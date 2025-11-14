@@ -1,15 +1,13 @@
 /// <reference types="node" />
+/// <reference types="express" />
+/// <reference types="multer" />
 
 declare global {
-  // Node.js globals
-  var __dirname: string;
-  var __filename: string;
-  var console: Console;
-  var Buffer: typeof globalThis.Buffer;
-  var process: NodeJS.Process;
+  // Node.js globals are already provided by @types/node
+  // Just ensure Express namespace is available
 }
 
-// Express namespace for multer
+// Extend Express namespace for multer
 declare namespace Express {
   namespace Multer {
     interface File {

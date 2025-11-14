@@ -1,5 +1,9 @@
+/// <reference types="node" />
+/// <reference types="express" />
+/// <reference types="multer" />
+
 import multer from 'multer';
-import path from 'path';
+import * as path from 'path';
 import * as fs from 'fs';
 import { Request } from 'express';
 

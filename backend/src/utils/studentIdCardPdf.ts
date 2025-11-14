@@ -1,6 +1,8 @@
+/// <reference types="node" />
+
 import PDFDocument from 'pdfkit';
-import path from 'path';
-import fs from 'fs';
+import * as path from 'path';
+import * as fs from 'fs';
 import { Student } from '../entities/Student';
 import { Settings } from '../entities/Settings';
 
