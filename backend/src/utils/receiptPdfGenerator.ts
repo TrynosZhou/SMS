@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import PDFDocument from 'pdfkit';
 import { Invoice } from '../entities/Invoice';
 import { Student } from '../entities/Student';

@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import PDFDocument from 'pdfkit';
 import { Settings } from '../entities/Settings';
 
