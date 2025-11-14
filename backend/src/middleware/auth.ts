@@ -5,11 +5,7 @@ import { User, UserRole } from '../entities/User';
 
 export interface AuthRequest extends Request {
   user?: User;
-  body?: any;
-  params?: any;
-  query?: any;
   file?: Express.Multer.File;
-  headers?: any;
 }
 
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
