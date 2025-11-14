@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AppDataSource } from '../config/database';
@@ -5,6 +6,11 @@ import { User, UserRole } from '../entities/User';
 
 export interface AuthRequest extends Request {
   user?: User;
+  body?: any;
+  params?: any;
+  query?: any;
+  file?: Express.Multer.File;
+  headers?: any;
 }
 
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
