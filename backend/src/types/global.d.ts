@@ -9,6 +9,25 @@ declare global {
   var require: NodeRequire;
 }
 
+// Buffer type declaration
+declare const Buffer: {
+  new (str: string, encoding?: string): Buffer;
+  from(str: string, encoding?: string): Buffer;
+  concat(buffers: Buffer[]): Buffer;
+  isBuffer(obj: any): obj is Buffer;
+  alloc(size: number): Buffer;
+  allocUnsafe(size: number): Buffer;
+  prototype: Buffer;
+};
+
+interface Buffer extends Uint8Array {
+  toString(encoding?: string): string;
+  write(string: string, offset?: number, length?: number, encoding?: string): number;
+  slice(start?: number, end?: number): Buffer;
+  copy(target: Buffer, targetStart?: number, sourceStart?: number, sourceEnd?: number): number;
+  length: number;
+}
+
 // Extend Express namespace for multer
 declare namespace Express {
   namespace Multer {
