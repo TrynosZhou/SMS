@@ -140,7 +140,9 @@ Fill in the configuration:
 - **Environment**: `Node`
 - **Region**: Same as database (for better performance)
 - **Branch**: `main` (or your default branch)
-- **Root Directory**: `backend` ⚠️ **Important!**
+- **Root Directory**: `backend` ⚠️ **CRITICAL - This must be set correctly!**
+  - If this is not set, you'll get error: "Couldn't find a package.json file"
+  - The Root Directory tells Render where your backend code is located
 - **Runtime**: `Node` (auto-detected)
 - **Build Command**: `npm install && npm run build`
 - **Start Command**: `npm start`
@@ -386,7 +388,12 @@ Your School Management System is now live:
 - ✅ Check database is running (status: Available)
 - ✅ Ensure database and backend are in same region
 
-**❌ Build failed**
+**❌ Build failed - "Couldn't find a package.json file"**
+- ✅ **Most Common Issue**: Root Directory is not set correctly
+- ✅ Go to Render dashboard → Your backend service → Settings
+- ✅ Set **Root Directory** to: `backend` (without quotes)
+- ✅ Save and redeploy
+- ✅ Verify `package.json` exists in the `backend` folder in your GitHub repo
 - ✅ Check `package.json` has all dependencies
 - ✅ Verify TypeScript compiles without errors
 - ✅ Check Render build logs for specific errors
