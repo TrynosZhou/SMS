@@ -16,8 +16,10 @@ import { UniformItem } from '../entities/UniformItem';
 import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
 import { Attendance } from '../entities/Attendance';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables (only if not already set, e.g., in production)
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 export const AppDataSource = new DataSource({
   type: 'postgres',

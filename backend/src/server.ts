@@ -5,7 +5,10 @@ import dotenv from 'dotenv';
 import { AppDataSource } from './config/database';
 import routes from './routes';
 
-dotenv.config();
+// Load environment variables (only if not already set, e.g., in production)
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 // Validate required environment variables
 const requiredEnvVars = ['JWT_SECRET', 'DB_HOST', 'DB_USERNAME', 'DB_PASSWORD', 'DB_NAME'];
