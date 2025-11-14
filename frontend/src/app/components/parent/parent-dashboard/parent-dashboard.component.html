@@ -1,0 +1,148 @@
+<div class="parent-dashboard-container">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>Parent Portal</h2>
+      <p class="user-info">{{ parentName }}</p>
+    </div>
+    
+    <nav class="sidebar-nav">
+      <div class="menu-section">
+        <ul class="menu-list">
+          <li><a routerLink="/parent/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+            <span class="menu-icon">📊</span> Dashboard
+          </a></li>
+          <li><a routerLink="/parent/inbox" routerLinkActive="active">
+            <span class="menu-icon">📧</span> My Inbox
+          </a></li>
+        </ul>
+      </div>
+
+      <!-- Logout -->
+      <div class="menu-section logout-section">
+        <ul class="menu-list">
+          <li><a (click)="logout()" style="cursor: pointer; color: #dc3545;">
+            <span class="menu-icon">🚪</span> Logout
+          </a></li>
+        </ul>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="dashboard-header">
+      <div>
+        <h1>Parent Dashboard</h1>
+        <p class="welcome-text">Welcome, {{ parentName }}</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-primary" (click)="linkMoreStudents()">➕ Link Students</button>
+        <button class="btn btn-info" (click)="manageAccount()">👤 Manage Account</button>
+      </div>
+    </div>
+
+    <!-- Quick Actions for Linked Students -->
+    <div *ngIf="!loading && students.length > 0" class="quick-actions-section">
+      <h3>Quick Actions</h3>
+      <div class="quick-actions-grid">
+        <button 
+          class="quick-action-btn" 
+          (click)="viewReportCardForFirstStudent()"
+          [disabled]="(getFirstStudent()?.termBalance || 0) > 0">
+          <span class="action-icon">📄</span>
+          <span class="action-label">View Report Card</span>
+          <span class="action-hint" *ngIf="(getFirstStudent()?.termBalance || 0) > 0">
+            (Clear term balance to access)
+          </span>
+        </button>
+        <button 
+          class="quick-action-btn" 
+          (click)="viewCurrentInvoice()">
+          <span class="action-icon">💰</span>
+          <span class="action-label">View Current Invoice</span>
+        </button>
+      </div>
+    </div>
+
+  <div class="alert alert-error" *ngIf="error" style="color: red; font-weight: bold;">{{ error }}</div>
+
+  <!-- Link Students Action Card - Always Visible -->
+  <div class="link-students-card">
+    <div class="link-students-content">
+      <div>
+        <h3>🔗 Link Your Child(ren)</h3>
+        <p>Connect your account to your child's student profile by entering their Student ID and Date of Birth</p>
+      </div>
+      <button class="btn btn-primary btn-large" (click)="linkMoreStudents()">
+        ➕ Link Students
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-message">Loading students...</div>
+
+  <div *ngIf="!loading && students.length === 0" class="empty-state">
+    <div class="empty-state-content">
+      <h2>No Linked Students</h2>
+      <p>You haven't linked any students yet. Click the button below to link your child(ren).</p>
+      <button class="btn btn-primary" (click)="linkMoreStudents()">➕ Link Students</button>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && students.length > 0" class="students-section">
+    <div class="section-header">
+      <h2>Your Linked Students</h2>
+      <button class="btn btn-primary" (click)="linkMoreStudents()">➕ Link More Students</button>
+    </div>
+    <div class="students-grid">
+      <div *ngFor="let student of students" class="student-card">
+        <div class="student-header">
+          <h3>{{ student.firstName }} {{ student.lastName }}</h3>
+          <span class="student-number">{{ student.studentNumber }}</span>
+        </div>
+      
+      <div class="student-info">
+        <div class="info-item">
+          <span class="label">Class:</span>
+          <span class="value">{{ student.class?.name || 'N/A' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Student Type:</span>
+          <span class="value">{{ student.studentType || 'Day Scholar' }}</span>
+        </div>
+      </div>
+
+      <div class="balance-section">
+        <div class="balance-label">Current Invoice Balance</div>
+        <div class="balance-amount" [class.positive]="student.currentInvoiceBalance > 0" 
+             [class.negative]="student.currentInvoiceBalance < 0"
+             [class.zero]="student.currentInvoiceBalance === 0">
+          {{ currencySymbol }} {{ student.currentInvoiceBalance | number:'1.2-2' }}
+        </div>
+        <div class="balance-note" *ngIf="(student.termBalance || 0) > 0" style="color: #dc3545; font-size: 12px; margin-top: 5px;">
+          ⚠️ Outstanding term balance - Report card access restricted
+        </div>
+        <div class="balance-note" *ngIf="(student.termBalance || 0) === 0" style="color: #28a745; font-size: 12px; margin-top: 5px;">
+          ✓ Term balance cleared - Report card accessible
+        </div>
+      </div>
+
+      <div class="student-actions">
+        <button 
+          class="btn btn-primary" 
+          (click)="viewReportCard(student)"
+          [disabled]="(student.termBalance || 0) > 0">
+          📄 View Report Card
+        </button>
+        <button 
+          class="btn btn-secondary" 
+          (click)="unlinkStudent(student.id)">
+          🔗 Unlink
+        </button>
+      </div>
+      </div>
+    </div>
+  </div>
+  </main>
+</div>

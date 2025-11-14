@@ -1,0 +1,359 @@
+<div class="dashboard-container">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>School Management</h2>
+      <p class="user-info">{{ user?.email }}</p>
+      <p class="user-role">{{ user?.role | titlecase }}</p>
+    </div>
+    
+    <nav class="sidebar-nav">
+      <!-- Admin Menu -->
+      <div *ngIf="isAdmin()" class="menu-section">
+        <h3 class="menu-section-title">Administration</h3>
+        <ul class="menu-list">
+          <li><a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+            <span class="menu-icon">📊</span> Dashboard
+          </a></li>
+          <li><a routerLink="/students" routerLinkActive="active">
+            <span class="menu-icon">👥</span> Students
+          </a></li>
+          <li><a routerLink="/classes" routerLinkActive="active">
+            <span class="menu-icon">🏫</span> Classes
+          </a></li>
+          <li><a routerLink="/subjects" routerLinkActive="active">
+            <span class="menu-icon">📚</span> Subjects
+          </a></li>
+          <li><a routerLink="/teachers" routerLinkActive="active">
+            <span class="menu-icon">👨‍🏫</span> Teachers
+          </a></li>
+          <li><a routerLink="/exams" routerLinkActive="active">
+            <span class="menu-icon">📝</span> Exams
+          </a></li>
+          <li><a routerLink="/attendance/mark" routerLinkActive="active">
+            <span class="menu-icon">✅</span> Mark Attendance
+          </a></li>
+          <li><a routerLink="/attendance/reports" routerLinkActive="active">
+            <span class="menu-icon">📊</span> Attendance Reports
+          </a></li>
+          <li><a routerLink="/invoices" routerLinkActive="active">
+            <span class="menu-icon">💰</span> Finance
+          </a></li>
+          <li><a routerLink="/report-cards" routerLinkActive="active">
+            <span class="menu-icon">📄</span> Report Cards
+          </a></li>
+          <li><a routerLink="/mark-sheet" routerLinkActive="active">
+            <span class="menu-icon">📊</span> Mark Sheet
+          </a></li>
+          <li><a routerLink="/rankings" routerLinkActive="active">
+            <span class="menu-icon">🏆</span> Rankings
+          </a></li>
+          <li><a routerLink="/settings" routerLinkActive="active">
+            <span class="menu-icon">⚙️</span> Settings
+          </a></li>
+          <li *ngIf="isSuperAdmin()"><a routerLink="/admin/manage-account" routerLinkActive="active">
+            <span class="menu-icon">🛠️</span> Manage Account
+          </a></li>
+        </ul>
+      </div>
+
+      <!-- Accountant Menu -->
+      <div *ngIf="isAccountant()" class="menu-section">
+        <h3 class="menu-section-title">Accountant Portal</h3>
+        <ul class="menu-list">
+          <li><a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+            <span class="menu-icon">📊</span> Dashboard
+          </a></li>
+          <li><a routerLink="/students" routerLinkActive="active">
+            <span class="menu-icon">👥</span> Students
+          </a></li>
+          <li><a routerLink="/invoices" routerLinkActive="active">
+            <span class="menu-icon">💰</span> Finance
+          </a></li>
+        </ul>
+      </div>
+
+      <!-- Teacher Menu -->
+      <div *ngIf="isTeacher()" class="menu-section">
+        <h3 class="menu-section-title">Teacher Portal</h3>
+        <ul class="menu-list">
+          <li><a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+            <span class="menu-icon">📊</span> Dashboard
+          </a></li>
+          <li *ngIf="hasModuleAccess('exams')"><a routerLink="/exams" routerLinkActive="active">
+            <span class="menu-icon">📝</span> Exams
+          </a></li>
+          <li><a routerLink="/attendance/mark" routerLinkActive="active">
+            <span class="menu-icon">✅</span> Mark Attendance
+          </a></li>
+          <li><a routerLink="/attendance/reports" routerLinkActive="active">
+            <span class="menu-icon">📊</span> Attendance Reports
+          </a></li>
+          <li *ngIf="hasModuleAccess('reportCards')"><a routerLink="/report-cards" routerLinkActive="active">
+            <span class="menu-icon">📄</span> Report Cards
+          </a></li>
+          <li *ngIf="hasModuleAccess('exams')"><a routerLink="/mark-sheet" routerLinkActive="active">
+            <span class="menu-icon">📊</span> Mark Sheet
+          </a></li>
+          <li *ngIf="hasModuleAccess('rankings')"><a routerLink="/rankings" routerLinkActive="active">
+            <span class="menu-icon">🏆</span> Rankings
+          </a></li>
+          <li><a routerLink="/teacher/manage-account" routerLinkActive="active">
+            <span class="menu-icon">👤</span> Manage Account
+          </a></li>
+        </ul>
+      </div>
+
+      <!-- Parent Menu -->
+      <div *ngIf="isParent()" class="menu-section">
+        <h3 class="menu-section-title">Parent Portal</h3>
+        <ul class="menu-list">
+          <li><a routerLink="/parent/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+            <span class="menu-icon">📊</span> Parent Dashboard
+          </a></li>
+        </ul>
+      </div>
+
+      <!-- Logout -->
+      <div class="menu-section logout-section">
+        <ul class="menu-list">
+          <li><a (click)="logout()" style="cursor: pointer; color: #dc3545;">
+            <span class="menu-icon">🚪</span> Logout
+          </a></li>
+        </ul>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="content-header">
+      <div class="header-top">
+        <div>
+          <h1>Dashboard</h1>
+          <p class="welcome-text">Welcome back, <strong>{{ user?.email }}</strong>!</p>
+        </div>
+        <div class="school-name-container" *ngIf="schoolName">
+          <span class="school-name">{{ schoolName }}</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Statistics Cards -->
+    <div class="stats-grid" *ngIf="(isAdmin() || isAccountant()) && !loadingStats">
+      <div class="stat-card primary">
+        <div class="stat-icon">👥</div>
+        <div class="stat-content">
+          <div class="stat-value">{{ stats.totalStudents }}</div>
+          <div class="stat-label">Total Students</div>
+          <div class="stat-sublabel" *ngIf="stats.totalStudents > 0">
+            {{ stats.dayScholars }} Day Scholars • {{ stats.boarders }} Boarders
+          </div>
+        </div>
+      </div>
+      
+      <div class="stat-card success">
+        <div class="stat-icon">👨‍🏫</div>
+        <div class="stat-content">
+          <div class="stat-value">{{ stats.totalTeachers }}</div>
+          <div class="stat-label">Teachers</div>
+        </div>
+      </div>
+      
+      <div class="stat-card info">
+        <div class="stat-icon">🏫</div>
+        <div class="stat-content">
+          <div class="stat-value">{{ stats.totalClasses }}</div>
+          <div class="stat-label">Active Classes</div>
+        </div>
+      </div>
+      
+      <div class="stat-card warning">
+        <div class="stat-icon">📚</div>
+        <div class="stat-content">
+          <div class="stat-value">{{ stats.totalSubjects }}</div>
+          <div class="stat-label">Subjects</div>
+        </div>
+      </div>
+      
+      <div class="stat-card danger" *ngIf="isAdmin() || isAccountant()">
+        <div class="stat-icon">💰</div>
+        <div class="stat-content">
+          <div class="stat-value">{{ stats.totalInvoices }}</div>
+          <div class="stat-label">Total Invoices</div>
+          <div class="stat-sublabel" *ngIf="stats.totalBalance > 0">
+            Outstanding: {{ stats.totalBalance | number:'1.2-2' }}
+          </div>
+        </div>
+      </div>
+      
+      <div class="stat-card secondary" *ngIf="isAdmin()">
+        <div class="stat-icon">👶</div>
+        <div class="stat-content">
+          <div class="stat-value">{{ stats.staffChildren }}</div>
+          <div class="stat-label">Staff Children</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="loading-stats" *ngIf="(isAdmin() || isAccountant()) && loadingStats">
+      <div class="spinner"></div>
+      <p>Loading statistics...</p>
+    </div>
+    
+    <div class="dashboard-cards">
+      <div class="card">
+        <h2>Quick Overview</h2>
+        <div *ngIf="isAdmin()">
+          <h3>Admin Features</h3>
+          <ul>
+            <li>✅ Manage Students - Register and enroll students</li>
+            <li>✅ Manage Teachers - Add and assign teachers</li>
+            <li>✅ Manage Exams - Create and organize exams</li>
+            <li>✅ Mark Attendance - Record daily student attendance</li>
+            <li>✅ Attendance Reports - View class attendance statistics</li>
+            <li>✅ Manage Finance - Handle invoices and payments</li>
+            <li>✅ View Report Cards - Access all student reports</li>
+            <li>✅ View Rankings - See class and form rankings</li>
+          </ul>
+        </div>
+        <div *ngIf="isTeacher()">
+          <h3>Teacher Features</h3>
+          <ul>
+            <li>✅ Capture Marks - Enter student exam marks</li>
+            <li>✅ Mark Attendance - Record daily student attendance</li>
+            <li>✅ Attendance Reports - View class attendance statistics</li>
+            <li>✅ View Rankings - Check class and subject rankings</li>
+            <li>✅ View Report Cards - Generate student reports</li>
+          </ul>
+        </div>
+        <div *ngIf="isAccountant()">
+          <h3>Accountant Features</h3>
+          <ul>
+            <li>✅ Manage Finance - Create and track invoices and payments</li>
+            <li>✅ View Students - Access student directory for billing updates</li>
+            <li>✅ Monitor Balances - Review outstanding balances and payment history</li>
+          </ul>
+        </div>
+        <div *ngIf="isParent()">
+          <h3>Parent Features</h3>
+          <ul>
+            <li>✅ Link Students - Connect your account to your child's profile</li>
+            <li>✅ View Invoice Balance - Check your child's current invoice balance</li>
+            <li>✅ View Report Cards - Access your child's report cards (when balance is cleared)</li>
+          </ul>
+          <p style="margin-top: 15px;">
+            <a routerLink="/parent/dashboard" class="action-btn" style="text-decoration: none; display: inline-block;">
+              Go to Parent Dashboard →
+            </a>
+          </p>
+        </div>
+      </div>
+
+      <div class="card" *ngIf="isAdmin() || isAccountant()">
+        <h2>Quick Actions</h2>
+        <div class="quick-actions">
+          <a routerLink="/students/new" class="action-btn" *ngIf="isAdmin()">
+            <span>➕</span> Add Student
+          </a>
+          <a routerLink="/classes/new" class="action-btn" *ngIf="isAdmin()">
+            <span>➕</span> Add Class
+          </a>
+          <a routerLink="/subjects/new" class="action-btn" *ngIf="isAdmin()">
+            <span>➕</span> Add Subject
+          </a>
+          <a routerLink="/teachers/new" class="action-btn" *ngIf="isAdmin()">
+            <span>➕</span> Add Teacher
+          </a>
+          <a (click)="openBulkMessage()" class="action-btn" style="cursor: pointer;" *ngIf="isAdmin()">
+            <span>📧</span> Bulk Message
+          </a>
+          <a routerLink="/attendance/mark" class="action-btn" *ngIf="isAdmin() || isTeacher()">
+            <span>✅</span> Mark Attendance
+          </a>
+          <a routerLink="/attendance/reports" class="action-btn" *ngIf="isAdmin() || isTeacher()">
+            <span>📊</span> Attendance Reports
+          </a>
+          <a routerLink="/students" class="action-btn" *ngIf="isAccountant()">
+            <span>📋</span> View Students
+          </a>
+          <a routerLink="/invoices" class="action-btn" *ngIf="isAccountant()">
+            <span>📑</span> Finance Overview
+          </a>
+          <a routerLink="/invoices/new" class="action-btn" *ngIf="isAdmin() || isAccountant()">
+            <span>➕</span> Create Invoice
+          </a>
+          <a routerLink="/admin/manage-accounts" class="action-btn" *ngIf="isAdmin()">
+            <span>👤</span> Manage Accounts
+          </a>
+          <a routerLink="/admin/class-promotion" class="action-btn" *ngIf="isAdmin()">
+            <span>⬆️</span> Class Promotion
+          </a>
+        </div>
+      </div>
+      
+      <!-- Recent Activity Section -->
+      <div class="card recent-activity" *ngIf="(isAdmin() || isAccountant()) && !loadingStats">
+        <div class="card-header-flex">
+          <h2>Recent Activity</h2>
+          <a routerLink="/students" class="view-all-link" *ngIf="recentStudents.length > 0">View All →</a>
+        </div>
+        
+        <div class="activity-tabs">
+          <div class="tab-content">
+            <h3 class="tab-title">Recent Students</h3>
+            <div class="activity-list" *ngIf="recentStudents.length > 0; else noRecentStudents">
+              <div class="activity-item" *ngFor="let student of recentStudents">
+                <div class="activity-icon">👤</div>
+                <div class="activity-details">
+                  <div class="activity-name">{{ student.firstName }} {{ student.lastName }}</div>
+                  <div class="activity-meta">
+                    <span>ID: {{ student.studentNumber }}</span>
+                    <span *ngIf="student.class">• {{ student.class.name }}</span>
+                    <span>• {{ student.studentType || 'Day Scholar' }}</span>
+                  </div>
+                </div>
+                <div class="activity-action">
+                  <a [routerLink]="['/students', student.id, 'edit']" class="btn-link">Edit</a>
+                </div>
+              </div>
+            </div>
+            <ng-template #noRecentStudents>
+              <div class="empty-state">
+                <p>No recent students</p>
+              </div>
+            </ng-template>
+          </div>
+          
+          <div class="tab-content" *ngIf="isAdmin() || isAccountant()">
+            <h3 class="tab-title">Recent Invoices</h3>
+            <div class="activity-list" *ngIf="recentInvoices.length > 0; else noRecentInvoices">
+              <div class="activity-item" *ngFor="let invoice of recentInvoices">
+                <div class="activity-icon">💰</div>
+                <div class="activity-details">
+                  <div class="activity-name">Invoice #{{ invoice.invoiceNumber }}</div>
+                  <div class="activity-meta">
+                    <span>Balance: {{ invoice.balance | number:'1.2-2' }}</span>
+                    <span *ngIf="invoice.student">• {{ invoice.student.firstName }} {{ invoice.student.lastName }}</span>
+                  </div>
+                </div>
+                <div class="activity-action">
+                  <a [routerLink]="['/invoices']" class="btn-link">View</a>
+                </div>
+              </div>
+            </div>
+            <ng-template #noRecentInvoices>
+              <div class="empty-state">
+                <p>No recent invoices</p>
+              </div>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bulk Message Modal -->
+  <app-bulk-message *ngIf="showBulkMessage" (close)="closeBulkMessage()"></app-bulk-message>
+</div>
+

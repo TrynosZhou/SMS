@@ -1,0 +1,48 @@
+<div class="container">
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h1>Classes</h1>
+      <button class="btn btn-primary" routerLink="/classes/new">➕ Add Class</button>
+    </div>
+    <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+    <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+    <div *ngIf="loading">Loading...</div>
+    <table *ngIf="!loading">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Grade</th>
+          <th>Description</th>
+          <th>Students</th>
+          <th>Teachers</th>
+          <th>Status</th>
+          <th style="text-align: center;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let classItem of classes">
+          <td>{{ classItem.name }}</td>
+          <td>{{ classItem.form }}</td>
+          <td>{{ classItem.description || 'N/A' }}</td>
+          <td>{{ classItem.students?.length || 0 }}</td>
+          <td>{{ classItem.teachers?.length || 0 }}</td>
+          <td>
+            <span [class]="classItem.isActive ? 'badge-success' : 'badge-error'">
+              {{ classItem.isActive ? 'Active' : 'Inactive' }}
+            </span>
+          </td>
+          <td style="text-align: center;">
+            <button class="btn btn-secondary" (click)="editClass(classItem.id)" style="margin-right: 5px;">✏️ Edit</button>
+            <button class="btn btn-danger" (click)="deleteClass(classItem.id, classItem.name)" [disabled]="loading">
+              🗑️ Delete
+            </button>
+          </td>
+        </tr>
+        <tr *ngIf="classes.length === 0">
+          <td colspan="7" style="text-align: center; padding: 20px;">No classes found</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+

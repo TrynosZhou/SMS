@@ -1,0 +1,76 @@
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { LoginComponent } from './components/login/login.component';
+import { DashboardComponent } from './components/dashboard/dashboard.component';
+import { StudentListComponent } from './components/students/student-list/student-list.component';
+import { StudentFormComponent } from './components/students/student-form/student-form.component';
+import { TeacherListComponent } from './components/teachers/teacher-list/teacher-list.component';
+import { TeacherFormComponent } from './components/teachers/teacher-form/teacher-form.component';
+import { ExamListComponent } from './components/exams/exam-list/exam-list.component';
+import { ExamFormComponent } from './components/exams/exam-form/exam-form.component';
+import { MarksEntryComponent } from './components/exams/marks-entry/marks-entry.component';
+import { ReportCardComponent } from './components/exams/report-card/report-card.component';
+import { RankingsComponent } from './components/exams/rankings/rankings.component';
+import { MarkSheetComponent } from './components/exams/mark-sheet/mark-sheet.component';
+import { InvoiceListComponent } from './components/finance/invoice-list/invoice-list.component';
+import { InvoiceFormComponent } from './components/finance/invoice-form/invoice-form.component';
+import { InvoiceStatementsComponent } from './components/finance/invoice-statements/invoice-statements.component';
+import { ClassListComponent } from './components/classes/class-list/class-list.component';
+import { ClassFormComponent } from './components/classes/class-form/class-form.component';
+import { SubjectListComponent } from './components/subjects/subject-list/subject-list.component';
+import { SubjectFormComponent } from './components/subjects/subject-form/subject-form.component';
+import { SettingsComponent } from './components/settings/settings.component';
+import { ParentDashboardComponent } from './components/parent/parent-dashboard/parent-dashboard.component';
+import { LinkStudentsComponent } from './components/parent/link-students/link-students.component';
+import { ParentInboxComponent } from './components/parent/parent-inbox/parent-inbox.component';
+import { ManageAccountComponent } from './components/teachers/manage-account/manage-account.component';
+import { ManageAccountsComponent } from './components/admin/manage-accounts/manage-accounts.component';
+import { ClassPromotionComponent } from './components/admin/class-promotion/class-promotion.component';
+import { MarkAttendanceComponent } from './components/attendance/mark-attendance/mark-attendance.component';
+import { AttendanceReportsComponent } from './components/attendance/attendance-reports/attendance-reports.component';
+import { AuthGuard } from './guards/auth.guard';
+
+const routes: Routes = [
+  { path: 'login', component: LoginComponent },
+  { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
+  { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
+  { path: 'parent/dashboard', component: ParentDashboardComponent, canActivate: [AuthGuard] },
+  { path: 'parent/inbox', component: ParentInboxComponent, canActivate: [AuthGuard] },
+  { path: 'parent/link-students', component: LinkStudentsComponent, canActivate: [AuthGuard] },
+  { path: 'parent/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
+  { path: 'teacher/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
+  { path: 'admin/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
+  { path: 'admin/manage-accounts', component: ManageAccountsComponent, canActivate: [AuthGuard] },
+  { path: 'admin/class-promotion', component: ClassPromotionComponent, canActivate: [AuthGuard] },
+  { path: 'students', component: StudentListComponent, canActivate: [AuthGuard] },
+  { path: 'students/new', component: StudentFormComponent, canActivate: [AuthGuard] },
+  { path: 'students/:id/edit', component: StudentFormComponent, canActivate: [AuthGuard] },
+  { path: 'teachers', component: TeacherListComponent, canActivate: [AuthGuard] },
+  { path: 'teachers/new', component: TeacherFormComponent, canActivate: [AuthGuard] },
+  { path: 'teachers/:id/edit', component: TeacherFormComponent, canActivate: [AuthGuard] },
+  { path: 'exams', component: ExamListComponent, canActivate: [AuthGuard] },
+  { path: 'exams/new', component: ExamFormComponent, canActivate: [AuthGuard] },
+  { path: 'exams/:id/marks', component: MarksEntryComponent, canActivate: [AuthGuard] },
+  { path: 'report-cards', component: ReportCardComponent, canActivate: [AuthGuard] },
+  { path: 'mark-sheet', component: MarkSheetComponent, canActivate: [AuthGuard] },
+  { path: 'rankings', component: RankingsComponent, canActivate: [AuthGuard] },
+  { path: 'invoices', component: InvoiceListComponent, canActivate: [AuthGuard] },
+  { path: 'invoices/new', component: InvoiceFormComponent, canActivate: [AuthGuard] },
+  { path: 'invoices/statements', component: InvoiceStatementsComponent, canActivate: [AuthGuard] },
+  { path: 'classes', component: ClassListComponent, canActivate: [AuthGuard] },
+  { path: 'classes/new', component: ClassFormComponent, canActivate: [AuthGuard] },
+  { path: 'classes/:id/edit', component: ClassFormComponent, canActivate: [AuthGuard] },
+  { path: 'subjects', component: SubjectListComponent, canActivate: [AuthGuard] },
+  { path: 'subjects/new', component: SubjectFormComponent, canActivate: [AuthGuard] },
+  { path: 'subjects/:id/edit', component: SubjectFormComponent, canActivate: [AuthGuard] },
+  { path: 'attendance/mark', component: MarkAttendanceComponent, canActivate: [AuthGuard] },
+  { path: 'attendance/reports', component: AttendanceReportsComponent, canActivate: [AuthGuard] },
+  { path: 'settings', component: SettingsComponent, canActivate: [AuthGuard] }
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule]
+})
+export class AppRoutingModule { }
+

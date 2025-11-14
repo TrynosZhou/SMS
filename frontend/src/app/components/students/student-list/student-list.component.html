@@ -1,0 +1,337 @@
+<div class="students-container">
+  <!-- Header Section -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="header-icon">👨‍🎓</span>
+        Students
+      </h1>
+      <p class="subtitle">Manage and view all enrolled students</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" routerLink="/students/new">
+        <span>➕</span> Add New Student
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">👥</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ students.length }}</div>
+        <div class="stat-label">Total Students</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🏫</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ getStudentsByClass().length }}</div>
+        <div class="stat-label">Classes</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🏠</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ getDayScholarsCount() }}</div>
+        <div class="stat-label">Day Scholars</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🏫</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ getBoardersCount() }}</div>
+        <div class="stat-label">Boarders</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert Messages -->
+  <div class="alert alert-success" *ngIf="success">
+    <span class="alert-icon">✓</span>
+    {{ success }}
+  </div>
+  <div class="alert alert-error" *ngIf="error">
+    <span class="alert-icon">⚠</span>
+    {{ error }}
+  </div>
+
+  <!-- Search and Filter Section -->
+  <div class="filter-card">
+    <div class="filter-header">
+      <h2>
+        <span class="icon">🔍</span>
+        Search & Filter
+      </h2>
+      <button class="btn-clear" (click)="clearFilters()" *ngIf="hasActiveFilters()">
+        🗑️ Clear Filters
+      </button>
+    </div>
+    <div class="filter-content">
+      <div class="search-box">
+        <input 
+          type="text" 
+          [(ngModel)]="searchQuery" 
+          [ngModelOptions]="{standalone: true}"
+          placeholder="Search by name, student number, or contact..."
+          class="search-input"
+          (input)="filterStudents()">
+        <span class="search-icon">🔍</span>
+      </div>
+      <div class="filter-options">
+        <div class="filter-group">
+          <label>Filter by Class</label>
+          <select 
+            [(ngModel)]="selectedClass" 
+            [ngModelOptions]="{standalone: true}"
+            (change)="filterStudents()"
+            class="filter-select">
+            <option value="">All Classes</option>
+            <option *ngFor="let cls of classes" [value]="cls.id">
+              {{ cls.name }}
+            </option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Filter by Type</label>
+          <select 
+            [(ngModel)]="selectedType" 
+            [ngModelOptions]="{standalone: true}"
+            (change)="filterStudents()"
+            class="filter-select">
+            <option value="">All Types</option>
+            <option value="Day Scholar">Day Scholar</option>
+            <option value="Boarder">Boarder</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Filter by Gender</label>
+          <select 
+            [(ngModel)]="selectedGender" 
+            [ngModelOptions]="{standalone: true}"
+            (change)="filterStudents()"
+            class="filter-select">
+            <option value="">All Genders</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>View Mode</label>
+          <div class="view-toggle">
+            <button 
+              class="toggle-btn" 
+              [class.active]="viewMode === 'grid'"
+              (click)="viewMode = 'grid'">
+              ⬜ Grid
+            </button>
+            <button 
+              class="toggle-btn" 
+              [class.active]="viewMode === 'list'"
+              (click)="viewMode = 'list'">
+              ☰ List
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner-large"></div>
+    <p>Loading students...</p>
+  </div>
+
+  <!-- Students Grid View -->
+  <div class="students-grid" *ngIf="!loading && viewMode === 'grid' && filteredStudents.length > 0">
+    <div *ngFor="let student of filteredStudents" class="student-card">
+      <div class="card-header">
+        <div class="student-avatar" [class.male]="student.gender === 'Male'" [class.female]="student.gender === 'Female'">
+          <img *ngIf="student.photo" 
+               [src]="'http://localhost:3001' + student.photo" 
+               [alt]="student.firstName + ' ' + student.lastName"
+               class="student-photo"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+          <span class="avatar-icon" [style.display]="student.photo ? 'none' : 'flex'">{{ student.gender === 'Male' ? '👨' : '👩' }}</span>
+        </div>
+        <div class="student-badge" [class.boarder]="student.studentType === 'Boarder'" [class.day-scholar]="student.studentType === 'Day Scholar'">
+          {{ student.studentType || 'Day Scholar' }}
+        </div>
+      </div>
+      <div class="card-body">
+        <h3 class="student-name">{{ student.firstName }} {{ student.lastName }}</h3>
+        <div class="student-info">
+          <div class="info-item">
+            <span class="info-label">Student #</span>
+            <span class="info-value student-id-link" (click)="viewStudentIdCard(student.id)" title="View Student ID Card">{{ student.studentNumber }}</span>
+          </div>
+          <div class="info-item" *ngIf="student.class">
+            <span class="info-label">Class</span>
+            <span class="info-value">{{ student.class.name }}</span>
+          </div>
+          <div class="info-item" *ngIf="student.contactNumber || student.phoneNumber">
+            <span class="info-label">Contact</span>
+            <span class="info-value">{{ student.contactNumber || student.phoneNumber }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Gender</span>
+            <span class="info-value">{{ student.gender }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="btn-action btn-view" (click)="viewStudentDetails(student)">
+          👁️ View
+        </button>
+        <button class="btn-action btn-edit" (click)="editStudent(student.id)">
+          ✏️ Edit
+        </button>
+        <button class="btn-action btn-report" (click)="viewReportCard(student.id)">
+          📄 Report
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Students List View -->
+  <div class="students-list-view" *ngIf="!loading && viewMode === 'list' && filteredStudents.length > 0">
+    <div class="list-header">
+      <div class="list-col number-col">Student #</div>
+      <div class="list-col name-col">Name</div>
+      <div class="list-col class-col">Class</div>
+      <div class="list-col contact-col">Contact</div>
+      <div class="list-col type-col">Type</div>
+      <div class="list-col gender-col">Gender</div>
+      <div class="list-col actions-col">Actions</div>
+    </div>
+    <div class="list-item" *ngFor="let student of filteredStudents">
+      <div class="list-col number-col">
+        <strong class="student-id-link" (click)="viewStudentIdCard(student.id)" title="View Student ID Card">{{ student.studentNumber }}</strong>
+      </div>
+      <div class="list-col name-col">
+        <div class="name-cell">
+          <img *ngIf="student.photo" 
+               [src]="'http://localhost:3001' + student.photo" 
+               [alt]="student.firstName + ' ' + student.lastName"
+               class="avatar-small-photo"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+          <span class="avatar-small" [style.display]="student.photo ? 'none' : 'inline'">{{ student.gender === 'Male' ? '👨' : '👩' }}</span>
+          <span class="name-text">{{ student.firstName }} {{ student.lastName }}</span>
+        </div>
+      </div>
+      <div class="list-col class-col">{{ student.class?.name || 'N/A' }}</div>
+      <div class="list-col contact-col">{{ student.contactNumber || student.phoneNumber || 'N/A' }}</div>
+      <div class="list-col type-col">
+        <span class="type-badge" [class.boarder]="student.studentType === 'Boarder'" [class.day-scholar]="student.studentType === 'Day Scholar'">
+          {{ student.studentType || 'Day Scholar' }}
+        </span>
+      </div>
+      <div class="list-col gender-col">{{ student.gender }}</div>
+      <div class="list-col actions-col">
+        <div class="action-buttons">
+          <button class="btn-icon-small" (click)="viewStudentDetails(student)" title="View Details">
+            👁️
+          </button>
+          <button class="btn-icon-small" (click)="editStudent(student.id)" title="Edit">
+            ✏️
+          </button>
+          <button class="btn-icon-small" (click)="viewReportCard(student.id)" title="Report Card">
+            📄
+          </button>
+          <button class="btn-icon-small btn-delete" (click)="deleteStudent(student.id, student.firstName + ' ' + student.lastName, student.studentNumber)" title="Delete" [disabled]="loading">
+            🗑️
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!loading && filteredStudents.length === 0">
+    <div class="empty-icon">👨‍🎓</div>
+    <h3>{{ searchQuery || selectedClass || selectedType || selectedGender ? 'No Students Found' : 'No Students Yet' }}</h3>
+    <p *ngIf="searchQuery || selectedClass || selectedType || selectedGender">
+      Try adjusting your search or filters to find students.
+    </p>
+    <p *ngIf="!searchQuery && !selectedClass && !selectedType && !selectedGender">
+      Get started by adding your first student to the system.
+    </p>
+    <button class="btn btn-primary" routerLink="/students/new" *ngIf="!searchQuery && !selectedClass && !selectedType && !selectedGender">
+      ➕ Add First Student
+    </button>
+  </div>
+
+  <!-- Student Details Modal -->
+  <div class="modal-overlay" *ngIf="selectedStudent" (click)="closeStudentDetails()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <button class="modal-close" (click)="closeStudentDetails()">&times;</button>
+      <div class="modal-header">
+        <div class="modal-avatar" [class.male]="selectedStudent.gender === 'Male'" [class.female]="selectedStudent.gender === 'Female'">
+          <img *ngIf="selectedStudent.photo" 
+               [src]="'http://localhost:3001' + selectedStudent.photo" 
+               [alt]="selectedStudent.firstName + ' ' + selectedStudent.lastName"
+               class="student-photo-large"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+          <span class="avatar-icon-large" [style.display]="selectedStudent.photo ? 'none' : 'flex'">{{ selectedStudent.gender === 'Male' ? '👨' : '👩' }}</span>
+        </div>
+        <div class="modal-title">
+          <h2>{{ selectedStudent.firstName }} {{ selectedStudent.lastName }}</h2>
+          <p class="student-number student-id-link" (click)="viewStudentIdCard(selectedStudent.id)" title="Click to view Student ID Card">
+            {{ selectedStudent.studentNumber }}
+          </p>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="detail-section">
+          <h3>Student Information</h3>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Class</span>
+              <span class="detail-value">{{ selectedStudent.class?.name || 'Not assigned' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Student Type</span>
+              <span class="detail-value">{{ selectedStudent.studentType || 'Day Scholar' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Gender</span>
+              <span class="detail-value">{{ selectedStudent.gender }}</span>
+            </div>
+            <div class="detail-item" *ngIf="selectedStudent.dateOfBirth">
+              <span class="detail-label">Date of Birth</span>
+              <span class="detail-value">{{ selectedStudent.dateOfBirth | date }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="detail-section">
+          <h3>Contact Information</h3>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Contact Number</span>
+              <span class="detail-value">{{ selectedStudent.contactNumber || 'Not provided' }}</span>
+            </div>
+            <div class="detail-item" *ngIf="selectedStudent.phoneNumber">
+              <span class="detail-label">Phone Number</span>
+              <span class="detail-value">{{ selectedStudent.phoneNumber }}</span>
+            </div>
+            <div class="detail-item" *ngIf="selectedStudent.address">
+              <span class="detail-label">Address</span>
+              <span class="detail-value">{{ selectedStudent.address }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeStudentDetails()">Close</button>
+        <button class="btn btn-primary" (click)="viewReportCard(selectedStudent.id)">
+          📄 View Report Card
+        </button>
+        <button class="btn btn-primary" (click)="editStudent(selectedStudent.id)">
+          ✏️ Edit Student
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

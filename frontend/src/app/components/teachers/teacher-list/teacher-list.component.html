@@ -1,0 +1,297 @@
+<div class="teachers-container">
+  <!-- Header Section -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="header-icon">👨‍🏫</span>
+        Teachers
+      </h1>
+      <p class="subtitle">Manage and view all teaching staff members</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" routerLink="/teachers/new">
+        <span>➕</span> Add New Teacher
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">👥</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ teachers.length }}</div>
+        <div class="stat-label">Total Teachers</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📚</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ getTotalSubjects() }}</div>
+        <div class="stat-label">Subjects Covered</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🏫</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ getTotalClasses() }}</div>
+        <div class="stat-label">Classes Assigned</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">⭐</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ getAverageSubjectsPerTeacher() }}</div>
+        <div class="stat-label">Avg Subjects/Teacher</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search and Filter Section -->
+  <div class="filter-card">
+    <div class="filter-header">
+      <h2>
+        <span class="icon">🔍</span>
+        Search & Filter
+      </h2>
+      <button class="btn-clear" (click)="clearFilters()" *ngIf="hasActiveFilters()">
+        🗑️ Clear Filters
+      </button>
+    </div>
+    <div class="filter-content">
+      <div class="search-box">
+        <input 
+          type="text" 
+          [(ngModel)]="searchQuery" 
+          [ngModelOptions]="{standalone: true}"
+          placeholder="Search by name, employee number, or phone..."
+          class="search-input"
+          (input)="filterTeachers()">
+        <span class="search-icon">🔍</span>
+      </div>
+      <div class="filter-options">
+        <div class="filter-group">
+          <label>Filter by Subject</label>
+          <select 
+            [(ngModel)]="selectedSubjectFilter" 
+            [ngModelOptions]="{standalone: true}"
+            (change)="filterTeachers()"
+            class="filter-select">
+            <option value="">All Subjects</option>
+            <option *ngFor="let subject of allSubjects" [value]="subject.id">
+              {{ subject.name }}
+            </option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Filter by Class</label>
+          <select 
+            [(ngModel)]="selectedClassFilter" 
+            [ngModelOptions]="{standalone: true}"
+            (change)="filterTeachers()"
+            class="filter-select">
+            <option value="">All Classes</option>
+            <option *ngFor="let cls of allClasses" [value]="cls.id">
+              {{ cls.name }}
+            </option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>View Mode</label>
+          <div class="view-toggle">
+            <button 
+              class="toggle-btn" 
+              [class.active]="viewMode === 'grid'"
+              (click)="viewMode = 'grid'">
+              ⬜ Grid
+            </button>
+            <button 
+              class="toggle-btn" 
+              [class.active]="viewMode === 'list'"
+              (click)="viewMode = 'list'">
+              ☰ List
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner-large"></div>
+    <p>Loading teachers...</p>
+  </div>
+
+  <!-- Teachers Grid View -->
+  <div class="teachers-grid" *ngIf="!loading && viewMode === 'grid' && filteredTeachers.length > 0">
+    <div *ngFor="let teacher of filteredTeachers" class="teacher-card">
+      <div class="card-header">
+        <div class="teacher-avatar">
+          <span class="avatar-icon">👨‍🏫</span>
+        </div>
+        <div class="teacher-badge" *ngIf="teacher.isActive !== false">Active</div>
+      </div>
+      <div class="card-body">
+        <h3 class="teacher-name">{{ teacher.firstName }} {{ teacher.lastName }}</h3>
+        <div class="teacher-info">
+          <div class="info-item">
+            <span class="info-label">Employee #</span>
+            <span class="info-value">{{ teacher.employeeNumber }}</span>
+          </div>
+          <div class="info-item" *ngIf="teacher.phoneNumber">
+            <span class="info-label">Phone</span>
+            <span class="info-value">{{ teacher.phoneNumber }}</span>
+          </div>
+        </div>
+        <div class="subjects-section" *ngIf="teacher.subjects && teacher.subjects.length > 0">
+          <div class="section-label">Subjects</div>
+          <div class="tags-container">
+            <span *ngFor="let subject of teacher.subjects" class="subject-tag">
+              {{ subject.name }}
+            </span>
+          </div>
+        </div>
+        <div class="classes-section" *ngIf="teacher.classes && teacher.classes.length > 0">
+          <div class="section-label">Classes</div>
+          <div class="tags-container">
+            <span *ngFor="let cls of teacher.classes" class="class-tag">
+              {{ cls.name }}
+            </span>
+          </div>
+        </div>
+        <div class="no-assignments" *ngIf="(!teacher.subjects || teacher.subjects.length === 0) && (!teacher.classes || teacher.classes.length === 0)">
+          <span class="info-text">No assignments yet</span>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="btn-action btn-view" (click)="viewTeacherDetails(teacher)">
+          👁️ View
+        </button>
+        <button class="btn-action btn-edit" (click)="editTeacher(teacher.id)">
+          ✏️ Edit
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teachers List View -->
+  <div class="teachers-list-view" *ngIf="!loading && viewMode === 'list' && filteredTeachers.length > 0">
+    <div class="list-header">
+      <div class="list-col name-col">Name</div>
+      <div class="list-col emp-col">Employee #</div>
+      <div class="list-col phone-col">Phone</div>
+      <div class="list-col subjects-col">Subjects</div>
+      <div class="list-col classes-col">Classes</div>
+      <div class="list-col actions-col">Actions</div>
+    </div>
+    <div class="list-item" *ngFor="let teacher of filteredTeachers">
+      <div class="list-col name-col">
+        <div class="name-cell">
+          <span class="avatar-small">👨‍🏫</span>
+          <span class="name-text">{{ teacher.firstName }} {{ teacher.lastName }}</span>
+        </div>
+      </div>
+      <div class="list-col emp-col">{{ teacher.employeeNumber }}</div>
+      <div class="list-col phone-col">{{ teacher.phoneNumber || 'N/A' }}</div>
+      <div class="list-col subjects-col">
+        <div class="tags-inline">
+          <span *ngFor="let subject of teacher.subjects" class="subject-tag-small">
+            {{ subject.name }}
+          </span>
+          <span *ngIf="!teacher.subjects || teacher.subjects.length === 0" class="no-data">N/A</span>
+        </div>
+      </div>
+      <div class="list-col classes-col">
+        <div class="tags-inline">
+          <span *ngFor="let cls of teacher.classes" class="class-tag-small">
+            {{ cls.name }}
+          </span>
+          <span *ngIf="!teacher.classes || teacher.classes.length === 0" class="no-data">N/A</span>
+        </div>
+      </div>
+      <div class="list-col actions-col">
+        <div class="action-buttons">
+          <button class="btn-icon-small" (click)="viewTeacherDetails(teacher)" title="View Details">
+            👁️
+          </button>
+          <button class="btn-icon-small" (click)="editTeacher(teacher.id)" title="Edit">
+            ✏️
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!loading && filteredTeachers.length === 0">
+    <div class="empty-icon">👨‍🏫</div>
+    <h3>{{ searchQuery || selectedSubjectFilter || selectedClassFilter ? 'No Teachers Found' : 'No Teachers Yet' }}</h3>
+    <p *ngIf="searchQuery || selectedSubjectFilter || selectedClassFilter">
+      Try adjusting your search or filters to find teachers.
+    </p>
+    <p *ngIf="!searchQuery && !selectedSubjectFilter && !selectedClassFilter">
+      Get started by adding your first teacher to the system.
+    </p>
+    <button class="btn btn-primary" routerLink="/teachers/new" *ngIf="!searchQuery && !selectedSubjectFilter && !selectedClassFilter">
+      ➕ Add First Teacher
+    </button>
+  </div>
+
+  <!-- Teacher Details Modal -->
+  <div class="modal-overlay" *ngIf="selectedTeacher" (click)="closeTeacherDetails()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <button class="modal-close" (click)="closeTeacherDetails()">&times;</button>
+      <div class="modal-header">
+        <div class="modal-avatar">
+          <span class="avatar-icon-large">👨‍🏫</span>
+        </div>
+        <div class="modal-title">
+          <h2>{{ selectedTeacher.firstName }} {{ selectedTeacher.lastName }}</h2>
+          <p class="employee-number">{{ selectedTeacher.employeeNumber }}</p>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="detail-section">
+          <h3>Contact Information</h3>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Phone Number</span>
+              <span class="detail-value">{{ selectedTeacher.phoneNumber || 'Not provided' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Address</span>
+              <span class="detail-value">{{ selectedTeacher.address || 'Not provided' }}</span>
+            </div>
+            <div class="detail-item" *ngIf="selectedTeacher.dateOfBirth">
+              <span class="detail-label">Date of Birth</span>
+              <span class="detail-value">{{ selectedTeacher.dateOfBirth | date }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="detail-section" *ngIf="selectedTeacher.subjects && selectedTeacher.subjects.length > 0">
+          <h3>Subjects ({{ selectedTeacher.subjects.length }})</h3>
+          <div class="tags-container">
+            <span *ngFor="let subject of selectedTeacher.subjects" class="subject-tag">
+              {{ subject.name }}
+            </span>
+          </div>
+        </div>
+        <div class="detail-section" *ngIf="selectedTeacher.classes && selectedTeacher.classes.length > 0">
+          <h3>Classes ({{ selectedTeacher.classes.length }})</h3>
+          <div class="tags-container">
+            <span *ngFor="let cls of selectedTeacher.classes" class="class-tag">
+              {{ cls.name }}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeTeacherDetails()">Close</button>
+        <button class="btn btn-primary" (click)="editTeacher(selectedTeacher.id)">
+          ✏️ Edit Teacher
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

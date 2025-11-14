@@ -1,0 +1,77 @@
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1>Link Students</h1>
+      <p>Link your child(ren) to your account by entering their Student ID and Date of Birth</p>
+    </div>
+    <button class="btn btn-secondary" (click)="goToDashboard()">⬅️ Back to Dashboard</button>
+  </div>
+
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <!-- Link Form Section -->
+  <div class="link-form-section">
+    <h2>Link a Student</h2>
+    <p class="form-description">Enter your child's Student ID and Date of Birth to link them to your account.</p>
+    
+    <form (ngSubmit)="linkStudent()" class="link-form">
+      <div class="form-group">
+        <label for="studentId">Student ID *</label>
+        <input 
+          type="text" 
+          id="studentId"
+          [(ngModel)]="studentId" 
+          name="studentId"
+          placeholder="Enter Student ID"
+          class="form-input"
+          [disabled]="linking"
+          required>
+      </div>
+
+      <div class="form-group">
+        <label for="dateOfBirth">Date of Birth *</label>
+        <input 
+          type="date" 
+          id="dateOfBirth"
+          [(ngModel)]="dateOfBirth" 
+          name="dateOfBirth"
+          class="form-input"
+          [disabled]="linking"
+          required>
+      </div>
+
+      <button 
+        type="submit"
+        class="btn btn-primary" 
+        [disabled]="linking || !studentId || !dateOfBirth">
+        {{ linking ? 'Linking...' : '🔗 Link Student' }}
+      </button>
+    </form>
+  </div>
+
+  <!-- Linked Students -->
+  <div class="linked-section">
+    <h2>Your Linked Students</h2>
+    <div *ngIf="loading" class="loading-message">Loading...</div>
+    <div *ngIf="!loading && linkedStudents.length === 0" class="empty-message">
+      <p>No students linked yet. Use the form above to link your child(ren).</p>
+    </div>
+    <div *ngIf="!loading && linkedStudents.length > 0" class="students-list">
+      <div *ngFor="let student of linkedStudents" class="student-item linked">
+        <div class="student-details">
+          <div class="student-name">
+            {{ student.firstName }} {{ student.lastName }}
+            <span class="linked-badge">✓ Linked</span>
+          </div>
+          <div class="student-info">
+            <span><strong>Student Number:</strong> {{ student.studentNumber }}</span>
+            <span><strong>Class:</strong> {{ student.class?.name || 'N/A' }}</span>
+            <span><strong>Type:</strong> {{ student.studentType || 'Day Scholar' }}</span>
+          </div>
+        </div>
+        <button class="btn btn-danger" (click)="unlinkStudent(student.id)">🔗 Unlink</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,24 @@
+<nav class="navbar">
+  <div class="nav-container">
+    <h1 class="nav-title">School Management System</h1>
+    <div class="nav-links" *ngIf="isAuthenticated()">
+      <!-- Admin/Teacher Navigation -->
+      <ng-container *ngIf="!isParent()">
+        <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+        <a routerLink="/students" routerLinkActive="active">Students</a>
+        <a routerLink="/teachers" routerLinkActive="active">Teachers</a>
+        <a routerLink="/exams" routerLinkActive="active">Exams</a>
+        <a routerLink="/report-cards" routerLinkActive="active">Report Cards</a>
+        <a routerLink="/rankings" routerLinkActive="active">Rankings</a>
+        <a routerLink="/invoices" routerLinkActive="active">Finance</a>
+      </ng-container>
+      <!-- Parent Navigation -->
+      <ng-container *ngIf="isParent()">
+        <a routerLink="/parent/dashboard" routerLinkActive="active">Parent Dashboard</a>
+      </ng-container>
+      <button class="btn btn-secondary" (click)="logout()">Logout</button>
+    </div>
+  </div>
+</nav>
+<router-outlet></router-outlet>
+

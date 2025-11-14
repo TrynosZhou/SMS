@@ -1,0 +1,716 @@
+<div class="container">
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="header-icon">💰</span>
+        Invoice Management
+      </h1>
+      <p class="subtitle">Manage student invoices, payments, and financial records</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="openBulkInvoiceForm()" *ngIf="canManageFinance()">
+        <span>📋</span> Bulk Create
+      </button>
+      <button class="btn btn-secondary" routerLink="/invoices/new" *ngIf="canManageFinance()">
+        <span>➕</span> Create Invoice
+      </button>
+    </div>
+  </div>
+  
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+  
+  <!-- Statistics Cards -->
+  <div class="stats-grid" *ngIf="!loading && invoices.length > 0">
+    <div class="stat-card primary">
+      <div class="stat-icon">📄</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ filteredInvoices.length }}</div>
+        <div class="stat-label">Total Invoices</div>
+        <div class="stat-sublabel" *ngIf="invoices.length !== filteredInvoices.length">
+          {{ invoices.length }} total
+        </div>
+      </div>
+    </div>
+    
+    <div class="stat-card success">
+      <div class="stat-icon">✅</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ currencySymbol }} {{ getPaidAmount() | number:'1.2-2' }}</div>
+        <div class="stat-label">Total Paid</div>
+        <div class="stat-sublabel" *ngIf="getTotalAmount() > 0">
+          {{ (getPaidAmount() / getTotalAmount() * 100) | number:'1.1-1' }}% collected
+        </div>
+      </div>
+    </div>
+    
+    <div class="stat-card danger">
+      <div class="stat-icon">⚠️</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ currencySymbol }} {{ getOutstandingAmount() | number:'1.2-2' }}</div>
+        <div class="stat-label">Outstanding Balance</div>
+        <div class="stat-sublabel" *ngIf="getOverdueCount() > 0">
+          {{ getOverdueCount() }} overdue
+        </div>
+      </div>
+    </div>
+    
+    <div class="stat-card info">
+      <div class="stat-icon">📊</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ currencySymbol }} {{ getTotalInvoiceAmount() | number:'1.2-2' }}</div>
+        <div class="stat-label">Total Invoice Amount</div>
+        <div class="stat-sublabel" *ngIf="getUniformTotal() > 0">
+          {{ currencySymbol }} {{ getUniformTotal() | number:'1.2-2' }} uniforms
+        </div>
+        <div class="stat-sublabel" style="margin-top: 4px;">
+          (Current: {{ currencySymbol }} {{ getTotalAmount() | number:'1.2-2' }})
+        </div>
+      </div>
+    </div>
+  </div>
+    
+    <!-- Student Balance Lookup Section -->
+    <div class="card" style="margin-bottom: 20px; padding: 20px;">
+      <h3 style="margin-top: 0;">Check Student Balance</h3>
+      <div style="display: flex; align-items: flex-start; flex-wrap: wrap; gap: 25px;">
+        <div class="form-group" style="flex: 0 0 30%; min-width: 150px; margin-bottom: 0;">
+          <label>Student ID</label>
+          <input type="text" [(ngModel)]="studentIdLookup" 
+                 [ngModelOptions]="{standalone: true}"
+                 placeholder="Enter Student ID" 
+                 class="form-control"
+                 (keyup.enter)="getStudentBalance()">
+        </div>
+        <div style="display: flex; gap: 10px; padding-top: 25px;">
+          <button class="btn btn-primary" (click)="getStudentBalance()" [disabled]="loadingBalance">
+            {{ loadingBalance ? 'Loading...' : '🔍 Get Balance' }}
+          </button>
+          <button class="btn btn-secondary" (click)="clearBalanceInfo()" *ngIf="studentBalanceInfo">
+            🗑️ Clear
+          </button>
+        </div>
+      </div>
+      
+      <!-- Display Student Balance Info -->
+      <div *ngIf="studentBalanceInfo" class="alert alert-info" style="margin-top: 15px; padding: 15px;">
+        <h4 style="margin-top: 0;">Student Information</h4>
+        <p style="margin: 5px 0;"><strong>Full Name:</strong> {{ studentBalanceInfo.fullName }}</p>
+        <p style="margin: 5px 0;"><strong>Student Number:</strong> {{ studentBalanceInfo.studentNumber }}</p>
+        <p style="margin: 5px 0; font-size: 18px;">
+          <strong>Fees Balance:</strong> 
+          <span style="color: #DC3545; font-weight: bold;">{{ currencySymbol }} {{ studentBalanceInfo.balance | number:'1.2-2' }}</span>
+        </p>
+        
+        <!-- Updated Balance After Payment -->
+        <div *ngIf="updatedBalanceAfterPayment !== null" 
+             style="margin-top: 15px; padding: 12px; background: #d4edda; border: 2px solid #28a745; border-radius: 6px;">
+          <p style="margin: 0; font-size: 16px; font-weight: 600; color: #155724;">
+            <strong>Current Invoice Balance After Payment:</strong>
+          </p>
+          <p style="margin: 8px 0 0 0; font-size: 20px; font-weight: bold; color: #155724;">
+            {{ currencySymbol }} {{ updatedBalanceAfterPayment | number:'1.2-2' }}
+          </p>
+        </div>
+        
+        <!-- Payment Section -->
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd;">
+          <h5 style="margin-top: 0; margin-bottom: 15px;">Record Payment</h5>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+            <div class="form-group">
+              <label>Amount to be Paid *</label>
+              <input type="number" 
+                     [(ngModel)]="quickPaymentAmount" 
+                     [ngModelOptions]="{standalone: true}"
+                     step="0.01" 
+                     min="0.01" 
+                     class="form-control" 
+                     placeholder="Enter payment amount">
+              <small style="color: #666;">Default is set to the balance</small>
+            </div>
+            <div class="form-group">
+              <label>Term *</label>
+              <input type="text" 
+                     [(ngModel)]="quickPaymentTerm" 
+                     [ngModelOptions]="{standalone: true}"
+                     class="form-control" 
+                     placeholder="e.g., Term 1 2024">
+              <small style="color: #666;">Term for this payment (from settings: {{ currentTermFromSettings }})</small>
+            </div>
+          </div>
+          <!-- Receipt Needed Checkbox -->
+          <div style="margin-bottom: 15px;">
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px; border: 2px solid #4a90e2; border-radius: 6px; background: #f0f7ff;">
+              <input 
+                type="checkbox" 
+                [(ngModel)]="quickPaymentReceiptNeeded" 
+                [ngModelOptions]="{standalone: true}"
+                style="width: 18px; height: 18px; cursor: pointer;">
+              <span style="font-weight: 600; color: #2c5aa0;">🧾 Receipt Needed?</span>
+              <small style="color: #666; margin-left: 5px;">(A receipt preview will be shown after payment is recorded)</small>
+            </label>
+          </div>
+          
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <button class="btn btn-primary" 
+                    (click)="recordQuickPayment()" 
+                    [disabled]="recordingQuickPayment || !canManageFinance()"
+                    *ngIf="canManageFinance()">
+              {{ recordingQuickPayment ? 'Recording...' : '💳 Record Payment' }}
+            </button>
+            <button class="btn btn-success" 
+                    (click)="openQuickPaymentReceipt()" 
+                    [disabled]="recordingQuickPayment || !lastQuickPaymentInvoiceId || !canManageFinance()"
+                    *ngIf="canManageFinance()"
+                    title="Print Receipt"
+                    style="min-width: 140px;">
+              🖨️ Print Receipt
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Bulk Invoice Creation Form Modal -->
+    <div *ngIf="showBulkInvoiceForm" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+      <div class="card" style="width: 500px; max-width: 90%; max-height: 90vh; overflow-y: auto; position: relative;">
+        <button (click)="closeBulkInvoiceForm()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+        <h2 style="margin-top: 0;">Create Invoices for All Students</h2>
+        <div class="alert alert-info" style="margin-bottom: 20px;">
+          <p><strong>Note:</strong> Invoices will be created for the <strong>following term</strong> based on the current term you select.</p>
+          <p>Example: If you select "Term 1 2024", invoices will be created for "Term 2 2024".</p>
+        </div>
+        <form (ngSubmit)="createBulkInvoices()">
+          <div class="form-group">
+            <label>Current Term *</label>
+            <input type="text" [(ngModel)]="bulkInvoiceForm.currentTerm" name="currentTerm" 
+                   placeholder="e.g., Term 1 2024" required 
+                   class="form-control">
+            <small style="color: #666;">Enter the current term. Invoices will be created for the following term.</small>
+            <div *ngIf="bulkInvoiceForm.currentTerm" style="margin-top: 8px; padding: 8px; background: #E8F4F8; border-radius: 4px;">
+              <strong>Following Term:</strong> <span style="color: #003366;">{{ getFollowingTerm(bulkInvoiceForm.currentTerm) }}</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Due Date *</label>
+            <input type="date" [(ngModel)]="bulkInvoiceForm.dueDate" name="dueDate" required 
+                   class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Description (Optional)</label>
+            <textarea [(ngModel)]="bulkInvoiceForm.description" name="description" 
+                      placeholder="e.g., Tuition fees for next term" 
+                      class="form-control" rows="3"></textarea>
+          </div>
+          <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+            <button type="button" class="btn btn-secondary" (click)="closeBulkInvoiceForm()" [disabled]="creatingBulk">
+              ❌ Cancel
+            </button>
+            <button type="submit" class="btn btn-primary" [disabled]="creatingBulk">
+              {{ creatingBulk ? 'Creating...' : '📋 Create Invoices' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+    <!-- Invoice Filters and Display Section -->
+    <div class="invoice-section">
+      <div class="section-header">
+        <h2>Invoice List</h2>
+        <div class="section-actions">
+          <button class="btn btn-secondary" 
+                  (click)="clearInvoiceFilters()" 
+                  *ngIf="hasActiveInvoiceFilters()">
+            <span>🗑️</span> Clear Filters
+          </button>
+          <button class="btn btn-primary" 
+                  (click)="onFilterChange()">
+            <span>📊</span> View Statements
+          </button>
+        </div>
+      </div>
+      
+      <!-- Filters -->
+      <div class="filters-card">
+        <div class="filters-header">
+          <h3>🔍 Filters & Search</h3>
+          <span class="filter-badge" *ngIf="hasActiveInvoiceFilters()">
+            {{ getActiveFilterCount() }} active
+          </span>
+        </div>
+        <div class="filters-grid">
+          <div class="filter-group">
+            <label>Search</label>
+            <div class="search-input-wrapper">
+              <span class="search-icon">🔍</span>
+              <input type="text" 
+                     [(ngModel)]="invoiceSearchQuery" 
+                     [ngModelOptions]="{standalone: true}"
+                     (input)="filterInvoices()"
+                     (keyup.enter)="filterInvoices()"
+                     placeholder="Search by student name, student number, invoice number, or term" 
+                     class="form-control search-input">
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Student</label>
+            <select [(ngModel)]="selectedStudent" 
+                    [ngModelOptions]="{standalone: true}" 
+                    (change)="filterInvoices()"
+                    class="form-control">
+              <option value="">All Students</option>
+              <option *ngFor="let student of students" [value]="student.id">
+                {{ student.firstName }} {{ student.lastName }}
+              </option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Status</label>
+            <select [(ngModel)]="selectedStatusFilter" 
+                    [ngModelOptions]="{standalone: true}" 
+                    (change)="filterInvoices()"
+                    class="form-control">
+              <option value="">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="paid">Paid</option>
+              <option value="partial">Partial</option>
+              <option value="overdue">Overdue</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Term</label>
+            <select [(ngModel)]="selectedTermFilter" 
+                    [ngModelOptions]="{standalone: true}" 
+                    (change)="filterInvoices()"
+                    class="form-control">
+              <option value="">All Terms</option>
+              <option *ngFor="let term of getUniqueTerms()" [value]="term">
+                {{ term }}
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div class="loading-state" *ngIf="loading">
+        <div class="spinner"></div>
+        <p>Loading invoices...</p>
+      </div>
+
+      <!-- Invoice Table -->
+      <div *ngIf="!loading">
+        <div *ngIf="filteredInvoices.length === 0" class="empty-state">
+          <div class="empty-icon">📋</div>
+          <h3>No invoices found</h3>
+          <p *ngIf="hasActiveInvoiceFilters()">
+            Try adjusting your filters or 
+            <button class="btn-link" (click)="clearInvoiceFilters()">clear all filters</button>.
+          </p>
+          <p *ngIf="!hasActiveInvoiceFilters()">
+            No invoices have been created yet. Start by creating invoices for students.
+          </p>
+        </div>
+
+        <div class="table-wrapper" *ngIf="filteredInvoices.length > 0">
+          <table class="invoice-table">
+          <thead>
+            <tr>
+              <th>Invoice Number</th>
+              <th>Student</th>
+              <th style="text-align: right;">Base Amount</th>
+              <th style="text-align: right;">Uniform Total</th>
+              <th style="text-align: right;">Grand Total</th>
+              <th style="text-align: right;">Paid</th>
+              <th style="text-align: right;">Balance</th>
+              <th>Status</th>
+              <th>Due Date</th>
+              <th>Term</th>
+              <th style="text-align: center;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let invoice of filteredInvoices">
+              <td>{{ invoice.invoiceNumber }}</td>
+              <td>{{ invoice.student?.firstName }} {{ invoice.student?.lastName }}</td>
+              <td style="text-align: right;">{{ currencySymbol }} {{ (invoice.amount - (invoice.uniformTotal || 0)) | number:'1.2-2' }}</td>
+              <td style="text-align: right;">{{ currencySymbol }} {{ invoice.uniformTotal || 0 | number:'1.2-2' }}</td>
+              <td style="text-align: right;">{{ currencySymbol }} {{ invoice.amount | number:'1.2-2' }}</td>
+              <td style="text-align: right;">{{ currencySymbol }} {{ invoice.paidAmount | number:'1.2-2' }}</td>
+              <td style="text-align: right;">{{ currencySymbol }} {{ invoice.balance | number:'1.2-2' }}</td>
+              <td>
+                <span [class]="getStatusClass(invoice.status)">
+                  {{ invoice.status }}
+                </span>
+              </td>
+              <td>{{ invoice.dueDate | date:'shortDate' }}</td>
+              <td>{{ invoice.term }}</td>
+              <td style="text-align: center;">
+                <div style="display: flex; gap: 8px; flex-wrap: nowrap; align-items: center; justify-content: center;">
+                  <button class="btn btn-primary" 
+                          type="button"
+                          (click)="viewInvoicePDF(invoice.id, $event)"
+                          title="View Invoice"
+                          style="font-size: 12px; padding: 5px 10px; white-space: nowrap;">
+                    📄 Invoice
+                  </button>
+                  <button class="btn btn-secondary" 
+                          (click)="openPaymentForm(invoice)"
+                          *ngIf="canManageFinance()"
+                          title="Record Payment"
+                          style="font-size: 12px; padding: 5px 10px; white-space: nowrap;">
+                    💳 Payment
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Summary Statistics -->
+        <div class="summary-cards" *ngIf="filteredInvoices.length > 0">
+          <div class="summary-card">
+            <div class="summary-icon">📄</div>
+            <div class="summary-content">
+              <div class="summary-label">Total Invoices</div>
+              <div class="summary-value">{{ filteredInvoices.length }}</div>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon">💵</div>
+            <div class="summary-content">
+              <div class="summary-label">Total Invoice Amount</div>
+              <div class="summary-value">{{ currencySymbol }} {{ getTotalInvoiceAmount() | number:'1.2-2' }}</div>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon">📋</div>
+            <div class="summary-content">
+              <div class="summary-label">Current Term Fees</div>
+              <div class="summary-value">{{ currencySymbol }} {{ getTotalAmount() | number:'1.2-2' }}</div>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon">👕</div>
+            <div class="summary-content">
+              <div class="summary-label">Uniform Total</div>
+              <div class="summary-value">{{ currencySymbol }} {{ getUniformTotal() | number:'1.2-2' }}</div>
+            </div>
+          </div>
+          <div class="summary-card success">
+            <div class="summary-icon">✅</div>
+            <div class="summary-content">
+              <div class="summary-label">Total Paid</div>
+              <div class="summary-value">{{ currencySymbol }} {{ getPaidAmount() | number:'1.2-2' }}</div>
+            </div>
+          </div>
+          <div class="summary-card danger">
+            <div class="summary-icon">⚠️</div>
+            <div class="summary-content">
+              <div class="summary-label">Outstanding</div>
+              <div class="summary-value">{{ currencySymbol }} {{ getOutstandingAmount() | number:'1.2-2' }}</div>
+            </div>
+          </div>
+          <div class="summary-card warning">
+            <div class="summary-icon">⏰</div>
+            <div class="summary-content">
+              <div class="summary-label">Overdue</div>
+              <div class="summary-value">{{ getOverdueCount() }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Form Modal -->
+    <div *ngIf="showPaymentForm" class="modal-overlay" (click)="closePaymentForm()">
+      <div class="payment-modal" (click)="$event.stopPropagation()">
+        <!-- Modal Header -->
+        <div class="modal-header">
+          <div class="modal-header-content">
+            <h2>
+              <span class="modal-icon">💳</span>
+              Record Payment
+            </h2>
+            <p class="modal-subtitle">Enter payment details for this invoice</p>
+          </div>
+          <button class="modal-close-btn" (click)="closePaymentForm()" title="Close">
+            <span>&times;</span>
+          </button>
+        </div>
+
+        <!-- Invoice Summary Card -->
+        <div *ngIf="selectedInvoice" class="invoice-summary-card">
+          <div class="summary-header">
+            <span class="summary-icon">📋</span>
+            <h3>Invoice Summary</h3>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-label">Invoice Number</span>
+              <span class="summary-value">{{ selectedInvoice.invoiceNumber }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Student</span>
+              <span class="summary-value">{{ selectedInvoice.student?.firstName }} {{ selectedInvoice.student?.lastName }}</span>
+            </div>
+            <div class="summary-item highlight">
+              <span class="summary-label">Current Balance</span>
+              <span class="summary-value balance">{{ currencySymbol }} {{ selectedInvoice.balance | number:'1.2-2' }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Amount Paid So Far</span>
+              <span class="summary-value paid">{{ currencySymbol }} {{ selectedInvoice.paidAmount | number:'1.2-2' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Form -->
+        <form (ngSubmit)="updatePayment()" class="payment-form">
+          <div class="form-section">
+            <h3 class="section-title">
+              <span class="section-icon">💰</span>
+              Payment Details
+            </h3>
+
+            <!-- Payment Amount -->
+            <div class="form-group">
+              <label for="amount">
+                Payment Amount <span class="required">*</span>
+              </label>
+              <div class="amount-input-wrapper">
+                <input 
+                  type="number" 
+                  id="amount"
+                  [(ngModel)]="paymentForm.amount" 
+                  name="amount" 
+                  step="0.01" 
+                  min="0.01" 
+                  required
+                  class="form-control amount-input"
+                  placeholder="0.00"
+                  (input)="onAmountChange()">
+              </div>
+              <div class="field-hint">
+                <span class="hint-icon">💡</span>
+                Default is set to the remaining balance
+              </div>
+              <div class="balance-preview" *ngIf="selectedInvoice && paymentForm.amount > 0">
+                <span class="preview-label">New Balance After Payment:</span>
+                <span class="preview-value" [class.warning]="getNewBalance() < 0" [class.success]="getNewBalance() === 0">
+                  {{ currencySymbol }} {{ getNewBalance() | number:'1.2-2' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Payment Date -->
+            <div class="form-group">
+              <label for="paymentDate">
+                Payment Date <span class="required">*</span>
+              </label>
+              <div class="date-input-wrapper">
+                <input 
+                  type="date" 
+                  id="paymentDate"
+                  [(ngModel)]="paymentForm.paymentDate" 
+                  name="paymentDate" 
+                  required
+                  class="form-control date-input">
+                <span class="date-icon">📅</span>
+              </div>
+            </div>
+
+            <!-- Payment Method -->
+            <div class="form-group">
+              <label for="paymentMethod">
+                Payment Method <span class="required">*</span>
+              </label>
+              <select 
+                id="paymentMethod"
+                [(ngModel)]="paymentForm.paymentMethod" 
+                name="paymentMethod" 
+                required
+                class="form-control">
+                <option value="Cash">💵 Cash</option>
+                <option value="Bank Transfer">🏦 Bank Transfer</option>
+                <option value="Mobile Money">📱 Mobile Money</option>
+                <option value="Cheque">📝 Cheque</option>
+                <option value="Credit Card">💳 Credit Card</option>
+                <option value="Other">🔷 Other</option>
+              </select>
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group">
+              <label for="notes">
+                Notes <span class="optional">(Optional)</span>
+              </label>
+              <textarea 
+                id="notes"
+                [(ngModel)]="paymentForm.notes" 
+                name="notes" 
+                placeholder="Additional notes about this payment (e.g., reference number, transaction ID)"
+                class="form-control notes-textarea"
+                rows="3"
+                maxlength="500"></textarea>
+              <div class="char-counter" *ngIf="paymentForm.notes">
+                {{ paymentForm.notes.length }}/500
+              </div>
+            </div>
+
+            <!-- Receipt Needed -->
+            <div class="form-group">
+              <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px; border: 2px solid #4a90e2; border-radius: 6px; background: #f0f7ff;">
+                <input 
+                  type="checkbox" 
+                  [(ngModel)]="paymentForm.receiptNeeded" 
+                  name="receiptNeeded"
+                  style="width: 18px; height: 18px; cursor: pointer;">
+                <span style="font-weight: 600; color: #2c5aa0;">🧾 Receipt Needed?</span>
+                <small style="color: #666; margin-left: 5px;">(A receipt preview will be shown after payment is recorded)</small>
+              </label>
+            </div>
+          </div>
+
+          <!-- Form Actions -->
+          <div class="form-actions" style="display: flex; gap: 10px; align-items: center;">
+            <button 
+              type="button" 
+              class="btn btn-secondary btn-cancel" 
+              (click)="closePaymentForm()"
+              [disabled]="loading">
+              ❌ Cancel
+            </button>
+            <button 
+              type="submit" 
+              class="btn btn-primary btn-submit"
+              [disabled]="loading || !canManageFinance()"
+              *ngIf="canManageFinance()">
+              <span *ngIf="!loading">
+                💳 Record Payment
+              </span>
+              <span *ngIf="loading" class="submit-loading">
+                <span class="spinner-small"></span>
+                Recording...
+              </span>
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-success btn-submit"
+              (click)="openReceiptForPrint()"
+              [disabled]="loading || !lastPaidInvoiceId || !canManageFinance()"
+              *ngIf="canManageFinance()"
+              title="Print Receipt"
+              style="min-width: 140px;">
+              🖨️ Print Receipt
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Link to Invoice Statements -->
+    <div style="margin-top: 20px; margin-bottom: 20px;">
+      <a routerLink="/invoices/statements" class="btn btn-primary" style="text-decoration: none; display: inline-block;">
+        📊 View Invoice Statements
+      </a>
+    </div>
+  </div>
+
+  <!-- PDF Viewer Modal -->
+  <div *ngIf="showPdfViewer" class="pdf-viewer-overlay" (click)="closePdfViewer()">
+    <div class="pdf-viewer-modal" (click)="$event.stopPropagation()">
+      <div class="pdf-viewer-header">
+        <h3>
+          <span>📄</span>
+          Invoice PDF - {{ currentInvoiceNumber }}
+        </h3>
+        <div class="pdf-viewer-actions">
+          <button 
+            type="button" 
+            class="btn btn-primary btn-sm" 
+            (click)="downloadInvoicePDF()"
+            title="Download PDF">
+            <span>💾</span> Download
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-secondary btn-sm" 
+            (click)="closePdfViewer()"
+            title="Close">
+            <span>✕</span> Close
+          </button>
+        </div>
+      </div>
+      <div class="pdf-viewer-content">
+        <iframe 
+          *ngIf="safePdfUrl && !loadingPdf" 
+          [src]="safePdfUrl" 
+          class="pdf-iframe"
+          title="Invoice PDF Viewer"
+          type="application/pdf">
+        </iframe>
+        <div *ngIf="loadingPdf" class="pdf-loading">
+          <div class="spinner-large"></div>
+          <p>Loading PDF...</p>
+        </div>
+        <div *ngIf="!safePdfUrl && !loadingPdf" class="pdf-loading">
+          <p>PDF not available</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Receipt Viewer Modal -->
+  <div *ngIf="showReceiptViewer" class="pdf-viewer-overlay" (click)="closeReceiptViewer()">
+    <div class="pdf-viewer-modal" (click)="$event.stopPropagation()">
+      <div class="pdf-viewer-header">
+        <h3>
+          <span>🧾</span>
+          Receipt - {{ currentReceiptNumber }}
+        </h3>
+        <div class="pdf-viewer-actions">
+          <button 
+            type="button" 
+            class="btn btn-primary btn-sm" 
+            (click)="printReceipt()"
+            title="Print Receipt">
+            <span>🖨️</span> Print
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-success btn-sm" 
+            (click)="downloadReceiptPDF()"
+            title="Download Receipt">
+            <span>💾</span> Download
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-secondary btn-sm" 
+            (click)="closeReceiptViewer()"
+            title="Close">
+            <span>✕</span> Close
+          </button>
+        </div>
+      </div>
+      <div class="pdf-viewer-content">
+        <iframe 
+          *ngIf="safeReceiptUrl && !loadingReceiptPdf" 
+          [src]="safeReceiptUrl" 
+          class="pdf-iframe"
+          title="Receipt PDF Viewer"
+          type="application/pdf">
+        </iframe>
+        <div *ngIf="loadingReceiptPdf" class="pdf-loading">
+          <div class="spinner-large"></div>
+          <p>Loading Receipt...</p>
+        </div>
+        <div *ngIf="!safeReceiptUrl && !loadingReceiptPdf" class="pdf-loading">
+          <p>Receipt not available</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

@@ -1,0 +1,114 @@
+import { Router } from 'express';
+import { authenticate, authorize } from '../middleware/auth';
+import { UserRole } from '../entities/User';
+import { AppDataSource } from '../config/database';
+import { Subject } from '../entities/Subject';
+
+const router = Router();
+
+router.get('/', authenticate, async (req, res) => {
+  try {
+    const subjectRepository = AppDataSource.getRepository(Subject);
+    const subjects = await subjectRepository.find({
+      relations: ['teachers', 'classes']
+    });
+    res.json(subjects);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+router.get('/:id', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const subjectRepository = AppDataSource.getRepository(Subject);
+    const subject = await subjectRepository.findOne({
+      where: { id },
+      relations: ['teachers', 'classes']
+    });
+
+    if (!subject) {
+      return res.status(404).json({ message: 'Subject not found' });
+    }
+
+    res.json(subject);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), async (req, res) => {
+  try {
+    const { name, code, description } = req.body;
+    const subjectRepository = AppDataSource.getRepository(Subject);
+    
+    // Validate required fields
+    if (!name) {
+      return res.status(400).json({ message: 'Subject name is required' });
+    }
+
+    if (!code) {
+      return res.status(400).json({ message: 'Subject code is required and must be unique' });
+    }
+
+    // Check if code is unique
+    const existingSubject = await subjectRepository.findOne({ where: { code } });
+    if (existingSubject) {
+      return res.status(400).json({ message: 'Subject code already exists' });
+    }
+
+    const subject = subjectRepository.create({ name, code, description });
+    await subjectRepository.save(subject);
+    res.status(201).json({ message: 'Subject created successfully', subject });
+  } catch (error: any) {
+    if (error.code === '23505') {
+      return res.status(400).json({ message: 'Subject code must be unique' });
+    }
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, code, description, isActive } = req.body;
+    const subjectRepository = AppDataSource.getRepository(Subject);
+
+    const subject = await subjectRepository.findOne({ where: { id } });
+    if (!subject) {
+      return res.status(404).json({ message: 'Subject not found' });
+    }
+
+    // Check if code is being changed and validate uniqueness
+    if (code !== undefined) {
+      const normalizedCode = code.trim().toUpperCase();
+      if (normalizedCode !== subject.code) {
+        // Check if the new code already exists (excluding current subject)
+        const existingSubject = await subjectRepository.findOne({ 
+          where: { code: normalizedCode },
+          relations: []
+        });
+        if (existingSubject && existingSubject.id !== id) {
+          return res.status(400).json({ message: 'Subject code already exists' });
+        }
+        subject.code = normalizedCode;
+      }
+    }
+
+    // Update fields
+    if (name !== undefined) subject.name = name;
+    if (description !== undefined) subject.description = description;
+    if (isActive !== undefined) subject.isActive = isActive;
+
+    await subjectRepository.save(subject);
+    res.json({ message: 'Subject updated successfully', subject });
+  } catch (error: any) {
+    if (error.code === '23505') {
+      return res.status(400).json({ message: 'Subject code must be unique' });
+    }
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+export default router;
+

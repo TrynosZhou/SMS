@@ -1,0 +1,118 @@
+<div class="container">
+  <div class="manage-account-card">
+    <div class="card-header">
+      <h2>Manage Account</h2>
+      <p class="subtitle">Update your username and password</p>
+    </div>
+
+    <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+    <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+    <div *ngIf="loading && !accountInfo" class="loading-message">
+      Loading account information...
+    </div>
+
+    <form *ngIf="accountInfo" (ngSubmit)="updateAccount()">
+      <div class="form-group">
+        <label>Current Username</label>
+        <input 
+          type="text" 
+          [value]="currentUsername || 'N/A'" 
+          disabled
+          class="disabled-input">
+        <small class="form-text">This is your current username</small>
+      </div>
+
+      <div class="form-group">
+        <label>Current Email</label>
+        <input 
+          type="email" 
+          [value]="currentEmail || 'N/A'" 
+          disabled
+          class="disabled-input">
+        <small class="form-text">This is your current email address</small>
+      </div>
+
+      <div class="form-group">
+        <label>New Username</label>
+        <input 
+          type="text" 
+          [(ngModel)]="newUsername" 
+          name="newUsername" 
+          placeholder="Enter new username (optional)" 
+          autocomplete="username">
+        <small class="form-text">Choose a new username for your account (leave blank to keep current)</small>
+      </div>
+
+      <div class="form-group">
+        <label>New Email</label>
+        <input 
+          type="email" 
+          [(ngModel)]="newEmail" 
+          name="newEmail" 
+          placeholder="Enter new email (optional)" 
+          autocomplete="email">
+        <small class="form-text">Enter a new email address (leave blank to keep current)</small>
+      </div>
+
+      <div class="form-group">
+        <label>Current Password *</label>
+        <div class="password-input-wrapper">
+          <input 
+            [type]="showCurrentPassword ? 'text' : 'password'" 
+            [(ngModel)]="currentPassword" 
+            name="currentPassword" 
+            placeholder="Enter current password" 
+            required
+            autocomplete="current-password">
+          <span class="password-toggle" (click)="toggleCurrentPasswordVisibility()">
+            {{ showCurrentPassword ? '👁️' : '👁️‍🗨️' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>New Password *</label>
+        <div class="password-input-wrapper">
+          <input 
+            [type]="showNewPassword ? 'text' : 'password'" 
+            [(ngModel)]="newPassword" 
+            name="newPassword" 
+            placeholder="At least 8 characters" 
+            required
+            minlength="8"
+            autocomplete="new-password">
+          <span class="password-toggle" (click)="toggleNewPasswordVisibility()">
+            {{ showNewPassword ? '👁️' : '👁️‍🗨️' }}
+          </span>
+        </div>
+        <small class="form-text">Password must be at least 8 characters long</small>
+      </div>
+
+      <div class="form-group">
+        <label>Confirm New Password *</label>
+        <div class="password-input-wrapper">
+          <input 
+            [type]="showConfirmPassword ? 'text' : 'password'" 
+            [(ngModel)]="confirmPassword" 
+            name="confirmPassword" 
+            placeholder="Confirm new password" 
+            required
+            autocomplete="new-password">
+          <span class="password-toggle" (click)="toggleConfirmPasswordVisibility()">
+            {{ showConfirmPassword ? '👁️' : '👁️‍🗨️' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="loading">
+          {{ loading ? 'Updating...' : '💾 Update Account' }}
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="goToDashboard()" [disabled]="loading">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

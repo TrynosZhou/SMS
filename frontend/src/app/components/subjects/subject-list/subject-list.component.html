@@ -1,0 +1,43 @@
+<div class="container">
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h1>Subjects</h1>
+      <button class="btn btn-primary" routerLink="/subjects/new">➕ Add Subject</button>
+    </div>
+    <div *ngIf="loading">Loading...</div>
+    <table *ngIf="!loading">
+      <thead>
+        <tr>
+          <th>Subject Code</th>
+          <th>Name</th>
+          <th>Description</th>
+          <th>Teachers</th>
+          <th>Classes</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let subject of subjects">
+          <td><strong>{{ subject.code || 'N/A' }}</strong></td>
+          <td>{{ subject.name }}</td>
+          <td>{{ subject.description || 'N/A' }}</td>
+          <td>{{ subject.teachers?.length || 0 }}</td>
+          <td>{{ subject.classes?.length || 0 }}</td>
+          <td>
+            <span [class]="subject.isActive ? 'badge-success' : 'badge-error'">
+              {{ subject.isActive ? 'Active' : 'Inactive' }}
+            </span>
+          </td>
+          <td>
+            <button class="btn btn-secondary" (click)="editSubject(subject.id)">✏️ Edit</button>
+          </td>
+        </tr>
+        <tr *ngIf="subjects.length === 0">
+          <td colspan="7" style="text-align: center; padding: 20px;">No subjects found</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
