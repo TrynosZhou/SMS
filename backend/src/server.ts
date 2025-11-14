@@ -31,7 +31,8 @@ if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
