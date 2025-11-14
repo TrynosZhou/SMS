@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
 import { UserRole } from '../entities/User';
