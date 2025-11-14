@@ -15,9 +15,11 @@
     "emitDecoratorMetadata": true,
     "strictPropertyInitialization": false,
     "allowSyntheticDefaultImports": true,
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    "declaration": false,
+    "sourceMap": false
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/types/**/*.d.ts"],
   "exclude": ["node_modules", "dist"]
 }
 
