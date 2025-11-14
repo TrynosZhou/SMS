@@ -13,15 +13,25 @@ services:
       - key: PORT
         value: 10000
       - key: DB_HOST
-        sync: false
+        fromDatabase:
+          name: sms-database
+          property: host
       - key: DB_PORT
-        value: 5432
+        fromDatabase:
+          name: sms-database
+          property: port
       - key: DB_USERNAME
-        sync: false
+        fromDatabase:
+          name: sms-database
+          property: user
       - key: DB_PASSWORD
-        sync: false
+        fromDatabase:
+          name: sms-database
+          property: password
       - key: DB_NAME
-        sync: false
+        fromDatabase:
+          name: sms-database
+          property: database
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
