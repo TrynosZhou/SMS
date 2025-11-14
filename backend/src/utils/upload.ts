@@ -1,6 +1,7 @@
 import multer from 'multer';
 import path from 'path';
 import * as fs from 'fs';
+import { Request } from 'express';
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, '../../uploads/students');
@@ -10,10 +11,10 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Configure storage
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     cb(null, uploadsDir);
   },
-  filename: (req, file, cb) => {
+  filename: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     // Generate unique filename: timestamp-studentId-originalname
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
@@ -22,7 +23,7 @@ const storage = multer.diskStorage({
 });
 
 // File filter - only allow images
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
