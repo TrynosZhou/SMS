@@ -16,12 +16,11 @@
     "typeorm": "^0.3.17",
     "reflect-metadata": "^0.1.13",
     "pg": "^8.11.1",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "typescript": "^5.2.2"
   },
   "devDependencies": {
-    "typescript": "^5.2.2",
     "ts-node": "^10.9.1",
     "nodemon": "^3.0.2"
-     
   }
 }
