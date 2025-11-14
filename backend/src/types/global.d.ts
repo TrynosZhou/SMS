@@ -5,7 +5,6 @@ declare global {
   var __dirname: string;
   var __filename: string;
   var console: Console;
-  var Buffer: typeof globalThis.Buffer;
   var process: NodeJS.Process;
   var require: NodeRequire;
 }
