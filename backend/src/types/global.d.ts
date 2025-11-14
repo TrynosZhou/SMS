@@ -1,13 +1,9 @@
-/// <reference types="node" />
-/// <reference types="express" />
-/// <reference types="multer" />
-
 declare global {
   // Node.js globals are already provided by @types/node
-  // Just ensure Express namespace is available
+  // Express namespace is provided by @types/express
 }
 
-// Extend Express namespace for multer
+// Extend Express namespace for multer if needed
 declare namespace Express {
   namespace Multer {
     interface File {
