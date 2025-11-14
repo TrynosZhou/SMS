@@ -13,23 +13,28 @@ services:
       - key: PORT
         value: 10000
       - key: DB_HOST
-        fromDatabase:
+        fromService:
+          type: postgresql
           name: sms-database
           property: host
       - key: DB_PORT
-        fromDatabase:
+        fromService:
+          type: postgresql
           name: sms-database
           property: port
       - key: DB_USERNAME
-        fromDatabase:
+        fromService:
+          type: postgresql
           name: sms-database
           property: user
       - key: DB_PASSWORD
-        fromDatabase:
+        fromService:
+          type: postgresql
           name: sms-database
           property: password
       - key: DB_NAME
-        fromDatabase:
+        fromService:
+          type: postgresql
           name: sms-database
           property: database
       - key: JWT_SECRET
