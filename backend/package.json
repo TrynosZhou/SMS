@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "dist/server.js",
   "scripts": {
-  "build": "npx tsc",
+  "build": "node node_modules/typescript/bin/tsc",
   "dev": "nodemon src/server.ts",
   "start": "node dist/server.js",
   "typeorm": "typeorm-ts-node-commonjs",
@@ -22,5 +22,6 @@
     "typescript": "^5.2.2",
     "ts-node": "^10.9.1",
     "nodemon": "^3.0.2"
+     
   }
 }
