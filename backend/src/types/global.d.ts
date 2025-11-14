@@ -1,9 +1,16 @@
+// Global type augmentations
 declare global {
-  // Node.js globals are already provided by @types/node
-  // Express namespace is provided by @types/express
+  // Node.js globals - these should be provided by @types/node
+  // But we declare them here as a fallback
+  var __dirname: string;
+  var __filename: string;
+  var console: Console;
+  var Buffer: typeof globalThis.Buffer;
+  var process: NodeJS.Process;
+  var require: NodeRequire;
 }
 
-// Extend Express namespace for multer if needed
+// Extend Express namespace for multer
 declare namespace Express {
   namespace Multer {
     interface File {
