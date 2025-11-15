@@ -136,7 +136,9 @@ export function createReportCardPDF(
       let currentY = logoY + 25;
       
       // Calculate available width for text (accounting for logo2 if present)
-      const logo2X = settings?.schoolLogo2 ? pageWidth - logoWidth - 50 : pageWidth;
+      // Use larger logo2 dimensions for calculation to prevent overlap
+      const logo2WidthForCalc = settings?.schoolLogo2 ? 140 : 0; // Match the actual logo2 width
+      const logo2X = settings?.schoolLogo2 ? pageWidth - logo2WidthForCalc - 50 : pageWidth;
       const maxTextWidth = logo2X - textStartX - 20; // Leave 20px gap before logo2
       const textWidth = Math.min(400, maxTextWidth); // Use smaller of 400 or available space
       
@@ -181,11 +183,11 @@ export function createReportCardPDF(
             if (base64Data) {
               const imageBuffer = Buffer.from(base64Data, 'base64');
               // Position in top right corner, but below the phone/academic year info to avoid overlap
-              const logo2X = pageWidth - logoWidth - 50; // Right margin
-              const logo2Y = Math.max(logoY, currentY - logoHeight); // Position below text content or align with logo1
-              // Make logo2 slightly smaller to fit better
-              const logo2Width = Math.min(logoWidth, 100);
-              const logo2Height = Math.min(logoHeight, 80);
+              // Make logo2 larger to match logo1 size and prevent squashing
+              const logo2Width = 140; // Increased size to match logo1 prominence
+              const logo2Height = 120; // Increased height to prevent squashing
+              const logo2X = pageWidth - logo2Width - 50; // Right margin
+              const logo2Y = Math.max(logoY, currentY - logo2Height); // Position below text content or align with logo1
               doc.image(imageBuffer, logo2X, logo2Y, { width: logo2Width, height: logo2Height });
               console.log('School logo 2 added to PDF successfully');
             } else {
