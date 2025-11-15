@@ -26,7 +26,21 @@ if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
 const app = express();
 
 // =================== MIDDLEWARE ===================
-app.use(cors());
+// Configure CORS to allow requests from frontend
+const corsOptions = {
+  origin: [
+    'https://sms-apua.vercel.app',
+    'http://localhost:4200',
+    'http://localhost:3000',
+    process.env.FRONTEND_URL || 'https://sms-apua.vercel.app'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
