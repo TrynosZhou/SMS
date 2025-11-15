@@ -135,11 +135,8 @@ export function createReportCardPDF(
       // Calculate positions for address and academic year
       let currentY = logoY + 25;
       
-      // Calculate available width for text (accounting for logo2 if present)
-      // Use larger logo2 dimensions for calculation to prevent overlap
-      const logo2WidthForCalc = settings?.schoolLogo2 ? 140 : 0; // Match the actual logo2 width
-      const logo2X = settings?.schoolLogo2 ? pageWidth - logo2WidthForCalc - 50 : pageWidth;
-      const maxTextWidth = logo2X - textStartX - 20; // Leave 20px gap before logo2
+      // Calculate available width for text (logo2 removed, so use full width)
+      const maxTextWidth = pageWidth - textStartX - 50; // Full width minus margins
       const textWidth = Math.min(400, maxTextWidth); // Use smaller of 400 or available space
       
       // Always display school address if it exists
@@ -174,35 +171,7 @@ export function createReportCardPDF(
       doc.fontSize(10).text(`Academic Year: ${academicYear}`, textStartX, currentY);
       currentY += 15; // Add spacing after academic year
 
-      // Add school logo 2 if available (top right corner, positioned below phone/academic year to avoid overlap)
-      if (settings?.schoolLogo2) {
-        try {
-          // If it's a base64 image
-          if (settings.schoolLogo2.startsWith('data:image')) {
-            const base64Data = settings.schoolLogo2.split(',')[1];
-            if (base64Data) {
-              const imageBuffer = Buffer.from(base64Data, 'base64');
-              // Position in top right corner, but below the phone/academic year info to avoid overlap
-              // Make logo2 larger to match logo1 size and prevent squashing
-              const logo2Width = 140; // Increased size to match logo1 prominence
-              const logo2Height = 120; // Increased height to prevent squashing
-              const logo2X = pageWidth - logo2Width - 50; // Right margin
-              const logo2Y = Math.max(logoY, currentY - logo2Height); // Position below text content or align with logo1
-              doc.image(imageBuffer, logo2X, logo2Y, { width: logo2Width, height: logo2Height });
-              console.log('School logo 2 added to PDF successfully');
-            } else {
-              console.warn('School logo 2 base64 data is empty');
-            }
-          } else if (settings.schoolLogo2.startsWith('http://') || settings.schoolLogo2.startsWith('https://')) {
-            // If it's a URL, we could fetch it, but for now skip
-            console.warn('URL-based logos not yet supported in PDF');
-          } else {
-            console.warn('School logo 2 format not recognized:', settings.schoolLogo2.substring(0, 50));
-          }
-        } catch (error) {
-          console.error('Could not add school logo 2 to PDF:', error);
-        }
-      }
+      // School logo 2 removed - no longer displayed in report card PDF
 
       // Title - adjust position based on logo size and header content with styled background
       // Ensure title is below all header content (logo, name, address, phone, academic year)

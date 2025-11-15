@@ -457,13 +457,6 @@
           </div>
         </div>
         <div class="form-group">
-          <label>School Logo 2</label>
-          <input type="file" accept="image/*" (change)="onLogoChange($event, 2)">
-          <div *ngIf="settings.schoolLogo2" style="margin-top: 10px;">
-            <img [src]="settings.schoolLogo2" alt="School Logo 2" style="max-width: 200px; max-height: 200px;">
-          </div>
-        </div>
-        <div class="form-group">
           <label>Headmaster Name</label>
           <input type="text" [(ngModel)]="settings.headmasterName" name="headmasterName" placeholder="Enter the headmaster's full name">
         </div>
