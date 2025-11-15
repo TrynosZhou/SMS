@@ -3,24 +3,25 @@
   "version": "1.0.0",
   "main": "dist/server.js",
   "scripts": {
-  "build": "node scripts/build.js",
-  "dev": "nodemon src/server.ts",
-  "start": "node dist/server.js",
-  "typeorm": "typeorm-ts-node-commonjs",
-  "setup-db": "node scripts/create-database.js",
-  "create-admin": "npx ts-node scripts/create-admin.ts",
-  "clear-invoices": "npx ts-node scripts/clear-invoices.ts"
+    "build": "tsc",
+    "dev": "nodemon src/server.ts",
+    "start": "node dist/server.js",
+    "typeorm": "typeorm-ts-node-commonjs",
+    "setup-db": "node scripts/create-database.js",
+    "create-admin": "npx ts-node scripts/create-admin.ts",
+    "clear-invoices": "npx ts-node scripts/clear-invoices.ts"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "typeorm": "^0.3.17",
-    "reflect-metadata": "^0.1.13",
-    "pg": "^8.11.1",
+    "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "typescript": "^5.2.2"
+    "express": "^4.18.2",
+    "pg": "^8.11.1",
+    "reflect-metadata": "^0.1.13",
+    "typeorm": "^0.3.17"
   },
   "devDependencies": {
+    "nodemon": "^3.0.2",
     "ts-node": "^10.9.1",
-    "nodemon": "^3.0.2"
+    "typescript": "^5.9.3"
   }
 }
