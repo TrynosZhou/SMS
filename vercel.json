@@ -1,17 +1,11 @@
 ﻿{
-  "version": 2,
-  "builds": [
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist/sms-frontend",
+  "installCommand": "cd frontend && npm install",
+  "rewrites": [
     {
-      "src": "package.json",
-      "use": "@vercel/node"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "dist/server.js"
-    }
-  ],
-  "installCommand": "npm ci --include=dev",
-  "buildCommand": "npm run build"
+  ]
 }
