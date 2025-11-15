@@ -32,7 +32,7 @@ import { AuthGuard } from './guards/auth.guard';
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
-  { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
+  { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
   { path: 'parent/dashboard', component: ParentDashboardComponent, canActivate: [AuthGuard] },
   { path: 'parent/inbox', component: ParentInboxComponent, canActivate: [AuthGuard] },
