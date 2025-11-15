@@ -27,13 +27,31 @@ const app = express();
 
 // =================== MIDDLEWARE ===================
 // Configure CORS to allow requests from frontend
+// Allow all origins in development, specific origins in production
+const allowedOrigins = [
+  'https://sms-apua.vercel.app',
+  'http://localhost:4200',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL
+].filter(Boolean); // Remove undefined values
+
 const corsOptions = {
-  origin: [
-    'https://sms-apua.vercel.app',
-    'http://localhost:4200',
-    'http://localhost:3000',
-    process.env.FRONTEND_URL || 'https://sms-apua.vercel.app'
-  ],
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // In development, allow all origins
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    
+    // In production, check against allowed origins
+    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
