@@ -44,6 +44,11 @@
                   "type": "anyComponentStyle",
                   "maximumWarning": "1mb",
                   "maximumError": "2mb"
+                },
+                {
+                  "type": "bundle",
+                  "maximumWarning": "1mb",
+                  "maximumError": "2mb"
                 }
               ],
               "outputHashing": "all"
