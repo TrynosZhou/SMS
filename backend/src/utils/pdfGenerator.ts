@@ -129,7 +129,50 @@ export function createReportCardPDF(
         console.log('No school logo found in settings');
       }
 
-      // Add school logo 2 if available (top right corner)
+      // School Name and Address
+      doc.fontSize(18).font('Helvetica-Bold').text(schoolName, textStartX, logoY);
+      
+      // Calculate positions for address and academic year
+      let currentY = logoY + 25;
+      
+      // Calculate available width for text (accounting for logo2 if present)
+      const logo2X = settings?.schoolLogo2 ? pageWidth - logoWidth - 50 : pageWidth;
+      const maxTextWidth = logo2X - textStartX - 20; // Leave 20px gap before logo2
+      const textWidth = Math.min(400, maxTextWidth); // Use smaller of 400 or available space
+      
+      // Always display school address if it exists
+      if (schoolAddress && schoolAddress.trim()) {
+        doc.fontSize(10).font('Helvetica').text(schoolAddress.trim(), textStartX, currentY, { 
+          width: textWidth,
+          align: 'left'
+        });
+        // Move down for phone (account for multi-line address)
+        const addressHeight = doc.heightOfString(schoolAddress.trim(), { width: textWidth });
+        currentY += addressHeight + 10;
+      } else {
+        // If no address, just move down a bit
+        currentY = logoY + 25;
+      }
+      
+      // Display school phone if it exists
+      if (schoolPhone && schoolPhone.trim()) {
+        doc.fontSize(10).font('Helvetica').text(`Phone: ${schoolPhone.trim()}`, textStartX, currentY, {
+          width: textWidth,
+          align: 'left'
+        });
+        // Move down for academic year (account for multi-line phone)
+        const phoneHeight = doc.heightOfString(`Phone: ${schoolPhone.trim()}`, { width: textWidth });
+        currentY += phoneHeight + 10;
+      } else {
+        // If no phone, add spacing before academic year
+        currentY += 5;
+      }
+      
+      // Display academic year
+      doc.fontSize(10).text(`Academic Year: ${academicYear}`, textStartX, currentY);
+      currentY += 15; // Add spacing after academic year
+
+      // Add school logo 2 if available (top right corner, positioned below phone/academic year to avoid overlap)
       if (settings?.schoolLogo2) {
         try {
           // If it's a base64 image
@@ -137,10 +180,13 @@ export function createReportCardPDF(
             const base64Data = settings.schoolLogo2.split(',')[1];
             if (base64Data) {
               const imageBuffer = Buffer.from(base64Data, 'base64');
-              // Position in top right corner (accounting for margins and border)
+              // Position in top right corner, but below the phone/academic year info to avoid overlap
               const logo2X = pageWidth - logoWidth - 50; // Right margin
-              const logo2Y = logoY; // Same vertical position as logo 1
-              doc.image(imageBuffer, logo2X, logo2Y, { width: logoWidth, height: logoHeight });
+              const logo2Y = Math.max(logoY, currentY - logoHeight); // Position below text content or align with logo1
+              // Make logo2 slightly smaller to fit better
+              const logo2Width = Math.min(logoWidth, 100);
+              const logo2Height = Math.min(logoHeight, 80);
+              doc.image(imageBuffer, logo2X, logo2Y, { width: logo2Width, height: logo2Height });
               console.log('School logo 2 added to PDF successfully');
             } else {
               console.warn('School logo 2 base64 data is empty');
@@ -155,44 +201,6 @@ export function createReportCardPDF(
           console.error('Could not add school logo 2 to PDF:', error);
         }
       }
-
-      // School Name and Address
-      doc.fontSize(18).font('Helvetica-Bold').text(schoolName, textStartX, logoY);
-      
-      // Calculate positions for address and academic year
-      let currentY = logoY + 25;
-      
-      // Always display school address if it exists
-      if (schoolAddress && schoolAddress.trim()) {
-        doc.fontSize(10).font('Helvetica').text(schoolAddress.trim(), textStartX, currentY, { 
-          width: 400,
-          align: 'left'
-        });
-        // Move down for phone (account for multi-line address)
-        const addressHeight = doc.heightOfString(schoolAddress.trim(), { width: 400 });
-        currentY += addressHeight + 10;
-      } else {
-        // If no address, just move down a bit
-        currentY = logoY + 25;
-      }
-      
-      // Display school phone if it exists
-      if (schoolPhone && schoolPhone.trim()) {
-        doc.fontSize(10).font('Helvetica').text(`Phone: ${schoolPhone.trim()}`, textStartX, currentY, {
-          width: 400,
-          align: 'left'
-        });
-        // Move down for academic year (account for multi-line phone)
-        const phoneHeight = doc.heightOfString(`Phone: ${schoolPhone.trim()}`, { width: 400 });
-        currentY += phoneHeight + 10;
-      } else {
-        // If no phone, add spacing before academic year
-        currentY += 5;
-      }
-      
-      // Display academic year
-      doc.fontSize(10).text(`Academic Year: ${academicYear}`, textStartX, currentY);
-      currentY += 15; // Add spacing after academic year
 
       // Title - adjust position based on logo size and header content with styled background
       // Ensure title is below all header content (logo, name, address, phone, academic year)
