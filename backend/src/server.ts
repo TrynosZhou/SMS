@@ -40,15 +40,24 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
+    // Log the origin for debugging
+    console.log('CORS request from origin:', origin);
+    
     // In development, allow all origins
     if (process.env.NODE_ENV !== 'production') {
       return callback(null, true);
     }
     
     // In production, check against allowed origins
-    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+    // Also allow any vercel.app subdomain for flexibility
+    const isAllowed = allowedOrigins.length === 0 || 
+                     allowedOrigins.includes(origin) ||
+                     origin.includes('.vercel.app');
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
+      console.log('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
