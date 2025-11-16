@@ -6,6 +6,13 @@ import { User, UserRole } from '../entities/User';
 import { Student } from '../entities/Student';
 import { Teacher } from '../entities/Teacher';
 import { Parent } from '../entities/Parent';
+import { Class } from '../entities/Class';
+import { Subject } from '../entities/Subject';
+import { Exam } from '../entities/Exam';
+import { Marks } from '../entities/Marks';
+import { Invoice } from '../entities/Invoice';
+import { Settings } from '../entities/Settings';
+import { resetDemoDataForLogin } from '../utils/resetDemoData';
 
 export const login = async (req: Request, res: Response) => {
   try {
@@ -34,6 +41,19 @@ export const login = async (req: Request, res: Response) => {
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // If demo user logs in, reset demo data to ensure clean state
+    // This ensures each demo user login gets a fresh start without seeing other users' data
+    if (user.isDemo) {
+      try {
+        console.log('🔄 Demo user login detected - resetting demo data...');
+        await resetDemoDataForLogin();
+        console.log('✅ Demo data reset completed');
+      } catch (resetError: any) {
+        console.error('⚠️ Error resetting demo data on login:', resetError.message);
+        // Continue with login even if reset fails
+      }
     }
 
     const secret = process.env.JWT_SECRET;

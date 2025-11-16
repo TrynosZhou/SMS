@@ -12,6 +12,7 @@ import { generateStudentId } from '../utils/studentIdGenerator';
 import { Settings } from '../entities/Settings';
 import QRCode from 'qrcode';
 import { createStudentIdCardPDF } from '../utils/studentIdCardPdf';
+import { isDemoUser } from '../utils/demoDataFilter';
 
 export const registerStudent = async (req: AuthRequest, res: Response) => {
   try {
@@ -268,8 +269,13 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       console.log('Filtering students by classId:', trimmedClassId);
 
       // First, try the simplest direct query
+      // Filter by demo status if user is demo
+      const whereCondition: any = { classId: trimmedClassId };
+      if (isDemoUser(req)) {
+        whereCondition.user = { isDemo: true };
+      }
       students = await studentRepository.find({
-        where: { classId: trimmedClassId },
+        where: whereCondition,
         relations: ['class', 'parent', 'user']
       });
       console.log(`Found ${students.length} students using direct query for classId: ${trimmedClassId}`);
@@ -282,6 +288,11 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
           .leftJoinAndSelect('student.parent', 'parent')
           .leftJoinAndSelect('student.user', 'user')
           .where('student.classId = :classId', { classId: trimmedClassId });
+        
+        // Filter by demo status if user is demo
+        if (isDemoUser(req)) {
+          queryBuilder.andWhere('user.isDemo = :isDemo', { isDemo: true });
+        }
 
         students = await queryBuilder.getMany();
         console.log(`Found ${students.length} students using query builder for classId: ${trimmedClassId}`);
@@ -353,7 +364,13 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       }
     } else {
       // No classId provided, return all students
+      // Filter by demo status if user is demo
+      const whereCondition: any = {};
+      if (isDemoUser(req)) {
+        whereCondition.user = { isDemo: true };
+      }
       students = await studentRepository.find({
+        where: whereCondition,
         relations: ['class', 'parent', 'user']
       });
       console.log(`No classId provided, returning all ${students.length} students`);

@@ -6,6 +6,7 @@ import { Teacher } from '../entities/Teacher';
 import { User, UserRole } from '../entities/User';
 import { AuthRequest } from '../middleware/auth';
 import { generateEmployeeNumber } from '../utils/employeeNumberGenerator';
+import { isDemoUser } from '../utils/demoDataFilter';
 
 export const registerTeacher = async (req: AuthRequest, res: Response) => {
   try {
@@ -131,8 +132,16 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
     }
 
     const teacherRepository = AppDataSource.getRepository(Teacher);
+    
+    // Filter by demo status if user is demo
+    const whereCondition: any = {};
+    if (isDemoUser(req)) {
+      whereCondition.user = { isDemo: true };
+    }
+    
     const teachers = await teacherRepository.find({
-      relations: ['subjects', 'classes']
+      where: whereCondition,
+      relations: ['subjects', 'classes', 'user']
     });
 
     res.json(teachers);
