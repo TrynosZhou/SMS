@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { TeacherService } from '../../../services/teacher.service';
 import { AccountService } from '../../../services/account.service';
 import { AuthService } from '../../../services/auth.service';
@@ -68,19 +68,31 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   constructor(
     private teacherService: TeacherService,
     private accountService: AccountService,
-    private authService: AuthService
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit() {
     this.loadTeachers();
     
+    // Get current user immediately
+    this.currentUser = this.authService.getCurrentUser();
+    
     // Subscribe to user changes to ensure we have the latest user data
     this.userSubscription = this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
+      // Force change detection to update the view
+      this.cdr.detectChanges();
     });
     
-    // Also get current user immediately
-    this.currentUser = this.authService.getCurrentUser();
+    // Double-check user after a short delay (for production builds where user might load asynchronously)
+    setTimeout(() => {
+      const user = this.authService.getCurrentUser();
+      if (user && !this.currentUser) {
+        this.currentUser = user;
+        this.cdr.detectChanges();
+      }
+    }, 200);
   }
 
   ngOnDestroy() {

@@ -35,7 +35,8 @@
   </div>
 
   <!-- Admin Password Change Section -->
-  <div class="admin-password-section" *ngIf="isAdmin() && !isDemoUser()" [@fadeInUp]>
+  <!-- Show password change section for admin/superadmin users (not demo) -->
+  <div class="admin-password-section" *ngIf="(isAdmin() || getCurrentAdminInfo()) && !isDemoUser()" [@fadeInUp]>
     <div class="password-section-header" (click)="togglePasswordChangeSection()">
       <div class="password-section-title">
         <span class="password-icon">🔐</span>
