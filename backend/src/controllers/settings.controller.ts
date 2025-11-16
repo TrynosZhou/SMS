@@ -78,6 +78,13 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    // For demo users, always return "Demo School" as school name
+    if (req.user?.isDemo) {
+      const demoSettings = { ...settings };
+      demoSettings.schoolName = 'Demo School';
+      return res.json(demoSettings);
+    }
+
     res.json(settings);
   } catch (error: any) {
     console.error('Error fetching settings:', error);
@@ -90,6 +97,11 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
 
 export const updateSettings = async (req: AuthRequest, res: Response) => {
   try {
+    // Prevent demo users from changing settings
+    if (req.user?.isDemo) {
+      return res.status(403).json({ message: 'Demo accounts cannot modify system settings. This is a demo environment.' });
+    }
+
     if (!AppDataSource.isInitialized) {
       await AppDataSource.initialize();
     }

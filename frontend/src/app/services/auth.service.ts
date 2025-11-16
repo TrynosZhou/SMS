@@ -12,6 +12,7 @@ export interface User {
   role: string;
   mustChangePassword?: boolean;
   isTemporaryAccount?: boolean;
+  isDemo?: boolean;
   student?: any;
   teacher?: any;
   parent?: any;

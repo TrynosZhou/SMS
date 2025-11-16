@@ -42,6 +42,9 @@ export class User {
   @Column({ default: false })
   isTemporaryAccount: boolean;
 
+  @Column({ default: false })
+  isDemo: boolean;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 

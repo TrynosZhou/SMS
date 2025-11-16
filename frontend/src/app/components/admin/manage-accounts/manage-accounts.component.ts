@@ -327,7 +327,13 @@ export class ManageAccountsComponent implements OnInit {
     return user ? {
       email: user.email,
       username: user.username || user.email,
-      role: user.role
+      role: user.role,
+      isDemo: user.isDemo
     } : null;
+  }
+
+  isDemoUser(): boolean {
+    const user = this.authService.getCurrentUser();
+    return user?.isDemo === true;
   }
 }

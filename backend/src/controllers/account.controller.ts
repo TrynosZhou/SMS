@@ -14,6 +14,11 @@ export const updateAccount = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
+    // Prevent demo users from changing their password
+    if (req.user?.isDemo) {
+      return res.status(403).json({ message: 'Demo accounts cannot change password. This is a demo environment.' });
+    }
+
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ message: 'Current password and new password are required' });
     }
@@ -112,6 +117,7 @@ export const getAccountInfo = async (req: AuthRequest, res: Response) => {
       role: user.role,
       mustChangePassword: user.mustChangePassword,
       isTemporaryAccount: user.isTemporaryAccount,
+      isDemo: user.isDemo,
       teacher: user.teacher,
       parent: user.parent,
       student: user.student

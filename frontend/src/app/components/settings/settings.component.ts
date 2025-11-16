@@ -140,6 +140,11 @@ export class SettingsComponent implements OnInit {
     private cdr: ChangeDetectorRef
   ) { }
 
+  isDemoUser(): boolean {
+    const user = this.authService.getCurrentUser();
+    return user?.isDemo === true;
+  }
+
   ngOnInit() {
     this.loadSettings();
     this.loadReminders();
@@ -147,10 +152,19 @@ export class SettingsComponent implements OnInit {
   }
 
   loadSettings() {
+    // For demo users, always set school name to "Demo School"
+    if (this.isDemoUser()) {
+      this.settings.schoolName = 'Demo School';
+    }
     this.loading = true;
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
         this.settings = { ...this.settings, ...data };
+        
+        // For demo users, always set school name to "Demo School"
+        if (this.isDemoUser()) {
+          this.settings.schoolName = 'Demo School';
+        }
         
         // Initialize term date inputs
         if (data.termStartDate) {
@@ -535,6 +549,15 @@ export class SettingsComponent implements OnInit {
   }
 
   onSubmit() {
+    // Prevent demo users from saving settings
+    if (this.isDemoUser()) {
+      this.error = 'Demo accounts cannot modify system settings. This is a demo environment.';
+      this.loading = false;
+      setTimeout(() => this.error = '', 5000);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     this.loading = true;
     this.error = '';
     this.success = '';

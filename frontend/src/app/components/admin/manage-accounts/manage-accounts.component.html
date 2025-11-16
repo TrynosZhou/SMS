@@ -23,8 +23,19 @@
     <span>{{ error }}</span>
   </div>
 
+  <!-- Demo Account Notice -->
+  <div class="demo-notice-card" *ngIf="getCurrentAdminInfo() && isDemoUser()" [@fadeInUp]>
+    <div class="demo-notice-content">
+      <span class="demo-notice-icon">🔒</span>
+      <div>
+        <h3>Demo Account - Password Change Disabled</h3>
+        <p>You are logged in as a demo user. Password changes are disabled in the demo environment. This account is for testing purposes only.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Admin Password Change Section -->
-  <div class="admin-password-section" *ngIf="getCurrentAdminInfo()" [@fadeInUp]>
+  <div class="admin-password-section" *ngIf="getCurrentAdminInfo() && !isDemoUser()" [@fadeInUp]>
     <div class="password-section-header" (click)="togglePasswordChangeSection()">
       <div class="password-section-title">
         <span class="password-icon">🔐</span>

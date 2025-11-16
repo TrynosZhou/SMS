@@ -1,3 +1,13 @@
+<!-- Demo Account Banner -->
+<div class="demo-banner" *ngIf="isAuthenticated() && isDemoUser()">
+  <div class="demo-banner-content">
+    <span class="demo-icon">⚠️</span>
+    <span class="demo-text">
+      <strong>You are using the Demo School account.</strong> Some actions like changing settings, password, or school name are disabled. Demo data is reset every night.
+    </span>
+  </div>
+</div>
+
 <nav class="navbar">
   <div class="nav-container">
     <h1 class="nav-title">School Management System</h1>

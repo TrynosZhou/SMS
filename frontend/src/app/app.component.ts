@@ -19,6 +19,11 @@ export class AppComponent {
     return this.authService.hasRole('parent');
   }
 
+  isDemoUser(): boolean {
+    const user = this.authService.getCurrentUser();
+    return user?.isDemo === true;
+  }
+
   logout(): void {
     this.authService.logout();
   }

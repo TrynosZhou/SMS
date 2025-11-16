@@ -42,6 +42,15 @@
   font-size: 12px;
 }
 
+.demo-disabled-text {
+  display: block;
+  margin-top: 5px;
+  color: #856404;
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 500;
+}
+
 .btn-sm {
   padding: 4px 8px;
   font-size: 12px;

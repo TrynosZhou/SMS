@@ -58,6 +58,7 @@ export const login = async (req: Request, res: Response) => {
         role: user.role,
         mustChangePassword: user.mustChangePassword,
         isTemporaryAccount: user.isTemporaryAccount,
+        isDemo: user.isDemo,
         student: user.student,
         teacher: user.teacher,
         parent: user.parent
