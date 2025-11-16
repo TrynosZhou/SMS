@@ -251,10 +251,15 @@ async function resetDemoData() {
         gender: i % 2 === 0 ? 'Male' : 'Female',
         address: 'Demo Address',
         phoneNumber: `+2547000000${10 + i}`,
-        admissionDate: new Date('2024-01-01'),
-        userId: studentUser.id
+        enrollmentDate: new Date('2024-01-01'),
+        studentType: 'Day Scholar',
+        usesTransport: false,
+        usesDiningHall: false,
+        isStaffChild: false,
+        isActive: true,
+        userId: studentUser.id,
+        classId: i < 3 ? form1Class.id : form2Class.id
       });
-      student.class = i < 3 ? form1Class : form2Class;
       await studentRepository.save(student);
     }
     console.log('✓ Created sample students');
