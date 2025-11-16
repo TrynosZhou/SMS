@@ -197,6 +197,66 @@ export const requestPasswordReset = async (req: Request, res: Response) => {
   }
 };
 
+// Create or update demo account (public endpoint for initial setup)
+export const createDemoAccount = async (req: Request, res: Response) => {
+  try {
+    const demoEmail = 'demo@school.com';
+    const demoUsername = 'demo@school.com';
+    const demoPassword = 'Demo@123';
+
+    const userRepository = AppDataSource.getRepository(User);
+
+    // Check if demo user already exists
+    const existingUser = await userRepository.findOne({
+      where: [
+        { email: demoEmail },
+        { username: demoUsername }
+      ]
+    });
+
+    if (existingUser) {
+      // Update existing user to ensure it's marked as demo
+      const hashedPassword = await bcrypt.hash(demoPassword, 10);
+      existingUser.isDemo = true;
+      existingUser.role = UserRole.ADMIN;
+      existingUser.isActive = true;
+      existingUser.mustChangePassword = false;
+      existingUser.isTemporaryAccount = false;
+      existingUser.password = hashedPassword;
+      
+      await userRepository.save(existingUser);
+      return res.json({ 
+        message: 'Demo account updated successfully',
+        email: demoEmail,
+        password: demoPassword
+      });
+    } else {
+      // Create new demo user
+      const hashedPassword = await bcrypt.hash(demoPassword, 10);
+      const demoUser = userRepository.create({
+        username: demoUsername,
+        email: demoEmail,
+        password: hashedPassword,
+        role: UserRole.ADMIN,
+        isActive: true,
+        isDemo: true,
+        mustChangePassword: false,
+        isTemporaryAccount: false
+      });
+
+      await userRepository.save(demoUser);
+      return res.json({ 
+        message: 'Demo account created successfully',
+        email: demoEmail,
+        password: demoPassword
+      });
+    }
+  } catch (error: any) {
+    console.error('Error creating demo account:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
 export const confirmPasswordReset = async (req: Request, res: Response) => {
   try {
     const { token, newPassword } = req.body;
