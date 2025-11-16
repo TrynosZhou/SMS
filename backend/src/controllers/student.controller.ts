@@ -268,33 +268,25 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       const trimmedClassId = String(classId).trim();
       console.log('Filtering students by classId:', trimmedClassId);
 
-      // First, try the simplest direct query
+      // First, try query builder to properly filter by demo status
+      const queryBuilder = studentRepository
+        .createQueryBuilder('student')
+        .leftJoinAndSelect('student.class', 'class')
+        .leftJoinAndSelect('student.parent', 'parent')
+        .leftJoinAndSelect('student.user', 'user')
+        .where('student.classId = :classId', { classId: trimmedClassId });
+      
       // Filter by demo status if user is demo
-      const whereCondition: any = { classId: trimmedClassId };
       if (isDemoUser(req)) {
-        whereCondition.user = { isDemo: true };
+        queryBuilder.andWhere('user.isDemo = :isDemo', { isDemo: true });
       }
-      students = await studentRepository.find({
-        where: whereCondition,
-        relations: ['class', 'parent', 'user']
-      });
-      console.log(`Found ${students.length} students using direct query for classId: ${trimmedClassId}`);
-
-      // If no students found, try query builder as fallback
-      if (students.length === 0) {
-        const queryBuilder = studentRepository
-          .createQueryBuilder('student')
-          .leftJoinAndSelect('student.class', 'class')
-          .leftJoinAndSelect('student.parent', 'parent')
-          .leftJoinAndSelect('student.user', 'user')
-          .where('student.classId = :classId', { classId: trimmedClassId });
-        
-        // Filter by demo status if user is demo
-        if (isDemoUser(req)) {
-          queryBuilder.andWhere('user.isDemo = :isDemo', { isDemo: true });
-        }
-
-        students = await queryBuilder.getMany();
+      
+      students = await queryBuilder.getMany();
+      console.log(`Found ${students.length} students using query builder for classId: ${trimmedClassId}`);
+      
+      if (isDemoUser(req)) {
+        console.log('Demo user - filtered to show only demo students');
+      }
         console.log(`Found ${students.length} students using query builder for classId: ${trimmedClassId}`);
       }
 
@@ -365,14 +357,17 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     } else {
       // No classId provided, return all students
       // Filter by demo status if user is demo
-      const whereCondition: any = {};
+      const queryBuilder = studentRepository
+        .createQueryBuilder('student')
+        .leftJoinAndSelect('student.class', 'class')
+        .leftJoinAndSelect('student.parent', 'parent')
+        .leftJoinAndSelect('student.user', 'user');
+      
       if (isDemoUser(req)) {
-        whereCondition.user = { isDemo: true };
+        queryBuilder.where('user.isDemo = :isDemo', { isDemo: true });
       }
-      students = await studentRepository.find({
-        where: whereCondition,
-        relations: ['class', 'parent', 'user']
-      });
+      
+      students = await queryBuilder.getMany();
       console.log(`No classId provided, returning all ${students.length} students`);
     }
 

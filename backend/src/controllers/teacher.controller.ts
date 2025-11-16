@@ -133,16 +133,18 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
 
     const teacherRepository = AppDataSource.getRepository(Teacher);
     
-    // Filter by demo status if user is demo
-    const whereCondition: any = {};
+    // Filter by demo status if user is demo using query builder
+    const queryBuilder = teacherRepository
+      .createQueryBuilder('teacher')
+      .leftJoinAndSelect('teacher.subjects', 'subjects')
+      .leftJoinAndSelect('teacher.classes', 'classes')
+      .leftJoinAndSelect('teacher.user', 'user');
+    
     if (isDemoUser(req)) {
-      whereCondition.user = { isDemo: true };
+      queryBuilder.where('user.isDemo = :isDemo', { isDemo: true });
     }
     
-    const teachers = await teacherRepository.find({
-      where: whereCondition,
-      relations: ['subjects', 'classes', 'user']
-    });
+    const teachers = await queryBuilder.getMany();
 
     res.json(teachers);
   } catch (error: any) {

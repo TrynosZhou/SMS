@@ -43,15 +43,33 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // Check if this is the demo account and ensure it's marked as demo
+    const isDemoAccount = user.email === 'demo@school.com' || user.username === 'demo@school.com';
+    if (isDemoAccount && !user.isDemo) {
+      // Update user to mark as demo
+      user.isDemo = true;
+      await userRepository.save(user);
+      console.log('✅ Marked demo account as isDemo = true');
+    }
+
     // If demo user logs in, reset demo data to ensure clean state
     // This ensures each demo user login gets a fresh start without seeing other users' data
-    if (user.isDemo) {
+    if (user.isDemo || isDemoAccount) {
       try {
         console.log('🔄 Demo user login detected - resetting demo data...');
         await resetDemoDataForLogin();
         console.log('✅ Demo data reset completed');
+        // Refresh user after reset
+        const refreshedUser = await userRepository.findOne({
+          where: { id: user.id },
+          relations: ['student', 'teacher', 'parent']
+        });
+        if (refreshedUser) {
+          user.isDemo = refreshedUser.isDemo;
+        }
       } catch (resetError: any) {
         console.error('⚠️ Error resetting demo data on login:', resetError.message);
+        console.error(resetError.stack);
         // Continue with login even if reset fails
       }
     }

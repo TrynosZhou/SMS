@@ -79,9 +79,13 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
     }
 
     // For demo users, always return "Demo School" as school name
-    if (req.user?.isDemo) {
+    const isDemo = req.user?.isDemo === true || req.user?.email === 'demo@school.com' || req.user?.username === 'demo@school.com';
+    console.log('Settings request - User isDemo:', req.user?.isDemo, 'Email:', req.user?.email, 'Username:', req.user?.username, 'Calculated isDemo:', isDemo);
+    
+    if (isDemo) {
       const demoSettings = { ...settings };
       demoSettings.schoolName = 'Demo School';
+      console.log('Returning demo settings with school name: Demo School');
       return res.json(demoSettings);
     }
 
