@@ -161,11 +161,115 @@ async function resetDemoData() {
     await userRepository.save(demoUser);
     console.log('✓ Reset demo user credentials');
 
+    // Step 12: Create sample demo data
+    console.log('\n📦 Creating sample demo data...');
+    
+    // Create sample classes
+    const form1Class = classRepository.create({
+      name: 'Form 1A',
+      form: 'Form 1',
+      description: 'Form 1 Class A - Demo',
+      isActive: true
+    });
+    const form2Class = classRepository.create({
+      name: 'Form 2A',
+      form: 'Form 2',
+      description: 'Form 2 Class A - Demo',
+      isActive: true
+    });
+    await classRepository.save([form1Class, form2Class]);
+    console.log('✓ Created sample classes');
+
+    // Create sample subjects
+    const subjects = [
+      { name: 'Mathematics', code: 'MATH001', description: 'Mathematics - Demo' },
+      { name: 'English', code: 'ENG001', description: 'English Language - Demo' },
+      { name: 'Science', code: 'SCI001', description: 'General Science - Demo' },
+      { name: 'Kiswahili', code: 'SWA001', description: 'Kiswahili - Demo' },
+      { name: 'Social Studies', code: 'SOC001', description: 'Social Studies - Demo' }
+    ];
+    const createdSubjects = subjects.map(subj => subjectRepository.create(subj));
+    await subjectRepository.save(createdSubjects);
+    console.log('✓ Created sample subjects');
+
+    // Create sample teachers
+    const teacher1User = userRepository.create({
+      email: 'teacher1@demo.school.com',
+      username: 'teacher1@demo.school.com',
+      password: await bcrypt.hash('Teacher@123', 10),
+      role: UserRole.TEACHER,
+      isActive: true,
+      isDemo: true,
+      mustChangePassword: false,
+      isTemporaryAccount: false
+    });
+    await userRepository.save(teacher1User);
+
+    const teacher1 = teacherRepository.create({
+      firstName: 'John',
+      lastName: 'Doe',
+      employeeNumber: 'T001',
+      phoneNumber: '+254700000001',
+      address: 'Demo Address',
+      dateOfBirth: new Date('1980-01-01'),
+      isActive: true,
+      userId: teacher1User.id
+    });
+    teacher1.subjects = [createdSubjects[0], createdSubjects[2]]; // Math and Science
+    teacher1.classes = [form1Class, form2Class];
+    await teacherRepository.save(teacher1);
+    console.log('✓ Created sample teachers');
+
+    // Create sample students
+    const studentNumbers = ['DEMO001', 'DEMO002', 'DEMO003', 'DEMO004', 'DEMO005'];
+    const studentNames = [
+      { first: 'Alice', last: 'Smith' },
+      { first: 'Bob', last: 'Johnson' },
+      { first: 'Charlie', last: 'Williams' },
+      { first: 'Diana', last: 'Brown' },
+      { first: 'Edward', last: 'Jones' }
+    ];
+
+    for (let i = 0; i < studentNumbers.length; i++) {
+      const studentUser = userRepository.create({
+        email: `student${i + 1}@demo.school.com`,
+        username: `student${i + 1}@demo.school.com`,
+        password: await bcrypt.hash('Student@123', 10),
+        role: UserRole.STUDENT,
+        isActive: true,
+        isDemo: true,
+        mustChangePassword: false,
+        isTemporaryAccount: false
+      });
+      await userRepository.save(studentUser);
+
+      const student = studentRepository.create({
+        firstName: studentNames[i].first,
+        lastName: studentNames[i].last,
+        studentNumber: studentNumbers[i],
+        dateOfBirth: new Date(2008 + i, 0, 1),
+        gender: i % 2 === 0 ? 'Male' : 'Female',
+        address: 'Demo Address',
+        phoneNumber: `+2547000000${10 + i}`,
+        admissionDate: new Date('2024-01-01'),
+        userId: studentUser.id
+      });
+      student.class = i < 3 ? form1Class : form2Class;
+      await studentRepository.save(student);
+    }
+    console.log('✓ Created sample students');
+
     console.log('\n✅ Demo data reset completed successfully!');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Demo account is ready for use:');
     console.log('  Email/Username: demo@school.com');
     console.log('  Password: Demo@123');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('\n📊 Sample Data Created:');
+    console.log('  - 2 Classes (Form 1A, Form 2A)');
+    console.log('  - 5 Subjects (Math, English, Science, Kiswahili, Social Studies)');
+    console.log('  - 1 Teacher (John Doe)');
+    console.log('  - 5 Students (Alice, Bob, Charlie, Diana, Edward)');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
     await AppDataSource.destroy();
