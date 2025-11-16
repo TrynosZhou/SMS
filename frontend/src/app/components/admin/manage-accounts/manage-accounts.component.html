@@ -23,6 +23,132 @@
     <span>{{ error }}</span>
   </div>
 
+  <!-- Admin Password Change Section -->
+  <div class="admin-password-section" *ngIf="getCurrentAdminInfo()" [@fadeInUp]>
+    <div class="password-section-header" (click)="togglePasswordChangeSection()">
+      <div class="password-section-title">
+        <span class="password-icon">🔐</span>
+        <div>
+          <h3>Change My Password</h3>
+          <p>Update your administrator account password</p>
+        </div>
+      </div>
+      <button class="toggle-btn" [class.expanded]="showPasswordChangeSection">
+        <span>{{ showPasswordChangeSection ? '▼' : '▶' }}</span>
+      </button>
+    </div>
+
+    <div class="password-section-content" *ngIf="showPasswordChangeSection" [@slideInUp]>
+      <div class="admin-info-box">
+        <div class="admin-info-item">
+          <span class="admin-info-label">Email:</span>
+          <span class="admin-info-value">{{ getCurrentAdminInfo()?.email }}</span>
+        </div>
+        <div class="admin-info-item">
+          <span class="admin-info-label">Username:</span>
+          <span class="admin-info-value">{{ getCurrentAdminInfo()?.username }}</span>
+        </div>
+      </div>
+
+      <form (ngSubmit)="changePassword()" class="password-change-form">
+        <div class="form-group">
+          <label for="currentPassword" class="form-label">
+            <span class="label-icon">🔑</span>
+            Current Password
+          </label>
+          <div class="password-input-wrapper">
+            <input
+              type="{{ showCurrentPassword ? 'text' : 'password' }}"
+              id="currentPassword"
+              class="form-input"
+              [(ngModel)]="currentPassword"
+              name="currentPassword"
+              placeholder="Enter your current password"
+              [disabled]="changingPassword"
+              required>
+            <button
+              type="button"
+              class="password-toggle-btn"
+              (click)="toggleCurrentPasswordVisibility()"
+              tabindex="-1">
+              <span>{{ showCurrentPassword ? '👁️' : '👁️‍🗨️' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="newPassword" class="form-label">
+            <span class="label-icon">🔒</span>
+            New Password
+          </label>
+          <div class="password-input-wrapper">
+            <input
+              type="{{ showNewPassword ? 'text' : 'password' }}"
+              id="newPassword"
+              class="form-input"
+              [(ngModel)]="newPassword"
+              name="newPassword"
+              placeholder="Enter your new password (min. 8 characters)"
+              [disabled]="changingPassword"
+              required>
+            <button
+              type="button"
+              class="password-toggle-btn"
+              (click)="toggleNewPasswordVisibility()"
+              tabindex="-1">
+              <span>{{ showNewPassword ? '👁️' : '👁️‍🗨️' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword" class="form-label">
+            <span class="label-icon">✓</span>
+            Confirm New Password
+          </label>
+          <div class="password-input-wrapper">
+            <input
+              type="{{ showConfirmPassword ? 'text' : 'password' }}"
+              id="confirmPassword"
+              class="form-input"
+              [(ngModel)]="confirmPassword"
+              name="confirmPassword"
+              placeholder="Confirm your new password"
+              [disabled]="changingPassword"
+              required>
+            <button
+              type="button"
+              class="password-toggle-btn"
+              (click)="toggleConfirmPasswordVisibility()"
+              tabindex="-1">
+              <span>{{ showConfirmPassword ? '👁️' : '👁️‍🗨️' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="togglePasswordChangeSection()"
+            [disabled]="changingPassword">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="changingPassword || !currentPassword || !newPassword || !confirmPassword">
+            <span *ngIf="!changingPassword">🔐 Change Password</span>
+            <span *ngIf="changingPassword" class="submit-loading">
+              <span class="spinner-small"></span>
+              Changing...
+            </span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Statistics Cards -->
   <div class="stats-container" *ngIf="!loading && teachers.length > 0">
     <div class="stat-card">

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { TeacherService } from '../../../services/teacher.service';
 import { AccountService } from '../../../services/account.service';
+import { AuthService } from '../../../services/auth.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 
 @Component({
@@ -49,9 +50,20 @@ export class ManageAccountsComponent implements OnInit {
   showDetailsModal = false;
   sendCredentials = false;
 
+  // Password change
+  showPasswordChangeSection = false;
+  currentPassword = '';
+  newPassword = '';
+  confirmPassword = '';
+  changingPassword = false;
+  showCurrentPassword = false;
+  showNewPassword = false;
+  showConfirmPassword = false;
+
   constructor(
     private teacherService: TeacherService,
-    private accountService: AccountService
+    private accountService: AccountService,
+    private authService: AuthService
   ) { }
 
   ngOnInit() {
@@ -230,5 +242,92 @@ export class ManageAccountsComponent implements OnInit {
   createAccountForTeacher(teacher: any) {
     // Legacy method - redirects to modal
     this.openCreateAccountModal(teacher);
+  }
+
+  // Password change methods
+  togglePasswordChangeSection() {
+    this.showPasswordChangeSection = !this.showPasswordChangeSection;
+    if (!this.showPasswordChangeSection) {
+      this.resetPasswordForm();
+    }
+  }
+
+  resetPasswordForm() {
+    this.currentPassword = '';
+    this.newPassword = '';
+    this.confirmPassword = '';
+    this.showCurrentPassword = false;
+    this.showNewPassword = false;
+    this.showConfirmPassword = false;
+    this.error = '';
+    this.success = '';
+  }
+
+  changePassword() {
+    // Validation
+    if (!this.currentPassword || !this.newPassword || !this.confirmPassword) {
+      this.error = 'Please fill in all password fields';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    if (this.newPassword.length < 8) {
+      this.error = 'New password must be at least 8 characters long';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    if (this.newPassword !== this.confirmPassword) {
+      this.error = 'New password and confirm password do not match';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    this.changingPassword = true;
+    this.error = '';
+    this.success = '';
+
+    const updateData = {
+      currentPassword: this.currentPassword,
+      newPassword: this.newPassword
+    };
+
+    this.accountService.updateAccount(updateData).subscribe({
+      next: (response: any) => {
+        this.changingPassword = false;
+        this.success = 'Password changed successfully!';
+        this.resetPasswordForm();
+        setTimeout(() => {
+          this.success = '';
+          this.showPasswordChangeSection = false;
+        }, 3000);
+      },
+      error: (err: any) => {
+        this.changingPassword = false;
+        this.error = err.error?.message || 'Failed to change password';
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  toggleCurrentPasswordVisibility() {
+    this.showCurrentPassword = !this.showCurrentPassword;
+  }
+
+  toggleNewPasswordVisibility() {
+    this.showNewPassword = !this.showNewPassword;
+  }
+
+  toggleConfirmPasswordVisibility() {
+    this.showConfirmPassword = !this.showConfirmPassword;
+  }
+
+  getCurrentAdminInfo() {
+    const user = this.authService.getCurrentUser();
+    return user ? {
+      email: user.email,
+      username: user.username || user.email,
+      role: user.role
+    } : null;
   }
 }
