@@ -20,6 +20,8 @@ export class TeacherListComponent implements OnInit {
   selectedClassFilter = '';
   viewMode: 'grid' | 'list' = 'grid';
   selectedTeacher: any = null;
+  error = '';
+  success = '';
 
   constructor(
     private teacherService: TeacherService,
@@ -153,5 +155,40 @@ export class TeacherListComponent implements OnInit {
       return sum + (teacher.subjects ? teacher.subjects.length : 0);
     }, 0);
     return Math.round((total / this.teachers.length) * 10) / 10;
+  }
+
+  deleteTeacher(id: string, teacherName: string, employeeNumber: string) {
+    if (!confirm(`Are you sure you want to delete teacher "${teacherName}" (${employeeNumber})? This action cannot be undone.`)) {
+      return;
+    }
+    this.loading = true;
+    this.error = '';
+    this.success = '';
+    this.teacherService.deleteTeacher(id).subscribe({
+      next: (data: any) => {
+        this.success = data.message || 'Teacher deleted successfully';
+        this.loading = false;
+        this.loadTeachers();
+        setTimeout(() => this.success = '', 5000);
+      },
+      error: (err: any) => {
+        console.error('Error deleting teacher:', err);
+        let errorMessage = 'Failed to delete teacher';
+        if (err.status === 0 || err.status === undefined) {
+          errorMessage = 'Cannot connect to server. Please ensure the backend server is running.';
+        } else if (err.error) {
+          if (typeof err.error === 'string') {
+            errorMessage = err.error;
+          } else if (err.error.message) {
+            errorMessage = err.error.message;
+          }
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+        this.error = errorMessage;
+        this.loading = false;
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
   }
 }

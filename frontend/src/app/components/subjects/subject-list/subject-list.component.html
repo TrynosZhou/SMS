@@ -4,6 +4,8 @@
       <h1>Subjects</h1>
       <button class="btn btn-primary" routerLink="/subjects/new">➕ Add Subject</button>
     </div>
+    <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+    <div class="alert alert-error" *ngIf="error">{{ error }}</div>
     <div *ngIf="loading">Loading...</div>
     <table *ngIf="!loading">
       <thead>
@@ -30,7 +32,10 @@
             </span>
           </td>
           <td>
-            <button class="btn btn-secondary" (click)="editSubject(subject.id)">✏️ Edit</button>
+            <button class="btn btn-secondary" (click)="editSubject(subject.id)" style="margin-right: 5px;">✏️ Edit</button>
+            <button class="btn btn-danger" (click)="deleteSubject(subject.id, subject.name, subject.code)" [disabled]="loading">
+              🗑️ Delete
+            </button>
           </td>
         </tr>
         <tr *ngIf="subjects.length === 0">

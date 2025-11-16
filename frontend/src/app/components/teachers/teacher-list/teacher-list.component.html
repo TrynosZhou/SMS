@@ -1,4 +1,8 @@
 <div class="teachers-container">
+  <!-- Alert Messages -->
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
   <!-- Header Section -->
   <div class="page-header">
     <div class="header-content">
@@ -171,6 +175,9 @@
         <button class="btn-action btn-edit" (click)="editTeacher(teacher.id)">
           ✏️ Edit
         </button>
+        <button class="btn-action btn-delete" (click)="deleteTeacher(teacher.id, teacher.firstName + ' ' + teacher.lastName, teacher.employeeNumber)" [disabled]="loading" title="Delete">
+          🗑️ Delete
+        </button>
       </div>
     </div>
   </div>
@@ -217,6 +224,9 @@
           </button>
           <button class="btn-icon-small" (click)="editTeacher(teacher.id)" title="Edit">
             ✏️
+          </button>
+          <button class="btn-icon-small btn-delete" (click)="deleteTeacher(teacher.id, teacher.firstName + ' ' + teacher.lastName, teacher.employeeNumber)" title="Delete" [disabled]="loading">
+            🗑️
           </button>
         </div>
       </div>

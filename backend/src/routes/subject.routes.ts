@@ -140,5 +140,43 @@ router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN),
   }
 });
 
+router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const subjectRepository = AppDataSource.getRepository(Subject);
+    const teacherRepository = AppDataSource.getRepository(Teacher);
+
+    const subject = await subjectRepository.findOne({
+      where: { id },
+      relations: ['teachers', 'classes']
+    });
+
+    if (!subject) {
+      return res.status(404).json({ message: 'Subject not found' });
+    }
+
+    // Check if subject has associated teachers or classes
+    const teacherCount = subject.teachers?.length || 0;
+    const classCount = subject.classes?.length || 0;
+
+    if (teacherCount > 0 || classCount > 0) {
+      return res.status(400).json({
+        message: 'Cannot delete subject with associated records',
+        details: {
+          teachers: teacherCount,
+          classes: classCount
+        }
+      });
+    }
+
+    // Delete the subject
+    await subjectRepository.remove(subject);
+    res.json({ message: 'Subject deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting subject:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 export default router;
 

@@ -6,6 +6,7 @@ import {
   getTeachers,
   getTeacherById,
   updateTeacher,
+  deleteTeacher,
   getTeacherClasses,
   createTeacherAccount
 } from '../controllers/teacher.controller';
@@ -18,6 +19,7 @@ router.get('/:id', authenticate, getTeacherById);
 router.get('/:id/classes', authenticate, getTeacherClasses);
 router.post('/:id/create-account', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), createTeacherAccount);
 router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), updateTeacher);
+router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), deleteTeacher);
 
 export default router;
 

@@ -34,5 +34,9 @@ export class TeacherService {
   createTeacherAccount(teacherId: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/teachers/${teacherId}/create-account`, {});
   }
+
+  deleteTeacher(id: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/teachers/${id}`);
+  }
 }
 

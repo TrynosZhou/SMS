@@ -244,6 +244,63 @@ export const updateTeacher = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const deleteTeacher = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const { id } = req.params;
+    console.log('Attempting to delete teacher with ID:', id);
+
+    const teacherRepository = AppDataSource.getRepository(Teacher);
+    const userRepository = AppDataSource.getRepository(User);
+
+    const teacher = await teacherRepository.findOne({
+      where: { id },
+      relations: ['user', 'subjects', 'classes']
+    });
+
+    if (!teacher) {
+      console.log('Teacher not found with ID:', id);
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+
+    console.log('Found teacher:', teacher.firstName, teacher.lastName, `(${teacher.employeeNumber})`);
+
+    // Check if teacher has associated classes or subjects
+    const classCount = teacher.classes?.length || 0;
+    const subjectCount = teacher.subjects?.length || 0;
+
+    if (classCount > 0 || subjectCount > 0) {
+      // Remove associations instead of preventing deletion
+      teacher.classes = [];
+      teacher.subjects = [];
+      await teacherRepository.save(teacher);
+    }
+
+    // Delete associated user account if it exists
+    if (teacher.userId) {
+      const user = await userRepository.findOne({ where: { id: teacher.userId } });
+      if (user) {
+        console.log('Deleting associated user account');
+        await userRepository.remove(user);
+      }
+    }
+
+    // Delete the teacher
+    console.log('Deleting teacher:', teacher.firstName, teacher.lastName);
+    await teacherRepository.remove(teacher);
+    console.log('Teacher deleted successfully');
+
+    res.json({ message: 'Teacher deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting teacher:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 export const getTeacherClasses = async (req: AuthRequest, res: Response) => {
   try {
     if (!AppDataSource.isInitialized) {

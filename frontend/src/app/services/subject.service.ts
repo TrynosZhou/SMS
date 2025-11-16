@@ -26,5 +26,9 @@ export class SubjectService {
   updateSubject(id: string, subject: any): Observable<any> {
     return this.http.put(`${this.apiUrl}/subjects/${id}`, subject);
   }
+
+  deleteSubject(id: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/subjects/${id}`);
+  }
 }
 
