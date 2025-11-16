@@ -1,12 +1,16 @@
 import { Injectable } from '@angular/core';
 import { HttpInterceptor, HttpRequest, HttpHandler, HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../services/auth.service';
+import { Router } from '@angular/router';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
-  constructor(private authService: AuthService) { }
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) { }
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<any> {
     const token = this.authService.getToken();
@@ -25,9 +29,16 @@ export class AuthInterceptor implements HttpInterceptor {
       catchError((error: HttpErrorResponse) => {
         // Handle 401 errors
         if (error.status === 401) {
-          // Token might be expired or invalid
-          console.error('Authentication error:', error);
-          // Don't auto-logout here, let the component handle it
+          // Skip auto-logout for auth endpoints (login, register, reset-password)
+          const isAuthEndpoint = req.url.includes('/auth/login') || 
+                                 req.url.includes('/auth/register') || 
+                                 req.url.includes('/auth/reset-password');
+          
+          if (!isAuthEndpoint && token) {
+            // Token is invalid or expired - clear it and redirect to login
+            console.warn('Authentication failed - token may be expired or invalid');
+            this.authService.logout();
+          }
         }
         return throwError(() => error);
       })
