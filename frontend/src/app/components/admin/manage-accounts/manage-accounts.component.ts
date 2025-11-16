@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { TeacherService } from '../../../services/teacher.service';
 import { AccountService } from '../../../services/account.service';
 import { AuthService } from '../../../services/auth.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-manage-accounts',
@@ -32,7 +33,7 @@ import { trigger, state, style, transition, animate } from '@angular/animations'
     ])
   ]
 })
-export class ManageAccountsComponent implements OnInit {
+export class ManageAccountsComponent implements OnInit, OnDestroy {
   teachers: any[] = [];
   filteredTeachers: any[] = [];
   loading = false;
@@ -60,6 +61,10 @@ export class ManageAccountsComponent implements OnInit {
   showNewPassword = false;
   showConfirmPassword = false;
 
+  // User subscription
+  private userSubscription?: Subscription;
+  currentUser: any = null;
+
   constructor(
     private teacherService: TeacherService,
     private accountService: AccountService,
@@ -68,6 +73,20 @@ export class ManageAccountsComponent implements OnInit {
 
   ngOnInit() {
     this.loadTeachers();
+    
+    // Subscribe to user changes to ensure we have the latest user data
+    this.userSubscription = this.authService.currentUser$.subscribe(user => {
+      this.currentUser = user;
+    });
+    
+    // Also get current user immediately
+    this.currentUser = this.authService.getCurrentUser();
+  }
+
+  ngOnDestroy() {
+    if (this.userSubscription) {
+      this.userSubscription.unsubscribe();
+    }
   }
 
   loadTeachers() {
@@ -323,17 +342,30 @@ export class ManageAccountsComponent implements OnInit {
   }
 
   getCurrentAdminInfo() {
-    const user = this.authService.getCurrentUser();
-    return user ? {
-      email: user.email,
-      username: user.username || user.email,
-      role: user.role,
-      isDemo: user.isDemo
-    } : null;
+    // Use currentUser from subscription or get fresh from service
+    const user = this.currentUser || this.authService.getCurrentUser();
+    // Only return info if user exists and is admin or superadmin
+    if (user && (user.role === 'admin' || user.role === 'superadmin')) {
+      return {
+        email: user.email,
+        username: user.username || user.email,
+        role: user.role,
+        isDemo: user.isDemo || false
+      };
+    }
+    return null;
   }
 
   isDemoUser(): boolean {
-    const user = this.authService.getCurrentUser();
+    // Use currentUser from subscription or get fresh from service
+    const user = this.currentUser || this.authService.getCurrentUser();
+    // Safely check if user is demo (handle undefined isDemo field)
     return user?.isDemo === true;
+  }
+
+  isAdmin(): boolean {
+    // Use currentUser from subscription or get fresh from service
+    const user = this.currentUser || this.authService.getCurrentUser();
+    return user?.role === 'admin' || user?.role === 'superadmin';
   }
 }

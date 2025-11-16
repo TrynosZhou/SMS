@@ -24,7 +24,7 @@
   </div>
 
   <!-- Demo Account Notice -->
-  <div class="demo-notice-card" *ngIf="getCurrentAdminInfo() && isDemoUser()" [@fadeInUp]>
+  <div class="demo-notice-card" *ngIf="isAdmin() && isDemoUser()" [@fadeInUp]>
     <div class="demo-notice-content">
       <span class="demo-notice-icon">🔒</span>
       <div>
@@ -35,7 +35,7 @@
   </div>
 
   <!-- Admin Password Change Section -->
-  <div class="admin-password-section" *ngIf="getCurrentAdminInfo() && !isDemoUser()" [@fadeInUp]>
+  <div class="admin-password-section" *ngIf="isAdmin() && !isDemoUser()" [@fadeInUp]>
     <div class="password-section-header" (click)="togglePasswordChangeSection()">
       <div class="password-section-title">
         <span class="password-icon">🔐</span>
