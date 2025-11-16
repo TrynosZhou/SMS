@@ -21,7 +21,7 @@ export class AppComponent {
 
   isDemoUser(): boolean {
     const user = this.authService.getCurrentUser();
-    return user?.isDemo === true;
+    return user?.isDemo === true || user?.email === 'demo@school.com' || user?.username === 'demo@school.com';
   }
 
   logout(): void {

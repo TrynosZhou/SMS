@@ -8,6 +8,7 @@ import { createInvoicePDF } from '../utils/invoicePdfGenerator';
 import { createReceiptPDF } from '../utils/receiptPdfGenerator';
 import { UniformItem } from '../entities/UniformItem';
 import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
+import { isDemoUser } from '../utils/demoDataFilter';
 
 // Helper function to determine next term
 function getNextTerm(currentTerm: string): string {
@@ -273,6 +274,29 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
   try {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const { studentId, status, invoiceId } = req.query as { studentId?: string; status?: string; invoiceId?: string };
+
+    // Filter invoices for demo users - only show invoices for demo students
+    if (isDemoUser(req)) {
+      const queryBuilder = invoiceRepository
+        .createQueryBuilder('invoice')
+        .leftJoinAndSelect('invoice.student', 'student')
+        .leftJoinAndSelect('student.user', 'user')
+        .where('user.isDemo = :isDemo', { isDemo: true });
+      
+      if (studentId) {
+        queryBuilder.andWhere('invoice.studentId = :studentId', { studentId });
+      }
+      if (status) {
+        queryBuilder.andWhere('invoice.status = :status', { status });
+      }
+      if (invoiceId) {
+        queryBuilder.andWhere('invoice.id = :invoiceId', { invoiceId });
+      }
+      
+      queryBuilder.orderBy('invoice.createdAt', 'DESC');
+      const invoices = await queryBuilder.getMany();
+      return res.json(invoices);
+    }
 
     const where: any = {};
     if (studentId) where.studentId = studentId;

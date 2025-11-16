@@ -138,10 +138,20 @@ export class DashboardComponent implements OnInit {
     }, 500);
   }
 
+  isDemoUser(): boolean {
+    const user = this.authService.getCurrentUser();
+    return user?.isDemo === true || user?.email === 'demo@school.com' || user?.username === 'demo@school.com';
+  }
+
   loadSettings() {
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
-        this.schoolName = data.schoolName || '';
+        // For demo users, always use "Demo School"
+        if (this.isDemoUser()) {
+          this.schoolName = 'Demo School';
+        } else {
+          this.schoolName = data.schoolName || '';
+        }
         this.moduleAccess = data.moduleAccess || {};
       },
       error: (err: any) => {

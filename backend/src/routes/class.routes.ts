@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, authorize } from '../middleware/auth';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { UserRole } from '../entities/User';
 import { AppDataSource } from '../config/database';
 import { Class } from '../entities/Class';
@@ -8,12 +8,41 @@ import { ReportCardRemarks } from '../entities/ReportCardRemarks';
 import { Teacher } from '../entities/Teacher';
 import { Subject } from '../entities/Subject';
 import { In } from 'typeorm';
+import { isDemoUser } from '../utils/demoDataFilter';
+import { Student } from '../entities/Student';
 
 const router = Router();
 
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const classRepository = AppDataSource.getRepository(Class);
+    
+    // Filter classes for demo users - only show classes with demo students
+    if (isDemoUser(req)) {
+      const studentRepository = AppDataSource.getRepository(Student);
+      const demoStudents = await studentRepository.find({
+        where: { user: { isDemo: true } },
+        relations: ['class', 'user']
+      });
+      const demoClassIds = [...new Set(demoStudents.map(s => s.classId).filter(Boolean))];
+      
+      if (demoClassIds.length > 0) {
+        const classes = await classRepository.find({
+          where: { id: In(demoClassIds) },
+          relations: ['students', 'teachers', 'subjects']
+        });
+        // Filter students to only show demo students
+        classes.forEach(cls => {
+          if (cls.students) {
+            cls.students = cls.students.filter((s: any) => s.user?.isDemo === true);
+          }
+        });
+        return res.json(classes);
+      } else {
+        return res.json([]);
+      }
+    }
+    
     const classes = await classRepository.find({
       relations: ['students', 'teachers', 'subjects']
     });
