@@ -287,8 +287,6 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       if (isDemoUser(req)) {
         console.log('Demo user - filtered to show only demo students');
       }
-        console.log(`Found ${students.length} students using query builder for classId: ${trimmedClassId}`);
-      }
 
       // If still no students found, try a more permissive approach
       if (students.length === 0) {
