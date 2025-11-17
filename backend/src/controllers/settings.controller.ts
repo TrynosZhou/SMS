@@ -5,6 +5,8 @@ import { Invoice, InvoiceStatus } from '../entities/Invoice';
 import { Student } from '../entities/Student';
 import { UniformItem } from '../entities/UniformItem';
 import { AuthRequest } from '../middleware/auth';
+import { getCurrentSchoolId } from '../utils/schoolContext';
+import { School } from '../entities/School';
 
 export const getSettings = async (req: AuthRequest, res: Response) => {
   try {
@@ -12,11 +14,19 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context missing' });
+    }
+
     const settingsRepository = AppDataSource.getRepository(Settings);
+    const schoolRepository = AppDataSource.getRepository(School);
     
     // Get the first (and only) settings record, or create default if none exists
     let settings = await settingsRepository.findOne({
-      where: {},
+      where: { schoolId },
       order: { createdAt: 'DESC' }
     });
 
@@ -61,7 +71,8 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
             invoices: true,
             dashboard: true
           }
-        }
+        },
+        schoolId
       });
       await settingsRepository.save(settings);
     } else if (settings.feesSettings) {
@@ -78,18 +89,30 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // For demo users, always return "Demo School" as school name
+    // Get school entity to include code in response
+    const school = await schoolRepository.findOne({ where: { id: schoolId } });
+    
+    // Include school code in response (preserve original case for human-readable codes)
+    const responsePayload: any = { ...settings };
+    if (school?.schoolid) {
+      responsePayload.schoolCode = school.schoolid;
+    }
+    if (!responsePayload.schoolName && school?.name) {
+      responsePayload.schoolName = school.name;
+    }
+
+    // For demo users, always return "Demo School" as school name/code
     const isDemo = req.user?.isDemo === true || req.user?.email === 'demo@school.com' || req.user?.username === 'demo@school.com';
     console.log('Settings request - User isDemo:', req.user?.isDemo, 'Email:', req.user?.email, 'Username:', req.user?.username, 'Calculated isDemo:', isDemo);
     
     if (isDemo) {
-      const demoSettings = { ...settings };
-      demoSettings.schoolName = 'Demo School';
-      console.log('Returning demo settings with school name: Demo School');
-      return res.json(demoSettings);
+      responsePayload.schoolName = 'Demo School';
+      responsePayload.schoolCode = 'demo';
+      console.log('Returning demo settings with school name/code locked to demo');
+      return res.json(responsePayload);
     }
 
-    res.json(settings);
+    res.json(responsePayload);
   } catch (error: any) {
     console.error('Error fetching settings:', error);
     res.status(500).json({ 
@@ -110,11 +133,19 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context missing' });
+    }
+
     const settingsRepository = AppDataSource.getRepository(Settings);
+    const schoolRepository = AppDataSource.getRepository(School);
     
     // Get existing settings or create new
     let settings = await settingsRepository.findOne({
-      where: {},
+      where: { schoolId },
       order: { createdAt: 'DESC' }
     });
 
@@ -126,6 +157,7 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       schoolLogo,
       schoolLogo2,
       schoolName,
+      schoolCode,
       schoolAddress,
       schoolPhone,
       schoolEmail,
@@ -140,7 +172,7 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
     } = req.body;
 
     if (!settings) {
-      settings = settingsRepository.create({});
+      settings = settingsRepository.create({ schoolId });
     }
 
     // Update fields
@@ -195,8 +227,43 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
     if (schoolLogo2 !== undefined) {
       settings.schoolLogo2 = schoolLogo2;
     }
-    if (schoolName !== undefined) {
-      settings.schoolName = schoolName;
+    let schoolEntity = await schoolRepository.findOne({ where: { id: schoolId } });
+    if (!schoolEntity) {
+      return res.status(404).json({ message: 'School record not found for current context' });
+    }
+
+    const hasSchoolCode = schoolCode !== undefined && schoolCode !== null && String(schoolCode).trim() !== '';
+    const hasSchoolName = schoolName !== undefined && schoolName !== null && String(schoolName).trim() !== '';
+
+    if (hasSchoolCode !== hasSchoolName) {
+      return res.status(400).json({ message: 'School code and school name must both be provided together.' });
+    }
+
+    if (hasSchoolCode && hasSchoolName) {
+      const normalizedCode = String(schoolCode).trim().toLowerCase();
+      // Human-readable code: alphanumeric, hyphens, underscores, 3-50 chars
+      const codePattern = /^[a-z0-9_-]{3,50}$/;
+      if (normalizedCode !== 'demo' && !codePattern.test(normalizedCode)) {
+        return res.status(400).json({ message: 'School code must be 3-50 characters long and contain only letters, numbers, hyphens, or underscores (e.g., riverton, school-2024).' });
+      }
+
+      if (normalizedCode !== schoolEntity.schoolid) {
+        const existingCode = await schoolRepository.findOne({ where: { schoolid: normalizedCode } });
+        if (existingCode && existingCode.id !== schoolEntity.id) {
+          return res.status(400).json({ message: 'Another school already uses that code. Please choose a unique code.' });
+        }
+        schoolEntity.schoolid = normalizedCode;
+      }
+
+      const trimmedName = String(schoolName).trim();
+      if (!trimmedName) {
+        return res.status(400).json({ message: 'School name cannot be empty when updating the school code.' });
+      }
+      schoolEntity.name = trimmedName;
+      settings.schoolName = trimmedName;
+    } else if (schoolName !== undefined && !hasSchoolName) {
+      // Explicit attempt to clear school name without code pairing
+      return res.status(400).json({ message: 'School name cannot be empty.' });
     }
     if (schoolAddress !== undefined) {
       settings.schoolAddress = schoolAddress;
@@ -234,10 +301,13 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
 
     settings.updatedAt = new Date();
     await settingsRepository.save(settings);
+    await schoolRepository.save(schoolEntity);
+
+    const responseSettings = { ...settings, schoolCode: schoolEntity.schoolid };
 
     res.json({ 
       message: 'Settings updated successfully', 
-      settings 
+      settings: responseSettings
     });
   } catch (error: any) {
     console.error('Error updating settings:', error);
@@ -255,9 +325,16 @@ export const getActiveTerm = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context missing' });
+    }
+
     const settingsRepository = AppDataSource.getRepository(Settings);
     const settings = await settingsRepository.findOne({
-      where: {},
+      where: { schoolId },
       order: { createdAt: 'DESC' }
     });
 
@@ -287,12 +364,19 @@ export const processOpeningDay = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context missing' });
+    }
+
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const settingsRepository = AppDataSource.getRepository(Settings);
     
     // Get settings
     const settings = await settingsRepository.findOne({
-      where: {},
+      where: { schoolId },
       order: { createdAt: 'DESC' }
     });
 
@@ -306,7 +390,8 @@ export const processOpeningDay = async (req: AuthRequest, res: Response) => {
     // Get all pending invoices with balance > 0
     const pendingInvoices = await invoiceRepository.find({
       where: {
-        status: InvoiceStatus.PENDING
+        status: InvoiceStatus.PENDING,
+        schoolId
       }
     });
 
@@ -342,13 +427,20 @@ export const processClosingDay = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context missing' });
+    }
+
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
     const settingsRepository = AppDataSource.getRepository(Settings);
     
     // Get settings
     const settings = await settingsRepository.findOne({
-      where: {},
+      where: { schoolId },
       order: { createdAt: 'DESC' }
     });
 
@@ -362,7 +454,7 @@ export const processClosingDay = async (req: AuthRequest, res: Response) => {
 
     // Get all active students
     const students = await studentRepository.find({
-      where: { isActive: true }
+      where: { isActive: true, schoolId }
     });
 
     const feesSettings = settings.feesSettings;

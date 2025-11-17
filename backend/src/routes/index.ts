@@ -11,6 +11,7 @@ import parentRoutes from './parent.routes';
 import accountRoutes from './account.routes';
 import messageRoutes from './message.routes';
 import attendanceRoutes from './attendance.routes';
+import schoolRoutes from './school.routes';
 
 const router = Router();
 
@@ -26,6 +27,7 @@ router.use('/parent', parentRoutes);
 router.use('/account', accountRoutes);
 router.use('/messages', messageRoutes);
 router.use('/attendance', attendanceRoutes);
+router.use('/schools', schoolRoutes);
 
 export default router;
 

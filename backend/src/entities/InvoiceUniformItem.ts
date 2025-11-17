@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Invoice } from './Invoice';
 import { UniformItem } from './UniformItem';
+import { School } from './School';
 
 @Entity('invoice_uniform_items')
 export class InvoiceUniformItem {
@@ -38,5 +39,12 @@ export class InvoiceUniformItem {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @ManyToOne(() => School, school => school.invoiceUniformItems, { nullable: false })
+  @JoinColumn({ name: 'schoolId' })
+  school: School;
+
+  @Column({ type: 'uuid' })
+  schoolId: string;
 }
 

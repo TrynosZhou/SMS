@@ -40,6 +40,7 @@ export class SettingsComponent implements OnInit {
       fail: 'UNCLASSIFIED'
     },
     schoolName: '',
+    schoolCode: '',
     schoolAddress: '',
     schoolPhone: '',
     schoolEmail: '',
@@ -155,15 +156,23 @@ export class SettingsComponent implements OnInit {
     // For demo users, always set school name to "Demo School"
     if (this.isDemoUser()) {
       this.settings.schoolName = 'Demo School';
+      this.settings.schoolCode = 'DEMO';
     }
     this.loading = true;
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
         this.settings = { ...this.settings, ...data };
+        // Load school code from settings (human-readable format, preserve case for display)
+        if (data?.schoolCode) {
+          this.settings.schoolCode = data.schoolCode;
+        } else if (!this.settings.schoolCode) {
+          this.settings.schoolCode = '';
+        }
         
         // For demo users, always set school name to "Demo School"
         if (this.isDemoUser()) {
           this.settings.schoolName = 'Demo School';
+          this.settings.schoolCode = 'demo';
         }
         
         // Initialize term date inputs
@@ -562,6 +571,31 @@ export class SettingsComponent implements OnInit {
     this.error = '';
     this.success = '';
 
+    const normalizedSchoolCode = (this.settings.schoolCode || '').toString().trim();
+    const normalizedSchoolName = (this.settings.schoolName || '').toString().trim();
+    const lowerCaseCode = normalizedSchoolCode.toLowerCase();
+    const isDemoCode = lowerCaseCode === 'demo';
+
+    if (!normalizedSchoolCode || !normalizedSchoolName) {
+      this.error = 'School code and school name are both required.';
+      this.loading = false;
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    // Validate human-readable school code: alphanumeric, hyphens, underscores, 3-50 chars
+    const codePattern = /^[a-zA-Z0-9_-]{3,50}$/;
+    if (!isDemoCode && !codePattern.test(normalizedSchoolCode)) {
+      this.error = 'School code must be 3-50 characters long and contain only letters, numbers, hyphens, or underscores (e.g., riverton, school-2024).';
+      this.loading = false;
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    // Store code in lowercase for consistency (but display as entered)
+    this.settings.schoolCode = lowerCaseCode;
+    this.settings.schoolName = normalizedSchoolName;
+
     // Convert date inputs to Date objects for backend
     if (this.termStartDateInput) {
       this.settings.termStartDate = new Date(this.termStartDateInput).toISOString();
@@ -690,7 +724,9 @@ export class SettingsComponent implements OnInit {
       this.settings.currencySymbol = 'KES';
     }
 
-    this.settingsService.updateSettings(this.settings).subscribe({
+    const payload = { ...this.settings, schoolCode: lowerCaseCode, schoolName: normalizedSchoolName };
+
+    this.settingsService.updateSettings(payload).subscribe({
       next: (response: any) => {
         this.success = 'Settings saved successfully!';
         this.loading = false;

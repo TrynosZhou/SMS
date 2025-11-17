@@ -36,6 +36,7 @@ import { BulkMessageComponent } from './components/dashboard/bulk-message/bulk-m
 import { ParentInboxComponent } from './components/parent/parent-inbox/parent-inbox.component';
 import { MarkAttendanceComponent } from './components/attendance/mark-attendance/mark-attendance.component';
 import { AttendanceReportsComponent } from './components/attendance/attendance-reports/attendance-reports.component';
+import { SchoolsComponent } from './components/schools/schools.component';
 
 @NgModule({
   declarations: [
@@ -68,7 +69,8 @@ import { AttendanceReportsComponent } from './components/attendance/attendance-r
     BulkMessageComponent,
     ParentInboxComponent,
     MarkAttendanceComponent,
-    AttendanceReportsComponent
+    AttendanceReportsComponent,
+    SchoolsComponent
   ],
   imports: [
     BrowserModule,

@@ -1,15 +1,31 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { AuthService } from './services/auth.service';
+import { SchoolService } from './services/school.service';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
-export class AppComponent {
-  title = 'School Management System';
+export class AppComponent implements OnInit {
+  schoolName = 'School Management System';
 
-  constructor(public authService: AuthService) { }
+  constructor(public authService: AuthService, private schoolService: SchoolService) { }
+
+  ngOnInit(): void {
+    this.authService.currentSchool$.subscribe(school => {
+      this.schoolName = school?.name || 'School Management System';
+    });
+
+    if (this.authService.isAuthenticated() && !this.authService.getCurrentSchool()) {
+      this.schoolService.getCurrentSchoolProfile().subscribe({
+        next: (school) => this.authService.setCurrentSchool(school),
+        error: () => {
+          // ignore profile fetch errors to avoid blocking UI
+        }
+      });
+    }
+  }
 
   isAuthenticated(): boolean {
     return this.authService.isAuthenticated();
@@ -17,6 +33,10 @@ export class AppComponent {
 
   isParent(): boolean {
     return this.authService.hasRole('parent');
+  }
+
+  isSuperAdmin(): boolean {
+    return this.authService.hasRole('superadmin');
   }
 
   isDemoUser(): boolean {

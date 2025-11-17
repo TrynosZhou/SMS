@@ -10,7 +10,7 @@
 
 <nav class="navbar">
   <div class="nav-container">
-    <h1 class="nav-title">School Management System</h1>
+    <h1 class="nav-title">{{ schoolName }}</h1>
     <div class="nav-links" *ngIf="isAuthenticated()">
       <!-- Admin/Teacher Navigation -->
       <ng-container *ngIf="!isParent()">
@@ -21,6 +21,7 @@
         <a routerLink="/report-cards" routerLinkActive="active">Report Cards</a>
         <a routerLink="/rankings" routerLinkActive="active">Rankings</a>
         <a routerLink="/invoices" routerLinkActive="active">Finance</a>
+        <a *ngIf="isSuperAdmin()" routerLink="/schools" routerLinkActive="active">Schools</a>
       </ng-container>
       <!-- Parent Navigation -->
       <ng-container *ngIf="isParent()">

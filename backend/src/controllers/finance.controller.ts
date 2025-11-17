@@ -9,6 +9,7 @@ import { createReceiptPDF } from '../utils/receiptPdfGenerator';
 import { UniformItem } from '../entities/UniformItem';
 import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
 import { isDemoUser } from '../utils/demoDataFilter';
+import { getCurrentSchoolId } from '../utils/schoolContext';
 
 // Helper function to determine next term
 function getNextTerm(currentTerm: string): string {
@@ -50,15 +51,21 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     const studentRepository = AppDataSource.getRepository(Student);
     const uniformItemRepository = AppDataSource.getRepository(UniformItem);
     const invoiceUniformItemRepository = AppDataSource.getRepository(InvoiceUniformItem);
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context not found' });
+    }
 
-    const student = await studentRepository.findOne({ where: { id: studentId } });
+    const student = await studentRepository.findOne({ where: { id: studentId, schoolId } });
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
 
     // Get previous balance and prepaid amount from last invoice
     const lastInvoice = await invoiceRepository.findOne({
-      where: { studentId },
+      where: { studentId, schoolId },
       order: { createdAt: 'DESC' }
     });
 
@@ -74,7 +81,7 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     if (term) {
       const settingsRepository = AppDataSource.getRepository(Settings);
       const settings = await settingsRepository.findOne({
-        where: {},
+        where: { schoolId },
         order: { createdAt: 'DESC' }
       });
 
@@ -166,7 +173,7 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
         }
 
         const uniformItem = await uniformItemRepository.findOne({
-          where: { id: itemId }
+          where: { id: itemId, schoolId }
         });
 
         if (!uniformItem || !uniformItem.isActive) {
@@ -184,7 +191,8 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
             itemName: uniformItem.name,
             unitPrice,
             quantity,
-            lineTotal
+            lineTotal,
+            schoolId
           })
         );
       }
@@ -205,7 +213,7 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     const totalAmount = totalInvoiceAmount - appliedPrepaidAmount;
 
     // Generate invoice number
-    const invoiceCount = await invoiceRepository.count();
+    const invoiceCount = await invoiceRepository.count({ where: { schoolId } });
     const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(6, '0')}`;
 
     const invoice = invoiceRepository.create({
@@ -220,18 +228,19 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       description,
       status: InvoiceStatus.PENDING,
       uniformTotal,
-      uniformItems: uniformItemsEntities
+      uniformItems: uniformItemsEntities,
+      schoolId
     });
 
     const savedInvoice = await invoiceRepository.save(invoice);
     const invoiceWithRelations = await invoiceRepository.findOne({
-      where: { id: savedInvoice.id },
+      where: { id: savedInvoice.id, schoolId },
       relations: ['student']
     });
     
     // Generate invoice PDF
     const studentWithClass = await studentRepository.findOne({ 
-      where: { id: studentId },
+      where: { id: studentId, schoolId },
       relations: ['class']
     });
 
@@ -274,6 +283,12 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
   try {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const { studentId, status, invoiceId } = req.query as { studentId?: string; status?: string; invoiceId?: string };
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context not found' });
+    }
 
     // Filter invoices for demo users - only show invoices for demo students
     if (isDemoUser(req)) {
@@ -281,7 +296,8 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
         .createQueryBuilder('invoice')
         .leftJoinAndSelect('invoice.student', 'student')
         .leftJoinAndSelect('student.user', 'user')
-        .where('user.isDemo = :isDemo', { isDemo: true });
+        .where('user.isDemo = :isDemo', { isDemo: true })
+        .andWhere('invoice."schoolId" = :schoolId', { schoolId });
       
       if (studentId) {
         queryBuilder.andWhere('invoice.studentId = :studentId', { studentId });
@@ -298,7 +314,7 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
       return res.json(invoices);
     }
 
-    const where: any = {};
+    const where: any = { schoolId };
     if (studentId) where.studentId = studentId;
     if (status) where.status = status;
     if (invoiceId) where.id = invoiceId;
@@ -322,13 +338,19 @@ export const updateInvoicePayment = async (req: AuthRequest, res: Response) => {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
     const settingsRepository = AppDataSource.getRepository(Settings);
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context not found' });
+    }
 
     if (!paidAmount || paidAmount <= 0) {
       return res.status(400).json({ message: 'Payment amount is required and must be greater than 0' });
     }
 
     const invoice = await invoiceRepository.findOne({ 
-      where: { id },
+      where: { id, schoolId },
       relations: ['student']
     });
     if (!invoice) {
@@ -368,7 +390,7 @@ export const updateInvoicePayment = async (req: AuthRequest, res: Response) => {
 
     // Generate receipt PDF
     const student = await studentRepository.findOne({ 
-      where: { id: invoice.studentId },
+      where: { id: invoice.studentId, schoolId },
       relations: ['class']
     });
 
@@ -377,7 +399,7 @@ export const updateInvoicePayment = async (req: AuthRequest, res: Response) => {
     }
 
     const settings = await settingsRepository.findOne({
-      where: {},
+      where: { schoolId },
       order: { createdAt: 'DESC' }
     });
 
@@ -415,10 +437,22 @@ export const calculateNextTermBalance = async (req: AuthRequest, res: Response) 
   try {
     const { studentId, nextTermAmount } = req.body;
     const invoiceRepository = AppDataSource.getRepository(Invoice);
+    const studentRepository = AppDataSource.getRepository(Student);
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context not found' });
+    }
+
+    const student = await studentRepository.findOne({ where: { id: studentId, schoolId } });
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
 
     // Get current balance
     const lastInvoice = await invoiceRepository.findOne({
-      where: { studentId },
+      where: { studentId, schoolId },
       order: { createdAt: 'DESC' }
     });
 
@@ -447,10 +481,16 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
     const settingsRepository = AppDataSource.getRepository(Settings);
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context not found' });
+    }
 
     // Get settings for tuition fees
     const settings = await settingsRepository.findOne({
-      where: {},
+      where: { schoolId },
       order: { createdAt: 'DESC' }
     });
 
@@ -473,7 +513,7 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
 
     // Get all active students
     const students = await studentRepository.find({
-      where: { isActive: true },
+      where: { isActive: true, schoolId },
       relations: ['class']
     });
 
@@ -490,7 +530,7 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
     };
 
     // Get current invoice count for numbering
-    const invoiceCount = await invoiceRepository.count();
+    const invoiceCount = await invoiceRepository.count({ where: { schoolId } });
     let invoiceCounter = invoiceCount + 1;
 
     // Process each student
@@ -498,7 +538,7 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
       try {
         // Get previous balance from last invoice (this is the outstanding fees balance)
         const lastInvoice = await invoiceRepository.findOne({
-          where: { studentId: student.id },
+          where: { studentId: student.id, schoolId },
           order: { createdAt: 'DESC' }
         });
 
@@ -579,7 +619,8 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
           dueDate: new Date(dueDate),
           term: nextTerm, // Invoice is for the following term
           description: description || `Fees for ${nextTerm} - ${student.studentType}${student.isStaffChild ? ' (Staff Child)' : ''}`,
-          status: InvoiceStatus.PENDING
+          status: InvoiceStatus.PENDING,
+          schoolId
         });
 
         const savedInvoice = await invoiceRepository.save(invoice);
@@ -617,9 +658,15 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
     const settingsRepository = AppDataSource.getRepository(Settings);
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context not found' });
+    }
 
     const invoice = await invoiceRepository.findOne({ 
-      where: { id },
+      where: { id, schoolId },
       relations: ['student']
     });
 
@@ -628,7 +675,7 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
     }
 
     const student = await studentRepository.findOne({ 
-      where: { id: invoice.studentId },
+      where: { id: invoice.studentId, schoolId },
       relations: ['class']
     });
 
@@ -637,7 +684,7 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
     }
 
     const settings = await settingsRepository.findOne({
-      where: {},
+      where: { schoolId },
       order: { createdAt: 'DESC' }
     });
 
@@ -677,6 +724,12 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
 export const getStudentBalance = async (req: AuthRequest, res: Response) => {
   try {
     const { studentId } = req.query;
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context not found' });
+    }
     
     if (!studentId) {
       return res.status(400).json({ message: 'Student ID or Student Number is required' });
@@ -700,13 +753,13 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
     if (uuidRegex.test(studentIdString)) {
       // Search by ID (UUID)
       student = await studentRepository.findOne({
-        where: { id: studentIdString },
+        where: { id: studentIdString, schoolId },
         relations: ['class']
       });
     } else {
       // Search by studentNumber
       student = await studentRepository.findOne({
-        where: { studentNumber: studentIdString },
+        where: { studentNumber: studentIdString, schoolId },
         relations: ['class']
       });
     }
@@ -717,7 +770,7 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
 
     // Get the latest invoice to get current balance
     const lastInvoice = await invoiceRepository.findOne({
-      where: { studentId: student.id },
+      where: { studentId: student.id, schoolId },
       order: { createdAt: 'DESC' }
     });
 
@@ -755,9 +808,15 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
     const settingsRepository = AppDataSource.getRepository(Settings);
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context not found' });
+    }
 
     const invoice = await invoiceRepository.findOne({ 
-      where: { id },
+      where: { id, schoolId },
       relations: ['student']
     });
 
@@ -766,7 +825,7 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     }
 
     const student = await studentRepository.findOne({ 
-      where: { id: invoice.studentId },
+      where: { id: invoice.studentId, schoolId },
       relations: ['class']
     });
 
@@ -775,7 +834,7 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     }
 
     const settings = await settingsRepository.findOne({
-      where: {},
+      where: { schoolId },
       order: { createdAt: 'DESC' }
     });
 

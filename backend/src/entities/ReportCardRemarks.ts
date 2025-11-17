@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 't
 import { Student } from './Student';
 import { Class } from './Class';
 import { User } from './User';
+import { School } from './School';
 
 @Entity('report_card_remarks')
 export class ReportCardRemarks {
@@ -50,5 +51,12 @@ export class ReportCardRemarks {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
+
+  @ManyToOne(() => School, school => school.reportCardRemarks, { nullable: false })
+  @JoinColumn({ name: 'schoolId' })
+  school: School;
+
+  @Column({ type: 'uuid' })
+  schoolId: string;
 }
 

@@ -6,6 +6,7 @@ import { Class } from '../entities/Class';
 import { Settings } from '../entities/Settings';
 import { AuthRequest } from '../middleware/auth';
 import { UserRole } from '../entities/User';
+import { getCurrentSchoolId } from '../utils/schoolContext';
 
 export const markAttendance = async (req: AuthRequest, res: Response) => {
   try {
@@ -17,6 +18,12 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
     }
 
     const { classId, date, attendanceData } = req.body;
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context not found' });
+    }
 
     if (!classId || !date || !attendanceData || !Array.isArray(attendanceData)) {
       return res.status(400).json({ message: 'Class ID, date, and attendance data are required' });
@@ -28,14 +35,14 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
     const settingsRepository = AppDataSource.getRepository(Settings);
 
     // Verify class exists
-    const classEntity = await classRepository.findOne({ where: { id: classId } });
+    const classEntity = await classRepository.findOne({ where: { id: classId, schoolId } });
     if (!classEntity) {
       return res.status(404).json({ message: 'Class not found' });
     }
 
     // Get current term from settings
     const settings = await settingsRepository.findOne({
-      where: {},
+      where: { schoolId },
       order: { createdAt: 'DESC' }
     });
     const currentTerm = settings?.activeTerm || settings?.currentTerm || null;
@@ -46,7 +53,8 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
     // Delete existing attendance records for this class and date
     await attendanceRepository.delete({
       classId,
-      date: attendanceDate
+      date: attendanceDate,
+      schoolId
     });
 
     // Create new attendance records
@@ -59,7 +67,7 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
 
       // Verify student exists and belongs to the class
       const student = await studentRepository.findOne({
-        where: { id: studentId, classId }
+        where: { id: studentId, classId, schoolId }
       });
 
       if (!student) {
@@ -73,7 +81,8 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
         status: status as AttendanceStatus,
         term: currentTerm,
         remarks: remarks || null,
-        markedBy: user.id
+        markedBy: user.id,
+        schoolId
       });
 
       const saved = await attendanceRepository.save(attendance);
@@ -102,10 +111,16 @@ export const getAttendance = async (req: AuthRequest, res: Response) => {
     }
 
     const { classId, date, studentId, term, startDate, endDate } = req.query;
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context not found' });
+    }
 
     const attendanceRepository = AppDataSource.getRepository(Attendance);
 
-    const query: any = {};
+    const query: any = { schoolId };
 
     if (classId) {
       query.classId = classId as string;
@@ -157,6 +172,12 @@ export const getAttendanceReport = async (req: AuthRequest, res: Response) => {
     }
 
     const { classId, term, startDate, endDate } = req.query;
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context not found' });
+    }
 
     if (!classId) {
       return res.status(400).json({ message: 'Class ID is required' });
@@ -167,12 +188,12 @@ export const getAttendanceReport = async (req: AuthRequest, res: Response) => {
 
     // Get all students in the class
     const students = await studentRepository.find({
-      where: { classId: classId as string, isActive: true },
+      where: { classId: classId as string, isActive: true, schoolId },
       order: { firstName: 'ASC', lastName: 'ASC' }
     });
 
     // Build query for attendance
-    const query: any = { classId: classId as string };
+    const query: any = { classId: classId as string, schoolId };
 
     if (term) {
       query.term = term as string;
@@ -241,6 +262,12 @@ export const getAttendanceReport = async (req: AuthRequest, res: Response) => {
 export const getStudentTotalAttendance = async (req: AuthRequest, res: Response) => {
   try {
     const { studentId, term } = req.query;
+    let schoolId: string;
+    try {
+      schoolId = getCurrentSchoolId(req);
+    } catch {
+      return res.status(400).json({ message: 'School context not found' });
+    }
 
     if (!studentId) {
       return res.status(400).json({ message: 'Student ID is required' });
@@ -248,7 +275,7 @@ export const getStudentTotalAttendance = async (req: AuthRequest, res: Response)
 
     const attendanceRepository = AppDataSource.getRepository(Attendance);
 
-    const query: any = { studentId: studentId as string };
+    const query: any = { studentId: studentId as string, schoolId };
 
     if (term) {
       query.term = term as string;

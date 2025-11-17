@@ -98,7 +98,7 @@ app.use((req, res) => {
 });
 
 // =================== DATABASE & SERVER ===================
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 AppDataSource.initialize()
   .then(() => {

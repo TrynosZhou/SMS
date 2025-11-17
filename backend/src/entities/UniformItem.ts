@@ -1,11 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { School } from './School';
 
 @Entity('uniform_items')
+@Index(['name', 'schoolId'], { unique: true })
 export class UniformItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 150, unique: true })
+  @Column({ type: 'varchar', length: 150 })
   name: string;
 
   @Column({ type: 'text', nullable: true })
@@ -22,5 +24,12 @@ export class UniformItem {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @ManyToOne(() => School, school => school.uniformItems, { nullable: false })
+  @JoinColumn({ name: 'schoolId' })
+  school: School;
+
+  @Column({ type: 'uuid' })
+  schoolId: string;
 }
 

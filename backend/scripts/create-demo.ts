@@ -10,6 +10,7 @@ import 'reflect-metadata';
 import * as dotenv from 'dotenv';
 import { AppDataSource } from '../src/config/database';
 import { User, UserRole } from '../src/entities/User';
+import { School } from '../src/entities/School';
 import bcrypt from 'bcryptjs';
 
 dotenv.config();
@@ -25,6 +26,19 @@ async function createDemo() {
     console.log('Database connected successfully');
 
     const userRepository = AppDataSource.getRepository(User);
+    const schoolRepository = AppDataSource.getRepository(School);
+
+    // Ensure demo school exists
+    let demoSchool = await schoolRepository.findOne({ where: { code: 'demo' } });
+    if (!demoSchool) {
+      demoSchool = schoolRepository.create({
+        name: 'Demo School',
+        code: 'demo',
+        isActive: true
+      });
+      await schoolRepository.save(demoSchool);
+      console.log('✅ Demo school created with code: demo');
+    }
 
     // Check if demo user already exists
     const existingUser = await userRepository.findOne({
@@ -41,6 +55,7 @@ async function createDemo() {
       existingUser.isActive = true;
       existingUser.mustChangePassword = false;
       existingUser.isTemporaryAccount = false;
+      existingUser.schoolId = demoSchool.id;
       
       // Update password in case it was changed
       const hashedPassword = await bcrypt.hash(demoPassword, 10);
@@ -61,7 +76,8 @@ async function createDemo() {
         isActive: true,
         isDemo: true,
         mustChangePassword: false,
-        isTemporaryAccount: false
+        isTemporaryAccount: false,
+        schoolId: demoSchool.id
       });
 
       await userRepository.save(demoUser);

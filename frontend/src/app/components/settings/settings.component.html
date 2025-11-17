@@ -433,17 +433,39 @@
       <!-- School Information -->
       <div class="form-section">
         <h2>School Information</h2>
-        <div class="form-group">
-          <label>School Name</label>
-          <input 
-            type="text" 
-            [(ngModel)]="settings.schoolName" 
-            name="schoolName"
-            [disabled]="isDemoUser()"
-            [value]="isDemoUser() ? 'Demo School' : settings.schoolName">
-          <small *ngIf="isDemoUser()" class="demo-disabled-text">
-            School name is locked to "Demo School" for demo accounts.
-          </small>
+        <div class="form-row school-code-row">
+          <div class="form-group">
+            <label>School Code *</label>
+            <input 
+              type="text" 
+              [(ngModel)]="settings.schoolCode" 
+              name="schoolCode"
+              class="school-code-input"
+              [disabled]="isDemoUser()"
+              minlength="3"
+              maxlength="50"
+              autocomplete="off"
+              placeholder="e.g., riverton, school-2024"
+              pattern="[a-zA-Z0-9_-]+"
+              required>
+            <small>Enter a unique, human-readable code (3-50 characters). Use only letters, numbers, hyphens, or underscores. This code will be used by teachers, students, and parents to log in.</small>
+            <small *ngIf="isDemoUser()" class="demo-disabled-text">
+              School code is locked to "demo" for demo accounts.
+            </small>
+          </div>
+          <div class="form-group">
+            <label>School Name *</label>
+            <input 
+              type="text" 
+              [(ngModel)]="settings.schoolName" 
+              name="schoolName"
+              [disabled]="isDemoUser()"
+              required
+              placeholder="Enter the official school name">
+            <small *ngIf="isDemoUser()" class="demo-disabled-text">
+              School name is locked to "Demo School" for demo accounts.
+            </small>
+          </div>
         </div>
         <div class="form-group">
           <label>School Address</label>

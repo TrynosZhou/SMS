@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMan
 import { Class } from './Class';
 import { Subject } from './Subject';
 import { Marks } from './Marks';
+import { School } from './School';
 
 export enum ExamType {
   MID_TERM = 'mid_term',
@@ -61,5 +62,12 @@ export class Exam {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
+
+  @ManyToOne(() => School, school => school.exams, { nullable: false })
+  @JoinColumn({ name: 'schoolId' })
+  school: School;
+
+  @Column({ type: 'uuid' })
+  schoolId: string;
 }
 

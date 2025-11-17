@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, Index } from 'typeorm';
 import { Student } from './Student';
 import { InvoiceUniformItem } from './InvoiceUniformItem';
+import { School } from './School';
 
 export enum InvoiceStatus {
   PENDING = 'pending',
@@ -10,11 +11,12 @@ export enum InvoiceStatus {
 }
 
 @Entity('invoices')
+@Index(['invoiceNumber', 'schoolId'], { unique: true })
 export class Invoice {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
+  @Column()
   invoiceNumber: string;
 
   @ManyToOne(() => Student, student => student.invoices)
@@ -66,5 +68,12 @@ export class Invoice {
 
   @OneToMany(() => InvoiceUniformItem, uniformItem => uniformItem.invoice, { cascade: ['insert'], eager: true })
   uniformItems: InvoiceUniformItem[];
+
+  @ManyToOne(() => School, school => school.invoices, { nullable: false })
+  @JoinColumn({ name: 'schoolId' })
+  school: School;
+
+  @Column({ type: 'uuid' })
+  schoolId: string;
 }
 

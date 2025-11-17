@@ -14,6 +14,7 @@ export class LoginComponent {
   // Sign In fields
   email = '';
   password = '';
+  schoolCode = '';
   
   // Sign Up fields
   signupRole = '';
@@ -24,9 +25,11 @@ export class LoginComponent {
   signupLastName = '';
   signupContactNumber = '';
   signupEmail = '';
+  signupSchoolCode = '';
   
   // Password Reset fields
   resetEmail = '';
+  resetSchoolCode = '';
   
   error = '';
   success = '';
@@ -66,18 +69,22 @@ export class LoginComponent {
     this.signupLastName = '';
     this.signupContactNumber = '';
     this.signupEmail = '';
+    this.signupSchoolCode = '';
     this.resetEmail = '';
+    this.password = '';
+    this.schoolCode = '';
+    this.resetSchoolCode = '';
   }
 
   onSignIn() {
-    if (!this.email || !this.password) {
-      this.error = 'Please enter username/email and password';
+    if (!this.email || !this.password || !this.schoolCode) {
+      this.error = 'Please enter username/email, password, and school code';
       return;
     }
 
     this.loading = true;
     this.error = '';
-    this.authService.login(this.email, this.password).subscribe({
+    this.authService.login(this.email, this.password, this.schoolCode).subscribe({
       next: (response: any) => {
         this.loading = false;
         const user = response.user;
@@ -120,7 +127,7 @@ export class LoginComponent {
   onSignUp() {
     // Validation
     if (!this.signupRole || !this.signupUsername || !this.signupPassword || !this.signupConfirmPassword || 
-        !this.signupFirstName || !this.signupLastName || !this.signupContactNumber) {
+        !this.signupFirstName || !this.signupLastName || !this.signupContactNumber || !this.signupSchoolCode) {
       this.error = 'Please fill in all fields';
       return;
     }
@@ -185,7 +192,8 @@ export class LoginComponent {
       role: roleLower,
       firstName: this.signupFirstName,
       lastName: this.signupLastName,
-      phoneNumber: this.signupContactNumber
+      phoneNumber: this.signupContactNumber,
+      schoolCode: this.signupSchoolCode.trim().toLowerCase()
     };
 
     // Only add contact number for parents
@@ -209,15 +217,15 @@ export class LoginComponent {
   }
 
   onResetPassword() {
-    if (!this.resetEmail) {
-      this.error = 'Please enter your email address';
+    if (!this.resetEmail || !this.resetSchoolCode) {
+      this.error = 'Please enter your email and school code';
       return;
     }
 
     this.loading = true;
     this.error = '';
     
-    this.authService.requestPasswordReset(this.resetEmail).subscribe({
+    this.authService.requestPasswordReset(this.resetEmail, this.resetSchoolCode).subscribe({
       next: () => {
         this.loading = false;
         this.success = 'Password reset instructions have been sent to your email.';

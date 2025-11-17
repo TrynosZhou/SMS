@@ -1,9 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToMany, JoinTable } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToMany, JoinTable, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Student } from './Student';
 import { Teacher } from './Teacher';
 import { Subject } from './Subject';
+import { School } from './School';
 
 @Entity('classes')
+@Index(['name', 'schoolId'], { unique: true })
 export class Class {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -29,5 +31,12 @@ export class Class {
   @ManyToMany(() => Subject, subject => subject.classes)
   @JoinTable()
   subjects: Subject[];
+
+  @ManyToOne(() => School, school => school.classes, { nullable: false })
+  @JoinColumn({ name: 'schoolId' })
+  school: School;
+
+  @Column({ type: 'uuid' })
+  schoolId: string;
 }
 

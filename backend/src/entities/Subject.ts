@@ -1,9 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Teacher } from './Teacher';
 import { Class } from './Class';
 import { Exam } from './Exam';
+import { School } from './School';
 
 @Entity('subjects')
+@Index(['code', 'schoolId'], { unique: true })
 export class Subject {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -11,7 +13,7 @@ export class Subject {
   @Column()
   name: string;
 
-  @Column({ unique: true })
+  @Column()
   code: string;
 
   @Column({ nullable: true })
@@ -28,5 +30,12 @@ export class Subject {
 
   @ManyToMany(() => Exam, exam => exam.subjects)
   exams: Exam[];
+
+  @ManyToOne(() => School, school => school.subjects, { nullable: false })
+  @JoinColumn({ name: 'schoolId' })
+  school: School;
+
+  @Column({ type: 'uuid' })
+  schoolId: string;
 }
 
