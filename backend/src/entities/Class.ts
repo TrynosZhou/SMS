@@ -21,7 +21,7 @@ export class Class {
   @Column({ default: true })
   isActive: boolean;
 
-  @OneToMany(() => Student, student => student.class)
+  @OneToMany(() => Student, 'class')
   students: Student[];
 
   @ManyToMany(() => Teacher, teacher => teacher.classes)
