@@ -24,7 +24,7 @@ export class Attendance {
 
   @ManyToOne(() => Class, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'classId' })
-  class: Class;
+  classEntity: Class;
 
   @Column()
   classId: string;

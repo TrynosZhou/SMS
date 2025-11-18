@@ -113,7 +113,7 @@ export async function createStudentIdCardPDF(data: StudentIdCardData): Promise<B
 
       doc.fontSize(10).font('Helvetica').fillColor('#344055');
       doc.text(`Student No: ${student.studentNumber}`, infoStartX, infoStartY + 22);
-      doc.text(`Class: ${student.class?.name || 'N/A'}`, infoStartX, infoStartY + 38);
+      doc.text(`Class: ${student.classEntity?.name || 'N/A'}`, infoStartX, infoStartY + 38);
       doc.text(`Type: ${student.studentType || 'Day Scholar'}`, infoStartX, infoStartY + 54);
 
       if (student.dateOfBirth) {

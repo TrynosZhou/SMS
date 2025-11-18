@@ -119,8 +119,8 @@ export function createInvoicePDF(
       doc.fontSize(10).font('Helvetica').fillColor('#000000');
       doc.text(`${student.firstName} ${student.lastName}`, 320, detailsBoxY + 25);
       doc.text(`Student Number: ${student.studentNumber}`, 320, detailsBoxY + 40);
-      if (student.class) {
-        doc.text(`Class: ${student.class.name}`, 320, detailsBoxY + 55);
+      if (student.classEntity) {
+        doc.text(`Class: ${student.classEntity.name}`, 320, detailsBoxY + 55);
       }
       doc.text(`Term: ${invoice.term}`, 320, detailsBoxY + 70);
 

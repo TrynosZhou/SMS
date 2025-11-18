@@ -352,7 +352,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       // First, try query builder to properly filter by demo status
       const queryBuilder = studentRepository
         .createQueryBuilder('student')
-        .leftJoinAndSelect('student.class', 'class')
+        .leftJoinAndSelect('student.classEntity', 'classEntity')
         .leftJoinAndSelect('student.parent', 'parent')
         .leftJoinAndSelect('student.user', 'user')
         .where('student.classId = :classId', { classId: trimmedClassId });
@@ -383,7 +383,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
           // Try query by class name as fallback
           const studentsByClassName = await studentRepository
             .createQueryBuilder('student')
-            .leftJoinAndSelect('student.class', 'class')
+            .leftJoinAndSelect('student.classEntity', 'classEntity')
             .leftJoinAndSelect('student.parent', 'parent')
             .leftJoinAndSelect('student.user', 'user')
             .where('class.name = :className', { className: classEntity.name })
@@ -416,7 +416,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
         // Filter by classId or class.id
         students = allStudents.filter(s => 
           (s.classId && s.classId === trimmedClassId) || 
-          (s.class && s.class.id === trimmedClassId)
+          (s.classEntity && s.classEntity.id === trimmedClassId)
         );
         
         console.log(`Found ${students.length} students after filtering all students`);
@@ -424,21 +424,21 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
         // Log all students for debugging
         console.log(`Total students in database: ${allStudents.length}`);
         allStudents.forEach((s, idx) => {
-          console.log(`Student ${idx + 1}: ${s.firstName} ${s.lastName}, classId: ${s.classId}, class.name: ${s.class?.name || 'N/A'}, class.id: ${s.class?.id || 'N/A'}`);
+          console.log(`Student ${idx + 1}: ${s.firstName} ${s.lastName}, classId: ${s.classId}, classEntity.name: ${s.classEntity?.name || 'N/A'}, classEntity.id: ${s.classEntity?.id || 'N/A'}`);
         });
       }
 
       if (students.length > 0) {
         console.log('Sample student classId:', students[0].classId);
-        console.log('Sample student class:', students[0].class?.name);
-        console.log('Sample student class.id:', students[0].class?.id);
+        console.log('Sample student classEntity:', students[0].classEntity?.name);
+        console.log('Sample student classEntity.id:', students[0].classEntity?.id);
       }
     } else {
       // No classId provided, return all students
       // Filter by demo status if user is demo
       const queryBuilder = studentRepository
         .createQueryBuilder('student')
-        .leftJoinAndSelect('student.class', 'class')
+        .leftJoinAndSelect('student.classEntity', 'classEntity')
         .leftJoinAndSelect('student.parent', 'parent')
         .leftJoinAndSelect('student.user', 'user');
       
@@ -650,7 +650,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       if (classId === null || classId === '') {
         // Allow setting classId to null/empty if explicitly provided
         student.classId = null;
-        // Don't set student.class = null as it's not nullable in TypeScript
+        // Don't set student.classEntity = null as it's not nullable in TypeScript
         // TypeORM will handle the relation based on classId
         console.log('Removing student from class');
       } else {
@@ -662,14 +662,14 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
           return res.status(404).json({ message: 'Class not found' });
         }
         const oldClassId = student.classId;
-        const oldClassName = student.class?.name || 'N/A';
+        const oldClassName = student.classEntity?.name || 'N/A';
         
-        // Update both classId and the class relation to ensure consistency
+        // Update both classId and the classEntity relation to ensure consistency
         student.classId = trimmedClassId;
-        student.class = classEntity; // Explicitly set the relation
+        student.classEntity = classEntity; // Explicitly set the relation
         
         console.log('Updating student class from', oldClassName, '(ID: ' + oldClassId + ') to:', classEntity.name, '(ID: ' + trimmedClassId + ')');
-        console.log('Setting student.class relation to:', classEntity.name);
+        console.log('Setting student.classEntity relation to:', classEntity.name);
       }
     }
 
@@ -686,12 +686,12 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
 
     console.log('Saving updated student...');
     console.log('Student classId before save:', student.classId);
-    console.log('Student class relation before save:', student.class?.name || 'null');
+    console.log('Student classEntity relation before save:', student.classEntity?.name || 'null');
     
     // Save the student - this should update both classId and the relation
     const savedStudent = await studentRepository.save(student);
     console.log('Student classId after save:', savedStudent.classId);
-    console.log('Student class relation after save:', savedStudent.class?.name || 'null');
+    console.log('Student classEntity relation after save:', savedStudent.classEntity?.name || 'null');
 
     // Use update query to ensure classId is definitely updated in the database
     if (classId !== undefined && classId !== null && classId !== '') {
@@ -713,8 +713,8 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
 
     console.log('Student updated successfully');
     console.log('Updated student classId:', updatedStudent.classId);
-    console.log('Updated student class name:', updatedStudent.class?.name || 'N/A');
-    console.log('Updated student class id:', updatedStudent.class?.id || 'N/A');
+    console.log('Updated student classEntity name:', updatedStudent.classEntity?.name || 'N/A');
+    console.log('Updated student classEntity id:', updatedStudent.classEntity?.id || 'N/A');
     
     res.json({ message: 'Student updated successfully', student: updatedStudent });
   } catch (error: any) {
@@ -932,7 +932,7 @@ export const generateStudentIdCard = async (req: AuthRequest, res: Response) => 
       studentId: student.id,
       studentNumber: student.studentNumber,
       name: `${student.firstName} ${student.lastName}`.trim(),
-      class: student.class?.name || null,
+      class: student.classEntity?.name || null,
       studentType: student.studentType,
       issuedAt: new Date().toISOString()
     };

@@ -58,7 +58,7 @@ export class Student {
 
   @ManyToOne(() => Class, classEntity => classEntity.students)
   @JoinColumn({ name: 'classId' })
-  class: Class;
+  classEntity: Class;
 
   @Column({ nullable: true })
   classId: string | null;

@@ -1107,8 +1107,8 @@ export const getOverallPerformanceRankings = async (req: AuthRequest, res: Respo
     // Create a map of student IDs to class names for quick lookup
     const studentClassMap = new Map<string, string>();
     students.forEach(student => {
-      if (student.class) {
-        studentClassMap.set(student.id, student.class.name);
+      if (student.classEntity) {
+        studentClassMap.set(student.id, student.classEntity.name);
       }
     });
 
@@ -1306,7 +1306,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       if (classEntity) {
         students = await studentRepository
           .createQueryBuilder('student')
-          .leftJoinAndSelect('student.class', 'class')
+          .leftJoinAndSelect('student.classEntity', 'classEntity')
           .where('(student.classId = :classId OR class.id = :classId OR class.name = :className)', {
             classId: classId as string,
             className: classEntity.name
@@ -1527,7 +1527,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     // Calculate grade rankings for all students in the same grade/form (stream) across ALL classes
     // e.g., all Grade 7A, Grade 7B, Grade 7C students together
     // Get unique forms from current students
-    const forms = Array.from(new Set(students.map(s => s.class?.form).filter(Boolean) as string[]));
+    const forms = Array.from(new Set(students.map(s => s.classEntity?.form).filter(Boolean) as string[]));
     
     // Initialize form rankings map
     const formRankingsMap = new Map<string, Array<{ studentId: string; average: number; position: number }>>();
@@ -1570,7 +1570,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       
       // Calculate form rankings (across all classes with same form)
       forms.forEach(form => {
-        const formStudents = allFormStudentsList.filter(s => s.class?.form === form);
+        const formStudents = allFormStudentsList.filter(s => s.classEntity?.form === form);
         const formStudentIdsSet = new Set(formStudents.map(s => s.id));
         const formStudentMarks = formMarks.filter(m => formStudentIdsSet.has(m.studentId));
         
@@ -1688,8 +1688,8 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       // Find grade position (across all classes with the same grade/form, e.g., Grade 7A, 7B, 7C)
       let formPosition = 0;
       let totalStudentsPerStream = 0;
-      if (student.class?.form) {
-        const formRanks = formRankingsMap.get(student.class.form);
+      if (student.classEntity?.form) {
+        const formRanks = formRankingsMap.get(student.classEntity.form);
         if (formRanks && formRanks.length > 0) {
           const formRankEntry = formRanks.find(r => r.studentId === student.id);
           if (formRankEntry) {
@@ -1727,7 +1727,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
           id: student.id,
           name: `${student.firstName} ${student.lastName}`,
           studentNumber: student.studentNumber,
-          class: student.class?.name
+          class: student.classEntity?.name
         },
         examType: examType,
         exams: (() => {
@@ -2110,13 +2110,13 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       // Calculate grade position (across all classes with the same grade/form) - get all students in the same form
       let formPosition = 0;
       let totalStudentsPerStream = 0;
-      if (student.class?.form) {
+      if (student.classEntity?.form) {
         const classRepository = AppDataSource.getRepository(Class);
-        const formClasses = await classRepository.find({ where: { form: student.class.form } });
+        const formClasses = await classRepository.find({ where: { form: student.classEntity.form } });
         const formClassIds = formClasses.map(c => c.id);
         const formStudents = await studentRepository.find({
           where: { classId: In(formClassIds) },
-          relations: ['class']
+          relations: ['classEntity']
         });
         
         // Get all exams of the specified type and term from ALL classes with the same form
@@ -2200,7 +2200,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
           id: student.id,
           name: `${student.firstName} ${student.lastName}`,
           studentNumber: student.studentNumber,
-          class: student.class?.name || ''
+          class: student.classEntity?.name || ''
         },
         examType: examType,
         exams: (() => {
@@ -2306,13 +2306,13 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       // Calculate grade position (across all classes with the same grade/form) - get all students in the same form
       let formPosition = 0;
       let totalStudentsPerStream = 0;
-      if (student.class?.form) {
+      if (student.classEntity?.form) {
         const classRepository = AppDataSource.getRepository(Class);
-        const formClasses = await classRepository.find({ where: { form: student.class.form } });
+        const formClasses = await classRepository.find({ where: { form: student.classEntity.form } });
         const formClassIds = formClasses.map(c => c.id);
         const formStudents = await studentRepository.find({
           where: { classId: In(formClassIds) },
-          relations: ['class']
+          relations: ['classEntity']
         });
         
         // For old format (single examId), we need to get the exam type and term from the exam
@@ -2397,7 +2397,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
           id: student.id,
           name: `${student.firstName} ${student.lastName}`,
           studentNumber: student.studentNumber,
-          class: student.class?.name || ''
+          class: student.classEntity?.name || ''
         },
         exam: exam,
         subjects: subjectData,

@@ -40,7 +40,7 @@ export class Exam {
 
   @ManyToOne(() => Class, classEntity => classEntity.id)
   @JoinColumn({ name: 'classId' })
-  class: Class;
+  classEntity: Class;
 
   @Column()
   classId: string;

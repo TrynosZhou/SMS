@@ -16,7 +16,7 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
     const parentRepository = AppDataSource.getRepository(Parent);
     const parent = await parentRepository.findOne({
       where: { userId },
-      relations: ['students', 'students.class']
+      relations: ['students', 'students.classEntity']
     });
 
     if (!parent) {
@@ -249,7 +249,7 @@ export const linkStudentByIdAndDob = async (req: AuthRequest, res: Response) => 
         firstName: student.firstName,
         lastName: student.lastName,
         studentNumber: student.studentNumber,
-        class: student.class
+        class: student.classEntity
       }
     });
   } catch (error: any) {
@@ -272,7 +272,7 @@ export const searchStudents = async (req: AuthRequest, res: Response) => {
     // Search by student number or name
     const students = await studentRepository
       .createQueryBuilder('student')
-      .leftJoinAndSelect('student.class', 'class')
+          .leftJoinAndSelect('student.classEntity', 'classEntity')
       .where(
         '(student.studentNumber LIKE :query OR student.firstName LIKE :query OR student.lastName LIKE :query OR CONCAT(student.firstName, \' \', student.lastName) LIKE :query)',
         { query: `%${query}%` }

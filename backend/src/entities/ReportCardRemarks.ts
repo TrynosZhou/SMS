@@ -17,7 +17,7 @@ export class ReportCardRemarks {
 
   @ManyToOne(() => Class)
   @JoinColumn({ name: 'classId' })
-  class: Class;
+  classEntity: Class;
 
   @Column()
   classId: string;
