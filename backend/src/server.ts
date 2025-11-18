@@ -1,9 +1,21 @@
 import 'reflect-metadata';
+console.log('[Server] ✓ reflect-metadata loaded');
+
 import express from 'express';
+console.log('[Server] ✓ express loaded');
+
 import cors from 'cors';
+console.log('[Server] ✓ cors loaded');
+
 import dotenv from 'dotenv';
+console.log('[Server] ✓ dotenv loaded');
+
+console.log('[Server] Loading database configuration...');
 import { AppDataSource } from './config/database';
+console.log('[Server] ✓ Database configuration imported');
+
 import routes from './routes';
+console.log('[Server] ✓ Routes loaded');
 
 // Load environment variables
 dotenv.config();
@@ -100,14 +112,41 @@ app.use((req, res) => {
 // =================== DATABASE & SERVER ===================
 const PORT = process.env.PORT || 3001;
 
+console.log('[Server] Starting database initialization...');
+console.log('[Server] Node version:', process.version);
+console.log('[Server] Platform:', process.platform);
+console.log('[Server] Architecture:', process.arch);
+console.log('[Server] Current working directory:', process.cwd());
+console.log('[Server] __dirname equivalent check...');
+
 AppDataSource.initialize()
   .then(() => {
-    console.log('Database connected successfully');
+    console.log('[Server] ✓ Database connected successfully');
+    console.log('[Server] DataSource.isInitialized:', AppDataSource.isInitialized);
+    console.log('[Server] Starting HTTP server on port', PORT);
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(`[Server] ✓ Server running on port ${PORT}`);
     });
   })
-  .catch((error) => {
-    console.error('Error connecting to database:', error);
+  .catch((error: any) => {
+    console.error('[Server] ✗ ERROR connecting to database:');
+    console.error('[Server] Error type:', error?.constructor?.name);
+    console.error('[Server] Error name:', error?.name);
+    console.error('[Server] Error message:', error?.message);
+    console.error('[Server] Error code:', error?.code);
+    console.error('[Server] Error errno:', error?.errno);
+    console.error('[Server] Error syscall:', error?.syscall);
+    console.error('[Server] Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+    console.error('[Server] Error stack:');
+    console.error(error?.stack);
+    if (error?.cause) {
+      console.error('[Server] Error cause:', error.cause);
+    }
+    if (error?.parent) {
+      console.error('[Server] Error parent:', error.parent);
+    }
+    if (error?.originalError) {
+      console.error('[Server] Original error:', error.originalError);
+    }
     process.exit(1);
   });
