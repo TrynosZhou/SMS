@@ -5,13 +5,9 @@ import { Subject } from './Subject';
 
 @Entity('classes')
 @Index(['name'], { unique: true })
-@Index(['classid'], { unique: true })
 export class Class {
   @PrimaryGeneratedColumn('uuid')
   id: string;
-
-  @Column({ unique: true })
-  classid: string; // Unique class identifier (e.g., "STAGE1A", "GRADE2")
 
   @Column()
   name: string;

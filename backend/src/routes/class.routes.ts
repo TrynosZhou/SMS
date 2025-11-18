@@ -73,7 +73,7 @@ router.get('/:id', authenticate, async (req, res) => {
 
 router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), async (req, res) => {
   try {
-    const { name, form, description, classid, teacherIds, subjectIds } = req.body;
+    const { name, form, description, teacherIds, subjectIds } = req.body;
     const classRepository = AppDataSource.getRepository(Class);
     
     // Validate required fields
@@ -81,28 +81,7 @@ router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), a
       return res.status(400).json({ message: 'Name and form are required' });
     }
 
-    // Generate classid if not provided
-    let finalClassid = classid;
-    if (!finalClassid) {
-      // Generate from name or form (uppercase, alphanumeric only)
-      const source = name || form;
-      finalClassid = source.toUpperCase().replace(/[^A-Z0-9]/g, '');
-      
-      // Ensure it's not empty
-      if (!finalClassid) {
-        finalClassid = 'CLASS' + Date.now().toString().slice(-6);
-      }
-    }
-
-    // Check if classid already exists
-    const existingClass = await classRepository.findOne({ where: { classid: finalClassid } });
-    if (existingClass) {
-      return res.status(400).json({ 
-        message: `Class ID "${finalClassid}" already exists. Please use a different class ID.` 
-      });
-    }
-
-    // Check if name already exists
+    // Check if name already exists (id is already unique as primary key)
     const existingClassByName = await classRepository.findOne({ where: { name } });
     if (existingClassByName) {
       return res.status(400).json({ 
@@ -110,7 +89,7 @@ router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), a
       });
     }
 
-    const classEntity = classRepository.create({ name, form, description, classid: finalClassid });
+    const classEntity = classRepository.create({ name, form, description });
     
     // Assign teachers if provided
     if (teacherIds && Array.isArray(teacherIds) && teacherIds.length > 0) {
@@ -143,7 +122,7 @@ router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), a
 router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, form, description, classid, isActive, teacherIds, subjectIds } = req.body;
+    const { name, form, description, isActive, teacherIds, subjectIds } = req.body;
     const classRepository = AppDataSource.getRepository(Class);
 
     const classEntity = await classRepository.findOne({ 
@@ -154,18 +133,7 @@ router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN),
       return res.status(404).json({ message: 'Class not found' });
     }
 
-    // Validate classid uniqueness if being updated
-    if (classid !== undefined && classid !== classEntity.classid) {
-      const existingClass = await classRepository.findOne({ where: { classid } });
-      if (existingClass) {
-        return res.status(400).json({ 
-          message: `Class ID "${classid}" already exists. Please use a different class ID.` 
-        });
-      }
-      classEntity.classid = classid;
-    }
-
-    // Validate name uniqueness if being updated
+    // Validate name uniqueness if being updated (id is already unique as primary key)
     if (name !== undefined && name !== classEntity.name) {
       const existingClassByName = await classRepository.findOne({ where: { name } });
       if (existingClassByName) {
