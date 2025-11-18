@@ -1,8 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
-import { School } from './School';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 
 @Entity('uniform_items')
-@Index(['name', 'schoolId'], { unique: true })
+@Index(['name'], { unique: true })
 export class UniformItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -24,12 +23,5 @@ export class UniformItem {
 
   @UpdateDateColumn()
   updatedAt: Date;
-
-  @ManyToOne(() => School, school => school.uniformItems, { nullable: false })
-  @JoinColumn({ name: 'schoolId' })
-  school: School;
-
-  @Column({ type: 'uuid' })
-  schoolId: string;
 }
 

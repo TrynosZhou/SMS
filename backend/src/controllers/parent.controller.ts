@@ -5,7 +5,6 @@ import { Parent } from '../entities/Parent';
 import { Student } from '../entities/Student';
 import { Invoice } from '../entities/Invoice';
 import { Settings } from '../entities/Settings';
-import { getCurrentSchoolId } from '../utils/schoolContext';
 
 // Get parent's linked students
 export const getParentStudents = async (req: AuthRequest, res: Response) => {
@@ -14,16 +13,9 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
     if (!userId) {
       return res.status(401).json({ message: 'Authentication required' });
     }
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
-
     const parentRepository = AppDataSource.getRepository(Parent);
     const parent = await parentRepository.findOne({
-      where: { userId, schoolId },
+      where: { userId },
       relations: ['students', 'students.class']
     });
 
@@ -37,7 +29,7 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
       (parent.students || []).map(async (student) => {
         // Get the latest invoice for the student
         const latestInvoice = await invoiceRepository.findOne({
-          where: { studentId: student.id, schoolId },
+          where: { studentId: student.id },
           order: { createdAt: 'DESC' }
         });
 
@@ -51,7 +43,6 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
           // Get settings to determine next term fees
           const settingsRepository = AppDataSource.getRepository(Settings);
           const settings = await settingsRepository.findOne({
-            where: { schoolId },
             order: { createdAt: 'DESC' }
           });
 
@@ -127,19 +118,13 @@ export const linkStudent = async (req: AuthRequest, res: Response) => {
 
     const parentRepository = AppDataSource.getRepository(Parent);
     const studentRepository = AppDataSource.getRepository(Student);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
-    const parent = await parentRepository.findOne({ where: { userId, schoolId } });
+    const parent = await parentRepository.findOne({ where: { userId } });
     if (!parent) {
       return res.status(404).json({ message: 'Parent profile not found' });
     }
 
-    const student = await studentRepository.findOne({ where: { id: studentId, schoolId } });
+    const student = await studentRepository.findOne({ where: { id: studentId } });
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
@@ -172,19 +157,13 @@ export const unlinkStudent = async (req: AuthRequest, res: Response) => {
 
     const parentRepository = AppDataSource.getRepository(Parent);
     const studentRepository = AppDataSource.getRepository(Student);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
-    const parent = await parentRepository.findOne({ where: { userId, schoolId } });
+    const parent = await parentRepository.findOne({ where: { userId } });
     if (!parent) {
       return res.status(404).json({ message: 'Parent profile not found' });
     }
 
-    const student = await studentRepository.findOne({ where: { id: studentId, schoolId } });
+    const student = await studentRepository.findOne({ where: { id: studentId } });
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
@@ -221,21 +200,15 @@ export const linkStudentByIdAndDob = async (req: AuthRequest, res: Response) => 
 
     const parentRepository = AppDataSource.getRepository(Parent);
     const studentRepository = AppDataSource.getRepository(Student);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
-    const parent = await parentRepository.findOne({ where: { userId, schoolId } });
+    const parent = await parentRepository.findOne({ where: { userId } });
     if (!parent) {
       return res.status(404).json({ message: 'Parent profile not found' });
     }
 
     // Find student by studentNumber (Student ID)
     const student = await studentRepository.findOne({
-      where: { studentNumber: studentId, schoolId },
+      where: { studentNumber: studentId },
       relations: ['class']
     });
 
@@ -295,19 +268,12 @@ export const searchStudents = async (req: AuthRequest, res: Response) => {
     }
 
     const studentRepository = AppDataSource.getRepository(Student);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
     
     // Search by student number or name
     const students = await studentRepository
       .createQueryBuilder('student')
       .leftJoinAndSelect('student.class', 'class')
-      .where('student."schoolId" = :schoolId', { schoolId })
-      .andWhere(
+      .where(
         '(student.studentNumber LIKE :query OR student.firstName LIKE :query OR student.lastName LIKE :query OR CONCAT(student.firstName, \' \', student.lastName) LIKE :query)',
         { query: `%${query}%` }
       )

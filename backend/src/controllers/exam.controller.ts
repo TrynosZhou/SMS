@@ -14,7 +14,6 @@ import { Attendance, AttendanceStatus } from '../entities/Attendance';
 import { AuthRequest } from '../middleware/auth';
 import { createReportCardPDF } from '../utils/pdfGenerator';
 import { createMarkSheetPDF } from '../utils/markSheetPdfGenerator';
-import { getCurrentSchoolId } from '../utils/schoolContext';
 
 // Helper function to assign positions with proper tie handling
 // Students with the same score (average or percentage) get the same position, and positions are skipped after ties
@@ -59,12 +58,6 @@ export const createExam = async (req: AuthRequest, res: Response) => {
     }
 
     const { name, type, examDate, description, term, classId, subjectIds } = req.body;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
     
     // Log received data for debugging
     console.log('Received exam data:', {
@@ -121,7 +114,7 @@ export const createExam = async (req: AuthRequest, res: Response) => {
     }
 
     // Verify class exists
-    const classEntity = await classRepository.findOne({ where: { id: trimmedClassId, schoolId } });
+    const classEntity = await classRepository.findOne({ where: { id: trimmedClassId } });
     if (!classEntity) {
       console.error(`Class not found with ID: ${trimmedClassId}`);
       return res.status(404).json({ 
@@ -156,8 +149,7 @@ export const createExam = async (req: AuthRequest, res: Response) => {
       type: type as ExamType,
       examDate: parsedExamDate,
       classId: trimmedClassId,
-      term: term ? String(term).trim() : null,
-      schoolId
+      term: term ? String(term).trim() : null
     };
     
     // Only include description if it's provided and not empty
@@ -197,7 +189,7 @@ export const createExam = async (req: AuthRequest, res: Response) => {
               });
             }
             
-            const subjects = await subjectRepository.find({ where: { id: In(validSubjectIds), schoolId } });
+            const subjects = await subjectRepository.find({ where: { id: In(validSubjectIds) } });
             
             // Check if all subjects were found
             const foundIds = subjects.map(s => s.id);
@@ -334,14 +326,8 @@ export const getExams = async (req: AuthRequest, res: Response) => {
 
     const examRepository = AppDataSource.getRepository(Exam);
     const { classId } = req.query;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
-    const where: any = { schoolId };
+    const where: any = {};
     if (classId) {
       where.classId = classId;
     }
@@ -370,15 +356,9 @@ export const getExamById = async (req: AuthRequest, res: Response) => {
 
     const examRepository = AppDataSource.getRepository(Exam);
     const { id } = req.params;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     const exam = await examRepository.findOne({
-      where: { id, schoolId },
+      where: { id },
       relations: ['class', 'subjects']
     });
 
@@ -406,17 +386,11 @@ export const deleteExam = async (req: AuthRequest, res: Response) => {
     const examRepository = AppDataSource.getRepository(Exam);
     const marksRepository = AppDataSource.getRepository(Marks);
     const { id } = req.params;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     console.log('Attempting to delete exam with ID:', id);
 
     const exam = await examRepository.findOne({
-      where: { id, schoolId },
+      where: { id },
       relations: ['subjects']
     });
 
@@ -642,12 +616,6 @@ export const captureMarks = async (req: AuthRequest, res: Response) => {
     }
 
     const { examId, marksData } = req.body; // marksData: [{studentId, subjectId, score, maxScore, comments}]
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
     
     // Validate examId
     if (!examId) {
@@ -657,7 +625,7 @@ export const captureMarks = async (req: AuthRequest, res: Response) => {
     
     // Check if exam is published - prevent editing
     const examRepository = AppDataSource.getRepository(Exam);
-    const exam = await examRepository.findOne({ where: { id: examId, schoolId } });
+    const exam = await examRepository.findOne({ where: { id: examId } });
     
     if (exam && exam.status === ExamStatus.PUBLISHED) {
       return res.status(403).json({ 
@@ -678,7 +646,7 @@ export const captureMarks = async (req: AuthRequest, res: Response) => {
     for (const mark of marksData) {
       // Ensure student belongs to current school
       const student = await studentRepository.findOne({
-        where: { id: String(mark.studentId), schoolId }
+        where: { id: String(mark.studentId) }
       });
       if (!student) {
         console.warn('Skipping mark entry for invalid student or mismatched school', mark.studentId);
@@ -687,7 +655,7 @@ export const captureMarks = async (req: AuthRequest, res: Response) => {
 
       // Ensure subject belongs to current school
       const subject = await subjectRepository.findOne({
-        where: { id: String(mark.subjectId), schoolId }
+        where: { id: String(mark.subjectId) }
       });
       if (!subject) {
         console.warn('Skipping mark entry for invalid subject or mismatched school', mark.subjectId);
@@ -700,7 +668,6 @@ export const captureMarks = async (req: AuthRequest, res: Response) => {
           examId,
           studentId: mark.studentId,
           subjectId: mark.subjectId,
-          schoolId
         }
       });
 
@@ -709,7 +676,6 @@ export const captureMarks = async (req: AuthRequest, res: Response) => {
         existing.score = mark.score ? Math.round(parseFloat(String(mark.score))) : 0;
         existing.maxScore = mark.maxScore ? Math.round(parseFloat(String(mark.maxScore))) : 100;
         existing.comments = mark.comments || existing.comments;
-        existing.schoolId = schoolId;
         marksToSave.push(existing);
       } else {
         // Create new mark
@@ -720,7 +686,6 @@ export const captureMarks = async (req: AuthRequest, res: Response) => {
           score: mark.score ? Math.round(parseFloat(String(mark.score))) : 0,
           maxScore: mark.maxScore ? Math.round(parseFloat(String(mark.maxScore))) : 100,
           comments: mark.comments || null,
-          schoolId
         });
         console.log('Creating new mark:', {
           examId: newMark.examId,
@@ -755,14 +720,8 @@ export const getMarks = async (req: AuthRequest, res: Response) => {
     const examRepository = AppDataSource.getRepository(Exam);
     const { examId, studentId, classId } = req.query;
     const user = req.user;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
-    const where: any = { schoolId };
+    const where: any = { };
     if (examId) where.examId = examId;
     if (studentId) where.studentId = studentId;
 
@@ -782,7 +741,7 @@ export const getMarks = async (req: AuthRequest, res: Response) => {
       // Get all exam IDs from marks
       const examIds = [...new Set(marks.map(m => m.examId))];
       const exams = await examRepository.find({
-        where: { id: In(examIds), schoolId }
+        where: { id: In(examIds) }
       });
       const publishedExamIds = new Set(
         exams.filter(e => e.status === ExamStatus.PUBLISHED).map(e => e.id)
@@ -808,16 +767,10 @@ export const getStudentRankings = async (req: AuthRequest, res: Response) => {
   try {
     const { examId, classId } = req.query;
     const marksRepository = AppDataSource.getRepository(Marks);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     // Get all marks for the exam
     const marks = await marksRepository.find({
-      where: { examId: examId as string, schoolId },
+      where: { examId: examId as string },
       relations: ['student', 'subject', 'exam']
     });
 
@@ -870,14 +823,8 @@ export const getSubjectRankings = async (req: AuthRequest, res: Response) => {
   try {
     const { examId, subjectId, classId } = req.query;
     const marksRepository = AppDataSource.getRepository(Marks);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
-    const where: any = { examId: examId as string, subjectId: subjectId as string, schoolId };
+    const where: any = { examId: examId as string, subjectId: subjectId as string };
     let marks = await marksRepository.find({
       where,
       relations: ['student', 'subject']
@@ -925,19 +872,12 @@ export const getClassRankingsByType = async (req: AuthRequest, res: Response) =>
 
     const marksRepository = AppDataSource.getRepository(Marks);
     const examRepository = AppDataSource.getRepository(Exam);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     // Get all exams of the specified type for this class
     const exams = await examRepository.find({
       where: {
         classId: classId as string,
         type: examType as ExamType,
-        schoolId
       }
     });
 
@@ -949,7 +889,7 @@ export const getClassRankingsByType = async (req: AuthRequest, res: Response) =>
 
     // Get all marks for these exams
     const marks = await marksRepository.find({
-      where: { examId: In(examIds), schoolId },
+      where: { examId: In(examIds) },
       relations: ['student', 'subject', 'exam']
     });
 
@@ -1006,18 +946,11 @@ export const getSubjectRankingsByType = async (req: AuthRequest, res: Response) 
 
     const marksRepository = AppDataSource.getRepository(Marks);
     const examRepository = AppDataSource.getRepository(Exam);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     // Get all exams of the specified type
     const exams = await examRepository.find({
       where: {
         type: examType as ExamType,
-        schoolId
       }
     });
 
@@ -1032,7 +965,6 @@ export const getSubjectRankingsByType = async (req: AuthRequest, res: Response) 
       where: { 
         examId: In(examIds),
         subjectId: subjectId as string,
-        schoolId
       },
       relations: ['student', 'subject']
     });
@@ -1088,27 +1020,21 @@ export const getFormRankings = async (req: AuthRequest, res: Response) => {
     const marksRepository = AppDataSource.getRepository(Marks);
     const studentRepository = AppDataSource.getRepository(Student);
     const classRepository = AppDataSource.getRepository(Class);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     // Get all classes for the form
-    const classes = await classRepository.find({ where: { form: form as string, schoolId } });
+    const classes = await classRepository.find({ where: { form: form as string } });
     const classIds = classes.map(c => c.id);
 
     // Get all students in these classes
     const students = await studentRepository.find({
-      where: { classId: In(classIds), schoolId }
+      where: { classId: In(classIds) }
     });
 
     const studentIds = students.map(s => s.id);
 
     // Get all marks for these students
     const marks = await marksRepository.find({
-      where: { examId: examId as string, schoolId },
+      where: { examId: examId as string },
       relations: ['student', 'subject']
     });
 
@@ -1163,15 +1089,9 @@ export const getOverallPerformanceRankings = async (req: AuthRequest, res: Respo
     const studentRepository = AppDataSource.getRepository(Student);
     const classRepository = AppDataSource.getRepository(Class);
     const examRepository = AppDataSource.getRepository(Exam);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     // Get all classes for the form/stream
-    const classes = await classRepository.find({ where: { form: form as string, schoolId } });
+    const classes = await classRepository.find({ where: { form: form as string } });
     if (classes.length === 0) {
       return res.status(404).json({ message: `No classes found for form: ${form}` });
     }
@@ -1180,7 +1100,7 @@ export const getOverallPerformanceRankings = async (req: AuthRequest, res: Respo
 
     // Get all students in these classes with class relation loaded
     const students = await studentRepository.find({
-      where: { classId: In(classIds), schoolId },
+      where: { classId: In(classIds) },
       relations: ['class']
     });
     
@@ -1203,7 +1123,6 @@ export const getOverallPerformanceRankings = async (req: AuthRequest, res: Respo
       where: {
         classId: In(classIds),
         type: examType as ExamType,
-        schoolId
       }
     });
 
@@ -1215,7 +1134,7 @@ export const getOverallPerformanceRankings = async (req: AuthRequest, res: Respo
 
     // Get all marks for these students across all exams of this type
     const marks = await marksRepository.find({
-      where: { examId: In(examIds), schoolId },
+      where: { examId: In(examIds) },
       relations: ['student', 'subject', 'exam']
     });
 
@@ -1273,12 +1192,6 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const isParent = user?.role === 'parent';
     const termValue = term ? String(term).trim() : '';
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
     
     console.log('Report card request received:', { classId, examType, term: termValue, studentId, isParent, query: req.query, path: req.path });
     
@@ -1295,7 +1208,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
 
       // Get parent
       const parent = await parentRepository.findOne({
-        where: { userId: user.id, schoolId },
+        where: { userId: user.id },
         relations: ['students']
       });
 
@@ -1305,7 +1218,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
 
       // Verify student is linked to this parent
       const student = await studentRepository.findOne({
-        where: { id: studentId as string, parentId: parent.id, schoolId }
+        where: { id: studentId as string, parentId: parent.id }
       });
 
       if (!student) {
@@ -1313,14 +1226,15 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       }
 
       // Get settings for next term fees
-      const settings = await settingsRepository.findOne({
-        where: { schoolId },
-        order: { createdAt: 'DESC' }
+      const settingsList = await settingsRepository.find({
+        order: { createdAt: 'DESC' },
+        take: 1
       });
+      const settings = settingsList.length > 0 ? settingsList[0] : null;
 
       // Get latest invoice for balance calculation
       const latestInvoice = await invoiceRepository.findOne({
-        where: { studentId: student.id, schoolId },
+        where: { studentId: student.id },
         order: { createdAt: 'DESC' }
       });
 
@@ -1348,7 +1262,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
 
     // Verify class exists
     const classEntity = await classRepository.findOne({
-      where: { id: classId as string, schoolId }
+      where: { id: classId as string }
     });
 
     if (!classEntity) {
@@ -1363,7 +1277,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     if (isParent && studentId) {
       // Parent access - first verify their linked student exists in this class
       parentStudentRecord = await studentRepository.findOne({
-        where: { id: studentId as string, classId: classId as string, schoolId },
+        where: { id: studentId as string, classId: classId as string },
         relations: ['class']
       });
 
@@ -1374,7 +1288,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
 
     // Always fetch full class roster for accurate rankings/positions
     students = await studentRepository.find({
-      where: { classId: classId as string, schoolId },
+      where: { classId: classId as string },
       relations: ['class'],
       order: { firstName: 'ASC', lastName: 'ASC' } // Sort alphabetically for sequential display
     });
@@ -1397,7 +1311,6 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
             classId: classId as string,
             className: classEntity.name
           })
-          .andWhere('student.schoolId = :schoolId', { schoolId })
           .orderBy('student.firstName', 'ASC')
           .addOrderBy('student.lastName', 'ASC')
           .getMany();
@@ -1414,7 +1327,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     // Get all exams of the specified type for this class
     console.log('Looking for exams with classId:', classId, 'term:', termValue, 'and examType:', examType);
     let exams = await examRepository.find({
-      where: { classId: classId as string, type: examType as any, term: termValue, schoolId },
+      where: { classId: classId as string, type: examType as any, term: termValue },
       relations: ['subjects']
     });
     
@@ -1458,7 +1371,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     if (exams.length === 0) {
       // Check if there are any exams for this class at all
       const allClassExams = await examRepository.find({
-        where: { classId: classId as string, term: termValue, schoolId },
+        where: { classId: classId as string, term: termValue },
         relations: ['subjects']
       });
       console.log('Total exams for this class and term:', allClassExams.length, allClassExams.map(e => ({ name: e.name, type: e.type })));
@@ -1466,10 +1379,11 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     }
 
     // Get settings for grade thresholds
-      const settings = await settingsRepository.findOne({
-        where: { schoolId },
-        order: { createdAt: 'DESC' }
+      const settingsList = await settingsRepository.find({
+        order: { createdAt: 'DESC' },
+        take: 1
       });
+      const settings = settingsList.length > 0 ? settingsList[0] : null;
 
     const thresholds = settings?.gradeThresholds || {
       excellent: 90,
@@ -1510,7 +1424,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     }
     
     const allMarks = await marksRepository.find({
-      where: { examId: In(examIds), schoolId },
+      where: { examId: In(examIds) },
       relations: ['subject', 'exam', 'student']
     });
     console.log('Found marks:', allMarks.length);
@@ -1621,13 +1535,13 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     if (forms.length > 0) {
       // Get all classes with the same forms
       const allClassesWithSameForms = await classRepository.find({
-        where: { form: In(forms), schoolId }
+        where: { form: In(forms) }
       });
       const allClassIdsWithSameForms = allClassesWithSameForms.map(c => c.id);
       
       // Get all students from classes with the same forms
       const allFormStudentsList = await studentRepository.find({
-        where: { classId: In(allClassIdsWithSameForms), schoolId },
+        where: { classId: In(allClassIdsWithSameForms) },
         relations: ['class']
       });
       
@@ -1638,7 +1552,6 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
           classId: In(allClassIdsWithSameForms),
           type: examType as any,
           term: termValue,
-          schoolId
         },
         relations: ['subjects']
       });
@@ -1651,7 +1564,6 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         where: { 
           examId: In(allFormExamIds),
           studentId: In(formStudentIds),
-          schoolId
         },
         relations: ['subject', 'exam', 'student']
       }) : [];
@@ -1794,7 +1706,6 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
           studentId: student.id,
           classId: classId as string,
           examType: examType as string,
-          schoolId
         }
       });
 
@@ -1804,7 +1715,6 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         where: {
           studentId: student.id,
           term: termValue,
-          schoolId
         }
       });
       const totalAttendance = attendanceRecords.length;
@@ -1882,12 +1792,6 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
     const user = req.user;
     const isParent = user?.role === 'parent';
     const termValue = term ? String(term).trim() : null;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
     
     console.log('PDF generation request:', { studentId, examId, classId, examType, term: termValue, isParent, query: req.query });
 
@@ -1904,7 +1808,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
 
       // Get parent
       const parent = await parentRepository.findOne({
-        where: { userId: user.id, schoolId }
+        where: { userId: user.id }
       });
 
       if (!parent) {
@@ -1913,7 +1817,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
 
       // Verify student is linked to this parent
       const student = await studentRepository.findOne({
-        where: { id: studentId as string, parentId: parent.id, schoolId }
+        where: { id: studentId as string, parentId: parent.id }
       });
 
       if (!student) {
@@ -1921,14 +1825,15 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       }
 
       // Get settings for next term fees
-      const settings = await settingsRepository.findOne({
-        where: { schoolId },
-        order: { createdAt: 'DESC' }
+      const settingsList = await settingsRepository.find({
+        order: { createdAt: 'DESC' },
+        take: 1
       });
+      const settings = settingsList.length > 0 ? settingsList[0] : null;
 
       // Get latest invoice for balance calculation
       const latestInvoice = await invoiceRepository.findOne({
-        where: { studentId: student.id, schoolId },
+        where: { studentId: student.id },
         order: { createdAt: 'DESC' }
       });
 
@@ -1964,7 +1869,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       console.log('Using new format: classId + examType + studentId');
       // New format: generate from aggregated report card data
       const student = await studentRepository.findOne({
-        where: { id: studentId as string, schoolId },
+        where: { id: studentId as string },
         relations: ['class']
       });
 
@@ -1974,7 +1879,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
 
       // Get all exams of the specified type for this class
       const exams = await examRepository.find({
-        where: { classId: classId as string, type: examType as any, term: termValue as string, schoolId },
+        where: { classId: classId as string, type: examType as any, term: termValue as string },
         relations: ['subjects']
       });
 
@@ -1984,7 +1889,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
 
       // Get all subjects for this class (to ensure all subjects appear on report card)
       const classWithSubjects = await classRepository.findOne({
-        where: { id: classId as string, schoolId },
+        where: { id: classId as string },
         relations: ['subjects']
       });
       let allClassSubjects = classWithSubjects?.subjects || [];
@@ -2013,13 +1918,13 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       // Get all marks for this student across all exams of this type
       const examIds = exams.map(e => e.id);
       const allMarks = await marksRepository.find({
-        where: { examId: In(examIds), studentId: studentId as string, schoolId },
+        where: { examId: In(examIds), studentId: studentId as string },
         relations: ['subject', 'exam', 'student']
       });
       
       // Get all marks for all students in the class to calculate class averages
       const allClassMarksForAverage = await marksRepository.find({
-        where: { examId: In(examIds), schoolId },
+        where: { examId: In(examIds) },
         relations: ['subject', 'exam', 'student']
       });
       
@@ -2079,10 +1984,11 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       // Note: We now include all subjects from the class, even if student has no marks
 
       // Get settings
-      const settings = await settingsRepository.findOne({
-        where: { schoolId },
-        order: { createdAt: 'DESC' }
+      const settingsList = await settingsRepository.find({
+        order: { createdAt: 'DESC' },
+        take: 1
       });
+      const settings = settingsList.length > 0 ? settingsList[0] : null;
 
       const thresholds = settings?.gradeThresholds || {
         excellent: 90,
@@ -2173,7 +2079,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
 
       // Calculate class position
       const allClassMarks = await marksRepository.find({
-        where: { examId: In(examIds), schoolId },
+        where: { examId: In(examIds) },
         relations: ['student', 'subject']
       });
 
@@ -2206,10 +2112,10 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       let totalStudentsPerStream = 0;
       if (student.class?.form) {
         const classRepository = AppDataSource.getRepository(Class);
-        const formClasses = await classRepository.find({ where: { form: student.class.form, schoolId } });
+        const formClasses = await classRepository.find({ where: { form: student.class.form } });
         const formClassIds = formClasses.map(c => c.id);
         const formStudents = await studentRepository.find({
-          where: { classId: In(formClassIds), schoolId },
+          where: { classId: In(formClassIds) },
           relations: ['class']
         });
         
@@ -2220,7 +2126,6 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
             classId: In(formClassIds),
             type: examType as any,
             term: termValue,
-            schoolId
           },
           relations: ['subjects']
         });
@@ -2229,7 +2134,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         
         // Get all marks for form students (using all form exams, not just current class exams)
         const formMarks = allFormExamIds.length > 0 ? await marksRepository.find({
-          where: { examId: In(allFormExamIds), studentId: In(formStudents.map(s => s.id)), schoolId },
+          where: { examId: In(allFormExamIds), studentId: In(formStudents.map(s => s.id)) },
           relations: ['student', 'subject']
         }) : [];
         
@@ -2271,7 +2176,6 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
           studentId: studentId as string,
           classId: classId as string,
           examType: examType as string,
-          schoolId
         }
       });
 
@@ -2281,7 +2185,6 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         where: {
           studentId: studentId as string,
           term: termValue,
-          schoolId
         }
       });
       const totalAttendance = attendanceRecords.length;
@@ -2328,7 +2231,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
     } else if (studentId && examId) {
       // Old format: single exam
       const student = await studentRepository.findOne({
-        where: { id: studentId as string, schoolId },
+        where: { id: studentId as string },
         relations: ['class']
       });
 
@@ -2337,7 +2240,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       }
 
       const marks = await marksRepository.find({
-        where: { studentId: studentId as string, examId: examId as string, schoolId },
+        where: { studentId: studentId as string, examId: examId as string },
         relations: ['subject', 'exam']
       });
 
@@ -2346,10 +2249,11 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       }
 
       // Get settings
-      const settings = await settingsRepository.findOne({
-        where: { schoolId },
-        order: { createdAt: 'DESC' }
+      const settingsList = await settingsRepository.find({
+        order: { createdAt: 'DESC' },
+        take: 1
       });
+      const settings = settingsList.length > 0 ? settingsList[0] : null;
 
       // Calculate report card data
       let totalPercentage = 0;
@@ -2485,7 +2389,6 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
           studentId: studentId as string,
           classId: student.classId || '',
           examType: exam.type,
-          schoolId
         }
       }) : null;
 
@@ -2514,10 +2417,11 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
     }
 
     // Get settings for PDF generation
-    const settings = await settingsRepository.findOne({
-      where: { schoolId },
-      order: { createdAt: 'DESC' }
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
     });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
 
     // Generate PDF
     console.log('Generating PDF with data:', {
@@ -2564,16 +2468,10 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
     const marksRepository = AppDataSource.getRepository(Marks);
     const classRepository = AppDataSource.getRepository(Class);
     const subjectRepository = AppDataSource.getRepository(Subject);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     // Get class information
     const classEntity = await classRepository.findOne({
-      where: { id: classId as string, schoolId },
+      where: { id: classId as string },
       relations: ['subjects']
     });
 
@@ -2583,7 +2481,7 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
 
     // Get all students in the class
     const students = await studentRepository.find({
-      where: { classId: classId as string, isActive: true, schoolId },
+      where: { classId: classId as string, isActive: true },
       order: { firstName: 'ASC', lastName: 'ASC' }
     });
 
@@ -2596,7 +2494,6 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       where: {
         classId: classId as string,
         type: examType as ExamType,
-        schoolId
       },
       relations: ['subjects'],
       order: { examDate: 'DESC' }
@@ -2618,7 +2515,6 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       where: {
         examId: In(examIds),
         studentId: In(students.map(s => s.id)),
-        schoolId
       },
       relations: ['student', 'exam', 'subject']
     });
@@ -2727,16 +2623,10 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
     const classRepository = AppDataSource.getRepository(Class);
     const subjectRepository = AppDataSource.getRepository(Subject);
     const settingsRepository = AppDataSource.getRepository(Settings);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     // Get class information
     const classEntity = await classRepository.findOne({
-      where: { id: classId as string, schoolId },
+      where: { id: classId as string },
       relations: ['subjects']
     });
 
@@ -2746,7 +2636,7 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
 
     // Get all students in the class
     const students = await studentRepository.find({
-      where: { classId: classId as string, isActive: true, schoolId },
+      where: { classId: classId as string, isActive: true },
       order: { firstName: 'ASC', lastName: 'ASC' }
     });
 
@@ -2759,7 +2649,6 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       where: {
         classId: classId as string,
         type: examType as ExamType,
-        schoolId
       },
       relations: ['subjects'],
       order: { examDate: 'DESC' }
@@ -2781,7 +2670,6 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       where: {
         examId: In(examIds),
         studentId: In(students.map(s => s.id)),
-        schoolId
       },
       relations: ['student', 'exam', 'subject']
     });
@@ -2850,10 +2738,11 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
     });
 
     // Get settings for PDF
-    const settings = await settingsRepository.findOne({
-        where: { schoolId },
-      order: { createdAt: 'DESC' }
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
     });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
 
     // Prepare data for PDF
     const pdfData = {
@@ -2894,12 +2783,6 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
 
     const { studentId, classId, examType, classTeacherRemarks, headmasterRemarks } = req.body;
     const user = req.user;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     if (!studentId || !classId || !examType) {
       return res.status(400).json({ message: 'Student ID, Class ID, and Exam Type are required' });
@@ -2918,7 +2801,7 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
 
     // Check if exam is published - prevent editing remarks
     const exams = await examRepository.find({
-      where: { classId: classId as string, type: examType as any, schoolId }
+      where: { classId: classId as string, type: examType as any }
     });
 
     if (exams.length > 0 && exams.some(exam => exam.status === ExamStatus.PUBLISHED)) {
@@ -2933,7 +2816,6 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
         studentId: studentId as string,
         classId: classId as string,
         examType: examType as string,
-        schoolId
       }
     });
 
@@ -2942,7 +2824,6 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
         studentId: studentId as string,
         classId: classId as string,
         examType: examType as string,
-        schoolId
       });
     }
 

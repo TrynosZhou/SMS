@@ -10,32 +10,25 @@ import { Subject } from '../entities/Subject';
 import { In } from 'typeorm';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { Student } from '../entities/Student';
-import { getCurrentSchoolId } from '../utils/schoolContext';
 
 const router = Router();
 
 router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const classRepository = AppDataSource.getRepository(Class);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
     
     // Filter classes for demo users - only show classes with demo students
     if (isDemoUser(req)) {
       const studentRepository = AppDataSource.getRepository(Student);
       const demoStudents = await studentRepository.find({
-        where: { user: { isDemo: true }, schoolId },
+        where: { user: { isDemo: true } },
         relations: ['class', 'user']
       });
       const demoClassIds = [...new Set(demoStudents.map(s => s.classId).filter(Boolean))];
       
       if (demoClassIds.length > 0) {
         const classes = await classRepository.find({
-          where: { id: In(demoClassIds), schoolId },
+          where: { id: In(demoClassIds) },
           relations: ['students', 'teachers', 'subjects']
         });
         // Filter students to only show demo students
@@ -51,7 +44,6 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
     }
     
     const classes = await classRepository.find({
-      where: { schoolId },
       relations: ['students', 'teachers', 'subjects']
     });
     res.json(classes);
@@ -81,33 +73,56 @@ router.get('/:id', authenticate, async (req, res) => {
 
 router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), async (req, res) => {
   try {
-    const { name, form, description, teacherIds, subjectIds } = req.body;
+    const { name, form, description, classid, teacherIds, subjectIds } = req.body;
     const classRepository = AppDataSource.getRepository(Class);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
     
     // Validate required fields
     if (!name || !form) {
       return res.status(400).json({ message: 'Name and form are required' });
     }
 
-    const classEntity = classRepository.create({ name, form, description, schoolId });
+    // Generate classid if not provided
+    let finalClassid = classid;
+    if (!finalClassid) {
+      // Generate from name or form (uppercase, alphanumeric only)
+      const source = name || form;
+      finalClassid = source.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      
+      // Ensure it's not empty
+      if (!finalClassid) {
+        finalClassid = 'CLASS' + Date.now().toString().slice(-6);
+      }
+    }
+
+    // Check if classid already exists
+    const existingClass = await classRepository.findOne({ where: { classid: finalClassid } });
+    if (existingClass) {
+      return res.status(400).json({ 
+        message: `Class ID "${finalClassid}" already exists. Please use a different class ID.` 
+      });
+    }
+
+    // Check if name already exists
+    const existingClassByName = await classRepository.findOne({ where: { name } });
+    if (existingClassByName) {
+      return res.status(400).json({ 
+        message: `A class with name "${name}" already exists. Please use a different name.` 
+      });
+    }
+
+    const classEntity = classRepository.create({ name, form, description, classid: finalClassid });
     
     // Assign teachers if provided
     if (teacherIds && Array.isArray(teacherIds) && teacherIds.length > 0) {
       const teacherRepository = AppDataSource.getRepository(Teacher);
-      const teachers = await teacherRepository.find({ where: { id: In(teacherIds), schoolId } });
+      const teachers = await teacherRepository.find({ where: { id: In(teacherIds) } });
       classEntity.teachers = teachers;
     }
     
     // Assign subjects if provided
     if (subjectIds && Array.isArray(subjectIds) && subjectIds.length > 0) {
       const subjectRepository = AppDataSource.getRepository(Subject);
-      const subjects = await subjectRepository.find({ where: { id: In(subjectIds), schoolId } });
+      const subjects = await subjectRepository.find({ where: { id: In(subjectIds) } });
       classEntity.subjects = subjects;
     }
     
@@ -115,7 +130,7 @@ router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), a
     
     // Load the class with relations
     const savedClass = await classRepository.findOne({
-      where: { id: classEntity.id, schoolId },
+      where: { id: classEntity.id },
       relations: ['students', 'teachers', 'subjects']
     });
     
@@ -128,25 +143,40 @@ router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), a
 router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, form, description, isActive, teacherIds, subjectIds } = req.body;
+    const { name, form, description, classid, isActive, teacherIds, subjectIds } = req.body;
     const classRepository = AppDataSource.getRepository(Class);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     const classEntity = await classRepository.findOne({ 
-      where: { id, schoolId },
+      where: { id },
       relations: ['teachers', 'subjects']
     });
     if (!classEntity) {
       return res.status(404).json({ message: 'Class not found' });
     }
 
+    // Validate classid uniqueness if being updated
+    if (classid !== undefined && classid !== classEntity.classid) {
+      const existingClass = await classRepository.findOne({ where: { classid } });
+      if (existingClass) {
+        return res.status(400).json({ 
+          message: `Class ID "${classid}" already exists. Please use a different class ID.` 
+        });
+      }
+      classEntity.classid = classid;
+    }
+
+    // Validate name uniqueness if being updated
+    if (name !== undefined && name !== classEntity.name) {
+      const existingClassByName = await classRepository.findOne({ where: { name } });
+      if (existingClassByName) {
+        return res.status(400).json({ 
+          message: `A class with name "${name}" already exists. Please use a different name.` 
+        });
+      }
+      classEntity.name = name;
+    }
+
     // Update fields
-    if (name !== undefined) classEntity.name = name;
     if (form !== undefined) classEntity.form = form;
     if (description !== undefined) classEntity.description = description;
     if (isActive !== undefined) classEntity.isActive = isActive;
@@ -155,7 +185,7 @@ router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN),
     if (teacherIds !== undefined) {
       if (Array.isArray(teacherIds) && teacherIds.length > 0) {
         const teacherRepository = AppDataSource.getRepository(Teacher);
-        const teachers = await teacherRepository.find({ where: { id: In(teacherIds), schoolId } });
+        const teachers = await teacherRepository.find({ where: { id: In(teacherIds) } });
         classEntity.teachers = teachers;
       } else {
         classEntity.teachers = [];
@@ -166,7 +196,7 @@ router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN),
     if (subjectIds !== undefined) {
       if (Array.isArray(subjectIds) && subjectIds.length > 0) {
         const subjectRepository = AppDataSource.getRepository(Subject);
-        const subjects = await subjectRepository.find({ where: { id: In(subjectIds), schoolId } });
+        const subjects = await subjectRepository.find({ where: { id: In(subjectIds) } });
         classEntity.subjects = subjects;
       } else {
         classEntity.subjects = [];
@@ -177,7 +207,7 @@ router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN),
     
     // Load the updated class with all relations
     const updatedClass = await classRepository.findOne({
-      where: { id, schoolId },
+      where: { id },
       relations: ['students', 'teachers', 'subjects']
     });
     
@@ -200,16 +230,10 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
     const classRepository = AppDataSource.getRepository(Class);
     const examRepository = AppDataSource.getRepository(Exam);
     const remarksRepository = AppDataSource.getRepository(ReportCardRemarks);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     // Find the class with all relations
     const classEntity = await classRepository.findOne({
-      where: { id, schoolId },
+      where: { id },
       relations: ['students', 'teachers', 'subjects']
     });
 
@@ -228,7 +252,7 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
     
     // Check for exams associated with this class
     const exams = await examRepository.find({
-      where: { classId: id, schoolId }
+      where: { classId: id }
     });
     const examCount = exams.length;
     console.log('Exams count:', examCount);
@@ -248,7 +272,7 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
 
     // Delete all report card remarks associated with this class
     const remarks = await remarksRepository.find({
-      where: { classId: id, schoolId }
+      where: { classId: id }
     });
     
     if (remarks.length > 0) {

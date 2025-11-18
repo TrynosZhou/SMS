@@ -13,20 +13,12 @@ import { Settings } from '../entities/Settings';
 import QRCode from 'qrcode';
 import { createStudentIdCardPDF } from '../utils/studentIdCardPdf';
 import { isDemoUser } from '../utils/demoDataFilter';
-import { getCurrentSchoolId } from '../utils/schoolContext';
 
 export const registerStudent = async (req: AuthRequest, res: Response) => {
   try {
     // Ensure database is initialized
     if (!AppDataSource.isInitialized) {
       await AppDataSource.initialize();
-    }
-
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
     }
 
     const parseBoolean = (value: any): boolean => {
@@ -74,19 +66,19 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
 
     // Verify class exists
-    const classEntity = await classRepository.findOne({ where: { id: classId, schoolId } });
+    const classEntity = await classRepository.findOne({ where: { id: classId } });
     if (!classEntity) {
       return res.status(404).json({ message: 'Class not found' });
     }
 
     if (parentId) {
-      const parent = await AppDataSource.getRepository(Parent).findOne({ where: { id: parentId, schoolId } });
+      const parent = await AppDataSource.getRepository(Parent).findOne({ where: { id: parentId } });
       if (!parent) {
-        return res.status(404).json({ message: 'Parent not found for this school' });
+        return res.status(404).json({ message: 'Parent not found' });
       }
     }
 
-    // Generate unique student ID with prefix JPS
+    // Generate unique student ID with prefix from settings
     const studentNumber = await generateStudentId();
 
     // Parse dateOfBirth if it's a string
@@ -134,26 +126,32 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
       photo: photoPath,
       classId, // Auto-enroll into the specified class
       parentId: parentId || null,
-      enrollmentDate: new Date(),
-      schoolId
+      enrollmentDate: new Date()
     });
 
     await studentRepository.save(student);
 
     // Load the student with class relation
     const savedStudent = await studentRepository.findOne({
-      where: { id: student.id, schoolId },
+      where: { id: student.id },
       relations: ['class', 'parent']
     });
 
     // Automatically create an initial invoice for the new student
     try {
+      console.log('📋 Creating invoice for new student:', savedStudent?.studentNumber || student.studentNumber);
+      console.log('📋 Student ID:', savedStudent?.id || student.id);
       const settings = await settingsRepository.findOne({
-        where: { schoolId },
         order: { createdAt: 'DESC' }
       });
 
-      if (settings && settings.feesSettings) {
+      if (!settings) {
+        console.warn('⚠️ No settings found');
+        console.warn('⚠️ Invoice not created - please configure fees in Settings page');
+      } else if (!settings.feesSettings) {
+        console.warn('⚠️ No feesSettings found in settings');
+        console.warn('⚠️ Invoice not created - please configure fees in Settings page');
+      } else {
         const fees = settings.feesSettings;
         const dayScholarTuition = parseFloat(String(fees.dayScholarTuitionFee || 0));
         const boarderTuition = parseFloat(String(fees.boarderTuitionFee || 0));
@@ -161,55 +159,81 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
         const deskFee = parseFloat(String(fees.deskFee || 0));
         const transportCost = parseFloat(String(fees.transportCost || 0));
         const diningHallCost = parseFloat(String(fees.diningHallCost || 0));
-        const libraryFee = parseFloat(String(fees.libraryFee || 0));
-        const sportsFee = parseFloat(String(fees.sportsFee || 0));
-        const otherFees = fees.otherFees || [];
-        const otherFeesTotal = otherFees.reduce((sum: number, fee: any) => sum + parseFloat(String(fee.amount || 0)), 0);
+        
+        console.log('💰 Fee settings loaded:', {
+          dayScholarTuition,
+          boarderTuition,
+          registrationFee,
+          deskFee,
+          transportCost,
+          diningHallCost,
+          studentType: validStudentType,
+          isStaffChild: isStaffChildFlag,
+          usesTransport: usesTransportFlag,
+          usesDiningHall: usesDiningHallFlag
+        });
 
-        // Calculate fees based on staff child status
+        // Calculate fees based on student type and staff child status
         let totalAmount = 0;
+        const invoiceItems: string[] = [];
         
-        // Registration fee: charged once at registration for non-staff children (both boarders and day scholars)
-        if (registrationFee > 0 && !isStaffChildFlag) {
-          totalAmount += registrationFee;
-        }
-        
-        // Tuition fee (staff children are exempt)
         if (!isStaffChildFlag) {
-          const tuitionFee = validStudentType === 'Boarder' ? boarderTuition : dayScholarTuition;
-          totalAmount += tuitionFee;
-        }
-
-        // Desk fee is charged once for every new student (both boarders and day scholars)
-        if (deskFee > 0 && !isStaffChildFlag) {
-          totalAmount += deskFee;
-        }
-
-        // Library, sports, and other recurring fees apply only to non-staff children
-        if (!isStaffChildFlag) {
-          totalAmount += libraryFee;
-          totalAmount += otherFeesTotal;
-          totalAmount += sportsFee; // Staff children don't pay sports fee
-        }
-
-        // Transport fee: only for non-staff day scholars who use school transport
-        if (validStudentType === 'Day Scholar' && usesTransportFlag && !isStaffChildFlag) {
-          totalAmount += transportCost;
-        }
-
-        // Dining hall cost rules
-        if (validStudentType === 'Day Scholar' && usesDiningHallFlag) {
-          if (isStaffChildFlag) {
-            totalAmount += diningHallCost * 0.5; // Staff children pay 50%
+          // Non-staff children pay registration fee, desk fee, and tuition for current term
+          
+          // Registration fee: charged once at registration (both boarders and day scholars)
+          if (registrationFee > 0) {
+            totalAmount += registrationFee;
+            invoiceItems.push(`Registration Fee: ${registrationFee}`);
           } else {
-            totalAmount += diningHallCost; // Non-staff day scholars pay full DH fee
+            console.log('ℹ️ Registration fee is 0 or not set');
+          }
+          
+          // Desk fee: charged once at registration (both boarders and day scholars)
+          if (deskFee > 0) {
+            totalAmount += deskFee;
+            invoiceItems.push(`Desk Fee: ${deskFee}`);
+          } else {
+            console.log('ℹ️ Desk fee is 0 or not set');
+          }
+          
+          // Tuition fee for current term (based on student type)
+          const tuitionFee = validStudentType === 'Boarder' ? boarderTuition : dayScholarTuition;
+          if (tuitionFee > 0) {
+            totalAmount += tuitionFee;
+            invoiceItems.push(`Tuition Fee (${validStudentType}): ${tuitionFee}`);
+          } else {
+            console.warn(`⚠️ Tuition fee is 0 or not set for ${validStudentType}`);
+            console.warn(`⚠️ Please set ${validStudentType === 'Boarder' ? 'boarderTuitionFee' : 'dayScholarTuitionFee'} in Settings`);
+          }
+          
+          // Transport fee: only for day scholars who use public transport
+          if (validStudentType === 'Day Scholar' && usesTransportFlag && transportCost > 0) {
+            totalAmount += transportCost;
+            invoiceItems.push(`Transport Fee: ${transportCost}`);
+          }
+          
+          // Dining hall fee: day scholars who take DH meals pay full fee (no discount)
+          if (validStudentType === 'Day Scholar' && usesDiningHallFlag && diningHallCost > 0) {
+            totalAmount += diningHallCost;
+            invoiceItems.push(`Dining Hall Fee: ${diningHallCost}`);
+          }
+        } else {
+          // Staff children: pay nothing unless they take DH meals (then pay 50% of DH fee)
+          if (usesDiningHallFlag && diningHallCost > 0) {
+            const staffChildDHFee = diningHallCost * 0.5;
+            totalAmount += staffChildDHFee;
+            invoiceItems.push(`Dining Hall Fee (Staff Child - 50%): ${staffChildDHFee}`);
+          } else {
+            console.log('ℹ️ Staff child - no fees applicable (no DH meals)');
           }
         }
 
         totalAmount = parseFloat(totalAmount.toFixed(2));
+        console.log('💰 Calculated total amount:', totalAmount);
+        console.log('📝 Invoice items:', invoiceItems);
 
         if (totalAmount > 0) {
-          const invoiceCount = await invoiceRepository.count({ where: { schoolId } });
+          const invoiceCount = await invoiceRepository.count();
           const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(6, '0')}`;
 
           const dueDate = new Date();
@@ -217,28 +241,68 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
 
           const term = settings.currentTerm || settings.activeTerm || `Term 1 ${new Date().getFullYear()}`;
 
+          // Build description from invoice items
+          const description = invoiceItems.length > 0 
+            ? `Initial fees upon registration: ${invoiceItems.join(', ')}`
+            : isStaffChildFlag && !usesDiningHallFlag
+              ? 'Staff child - no fees applicable'
+              : 'Initial fees upon registration';
+          
+          // Ensure balance is a proper decimal number
+          const balanceValue = parseFloat(totalAmount.toFixed(2));
+          const amountValue = parseFloat(totalAmount.toFixed(2));
+          
+          // Use savedStudent.id to ensure we have the correct student ID
+          const studentIdForInvoice = savedStudent?.id || student.id;
+          console.log('📋 Using student ID for invoice:', studentIdForInvoice);
+          
           const initialInvoice = invoiceRepository.create({
             invoiceNumber,
-            studentId: student.id,
-            amount: totalAmount,
+            studentId: studentIdForInvoice,
+            amount: amountValue,
             previousBalance: 0,
             paidAmount: 0,
-            balance: totalAmount,
+            balance: balanceValue,
             prepaidAmount: 0,
             uniformTotal: 0,
             dueDate,
             term,
-            description: 'Initial fees upon registration (tuition, desk fee, and applicable services)',
+            description,
             status: InvoiceStatus.PENDING,
-            uniformItems: [],
-            schoolId
+            uniformItems: []
+          });
+          
+          console.log('📋 Invoice object before save:', {
+            invoiceNumber,
+            studentId: studentIdForInvoice,
+            amount: amountValue,
+            balance: balanceValue
           });
 
-          await invoiceRepository.save(initialInvoice);
+          const savedInvoice = await invoiceRepository.save(initialInvoice);
+          console.log('✅ Invoice created successfully:', invoiceNumber, 'Amount:', amountValue, 'Balance:', balanceValue);
+          console.log('✅ Saved invoice balance:', savedInvoice.balance, 'Type:', typeof savedInvoice.balance);
+          
+          // Verify the invoice was saved correctly
+          const verifyInvoice = await invoiceRepository.findOne({ 
+            where: { id: savedInvoice.id } 
+          });
+          if (verifyInvoice) {
+            console.log('✅ Verified invoice balance from DB:', verifyInvoice.balance);
+          } else {
+            console.error('❌ Could not verify invoice after save');
+          }
+        } else {
+          console.warn('⚠️ No invoice created - total amount is 0');
+          console.warn('⚠️ Please configure fees in Settings page:');
+          console.warn('   - Registration Fee');
+          console.warn('   - Desk Fee');
+          console.warn(`   - ${validStudentType === 'Boarder' ? 'Boarder' : 'Day Scholar'} Tuition Fee`);
         }
       }
     } catch (invoiceError) {
-      console.error('Error creating initial invoice for new student:', invoiceError);
+      console.error('❌ Error creating initial invoice for new student:', invoiceError);
+      console.error('❌ Error details:', invoiceError);
       // Continue without failing the student registration
     }
 
@@ -273,13 +337,6 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
-
     const studentRepository = AppDataSource.getRepository(Student);
     const { classId } = req.query;
 
@@ -298,8 +355,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
         .leftJoinAndSelect('student.class', 'class')
         .leftJoinAndSelect('student.parent', 'parent')
         .leftJoinAndSelect('student.user', 'user')
-        .where('student.classId = :classId', { classId: trimmedClassId })
-        .andWhere('student.schoolId = :schoolId', { schoolId });
+        .where('student.classId = :classId', { classId: trimmedClassId });
       
       // Filter by demo status if user is demo
       if (isDemoUser(req)) {
@@ -319,7 +375,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
         
         // Try finding by class name if we can get the class
         const classRepository = AppDataSource.getRepository(Class);
-        const classEntity = await classRepository.findOne({ where: { id: trimmedClassId, schoolId } });
+        const classEntity = await classRepository.findOne({ where: { id: trimmedClassId } });
         
         if (classEntity) {
           console.log(`Found class: ${classEntity.name} (${classEntity.id})`);
@@ -331,7 +387,6 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
             .leftJoinAndSelect('student.parent', 'parent')
             .leftJoinAndSelect('student.user', 'user')
             .where('class.name = :className', { className: classEntity.name })
-            .andWhere('student.schoolId = :schoolId', { schoolId })
             .getMany();
           
           console.log(`Found ${studentsByClassName.length} students by class name: ${classEntity.name}`);
@@ -355,7 +410,6 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       if (students.length === 0) {
         console.log('Trying final fallback: loading all students...');
         const allStudents = await studentRepository.find({
-          where: { schoolId },
           relations: ['class', 'parent', 'user']
         });
         
@@ -386,8 +440,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
         .createQueryBuilder('student')
         .leftJoinAndSelect('student.class', 'class')
         .leftJoinAndSelect('student.parent', 'parent')
-        .leftJoinAndSelect('student.user', 'user')
-        .where('student.schoolId = :schoolId', { schoolId });
+        .leftJoinAndSelect('student.user', 'user');
       
       if (isDemoUser(req)) {
         queryBuilder.andWhere('user.isDemo = :isDemo', { isDemo: true });
@@ -416,15 +469,9 @@ export const getStudentById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const studentRepository = AppDataSource.getRepository(Student);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     const student = await studentRepository.findOne({
-      where: { id, schoolId },
+      where: { id },
       relations: ['class', 'parent', 'user', 'marks', 'invoices']
     });
 
@@ -443,15 +490,9 @@ export const enrollStudent = async (req: AuthRequest, res: Response) => {
     const { studentId, classId } = req.body;
     const studentRepository = AppDataSource.getRepository(Student);
     const classRepository = AppDataSource.getRepository(Class);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
-    const student = await studentRepository.findOne({ where: { id: studentId, schoolId } });
-    const classEntity = await classRepository.findOne({ where: { id: classId, schoolId } });
+    const student = await studentRepository.findOne({ where: { id: studentId } });
+    const classEntity = await classRepository.findOne({ where: { id: classId } });
 
     if (!student || !classEntity) {
       return res.status(404).json({ message: 'Student or class not found' });
@@ -497,15 +538,9 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     const studentRepository = AppDataSource.getRepository(Student);
     const classRepository = AppDataSource.getRepository(Class);
     const parentRepository = AppDataSource.getRepository(Parent);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     const student = await studentRepository.findOne({ 
-      where: { id, schoolId },
+      where: { id },
       relations: ['class']
     });
 
@@ -621,7 +656,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       } else {
         // Verify class exists
         const trimmedClassId = String(classId).trim();
-        const classEntity = await classRepository.findOne({ where: { id: trimmedClassId, schoolId } });
+        const classEntity = await classRepository.findOne({ where: { id: trimmedClassId } });
         if (!classEntity) {
           console.error('Class not found with ID:', trimmedClassId);
           return res.status(404).json({ message: 'Class not found' });
@@ -641,7 +676,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     // Update parentId if provided
     if (parentId !== undefined) {
       if (parentId) {
-        const parent = await parentRepository.findOne({ where: { id: parentId, schoolId } });
+        const parent = await parentRepository.findOne({ where: { id: parentId } });
         if (!parent) {
           return res.status(404).json({ message: 'Parent not found' });
         }
@@ -661,13 +696,13 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     // Use update query to ensure classId is definitely updated in the database
     if (classId !== undefined && classId !== null && classId !== '') {
       const trimmedClassId = String(classId).trim();
-       await studentRepository.update({ id, schoolId }, { classId: trimmedClassId });
+       await studentRepository.update({ id }, { classId: trimmedClassId });
       console.log('Explicitly updated classId via update query:', trimmedClassId);
     }
 
     // Reload student with relations to get fresh data from database
     const updatedStudent = await studentRepository.findOne({
-      where: { id, schoolId },
+      where: { id },
       relations: ['class', 'parent']
     });
 
@@ -699,12 +734,6 @@ export const promoteStudents = async (req: AuthRequest, res: Response) => {
     }
 
     const { fromClassId, toClassId } = req.body;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     if (!fromClassId || !toClassId) {
       return res.status(400).json({ message: 'From class ID and to class ID are required' });
@@ -718,8 +747,8 @@ export const promoteStudents = async (req: AuthRequest, res: Response) => {
     const classRepository = AppDataSource.getRepository(Class);
 
     // Verify both classes exist
-    const fromClass = await classRepository.findOne({ where: { id: fromClassId, schoolId } });
-    const toClass = await classRepository.findOne({ where: { id: toClassId, schoolId } });
+    const fromClass = await classRepository.findOne({ where: { id: fromClassId } });
+    const toClass = await classRepository.findOne({ where: { id: toClassId } });
 
     if (!fromClass) {
       return res.status(404).json({ message: 'Source class not found' });
@@ -731,7 +760,7 @@ export const promoteStudents = async (req: AuthRequest, res: Response) => {
 
     // Get all students in the source class
     const students = await studentRepository.find({
-      where: { classId: fromClassId, schoolId },
+      where: { classId: fromClassId },
       relations: ['class']
     });
 
@@ -777,15 +806,9 @@ export const deleteStudent = async (req: AuthRequest, res: Response) => {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const remarksRepository = AppDataSource.getRepository(ReportCardRemarks);
     const userRepository = AppDataSource.getRepository(User);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     const student = await studentRepository.findOne({
-      where: { id, schoolId },
+      where: { id },
       relations: ['marks', 'invoices', 'user', 'class', 'parent']
     });
 
@@ -798,7 +821,7 @@ export const deleteStudent = async (req: AuthRequest, res: Response) => {
 
     // Delete all report card remarks associated with this student
     const remarks = await remarksRepository.find({
-      where: { studentId: id, schoolId }
+      where: { studentId: id }
     });
     
     if (remarks.length > 0) {
@@ -808,7 +831,7 @@ export const deleteStudent = async (req: AuthRequest, res: Response) => {
 
     // Delete all marks associated with this student
     const marks = await marksRepository.find({
-      where: { studentId: id, schoolId }
+      where: { studentId: id }
     });
     
     if (marks.length > 0) {
@@ -818,7 +841,7 @@ export const deleteStudent = async (req: AuthRequest, res: Response) => {
 
     // Delete all invoices associated with this student
     const invoices = await invoiceRepository.find({
-      where: { studentId: id, schoolId }
+      where: { studentId: id }
     });
     
     if (invoices.length > 0) {
@@ -867,15 +890,9 @@ export const generateStudentIdCard = async (req: AuthRequest, res: Response) => 
     const studentRepository = AppDataSource.getRepository(Student);
     const settingsRepository = AppDataSource.getRepository(Settings);
     const parentRepository = AppDataSource.getRepository(Parent);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     const student = await studentRepository.findOne({
-      where: { id, schoolId },
+      where: { id },
       relations: ['class', 'parent']
     });
 
@@ -890,7 +907,7 @@ export const generateStudentIdCard = async (req: AuthRequest, res: Response) => 
       if (user.role === UserRole.PARENT) {
         // Check if the student is linked to this parent
         const parent = await parentRepository.findOne({
-          where: { userId: user.id, schoolId }
+          where: { userId: user.id }
         });
 
         if (!parent || student.parentId !== parent.id) {
@@ -908,7 +925,6 @@ export const generateStudentIdCard = async (req: AuthRequest, res: Response) => 
     }
 
     const settings = await settingsRepository.findOne({
-      where: { schoolId },
       order: { createdAt: 'DESC' }
     });
 

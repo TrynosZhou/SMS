@@ -1,7 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { User } from './User';
 import { Parent } from './Parent';
-import { School } from './School';
 
 @Entity('messages')
 export class Message {
@@ -39,12 +38,5 @@ export class Message {
 
   @Column({ default: false })
   isRead: boolean;
-
-  @ManyToOne(() => School, school => school.messages, { nullable: false })
-  @JoinColumn({ name: 'schoolId' })
-  school: School;
-
-  @Column({ type: 'uuid' })
-  schoolId: string;
 }
 

@@ -5,7 +5,6 @@ import { User, UserRole } from '../entities/User';
 
 export interface AuthRequest extends Request {
   user?: User;
-  schoolId?: string;
   file?: Express.Multer.File;
 }
 
@@ -27,24 +26,18 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
       console.error('JWT_SECRET is not configured');
       return res.status(500).json({ message: 'Server configuration error' });
     }
-    const decoded = jwt.verify(token, jwtSecret) as { userId: string; schoolId: string };
+    const decoded = jwt.verify(token, jwtSecret) as { userId: string; role?: string };
     const userRepository = AppDataSource.getRepository(User);
     const user = await userRepository.findOne({
       where: { id: decoded.userId },
-      relations: ['student', 'teacher', 'parent', 'school']
+      relations: ['student', 'teacher', 'parent']
     });
 
     if (!user || !user.isActive) {
       return res.status(401).json({ message: 'Invalid or inactive user' });
     }
 
-    const schoolId = decoded.schoolId || user.schoolId;
-    if (!schoolId || user.schoolId !== schoolId) {
-      return res.status(401).json({ message: 'Invalid school context' });
-    }
-
     req.user = user;
-    req.schoolId = schoolId;
     next();
   } catch (error: any) {
     if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
@@ -62,6 +55,12 @@ export const authorize = (...roles: UserRole[]) => {
     }
 
     if (!roles.includes(req.user.role)) {
+      console.log('Authorization failed:', {
+        userRole: req.user.role,
+        requiredRoles: roles,
+        path: req.path,
+        method: req.method
+      });
       return res.status(403).json({ message: 'Insufficient permissions' });
     }
 

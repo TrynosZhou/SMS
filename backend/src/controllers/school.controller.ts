@@ -3,18 +3,34 @@ import { AppDataSource } from '../config/database';
 import { School } from '../entities/School';
 import { AuthRequest } from '../middleware/auth';
 
-export const listSchools = async (_req: AuthRequest, res: Response) => {
+export const listSchools = async (req: AuthRequest, res: Response) => {
   try {
+    console.log('listSchools called', {
+      method: req.method,
+      url: req.url,
+      hasUser: !!req.user,
+      userRole: req.user?.role
+    });
+
     if (!AppDataSource.isInitialized) {
       await AppDataSource.initialize();
     }
 
     const schoolRepository = AppDataSource.getRepository(School);
     const schools = await schoolRepository.find({ order: { name: 'ASC' } });
+    console.log('Found schools:', schools.length);
     res.json(schools);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error listing schools:', error);
-    res.status(500).json({ message: 'Server error', error });
+    console.error('Error details:', {
+      message: error?.message,
+      stack: error?.stack,
+      code: error?.code
+    });
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error?.message || 'Unknown error' 
+    });
   }
 };
 
@@ -107,22 +123,70 @@ export const getCurrentSchoolProfile = async (req: AuthRequest, res: Response) =
       await AppDataSource.initialize();
     }
 
-    const schoolId = req.schoolId || req.user?.schoolId;
-    if (!schoolId) {
-      return res.status(400).json({ message: 'School context missing' });
+    const schoolRepository = AppDataSource.getRepository(School);
+    // Get the first school (single school system)
+    const schools = await schoolRepository.find({ 
+      order: { createdAt: 'ASC' },
+      take: 1
+    });
+    const school = schools.length > 0 ? schools[0] : null;
+
+    if (!school) {
+      // Return a default school object instead of 404 to prevent frontend errors
+      return res.json({
+        id: '',
+        name: 'School Management System',
+        schoolid: '',
+        logoUrl: null,
+        address: null,
+        phone: null,
+        isActive: true,
+        subscriptionEndDate: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
     }
 
+    res.json(school);
+  } catch (error: any) {
+    console.error('Error fetching school profile:', error);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error?.message || 'Unknown error' 
+    });
+  }
+};
+
+export const deleteSchool = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const { id } = req.params;
     const schoolRepository = AppDataSource.getRepository(School);
-    const school = await schoolRepository.findOne({ where: { id: schoolId } });
+    const school = await schoolRepository.findOne({ where: { id } });
 
     if (!school) {
       return res.status(404).json({ message: 'School not found' });
     }
 
-    res.json(school);
-  } catch (error) {
-    console.error('Error fetching school profile:', error);
-    res.status(500).json({ message: 'Server error', error });
+    await schoolRepository.remove(school);
+    res.json({ message: 'School deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting school:', error);
+    
+    // Handle foreign key constraint violations
+    if (error.code === '23503') {
+      return res.status(400).json({ 
+        message: 'Cannot delete school. It is associated with existing records (users, students, etc.). Please remove all associations first.' 
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error?.message || 'Unknown error' 
+    });
   }
 };
 

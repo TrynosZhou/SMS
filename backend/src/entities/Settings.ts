@@ -1,8 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
-import { School } from './School';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity('settings')
-@Index('idx_settings_school', ['schoolId'], { unique: true })
 export class Settings {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -144,12 +142,5 @@ export class Settings {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
-
-  @ManyToOne(() => School, school => school.settingsRecords, { nullable: false })
-  @JoinColumn({ name: 'schoolId' })
-  school: School;
-
-  @Column({ type: 'uuid' })
-  schoolId: string;
 }
 

@@ -1,7 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, OneToMany, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, OneToMany } from 'typeorm';
 import { User } from './User';
 import { Student } from './Student';
-import { School } from './School';
 
 @Entity('parents')
 export class Parent {
@@ -31,12 +30,5 @@ export class Parent {
 
   @OneToMany(() => Student, student => student.parent)
   students: Student[];
-
-  @ManyToOne(() => School, school => school.parents, { nullable: false })
-  @JoinColumn({ name: 'schoolId' })
-  school: School;
-
-  @Column({ type: 'uuid' })
-  schoolId: string;
 }
 

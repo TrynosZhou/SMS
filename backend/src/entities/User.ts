@@ -1,8 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, ManyToOne, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, Index } from 'typeorm';
 import { Student } from './Student';
 import { Teacher } from './Teacher';
 import { Parent } from './Parent';
-import { School } from './School';
 
 export enum UserRole {
   SUPERADMIN = 'superadmin',
@@ -14,8 +13,8 @@ export enum UserRole {
 }
 
 @Entity('users')
-@Index(['email', 'schoolId'], { unique: true })
-@Index(['username', 'schoolId'], { unique: true })
+@Index(['email'], { unique: true })
+@Index(['username'], { unique: true })
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -50,13 +49,6 @@ export class User {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
-
-  @ManyToOne(() => School, school => school.users, { nullable: false })
-  @JoinColumn({ name: 'schoolId' })
-  school: School;
-
-  @Column({ type: 'uuid' })
-  schoolId: string;
 
   @OneToOne(() => Student, student => student.user, { nullable: true })
   @JoinColumn()

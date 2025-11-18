@@ -16,6 +16,7 @@ import { UniformItem } from '../entities/UniformItem';
 import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
 import { Attendance } from '../entities/Attendance';
 import { School } from '../entities/School';
+import { PromotionRule } from '../entities/PromotionRule';
 
 // Load environment variables (only if not already set, e.g., in production)
 if (process.env.NODE_ENV !== 'production') {
@@ -31,7 +32,7 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME || 'sms_db',
   synchronize: false,
   logging: false,
-  entities: [User, Student, Teacher, Class, Subject, Exam, Marks, Invoice, Parent, Settings, ReportCardRemarks, Message, UniformItem, InvoiceUniformItem, Attendance, School],
+  entities: [User, Student, Teacher, Class, Subject, Exam, Marks, Invoice, Parent, Settings, ReportCardRemarks, Message, UniformItem, InvoiceUniformItem, Attendance, School, PromotionRule],
   migrations: ['src/migrations/**/*.ts'],
   subscribers: ['src/subscribers/**/*.ts'],
 });

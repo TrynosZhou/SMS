@@ -2,7 +2,6 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 't
 import { Student } from './Student';
 import { Exam } from './Exam';
 import { Subject } from './Subject';
-import { School } from './School';
 
 @Entity('marks')
 export class Marks {
@@ -44,12 +43,5 @@ export class Marks {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
-
-  @ManyToOne(() => School, school => school.marks, { nullable: false })
-  @JoinColumn({ name: 'schoolId' })
-  school: School;
-
-  @Column({ type: 'uuid' })
-  schoolId: string;
 }
 

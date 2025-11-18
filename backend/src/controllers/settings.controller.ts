@@ -5,8 +5,6 @@ import { Invoice, InvoiceStatus } from '../entities/Invoice';
 import { Student } from '../entities/Student';
 import { UniformItem } from '../entities/UniformItem';
 import { AuthRequest } from '../middleware/auth';
-import { getCurrentSchoolId } from '../utils/schoolContext';
-import { School } from '../entities/School';
 
 export const getSettings = async (req: AuthRequest, res: Response) => {
   try {
@@ -14,67 +12,105 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context missing' });
-    }
-
     const settingsRepository = AppDataSource.getRepository(Settings);
-    const schoolRepository = AppDataSource.getRepository(School);
     
     // Get the first (and only) settings record, or create default if none exists
-    let settings = await settingsRepository.findOne({
-      where: { schoolId },
-      order: { createdAt: 'DESC' }
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
     });
+    let settings = settingsList.length > 0 ? settingsList[0] : null;
 
     if (!settings) {
-      // Create default settings
-      settings = settingsRepository.create({
-        studentIdPrefix: 'JPS',
-        feesSettings: {
-          dayScholarTuitionFee: 0,
-          boarderTuitionFee: 0,
-          registrationFee: 0,
-          deskFee: 0,
-          libraryFee: 0,
-          sportsFee: 0,
-          transportCost: 0,
-          diningHallCost: 0,
-          otherFees: []
-        },
-        gradeThresholds: {
-          excellent: 90,
-          veryGood: 80,
-          good: 70,
-          satisfactory: 60,
-          needsImprovement: 50
-        },
-        academicYear: new Date().getFullYear().toString(),
-        currentTerm: `Term 1 ${new Date().getFullYear()}`,
-        currencySymbol: 'KES',
-        moduleAccess: {
-          teachers: {
-            students: true,
-            classes: true,
-            subjects: true,
-            exams: true,
-            reportCards: true,
-            rankings: true,
-            finance: false,
-            settings: false
+      try {
+        // Create default settings
+        settings = settingsRepository.create({
+          studentIdPrefix: 'JPS',
+          feesSettings: {
+            dayScholarTuitionFee: 0,
+            boarderTuitionFee: 0,
+            registrationFee: 0,
+            deskFee: 0,
+            libraryFee: 0,
+            sportsFee: 0,
+            transportCost: 0,
+            diningHallCost: 0,
+            otherFees: []
           },
-          parents: {
-            reportCards: true,
-            invoices: true,
-            dashboard: true
+          gradeThresholds: {
+            excellent: 90,
+            veryGood: 80,
+            good: 70,
+            satisfactory: 60,
+            needsImprovement: 50
+          },
+          academicYear: new Date().getFullYear().toString(),
+          currentTerm: `Term 1 ${new Date().getFullYear()}`,
+          currencySymbol: 'KES',
+          moduleAccess: {
+            teachers: {
+              students: true,
+              classes: true,
+              subjects: true,
+              exams: true,
+              reportCards: true,
+              rankings: true,
+              finance: false,
+              settings: false
+            },
+            parents: {
+              reportCards: true,
+              invoices: true,
+              dashboard: true
+            }
           }
-        },
-        schoolId
-      });
-      await settingsRepository.save(settings);
+        });
+        await settingsRepository.save(settings);
+      } catch (createError: any) {
+        console.error('Error creating default settings:', createError);
+        // If we can't create settings, return default object
+        return res.json({
+          studentIdPrefix: 'JPS',
+          feesSettings: {
+            dayScholarTuitionFee: 0,
+            boarderTuitionFee: 0,
+            registrationFee: 0,
+            deskFee: 0,
+            libraryFee: 0,
+            sportsFee: 0,
+            transportCost: 0,
+            diningHallCost: 0,
+            otherFees: []
+          },
+          gradeThresholds: {
+            excellent: 90,
+            veryGood: 80,
+            good: 70,
+            satisfactory: 60,
+            needsImprovement: 50
+          },
+          academicYear: new Date().getFullYear().toString(),
+          currentTerm: `Term 1 ${new Date().getFullYear()}`,
+          currencySymbol: 'KES',
+          moduleAccess: {
+            teachers: {
+              students: true,
+              classes: true,
+              subjects: true,
+              exams: true,
+              reportCards: true,
+              rankings: true,
+              finance: false,
+              settings: false
+            },
+            parents: {
+              reportCards: true,
+              invoices: true,
+              dashboard: true
+            }
+          }
+        });
+      }
     } else if (settings.feesSettings) {
       // Migrate old tuitionFee to both dayScholarTuitionFee and boarderTuitionFee
       const feesSettingsAny = settings.feesSettings as any;
@@ -89,35 +125,25 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Get school entity to include code in response
-    const school = await schoolRepository.findOne({ where: { id: schoolId } });
-    
-    // Include school code in response (preserve original case for human-readable codes)
+    // Include school name from settings if available
     const responsePayload: any = { ...settings };
-    if (school?.schoolid) {
-      responsePayload.schoolCode = school.schoolid;
-    }
-    if (!responsePayload.schoolName && school?.name) {
-      responsePayload.schoolName = school.name;
-    }
 
     // For demo users, always return "Demo School" as school name/code
     const isDemo = req.user?.isDemo === true || req.user?.email === 'demo@school.com' || req.user?.username === 'demo@school.com';
-    console.log('Settings request - User isDemo:', req.user?.isDemo, 'Email:', req.user?.email, 'Username:', req.user?.username, 'Calculated isDemo:', isDemo);
     
     if (isDemo) {
       responsePayload.schoolName = 'Demo School';
       responsePayload.schoolCode = 'demo';
-      console.log('Returning demo settings with school name/code locked to demo');
       return res.json(responsePayload);
     }
 
     res.json(responsePayload);
   } catch (error: any) {
     console.error('Error fetching settings:', error);
+    console.error('Error stack:', error?.stack);
     res.status(500).json({ 
       message: 'Server error', 
-      error: error.message || 'Unknown error' 
+      error: error?.message || 'Unknown error' 
     });
   }
 };
@@ -133,21 +159,14 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context missing' });
-    }
-
     const settingsRepository = AppDataSource.getRepository(Settings);
-    const schoolRepository = AppDataSource.getRepository(School);
     
     // Get existing settings or create new
-    let settings = await settingsRepository.findOne({
-      where: { schoolId },
-      order: { createdAt: 'DESC' }
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
     });
+    let settings = settingsList.length > 0 ? settingsList[0] : null;
 
     const {
       studentIdPrefix,
@@ -172,7 +191,7 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
     } = req.body;
 
     if (!settings) {
-      settings = settingsRepository.create({ schoolId });
+      settings = settingsRepository.create({});
     }
 
     // Update fields
@@ -227,43 +246,13 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
     if (schoolLogo2 !== undefined) {
       settings.schoolLogo2 = schoolLogo2;
     }
-    let schoolEntity = await schoolRepository.findOne({ where: { id: schoolId } });
-    if (!schoolEntity) {
-      return res.status(404).json({ message: 'School record not found for current context' });
-    }
-
-    const hasSchoolCode = schoolCode !== undefined && schoolCode !== null && String(schoolCode).trim() !== '';
-    const hasSchoolName = schoolName !== undefined && schoolName !== null && String(schoolName).trim() !== '';
-
-    if (hasSchoolCode !== hasSchoolName) {
-      return res.status(400).json({ message: 'School code and school name must both be provided together.' });
-    }
-
-    if (hasSchoolCode && hasSchoolName) {
-      const normalizedCode = String(schoolCode).trim().toLowerCase();
-      // Human-readable code: alphanumeric, hyphens, underscores, 3-50 chars
-      const codePattern = /^[a-z0-9_-]{3,50}$/;
-      if (normalizedCode !== 'demo' && !codePattern.test(normalizedCode)) {
-        return res.status(400).json({ message: 'School code must be 3-50 characters long and contain only letters, numbers, hyphens, or underscores (e.g., riverton, school-2024).' });
-      }
-
-      if (normalizedCode !== schoolEntity.schoolid) {
-        const existingCode = await schoolRepository.findOne({ where: { schoolid: normalizedCode } });
-        if (existingCode && existingCode.id !== schoolEntity.id) {
-          return res.status(400).json({ message: 'Another school already uses that code. Please choose a unique code.' });
-        }
-        schoolEntity.schoolid = normalizedCode;
-      }
-
+    // Update school name if provided
+    if (schoolName !== undefined && schoolName !== null) {
       const trimmedName = String(schoolName).trim();
       if (!trimmedName) {
-        return res.status(400).json({ message: 'School name cannot be empty when updating the school code.' });
+        return res.status(400).json({ message: 'School name cannot be empty.' });
       }
-      schoolEntity.name = trimmedName;
       settings.schoolName = trimmedName;
-    } else if (schoolName !== undefined && !hasSchoolName) {
-      // Explicit attempt to clear school name without code pairing
-      return res.status(400).json({ message: 'School name cannot be empty.' });
     }
     if (schoolAddress !== undefined) {
       settings.schoolAddress = schoolAddress;
@@ -301,9 +290,8 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
 
     settings.updatedAt = new Date();
     await settingsRepository.save(settings);
-    await schoolRepository.save(schoolEntity);
 
-    const responseSettings = { ...settings, schoolCode: schoolEntity.schoolid };
+    const responseSettings = { ...settings };
 
     res.json({ 
       message: 'Settings updated successfully', 
@@ -325,18 +313,12 @@ export const getActiveTerm = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context missing' });
-    }
-
     const settingsRepository = AppDataSource.getRepository(Settings);
-    const settings = await settingsRepository.findOne({
-      where: { schoolId },
-      order: { createdAt: 'DESC' }
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
     });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
 
     if (!settings) {
       return res.json({ activeTerm: null });
@@ -364,19 +346,11 @@ export const processOpeningDay = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context missing' });
-    }
-
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const settingsRepository = AppDataSource.getRepository(Settings);
     
     // Get settings
     const settings = await settingsRepository.findOne({
-      where: { schoolId },
       order: { createdAt: 'DESC' }
     });
 
@@ -390,8 +364,7 @@ export const processOpeningDay = async (req: AuthRequest, res: Response) => {
     // Get all pending invoices with balance > 0
     const pendingInvoices = await invoiceRepository.find({
       where: {
-        status: InvoiceStatus.PENDING,
-        schoolId
+        status: InvoiceStatus.PENDING
       }
     });
 
@@ -427,20 +400,12 @@ export const processClosingDay = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context missing' });
-    }
-
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
     const settingsRepository = AppDataSource.getRepository(Settings);
     
     // Get settings
     const settings = await settingsRepository.findOne({
-      where: { schoolId },
       order: { createdAt: 'DESC' }
     });
 
@@ -454,7 +419,7 @@ export const processClosingDay = async (req: AuthRequest, res: Response) => {
 
     // Get all active students
     const students = await studentRepository.find({
-      where: { isActive: true, schoolId }
+      where: { isActive: true }
     });
 
     const feesSettings = settings.feesSettings;

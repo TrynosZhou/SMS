@@ -7,7 +7,6 @@ import { User, UserRole } from '../entities/User';
 import { AuthRequest } from '../middleware/auth';
 import { generateEmployeeNumber } from '../utils/employeeNumberGenerator';
 import { isDemoUser } from '../utils/demoDataFilter';
-import { getCurrentSchoolId } from '../utils/schoolContext';
 
 export const registerTeacher = async (req: AuthRequest, res: Response) => {
   try {
@@ -17,12 +16,6 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
     }
 
     const { firstName, lastName, phoneNumber, address, dateOfBirth, subjectIds, classIds } = req.body;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
     
     // Validate required fields
     if (!firstName || !lastName) {
@@ -53,8 +46,7 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
       lastName: lastName.trim(),
       employeeNumber,
       phoneNumber: phoneNumber?.trim() || null,
-      address: address?.trim() || null,
-      schoolId
+      address: address?.trim() || null
     };
 
     // Only include dateOfBirth if it's provided
@@ -67,14 +59,14 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
     if (subjectIds) {
       const { Subject } = await import('../entities/Subject');
       const subjectRepository = AppDataSource.getRepository(Subject);
-      const subjects = await subjectRepository.find({ where: { id: In(subjectIds), schoolId } });
+      const subjects = await subjectRepository.find({ where: { id: In(subjectIds) } });
       teacher.subjects = subjects;
     }
 
     if (classIds) {
       const { Class } = await import('../entities/Class');
       const classRepository = AppDataSource.getRepository(Class);
-      const classes = await classRepository.find({ where: { id: In(classIds), schoolId } });
+      const classes = await classRepository.find({ where: { id: In(classIds) } });
       teacher.classes = classes;
     }
 
@@ -92,8 +84,7 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
       password: hashedPassword,
       role: UserRole.TEACHER,
       mustChangePassword: true,
-      isTemporaryAccount: true,
-      schoolId
+      isTemporaryAccount: true
     });
     
     await userRepository.save(user);
@@ -104,7 +95,7 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
     
     // Load the teacher with relations
     const savedTeacher = await teacherRepository.findOne({
-      where: { id: teacher.id, schoolId },
+      where: { id: teacher.id },
       relations: ['subjects', 'classes']
     });
 
@@ -140,13 +131,6 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
-
     const teacherRepository = AppDataSource.getRepository(Teacher);
     
     // Filter by demo status if user is demo using query builder
@@ -154,8 +138,7 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
       .createQueryBuilder('teacher')
       .leftJoinAndSelect('teacher.subjects', 'subjects')
       .leftJoinAndSelect('teacher.classes', 'classes')
-      .leftJoinAndSelect('teacher.user', 'user')
-      .where('teacher.schoolId = :schoolId', { schoolId });
+      .leftJoinAndSelect('teacher.user', 'user');
     
     if (isDemoUser(req)) {
       queryBuilder.andWhere('user.isDemo = :isDemo', { isDemo: true });
@@ -180,15 +163,9 @@ export const getTeacherById = async (req: AuthRequest, res: Response) => {
     }
 
     const { id } = req.params;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
     const teacherRepository = AppDataSource.getRepository(Teacher);
     const teacher = await teacherRepository.findOne({
-      where: { id, schoolId },
+      where: { id },
       relations: ['subjects', 'classes']
     });
 
@@ -214,16 +191,10 @@ export const updateTeacher = async (req: AuthRequest, res: Response) => {
 
     const { id } = req.params;
     const { firstName, lastName, phoneNumber, address, dateOfBirth, subjectIds, classIds } = req.body;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
     
     const teacherRepository = AppDataSource.getRepository(Teacher);
     const teacher = await teacherRepository.findOne({
-      where: { id, schoolId },
+      where: { id },
       relations: ['subjects', 'classes']
     });
 
@@ -245,21 +216,21 @@ export const updateTeacher = async (req: AuthRequest, res: Response) => {
     if (subjectIds) {
       const { Subject } = await import('../entities/Subject');
       const subjectRepository = AppDataSource.getRepository(Subject);
-      const subjects = await subjectRepository.find({ where: { id: In(subjectIds), schoolId } });
+      const subjects = await subjectRepository.find({ where: { id: In(subjectIds) } });
       teacher.subjects = subjects;
     }
 
     if (classIds) {
       const { Class } = await import('../entities/Class');
       const classRepository = AppDataSource.getRepository(Class);
-      const classes = await classRepository.find({ where: { id: In(classIds), schoolId } });
+      const classes = await classRepository.find({ where: { id: In(classIds) } });
       teacher.classes = classes;
     }
 
     await teacherRepository.save(teacher);
 
     const updatedTeacher = await teacherRepository.findOne({
-      where: { id, schoolId },
+      where: { id },
       relations: ['subjects', 'classes']
     });
 
@@ -281,18 +252,12 @@ export const deleteTeacher = async (req: AuthRequest, res: Response) => {
 
     const { id } = req.params;
     console.log('Attempting to delete teacher with ID:', id);
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     const teacherRepository = AppDataSource.getRepository(Teacher);
     const userRepository = AppDataSource.getRepository(User);
 
     const teacher = await teacherRepository.findOne({
-      where: { id, schoolId },
+      where: { id },
       relations: ['user', 'subjects', 'classes']
     });
 
@@ -344,16 +309,9 @@ export const getTeacherClasses = async (req: AuthRequest, res: Response) => {
 
     const teacherId = req.user?.teacher?.id || req.params.id;
 
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
-
     const teacherRepository = AppDataSource.getRepository(Teacher);
     const teacher = await teacherRepository.findOne({
-      where: { id: teacherId, schoolId },
+      where: { id: teacherId },
       relations: ['classes']
     });
 
@@ -379,16 +337,10 @@ export const createTeacherAccount = async (req: AuthRequest, res: Response) => {
     }
 
     const { id } = req.params;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
     const teacherRepository = AppDataSource.getRepository(Teacher);
     const userRepository = AppDataSource.getRepository(User);
 
-    const teacher = await teacherRepository.findOne({ where: { id, schoolId } });
+    const teacher = await teacherRepository.findOne({ where: { id } });
 
     if (!teacher) {
       return res.status(404).json({ message: 'Teacher not found' });
@@ -414,8 +366,7 @@ export const createTeacherAccount = async (req: AuthRequest, res: Response) => {
       password: hashedPassword,
       role: UserRole.TEACHER,
       mustChangePassword: true,
-      isTemporaryAccount: true,
-      schoolId
+      isTemporaryAccount: true
     });
     
     await userRepository.save(user);

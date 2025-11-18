@@ -1,14 +1,17 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToMany, JoinTable, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToMany, JoinTable, Index } from 'typeorm';
 import { Student } from './Student';
 import { Teacher } from './Teacher';
 import { Subject } from './Subject';
-import { School } from './School';
 
 @Entity('classes')
-@Index(['name', 'schoolId'], { unique: true })
+@Index(['name'], { unique: true })
+@Index(['classid'], { unique: true })
 export class Class {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ unique: true })
+  classid: string; // Unique class identifier (e.g., "STAGE1A", "GRADE2")
 
   @Column()
   name: string;
@@ -31,12 +34,5 @@ export class Class {
   @ManyToMany(() => Subject, subject => subject.classes)
   @JoinTable()
   subjects: Subject[];
-
-  @ManyToOne(() => School, school => school.classes, { nullable: false })
-  @JoinColumn({ name: 'schoolId' })
-  school: School;
-
-  @Column({ type: 'uuid' })
-  schoolId: string;
 }
 

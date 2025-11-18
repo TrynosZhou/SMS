@@ -4,10 +4,9 @@ import { Class } from './Class';
 import { Parent } from './Parent';
 import { Marks } from './Marks';
 import { Invoice } from './Invoice';
-import { School } from './School';
 
 @Entity('students')
-@Index(['studentNumber', 'schoolId'], { unique: true })
+@Index(['studentNumber'], { unique: true })
 export class Student {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -82,12 +81,5 @@ export class Student {
 
   @OneToMany(() => Invoice, invoice => invoice.student)
   invoices: Invoice[];
-
-  @ManyToOne(() => School, school => school.students, { nullable: false })
-  @JoinColumn({ name: 'schoolId' })
-  school: School;
-
-  @Column({ type: 'uuid' })
-  schoolId: string;
 }
 

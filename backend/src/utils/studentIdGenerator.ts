@@ -41,7 +41,7 @@ export async function generateStudentId(): Promise<string> {
     
     // Check if this ID already exists
     existing = await studentRepository.findOne({ 
-      where: { studentNumber: studentId } 
+      where: { studentNumber: studentId }
     });
     
     attempts++;

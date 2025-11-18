@@ -7,18 +7,11 @@ import { User } from '../entities/User';
 import { Settings } from '../entities/Settings';
 import { Message } from '../entities/Message';
 import { AuthRequest } from '../middleware/auth';
-import { getCurrentSchoolId } from '../utils/schoolContext';
 
 export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
   try {
     const { subject, message, recipients } = req.body;
     const user = req.user;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     // Check if user has permission (admin, superadmin, or accountant)
     if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
@@ -44,7 +37,6 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
 
     // Get school name and headmaster name from settings
     const settings = await settingsRepository.findOne({
-      where: { schoolId },
       order: { createdAt: 'DESC' }
     });
 
@@ -57,7 +49,7 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
 
     if (recipients === 'all' || recipients === 'students') {
       const students = await studentRepository.find({
-        where: { isActive: true, schoolId },
+        where: { isActive: true },
         relations: ['user']
       });
       students.forEach(student => {
@@ -73,7 +65,6 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
 
     if (recipients === 'all' || recipients === 'parents') {
       const parents = await parentRepository.find({
-        where: { schoolId },
         relations: ['user']
       });
       parents.forEach(parent => {
@@ -89,7 +80,7 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
 
     if (recipients === 'all' || recipients === 'teachers') {
       const teachers = await teacherRepository.find({
-        where: { isActive: true, schoolId },
+        where: { isActive: true },
         relations: ['user']
       });
       teachers.forEach(teacher => {
@@ -119,7 +110,6 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
     
     if (recipients === 'all' || recipients === 'parents') {
       const parents = await parentRepository.find({
-        where: { schoolId },
         relations: ['user']
       });
       
@@ -135,8 +125,7 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
           senderId: user.id,
           senderName,
           parentId: parent.id,
-          isRead: false,
-          schoolId
+          isRead: false
         });
         
         return messageRepository.save(messageRecord);
@@ -175,19 +164,12 @@ export const getParentMessages = async (req: AuthRequest, res: Response) => {
     if (!user || user.role !== 'parent') {
       return res.status(403).json({ message: 'Access denied. Parent role required.' });
     }
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
-
     const parentRepository = AppDataSource.getRepository(Parent);
     const messageRepository = AppDataSource.getRepository(Message);
 
     // Find parent by user ID
     const parent = await parentRepository.findOne({
-      where: { userId: user.id, schoolId }
+      where: { userId: user.id }
     });
 
     if (!parent) {
@@ -196,7 +178,7 @@ export const getParentMessages = async (req: AuthRequest, res: Response) => {
 
     // Get all messages for this parent, ordered by most recent first
     const messages = await messageRepository.find({
-      where: { parentId: parent.id, schoolId },
+      where: { parentId: parent.id },
       order: { createdAt: 'DESC' }
     });
 

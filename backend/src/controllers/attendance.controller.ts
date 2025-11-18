@@ -6,7 +6,6 @@ import { Class } from '../entities/Class';
 import { Settings } from '../entities/Settings';
 import { AuthRequest } from '../middleware/auth';
 import { UserRole } from '../entities/User';
-import { getCurrentSchoolId } from '../utils/schoolContext';
 
 export const markAttendance = async (req: AuthRequest, res: Response) => {
   try {
@@ -18,12 +17,6 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
     }
 
     const { classId, date, attendanceData } = req.body;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     if (!classId || !date || !attendanceData || !Array.isArray(attendanceData)) {
       return res.status(400).json({ message: 'Class ID, date, and attendance data are required' });
@@ -35,16 +28,17 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
     const settingsRepository = AppDataSource.getRepository(Settings);
 
     // Verify class exists
-    const classEntity = await classRepository.findOne({ where: { id: classId, schoolId } });
+    const classEntity = await classRepository.findOne({ where: { id: classId } });
     if (!classEntity) {
       return res.status(404).json({ message: 'Class not found' });
     }
 
     // Get current term from settings
-    const settings = await settingsRepository.findOne({
-      where: { schoolId },
-      order: { createdAt: 'DESC' }
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
     });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
     const currentTerm = settings?.activeTerm || settings?.currentTerm || null;
 
     const attendanceDate = new Date(date);
@@ -53,8 +47,7 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
     // Delete existing attendance records for this class and date
     await attendanceRepository.delete({
       classId,
-      date: attendanceDate,
-      schoolId
+      date: attendanceDate
     });
 
     // Create new attendance records
@@ -67,7 +60,7 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
 
       // Verify student exists and belongs to the class
       const student = await studentRepository.findOne({
-        where: { id: studentId, classId, schoolId }
+        where: { id: studentId, classId }
       });
 
       if (!student) {
@@ -81,8 +74,7 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
         status: status as AttendanceStatus,
         term: currentTerm,
         remarks: remarks || null,
-        markedBy: user.id,
-        schoolId
+        markedBy: user.id
       });
 
       const saved = await attendanceRepository.save(attendance);
@@ -103,6 +95,10 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
 
 export const getAttendance = async (req: AuthRequest, res: Response) => {
   try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
     const user = req.user;
     
     // Check if user has permission
@@ -111,16 +107,10 @@ export const getAttendance = async (req: AuthRequest, res: Response) => {
     }
 
     const { classId, date, studentId, term, startDate, endDate } = req.query;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     const attendanceRepository = AppDataSource.getRepository(Attendance);
 
-    const query: any = { schoolId };
+    const query: any = {};
 
     if (classId) {
       query.classId = classId as string;
@@ -131,18 +121,47 @@ export const getAttendance = async (req: AuthRequest, res: Response) => {
     }
 
     if (date) {
-      query.date = new Date(date as string);
+      const dateObj = new Date(date as string);
+      if (!isNaN(dateObj.getTime())) {
+        query.date = dateObj;
+      }
     }
 
     if (term) {
       query.term = term as string;
     }
 
-    const attendance = await attendanceRepository.find({
-      where: query,
-      relations: ['student', 'class', 'markedByUser'],
+    // Build find options
+    const findOptions: any = {
+      relations: ['student', 'class'],
       order: { date: 'DESC', createdAt: 'DESC' }
-    });
+    };
+
+    // Add markedByUser relation if it exists in the entity
+    try {
+      findOptions.relations.push('markedByUser');
+    } catch (e) {
+      // Relation might not exist, continue without it
+    }
+
+    // Only add where clause if we have filters
+    if (Object.keys(query).length > 0) {
+      findOptions.where = query;
+    }
+
+    let attendance;
+    try {
+      attendance = await attendanceRepository.find(findOptions);
+    } catch (dbError: any) {
+      // If markedByUser relation fails, try without it
+      if (dbError.message && dbError.message.includes('markedByUser')) {
+        console.warn('Failed to load markedByUser relation, retrying without it');
+        findOptions.relations = ['student', 'class'];
+        attendance = await attendanceRepository.find(findOptions);
+      } else {
+        throw dbError;
+      }
+    }
 
     // Filter by date range if provided
     let filteredAttendance = attendance;
@@ -158,7 +177,16 @@ export const getAttendance = async (req: AuthRequest, res: Response) => {
     res.json({ attendance: filteredAttendance });
   } catch (error: any) {
     console.error('Error fetching attendance:', error);
-    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+    console.error('Error details:', {
+      message: error?.message,
+      stack: error?.stack,
+      code: error?.code,
+      name: error?.name
+    });
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error?.message || 'Unknown error' 
+    });
   }
 };
 
@@ -172,12 +200,6 @@ export const getAttendanceReport = async (req: AuthRequest, res: Response) => {
     }
 
     const { classId, term, startDate, endDate } = req.query;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     if (!classId) {
       return res.status(400).json({ message: 'Class ID is required' });
@@ -188,12 +210,12 @@ export const getAttendanceReport = async (req: AuthRequest, res: Response) => {
 
     // Get all students in the class
     const students = await studentRepository.find({
-      where: { classId: classId as string, isActive: true, schoolId },
+      where: { classId: classId as string, isActive: true },
       order: { firstName: 'ASC', lastName: 'ASC' }
     });
 
     // Build query for attendance
-    const query: any = { classId: classId as string, schoolId };
+    const query: any = { classId: classId as string };
 
     if (term) {
       query.term = term as string;
@@ -262,12 +284,6 @@ export const getAttendanceReport = async (req: AuthRequest, res: Response) => {
 export const getStudentTotalAttendance = async (req: AuthRequest, res: Response) => {
   try {
     const { studentId, term } = req.query;
-    let schoolId: string;
-    try {
-      schoolId = getCurrentSchoolId(req);
-    } catch {
-      return res.status(400).json({ message: 'School context not found' });
-    }
 
     if (!studentId) {
       return res.status(400).json({ message: 'Student ID is required' });
@@ -275,7 +291,7 @@ export const getStudentTotalAttendance = async (req: AuthRequest, res: Response)
 
     const attendanceRepository = AppDataSource.getRepository(Attendance);
 
-    const query: any = { studentId: studentId as string, schoolId };
+    const query: any = { studentId: studentId as string };
 
     if (term) {
       query.term = term as string;
