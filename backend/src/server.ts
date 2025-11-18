@@ -118,11 +118,39 @@ console.log('[Server] Platform:', process.platform);
 console.log('[Server] Architecture:', process.arch);
 console.log('[Server] Current working directory:', process.cwd());
 console.log('[Server] __dirname equivalent check...');
+console.log('[Server] AppDataSource type:', typeof AppDataSource);
+console.log('[Server] AppDataSource.isInitialized before:', AppDataSource.isInitialized);
+console.log('[Server] About to call AppDataSource.initialize()...');
 
-AppDataSource.initialize()
+// Add process listeners to catch unhandled errors
+process.on('uncaughtException', (error) => {
+  console.error('[Server] ✗ UNCAUGHT EXCEPTION:');
+  console.error('[Server] Error:', error);
+  console.error('[Server] Stack:', error.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[Server] ✗ UNHANDLED REJECTION:');
+  console.error('[Server] Reason:', reason);
+  console.error('[Server] Promise:', promise);
+});
+
+// Wrap initialize in a try-catch to get more details
+try {
+  console.log('[Server] Calling AppDataSource.initialize()...');
+  const initPromise = AppDataSource.initialize();
+  console.log('[Server] initialize() promise created, awaiting...');
+  
+  initPromise
   .then(() => {
     console.log('[Server] ✓ Database connected successfully');
     console.log('[Server] DataSource.isInitialized:', AppDataSource.isInitialized);
+    console.log('[Server] DataSource options:', {
+      type: AppDataSource.options.type,
+      database: AppDataSource.options.database,
+      entitiesCount: AppDataSource.entityMetadatas.length,
+      migrationsCount: AppDataSource.migrations.length
+    });
     console.log('[Server] Starting HTTP server on port', PORT);
     app.listen(PORT, () => {
       console.log(`[Server] ✓ Server running on port ${PORT}`);
@@ -150,3 +178,10 @@ AppDataSource.initialize()
     }
     process.exit(1);
   });
+} catch (syncError: any) {
+  console.error('[Server] ✗ SYNCHRONOUS ERROR during initialize() call:');
+  console.error('[Server] Error type:', syncError?.constructor?.name);
+  console.error('[Server] Error message:', syncError?.message);
+  console.error('[Server] Error stack:', syncError?.stack);
+  process.exit(1);
+}

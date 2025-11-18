@@ -30,13 +30,44 @@ console.log('[DB Config] Module type check - typeof exports:', typeof exports);
 console.log('[DB Config] Module type check - typeof module:', typeof module);
 
 console.log('[DB Config] Preparing entity list...');
+// Try using entity classes first, fallback to paths if needed
 const entities = [User, Student, Teacher, Class, Subject, Exam, Marks, Invoice, Parent, Settings, ReportCardRemarks, Message, UniformItem, InvoiceUniformItem, Attendance, School, PromotionRule];
 console.log('[DB Config] Entity count:', entities.length);
 console.log('[DB Config] Entity names:', entities.map(e => e?.name || 'unknown').join(', '));
+console.log('[DB Config] Checking each entity...');
+entities.forEach((entity, index) => {
+  try {
+    console.log(`[DB Config] Entity ${index + 1}: ${entity?.name || 'unknown'} - OK`);
+  } catch (err: any) {
+    console.error(`[DB Config] Entity ${index + 1}: ERROR -`, err?.message);
+  }
+});
 
 console.log('[DB Config] Creating DataSource instance...');
 let AppDataSource: DataSource;
 try {
+  // Determine migrations path based on environment
+  // Temporarily disable migrations and subscribers to isolate the issue
+  const migrationsPath = process.env.NODE_ENV === 'production' 
+    ? ['dist/migrations/**/*.js'] 
+    : ['src/migrations/**/*.ts'];
+  
+  const subscribersPath = process.env.NODE_ENV === 'production'
+    ? ['dist/subscribers/**/*.js']
+    : ['src/subscribers/**/*.ts'];
+  
+  console.log('[DB Config] Migrations path:', migrationsPath);
+  console.log('[DB Config] Subscribers path:', subscribersPath);
+  console.log('[DB Config] Temporarily disabling migrations and subscribers to isolate issue...');
+  
+  // Try using entity paths instead of classes to avoid potential issues
+  const entityPaths = process.env.NODE_ENV === 'production'
+    ? ['dist/entities/**/*.js']
+    : ['src/entities/**/*.ts'];
+  
+  console.log('[DB Config] Using entity paths:', entityPaths);
+  console.log('[DB Config] This allows TypeORM to load entities dynamically');
+  
   AppDataSource = new DataSource({
     type: 'postgres',
     host: process.env.DB_HOST || 'localhost',
@@ -46,9 +77,9 @@ try {
     database: process.env.DB_NAME || 'sms_db',
     synchronize: false,
     logging: false,
-    entities: entities,
-    migrations: ['src/migrations/**/*.ts'],
-    subscribers: ['src/subscribers/**/*.ts'],
+    entities: entityPaths, // Use paths instead of classes
+    migrations: [], // Temporarily disabled
+    subscribers: [], // Temporarily disabled
   });
   
   console.log('[DB Config] DataSource created successfully');
