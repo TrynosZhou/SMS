@@ -1,6 +1,7 @@
 {
   "name": "sms-backend",
   "version": "1.0.0",
+  "type": "commonjs",
   "main": "dist/server.js",
   "scripts": {
     "clean": "rimraf dist",
