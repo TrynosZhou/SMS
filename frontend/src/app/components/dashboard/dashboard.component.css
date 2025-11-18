@@ -158,6 +158,14 @@
   display: inline-block;
 }
 
+.school-id {
+  font-size: 0.9em;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+  font-family: 'Courier New', monospace;
+  white-space: nowrap;
+}
+
 .welcome-text {
   color: #7f8c8d;
   margin: 0;

@@ -59,17 +59,6 @@
             </span>
           </div>
         </div>
-        <div class="form-group">
-          <label>School Code</label>
-          <input 
-            type="text"
-            [(ngModel)]="schoolCode"
-            name="schoolCode"
-            placeholder="Enter your school code (e.g. demo)"
-            required
-            autocomplete="organization">
-          <small class="form-text">Ask your administrator if you are unsure of the code.</small>
-        </div>
         <button type="submit" class="btn btn-primary btn-block" [disabled]="loading">
           {{ loading ? 'Signing in...' : '🔐 Sign In' }}
         </button>
@@ -153,16 +142,6 @@
             required>
         </div>
         <div class="form-group">
-          <label>School Code *</label>
-          <input 
-            type="text"
-            [(ngModel)]="signupSchoolCode"
-            name="signupSchoolCode"
-            placeholder="Enter the school's unique code"
-            required>
-          <small class="form-text">Use the school code provided by your administrator.</small>
-        </div>
-        <div class="form-group">
           <label>Password *</label>
           <div class="password-input-wrapper">
             <input 
@@ -216,15 +195,6 @@
             required
             autocomplete="email">
           <small class="form-text">Enter the email address linked to your account</small>
-        </div>
-        <div class="form-group">
-          <label>School Code</label>
-          <input 
-            type="text"
-            [(ngModel)]="resetSchoolCode"
-            name="resetSchoolCode"
-            placeholder="Enter your school code"
-            required>
         </div>
         <button type="submit" class="btn btn-primary btn-block" [disabled]="loading">
           {{ loading ? 'Sending...' : '🔑 Send Reset Link' }}

@@ -40,6 +40,20 @@ export class AuthInterceptor implements HttpInterceptor {
             this.authService.logout();
           }
         }
+        
+        // Handle 400 errors related to school context (indicates old token format)
+        if (error.status === 400) {
+          const errorMessage = error.error?.message || '';
+          const isSchoolContextError = errorMessage.toLowerCase().includes('school context') ||
+                                       errorMessage.toLowerCase().includes('school context not found');
+          
+          if (isSchoolContextError && token) {
+            console.warn('School context missing - token may be outdated. Please log out and log back in.');
+            // Don't auto-logout, but log the warning - user should manually re-login
+            // This allows them to see the error and understand they need to refresh their session
+          }
+        }
+        
         return throwError(() => error);
       })
     );

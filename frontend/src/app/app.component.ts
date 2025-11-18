@@ -13,13 +13,12 @@ export class AppComponent implements OnInit {
   constructor(public authService: AuthService, private schoolService: SchoolService) { }
 
   ngOnInit(): void {
-    this.authService.currentSchool$.subscribe(school => {
-      this.schoolName = school?.name || 'School Management System';
-    });
-
-    if (this.authService.isAuthenticated() && !this.authService.getCurrentSchool()) {
+    // Load school name from settings if authenticated
+    if (this.authService.isAuthenticated()) {
       this.schoolService.getCurrentSchoolProfile().subscribe({
-        next: (school) => this.authService.setCurrentSchool(school),
+        next: (school) => {
+          this.schoolName = school?.name || 'School Management System';
+        },
         error: () => {
           // ignore profile fetch errors to avoid blocking UI
         }

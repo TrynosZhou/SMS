@@ -25,32 +25,24 @@ export class AuthService {
   private apiUrl = environment.apiUrl;
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
-  private currentSchoolSubject = new BehaviorSubject<any | null>(null);
-  public currentSchool$ = this.currentSchoolSubject.asObservable();
 
   constructor(private http: HttpClient, private router: Router) {
     const token = localStorage.getItem('token');
     const user = localStorage.getItem('user');
-    const school = localStorage.getItem('school');
     if (token && user) {
       this.currentUserSubject.next(JSON.parse(user));
     }
-    if (school) {
-      this.currentSchoolSubject.next(JSON.parse(school));
-    }
   }
 
-  login(identifier: string, password: string, schoolCode: string): Observable<any> {
+  login(identifier: string, password: string): Observable<any> {
     // Support both username and email login
     const loginData = identifier.includes('@') 
-      ? { email: identifier, password, schoolCode }
-      : { username: identifier, password, schoolCode };
+      ? { email: identifier, password }
+      : { username: identifier, password };
     return this.http.post(`${this.apiUrl}/auth/login`, loginData).pipe(
       tap((response: any) => {
         localStorage.setItem('token', response.token);
         localStorage.setItem('user', JSON.stringify(response.user));
-        const schoolPayload = response.school || response.user?.school || null;
-        this.setCurrentSchool(schoolPayload);
         this.currentUserSubject.next(response.user);
       })
     );
@@ -63,7 +55,6 @@ export class AuthService {
   logout(): void {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    this.setCurrentSchool(null);
     this.currentUserSubject.next(null);
     this.router.navigate(['/login']);
   }
@@ -76,10 +67,6 @@ export class AuthService {
     return this.currentUserSubject.value;
   }
 
-  getCurrentSchool(): any | null {
-    return this.currentSchoolSubject.value;
-  }
-
   isAuthenticated(): boolean {
     return !!this.getToken();
   }
@@ -89,8 +76,8 @@ export class AuthService {
     return user?.role === role;
   }
 
-  requestPasswordReset(email: string, schoolCode: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/auth/reset-password`, { email, schoolCode });
+  requestPasswordReset(email: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/reset-password`, { email });
   }
 
   resetPassword(token: string, newPassword: string): Observable<any> {
@@ -107,15 +94,6 @@ export class AuthService {
 
   unlinkStudent(studentId: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/parent/unlink-student/${studentId}`);
-  }
-
-  setCurrentSchool(school: any | null): void {
-    if (school) {
-      localStorage.setItem('school', JSON.stringify(school));
-    } else {
-      localStorage.removeItem('school');
-    }
-    this.currentSchoolSubject.next(school);
   }
 }
 

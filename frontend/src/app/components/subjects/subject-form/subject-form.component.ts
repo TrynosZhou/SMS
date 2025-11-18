@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, AfterViewChecked } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SubjectService } from '../../../services/subject.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
@@ -19,7 +19,7 @@ import { trigger, state, style, transition, animate } from '@angular/animations'
     ])
   ]
 })
-export class SubjectFormComponent implements OnInit {
+export class SubjectFormComponent implements OnInit, AfterViewChecked {
   subject: any = {
     name: '',
     code: '',
@@ -34,11 +34,13 @@ export class SubjectFormComponent implements OnInit {
   // Form validation
   fieldErrors: any = {};
   touchedFields: Set<string> = new Set();
+  private validationChecked = false;
 
   constructor(
     private subjectService: SubjectService,
     private route: ActivatedRoute,
-    public router: Router
+    public router: Router,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit() {
@@ -46,6 +48,16 @@ export class SubjectFormComponent implements OnInit {
     if (id) {
       this.isEdit = true;
       this.loadSubject(id);
+    }
+  }
+
+  ngAfterViewChecked() {
+    // Prevent ExpressionChangedAfterItHasBeenCheckedError
+    if (!this.validationChecked) {
+      this.validationChecked = true;
+      setTimeout(() => {
+        this.validationChecked = false;
+      }, 0);
     }
   }
 
@@ -109,7 +121,11 @@ export class SubjectFormComponent implements OnInit {
   }
 
   isFieldInvalid(fieldName: string): boolean {
-    return this.touchedFields.has(fieldName) && !!this.fieldErrors[fieldName];
+    // Use a stable check to prevent ExpressionChangedAfterItHasBeenCheckedError
+    if (!this.touchedFields.has(fieldName)) {
+      return false;
+    }
+    return !!this.fieldErrors[fieldName];
   }
 
   getFieldError(fieldName: string): string {
@@ -123,10 +139,7 @@ export class SubjectFormComponent implements OnInit {
   }
 
   isFormValid(): boolean {
-    // Validate required fields
-    this.validateField('name');
-    this.validateField('code');
-    
+    // Don't validate during change detection - only check existing errors
     return !this.fieldErrors['name'] && 
            !this.fieldErrors['code'] && 
            !!this.subject.name?.trim() && 

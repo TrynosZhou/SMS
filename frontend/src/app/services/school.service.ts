@@ -37,6 +37,10 @@ export class SchoolService {
     return this.http.patch(`${this.apiUrl}/schools/${id}`, payload);
   }
 
+  deleteSchool(id: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/schools/${id}`);
+  }
+
   generateSchoolCode(): Observable<{ code: string }> {
     return this.http.post<{ code: string }>(`${this.apiUrl}/schools/generate-code`, {});
   }

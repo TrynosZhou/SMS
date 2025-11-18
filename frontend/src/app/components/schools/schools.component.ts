@@ -11,6 +11,7 @@ export class SchoolsComponent implements OnInit {
   schools: any[] = [];
   loading = false;
   submitting = false;
+  deleting: { [key: string]: boolean } = {};
   error = '';
   success = '';
   schoolForm: FormGroup;
@@ -75,6 +76,34 @@ export class SchoolsComponent implements OnInit {
         this.submitting = false;
       }
     });
+  }
+
+  deleteSchool(schoolId: string): void {
+    if (!confirm('Are you sure you want to delete this school? This action cannot be undone.')) {
+      return;
+    }
+
+    this.deleting[schoolId] = true;
+    this.error = '';
+    this.success = '';
+
+    this.schoolService.deleteSchool(schoolId).subscribe({
+      next: (response) => {
+        this.success = response?.message || 'School deleted successfully';
+        this.deleting[schoolId] = false;
+        this.loadSchools();
+        setTimeout(() => (this.success = ''), 4000);
+      },
+      error: (err) => {
+        this.error = err.error?.message || 'Failed to delete school';
+        this.deleting[schoolId] = false;
+        setTimeout(() => (this.error = ''), 5000);
+      }
+    });
+  }
+
+  isDeleting(schoolId: string): boolean {
+    return this.deleting[schoolId] || false;
   }
 }
 

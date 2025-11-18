@@ -2,6 +2,8 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { SettingsService } from '../../services/settings.service';
 import { AuthService } from '../../services/auth.service';
+import { PromotionRuleService } from '../../services/promotion-rule.service';
+import { ClassService } from '../../services/class.service';
 
 @Component({
   selector: 'app-settings',
@@ -40,7 +42,6 @@ export class SettingsComponent implements OnInit {
       fail: 'UNCLASSIFIED'
     },
     schoolName: '',
-    schoolCode: '',
     schoolAddress: '',
     schoolPhone: '',
     schoolEmail: '',
@@ -105,9 +106,22 @@ export class SettingsComponent implements OnInit {
   success = '';
   newFeeName = '';
   newFeeAmount = 0;
-  newPromotionFrom = '';
-  newPromotionTo = '';
-  editingPromotionRule: string | null = null; // Track which rule is being edited
+  // Promotion Rules (database-backed)
+  promotionRules: any[] = [];
+  classes: any[] = [];
+  editingPromotionRule: any | null = null;
+  promotionRuleForm: {
+    fromClassId: string;
+    toClassId: string | null;
+    isFinalClass: boolean;
+    isActive: boolean;
+  } = {
+    fromClassId: '',
+    toClassId: null,
+    isFinalClass: false,
+    isActive: true
+  };
+  loadingPromotionRules = false;
   termStartDateInput: string = '';
   termEndDateInput: string = '';
   reminders: string[] = [];
@@ -138,7 +152,9 @@ export class SettingsComponent implements OnInit {
     private settingsService: SettingsService,
     private router: Router,
     public authService: AuthService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private promotionRuleService: PromotionRuleService,
+    private classService: ClassService
   ) { }
 
   isDemoUser(): boolean {
@@ -150,29 +166,23 @@ export class SettingsComponent implements OnInit {
     this.loadSettings();
     this.loadReminders();
     this.loadUniformItems();
+    this.loadClasses();
+    this.loadPromotionRules();
   }
 
   loadSettings() {
     // For demo users, always set school name to "Demo School"
     if (this.isDemoUser()) {
       this.settings.schoolName = 'Demo School';
-      this.settings.schoolCode = 'DEMO';
     }
     this.loading = true;
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
         this.settings = { ...this.settings, ...data };
-        // Load school code from settings (human-readable format, preserve case for display)
-        if (data?.schoolCode) {
-          this.settings.schoolCode = data.schoolCode;
-        } else if (!this.settings.schoolCode) {
-          this.settings.schoolCode = '';
-        }
         
         // For demo users, always set school name to "Demo School"
         if (this.isDemoUser()) {
           this.settings.schoolName = 'Demo School';
-          this.settings.schoolCode = 'demo';
         }
         
         // Initialize term date inputs
@@ -420,113 +430,193 @@ export class SettingsComponent implements OnInit {
     this.settings.feesSettings.otherFees.splice(index, 1);
   }
 
-  addPromotionRule() {
-    console.log('addPromotionRule called', { from: this.newPromotionFrom, to: this.newPromotionTo });
-    
-    // Trim whitespace
-    const fromClass = this.newPromotionFrom?.trim();
-    const toClass = this.newPromotionTo?.trim();
-    
-    if (!fromClass || !toClass) {
-      this.error = 'Please enter both current class and next class';
+  // Load classes for dropdowns
+  loadClasses() {
+    this.classService.getClasses().subscribe({
+      next: (response: any) => {
+        this.classes = Array.isArray(response) ? response : (response?.classes || []);
+        // Sort by name
+        this.classes.sort((a, b) => a.name.localeCompare(b.name));
+      },
+      error: (err: any) => {
+        console.error('Error loading classes:', err);
+      }
+    });
+  }
+
+  // Load promotion rules from database
+  loadPromotionRules() {
+    this.loadingPromotionRules = true;
+    this.promotionRuleService.getPromotionRules().subscribe({
+      next: (rules: any) => {
+        this.promotionRules = Array.isArray(rules) ? rules : [];
+        this.loadingPromotionRules = false;
+      },
+      error: (err: any) => {
+        console.error('Error loading promotion rules:', err);
+        this.error = 'Failed to load promotion rules';
+        this.loadingPromotionRules = false;
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  // Get active classes for dropdown (excluding the one being edited)
+  getAvailableFromClasses(): any[] {
+    const editingFromClassId = this.editingPromotionRule?.fromClassId;
+    return this.classes.filter(c => 
+      c.isActive && 
+      (c.id === editingFromClassId || !this.promotionRules.find(r => r.fromClassId === c.id))
+    );
+  }
+
+  // Get available to classes (all classes + "Completed" option)
+  getAvailableToClasses(): any[] {
+    return this.classes.filter(c => c.isActive);
+  }
+
+  // Add or update promotion rule
+  savePromotionRule() {
+    if (!this.promotionRuleForm.fromClassId) {
+      this.error = 'Please select a From Class';
       setTimeout(() => this.error = '', 3000);
-      this.cdr.markForCheck();
       return;
     }
-    
-    if (!this.settings.promotionRules) {
-      this.settings.promotionRules = {};
+
+    if (!this.promotionRuleForm.isFinalClass && !this.promotionRuleForm.toClassId) {
+      this.error = 'Please select a To Class or mark as Final Class';
+      setTimeout(() => this.error = '', 3000);
+      return;
     }
-    
-    // If editing an existing rule
+
+    if (this.promotionRuleForm.fromClassId === this.promotionRuleForm.toClassId) {
+      this.error = 'From Class and To Class cannot be the same';
+      setTimeout(() => this.error = '', 3000);
+      return;
+    }
+
+    // Handle "COMPLETED" option
+    const toClassId = this.promotionRuleForm.toClassId === 'COMPLETED' || this.promotionRuleForm.isFinalClass 
+      ? null 
+      : this.promotionRuleForm.toClassId;
+    const isFinalClass = this.promotionRuleForm.toClassId === 'COMPLETED' || this.promotionRuleForm.isFinalClass;
+
+    const ruleData = {
+      fromClassId: this.promotionRuleForm.fromClassId,
+      toClassId: toClassId,
+      isFinalClass: isFinalClass,
+      isActive: this.promotionRuleForm.isActive
+    };
+
     if (this.editingPromotionRule) {
-      // If the from class changed, we need to remove the old one
-      if (fromClass !== this.editingPromotionRule) {
-        // Remove old rule
-        const { [this.editingPromotionRule]: removed, ...rest } = this.settings.promotionRules;
-        this.settings.promotionRules = rest;
-      }
-      
-      // Add/update the rule
-      this.settings.promotionRules = {
-        ...this.settings.promotionRules,
-        [fromClass]: toClass
-      };
-      
-      this.success = `Promotion rule updated: ${fromClass} → ${toClass}. Don't forget to save settings!`;
-      this.editingPromotionRule = null; // Clear editing state
+      // Update existing rule
+      this.promotionRuleService.updatePromotionRule(this.editingPromotionRule.id, ruleData).subscribe({
+        next: (rule: any) => {
+          this.success = 'Promotion rule updated successfully';
+          this.loadPromotionRules();
+          this.resetPromotionRuleForm();
+          setTimeout(() => this.success = '', 5000);
+        },
+        error: (err: any) => {
+          this.error = err.error?.message || 'Failed to update promotion rule';
+          setTimeout(() => this.error = '', 5000);
+        }
+      });
     } else {
-      // Check if rule already exists (only when adding new, not editing)
-      if (this.settings.promotionRules[fromClass]) {
-        this.error = `A promotion rule for "${fromClass}" already exists. Please remove it first or click Edit to update it.`;
-        setTimeout(() => this.error = '', 4000);
-        this.cdr.markForCheck();
-        return;
-      }
-      
-      // Add the new rule - create new object reference to trigger change detection
-      this.settings.promotionRules = {
-        ...this.settings.promotionRules,
-        [fromClass]: toClass
-      };
-      
-      this.success = `Promotion rule added: ${fromClass} → ${toClass}. Don't forget to save settings!`;
+      // Create new rule
+      this.promotionRuleService.createPromotionRule(ruleData).subscribe({
+        next: (rule: any) => {
+          this.success = 'Promotion rule created successfully';
+          this.loadPromotionRules();
+          this.resetPromotionRuleForm();
+          setTimeout(() => this.success = '', 5000);
+        },
+        error: (err: any) => {
+          this.error = err.error?.message || 'Failed to create promotion rule';
+          setTimeout(() => this.error = '', 5000);
+        }
+      });
     }
-    
-    console.log('Promotion rule saved', this.settings.promotionRules);
-    
-    // Clear input fields
-    this.newPromotionFrom = '';
-    this.newPromotionTo = '';
-    
-    setTimeout(() => this.success = '', 5000);
-    
-    // Trigger change detection
-    this.cdr.detectChanges();
   }
 
-  editPromotionRule(fromClass: string) {
-    // Populate input fields with existing values
-    this.newPromotionFrom = fromClass;
-    this.newPromotionTo = this.settings.promotionRules[fromClass] || '';
-    this.editingPromotionRule = fromClass;
+  // Edit promotion rule
+  editPromotionRule(rule: any) {
+    this.editingPromotionRule = rule;
+    this.promotionRuleForm = {
+      fromClassId: rule.fromClassId,
+      toClassId: rule.isFinalClass ? 'COMPLETED' : rule.toClassId,
+      isFinalClass: rule.isFinalClass,
+      isActive: rule.isActive
+    };
     
-    // Scroll to input fields
+    // Scroll to form
     setTimeout(() => {
-      const inputElement = document.querySelector('input[name="newPromotionFrom"]') as HTMLElement;
-      if (inputElement) {
-        inputElement.focus();
-        inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const formElement = document.querySelector('.promotion-rule-form') as HTMLElement;
+      if (formElement) {
+        formElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 100);
-    
-    this.cdr.markForCheck();
   }
 
+  // Delete promotion rule
+  deletePromotionRule(rule: any) {
+    if (!confirm(`Are you sure you want to delete the promotion rule from "${rule.fromClass?.name || rule.fromClass?.form}"?`)) {
+      return;
+    }
+
+    this.promotionRuleService.deletePromotionRule(rule.id).subscribe({
+      next: () => {
+        this.success = 'Promotion rule deleted successfully';
+        this.loadPromotionRules();
+        setTimeout(() => this.success = '', 5000);
+      },
+      error: (err: any) => {
+        this.error = err.error?.message || 'Failed to delete promotion rule';
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  // Cancel editing
   cancelEditPromotionRule() {
-    this.newPromotionFrom = '';
-    this.newPromotionTo = '';
+    this.resetPromotionRuleForm();
+  }
+
+  // Reset form
+  resetPromotionRuleForm() {
     this.editingPromotionRule = null;
-    this.cdr.markForCheck();
+    this.promotionRuleForm = {
+      fromClassId: '',
+      toClassId: null,
+      isFinalClass: false,
+      isActive: true
+    };
   }
 
-  removePromotionRule(fromClass: string) {
-    if (this.settings.promotionRules && this.settings.promotionRules[fromClass]) {
-      // Create new object without the deleted rule to trigger change detection
-      const { [fromClass]: removed, ...rest } = this.settings.promotionRules;
-      this.settings.promotionRules = rest;
-      this.cdr.markForCheck();
-    }
+  // Toggle rule active status
+  toggleRuleStatus(rule: any) {
+    this.promotionRuleService.updatePromotionRule(rule.id, {
+      isActive: !rule.isActive
+    }).subscribe({
+      next: () => {
+        this.loadPromotionRules();
+      },
+      error: (err: any) => {
+        this.error = err.error?.message || 'Failed to update rule status';
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
   }
 
-  getPromotionRulesArray(): { from: string; to: string }[] {
-    if (!this.settings.promotionRules) {
-      return [];
-    }
-    return Object.entries(this.settings.promotionRules).map(([from, to]) => ({
-      from,
-      to: to as string
-    }));
+  // Get class display name
+  getClassDisplayName(classItem: any): string {
+    if (!classItem) return '';
+    return classItem.name || classItem.form || 'Unknown';
+  }
+
+  // Check if class has no promotion rule (for warning)
+  hasNoPromotionRule(classId: string): boolean {
+    return !this.promotionRules.find(r => r.fromClassId === classId && r.isActive);
   }
 
   validateGradeThresholds() {
@@ -571,29 +661,15 @@ export class SettingsComponent implements OnInit {
     this.error = '';
     this.success = '';
 
-    const normalizedSchoolCode = (this.settings.schoolCode || '').toString().trim();
     const normalizedSchoolName = (this.settings.schoolName || '').toString().trim();
-    const lowerCaseCode = normalizedSchoolCode.toLowerCase();
-    const isDemoCode = lowerCaseCode === 'demo';
 
-    if (!normalizedSchoolCode || !normalizedSchoolName) {
-      this.error = 'School code and school name are both required.';
+    if (!normalizedSchoolName) {
+      this.error = 'School name is required.';
       this.loading = false;
       setTimeout(() => this.error = '', 5000);
       return;
     }
 
-    // Validate human-readable school code: alphanumeric, hyphens, underscores, 3-50 chars
-    const codePattern = /^[a-zA-Z0-9_-]{3,50}$/;
-    if (!isDemoCode && !codePattern.test(normalizedSchoolCode)) {
-      this.error = 'School code must be 3-50 characters long and contain only letters, numbers, hyphens, or underscores (e.g., riverton, school-2024).';
-      this.loading = false;
-      setTimeout(() => this.error = '', 5000);
-      return;
-    }
-
-    // Store code in lowercase for consistency (but display as entered)
-    this.settings.schoolCode = lowerCaseCode;
     this.settings.schoolName = normalizedSchoolName;
 
     // Convert date inputs to Date objects for backend
@@ -724,7 +800,7 @@ export class SettingsComponent implements OnInit {
       this.settings.currencySymbol = 'KES';
     }
 
-    const payload = { ...this.settings, schoolCode: lowerCaseCode, schoolName: normalizedSchoolName };
+    const payload = { ...this.settings, schoolName: normalizedSchoolName };
 
     this.settingsService.updateSettings(payload).subscribe({
       next: (response: any) => {

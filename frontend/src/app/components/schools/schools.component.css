@@ -46,6 +46,13 @@ form input {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 12px;
+}
+
+.school-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .badge {
@@ -93,6 +100,21 @@ form input {
 .btn-primary {
   background: #007bff;
   color: #fff;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: #fff;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .empty-state {

@@ -232,6 +232,7 @@ export class ClassFormComponent implements OnInit {
     }
   }
 
+
   isFormValid(): boolean {
     // Check validity without modifying state to avoid ExpressionChangedAfterItHasBeenCheckedError
     const nameValid = !!this.classItem.name?.trim() && this.classItem.name.length <= 50;

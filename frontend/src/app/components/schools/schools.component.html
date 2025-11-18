@@ -65,9 +65,19 @@
           <h4>{{ school.name }}</h4>
           <p class="code">Code: {{ school.schoolid }}</p>
         </div>
-        <span class="badge" [ngClass]="{ active: school.isActive, inactive: !school.isActive }">
-          {{ school.isActive ? 'Active' : 'Inactive' }}
-        </span>
+        <div class="school-header-right">
+          <span class="badge" [ngClass]="{ active: school.isActive, inactive: !school.isActive }">
+            {{ school.isActive ? 'Active' : 'Inactive' }}
+          </span>
+          <button 
+            type="button" 
+            class="btn btn-danger btn-sm" 
+            (click)="deleteSchool(school.id)"
+            [disabled]="isDeleting(school.id)"
+            title="Delete school">
+            {{ isDeleting(school.id) ? 'Deleting...' : '🗑️ Delete' }}
+          </button>
+        </div>
       </div>
       <div class="school-body">
         <p *ngIf="school.address"><strong>Address:</strong> {{ school.address }}</p>

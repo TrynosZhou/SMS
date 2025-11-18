@@ -433,28 +433,8 @@
       <!-- School Information -->
       <div class="form-section">
         <h2>School Information</h2>
-        <div class="form-row school-code-row">
-          <div class="form-group">
-            <label>School Code *</label>
-            <input 
-              type="text" 
-              [(ngModel)]="settings.schoolCode" 
-              name="schoolCode"
-              class="school-code-input"
-              [disabled]="isDemoUser()"
-              minlength="3"
-              maxlength="50"
-              autocomplete="off"
-              placeholder="e.g., riverton, school-2024"
-              pattern="[a-zA-Z0-9_-]+"
-              required>
-            <small>Enter a unique, human-readable code (3-50 characters). Use only letters, numbers, hyphens, or underscores. This code will be used by teachers, students, and parents to log in.</small>
-            <small *ngIf="isDemoUser()" class="demo-disabled-text">
-              School code is locked to "demo" for demo accounts.
-            </small>
-          </div>
-          <div class="form-group">
-            <label>School Name *</label>
+        <div class="form-group">
+          <label>School Name *</label>
             <input 
               type="text" 
               [(ngModel)]="settings.schoolName" 
@@ -465,7 +445,6 @@
             <small *ngIf="isDemoUser()" class="demo-disabled-text">
               School name is locked to "Demo School" for demo accounts.
             </small>
-          </div>
         </div>
         <div class="form-group">
           <label>School Address</label>
@@ -578,78 +557,179 @@
         <p class="section-description">Configure how students move from one class to another during promotion. This determines the promotion path for all students.</p>
         
         <div class="promotion-rules-container">
-          <div class="add-promotion-rule">
-            <div style="display: grid; grid-template-columns: 2fr 2fr auto auto; gap: 15px; margin-bottom: 15px; align-items: center;">
-              <input 
-                type="text" 
-                [(ngModel)]="newPromotionFrom" 
-                name="newPromotionFrom"
-                [placeholder]="editingPromotionRule ? 'Current Class (editing...)' : 'Current Class (e.g., ECD A, Grade 1)'"
-                class="form-control promotion-input"
-                [style.border-color]="editingPromotionRule ? '#007bff' : ''"
-                [style.border-width]="editingPromotionRule ? '2px' : '1px'"
-                style="padding: 12px; font-size: 15px; width: 100%;">
-              <input 
-                type="text" 
-                [(ngModel)]="newPromotionTo" 
-                name="newPromotionTo"
-                [placeholder]="editingPromotionRule ? 'Next Class (editing...)' : 'Next Class (e.g., ECD B, Grade 2)'"
-                class="form-control promotion-input"
-                [style.border-color]="editingPromotionRule ? '#007bff' : ''"
-                [style.border-width]="editingPromotionRule ? '2px' : '1px'"
-                style="padding: 12px; font-size: 15px; width: 100%;">
+          <!-- Add/Edit Form -->
+          <div class="promotion-rule-form" style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #e0e0e0;">
+            <h3 style="margin-top: 0; margin-bottom: 15px; color: #333;">
+              {{ editingPromotionRule ? '✏️ Edit Promotion Rule' : '➕ Add New Promotion Rule' }}
+            </h3>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+              <div class="form-group">
+                <label>From Class *</label>
+                <select 
+                  [(ngModel)]="promotionRuleForm.fromClassId" 
+                  name="fromClassId"
+                  class="form-control"
+                  [disabled]="!!editingPromotionRule">
+                  <option value="">-- Select From Class --</option>
+                  <option *ngFor="let cls of getAvailableFromClasses()" [value]="cls.id">
+                    {{ getClassDisplayName(cls) }} ({{ cls.form }})
+                  </option>
+                </select>
+                <small>Select the class students are currently in</small>
+              </div>
+              
+              <div class="form-group">
+                <label>To Class *</label>
+                <select 
+                  [(ngModel)]="promotionRuleForm.toClassId" 
+                  name="toClassId"
+                  class="form-control"
+                  [disabled]="promotionRuleForm.isFinalClass"
+                  (change)="promotionRuleForm.toClassId === 'COMPLETED' ? promotionRuleForm.isFinalClass = true : null">
+                  <option value="">-- Select To Class --</option>
+                  <option value="COMPLETED">✅ Completed/Graduated</option>
+                  <option *ngFor="let cls of getAvailableToClasses()" [value]="cls.id">
+                    {{ getClassDisplayName(cls) }} ({{ cls.form }})
+                  </option>
+                </select>
+                <small>Select the class students will be promoted to, or "Completed" for final classes</small>
+              </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+              <div class="form-group">
+                <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input 
+                    type="checkbox" 
+                    [(ngModel)]="promotionRuleForm.isFinalClass" 
+                    name="isFinalClass"
+                    (change)="promotionRuleForm.isFinalClass ? promotionRuleForm.toClassId = null : null">
+                  <span><strong>Is Final Class?</strong></span>
+                </label>
+                <small>Check if this class leads to completion/graduation (no further promotion)</small>
+              </div>
+              
+              <div class="form-group">
+                <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input 
+                    type="checkbox" 
+                    [(ngModel)]="promotionRuleForm.isActive" 
+                    name="isActive">
+                  <span><strong>Active</strong></span>
+                </label>
+                <small>Uncheck to temporarily disable this rule without deleting it</small>
+              </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
               <button 
                 type="button" 
                 [class]="editingPromotionRule ? 'btn btn-primary' : 'btn btn-secondary'" 
-                (click)="addPromotionRule(); $event.stopPropagation()"
-                style="white-space: nowrap; padding: 12px 20px;">
-                {{ editingPromotionRule ? 'Update Rule' : 'Add Rule' }}
+                (click)="savePromotionRule()"
+                [disabled]="!promotionRuleForm.fromClassId || (!promotionRuleForm.isFinalClass && !promotionRuleForm.toClassId)">
+                {{ editingPromotionRule ? '💾 Update Rule' : '➕ Add Rule' }}
               </button>
               <button 
                 *ngIf="editingPromotionRule"
                 type="button" 
                 class="btn btn-secondary" 
-                (click)="cancelEditPromotionRule(); $event.stopPropagation()"
-                title="Cancel editing"
-                style="white-space: nowrap; padding: 12px 20px;">
+                (click)="cancelEditPromotionRule()">
                 Cancel
               </button>
             </div>
-            <div *ngIf="editingPromotionRule" class="alert alert-info" style="padding: 8px 12px; margin-bottom: 10px; background: #e3f2fd; border-left: 3px solid #2196f3; color: #1565c0; font-size: 13px;">
-              <strong>✏️ Editing:</strong> {{ editingPromotionRule }} → {{ settings.promotionRules[editingPromotionRule] }}
+            
+            <div *ngIf="editingPromotionRule" class="alert alert-info" style="margin-top: 15px; padding: 10px 15px; background: #e3f2fd; border-left: 3px solid #2196f3; color: #1565c0;">
+              <strong>✏️ Editing:</strong> {{ getClassDisplayName(editingPromotionRule.fromClass) }} → 
+              {{ editingPromotionRule.isFinalClass ? 'Completed' : getClassDisplayName(editingPromotionRule.toClass) }}
             </div>
           </div>
 
-          <div class="promotion-rules-list">
-            <div *ngFor="let rule of getPromotionRulesArray()" class="promotion-rule-item" [class.editing]="editingPromotionRule === rule.from">
-              <div class="rule-content">
-                <span class="rule-from">{{ rule.from }}</span>
-                <span class="rule-arrow">→</span>
-                <span class="rule-to">{{ rule.to }}</span>
-              </div>
-              <div class="rule-actions" style="display: flex; gap: 8px;">
-                <button 
-                  type="button" 
-                  class="btn btn-primary btn-sm" 
-                  (click)="editPromotionRule(rule.from)"
-                  [disabled]="editingPromotionRule && editingPromotionRule !== rule.from"
-                  title="Edit this rule">
-                  ✏️ Edit
-                </button>
-                <button 
-                  type="button" 
-                  class="btn btn-danger btn-sm" 
-                  (click)="removePromotionRule(rule.from)"
-                  [disabled]="editingPromotionRule === rule.from"
-                  title="Remove this rule">
-                  Remove
-                </button>
-              </div>
-            </div>
+          <!-- Rules Table -->
+          <div *ngIf="loadingPromotionRules" style="text-align: center; padding: 20px;">
+            Loading promotion rules...
+          </div>
+          
+          <div *ngIf="!loadingPromotionRules && promotionRules.length > 0" class="promotion-rules-table-wrapper" style="overflow-x: auto;">
+            <table class="promotion-rules-table" style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background: #f5f5f5;">
+                  <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">From Class</th>
+                  <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">To Class</th>
+                  <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Final Class</th>
+                  <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Status</th>
+                  <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let rule of promotionRules" [class.editing]="editingPromotionRule?.id === rule.id" style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 12px;">
+                    <strong>{{ getClassDisplayName(rule.fromClass) }}</strong>
+                    <br>
+                    <small style="color: #666;">{{ rule.fromClass?.form }}</small>
+                  </td>
+                  <td style="padding: 12px;">
+                    <span *ngIf="rule.isFinalClass" style="color: #28a745; font-weight: bold;">✅ Completed</span>
+                    <span *ngIf="!rule.isFinalClass">
+                      <strong>{{ getClassDisplayName(rule.toClass) }}</strong>
+                      <br>
+                      <small style="color: #666;">{{ rule.toClass?.form }}</small>
+                    </span>
+                  </td>
+                  <td style="padding: 12px; text-align: center;">
+                    <span *ngIf="rule.isFinalClass" style="color: #28a745; font-weight: bold;">✓</span>
+                    <span *ngIf="!rule.isFinalClass" style="color: #999;">-</span>
+                  </td>
+                  <td style="padding: 12px; text-align: center;">
+                    <label class="toggle-switch" style="cursor: pointer;">
+                      <input 
+                        type="checkbox" 
+                        [checked]="rule.isActive"
+                        (change)="toggleRuleStatus(rule)">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <br>
+                    <small [style.color]="rule.isActive ? '#28a745' : '#dc3545'">
+                      {{ rule.isActive ? 'Active' : 'Inactive' }}
+                    </small>
+                  </td>
+                  <td style="padding: 12px; text-align: center;">
+                    <div style="display: flex; gap: 8px; justify-content: center;">
+                      <button 
+                        type="button" 
+                        class="btn btn-primary btn-sm" 
+                        (click)="editPromotionRule(rule)"
+                        [disabled]="!!editingPromotionRule && editingPromotionRule.id !== rule.id"
+                        title="Edit this rule">
+                        ✏️
+                      </button>
+                      <button 
+                        type="button" 
+                        class="btn btn-danger btn-sm" 
+                        (click)="deletePromotionRule(rule)"
+                        [disabled]="editingPromotionRule?.id === rule.id"
+                        title="Delete this rule">
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          <div *ngIf="getPromotionRulesArray().length === 0" class="no-rules-message">
-            <p>No promotion rules configured. Add rules to define how students move between classes.</p>
+          <div *ngIf="!loadingPromotionRules && promotionRules.length === 0" class="no-rules-message" style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px; color: #666;">
+            <p style="font-size: 16px; margin: 0;">No promotion rules configured yet.</p>
+            <p style="font-size: 14px; margin-top: 10px;">Add rules above to define how students move between classes.</p>
+          </div>
+          
+          <!-- Warning for classes without rules -->
+          <div *ngIf="!loadingPromotionRules && classes.length > 0" style="margin-top: 20px;">
+            <div *ngFor="let cls of classes" style="margin-bottom: 5px;">
+              <div *ngIf="cls.isActive && hasNoPromotionRule(cls.id)" class="alert alert-warning" style="padding: 8px 12px; margin-bottom: 5px; background: #fff3cd; border-left: 3px solid #ffc107; color: #856404; font-size: 13px;">
+                ⚠️ <strong>{{ getClassDisplayName(cls) }}</strong> has no active promotion rule defined
+              </div>
+            </div>
           </div>
         </div>
       </div>

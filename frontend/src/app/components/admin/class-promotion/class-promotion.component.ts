@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ClassService } from '../../../services/class.service';
 import { StudentService } from '../../../services/student.service';
 import { SettingsService } from '../../../services/settings.service';
+import { PromotionRuleService } from '../../../services/promotion-rule.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 
 interface PromotionData {
@@ -63,59 +64,40 @@ export class ClassPromotionComponent implements OnInit {
   // Modal
   showConfirmModal = false;
 
-  // Promotion rules from settings
-  promotionRules: { [key: string]: string } = {};
+  // Promotion rules from database
+  promotionRules: any[] = [];
+  promotionRulesMap: Map<string, any> = new Map(); // Map fromClassId -> rule
 
   constructor(
     private classService: ClassService,
     private studentService: StudentService,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
+    private promotionRuleService: PromotionRuleService
   ) { }
 
   ngOnInit() {
-    this.loadSettings();
+    this.loadPromotionRules();
   }
 
-  loadSettings() {
-    this.settingsService.getSettings().subscribe({
-      next: (settings: any) => {
-        console.log('Settings loaded:', settings);
-        this.promotionRules = settings.promotionRules || {};
-        
-        // If no promotion rules in settings, use defaults
-        if (!this.promotionRules || Object.keys(this.promotionRules).length === 0) {
-          console.warn('No promotion rules found in settings, using defaults');
-          this.promotionRules = {
-            'ECD A': 'ECD B',
-            'ECD B': 'Grade 1',
-            'Grade 1': 'Grade 2',
-            'Grade 2': 'Grade 3',
-            'Grade 3': 'Grade 4',
-            'Grade 4': 'Grade 5',
-            'Grade 5': 'Grade 6',
-            'Grade 6': 'Grade 7',
-            'Grade 7': 'Completed'
-          };
-        }
-        
-        console.log('Using promotion rules:', this.promotionRules);
+  loadPromotionRules() {
+    this.promotionRuleService.getActivePromotionRules().subscribe({
+      next: (rules: any) => {
+        this.promotionRules = Array.isArray(rules) ? rules : [];
+        // Build a map for quick lookup by fromClassId
+        this.promotionRulesMap.clear();
+        this.promotionRules.forEach(rule => {
+          if (rule.fromClassId) {
+            this.promotionRulesMap.set(rule.fromClassId, rule);
+          }
+        });
+        console.log('Loaded promotion rules from database:', this.promotionRules.length);
+        console.log('Promotion rules map:', Array.from(this.promotionRulesMap.entries()));
         this.loadAllData();
       },
       error: (err: any) => {
-        console.error('Error loading settings:', err);
-        // Use default promotion rules if settings fail to load
-        this.promotionRules = {
-          'ECD A': 'ECD B',
-          'ECD B': 'Grade 1',
-          'Grade 1': 'Grade 2',
-          'Grade 2': 'Grade 3',
-          'Grade 3': 'Grade 4',
-          'Grade 4': 'Grade 5',
-          'Grade 5': 'Grade 6',
-          'Grade 6': 'Grade 7',
-          'Grade 7': 'Completed'
-        };
-        console.log('Using default promotion rules due to error');
+        console.error('Error loading promotion rules:', err);
+        this.promotionRules = [];
+        this.promotionRulesMap.clear();
         this.loadAllData();
       }
     });
@@ -213,152 +195,43 @@ export class ClassPromotionComponent implements OnInit {
   }
 
   findNextClass(classItem: any): any | null {
-    if (!classItem || !this.promotionRules || Object.keys(this.promotionRules).length === 0) {
-      console.log('findNextClass: Missing classItem or promotionRules');
+    if (!classItem || !classItem.id) {
+      console.log('findNextClass: Missing classItem or classItem.id');
       return null;
     }
 
-    // Normalize function for case-insensitive, trimmed matching
-    const normalize = (str: string) => {
-      if (!str) return '';
-      return str.trim().toLowerCase().replace(/\s+/g, ' ');
-    };
-    
-    // Extract base class name (e.g., "Grade 2" from "Grade 2A" or "Grade2")
-    const extractBaseName = (str: string) => {
-      if (!str) return '';
-      const normalized = normalize(str);
-      // Match patterns like "grade 2", "grade2", "grade 2a", etc.
-      const match = normalized.match(/^(grade|form|ecd)\s*([a-z0-9]+)/i);
-      if (match) {
-        return `${match[1]} ${match[2]}`.toLowerCase();
-      }
-      return normalized;
-    };
-    
-    // Try to find matching rule - check both name and form
-    let nextClassName: string | undefined;
-    const className = classItem.name || '';
-    const classForm = classItem.form || '';
-    
-    console.log(`Finding next class for: name="${className}", form="${classForm}"`);
-    console.log('Available promotion rules:', Object.keys(this.promotionRules));
-    
-    // Strategy 1: Exact match by name
-    if (className && this.promotionRules[className]) {
-      nextClassName = this.promotionRules[className];
-      console.log(`Found exact match by name: ${className} → ${nextClassName}`);
-    }
-    // Strategy 2: Exact match by form
-    else if (classForm && this.promotionRules[classForm]) {
-      nextClassName = this.promotionRules[classForm];
-      console.log(`Found exact match by form: ${classForm} → ${nextClassName}`);
-    }
-    // Strategy 3: Case-insensitive exact match by name
-    else if (className) {
-      const normalizedName = normalize(className);
-      for (const [key, value] of Object.entries(this.promotionRules)) {
-        if (normalize(key) === normalizedName) {
-          nextClassName = value;
-          console.log(`Found case-insensitive match by name: ${key} → ${nextClassName}`);
-          break;
-        }
-      }
-    }
-    // Strategy 4: Case-insensitive exact match by form
-    else if (classForm) {
-      const normalizedForm = normalize(classForm);
-      for (const [key, value] of Object.entries(this.promotionRules)) {
-        if (normalize(key) === normalizedForm) {
-          nextClassName = value;
-          console.log(`Found case-insensitive match by form: ${key} → ${nextClassName}`);
-          break;
-        }
-      }
-    }
-    
-    // Strategy 5: Base name matching (e.g., "Grade 2" matches "Grade 2A")
-    if (!nextClassName && className) {
-      const baseName = extractBaseName(className);
-      for (const [key, value] of Object.entries(this.promotionRules)) {
-        const keyBase = extractBaseName(key);
-        if (keyBase === baseName) {
-          nextClassName = value;
-          console.log(`Found base name match: ${key} (base: ${keyBase}) → ${nextClassName}`);
-          break;
-        }
-      }
-    }
-    
-    // Strategy 6: Base name matching by form
-    if (!nextClassName && classForm) {
-      const baseForm = extractBaseName(classForm);
-      for (const [key, value] of Object.entries(this.promotionRules)) {
-        const keyBase = extractBaseName(key);
-        if (keyBase === baseForm) {
-          nextClassName = value;
-          console.log(`Found base form match: ${key} (base: ${keyBase}) → ${nextClassName}`);
-          break;
-        }
-      }
-    }
-    
-    // If "Completed" is the next class, return null (no actual class to promote to)
-    if (nextClassName === 'Completed') {
-      console.log('Next class is "Completed" - returning null');
+    if (!this.promotionRulesMap || this.promotionRulesMap.size === 0) {
+      console.log('findNextClass: No promotion rules loaded');
       return null;
     }
+
+    // Look up the promotion rule by fromClassId
+    const rule = this.promotionRulesMap.get(classItem.id);
     
-    // If no next class found in rules, return null
-    if (!nextClassName) {
-      console.log(`No promotion rule found for: name="${className}", form="${classForm}"`);
+    if (!rule) {
+      console.log(`No promotion rule found for class: ${classItem.name} (ID: ${classItem.id})`);
       return null;
     }
-    
-    console.log(`Looking for class object: ${nextClassName}`);
-    console.log('Available classes:', this.classes.map(c => ({ name: c.name, form: c.form })));
-    
-    // Now find the actual class object
-    // Strategy 1: Exact match
-    let nextClass = this.classes.find(c => 
-      c.name === nextClassName || c.form === nextClassName
-    );
-    
-    // Strategy 2: Case-insensitive match
-    if (!nextClass) {
-      const normalizedNext = normalize(nextClassName);
-      nextClass = this.classes.find(c => 
-        normalize(c.name) === normalizedNext || normalize(c.form) === normalizedNext
-      );
+
+    // If it's a final class, return null (no promotion)
+    if (rule.isFinalClass) {
+      console.log(`Class ${classItem.name} is a final class - no promotion`);
+      return null;
     }
-    
-    // Strategy 3: Base name matching
-    if (!nextClass) {
-      const baseNext = extractBaseName(nextClassName);
-      nextClass = this.classes.find(c => {
-        const cBaseName = extractBaseName(c.name);
-        const cBaseForm = extractBaseName(c.form);
-        return cBaseName === baseNext || cBaseForm === baseNext;
-      });
+
+    // If no toClassId, return null
+    if (!rule.toClassId) {
+      console.log(`Promotion rule for ${classItem.name} has no toClassId`);
+      return null;
     }
-    
-    // Strategy 4: Partial match (e.g., "Grade 1" matches "Grade 1A")
-    if (!nextClass) {
-      const normalizedNext = normalize(nextClassName);
-      nextClass = this.classes.find(c => {
-        const cName = normalize(c.name);
-        const cForm = normalize(c.form);
-        return cName.startsWith(normalizedNext) || 
-               normalizedNext.startsWith(cName) ||
-               cForm.startsWith(normalizedNext) ||
-               normalizedNext.startsWith(cForm);
-      });
-    }
+
+    // Find the actual class object by toClassId
+    const nextClass = this.classes.find(c => c.id === rule.toClassId);
     
     if (nextClass) {
-      console.log(`Found next class: ${nextClass.name} (form: ${nextClass.form})`);
+      console.log(`Found next class: ${nextClass.name} (form: ${nextClass.form}) for ${classItem.name}`);
     } else {
-      console.log(`Class object not found for: ${nextClassName}`);
+      console.log(`Class object not found for toClassId: ${rule.toClassId}`);
     }
     
     return nextClass || null;
