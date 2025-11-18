@@ -3,17 +3,18 @@
   "version": "1.0.0",
   "main": "dist/server.js",
   "scripts": {
-      "build": "npx tsc",
-      "vercel-build": "npx tsc",
-      "dev": "nodemon src/server.ts",
-      "start": "node dist/server.js",
-      "typeorm": "typeorm-ts-node-commonjs -d src/data-source.ts",
-      "setup-db": "node scripts/create-database.js",
-      "create-admin": "npx ts-node scripts/create-admin.ts",
-      "create-demo": "npx ts-node scripts/create-demo.ts",
-      "reset-demo-data": "npx ts-node scripts/reset-demo-data.ts",
-      "clear-invoices": "npx ts-node scripts/clear-invoices.ts",
-      "check-login": "npx ts-node scripts/check-user-login.ts"
+    "clean": "rimraf dist",
+    "build": "npm run clean && npx tsc",
+    "vercel-build": "npm run clean && npx tsc",
+    "dev": "nodemon src/server.ts",
+    "start": "node dist/server.js",
+    "typeorm": "typeorm-ts-node-commonjs -d src/data-source.ts",
+    "setup-db": "node scripts/create-database.js",
+    "create-admin": "npx ts-node scripts/create-admin.ts",
+    "create-demo": "npx ts-node scripts/create-demo.ts",
+    "reset-demo-data": "npx ts-node scripts/reset-demo-data.ts",
+    "clear-invoices": "npx ts-node scripts/clear-invoices.ts",
+    "check-login": "npx ts-node scripts/check-user-login.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -23,12 +24,12 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "pdfkit": "^0.14.0",
-    "qrcode": "^1.5.3",
     "pg": "^8.11.1",
+    "qrcode": "^1.5.3",
     "reflect-metadata": "^0.1.13",
+    "ts-node": "^10.9.1",
     "typeorm": "^0.3.17",
-    "typescript": "^5.9.3",
-    "ts-node": "^10.9.1"
+    "typescript": "^5.9.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -39,6 +40,7 @@
     "@types/node": "^20.10.6",
     "@types/pdfkit": "^0.13.4",
     "@types/qrcode": "^1.5.5",
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.0.2",
+    "rimraf": "^6.1.0"
   }
 }
