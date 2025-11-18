@@ -270,7 +270,7 @@ export const createExam = async (req: AuthRequest, res: Response) => {
     // Load the exam with relations
     const finalExam = await examRepository.findOne({
       where: { id: savedExam.id },
-      relations: ['class', 'subjects']
+      relations: ['classEntity', 'subjects']
     });
 
     if (!finalExam) {
@@ -334,7 +334,7 @@ export const getExams = async (req: AuthRequest, res: Response) => {
 
     const exams = await examRepository.find({
       where,
-      relations: ['class', 'subjects']
+      relations: ['classEntity', 'subjects']
     });
 
     res.json(exams);
@@ -359,7 +359,7 @@ export const getExamById = async (req: AuthRequest, res: Response) => {
 
     const exam = await examRepository.findOne({
       where: { id },
-      relations: ['class', 'subjects']
+      relations: ['classEntity', 'subjects']
     });
 
     if (!exam) {
@@ -506,7 +506,7 @@ export const publishExam = async (req: AuthRequest, res: Response) => {
 
     const exam = await examRepository.findOne({
       where: { id: examId },
-      relations: ['class', 'subjects']
+      relations: ['classEntity', 'subjects']
     });
 
     if (!exam) {
@@ -576,7 +576,7 @@ export const publishExamByType = async (req: AuthRequest, res: Response) => {
     
     const exams = await examRepository.find({
       where: whereCondition,
-      relations: ['class', 'subjects']
+      relations: ['classEntity', 'subjects']
     });
 
     if (exams.length === 0) {
@@ -1101,7 +1101,7 @@ export const getOverallPerformanceRankings = async (req: AuthRequest, res: Respo
     // Get all students in these classes with class relation loaded
     const students = await studentRepository.find({
       where: { classId: In(classIds) },
-      relations: ['class']
+      relations: ['classEntity']
     });
     
     // Create a map of student IDs to class names for quick lookup
@@ -1278,7 +1278,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       // Parent access - first verify their linked student exists in this class
       parentStudentRecord = await studentRepository.findOne({
         where: { id: studentId as string, classId: classId as string },
-        relations: ['class']
+        relations: ['classEntity']
       });
 
       if (!parentStudentRecord) {
@@ -1289,7 +1289,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     // Always fetch full class roster for accurate rankings/positions
     students = await studentRepository.find({
       where: { classId: classId as string },
-      relations: ['class'],
+      relations: ['classEntity'],
       order: { firstName: 'ASC', lastName: 'ASC' } // Sort alphabetically for sequential display
     });
 
@@ -1307,7 +1307,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         students = await studentRepository
           .createQueryBuilder('student')
           .leftJoinAndSelect('student.classEntity', 'classEntity')
-          .where('(student.classId = :classId OR class.id = :classId OR class.name = :className)', {
+          .where('(student.classId = :classId OR classEntity.id = :classId OR classEntity.name = :className)', {
             classId: classId as string,
             className: classEntity.name
           })
@@ -1542,7 +1542,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       // Get all students from classes with the same forms
       const allFormStudentsList = await studentRepository.find({
         where: { classId: In(allClassIdsWithSameForms) },
-        relations: ['class']
+        relations: ['classEntity']
       });
       
       // Get all exams of the specified type and term from ALL classes with the same form
@@ -1870,7 +1870,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       // New format: generate from aggregated report card data
       const student = await studentRepository.findOne({
         where: { id: studentId as string },
-        relations: ['class']
+        relations: ['classEntity']
       });
 
       if (!student) {
@@ -2232,7 +2232,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       // Old format: single exam
       const student = await studentRepository.findOne({
         where: { id: studentId as string },
-        relations: ['class']
+        relations: ['classEntity']
       });
 
       if (!student) {

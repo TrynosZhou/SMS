@@ -22,7 +22,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
       const studentRepository = AppDataSource.getRepository(Student);
       const demoStudents = await studentRepository.find({
         where: { user: { isDemo: true } },
-        relations: ['class', 'user']
+        relations: ['classEntity', 'user']
       });
       const demoClassIds = [...new Set(demoStudents.map(s => s.classId).filter(Boolean))];
       

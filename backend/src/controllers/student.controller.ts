@@ -134,7 +134,7 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
     // Load the student with class relation
     const savedStudent = await studentRepository.findOne({
       where: { id: student.id },
-      relations: ['class', 'parent']
+      relations: ['classEntity', 'parent']
     });
 
     // Automatically create an initial invoice for the new student
@@ -410,7 +410,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       if (students.length === 0) {
         console.log('Trying final fallback: loading all students...');
         const allStudents = await studentRepository.find({
-          relations: ['class', 'parent', 'user']
+          relations: ['classEntity', 'parent', 'user']
         });
         
         // Filter by classId or class.id
@@ -472,7 +472,7 @@ export const getStudentById = async (req: AuthRequest, res: Response) => {
 
     const student = await studentRepository.findOne({
       where: { id },
-      relations: ['class', 'parent', 'user', 'marks', 'invoices']
+      relations: ['classEntity', 'parent', 'user', 'marks', 'invoices']
     });
 
     if (!student) {
@@ -541,7 +541,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
 
     const student = await studentRepository.findOne({ 
       where: { id },
-      relations: ['class']
+      relations: ['classEntity']
     });
 
     if (!student) {
@@ -703,7 +703,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     // Reload student with relations to get fresh data from database
     const updatedStudent = await studentRepository.findOne({
       where: { id },
-      relations: ['class', 'parent']
+      relations: ['classEntity', 'parent']
     });
 
     if (!updatedStudent) {
@@ -761,7 +761,7 @@ export const promoteStudents = async (req: AuthRequest, res: Response) => {
     // Get all students in the source class
     const students = await studentRepository.find({
       where: { classId: fromClassId },
-      relations: ['class']
+      relations: ['classEntity']
     });
 
     if (students.length === 0) {
@@ -809,7 +809,7 @@ export const deleteStudent = async (req: AuthRequest, res: Response) => {
 
     const student = await studentRepository.findOne({
       where: { id },
-      relations: ['marks', 'invoices', 'user', 'class', 'parent']
+      relations: ['marks', 'invoices', 'user', 'classEntity', 'parent']
     });
 
     if (!student) {
@@ -893,7 +893,7 @@ export const generateStudentIdCard = async (req: AuthRequest, res: Response) => 
 
     const student = await studentRepository.findOne({
       where: { id },
-      relations: ['class', 'parent']
+      relations: ['classEntity', 'parent']
     });
 
     if (!student) {

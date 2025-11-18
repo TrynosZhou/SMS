@@ -233,7 +233,7 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     // Generate invoice PDF
     const studentWithClass = await studentRepository.findOne({ 
       where: { id: studentId },
-      relations: ['class']
+      relations: ['classEntity']
     });
 
     if (studentWithClass) {
@@ -370,7 +370,7 @@ export const updateInvoicePayment = async (req: AuthRequest, res: Response) => {
     // Generate receipt PDF
     const student = await studentRepository.findOne({ 
       where: { id: invoice.studentId },
-      relations: ['class']
+      relations: ['classEntity']
     });
 
     if (!student) {
@@ -481,7 +481,7 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
     // Get all active students
     const students = await studentRepository.find({
       where: { isActive: true },
-      relations: ['class']
+      relations: ['classEntity']
     });
 
     if (students.length === 0) {
@@ -636,7 +636,7 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
 
     const student = await studentRepository.findOne({ 
       where: { id: invoice.studentId },
-      relations: ['class']
+      relations: ['classEntity']
     });
 
     if (!student) {
@@ -709,13 +709,13 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
       // Search by ID (UUID)
       student = await studentRepository.findOne({
         where: { id: studentIdString },
-        relations: ['class']
+        relations: ['classEntity']
       });
     } else {
       // Search by studentNumber
       student = await studentRepository.findOne({
         where: { studentNumber: studentIdString },
-        relations: ['class']
+        relations: ['classEntity']
       });
     }
 
@@ -775,7 +775,7 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
 
     const student = await studentRepository.findOne({ 
       where: { id: invoice.studentId },
-      relations: ['class']
+      relations: ['classEntity']
     });
 
     if (!student) {

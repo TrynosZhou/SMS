@@ -209,7 +209,7 @@ export const linkStudentByIdAndDob = async (req: AuthRequest, res: Response) => 
     // Find student by studentNumber (Student ID)
     const student = await studentRepository.findOne({
       where: { studentNumber: studentId },
-      relations: ['class']
+      relations: ['classEntity']
     });
 
     if (!student) {

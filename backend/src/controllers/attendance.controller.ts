@@ -133,7 +133,7 @@ export const getAttendance = async (req: AuthRequest, res: Response) => {
 
     // Build find options
     const findOptions: any = {
-      relations: ['student', 'class'],
+      relations: ['student', 'classEntity'],
       order: { date: 'DESC', createdAt: 'DESC' }
     };
 
@@ -156,7 +156,7 @@ export const getAttendance = async (req: AuthRequest, res: Response) => {
       // If markedByUser relation fails, try without it
       if (dbError.message && dbError.message.includes('markedByUser')) {
         console.warn('Failed to load markedByUser relation, retrying without it');
-        findOptions.relations = ['student', 'class'];
+        findOptions.relations = ['student', 'classEntity'];
         attendance = await attendanceRepository.find(findOptions);
       } else {
         throw dbError;
