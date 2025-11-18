@@ -19,9 +19,10 @@ import { Message } from '../entities/Message';
 import { UniformItem } from '../entities/UniformItem';
 import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
 import { ReportCardRemarks } from '../entities/ReportCardRemarks';
+import { DeepPartial } from 'typeorm';
 import bcrypt from 'bcryptjs';
 
-export async function resetDemoDataForLogin(demoSchoolId: string) {
+export async function resetDemoDataForLogin() {
   const demoEmail = 'demo@school.com';
   
   // Get repositories
@@ -38,7 +39,7 @@ export async function resetDemoDataForLogin(demoSchoolId: string) {
 
   // Find demo user
   const demoUser = await userRepository.findOne({
-    where: { email: demoEmail, isDemo: true, schoolId: demoSchoolId }
+    where: { email: demoEmail, isDemo: true }
   });
 
   if (!demoUser) {
@@ -47,17 +48,17 @@ export async function resetDemoDataForLogin(demoSchoolId: string) {
 
   // Delete all non-demo data
   // Delete invoices
-  await AppDataSource.getRepository(InvoiceUniformItem).delete({ schoolId: demoSchoolId });
-  await invoiceRepository.delete({ schoolId: demoSchoolId });
+  await AppDataSource.getRepository(InvoiceUniformItem).delete({});
+  await invoiceRepository.delete({});
   
   // Delete marks
-  await marksRepository.delete({ schoolId: demoSchoolId });
+  await marksRepository.delete({});
   
   // Delete exams
-  await examRepository.delete({ schoolId: demoSchoolId });
+  await examRepository.delete({});
   
   // Delete students (and their associated users if not demo)
-  const students = await studentRepository.find({ where: { schoolId: demoSchoolId }, relations: ['user'] });
+  const students = await studentRepository.find({ relations: ['user'] });
   for (const student of students) {
     if (student.user && !student.user.isDemo) {
       await userRepository.remove(student.user);
@@ -66,7 +67,7 @@ export async function resetDemoDataForLogin(demoSchoolId: string) {
   }
   
   // Delete teachers (and their associated users if not demo)
-  const teachers = await teacherRepository.find({ where: { schoolId: demoSchoolId }, relations: ['user'] });
+  const teachers = await teacherRepository.find({ relations: ['user'] });
   for (const teacher of teachers) {
     if (teacher.user && !teacher.user.isDemo) {
       await userRepository.remove(teacher.user);
@@ -75,7 +76,7 @@ export async function resetDemoDataForLogin(demoSchoolId: string) {
   }
   
   // Delete parents (and their associated users if not demo)
-  const parents = await parentRepository.find({ where: { schoolId: demoSchoolId }, relations: ['user'] });
+  const parents = await parentRepository.find({ relations: ['user'] });
   for (const parent of parents) {
     if (parent.user && !parent.user.isDemo) {
       await userRepository.remove(parent.user);
@@ -84,21 +85,25 @@ export async function resetDemoDataForLogin(demoSchoolId: string) {
   }
   
   // Delete all non-demo users (except demo user)
-  await userRepository.delete({ isDemo: false, schoolId: demoSchoolId });
+  await userRepository.delete({ isDemo: false });
   
   // Delete classes
-  await classRepository.delete({ schoolId: demoSchoolId });
+  await classRepository.delete({});
   
   // Delete subjects
-  await subjectRepository.delete({ schoolId: demoSchoolId });
+  await subjectRepository.delete({});
 
-  await AppDataSource.getRepository(Message).delete({ schoolId: demoSchoolId });
-  await AppDataSource.getRepository(Attendance).delete({ schoolId: demoSchoolId });
-  await AppDataSource.getRepository(UniformItem).delete({ schoolId: demoSchoolId });
-  await AppDataSource.getRepository(ReportCardRemarks).delete({ schoolId: demoSchoolId });
+  await AppDataSource.getRepository(Message).delete({});
+  await AppDataSource.getRepository(Attendance).delete({});
+  await AppDataSource.getRepository(UniformItem).delete({});
+  await AppDataSource.getRepository(ReportCardRemarks).delete({});
   
   // Reset settings to default (but keep school name as "Demo School")
-  const existingSettings = await settingsRepository.findOne({ where: { schoolId: demoSchoolId } });
+  const settingsList = await settingsRepository.find({
+    order: { createdAt: 'DESC' },
+    take: 1
+  });
+  const existingSettings = settingsList.length > 0 ? settingsList[0] : null;
   if (existingSettings) {
     existingSettings.schoolName = 'Demo School';
     existingSettings.schoolAddress = null;
@@ -132,8 +137,7 @@ export async function resetDemoDataForLogin(demoSchoolId: string) {
       schoolName: 'Demo School',
       academicYear: new Date().getFullYear().toString(),
       currentTerm: `Term 1 ${new Date().getFullYear()}`,
-      currencySymbol: 'KES',
-      schoolId: demoSchoolId
+      currencySymbol: 'KES'
     });
     await settingsRepository.save(defaultSettings);
   }
@@ -152,25 +156,23 @@ export async function resetDemoDataForLogin(demoSchoolId: string) {
     name: 'Form 1A',
     form: 'Form 1',
     description: 'Form 1 Class A - Demo',
-    isActive: true,
-    schoolId: demoSchoolId
+    isActive: true
   });
   const form2Class = classRepository.create({
     name: 'Form 2A',
     form: 'Form 2',
     description: 'Form 2 Class A - Demo',
-    isActive: true,
-    schoolId: demoSchoolId
+    isActive: true
   });
   await classRepository.save([form1Class, form2Class]);
   
   // Create sample subjects
   const subjects = [
-    { name: 'Mathematics', code: 'MATH001', description: 'Mathematics - Demo', schoolId: demoSchoolId },
-    { name: 'English', code: 'ENG001', description: 'English Language - Demo', schoolId: demoSchoolId },
-    { name: 'Science', code: 'SCI001', description: 'General Science - Demo', schoolId: demoSchoolId },
-    { name: 'Kiswahili', code: 'SWA001', description: 'Kiswahili - Demo', schoolId: demoSchoolId },
-    { name: 'Social Studies', code: 'SOC001', description: 'Social Studies - Demo', schoolId: demoSchoolId }
+    { name: 'Mathematics', code: 'MATH001', description: 'Mathematics - Demo' },
+    { name: 'English', code: 'ENG001', description: 'English Language - Demo' },
+    { name: 'Science', code: 'SCI001', description: 'General Science - Demo' },
+    { name: 'Kiswahili', code: 'SWA001', description: 'Kiswahili - Demo' },
+    { name: 'Social Studies', code: 'SOC001', description: 'Social Studies - Demo' }
   ];
   const createdSubjects = subjects.map(subj => subjectRepository.create(subj));
   await subjectRepository.save(createdSubjects);
@@ -184,8 +186,7 @@ export async function resetDemoDataForLogin(demoSchoolId: string) {
     isActive: true,
     isDemo: true,
     mustChangePassword: false,
-    isTemporaryAccount: false,
-    schoolId: demoSchoolId
+    isTemporaryAccount: false
   });
   await userRepository.save(teacher1User);
   
@@ -197,8 +198,7 @@ export async function resetDemoDataForLogin(demoSchoolId: string) {
     address: 'Demo Address',
     dateOfBirth: new Date('1980-01-01'),
     isActive: true,
-    userId: teacher1User.id,
-    schoolId: demoSchoolId
+    userId: teacher1User.id
   });
   teacher1.subjects = [createdSubjects[0], createdSubjects[2]]; // Math and Science
   teacher1.classes = [form1Class, form2Class];
@@ -215,7 +215,7 @@ export async function resetDemoDataForLogin(demoSchoolId: string) {
   ];
   
   for (let i = 0; i < studentNumbers.length; i++) {
-    const studentUser = userRepository.create({
+    const studentUserData: DeepPartial<User> = {
       email: `student${i + 1}@demo.school.com`,
       username: `student${i + 1}@demo.school.com`,
       password: await bcrypt.hash('Student@123', 10),
@@ -223,12 +223,12 @@ export async function resetDemoDataForLogin(demoSchoolId: string) {
       isActive: true,
       isDemo: true,
       mustChangePassword: false,
-      isTemporaryAccount: false,
-      schoolId: demoSchoolId
-    });
+      isTemporaryAccount: false
+    };
+    const studentUser = userRepository.create(studentUserData);
     await userRepository.save(studentUser);
     
-    const student = studentRepository.create({
+    const studentData: DeepPartial<Student> = {
       firstName: studentNames[i].first,
       lastName: studentNames[i].last,
       studentNumber: studentNumbers[i],
@@ -243,9 +243,9 @@ export async function resetDemoDataForLogin(demoSchoolId: string) {
       isStaffChild: false,
       isActive: true,
       userId: studentUser.id,
-      classId: i < 3 ? form1Class.id : form2Class.id,
-      schoolId: demoSchoolId
-    });
+      classId: i < 3 ? form1Class.id : form2Class.id
+    };
+    const student = studentRepository.create(studentData);
     await studentRepository.save(student);
   }
 }
