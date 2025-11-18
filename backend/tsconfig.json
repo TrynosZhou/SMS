@@ -19,7 +19,8 @@
     "noImplicitAny": false,
     "declaration": false,
     "sourceMap": false,
-    "typeRoots": ["./node_modules/@types"]
+    "typeRoots": ["./node_modules/@types"],
+    "downlevelIteration": true
   },
   "include": ["src/**/*", "src/types/**/*.d.ts"],
   "exclude": ["node_modules", "dist"]
