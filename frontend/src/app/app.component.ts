@@ -9,6 +9,7 @@ import { SettingsService } from './services/settings.service';
 })
 export class AppComponent implements OnInit {
   schoolName = 'School Management System';
+  mobileMenuOpen = false;
 
   constructor(public authService: AuthService, private settingsService: SettingsService) { }
 
@@ -43,7 +44,23 @@ export class AppComponent implements OnInit {
     return user?.isDemo === true || user?.email === 'demo@school.com' || user?.username === 'demo@school.com';
   }
 
+  toggleMobileMenu(): void {
+    this.mobileMenuOpen = !this.mobileMenuOpen;
+    // Prevent body scroll when menu is open
+    if (this.mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+  }
+
+  closeMobileMenu(): void {
+    this.mobileMenuOpen = false;
+    document.body.style.overflow = '';
+  }
+
   logout(): void {
+    this.closeMobileMenu();
     this.authService.logout();
   }
 }

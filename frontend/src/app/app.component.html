@@ -8,27 +8,179 @@
   </div>
 </div>
 
-<nav class="navbar">
+<!-- Responsive Navigation -->
+<nav class="navbar" *ngIf="isAuthenticated()">
   <div class="nav-container">
-    <h1 class="nav-title">{{ schoolName }}</h1>
-    <div class="nav-links" *ngIf="isAuthenticated()">
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" 
+            (click)="toggleMobileMenu()" 
+            aria-label="Toggle menu"
+            *ngIf="isAuthenticated()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="12" x2="21" y2="12" *ngIf="!mobileMenuOpen"></line>
+        <line x1="3" y1="6" x2="21" y2="6" *ngIf="!mobileMenuOpen"></line>
+        <line x1="3" y1="18" x2="21" y2="18" *ngIf="!mobileMenuOpen"></line>
+        <line x1="18" y1="6" x2="6" y2="18" *ngIf="mobileMenuOpen"></line>
+        <line x1="6" y1="6" x2="18" y2="18" *ngIf="mobileMenuOpen"></line>
+      </svg>
+    </button>
+
+    <!-- School Name / Logo -->
+    <div class="nav-brand">
+      <h1 class="nav-title">{{ schoolName }}</h1>
+    </div>
+
+    <!-- Desktop Navigation Links -->
+    <div class="nav-links desktop-only" *ngIf="isAuthenticated()">
       <!-- Admin/Teacher Navigation -->
       <ng-container *ngIf="!isParent()">
-        <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
-        <a routerLink="/students" routerLinkActive="active">Students</a>
-        <a routerLink="/teachers" routerLinkActive="active">Teachers</a>
-        <a routerLink="/exams" routerLinkActive="active">Exams</a>
-        <a routerLink="/report-cards" routerLinkActive="active">Report Cards</a>
-        <a routerLink="/rankings" routerLinkActive="active">Rankings</a>
-        <a routerLink="/invoices" routerLinkActive="active">Finance</a>
+        <a routerLink="/dashboard" routerLinkActive="active" class="nav-link">
+          <span class="nav-icon">🏠</span>
+          <span>Dashboard</span>
+        </a>
+        <a routerLink="/students" routerLinkActive="active" class="nav-link">
+          <span class="nav-icon">👨‍🎓</span>
+          <span>Students</span>
+        </a>
+        <a routerLink="/teachers" routerLinkActive="active" class="nav-link">
+          <span class="nav-icon">👨‍🏫</span>
+          <span>Teachers</span>
+        </a>
+        <a routerLink="/exams" routerLinkActive="active" class="nav-link">
+          <span class="nav-icon">📝</span>
+          <span>Exams</span>
+        </a>
+        <a routerLink="/report-cards" routerLinkActive="active" class="nav-link">
+          <span class="nav-icon">📊</span>
+          <span>Reports</span>
+        </a>
+        <a routerLink="/rankings" routerLinkActive="active" class="nav-link">
+          <span class="nav-icon">🏆</span>
+          <span>Rankings</span>
+        </a>
+        <a routerLink="/invoices" routerLinkActive="active" class="nav-link">
+          <span class="nav-icon">💰</span>
+          <span>Finance</span>
+        </a>
       </ng-container>
+      
       <!-- Parent Navigation -->
       <ng-container *ngIf="isParent()">
-        <a routerLink="/parent/dashboard" routerLinkActive="active">Parent Dashboard</a>
+        <a routerLink="/parent/dashboard" routerLinkActive="active" class="nav-link">
+          <span class="nav-icon">🏠</span>
+          <span>Parent Dashboard</span>
+        </a>
       </ng-container>
-      <button class="btn btn-secondary" (click)="logout()">Logout</button>
     </div>
+
+    <!-- Desktop Logout Button -->
+    <button class="btn btn-secondary desktop-only" (click)="logout()" *ngIf="isAuthenticated()">
+      <span>Logout</span>
+    </button>
   </div>
 </nav>
-<router-outlet></router-outlet>
+
+<!-- Mobile Sidebar Menu -->
+<div class="mobile-sidebar" 
+     [class.open]="mobileMenuOpen" 
+     *ngIf="isAuthenticated()">
+  <!-- Overlay -->
+  <div class="mobile-sidebar-overlay" 
+       (click)="closeMobileMenu()"
+       [class.show]="mobileMenuOpen"></div>
+  
+  <!-- Sidebar Content -->
+  <div class="mobile-sidebar-content" [class.show]="mobileMenuOpen">
+    <div class="mobile-sidebar-header">
+      <h2>{{ schoolName }}</h2>
+      <button class="mobile-sidebar-close" 
+              (click)="closeMobileMenu()" 
+              aria-label="Close menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <nav class="mobile-nav-links">
+      <!-- Admin/Teacher Navigation -->
+      <ng-container *ngIf="!isParent()">
+        <a routerLink="/dashboard" 
+           routerLinkActive="active" 
+           class="mobile-nav-link"
+           (click)="closeMobileMenu()">
+          <span class="nav-icon">🏠</span>
+          <span>Dashboard</span>
+        </a>
+        <a routerLink="/students" 
+           routerLinkActive="active" 
+           class="mobile-nav-link"
+           (click)="closeMobileMenu()">
+          <span class="nav-icon">👨‍🎓</span>
+          <span>Students</span>
+        </a>
+        <a routerLink="/teachers" 
+           routerLinkActive="active" 
+           class="mobile-nav-link"
+           (click)="closeMobileMenu()">
+          <span class="nav-icon">👨‍🏫</span>
+          <span>Teachers</span>
+        </a>
+        <a routerLink="/exams" 
+           routerLinkActive="active" 
+           class="mobile-nav-link"
+           (click)="closeMobileMenu()">
+          <span class="nav-icon">📝</span>
+          <span>Exams</span>
+        </a>
+        <a routerLink="/report-cards" 
+           routerLinkActive="active" 
+           class="mobile-nav-link"
+           (click)="closeMobileMenu()">
+          <span class="nav-icon">📊</span>
+          <span>Report Cards</span>
+        </a>
+        <a routerLink="/rankings" 
+           routerLinkActive="active" 
+           class="mobile-nav-link"
+           (click)="closeMobileMenu()">
+          <span class="nav-icon">🏆</span>
+          <span>Rankings</span>
+        </a>
+        <a routerLink="/invoices" 
+           routerLinkActive="active" 
+           class="mobile-nav-link"
+           (click)="closeMobileMenu()">
+          <span class="nav-icon">💰</span>
+          <span>Finance</span>
+        </a>
+      </ng-container>
+      
+      <!-- Parent Navigation -->
+      <ng-container *ngIf="isParent()">
+        <a routerLink="/parent/dashboard" 
+           routerLinkActive="active" 
+           class="mobile-nav-link"
+           (click)="closeMobileMenu()">
+          <span class="nav-icon">🏠</span>
+          <span>Parent Dashboard</span>
+        </a>
+      </ng-container>
+    </nav>
+
+    <!-- Mobile Logout Button -->
+    <div class="mobile-sidebar-footer">
+      <button class="btn btn-danger btn-block" (click)="logout()">
+        <span>🚪</span>
+        <span>Logout</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<main class="main-content" [class.menu-open]="mobileMenuOpen">
+  <router-outlet></router-outlet>
+</main>
 
