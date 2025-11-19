@@ -6,6 +6,8 @@ import { User, UserRole } from '../entities/User';
 import { Student } from '../entities/Student';
 import { Teacher } from '../entities/Teacher';
 import { Parent } from '../entities/Parent';
+import { resetDemoDataForLogin } from '../utils/resetDemoData';
+import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
 
 export const login = async (req: Request, res: Response) => {
   try {
@@ -42,9 +44,21 @@ export const login = async (req: Request, res: Response) => {
 
     // Check if this is the demo account and ensure it's marked as demo
     const isDemoAccount = user.email === 'demo@school.com' || user.username === 'demo@school.com';
-    if (isDemoAccount && !user.isDemo) {
-      user.isDemo = true;
-      await userRepository.save(user);
+    if (isDemoAccount) {
+      if (!user.isDemo) {
+        user.isDemo = true;
+        await userRepository.save(user);
+      }
+
+      // Ensure demo data is available for the session
+      try {
+        console.log('[Auth] Demo login detected - ensuring demo data is available');
+        await resetDemoDataForLogin();
+        await ensureDemoDataAvailable();
+        console.log('[Auth] Demo data ready');
+      } catch (resetError) {
+        console.error('[Auth] Error ensuring demo data:', (resetError as Error).message);
+      }
     }
 
     const secret = process.env.JWT_SECRET;

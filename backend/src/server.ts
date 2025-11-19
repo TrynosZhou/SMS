@@ -142,9 +142,24 @@ try {
   console.log('[Server] initialize() promise created, awaiting...');
   
   initPromise
-  .then(() => {
+  .then(async () => {
     console.log('[Server] ✓ Database connected successfully');
     console.log('[Server] DataSource.isInitialized:', AppDataSource.isInitialized);
+
+    try {
+      console.log('[Server] Running pending migrations (if any)...');
+      const pendingMigrations = await AppDataSource.showMigrations();
+      if (pendingMigrations) {
+        await AppDataSource.runMigrations();
+        console.log('[Server] ✓ Migrations executed');
+      } else {
+        console.log('[Server] No migrations to run');
+      }
+    } catch (migrationError: any) {
+      console.error('[Server] ✗ ERROR running migrations:');
+      console.error('[Server] Migration error message:', migrationError?.message);
+    }
+
     console.log('[Server] DataSource options:', {
       type: AppDataSource.options.type,
       database: AppDataSource.options.database,

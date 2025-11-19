@@ -207,11 +207,8 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     // Calculate how much prepaid amount is applied to this invoice
     // Prepaid amount can cover part or all of the total invoice amount
     const appliedPrepaidAmount = Math.min(prepaidAmount, totalInvoiceAmount);
-    // Remaining prepaid amount (if any) carries forward
     const remainingPrepaidAmount = Math.max(0, prepaidAmount - appliedPrepaidAmount);
-    
-    // Final balance = total invoice amount - applied prepaid amount
-    const totalAmount = totalInvoiceAmount - appliedPrepaidAmount;
+    const finalBalance = totalInvoiceAmount - appliedPrepaidAmount;
 
     // Generate invoice number
     const invoiceCount = await invoiceRepository.count();
@@ -222,12 +219,13 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       studentId,
       amount: amountNum,
       previousBalance,
-      prepaidAmount: remainingPrepaidAmount, // Carry forward remaining prepaid amount
-      balance: totalAmount,
+      paidAmount: appliedPrepaidAmount,
+      prepaidAmount: remainingPrepaidAmount,
+      balance: finalBalance,
       dueDate,
       term,
       description,
-      status: InvoiceStatus.PENDING,
+      status: finalBalance <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PENDING,
       uniformTotal,
       uniformItems: uniformItemsEntities
     });
@@ -351,15 +349,18 @@ export const updateInvoicePayment = async (req: AuthRequest, res: Response) => {
     const currentBalance = parseAmount(invoice.balance);
     
     if (isPrepayment) {
-      // Handle prepayment: add to prepaid amount
       invoice.prepaidAmount = oldPrepaidAmount + paidAmountNum;
-      // Prepayment also reduces the current invoice balance
       invoice.paidAmount = oldPaidAmount + paidAmountNum;
-      invoice.balance = Math.max(0, currentBalance - paidAmountNum);
     } else {
-      // Regular payment: only reduce current invoice balance
-      invoice.paidAmount = oldPaidAmount + paidAmountNum;
-      invoice.balance = Math.max(0, currentBalance - paidAmountNum);
+      const paymentTowardBalance = Math.min(paidAmountNum, currentBalance);
+      const overPayment = Math.max(0, paidAmountNum - paymentTowardBalance);
+
+      invoice.paidAmount = oldPaidAmount + paymentTowardBalance;
+      invoice.balance = Math.max(0, currentBalance - paymentTowardBalance);
+
+      if (overPayment > 0) {
+        invoice.prepaidAmount = oldPrepaidAmount + overPayment;
+      }
     }
 
     if (invoice.balance <= 0) {
@@ -439,11 +440,16 @@ export const calculateNextTermBalance = async (req: AuthRequest, res: Response) 
     });
 
     const currentBalance = parseAmount(lastInvoice?.balance);
-    const nextTermBalance = currentBalance + nextTermAmount;
+    const prepaidAmount = parseAmount(lastInvoice?.prepaidAmount);
+    const totalBeforeCredit = currentBalance + nextTermAmount;
+    const appliedPrepaid = Math.min(prepaidAmount, totalBeforeCredit);
+    const nextTermBalance = totalBeforeCredit - appliedPrepaid;
 
     res.json({
       currentBalance,
       nextTermAmount,
+      appliedPrepaid,
+      availablePrepaid: prepaidAmount,
       nextTermBalance
     });
   } catch (error) {
@@ -516,9 +522,9 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
           order: { createdAt: 'DESC' }
         });
 
-        // Previous balance is the outstanding fees from the last invoice
-        // Ensure it's a number to avoid string concatenation
+        // Previous balance and prepaid credit from the last invoice
         const previousBalance = parseAmount(lastInvoice?.balance);
+        const previousPrepaid = parseAmount(lastInvoice?.prepaidAmount);
 
         // Determine tuition fee for the NEXT term (following term)
         // The term provided is the current term, so we calculate fees for the following term
@@ -577,10 +583,11 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
           termFees = 0;
         }
 
-        // Calculate total amount: Old invoice balance (outstanding fees) + Fees for following term
-        // Current invoice balance = Old invoice balance + Fees for following term
-        // Ensure numeric addition, not string concatenation
+        // Calculate total amount due for the new invoice (before applying prepaid credit)
         const totalAmount = previousBalance + termFees;
+        const appliedPrepaid = Math.min(previousPrepaid, totalAmount);
+        const remainingPrepaid = previousPrepaid - appliedPrepaid;
+        const finalBalance = totalAmount - appliedPrepaid;
 
         // Generate invoice number
         const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCounter).padStart(6, '0')}`;
@@ -591,13 +598,15 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
         const invoice = invoiceRepository.create({
           invoiceNumber,
           studentId: student.id,
-          amount: termFees, // Fees for following term (ensure it's a number)
-          previousBalance, // Old invoice balance (outstanding fees)
-          balance: totalAmount, // Current invoice balance = Old balance + Following term fees
+          amount: termFees,
+          previousBalance,
+          balance: finalBalance,
+          prepaidAmount: remainingPrepaid,
+          paidAmount: appliedPrepaid,
           dueDate: new Date(dueDate),
-          term: nextTerm, // Invoice is for the following term
+          term: nextTerm,
           description: description || `Fees for ${nextTerm} - ${student.studentType}${student.isStaffChild ? ' (Staff Child)' : ''}`,
-          status: InvoiceStatus.PENDING
+          status: finalBalance <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PENDING
         });
 
         const savedInvoice = await invoiceRepository.save(invoice);
@@ -609,7 +618,9 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
           studentNumber: student.studentNumber,
           termFees: termFees,
           previousBalance,
-          totalBalance: totalAmount,
+          totalBalance: finalBalance,
+          prepaidApplied: appliedPrepaid,
+          remainingPrepaid,
           term: nextTerm
         });
       } catch (error: any) {

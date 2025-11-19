@@ -10,6 +10,8 @@ import { Subject } from '../entities/Subject';
 import { In } from 'typeorm';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { Student } from '../entities/Student';
+import { User } from '../entities/User';
+import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
 
 const router = Router();
 
@@ -17,35 +19,17 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const classRepository = AppDataSource.getRepository(Class);
     
-    // Filter classes for demo users - only show classes with demo students
     if (isDemoUser(req)) {
-      const studentRepository = AppDataSource.getRepository(Student);
-      const demoStudents = await studentRepository.find({
-        where: { user: { isDemo: true } },
-        relations: ['classEntity', 'user']
-      });
-      const demoClassIds = [...new Set(demoStudents.map(s => s.classId).filter(Boolean))];
-      
-      if (demoClassIds.length > 0) {
-        const classes = await classRepository.find({
-          where: { id: In(demoClassIds) },
-          relations: ['students', 'teachers', 'subjects']
-        });
-        // Filter students to only show demo students
-        classes.forEach(cls => {
-          if (cls.students) {
-            cls.students = cls.students.filter((s: any) => s.user?.isDemo === true);
-          }
-        });
-        return res.json(classes);
-      } else {
-        return res.json([]);
-      }
+      await ensureDemoDataAvailable();
     }
-    
+
+    // For demo users, show all classes and all students (relaxed restriction)
     const classes = await classRepository.find({
-      relations: ['students', 'teachers', 'subjects']
+      relations: ['students', 'students.user', 'teachers', 'subjects']
     });
+    
+    // Removed demo filtering - demo users can now see all students in classes
+    
     res.json(classes);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });
@@ -215,8 +199,43 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
     console.log('Teachers count:', classEntity.teachers?.length || 0);
 
     // Check for associated records
-    const studentCount = classEntity.students?.length || 0;
-    const teacherCount = classEntity.teachers?.length || 0;
+    // For demo users, only count demo students/teachers
+    let studentCount = 0;
+    let teacherCount = 0;
+    
+    if (isDemoUser(req)) {
+      // For demo users, only count demo students and teachers
+      if (classEntity.students) {
+        const studentRepository = AppDataSource.getRepository(Student);
+        const demoStudents = await studentRepository.find({
+          where: { 
+            classId: id,
+            user: { isDemo: true }
+          },
+          relations: ['user']
+        });
+        studentCount = demoStudents.length;
+      }
+      
+      // Count only demo teachers
+      if (classEntity.teachers) {
+        const teacherRepository = AppDataSource.getRepository(Teacher);
+        const demoTeachers = await teacherRepository.find({
+          where: {
+            user: { isDemo: true }
+          },
+          relations: ['user', 'classes']
+        });
+        // Filter to only teachers assigned to this class
+        teacherCount = demoTeachers.filter(t => 
+          t.classes?.some(c => c.id === id)
+        ).length;
+      }
+    } else {
+      // For non-demo users, count all students and teachers
+      studentCount = classEntity.students?.length || 0;
+      teacherCount = classEntity.teachers?.length || 0;
+    }
     
     // Check for exams associated with this class
     const exams = await examRepository.find({
@@ -224,6 +243,8 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
     });
     const examCount = exams.length;
     console.log('Exams count:', examCount);
+    console.log('Filtered student count:', studentCount);
+    console.log('Filtered teacher count:', teacherCount);
 
     // Prevent deletion if there are associated records
     if (studentCount > 0 || teacherCount > 0 || examCount > 0) {

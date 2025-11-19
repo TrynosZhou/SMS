@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
+import { SettingsService } from '../../../services/settings.service';
 
 @Component({
   selector: 'app-student-form',
@@ -35,10 +36,12 @@ export class StudentFormComponent implements OnInit {
   maxDate = '';
   selectedPhoto: File | null = null;
   photoPreview: string | null = null;
+  studentIdPrefix = 'JPS';
 
   constructor(
     private studentService: StudentService,
     private classService: ClassService,
+    private settingsService: SettingsService,
     private route: ActivatedRoute,
     public router: Router
   ) {
@@ -49,11 +52,28 @@ export class StudentFormComponent implements OnInit {
 
   ngOnInit() {
     this.loadClasses();
+    this.loadStudentIdPrefix();
     const id = this.route.snapshot.params['id'];
     if (id) {
       this.isEdit = true;
       this.loadStudent(id);
     }
+  }
+
+  loadStudentIdPrefix() {
+    this.settingsService.getSettings().subscribe({
+      next: (settings: any) => {
+        const prefix = typeof settings?.studentIdPrefix === 'string'
+          ? settings.studentIdPrefix.trim()
+          : '';
+        if (prefix) {
+          this.studentIdPrefix = prefix.toUpperCase();
+        }
+      },
+      error: (err: any) => {
+        console.error('Error loading student ID prefix:', err);
+      }
+    });
   }
 
   loadClasses() {

@@ -140,6 +140,11 @@ export class ClassListComponent implements OnInit {
         
         this.error = errorMessage;
         this.loading = false;
+        
+        // Clear error message after 8 seconds
+        setTimeout(() => {
+          this.error = '';
+        }, 8000);
       }
     });
   }

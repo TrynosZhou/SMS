@@ -37,6 +37,7 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
 
     // Get school name and headmaster name from settings
     const settings = await settingsRepository.findOne({
+      where: {},
       order: { createdAt: 'DESC' }
     });
 

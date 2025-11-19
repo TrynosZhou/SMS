@@ -206,9 +206,11 @@
             <span class="info-icon">🔢</span>
             <div>
               <strong *ngIf="isEdit">{{ student.studentNumber }}</strong>
-              <strong *ngIf="!isEdit">Auto-generated (JPS format)</strong>
+              <strong *ngIf="!isEdit">Auto-generated ({{ studentIdPrefix }} format)</strong>
               <p class="info-text">
-                {{ isEdit ? 'Student number cannot be changed' : 'A unique 7-digit number with prefix JPS will be automatically generated (e.g., JPS1234567)' }}
+                {{ isEdit 
+                  ? 'Student number cannot be changed' 
+                  : ('A unique 7-digit number with prefix ' + studentIdPrefix + ' will be automatically generated (e.g., ' + studentIdPrefix + '1234567)') }}
               </p>
             </div>
           </div>

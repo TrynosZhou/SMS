@@ -28,7 +28,6 @@ import { ManageAccountsComponent } from './components/admin/manage-accounts/mana
 import { ClassPromotionComponent } from './components/admin/class-promotion/class-promotion.component';
 import { MarkAttendanceComponent } from './components/attendance/mark-attendance/mark-attendance.component';
 import { AttendanceReportsComponent } from './components/attendance/attendance-reports/attendance-reports.component';
-import { SchoolsComponent } from './components/schools/schools.component';
 import { AuthGuard } from './guards/auth.guard';
 
 const routes: Routes = [
@@ -64,10 +63,10 @@ const routes: Routes = [
   { path: 'subjects', component: SubjectListComponent, canActivate: [AuthGuard] },
   { path: 'subjects/new', component: SubjectFormComponent, canActivate: [AuthGuard] },
   { path: 'subjects/:id/edit', component: SubjectFormComponent, canActivate: [AuthGuard] },
+  { path: 'schools', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: 'attendance/mark', component: MarkAttendanceComponent, canActivate: [AuthGuard] },
   { path: 'attendance/reports', component: AttendanceReportsComponent, canActivate: [AuthGuard] },
-  { path: 'settings', component: SettingsComponent, canActivate: [AuthGuard] },
-  { path: 'schools', component: SchoolsComponent, canActivate: [AuthGuard] }
+  { path: 'settings', component: SettingsComponent, canActivate: [AuthGuard] }
 ];
 
 @NgModule({

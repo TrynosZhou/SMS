@@ -3,8 +3,11 @@ import { Student } from '../entities/Student';
 import { Settings } from '../entities/Settings';
 
 /**
- * Generates a unique 7-digit random student ID with prefix from settings
- * Format: {PREFIX}1234567, {PREFIX}9876543, etc. (random 7-digit numbers)
+ * Generates a unique student ID with structure:
+ * AAA###YYYY
+ * - AAA  : first three letters (prefix from settings, sanitized to letters)
+ * - ###  : random three-digit number
+ * - YYYY : current year (registration year)
  */
 export async function generateStudentId(): Promise<string> {
   // Ensure database is initialized
@@ -15,10 +18,11 @@ export async function generateStudentId(): Promise<string> {
   const studentRepository = AppDataSource.getRepository(Student);
   const settingsRepository = AppDataSource.getRepository(Settings);
   
-  // Get prefix from settings, default to 'JPS' if not found
-  let prefix = 'JPS';
+  // Get prefix from settings, default to 'SCH' if not found
+  let prefix = 'SCH';
   try {
     const settings = await settingsRepository.findOne({
+      where: {},
       order: { createdAt: 'DESC' }
     });
     if (settings && settings.studentIdPrefix) {
@@ -27,17 +31,29 @@ export async function generateStudentId(): Promise<string> {
   } catch (error) {
     console.warn('Could not load settings for student ID prefix, using default:', error);
   }
+
+  // Sanitize prefix to letters only and ensure 3 characters
+  prefix = prefix.replace(/[^A-Za-z]/g, '').toUpperCase();
+  if (!prefix) {
+    prefix = 'SCH';
+  }
+  if (prefix.length < 3) {
+    prefix = (prefix + 'XXX').slice(0, 3);
+  } else if (prefix.length > 3) {
+    prefix = prefix.slice(0, 3);
+  }
+
+  const currentYear = new Date().getFullYear().toString();
   
-  // Generate random 7-digit number and check uniqueness
+  // Generate random digits and check uniqueness
   let attempts = 0;
   let studentId: string;
   let existing: Student | null;
   
   do {
-    // Generate random 7-digit number (1000000 to 9999999)
-    const randomNumber = Math.floor(Math.random() * 9000000) + 1000000;
-    const formattedNumber = randomNumber.toString().padStart(7, '0');
-    studentId = `${prefix}${formattedNumber}`;
+    const randomNumber = Math.floor(Math.random() * 1000); // 0 - 999
+    const formattedNumber = randomNumber.toString().padStart(3, '0');
+    studentId = `${prefix}${formattedNumber}${currentYear}`;
     
     // Check if this ID already exists
     existing = await studentRepository.findOne({ 

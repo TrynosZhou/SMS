@@ -21,7 +21,6 @@
         <a routerLink="/report-cards" routerLinkActive="active">Report Cards</a>
         <a routerLink="/rankings" routerLinkActive="active">Rankings</a>
         <a routerLink="/invoices" routerLinkActive="active">Finance</a>
-        <a *ngIf="isSuperAdmin()" routerLink="/schools" routerLinkActive="active">Schools</a>
       </ng-container>
       <!-- Parent Navigation -->
       <ng-container *ngIf="isParent()">

@@ -49,6 +49,11 @@ export class TeacherListComponent implements OnInit {
         this.loading = false;
         this.teachers = [];
         this.filteredTeachers = [];
+        
+        // Show user-friendly error message
+        if (err.status === 0 || err.status === undefined) {
+          console.error('Backend server is not running or not accessible. Please ensure the backend server is running on port 3001.');
+        }
       }
     });
   }
@@ -60,6 +65,9 @@ export class TeacherListComponent implements OnInit {
       },
       error: (err: any) => {
         console.error('Error loading subjects:', err);
+        if (err.status === 0 || err.status === undefined) {
+          console.error('Backend server is not running or not accessible.');
+        }
       }
     });
   }
@@ -71,6 +79,9 @@ export class TeacherListComponent implements OnInit {
       },
       error: (err: any) => {
         console.error('Error loading classes:', err);
+        if (err.status === 0 || err.status === undefined) {
+          console.error('Backend server is not running or not accessible.');
+        }
       }
     });
   }

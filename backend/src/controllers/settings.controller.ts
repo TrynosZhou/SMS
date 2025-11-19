@@ -351,6 +351,7 @@ export const processOpeningDay = async (req: AuthRequest, res: Response) => {
     
     // Get settings
     const settings = await settingsRepository.findOne({
+      where: {},
       order: { createdAt: 'DESC' }
     });
 
@@ -406,6 +407,7 @@ export const processClosingDay = async (req: AuthRequest, res: Response) => {
     
     // Get settings
     const settings = await settingsRepository.findOne({
+      where: {},
       order: { createdAt: 'DESC' }
     });
 

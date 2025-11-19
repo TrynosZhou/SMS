@@ -46,27 +46,19 @@ entities.forEach((entity, index) => {
 console.log('[DB Config] Creating DataSource instance...');
 let AppDataSource: DataSource;
 try {
-  // Determine migrations path based on environment
-  // Temporarily disable migrations and subscribers to isolate the issue
+  const entityPaths = process.env.NODE_ENV === 'production'
+    ? ['dist/entities/**/*.js']
+    : ['src/entities/**/*.ts'];
   const migrationsPath = process.env.NODE_ENV === 'production' 
     ? ['dist/migrations/**/*.js'] 
     : ['src/migrations/**/*.ts'];
-  
   const subscribersPath = process.env.NODE_ENV === 'production'
     ? ['dist/subscribers/**/*.js']
     : ['src/subscribers/**/*.ts'];
   
+  console.log('[DB Config] Using entity paths:', entityPaths);
   console.log('[DB Config] Migrations path:', migrationsPath);
   console.log('[DB Config] Subscribers path:', subscribersPath);
-  console.log('[DB Config] Temporarily disabling migrations and subscribers to isolate issue...');
-  
-  // Try using entity paths instead of classes to avoid potential issues
-  const entityPaths = process.env.NODE_ENV === 'production'
-    ? ['dist/entities/**/*.js']
-    : ['src/entities/**/*.ts'];
-  
-  console.log('[DB Config] Using entity paths:', entityPaths);
-  console.log('[DB Config] This allows TypeORM to load entities dynamically');
   
   AppDataSource = new DataSource({
     type: 'postgres',
@@ -77,9 +69,9 @@ try {
     database: process.env.DB_NAME || 'sms_db',
     synchronize: false,
     logging: false,
-    entities: entityPaths, // Use paths instead of classes
-    migrations: [], // Temporarily disabled
-    subscribers: [], // Temporarily disabled
+    entities: entityPaths,
+    migrations: migrationsPath,
+    subscribers: subscribersPath,
   });
   
   console.log('[DB Config] DataSource created successfully');

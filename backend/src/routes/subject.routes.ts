@@ -6,6 +6,7 @@ import { Subject } from '../entities/Subject';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { Teacher } from '../entities/Teacher';
 import { In } from 'typeorm';
+import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
 
 const router = Router();
 
@@ -13,35 +14,17 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const subjectRepository = AppDataSource.getRepository(Subject);
     
-    // Filter subjects for demo users - only show subjects assigned to demo teachers
     if (isDemoUser(req)) {
-      const teacherRepository = AppDataSource.getRepository(Teacher);
-      const demoTeachers = await teacherRepository.find({
-        where: { user: { isDemo: true } },
-        relations: ['subjects', 'user']
-      });
-      const demoSubjectIds = [...new Set(demoTeachers.flatMap(t => t.subjects?.map(s => s.id) || []).filter(Boolean))];
-      
-      if (demoSubjectIds.length > 0) {
-        const subjects = await subjectRepository.find({
-          where: { id: In(demoSubjectIds) },
-          relations: ['teachers', 'classes']
-        });
-        // Filter teachers to only show demo teachers
-        subjects.forEach(subj => {
-          if (subj.teachers) {
-            subj.teachers = subj.teachers.filter((t: any) => t.user?.isDemo === true);
-          }
-        });
-        return res.json(subjects);
-      } else {
-        return res.json([]);
-      }
+      await ensureDemoDataAvailable();
     }
-    
+
+    // For demo users, show all subjects and all teachers (relaxed restriction)
     const subjects = await subjectRepository.find({
-      relations: ['teachers', 'classes']
+      relations: ['teachers', 'teachers.user', 'classes']
     });
+    
+    // Removed demo filtering - demo users can now see all teachers in subjects
+    
     res.json(subjects);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });

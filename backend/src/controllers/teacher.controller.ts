@@ -7,6 +7,7 @@ import { User, UserRole } from '../entities/User';
 import { AuthRequest } from '../middleware/auth';
 import { generateEmployeeNumber } from '../utils/employeeNumberGenerator';
 import { isDemoUser } from '../utils/demoDataFilter';
+import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
 
 export const registerTeacher = async (req: AuthRequest, res: Response) => {
   try {
@@ -78,13 +79,19 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
     const tempEmail = `${tempUsername}@school.local`;
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
     
+    // Check if the current user is a demo user
+    const isDemo = req.user?.isDemo === true || 
+                   req.user?.email === 'demo@school.com' || 
+                   req.user?.username === 'demo@school.com';
+    
     const user = userRepository.create({
       email: tempEmail,
       username: tempUsername,
       password: hashedPassword,
       role: UserRole.TEACHER,
       mustChangePassword: true,
-      isTemporaryAccount: true
+      isTemporaryAccount: true,
+      isDemo: isDemo // Set isDemo flag based on creator
     });
     
     await userRepository.save(user);
@@ -131,19 +138,20 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
+    if (isDemoUser(req)) {
+      await ensureDemoDataAvailable();
+    }
+
     const teacherRepository = AppDataSource.getRepository(Teacher);
     
-    // Filter by demo status if user is demo using query builder
+    // For demo users, show all teachers (relaxed restriction)
     const queryBuilder = teacherRepository
       .createQueryBuilder('teacher')
       .leftJoinAndSelect('teacher.subjects', 'subjects')
       .leftJoinAndSelect('teacher.classes', 'classes')
       .leftJoinAndSelect('teacher.user', 'user');
     
-    if (isDemoUser(req)) {
-      queryBuilder.andWhere('user.isDemo = :isDemo', { isDemo: true });
-    }
-    
+    // Removed demo filtering - demo users can now see all teachers
     const teachers = await queryBuilder.getMany();
 
     res.json(teachers);
@@ -360,13 +368,19 @@ export const createTeacherAccount = async (req: AuthRequest, res: Response) => {
     const tempEmail = `${tempUsername}@school.local`;
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
     
+    // Check if the current user is a demo user
+    const isDemo = req.user?.isDemo === true || 
+                   req.user?.email === 'demo@school.com' || 
+                   req.user?.username === 'demo@school.com';
+    
     const user = userRepository.create({
       email: tempEmail,
       username: tempUsername,
       password: hashedPassword,
       role: UserRole.TEACHER,
       mustChangePassword: true,
-      isTemporaryAccount: true
+      isTemporaryAccount: true,
+      isDemo: isDemo // Set isDemo flag based on creator
     });
     
     await userRepository.save(user);
