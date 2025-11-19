@@ -9,6 +9,7 @@ import { createReceiptPDF } from '../utils/receiptPdfGenerator';
 import { UniformItem } from '../entities/UniformItem';
 import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
 import { isDemoUser } from '../utils/demoDataFilter';
+import { parseAmount } from '../utils/numberUtils';
 
 // Helper function to determine next term
 function getNextTerm(currentTerm: string): string {
@@ -26,6 +27,7 @@ function getNextTerm(currentTerm: string): string {
       }
       return currentTerm.replace(/3/g, '1');
     }
+
     return currentTerm;
   }
 
@@ -63,9 +65,9 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     });
 
     // Ensure numeric values to avoid string concatenation
-    const previousBalance = parseFloat(String(lastInvoice?.balance || 0));
-    const prepaidAmount = parseFloat(String(lastInvoice?.prepaidAmount || 0));
-    let baseAmount = parseFloat(String(amount || 0));
+    const previousBalance = parseAmount(lastInvoice?.balance);
+    const prepaidAmount = parseAmount(lastInvoice?.prepaidAmount);
+    let baseAmount = parseAmount(amount);
     let calculatedFees = 0;
 
     // If term is provided, automatically calculate fees for that term
@@ -81,15 +83,15 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
 
       if (settings && settings.feesSettings) {
         const fees = settings.feesSettings;
-        const dayScholarTuitionFee = parseFloat(String(fees.dayScholarTuitionFee || 0));
-        const boarderTuitionFee = parseFloat(String(fees.boarderTuitionFee || 0));
-        const deskFee = parseFloat(String(fees.deskFee || 0));
-        const transportCost = parseFloat(String(fees.transportCost || 0));
-        const diningHallCost = parseFloat(String(fees.diningHallCost || 0));
-        const libraryFee = parseFloat(String(fees.libraryFee || 0));
-        const sportsFee = parseFloat(String(fees.sportsFee || 0));
-        const otherFees = fees.otherFees || [];
-        const otherFeesTotal = otherFees.reduce((sum: number, fee: any) => sum + parseFloat(String(fee.amount || 0)), 0);
+        const dayScholarTuitionFee = parseAmount(fees.dayScholarTuitionFee);
+        const boarderTuitionFee = parseAmount(fees.boarderTuitionFee);
+        const deskFee = parseAmount(fees.deskFee);
+        const transportCost = parseAmount(fees.transportCost);
+        const diningHallCost = parseAmount(fees.diningHallCost);
+        const libraryFee = parseAmount(fees.libraryFee);
+        const sportsFee = parseAmount(fees.sportsFee);
+        const otherFees = Array.isArray(fees.otherFees) ? fees.otherFees : [];
+        const otherFeesTotal = otherFees.reduce((sum: number, fee: any) => sum + parseAmount(fee?.amount), 0);
 
         // Check if desk fee was already charged (only charge once at registration)
         const hasPreviousInvoice = Boolean(lastInvoice);
@@ -147,6 +149,10 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    if (!Number.isFinite(calculatedFees)) {
+      calculatedFees = 0;
+    }
+
     // Process uniform items (check if this is a uniform-only invoice)
     let uniformTotal = 0;
     let uniformItemsEntities: InvoiceUniformItem[] = [];
@@ -174,7 +180,7 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
           return res.status(400).json({ message: `Uniform item not found or inactive (${itemId})` });
         }
 
-        const unitPrice = parseFloat(String(uniformItem.unitPrice || 0));
+        const unitPrice = parseAmount(uniformItem.unitPrice);
         const lineTotal = unitPrice * quantity;
         uniformTotal += lineTotal;
 
@@ -191,10 +197,12 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    const amountNum = baseAmount + uniformTotal;
+    const amountNumRaw = baseAmount + uniformTotal;
+    const amountNum = Number.isFinite(amountNumRaw) ? amountNumRaw : 0;
     
     // Calculate total invoice amount (previous balance + new amount)
-    const totalInvoiceAmount = previousBalance + amountNum;
+    const totalInvoiceAmountRaw = previousBalance + amountNum;
+    const totalInvoiceAmount = Number.isFinite(totalInvoiceAmountRaw) ? totalInvoiceAmountRaw : 0;
     
     // Calculate how much prepaid amount is applied to this invoice
     // Prepaid amount can cover part or all of the total invoice amount
@@ -337,10 +345,10 @@ export const updateInvoicePayment = async (req: AuthRequest, res: Response) => {
     }
 
     // Ensure all values are numbers to avoid string concatenation
-    const oldPaidAmount = parseFloat(String(invoice.paidAmount || 0));
-    const oldPrepaidAmount = parseFloat(String(invoice.prepaidAmount || 0));
-    const paidAmountNum = parseFloat(String(paidAmount));
-    const currentBalance = parseFloat(String(invoice.balance || 0));
+    const oldPaidAmount = parseAmount(invoice.paidAmount);
+    const oldPrepaidAmount = parseAmount(invoice.prepaidAmount);
+    const paidAmountNum = parseAmount(paidAmount);
+    const currentBalance = parseAmount(invoice.balance);
     
     if (isPrepayment) {
       // Handle prepayment: add to prepaid amount
@@ -430,7 +438,7 @@ export const calculateNextTermBalance = async (req: AuthRequest, res: Response) 
       order: { createdAt: 'DESC' }
     });
 
-    const currentBalance = lastInvoice?.balance || 0;
+    const currentBalance = parseAmount(lastInvoice?.balance);
     const nextTermBalance = currentBalance + nextTermAmount;
 
     res.json({
@@ -458,6 +466,7 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
 
     // Get settings for tuition fees
     const settings = await settingsRepository.findOne({
+      where: {},
       order: { createdAt: 'DESC' }
     });
 
@@ -465,18 +474,16 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Fee settings not configured. Please configure fees in settings first.' });
     }
 
-    const { 
-      dayScholarTuitionFee = 0, 
-      boarderTuitionFee = 0,
-      transportCost = 0,
-      diningHallCost = 0,
-      deskFee = 0,
-      libraryFee = 0,
-      sportsFee = 0,
-      otherFees = []
-    } = settings.feesSettings;
-    
-    const otherFeesTotal = (otherFees || []).reduce((sum: number, fee: any) => sum + parseFloat(String(fee.amount || 0)), 0);
+    const feesConfig = settings.feesSettings;
+    const dayScholarTuitionFee = parseAmount(feesConfig.dayScholarTuitionFee);
+    const boarderTuitionFee = parseAmount(feesConfig.boarderTuitionFee);
+    const transportCost = parseAmount(feesConfig.transportCost);
+    const diningHallCost = parseAmount(feesConfig.diningHallCost);
+    const deskFee = parseAmount(feesConfig.deskFee);
+    const libraryFee = parseAmount(feesConfig.libraryFee);
+    const sportsFee = parseAmount(feesConfig.sportsFee);
+    const otherFeesArray = Array.isArray(feesConfig.otherFees) ? feesConfig.otherFees : [];
+    const otherFeesTotal = otherFeesArray.reduce((sum: number, fee: any) => sum + parseAmount(fee?.amount), 0);
 
     // Get all active students
     const students = await studentRepository.find({
@@ -511,7 +518,7 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
 
         // Previous balance is the outstanding fees from the last invoice
         // Ensure it's a number to avoid string concatenation
-        const previousBalance = parseFloat(String(lastInvoice?.balance || 0));
+        const previousBalance = parseAmount(lastInvoice?.balance);
 
         // Determine tuition fee for the NEXT term (following term)
         // The term provided is the current term, so we calculate fees for the following term
@@ -527,8 +534,8 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
         // Staff children don't pay tuition fees
         if (!student.isStaffChild) {
           const tuitionFeeNum = student.studentType === 'Boarder' 
-            ? parseFloat(String(boarderTuitionFee || 0))
-            : parseFloat(String(dayScholarTuitionFee || 0));
+            ? boarderTuitionFee
+            : dayScholarTuitionFee;
           
           if (tuitionFeeNum <= 0) {
             results.failed++;
@@ -541,29 +548,33 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
 
         // Desk fee: only charged once at registration (first invoice only)
         if (!student.isStaffChild && shouldChargeDeskFee) {
-          termFees += parseFloat(String(deskFee || 0));
+          termFees += deskFee;
         }
         
         // Library fee, sports fee, and other fees: charged every term for non-staff children
         if (!student.isStaffChild) {
-          termFees += parseFloat(String(libraryFee || 0));
-          termFees += parseFloat(String(sportsFee || 0));
+          termFees += libraryFee;
+          termFees += sportsFee;
           termFees += otherFeesTotal;
         }
 
         // Transport cost: only for day scholars who use transport AND are not staff children
         if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild) {
-          termFees += parseFloat(String(transportCost || 0));
+          termFees += transportCost;
         }
 
         // Dining hall cost: full price for regular students, 50% for staff children
         if (student.usesDiningHall) {
-          const diningCost = parseFloat(String(diningHallCost || 0));
+          const diningCost = diningHallCost;
           if (student.isStaffChild) {
             termFees += diningCost * 0.5; // 50% for staff children
           } else {
             termFees += diningCost; // Full price for regular students
           }
+        }
+
+        if (!Number.isFinite(termFees)) {
+          termFees = 0;
         }
 
         // Calculate total amount: Old invoice balance (outstanding fees) + Fees for following term
@@ -729,10 +740,10 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
       order: { createdAt: 'DESC' }
     });
 
-    const balance = lastInvoice?.balance || 0;
-    const lastInvoiceAmount = parseFloat(String(lastInvoice?.amount || 0));
-    const previousBalance = parseFloat(String(lastInvoice?.previousBalance || 0));
-    const paidAmount = parseFloat(String(lastInvoice?.paidAmount || 0));
+    const balance = parseAmount(lastInvoice?.balance);
+    const lastInvoiceAmount = parseAmount(lastInvoice?.amount);
+    const previousBalance = parseAmount(lastInvoice?.previousBalance);
+    const paidAmount = parseAmount(lastInvoice?.paidAmount);
 
     res.json({
       studentId: student.id,
@@ -795,7 +806,7 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
       invoice,
       student,
       settings,
-      paymentAmount: paymentAmount ? parseFloat(paymentAmount as string) : invoice.paidAmount || 0,
+      paymentAmount: paymentAmount ? parseAmount(paymentAmount) : parseAmount(invoice.paidAmount),
       paymentDate: paymentDate ? new Date(paymentDate as string) : new Date(),
       receiptNumber
     });

@@ -5,6 +5,7 @@ import { Parent } from '../entities/Parent';
 import { Student } from '../entities/Student';
 import { Invoice } from '../entities/Invoice';
 import { Settings } from '../entities/Settings';
+import { parseAmount } from '../utils/numberUtils';
 
 // Get parent's linked students
 export const getParentStudents = async (req: AuthRequest, res: Response) => {
@@ -43,15 +44,16 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
           // Get settings to determine next term fees
           const settingsRepository = AppDataSource.getRepository(Settings);
           const settings = await settingsRepository.findOne({
+            where: {},
             order: { createdAt: 'DESC' }
           });
 
           // Get next term fees based on student type
           const feesSettings = settings?.feesSettings || {};
-          const dayScholarTuitionFee = parseFloat(String(feesSettings.dayScholarTuitionFee || 0));
-          const boarderTuitionFee = parseFloat(String(feesSettings.boarderTuitionFee || 0));
-          const transportCost = parseFloat(String(feesSettings.transportCost || 0));
-          const diningHallCost = parseFloat(String(feesSettings.diningHallCost || 0));
+          const dayScholarTuitionFee = parseAmount(feesSettings.dayScholarTuitionFee);
+          const boarderTuitionFee = parseAmount(feesSettings.boarderTuitionFee);
+          const transportCost = parseAmount(feesSettings.transportCost);
+          const diningHallCost = parseAmount(feesSettings.diningHallCost);
           
           // Calculate fees based on staff child status
           let nextTermFees = 0;

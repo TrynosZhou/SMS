@@ -2,6 +2,7 @@ import PDFDocument from 'pdfkit';
 import { Invoice } from '../entities/Invoice';
 import { Student } from '../entities/Student';
 import { Settings } from '../entities/Settings';
+import { parseAmount } from './numberUtils';
 
 interface InvoicePDFData {
   invoice: Invoice;
@@ -164,12 +165,12 @@ export function createInvoicePDF(
       yPos += rowHeight;
 
       // Ensure all numeric values are properly converted to numbers
-      const invoiceAmount = parseFloat(String(invoice.amount || 0));
-      const previousBalance = parseFloat(String(invoice.previousBalance || 0));
-      const paidAmount = parseFloat(String(invoice.paidAmount || 0));
-      const balance = parseFloat(String(invoice.balance || 0));
-      const prepaidAmount = parseFloat(String(invoice.prepaidAmount || 0));
-      const uniformTotal = parseFloat(String((invoice as any).uniformTotal || 0));
+      const invoiceAmount = parseAmount(invoice.amount);
+      const previousBalance = parseAmount(invoice.previousBalance);
+      const paidAmount = parseAmount(invoice.paidAmount);
+      const balance = parseAmount(invoice.balance);
+      const prepaidAmount = parseAmount(invoice.prepaidAmount);
+      const uniformTotal = parseAmount((invoice as any).uniformTotal);
       const baseAmount = parseFloat((invoiceAmount - uniformTotal).toFixed(2));
       // Note: uniformItems array is NOT used for display - only uniformTotal subtotal is shown
       // Individual uniform items should NOT appear on the invoice
@@ -198,16 +199,16 @@ export function createInvoicePDF(
 
       // Calculate fee breakdown from student data and settings
       const feesSettings = settings?.feesSettings || {};
-      const dayScholarTuitionFee = parseFloat(String(feesSettings.dayScholarTuitionFee || 0));
-      const boarderTuitionFee = parseFloat(String(feesSettings.boarderTuitionFee || 0));
-      const registrationFee = parseFloat(String(feesSettings.registrationFee || 0));
-      const deskFee = parseFloat(String(feesSettings.deskFee || 0));
-      const transportCost = parseFloat(String(feesSettings.transportCost || 0));
-      const diningHallCost = parseFloat(String(feesSettings.diningHallCost || 0));
-      const libraryFee = parseFloat(String(feesSettings.libraryFee || 0));
-      const sportsFee = parseFloat(String(feesSettings.sportsFee || 0));
+      const dayScholarTuitionFee = parseAmount(feesSettings.dayScholarTuitionFee);
+      const boarderTuitionFee = parseAmount(feesSettings.boarderTuitionFee);
+      const registrationFee = parseAmount(feesSettings.registrationFee);
+      const deskFee = parseAmount(feesSettings.deskFee);
+      const transportCost = parseAmount(feesSettings.transportCost);
+      const diningHallCost = parseAmount(feesSettings.diningHallCost);
+      const libraryFee = parseAmount(feesSettings.libraryFee);
+      const sportsFee = parseAmount(feesSettings.sportsFee);
       const otherFees = feesSettings.otherFees || [];
-      const otherFeesTotal = otherFees.reduce((sum: number, fee: any) => sum + parseFloat(String(fee.amount || 0)), 0);
+      const otherFeesTotal = otherFees.reduce((sum: number, fee: any) => sum + parseAmount(fee?.amount), 0);
 
       // Calculate individual fees based on student status
       let tuitionFee = 0;
@@ -317,7 +318,7 @@ export function createInvoicePDF(
         // Other fees - show each configured fee
         if (otherFeesTotal > 0) {
           otherFees.forEach((fee: any) => {
-            const feeAmount = parseFloat(String(fee.amount || 0));
+            const feeAmount = parseAmount(fee.amount);
             if (feeAmount > 0) {
               renderTableRow(fee.name || 'Other Fee', feeAmount, { fill: '#F8F9FA' });
               displayedFeesTotal += feeAmount;

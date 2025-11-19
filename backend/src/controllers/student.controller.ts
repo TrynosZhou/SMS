@@ -13,6 +13,7 @@ import { Settings } from '../entities/Settings';
 import QRCode from 'qrcode';
 import { createStudentIdCardPDF } from '../utils/studentIdCardPdf';
 import { isDemoUser } from '../utils/demoDataFilter';
+import { parseAmount } from '../utils/numberUtils';
 
 export const registerStudent = async (req: AuthRequest, res: Response) => {
   try {
@@ -142,6 +143,7 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
       console.log('📋 Creating invoice for new student:', savedStudent?.studentNumber || student.studentNumber);
       console.log('📋 Student ID:', savedStudent?.id || student.id);
       const settings = await settingsRepository.findOne({
+        where: {},
         order: { createdAt: 'DESC' }
       });
 
@@ -153,12 +155,12 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
         console.warn('⚠️ Invoice not created - please configure fees in Settings page');
       } else {
         const fees = settings.feesSettings;
-        const dayScholarTuition = parseFloat(String(fees.dayScholarTuitionFee || 0));
-        const boarderTuition = parseFloat(String(fees.boarderTuitionFee || 0));
-        const registrationFee = parseFloat(String(fees.registrationFee || 0));
-        const deskFee = parseFloat(String(fees.deskFee || 0));
-        const transportCost = parseFloat(String(fees.transportCost || 0));
-        const diningHallCost = parseFloat(String(fees.diningHallCost || 0));
+        const dayScholarTuition = parseAmount(fees.dayScholarTuitionFee);
+        const boarderTuition = parseAmount(fees.boarderTuitionFee);
+        const registrationFee = parseAmount(fees.registrationFee);
+        const deskFee = parseAmount(fees.deskFee);
+        const transportCost = parseAmount(fees.transportCost);
+        const diningHallCost = parseAmount(fees.diningHallCost);
         
         console.log('💰 Fee settings loaded:', {
           dayScholarTuition,
@@ -925,6 +927,7 @@ export const generateStudentIdCard = async (req: AuthRequest, res: Response) => 
     }
 
     const settings = await settingsRepository.findOne({
+      where: {},
       order: { createdAt: 'DESC' }
     });
 
