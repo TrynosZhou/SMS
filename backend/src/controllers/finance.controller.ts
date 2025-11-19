@@ -282,29 +282,7 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const { studentId, status, invoiceId } = req.query as { studentId?: string; status?: string; invoiceId?: string };
 
-    // Filter invoices for demo users - only show invoices for demo students
-    if (isDemoUser(req)) {
-      const queryBuilder = invoiceRepository
-        .createQueryBuilder('invoice')
-        .leftJoinAndSelect('invoice.student', 'student')
-        .leftJoinAndSelect('student.user', 'user')
-        .where('user.isDemo = :isDemo', { isDemo: true });
-      
-      if (studentId) {
-        queryBuilder.andWhere('invoice.studentId = :studentId', { studentId });
-      }
-      if (status) {
-        queryBuilder.andWhere('invoice.status = :status', { status });
-      }
-      if (invoiceId) {
-        queryBuilder.andWhere('invoice.id = :invoiceId', { invoiceId });
-      }
-      
-      queryBuilder.orderBy('invoice.createdAt', 'DESC');
-      const invoices = await queryBuilder.getMany();
-      return res.json(invoices);
-    }
-
+    // Demo users have full access to all invoices
     const where: any = {};
     if (studentId) where.studentId = studentId;
     if (status) where.status = status;

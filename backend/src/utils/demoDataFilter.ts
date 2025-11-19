@@ -4,15 +4,17 @@
  */
 
 import { AuthRequest } from '../middleware/auth';
+import { UserRole } from '../entities/User';
 
 /**
  * Check if the current user is a demo user
  */
 export function isDemoUser(req: AuthRequest): boolean {
   const isDemo = req.user?.isDemo === true || 
+                 req.user?.role === UserRole.DEMO_USER ||
                  req.user?.email === 'demo@school.com' || 
                  req.user?.username === 'demo@school.com';
-  if (isDemo && !req.user?.isDemo) {
+  if (isDemo && !req.user?.isDemo && req.user?.role !== UserRole.DEMO_USER) {
     // Log if we detect demo account but isDemo flag is not set
     console.warn('⚠️ Demo account detected but isDemo flag is not set. Email:', req.user?.email, 'Username:', req.user?.username);
   }

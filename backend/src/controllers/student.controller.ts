@@ -351,7 +351,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       const trimmedClassId = String(classId).trim();
       console.log('Filtering students by classId:', trimmedClassId);
 
-      // First, try query builder to properly filter by demo status
+      // Query all students for the class (demo users have full access)
       const queryBuilder = studentRepository
         .createQueryBuilder('student')
         .leftJoinAndSelect('student.classEntity', 'classEntity')
@@ -359,17 +359,8 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
         .leftJoinAndSelect('student.user', 'user')
         .where('student.classId = :classId', { classId: trimmedClassId });
       
-      // Filter by demo status if user is demo
-      if (isDemoUser(req)) {
-        queryBuilder.andWhere('user.isDemo = :isDemo', { isDemo: true });
-      }
-      
       students = await queryBuilder.getMany();
       console.log(`Found ${students.length} students using query builder for classId: ${trimmedClassId}`);
-      
-      if (isDemoUser(req)) {
-        console.log('Demo user - filtered to show only demo students');
-      }
 
       // If still no students found, try a more permissive approach
       if (students.length === 0) {
@@ -436,19 +427,14 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
         console.log('Sample student classEntity.id:', students[0].classEntity?.id);
       }
     } else {
-      // No classId provided, return all students
-      // Filter by demo status if user is demo
-      const queryBuilder = studentRepository
+      // No classId provided, return all students (demo users have full access)
+      students = await studentRepository
         .createQueryBuilder('student')
         .leftJoinAndSelect('student.classEntity', 'classEntity')
         .leftJoinAndSelect('student.parent', 'parent')
-        .leftJoinAndSelect('student.user', 'user');
+        .leftJoinAndSelect('student.user', 'user')
+        .getMany();
       
-      if (isDemoUser(req)) {
-        queryBuilder.andWhere('user.isDemo = :isDemo', { isDemo: true });
-      }
-      
-      students = await queryBuilder.getMany();
       console.log(`No classId provided, returning all ${students.length} students`);
     }
 
