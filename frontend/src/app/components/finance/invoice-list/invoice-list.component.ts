@@ -354,6 +354,20 @@ export class InvoiceListComponent implements OnInit {
     }, 0);
   }
 
+  getTotalPrepaidCredit(): number {
+    return this.filteredInvoices.reduce((sum, inv) => {
+      const prepaidAmount = parseFloat(String(inv.prepaidAmount || 0));
+      return sum + prepaidAmount;
+    }, 0);
+  }
+
+  getPrepaidCreditCount(): number {
+    return this.filteredInvoices.filter(inv => {
+      const prepaidAmount = parseFloat(String(inv.prepaidAmount || 0));
+      return prepaidAmount > 0;
+    }).length;
+  }
+
   openInvoiceDetails(invoice: any) {
     this.selectedInvoiceDetails = invoice;
     this.showInvoiceDetailsModal = true;

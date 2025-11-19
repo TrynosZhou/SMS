@@ -755,6 +755,7 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
     const lastInvoiceAmount = parseAmount(lastInvoice?.amount);
     const previousBalance = parseAmount(lastInvoice?.previousBalance);
     const paidAmount = parseAmount(lastInvoice?.paidAmount);
+    const prepaidAmount = parseAmount(lastInvoice?.prepaidAmount);
 
     res.json({
       studentId: student.id,
@@ -763,6 +764,7 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
       lastName: student.lastName,
       fullName: `${student.lastName} ${student.firstName}`,
       balance: balance,
+      prepaidAmount: prepaidAmount,
       lastInvoiceId: lastInvoice?.id || null,
       lastInvoiceNumber: lastInvoice?.invoiceNumber || null,
       lastInvoiceTerm: lastInvoice?.term || null,

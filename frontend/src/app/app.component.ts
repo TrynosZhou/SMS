@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { AuthService } from './services/auth.service';
-import { SchoolService } from './services/school.service';
+import { SettingsService } from './services/settings.service';
 
 @Component({
   selector: 'app-root',
@@ -10,17 +10,17 @@ import { SchoolService } from './services/school.service';
 export class AppComponent implements OnInit {
   schoolName = 'School Management System';
 
-  constructor(public authService: AuthService, private schoolService: SchoolService) { }
+  constructor(public authService: AuthService, private settingsService: SettingsService) { }
 
   ngOnInit(): void {
     // Load school name from settings if authenticated
     if (this.authService.isAuthenticated()) {
-      this.schoolService.getCurrentSchoolProfile().subscribe({
-        next: (school) => {
-          this.schoolName = school?.name || 'School Management System';
+      this.settingsService.getSettings().subscribe({
+        next: (settings: any) => {
+          this.schoolName = settings?.schoolName || 'School Management System';
         },
         error: () => {
-          // ignore profile fetch errors to avoid blocking UI
+          // ignore settings fetch errors to avoid blocking UI
         }
       });
     }

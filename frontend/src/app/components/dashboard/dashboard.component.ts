@@ -7,7 +7,6 @@ import { TeacherService } from '../../services/teacher.service';
 import { ClassService } from '../../services/class.service';
 import { FinanceService } from '../../services/finance.service';
 import { SubjectService } from '../../services/subject.service';
-import { SchoolService } from '../../services/school.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -45,8 +44,7 @@ export class DashboardComponent implements OnInit {
     private teacherService: TeacherService,
     private classService: ClassService,
     private financeService: FinanceService,
-    private subjectService: SubjectService,
-    private schoolService: SchoolService
+    private subjectService: SubjectService
   ) { }
 
   ngOnInit() {

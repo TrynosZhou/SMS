@@ -68,6 +68,17 @@
         </div>
       </div>
     </div>
+    
+    <div class="stat-card" style="border-left: 4px solid #17a2b8;" *ngIf="getTotalPrepaidCredit() > 0">
+      <div class="stat-icon">💳</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ currencySymbol }} {{ getTotalPrepaidCredit() | number:'1.2-2' }}</div>
+        <div class="stat-label">Available Credits</div>
+        <div class="stat-sublabel">
+          {{ getPrepaidCreditCount() }} student(s) with credit
+        </div>
+      </div>
+    </div>
   </div>
     
     <!-- Student Balance Lookup Section -->
@@ -101,6 +112,18 @@
           <strong>Fees Balance:</strong> 
           <span style="color: #DC3545; font-weight: bold;">{{ currencySymbol }} {{ studentBalanceInfo.balance | number:'1.2-2' }}</span>
         </p>
+        
+        <!-- Available Credit Display -->
+        <div *ngIf="studentBalanceInfo.prepaidAmount && studentBalanceInfo.prepaidAmount > 0" 
+             style="margin-top: 10px; padding: 10px; background: #d1ecf1; border: 2px solid #17a2b8; border-radius: 6px;">
+          <p style="margin: 0; font-size: 16px;">
+            <strong style="color: #0c5460;">💳 Available Credit:</strong>
+            <span style="color: #0c5460; font-weight: bold; font-size: 18px;">
+              {{ currencySymbol }} {{ studentBalanceInfo.prepaidAmount | number:'1.2-2' }}
+            </span>
+          </p>
+          <small style="color: #0c5460;">This credit will be applied to the next invoice</small>
+        </div>
         
         <!-- Updated Balance After Payment -->
         <div *ngIf="updatedBalanceAfterPayment !== null" 
@@ -324,6 +347,7 @@
               <th style="text-align: right;">Grand Total</th>
               <th style="text-align: right;">Paid</th>
               <th style="text-align: right;">Balance</th>
+              <th style="text-align: right;">Credit 💳</th>
               <th>Status</th>
               <th>Due Date</th>
               <th>Term</th>
@@ -339,6 +363,15 @@
               <td style="text-align: right;">{{ currencySymbol }} {{ invoice.amount | number:'1.2-2' }}</td>
               <td style="text-align: right;">{{ currencySymbol }} {{ invoice.paidAmount | number:'1.2-2' }}</td>
               <td style="text-align: right;">{{ currencySymbol }} {{ invoice.balance | number:'1.2-2' }}</td>
+              <td style="text-align: right;">
+                <span *ngIf="invoice.prepaidAmount && invoice.prepaidAmount > 0" 
+                      style="color: #17a2b8; font-weight: bold;" 
+                      title="Available prepaid credit">
+                  {{ currencySymbol }} {{ invoice.prepaidAmount | number:'1.2-2' }}
+                </span>
+                <span *ngIf="!invoice.prepaidAmount || invoice.prepaidAmount <= 0" 
+                      style="color: #999;">—</span>
+              </td>
               <td>
                 <span [class]="getStatusClass(invoice.status)">
                   {{ invoice.status }}
@@ -463,6 +496,12 @@
               <span class="summary-label">Amount Paid So Far</span>
               <span class="summary-value paid">{{ currencySymbol }} {{ selectedInvoice.paidAmount | number:'1.2-2' }}</span>
             </div>
+            <div class="summary-item" 
+                 *ngIf="selectedInvoice.prepaidAmount && selectedInvoice.prepaidAmount > 0"
+                 style="background: #d1ecf1; border-left: 3px solid #17a2b8;">
+              <span class="summary-label">💳 Available Credit</span>
+              <span class="summary-value" style="color: #0c5460; font-weight: bold;">{{ currencySymbol }} {{ selectedInvoice.prepaidAmount | number:'1.2-2' }}</span>
+            </div>
           </div>
         </div>
 
@@ -501,6 +540,11 @@
                 <span class="preview-value" [class.warning]="getNewBalance() < 0" [class.success]="getNewBalance() === 0">
                   {{ currencySymbol }} {{ getNewBalance() | number:'1.2-2' }}
                 </span>
+              </div>
+              <div class="field-hint" *ngIf="selectedInvoice && paymentForm.amount > 0 && getNewBalance() < 0" 
+                   style="margin-top: 8px; padding: 8px; background: #d1ecf1; border-left: 3px solid #17a2b8; color: #0c5460;">
+                <span class="hint-icon">ℹ️</span>
+                Overpayment of {{ currencySymbol }} {{ Math.abs(getNewBalance()) | number:'1.2-2' }} will be saved as credit and automatically applied to the next invoice.
               </div>
             </div>
 
