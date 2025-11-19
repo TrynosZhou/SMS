@@ -6,6 +6,76 @@ import { Student } from '../entities/Student';
 import { UniformItem } from '../entities/UniformItem';
 import { AuthRequest } from '../middleware/auth';
 
+const DEFAULT_MODULE_ACCESS: Settings['moduleAccess'] = {
+  teachers: {
+    students: true,
+    classes: true,
+    subjects: true,
+    exams: true,
+    reportCards: true,
+    rankings: true,
+    finance: false,
+    settings: false
+  },
+  parents: {
+    reportCards: true,
+    invoices: true,
+    dashboard: true
+  },
+  accountant: {
+    students: true,
+    invoices: true,
+    finance: true,
+    dashboard: true,
+    settings: false
+  },
+  admin: {
+    students: true,
+    teachers: true,
+    classes: true,
+    subjects: true,
+    exams: true,
+    reportCards: true,
+    rankings: true,
+    finance: true,
+    attendance: true,
+    settings: true,
+    dashboard: true
+  },
+  students: {
+    dashboard: true,
+    subjects: true,
+    assignments: true,
+    reportCards: true,
+    finance: false
+  },
+  demoAccount: {
+    dashboard: true,
+    students: true,
+    teachers: true,
+    classes: true,
+    subjects: true,
+    exams: true,
+    reportCards: true,
+    rankings: true,
+    finance: true,
+    attendance: true,
+    settings: false
+  }
+};
+
+const ensureModuleAccessDefaults = (current?: Settings['moduleAccess'] | null): Settings['moduleAccess'] => {
+  const existing = current || {};
+  return {
+    teachers: { ...DEFAULT_MODULE_ACCESS?.teachers, ...(existing.teachers || {}) },
+    parents: { ...DEFAULT_MODULE_ACCESS?.parents, ...(existing.parents || {}) },
+    accountant: { ...DEFAULT_MODULE_ACCESS?.accountant, ...(existing.accountant || {}) },
+    admin: { ...DEFAULT_MODULE_ACCESS?.admin, ...(existing.admin || {}) },
+    students: { ...DEFAULT_MODULE_ACCESS?.students, ...(existing.students || {}) },
+    demoAccount: { ...DEFAULT_MODULE_ACCESS?.demoAccount, ...(existing.demoAccount || {}) }
+  };
+};
+
 export const getSettings = async (req: AuthRequest, res: Response) => {
   try {
     if (!AppDataSource.isInitialized) {
@@ -47,23 +117,7 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
           academicYear: new Date().getFullYear().toString(),
           currentTerm: `Term 1 ${new Date().getFullYear()}`,
           currencySymbol: 'KES',
-          moduleAccess: {
-            teachers: {
-              students: true,
-              classes: true,
-              subjects: true,
-              exams: true,
-              reportCards: true,
-              rankings: true,
-              finance: false,
-              settings: false
-            },
-            parents: {
-              reportCards: true,
-              invoices: true,
-              dashboard: true
-            }
-          }
+          moduleAccess: ensureModuleAccessDefaults()
         });
         await settingsRepository.save(settings);
       } catch (createError: any) {
@@ -92,23 +146,7 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
           academicYear: new Date().getFullYear().toString(),
           currentTerm: `Term 1 ${new Date().getFullYear()}`,
           currencySymbol: 'KES',
-          moduleAccess: {
-            teachers: {
-              students: true,
-              classes: true,
-              subjects: true,
-              exams: true,
-              reportCards: true,
-              rankings: true,
-              finance: false,
-              settings: false
-            },
-            parents: {
-              reportCards: true,
-              invoices: true,
-              dashboard: true
-            }
-          }
+          moduleAccess: ensureModuleAccessDefaults()
         });
       }
     } else if (settings.feesSettings) {
@@ -127,6 +165,7 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
 
     // Include school name from settings if available
     const responsePayload: any = { ...settings };
+    responsePayload.moduleAccess = ensureModuleAccessDefaults(settings?.moduleAccess);
 
     // For demo users, always return "Demo School" as school name/code
     const isDemo = req.user?.isDemo === true || req.user?.email === 'demo@school.com' || req.user?.username === 'demo@school.com';
@@ -285,7 +324,9 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       settings.currencySymbol = String(currencySymbol).trim() || 'KES';
     }
     if (moduleAccess !== undefined) {
-      settings.moduleAccess = moduleAccess;
+      settings.moduleAccess = ensureModuleAccessDefaults(moduleAccess);
+    } else if (settings.moduleAccess) {
+      settings.moduleAccess = ensureModuleAccessDefaults(settings.moduleAccess);
     }
 
     settings.updatedAt = new Date();

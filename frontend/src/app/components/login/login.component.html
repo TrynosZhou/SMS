@@ -66,6 +66,24 @@
           <a href="#" (click)="setTab('reset'); $event.preventDefault()" class="link">Forgot password?</a>
         </div>
       </form>
+      <div class="demo-access-card">
+        <div class="demo-access-content">
+          <div>
+            <h3>Explore as Demo User</h3>
+            <p>Try the full system with sample data. Changes reset automatically.</p>
+            <p class="demo-credentials">
+              Email: <strong>demo@school.com</strong> &nbsp;•&nbsp; Password: <strong>Demo@123</strong>
+            </p>
+          </div>
+          <button 
+            type="button" 
+            class="btn btn-demo btn-block" 
+            (click)="loginAsDemoUser()" 
+            [disabled]="loading">
+            {{ demoLoginInProgress ? 'Joining Demo...' : '🚀 Continue as Demo User' }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Sign Up Form -->

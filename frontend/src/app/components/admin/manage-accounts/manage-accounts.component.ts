@@ -40,7 +40,18 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   error = '';
   success = '';
   creatingAccount = false;
+  creatingUserAccount = false;
   selectedTeacher: any = null;
+  showManualPassword = false;
+  manualAccountRoles = [
+    { value: 'superadmin', label: 'Super Admin' },
+    { value: 'admin', label: 'Administrator' },
+    { value: 'accountant', label: 'Accountant' },
+    { value: 'teacher', label: 'Teacher' },
+    { value: 'parent', label: 'Parent' },
+    { value: 'student', label: 'Student' }
+  ];
+  manualAccount = this.getDefaultManualAccountForm();
   
   // Search and filter
   searchQuery = '';
@@ -379,5 +390,97 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     // Use currentUser from subscription or get fresh from service
     const user = this.currentUser || this.authService.getCurrentUser();
     return user?.role === 'admin' || user?.role === 'superadmin';
+  }
+
+  isSuperAdmin(): boolean {
+    const user = this.currentUser || this.authService.getCurrentUser();
+    return user?.role === 'superadmin';
+  }
+
+  canCreateManualAccounts(): boolean {
+    return this.isAdmin();
+  }
+
+  toggleManualPasswordVisibility() {
+    this.showManualPassword = !this.showManualPassword;
+  }
+
+  resetManualAccountForm() {
+    this.manualAccount = this.getDefaultManualAccountForm();
+    this.showManualPassword = false;
+  }
+
+  private getDefaultManualAccountForm() {
+    return {
+      email: '',
+      username: '',
+      role: 'accountant',
+      generatePassword: true,
+      password: '',
+      isDemo: false
+    };
+  }
+
+  createManualAccount() {
+    if (!this.manualAccount.email || !this.manualAccount.role) {
+      this.error = 'Email and role are required to create an account';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    if (!this.manualAccount.generatePassword) {
+      if (!this.manualAccount.password || this.manualAccount.password.trim().length < 8) {
+        this.error = 'Please provide a password with at least 8 characters';
+        setTimeout(() => this.error = '', 5000);
+        return;
+      }
+    }
+
+    if (this.manualAccount.role === 'superadmin' && !this.isSuperAdmin()) {
+      this.error = 'Only Super Admins can create another Super Admin account';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    this.creatingUserAccount = true;
+    this.error = '';
+    this.success = '';
+
+    const payload: any = {
+      email: this.manualAccount.email.trim(),
+      role: this.manualAccount.role,
+      username: this.manualAccount.username?.trim() || undefined,
+      generatePassword: this.manualAccount.generatePassword
+    };
+
+    if (!this.manualAccount.generatePassword) {
+      payload.password = this.manualAccount.password.trim();
+    }
+
+    if (this.manualAccount.isDemo && this.isSuperAdmin()) {
+      payload.isDemo = true;
+    }
+
+    this.accountService.createUserAccount(payload).subscribe({
+      next: (response: any) => {
+        this.creatingUserAccount = false;
+        const password = response.temporaryCredentials?.password || payload.password;
+        const messageParts = [
+          `Account created for <strong>${response.user?.email || payload.email}</strong>.`,
+          `<strong>Role:</strong> ${response.user?.role || payload.role}`
+        ];
+        if (password) {
+          messageParts.push(`<strong>Temporary Password:</strong> ${password}`);
+        }
+        this.success = messageParts.join('<br>');
+        this.resetManualAccountForm();
+        setTimeout(() => this.success = '', 12000);
+      },
+      error: (err: any) => {
+        this.creatingUserAccount = false;
+        this.error = err.error?.message || 'Failed to create user account';
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
   }
 }

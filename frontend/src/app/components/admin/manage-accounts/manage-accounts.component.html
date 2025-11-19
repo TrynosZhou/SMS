@@ -23,6 +23,80 @@
     <span>{{ error }}</span>
   </div>
 
+  <!-- Manual User Account Creation -->
+  <div class="manual-account-card" *ngIf="canCreateManualAccounts()" [@fadeInUp]>
+    <div class="manual-account-header">
+      <div>
+        <h2>Create User Account</h2>
+        <p>Create login credentials for administrators, accountants, parents, or students without linking to teacher records.</p>
+      </div>
+      <div class="manual-account-meta">
+        <span class="meta-item"><strong>Admins</strong> can create Admin/Accountant/Parent/Student accounts</span>
+        <span class="meta-item" *ngIf="isSuperAdmin()"><strong>Super Admins</strong> can also create Super Admin & Demo accounts</span>
+      </div>
+    </div>
+    <form class="manual-account-form" (ngSubmit)="createManualAccount()">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Email Address *</label>
+          <input type="email" [(ngModel)]="manualAccount.email" name="manualEmail" placeholder="user@example.com" required [disabled]="creatingUserAccount">
+        </div>
+        <div class="form-group">
+          <label>Username (optional)</label>
+          <input type="text" [(ngModel)]="manualAccount.username" name="manualUsername" placeholder="Leave blank to auto-generate" [disabled]="creatingUserAccount">
+        </div>
+        <div class="form-group">
+          <label>Role *</label>
+          <select [(ngModel)]="manualAccount.role" name="manualRole" required [disabled]="creatingUserAccount">
+            <option *ngFor="let option of manualAccountRoles" [ngValue]="option.value" [disabled]="option.value === 'superadmin' && !isSuperAdmin()">
+              {{ option.label }}{{ option.value === 'superadmin' ? ' (Super Admin only)' : '' }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group checkbox-inline">
+          <label class="checkbox-label">
+            <input type="checkbox" [(ngModel)]="manualAccount.generatePassword" name="manualGeneratePassword" [disabled]="creatingUserAccount">
+            <span>Generate secure password automatically</span>
+          </label>
+        </div>
+        <div class="form-group" *ngIf="!manualAccount.generatePassword">
+          <label>Temporary Password *</label>
+          <div class="password-input-wrapper">
+            <input
+              [type]="showManualPassword ? 'text' : 'password'"
+              [(ngModel)]="manualAccount.password"
+              name="manualPassword"
+              minlength="8"
+              placeholder="Minimum 8 characters"
+              [disabled]="creatingUserAccount"
+              required>
+            <button type="button" class="password-toggle-btn" (click)="toggleManualPasswordVisibility()" tabindex="-1">
+              <span>{{ showManualPassword ? '👁️' : '👁️‍🗨️' }}</span>
+            </button>
+          </div>
+        </div>
+        <div class="form-group checkbox-inline" *ngIf="isSuperAdmin()">
+          <label class="checkbox-label">
+            <input type="checkbox" [(ngModel)]="manualAccount.isDemo" name="manualIsDemo" [disabled]="creatingUserAccount">
+            <span>Mark as Demo Account (restricted permissions)</span>
+          </label>
+        </div>
+      </div>
+      <div class="manual-account-actions">
+        <button type="button" class="btn btn-secondary" (click)="resetManualAccountForm()" [disabled]="creatingUserAccount">
+          Reset
+        </button>
+        <button type="submit" class="btn btn-primary" [disabled]="creatingUserAccount">
+          <span *ngIf="!creatingUserAccount">Create Account</span>
+          <span *ngIf="creatingUserAccount" class="submit-loading">
+            <span class="spinner-small"></span>
+            Creating...
+          </span>
+        </button>
+      </div>
+    </form>
+  </div>
+
   <!-- Demo Account Notice -->
   <div class="demo-notice-card" *ngIf="isAdmin() && isDemoUser()" [@fadeInUp]>
     <div class="demo-notice-content">

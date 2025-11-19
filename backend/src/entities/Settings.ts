@@ -129,6 +129,26 @@ export class Settings {
       settings?: boolean;
       dashboard?: boolean;
     };
+    students?: {
+      dashboard?: boolean;
+      subjects?: boolean;
+      assignments?: boolean;
+      reportCards?: boolean;
+      finance?: boolean;
+    };
+    demoAccount?: {
+      dashboard?: boolean;
+      students?: boolean;
+      teachers?: boolean;
+      classes?: boolean;
+      subjects?: boolean;
+      exams?: boolean;
+      reportCards?: boolean;
+      rankings?: boolean;
+      finance?: boolean;
+      attendance?: boolean;
+      settings?: boolean;
+    };
   } | null;
 
   // Promotion Rules (JSON) - Maps current class to next class

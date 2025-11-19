@@ -86,6 +86,26 @@ export class SettingsComponent implements OnInit {
         attendance: true,
         settings: true,
         dashboard: true
+      },
+      students: {
+        dashboard: true,
+        subjects: true,
+        assignments: true,
+        reportCards: true,
+        finance: false
+      },
+      demoAccount: {
+        dashboard: true,
+        students: true,
+        teachers: true,
+        classes: true,
+        subjects: true,
+        exams: true,
+        reportCards: true,
+        rankings: true,
+        finance: true,
+        attendance: true,
+        settings: false
       }
     },
     promotionRules: {
@@ -299,6 +319,26 @@ export class SettingsComponent implements OnInit {
               attendance: true,
               settings: true,
               dashboard: true
+            },
+            students: {
+              dashboard: true,
+              subjects: true,
+              assignments: true,
+              reportCards: true,
+              finance: false
+            },
+            demoAccount: {
+              dashboard: true,
+              students: true,
+              teachers: true,
+              classes: true,
+              subjects: true,
+              exams: true,
+              reportCards: true,
+              rankings: true,
+              finance: true,
+              attendance: true,
+              settings: false
             }
           };
         } else {
@@ -325,6 +365,30 @@ export class SettingsComponent implements OnInit {
               attendance: true,
               settings: true,
               dashboard: true
+            };
+          }
+          if (!this.settings.moduleAccess.students) {
+            this.settings.moduleAccess.students = {
+              dashboard: true,
+              subjects: true,
+              assignments: true,
+              reportCards: true,
+              finance: false
+            };
+          }
+          if (!this.settings.moduleAccess.demoAccount) {
+            this.settings.moduleAccess.demoAccount = {
+              dashboard: true,
+              students: true,
+              teachers: true,
+              classes: true,
+              subjects: true,
+              exams: true,
+              reportCards: true,
+              rankings: true,
+              finance: true,
+              attendance: true,
+              settings: false
             };
           }
         }

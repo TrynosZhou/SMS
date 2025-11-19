@@ -6,6 +6,104 @@
   padding: 20px;
 }
 
+.manual-account-card {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 25px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  border: 1px solid #eef1f5;
+}
+
+.manual-account-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.manual-account-header h2 {
+  margin: 0;
+  font-size: 22px;
+  color: #2c3e50;
+}
+
+.manual-account-header p {
+  margin: 0;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.manual-account-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  color: #495057;
+}
+
+.manual-account-meta .meta-item {
+  background: #f1f3f5;
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
+.manual-account-form .form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 15px 20px;
+}
+
+.manual-account-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.manual-account-form label {
+  font-weight: 600;
+  font-size: 13px;
+  color: #34495e;
+}
+
+.manual-account-form input,
+.manual-account-form select {
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.manual-account-form input:focus,
+.manual-account-form select:focus {
+  border-color: #667eea;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.manual-account-form .checkbox-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.manual-account-form .checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: #5c6c7c;
+  cursor: pointer;
+}
+
+.manual-account-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
 /* Header Section */
 .page-header {
   display: flex;
@@ -955,6 +1053,14 @@
   .page-header {
     flex-direction: column;
     gap: 15px;
+  }
+
+  .manual-account-form .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manual-account-actions {
+    flex-direction: column;
   }
 
   .stats-container {

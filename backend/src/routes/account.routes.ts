@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth';
-import { updateAccount, getAccountInfo } from '../controllers/account.controller';
+import { authenticate, authorize } from '../middleware/auth';
+import { updateAccount, getAccountInfo, createUserAccount } from '../controllers/account.controller';
+import { UserRole } from '../entities/User';
 
 const router = Router();
 
@@ -12,6 +13,13 @@ router.get('/', getAccountInfo);
 
 // Update account (all authenticated users - teachers, parents, students)
 router.put('/', updateAccount);
+
+// Admin/SuperAdmin can create user accounts
+router.post(
+  '/users',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  createUserAccount
+);
 
 export default router;
 

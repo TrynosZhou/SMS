@@ -198,6 +198,10 @@ export class DashboardComponent implements OnInit {
     return this.authService.hasRole('parent');
   }
 
+  isStudent(): boolean {
+    return this.authService.hasRole('student');
+  }
+
   openBulkMessage() {
     this.showBulkMessage = true;
   }
@@ -210,6 +214,16 @@ export class DashboardComponent implements OnInit {
     if (!this.moduleAccess) {
       // Default to true if settings not loaded (for backward compatibility)
       return true;
+    }
+
+    const normalizedModule = this.normalizeModuleKey(module);
+
+    // Apply demo account restrictions first (demo users have explicit limits)
+    if (this.isDemoUser()) {
+      const demoModules = this.moduleAccess.demoAccount || {};
+      if (demoModules[normalizedModule] === false) {
+        return false;
+      }
     }
 
     // Check module access for Accountants
@@ -227,7 +241,7 @@ export class DashboardComponent implements OnInit {
         'settings': 'settings',
         'dashboard': 'dashboard'
       };
-      const key = moduleMap[module] || module;
+      const key = moduleMap[module] || normalizedModule;
       return accountantModules[key] !== false; // Default to true if not explicitly set
     }
 
@@ -247,7 +261,7 @@ export class DashboardComponent implements OnInit {
         'settings': 'settings',
         'dashboard': 'dashboard'
       };
-      const key = moduleMap[module] || module;
+      const key = moduleMap[module] || normalizedModule;
       return adminModules[key] !== false; // Default to true if not explicitly set
     }
 
@@ -269,7 +283,7 @@ export class DashboardComponent implements OnInit {
         'finance': 'finance',
         'settings': 'settings'
       };
-      const key = moduleMap[module] || module;
+      const key = moduleMap[module] || normalizedModule;
       return teacherModules[key] !== false; // Default to true if not explicitly set
     }
 
@@ -280,11 +294,43 @@ export class DashboardComponent implements OnInit {
         'invoices': 'invoices',
         'dashboard': 'dashboard'
       };
-      const key = moduleMap[module] || module;
+      const key = moduleMap[module] || normalizedModule;
       return parentModules[key] !== false; // Default to true if not explicitly set
     }
 
+    if (this.isStudent()) {
+      const studentModules = this.moduleAccess.students || {};
+      const moduleMap: any = {
+        'dashboard': 'dashboard',
+        'subjects': 'subjects',
+        'assignments': 'assignments',
+        'reportCards': 'reportCards',
+        'finance': 'finance'
+      };
+      const key = moduleMap[module] || normalizedModule;
+      return studentModules[key] !== false;
+    }
+
     return false;
+  }
+
+  private normalizeModuleKey(module: string): string {
+    const baseMap: any = {
+      exams: 'exams',
+      reportCards: 'reportCards',
+      rankings: 'rankings',
+      students: 'students',
+      classes: 'classes',
+      subjects: 'subjects',
+      finance: 'finance',
+      invoices: 'invoices',
+      settings: 'settings',
+      dashboard: 'dashboard',
+      attendance: 'attendance',
+      assignments: 'assignments',
+      teachers: 'teachers'
+    };
+    return baseMap[module] || module;
   }
 
   logout() {

@@ -880,6 +880,90 @@
             </label>
           </div>
         </div>
+
+        <!-- Demo Account Module Access -->
+        <div class="module-access-group">
+          <h3>🧪 Demo Account Access</h3>
+          <p class="section-description" style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
+            Limit what the shared demo login can access. Useful when sharing the system publicly.
+          </p>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.dashboard" name="demoDashboard">
+              <span>Dashboard</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.students" name="demoStudents">
+              <span>Students</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.teachers" name="demoTeachers">
+              <span>Teachers</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.classes" name="demoClasses">
+              <span>Classes</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.subjects" name="demoSubjects">
+              <span>Subjects</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.exams" name="demoExams">
+              <span>Exams</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.reportCards" name="demoReportCards">
+              <span>Report Cards</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.rankings" name="demoRankings">
+              <span>Rankings</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.finance" name="demoFinance">
+              <span>Finance</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.attendance" name="demoAttendance">
+              <span>Attendance</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.settings" name="demoSettings">
+              <span>Settings</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Student Module Access -->
+        <div class="module-access-group">
+          <h3>🎓 Student Access</h3>
+          <p class="section-description" style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
+            Decide what logged-in students can see when student accounts are enabled.
+          </p>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.students.dashboard" name="studentDashboard">
+              <span>Dashboard</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.students.subjects" name="studentSubjects">
+              <span>Subjects</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.students.assignments" name="studentAssignments">
+              <span>Assignments</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.students.reportCards" name="studentReportCards">
+              <span>Report Cards</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.students.finance" name="studentFinance">
+              <span>Finance</span>
+            </label>
+          </div>
+        </div>
       </div>
 
       <div style="margin-top: 20px;">

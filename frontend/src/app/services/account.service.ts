@@ -18,5 +18,16 @@ export class AccountService {
   updateAccount(data: { newUsername?: string; newEmail?: string; currentPassword: string; newPassword: string }): Observable<any> {
     return this.http.put(`${this.apiUrl}/account`, data);
   }
+
+  createUserAccount(data: {
+    email: string;
+    username?: string;
+    role: string;
+    password?: string;
+    generatePassword?: boolean;
+    isDemo?: boolean;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/account/users`, data);
+  }
 }
 

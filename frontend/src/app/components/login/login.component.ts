@@ -14,6 +14,11 @@ export class LoginComponent {
   // Sign In fields
   email = '';
   password = '';
+  demoLoginInProgress = false;
+  readonly demoUserCredentials = {
+    username: 'demo@school.com',
+    password: 'Demo@123'
+  };
   
   // Sign Up fields
   signupRole = '';
@@ -73,6 +78,7 @@ export class LoginComponent {
   onSignIn() {
     if (!this.email || !this.password) {
       this.error = 'Please enter username/email and password';
+      this.demoLoginInProgress = false;
       return;
     }
 
@@ -81,6 +87,7 @@ export class LoginComponent {
     this.authService.login(this.email, this.password).subscribe({
       next: (response: any) => {
         this.loading = false;
+        this.demoLoginInProgress = false;
         const user = response.user;
         
         // Check if teacher must change password
@@ -114,8 +121,19 @@ export class LoginComponent {
       error: (err: any) => {
         this.error = err.error?.message || 'Login failed';
         this.loading = false;
+        this.demoLoginInProgress = false;
       }
     });
+  }
+
+  loginAsDemoUser() {
+    if (this.loading) {
+      return;
+    }
+    this.email = this.demoUserCredentials.username;
+    this.password = this.demoUserCredentials.password;
+    this.demoLoginInProgress = true;
+    this.onSignIn();
   }
 
   onSignUp() {
