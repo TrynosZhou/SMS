@@ -22,13 +22,13 @@ router.get('/active', authenticate, getActivePromotionRules);
 router.get('/:id', authenticate, getPromotionRule);
 
 // Create a new promotion rule
-router.post('/', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), createPromotionRule);
+router.post('/', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), createPromotionRule);
 
 // Update a promotion rule
-router.put('/:id', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), updatePromotionRule);
+router.put('/:id', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), updatePromotionRule);
 
 // Delete a promotion rule
-router.delete('/:id', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), deletePromotionRule);
+router.delete('/:id', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), deletePromotionRule);
 
 export default router;
 

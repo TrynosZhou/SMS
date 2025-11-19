@@ -12,7 +12,18 @@
 
     <div *ngIf="loading && !settings.studentIdPrefix">Loading settings...</div>
 
+    <div class="demo-settings-banner" *ngIf="isDemoUser()">
+      <div class="demo-settings-icon">🧪</div>
+      <div>
+        <h3>Demo Mode — Read Only</h3>
+        <p>Settings are locked for the shared demo account. Switch to your own admin account to make permanent changes.</p>
+      </div>
+    </div>
+
     <form (ngSubmit)="onSubmit()" *ngIf="settings.studentIdPrefix">
+      <fieldset
+        [attr.disabled]="isDemoUser() ? true : null"
+        [class.demo-readonly]="isDemoUser()">
       <!-- Student ID Prefix -->
       <div class="form-section">
         <h2>Student ID Settings</h2>
@@ -929,6 +940,18 @@
               <span>Attendance</span>
             </label>
             <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.assignments" name="demoAssignments">
+              <span>Assignments</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.messages" name="demoMessages">
+              <span>Messages</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.accounts" name="demoAccounts">
+              <span>Accounts</span>
+            </label>
+            <label class="checkbox-label">
               <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.settings" name="demoSettings">
               <span>Settings</span>
             </label>
@@ -965,6 +988,7 @@
           </div>
         </div>
       </div>
+      </fieldset>
 
       <div style="margin-top: 20px;">
         <button type="submit" class="btn btn-primary" [disabled]="loading || isDemoUser()">

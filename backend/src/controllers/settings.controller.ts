@@ -60,6 +60,9 @@ const DEFAULT_MODULE_ACCESS: Settings['moduleAccess'] = {
     rankings: true,
     finance: true,
     attendance: true,
+    assignments: true,
+    messages: true,
+    accounts: true,
     settings: false
   }
 };

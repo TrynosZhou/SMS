@@ -359,6 +359,39 @@
   font-size: 12px;
 }
 
+.demo-settings-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 12px;
+  background: #f3f5ff;
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  color: #334155;
+  margin-bottom: 20px;
+}
+
+.demo-settings-icon {
+  font-size: 32px;
+}
+
+.demo-settings-banner h3 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.demo-settings-banner p {
+  margin: 0;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+fieldset.demo-readonly {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
 .modal-backdrop {
   position: fixed;
   top: 0;

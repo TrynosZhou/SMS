@@ -52,6 +52,9 @@
               {{ option.label }}{{ option.value === 'superadmin' ? ' (Super Admin only)' : '' }}
             </option>
           </select>
+          <small class="form-text" *ngIf="manualAccount.role === 'demo-user'">
+            Demo User accounts are flagged as read-only demo logins and automatically receive demo permissions.
+          </small>
         </div>
         <div class="form-group checkbox-inline">
           <label class="checkbox-label">
@@ -80,6 +83,15 @@
             <input type="checkbox" [(ngModel)]="manualAccount.isDemo" name="manualIsDemo" [disabled]="creatingUserAccount">
             <span>Mark as Demo Account (restricted permissions)</span>
           </label>
+        </div>
+        <div class="info-box demo-info" *ngIf="manualAccount.role === 'demo-user'">
+          <span class="info-icon">🧪</span>
+          <div>
+            <p class="info-title">Demo User</p>
+            <p class="info-text">
+              This account will automatically sign in as a demo administrator with limited editing rights. Use it when sharing the system publicly.
+            </p>
+          </div>
         </div>
       </div>
       <div class="manual-account-actions">

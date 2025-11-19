@@ -13,13 +13,13 @@ import {
 
 const router = Router();
 
-router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), registerTeacher);
+router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), registerTeacher);
 router.get('/', authenticate, getTeachers);
 router.get('/:id', authenticate, getTeacherById);
 router.get('/:id/classes', authenticate, getTeacherClasses);
-router.post('/:id/create-account', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), createTeacherAccount);
-router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), updateTeacher);
-router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), deleteTeacher);
+router.post('/:id/create-account', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), createTeacherAccount);
+router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), updateTeacher);
+router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), deleteTeacher);
 
 export default router;
 

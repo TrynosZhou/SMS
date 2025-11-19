@@ -945,6 +945,32 @@
   margin-top: 15px;
 }
 
+.info-box.demo-info {
+  background: #f3f5ff;
+  border: 1px solid rgba(102, 126, 234, 0.4);
+  border-radius: 12px;
+  padding: 16px;
+  align-items: flex-start;
+}
+
+.info-box.demo-info .info-icon {
+  font-size: 24px;
+  color: #5b67d0;
+}
+
+.info-box.demo-info .info-title {
+  margin: 0;
+  font-weight: 600;
+  color: #1f2a37;
+}
+
+.info-box.demo-info .info-text {
+  margin: 4px 0 0 0;
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .info-box-icon {
   font-size: 20px;
   flex-shrink: 0;

@@ -49,7 +49,8 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     { value: 'accountant', label: 'Accountant' },
     { value: 'teacher', label: 'Teacher' },
     { value: 'parent', label: 'Parent' },
-    { value: 'student', label: 'Student' }
+    { value: 'student', label: 'Student' },
+    { value: 'demo-user', label: 'Demo User' }
   ];
   manualAccount = this.getDefaultManualAccountForm();
   
@@ -436,7 +437,10 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
       }
     }
 
-    if (this.manualAccount.role === 'superadmin' && !this.isSuperAdmin()) {
+    const isDemoRole = this.manualAccount.role === 'demo-user';
+    const resolvedRole = isDemoRole ? 'admin' : this.manualAccount.role;
+
+    if (resolvedRole === 'superadmin' && !this.isSuperAdmin()) {
       this.error = 'Only Super Admins can create another Super Admin account';
       setTimeout(() => this.error = '', 5000);
       return;
@@ -448,7 +452,7 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
 
     const payload: any = {
       email: this.manualAccount.email.trim(),
-      role: this.manualAccount.role,
+      role: resolvedRole,
       username: this.manualAccount.username?.trim() || undefined,
       generatePassword: this.manualAccount.generatePassword
     };
@@ -457,7 +461,7 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
       payload.password = this.manualAccount.password.trim();
     }
 
-    if (this.manualAccount.isDemo && this.isSuperAdmin()) {
+    if (isDemoRole || (this.manualAccount.isDemo && this.isSuperAdmin())) {
       payload.isDemo = true;
     }
 

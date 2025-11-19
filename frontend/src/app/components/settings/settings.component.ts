@@ -105,6 +105,9 @@ export class SettingsComponent implements OnInit {
         rankings: true,
         finance: true,
         attendance: true,
+        assignments: true,
+        messages: true,
+        accounts: true,
         settings: false
       }
     },

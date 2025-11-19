@@ -147,6 +147,9 @@ export class Settings {
       rankings?: boolean;
       finance?: boolean;
       attendance?: boolean;
+      assignments?: boolean;
+      messages?: boolean;
+      accounts?: boolean;
       settings?: boolean;
     };
   } | null;
