@@ -11,9 +11,9 @@ import {
 
 const router = Router();
 
-// All routes require authentication and parent role
+// All routes require authentication and parent role (or demo user for testing)
 router.use(authenticate);
-router.use(authorize(UserRole.PARENT));
+router.use(authorize(UserRole.PARENT, UserRole.DEMO_USER, UserRole.ADMIN, UserRole.SUPERADMIN));
 
 router.get('/students', getParentStudents);
 router.post('/link-student', linkStudent);

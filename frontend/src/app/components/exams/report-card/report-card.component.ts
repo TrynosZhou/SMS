@@ -219,9 +219,11 @@ export class ReportCardComponent implements OnInit {
         }
 
         // Balance is OK, load student's class and generate report card
-        if (student.class?.id) {
-          this.selectedClass = student.class.id;
-          this.parentStudentClassName = student.class.name || '';
+        // Check both 'class' and 'classEntity' properties (backend may use either)
+        const studentClass = student.class || student.classEntity;
+        if (studentClass?.id) {
+          this.selectedClass = studentClass.id;
+          this.parentStudentClassName = studentClass.name || '';
           // Load available exam types and let parent select
           this.loadClasses();
         } else {
