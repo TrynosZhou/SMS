@@ -118,12 +118,12 @@
       </div>
 
       <div class="form-group">
-        <label>Employee Number</label>
+        <label>Teacher ID</label>
         <div class="info-box">
           <div class="info-content">
             <span class="info-icon">🔢</span>
             <div>
-              <strong *ngIf="isEdit">{{ teacher.employeeNumber }}</strong>
+              <strong *ngIf="isEdit">{{ teacher.teacherId }}</strong>
               <strong *ngIf="!isEdit">Auto-generated (JPST format)</strong>
               <p class="info-text">
                 {{ isEdit ? 'Employee number cannot be changed' : 'A unique 7-digit number with prefix JPST will be automatically generated (e.g., JPST1234567)' }}

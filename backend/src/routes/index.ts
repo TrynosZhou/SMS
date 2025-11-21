@@ -12,6 +12,7 @@ import accountRoutes from './account.routes';
 import messageRoutes from './message.routes';
 import attendanceRoutes from './attendance.routes';
 import promotionRuleRoutes from './promotion-rule.routes';
+import recordBookRoutes from './recordBook.routes';
 
 const router = Router();
 
@@ -28,6 +29,7 @@ router.use('/account', accountRoutes);
 router.use('/messages', messageRoutes);
 router.use('/attendance', attendanceRoutes);
 router.use('/promotion-rules', promotionRuleRoutes);
+router.use('/record-book', recordBookRoutes);
 
 export default router;
 

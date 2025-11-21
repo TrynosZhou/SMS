@@ -159,7 +159,7 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
       filtered = filtered.filter(teacher => 
         teacher.firstName?.toLowerCase().includes(query) ||
         teacher.lastName?.toLowerCase().includes(query) ||
-        teacher.employeeNumber?.toLowerCase().includes(query) ||
+        teacher.teacherId?.toLowerCase().includes(query) ||
         teacher.email?.toLowerCase().includes(query) ||
         teacher.accountStatus?.toLowerCase().includes(query)
       );

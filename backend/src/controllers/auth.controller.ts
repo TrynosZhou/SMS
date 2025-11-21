@@ -11,9 +11,10 @@ import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, username, password } = req.body;
+    const { email, username, password, teacherId } = req.body;
     
     const userRepository = AppDataSource.getRepository(User);
+    const teacherRepository = AppDataSource.getRepository(Teacher);
 
     // Support both email and username login
     const loginIdentifier = username || email;
@@ -40,6 +41,41 @@ export const login = async (req: Request, res: Response) => {
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // If teacherId is provided, verify it matches the teacher's employee number
+    if (teacherId && teacherId.trim()) {
+      // This should be a teacher login
+      if (user.role !== UserRole.TEACHER) {
+        return res.status(401).json({ message: 'Teacher ID is only for teacher accounts' });
+      }
+
+      // Find the teacher by userId and verify employee number
+      const teacher = await teacherRepository.findOne({
+        where: { userId: user.id },
+        relations: ['classes', 'subjects']
+      });
+
+      if (!teacher) {
+        return res.status(401).json({ message: 'Teacher profile not found' });
+      }
+
+      // Verify the teacher ID matches
+      if (teacher.teacherId !== teacherId.trim()) {
+        return res.status(401).json({ message: 'Invalid Teacher ID' });
+      }
+
+      // Attach teacher with classes to user object for response
+      user.teacher = teacher;
+      
+      console.log('[Login] Teacher authenticated:', teacher.firstName, teacher.lastName);
+      console.log('[Login] Teacher ID:', teacher.teacherId);
+      console.log('[Login] Classes:', teacher.classes?.length || 0);
+    } else if (user.role === UserRole.TEACHER) {
+      // Teacher login without teacherId - require it
+      return res.status(400).json({ 
+        message: 'Teacher ID is required for teacher login. Please enter your employee number (e.g., JPST1234567)' 
+      });
     }
 
     // Check if this is the demo account and ensure it's marked as demo

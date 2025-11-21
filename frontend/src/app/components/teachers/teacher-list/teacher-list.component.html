@@ -140,8 +140,8 @@
         <h3 class="teacher-name">{{ teacher.firstName }} {{ teacher.lastName }}</h3>
         <div class="teacher-info">
           <div class="info-item">
-            <span class="info-label">Employee #</span>
-            <span class="info-value">{{ teacher.employeeNumber }}</span>
+            <span class="info-label">Teacher ID</span>
+            <span class="info-value">{{ teacher.teacherId }}</span>
           </div>
           <div class="info-item" *ngIf="teacher.phoneNumber">
             <span class="info-label">Phone</span>
@@ -175,7 +175,7 @@
         <button class="btn-action btn-edit" (click)="editTeacher(teacher.id)">
           ✏️ Edit
         </button>
-        <button class="btn-action btn-delete" (click)="deleteTeacher(teacher.id, teacher.firstName + ' ' + teacher.lastName, teacher.employeeNumber)" [disabled]="loading" title="Delete">
+        <button class="btn-action btn-delete" (click)="deleteTeacher(teacher.id, teacher.firstName + ' ' + teacher.lastName, teacher.teacherId)" [disabled]="loading" title="Delete">
           🗑️ Delete
         </button>
       </div>
@@ -199,7 +199,7 @@
           <span class="name-text">{{ teacher.firstName }} {{ teacher.lastName }}</span>
         </div>
       </div>
-      <div class="list-col emp-col">{{ teacher.employeeNumber }}</div>
+      <div class="list-col emp-col">{{ teacher.teacherId }}</div>
       <div class="list-col phone-col">{{ teacher.phoneNumber || 'N/A' }}</div>
       <div class="list-col subjects-col">
         <div class="tags-inline">
@@ -225,7 +225,7 @@
           <button class="btn-icon-small" (click)="editTeacher(teacher.id)" title="Edit">
             ✏️
           </button>
-          <button class="btn-icon-small btn-delete" (click)="deleteTeacher(teacher.id, teacher.firstName + ' ' + teacher.lastName, teacher.employeeNumber)" title="Delete" [disabled]="loading">
+          <button class="btn-icon-small btn-delete" (click)="deleteTeacher(teacher.id, teacher.firstName + ' ' + teacher.lastName, teacher.teacherId)" title="Delete" [disabled]="loading">
             🗑️
           </button>
         </div>
@@ -258,7 +258,7 @@
         </div>
         <div class="modal-title">
           <h2>{{ selectedTeacher.firstName }} {{ selectedTeacher.lastName }}</h2>
-          <p class="employee-number">{{ selectedTeacher.employeeNumber }}</p>
+          <p class="employee-number">{{ selectedTeacher.teacherId }}</p>
         </div>
       </div>
       <div class="modal-body">

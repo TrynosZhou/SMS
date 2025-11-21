@@ -46,6 +46,10 @@
           <span class="nav-icon">👨‍🏫</span>
           <span>Teachers</span>
         </a>
+        <a routerLink="/teacher/record-book" routerLinkActive="active" class="nav-link" *ngIf="isTeacher()">
+          <span class="nav-icon">📚</span>
+          <span>My Record Book</span>
+        </a>
         <a routerLink="/exams" routerLinkActive="active" class="nav-link">
           <span class="nav-icon">📝</span>
           <span>Exams</span>
@@ -54,11 +58,11 @@
           <span class="nav-icon">📊</span>
           <span>Reports</span>
         </a>
-        <a routerLink="/rankings" routerLinkActive="active" class="nav-link">
+        <a routerLink="/rankings" routerLinkActive="active" class="nav-link" *ngIf="canAccessModule('rankings')">
           <span class="nav-icon">🏆</span>
           <span>Rankings</span>
         </a>
-        <a routerLink="/invoices" routerLinkActive="active" class="nav-link">
+        <a routerLink="/invoices" routerLinkActive="active" class="nav-link" *ngIf="canAccessModule('finance')">
           <span class="nav-icon">💰</span>
           <span>Finance</span>
         </a>
@@ -127,6 +131,14 @@
           <span class="nav-icon">👨‍🏫</span>
           <span>Teachers</span>
         </a>
+        <a routerLink="/teacher/record-book" 
+           routerLinkActive="active" 
+           class="mobile-nav-link"
+           *ngIf="isTeacher()"
+           (click)="closeMobileMenu()">
+          <span class="nav-icon">📚</span>
+          <span>My Record Book</span>
+        </a>
         <a routerLink="/exams" 
            routerLinkActive="active" 
            class="mobile-nav-link"
@@ -144,14 +156,16 @@
         <a routerLink="/rankings" 
            routerLinkActive="active" 
            class="mobile-nav-link"
-           (click)="closeMobileMenu()">
+           (click)="closeMobileMenu()"
+           *ngIf="canAccessModule('rankings')">
           <span class="nav-icon">🏆</span>
           <span>Rankings</span>
         </a>
         <a routerLink="/invoices" 
            routerLinkActive="active" 
            class="mobile-nav-link"
-           (click)="closeMobileMenu()">
+           (click)="closeMobileMenu()"
+           *ngIf="canAccessModule('finance')">
           <span class="nav-icon">💰</span>
           <span>Finance</span>
         </a>

@@ -34,11 +34,17 @@ export class AuthService {
     }
   }
 
-  login(identifier: string, password: string): Observable<any> {
+  login(identifier: string, password: string, teacherId?: string): Observable<any> {
     // Support both username and email login
-    const loginData = identifier.includes('@') 
+    const loginData: any = identifier.includes('@') 
       ? { email: identifier, password }
       : { username: identifier, password };
+    
+    // Add teacherId if provided (for teacher login)
+    if (teacherId && teacherId.trim()) {
+      loginData.teacherId = teacherId.trim();
+    }
+    
     return this.http.post(`${this.apiUrl}/auth/login`, loginData).pipe(
       tap((response: any) => {
         localStorage.setItem('token', response.token);

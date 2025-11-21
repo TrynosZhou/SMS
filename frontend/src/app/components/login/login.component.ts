@@ -14,6 +14,7 @@ export class LoginComponent {
   // Sign In fields
   email = '';
   password = '';
+  teacherId = ''; // Teacher ID (employee number) for teacher login
   demoLoginInProgress = false;
   readonly demoUserCredentials = {
     username: 'demo@school.com',
@@ -63,6 +64,7 @@ export class LoginComponent {
     // Clear all fields when switching tabs
     this.email = '';
     this.password = '';
+    this.teacherId = '';
     this.signupRole = '';
     this.signupUsername = '';
     this.signupPassword = '';
@@ -72,7 +74,6 @@ export class LoginComponent {
     this.signupContactNumber = '';
     this.signupEmail = '';
     this.resetEmail = '';
-    this.password = '';
   }
 
   onSignIn() {
@@ -84,7 +85,7 @@ export class LoginComponent {
 
     this.loading = true;
     this.error = '';
-    this.authService.login(this.email, this.password).subscribe({
+    this.authService.login(this.email, this.password, this.teacherId).subscribe({
       next: (response: any) => {
         this.loading = false;
         this.demoLoginInProgress = false;

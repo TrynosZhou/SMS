@@ -1,0 +1,516 @@
+import { Component, OnInit } from '@angular/core';
+import { AuthService } from '../../../services/auth.service';
+import { TeacherService } from '../../../services/teacher.service';
+import { RecordBookService } from '../../../services/record-book.service';
+import { SettingsService } from '../../../services/settings.service';
+
+@Component({
+  selector: 'app-record-book',
+  templateUrl: './record-book.component.html',
+  styleUrls: ['./record-book.component.css']
+})
+export class RecordBookComponent implements OnInit {
+  teacher: any = null;
+  teacherClasses: any[] = [];
+  selectedClassId: string = '';
+  selectedClass: any = null;
+  students: any[] = [];
+  filteredStudents: any[] = [];
+  searchTerm: string = '';
+  teacherSubjects: string = '';
+  loading = false;
+  saving = false;
+  error = '';
+  success = '';
+  
+  // Settings
+  schoolName = '';
+  currentTerm = '';
+  currentYear = '';
+  
+  // Topics for each test (no defaults - teacher must enter)
+  topics = {
+    test1: '',
+    test2: '',
+    test3: '',
+    test4: '',
+    test5: '',
+    test6: '',
+    test7: '',
+    test8: '',
+    test9: '',
+    test10: ''
+  };
+
+  // Dates for each test
+  testDates = {
+    test1: '',
+    test2: '',
+    test3: '',
+    test4: '',
+    test5: '',
+    test6: '',
+    test7: '',
+    test8: '',
+    test9: '',
+    test10: ''
+  };
+
+  // Number of visible test columns (default 4, expandable to 10)
+  visibleTests = 4;
+  maxTests = 10;
+
+  constructor(
+    private authService: AuthService,
+    private teacherService: TeacherService,
+    private recordBookService: RecordBookService,
+    private settingsService: SettingsService
+  ) { }
+
+  ngOnInit() {
+    this.loadTeacherInfo();
+    this.loadSettings();
+  }
+
+  loadSettings() {
+    this.settingsService.getSettings().subscribe({
+      next: (settings: any) => {
+        this.schoolName = settings.schoolName || 'School';
+        this.currentTerm = settings.currentTerm || 'Term 1';
+        this.currentYear = settings.academicYear || new Date().getFullYear().toString();
+      },
+      error: (err: any) => {
+        console.error('Error loading settings:', err);
+      }
+    });
+  }
+
+  loadTeacherInfo() {
+    const user = this.authService.getCurrentUser();
+    
+    // Check if user is a teacher
+    if (!user || user.role !== 'teacher') {
+      this.error = 'Only teachers can access the record book';
+      return;
+    }
+
+    this.loading = true;
+    
+    // Use the new /teachers/me endpoint which gets teacher by userId
+    this.teacherService.getCurrentTeacher().subscribe({
+      next: (teacher: any) => {
+        this.teacher = teacher;
+        this.teacherClasses = teacher.classes || [];
+        this.loading = false;
+        
+        // Log success for debugging
+        console.log('Teacher loaded successfully:', teacher.firstName, teacher.lastName);
+        console.log('Assigned classes:', this.teacherClasses.length);
+        console.log('Teacher subjects:', teacher.subjects);
+      },
+      error: (err: any) => {
+        console.error('Error loading teacher:', err);
+        
+        if (err.status === 404) {
+          this.error = 'No teacher profile found for your account. Please contact the administrator.';
+        } else if (err.status === 401) {
+          this.error = 'You are not authenticated. Please log in again.';
+        } else {
+          this.error = 'Failed to load teacher information. Please try again.';
+        }
+        
+        this.loading = false;
+      }
+    });
+  }
+
+  onClassChange() {
+    if (!this.selectedClassId) {
+      this.students = [];
+      this.filteredStudents = [];
+      this.selectedClass = null;
+      this.searchTerm = '';
+      this.teacherSubjects = '';
+      return;
+    }
+
+    this.selectedClass = this.teacherClasses.find(c => c.id === this.selectedClassId);
+    this.loadTeacherSubjects();
+    this.loadRecordBook();
+  }
+
+  loadTeacherSubjects() {
+    // Get subjects from teacher profile
+    if (this.teacher && this.teacher.subjects && this.teacher.subjects.length > 0) {
+      // Join all subject names with commas
+      const subjectNames = this.teacher.subjects.map((s: any) => s.name).join(', ');
+      this.teacherSubjects = subjectNames;
+    } else {
+      this.teacherSubjects = 'No subjects assigned';
+    }
+  }
+
+  loadRecordBook() {
+    if (!this.selectedClassId) return;
+
+    this.loading = true;
+    this.error = '';
+    
+    this.recordBookService.getRecordBookByClass(this.selectedClassId).subscribe({
+      next: (response: any) => {
+        this.students = response.students || [];
+        this.currentTerm = response.term || this.currentTerm;
+        this.currentYear = response.year || this.currentYear;
+        
+        // Initialize topics and dates from first student's record if available
+        if (this.students.length > 0) {
+          const firstStudent = this.students[0];
+          this.topics.test1 = firstStudent.test1Topic || '';
+          this.topics.test2 = firstStudent.test2Topic || '';
+          this.topics.test3 = firstStudent.test3Topic || '';
+          this.topics.test4 = firstStudent.test4Topic || '';
+          this.topics.test5 = firstStudent.test5Topic || '';
+          this.topics.test6 = firstStudent.test6Topic || '';
+          this.topics.test7 = firstStudent.test7Topic || '';
+          this.topics.test8 = firstStudent.test8Topic || '';
+          this.topics.test9 = firstStudent.test9Topic || '';
+          this.topics.test10 = firstStudent.test10Topic || '';
+          
+          this.testDates.test1 = firstStudent.test1Date ? this.formatDate(firstStudent.test1Date) : '';
+          this.testDates.test2 = firstStudent.test2Date ? this.formatDate(firstStudent.test2Date) : '';
+          this.testDates.test3 = firstStudent.test3Date ? this.formatDate(firstStudent.test3Date) : '';
+          this.testDates.test4 = firstStudent.test4Date ? this.formatDate(firstStudent.test4Date) : '';
+          this.testDates.test5 = firstStudent.test5Date ? this.formatDate(firstStudent.test5Date) : '';
+          this.testDates.test6 = firstStudent.test6Date ? this.formatDate(firstStudent.test6Date) : '';
+          this.testDates.test7 = firstStudent.test7Date ? this.formatDate(firstStudent.test7Date) : '';
+          this.testDates.test8 = firstStudent.test8Date ? this.formatDate(firstStudent.test8Date) : '';
+          this.testDates.test9 = firstStudent.test9Date ? this.formatDate(firstStudent.test9Date) : '';
+          this.testDates.test10 = firstStudent.test10Date ? this.formatDate(firstStudent.test10Date) : '';
+          
+          // Determine visible tests based on existing data
+          for (let i = 10; i >= 4; i--) {
+            const testKey = `test${i}`;
+            const topicKey = `test${i}Topic`;
+            const hasData = this.students.some((s: any) => s[testKey] !== null || s[topicKey]);
+            if (hasData) {
+              this.visibleTests = i;
+              break;
+            }
+          }
+        }
+        
+        this.filteredStudents = [...this.students];
+        this.loading = false;
+      },
+      error: (err: any) => {
+        this.error = err.error?.message || 'Failed to load record book';
+        this.loading = false;
+      }
+    });
+  }
+
+  filterStudents() {
+    if (!this.searchTerm.trim()) {
+      this.filteredStudents = [...this.students];
+      return;
+    }
+
+    const term = this.searchTerm.toLowerCase().trim();
+    this.filteredStudents = this.students.filter(student =>
+      student.firstName.toLowerCase().includes(term) ||
+      student.lastName.toLowerCase().includes(term) ||
+      student.studentNumber.toLowerCase().includes(term)
+    );
+  }
+
+  clearSearch() {
+    this.searchTerm = '';
+    this.filterStudents();
+  }
+
+  onMarkChange(student: any, testNumber: number) {
+    // Auto-save when mark changes
+    const testKey = `test${testNumber}`;
+    const mark = student[testKey];
+    
+    // Validate mark (0-100)
+    if (mark !== null && mark !== '' && (mark < 0 || mark > 100)) {
+      this.error = 'Marks must be between 0 and 100';
+      setTimeout(() => this.error = '', 3000);
+      return;
+    }
+
+    this.saveStudentMarks(student);
+  }
+
+  saveStudentMarks(student: any) {
+    const data: any = {
+      classId: this.selectedClassId,
+      studentId: student.studentId,
+      test1: student.test1,
+      test2: student.test2,
+      test3: student.test3,
+      test4: student.test4,
+      test5: student.test5,
+      test6: student.test6,
+      test7: student.test7,
+      test8: student.test8,
+      test9: student.test9,
+      test10: student.test10,
+      test1Topic: this.topics.test1,
+      test1Date: this.testDates.test1,
+      test2Topic: this.topics.test2,
+      test2Date: this.testDates.test2,
+      test3Topic: this.topics.test3,
+      test3Date: this.testDates.test3,
+      test4Topic: this.topics.test4,
+      test4Date: this.testDates.test4,
+      test5Topic: this.topics.test5,
+      test5Date: this.testDates.test5,
+      test6Topic: this.topics.test6,
+      test6Date: this.testDates.test6,
+      test7Topic: this.topics.test7,
+      test7Date: this.testDates.test7,
+      test8Topic: this.topics.test8,
+      test8Date: this.testDates.test8,
+      test9Topic: this.topics.test9,
+      test9Date: this.testDates.test9,
+      test10Topic: this.topics.test10,
+      test10Date: this.testDates.test10
+    };
+
+    this.recordBookService.saveMarks(data).subscribe({
+      next: () => {
+        // Silent save - no success message for individual saves
+      },
+      error: (err: any) => {
+        this.error = 'Failed to save marks';
+        setTimeout(() => this.error = '', 3000);
+      }
+    });
+  }
+
+  saveAllMarks() {
+    if (!this.selectedClassId || this.students.length === 0) {
+      this.error = 'No students to save';
+      return;
+    }
+
+    this.saving = true;
+    this.error = '';
+    this.success = '';
+
+    const records = this.students.map(student => ({
+      studentId: student.studentId,
+      test1: student.test1,
+      test2: student.test2,
+      test3: student.test3,
+      test4: student.test4,
+      test5: student.test5,
+      test6: student.test6,
+      test7: student.test7,
+      test8: student.test8,
+      test9: student.test9,
+      test10: student.test10
+    }));
+
+    this.recordBookService.batchSaveMarks(this.selectedClassId, records, this.topics, this.testDates).subscribe({
+      next: () => {
+        this.success = 'All marks saved successfully';
+        this.saving = false;
+        setTimeout(() => this.success = '', 3000);
+      },
+      error: (err: any) => {
+        this.error = err.error?.message || 'Failed to save marks';
+        this.saving = false;
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  onTopicChange() {
+    // Update topics for all students when topic changes
+    if (this.students.length > 0) {
+      this.saveAllMarks();
+    }
+  }
+
+  addTestColumn() {
+    if (this.visibleTests < this.maxTests) {
+      this.visibleTests++;
+    }
+  }
+
+  removeTestColumn() {
+    if (this.visibleTests > 1) {
+      this.visibleTests--;
+    }
+  }
+
+  getVisibleTestNumbers(): number[] {
+    return Array.from({ length: this.visibleTests }, (_, i) => i + 1);
+  }
+
+  formatDate(date: any): string {
+    if (!date) return '';
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  onDateChange() {
+    // Update dates for all students when date changes
+    if (this.students.length > 0) {
+      this.saveAllMarks();
+    }
+  }
+
+  onMarkFocus(event: any) {
+    event.target.select();
+  }
+
+  getGradeIcon(mark: number): string {
+    if (mark >= 80) return '⭐';
+    if (mark >= 60) return '✓';
+    if (mark >= 40) return '○';
+    return '✗';
+  }
+
+  getCompletedCount(): number {
+    let completed = 0;
+    for (const student of this.students) {
+      for (let i = 1; i <= this.visibleTests; i++) {
+        const mark = student[`test${i}`];
+        if (mark !== null && mark !== '' && mark !== undefined) {
+          completed++;
+        }
+      }
+    }
+    return completed;
+  }
+
+  getPendingCount(): number {
+    const total = this.students.length * this.visibleTests;
+    return total - this.getCompletedCount();
+  }
+
+  getAverageScore(): string {
+    let totalMarks = 0;
+    let count = 0;
+    
+    for (const student of this.students) {
+      for (let i = 1; i <= this.visibleTests; i++) {
+        const mark = student[`test${i}`];
+        if (mark !== null && mark !== '' && mark !== undefined) {
+          totalMarks += parseFloat(mark);
+          count++;
+        }
+      }
+    }
+    
+    return count > 0 ? (totalMarks / count).toFixed(1) : '0.0';
+  }
+
+  exportToExcel() {
+    // Prepare data for export
+    const data: any[] = [];
+    
+    // Header row
+    const headers = ['#', 'Student ID', 'Last Name', 'First Name'];
+    for (let i = 1; i <= this.visibleTests; i++) {
+      headers.push(`Test ${i}`);
+    }
+    data.push(headers);
+    
+    // Student rows
+    this.filteredStudents.forEach((student, index) => {
+      const row = [
+        index + 1,
+        student.studentNumber,
+        student.lastName,
+        student.firstName
+      ];
+      
+      for (let i = 1; i <= this.visibleTests; i++) {
+        const mark = student[`test${i}`];
+        row.push(mark !== null && mark !== '' ? mark : '—');
+      }
+      
+      data.push(row);
+    });
+    
+    // Topic row
+    const topicRow = ['', '', 'Topic', ''];
+    for (let i = 1; i <= this.visibleTests; i++) {
+      const key = `test${i}` as keyof typeof this.topics;
+      topicRow.push(this.topics[key] || '—');
+    }
+    data.push(topicRow);
+    
+    // Date row
+    const dateRow = ['', '', 'Date', ''];
+    for (let i = 1; i <= this.visibleTests; i++) {
+      const key = `test${i}` as keyof typeof this.testDates;
+      dateRow.push(this.testDates[key] || '—');
+    }
+    data.push(dateRow);
+    
+    // Convert to CSV
+    const csv = data.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `RecordBook_${this.selectedClass.name}_${this.currentTerm}.csv`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+    
+    this.success = 'Record book exported successfully!';
+    setTimeout(() => this.success = '', 3000);
+  }
+
+  printRecordBook() {
+    window.print();
+  }
+
+  calculateStatistics() {
+    const stats = {
+      totalStudents: this.students.length,
+      totalTests: this.visibleTests,
+      completedMarks: this.getCompletedCount(),
+      pendingMarks: this.getPendingCount(),
+      averageScore: this.getAverageScore(),
+      highestScore: 0,
+      lowestScore: 100
+    };
+    
+    // Calculate highest and lowest scores
+    for (const student of this.students) {
+      for (let i = 1; i <= this.visibleTests; i++) {
+        const mark = student[`test${i}`];
+        if (mark !== null && mark !== '' && mark !== undefined) {
+          const numMark = parseFloat(mark);
+          if (numMark > stats.highestScore) stats.highestScore = numMark;
+          if (numMark < stats.lowestScore) stats.lowestScore = numMark;
+        }
+      }
+    }
+    
+    const message = `
+📊 Record Book Statistics
+
+👥 Total Students: ${stats.totalStudents}
+📝 Total Tests: ${stats.totalTests}
+✅ Completed Marks: ${stats.completedMarks}
+⏳ Pending Marks: ${stats.pendingMarks}
+📈 Average Score: ${stats.averageScore}%
+🏆 Highest Score: ${stats.highestScore}%
+📉 Lowest Score: ${stats.lowestScore === 100 ? 'N/A' : stats.lowestScore + '%'}
+    `.trim();
+    
+    alert(message);
+  }
+}
+

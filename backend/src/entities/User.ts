@@ -56,7 +56,6 @@ export class User {
   student: Student;
 
   @OneToOne(() => Teacher, teacher => teacher.user, { nullable: true })
-  @JoinColumn()
   teacher: Teacher;
 
   @OneToOne(() => Parent, parent => parent.user, { nullable: true })

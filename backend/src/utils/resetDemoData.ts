@@ -193,7 +193,7 @@ export async function resetDemoDataForLogin() {
   const teacher1 = teacherRepository.create({
     firstName: 'John',
     lastName: 'Doe',
-    employeeNumber: 'T001',
+    teacherId: 'T001',
     phoneNumber: '+254700000001',
     address: 'Demo Address',
     dateOfBirth: new Date('1980-01-01'),

@@ -5,7 +5,7 @@ import { AppDataSource } from '../config/database';
 import { Teacher } from '../entities/Teacher';
 import { User, UserRole } from '../entities/User';
 import { AuthRequest } from '../middleware/auth';
-import { generateEmployeeNumber } from '../utils/employeeNumberGenerator';
+import { generateTeacherId } from '../utils/teacherIdGenerator';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
 
@@ -26,8 +26,8 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
     const teacherRepository = AppDataSource.getRepository(Teacher);
     const userRepository = AppDataSource.getRepository(User);
 
-    // Generate unique employee number with prefix JPST
-    const employeeNumber = await generateEmployeeNumber();
+    // Generate unique teacher ID with prefix JPST
+    const teacherId = await generateTeacherId();
 
     // Parse dateOfBirth if it's a string
     let parsedDateOfBirth: Date | null = null;
@@ -45,7 +45,7 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
     const teacherData: Partial<Teacher> = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      employeeNumber,
+      teacherId,
       phoneNumber: phoneNumber?.trim() || null,
       address: address?.trim() || null
     };
@@ -74,8 +74,8 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
     await teacherRepository.save(teacher);
     
     // Create temporary user account for teacher
-    const tempUsername = `teacher_${employeeNumber}`;
-    const tempPassword = `temp_${employeeNumber}_${Date.now()}`;
+    const tempUsername = `teacher_${teacherId}`;
+    const tempPassword = `temp_${teacherId}_${Date.now()}`;
     const tempEmail = `${tempUsername}@school.local`;
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
     
@@ -160,6 +160,114 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ 
       message: 'Server error', 
       error: error.message || 'Unknown error' 
+    });
+  }
+};
+
+export const getCurrentTeacher = async (req: AuthRequest, res: Response) => {
+  console.log('[getCurrentTeacher] ========== ENDPOINT CALLED ==========');
+  console.log('[getCurrentTeacher] Request URL:', req.url);
+  console.log('[getCurrentTeacher] Request Method:', req.method);
+  
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+    const userEmail = req.user?.email;
+    
+    console.log('[getCurrentTeacher] ============ DEBUG INFO ============');
+    console.log('[getCurrentTeacher] User ID:', userId);
+    console.log('[getCurrentTeacher] User Role:', userRole);
+    console.log('[getCurrentTeacher] User Email:', userEmail);
+    
+    if (!userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    if (userRole !== UserRole.TEACHER) {
+      return res.status(403).json({ message: 'Only teachers can access this endpoint' });
+    }
+
+    const teacherRepository = AppDataSource.getRepository(Teacher);
+    const userRepository = AppDataSource.getRepository(User);
+    
+    try {
+      // Try to find teacher by userId
+      let teacher = await teacherRepository.findOne({
+        where: { userId },
+        relations: ['subjects', 'classes', 'user']
+      });
+
+      console.log('[getCurrentTeacher] Teacher found by userId:', teacher ? 'Yes' : 'No');
+      
+      if (!teacher) {
+        console.log('[getCurrentTeacher] No teacher found for userId:', userId);
+        
+        // Try to find teacher by user email pattern (diagnostic)
+        const allTeachers = await teacherRepository.find();
+        console.log('[getCurrentTeacher] Total teachers in DB:', allTeachers.length);
+        console.log('[getCurrentTeacher] Teachers without userId:', allTeachers.filter(t => !t.userId).length);
+        
+        // Check if user has teacher relationship from User side
+        const userWithTeacher = await userRepository.findOne({
+          where: { id: userId },
+          relations: ['teacher']
+        });
+        
+        console.log('[getCurrentTeacher] User.teacher exists:', !!userWithTeacher?.teacher);
+        
+        if (userWithTeacher?.teacher) {
+          // User has teacher relationship, but teacher.userId might not be set
+          console.log('[getCurrentTeacher] Found teacher via User relationship:', userWithTeacher.teacher.id);
+          teacher = await teacherRepository.findOne({
+            where: { id: userWithTeacher.teacher.id },
+            relations: ['subjects', 'classes', 'user']
+          });
+          
+          // Fix the userId if it's not set
+          if (teacher && !teacher.userId) {
+            console.log('[getCurrentTeacher] Auto-fixing teacher.userId...');
+            teacher.userId = userId;
+            await teacherRepository.save(teacher);
+            console.log('[getCurrentTeacher] Teacher.userId fixed!');
+          }
+        }
+        
+        if (!teacher) {
+          return res.status(404).json({ 
+            message: 'Teacher profile not found. Please contact administrator.',
+            debug: {
+              userId,
+              userEmail,
+              totalTeachers: allTeachers.length,
+              teachersWithoutUserId: allTeachers.filter(t => !t.userId).length,
+              suggestion: 'Run: UPDATE teachers SET "userId" = \'' + userId + '\' WHERE "teacherId" = \'YOUR_TEACHER_ID\';'
+            }
+          });
+        }
+      }
+
+      console.log('[getCurrentTeacher] Teacher ID:', teacher.id);
+      console.log('[getCurrentTeacher] Teacher Name:', teacher.firstName, teacher.lastName);
+      console.log('[getCurrentTeacher] Teacher ID Number:', teacher.teacherId);
+      console.log('[getCurrentTeacher] Classes count:', teacher.classes?.length || 0);
+      console.log('[getCurrentTeacher] =====================================');
+      
+      res.json(teacher);
+    } catch (dbError: any) {
+      console.error('[getCurrentTeacher] Database error:', dbError);
+      throw dbError;
+    }
+  } catch (error: any) {
+    console.error('[getCurrentTeacher] Error:', error);
+    console.error('[getCurrentTeacher] Stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message || 'Unknown error',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
@@ -274,7 +382,7 @@ export const deleteTeacher = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Teacher not found' });
     }
 
-    console.log('Found teacher:', teacher.firstName, teacher.lastName, `(${teacher.employeeNumber})`);
+    console.log('Found teacher:', teacher.firstName, teacher.lastName, `(${teacher.teacherId})`);
 
     // Check if teacher has associated classes or subjects
     const classCount = teacher.classes?.length || 0;
@@ -363,8 +471,8 @@ export const createTeacherAccount = async (req: AuthRequest, res: Response) => {
     }
 
     // Create temporary user account
-    const tempUsername = `teacher_${teacher.employeeNumber}`;
-    const tempPassword = `temp_${teacher.employeeNumber}_${Date.now()}`;
+    const tempUsername = `teacher_${teacher.teacherId}`;
+    const tempPassword = `temp_${teacher.teacherId}_${Date.now()}`;
     const tempEmail = `${tempUsername}@school.local`;
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
     

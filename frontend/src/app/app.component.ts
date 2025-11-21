@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { AuthService } from './services/auth.service';
 import { SettingsService } from './services/settings.service';
+import { ModuleAccessService } from './services/module-access.service';
 
 @Component({
   selector: 'app-root',
@@ -11,7 +12,11 @@ export class AppComponent implements OnInit {
   schoolName = 'School Management System';
   mobileMenuOpen = false;
 
-  constructor(public authService: AuthService, private settingsService: SettingsService) { }
+  constructor(
+    public authService: AuthService, 
+    private settingsService: SettingsService,
+    public moduleAccessService: ModuleAccessService
+  ) { }
 
   ngOnInit(): void {
     // Load school name from settings if authenticated
@@ -24,6 +29,9 @@ export class AppComponent implements OnInit {
           // ignore settings fetch errors to avoid blocking UI
         }
       });
+      
+      // Load module access settings
+      this.moduleAccessService.loadModuleAccess();
     }
   }
 
@@ -35,6 +43,10 @@ export class AppComponent implements OnInit {
     return this.authService.hasRole('parent');
   }
 
+  isTeacher(): boolean {
+    return this.authService.hasRole('teacher');
+  }
+
   isSuperAdmin(): boolean {
     return this.authService.hasRole('superadmin');
   }
@@ -42,6 +54,10 @@ export class AppComponent implements OnInit {
   isDemoUser(): boolean {
     const user = this.authService.getCurrentUser();
     return user?.isDemo === true || user?.email === 'demo@school.com' || user?.username === 'demo@school.com';
+  }
+
+  canAccessModule(moduleName: string): boolean {
+    return this.moduleAccessService.canAccessModule(moduleName);
   }
 
   toggleMobileMenu(): void {

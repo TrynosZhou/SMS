@@ -94,9 +94,9 @@ export class TeacherListComponent implements OnInit {
       const query = this.searchQuery.toLowerCase().trim();
       filtered = filtered.filter(teacher => {
         const fullName = `${teacher.firstName} ${teacher.lastName}`.toLowerCase();
-        const empNumber = (teacher.employeeNumber || '').toLowerCase();
+        const teacherId = (teacher.teacherId || '').toLowerCase();
         const phone = (teacher.phoneNumber || '').toLowerCase();
-        return fullName.includes(query) || empNumber.includes(query) || phone.includes(query);
+        return fullName.includes(query) || teacherId.includes(query) || phone.includes(query);
       });
     }
 
@@ -168,8 +168,8 @@ export class TeacherListComponent implements OnInit {
     return Math.round((total / this.teachers.length) * 10) / 10;
   }
 
-  deleteTeacher(id: string, teacherName: string, employeeNumber: string) {
-    if (!confirm(`Are you sure you want to delete teacher "${teacherName}" (${employeeNumber})? This action cannot be undone.`)) {
+  deleteTeacher(id: string, teacherName: string, teacherId: string) {
+    if (!confirm(`Are you sure you want to delete teacher "${teacherName}" (${teacherId})? This action cannot be undone.`)) {
       return;
     }
     this.loading = true;

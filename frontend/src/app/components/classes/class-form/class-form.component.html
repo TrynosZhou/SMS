@@ -190,7 +190,7 @@
                     (change)="toggleTeacher(teacher.id)">
                   <label [for]="'teacher-' + teacher.id">
                     <strong>{{ teacher.firstName }} {{ teacher.lastName }}</strong>
-                    <small>{{ teacher.employeeNumber }}</small>
+                    <small>{{ teacher.teacherId }}</small>
                   </label>
                 </div>
                 <div *ngIf="filteredTeachers.length === 0" class="empty-state">

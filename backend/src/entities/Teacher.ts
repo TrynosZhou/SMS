@@ -4,7 +4,7 @@ import { Subject } from './Subject';
 import { Class } from './Class';
 
 @Entity('teachers')
-@Index(['employeeNumber'], { unique: true })
+@Index(['teacherId'], { unique: true })
 export class Teacher {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -16,7 +16,7 @@ export class Teacher {
   lastName: string;
 
   @Column()
-  employeeNumber: string;
+  teacherId: string;
 
   @Column({ nullable: true })
   phoneNumber: string;
@@ -30,11 +30,12 @@ export class Teacher {
   @Column({ default: true })
   isActive: boolean;
 
-  @OneToOne(() => User, user => user.teacher)
-  user: User;
-
-  @Column({ nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   userId: string;
+
+  @OneToOne(() => User, user => user.teacher)
+  @JoinColumn({ name: 'userId' })
+  user: User;
 
   @ManyToMany(() => Subject, subject => subject.teachers)
   @JoinTable()

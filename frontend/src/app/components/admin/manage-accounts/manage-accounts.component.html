@@ -339,7 +339,7 @@
             <td>
               <div class="employee-number">
                 <span class="employee-icon">🆔</span>
-                {{ teacher.employeeNumber }}
+                {{ teacher.teacherId }}
               </div>
             </td>
             <td>
@@ -440,8 +440,8 @@
             <span class="info-value">{{ selectedTeacher.firstName }} {{ selectedTeacher.lastName }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">Employee Number:</span>
-            <span class="info-value">{{ selectedTeacher.employeeNumber }}</span>
+            <span class="info-label">Teacher ID:</span>
+            <span class="info-value">{{ selectedTeacher.teacherId }}</span>
           </div>
           <div class="info-item" *ngIf="selectedTeacher.email">
             <span class="info-label">Email:</span>
@@ -513,8 +513,8 @@
               <span class="detail-value">{{ selectedTeacher.firstName }} {{ selectedTeacher.lastName }}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">Employee Number:</span>
-              <span class="detail-value">{{ selectedTeacher.employeeNumber }}</span>
+              <span class="detail-label">Teacher ID:</span>
+              <span class="detail-value">{{ selectedTeacher.teacherId }}</span>
             </div>
             <div class="detail-item" *ngIf="selectedTeacher.email">
               <span class="detail-label">Email:</span>

@@ -28,7 +28,9 @@ import { ManageAccountsComponent } from './components/admin/manage-accounts/mana
 import { ClassPromotionComponent } from './components/admin/class-promotion/class-promotion.component';
 import { MarkAttendanceComponent } from './components/attendance/mark-attendance/mark-attendance.component';
 import { AttendanceReportsComponent } from './components/attendance/attendance-reports/attendance-reports.component';
+import { RecordBookComponent } from './components/teacher/record-book/record-book.component';
 import { AuthGuard } from './guards/auth.guard';
+import { ModuleAccessGuard } from './guards/module-access.guard';
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -39,6 +41,7 @@ const routes: Routes = [
   { path: 'parent/link-students', component: LinkStudentsComponent, canActivate: [AuthGuard] },
   { path: 'parent/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'teacher/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
+  { path: 'teacher/record-book', component: RecordBookComponent, canActivate: [AuthGuard] },
   { path: 'admin/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'admin/manage-accounts', component: ManageAccountsComponent, canActivate: [AuthGuard] },
   { path: 'admin/class-promotion', component: ClassPromotionComponent, canActivate: [AuthGuard] },
@@ -54,9 +57,9 @@ const routes: Routes = [
   { path: 'report-cards', component: ReportCardComponent, canActivate: [AuthGuard] },
   { path: 'mark-sheet', component: MarkSheetComponent, canActivate: [AuthGuard] },
   { path: 'rankings', component: RankingsComponent, canActivate: [AuthGuard] },
-  { path: 'invoices', component: InvoiceListComponent, canActivate: [AuthGuard] },
-  { path: 'invoices/new', component: InvoiceFormComponent, canActivate: [AuthGuard] },
-  { path: 'invoices/statements', component: InvoiceStatementsComponent, canActivate: [AuthGuard] },
+  { path: 'invoices', component: InvoiceListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
+  { path: 'invoices/new', component: InvoiceFormComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
+  { path: 'invoices/statements', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'classes', component: ClassListComponent, canActivate: [AuthGuard] },
   { path: 'classes/new', component: ClassFormComponent, canActivate: [AuthGuard] },
   { path: 'classes/:id/edit', component: ClassFormComponent, canActivate: [AuthGuard] },

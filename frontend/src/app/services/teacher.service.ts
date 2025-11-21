@@ -15,6 +15,10 @@ export class TeacherService {
     return this.http.get(`${this.apiUrl}/teachers`);
   }
 
+  getCurrentTeacher(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/teachers/me`);
+  }
+
   getTeacherById(id: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/teachers/${id}`);
   }

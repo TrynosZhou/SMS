@@ -133,9 +133,9 @@ export class TeacherFormComponent implements OnInit {
     }
 
     if (this.isEdit) {
-      // Don't send employeeNumber in update (it cannot be changed)
+      // Don't send teacherId in update (it cannot be changed)
       const updateData = { ...this.teacher };
-      delete updateData.employeeNumber;
+      delete updateData.teacherId;
       
       this.teacherService.updateTeacher(this.teacher.id, updateData).subscribe({
         next: () => {
@@ -150,9 +150,9 @@ export class TeacherFormComponent implements OnInit {
         }
       });
     } else {
-      // For new teachers, don't send employeeNumber (it will be auto-generated)
+      // For new teachers, don't send teacherId (it will be auto-generated)
       const teacherData = { ...this.teacher };
-      delete teacherData.employeeNumber; // Remove employeeNumber, it will be auto-generated
+      delete teacherData.teacherId; // Remove teacherId, it will be auto-generated
       
       this.teacherService.createTeacher(teacherData).subscribe({
         next: (response: any) => {

@@ -136,8 +136,8 @@ export class ClassFormComponent implements OnInit {
     const query = this.teacherSearchQuery.toLowerCase().trim();
     this.filteredTeachers = this.teachers.filter(teacher => {
       const fullName = `${teacher.firstName} ${teacher.lastName}`.toLowerCase();
-      const employeeNumber = (teacher.employeeNumber || '').toLowerCase();
-      return fullName.includes(query) || employeeNumber.includes(query);
+      const teacherId = (teacher.teacherId || '').toLowerCase();
+      return fullName.includes(query) || teacherId.includes(query);
     });
   }
 

@@ -59,6 +59,16 @@
             </span>
           </div>
         </div>
+        <div class="form-group">
+          <label>Teacher ID <span style="font-size: 12px; color: #666;">(Teachers only - e.g., JPST1234567)</span></label>
+          <input 
+            type="text" 
+            [(ngModel)]="teacherId" 
+            name="teacherId" 
+            placeholder="Enter your Teacher ID (optional for non-teachers)" 
+            autocomplete="off">
+          <small class="form-hint">Leave blank if you're not a teacher</small>
+        </div>
         <button type="submit" class="btn btn-primary btn-block" [disabled]="loading">
           {{ loading ? 'Signing in...' : '🔐 Sign In' }}
         </button>
