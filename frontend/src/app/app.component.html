@@ -8,86 +8,163 @@
   </div>
 </div>
 
-<!-- Responsive Navigation -->
-<nav class="navbar" *ngIf="isAuthenticated()">
-  <div class="nav-container">
-    <!-- Mobile Menu Toggle -->
-    <button class="mobile-menu-toggle" 
-            (click)="toggleMobileMenu()" 
-            aria-label="Toggle menu"
-            *ngIf="isAuthenticated()">
+<!-- Top Navigation Bar -->
+<nav class="top-navbar" *ngIf="isAuthenticated()">
+  <div class="top-navbar-content">
+    <button class="sidebar-toggle" (click)="toggleSidebar()" aria-label="Toggle sidebar">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="3" y1="12" x2="21" y2="12" *ngIf="!mobileMenuOpen"></line>
-        <line x1="3" y1="6" x2="21" y2="6" *ngIf="!mobileMenuOpen"></line>
-        <line x1="3" y1="18" x2="21" y2="18" *ngIf="!mobileMenuOpen"></line>
-        <line x1="18" y1="6" x2="6" y2="18" *ngIf="mobileMenuOpen"></line>
-        <line x1="6" y1="6" x2="18" y2="18" *ngIf="mobileMenuOpen"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
       </svg>
     </button>
-
-    <!-- School Name / Logo -->
-    <div class="nav-brand">
-      <h1 class="nav-title">{{ schoolName }}</h1>
-    </div>
-
-    <!-- Desktop Navigation Links -->
-    <div class="nav-links desktop-only" *ngIf="isAuthenticated()">
-      <!-- Admin/Teacher Navigation -->
-      <ng-container *ngIf="!isParent()">
-        <a routerLink="/dashboard" routerLinkActive="active" class="nav-link">
-          <span class="nav-icon">🏠</span>
-          <span>Dashboard</span>
-        </a>
-        <a routerLink="/students" routerLinkActive="active" class="nav-link">
-          <span class="nav-icon">👨‍🎓</span>
-          <span>Students</span>
-        </a>
-        <a routerLink="/teachers" routerLinkActive="active" class="nav-link">
-          <span class="nav-icon">👨‍🏫</span>
-          <span>Teachers</span>
-        </a>
-        <a routerLink="/teacher/record-book" routerLinkActive="active" class="nav-link" *ngIf="isTeacher()">
-          <span class="nav-icon">📚</span>
-          <span>My Record Book</span>
-        </a>
-        <a routerLink="/exams" routerLinkActive="active" class="nav-link">
-          <span class="nav-icon">📝</span>
-          <span>Exams</span>
-        </a>
-        <a routerLink="/report-cards" routerLinkActive="active" class="nav-link">
-          <span class="nav-icon">📊</span>
-          <span>Reports</span>
-        </a>
-        <a routerLink="/rankings" routerLinkActive="active" class="nav-link" *ngIf="canAccessModule('rankings')">
-          <span class="nav-icon">🏆</span>
-          <span>Rankings</span>
-        </a>
-        <a routerLink="/invoices" routerLinkActive="active" class="nav-link" *ngIf="canAccessModule('finance')">
-          <span class="nav-icon">💰</span>
-          <span>Finance</span>
-        </a>
-      </ng-container>
-      
-      <!-- Parent Navigation -->
-      <ng-container *ngIf="isParent()">
-        <a routerLink="/parent/dashboard" routerLinkActive="active" class="nav-link">
-          <span class="nav-icon">🏠</span>
-          <span>Parent Dashboard</span>
-        </a>
-      </ng-container>
-    </div>
-
-    <!-- Desktop Logout Button -->
-    <button class="btn btn-secondary desktop-only" (click)="logout()" *ngIf="isAuthenticated()">
+    <h1 class="top-navbar-title">{{ schoolName }}</h1>
+    <button class="btn btn-secondary logout-btn" (click)="logout()">
       <span>Logout</span>
     </button>
   </div>
 </nav>
 
-<!-- Mobile Sidebar Menu -->
+<!-- Collapsible Sidebar -->
+<aside class="sidebar" [class.collapsed]="sidebarCollapsed" *ngIf="isAuthenticated() && !isParent()">
+  <div class="sidebar-content">
+    <nav class="sidebar-nav">
+      <!-- Dashboard -->
+      <a routerLink="/dashboard" routerLinkActive="active" class="sidebar-item">
+        <span class="sidebar-icon">🏠</span>
+        <span class="sidebar-text">Dashboard</span>
+      </a>
+
+      <!-- Student Management -->
+      <div class="sidebar-menu">
+        <div class="sidebar-menu-header" (click)="toggleMenu('studentManagement')">
+          <span class="sidebar-icon">👨‍🎓</span>
+          <span class="sidebar-text">Student Management</span>
+          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('studentManagement')">▼</span>
+        </div>
+        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('studentManagement')">
+          <a routerLink="/students/new" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-text">Registration</span>
+          </a>
+          <a routerLink="/students" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-text">Database</span>
+          </a>
+          <a routerLink="/attendance/mark" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-text">Mark Attendance</span>
+          </a>
+          <a routerLink="/admin/class-promotion" routerLinkActive="active" class="sidebar-subitem" *ngIf="isSuperAdmin()">
+            <span class="sidebar-text">Class Promotion</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Teacher Management -->
+      <div class="sidebar-menu">
+        <div class="sidebar-menu-header" (click)="toggleMenu('teacherManagement')">
+          <span class="sidebar-icon">👨‍🏫</span>
+          <span class="sidebar-text">Teacher Management</span>
+          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('teacherManagement')">▼</span>
+        </div>
+        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('teacherManagement')">
+          <a routerLink="/teachers/new" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-text">Registration</span>
+          </a>
+          <a routerLink="/teachers" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-text">Teachers</span>
+          </a>
+          <a routerLink="/admin/manage-accounts" routerLinkActive="active" class="sidebar-subitem" *ngIf="isSuperAdmin()">
+            <span class="sidebar-text">Account Management</span>
+          </a>
+          <a routerLink="/teacher/manage-account" routerLinkActive="active" class="sidebar-subitem" *ngIf="isTeacher()">
+            <span class="sidebar-text">Account Management</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Exam Management -->
+      <div class="sidebar-menu">
+        <div class="sidebar-menu-header" (click)="toggleMenu('examManagement')">
+          <span class="sidebar-icon">📝</span>
+          <span class="sidebar-text">Exam Management</span>
+          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('examManagement')">▼</span>
+        </div>
+        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('examManagement')">
+          <a routerLink="/exams" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-text">Marks Capturing</span>
+          </a>
+          <a routerLink="/mark-sheet" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-text">Mark Sheets</span>
+          </a>
+          <a routerLink="/rankings" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('rankings')">
+            <span class="sidebar-text">Rankings</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Finance Management -->
+      <div class="sidebar-menu" *ngIf="canAccessModule('finance')">
+        <div class="sidebar-menu-header" (click)="toggleMenu('financeManagement')">
+          <span class="sidebar-icon">💰</span>
+          <span class="sidebar-text">Finance Management</span>
+          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('financeManagement')">▼</span>
+        </div>
+        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('financeManagement')">
+          <a routerLink="/invoices" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-text">Billing & Invoicing</span>
+          </a>
+          <a routerLink="/payments/record" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-text">Record Payment</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Reports -->
+      <div class="sidebar-menu">
+        <div class="sidebar-menu-header" (click)="toggleMenu('reports')">
+          <span class="sidebar-icon">📊</span>
+          <span class="sidebar-text">Reports</span>
+          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('reports')">▼</span>
+        </div>
+        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('reports')">
+          <a routerLink="/report-cards" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-text">Report Cards</span>
+          </a>
+          <a routerLink="/attendance/reports" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-text">Attendance Reports</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- General Settings -->
+      <div class="sidebar-menu">
+        <div class="sidebar-menu-header" (click)="toggleMenu('settings')">
+          <span class="sidebar-icon">⚙️</span>
+          <span class="sidebar-text">General Settings</span>
+          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('settings')">▼</span>
+        </div>
+        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('settings')">
+          <a routerLink="/settings" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-text">School Settings</span>
+          </a>
+          <a routerLink="/admin/manage-accounts" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
+            <span class="sidebar-text">User Management</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- My Record Book (Teachers only) -->
+      <a routerLink="/teacher/record-book" routerLinkActive="active" class="sidebar-item" *ngIf="isTeacher()">
+        <span class="sidebar-icon">📚</span>
+        <span class="sidebar-text">My Record Book</span>
+      </a>
+    </nav>
+  </div>
+</aside>
+
+<!-- Parent Navigation (Mobile) -->
 <div class="mobile-sidebar" 
      [class.open]="mobileMenuOpen" 
-     *ngIf="isAuthenticated()">
+     *ngIf="isAuthenticated() && isParent()">
   <!-- Overlay -->
   <div class="mobile-sidebar-overlay" 
        (click)="closeMobileMenu()"
@@ -108,79 +185,13 @@
     </div>
 
     <nav class="mobile-nav-links">
-      <!-- Admin/Teacher Navigation -->
-      <ng-container *ngIf="!isParent()">
-        <a routerLink="/dashboard" 
-           routerLinkActive="active" 
-           class="mobile-nav-link"
-           (click)="closeMobileMenu()">
-          <span class="nav-icon">🏠</span>
-          <span>Dashboard</span>
-        </a>
-        <a routerLink="/students" 
-           routerLinkActive="active" 
-           class="mobile-nav-link"
-           (click)="closeMobileMenu()">
-          <span class="nav-icon">👨‍🎓</span>
-          <span>Students</span>
-        </a>
-        <a routerLink="/teachers" 
-           routerLinkActive="active" 
-           class="mobile-nav-link"
-           (click)="closeMobileMenu()">
-          <span class="nav-icon">👨‍🏫</span>
-          <span>Teachers</span>
-        </a>
-        <a routerLink="/teacher/record-book" 
-           routerLinkActive="active" 
-           class="mobile-nav-link"
-           *ngIf="isTeacher()"
-           (click)="closeMobileMenu()">
-          <span class="nav-icon">📚</span>
-          <span>My Record Book</span>
-        </a>
-        <a routerLink="/exams" 
-           routerLinkActive="active" 
-           class="mobile-nav-link"
-           (click)="closeMobileMenu()">
-          <span class="nav-icon">📝</span>
-          <span>Exams</span>
-        </a>
-        <a routerLink="/report-cards" 
-           routerLinkActive="active" 
-           class="mobile-nav-link"
-           (click)="closeMobileMenu()">
-          <span class="nav-icon">📊</span>
-          <span>Report Cards</span>
-        </a>
-        <a routerLink="/rankings" 
-           routerLinkActive="active" 
-           class="mobile-nav-link"
-           (click)="closeMobileMenu()"
-           *ngIf="canAccessModule('rankings')">
-          <span class="nav-icon">🏆</span>
-          <span>Rankings</span>
-        </a>
-        <a routerLink="/invoices" 
-           routerLinkActive="active" 
-           class="mobile-nav-link"
-           (click)="closeMobileMenu()"
-           *ngIf="canAccessModule('finance')">
-          <span class="nav-icon">💰</span>
-          <span>Finance</span>
-        </a>
-      </ng-container>
-      
-      <!-- Parent Navigation -->
-      <ng-container *ngIf="isParent()">
-        <a routerLink="/parent/dashboard" 
-           routerLinkActive="active" 
-           class="mobile-nav-link"
-           (click)="closeMobileMenu()">
-          <span class="nav-icon">🏠</span>
-          <span>Parent Dashboard</span>
-        </a>
-      </ng-container>
+      <a routerLink="/parent/dashboard" 
+         routerLinkActive="active" 
+         class="mobile-nav-link"
+         (click)="closeMobileMenu()">
+        <span class="nav-icon">🏠</span>
+        <span>Parent Dashboard</span>
+      </a>
     </nav>
 
     <!-- Mobile Logout Button -->
@@ -193,8 +204,21 @@
   </div>
 </div>
 
+<!-- Mobile Menu Toggle for Parents -->
+<button class="mobile-menu-toggle" 
+        (click)="toggleMobileMenu()" 
+        aria-label="Toggle menu"
+        *ngIf="isAuthenticated() && isParent()">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="3" y1="12" x2="21" y2="12" *ngIf="!mobileMenuOpen"></line>
+    <line x1="3" y1="6" x2="21" y2="6" *ngIf="!mobileMenuOpen"></line>
+    <line x1="3" y1="18" x2="21" y2="18" *ngIf="!mobileMenuOpen"></line>
+    <line x1="18" y1="6" x2="6" y2="18" *ngIf="mobileMenuOpen"></line>
+    <line x1="6" y1="6" x2="18" y2="18" *ngIf="mobileMenuOpen"></line>
+  </svg>
+</button>
+
 <!-- Main Content -->
-<main class="main-content" [class.menu-open]="mobileMenuOpen">
+<main class="main-content" [class.sidebar-open]="!sidebarCollapsed" [class.menu-open]="mobileMenuOpen">
   <router-outlet></router-outlet>
 </main>
-

@@ -11,6 +11,8 @@ import { ModuleAccessService } from './services/module-access.service';
 export class AppComponent implements OnInit {
   schoolName = 'School Management System';
   mobileMenuOpen = false;
+  sidebarCollapsed = false;
+  expandedMenus: { [key: string]: boolean } = {};
 
   constructor(
     public authService: AuthService, 
@@ -51,6 +53,10 @@ export class AppComponent implements OnInit {
     return this.authService.hasRole('superadmin');
   }
 
+  isAdmin(): boolean {
+    return this.authService.hasRole('admin') || this.authService.hasRole('superadmin');
+  }
+
   isDemoUser(): boolean {
     const user = this.authService.getCurrentUser();
     return user?.isDemo === true || user?.email === 'demo@school.com' || user?.username === 'demo@school.com';
@@ -78,6 +84,41 @@ export class AppComponent implements OnInit {
   logout(): void {
     this.closeMobileMenu();
     this.authService.logout();
+  }
+
+  toggleSidebar(): void {
+    this.sidebarCollapsed = !this.sidebarCollapsed;
+    // Collapse all menus when sidebar is collapsed
+    if (this.sidebarCollapsed) {
+      this.expandedMenus = {};
+    }
+  }
+
+  toggleMenu(menuKey: string): void {
+    // Don't expand menus when sidebar is collapsed
+    if (this.sidebarCollapsed) {
+      return;
+    }
+    this.expandedMenus[menuKey] = !this.expandedMenus[menuKey];
+  }
+
+  isMenuExpanded(menuKey: string): boolean {
+    return this.expandedMenus[menuKey] || false;
+  }
+
+  getCurrentUserRole(): string {
+    const user = this.authService.getCurrentUser();
+    if (!user) return '';
+    
+    if (user.role) {
+      return user.role.toUpperCase();
+    }
+    
+    // Fallback to checking roles
+    if (this.isSuperAdmin()) return 'SUPERADMIN';
+    if (this.isTeacher()) return 'TEACHER';
+    if (this.isParent()) return 'PARENT';
+    return 'ADMIN';
   }
 }
 

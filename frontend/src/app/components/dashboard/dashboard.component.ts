@@ -18,6 +18,13 @@ export class DashboardComponent implements OnInit {
   moduleAccess: any = null;
   schoolName: string = '';
   showBulkMessage = false;
+
+  // Sidebar collapse state
+  studentManagementOpen = true;
+  examManagementOpen = true;
+  financeManagementOpen = true;
+  reportsOpen = true;
+  generalSettingsOpen = true;
   
   // Statistics
   stats = {
@@ -210,6 +217,26 @@ export class DashboardComponent implements OnInit {
     this.showBulkMessage = false;
   }
 
+  toggleSection(section: string) {
+    switch (section) {
+      case 'studentManagement':
+        this.studentManagementOpen = !this.studentManagementOpen;
+        break;
+      case 'examManagement':
+        this.examManagementOpen = !this.examManagementOpen;
+        break;
+      case 'financeManagement':
+        this.financeManagementOpen = !this.financeManagementOpen;
+        break;
+      case 'reports':
+        this.reportsOpen = !this.reportsOpen;
+        break;
+      case 'generalSettings':
+        this.generalSettingsOpen = !this.generalSettingsOpen;
+        break;
+    }
+  }
+
   hasModuleAccess(module: string): boolean {
     if (!this.moduleAccess) {
       // Default to true if settings not loaded (for backward compatibility)
@@ -336,6 +363,19 @@ export class DashboardComponent implements OnInit {
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+
+  getCurrentDateTime(): string {
+    const now = new Date();
+    const options: Intl.DateTimeFormatOptions = { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    };
+    return now.toLocaleDateString('en-US', options);
   }
 }
 

@@ -37,6 +37,7 @@ import { ParentInboxComponent } from './components/parent/parent-inbox/parent-in
 import { MarkAttendanceComponent } from './components/attendance/mark-attendance/mark-attendance.component';
 import { AttendanceReportsComponent } from './components/attendance/attendance-reports/attendance-reports.component';
 import { RecordBookComponent } from './components/teacher/record-book/record-book.component';
+import { RecordPaymentComponent } from './components/finance/record-payment/record-payment.component';
 
 @NgModule({
   declarations: [
@@ -70,12 +71,12 @@ import { RecordBookComponent } from './components/teacher/record-book/record-boo
     ParentInboxComponent,
     MarkAttendanceComponent,
     AttendanceReportsComponent,
-    RecordBookComponent
+    RecordBookComponent,
+    RecordPaymentComponent
   ],
   imports: [
     BrowserModule,
     BrowserAnimationsModule,
-    CommonModule,
     AppRoutingModule,
     HttpClientModule,
     FormsModule,

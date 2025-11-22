@@ -15,6 +15,7 @@ import { MarkSheetComponent } from './components/exams/mark-sheet/mark-sheet.com
 import { InvoiceListComponent } from './components/finance/invoice-list/invoice-list.component';
 import { InvoiceFormComponent } from './components/finance/invoice-form/invoice-form.component';
 import { InvoiceStatementsComponent } from './components/finance/invoice-statements/invoice-statements.component';
+import { RecordPaymentComponent } from './components/finance/record-payment/record-payment.component';
 import { ClassListComponent } from './components/classes/class-list/class-list.component';
 import { ClassFormComponent } from './components/classes/class-form/class-form.component';
 import { SubjectListComponent } from './components/subjects/subject-list/subject-list.component';
@@ -60,6 +61,7 @@ const routes: Routes = [
   { path: 'invoices', component: InvoiceListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'invoices/new', component: InvoiceFormComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'invoices/statements', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
+  { path: 'payments/record', component: RecordPaymentComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'classes', component: ClassListComponent, canActivate: [AuthGuard] },
   { path: 'classes/new', component: ClassFormComponent, canActivate: [AuthGuard] },
   { path: 'classes/:id/edit', component: ClassFormComponent, canActivate: [AuthGuard] },
