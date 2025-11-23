@@ -47,6 +47,14 @@
   animation: pulse 2s ease-in-out infinite;
 }
 
+.school-motto {
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: #6b7280;
+  font-style: italic;
+  margin-left: 8px;
+}
+
 @keyframes pulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.1); }
@@ -147,6 +155,12 @@
   font-size: 1.2rem;
   white-space: nowrap;
   display: inline-block;
+  transition: opacity 0.5s ease;
+}
+
+.school-motto-text {
+  font-size: 1.2rem;
+  font-weight: 700;
 }
 
 .school-id {

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { SettingsService } from '../../services/settings.service';
@@ -13,11 +13,15 @@ import { SubjectService } from '../../services/subject.service';
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   user: any;
   moduleAccess: any = null;
   schoolName: string = '';
+  schoolMotto: string = '';
   showBulkMessage = false;
+  displayedText: string = '';
+  private textToggleInterval: any;
+  private showMotto: boolean = false;
 
   // Sidebar collapse state
   studentManagementOpen = true;
@@ -59,6 +63,13 @@ export class DashboardComponent implements OnInit {
     this.loadSettings();
     if (this.isAdmin() || this.isAccountant()) {
       this.loadStatistics();
+    }
+  }
+
+  ngOnDestroy() {
+    // Clear interval when component is destroyed
+    if (this.textToggleInterval) {
+      clearInterval(this.textToggleInterval);
     }
   }
   
@@ -159,7 +170,11 @@ export class DashboardComponent implements OnInit {
         } else {
           this.schoolName = data.schoolName || '';
         }
+        this.schoolMotto = data.schoolMotto || '';
         this.moduleAccess = data.moduleAccess || {};
+        
+        // Initialize displayed text and start toggle timer
+        this.initializeTextToggle();
       },
       error: (err: any) => {
         console.error('Error loading settings:', err);
@@ -376,6 +391,34 @@ export class DashboardComponent implements OnInit {
       minute: '2-digit'
     };
     return now.toLocaleDateString('en-US', options);
+  }
+
+  initializeTextToggle() {
+    // Clear any existing interval
+    if (this.textToggleInterval) {
+      clearInterval(this.textToggleInterval);
+    }
+
+    // Set initial displayed text
+    if (this.schoolName && this.schoolMotto) {
+      // If both exist, start with school name and toggle
+      this.displayedText = this.schoolName;
+      this.showMotto = false;
+      
+      // Toggle every 3 seconds (3000ms)
+      this.textToggleInterval = setInterval(() => {
+        this.showMotto = !this.showMotto;
+        this.displayedText = this.showMotto ? this.schoolMotto : this.schoolName;
+      }, 3000);
+    } else if (this.schoolName) {
+      // Only school name available
+      this.displayedText = this.schoolName;
+    } else if (this.schoolMotto) {
+      // Only motto available
+      this.displayedText = this.schoolMotto;
+    } else {
+      this.displayedText = '';
+    }
   }
 }
 

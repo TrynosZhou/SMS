@@ -223,6 +223,7 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       schoolPhone,
       schoolEmail,
       headmasterName,
+      schoolMotto,
       academicYear,
       currentTerm,
       activeTerm,
@@ -307,6 +308,9 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
     }
     if (headmasterName !== undefined) {
       settings.headmasterName = headmasterName;
+    }
+    if (schoolMotto !== undefined) {
+      settings.schoolMotto = schoolMotto;
     }
     if (academicYear !== undefined) {
       settings.academicYear = academicYear;

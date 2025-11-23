@@ -68,6 +68,9 @@ export class Settings {
   @Column({ type: 'varchar', nullable: true })
   headmasterName: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  schoolMotto: string | null; // School motto or tagline
+
   // Academic Year
   @Column({ type: 'varchar', nullable: true })
   academicYear: string | null; // e.g., "2024/2025"
