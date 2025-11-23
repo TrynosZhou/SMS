@@ -236,7 +236,7 @@
           
           <!-- School Header -->
           <div *ngIf="reportCard.settings || schoolLogo || schoolLogo2" class="school-header">
-            <div class="school-logo-wrapper" *ngIf="schoolLogo">
+            <div class="school-logo-wrapper school-logo-left" *ngIf="schoolLogo">
               <img [src]="schoolLogo" alt="School Logo" class="school-logo">
             </div>
             <div class="school-text">
@@ -250,6 +250,9 @@
               <p *ngIf="reportCard.settings?.academicYear" class="academic-year">
                 Academic Year: {{ reportCard.settings.academicYear }}
               </p>
+            </div>
+            <div class="school-logo-wrapper school-logo-right" *ngIf="schoolLogo2">
+              <img [src]="schoolLogo2" alt="School Logo 2" class="school-logo">
             </div>
           </div>
 

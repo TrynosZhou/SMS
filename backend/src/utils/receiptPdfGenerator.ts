@@ -218,9 +218,9 @@ export function createReceiptPDF(
       doc.moveTo(tableStartX, yPos).lineTo(tableEndX, yPos).stroke();
       yPos += 15;
 
-      // Invoice Summary Section Header
+      // Transaction Details Section Header
       doc.fontSize(14).font('Helvetica-Bold').fillColor('#2C3E50');
-      doc.text('Invoice Summary', 50, yPos);
+      doc.text('Transaction Details', 50, yPos);
       yPos += 25;
 
       // Ensure all numeric values are properly converted to numbers
@@ -230,67 +230,64 @@ export function createReceiptPDF(
       const balance = parseFloat(String(invoice.balance || 0));
       const prepaidAmount = parseFloat(String(invoice.prepaidAmount || 0));
 
-      // Invoice Summary Box
-      const summaryBoxY = yPos;
-      const summaryBoxHeight = 90 + (previousBalance > 0 ? 15 : 0) + (prepaidAmount > 0 ? 15 : 0);
-      doc.rect(50, summaryBoxY, 500, summaryBoxHeight)
-        .fillColor('#FFF9E6')
-        .fill()
-        .strokeColor('#FFC107')
-        .lineWidth(1.5)
-        .stroke();
-      
-      yPos = summaryBoxY + 15;
+      // Calculate total invoice amount (invoice amount + previous balance)
+      const totalInvoiceAmount = invoiceAmount + previousBalance;
 
-      // Use a consistent layout for invoice summary with proper alignment
-      const summaryLabelWidth = 300; // Width for labels
-      const summaryValueStartX = tableStartX + summaryLabelWidth; // Start position for values
-      const summaryValueWidth = tableEndX - summaryValueStartX; // Available width for values
+      // Table dimensions (reuse variables from payment details section)
+      const labelColumnWidth = 350;
+      const valueColumnWidth = 145;
+      const valueColumnStartX = tableEndX - valueColumnWidth;
+      const transactionRowHeight = 20;
 
-      // Horizontal divider in summary box
-      doc.strokeColor('#FFE082').lineWidth(0.5);
-      doc.moveTo(60, yPos - 5).lineTo(540, yPos - 5).stroke();
+      // Draw table with borders
+      // Table has 5 rows: Total Invoice Amount, Previous Balance, Total Paid, Remaining Balance, Prepaid Amount
+      const numRows = 5;
+      const tableStartY = yPos;
+      const tableHeight = numRows * transactionRowHeight;
 
+      // Draw table border
+      doc.strokeColor('#000000').lineWidth(1);
+      doc.rect(tableStartX, tableStartY, tableWidth, tableHeight).stroke();
+
+      // Draw vertical divider
+      doc.moveTo(valueColumnStartX, tableStartY).lineTo(valueColumnStartX, tableStartY + tableHeight).stroke();
+
+      // Draw horizontal dividers between rows
+      for (let i = 1; i < numRows; i++) {
+        const dividerY = tableStartY + (i * transactionRowHeight);
+        doc.moveTo(tableStartX, dividerY).lineTo(tableEndX, dividerY).stroke();
+      }
+
+      // Row 1: Total Invoice Amount
+      yPos = tableStartY + 5;
       doc.fontSize(10).font('Helvetica').fillColor('#000000');
-      doc.text('Invoice Amount:', tableStartX + 10, yPos);
-      doc.text(`${currencySymbol} ${invoiceAmount.toFixed(2)}`, summaryValueStartX, yPos, { align: 'right', width: summaryValueWidth });
-      yPos += 15;
+      doc.text('Total Invoice Amount:', tableStartX + 5, yPos + 5);
+      doc.text(`${currencySymbol} ${totalInvoiceAmount.toFixed(2)}`, valueColumnStartX + 5, yPos + 5, { align: 'right', width: valueColumnWidth - 10 });
+      yPos += transactionRowHeight;
 
-      if (previousBalance > 0) {
-        doc.text('Previous Balance:', tableStartX + 10, yPos);
-        doc.text(`${currencySymbol} ${previousBalance.toFixed(2)}`, summaryValueStartX, yPos, { align: 'right', width: summaryValueWidth });
-        yPos += 15;
-      }
+      // Row 2: Invoice balance b/f (Previous Balance)
+      doc.text('Invoice balance b/f (Previous Balance):', tableStartX + 5, yPos + 5);
+      doc.text(`${currencySymbol} ${previousBalance.toFixed(2)}`, valueColumnStartX + 5, yPos + 5, { align: 'right', width: valueColumnWidth - 10 });
+      yPos += transactionRowHeight;
 
-      if (prepaidAmount > 0) {
-        doc.fontSize(10).font('Helvetica-Bold').fillColor('#1976D2');
-        doc.text('Prepaid Amount:', tableStartX + 10, yPos);
-        doc.text(`${currencySymbol} ${prepaidAmount.toFixed(2)}`, summaryValueStartX, yPos, { align: 'right', width: summaryValueWidth });
-        yPos += 15;
-      }
+      // Row 3: Payment:Total Paid (including this payment)
+      doc.text('Payment:Total Paid (including this payment)', tableStartX + 5, yPos + 5);
+      doc.text(`${currencySymbol} ${paidAmount.toFixed(2)}`, valueColumnStartX + 5, yPos + 5, { align: 'right', width: valueColumnWidth - 10 });
+      yPos += transactionRowHeight;
 
-      // Horizontal divider before totals
-      doc.strokeColor('#FFE082').lineWidth(0.5);
-      doc.moveTo(60, yPos - 2).lineTo(540, yPos - 2).stroke();
-      yPos += 3;
+      // Row 4: Invoice balance c/f (Remaining Balance) - Value in red and bold
+      doc.text('Invoice balance c/f (Remaining Balance):', tableStartX + 5, yPos + 5);
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#DC3545'); // Red color
+      doc.text(`${currencySymbol} ${balance.toFixed(2)}`, valueColumnStartX + 5, yPos + 5, { align: 'right', width: valueColumnWidth - 10 });
+      // Reset font and color for next row
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      yPos += transactionRowHeight;
 
-      doc.text('Total Invoice Amount:', tableStartX + 10, yPos);
-      doc.text(`${currencySymbol} ${(invoiceAmount + previousBalance).toFixed(2)}`, summaryValueStartX, yPos, { align: 'right', width: summaryValueWidth });
-      yPos += 15;
-
-      doc.text('Total Paid (including this payment):', tableStartX + 10, yPos);
-      doc.text(`${currencySymbol} ${paidAmount.toFixed(2)}`, summaryValueStartX, yPos, { align: 'right', width: summaryValueWidth });
-      yPos += 15;
-
-      // Horizontal divider before remaining balance
-      doc.strokeColor('#FFC107').lineWidth(1);
-      doc.moveTo(60, yPos - 2).lineTo(540, yPos - 2).stroke();
-      yPos += 3;
-
-      doc.fontSize(11).font('Helvetica-Bold').fillColor('#DC3545');
-      doc.text('Remaining Balance:', tableStartX + 10, yPos);
-      doc.text(`${currencySymbol} ${balance.toFixed(2)}`, summaryValueStartX, yPos, { align: 'right', width: summaryValueWidth });
-      yPos = summaryBoxY + summaryBoxHeight + 20;
+      // Row 5: Prepaid Amount
+      doc.text('Prepaid Amount:', tableStartX + 5, yPos + 5);
+      doc.text(`${currencySymbol} ${prepaidAmount.toFixed(2)}`, valueColumnStartX + 5, yPos + 5, { align: 'right', width: valueColumnWidth - 10 });
+      
+      yPos = tableStartY + tableHeight + 20;
 
       // Horizontal divider after invoice summary
       doc.strokeColor('#CCCCCC').lineWidth(1);

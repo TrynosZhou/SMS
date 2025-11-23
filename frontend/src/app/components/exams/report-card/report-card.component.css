@@ -495,6 +495,13 @@
   padding: 10px 14px;
 }
 
+.school-logo-wrapper.school-logo-left {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  margin: 0;
+}
+
 .school-logo-wrapper.school-logo-right {
   position: absolute;
   top: 20px;
@@ -512,6 +519,8 @@
   text-align: center;
   min-width: 200px;
   flex: 1;
+  margin: 0 auto;
+  max-width: calc(100% - 400px); /* Ensure text has space between logos */
 }
 
 .school-header h3 {

@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import sizeOf from 'image-size';
 import { Settings } from '../entities/Settings';
 
 interface ReportCardData {
@@ -97,10 +98,64 @@ export function createReportCardPDF(
       });
 
       let logoX = 50;
-      let logoY = 50;
-      let logoWidth = 120; // Increased from 100 to make it wider
-      let logoHeight = 100;
+      // Align logos with the top of the school name text (16pt bold)
+      // In PDFKit, text Y is baseline, so we adjust logo Y to align with text top
+      const schoolNameFontSize = 16;
+      const textBaselineY = 50;
+      // Approximate ascender height for 18pt bold text (typically ~70% of font size)
+      // Add extra adjustment to align logo top with text top visually
+      const textAscender = schoolNameFontSize * 0.7;
+      const logoY = textBaselineY - textAscender - 8; // Position logo top to match text top (adjusted for proper alignment)
+      let logoWidth = 120; // Maximum width for logo
+      let logoHeight = 100; // Maximum height for logo
       let textStartX = 180; // Adjusted to accommodate wider logo
+      let textEndX = pageWidth - 50; // Default end position (will be adjusted if logo2 exists)
+
+      // Helper function to add logo with preserved aspect ratio
+      // Aligns logo at the top (startY) to match school name alignment
+      const addLogoWithAspectRatio = (
+        imageBuffer: Buffer,
+        startX: number,
+        startY: number,
+        maxWidth: number,
+        maxHeight: number
+      ) => {
+        try {
+          // Get image dimensions
+          const dimensions = sizeOf(imageBuffer);
+          const imgWidth = dimensions.width || maxWidth;
+          const imgHeight = dimensions.height || maxHeight;
+          
+          // Calculate scale factor to fit within max dimensions while preserving aspect ratio
+          const scaleX = maxWidth / imgWidth;
+          const scaleY = maxHeight / imgHeight;
+          const scale = Math.min(scaleX, scaleY); // Use smaller scale to ensure it fits
+          
+          // Calculate final dimensions
+          const finalWidth = imgWidth * scale;
+          const finalHeight = imgHeight * scale;
+          
+          // Center horizontally, but align at top vertically (to match school name)
+          const centeredX = startX + (maxWidth - finalWidth) / 2;
+          const alignedY = startY; // Align at top, not centered vertically
+          
+          // Draw the image with calculated dimensions (preserving aspect ratio)
+          doc.image(imageBuffer, centeredX, alignedY, {
+            width: finalWidth,
+            height: finalHeight
+          });
+        } catch (error) {
+          console.error('Error adding logo with aspect ratio:', error);
+          // Fallback: try to add image with max width (pdfkit will maintain aspect ratio)
+          try {
+            doc.image(imageBuffer, startX, startY, {
+              width: maxWidth
+            });
+          } catch (fallbackError) {
+            console.error('Fallback logo addition also failed:', fallbackError);
+          }
+        }
+      };
 
       // Add school logo if available (left side)
       if (settings?.schoolLogo) {
@@ -110,7 +165,7 @@ export function createReportCardPDF(
             const base64Data = settings.schoolLogo.split(',')[1];
             if (base64Data) {
               const imageBuffer = Buffer.from(base64Data, 'base64');
-              doc.image(imageBuffer, logoX, logoY, { width: logoWidth, height: logoHeight });
+              addLogoWithAspectRatio(imageBuffer, logoX, logoY, logoWidth, logoHeight);
               textStartX = logoX + logoWidth + 20; // Start text after logo
               console.log('School logo added to PDF successfully');
             } else {
@@ -129,14 +184,39 @@ export function createReportCardPDF(
         console.log('No school logo found in settings');
       }
 
+      // Add school logo 2 if available (right side)
+      if (settings?.schoolLogo2) {
+        try {
+          if (settings.schoolLogo2.startsWith('data:image')) {
+            const base64Data = settings.schoolLogo2.split(',')[1];
+            if (base64Data) {
+              const imageBuffer = Buffer.from(base64Data, 'base64');
+              // Position logo on the right side
+              const logo2X = pageWidth - logoWidth - 50; // 50px margin from right edge
+              addLogoWithAspectRatio(imageBuffer, logo2X, logoY, logoWidth, logoHeight);
+              textEndX = logo2X - 20; // Adjust text end position to leave space for logo
+              console.log('School logo 2 added to PDF successfully');
+            } else {
+              console.warn('School logo 2 base64 data is empty');
+            }
+          } else if (settings.schoolLogo2.startsWith('http://') || settings.schoolLogo2.startsWith('https://')) {
+            console.warn('URL-based logos not yet supported in PDF');
+          } else {
+            console.warn('School logo 2 format not recognized:', settings.schoolLogo2.substring(0, 50));
+          }
+        } catch (error) {
+          console.error('Could not add school logo 2 to PDF:', error);
+        }
+      }
+
       // School Name and Address
-      doc.fontSize(18).font('Helvetica-Bold').text(schoolName, textStartX, logoY);
+      doc.fontSize(schoolNameFontSize).font('Helvetica-Bold').text(schoolName, textStartX, logoY);
       
       // Calculate positions for address and academic year
       let currentY = logoY + 25;
       
-      // Calculate available width for text (logo2 removed, so use full width)
-      const maxTextWidth = pageWidth - textStartX - 50; // Full width minus margins
+      // Calculate available width for text (accounting for both logos if present)
+      const maxTextWidth = textEndX - textStartX; // Space between logo1 and logo2 (or end of page)
       const textWidth = Math.min(400, maxTextWidth); // Use smaller of 400 or available space
       
       // Always display school address if it exists
@@ -170,8 +250,6 @@ export function createReportCardPDF(
       // Display academic year
       doc.fontSize(10).text(`Academic Year: ${academicYear}`, textStartX, currentY);
       currentY += 15; // Add spacing after academic year
-
-      // School logo 2 removed - no longer displayed in report card PDF
 
       // Title - adjust position based on logo size and header content with styled background
       // Ensure title is below all header content (logo, name, address, phone, academic year)

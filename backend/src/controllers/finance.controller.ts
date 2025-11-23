@@ -682,6 +682,57 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const getOutstandingBalances = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const invoiceRepository = AppDataSource.getRepository(Invoice);
+    const studentRepository = AppDataSource.getRepository(Student);
+
+    // Get all students
+    const allStudents = await studentRepository.find({
+      order: { studentNumber: 'ASC' }
+    });
+
+    // Get latest invoice for each student in a single query
+    const outstandingBalances = [];
+
+    for (const student of allStudents) {
+      // Get the latest invoice for this student
+      const latestInvoice = await invoiceRepository.findOne({
+        where: { studentId: student.id },
+        order: { createdAt: 'DESC' }
+      });
+
+      if (latestInvoice) {
+        const balance = parseAmount(latestInvoice.balance);
+        
+        // Only include students with balance > 0
+        if (balance > 0) {
+          outstandingBalances.push({
+            studentId: student.id,
+            studentNumber: student.studentNumber,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            phoneNumber: student.phoneNumber || '',
+            invoiceBalance: balance
+          });
+        }
+      }
+    }
+
+    res.json(outstandingBalances);
+  } catch (error: any) {
+    console.error('Error fetching outstanding balances:', error);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message || 'Unknown error' 
+    });
+  }
+};
+
 export const getStudentBalance = async (req: AuthRequest, res: Response) => {
   try {
     const { studentId } = req.query;

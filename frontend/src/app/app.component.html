@@ -47,7 +47,7 @@
             <span class="sidebar-text">Registration</span>
           </a>
           <a routerLink="/students" routerLinkActive="active" class="sidebar-subitem">
-            <span class="sidebar-text">Database</span>
+            <span class="sidebar-text">Student Listing</span>
           </a>
           <a routerLink="/attendance/mark" routerLinkActive="active" class="sidebar-subitem">
             <span class="sidebar-text">Mark Attendance</span>
@@ -71,6 +71,9 @@
           </a>
           <a routerLink="/teachers" routerLinkActive="active" class="sidebar-subitem">
             <span class="sidebar-text">Teachers</span>
+          </a>
+          <a routerLink="/admin/teacher-record-book" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
+            <span class="sidebar-text">Record Book</span>
           </a>
           <a routerLink="/admin/manage-accounts" routerLinkActive="active" class="sidebar-subitem" *ngIf="isSuperAdmin()">
             <span class="sidebar-text">Account Management</span>
@@ -114,6 +117,9 @@
           </a>
           <a routerLink="/payments/record" routerLinkActive="active" class="sidebar-subitem">
             <span class="sidebar-text">Record Payment</span>
+          </a>
+          <a routerLink="/outstanding-balance" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-text">Unpaid Invoices</span>
           </a>
         </div>
       </div>

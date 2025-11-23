@@ -16,6 +16,7 @@ import { InvoiceListComponent } from './components/finance/invoice-list/invoice-
 import { InvoiceFormComponent } from './components/finance/invoice-form/invoice-form.component';
 import { InvoiceStatementsComponent } from './components/finance/invoice-statements/invoice-statements.component';
 import { RecordPaymentComponent } from './components/finance/record-payment/record-payment.component';
+import { OutstandingBalanceComponent } from './components/finance/outstanding-balance/outstanding-balance.component';
 import { ClassListComponent } from './components/classes/class-list/class-list.component';
 import { ClassFormComponent } from './components/classes/class-form/class-form.component';
 import { SubjectListComponent } from './components/subjects/subject-list/subject-list.component';
@@ -30,6 +31,7 @@ import { ClassPromotionComponent } from './components/admin/class-promotion/clas
 import { MarkAttendanceComponent } from './components/attendance/mark-attendance/mark-attendance.component';
 import { AttendanceReportsComponent } from './components/attendance/attendance-reports/attendance-reports.component';
 import { RecordBookComponent } from './components/teacher/record-book/record-book.component';
+import { TeacherRecordBookComponent } from './components/admin/teacher-record-book/teacher-record-book.component';
 import { AuthGuard } from './guards/auth.guard';
 import { ModuleAccessGuard } from './guards/module-access.guard';
 
@@ -46,6 +48,7 @@ const routes: Routes = [
   { path: 'admin/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'admin/manage-accounts', component: ManageAccountsComponent, canActivate: [AuthGuard] },
   { path: 'admin/class-promotion', component: ClassPromotionComponent, canActivate: [AuthGuard] },
+  { path: 'admin/teacher-record-book', component: TeacherRecordBookComponent, canActivate: [AuthGuard] },
   { path: 'students', component: StudentListComponent, canActivate: [AuthGuard] },
   { path: 'students/new', component: StudentFormComponent, canActivate: [AuthGuard] },
   { path: 'students/:id/edit', component: StudentFormComponent, canActivate: [AuthGuard] },
@@ -62,6 +65,7 @@ const routes: Routes = [
   { path: 'invoices/new', component: InvoiceFormComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'invoices/statements', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'payments/record', component: RecordPaymentComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
+  { path: 'outstanding-balance', component: OutstandingBalanceComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'classes', component: ClassListComponent, canActivate: [AuthGuard] },
   { path: 'classes/new', component: ClassFormComponent, canActivate: [AuthGuard] },
   { path: 'classes/:id/edit', component: ClassFormComponent, canActivate: [AuthGuard] },

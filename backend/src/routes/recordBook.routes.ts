@@ -4,23 +4,24 @@ import { UserRole } from '../entities/User';
 import {
   getRecordBookByClass,
   saveRecordBookMarks,
-  batchSaveRecordBookMarks
+  batchSaveRecordBookMarks,
+  getRecordBookByClassForAdmin,
+  generateRecordBookPDF
 } from '../controllers/recordBook.controller';
 
 const router = Router();
 
-// All routes require authentication and teacher role
+// All routes require authentication
 router.use(authenticate);
-router.use(authorize(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER));
 
-// Get record book for a specific class
-router.get('/class/:classId', getRecordBookByClass);
+// Teacher routes
+router.get('/class/:classId', authorize(UserRole.TEACHER, UserRole.DEMO_USER), getRecordBookByClass);
+router.post('/marks', authorize(UserRole.TEACHER, UserRole.DEMO_USER), saveRecordBookMarks);
+router.post('/marks/batch', authorize(UserRole.TEACHER, UserRole.DEMO_USER), batchSaveRecordBookMarks);
 
-// Save marks for a single student
-router.post('/marks', saveRecordBookMarks);
-
-// Batch save marks for multiple students
-router.post('/marks/batch', batchSaveRecordBookMarks);
+// Admin routes
+router.get('/admin/class/:classId', authorize(UserRole.ADMIN, UserRole.SUPERADMIN), getRecordBookByClassForAdmin);
+router.get('/admin/pdf/:classId', authorize(UserRole.ADMIN, UserRole.SUPERADMIN), generateRecordBookPDF);
 
 export default router;
 

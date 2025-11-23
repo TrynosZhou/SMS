@@ -71,5 +71,9 @@ export class FinanceService {
       responseType: 'blob'
     });
   }
+
+  getOutstandingBalances(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/finance/outstanding-balances`);
+  }
 }
 

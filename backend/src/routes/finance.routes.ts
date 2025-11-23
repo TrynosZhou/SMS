@@ -9,7 +9,8 @@ import {
   createBulkInvoices,
   generateInvoicePDF,
   generateReceiptPDF,
-  getStudentBalance
+  getStudentBalance,
+  getOutstandingBalances
 } from '../controllers/finance.controller';
 
 const router = Router();
@@ -18,6 +19,7 @@ router.post('/', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, Us
 router.post('/bulk', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), createBulkInvoices);
 router.get('/', authenticate, getInvoices);
 router.get('/balance', authenticate, getStudentBalance);
+router.get('/outstanding-balances', authenticate, getOutstandingBalances);
 router.get('/:id/pdf', authenticate, generateInvoicePDF);
 router.get('/:id/receipt', authenticate, generateReceiptPDF);
 router.put('/:id/payment', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), updateInvoicePayment);

@@ -37,7 +37,9 @@ import { ParentInboxComponent } from './components/parent/parent-inbox/parent-in
 import { MarkAttendanceComponent } from './components/attendance/mark-attendance/mark-attendance.component';
 import { AttendanceReportsComponent } from './components/attendance/attendance-reports/attendance-reports.component';
 import { RecordBookComponent } from './components/teacher/record-book/record-book.component';
+import { TeacherRecordBookComponent } from './components/admin/teacher-record-book/teacher-record-book.component';
 import { RecordPaymentComponent } from './components/finance/record-payment/record-payment.component';
+import { OutstandingBalanceComponent } from './components/finance/outstanding-balance/outstanding-balance.component';
 
 @NgModule({
   declarations: [
@@ -72,7 +74,9 @@ import { RecordPaymentComponent } from './components/finance/record-payment/reco
     MarkAttendanceComponent,
     AttendanceReportsComponent,
     RecordBookComponent,
-    RecordPaymentComponent
+    TeacherRecordBookComponent,
+    RecordPaymentComponent,
+    OutstandingBalanceComponent
   ],
   imports: [
     BrowserModule,

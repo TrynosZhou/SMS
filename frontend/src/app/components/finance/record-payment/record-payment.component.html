@@ -62,7 +62,7 @@
         <div class="info-row">
           <div class="info-item">
             <label>Fees Balance:</label>
-            <div class="info-value balance-amount">${{ formatCurrency(studentData.balance) }}</div>
+            <div class="info-value balance-amount">{{ currencySymbol }} {{ formatCurrency(studentData.balance) }}</div>
           </div>
         </div>
       </div>
@@ -151,7 +151,7 @@
               type="button"
               class="btn btn-info"
               (click)="showReceiptPreview()"
-              [disabled]="loadingReceipt || !success"
+              [disabled]="loadingReceipt || (!success && !paymentRecorded)"
             >
               <span class="icon">🧾</span> Receipt
             </button>
@@ -162,11 +162,41 @@
   </div>
 
   <!-- Receipt Preview -->
-  <div *ngIf="showReceipt && receiptPdfUrl" class="receipt-preview">
+  <div *ngIf="showReceipt" class="receipt-preview">
     <div class="receipt-header">
       <h3>Receipt Preview</h3>
-      <button class="btn btn-close" (click)="showReceipt = false">×</button>
+      <button class="btn btn-close" (click)="closeReceipt()" title="Close Receipt">×</button>
     </div>
-    <iframe [src]="receiptPdfUrl" class="receipt-iframe"></iframe>
+    <div *ngIf="loadingReceipt" class="receipt-loading">
+      <div class="spinner-large"></div>
+      <p>Loading Receipt...</p>
+    </div>
+    <div *ngIf="!loadingReceipt && !receiptPdfUrl" class="receipt-loading">
+      <p>Receipt not available</p>
+    </div>
+    <div *ngIf="receiptPdfUrl && !loadingReceipt" class="receipt-content">
+      <iframe 
+        [src]="receiptPdfUrl" 
+        class="receipt-iframe"
+        title="Receipt PDF"
+        type="application/pdf">
+      </iframe>
+      <div class="receipt-actions">
+        <button 
+          type="button" 
+          class="btn btn-primary"
+          (click)="openReceiptInNewWindow()"
+          title="Open in New Window">
+          <span class="icon">🔗</span> Open in New Window
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-success"
+          (click)="downloadReceipt()"
+          title="Download Receipt">
+          <span class="icon">💾</span> Download Receipt
+        </button>
+      </div>
+    </div>
   </div>
 </div>

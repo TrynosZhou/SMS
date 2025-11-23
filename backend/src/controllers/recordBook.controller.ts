@@ -6,6 +6,8 @@ import { Teacher } from '../entities/Teacher';
 import { Class } from '../entities/Class';
 import { Settings } from '../entities/Settings';
 import { AuthRequest } from '../middleware/auth';
+import { UserRole } from '../entities/User';
+import { createRecordBookPDF } from '../utils/recordBookPdfGenerator';
 
 // Get record book data for a specific class
 export const getRecordBookByClass = async (req: AuthRequest, res: Response) => {
@@ -393,6 +395,193 @@ export const batchSaveRecordBookMarks = async (req: AuthRequest, res: Response) 
     res.json({ message: 'All marks saved successfully', count: savedRecords.length });
   } catch (error: any) {
     console.error('Error batch saving record book marks:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get record book for admin/superAdmin (for any teacher's class)
+export const getRecordBookByClassForAdmin = async (req: AuthRequest, res: Response) => {
+  try {
+    const { classId } = req.params;
+    const { teacherId } = req.query;
+    const userRole = req.user?.role;
+
+    // Check if user is admin or superAdmin
+    if (userRole !== UserRole.ADMIN && userRole !== UserRole.SUPERADMIN) {
+      return res.status(403).json({ message: 'Only administrators can access this endpoint' });
+    }
+
+    if (!teacherId) {
+      return res.status(400).json({ message: 'Teacher ID is required' });
+    }
+
+    // Get current term and year from settings
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const settings = await settingsRepository.findOne({
+      where: {},
+      order: { createdAt: 'DESC' }
+    });
+
+    const currentTerm = settings?.currentTerm || 'Term 1';
+    const currentYear = settings?.academicYear || new Date().getFullYear().toString();
+
+    // Get all students in the class
+    const studentRepository = AppDataSource.getRepository(Student);
+    const students = await studentRepository.find({
+      where: { classId, isActive: true },
+      order: { lastName: 'ASC', firstName: 'ASC' }
+    });
+
+    // Get existing record book entries for this teacher and class
+    const recordBookRepository = AppDataSource.getRepository(RecordBook);
+    const records = await recordBookRepository.find({
+      where: {
+        classId,
+        teacherId: teacherId as string,
+        term: currentTerm,
+        year: currentYear
+      }
+    });
+
+    // Map records to students
+    const recordsMap = new Map(records.map(r => [r.studentId, r]));
+
+    const studentsWithRecords = students.map(student => {
+      const record = recordsMap.get(student.id);
+      return {
+        studentId: student.id,
+        studentNumber: student.studentNumber,
+        lastName: student.lastName,
+        firstName: student.firstName,
+        test1: record?.test1 || null,
+        test1Topic: record?.test1Topic || '',
+        test1Date: record?.test1Date || null,
+        test2: record?.test2 || null,
+        test2Topic: record?.test2Topic || '',
+        test2Date: record?.test2Date || null,
+        test3: record?.test3 || null,
+        test3Topic: record?.test3Topic || '',
+        test3Date: record?.test3Date || null,
+        test4: record?.test4 || null,
+        test4Topic: record?.test4Topic || '',
+        test4Date: record?.test4Date || null,
+        test5: record?.test5 || null,
+        test5Topic: record?.test5Topic || '',
+        test5Date: record?.test5Date || null,
+        test6: record?.test6 || null,
+        test6Topic: record?.test6Topic || '',
+        test6Date: record?.test6Date || null,
+        test7: record?.test7 || null,
+        test7Topic: record?.test7Topic || '',
+        test7Date: record?.test7Date || null,
+        test8: record?.test8 || null,
+        test8Topic: record?.test8Topic || '',
+        test8Date: record?.test8Date || null,
+        test9: record?.test9 || null,
+        test9Topic: record?.test9Topic || '',
+        test9Date: record?.test9Date || null,
+        test10: record?.test10 || null,
+        test10Topic: record?.test10Topic || '',
+        test10Date: record?.test10Date || null,
+        recordId: record?.id || null
+      };
+    });
+
+    res.json({
+      students: studentsWithRecords,
+      term: currentTerm,
+      year: currentYear
+    });
+  } catch (error: any) {
+    console.error('Error fetching record book for admin:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Generate PDF for record book (admin access)
+export const generateRecordBookPDF = async (req: AuthRequest, res: Response) => {
+  try {
+    const { classId } = req.params;
+    const { teacherId } = req.query;
+    const userRole = req.user?.role;
+
+    // Check if user is admin or superAdmin
+    if (userRole !== UserRole.ADMIN && userRole !== UserRole.SUPERADMIN) {
+      return res.status(403).json({ message: 'Only administrators can generate PDFs' });
+    }
+
+    if (!teacherId) {
+      return res.status(400).json({ message: 'Teacher ID is required' });
+    }
+
+    // Get teacher info
+    const teacherRepository = AppDataSource.getRepository(Teacher);
+    const teacher = await teacherRepository.findOne({
+      where: { id: teacherId as string }
+    });
+
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+
+    // Get class info
+    const classRepository = AppDataSource.getRepository(Class);
+    const classEntity = await classRepository.findOne({
+      where: { id: classId }
+    });
+
+    if (!classEntity) {
+      return res.status(404).json({ message: 'Class not found' });
+    }
+
+    // Get settings
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const settings = await settingsRepository.findOne({
+      where: {},
+      order: { createdAt: 'DESC' }
+    });
+
+    const currentTerm = settings?.currentTerm || 'Term 1';
+    const currentYear = settings?.academicYear || new Date().getFullYear().toString();
+
+    // Get students and records
+    const studentRepository = AppDataSource.getRepository(Student);
+    const students = await studentRepository.find({
+      where: { classId, isActive: true },
+      order: { lastName: 'ASC', firstName: 'ASC' }
+    });
+
+    const recordBookRepository = AppDataSource.getRepository(RecordBook);
+    const records = await recordBookRepository.find({
+      where: {
+        classId,
+        teacherId: teacherId as string,
+        term: currentTerm,
+        year: currentYear
+      }
+    });
+
+    // Generate PDF using pdfkit
+    const pdfBuffer = await createRecordBookPDF({
+      teacher,
+      classEntity,
+      students,
+      records,
+      term: currentTerm,
+      year: currentYear,
+      settings
+    });
+
+    // Create filename
+    const teacherName = `${teacher.lastName}_${teacher.firstName}`.replace(/\s+/g, '_');
+    const className = classEntity.name.replace(/\s+/g, '_');
+    const filename = `RecordBook_${teacherName}_${className}_${currentTerm}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error('Error generating record book PDF:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
