@@ -35,12 +35,12 @@
     <div *ngIf="activeTab === 'signin'" class="tab-content">
       <form (ngSubmit)="onSignIn()">
         <div class="form-group">
-          <label>Username or Email</label>
+          <label>Username</label>
           <input 
             type="text" 
             [(ngModel)]="email" 
             name="email" 
-            placeholder="Enter username or email" 
+            placeholder="Enter username" 
             required
             autocomplete="username">
         </div>
@@ -58,16 +58,6 @@
               {{ showPassword ? '👁️' : '👁️‍🗨️' }}
             </span>
           </div>
-        </div>
-        <div class="form-group">
-          <label>Teacher ID <span style="font-size: 12px; color: #666;">(Teachers only - e.g., JPST1234567)</span></label>
-          <input 
-            type="text" 
-            [(ngModel)]="teacherId" 
-            name="teacherId" 
-            placeholder="Enter your Teacher ID (optional for non-teachers)" 
-            autocomplete="off">
-          <small class="form-hint">Leave blank if you're not a teacher</small>
         </div>
         <button type="submit" class="btn btn-primary btn-block" [disabled]="loading">
           {{ loading ? 'Signing in...' : '🔐 Sign In' }}
@@ -98,8 +88,8 @@
 
     <!-- Sign Up Form -->
     <div *ngIf="activeTab === 'signup'" class="tab-content">
-      <div class="info-box" style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
-        <p style="margin: 0; font-size: 13px; color: #1565c0;">
+      <div class="info-box" style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 10px 12px; margin-bottom: 14px; border-radius: 4px;">
+        <p style="margin: 0; font-size: 11px; color: #1565c0; line-height: 1.4;">
           <strong>Note:</strong> Teachers use temporary accounts provided by the administrator to login.
         </p>
       </div>

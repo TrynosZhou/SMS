@@ -1,48 +1,175 @@
-<div class="container">
-  <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <h1>Classes</h1>
-      <button class="btn btn-primary" routerLink="/classes/new">➕ Add Class</button>
+<div class="classes-container">
+  <!-- Header Section -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-title">
+        <h1>📚 Class Management</h1>
+        <p class="subtitle">Manage and organize all classes in your school</p>
+      </div>
+      <button class="btn btn-primary btn-add" routerLink="/classes/new">
+        <span class="btn-icon">➕</span>
+        <span>Add New Class</span>
+      </button>
     </div>
-    <div class="alert alert-success" *ngIf="success">{{ success }}</div>
-    <div class="alert alert-error" *ngIf="error">{{ error }}</div>
-    <div *ngIf="loading">Loading...</div>
-    <table *ngIf="!loading">
+  </div>
+
+  <!-- Alert Messages -->
+  <div class="alert alert-success" *ngIf="success" (click)="success = ''">
+    <span class="alert-icon">✅</span>
+    <span>{{ success }}</span>
+    <button class="alert-close" aria-label="Close">×</button>
+  </div>
+  <div class="alert alert-error" *ngIf="error" (click)="error = ''">
+    <span class="alert-icon">⚠️</span>
+    <span>{{ error }}</span>
+    <button class="alert-close" aria-label="Close">×</button>
+  </div>
+
+  <!-- Filters and Search Section -->
+  <div class="filters-section">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input 
+        type="text" 
+        class="search-input" 
+        placeholder="Search classes by name, grade, or description..."
+        [(ngModel)]="searchTerm"
+        (input)="filterClasses()">
+      <button class="search-clear" *ngIf="searchTerm" (click)="clearSearch()" aria-label="Clear search">×</button>
+    </div>
+    <div class="filter-controls">
+      <select class="filter-select" [(ngModel)]="statusFilter" (change)="filterClasses()">
+        <option value="all">All Status</option>
+        <option value="active">Active Only</option>
+        <option value="inactive">Inactive Only</option>
+      </select>
+      <select class="filter-select" [(ngModel)]="sortBy" (change)="sortClasses()">
+        <option value="name">Sort by Name</option>
+        <option value="form">Sort by Grade</option>
+        <option value="students">Sort by Students</option>
+        <option value="teachers">Sort by Teachers</option>
+      </select>
+      <button class="btn btn-secondary btn-refresh" (click)="loadClasses()" [disabled]="loading">
+        <span class="btn-icon">🔄</span>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="loading">
+    <div class="skeleton-loader" *ngFor="let i of [1,2,3,4,5]">
+      <div class="skeleton-row">
+        <div class="skeleton-cell skeleton-name"></div>
+        <div class="skeleton-cell skeleton-grade"></div>
+        <div class="skeleton-cell skeleton-count"></div>
+        <div class="skeleton-cell skeleton-count"></div>
+        <div class="skeleton-cell skeleton-status"></div>
+        <div class="skeleton-cell skeleton-actions"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Classes Table -->
+  <div class="table-container" *ngIf="!loading">
+    <table class="modern-table">
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Grade</th>
-          <th>Description</th>
-          <th>Students</th>
-          <th>Teachers</th>
+          <th (click)="sortByColumn('name')" class="sortable">
+            <span>Class Name</span>
+            <span class="sort-icon" *ngIf="sortColumn === 'name'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+          </th>
+          <th (click)="sortByColumn('form')" class="sortable">
+            <span>Grade/Form</span>
+            <span class="sort-icon" *ngIf="sortColumn === 'form'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+          </th>
+          <th (click)="sortByColumn('students')" class="sortable">
+            <span>Students</span>
+            <span class="sort-icon" *ngIf="sortColumn === 'students'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+          </th>
+          <th (click)="sortByColumn('teachers')" class="sortable">
+            <span>Teachers</span>
+            <span class="sort-icon" *ngIf="sortColumn === 'teachers'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+          </th>
           <th>Status</th>
-          <th style="text-align: center;">Actions</th>
+          <th class="actions-header"></th>
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let classItem of classes">
-          <td>{{ classItem.name }}</td>
-          <td>{{ classItem.form }}</td>
-          <td>{{ classItem.description || 'N/A' }}</td>
-          <td>{{ classItem.students?.length || 0 }}</td>
-          <td>{{ classItem.teachers?.length || 0 }}</td>
-          <td>
-            <span [class]="classItem.isActive ? 'badge-success' : 'badge-error'">
+        <tr *ngFor="let classItem of filteredClasses" class="table-row">
+          <td class="class-name">
+            <span class="name-text">{{ classItem.name }}</span>
+          </td>
+          <td class="class-grade">
+            <span class="grade-badge">{{ classItem.form }}</span>
+          </td>
+          <td class="class-count">
+            <span class="count-badge students">
+              <span class="count-icon">👨‍🎓</span>
+              {{ classItem.students?.length || 0 }}
+            </span>
+          </td>
+          <td class="class-count">
+            <span class="count-badge teachers">
+              <span class="count-icon">👨‍🏫</span>
+              {{ classItem.teachers?.length || 0 }}
+            </span>
+          </td>
+          <td class="status-cell">
+            <span class="status-badge" [class.active]="classItem.isActive" [class.inactive]="!classItem.isActive">
+              <span class="status-dot"></span>
               {{ classItem.isActive ? 'Active' : 'Inactive' }}
             </span>
           </td>
-          <td style="text-align: center;">
-            <button class="btn btn-secondary" (click)="editClass(classItem.id)" style="margin-right: 5px;">✏️ Edit</button>
-            <button class="btn btn-danger" (click)="deleteClass(classItem.id, classItem.name)" [disabled]="loading">
-              🗑️ Delete
-            </button>
+          <td class="actions-cell">
+            <div class="action-buttons">
+              <button 
+                class="btn-action btn-edit" 
+                (click)="editClass(classItem.id)" 
+                title="Edit Class">
+                <span class="action-icon">✏️</span>
+                <span class="action-text">Edit</span>
+              </button>
+              <span class="actions-label">Actions</span>
+              <button 
+                class="btn-action btn-delete" 
+                (click)="deleteClass(classItem.id, classItem.name)" 
+                [disabled]="loading"
+                title="Delete Class">
+                <span class="action-icon">🗑️</span>
+                <span class="action-text">Delete</span>
+              </button>
+            </div>
           </td>
-        </tr>
-        <tr *ngIf="classes.length === 0">
-          <td colspan="7" style="text-align: center; padding: 20px;">No classes found</td>
         </tr>
       </tbody>
     </table>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="filteredClasses.length === 0 && !loading">
+      <div class="empty-icon">📚</div>
+      <h3>{{ searchTerm || statusFilter !== 'all' ? 'No classes found' : 'No classes yet' }}</h3>
+      <p *ngIf="searchTerm || statusFilter !== 'all'">
+        Try adjusting your search or filter criteria.
+      </p>
+      <p *ngIf="!searchTerm && statusFilter === 'all'">
+        Get started by creating your first class.
+      </p>
+      <button class="btn btn-primary" routerLink="/classes/new" *ngIf="!searchTerm && statusFilter === 'all'">
+        <span class="btn-icon">➕</span>
+        <span>Add Your First Class</span>
+      </button>
+      <button class="btn btn-secondary" (click)="clearFilters()" *ngIf="searchTerm || statusFilter !== 'all'">
+        <span>Clear Filters</span>
+      </button>
+    </div>
+
+    <!-- Results Summary -->
+    <div class="results-summary" *ngIf="filteredClasses.length > 0">
+      <span class="summary-text">
+        Showing {{ filteredClasses.length }} of {{ classes.length }} class{{ classes.length !== 1 ? 'es' : '' }}
+      </span>
+    </div>
   </div>
 </div>
 

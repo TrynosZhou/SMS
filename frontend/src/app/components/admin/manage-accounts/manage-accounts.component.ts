@@ -105,6 +105,11 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       }
     }, 200);
+    
+    // Initialize form - ensure email is cleared if role is teacher
+    if (this.manualAccount.role === 'teacher') {
+      this.manualAccount.email = '';
+    }
   }
 
   ngOnDestroy() {
@@ -411,6 +416,19 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     this.showManualPassword = false;
   }
 
+  onRoleChange() {
+    // Clear email when switching to teacher role
+    if (this.manualAccount.role === 'teacher') {
+      this.manualAccount.email = '';
+      // Ensure username is required for teachers
+      if (!this.manualAccount.username || !this.manualAccount.username.trim()) {
+        // Username will be required by the form validation
+      }
+    }
+    // Force change detection to update the view
+    this.cdr.detectChanges();
+  }
+
   private getDefaultManualAccountForm() {
     return {
       email: '',
@@ -423,10 +441,25 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   }
 
   createManualAccount() {
-    if (!this.manualAccount.email || !this.manualAccount.role) {
-      this.error = 'Email and role are required to create an account';
-      setTimeout(() => this.error = '', 5000);
-      return;
+    // For teachers, username is mandatory, email is not required
+    if (this.manualAccount.role === 'teacher') {
+      if (!this.manualAccount.username || !this.manualAccount.username.trim()) {
+        this.error = 'Username is mandatory for teacher accounts';
+        setTimeout(() => this.error = '', 5000);
+        return;
+      }
+      if (!this.manualAccount.role) {
+        this.error = 'Role is required';
+        setTimeout(() => this.error = '', 5000);
+        return;
+      }
+    } else {
+      // For other roles, email is required
+      if (!this.manualAccount.email || !this.manualAccount.role) {
+        this.error = 'Email and role are required to create an account';
+        setTimeout(() => this.error = '', 5000);
+        return;
+      }
     }
 
     if (!this.manualAccount.generatePassword) {
@@ -451,11 +484,16 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     this.success = '';
 
     const payload: any = {
-      email: this.manualAccount.email.trim(),
       role: resolvedRole,
       username: this.manualAccount.username?.trim() || undefined,
       generatePassword: this.manualAccount.generatePassword
     };
+    
+    // Email is not required for teachers, required for other roles
+    if (resolvedRole !== 'teacher') {
+      payload.email = this.manualAccount.email.trim();
+    }
+    // Do not include email for teachers - teachers login with username and password only
 
     if (!this.manualAccount.generatePassword) {
       payload.password = this.manualAccount.password.trim();
@@ -469,12 +507,16 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
       next: (response: any) => {
         this.creatingUserAccount = false;
         const password = response.temporaryCredentials?.password || payload.password;
+        const displayName = response.user?.email || payload.email || response.user?.username || payload.username || 'N/A';
         const messageParts = [
-          `Account created for <strong>${response.user?.email || payload.email}</strong>.`,
+          `Account created for <strong>${displayName}</strong>.`,
           `<strong>Role:</strong> ${response.user?.role || payload.role}`
         ];
         if (password) {
           messageParts.push(`<strong>Temporary Password:</strong> ${password}`);
+        }
+        if (resolvedRole === 'teacher') {
+          messageParts.push(`<small>Note: A basic teacher profile has been created. You can update the teacher details later.</small>`);
         }
         this.success = messageParts.join('<br>');
         this.resetManualAccountForm();

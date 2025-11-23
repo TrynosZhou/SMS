@@ -14,16 +14,17 @@
 
     <form *ngIf="accountInfo" (ngSubmit)="updateAccount()">
       <div class="form-group">
-        <label>Current Username</label>
+        <label>Username (TeacherID)</label>
         <input 
           type="text" 
           [value]="currentUsername || 'N/A'" 
-          disabled
+          [disabled]="true"
           class="disabled-input">
-        <small class="form-text">This is your current username</small>
+        <small class="form-text" *ngIf="isTeacher">Your username is your TeacherID and cannot be changed.</small>
+        <small class="form-text" *ngIf="!isTeacher">This is your current username</small>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" *ngIf="!isTeacher">
         <label>Current Email</label>
         <input 
           type="email" 
@@ -33,18 +34,7 @@
         <small class="form-text">This is your current email address</small>
       </div>
 
-      <div class="form-group">
-        <label>New Username</label>
-        <input 
-          type="text" 
-          [(ngModel)]="newUsername" 
-          name="newUsername" 
-          placeholder="Enter new username (optional)" 
-          autocomplete="username">
-        <small class="form-text">Choose a new username for your account (leave blank to keep current)</small>
-      </div>
-
-      <div class="form-group">
+      <div class="form-group" *ngIf="!isTeacher">
         <label>New Email</label>
         <input 
           type="email" 
@@ -53,6 +43,11 @@
           placeholder="Enter new email (optional)" 
           autocomplete="email">
         <small class="form-text">Enter a new email address (leave blank to keep current)</small>
+      </div>
+
+      <div class="info-box" *ngIf="isTeacher && mustChangePassword">
+        <span class="info-icon">⚠️</span>
+        <p><strong>First Login:</strong> You must change your temporary password. Your username (TeacherID) cannot be changed.</p>
       </div>
 
       <div class="form-group">

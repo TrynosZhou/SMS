@@ -15,7 +15,8 @@
     "create-demo": "npx ts-node scripts/create-demo.ts",
     "reset-demo-data": "npx ts-node scripts/reset-demo-data.ts",
     "clear-invoices": "npx ts-node scripts/clear-invoices.ts",
-    "check-login": "npx ts-node scripts/check-user-login.ts"
+    "check-login": "npx ts-node scripts/check-user-login.ts",
+    "fix-all-teachers": "npx ts-node src/scripts/fix-all-teachers.ts"
   },
   "dependencies": {
     "@types/image-size": "^0.7.0",

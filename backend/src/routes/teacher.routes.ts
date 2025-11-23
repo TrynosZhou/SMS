@@ -9,7 +9,9 @@ import {
   updateTeacher,
   deleteTeacher,
   getTeacherClasses,
-  createTeacherAccount
+  createTeacherAccount,
+  syncTeacherClasses,
+  diagnoseTeacherClasses
 } from '../controllers/teacher.controller';
 
 const router = Router();
@@ -18,6 +20,8 @@ const router = Router();
 router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), registerTeacher);
 router.get('/', authenticate, getTeachers);
 router.get('/me', authenticate, getCurrentTeacher); // Must be before /:id
+router.post('/sync-classes', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), syncTeacherClasses); // Sync endpoint
+router.get('/:teacherId/diagnose', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), diagnoseTeacherClasses); // Diagnostic endpoint
 router.get('/:id/classes', authenticate, getTeacherClasses); // Specific routes before /:id
 router.get('/:id', authenticate, getTeacherById);
 router.post('/:id/create-account', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), createTeacherAccount);

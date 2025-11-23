@@ -1,8 +1,10 @@
 import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { TeacherService } from '../../../services/teacher.service';
 import { RecordBookService } from '../../../services/record-book.service';
 import { SettingsService } from '../../../services/settings.service';
+import { ClassService } from '../../../services/class.service';
 
 @Component({
   selector: 'app-record-book',
@@ -64,12 +66,15 @@ export class RecordBookComponent implements OnInit {
     private authService: AuthService,
     private teacherService: TeacherService,
     private recordBookService: RecordBookService,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
+    private classService: ClassService,
+    private route: ActivatedRoute,
+    private router: Router
   ) { }
 
   ngOnInit() {
-    this.loadTeacherInfo();
     this.loadSettings();
+    this.loadTeacherInfo();
   }
 
   loadSettings() {
@@ -96,17 +101,25 @@ export class RecordBookComponent implements OnInit {
 
     this.loading = true;
     
-    // Use the new /teachers/me endpoint which gets teacher by userId
+    // First, get the teacher profile to get teacherId
     this.teacherService.getCurrentTeacher().subscribe({
       next: (teacher: any) => {
         this.teacher = teacher;
-        this.teacherClasses = teacher.classes || [];
-        this.loading = false;
         
         // Log success for debugging
         console.log('Teacher loaded successfully:', teacher.firstName, teacher.lastName);
-        console.log('Assigned classes:', this.teacherClasses.length);
+        console.log('Teacher ID:', teacher.id);
         console.log('Teacher subjects:', teacher.subjects);
+        
+        // Now fetch classes using the new endpoint with teacherId
+        if (teacher.id) {
+          this.loadTeacherClasses(teacher.id);
+        } else {
+          // Fallback to classes from teacher object
+          this.teacherClasses = teacher.classes || [];
+          this.loading = false;
+          this.handleQueryParams();
+        }
       },
       error: (err: any) => {
         console.error('Error loading teacher:', err);
@@ -124,6 +137,58 @@ export class RecordBookComponent implements OnInit {
     });
   }
 
+  loadTeacherClasses(teacherId: string) {
+    console.log('Loading classes for teacherId:', teacherId);
+    
+    // Use the new endpoint to fetch classes from junction table
+    this.teacherService.getTeacherClasses(teacherId).subscribe({
+      next: (response: any) => {
+        this.teacherClasses = response.classes || [];
+        this.loading = false;
+        
+        console.log('Assigned classes loaded:', this.teacherClasses.length);
+        console.log('Classes:', this.teacherClasses.map((c: any) => c.name).join(', '));
+        
+        // Handle query params after classes are loaded
+        this.handleQueryParams();
+      },
+      error: (err: any) => {
+        console.error('Error loading teacher classes:', err);
+        
+        // Fallback: try to get classes from teacher object if available
+        if (this.teacher && this.teacher.classes) {
+          this.teacherClasses = this.teacher.classes || [];
+          console.log('Using fallback classes from teacher object:', this.teacherClasses.length);
+        } else {
+          this.teacherClasses = [];
+          this.error = 'Failed to load classes. Please try again.';
+          setTimeout(() => this.error = '', 5000);
+        }
+        
+        this.loading = false;
+        this.handleQueryParams();
+      }
+    });
+  }
+
+  handleQueryParams() {
+    // Check for classId in query params after classes are loaded
+    this.route.queryParams.subscribe(params => {
+      const classId = params['classId'];
+      if (classId && this.teacherClasses.length > 0) {
+        // Check if the classId exists in teacher's classes
+        const classExists = this.teacherClasses.find((c: any) => c.id === classId);
+        if (classExists) {
+          this.selectedClassId = classId;
+          this.onClassChange();
+        } else {
+          this.error = 'You are not assigned to this class.';
+          setTimeout(() => this.error = '', 5000);
+        }
+      }
+    });
+  }
+
   onClassChange() {
     if (!this.selectedClassId) {
       this.students = [];
@@ -135,12 +200,63 @@ export class RecordBookComponent implements OnInit {
     }
 
     this.selectedClass = this.teacherClasses.find(c => c.id === this.selectedClassId);
-    this.loadTeacherSubjects();
+    
+    // Fetch class details with subjects to filter teacher's subjects
+    this.loadClassWithSubjects();
     this.loadRecordBook();
   }
 
+  loadClassWithSubjects() {
+    if (!this.selectedClassId) {
+      this.teacherSubjects = '';
+      return;
+    }
+
+    // Fetch class details with subjects
+    this.classService.getClassById(this.selectedClassId).subscribe({
+      next: (classData: any) => {
+        this.selectedClass = classData;
+        this.loadTeacherSubjectsForClass(classData);
+      },
+      error: (err: any) => {
+        console.error('Error loading class details:', err);
+        // Fallback to showing all teacher subjects if class fetch fails
+        this.loadTeacherSubjects();
+      }
+    });
+  }
+
+  loadTeacherSubjectsForClass(classData: any) {
+    // Get subjects that the teacher teaches AND that are taught in the selected class
+    if (!this.teacher || !this.teacher.subjects || this.teacher.subjects.length === 0) {
+      this.teacherSubjects = 'No subjects assigned';
+      return;
+    }
+
+    if (!classData || !classData.subjects || classData.subjects.length === 0) {
+      this.teacherSubjects = 'No subjects assigned to this class';
+      return;
+    }
+
+    // Find intersection: subjects that teacher teaches AND that are in the class
+    const teacherSubjectIds = this.teacher.subjects.map((s: any) => s.id);
+    const classSubjectIds = classData.subjects.map((s: any) => s.id);
+    
+    // Filter teacher's subjects to only include those in the class
+    const matchingSubjects = this.teacher.subjects.filter((teacherSubject: any) => 
+      classSubjectIds.includes(teacherSubject.id)
+    );
+
+    if (matchingSubjects.length > 0) {
+      const subjectNames = matchingSubjects.map((s: any) => s.name).join(', ');
+      this.teacherSubjects = subjectNames;
+    } else {
+      this.teacherSubjects = 'No matching subjects found';
+    }
+  }
+
   loadTeacherSubjects() {
-    // Get subjects from teacher profile
+    // Get all subjects from teacher profile (fallback method)
     if (this.teacher && this.teacher.subjects && this.teacher.subjects.length > 0) {
       // Join all subject names with commas
       const subjectNames = this.teacher.subjects.map((s: any) => s.name).join(', ');

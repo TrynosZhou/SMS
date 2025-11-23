@@ -7,6 +7,7 @@ import { TeacherService } from '../../services/teacher.service';
 import { ClassService } from '../../services/class.service';
 import { FinanceService } from '../../services/finance.service';
 import { SubjectService } from '../../services/subject.service';
+import { ModuleAccessService } from '../../services/module-access.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -22,6 +23,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   displayedText: string = '';
   private textToggleInterval: any;
   private showMotto: boolean = false;
+  teacherName: string = '';
 
   // Sidebar collapse state
   studentManagementOpen = true;
@@ -55,14 +57,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private teacherService: TeacherService,
     private classService: ClassService,
     private financeService: FinanceService,
-    private subjectService: SubjectService
+    private subjectService: SubjectService,
+    private moduleAccessService: ModuleAccessService
   ) { }
 
   ngOnInit() {
     this.user = this.authService.getCurrentUser();
+    
+    // Debug: Log user object for teachers
+    if (this.user && this.user.role === 'teacher') {
+      console.log('Dashboard: User object:', this.user);
+      console.log('Dashboard: User.teacher:', this.user.teacher);
+      if (this.user.teacher) {
+        console.log('Dashboard: Teacher fullName:', this.user.teacher.fullName);
+        console.log('Dashboard: Teacher firstName:', this.user.teacher.firstName);
+        console.log('Dashboard: Teacher lastName:', this.user.teacher.lastName);
+        console.log('Dashboard: Teacher teacherId:', this.user.teacher.teacherId);
+      }
+    }
+    
+    // Load module access from service
+    this.moduleAccessService.loadModuleAccess();
     this.loadSettings();
-    if (this.isAdmin() || this.isAccountant()) {
+    if (this.isAdmin() || this.isAccountant() || this.isTeacher()) {
       this.loadStatistics();
+    }
+    // Load teacher name if user is a teacher (this will set teacherName immediately from user.teacher)
+    if (this.isTeacher()) {
+      this.loadTeacherName();
     }
   }
 
@@ -173,25 +195,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.schoolMotto = data.schoolMotto || '';
         this.moduleAccess = data.moduleAccess || {};
         
+        // Update module access service with latest settings
+        if (data.moduleAccess) {
+          (this.moduleAccessService as any).moduleAccess = data.moduleAccess;
+        }
+        
         // Initialize displayed text and start toggle timer
         this.initializeTextToggle();
       },
       error: (err: any) => {
         console.error('Error loading settings:', err);
         this.schoolName = '';
-        // Default to allowing all modules if settings can't be loaded
-        this.moduleAccess = {
-          teachers: {
-            exams: true,
-            reportCards: true,
-            rankings: true
-          },
-          parents: {
-            reportCards: true,
-            invoices: true,
-            dashboard: true
-          }
-        };
+        // Use default module access from service
+        this.moduleAccess = this.moduleAccessService.getModuleAccess();
       }
     });
   }
@@ -253,107 +269,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   hasModuleAccess(module: string): boolean {
-    if (!this.moduleAccess) {
-      // Default to true if settings not loaded (for backward compatibility)
-      return true;
-    }
+    // Use module access service which has proper defaults and settings integration
+    return this.moduleAccessService.canAccessModule(module);
+  }
 
-    const normalizedModule = this.normalizeModuleKey(module);
-
-    // Apply demo account restrictions first (demo users have explicit limits)
-    if (this.isDemoUser()) {
-      const demoModules = this.moduleAccess.demoAccount || {};
-      if (demoModules[normalizedModule] === false) {
-        return false;
-      }
-    }
-
-    // Check module access for Accountants
-    if (this.isAccountant()) {
-      const accountantModules = this.moduleAccess.accountant || {};
-      const moduleMap: any = {
-        'exams': 'exams',
-        'reportCards': 'reportCards',
-        'rankings': 'rankings',
-        'students': 'students',
-        'classes': 'classes',
-        'subjects': 'subjects',
-        'finance': 'finance',
-        'invoices': 'invoices',
-        'settings': 'settings',
-        'dashboard': 'dashboard'
-      };
-      const key = moduleMap[module] || normalizedModule;
-      return accountantModules[key] !== false; // Default to true if not explicitly set
-    }
-
-    // Check module access for Administrators (respect settings)
-    if (this.isAdmin() && !this.isSuperAdmin()) {
-      const adminModules = this.moduleAccess.admin || {};
-      const moduleMap: any = {
-        'exams': 'exams',
-        'reportCards': 'reportCards',
-        'rankings': 'rankings',
-        'students': 'students',
-        'teachers': 'teachers',
-        'classes': 'classes',
-        'subjects': 'subjects',
-        'finance': 'finance',
-        'attendance': 'attendance',
-        'settings': 'settings',
-        'dashboard': 'dashboard'
-      };
-      const key = moduleMap[module] || normalizedModule;
-      return adminModules[key] !== false; // Default to true if not explicitly set
-    }
-
-    // SuperAdmins always have access to all modules
-    if (this.isSuperAdmin()) {
-      return true;
-    }
-
-    if (this.isTeacher()) {
-      const teacherModules = this.moduleAccess.teachers || {};
-      // Map module names to settings keys
-      const moduleMap: any = {
-        'exams': 'exams',
-        'reportCards': 'reportCards',
-        'rankings': 'rankings',
-        'students': 'students',
-        'classes': 'classes',
-        'subjects': 'subjects',
-        'finance': 'finance',
-        'settings': 'settings'
-      };
-      const key = moduleMap[module] || normalizedModule;
-      return teacherModules[key] !== false; // Default to true if not explicitly set
-    }
-
-    if (this.isParent()) {
-      const parentModules = this.moduleAccess.parents || {};
-      const moduleMap: any = {
-        'reportCards': 'reportCards',
-        'invoices': 'invoices',
-        'dashboard': 'dashboard'
-      };
-      const key = moduleMap[module] || normalizedModule;
-      return parentModules[key] !== false; // Default to true if not explicitly set
-    }
-
-    if (this.isStudent()) {
-      const studentModules = this.moduleAccess.students || {};
-      const moduleMap: any = {
-        'dashboard': 'dashboard',
-        'subjects': 'subjects',
-        'assignments': 'assignments',
-        'reportCards': 'reportCards',
-        'finance': 'finance'
-      };
-      const key = moduleMap[module] || normalizedModule;
-      return studentModules[key] !== false;
-    }
-
-    return false;
+  canAccessModule(module: string): boolean {
+    // Alias for hasModuleAccess for consistency
+    return this.moduleAccessService.canAccessModule(module);
   }
 
   private normalizeModuleKey(module: string): string {
@@ -391,6 +313,120 @@ export class DashboardComponent implements OnInit, OnDestroy {
       minute: '2-digit'
     };
     return now.toLocaleDateString('en-US', options);
+  }
+
+  loadTeacherName() {
+    const user = this.authService.getCurrentUser();
+    if (!user || user.role !== 'teacher') {
+      return;
+    }
+
+    // First, try to get name from user object (from login response)
+    if (user.teacher) {
+      // Prioritize fullName from login response
+      if (user.teacher.fullName && 
+          user.teacher.fullName.trim() && 
+          user.teacher.fullName !== 'Teacher' && 
+          user.teacher.fullName !== 'Account Teacher') {
+        this.teacherName = user.teacher.fullName.trim();
+        console.log('Dashboard: Using fullName from login response:', this.teacherName);
+        return;
+      }
+      
+      // Fallback to extracting from firstName/lastName
+      const name = this.extractTeacherName(user.teacher);
+      if (name && name !== 'Teacher' && name.trim()) {
+        this.teacherName = name;
+        console.log('Dashboard: Extracted name from user.teacher:', this.teacherName);
+        return;
+      }
+    }
+
+    // If not available in user object, fetch from API as fallback
+    this.teacherService.getCurrentTeacher().subscribe({
+      next: (teacher: any) => {
+        // Prioritize fullName from API response
+        if (teacher.fullName && 
+            teacher.fullName.trim() && 
+            teacher.fullName !== 'Teacher' && 
+            teacher.fullName !== 'Account Teacher') {
+          this.teacherName = teacher.fullName.trim();
+          console.log('Dashboard: Using fullName from API:', this.teacherName);
+        } else {
+          const name = this.extractTeacherName(teacher);
+          if (name && name !== 'Teacher' && name.trim()) {
+            this.teacherName = name;
+            console.log('Dashboard: Extracted name from API response:', this.teacherName);
+          }
+        }
+      },
+      error: (err) => {
+        console.error('Error loading teacher name from API:', err);
+        // Keep teacherName empty, getDisplayName() will handle fallback
+        this.teacherName = '';
+      }
+    });
+  }
+
+  private extractTeacherName(teacher: any): string {
+    if (!teacher) {
+      return '';
+    }
+
+    // Use fullName if available and valid
+    if (teacher.fullName && teacher.fullName.trim() && teacher.fullName !== 'Teacher' && teacher.fullName !== 'Account Teacher') {
+      return teacher.fullName.trim();
+    }
+
+    // Otherwise construct from firstName and lastName
+    const firstName = (teacher.firstName && typeof teacher.firstName === 'string') ? teacher.firstName.trim() : '';
+    const lastName = (teacher.lastName && typeof teacher.lastName === 'string') ? teacher.lastName.trim() : '';
+    
+    // Filter out placeholder values
+    const validFirst = (firstName && firstName !== 'Teacher' && firstName !== 'Account') ? firstName : '';
+    const validLast = (lastName && lastName !== 'Teacher' && lastName !== 'Account') ? lastName : '';
+    
+    // Combine as LastName + FirstName
+    const parts = [validLast, validFirst].filter(part => part.length > 0);
+    return parts.join(' ').trim();
+  }
+
+  getDisplayName(): string {
+    const user = this.authService.getCurrentUser();
+    if (!user) {
+      return 'User';
+    }
+
+    // For teachers, prioritize teacher fullName from login response
+    if (user.role === 'teacher') {
+      // First check if we have a cached teacher name
+      if (this.teacherName && this.teacherName !== 'Teacher' && this.teacherName.trim()) {
+        return this.teacherName;
+      }
+      
+      // Then check user.teacher object from login response (most reliable)
+      if (user.teacher) {
+        // Prioritize fullName from login response
+        if (user.teacher.fullName && 
+            user.teacher.fullName.trim() && 
+            user.teacher.fullName !== 'Teacher' && 
+            user.teacher.fullName !== 'Account Teacher') {
+          return user.teacher.fullName.trim();
+        }
+        
+        // Fallback to extracting from firstName/lastName
+        const extractedName = this.extractTeacherName(user.teacher);
+        if (extractedName && extractedName !== 'Teacher' && extractedName.trim()) {
+          return extractedName;
+        }
+      }
+      
+      // If teacher name is still not available, return generic 'Teacher' instead of username
+      return 'Teacher';
+    }
+
+    // For other roles, return email or username
+    return user.email || user.username || 'User';
   }
 
   initializeTextToggle() {

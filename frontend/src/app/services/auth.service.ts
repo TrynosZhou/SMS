@@ -16,6 +16,7 @@ export interface User {
   student?: any;
   teacher?: any;
   parent?: any;
+  classes?: any[]; // Classes assigned to teacher (for teacher role)
 }
 
 @Injectable({
@@ -35,21 +36,34 @@ export class AuthService {
   }
 
   login(identifier: string, password: string, teacherId?: string): Observable<any> {
-    // Support both username and email login
-    const loginData: any = identifier.includes('@') 
-      ? { email: identifier, password }
-      : { username: identifier, password };
+    // Use username for login (email is optional for non-teachers)
+    // For teachers, only username is used
+    const loginData: any = { username: identifier, password };
     
-    // Add teacherId if provided (for teacher login)
+    // Only add email if it's actually an email (contains @) and not a teacher login
+    // This maintains backward compatibility for non-teacher accounts
+    if (identifier.includes('@')) {
+      loginData.email = identifier;
+    }
+    
+    // Note: teacherId is no longer required for teacher login
+    // Only add it if explicitly provided (for optional verification)
     if (teacherId && teacherId.trim()) {
       loginData.teacherId = teacherId.trim();
     }
     
     return this.http.post(`${this.apiUrl}/auth/login`, loginData).pipe(
       tap((response: any) => {
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        this.currentUserSubject.next(response.user);
+        if (response && response.token && response.user) {
+          // Store token and user synchronously
+          localStorage.setItem('token', response.token);
+          localStorage.setItem('user', JSON.stringify(response.user));
+          // Update BehaviorSubject immediately
+          this.currentUserSubject.next(response.user);
+        } else {
+          console.error('Invalid login response:', response);
+          throw new Error('Invalid response from server');
+        }
       })
     );
   }
@@ -74,7 +88,10 @@ export class AuthService {
   }
 
   isAuthenticated(): boolean {
-    return !!this.getToken();
+    const token = this.getToken();
+    const user = this.getCurrentUser();
+    // Check both token and user to ensure authentication is complete
+    return !!(token && user);
   }
 
   hasRole(role: string): boolean {

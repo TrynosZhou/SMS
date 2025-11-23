@@ -28,7 +28,7 @@
     <div class="manual-account-header">
       <div>
         <h2>Create User Account</h2>
-        <p>Create login credentials for administrators, accountants, parents, or students without linking to teacher records.</p>
+        <p>Create login credentials for administrators, accountants, parents, students, or teachers. For teachers, only username and password are required (email is not needed).</p>
       </div>
       <div class="manual-account-meta">
         <span class="meta-item"><strong>Admins</strong> can create Admin/Accountant/Parent/Student accounts</span>
@@ -38,16 +38,8 @@
     <form class="manual-account-form" (ngSubmit)="createManualAccount()">
       <div class="form-grid">
         <div class="form-group">
-          <label>Email Address *</label>
-          <input type="email" [(ngModel)]="manualAccount.email" name="manualEmail" placeholder="user@example.com" required [disabled]="creatingUserAccount">
-        </div>
-        <div class="form-group">
-          <label>Username (optional)</label>
-          <input type="text" [(ngModel)]="manualAccount.username" name="manualUsername" placeholder="Leave blank to auto-generate" [disabled]="creatingUserAccount">
-        </div>
-        <div class="form-group">
           <label>Role *</label>
-          <select [(ngModel)]="manualAccount.role" name="manualRole" required [disabled]="creatingUserAccount">
+          <select [(ngModel)]="manualAccount.role" name="manualRole" required [disabled]="creatingUserAccount" (change)="onRoleChange()">
             <option *ngFor="let option of manualAccountRoles" [ngValue]="option.value" [disabled]="option.value === 'superadmin' && !isSuperAdmin()">
               {{ option.label }}{{ option.value === 'superadmin' ? ' (Super Admin only)' : '' }}
             </option>
@@ -55,6 +47,24 @@
           <small class="form-text" *ngIf="manualAccount.role === 'demo-user'">
             Demo User accounts are flagged as read-only demo logins and automatically receive demo permissions.
           </small>
+        </div>
+        <div class="form-group" *ngIf="manualAccount.role === 'teacher'">
+          <label>Username *</label>
+          <input type="text" [(ngModel)]="manualAccount.username" name="manualUsernameTeacher" 
+            placeholder="Enter username (required)" 
+            required
+            [disabled]="creatingUserAccount">
+          <small class="form-text">Username is mandatory for teacher accounts. Teachers login with username and password only. Email is not required.</small>
+        </div>
+        <div class="form-group" *ngIf="manualAccount.role !== 'teacher'">
+          <label>Email Address *</label>
+          <input type="email" [(ngModel)]="manualAccount.email" name="manualEmail" placeholder="user@example.com" required [disabled]="creatingUserAccount">
+        </div>
+        <div class="form-group" *ngIf="manualAccount.role !== 'teacher'">
+          <label>Username (optional)</label>
+          <input type="text" [(ngModel)]="manualAccount.username" name="manualUsername" 
+            placeholder="Leave blank to auto-generate" 
+            [disabled]="creatingUserAccount">
         </div>
         <div class="form-group checkbox-inline">
           <label class="checkbox-label">
@@ -71,12 +81,18 @@
               name="manualPassword"
               minlength="8"
               placeholder="Minimum 8 characters"
+              autocomplete="new-password"
               [disabled]="creatingUserAccount"
               required>
             <button type="button" class="password-toggle-btn" (click)="toggleManualPasswordVisibility()" tabindex="-1">
               <span>{{ showManualPassword ? '👁️' : '👁️‍🗨️' }}</span>
             </button>
           </div>
+          <small class="form-text" *ngIf="manualAccount.role === 'teacher'">This is a temporary password. The teacher must change it on first login.</small>
+        </div>
+        <div class="info-box" *ngIf="manualAccount.role === 'teacher' && manualAccount.generatePassword">
+          <span class="info-box-icon">💡</span>
+          <p>A temporary password will be generated. The teacher must change it on first login.</p>
         </div>
         <div class="form-group checkbox-inline" *ngIf="isSuperAdmin()">
           <label class="checkbox-label">

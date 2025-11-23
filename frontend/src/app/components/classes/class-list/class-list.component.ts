@@ -9,9 +9,17 @@ import { ClassService } from '../../../services/class.service';
 })
 export class ClassListComponent implements OnInit {
   classes: any[] = [];
+  filteredClasses: any[] = [];
   loading = false;
   error = '';
   success = '';
+  
+  // Search and filter properties
+  searchTerm: string = '';
+  statusFilter: string = 'all';
+  sortBy: string = 'name';
+  sortColumn: string = 'name';
+  sortDirection: 'asc' | 'desc' = 'asc';
 
   constructor(
     private classService: ClassService,
@@ -47,6 +55,8 @@ export class ClassListComponent implements OnInit {
     this.classService.getClasses().subscribe({
       next: (data: any) => {
         this.classes = data || [];
+        this.filteredClasses = [...this.classes];
+        this.sortClasses();
         this.loading = false;
       },
       error: (err: any) => {
@@ -71,8 +81,90 @@ export class ClassListComponent implements OnInit {
         this.error = errorMessage;
         this.loading = false;
         this.classes = []; // Clear classes array on error
+        this.filteredClasses = [];
       }
     });
+  }
+
+  filterClasses() {
+    this.filteredClasses = this.classes.filter(classItem => {
+      // Search filter
+      const matchesSearch = !this.searchTerm || 
+        classItem.name?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        classItem.form?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        classItem.description?.toLowerCase().includes(this.searchTerm.toLowerCase());
+      
+      // Status filter
+      const matchesStatus = this.statusFilter === 'all' ||
+        (this.statusFilter === 'active' && classItem.isActive) ||
+        (this.statusFilter === 'inactive' && !classItem.isActive);
+      
+      return matchesSearch && matchesStatus;
+    });
+    
+    this.sortClasses();
+  }
+
+  sortClasses() {
+    if (!this.sortBy) return;
+    
+    this.sortColumn = this.sortBy;
+    this.filteredClasses.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+      
+      switch (this.sortBy) {
+        case 'name':
+          aValue = a.name?.toLowerCase() || '';
+          bValue = b.name?.toLowerCase() || '';
+          break;
+        case 'form':
+          aValue = a.form?.toLowerCase() || '';
+          bValue = b.form?.toLowerCase() || '';
+          break;
+        case 'students':
+          aValue = a.students?.length || 0;
+          bValue = b.students?.length || 0;
+          break;
+        case 'teachers':
+          aValue = a.teachers?.length || 0;
+          bValue = b.teachers?.length || 0;
+          break;
+        default:
+          return 0;
+      }
+      
+      if (aValue < bValue) return this.sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return this.sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  sortByColumn(column: string) {
+    if (this.sortColumn === column) {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortColumn = column;
+      this.sortDirection = 'asc';
+    }
+    this.sortBy = column;
+    this.sortClasses();
+  }
+
+  clearSearch() {
+    this.searchTerm = '';
+    this.filterClasses();
+  }
+
+  clearFilters() {
+    this.searchTerm = '';
+    this.statusFilter = 'all';
+    this.filterClasses();
+  }
+
+  truncate(text: string, length: number): string {
+    if (!text) return 'N/A';
+    return text.length > length ? text.substring(0, length) + '...' : text;
   }
 
   editClass(id: string) {

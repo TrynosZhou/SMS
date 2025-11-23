@@ -12,46 +12,194 @@ import { isDemoUser } from '../utils/demoDataFilter';
 import { Student } from '../entities/Student';
 import { User } from '../entities/User';
 import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
+import { linkClassToTeachers } from '../utils/teacherClassLinker';
 
 const router = Router();
 
 router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
     const classRepository = AppDataSource.getRepository(Class);
     
     if (isDemoUser(req)) {
       await ensureDemoDataAvailable();
     }
 
-    // For demo users, show all classes and all students (relaxed restriction)
-    const classes = await classRepository.find({
-      relations: ['students', 'students.user', 'teachers', 'subjects']
-    });
+    // Try to load with relations, but handle errors gracefully
+    let classes;
+    try {
+      classes = await classRepository.find({
+        relations: ['students', 'students.user', 'teachers', 'subjects']
+      });
+    } catch (relationError: any) {
+      console.error('[getClasses] Error loading with relations:', relationError.message);
+      console.error('[getClasses] Error code:', relationError.code);
+      console.error('[getClasses] Error stack:', relationError.stack);
+      
+      // Check if it's a table/relation error
+      const isTableError = relationError.message?.includes('does not exist') || 
+                          relationError.message?.includes('relation') ||
+                          relationError.message?.includes('column') ||
+                          relationError.code === '42P01' || // PostgreSQL: relation does not exist
+                          relationError.code === '42703';   // PostgreSQL: undefined column
+      
+      if (isTableError) {
+        console.log('[getClasses] Table/relation error detected, trying fallback queries');
+        // Fallback 1: load without teachers relation
+        try {
+          classes = await classRepository.find({
+            relations: ['students', 'students.user', 'subjects']
+          });
+          // Initialize teachers array for all classes
+          classes = classes.map((c: any) => ({
+            ...c,
+            teachers: c.teachers || []
+          }));
+          console.log('[getClasses] Successfully loaded classes without teachers relation');
+        } catch (fallbackError1: any) {
+          console.error('[getClasses] Fallback 1 failed:', fallbackError1.message);
+          // Fallback 2: load without nested user relation
+          try {
+            classes = await classRepository.find({
+              relations: ['students', 'subjects']
+            });
+            classes = classes.map((c: any) => ({
+              ...c,
+              teachers: c.teachers || [],
+              students: (c.students || []).map((s: any) => ({
+                ...s,
+                user: s.user || null
+              }))
+            }));
+            console.log('[getClasses] Successfully loaded classes without nested user relation');
+          } catch (fallbackError2: any) {
+            console.error('[getClasses] Fallback 2 failed:', fallbackError2.message);
+            // Last resort: load without any relations
+            try {
+              classes = await classRepository.find();
+              classes = classes.map((c: any) => ({
+                ...c,
+                teachers: [],
+                students: [],
+                subjects: []
+              }));
+              console.log('[getClasses] Successfully loaded classes without relations');
+            } catch (finalError: any) {
+              console.error('[getClasses] All fallbacks failed:', finalError.message);
+              // Return empty array as last resort
+              classes = [];
+            }
+          }
+        }
+      } else {
+        // For other errors, try fallback before rethrowing
+        console.log('[getClasses] Non-table error, trying fallback before rethrowing');
+        try {
+          classes = await classRepository.find({
+            relations: ['subjects']
+          });
+          classes = classes.map((c: any) => ({
+            ...c,
+            teachers: [],
+            students: []
+          }));
+          console.log('[getClasses] Fallback successful for non-table error');
+        } catch (fallbackError: any) {
+          console.error('[getClasses] Fallback failed, rethrowing original error');
+          throw relationError;
+        }
+      }
+    }
     
     // Removed demo filtering - demo users can now see all students in classes
     
+    // Ensure classes is always an array
+    if (!Array.isArray(classes)) {
+      console.warn('[getClasses] Classes is not an array, initializing as empty array');
+      classes = [];
+    }
+    
+    // Ensure all classes have required arrays initialized
+    classes = classes.map((c: any) => ({
+      ...c,
+      teachers: Array.isArray(c.teachers) ? c.teachers : [],
+      students: Array.isArray(c.students) ? c.students : [],
+      subjects: Array.isArray(c.subjects) ? c.subjects : []
+    }));
+    
     res.json(classes);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
+  } catch (error: any) {
+    console.error('[getClasses] Error:', error);
+    console.error('[getClasses] Error stack:', error.stack);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 });
 
 router.get('/:id', authenticate, async (req, res) => {
   try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
     const { id } = req.params;
     const classRepository = AppDataSource.getRepository(Class);
-    const classEntity = await classRepository.findOne({
-      where: { id },
-      relations: ['students', 'teachers', 'subjects']
-    });
+    
+    let classEntity;
+    try {
+      classEntity = await classRepository.findOne({
+        where: { id },
+        relations: ['students', 'teachers', 'subjects']
+      });
+    } catch (relationError: any) {
+      console.error('[getClassById] Error loading with relations:', relationError.message);
+      console.error('[getClassById] Error code:', relationError.code);
+      
+      // Check if it's a table/relation error
+      const isTableError = relationError.message?.includes('does not exist') || 
+                          relationError.message?.includes('relation') ||
+                          relationError.code === '42P01'; // PostgreSQL: relation does not exist
+      
+      if (isTableError) {
+        console.log('[getClassById] Table/relation error detected, loading without teachers relation');
+        // Fallback: load without teachers relation
+        try {
+          classEntity = await classRepository.findOne({
+            where: { id },
+            relations: ['students', 'subjects']
+          });
+          if (classEntity) {
+            (classEntity as any).teachers = [];
+          }
+        } catch (fallbackError: any) {
+          console.error('[getClassById] Error in fallback query:', fallbackError.message);
+          // Last resort: load without any relations
+          classEntity = await classRepository.findOne({
+            where: { id }
+          });
+          if (classEntity) {
+            (classEntity as any).teachers = [];
+            (classEntity as any).students = [];
+            (classEntity as any).subjects = [];
+          }
+        }
+      } else {
+        // For other errors, rethrow to be caught by outer catch
+        throw relationError;
+      }
+    }
 
     if (!classEntity) {
       return res.status(404).json({ message: 'Class not found' });
     }
 
     res.json(classEntity);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
+  } catch (error: any) {
+    console.error('[getClassById] Error:', error);
+    console.error('[getClassById] Error stack:', error.stack);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 });
 
@@ -75,13 +223,6 @@ router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, Us
 
     const classEntity = classRepository.create({ name, form, description });
     
-    // Assign teachers if provided
-    if (teacherIds && Array.isArray(teacherIds) && teacherIds.length > 0) {
-      const teacherRepository = AppDataSource.getRepository(Teacher);
-      const teachers = await teacherRepository.find({ where: { id: In(teacherIds) } });
-      classEntity.teachers = teachers;
-    }
-    
     // Assign subjects if provided
     if (subjectIds && Array.isArray(subjectIds) && subjectIds.length > 0) {
       const subjectRepository = AppDataSource.getRepository(Subject);
@@ -89,7 +230,26 @@ router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, Us
       classEntity.subjects = subjects;
     }
     
+    // Assign teachers via ManyToMany for backward compatibility
+    if (teacherIds && Array.isArray(teacherIds) && teacherIds.length > 0) {
+      const teacherRepository = AppDataSource.getRepository(Teacher);
+      const teachers = await teacherRepository.find({ where: { id: In(teacherIds) } });
+      classEntity.teachers = teachers;
+    }
+    
+    // Save class
     await classRepository.save(classEntity);
+    
+    // Also link class to teachers using the junction table (in addition to ManyToMany)
+    if (teacherIds && Array.isArray(teacherIds) && teacherIds.length > 0) {
+      try {
+        await linkClassToTeachers(classEntity.id, teacherIds);
+        console.log('[createClass] Linked class to teachers via junction table');
+      } catch (linkError: any) {
+        console.error('[createClass] Error linking class to teachers via junction table:', linkError);
+        // Continue - the class is saved with ManyToMany relation, junction table is optional
+      }
+    }
     
     // Load the class with relations
     const savedClass = await classRepository.findOne({
@@ -133,17 +293,6 @@ router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, 
     if (description !== undefined) classEntity.description = description;
     if (isActive !== undefined) classEntity.isActive = isActive;
 
-    // Update teachers if provided
-    if (teacherIds !== undefined) {
-      if (Array.isArray(teacherIds) && teacherIds.length > 0) {
-        const teacherRepository = AppDataSource.getRepository(Teacher);
-        const teachers = await teacherRepository.find({ where: { id: In(teacherIds) } });
-        classEntity.teachers = teachers;
-      } else {
-        classEntity.teachers = [];
-      }
-    }
-    
     // Update subjects if provided
     if (subjectIds !== undefined) {
       if (Array.isArray(subjectIds) && subjectIds.length > 0) {
@@ -155,7 +304,40 @@ router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, 
       }
     }
 
+    // Update teachers via ManyToMany for backward compatibility
+    if (teacherIds !== undefined) {
+      if (Array.isArray(teacherIds) && teacherIds.length > 0) {
+        const teacherRepository = AppDataSource.getRepository(Teacher);
+        const teachers = await teacherRepository.find({ where: { id: In(teacherIds) } });
+        classEntity.teachers = teachers;
+      } else {
+        classEntity.teachers = [];
+      }
+    }
+
+    // Save class
     await classRepository.save(classEntity);
+    
+    // Also link class to teachers using the junction table (in addition to ManyToMany)
+    if (teacherIds !== undefined) {
+      if (Array.isArray(teacherIds) && teacherIds.length > 0) {
+        try {
+          await linkClassToTeachers(classEntity.id, teacherIds);
+          console.log('[updateClass] Linked class to teachers via junction table');
+        } catch (linkError: any) {
+          console.error('[updateClass] Error linking class to teachers via junction table:', linkError);
+          // Continue - the class is saved with ManyToMany relation, junction table is optional
+        }
+      } else {
+        // Empty array means remove all teacher links
+        try {
+          await linkClassToTeachers(classEntity.id, []);
+          console.log('[updateClass] Removed all teacher links for class');
+        } catch (linkError: any) {
+          console.error('[updateClass] Error removing teacher links:', linkError);
+        }
+      }
+    }
     
     // Load the updated class with all relations
     const updatedClass = await classRepository.findOne({

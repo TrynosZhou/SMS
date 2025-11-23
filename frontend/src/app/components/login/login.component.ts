@@ -78,23 +78,56 @@ export class LoginComponent {
 
   onSignIn() {
     if (!this.email || !this.password) {
-      this.error = 'Please enter username/email and password';
+      this.error = 'Please enter username and password';
       this.demoLoginInProgress = false;
       return;
     }
 
     this.loading = true;
     this.error = '';
-    this.authService.login(this.email, this.password, this.teacherId).subscribe({
+    // Login with username and password only (no teacherId required)
+    this.authService.login(this.email, this.password).subscribe({
       next: (response: any) => {
         this.loading = false;
         this.demoLoginInProgress = false;
+        
+        if (!response || !response.user) {
+          this.error = 'Invalid response from server';
+          return;
+        }
+        
         const user = response.user;
         
+        // Ensure token is stored before navigation
+        if (!response.token) {
+          this.error = 'Authentication token not received';
+          return;
+        }
+        
+        // Verify authentication is complete before navigation
+        // The tap operator in authService.login() already stored token and user
+        if (!this.authService.isAuthenticated()) {
+          console.error('Authentication not complete after login');
+          this.error = 'Authentication failed. Please try again.';
+          return;
+        }
+        
+        // Navigate immediately - token and user are already stored
         // Check if teacher must change password
         if (user.role === 'teacher' && user.mustChangePassword) {
           // Navigate to manage account page
-          this.router.navigate(['/teacher/manage-account']);
+          this.router.navigate(['/teacher/manage-account']).catch(err => {
+            console.error('Navigation error:', err);
+            this.error = 'Failed to navigate. Please try again.';
+          });
+        }
+        // Check if teacher login - redirect to teacher dashboard
+        else if (user.role === 'teacher') {
+          // Navigate to teacher dashboard
+          this.router.navigate(['/teacher/dashboard']).catch(err => {
+            console.error('Navigation error:', err);
+            this.error = 'Failed to navigate. Please try again.';
+          });
         }
         // Check if parent needs to link students
         else if (user.role === 'parent' && user.parent) {
@@ -103,24 +136,54 @@ export class LoginComponent {
             next: (students: any[]) => {
               if (students.length === 0) {
                 // Navigate to student linking page
-                this.router.navigate(['/parent/link-students']);
+                this.router.navigate(['/parent/link-students']).catch(err => {
+                  console.error('Navigation error:', err);
+                  this.error = 'Failed to navigate. Please try again.';
+                });
               } else {
                 // Navigate to parent dashboard
-                this.router.navigate(['/parent/dashboard']);
+                this.router.navigate(['/parent/dashboard']).catch(err => {
+                  console.error('Navigation error:', err);
+                  this.error = 'Failed to navigate. Please try again.';
+                });
               }
             },
-            error: () => {
+            error: (err) => {
+              console.error('Error fetching parent students:', err);
               // Navigate to student linking page if error
-              this.router.navigate(['/parent/link-students']);
+              this.router.navigate(['/parent/link-students']).catch(navErr => {
+                console.error('Navigation error:', navErr);
+                this.error = 'Failed to navigate. Please try again.';
+              });
             }
           });
         } else {
           // Navigate to regular dashboard for other roles
-          this.router.navigate(['/dashboard']);
+          this.router.navigate(['/dashboard']).catch(err => {
+            console.error('Navigation error:', err);
+            this.error = 'Failed to navigate. Please try again.';
+          });
         }
       },
       error: (err: any) => {
-        this.error = err.error?.message || 'Login failed';
+        console.error('Login error:', err);
+        console.error('Error status:', err.status);
+        console.error('Error message:', err.error?.message || err.message);
+        
+        if (err.status === 0) {
+          // Connection error - server not reachable
+          this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+        } else if (err.status === 401) {
+          // Unauthorized - invalid credentials
+          this.error = err.error?.message || 'Invalid username or password. Please try again.';
+        } else if (err.status === 500) {
+          // Server error
+          this.error = 'Server error. Please try again later.';
+        } else {
+          // Other errors
+          this.error = err.error?.message || err.message || 'Login failed. Please check your credentials.';
+        }
+        
         this.loading = false;
         this.demoLoginInProgress = false;
       }

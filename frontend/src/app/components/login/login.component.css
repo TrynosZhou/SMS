@@ -9,10 +9,10 @@
 
 .login-card {
   background: white;
-  border-radius: 12px;
-  padding: 40px;
+  border-radius: 10px;
+  padding: 25px;
   width: 100%;
-  max-width: 480px;
+  max-width: 450px;
   box-shadow: 0 10px 40px rgba(0,0,0,0.2);
   animation: slideUp 0.5s ease-out;
 }
@@ -30,37 +30,37 @@
 
 .login-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 .login-header h2 {
-  margin: 0 0 10px 0;
+  margin: 0 0 6px 0;
   color: #333;
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 700;
 }
 
 .subtitle {
   color: #666;
-  font-size: 14px;
+  font-size: 12px;
   margin: 0;
 }
 
 .tab-navigation {
   display: flex;
-  gap: 5px;
-  margin-bottom: 30px;
+  gap: 4px;
+  margin-bottom: 20px;
   border-bottom: 2px solid #e0e0e0;
 }
 
 .tab-btn {
   flex: 1;
-  padding: 12px 20px;
+  padding: 8px 12px;
   background: transparent;
   border: none;
   border-bottom: 3px solid transparent;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: #666;
   transition: all 0.3s ease;
@@ -92,24 +92,24 @@
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
   color: #333;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .form-group input,
 .form-group select.form-control {
   width: 100%;
-  padding: 12px 15px;
+  padding: 10px 12px;
   border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 13px;
   transition: all 0.3s ease;
   box-sizing: border-box;
 }
@@ -133,20 +133,20 @@
 }
 
 .password-input-wrapper input {
-  padding-right: 45px;
+  padding-right: 40px;
 }
 
 .password-toggle {
   position: absolute;
-  right: 15px;
+  right: 12px;
   cursor: pointer;
   user-select: none;
-  font-size: 18px;
+  font-size: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   transition: transform 0.2s ease;
 }
 
@@ -161,21 +161,21 @@
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 15px;
+  gap: 12px;
 }
 
 .form-text {
   display: block;
-  margin-top: 5px;
-  font-size: 12px;
+  margin-top: 4px;
+  font-size: 11px;
   color: #666;
 }
 
 .btn {
-  padding: 12px 24px;
+  padding: 10px 20px;
   border: none;
-  border-radius: 8px;
-  font-size: 16px;
+  border-radius: 6px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -211,13 +211,13 @@
 
 .btn-block {
   width: 100%;
-  padding: 14px;
+  padding: 11px;
 }
 
 .form-footer {
-  margin-top: 20px;
+  margin-top: 14px;
   text-align: center;
-  font-size: 14px;
+  font-size: 12px;
   color: #666;
 }
 
@@ -233,9 +233,9 @@
 }
 
 .demo-access-card {
-  margin-top: 25px;
-  padding: 18px 20px;
-  border-radius: 12px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 8px;
   background: #f5f7ff;
   border: 1px dashed rgba(102, 126, 234, 0.6);
 }
@@ -243,33 +243,34 @@
 .demo-access-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   text-align: left;
 }
 
 .demo-access-card h3 {
-  margin: 0 0 4px 0;
+  margin: 0 0 3px 0;
   color: #2c3e50;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
 }
 
 .demo-access-card p {
   margin: 0;
   color: #4a5568;
-  font-size: 14px;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .demo-credentials {
-  font-size: 13px;
+  font-size: 11px;
   color: #1a237e;
 }
 
 .alert {
-  padding: 12px 15px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  font-size: 14px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 14px;
+  font-size: 12px;
   animation: slideDown 0.3s ease-out;
 }
 

@@ -14,16 +14,16 @@ export enum UserRole {
 }
 
 @Entity('users')
-@Index(['email'], { unique: true })
+@Index(['email'], { unique: true, where: '"email" IS NOT NULL' })
 @Index(['username'], { unique: true })
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
-  email: string;
-
   @Column({ nullable: true })
+  email: string | null;
+
+  @Column()
   username: string;
 
   @Column()

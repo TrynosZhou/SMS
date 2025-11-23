@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { SettingsService } from './settings.service';
 import { AuthService } from './auth.service';
 import { Observable, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, filter } from 'rxjs/operators';
 
 export interface ModuleAccess {
   teachers?: {
@@ -123,10 +123,32 @@ export class ModuleAccessService {
     private settingsService: SettingsService,
     private authService: AuthService
   ) {
-    this.loadModuleAccess();
+    // Always initialize with default access
+    this.moduleAccess = this.defaultAccess;
+    
+    // Load module access from settings if user is authenticated
+    if (this.authService.isAuthenticated()) {
+      this.loadModuleAccess();
+    }
+    
+    // Subscribe to auth state changes to refresh module access on login
+    this.authService.currentUser$.pipe(
+      filter(user => user !== null)
+    ).subscribe(() => {
+      // User just logged in, refresh module access
+      if (this.authService.isAuthenticated()) {
+        this.loadModuleAccess();
+      }
+    });
   }
 
   loadModuleAccess(): void {
+    // Check if user is authenticated before making API call
+    if (!this.authService.isAuthenticated()) {
+      this.moduleAccess = this.defaultAccess;
+      return;
+    }
+
     this.settingsService.getSettings().subscribe({
       next: (settings: any) => {
         if (settings && settings.moduleAccess) {
@@ -135,7 +157,8 @@ export class ModuleAccessService {
           this.moduleAccess = this.defaultAccess;
         }
       },
-      error: () => {
+      error: (err) => {
+        // Silently fall back to default access on error (401, 403, etc.)
         this.moduleAccess = this.defaultAccess;
       }
     });
@@ -150,14 +173,30 @@ export class ModuleAccessService {
     // Superadmin has access to everything
     if (role === 'superadmin') return true;
 
+    // Map role names to module access keys (handle singular/plural differences)
+    const roleMap: { [key: string]: string } = {
+      'teacher': 'teachers',
+      'parent': 'parents',
+      'accountant': 'accountant',
+      'admin': 'admin',
+      'superadmin': 'superadmin',
+      'demo_user': 'demo_user'
+    };
+
+    const accessKey = roleMap[role] || role;
+
     // Get module access for the user's role
     const access = this.moduleAccess || this.defaultAccess;
-    const roleAccess = (access as any)[role];
+    const roleAccess = (access as any)[accessKey];
 
-    if (!roleAccess) return false;
+    if (!roleAccess) {
+      console.warn(`No module access found for role: ${role} (mapped to: ${accessKey})`);
+      return false;
+    }
 
     // Check if the module is explicitly allowed
-    return roleAccess[moduleName] !== false;
+    const hasAccess = roleAccess[moduleName] !== false;
+    return hasAccess;
   }
 
   getModuleAccess(): ModuleAccess {
@@ -165,6 +204,12 @@ export class ModuleAccessService {
   }
 
   refreshModuleAccess(): Observable<boolean> {
+    // Check if user is authenticated before making API call
+    if (!this.authService.isAuthenticated()) {
+      this.moduleAccess = this.defaultAccess;
+      return of(false);
+    }
+
     return this.settingsService.getSettings().pipe(
       map((settings: any) => {
         if (settings && settings.moduleAccess) {
@@ -174,7 +219,8 @@ export class ModuleAccessService {
         }
         return true;
       }),
-      catchError(() => {
+      catchError((err) => {
+        // Silently fall back to default access on error
         this.moduleAccess = this.defaultAccess;
         return of(false);
       })

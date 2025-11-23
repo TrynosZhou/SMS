@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { SubjectService } from '../../../services/subject.service';
 
 @Component({
@@ -9,31 +9,161 @@ import { SubjectService } from '../../../services/subject.service';
 })
 export class SubjectListComponent implements OnInit {
   subjects: any[] = [];
+  filteredSubjects: any[] = [];
   loading = false;
   error = '';
   success = '';
+  
+  // Search and filter properties
+  searchTerm: string = '';
+  statusFilter: string = 'all';
+  sortBy: string = 'name';
+  sortColumn: string = 'name';
+  sortDirection: 'asc' | 'desc' = 'asc';
 
   constructor(
     private subjectService: SubjectService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) { }
 
   ngOnInit() {
+    // Check for success message from query parameters
+    this.route.queryParams.subscribe(params => {
+      if (params['success']) {
+        this.success = params['success'];
+        // Clear the query parameter from URL
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: {},
+          replaceUrl: true
+        });
+        // Auto-hide success message after 5 seconds
+        setTimeout(() => {
+          this.success = '';
+        }, 5000);
+      }
+    });
+    // Load subjects on component initialization
     this.loadSubjects();
   }
 
   loadSubjects() {
     this.loading = true;
+    this.error = '';
     this.subjectService.getSubjects().subscribe({
       next: (data: any) => {
-        this.subjects = data;
+        this.subjects = data || [];
+        this.filteredSubjects = [...this.subjects];
+        this.sortSubjects();
         this.loading = false;
       },
       error: (err: any) => {
-        console.error(err);
+        console.error('Error loading subjects:', err);
+        
+        // Handle different types of errors
+        let errorMessage = 'Failed to load subjects';
+        
+        if (err.status === 0 || err.status === undefined) {
+          // Connection error (backend not running)
+          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+        } else if (err.error) {
+          if (typeof err.error === 'string') {
+            errorMessage = err.error;
+          } else if (err.error.message) {
+            errorMessage = err.error.message;
+          }
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+        
+        this.error = errorMessage;
         this.loading = false;
+        this.subjects = []; // Clear subjects array on error
+        this.filteredSubjects = [];
       }
     });
+  }
+
+  filterSubjects() {
+    this.filteredSubjects = this.subjects.filter(subject => {
+      // Search filter
+      const matchesSearch = !this.searchTerm || 
+        subject.code?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        subject.name?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        subject.description?.toLowerCase().includes(this.searchTerm.toLowerCase());
+      
+      // Status filter
+      const matchesStatus = this.statusFilter === 'all' ||
+        (this.statusFilter === 'active' && subject.isActive) ||
+        (this.statusFilter === 'inactive' && !subject.isActive);
+      
+      return matchesSearch && matchesStatus;
+    });
+    
+    this.sortSubjects();
+  }
+
+  sortSubjects() {
+    if (!this.sortBy) return;
+    
+    this.sortColumn = this.sortBy;
+    this.filteredSubjects.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+      
+      switch (this.sortBy) {
+        case 'code':
+          aValue = a.code?.toLowerCase() || '';
+          bValue = b.code?.toLowerCase() || '';
+          break;
+        case 'name':
+          aValue = a.name?.toLowerCase() || '';
+          bValue = b.name?.toLowerCase() || '';
+          break;
+        case 'teachers':
+          aValue = a.teachers?.length || 0;
+          bValue = b.teachers?.length || 0;
+          break;
+        case 'classes':
+          aValue = a.classes?.length || 0;
+          bValue = b.classes?.length || 0;
+          break;
+        default:
+          return 0;
+      }
+      
+      if (aValue < bValue) return this.sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return this.sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  sortByColumn(column: string) {
+    if (this.sortColumn === column) {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortColumn = column;
+      this.sortDirection = 'asc';
+    }
+    this.sortBy = column;
+    this.sortSubjects();
+  }
+
+  clearSearch() {
+    this.searchTerm = '';
+    this.filterSubjects();
+  }
+
+  clearFilters() {
+    this.searchTerm = '';
+    this.statusFilter = 'all';
+    this.filterSubjects();
+  }
+
+  truncate(text: string, length: number): string {
+    if (!text) return 'N/A';
+    return text.length > length ? text.substring(0, length) + '...' : text;
   }
 
   editSubject(id: string) {
@@ -44,21 +174,51 @@ export class SubjectListComponent implements OnInit {
     if (!confirm(`Are you sure you want to delete subject "${subjectName}" (${subjectCode})? This action cannot be undone.`)) {
       return;
     }
+
     this.loading = true;
     this.error = '';
     this.success = '';
+
     this.subjectService.deleteSubject(id).subscribe({
       next: (data: any) => {
         this.success = data.message || 'Subject deleted successfully';
         this.loading = false;
+        // Reload subjects list
         this.loadSubjects();
-        setTimeout(() => this.success = '', 5000);
       },
       error: (err: any) => {
         console.error('Error deleting subject:', err);
+        console.error('Error status:', err.status);
+        console.error('Error response:', err.error);
+        
+        // Handle different error response formats
         let errorMessage = 'Failed to delete subject';
+        
         if (err.status === 0 || err.status === undefined) {
-          errorMessage = 'Cannot connect to server. Please ensure the backend server is running.';
+          // Connection error (backend not running)
+          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+        } else if (err.status === 400) {
+          // Bad Request - usually means subject has associated records
+          if (err.error) {
+            if (typeof err.error === 'string') {
+              errorMessage = err.error;
+            } else if (err.error.message) {
+              errorMessage = err.error.message;
+            }
+            
+            // Add details if available
+            if (err.error.details) {
+              const details = err.error.details;
+              const detailParts: string[] = [];
+              if (details.teachers > 0) detailParts.push(`${details.teachers} teacher(s)`);
+              if (details.classes > 0) detailParts.push(`${details.classes} class(es)`);
+              if (details.exams > 0) detailParts.push(`${details.exams} exam(s)`);
+              
+              if (detailParts.length > 0) {
+                errorMessage = `Cannot delete subject "${subjectName}". This subject has: ${detailParts.join(', ')}. Please remove or reassign these associations first.`;
+              }
+            }
+          }
         } else if (err.error) {
           if (typeof err.error === 'string') {
             errorMessage = err.error;
@@ -68,9 +228,14 @@ export class SubjectListComponent implements OnInit {
         } else if (err.message) {
           errorMessage = err.message;
         }
+        
         this.error = errorMessage;
         this.loading = false;
-        setTimeout(() => this.error = '', 5000);
+        
+        // Clear error message after 8 seconds
+        setTimeout(() => {
+          this.error = '';
+        }, 8000);
       }
     });
   }

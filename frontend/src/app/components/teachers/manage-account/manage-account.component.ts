@@ -20,6 +20,9 @@ export class ManageAccountComponent implements OnInit {
   loading = false;
   error = '';
   success = '';
+  isTeacher = false;
+  mustChangePassword = false;
+  canChangeUsername = true;
   
   showCurrentPassword = false;
   showNewPassword = false;
@@ -44,6 +47,10 @@ export class ManageAccountComponent implements OnInit {
         this.currentEmail = data.email || '';
         this.newUsername = this.currentUsername;
         this.newEmail = this.currentEmail;
+        this.isTeacher = data.role === 'teacher';
+        this.mustChangePassword = data.mustChangePassword === true;
+        // For teachers, username (TeacherID) cannot be changed, especially on first login
+        this.canChangeUsername = !this.isTeacher || !this.mustChangePassword;
         this.loading = false;
       },
       error: (err: any) => {
@@ -80,11 +87,13 @@ export class ManageAccountComponent implements OnInit {
       newPassword: this.newPassword
     };
     
-    if (this.newUsername) {
+    // For teachers, username (TeacherID) cannot be changed
+    if (this.canChangeUsername && this.newUsername && this.newUsername !== this.currentUsername) {
       updateData.newUsername = this.newUsername;
     }
     
-    if (this.newEmail) {
+    // Email is not used for teachers
+    if (!this.isTeacher && this.newEmail && this.newEmail !== this.currentEmail) {
       updateData.newEmail = this.newEmail;
     }
 
