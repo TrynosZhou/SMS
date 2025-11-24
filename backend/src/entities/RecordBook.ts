@@ -2,9 +2,10 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } 
 import { Student } from './Student';
 import { Teacher } from './Teacher';
 import { Class } from './Class';
+import { Subject } from './Subject';
 
 @Entity('record_books')
-@Index(['studentId', 'teacherId', 'classId', 'term', 'year'], { unique: true })
+@Index(['studentId', 'teacherId', 'classId', 'subjectId', 'term', 'year'], { unique: true })
 export class RecordBook {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -29,6 +30,13 @@ export class RecordBook {
   @ManyToOne(() => Class)
   @JoinColumn({ name: 'classId' })
   class: Class;
+
+  @Column()
+  subjectId: string;
+
+  @ManyToOne(() => Subject)
+  @JoinColumn({ name: 'subjectId' })
+  subject: Subject;
 
   @Column({ type: 'varchar', length: 50 })
   term: string; // e.g., "Term 1"

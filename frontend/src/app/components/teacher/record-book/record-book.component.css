@@ -118,6 +118,11 @@
   color: #555;
 }
 
+.form-group label .required {
+  color: #e74c3c;
+  margin-left: 3px;
+}
+
 .select-wrapper {
   position: relative;
   display: inline-block;

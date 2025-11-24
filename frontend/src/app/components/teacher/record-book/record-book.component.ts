@@ -16,6 +16,9 @@ export class RecordBookComponent implements OnInit {
   teacherClasses: any[] = [];
   selectedClassId: string = '';
   selectedClass: any = null;
+  availableSubjects: any[] = [];
+  selectedSubjectId: string = '';
+  selectedSubject: any = null;
   students: any[] = [];
   filteredStudents: any[] = [];
   searchTerm: string = '';
@@ -86,6 +89,10 @@ export class RecordBookComponent implements OnInit {
       },
       error: (err: any) => {
         console.error('Error loading settings:', err);
+        // Set defaults if settings can't be loaded
+        this.schoolName = 'School';
+        this.currentTerm = 'Term 1';
+        this.currentYear = new Date().getFullYear().toString();
       }
     });
   }
@@ -128,6 +135,8 @@ export class RecordBookComponent implements OnInit {
           this.error = 'No teacher profile found for your account. Please contact the administrator.';
         } else if (err.status === 401) {
           this.error = 'You are not authenticated. Please log in again.';
+        } else if (err.status === 0 || err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+          this.error = 'Cannot connect to server. Please ensure the backend server is running.';
         } else {
           this.error = 'Failed to load teacher information. Please try again.';
         }
@@ -194,6 +203,9 @@ export class RecordBookComponent implements OnInit {
       this.students = [];
       this.filteredStudents = [];
       this.selectedClass = null;
+      this.selectedSubjectId = '';
+      this.selectedSubject = null;
+      this.availableSubjects = [];
       this.searchTerm = '';
       this.teacherSubjects = '';
       return;
@@ -203,7 +215,7 @@ export class RecordBookComponent implements OnInit {
     
     // Fetch class details with subjects to filter teacher's subjects
     this.loadClassWithSubjects();
-    this.loadRecordBook();
+    // Don't load record book until subject is selected
   }
 
   loadClassWithSubjects() {
@@ -230,11 +242,13 @@ export class RecordBookComponent implements OnInit {
     // Get subjects that the teacher teaches AND that are taught in the selected class
     if (!this.teacher || !this.teacher.subjects || this.teacher.subjects.length === 0) {
       this.teacherSubjects = 'No subjects assigned';
+      this.availableSubjects = [];
       return;
     }
 
     if (!classData || !classData.subjects || classData.subjects.length === 0) {
       this.teacherSubjects = 'No subjects assigned to this class';
+      this.availableSubjects = [];
       return;
     }
 
@@ -248,10 +262,45 @@ export class RecordBookComponent implements OnInit {
     );
 
     if (matchingSubjects.length > 0) {
+      // Store available subjects for the dropdown
+      this.availableSubjects = matchingSubjects;
       const subjectNames = matchingSubjects.map((s: any) => s.name).join(', ');
       this.teacherSubjects = subjectNames;
+      
+      // Auto-select first subject if only one is available
+      if (matchingSubjects.length === 1) {
+        this.selectedSubjectId = matchingSubjects[0].id;
+        this.selectedSubject = matchingSubjects[0];
+        this.onSubjectChange();
+      } else {
+        // Reset subject selection if multiple subjects
+        this.selectedSubjectId = '';
+        this.selectedSubject = null;
+        this.students = [];
+        this.filteredStudents = [];
+      }
     } else {
       this.teacherSubjects = 'No matching subjects found';
+      this.availableSubjects = [];
+      this.selectedSubjectId = '';
+      this.selectedSubject = null;
+      this.students = [];
+      this.filteredStudents = [];
+    }
+  }
+
+  onSubjectChange() {
+    if (!this.selectedSubjectId) {
+      this.students = [];
+      this.filteredStudents = [];
+      this.selectedSubject = null;
+      return;
+    }
+
+    this.selectedSubject = this.availableSubjects.find(s => s.id === this.selectedSubjectId);
+    
+    if (this.selectedSubjectId && this.selectedClassId) {
+      this.loadRecordBook();
     }
   }
 
@@ -267,12 +316,12 @@ export class RecordBookComponent implements OnInit {
   }
 
   loadRecordBook() {
-    if (!this.selectedClassId) return;
+    if (!this.selectedClassId || !this.selectedSubjectId) return;
 
     this.loading = true;
     this.error = '';
     
-    this.recordBookService.getRecordBookByClass(this.selectedClassId).subscribe({
+    this.recordBookService.getRecordBookByClass(this.selectedClassId, this.selectedSubjectId).subscribe({
       next: (response: any) => {
         this.students = response.students || [];
         this.currentTerm = response.term || this.currentTerm;
@@ -360,8 +409,15 @@ export class RecordBookComponent implements OnInit {
   }
 
   saveStudentMarks(student: any) {
+    if (!this.selectedSubjectId) {
+      this.error = 'Please select a subject first';
+      setTimeout(() => this.error = '', 3000);
+      return;
+    }
+
     const data: any = {
       classId: this.selectedClassId,
+      subjectId: this.selectedSubjectId,
       studentId: student.studentId,
       test1: student.test1,
       test2: student.test2,
@@ -407,8 +463,8 @@ export class RecordBookComponent implements OnInit {
   }
 
   saveAllMarks() {
-    if (!this.selectedClassId || this.students.length === 0) {
-      this.error = 'No students to save';
+    if (!this.selectedClassId || !this.selectedSubjectId || this.students.length === 0) {
+      this.error = !this.selectedSubjectId ? 'Please select a subject first' : 'No students to save';
       return;
     }
 
@@ -430,7 +486,7 @@ export class RecordBookComponent implements OnInit {
       test10: student.test10
     }));
 
-    this.recordBookService.batchSaveMarks(this.selectedClassId, records, this.topics, this.testDates).subscribe({
+    this.recordBookService.batchSaveMarks(this.selectedClassId, this.selectedSubjectId, records, this.topics, this.testDates).subscribe({
       next: () => {
         this.success = 'All marks saved successfully';
         this.saving = false;
@@ -579,7 +635,9 @@ export class RecordBookComponent implements OnInit {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `RecordBook_${this.selectedClass.name}_${this.currentTerm}.csv`;
+    const className = this.selectedClass?.name || 'Class';
+    const subjectName = this.selectedSubject?.name || 'Subject';
+    link.download = `RecordBook_${className}_${subjectName}_${this.currentTerm}.csv`;
     link.click();
     window.URL.revokeObjectURL(url);
     

@@ -4,26 +4,32 @@ import { RecordBook } from '../entities/RecordBook';
 import { Student } from '../entities/Student';
 import { Teacher } from '../entities/Teacher';
 import { Class } from '../entities/Class';
+import { Subject } from '../entities/Subject';
 import { Settings } from '../entities/Settings';
 import { AuthRequest } from '../middleware/auth';
 import { UserRole } from '../entities/User';
 import { createRecordBookPDF } from '../utils/recordBookPdfGenerator';
 
-// Get record book data for a specific class
+// Get record book data for a specific class and subject
 export const getRecordBookByClass = async (req: AuthRequest, res: Response) => {
   try {
     const { classId } = req.params;
+    const { subjectId } = req.query;
     const teacherId = req.user?.teacher?.id;
 
     if (!teacherId) {
       return res.status(403).json({ message: 'Only teachers can access record books' });
     }
 
+    if (!subjectId) {
+      return res.status(400).json({ message: 'Subject ID is required' });
+    }
+
     // Verify teacher is assigned to this class
     const teacherRepository = AppDataSource.getRepository(Teacher);
     const teacher = await teacherRepository.findOne({
       where: { id: teacherId },
-      relations: ['classes']
+      relations: ['classes', 'subjects']
     });
 
     if (!teacher) {
@@ -33,6 +39,12 @@ export const getRecordBookByClass = async (req: AuthRequest, res: Response) => {
     const isAssigned = teacher.classes?.some(c => c.id === classId);
     if (!isAssigned) {
       return res.status(403).json({ message: 'You are not assigned to this class' });
+    }
+
+    // Verify teacher teaches this subject
+    const teachesSubject = teacher.subjects?.some(s => s.id === subjectId);
+    if (!teachesSubject) {
+      return res.status(403).json({ message: 'You are not assigned to teach this subject' });
     }
 
     // Get current term and year from settings
@@ -52,12 +64,13 @@ export const getRecordBookByClass = async (req: AuthRequest, res: Response) => {
       order: { lastName: 'ASC', firstName: 'ASC' }
     });
 
-    // Get existing record book entries
+    // Get existing record book entries for this subject
     const recordBookRepository = AppDataSource.getRepository(RecordBook);
     const records = await recordBookRepository.find({
       where: {
         classId,
         teacherId,
+        subjectId: subjectId as string,
         term: currentTerm,
         year: currentYear
       }
@@ -114,6 +127,23 @@ export const getRecordBookByClass = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error fetching record book:', error);
+    
+    // Check if it's a database column error (migration not run)
+    if (error.message?.includes('column') && error.message?.includes('subjectId')) {
+      return res.status(500).json({ 
+        message: 'Database migration required. Please run the migration to add subjectId column to record_books table.',
+        error: 'Missing column: subjectId'
+      });
+    }
+    
+    // Check if it's a foreign key constraint error
+    if (error.message?.includes('foreign key') || error.code === '23503') {
+      return res.status(400).json({ 
+        message: 'Invalid subject ID provided.',
+        error: error.message 
+      });
+    }
+    
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -121,7 +151,7 @@ export const getRecordBookByClass = async (req: AuthRequest, res: Response) => {
 // Save or update record book marks
 export const saveRecordBookMarks = async (req: AuthRequest, res: Response) => {
   try {
-    const { classId, studentId, test1, test2, test3, test4, test5, test6, test7, test8, test9, test10, 
+    const { classId, studentId, subjectId, test1, test2, test3, test4, test5, test6, test7, test8, test9, test10, 
             test1Topic, test2Topic, test3Topic, test4Topic, test5Topic, test6Topic, test7Topic, test8Topic, test9Topic, test10Topic,
             test1Date, test2Date, test3Date, test4Date, test5Date, test6Date, test7Date, test8Date, test9Date, test10Date } = req.body;
     const teacherId = req.user?.teacher?.id;
@@ -130,15 +160,15 @@ export const saveRecordBookMarks = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: 'Only teachers can save record book marks' });
     }
 
-    if (!classId || !studentId) {
-      return res.status(400).json({ message: 'Class ID and Student ID are required' });
+    if (!classId || !studentId || !subjectId) {
+      return res.status(400).json({ message: 'Class ID, Student ID, and Subject ID are required' });
     }
 
     // Verify teacher is assigned to this class
     const teacherRepository = AppDataSource.getRepository(Teacher);
     const teacher = await teacherRepository.findOne({
       where: { id: teacherId },
-      relations: ['classes']
+      relations: ['classes', 'subjects']
     });
 
     if (!teacher) {
@@ -148,6 +178,12 @@ export const saveRecordBookMarks = async (req: AuthRequest, res: Response) => {
     const isAssigned = teacher.classes?.some(c => c.id === classId);
     if (!isAssigned) {
       return res.status(403).json({ message: 'You are not assigned to this class' });
+    }
+
+    // Verify teacher teaches this subject
+    const teachesSubject = teacher.subjects?.some(s => s.id === subjectId);
+    if (!teachesSubject) {
+      return res.status(403).json({ message: 'You are not assigned to teach this subject' });
     }
 
     // Get current term and year from settings
@@ -167,6 +203,7 @@ export const saveRecordBookMarks = async (req: AuthRequest, res: Response) => {
         studentId,
         teacherId,
         classId,
+        subjectId,
         term: currentTerm,
         year: currentYear
       }
@@ -210,6 +247,7 @@ export const saveRecordBookMarks = async (req: AuthRequest, res: Response) => {
         studentId,
         teacherId,
         classId,
+        subjectId,
         term: currentTerm,
         year: currentYear,
         test1: test1 !== undefined && test1 !== null && test1 !== '' ? parseInt(String(test1)) : null,
@@ -250,6 +288,23 @@ export const saveRecordBookMarks = async (req: AuthRequest, res: Response) => {
     res.json({ message: 'Marks saved successfully', record });
   } catch (error: any) {
     console.error('Error saving record book marks:', error);
+    
+    // Check if it's a database column error (migration not run)
+    if (error.message?.includes('column') && error.message?.includes('subjectId')) {
+      return res.status(500).json({ 
+        message: 'Database migration required. Please run the migration to add subjectId column to record_books table.',
+        error: 'Missing column: subjectId'
+      });
+    }
+    
+    // Check if it's a unique constraint violation
+    if (error.code === '23505' || error.message?.includes('unique constraint')) {
+      return res.status(400).json({ 
+        message: 'A record book entry already exists for this student, teacher, class, subject, term, and year.',
+        error: error.message 
+      });
+    }
+    
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -257,22 +312,22 @@ export const saveRecordBookMarks = async (req: AuthRequest, res: Response) => {
 // Batch save marks for multiple students
 export const batchSaveRecordBookMarks = async (req: AuthRequest, res: Response) => {
   try {
-    const { classId, records, topics, testDates } = req.body;
+    const { classId, subjectId, records, topics, testDates } = req.body;
     const teacherId = req.user?.teacher?.id;
 
     if (!teacherId) {
       return res.status(403).json({ message: 'Only teachers can save record book marks' });
     }
 
-    if (!classId || !records || !Array.isArray(records)) {
-      return res.status(400).json({ message: 'Class ID and records array are required' });
+    if (!classId || !subjectId || !records || !Array.isArray(records)) {
+      return res.status(400).json({ message: 'Class ID, Subject ID, and records array are required' });
     }
 
     // Verify teacher is assigned to this class
     const teacherRepository = AppDataSource.getRepository(Teacher);
     const teacher = await teacherRepository.findOne({
       where: { id: teacherId },
-      relations: ['classes']
+      relations: ['classes', 'subjects']
     });
 
     if (!teacher) {
@@ -282,6 +337,12 @@ export const batchSaveRecordBookMarks = async (req: AuthRequest, res: Response) 
     const isAssigned = teacher.classes?.some(c => c.id === classId);
     if (!isAssigned) {
       return res.status(403).json({ message: 'You are not assigned to this class' });
+    }
+
+    // Verify teacher teaches this subject
+    const teachesSubject = teacher.subjects?.some(s => s.id === subjectId);
+    if (!teachesSubject) {
+      return res.status(403).json({ message: 'You are not assigned to teach this subject' });
     }
 
     // Get current term and year from settings
@@ -307,6 +368,7 @@ export const batchSaveRecordBookMarks = async (req: AuthRequest, res: Response) 
           studentId,
           teacherId,
           classId,
+          subjectId,
           term: currentTerm,
           year: currentYear
         }
@@ -353,6 +415,7 @@ export const batchSaveRecordBookMarks = async (req: AuthRequest, res: Response) 
           studentId,
           teacherId,
           classId,
+          subjectId,
           term: currentTerm,
           year: currentYear,
           test1: test1 !== undefined && test1 !== null && test1 !== '' ? parseInt(String(test1)) : null,
@@ -395,6 +458,23 @@ export const batchSaveRecordBookMarks = async (req: AuthRequest, res: Response) 
     res.json({ message: 'All marks saved successfully', count: savedRecords.length });
   } catch (error: any) {
     console.error('Error batch saving record book marks:', error);
+    
+    // Check if it's a database column error (migration not run)
+    if (error.message?.includes('column') && error.message?.includes('subjectId')) {
+      return res.status(500).json({ 
+        message: 'Database migration required. Please run the migration to add subjectId column to record_books table.',
+        error: 'Missing column: subjectId'
+      });
+    }
+    
+    // Check if it's a unique constraint violation
+    if (error.code === '23505' || error.message?.includes('unique constraint')) {
+      return res.status(400).json({ 
+        message: 'A record book entry already exists for one or more students.',
+        error: error.message 
+      });
+    }
+    
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -403,7 +483,7 @@ export const batchSaveRecordBookMarks = async (req: AuthRequest, res: Response) 
 export const getRecordBookByClassForAdmin = async (req: AuthRequest, res: Response) => {
   try {
     const { classId } = req.params;
-    const { teacherId } = req.query;
+    const { teacherId, subjectId } = req.query;
     const userRole = req.user?.role;
 
     // Check if user is admin or superAdmin
@@ -413,6 +493,10 @@ export const getRecordBookByClassForAdmin = async (req: AuthRequest, res: Respon
 
     if (!teacherId) {
       return res.status(400).json({ message: 'Teacher ID is required' });
+    }
+
+    if (!subjectId) {
+      return res.status(400).json({ message: 'Subject ID is required' });
     }
 
     // Get current term and year from settings
@@ -432,12 +516,13 @@ export const getRecordBookByClassForAdmin = async (req: AuthRequest, res: Respon
       order: { lastName: 'ASC', firstName: 'ASC' }
     });
 
-    // Get existing record book entries for this teacher and class
+    // Get existing record book entries for this teacher, class, and subject
     const recordBookRepository = AppDataSource.getRepository(RecordBook);
     const records = await recordBookRepository.find({
       where: {
         classId,
         teacherId: teacherId as string,
+        subjectId: subjectId as string,
         term: currentTerm,
         year: currentYear
       }
@@ -502,7 +587,7 @@ export const getRecordBookByClassForAdmin = async (req: AuthRequest, res: Respon
 export const generateRecordBookPDF = async (req: AuthRequest, res: Response) => {
   try {
     const { classId } = req.params;
-    const { teacherId } = req.query;
+    const { teacherId, subjectId } = req.query;
     const userRole = req.user?.role;
 
     // Check if user is admin or superAdmin
@@ -512,6 +597,10 @@ export const generateRecordBookPDF = async (req: AuthRequest, res: Response) => 
 
     if (!teacherId) {
       return res.status(400).json({ message: 'Teacher ID is required' });
+    }
+
+    if (!subjectId) {
+      return res.status(400).json({ message: 'Subject ID is required' });
     }
 
     // Get teacher info
@@ -532,6 +621,16 @@ export const generateRecordBookPDF = async (req: AuthRequest, res: Response) => 
 
     if (!classEntity) {
       return res.status(404).json({ message: 'Class not found' });
+    }
+
+    // Get subject info
+    const subjectRepository = AppDataSource.getRepository(Subject);
+    const subject = await subjectRepository.findOne({
+      where: { id: subjectId as string }
+    });
+
+    if (!subject) {
+      return res.status(404).json({ message: 'Subject not found' });
     }
 
     // Get settings
@@ -556,6 +655,7 @@ export const generateRecordBookPDF = async (req: AuthRequest, res: Response) => 
       where: {
         classId,
         teacherId: teacherId as string,
+        subjectId: subjectId as string,
         term: currentTerm,
         year: currentYear
       }
@@ -565,6 +665,7 @@ export const generateRecordBookPDF = async (req: AuthRequest, res: Response) => 
     const pdfBuffer = await createRecordBookPDF({
       teacher,
       classEntity,
+      subject,
       students,
       records,
       term: currentTerm,
@@ -575,7 +676,8 @@ export const generateRecordBookPDF = async (req: AuthRequest, res: Response) => 
     // Create filename
     const teacherName = `${teacher.lastName}_${teacher.firstName}`.replace(/\s+/g, '_');
     const className = classEntity.name.replace(/\s+/g, '_');
-    const filename = `RecordBook_${teacherName}_${className}_${currentTerm}.pdf`;
+    const subjectName = subject.name.replace(/\s+/g, '_');
+    const filename = `RecordBook_${teacherName}_${className}_${subjectName}_${currentTerm}.pdf`;
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

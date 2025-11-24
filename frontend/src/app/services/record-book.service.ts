@@ -11,17 +11,18 @@ export class RecordBookService {
 
   constructor(private http: HttpClient) { }
 
-  getRecordBookByClass(classId: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/record-book/class/${classId}`);
+  getRecordBookByClass(classId: string, subjectId: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/record-book/class/${classId}?subjectId=${subjectId}`);
   }
 
   saveMarks(data: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/record-book/marks`, data);
   }
 
-  batchSaveMarks(classId: string, records: any[], topics: any, testDates?: any): Observable<any> {
+  batchSaveMarks(classId: string, subjectId: string, records: any[], topics: any, testDates?: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/record-book/marks/batch`, {
       classId,
+      subjectId,
       records,
       topics,
       testDates

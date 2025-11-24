@@ -2,6 +2,7 @@ import PDFDocument from 'pdfkit';
 import sizeOf from 'image-size';
 import { Teacher } from '../entities/Teacher';
 import { Class } from '../entities/Class';
+import { Subject } from '../entities/Subject';
 import { Settings } from '../entities/Settings';
 import { RecordBook } from '../entities/RecordBook';
 import { Student } from '../entities/Student';
@@ -9,6 +10,7 @@ import { Student } from '../entities/Student';
 interface RecordBookPDFData {
   teacher: Teacher;
   classEntity: Class;
+  subject: Subject | null;
   students: Student[];
   records: RecordBook[];
   term: string;
@@ -30,7 +32,7 @@ export function createRecordBookPDF(
       });
       doc.on('error', reject);
 
-      const { teacher, classEntity, students, records, term, year, settings } = data;
+      const { teacher, classEntity, subject, students, records, term, year, settings } = data;
 
       // School Header
       const schoolName = settings?.schoolName || 'School Management System';
@@ -203,8 +205,18 @@ export function createRecordBookPDF(
       doc.text(`Class: ${classEntity.name}`, doc.page.width - 200, yPos);
       
       yPos += 20;
-      doc.text(`Term: ${term}`, 40, yPos);
-      doc.text(`Year: ${year}`, doc.page.width - 200, yPos);
+      if (subject) {
+        doc.text(`Subject: ${subject.name}`, 40, yPos);
+        doc.text(`Term: ${term}`, doc.page.width - 200, yPos);
+      } else {
+        doc.text(`Term: ${term}`, 40, yPos);
+        doc.text(`Year: ${year}`, doc.page.width - 200, yPos);
+      }
+      
+      yPos += 20;
+      if (subject) {
+        doc.text(`Year: ${year}`, 40, yPos);
+      }
       
       yPos += 30;
 
