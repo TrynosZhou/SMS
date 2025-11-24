@@ -36,10 +36,11 @@ import { TeacherRecordBookComponent } from './components/admin/teacher-record-bo
 import { TeacherDashboardComponent } from './components/teacher/teacher-dashboard/teacher-dashboard.component';
 import { AuthGuard } from './guards/auth.guard';
 import { ModuleAccessGuard } from './guards/module-access.guard';
+import { SplashComponent } from './components/splash/splash.component';
 
 const routes: Routes = [
+  { path: '', component: SplashComponent },
   { path: 'login', component: LoginComponent },
-  { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
   { path: 'parent/dashboard', component: ParentDashboardComponent, canActivate: [AuthGuard] },
   { path: 'teacher/dashboard', component: DashboardComponent, canActivate: [AuthGuard] },

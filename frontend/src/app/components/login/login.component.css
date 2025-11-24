@@ -1,10 +1,19 @@
-.login-container {
+:host {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  width: 100%;
   padding: 40px 16px;
   background: #f5f7fa;
+  box-sizing: border-box;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  justify-content: center;
 }
 
 .login-card {
@@ -251,6 +260,11 @@
 }
 
 @media (max-width: 480px) {
+  :host {
+    align-items: flex-start;
+    padding: 20px 12px;
+  }
+
   .login-card {
     padding: 18px 16px;
   }
