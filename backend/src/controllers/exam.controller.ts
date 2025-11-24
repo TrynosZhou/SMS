@@ -6,6 +6,7 @@ import { Marks } from '../entities/Marks';
 import { Student } from '../entities/Student';
 import { Subject } from '../entities/Subject';
 import { Class } from '../entities/Class';
+import { Teacher } from '../entities/Teacher';
 import { Settings } from '../entities/Settings';
 import { ReportCardRemarks } from '../entities/ReportCardRemarks';
 import { Parent } from '../entities/Parent';
@@ -1184,19 +1185,33 @@ export const getOverallPerformanceRankings = async (req: AuthRequest, res: Respo
 
 export const getReportCard = async (req: AuthRequest, res: Response) => {
   try {
+    console.log('[getReportCard] Route handler called');
+    console.log('[getReportCard] Request path:', req.path);
+    console.log('[getReportCard] Request method:', req.method);
+    console.log('[getReportCard] Request query:', req.query);
+    
     if (!AppDataSource.isInitialized) {
       await AppDataSource.initialize();
     }
 
-    const { classId, examType, studentId, term } = req.query;
+    const { classId, examType, studentId, term, subjectId } = req.query;
     const user = req.user;
     const isParent = user?.role === 'parent';
+    const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+    const isTeacher = user?.role === 'teacher';
     const termValue = term ? String(term).trim() : '';
     
-    console.log('Report card request received:', { classId, examType, term: termValue, studentId, isParent, query: req.query, path: req.path });
+    console.log('[getReportCard] Report card request received:', { classId, examType, term: termValue, studentId, subjectId, isParent, isTeacher, isAdmin, query: req.query, path: req.path });
     
     if (!classId || !examType || !termValue) {
+      console.log('[getReportCard] Missing required parameters');
       return res.status(400).json({ message: 'Class ID, term, and exam type are required' });
+    }
+
+    // For teachers, subjectId is required
+    if (isTeacher && !subjectId) {
+      console.log('[getReportCard] Teacher request missing subjectId');
+      return res.status(400).json({ message: 'Subject ID is required for teachers' });
     }
 
     // For parents, check balance before allowing access
@@ -1259,14 +1274,42 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     const examRepository = AppDataSource.getRepository(Exam);
     const settingsRepository = AppDataSource.getRepository(Settings);
     const classRepository = AppDataSource.getRepository(Class);
+    const teacherRepository = AppDataSource.getRepository(Teacher);
 
     // Verify class exists
     const classEntity = await classRepository.findOne({
-      where: { id: classId as string }
+      where: { id: classId as string },
+      relations: ['subjects']
     });
 
     if (!classEntity) {
       return res.status(404).json({ message: 'Class not found' });
+    }
+
+    // For teachers, verify assignment to class and subject
+    if (isTeacher && user?.teacher?.id) {
+      const teacher = await teacherRepository.findOne({
+        where: { id: user.teacher.id },
+        relations: ['classes', 'subjects']
+      });
+
+      if (!teacher) {
+        return res.status(404).json({ message: 'Teacher not found' });
+      }
+
+      // Verify teacher is assigned to this class
+      const isAssignedToClass = teacher.classes?.some(c => c.id === classId);
+      if (!isAssignedToClass) {
+        return res.status(403).json({ message: 'You are not assigned to this class' });
+      }
+
+      // Verify teacher teaches this subject
+      if (subjectId) {
+        const teachesSubject = teacher.subjects?.some(s => s.id === subjectId);
+        if (!teachesSubject) {
+          return res.status(403).json({ message: 'You are not assigned to teach this subject' });
+        }
+      }
     }
 
     // Get all students enrolled in the class (including inactive students for report cards)
@@ -1332,7 +1375,6 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     });
     
     // Filter by exam status: non-admin users can only see published exams
-    const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
     if (!isAdmin) {
       exams = exams.filter(exam => exam.status === ExamStatus.PUBLISHED);
     }
@@ -1347,8 +1389,41 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     let allClassSubjects = classWithSubjects?.subjects || [];
     console.log('All subjects for class:', allClassSubjects.length, allClassSubjects.map(s => s.name));
     
-    // If no subjects are assigned to the class, get subjects from the exams instead
-    if (allClassSubjects.length === 0 && exams.length > 0) {
+    // If subjectId is provided, filter to that subject only
+    if (subjectId) {
+      const selectedSubject = allClassSubjects.find(s => s.id === subjectId);
+      if (!selectedSubject) {
+        // Try to get from exams if not in class subjects
+        if (exams.length > 0) {
+          const examSubjectsSet = new Set<string>();
+          const examSubjectsMap = new Map<string, Subject>();
+          
+          exams.forEach(exam => {
+            if (exam.subjects && exam.subjects.length > 0) {
+              exam.subjects.forEach((subject: Subject) => {
+                if (subject.id === subjectId) {
+                  examSubjectsSet.add(subject.id);
+                  examSubjectsMap.set(subject.id, subject);
+                }
+              });
+            }
+          });
+          
+          const subjectIdStr = String(subjectId);
+          if (examSubjectsMap.has(subjectIdStr)) {
+            allClassSubjects = [examSubjectsMap.get(subjectIdStr)!];
+          } else {
+            return res.status(404).json({ message: 'Subject not found in this class' });
+          }
+        } else {
+          return res.status(404).json({ message: 'Subject not found in this class' });
+        }
+      } else {
+        allClassSubjects = [selectedSubject];
+      }
+      console.log('Filtered to selected subject:', allClassSubjects.map(s => s.name));
+    } else if (allClassSubjects.length === 0 && exams.length > 0) {
+      // If no subjects are assigned to the class, get subjects from the exams instead
       console.log('No subjects assigned to class, getting subjects from exams...');
       const examSubjectsSet = new Set<string>();
       const examSubjectsMap = new Map<string, Subject>();
@@ -1415,19 +1490,24 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       return gradeLabels.fail || 'UNCLASSIFIED';
     }
 
-    // Get all marks for all students and exams
+    // Get all marks for all students and exams, filtered by subject if provided
     const examIds = exams.map(e => e.id);
-    console.log('Looking for marks with examIds:', examIds);
+    console.log('Looking for marks with examIds:', examIds, 'subjectId:', subjectId);
     
     if (examIds.length === 0) {
       return res.status(404).json({ message: 'No exam IDs found' });
     }
     
+    const marksWhere: any = { examId: In(examIds) };
+    if (subjectId) {
+      marksWhere.subjectId = subjectId as string;
+    }
+    
     const allMarks = await marksRepository.find({
-      where: { examId: In(examIds) },
+      where: marksWhere,
       relations: ['subject', 'exam', 'student']
     });
-    console.log('Found marks:', allMarks.length);
+    console.log('Found marks:', allMarks.length, subjectId ? `(filtered by subject ${subjectId})` : '(all subjects)');
 
     // Calculate class averages for each subject
     // Class Average = Total marks scored by all students in a subject / number of students who wrote the exam
@@ -2457,10 +2537,18 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
 
 export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
   try {
-    const { classId, examType } = req.query;
+    const { classId, examType, term, subjectId } = req.query;
+    const user = req.user;
+    const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+    const isTeacher = user?.role === 'teacher';
 
     if (!classId || !examType) {
       return res.status(400).json({ message: 'Class ID and exam type are required' });
+    }
+
+    // For teachers, subjectId is required
+    if (isTeacher && !subjectId) {
+      return res.status(400).json({ message: 'Subject ID is required for teachers' });
     }
 
     const studentRepository = AppDataSource.getRepository(Student);
@@ -2468,6 +2556,7 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
     const marksRepository = AppDataSource.getRepository(Marks);
     const classRepository = AppDataSource.getRepository(Class);
     const subjectRepository = AppDataSource.getRepository(Subject);
+    const teacherRepository = AppDataSource.getRepository(Teacher);
 
     // Get class information
     const classEntity = await classRepository.findOne({
@@ -2477,6 +2566,32 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
 
     if (!classEntity) {
       return res.status(404).json({ message: 'Class not found' });
+    }
+
+    // For teachers, verify assignment to class and subject
+    if (isTeacher && user?.teacher?.id) {
+      const teacher = await teacherRepository.findOne({
+        where: { id: user.teacher.id },
+        relations: ['classes', 'subjects']
+      });
+
+      if (!teacher) {
+        return res.status(404).json({ message: 'Teacher not found' });
+      }
+
+      // Verify teacher is assigned to this class
+      const isAssignedToClass = teacher.classes?.some(c => c.id === classId);
+      if (!isAssignedToClass) {
+        return res.status(403).json({ message: 'You are not assigned to this class' });
+      }
+
+      // Verify teacher teaches this subject
+      if (subjectId) {
+        const teachesSubject = teacher.subjects?.some(s => s.id === subjectId);
+        if (!teachesSubject) {
+          return res.status(403).json({ message: 'You are not assigned to teach this subject' });
+        }
+      }
     }
 
     // Get all students in the class
@@ -2589,6 +2704,8 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
         form: classEntity.form
       },
       examType,
+      term: term || exams[0]?.term || null,
+      subject: subjectId ? subjects.find(s => s.id === subjectId) : null,
       subjects: subjects.map(s => ({ id: s.id, name: s.name })),
       exams: exams.map(e => ({
         id: e.id,
@@ -2611,10 +2728,18 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
-    const { classId, examType } = req.query;
+    const { classId, examType, term, subjectId } = req.query;
+    const user = req.user;
+    const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+    const isTeacher = user?.role === 'teacher';
 
     if (!classId || !examType) {
       return res.status(400).json({ message: 'Class ID and exam type are required' });
+    }
+
+    // For teachers, subjectId is required
+    if (isTeacher && !subjectId) {
+      return res.status(400).json({ message: 'Subject ID is required for teachers' });
     }
 
     const studentRepository = AppDataSource.getRepository(Student);
@@ -2623,6 +2748,7 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
     const classRepository = AppDataSource.getRepository(Class);
     const subjectRepository = AppDataSource.getRepository(Subject);
     const settingsRepository = AppDataSource.getRepository(Settings);
+    const teacherRepository = AppDataSource.getRepository(Teacher);
 
     // Get class information
     const classEntity = await classRepository.findOne({
@@ -2632,6 +2758,32 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
 
     if (!classEntity) {
       return res.status(404).json({ message: 'Class not found' });
+    }
+
+    // For teachers, verify assignment to class and subject
+    if (isTeacher && user?.teacher?.id) {
+      const teacher = await teacherRepository.findOne({
+        where: { id: user.teacher.id },
+        relations: ['classes', 'subjects']
+      });
+
+      if (!teacher) {
+        return res.status(404).json({ message: 'Teacher not found' });
+      }
+
+      // Verify teacher is assigned to this class
+      const isAssignedToClass = teacher.classes?.some(c => c.id === classId);
+      if (!isAssignedToClass) {
+        return res.status(403).json({ message: 'You are not assigned to this class' });
+      }
+
+      // Verify teacher teaches this subject
+      if (subjectId) {
+        const teachesSubject = teacher.subjects?.some(s => s.id === subjectId);
+        if (!teachesSubject) {
+          return res.status(403).json({ message: 'You are not assigned to teach this subject' });
+        }
+      }
     }
 
     // Get all students in the class
@@ -2644,33 +2796,52 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'No students found in this class' });
     }
 
-    // Get all exams of the specified type for this class
+    // Build exam query with optional term filter
+    const examWhere: any = {
+      classId: classId as string,
+      type: examType as ExamType,
+    };
+    if (term) {
+      examWhere.term = term as string;
+    }
+
+    // Get exams of the specified type for this class (and term if provided)
     const exams = await examRepository.find({
-      where: {
-        classId: classId as string,
-        type: examType as ExamType,
-      },
+      where: examWhere,
       relations: ['subjects'],
       order: { examDate: 'DESC' }
     });
 
     if (exams.length === 0) {
-      return res.status(404).json({ message: `No ${examType} exams found for this class` });
+      return res.status(404).json({ message: `No ${examType} exams found for this class${term ? ` in ${term}` : ''}` });
     }
 
-    // Get all subjects for this class
-    const subjects = classEntity.subjects || [];
+    // If subjectId is provided, filter to that subject only
+    let subjects = classEntity.subjects || [];
+    if (subjectId) {
+      const selectedSubject = subjects.find(s => s.id === subjectId);
+      if (!selectedSubject) {
+        return res.status(404).json({ message: 'Subject not found in this class' });
+      }
+      subjects = [selectedSubject];
+    }
+
     if (subjects.length === 0) {
       return res.status(404).json({ message: 'No subjects found for this class' });
     }
 
-    // Get all marks for these exams
+    // Get all marks for these exams, filtered by subject if provided
     const examIds = exams.map(exam => exam.id);
+    const marksWhere: any = {
+      examId: In(examIds),
+      studentId: In(students.map(s => s.id)),
+    };
+    if (subjectId) {
+      marksWhere.subjectId = subjectId as string;
+    }
+
     const allMarks = await marksRepository.find({
-      where: {
-        examId: In(examIds),
-        studentId: In(students.map(s => s.id)),
-      },
+      where: marksWhere,
       relations: ['student', 'exam', 'subject']
     });
 

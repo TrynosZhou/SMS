@@ -9,6 +9,7 @@ import { generateTeacherId } from '../utils/teacherIdGenerator';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
 import { linkTeacherToClasses, syncManyToManyToJunctionTable } from '../utils/teacherClassLinker';
+import { calculateAge } from '../utils/ageUtils';
 
 export const registerTeacher = async (req: AuthRequest, res: Response) => {
   try {
@@ -43,6 +44,15 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    if (!parsedDateOfBirth) {
+      return res.status(400).json({ message: 'Date of birth is required to register a teacher' });
+    }
+
+    const teacherAge = calculateAge(parsedDateOfBirth);
+    if (teacherAge < 20 || teacherAge > 65) {
+      return res.status(400).json({ message: 'Teacher age must be between 20 and 65 years' });
+    }
+
     const teacherData: Partial<Teacher> = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
@@ -52,9 +62,7 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
     };
 
     // Only include dateOfBirth if it's provided
-    if (parsedDateOfBirth) {
-      teacherData.dateOfBirth = parsedDateOfBirth;
-    }
+    teacherData.dateOfBirth = parsedDateOfBirth;
 
     const teacher = teacherRepository.create(teacherData) as Teacher;
 

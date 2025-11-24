@@ -98,6 +98,9 @@
                 {{ term }}
               </option>
             </select>
+            <small style="color: #666; font-style: italic; display: block; margin-top: 5px;">
+              {{ loadingTerms ? 'Loading term from settings...' : (selectedTerm ? 'Current term is automatically selected from system settings' : 'Please configure active term in settings') }}
+            </small>
             <div class="field-error" *ngIf="loadingTerms">
               Loading term options...
             </div>
@@ -125,6 +128,34 @@
             <div class="field-error" *ngIf="isFieldInvalid('examType')">
               {{ getFieldError('examType') }}
             </div>
+          </div>
+
+          <div class="form-group" *ngIf="!isParent" [class.has-error]="isFieldInvalid('subject')">
+            <label>
+              Subject <span class="required">*</span>
+            </label>
+            <select 
+              [(ngModel)]="selectedSubjectId" 
+              name="subject" 
+              required
+              [disabled]="!selectedClass || subjects.length === 0"
+              [class.invalid]="isFieldInvalid('subject')"
+              class="form-control"
+              (change)="onSelectionChange()">
+              <option value="">{{ selectedClass ? (subjects.length === 0 ? 'No subjects available' : 'Select Subject') : 'Select Class first' }}</option>
+              <option *ngFor="let subject of subjects" [value]="subject.id">
+                {{ subject.name }} ({{ subject.code }})
+              </option>
+            </select>
+            <div class="field-error" *ngIf="isFieldInvalid('subject')">
+              {{ getFieldError('subject') }}
+            </div>
+            <small *ngIf="selectedClass && subjects.length === 0 && !isAdmin && !isParent" style="color: #e74c3c; font-style: italic; display: block; margin-top: 5px;">
+              No subjects assigned to you for this class. Please contact administrator.
+            </small>
+            <small *ngIf="selectedClass && subjects.length > 0 && !isAdmin && !isParent" style="color: #666; font-style: italic; display: block; margin-top: 5px;">
+              Showing subjects you teach for this class
+            </small>
           </div>
         </div>
 

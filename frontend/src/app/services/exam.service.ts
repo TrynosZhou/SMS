@@ -69,12 +69,21 @@ export class ExamService {
     return this.http.get(`${this.apiUrl}/exams/rankings/overall-performance`, { params: { form, examType } });
   }
 
-  getReportCard(classId: string, examType: string, term: string, studentId?: string): Observable<any> {
+  getReportCard(classId: string, examType: string, term: string, studentId?: string, subjectId?: string): Observable<any> {
     const url = `${this.apiUrl}/exams/report-card`;
-    const params: any = { classId, examType, term };
-    if (studentId) {
-      params.studentId = studentId;
+    const params: any = {};
+    
+    // Only add defined and non-empty parameters
+    if (classId) params.classId = String(classId).trim();
+    if (examType) params.examType = String(examType).trim();
+    if (term) params.term = String(term).trim();
+    if (studentId && studentId.trim() !== '') {
+      params.studentId = String(studentId).trim();
     }
+    if (subjectId && subjectId.trim() !== '') {
+      params.subjectId = String(subjectId).trim();
+    }
+    
     console.log('Requesting report card:', url, params);
     return this.http.get(url, { params });
   }
@@ -112,15 +121,19 @@ export class ExamService {
     return this.http.delete(`${this.apiUrl}/exams/all`);
   }
 
-  generateMarkSheet(classId: string, examType: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/exams/mark-sheet`, {
-      params: { classId, examType }
-    });
+  generateMarkSheet(classId: string, examType: string, term?: string, subjectId?: string): Observable<any> {
+    const params: any = { classId, examType };
+    if (term) params.term = term;
+    if (subjectId) params.subjectId = subjectId;
+    return this.http.get(`${this.apiUrl}/exams/mark-sheet`, { params });
   }
 
-  downloadMarkSheetPDF(classId: string, examType: string): Observable<Blob> {
+  downloadMarkSheetPDF(classId: string, examType: string, term?: string, subjectId?: string): Observable<Blob> {
+    const params: any = { classId, examType };
+    if (term) params.term = term;
+    if (subjectId) params.subjectId = subjectId;
     return this.http.get(`${this.apiUrl}/exams/mark-sheet/pdf`, {
-      params: { classId, examType },
+      params,
       responseType: 'blob'
     });
   }

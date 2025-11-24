@@ -120,14 +120,35 @@ export class TeacherFormComponent implements OnInit {
     );
   }
 
+  private calculateAge(dateString: string): number {
+    const dob = new Date(dateString);
+    if (isNaN(dob.getTime())) {
+      return 0;
+    }
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+    return age;
+  }
+
   onSubmit() {
     this.error = '';
     this.success = '';
     this.submitting = true;
 
     // Validate required fields
-    if (!this.teacher.firstName || !this.teacher.lastName) {
+    if (!this.teacher.firstName || !this.teacher.lastName || !this.teacher.dateOfBirth) {
       this.error = 'Please fill in all required fields';
+      this.submitting = false;
+      return;
+    }
+
+    const age = this.calculateAge(this.teacher.dateOfBirth);
+    if (age < 20 || age > 65) {
+      this.error = 'Teacher age must be between 20 and 65 years';
       this.submitting = false;
       return;
     }

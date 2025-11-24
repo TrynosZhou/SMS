@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ExamService } from '../../../services/exam.service';
 import { ClassService } from '../../../services/class.service';
+import { SubjectService } from '../../../services/subject.service';
+import { TeacherService } from '../../../services/teacher.service';
 import { AuthService } from '../../../services/auth.service';
 import { ParentService } from '../../../services/parent.service';
 import { SettingsService } from '../../../services/settings.service';
@@ -31,9 +33,12 @@ import { trigger, state, style, transition, animate } from '@angular/animations'
 })
 export class ReportCardComponent implements OnInit {
   classes: any[] = [];
+  allSubjects: any[] = [];
+  subjects: any[] = [];
   selectedClass = '';
   selectedExamType = '';
   selectedTerm = '';
+  selectedSubjectId = '';
   reportCards: any[] = [];
   filteredReportCards: any[] = [];
   classInfo: any = null;
@@ -65,10 +70,17 @@ export class ReportCardComponent implements OnInit {
   schoolLogo2: string | null = null;
   gradeThresholds: any = null;
   gradeLabels: any = null;
+  
+  // Teacher data
+  teacher: any = null;
+  teacherSubjects: any[] = [];
+  isAdmin = false;
 
   constructor(
     private examService: ExamService,
     private classService: ClassService,
+    private subjectService: SubjectService,
+    private teacherService: TeacherService,
     public authService: AuthService,
     private route: ActivatedRoute,
     private router: Router,
@@ -78,6 +90,8 @@ export class ReportCardComponent implements OnInit {
     // Check if user can edit remarks (teacher or admin)
     this.canEditRemarks = this.authService.hasRole('teacher') || this.authService.hasRole('admin');
     this.isParent = this.authService.hasRole('parent');
+    const user = this.authService.getCurrentUser();
+    this.isAdmin = user ? (user.role === 'admin' || user.role === 'superadmin') : false;
   }
 
   ngOnInit() {
@@ -90,9 +104,114 @@ export class ReportCardComponent implements OnInit {
         this.parentStudentId = params['studentId'];
         this.checkStudentBalance();
       } else {
-        this.loadClasses();
+        // If user is a teacher, load teacher-specific data
+        const user = this.authService.getCurrentUser();
+        if (user && user.role === 'teacher' && !this.isAdmin && !this.isParent) {
+          this.loadTeacherInfo();
+        } else {
+          // Admin/SuperAdmin can see all classes and subjects
+          this.loadClasses();
+          this.loadSubjects();
+        }
       }
     });
+  }
+
+  loadTeacherInfo() {
+    // Load teacher profile to get teacher ID and subjects
+    this.teacherService.getCurrentTeacher().subscribe({
+      next: (teacher: any) => {
+        this.teacher = teacher;
+        this.teacherSubjects = teacher.subjects || [];
+        
+        // Load classes assigned to this teacher
+        if (teacher.id) {
+          this.loadTeacherClasses(teacher.id);
+        } else {
+          this.classes = [];
+          this.error = 'Teacher ID not found. Please contact administrator.';
+        }
+        
+        // Load all subjects (we'll filter them later based on selected class)
+        this.loadAllSubjects();
+      },
+      error: (err: any) => {
+        console.error('Error loading teacher info:', err);
+        this.error = 'Failed to load teacher information. Please try again.';
+      }
+    });
+  }
+
+  loadTeacherClasses(teacherId: string) {
+    this.teacherService.getTeacherClasses(teacherId).subscribe({
+      next: (response: any) => {
+        this.classes = response.classes || [];
+        console.log('Loaded teacher classes:', this.classes.length);
+      },
+      error: (err: any) => {
+        console.error('Error loading teacher classes:', err);
+        this.classes = [];
+        this.error = 'Failed to load assigned classes. Please try again.';
+      }
+    });
+  }
+
+  loadAllSubjects() {
+    // Load all subjects (we'll filter based on teacher and class)
+    this.subjectService.getSubjects().subscribe({
+      next: (data: any) => {
+        this.allSubjects = data || [];
+        this.updateSubjectsForSelectedClass();
+      },
+      error: (err: any) => {
+        console.error('Error loading subjects:', err);
+        this.allSubjects = [];
+      }
+    });
+  }
+
+  updateSubjectsForSelectedClass() {
+    if (!this.selectedClass || this.isAdmin || this.isParent) {
+      // If no class selected or admin/parent, show all subjects (or teacher's subjects if teacher)
+      if (!this.isAdmin && !this.isParent && this.teacherSubjects.length > 0) {
+        this.subjects = this.teacherSubjects;
+      } else {
+        this.subjects = this.allSubjects;
+      }
+      return;
+    }
+
+    // For teachers: filter subjects that:
+    // 1. Teacher is assigned to teach
+    // 2. Are taught in the selected class
+    if (this.teacher && this.teacherSubjects.length > 0) {
+      // Get class details to check which subjects are taught in this class
+      this.classService.getClassById(this.selectedClass).subscribe({
+        next: (classData: any) => {
+          const classSubjectIds = (classData.subjects || []).map((s: any) => s.id);
+          
+          // Find intersection: subjects teacher teaches AND that are in the class
+          this.subjects = this.teacherSubjects.filter((teacherSubject: any) => 
+            classSubjectIds.includes(teacherSubject.id)
+          );
+          
+          console.log('Filtered subjects for class:', this.subjects.length);
+          
+          // Reset subject selection if current selection is not in filtered list
+          if (this.selectedSubjectId && !this.subjects.find(s => s.id === this.selectedSubjectId)) {
+            this.selectedSubjectId = '';
+          }
+        },
+        error: (err: any) => {
+          console.error('Error loading class details:', err);
+          // Fallback: show only teacher's subjects
+          this.subjects = this.teacherSubjects;
+        }
+      });
+    } else {
+      // Fallback: show all subjects if teacher info not loaded
+      this.subjects = this.allSubjects;
+    }
   }
 
   loadTermOptions() {
@@ -117,6 +236,7 @@ export class ReportCardComponent implements OnInit {
           if (!this.availableTerms.includes(activeTerm)) {
             this.availableTerms.unshift(activeTerm);
           }
+          // Auto-select the active term
           this.selectedTerm = activeTerm;
         } else if (!this.selectedTerm && this.availableTerms.length > 0) {
           this.selectedTerm = this.availableTerms[0];
@@ -259,9 +379,29 @@ export class ReportCardComponent implements OnInit {
     });
   }
 
+  loadSubjects() {
+    // For admin/superadmin - load all subjects
+    this.subjectService.getSubjects().subscribe({
+      next: (data: any) => {
+        this.allSubjects = data || [];
+        this.subjects = data || [];
+      },
+      error: (err: any) => {
+        console.error('Error loading subjects:', err);
+        this.allSubjects = [];
+        this.subjects = [];
+      }
+    });
+  }
+
   generateReportCards() {
     if (!this.selectedClass || !this.selectedExamType || !this.selectedTerm) {
       this.error = 'Please select class, term, and exam type';
+      return;
+    }
+
+    if (!this.selectedSubjectId && !this.isAdmin && !this.isParent) {
+      this.error = 'Please select a subject';
       return;
     }
 
@@ -280,11 +420,34 @@ export class ReportCardComponent implements OnInit {
     this.reportCards = [];
     this.accessDenied = false;
 
+    // Ensure subjectId is passed correctly (empty string should be treated as missing)
+    const subjectIdParam = this.selectedSubjectId && this.selectedSubjectId.trim() !== '' 
+      ? this.selectedSubjectId.trim() 
+      : undefined;
+    
+    // Ensure all required parameters are strings
+    const classIdParam = String(this.selectedClass).trim();
+    const examTypeParam = String(this.selectedExamType).trim();
+    const termParam = String(this.selectedTerm).trim();
+    const studentIdParam = this.parentStudentId && this.parentStudentId.trim() !== ''
+      ? this.parentStudentId.trim()
+      : undefined;
+    
+    console.log('Calling getReportCard with:', {
+      classId: classIdParam,
+      examType: examTypeParam,
+      term: termParam,
+      studentId: studentIdParam,
+      subjectId: subjectIdParam,
+      isTeacher: !this.isAdmin && !this.isParent
+    });
+    
     this.examService.getReportCard(
-      this.selectedClass,
-      this.selectedExamType,
-      this.selectedTerm,
-      this.parentStudentId || undefined
+      classIdParam,
+      examTypeParam,
+      termParam,
+      studentIdParam,
+      subjectIdParam
     ).subscribe({
       next: (data: any) => {
         let cards = data.reportCards || [];
@@ -311,11 +474,25 @@ export class ReportCardComponent implements OnInit {
         this.loading = false;
       },
       error: (err: any) => {
-        this.error = err.error?.message || 'Failed to generate report cards';
-        this.loading = false;
-        if (err.status === 403) {
+        console.error('Error generating report cards:', err);
+        console.error('Error status:', err.status);
+        console.error('Error URL:', err.url);
+        console.error('Error message:', err.message);
+        console.error('Error error:', err.error);
+        
+        if (err.status === 0) {
+          this.error = 'Cannot connect to server. Please ensure the backend server is running.';
+        } else if (err.status === 404) {
+          this.error = err.error?.message || 'Report card endpoint not found. Please check the server configuration.';
+        } else if (err.status === 400) {
+          this.error = err.error?.message || 'Invalid request parameters. Please check your selections.';
+        } else if (err.status === 403) {
+          this.error = err.error?.message || 'Access denied';
           this.accessDenied = true;
+        } else {
+          this.error = err.error?.message || 'Failed to generate report cards';
         }
+        this.loading = false;
       }
     });
   }
@@ -429,7 +606,12 @@ export class ReportCardComponent implements OnInit {
 
   // Validation
   isSelectionValid(): boolean {
-    return !!(this.selectedClass && this.selectedExamType && this.selectedTerm);
+    if (this.isParent) {
+      // Parents don't need subject selection
+      return !!(this.selectedClass && this.selectedExamType && this.selectedTerm);
+    }
+    // Teachers need subject selection
+    return !!(this.selectedClass && this.selectedExamType && this.selectedTerm && (this.selectedSubjectId || this.isAdmin));
   }
 
   isFieldInvalid(fieldName: string): boolean {
@@ -443,6 +625,16 @@ export class ReportCardComponent implements OnInit {
   onSelectionChange() {
     this.fieldErrors = {};
     this.touchedFields.clear();
+    
+    // If class changed and user is a teacher, update subjects list
+    if (!this.isAdmin && !this.isParent && this.selectedClass) {
+      this.updateSubjectsForSelectedClass();
+    }
+    
+    // Reset subject selection if class changed
+    if (!this.selectedClass) {
+      this.selectedSubjectId = '';
+    }
   }
 
   resetSelection() {

@@ -19,12 +19,29 @@
             id="class"
             [(ngModel)]="selectedClassId" 
             [ngModelOptions]="{standalone: true}"
+            (change)="onClassChange()"
             class="form-control">
             <option value="">-- Select Class --</option>
             <option *ngFor="let cls of classes" [value]="cls.id">
               {{ cls.name }} ({{ cls.form }})
             </option>
           </select>
+        </div>
+
+        <div class="form-group">
+          <label for="term">Term</label>
+          <input 
+            type="text" 
+            id="term"
+            [ngModel]="selectedTerm || (loadingTerm ? 'Loading...' : 'Not set')" 
+            [ngModelOptions]="{standalone: true}"
+            readonly
+            [disabled]="loadingTerm"
+            style="background-color: #f5f5f5; cursor: not-allowed;"
+            class="form-control">
+          <small style="color: #666; font-style: italic; display: block; margin-top: 5px;">
+            {{ loadingTerm ? 'Loading term from settings...' : (selectedTerm ? 'Term is automatically set from system settings' : 'Please configure active term in settings') }}
+          </small>
         </div>
 
         <div class="form-group">
@@ -42,11 +59,32 @@
         </div>
 
         <div class="form-group">
+          <label for="subject">Select Subject <span class="required">*</span></label>
+          <select 
+            id="subject"
+            [(ngModel)]="selectedSubjectId" 
+            [ngModelOptions]="{standalone: true}"
+            [disabled]="!selectedClassId || subjects.length === 0"
+            class="form-control">
+            <option value="">{{ selectedClassId ? (subjects.length === 0 ? 'No subjects available' : 'Select Subject') : 'Select Class first' }}</option>
+            <option *ngFor="let subject of subjects" [value]="subject.id">
+              {{ subject.name }} ({{ subject.code }})
+            </option>
+          </select>
+          <small *ngIf="selectedClassId && subjects.length === 0 && !isAdmin" style="color: #e74c3c; font-style: italic; display: block; margin-top: 5px;">
+            No subjects assigned to you for this class. Please contact administrator.
+          </small>
+          <small *ngIf="selectedClassId && subjects.length > 0" style="color: #666; font-style: italic; display: block; margin-top: 5px;">
+            Showing subjects you teach for this class
+          </small>
+        </div>
+
+        <div class="form-group">
           <label>&nbsp;</label>
           <button 
             class="btn btn-primary" 
             (click)="generateMarkSheet()" 
-            [disabled]="loading || !selectedClassId || !selectedExamType">
+            [disabled]="loading || !selectedClassId || !selectedExamType || !selectedTerm || (!selectedSubjectId && !isAdmin)">
             <span *ngIf="!loading">📊 Generate Mark Sheet</span>
             <span *ngIf="loading">⏳ Generating...</span>
           </button>

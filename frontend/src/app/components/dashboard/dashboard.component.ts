@@ -64,18 +64,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.user = this.authService.getCurrentUser();
     
-    // Debug: Log user object for teachers
-    if (this.user && this.user.role === 'teacher') {
-      console.log('Dashboard: User object:', this.user);
-      console.log('Dashboard: User.teacher:', this.user.teacher);
-      if (this.user.teacher) {
-        console.log('Dashboard: Teacher fullName:', this.user.teacher.fullName);
-        console.log('Dashboard: Teacher firstName:', this.user.teacher.firstName);
-        console.log('Dashboard: Teacher lastName:', this.user.teacher.lastName);
-        console.log('Dashboard: Teacher teacherId:', this.user.teacher.teacherId);
-      }
-    }
-    
     // Load module access from service
     this.moduleAccessService.loadModuleAccess();
     this.loadSettings();
@@ -329,17 +317,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
           user.teacher.fullName !== 'Teacher' && 
           user.teacher.fullName !== 'Account Teacher') {
         this.teacherName = user.teacher.fullName.trim();
-        console.log('Dashboard: Using fullName from login response:', this.teacherName);
         return;
       }
       
       // Fallback to extracting from firstName/lastName
-      const name = this.extractTeacherName(user.teacher);
-      if (name && name !== 'Teacher' && name.trim()) {
-        this.teacherName = name;
-        console.log('Dashboard: Extracted name from user.teacher:', this.teacherName);
-        return;
-      }
+        const name = this.extractTeacherName(user.teacher);
+        if (name && name !== 'Teacher' && name.trim()) {
+          this.teacherName = name;
+          return;
+        }
     }
 
     // If not available in user object, fetch from API as fallback
@@ -351,12 +337,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
             teacher.fullName !== 'Teacher' && 
             teacher.fullName !== 'Account Teacher') {
           this.teacherName = teacher.fullName.trim();
-          console.log('Dashboard: Using fullName from API:', this.teacherName);
         } else {
           const name = this.extractTeacherName(teacher);
           if (name && name !== 'Teacher' && name.trim()) {
             this.teacherName = name;
-            console.log('Dashboard: Extracted name from API response:', this.teacherName);
           }
         }
       },

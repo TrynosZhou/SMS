@@ -14,6 +14,7 @@ import QRCode from 'qrcode';
 import { createStudentIdCardPDF } from '../utils/studentIdCardPdf';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
+import { calculateAge } from '../utils/ageUtils';
 
 export const registerStudent = async (req: AuthRequest, res: Response) => {
   try {
@@ -91,6 +92,11 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
       }
     } else {
       parsedDateOfBirth = dateOfBirth;
+    }
+
+    const studentAge = calculateAge(parsedDateOfBirth);
+    if (studentAge < 4 || studentAge > 12) {
+      return res.status(400).json({ message: 'Student age must be between 4 and 12 years' });
     }
 
     // Use contactNumber if provided, otherwise fall back to phoneNumber

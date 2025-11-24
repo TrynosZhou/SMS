@@ -6,6 +6,7 @@ import { SubjectService } from '../../../services/subject.service';
 import { StudentService } from '../../../services/student.service';
 import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
+import { TeacherService } from '../../../services/teacher.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 
 @Component({
@@ -33,9 +34,14 @@ export class ExamListComponent implements OnInit, OnDestroy {
   
   // Data
   classes: any[] = [];
-  subjects: any[] = [];
+  allSubjects: any[] = []; // All subjects in the system
+  subjects: any[] = []; // Filtered subjects for selected class
   students: any[] = [];
   filteredStudents: any[] = [];
+  
+  // Teacher data
+  teacher: any = null;
+  teacherSubjects: any[] = []; // Subjects assigned to teacher
   
   // Marks entry
   marks: any = {};
@@ -84,6 +90,7 @@ export class ExamListComponent implements OnInit, OnDestroy {
     private studentService: StudentService,
     private settingsService: SettingsService,
     private authService: AuthService,
+    private teacherService: TeacherService,
     private router: Router
   ) {
     const user = this.authService.getCurrentUser();
@@ -92,8 +99,17 @@ export class ExamListComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.loadClasses();
-    this.loadSubjects();
+    const user = this.authService.getCurrentUser();
+    
+    // If user is a teacher, load teacher-specific data
+    if (user && user.role === 'teacher' && !this.isAdmin) {
+      this.loadTeacherInfo();
+    } else {
+      // Admin/SuperAdmin can see all classes and subjects
+      this.loadClasses();
+      this.loadSubjects();
+    }
+    
     this.loadActiveTerm();
     
     // Set publish term from active term
@@ -156,18 +172,129 @@ export class ExamListComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadTeacherInfo() {
+    // Load teacher profile to get teacher ID and subjects
+    this.teacherService.getCurrentTeacher().subscribe({
+      next: (teacher: any) => {
+        this.teacher = teacher;
+        this.teacherSubjects = teacher.subjects || [];
+        
+        // Load classes assigned to this teacher
+        if (teacher.id) {
+          this.loadTeacherClasses(teacher.id);
+        } else {
+          this.classes = [];
+          this.error = 'Teacher ID not found. Please contact administrator.';
+        }
+        
+        // Load all subjects (we'll filter them later based on selected class)
+        this.loadAllSubjects();
+      },
+      error: (err: any) => {
+        console.error('Error loading teacher info:', err);
+        this.error = 'Failed to load teacher information. Please try again.';
+      }
+    });
+  }
+
+  loadTeacherClasses(teacherId: string) {
+    this.teacherService.getTeacherClasses(teacherId).subscribe({
+      next: (response: any) => {
+        this.classes = response.classes || [];
+        console.log('Loaded teacher classes:', this.classes.length);
+      },
+      error: (err: any) => {
+        console.error('Error loading teacher classes:', err);
+        this.classes = [];
+        this.error = 'Failed to load assigned classes. Please try again.';
+      }
+    });
+  }
+
   loadClasses() {
+    // For admin/superadmin - load all classes
     this.classService.getClasses().subscribe({
       next: (data: any) => this.classes = data,
-      error: (err: any) => console.error(err)
+      error: (err: any) => {
+        console.error('Error loading classes:', err);
+        this.classes = [];
+      }
+    });
+  }
+
+  loadAllSubjects() {
+    // Load all subjects (we'll filter based on teacher and class)
+    this.subjectService.getSubjects().subscribe({
+      next: (data: any) => {
+        this.allSubjects = data || [];
+        // Update subjects list when class is selected
+        this.updateSubjectsForSelectedClass();
+      },
+      error: (err: any) => {
+        console.error('Error loading subjects:', err);
+        this.allSubjects = [];
+      }
     });
   }
 
   loadSubjects() {
+    // For admin/superadmin - load all subjects
     this.subjectService.getSubjects().subscribe({
-      next: (data: any) => this.subjects = data,
-      error: (err: any) => console.error(err)
+      next: (data: any) => {
+        this.allSubjects = data || [];
+        this.subjects = data || [];
+      },
+      error: (err: any) => {
+        console.error('Error loading subjects:', err);
+        this.allSubjects = [];
+        this.subjects = [];
+      }
     });
+  }
+
+  updateSubjectsForSelectedClass() {
+    if (!this.selectedClassId || this.isAdmin) {
+      // If no class selected or admin, show all subjects (or teacher's subjects if teacher)
+      if (!this.isAdmin && this.teacherSubjects.length > 0) {
+        this.subjects = this.teacherSubjects;
+      } else {
+        this.subjects = this.allSubjects;
+      }
+      return;
+    }
+
+    // For teachers: filter subjects that:
+    // 1. Teacher is assigned to teach
+    // 2. Are taught in the selected class
+    if (this.teacher && this.teacherSubjects.length > 0) {
+      // Get class details to check which subjects are taught in this class
+      this.classService.getClassById(this.selectedClassId).subscribe({
+        next: (classData: any) => {
+          const classSubjectIds = (classData.subjects || []).map((s: any) => s.id);
+          
+          // Find intersection: subjects teacher teaches AND that are in the class
+          this.subjects = this.teacherSubjects.filter((teacherSubject: any) => 
+            classSubjectIds.includes(teacherSubject.id)
+          );
+          
+          console.log('Filtered subjects for class:', this.subjects.length);
+          
+          // Reset subject selection if current selection is not in filtered list
+          if (this.selectedSubjectId && !this.subjects.find(s => s.id === this.selectedSubjectId)) {
+            this.selectedSubjectId = '';
+            this.onSelectionChange();
+          }
+        },
+        error: (err: any) => {
+          console.error('Error loading class details:', err);
+          // Fallback: show only teacher's subjects
+          this.subjects = this.teacherSubjects;
+        }
+      });
+    } else {
+      // Fallback: show all subjects if teacher info not loaded
+      this.subjects = this.allSubjects;
+    }
   }
 
   onSelectionChange() {
@@ -180,6 +307,16 @@ export class ExamListComponent implements OnInit, OnDestroy {
     this.studentSearchQuery = '';
     this.canPublish = false;
     this.isPublished = false;
+    
+    // If class changed and user is a teacher, update subjects list
+    if (!this.isAdmin && this.selectedClassId) {
+      this.updateSubjectsForSelectedClass();
+    }
+    
+    // Reset subject selection if class changed
+    if (!this.selectedClassId) {
+      this.selectedSubjectId = '';
+    }
   }
 
   loadStudents() {

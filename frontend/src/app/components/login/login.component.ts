@@ -14,12 +14,6 @@ export class LoginComponent {
   // Sign In fields
   email = '';
   password = '';
-  teacherId = ''; // Teacher ID (employee number) for teacher login
-  demoLoginInProgress = false;
-  readonly demoUserCredentials = {
-    username: 'demo@school.com',
-    password: 'Demo@123'
-  };
   
   // Sign Up fields
   signupRole = '';
@@ -64,7 +58,6 @@ export class LoginComponent {
     // Clear all fields when switching tabs
     this.email = '';
     this.password = '';
-    this.teacherId = '';
     this.signupRole = '';
     this.signupUsername = '';
     this.signupPassword = '';
@@ -79,17 +72,14 @@ export class LoginComponent {
   onSignIn() {
     if (!this.email || !this.password) {
       this.error = 'Please enter username and password';
-      this.demoLoginInProgress = false;
       return;
     }
 
     this.loading = true;
     this.error = '';
-    // Login with username and password only (no teacherId required)
     this.authService.login(this.email, this.password).subscribe({
       next: (response: any) => {
         this.loading = false;
-        this.demoLoginInProgress = false;
         
         if (!response || !response.user) {
           this.error = 'Invalid response from server';
@@ -185,19 +175,8 @@ export class LoginComponent {
         }
         
         this.loading = false;
-        this.demoLoginInProgress = false;
       }
     });
-  }
-
-  loginAsDemoUser() {
-    if (this.loading) {
-      return;
-    }
-    this.email = this.demoUserCredentials.username;
-    this.password = this.demoUserCredentials.password;
-    this.demoLoginInProgress = true;
-    this.onSignIn();
   }
 
   onSignUp() {

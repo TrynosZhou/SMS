@@ -194,6 +194,20 @@ export class StudentFormComponent implements OnInit {
     this.student.photo = null;
   }
 
+  private calculateAge(dateString: string): number {
+    const dob = new Date(dateString);
+    if (isNaN(dob.getTime())) {
+      return 0;
+    }
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+    return age;
+  }
+
   onSubmit() {
     this.error = '';
     this.success = '';
@@ -209,6 +223,13 @@ export class StudentFormComponent implements OnInit {
 
     if (!this.student.classId) {
       this.error = 'Please select a class for enrollment';
+      this.submitting = false;
+      return;
+    }
+
+    const studentAge = this.calculateAge(this.student.dateOfBirth);
+    if (studentAge < 4 || studentAge > 12) {
+      this.error = 'Students must be between 4 and 12 years old at registration';
       this.submitting = false;
       return;
     }
