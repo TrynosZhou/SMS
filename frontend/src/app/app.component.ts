@@ -1,23 +1,27 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { AuthService } from './services/auth.service';
 import { SettingsService } from './services/settings.service';
 import { ModuleAccessService } from './services/module-access.service';
+import { SessionTimeoutService } from './services/session-timeout.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   schoolName = 'School Management System';
   mobileMenuOpen = false;
   sidebarCollapsed = false;
   expandedMenus: { [key: string]: boolean } = {};
+  private authSubscription?: Subscription;
 
   constructor(
     public authService: AuthService, 
     private settingsService: SettingsService,
-    public moduleAccessService: ModuleAccessService
+    public moduleAccessService: ModuleAccessService,
+    private sessionTimeoutService: SessionTimeoutService
   ) { }
 
   ngOnInit(): void {
@@ -34,7 +38,23 @@ export class AppComponent implements OnInit {
       
       // Load module access settings
       this.moduleAccessService.loadModuleAccess();
+
+      // Start inactivity monitoring
+      this.sessionTimeoutService.start();
     }
+
+    this.authSubscription = this.authService.currentUser$.subscribe(user => {
+      if (user) {
+        this.sessionTimeoutService.start();
+      } else {
+        this.sessionTimeoutService.stop();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.authSubscription?.unsubscribe();
+    this.sessionTimeoutService.stop();
   }
 
   isAuthenticated(): boolean {

@@ -20,6 +20,13 @@ export class ClassListComponent implements OnInit {
   sortBy: string = 'name';
   sortColumn: string = 'name';
   sortDirection: 'asc' | 'desc' = 'asc';
+  pagination = {
+    page: 1,
+    limit: 1000, // Set high limit to show all classes by default
+    total: 0,
+    totalPages: 1
+  };
+  pageSizeOptions = [10, 20, 50, 100, 500, 1000];
 
   constructor(
     private classService: ClassService,
@@ -48,15 +55,83 @@ export class ClassListComponent implements OnInit {
     this.loadClasses();
   }
 
-  loadClasses() {
+  loadClasses(page = this.pagination.page) {
     this.loading = true;
     this.error = '';
     // Note: success message is preserved if set from query params
-    this.classService.getClasses().subscribe({
-      next: (data: any) => {
-        this.classes = data || [];
+    this.classService.getClassesPaginated(page, this.pagination.limit).subscribe({
+      next: (response: any) => {
+        const data = response?.data || response || [];
+        // Clean IDs in case they have any trailing characters
+        let cleanedData = data.map((classItem: any) => {
+          if (classItem.id) {
+            let cleanId = String(classItem.id).trim();
+            // Remove any trailing :number or :text patterns
+            if (cleanId.includes(':')) {
+              cleanId = cleanId.split(':')[0].trim();
+            }
+            classItem.id = cleanId;
+          }
+          return classItem;
+        });
+        
+        // Remove duplicates based on ID (after cleaning)
+        // Use a Map to track unique classes by ID
+        const uniqueClassesMap = new Map<string, any>();
+        let duplicatesCount = 0;
+        
+        cleanedData.forEach((classItem: any) => {
+          const id = classItem.id || '';
+          
+          // If class has an ID, use it as the key
+          if (id) {
+            // Check if we already have this class by ID
+            if (uniqueClassesMap.has(id)) {
+              duplicatesCount++;
+              // Keep the first occurrence (or you could keep the one with more data)
+              return; // Skip duplicate
+            }
+            // Add to map
+            uniqueClassesMap.set(id, classItem);
+          } else {
+            // If no ID, check by name as fallback
+            const name = classItem.name || '';
+            if (name) {
+              const existingByName = Array.from(uniqueClassesMap.values()).find(
+                (c: any) => !c.id && c.name === name
+              );
+              if (existingByName) {
+                duplicatesCount++;
+                return; // Skip duplicate
+              }
+            }
+            // Add with a generated key
+            uniqueClassesMap.set(`no-id-${uniqueClassesMap.size}`, classItem);
+          }
+        });
+        
+        // Convert map back to array
+        this.classes = Array.from(uniqueClassesMap.values());
+        
+        // Log if duplicates were removed (only in development)
+        if (duplicatesCount > 0) {
+          console.log(`Removed ${duplicatesCount} duplicate class(es) from display`);
+        }
+        
+        if (response?.page !== undefined) {
+          this.pagination = {
+            page: response.page,
+            limit: response.limit,
+            total: this.classes.length, // Use deduplicated count
+            totalPages: response.totalPages
+          };
+        } else {
+          this.pagination.total = this.classes.length; // Use deduplicated count
+          this.pagination.totalPages = Math.max(1, Math.ceil(this.pagination.total / this.pagination.limit));
+          this.pagination.page = page;
+        }
         this.filteredClasses = [...this.classes];
-        this.sortClasses();
+        this.filterClasses();
         this.loading = false;
       },
       error: (err: any) => {
@@ -167,8 +242,33 @@ export class ClassListComponent implements OnInit {
     return text.length > length ? text.substring(0, length) + '...' : text;
   }
 
+  getCleanId(id: any): string {
+    if (!id) {
+      console.warn('getCleanId: No ID provided');
+      return '';
+    }
+    let cleanId = String(id).trim();
+    console.log('getCleanId - Original:', id, 'Type:', typeof id);
+    
+    // Remove any trailing :number or :text patterns (e.g., :1, :abc)
+    if (cleanId.includes(':')) {
+      const parts = cleanId.split(':');
+      cleanId = parts[0].trim();
+      console.log('getCleanId - Had colon, cleaned to:', cleanId, 'Removed:', parts.slice(1).join(':'));
+    }
+    
+    // Final validation - ensure it's a valid UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(cleanId)) {
+      console.error('getCleanId - Invalid UUID after cleaning:', cleanId);
+    }
+    
+    return cleanId;
+  }
+
   editClass(id: string) {
-    this.router.navigate([`/classes/${id}/edit`]);
+    const cleanId = this.getCleanId(id);
+    this.router.navigate([`/classes/${cleanId}/edit`]);
   }
 
   deleteClass(id: string, className: string) {
@@ -176,11 +276,39 @@ export class ClassListComponent implements OnInit {
       return;
     }
 
+    // Validate ID
+    if (!id) {
+      this.error = 'Invalid class ID. Cannot delete class.';
+      console.error('Invalid class ID:', id);
+      return;
+    }
+
+    // Log original ID for debugging
+    console.log('Original ID received:', id, 'Type:', typeof id);
+
+    // Clean and trim the ID - remove any trailing characters after colon
+    let cleanId = String(id).trim();
+    
+    // Remove any trailing :number or :text patterns (e.g., :1, :abc)
+    if (cleanId.includes(':')) {
+      cleanId = cleanId.split(':')[0].trim();
+    }
+    
+    // Validate UUID format (basic check)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(cleanId)) {
+      this.error = 'Invalid class ID format. Cannot delete class.';
+      console.error('Invalid class ID format. Original:', id, 'Cleaned:', cleanId);
+      return;
+    }
+
     this.loading = true;
     this.error = '';
     this.success = '';
 
-    this.classService.deleteClass(id).subscribe({
+    console.log('Deleting class with cleaned ID:', cleanId);
+
+    this.classService.deleteClass(cleanId).subscribe({
       next: (data: any) => {
         this.success = data.message || 'Class deleted successfully';
         this.loading = false;
@@ -239,6 +367,20 @@ export class ClassListComponent implements OnInit {
         }, 8000);
       }
     });
+  }
+
+  onPageChange(page: number) {
+    if (page < 1 || page > this.pagination.totalPages || page === this.pagination.page) {
+      return;
+    }
+    this.loadClasses(page);
+  }
+
+  onPageSizeChange(limit: number | string) {
+    const parsedLimit = Number(limit);
+    this.pagination.limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : this.pagination.limit;
+    this.pagination.page = 1;
+    this.loadClasses(1);
   }
 }
 

@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { PaginatedResponse } from '../types/pagination';
 
 @Injectable({
   providedIn: 'root'
@@ -12,11 +13,23 @@ export class FinanceService {
 
   constructor(private http: HttpClient) { }
 
-  getInvoices(studentId?: string, status?: string): Observable<any> {
+  getInvoices(studentId?: string, status?: string): Observable<any[]> {
     const params: any = {};
     if (studentId) params.studentId = studentId;
     if (status) params.status = status;
-    return this.http.get(`${this.apiUrl}/finance`, { params });
+    return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/finance`, { params }).pipe(
+      map(response => Array.isArray(response) ? response : (response?.data || []))
+    );
+  }
+
+  getInvoicesPaginated(options: { studentId?: string; status?: string; page?: number; limit?: number } = {}): Observable<PaginatedResponse<any>> {
+    const params: any = {
+      page: options.page ?? 1,
+      limit: options.limit ?? 20
+    };
+    if (options.studentId) params.studentId = options.studentId;
+    if (options.status) params.status = options.status;
+    return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/finance`, { params });
   }
 
   createInvoice(invoice: any): Observable<any> {

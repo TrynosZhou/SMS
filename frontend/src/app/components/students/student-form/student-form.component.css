@@ -213,6 +213,14 @@ select.form-input {
   padding-right: 40px;
 }
 
+.form-error {
+  color: #e53e3e;
+  font-size: 13px;
+  margin-top: 4px;
+  display: block;
+  font-weight: 500;
+}
+
 .form-hint {
   color: #666;
   font-size: 12px;

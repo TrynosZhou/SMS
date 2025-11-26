@@ -155,11 +155,13 @@
             [(ngModel)]="student.contactNumber" 
             name="contactNumber"
             required
-            placeholder="e.g., +254 712 345 678"
+            placeholder="e.g., 0771234567 or +263771234567"
             class="form-input"
-            pattern="[0-9+\s\-()]+"
-            [class.error]="studentForm.submitted && !student.contactNumber">
-          <small class="form-hint">Primary contact number</small>
+            [class.error]="(studentForm.submitted && !student.contactNumber) || contactNumberError"
+            (blur)="validateContactNumber()"
+            (input)="contactNumberError = ''">
+          <small class="form-hint" *ngIf="!contactNumberError">Primary contact number (Zimbabwean format: 07XXXXXXXX or +2637XXXXXXXX)</small>
+          <small class="form-error" *ngIf="contactNumberError">{{ contactNumberError }}</small>
         </div>
 
         <div class="form-group">
@@ -169,10 +171,13 @@
             id="phoneNumber"
             [(ngModel)]="student.phoneNumber" 
             name="phoneNumber"
-            placeholder="e.g., +254 712 345 678"
+            placeholder="e.g., 0771234567 or +263771234567"
             class="form-input"
-            pattern="[0-9+\s\-()]+">
-          <small class="form-hint">Alternative phone number</small>
+            [class.error]="phoneNumberError"
+            (blur)="validatePhoneNumber()"
+            (input)="phoneNumberError = ''">
+          <small class="form-hint" *ngIf="!phoneNumberError">Alternative phone number (Zimbabwean format: 07XXXXXXXX or +2637XXXXXXXX)</small>
+          <small class="form-error" *ngIf="phoneNumberError">{{ phoneNumberError }}</small>
         </div>
       </div>
 

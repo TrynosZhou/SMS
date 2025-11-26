@@ -111,8 +111,8 @@ export class ClassPromotionComponent implements OnInit {
     
     // Load classes and students in parallel
     Promise.all([
-      this.classService.getClasses().toPromise(),
-      this.studentService.getStudents().toPromise()
+      this.classService.getClasses().toPromise() as Promise<any[] | any>,
+      this.studentService.getStudents().toPromise() as Promise<any[] | any>
     ]).then(([classesData, studentsData]) => {
       // Process classes
       this.classes = Array.isArray(classesData) ? classesData : (classesData?.classes || []);

@@ -37,6 +37,7 @@ import { TeacherDashboardComponent } from './components/teacher/teacher-dashboar
 import { AuthGuard } from './guards/auth.guard';
 import { ModuleAccessGuard } from './guards/module-access.guard';
 import { SplashComponent } from './components/splash/splash.component';
+import { StudentTransferComponent } from './components/students/student-transfer/student-transfer.component';
 
 const routes: Routes = [
   { path: '', component: SplashComponent },
@@ -57,6 +58,7 @@ const routes: Routes = [
   { path: 'students', component: StudentListComponent, canActivate: [AuthGuard] },
   { path: 'students/new', component: StudentFormComponent, canActivate: [AuthGuard] },
   { path: 'students/:id/edit', component: StudentFormComponent, canActivate: [AuthGuard] },
+  { path: 'students/transfer', component: StudentTransferComponent, canActivate: [AuthGuard] },
   { path: 'teachers', component: TeacherListComponent, canActivate: [AuthGuard] },
   { path: 'teachers/new', component: TeacherFormComponent, canActivate: [AuthGuard] },
   { path: 'teachers/:id/edit', component: TeacherFormComponent, canActivate: [AuthGuard] },

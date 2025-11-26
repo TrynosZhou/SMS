@@ -22,6 +22,13 @@ export class TeacherListComponent implements OnInit {
   selectedTeacher: any = null;
   error = '';
   success = '';
+  pagination = {
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1
+  };
+  pageSizeOptions = [10, 20, 50];
 
   constructor(
     private teacherService: TeacherService,
@@ -36,12 +43,26 @@ export class TeacherListComponent implements OnInit {
     this.loadClasses();
   }
 
-  loadTeachers() {
+  loadTeachers(page = this.pagination.page) {
     this.loading = true;
-    this.teacherService.getTeachers().subscribe({
-      next: (data: any) => {
-        this.teachers = data || [];
+    this.teacherService.getTeachersPaginated(page, this.pagination.limit).subscribe({
+      next: (response: any) => {
+        const data = Array.isArray(response) ? response : (response?.data || []);
+        this.teachers = data;
+        if (response?.page !== undefined) {
+          this.pagination = {
+            page: response.page,
+            limit: response.limit,
+            total: response.total,
+            totalPages: response.totalPages
+          };
+        } else {
+          this.pagination.total = data.length;
+          this.pagination.totalPages = Math.max(1, Math.ceil(this.pagination.total / this.pagination.limit));
+          this.pagination.page = page;
+        }
         this.filteredTeachers = this.teachers;
+        this.filterTeachers();
         this.loading = false;
       },
       error: (err: any) => {
@@ -61,7 +82,7 @@ export class TeacherListComponent implements OnInit {
   loadSubjects() {
     this.subjectService.getSubjects().subscribe({
       next: (data: any) => {
-        this.allSubjects = data || [];
+        this.allSubjects = data?.data || data || [];
       },
       error: (err: any) => {
         console.error('Error loading subjects:', err);
@@ -73,9 +94,9 @@ export class TeacherListComponent implements OnInit {
   }
 
   loadClasses() {
-    this.classService.getClasses().subscribe({
+    this.classService.getClassesPaginated(1, 100).subscribe({
       next: (data: any) => {
-        this.allClasses = data || [];
+        this.allClasses = data?.data || data || [];
       },
       error: (err: any) => {
         console.error('Error loading classes:', err);
@@ -166,6 +187,20 @@ export class TeacherListComponent implements OnInit {
       return sum + (teacher.subjects ? teacher.subjects.length : 0);
     }, 0);
     return Math.round((total / this.teachers.length) * 10) / 10;
+  }
+
+  onPageChange(page: number) {
+    if (page < 1 || page > this.pagination.totalPages || page === this.pagination.page) {
+      return;
+    }
+    this.loadTeachers(page);
+  }
+
+  onPageSizeChange(limit: number | string) {
+    const parsedLimit = Number(limit);
+    this.pagination.limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : this.pagination.limit;
+    this.pagination.page = 1;
+    this.loadTeachers(1);
   }
 
   deleteTeacher(id: string, teacherName: string, teacherId: string) {

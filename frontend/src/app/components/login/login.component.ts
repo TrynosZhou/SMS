@@ -1,13 +1,14 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
+import { AuthService, LogoutReason } from '../../services/auth.service';
+import { validatePhoneNumber } from '../../utils/phone-validator';
 
 @Component({
   selector: 'app-login',
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   // Tab management
   activeTab: 'signin' | 'signup' | 'reset' = 'signin';
   
@@ -30,14 +31,36 @@ export class LoginComponent {
   
   error = '';
   success = '';
+  infoMessage = '';
   loading = false;
   
   // Password visibility toggles
   showPassword = false;
   showSignupPassword = false;
   showSignupConfirmPassword = false;
+  
+  // Phone validation error
+  signupContactNumberError = '';
 
   constructor(private authService: AuthService, private router: Router) { }
+
+  ngOnInit(): void {
+    const logoutReason = this.authService.consumeLogoutReason();
+    if (logoutReason) {
+      this.infoMessage = this.getLogoutMessage(logoutReason);
+    }
+  }
+
+  private getLogoutMessage(reason: LogoutReason): string {
+    switch (reason) {
+      case 'session-timeout':
+        return 'Your session has expired due to inactivity. Please log in again.';
+      case 'unauthorized':
+        return 'Your session is no longer valid. Please log in again.';
+      default:
+        return '';
+    }
+  }
 
   togglePasswordVisibility() {
     this.showPassword = !this.showPassword;
@@ -55,6 +78,9 @@ export class LoginComponent {
     this.activeTab = tab;
     this.error = '';
     this.success = '';
+    if (tab !== 'signin') {
+      this.infoMessage = '';
+    }
     // Clear all fields when switching tabs
     this.email = '';
     this.password = '';
@@ -80,6 +106,7 @@ export class LoginComponent {
     this.authService.login(this.email, this.password).subscribe({
       next: (response: any) => {
         this.loading = false;
+        this.infoMessage = '';
         
         if (!response || !response.user) {
           this.error = 'Invalid response from server';
@@ -179,12 +206,34 @@ export class LoginComponent {
     });
   }
 
+  validateSignupContactNumber(): void {
+    const result = validatePhoneNumber(this.signupContactNumber, true);
+    this.signupContactNumberError = result.isValid ? '' : (result.error || '');
+    if (result.isValid && result.normalized) {
+      this.signupContactNumber = result.normalized;
+    }
+  }
+
   onSignUp() {
+    this.error = '';
+    this.signupContactNumberError = '';
+    
     // Validation
     if (!this.signupRole || !this.signupUsername || !this.signupPassword || !this.signupConfirmPassword || 
         !this.signupFirstName || !this.signupLastName || !this.signupContactNumber) {
       this.error = 'Please fill in all fields';
       return;
+    }
+
+    // Validate phone number
+    const phoneResult = validatePhoneNumber(this.signupContactNumber, true);
+    if (!phoneResult.isValid) {
+      this.signupContactNumberError = phoneResult.error || 'Invalid phone number';
+      this.error = phoneResult.error || 'Please enter a valid phone number';
+      return;
+    }
+    if (phoneResult.normalized) {
+      this.signupContactNumber = phoneResult.normalized;
     }
 
     if (this.signupRole === 'PARENT') {

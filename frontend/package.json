@@ -5,6 +5,7 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build --configuration production --no-progress",
+    "build:clean": "rm -rf dist && ng build --configuration production --no-progress",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

@@ -20,28 +20,28 @@
     <div class="stat-card">
       <div class="stat-icon">👥</div>
       <div class="stat-content">
-        <div class="stat-value">{{ students.length }}</div>
+        <div class="stat-value">{{ pagination.total }}</div>
         <div class="stat-label">Total Students</div>
       </div>
     </div>
     <div class="stat-card">
       <div class="stat-icon">🏫</div>
       <div class="stat-content">
-        <div class="stat-value">{{ getStudentsByClass().length }}</div>
+        <div class="stat-value">{{ stats.classCount }}</div>
         <div class="stat-label">Classes</div>
       </div>
     </div>
     <div class="stat-card">
       <div class="stat-icon">🏠</div>
       <div class="stat-content">
-        <div class="stat-value">{{ getDayScholarsCount() }}</div>
+        <div class="stat-value">{{ stats.totalDayScholars }}</div>
         <div class="stat-label">Day Scholars</div>
       </div>
     </div>
     <div class="stat-card">
       <div class="stat-icon">🏫</div>
       <div class="stat-content">
-        <div class="stat-value">{{ getBoardersCount() }}</div>
+        <div class="stat-value">{{ stats.totalBoarders }}</div>
         <div class="stat-label">Boarders</div>
       </div>
     </div>
@@ -76,7 +76,7 @@
           [ngModelOptions]="{standalone: true}"
           placeholder="Search by name, student number, or contact..."
           class="search-input"
-          (input)="filterStudents()">
+          (input)="applyFilters()">
         <span class="search-icon">🔍</span>
       </div>
       <div class="filter-options">
@@ -85,7 +85,7 @@
           <select 
             [(ngModel)]="selectedClass" 
             [ngModelOptions]="{standalone: true}"
-            (change)="filterStudents()"
+            (change)="onClassFilterChange()"
             class="filter-select">
             <option value="">All Classes</option>
             <option *ngFor="let cls of classes" [value]="cls.id">
@@ -98,7 +98,7 @@
           <select 
             [(ngModel)]="selectedType" 
             [ngModelOptions]="{standalone: true}"
-            (change)="filterStudents()"
+            (change)="applyFilters()"
             class="filter-select">
             <option value="">All Types</option>
             <option value="Day Scholar">Day Scholar</option>
@@ -110,7 +110,7 @@
           <select 
             [(ngModel)]="selectedGender" 
             [ngModelOptions]="{standalone: true}"
-            (change)="filterStudents()"
+            (change)="applyFilters()"
             class="filter-select">
             <option value="">All Genders</option>
             <option value="Male">Male</option>
@@ -134,6 +134,32 @@
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination Controls -->
+  <div class="pagination-bar" *ngIf="!loading && pagination.total > 0">
+    <div class="pagination-info">
+      Showing page {{ pagination.page }} of {{ pagination.totalPages }} ({{ pagination.total }} students)
+    </div>
+    <div class="pagination-actions">
+      <label class="page-size-label">
+        Rows per page
+        <select 
+          [ngModel]="pagination.limit" 
+          (ngModelChange)="onPageSizeChange($event)"
+          class="page-size-select">
+          <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size }}</option>
+        </select>
+      </label>
+      <div class="page-buttons">
+        <button class="btn btn-secondary" (click)="onPageChange(pagination.page - 1)" [disabled]="pagination.page === 1">
+          ◀ Previous
+        </button>
+        <button class="btn btn-secondary" (click)="onPageChange(pagination.page + 1)" [disabled]="pagination.page === pagination.totalPages">
+          Next ▶
+        </button>
       </div>
     </div>
   </div>

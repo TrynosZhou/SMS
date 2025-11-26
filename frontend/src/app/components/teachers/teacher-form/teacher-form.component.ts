@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { TeacherService } from '../../../services/teacher.service';
 import { SubjectService } from '../../../services/subject.service';
 import { ClassService } from '../../../services/class.service';
+import { validatePhoneNumber } from '../../../utils/phone-validator';
 
 @Component({
   selector: 'app-teacher-form',
@@ -30,6 +31,9 @@ export class TeacherFormComponent implements OnInit {
   success = '';
   submitting = false;
   maxDate = '';
+  
+  // Phone validation error
+  phoneNumberError = '';
 
   constructor(
     private teacherService: TeacherService,
@@ -134,10 +138,37 @@ export class TeacherFormComponent implements OnInit {
     return age;
   }
 
+  validatePhoneNumber(): void {
+    if (this.teacher.phoneNumber && this.teacher.phoneNumber.trim()) {
+      const result = validatePhoneNumber(this.teacher.phoneNumber, false);
+      this.phoneNumberError = result.isValid ? '' : (result.error || '');
+      if (result.isValid && result.normalized) {
+        this.teacher.phoneNumber = result.normalized;
+      }
+    } else {
+      this.phoneNumberError = '';
+    }
+  }
+
   onSubmit() {
     this.error = '';
     this.success = '';
+    this.phoneNumberError = '';
     this.submitting = true;
+
+    // Validate phone number if provided
+    if (this.teacher.phoneNumber && this.teacher.phoneNumber.trim()) {
+      const phoneResult = validatePhoneNumber(this.teacher.phoneNumber, false);
+      if (!phoneResult.isValid) {
+        this.phoneNumberError = phoneResult.error || 'Invalid phone number';
+        this.error = phoneResult.error || 'Please enter a valid phone number';
+        this.submitting = false;
+        return;
+      }
+      if (phoneResult.normalized) {
+        this.teacher.phoneNumber = phoneResult.normalized;
+      }
+    }
 
     // Validate required fields
     if (!this.teacher.firstName || !this.teacher.lastName || !this.teacher.dateOfBirth) {

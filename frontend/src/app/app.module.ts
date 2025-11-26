@@ -43,6 +43,7 @@ import { TeacherDashboardComponent } from './components/teacher/teacher-dashboar
 import { RecordPaymentComponent } from './components/finance/record-payment/record-payment.component';
 import { OutstandingBalanceComponent } from './components/finance/outstanding-balance/outstanding-balance.component';
 import { SplashComponent } from './components/splash/splash.component';
+import { StudentTransferComponent } from './components/students/student-transfer/student-transfer.component';
 
 @NgModule({
   declarations: [
@@ -82,7 +83,8 @@ import { SplashComponent } from './components/splash/splash.component';
     TeacherDashboardComponent,
     RecordPaymentComponent,
     OutstandingBalanceComponent,
-    SplashComponent
+    SplashComponent,
+    StudentTransferComponent
   ],
   imports: [
     BrowserModule,

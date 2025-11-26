@@ -13,6 +13,32 @@
     </div>
   </div>
 
+  <!-- Pagination Controls -->
+  <div class="pagination-bar" *ngIf="!loading && pagination.total > 0">
+    <div class="pagination-info">
+      Showing page {{ pagination.page }} of {{ pagination.totalPages }} ({{ pagination.total }} classes)
+    </div>
+    <div class="pagination-actions">
+      <label class="page-size-label">
+        Rows per page
+        <select 
+          [ngModel]="pagination.limit" 
+          (ngModelChange)="onPageSizeChange($event)"
+          class="page-size-select">
+          <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size === 1000 ? 'All' : size }}</option>
+        </select>
+      </label>
+      <div class="page-buttons">
+        <button class="btn btn-secondary" (click)="onPageChange(pagination.page - 1)" [disabled]="pagination.page === 1">
+          ◀ Previous
+        </button>
+        <button class="btn btn-secondary" (click)="onPageChange(pagination.page + 1)" [disabled]="pagination.page === pagination.totalPages">
+          Next ▶
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Alert Messages -->
   <div class="alert alert-success" *ngIf="success" (click)="success = ''">
     <span class="alert-icon">✅</span>
@@ -92,7 +118,7 @@
             <span class="sort-icon" *ngIf="sortColumn === 'teachers'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
           </th>
           <th>Status</th>
-          <th class="actions-header"></th>
+          <th class="actions-header">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -123,22 +149,24 @@
           </td>
           <td class="actions-cell">
             <div class="action-buttons">
-              <button 
-                class="btn-action btn-edit" 
-                (click)="editClass(classItem.id)" 
-                title="Edit Class">
-                <span class="action-icon">✏️</span>
-                <span class="action-text">Edit</span>
-              </button>
               <span class="actions-label">Actions</span>
-              <button 
-                class="btn-action btn-delete" 
-                (click)="deleteClass(classItem.id, classItem.name)" 
-                [disabled]="loading"
-                title="Delete Class">
-                <span class="action-icon">🗑️</span>
-                <span class="action-text">Delete</span>
-              </button>
+              <div class="action-buttons-row">
+                <button 
+                  class="btn-action btn-edit" 
+                  (click)="editClass(getCleanId(classItem.id))" 
+                  title="Edit Class">
+                  <span class="action-icon">✏️</span>
+                  <span class="action-text">Edit</span>
+                </button>
+                <button 
+                  class="btn-action btn-delete" 
+                  (click)="deleteClass(getCleanId(classItem.id), classItem.name)" 
+                  [disabled]="loading"
+                  title="Delete Class">
+                  <span class="action-icon">🗑️</span>
+                  <span class="action-text">Delete</span>
+                </button>
+              </div>
             </div>
           </td>
         </tr>
@@ -167,7 +195,7 @@
     <!-- Results Summary -->
     <div class="results-summary" *ngIf="filteredClasses.length > 0">
       <span class="summary-text">
-        Showing {{ filteredClasses.length }} of {{ classes.length }} class{{ classes.length !== 1 ? 'es' : '' }}
+        Showing {{ filteredClasses.length }} of {{ pagination.total }} class{{ pagination.total !== 1 ? 'es' : '' }}
       </span>
     </div>
   </div>

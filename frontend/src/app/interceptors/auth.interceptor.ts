@@ -15,14 +15,38 @@ export class AuthInterceptor implements HttpInterceptor {
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<any> {
     const token = this.authService.getToken();
     
-    // Clone the request and add the authorization header if token exists
+    // Clean URL to remove any :1 or similar suffixes from IDs in the path
+    // This fixes issues where class IDs or other UUIDs have :1 appended
+    let cleanedUrl = req.url;
+    // Match UUIDs in the path (not in the domain/port) and remove trailing :number or :text
+    // Pattern: /api/classes/{uuid}:1 or /api/settings/reminders:1
+    // Only match after /api/ to avoid matching port numbers like :3001
+    if (cleanedUrl.includes('/api/')) {
+      const apiIndex = cleanedUrl.indexOf('/api/');
+      const beforeApi = cleanedUrl.substring(0, apiIndex);
+      const afterApi = cleanedUrl.substring(apiIndex);
+      // Clean the path part (after /api/) to remove :suffix from UUIDs
+      const cleanedPath = afterApi.replace(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):[^/\s?&#]+/gi, '$1');
+      cleanedUrl = beforeApi + cleanedPath;
+      
+      if (cleanedUrl !== req.url) {
+        console.log('AuthInterceptor: Cleaned URL from', req.url, 'to', cleanedUrl);
+      }
+    }
+    
+    // Clone the request with cleaned URL and add the authorization header if token exists
     let authReq = req;
-    if (token) {
-      authReq = req.clone({
-        setHeaders: {
+    if (cleanedUrl !== req.url || token) {
+      const update: any = {};
+      if (cleanedUrl !== req.url) {
+        update.url = cleanedUrl;
+      }
+      if (token) {
+        update.setHeaders = {
           Authorization: `Bearer ${token}`
-        }
-      });
+        };
+      }
+      authReq = req.clone(update);
     }
     
     return next.handle(authReq).pipe(
@@ -37,7 +61,7 @@ export class AuthInterceptor implements HttpInterceptor {
           if (!isAuthEndpoint && token) {
             // Token is invalid or expired - clear it and redirect to login
             console.warn('Authentication failed - token may be expired or invalid');
-            this.authService.logout();
+            this.authService.logout('unauthorized');
           }
         }
         

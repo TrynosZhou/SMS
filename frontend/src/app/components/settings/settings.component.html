@@ -463,7 +463,16 @@
         </div>
         <div class="form-group">
           <label>School Phone</label>
-          <input type="text" [(ngModel)]="settings.schoolPhone" name="schoolPhone">
+          <input 
+            type="tel" 
+            [(ngModel)]="settings.schoolPhone" 
+            name="schoolPhone"
+            placeholder="e.g., 0771234567 or +263771234567"
+            [class.error]="schoolPhoneError"
+            (blur)="validateSchoolPhone()"
+            (input)="schoolPhoneError = ''">
+          <small class="form-hint" *ngIf="!schoolPhoneError">Zimbabwean format: 07XXXXXXXX or +2637XXXXXXXX</small>
+          <small class="form-error" *ngIf="schoolPhoneError">{{ schoolPhoneError }}</small>
         </div>
         <div class="form-group">
           <label>School Email</label>

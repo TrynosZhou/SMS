@@ -29,9 +29,7 @@ export class MarkSheetComponent implements OnInit {
   
   examTypes = [
     { value: 'mid_term', label: 'Mid Term' },
-    { value: 'end_term', label: 'End of Term' },
-    { value: 'assignment', label: 'Assignment' },
-    { value: 'quiz', label: 'Quiz' }
+    { value: 'end_term', label: 'End of Term' }
   ];
 
   markSheetData: any = null;
@@ -124,17 +122,62 @@ export class MarkSheetComponent implements OnInit {
   }
 
   loadClasses() {
-    // For admin/superadmin - load all classes
+    // For admin/superadmin - load all classes using pagination
     this.loading = true;
-    this.classService.getClasses().subscribe({
-      next: (data: any[]) => {
-        this.classes = (data || []).filter(c => c.isActive);
-        this.loading = false;
+    this.classes = [];
+    this.loadAllClasses(1, []);
+  }
+
+  loadAllClasses(page: number, accumulatedClasses: any[]) {
+    this.classService.getClassesPaginated(page, 100).subscribe({
+      next: (response: any) => {
+        const data = response?.data || response || [];
+        const allClasses = [...accumulatedClasses, ...data];
+        
+        // Check if there are more pages to fetch
+        const totalPages = response?.totalPages || 1;
+        const currentPage = response?.page || page;
+        
+        if (currentPage < totalPages) {
+          // Fetch next page
+          this.loadAllClasses(currentPage + 1, allClasses);
+        } else {
+          // All classes loaded - clean IDs, remove duplicates, and filter active
+          const cleanedClasses = allClasses.map((classItem: any) => {
+            if (classItem.id) {
+              let cleanId = String(classItem.id).trim();
+              if (cleanId.includes(':')) {
+                cleanId = cleanId.split(':')[0].trim();
+              }
+              classItem.id = cleanId;
+            }
+            return classItem;
+          });
+          
+          // Remove duplicates by ID
+          const uniqueClassesMap = new Map<string, any>();
+          cleanedClasses.forEach((classItem: any) => {
+            const id = classItem.id || '';
+            if (id && !uniqueClassesMap.has(id)) {
+              uniqueClassesMap.set(id, classItem);
+            }
+          });
+          
+          // Filter to only active classes
+          this.classes = Array.from(uniqueClassesMap.values()).filter(c => c.isActive);
+          this.loading = false;
+          console.log(`Loaded ${this.classes.length} active classes for mark sheet`);
+        }
       },
       error: (err: any) => {
         console.error('Error loading classes:', err);
         this.error = 'Failed to load classes';
         this.loading = false;
+        // Use accumulated classes if we got some before the error
+        if (accumulatedClasses.length > 0) {
+          this.classes = accumulatedClasses.filter(c => c.isActive);
+          console.warn(`Loaded partial class list (${this.classes.length} classes) due to error`);
+        }
         setTimeout(() => this.error = '', 5000);
       }
     });

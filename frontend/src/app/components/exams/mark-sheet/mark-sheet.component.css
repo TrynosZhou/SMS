@@ -25,20 +25,22 @@ h1 {
 
 .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 20px;
-  align-items: end;
+  grid-template-columns: 200px 180px 160px 1fr;
+  gap: 15px;
+  align-items: start;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
+  min-width: 0; /* Allow shrinking below content size */
 }
 
 .form-group label {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-weight: 600;
   color: #495057;
+  font-size: 13px;
 }
 
 .form-group .required {
@@ -46,10 +48,21 @@ h1 {
 }
 
 .form-control {
-  padding: 10px;
+  padding: 10px 12px;
   border: 1px solid #ced4da;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 13px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.button-container {
+  margin-top: 12px;
+}
+
+.button-container .btn {
+  width: 100%;
+  justify-content: center;
 }
 
 .btn {
@@ -509,7 +522,16 @@ h1 {
   .statistics-grid {
     grid-template-columns: 1fr;
   }
+}
 
+@media (max-width: 1200px) {
+  .form-row {
+    grid-template-columns: 180px 160px 140px 1fr;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 768px) {
   .form-row {
     grid-template-columns: 1fr;
   }

@@ -24,7 +24,7 @@
     <div class="stat-card">
       <div class="stat-icon">👥</div>
       <div class="stat-content">
-        <div class="stat-value">{{ teachers.length }}</div>
+        <div class="stat-value">{{ pagination.total }}</div>
         <div class="stat-label">Total Teachers</div>
       </div>
     </div>
@@ -47,6 +47,32 @@
       <div class="stat-content">
         <div class="stat-value">{{ getAverageSubjectsPerTeacher() }}</div>
         <div class="stat-label">Avg Subjects/Teacher</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination Controls -->
+  <div class="pagination-bar" *ngIf="!loading && pagination.total > 0">
+    <div class="pagination-info">
+      Showing page {{ pagination.page }} of {{ pagination.totalPages }} ({{ pagination.total }} teachers)
+    </div>
+    <div class="pagination-actions">
+      <label class="page-size-label">
+        Rows per page
+        <select 
+          [ngModel]="pagination.limit" 
+          (ngModelChange)="onPageSizeChange($event)"
+          class="page-size-select">
+          <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size }}</option>
+        </select>
+      </label>
+      <div class="page-buttons">
+        <button class="btn btn-secondary" (click)="onPageChange(pagination.page - 1)" [disabled]="pagination.page === 1">
+          ◀ Previous
+        </button>
+        <button class="btn btn-secondary" (click)="onPageChange(pagination.page + 1)" [disabled]="pagination.page === pagination.totalPages">
+          Next ▶
+        </button>
       </div>
     </div>
   </div>

@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { PaginatedResponse } from '../types/pagination';
 
 @Injectable({
   providedIn: 'root'
@@ -11,8 +13,16 @@ export class ClassService {
 
   constructor(private http: HttpClient) { }
 
-  getClasses(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/classes`);
+  getClasses(): Observable<any[]> {
+    return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/classes`).pipe(
+      map(response => Array.isArray(response) ? response : (response?.data || []))
+    );
+  }
+
+  getClassesPaginated(page = 1, limit = 20): Observable<PaginatedResponse<any>> {
+    return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/classes`, {
+      params: { page, limit }
+    });
   }
 
   getClassById(id: string): Observable<any> {
@@ -28,7 +38,45 @@ export class ClassService {
   }
 
   deleteClass(id: string): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/classes/${id}`);
+    console.log('deleteClass service - Received ID:', id, 'Type:', typeof id);
+    
+    // Clean the ID - remove any trailing characters after colon (e.g., :1)
+    let cleanId = String(id).trim();
+    console.log('deleteClass service - After String conversion:', cleanId);
+    
+    // Remove any trailing :number or :text patterns (e.g., :1, :abc)
+    // Split by colon and take only the first part
+    if (cleanId.includes(':')) {
+      const beforeColon = cleanId.split(':')[0].trim();
+      console.log('deleteClass service - Found colon, before:', beforeColon, 'full:', cleanId);
+      cleanId = beforeColon;
+    }
+    
+    // Extra safety: Remove any non-UUID characters that might have slipped through
+    // But preserve hyphens in their correct positions
+    const uuidMatch = cleanId.match(/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+    if (uuidMatch) {
+      cleanId = uuidMatch[1];
+      console.log('deleteClass service - Extracted UUID:', cleanId);
+    }
+    
+    // Validate it's a proper UUID format before making the request
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(cleanId)) {
+      console.error('deleteClass service - Invalid UUID format. Original:', id, 'Cleaned:', cleanId);
+      return throwError(() => new Error(`Invalid class ID format: ${id}`));
+    }
+    
+    // Construct the URL using template literal - Angular HttpClient handles encoding
+    const url = `${this.apiUrl}/classes/${cleanId}`;
+    console.log('deleteClass service - Final URL:', url);
+    console.log('deleteClass service - URL length:', url.length);
+    console.log('deleteClass service - ID in URL:', cleanId, 'Length:', cleanId.length);
+    
+    // Make the request
+    const request = this.http.delete(url);
+    console.log('deleteClass service - Request created');
+    return request;
   }
 }
 

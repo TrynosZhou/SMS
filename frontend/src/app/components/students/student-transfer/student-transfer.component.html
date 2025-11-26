@@ -1,0 +1,384 @@
+<div class="transfer-container">
+  <!-- Modern Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-icon-wrapper">
+        <div class="header-icon">🔄</div>
+      </div>
+      <div class="header-text">
+        <h1>Student Transfer</h1>
+        <p class="subtitle">Move learners between classes with complete audit trail</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert Messages with Animation -->
+  <div class="alert alert-success" *ngIf="successMessage" [@fadeIn]>
+    <div class="alert-content">
+      <span class="alert-icon">✓</span>
+      <span>{{ successMessage }}</span>
+    </div>
+    <button class="alert-close" (click)="clearSuccessMessage()" aria-label="Close">×</button>
+  </div>
+  <div class="alert alert-error" *ngIf="errorMessage" [@fadeIn]>
+    <div class="alert-content">
+      <span class="alert-icon">⚠</span>
+      <span>{{ errorMessage }}</span>
+    </div>
+    <button class="alert-close" (click)="clearErrorMessage()" aria-label="Close">×</button>
+  </div>
+
+  <!-- Main Transfer Grid -->
+  <div class="transfer-grid">
+    <!-- Transfer Form Card -->
+    <div class="card transfer-form-card" [@slideIn]>
+      <div class="card-header">
+        <div class="card-header-content">
+          <div class="card-icon">📝</div>
+          <div>
+            <h2>Transfer Details</h2>
+            <p>Select student and destination class</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <!-- Enhanced Search -->
+        <div class="form-group">
+          <label class="form-label">
+            <span class="label-icon">🔍</span>
+            Search Student
+          </label>
+          <div class="search-box-modern">
+            <input 
+              type="text" 
+              [(ngModel)]="searchTerm" 
+              (input)="filterStudentList()" 
+              placeholder="Type name or student number..."
+              class="search-input-modern">
+            <button class="search-clear" *ngIf="searchTerm" (click)="clearSearch()" aria-label="Clear">
+              ×
+            </button>
+          </div>
+          <div class="search-results-count" *ngIf="searchTerm">
+            {{ filteredStudents.length }} student(s) found
+          </div>
+        </div>
+
+        <!-- Student Selection -->
+        <div class="form-group">
+          <label class="form-label">
+            Select Student <span class="required">*</span>
+          </label>
+          <div class="select-wrapper">
+            <select 
+              class="form-control-modern" 
+              [(ngModel)]="selectedStudentId" 
+              (change)="onStudentChange()" 
+              [disabled]="loadingStudents">
+              <option value="">{{ loadingStudents ? 'Loading students...' : 'Choose a student' }}</option>
+              <option *ngFor="let student of filteredStudents" [value]="student.id">
+                {{ student.firstName }} {{ student.lastName }} - {{ student.studentNumber }}
+              </option>
+            </select>
+            <div class="select-arrow">▼</div>
+          </div>
+        </div>
+
+        <!-- Selected Student Info Card -->
+        <div class="student-info-card" *ngIf="selectedStudent" [@slideIn]>
+          <div class="student-info-header">
+            <div class="student-avatar">
+              <span>{{ selectedStudent.firstName?.charAt(0) }}{{ selectedStudent.lastName?.charAt(0) }}</span>
+            </div>
+            <div class="student-info-text">
+              <h3>{{ selectedStudent.firstName }} {{ selectedStudent.lastName }}</h3>
+              <p class="student-number">{{ selectedStudent.studentNumber }}</p>
+            </div>
+          </div>
+          
+          <div class="info-divider"></div>
+          
+          <div class="current-class-info">
+            <div class="info-label">Current Class</div>
+            <div class="current-class-badge">
+              <span class="class-icon">🏫</span>
+              <span class="class-name">{{ getCurrentClassName() }}</span>
+            </div>
+          </div>
+
+          <div class="parent-info" *ngIf="selectedStudent.parent">
+            <div class="info-label">Linked Parent</div>
+            <div class="parent-name">
+              <span class="parent-icon">👤</span>
+              {{ selectedStudent.parent?.firstName }} {{ selectedStudent.parent?.lastName }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Transfer Type Selection -->
+        <div class="form-group" *ngIf="selectedStudent">
+          <label class="form-label">
+            <span class="label-icon">🔄</span>
+            Transfer Type <span class="required">*</span>
+          </label>
+          <div class="transfer-type-selector">
+            <label class="transfer-type-option" [class.active]="transferType === 'internal'">
+              <input 
+                type="radio" 
+                name="transferType" 
+                value="internal"
+                [(ngModel)]="transferType"
+                (change)="onTransferTypeChange()">
+              <div class="option-content">
+                <span class="option-icon">🏫</span>
+                <div>
+                  <strong>Internal Transfer</strong>
+                  <small>Move student to another class within this school</small>
+                </div>
+              </div>
+            </label>
+            <label class="transfer-type-option" [class.active]="transferType === 'external'">
+              <input 
+                type="radio" 
+                name="transferType" 
+                value="external"
+                [(ngModel)]="transferType"
+                (change)="onTransferTypeChange()">
+              <div class="option-content">
+                <span class="option-icon">🚪</span>
+                <div>
+                  <strong>External Transfer</strong>
+                  <small>Student transferring to another school</small>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Internal Transfer: Destination Class Selection -->
+        <div class="form-group" *ngIf="transferType === 'internal'">
+          <label class="form-label">
+            <span class="label-icon">🎯</span>
+            Destination Class <span class="required">*</span>
+          </label>
+          <div class="select-wrapper">
+            <select 
+              class="form-control-modern" 
+              [(ngModel)]="targetClassId" 
+              [disabled]="loadingClasses || !selectedStudent">
+              <option value="">{{ loadingClasses ? 'Loading classes...' : (!selectedStudent ? 'Select student first' : 'Choose destination class') }}</option>
+              <option *ngFor="let cls of classes" [value]="cls.id" [disabled]="cls.id === selectedStudent?.classId">
+                {{ cls.name }} ({{ cls.form }})
+              </option>
+            </select>
+            <div class="select-arrow">▼</div>
+          </div>
+        </div>
+
+        <!-- External Transfer: External School Information -->
+        <div *ngIf="transferType === 'external'" [@slideIn]>
+          <div class="form-group">
+            <label class="form-label">
+              <span class="label-icon">🏫</span>
+              External School Name <span class="required">*</span>
+            </label>
+            <input 
+              type="text" 
+              class="form-control-modern" 
+              [(ngModel)]="externalSchoolName" 
+              placeholder="Enter the name of the school"
+              required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              <span class="label-icon">📍</span>
+              External School Address
+            </label>
+            <textarea 
+              class="form-control-modern textarea-modern" 
+              rows="3" 
+              [(ngModel)]="externalSchoolAddress" 
+              placeholder="Enter the address of the external school"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              <span class="label-icon">📞</span>
+              External School Phone
+            </label>
+            <input 
+              type="tel" 
+              class="form-control-modern" 
+              [(ngModel)]="externalSchoolPhone" 
+              placeholder="e.g., 0771234567 or +263771234567"
+              (blur)="validateExternalSchoolPhone()"
+              (input)="errorMessage = ''">
+            <small class="form-hint">Zimbabwean format: 07XXXXXXXX or +2637XXXXXXXX</small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              <span class="label-icon">📧</span>
+              External School Email
+            </label>
+            <input 
+              type="email" 
+              class="form-control-modern" 
+              [(ngModel)]="externalSchoolEmail" 
+              placeholder="Enter the email address of the external school">
+          </div>
+        </div>
+
+        <!-- Transfer Preview -->
+        <div class="transfer-preview" *ngIf="selectedStudent && ((transferType === 'internal' && targetClassId) || (transferType === 'external' && externalSchoolName))" [@slideIn]>
+          <div class="transfer-arrow-container">
+            <div class="class-box from-class">
+              <div class="class-box-icon">📚</div>
+              <div class="class-box-name">{{ getCurrentClassName() }}</div>
+            </div>
+            <div class="transfer-arrow">
+              <svg width="40" height="40" viewBox="0 0 40 40">
+                <path d="M10 20 L30 20 M25 15 L30 20 L25 25" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="class-box to-class" [class.external]="transferType === 'external'">
+              <div class="class-box-icon">{{ transferType === 'external' ? '🚪' : '🎯' }}</div>
+              <div class="class-box-name">
+                <span *ngIf="transferType === 'internal'">{{ getTargetClassName() }}</span>
+                <span *ngIf="transferType === 'external'">{{ externalSchoolName || 'External School' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reason Textarea -->
+        <div class="form-group">
+          <label class="form-label">
+            <span class="label-icon">📄</span>
+            Transfer Reason <span class="optional">(optional)</span>
+          </label>
+          <textarea 
+            class="form-control-modern textarea-modern" 
+            rows="4" 
+            [(ngModel)]="transferReason" 
+            placeholder="Enter reason for transfer (e.g., Academic performance, Parent request, etc.)"></textarea>
+          <div class="char-count">{{ transferReason.length }}/500</div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="form-actions">
+          <button 
+            class="btn btn-transfer" 
+            [class.btn-external]="transferType === 'external'"
+            (click)="submitTransfer()" 
+            [disabled]="submitting || !selectedStudent || (transferType === 'internal' && !targetClassId) || (transferType === 'external' && !externalSchoolName)"
+            [class.loading]="submitting">
+            <span *ngIf="!submitting" class="btn-content">
+              <span class="btn-icon">{{ transferType === 'external' ? '🚪' : '🔄' }}</span>
+              <span>{{ transferType === 'external' ? 'Transfer to External School' : 'Transfer Student' }}</span>
+            </span>
+            <span *ngIf="submitting" class="btn-content">
+              <span class="spinner-btn"></span>
+              <span>Processing Transfer...</span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transfer History Card -->
+    <div class="card history-card" [@slideIn]>
+      <div class="card-header">
+        <div class="card-header-content">
+          <div class="card-icon">📋</div>
+          <div>
+            <h2>Transfer History</h2>
+            <p *ngIf="selectedStudent">Transfer records for {{ selectedStudent.firstName }} {{ selectedStudent.lastName }}</p>
+            <p *ngIf="!selectedStudent" class="placeholder-text">Select a student to view transfer history</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="history-body" *ngIf="selectedStudent">
+        <!-- Loading State -->
+        <div class="history-loading" *ngIf="loadingHistory">
+          <div class="loading-spinner"></div>
+          <p>Loading transfer history...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div class="history-empty" *ngIf="!loadingHistory && transferHistory.length === 0">
+          <div class="empty-icon-wrapper">
+            <div class="empty-icon">📭</div>
+          </div>
+          <h3>No Transfer History</h3>
+          <p>This student has not been transferred yet.</p>
+        </div>
+
+        <!-- History Timeline -->
+        <div class="history-timeline" *ngIf="!loadingHistory && transferHistory.length > 0">
+          <div class="timeline-item" *ngFor="let transfer of transferHistory; trackBy: trackByTransferId" [attr.data-index]="$index">
+            <div class="timeline-marker"></div>
+            <div class="timeline-content">
+              <div class="transfer-path">
+                <div class="path-from">
+                  <span class="path-label">From</span>
+                  <span class="path-class">{{ transfer.fromClass?.name || 'Unassigned' }}</span>
+                </div>
+                <div class="path-arrow">→</div>
+                <div class="path-to" [class.external-transfer]="transfer.transferType === 'external'">
+                  <span class="path-label">To</span>
+                  <span class="path-class" *ngIf="transfer.transferType === 'internal'">{{ transfer.toClass?.name }}</span>
+                  <div *ngIf="transfer.transferType === 'external'" class="external-school-info">
+                    <span class="path-class external-school-name">{{ transfer.externalSchoolName }}</span>
+                    <span class="external-school-badge">External School</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- External School Details -->
+              <div class="external-school-details" *ngIf="transfer.transferType === 'external'">
+                <div class="detail-row" *ngIf="transfer.externalSchoolAddress">
+                  <span class="detail-label">School Address:</span>
+                  <span class="detail-value">{{ transfer.externalSchoolAddress }}</span>
+                </div>
+                <div class="detail-row" *ngIf="transfer.externalSchoolPhone">
+                  <span class="detail-label">School Phone:</span>
+                  <span class="detail-value">{{ transfer.externalSchoolPhone }}</span>
+                </div>
+                <div class="detail-row" *ngIf="transfer.externalSchoolEmail">
+                  <span class="detail-label">School Email:</span>
+                  <span class="detail-value">{{ transfer.externalSchoolEmail }}</span>
+                </div>
+              </div>
+              
+              <div class="transfer-details">
+                <div class="detail-row">
+                  <span class="detail-label">Date:</span>
+                  <span class="detail-value">{{ transfer.createdAt | date:'medium' }}</span>
+                </div>
+                <div class="detail-row" *ngIf="transfer.performedBy">
+                  <span class="detail-label">By:</span>
+                  <span class="detail-value">{{ getPerformedByName(transfer) }}</span>
+                </div>
+                <div class="detail-row" *ngIf="transfer.reason">
+                  <span class="detail-label">Reason:</span>
+                  <span class="detail-value reason-text">{{ transfer.reason }}</span>
+                </div>
+              </div>
+              
+              <div class="transfer-status">
+                <span class="status-badge" [class.status-completed]="isTransferCompleted(transfer)" [class.status-cancelled]="isTransferCancelled(transfer)">
+                  {{ transfer.status | titlecase }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

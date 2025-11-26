@@ -87,10 +87,13 @@
             id="phoneNumber"
             [(ngModel)]="teacher.phoneNumber" 
             name="phoneNumber"
-            placeholder="e.g., +254 712 345 678"
+            placeholder="e.g., 0771234567 or +263771234567"
             class="form-input"
-            pattern="[0-9+\s\-()]+">
-          <small class="form-hint">Contact phone number</small>
+            [class.error]="phoneNumberError"
+            (blur)="validatePhoneNumber()"
+            (input)="phoneNumberError = ''">
+          <small class="form-hint" *ngIf="!phoneNumberError">Contact phone number (Zimbabwean format: 07XXXXXXXX or +2637XXXXXXXX)</small>
+          <small class="form-error" *ngIf="phoneNumberError">{{ phoneNumberError }}</small>
         </div>
       </div>
 

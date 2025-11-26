@@ -3,6 +3,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError, Observer } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { PaginatedResponse } from '../types/pagination';
 
 @Injectable({
   providedIn: 'root'
@@ -12,12 +13,25 @@ export class StudentService {
 
   constructor(private http: HttpClient) { }
 
-  getStudents(classId?: string): Observable<any> {
-    const options: any = {};
+  getStudents(classId?: string): Observable<any[]> {
+    const params: any = {};
     if (classId) {
-      options.params = { classId };
+      params.classId = classId;
     }
-    return this.http.get(`${this.apiUrl}/students`, options);
+    return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/students`, { params }).pipe(
+      map(response => Array.isArray(response) ? response : (response?.data || []))
+    );
+  }
+
+  getStudentsPaginated(params: { classId?: string; page?: number; limit?: number } = {}): Observable<PaginatedResponse<any>> {
+    const queryParams: any = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 20
+    };
+    if (params.classId) {
+      queryParams.classId = params.classId;
+    }
+    return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/students`, { params: queryParams });
   }
 
   getStudentById(id: string): Observable<any> {
@@ -154,6 +168,23 @@ export class StudentService {
         return throwError(() => error);
       })
     );
+  }
+
+  transferStudent(payload: { 
+    studentId: string; 
+    toClassId?: string; 
+    reason?: string;
+    transferType?: 'internal' | 'external';
+    externalSchoolName?: string;
+    externalSchoolAddress?: string;
+    externalSchoolPhone?: string;
+    externalSchoolEmail?: string;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/students/transfer`, payload);
+  }
+
+  getStudentTransfers(studentId: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/students/${studentId}/transfers`);
   }
 }
 

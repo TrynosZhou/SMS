@@ -4,6 +4,7 @@ import { SettingsService } from '../../services/settings.service';
 import { AuthService } from '../../services/auth.service';
 import { PromotionRuleService } from '../../services/promotion-rule.service';
 import { ClassService } from '../../services/class.service';
+import { validatePhoneNumber } from '../../utils/phone-validator';
 
 @Component({
   selector: 'app-settings',
@@ -687,6 +688,20 @@ export class SettingsComponent implements OnInit {
     return !this.promotionRules.find(r => r.fromClassId === classId && r.isActive);
   }
 
+  schoolPhoneError = '';
+
+  validateSchoolPhone(): void {
+    if (this.settings.schoolPhone && this.settings.schoolPhone.trim()) {
+      const result = validatePhoneNumber(this.settings.schoolPhone, false);
+      this.schoolPhoneError = result.isValid ? '' : (result.error || '');
+      if (result.isValid && result.normalized) {
+        this.settings.schoolPhone = result.normalized;
+      }
+    } else {
+      this.schoolPhoneError = '';
+    }
+  }
+
   validateGradeThresholds() {
     if (!this.settings.gradeThresholds) return;
     
@@ -861,6 +876,21 @@ export class SettingsComponent implements OnInit {
       this.settings.gradeLabels.needsImprovement = this.settings.gradeLabels.needsImprovement.trim();
       this.settings.gradeLabels.basic = this.settings.gradeLabels.basic.trim();
       this.settings.gradeLabels.fail = this.settings.gradeLabels.fail.trim();
+    }
+
+    // Validate school phone if provided
+    if (this.settings.schoolPhone && this.settings.schoolPhone.trim()) {
+      const phoneResult = validatePhoneNumber(this.settings.schoolPhone, false);
+      if (!phoneResult.isValid) {
+        this.schoolPhoneError = phoneResult.error || 'Invalid phone number';
+        this.error = phoneResult.error || 'Please enter a valid school phone number';
+        this.loading = false;
+        setTimeout(() => this.error = '', 5000);
+        return;
+      }
+      if (phoneResult.normalized) {
+        this.settings.schoolPhone = phoneResult.normalized;
+      }
     }
 
     // Ensure currencySymbol is set and not empty

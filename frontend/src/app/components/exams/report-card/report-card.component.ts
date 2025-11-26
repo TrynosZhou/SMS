@@ -2,7 +2,6 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ExamService } from '../../../services/exam.service';
 import { ClassService } from '../../../services/class.service';
-import { SubjectService } from '../../../services/subject.service';
 import { TeacherService } from '../../../services/teacher.service';
 import { AuthService } from '../../../services/auth.service';
 import { ParentService } from '../../../services/parent.service';
@@ -33,12 +32,9 @@ import { trigger, state, style, transition, animate } from '@angular/animations'
 })
 export class ReportCardComponent implements OnInit {
   classes: any[] = [];
-  allSubjects: any[] = [];
-  subjects: any[] = [];
   selectedClass = '';
   selectedExamType = '';
   selectedTerm = '';
-  selectedSubjectId = '';
   reportCards: any[] = [];
   filteredReportCards: any[] = [];
   classInfo: any = null;
@@ -73,13 +69,11 @@ export class ReportCardComponent implements OnInit {
   
   // Teacher data
   teacher: any = null;
-  teacherSubjects: any[] = [];
   isAdmin = false;
 
   constructor(
     private examService: ExamService,
     private classService: ClassService,
-    private subjectService: SubjectService,
     private teacherService: TeacherService,
     public authService: AuthService,
     private route: ActivatedRoute,
@@ -111,7 +105,6 @@ export class ReportCardComponent implements OnInit {
         } else {
           // Admin/SuperAdmin can see all classes and subjects
           this.loadClasses();
-          this.loadSubjects();
         }
       }
     });
@@ -122,8 +115,6 @@ export class ReportCardComponent implements OnInit {
     this.teacherService.getCurrentTeacher().subscribe({
       next: (teacher: any) => {
         this.teacher = teacher;
-        this.teacherSubjects = teacher.subjects || [];
-        
         // Load classes assigned to this teacher
         if (teacher.id) {
           this.loadTeacherClasses(teacher.id);
@@ -131,9 +122,6 @@ export class ReportCardComponent implements OnInit {
           this.classes = [];
           this.error = 'Teacher ID not found. Please contact administrator.';
         }
-        
-        // Load all subjects (we'll filter them later based on selected class)
-        this.loadAllSubjects();
       },
       error: (err: any) => {
         console.error('Error loading teacher info:', err);
@@ -154,64 +142,6 @@ export class ReportCardComponent implements OnInit {
         this.error = 'Failed to load assigned classes. Please try again.';
       }
     });
-  }
-
-  loadAllSubjects() {
-    // Load all subjects (we'll filter based on teacher and class)
-    this.subjectService.getSubjects().subscribe({
-      next: (data: any) => {
-        this.allSubjects = data || [];
-        this.updateSubjectsForSelectedClass();
-      },
-      error: (err: any) => {
-        console.error('Error loading subjects:', err);
-        this.allSubjects = [];
-      }
-    });
-  }
-
-  updateSubjectsForSelectedClass() {
-    if (!this.selectedClass || this.isAdmin || this.isParent) {
-      // If no class selected or admin/parent, show all subjects (or teacher's subjects if teacher)
-      if (!this.isAdmin && !this.isParent && this.teacherSubjects.length > 0) {
-        this.subjects = this.teacherSubjects;
-      } else {
-        this.subjects = this.allSubjects;
-      }
-      return;
-    }
-
-    // For teachers: filter subjects that:
-    // 1. Teacher is assigned to teach
-    // 2. Are taught in the selected class
-    if (this.teacher && this.teacherSubjects.length > 0) {
-      // Get class details to check which subjects are taught in this class
-      this.classService.getClassById(this.selectedClass).subscribe({
-        next: (classData: any) => {
-          const classSubjectIds = (classData.subjects || []).map((s: any) => s.id);
-          
-          // Find intersection: subjects teacher teaches AND that are in the class
-          this.subjects = this.teacherSubjects.filter((teacherSubject: any) => 
-            classSubjectIds.includes(teacherSubject.id)
-          );
-          
-          console.log('Filtered subjects for class:', this.subjects.length);
-          
-          // Reset subject selection if current selection is not in filtered list
-          if (this.selectedSubjectId && !this.subjects.find(s => s.id === this.selectedSubjectId)) {
-            this.selectedSubjectId = '';
-          }
-        },
-        error: (err: any) => {
-          console.error('Error loading class details:', err);
-          // Fallback: show only teacher's subjects
-          this.subjects = this.teacherSubjects;
-        }
-      });
-    } else {
-      // Fallback: show all subjects if teacher info not loaded
-      this.subjects = this.allSubjects;
-    }
   }
 
   loadTermOptions() {
@@ -361,10 +291,31 @@ export class ReportCardComponent implements OnInit {
 
   loadClasses() {
     this.loading = true;
-    this.classService.getClasses().subscribe({
-      next: (data: any) => {
-        this.classes = data;
-        this.loading = false;
+    this.classes = [];
+    
+    // Fetch all classes by making paginated requests
+    this.loadAllClasses(1, []);
+  }
+
+  loadAllClasses(page: number, accumulatedClasses: any[]) {
+    this.classService.getClassesPaginated(page, 100).subscribe({
+      next: (response: any) => {
+        const data = response?.data || response || [];
+        const allClasses = [...accumulatedClasses, ...data];
+        
+        // Check if there are more pages to fetch
+        const totalPages = response?.totalPages || 1;
+        const currentPage = response?.page || page;
+        
+        if (currentPage < totalPages) {
+          // Fetch next page
+          this.loadAllClasses(currentPage + 1, allClasses);
+        } else {
+          // All classes loaded
+          this.classes = allClasses;
+          this.loading = false;
+          console.log(`Loaded ${this.classes.length} classes for report cards`);
+        }
       },
       error: (err: any) => {
         this.loading = false;
@@ -375,21 +326,11 @@ export class ReportCardComponent implements OnInit {
           this.error = err.error?.message || 'Failed to load classes';
           console.error('Error loading classes:', err);
         }
-      }
-    });
-  }
-
-  loadSubjects() {
-    // For admin/superadmin - load all subjects
-    this.subjectService.getSubjects().subscribe({
-      next: (data: any) => {
-        this.allSubjects = data || [];
-        this.subjects = data || [];
-      },
-      error: (err: any) => {
-        console.error('Error loading subjects:', err);
-        this.allSubjects = [];
-        this.subjects = [];
+        // Use accumulated classes if we got some before the error
+        if (accumulatedClasses.length > 0) {
+          this.classes = accumulatedClasses;
+          console.warn(`Loaded partial class list (${accumulatedClasses.length} classes) due to error`);
+        }
       }
     });
   }
@@ -397,11 +338,6 @@ export class ReportCardComponent implements OnInit {
   generateReportCards() {
     if (!this.selectedClass || !this.selectedExamType || !this.selectedTerm) {
       this.error = 'Please select class, term, and exam type';
-      return;
-    }
-
-    if (!this.selectedSubjectId && !this.isAdmin && !this.isParent) {
-      this.error = 'Please select a subject';
       return;
     }
 
@@ -420,11 +356,6 @@ export class ReportCardComponent implements OnInit {
     this.reportCards = [];
     this.accessDenied = false;
 
-    // Ensure subjectId is passed correctly (empty string should be treated as missing)
-    const subjectIdParam = this.selectedSubjectId && this.selectedSubjectId.trim() !== '' 
-      ? this.selectedSubjectId.trim() 
-      : undefined;
-    
     // Ensure all required parameters are strings
     const classIdParam = String(this.selectedClass).trim();
     const examTypeParam = String(this.selectedExamType).trim();
@@ -438,7 +369,6 @@ export class ReportCardComponent implements OnInit {
       examType: examTypeParam,
       term: termParam,
       studentId: studentIdParam,
-      subjectId: subjectIdParam,
       isTeacher: !this.isAdmin && !this.isParent
     });
     
@@ -446,8 +376,7 @@ export class ReportCardComponent implements OnInit {
       classIdParam,
       examTypeParam,
       termParam,
-      studentIdParam,
-      subjectIdParam
+      studentIdParam
     ).subscribe({
       next: (data: any) => {
         let cards = data.reportCards || [];
@@ -606,12 +535,7 @@ export class ReportCardComponent implements OnInit {
 
   // Validation
   isSelectionValid(): boolean {
-    if (this.isParent) {
-      // Parents don't need subject selection
-      return !!(this.selectedClass && this.selectedExamType && this.selectedTerm);
-    }
-    // Teachers need subject selection
-    return !!(this.selectedClass && this.selectedExamType && this.selectedTerm && (this.selectedSubjectId || this.isAdmin));
+    return !!(this.selectedClass && this.selectedExamType && this.selectedTerm);
   }
 
   isFieldInvalid(fieldName: string): boolean {
@@ -625,16 +549,6 @@ export class ReportCardComponent implements OnInit {
   onSelectionChange() {
     this.fieldErrors = {};
     this.touchedFields.clear();
-    
-    // If class changed and user is a teacher, update subjects list
-    if (!this.isAdmin && !this.isParent && this.selectedClass) {
-      this.updateSubjectsForSelectedClass();
-    }
-    
-    // Reset subject selection if class changed
-    if (!this.selectedClass) {
-      this.selectedSubjectId = '';
-    }
   }
 
   resetSelection() {

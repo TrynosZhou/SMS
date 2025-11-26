@@ -19,6 +19,8 @@ export interface User {
   classes?: any[]; // Classes assigned to teacher (for teacher role)
 }
 
+export type LogoutReason = 'manual' | 'session-timeout' | 'unauthorized';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -26,6 +28,7 @@ export class AuthService {
   private apiUrl = environment.apiUrl;
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
+  private logoutReasonKey = 'logoutReason';
 
   constructor(private http: HttpClient, private router: Router) {
     const token = localStorage.getItem('token');
@@ -72,7 +75,12 @@ export class AuthService {
     return this.http.post(`${this.apiUrl}/auth/register`, data);
   }
 
-  logout(): void {
+  logout(reason: LogoutReason = 'manual'): void {
+    if (reason && reason !== 'manual') {
+      sessionStorage.setItem(this.logoutReasonKey, reason);
+    } else {
+      sessionStorage.removeItem(this.logoutReasonKey);
+    }
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     this.currentUserSubject.next(null);
@@ -85,6 +93,15 @@ export class AuthService {
 
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;
+  }
+
+  consumeLogoutReason(): LogoutReason | null {
+    const reason = sessionStorage.getItem(this.logoutReasonKey) as LogoutReason | null;
+    if (reason) {
+      sessionStorage.removeItem(this.logoutReasonKey);
+      return reason;
+    }
+    return null;
   }
 
   isAuthenticated(): boolean {

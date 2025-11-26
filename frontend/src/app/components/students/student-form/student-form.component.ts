@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
 import { SettingsService } from '../../../services/settings.service';
+import { validatePhoneNumber } from '../../../utils/phone-validator';
 
 @Component({
   selector: 'app-student-form',
@@ -37,6 +38,10 @@ export class StudentFormComponent implements OnInit {
   selectedPhoto: File | null = null;
   photoPreview: string | null = null;
   studentIdPrefix = 'JPS';
+  
+  // Phone validation errors
+  contactNumberError = '';
+  phoneNumberError = '';
 
   constructor(
     private studentService: StudentService,
@@ -208,14 +213,61 @@ export class StudentFormComponent implements OnInit {
     return age;
   }
 
+  validateContactNumber(): void {
+    const result = validatePhoneNumber(this.student.contactNumber, true);
+    this.contactNumberError = result.isValid ? '' : (result.error || '');
+    if (result.isValid && result.normalized) {
+      this.student.contactNumber = result.normalized;
+    }
+  }
+
+  validatePhoneNumber(): void {
+    if (this.student.phoneNumber && this.student.phoneNumber.trim()) {
+      const result = validatePhoneNumber(this.student.phoneNumber, false);
+      this.phoneNumberError = result.isValid ? '' : (result.error || '');
+      if (result.isValid && result.normalized) {
+        this.student.phoneNumber = result.normalized;
+      }
+    } else {
+      this.phoneNumberError = '';
+    }
+  }
+
   onSubmit() {
     this.error = '';
     this.success = '';
+    this.contactNumberError = '';
+    this.phoneNumberError = '';
     this.submitting = true;
+
+    // Validate phone numbers
+    const contactResult = validatePhoneNumber(this.student.contactNumber, true);
+    if (!contactResult.isValid) {
+      this.contactNumberError = contactResult.error || 'Invalid contact number';
+      this.error = contactResult.error || 'Please enter a valid contact number';
+      this.submitting = false;
+      return;
+    }
+    if (contactResult.normalized) {
+      this.student.contactNumber = contactResult.normalized;
+    }
+
+    if (this.student.phoneNumber && this.student.phoneNumber.trim()) {
+      const phoneResult = validatePhoneNumber(this.student.phoneNumber, false);
+      if (!phoneResult.isValid) {
+        this.phoneNumberError = phoneResult.error || 'Invalid phone number';
+        this.error = phoneResult.error || 'Please enter a valid phone number';
+        this.submitting = false;
+        return;
+      }
+      if (phoneResult.normalized) {
+        this.student.phoneNumber = phoneResult.normalized;
+      }
+    }
 
     // Validate required fields
     if (!this.student.firstName || !this.student.lastName || !this.student.dateOfBirth || 
-        !this.student.gender || !this.student.contactNumber || !this.student.studentType) {
+        !this.student.gender || !this.student.studentType) {
       this.error = 'Please fill in all required fields';
       this.submitting = false;
       return;

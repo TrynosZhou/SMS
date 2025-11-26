@@ -28,6 +28,7 @@
     </div>
 
     <!-- Messages -->
+    <div class="alert alert-info" *ngIf="infoMessage">{{ infoMessage }}</div>
     <div class="alert alert-success" *ngIf="success">{{ success }}</div>
     <div class="alert alert-error" *ngIf="error">{{ error }}</div>
 
@@ -137,9 +138,14 @@
           <input 
             type="tel" 
             [(ngModel)]="signupContactNumber" 
-            name="signupContactNumber" 
-            placeholder="Phone number" 
-            required>
+            name="signupContactNumber"
+            placeholder="e.g., 0771234567 or +263771234567" 
+            required
+            [class.error]="signupContactNumberError"
+            (blur)="validateSignupContactNumber()"
+            (input)="signupContactNumberError = ''">
+          <small class="form-text" *ngIf="!signupContactNumberError">Zimbabwean format: 07XXXXXXXX or +2637XXXXXXXX</small>
+          <small class="form-error" *ngIf="signupContactNumberError">{{ signupContactNumberError }}</small>
         </div>
         <div class="form-group">
           <label>Password *</label>

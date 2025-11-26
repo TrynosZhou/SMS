@@ -21,6 +21,18 @@ export class StudentListComponent implements OnInit {
   error = '';
   success = '';
   selectedStudent: any = null;
+  pagination = {
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1
+  };
+  stats = {
+    totalDayScholars: 0,
+    totalBoarders: 0,
+    classCount: 0
+  };
+  pageSizeOptions = [10, 20, 50];
 
   constructor(
     private studentService: StudentService,
@@ -34,9 +46,9 @@ export class StudentListComponent implements OnInit {
   }
 
   loadClasses() {
-    this.classService.getClasses().subscribe({
-      next: (data: any) => {
-        this.classes = data || [];
+    this.classService.getClassesPaginated(1, 100).subscribe({
+      next: (response: any) => {
+        this.classes = response?.data || response || [];
       },
       error: (err: any) => {
         console.error('Error loading classes:', err);
@@ -44,12 +56,27 @@ export class StudentListComponent implements OnInit {
     });
   }
 
-  loadStudents() {
+  loadStudents(page = this.pagination.page) {
     this.loading = true;
-    this.studentService.getStudents(this.selectedClass || undefined).subscribe({
-      next: (data: any) => {
-        this.students = data || [];
-        this.filteredStudents = this.students;
+    this.studentService.getStudentsPaginated({
+      classId: this.selectedClass || undefined,
+      page,
+      limit: this.pagination.limit
+    }).subscribe({
+      next: (response: any) => {
+        this.students = response?.data || [];
+        this.pagination = {
+          page: response?.page || page,
+          limit: response?.limit || this.pagination.limit,
+          total: response?.total || this.students.length,
+          totalPages: response?.totalPages || 1
+        };
+        this.stats = {
+          totalDayScholars: response?.stats?.totalDayScholars ?? 0,
+          totalBoarders: response?.stats?.totalBoarders ?? 0,
+          classCount: response?.stats?.classCount ?? this.classes.length
+        };
+        this.applyFilters();
         this.loading = false;
       },
       error: (err: any) => {
@@ -63,7 +90,7 @@ export class StudentListComponent implements OnInit {
     });
   }
 
-  filterStudents() {
+  applyFilters() {
     let filtered = [...this.students];
 
     // Search filter
@@ -74,13 +101,6 @@ export class StudentListComponent implements OnInit {
         const studentNumber = (student.studentNumber || '').toLowerCase();
         const contact = ((student.contactNumber || student.phoneNumber) || '').toLowerCase();
         return fullName.includes(query) || studentNumber.includes(query) || contact.includes(query);
-      });
-    }
-
-    // Class filter
-    if (this.selectedClass) {
-      filtered = filtered.filter(student => {
-        return student.classId === this.selectedClass || student.class?.id === this.selectedClass;
       });
     }
 
@@ -102,11 +122,16 @@ export class StudentListComponent implements OnInit {
   }
 
   clearFilters() {
+    const hadClassFilter = !!this.selectedClass;
     this.searchQuery = '';
     this.selectedClass = '';
     this.selectedType = '';
     this.selectedGender = '';
-    this.filterStudents();
+    if (hadClassFilter) {
+      this.loadStudents(1);
+    } else {
+      this.applyFilters();
+    }
   }
 
   hasActiveFilters(): boolean {
@@ -231,21 +256,22 @@ export class StudentListComponent implements OnInit {
     });
   }
 
-  getStudentsByClass(): any[] {
-    const classSet = new Set();
-    this.students.forEach(student => {
-      if (student.classId || student.class?.id) {
-        classSet.add(student.classId || student.class?.id);
-      }
-    });
-    return Array.from(classSet);
+  onClassFilterChange() {
+    this.pagination.page = 1;
+    this.loadStudents(1);
   }
 
-  getDayScholarsCount(): number {
-    return this.students.filter(s => (s.studentType || 'Day Scholar') === 'Day Scholar').length;
+  onPageChange(page: number) {
+    if (page < 1 || page > this.pagination.totalPages || page === this.pagination.page) {
+      return;
+    }
+    this.loadStudents(page);
   }
 
-  getBoardersCount(): number {
-    return this.students.filter(s => s.studentType === 'Boarder').length;
+  onPageSizeChange(limit: number | string) {
+    const parsedLimit = Number(limit);
+    this.pagination.limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : this.pagination.limit;
+    this.pagination.page = 1;
+    this.loadStudents(1);
   }
 }

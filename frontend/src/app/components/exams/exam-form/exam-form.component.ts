@@ -100,9 +100,60 @@ export class ExamFormComponent implements OnInit {
   }
 
   loadClasses() {
-    this.classService.getClasses().subscribe({
-      next: (data: any) => this.classes = data,
-      error: (err: any) => console.error(err)
+    // Load all classes using pagination
+    this.classes = [];
+    this.loadAllClasses(1, []);
+  }
+
+  loadAllClasses(page: number, accumulatedClasses: any[]) {
+    this.classService.getClassesPaginated(page, 100).subscribe({
+      next: (response: any) => {
+        const data = response?.data || response || [];
+        const allClasses = [...accumulatedClasses, ...data];
+        
+        // Check if there are more pages to fetch
+        const totalPages = response?.totalPages || 1;
+        const currentPage = response?.page || page;
+        
+        if (currentPage < totalPages) {
+          // Fetch next page
+          this.loadAllClasses(currentPage + 1, allClasses);
+        } else {
+          // All classes loaded - clean IDs and remove duplicates
+          const cleanedClasses = allClasses.map((classItem: any) => {
+            if (classItem.id) {
+              let cleanId = String(classItem.id).trim();
+              if (cleanId.includes(':')) {
+                cleanId = cleanId.split(':')[0].trim();
+              }
+              classItem.id = cleanId;
+            }
+            return classItem;
+          });
+          
+          // Remove duplicates by ID
+          const uniqueClassesMap = new Map<string, any>();
+          cleanedClasses.forEach((classItem: any) => {
+            const id = classItem.id || '';
+            if (id && !uniqueClassesMap.has(id)) {
+              uniqueClassesMap.set(id, classItem);
+            }
+          });
+          
+          this.classes = Array.from(uniqueClassesMap.values());
+          console.log(`Loaded ${this.classes.length} classes for exam form`);
+        }
+      },
+      error: (err: any) => {
+        console.error('Error loading classes:', err);
+        // Use accumulated classes if we got some before the error
+        if (accumulatedClasses.length > 0) {
+          this.classes = accumulatedClasses;
+          console.warn(`Loaded partial class list (${accumulatedClasses.length} classes) due to error`);
+        } else {
+          this.classes = [];
+        }
+      }
     });
   }
 
