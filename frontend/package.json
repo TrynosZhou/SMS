@@ -4,8 +4,9 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "start:prod": "node server.js",
     "build": "ng build --configuration production --no-progress",
-    "build:clean": "rm -rf dist node_modules/.cache && ng build --configuration production --no-progress",
+    "build:clean": "rm -rf dist node_modules/.cache .angular && npm ci && ng build --configuration production --no-progress",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

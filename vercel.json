@@ -1,6 +1,6 @@
 ﻿{
   "version": 2,
-  "buildCommand": "cd frontend && npm ci && npm run build:clean",
+  "buildCommand": "cd frontend && rm -rf dist node_modules/.cache .angular && npm ci && npm run build:clean",
   "outputDirectory": "frontend/dist/sms-frontend",
   "installCommand": "cd frontend && npm ci",
   "framework": "angular",

@@ -6,7 +6,7 @@ services:
     plan: free
     rootDir: frontend
     buildCommand: rm -rf dist node_modules/.cache && npm ci && npm run build:clean
-    startCommand: npm start
+    startCommand: npm run start:prod
     envVars:
       - key: NODE_ENV
         value: production
