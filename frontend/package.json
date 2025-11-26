@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "node server.js",
+    "start:dev": "ng serve",
     "build": "ng build --configuration production --no-progress",
-    "build:clean": "rm -rf dist && ng build --configuration production --no-progress",
+    "build:clean": "rm -rf dist node_modules/.cache && ng build --configuration production --no-progress",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
@@ -19,6 +20,7 @@
     "@angular/platform-browser": "^16.2.0",
     "@angular/platform-browser-dynamic": "^16.2.0",
     "@angular/router": "^16.2.0",
+    "express": "^4.18.2",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.13.0"

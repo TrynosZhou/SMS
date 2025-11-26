@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: sms-frontend
+    env: node
+    region: oregon
+    plan: free
+    rootDir: frontend
+    buildCommand: rm -rf dist node_modules/.cache && npm ci && npm run build:clean
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+
