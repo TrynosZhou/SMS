@@ -651,12 +651,12 @@ export const getYearEndReminders = async (req: AuthRequest, res: Response) => {
       const isTerm3 = settings.activeTerm?.includes('Term 3') || settings.currentTerm?.includes('Term 3');
       
       if (isTerm3 && daysUntilEnd <= 7 && daysUntilEnd >= 0) {
-        reminders.push(`Academic year ending soon! Class promotion should be performed after ${settings.termEndDate.toISOString().split('T')[0]}.`);
+        reminders.push(`Academic year ending soon! Class promotion should be performed after ${termEndDate.toISOString().split('T')[0]}.`);
         needsPromotion = true;
       }
       
       if (daysUntilEnd <= 3 && daysUntilEnd >= 0) {
-        reminders.push(`Term ending on ${settings.termEndDate.toISOString().split('T')[0]}. Please process closing day operations to calculate closing balances.`);
+        reminders.push(`Term ending on ${termEndDate.toISOString().split('T')[0]}. Please process closing day operations to calculate closing balances.`);
         needsFeeCalculation = true;
       }
       

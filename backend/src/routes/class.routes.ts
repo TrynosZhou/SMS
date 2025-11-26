@@ -382,7 +382,24 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
     }
 
     const { id } = req.params;
-    console.log('Attempting to delete class with ID:', id);
+    
+    // Validate ID
+    if (!id || typeof id !== 'string' || id.trim() === '') {
+      console.error('Invalid class ID provided:', id);
+      return res.status(400).json({ message: 'Invalid class ID provided' });
+    }
+    
+    // Clean the ID (remove any trailing characters that might have been added)
+    const cleanId = id.trim().split(':')[0]; // Remove anything after colon if present
+    
+    // Basic UUID format validation
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(cleanId)) {
+      console.error('Invalid UUID format for class ID:', cleanId);
+      return res.status(400).json({ message: 'Invalid class ID format' });
+    }
+    
+    console.log('Attempting to delete class with ID:', cleanId);
     
     const classRepository = AppDataSource.getRepository(Class);
     const examRepository = AppDataSource.getRepository(Exam);
@@ -390,7 +407,7 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
 
     // Find the class with all relations
     const classEntity = await classRepository.findOne({
-      where: { id },
+      where: { id: cleanId },
       relations: ['students', 'teachers', 'subjects']
     });
 
@@ -414,7 +431,7 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
         const studentRepository = AppDataSource.getRepository(Student);
         const demoStudents = await studentRepository.find({
           where: { 
-            classId: id,
+            classId: cleanId,
             user: { isDemo: true }
           },
           relations: ['user']
@@ -433,7 +450,7 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
         });
         // Filter to only teachers assigned to this class
         teacherCount = demoTeachers.filter(t => 
-          t.classes?.some(c => c.id === id)
+          t.classes?.some(c => c.id === cleanId)
         ).length;
       }
     } else {
@@ -444,7 +461,7 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
     
     // Check for exams associated with this class
     const exams = await examRepository.find({
-      where: { classId: id }
+      where: { classId: cleanId }
     });
     const examCount = exams.length;
     console.log('Exams count:', examCount);
@@ -466,7 +483,7 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
 
     // Delete all report card remarks associated with this class
     const remarks = await remarksRepository.find({
-      where: { classId: id }
+      where: { classId: cleanId }
     });
     
     if (remarks.length > 0) {
