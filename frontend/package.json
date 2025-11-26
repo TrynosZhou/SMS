@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "node server.js",
-    "start:dev": "ng serve",
+    "start": "ng serve",
     "build": "ng build --configuration production --no-progress",
     "build:clean": "rm -rf dist node_modules/.cache && ng build --configuration production --no-progress",
     "watch": "ng build --watch --configuration development",
