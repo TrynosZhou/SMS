@@ -301,7 +301,17 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       settings.schoolAddress = schoolAddress;
     }
     if (schoolPhone !== undefined) {
-      settings.schoolPhone = schoolPhone;
+      // Validate phone number if provided
+      if (schoolPhone && schoolPhone.trim()) {
+        const { validatePhoneNumber } = await import('../utils/phoneValidator');
+        const phoneValidation = validatePhoneNumber(schoolPhone, false);
+        if (!phoneValidation.isValid) {
+          return res.status(400).json({ message: phoneValidation.error || 'Invalid school phone number' });
+        }
+        settings.schoolPhone = phoneValidation.normalized || schoolPhone.trim();
+      } else {
+        settings.schoolPhone = null;
+      }
     }
     if (schoolEmail !== undefined) {
       settings.schoolEmail = schoolEmail;

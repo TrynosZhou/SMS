@@ -40,7 +40,10 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     req.user = user;
     next();
   } catch (error: any) {
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Session expired. Please log in again.' });
+    }
+    if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ message: 'Invalid token' });
     }
     console.error('Auth error:', error);

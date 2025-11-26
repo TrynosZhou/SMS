@@ -10,6 +10,8 @@ import { isDemoUser } from '../utils/demoDataFilter';
 import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
 import { linkTeacherToClasses, syncManyToManyToJunctionTable } from '../utils/teacherClassLinker';
 import { calculateAge } from '../utils/ageUtils';
+import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
+import { validatePhoneNumber } from '../utils/phoneValidator';
 
 export const registerTeacher = async (req: AuthRequest, res: Response) => {
   try {
@@ -53,11 +55,21 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Teacher age must be between 20 and 65 years' });
     }
 
+    // Validate phone number if provided
+    let normalizedPhoneNumber: string | null = null;
+    if (phoneNumber && phoneNumber.trim()) {
+      const phoneValidation = validatePhoneNumber(phoneNumber, false);
+      if (!phoneValidation.isValid) {
+        return res.status(400).json({ message: phoneValidation.error || 'Invalid phone number' });
+      }
+      normalizedPhoneNumber = phoneValidation.normalized || phoneNumber.trim();
+    }
+
     const teacherData: Partial<Teacher> = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       teacherId,
-      phoneNumber: phoneNumber?.trim() || null,
+      phoneNumber: normalizedPhoneNumber,
       address: address?.trim() || null
     };
 
@@ -163,9 +175,15 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
     }
 
     const teacherRepository = AppDataSource.getRepository(Teacher);
+    const { page: pageParam, limit: limitParam } = req.query;
+    const { page, limit, skip } = resolvePaginationParams(
+      pageParam as string,
+      limitParam as string
+    );
     
     // Try to load with relations, but handle errors gracefully
-    let teachers;
+    let teachers: Teacher[] = [];
+    let total = 0;
     try {
       const queryBuilder = teacherRepository
         .createQueryBuilder('teacher')
@@ -173,7 +191,12 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
         .leftJoinAndSelect('teacher.classes', 'classes')
         .leftJoinAndSelect('teacher.user', 'user');
       
-      teachers = await queryBuilder.getMany();
+      [teachers, total] = await queryBuilder
+        .orderBy('teacher.lastName', 'ASC')
+        .addOrderBy('teacher.firstName', 'ASC')
+        .skip(skip)
+        .take(limit)
+        .getManyAndCount();
     } catch (relationError: any) {
       console.error('[getTeachers] Error loading with relations:', relationError.message);
       console.error('[getTeachers] Error code:', relationError.code);
@@ -192,7 +215,9 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
             .leftJoinAndSelect('teacher.subjects', 'subjects')
             .leftJoinAndSelect('teacher.user', 'user');
           
-          teachers = await queryBuilder.getMany();
+          const fallbackResults = await queryBuilder.getMany();
+          total = fallbackResults.length;
+          teachers = fallbackResults.slice(skip, skip + limit);
           
           // Initialize classes array for all teachers
           teachers = teachers.map((t: any) => ({
@@ -202,8 +227,9 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
         } catch (fallbackError: any) {
           console.error('[getTeachers] Error in fallback query:', fallbackError.message);
           // Last resort: load without any relations
-          teachers = await teacherRepository.find();
-          teachers = teachers.map((t: any) => ({
+          const finalFallback = await teacherRepository.find();
+          total = finalFallback.length;
+          teachers = finalFallback.slice(skip, skip + limit).map((t: any) => ({
             ...t,
             classes: [],
             subjects: t.subjects || []
@@ -215,7 +241,7 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    res.json(teachers);
+    res.json(buildPaginationResponse(teachers, total, page, limit));
   } catch (error: any) {
     console.error('[getTeachers] Error:', error);
     console.error('[getTeachers] Error stack:', error.stack);
@@ -558,7 +584,20 @@ export const updateTeacher = async (req: AuthRequest, res: Response) => {
 
     if (firstName) teacher.firstName = firstName.trim();
     if (lastName) teacher.lastName = lastName.trim();
-    if (phoneNumber !== undefined) teacher.phoneNumber = phoneNumber?.trim() || null;
+    
+    // Update and validate phone number
+    if (phoneNumber !== undefined) {
+      if (phoneNumber && phoneNumber.trim()) {
+        const phoneValidation = validatePhoneNumber(phoneNumber, false);
+        if (!phoneValidation.isValid) {
+          return res.status(400).json({ message: phoneValidation.error || 'Invalid phone number' });
+        }
+        teacher.phoneNumber = phoneValidation.normalized || phoneNumber.trim();
+      } else {
+        teacher.phoneNumber = null;
+      }
+    }
+    
     if (address !== undefined) teacher.address = address?.trim() || null;
     if (dateOfBirth) {
       const parsedDate = typeof dateOfBirth === 'string' ? new Date(dateOfBirth) : dateOfBirth;

@@ -15,6 +15,9 @@ import { createStudentIdCardPDF } from '../utils/studentIdCardPdf';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
 import { calculateAge } from '../utils/ageUtils';
+import { StudentTransfer, StudentTransferStatus, TransferType } from '../entities/StudentTransfer';
+import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
+import { validatePhoneNumber } from '../utils/phoneValidator';
 
 export const registerStudent = async (req: AuthRequest, res: Response) => {
   try {
@@ -56,6 +59,20 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
 
     if (!contactNumber && !phoneNumber) {
       return res.status(400).json({ message: 'Contact number is required' });
+    }
+
+    // Validate contact number
+    const contactValidation = validatePhoneNumber(contactNumber || phoneNumber, true);
+    if (!contactValidation.isValid) {
+      return res.status(400).json({ message: contactValidation.error || 'Invalid contact number' });
+    }
+
+    // Validate phone number if provided
+    if (phoneNumber && phoneNumber.trim() && phoneNumber !== contactNumber) {
+      const phoneValidation = validatePhoneNumber(phoneNumber, false);
+      if (!phoneValidation.isValid) {
+        return res.status(400).json({ message: phoneValidation.error || 'Invalid phone number' });
+      }
     }
 
     if (!classId) {
@@ -346,109 +363,115 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     }
 
     const studentRepository = AppDataSource.getRepository(Student);
-    const { classId } = req.query;
+    const { classId, page: pageParam, limit: limitParam } = req.query;
+    const { page, limit, skip } = resolvePaginationParams(
+      pageParam as string,
+      limitParam as string
+    );
+    const trimmedClassId = classId ? String(classId).trim() : null;
 
-    console.log('Fetching students with classId:', classId);
+    console.log('Fetching students with classId:', classId || 'ALL');
 
-    let students: Student[] = [];
+    let queryBuilder = studentRepository
+      .createQueryBuilder('student')
+      .leftJoinAndSelect('student.classEntity', 'classEntity')
+      .leftJoinAndSelect('student.parent', 'parent')
+      .leftJoinAndSelect('student.user', 'user')
+      .where('(student.isActive IS NULL OR student.isActive = :active)', { active: true });
 
-    if (classId) {
-      // Ensure classId is trimmed and valid
-      const trimmedClassId = String(classId).trim();
-      console.log('Filtering students by classId:', trimmedClassId);
+    if (trimmedClassId) {
+      queryBuilder = queryBuilder.andWhere(
+        '(student.classId = :classId OR classEntity.id = :classId)',
+        { classId: trimmedClassId }
+      );
+    }
 
-      // Query all students for the class (demo users have full access)
-      const queryBuilder = studentRepository
-        .createQueryBuilder('student')
-        .leftJoinAndSelect('student.classEntity', 'classEntity')
-        .leftJoinAndSelect('student.parent', 'parent')
-        .leftJoinAndSelect('student.user', 'user')
-        .where('student.classId = :classId', { classId: trimmedClassId });
-      
-      students = await queryBuilder.getMany();
-      console.log(`Found ${students.length} students using query builder for classId: ${trimmedClassId}`);
+    let [students, total] = await queryBuilder
+      .orderBy('student.lastName', 'ASC')
+      .addOrderBy('student.firstName', 'ASC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
 
-      // If still no students found, try a more permissive approach
-      if (students.length === 0) {
-        console.log('No students found with query builder, trying alternative methods...');
-        
-        // Try finding by class name if we can get the class
-        const classRepository = AppDataSource.getRepository(Class);
-        const classEntity = await classRepository.findOne({ where: { id: trimmedClassId } });
-        
-        if (classEntity) {
-          console.log(`Found class: ${classEntity.name} (${classEntity.id})`);
-          
-          // Try query by class name as fallback
-          const studentsByClassName = await studentRepository
-            .createQueryBuilder('student')
-            .leftJoinAndSelect('student.classEntity', 'classEntity')
-            .leftJoinAndSelect('student.parent', 'parent')
-            .leftJoinAndSelect('student.user', 'user')
-            .where('class.name = :className', { className: classEntity.name })
-            .getMany();
-          
-          console.log(`Found ${studentsByClassName.length} students by class name: ${classEntity.name}`);
-          
-          if (studentsByClassName.length > 0) {
-            students = studentsByClassName;
-            // Update their classId to match
-            console.log('Updating students classId to match...');
-            for (const student of students) {
-              if (student.classId !== trimmedClassId) {
-                student.classId = trimmedClassId;
-                await studentRepository.save(student);
-                console.log(`Updated student ${student.firstName} ${student.lastName} classId to ${trimmedClassId}`);
-              }
+    // Fallback logic for legacy/inconsistent class data
+    if (trimmedClassId && total === 0) {
+      console.log('No students found with direct query, running legacy fallback...');
+      const classRepository = AppDataSource.getRepository(Class);
+      const fallbackStudents: Student[] = [];
+
+      const classEntity = await classRepository.findOne({ where: { id: trimmedClassId } });
+      if (classEntity) {
+        const studentsByClassName = await studentRepository
+          .createQueryBuilder('student')
+          .leftJoinAndSelect('student.classEntity', 'classEntity')
+          .leftJoinAndSelect('student.parent', 'parent')
+          .leftJoinAndSelect('student.user', 'user')
+          .where('classEntity.name = :className', { className: classEntity.name })
+          .andWhere('(student.isActive IS NULL OR student.isActive = :active)', { active: true })
+          .getMany();
+
+        console.log(`Fallback by class name found ${studentsByClassName.length} students`);
+
+        if (studentsByClassName.length > 0) {
+          for (const student of studentsByClassName) {
+            if (student.classId !== trimmedClassId) {
+              student.classId = trimmedClassId;
+              await studentRepository.save(student);
+              console.log(`Updated student ${student.firstName} ${student.lastName} classId to ${trimmedClassId}`);
             }
+            fallbackStudents.push(student);
           }
         }
       }
 
-      // Final fallback: get all students and filter in memory
-      if (students.length === 0) {
-        console.log('Trying final fallback: loading all students...');
+      if (fallbackStudents.length === 0) {
+        console.log('Fallback by class name failed, loading all students as last resort');
         const allStudents = await studentRepository.find({
           relations: ['classEntity', 'parent', 'user']
         });
-        
-        // Filter by classId or class.id
-        students = allStudents.filter(s => 
-          (s.classId && s.classId === trimmedClassId) || 
-          (s.classEntity && s.classEntity.id === trimmedClassId)
+
+        fallbackStudents.push(
+          ...allStudents.filter(
+            s =>
+              (s.classId && s.classId === trimmedClassId) ||
+              (s.classEntity && s.classEntity.id === trimmedClassId)
+          )
         );
-        
-        console.log(`Found ${students.length} students after filtering all students`);
-        
-        // Log all students for debugging
-        console.log(`Total students in database: ${allStudents.length}`);
-        allStudents.forEach((s, idx) => {
-          console.log(`Student ${idx + 1}: ${s.firstName} ${s.lastName}, classId: ${s.classId}, classEntity.name: ${s.classEntity?.name || 'N/A'}, classEntity.id: ${s.classEntity?.id || 'N/A'}`);
-        });
       }
 
-      if (students.length > 0) {
-        console.log('Sample student classId:', students[0].classId);
-        console.log('Sample student classEntity:', students[0].classEntity?.name);
-        console.log('Sample student classEntity.id:', students[0].classEntity?.id);
-      }
-    } else {
-      // No classId provided, return all students (demo users have full access)
-      students = await studentRepository
-        .createQueryBuilder('student')
-        .leftJoinAndSelect('student.classEntity', 'classEntity')
-        .leftJoinAndSelect('student.parent', 'parent')
-        .leftJoinAndSelect('student.user', 'user')
-        .getMany();
-      
-      console.log(`No classId provided, returning all ${students.length} students`);
+      total = fallbackStudents.length;
+      students = fallbackStudents.slice(skip, skip + limit);
     }
 
-    // Filter to only return active students (if isActive is false, exclude them)
-    const activeStudents = students.filter(s => s.isActive !== false);
-    console.log(`Returning ${activeStudents.length} active students`);
+    console.log(`Returning ${students.length} students (page ${page}/${Math.max(1, Math.ceil(total / limit))})`);
 
-    res.json(activeStudents);
+    const statsQuery = studentRepository
+      .createQueryBuilder('student')
+      .leftJoin('student.classEntity', 'statsClass')
+      .select("SUM(CASE WHEN student.studentType = 'Boarder' THEN 1 ELSE 0 END)", 'boarders')
+      .addSelect("SUM(CASE WHEN student.studentType = 'Day Scholar' THEN 1 ELSE 0 END)", 'dayScholars')
+      .addSelect('COUNT(DISTINCT COALESCE(student.classId, statsClass.id))', 'classCount')
+      .where('(student.isActive IS NULL OR student.isActive = :active)', { active: true });
+
+    if (trimmedClassId) {
+      statsQuery.andWhere(
+        '(student.classId = :classId OR statsClass.id = :classId)',
+        { classId: trimmedClassId }
+      );
+    }
+
+    const statsRaw = await statsQuery.getRawOne();
+    const stats = {
+      totalBoarders: Number(statsRaw?.boarders ?? 0),
+      totalDayScholars: Number(statsRaw?.dayScholars ?? 0),
+      classCount: Number(statsRaw?.classCount ?? 0)
+    };
+
+    res.json(
+      buildPaginationResponse(students, total, page, limit, {
+        stats
+      })
+    );
   } catch (error: any) {
     console.error('Error fetching students:', error);
     res.status(500).json({ 
@@ -591,8 +614,29 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     // Handle contact number - use contactNumber if provided, otherwise phoneNumber
     if (contactNumber !== undefined || phoneNumber !== undefined) {
       const finalContactNumber = contactNumber?.trim() || phoneNumber?.trim() || null;
-      student.contactNumber = finalContactNumber;
-      student.phoneNumber = finalContactNumber;
+      
+      // Validate contact number if provided
+      if (finalContactNumber) {
+        const contactValidation = validatePhoneNumber(finalContactNumber, true);
+        if (!contactValidation.isValid) {
+          return res.status(400).json({ message: contactValidation.error || 'Invalid contact number' });
+        }
+        // Use normalized number if available
+        student.contactNumber = contactValidation.normalized || finalContactNumber;
+        student.phoneNumber = contactValidation.normalized || finalContactNumber;
+      } else {
+        student.contactNumber = null;
+        student.phoneNumber = null;
+      }
+    }
+    
+    // Validate phoneNumber separately if it's different from contactNumber
+    if (phoneNumber !== undefined && phoneNumber !== contactNumber && phoneNumber?.trim()) {
+      const phoneValidation = validatePhoneNumber(phoneNumber, false);
+      if (!phoneValidation.isValid) {
+        return res.status(400).json({ message: phoneValidation.error || 'Invalid phone number' });
+      }
+      student.phoneNumber = phoneValidation.normalized || phoneNumber;
     }
 
     // Handle student type validation
@@ -861,6 +905,147 @@ export const deleteStudent = async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     console.error('Error deleting student:', error);
     console.error('Error stack:', error.stack);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+export const transferStudent = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const { 
+      studentId, 
+      toClassId, 
+      reason, 
+      transferType,
+      externalSchoolName,
+      externalSchoolAddress,
+      externalSchoolPhone,
+      externalSchoolEmail
+    } = req.body;
+
+    if (!studentId) {
+      return res.status(400).json({ message: 'Student ID is required' });
+    }
+
+    const studentRepository = AppDataSource.getRepository(Student);
+    const classRepository = AppDataSource.getRepository(Class);
+    const transferRepository = AppDataSource.getRepository(StudentTransfer);
+
+    const student = await studentRepository.findOne({
+      where: { id: studentId },
+      relations: ['classEntity', 'parent', 'user']
+    });
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    // Determine transfer type
+    const isExternalTransfer = transferType === TransferType.EXTERNAL || 
+                               (!toClassId && (externalSchoolName || externalSchoolAddress));
+
+    // Validate based on transfer type
+    if (isExternalTransfer) {
+      // External transfer validation
+      if (!externalSchoolName || !externalSchoolName.trim()) {
+        return res.status(400).json({ message: 'External school name is required for external transfers' });
+      }
+
+      // Validate external school phone if provided
+      if (externalSchoolPhone && externalSchoolPhone.trim()) {
+        const { validatePhoneNumber } = await import('../utils/phoneValidator');
+        const phoneValidation = validatePhoneNumber(externalSchoolPhone, false);
+        if (!phoneValidation.isValid) {
+          return res.status(400).json({ message: phoneValidation.error || 'Invalid external school phone number' });
+        }
+      }
+    } else {
+      // Internal transfer validation
+      if (!toClassId) {
+        return res.status(400).json({ message: 'Destination class ID is required for internal transfers' });
+      }
+
+      const targetClass = await classRepository.findOne({ where: { id: toClassId } });
+      if (!targetClass) {
+        return res.status(404).json({ message: 'Destination class not found' });
+      }
+
+      const currentClassId = student.classId || student.classEntity?.id || null;
+      if (currentClassId && currentClassId === toClassId) {
+        return res.status(400).json({ message: 'Student is already enrolled in the selected class' });
+      }
+    }
+
+    const currentClassId = student.classId || student.classEntity?.id || null;
+
+    // Create transfer record
+    const transferData: any = {
+      studentId: student.id,
+      fromClassId: currentClassId,
+      toClassId: isExternalTransfer ? null : toClassId,
+      reason: reason || null,
+      performedByUserId: req.user?.id || null,
+      status: StudentTransferStatus.COMPLETED,
+      transferType: isExternalTransfer ? TransferType.EXTERNAL : TransferType.INTERNAL
+    };
+
+    // Add external transfer fields if applicable
+    if (isExternalTransfer) {
+      transferData.externalSchoolName = externalSchoolName?.trim() || null;
+      transferData.externalSchoolAddress = externalSchoolAddress?.trim() || null;
+      transferData.externalSchoolPhone = externalSchoolPhone?.trim() || null;
+      transferData.externalSchoolEmail = externalSchoolEmail?.trim() || null;
+    }
+
+    const transfer = transferRepository.create(transferData);
+    const savedTransfer = await transferRepository.save(transfer);
+
+    // For internal transfers, update student's class
+    // For external transfers, mark student as inactive or remove from class
+    if (isExternalTransfer) {
+      // Mark student as inactive (transferred out)
+      student.isActive = false;
+      student.classId = null;
+      await studentRepository.save(student);
+    } else {
+      // Update student's class for internal transfer
+      student.classId = toClassId;
+      await studentRepository.save(student);
+    }
+
+    res.json({
+      message: isExternalTransfer 
+        ? 'Student transferred to external school successfully' 
+        : 'Student transferred successfully',
+      transfer: savedTransfer,
+      student
+    });
+  } catch (error: any) {
+    console.error('Error transferring student:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+export const getStudentTransfers = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const { id } = req.params;
+    const transferRepository = AppDataSource.getRepository(StudentTransfer);
+
+    const transfers = await transferRepository.find({
+      where: { studentId: id },
+      order: { createdAt: 'DESC' }
+    });
+
+    res.json(transfers);
+  } catch (error: any) {
+    console.error('Error fetching student transfer history:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

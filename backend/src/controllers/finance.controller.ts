@@ -10,6 +10,7 @@ import { UniformItem } from '../entities/UniformItem';
 import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
+import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
 
 // Helper function to determine next term
 function getNextTerm(currentTerm: string): string {
@@ -280,21 +281,34 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
 export const getInvoices = async (req: AuthRequest, res: Response) => {
   try {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
-    const { studentId, status, invoiceId } = req.query as { studentId?: string; status?: string; invoiceId?: string };
+    const {
+      studentId,
+      status,
+      invoiceId,
+      page: pageParam,
+      limit: limitParam
+    } = req.query as { studentId?: string; status?: string; invoiceId?: string; page?: string; limit?: string };
 
-    // Demo users have full access to all invoices
-    const where: any = {};
-    if (studentId) where.studentId = studentId;
-    if (status) where.status = status;
-    if (invoiceId) where.id = invoiceId;
+    const { page, limit, skip } = resolvePaginationParams(pageParam, limitParam);
 
-    const invoices = await invoiceRepository.find({
-      where,
-      relations: ['student'],
-      order: { createdAt: 'DESC' }
-    });
+    const queryBuilder = invoiceRepository
+      .createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.student', 'student')
+      .orderBy('invoice.createdAt', 'DESC');
 
-    res.json(invoices);
+    if (studentId) {
+      queryBuilder.andWhere('invoice.studentId = :studentId', { studentId });
+    }
+    if (status) {
+      queryBuilder.andWhere('invoice.status = :status', { status });
+    }
+    if (invoiceId) {
+      queryBuilder.andWhere('invoice.id = :invoiceId', { invoiceId });
+    }
+
+    const [invoices, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
+
+    res.json(buildPaginationResponse(invoices, total, page, limit));
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });
   }

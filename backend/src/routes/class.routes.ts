@@ -13,6 +13,7 @@ import { Student } from '../entities/Student';
 import { User } from '../entities/User';
 import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
 import { linkClassToTeachers } from '../utils/teacherClassLinker';
+import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
 
 const router = Router();
 
@@ -28,11 +29,21 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
       await ensureDemoDataAvailable();
     }
 
+    const { page: pageParam, limit: limitParam } = req.query;
+    const { page, limit, skip } = resolvePaginationParams(
+      pageParam as string,
+      limitParam as string
+    );
+
     // Try to load with relations, but handle errors gracefully
-    let classes;
+    let classes: Class[] = [];
+    let total = 0;
     try {
-      classes = await classRepository.find({
-        relations: ['students', 'students.user', 'teachers', 'subjects']
+      [classes, total] = await classRepository.findAndCount({
+        relations: ['students', 'students.user', 'teachers', 'subjects'],
+        order: { name: 'ASC' },
+        skip,
+        take: limit
       });
     } catch (relationError: any) {
       console.error('[getClasses] Error loading with relations:', relationError.message);
@@ -50,9 +61,11 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
         console.log('[getClasses] Table/relation error detected, trying fallback queries');
         // Fallback 1: load without teachers relation
         try {
-          classes = await classRepository.find({
+          const fallbackResults = await classRepository.find({
             relations: ['students', 'students.user', 'subjects']
           });
+          total = fallbackResults.length;
+          classes = fallbackResults.slice(skip, skip + limit);
           // Initialize teachers array for all classes
           classes = classes.map((c: any) => ({
             ...c,
@@ -63,9 +76,11 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
           console.error('[getClasses] Fallback 1 failed:', fallbackError1.message);
           // Fallback 2: load without nested user relation
           try {
-            classes = await classRepository.find({
+            const fallbackResults = await classRepository.find({
               relations: ['students', 'subjects']
             });
+            total = fallbackResults.length;
+            classes = fallbackResults.slice(skip, skip + limit);
             classes = classes.map((c: any) => ({
               ...c,
               teachers: c.teachers || [],
@@ -79,7 +94,9 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
             console.error('[getClasses] Fallback 2 failed:', fallbackError2.message);
             // Last resort: load without any relations
             try {
-              classes = await classRepository.find();
+              const finalFallback = await classRepository.find();
+              total = finalFallback.length;
+              classes = finalFallback.slice(skip, skip + limit);
               classes = classes.map((c: any) => ({
                 ...c,
                 teachers: [],
@@ -98,9 +115,11 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
         // For other errors, try fallback before rethrowing
         console.log('[getClasses] Non-table error, trying fallback before rethrowing');
         try {
-          classes = await classRepository.find({
+          const fallbackResults = await classRepository.find({
             relations: ['subjects']
           });
+          total = fallbackResults.length;
+          classes = fallbackResults.slice(skip, skip + limit);
           classes = classes.map((c: any) => ({
             ...c,
             teachers: [],
@@ -130,7 +149,11 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
       subjects: Array.isArray(c.subjects) ? c.subjects : []
     }));
     
-    res.json(classes);
+    if (!total) {
+      total = await classRepository.count();
+    }
+
+    res.json(buildPaginationResponse(classes, total, page, limit));
   } catch (error: any) {
     console.error('[getClasses] Error:', error);
     console.error('[getClasses] Error stack:', error.stack);

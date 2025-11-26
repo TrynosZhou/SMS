@@ -8,6 +8,7 @@ import { Teacher } from '../entities/Teacher';
 import { Parent } from '../entities/Parent';
 import { resetDemoDataForLogin } from '../utils/resetDemoData';
 import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
+import { validatePhoneNumber } from '../utils/phoneValidator';
 
 export const login = async (req: Request, res: Response) => {
   try {
@@ -278,8 +279,8 @@ export const login = async (req: Request, res: Response) => {
     if (!secret) {
       return res.status(500).json({ message: 'Server configuration error' });
     }
-    const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
-    // @ts-ignore - expiresIn accepts string values like '7d' which is valid
+    const expiresIn = process.env.JWT_EXPIRES_IN || '30m';
+    // @ts-ignore - expiresIn accepts string values like '30m' which is valid
     const token = jwt.sign(
       { userId: user.id, role: user.role },
       secret,
@@ -375,6 +376,20 @@ export const register = async (req: Request, res: Response) => {
       });
       await teacherRepository.save(teacher);
     } else if (requestedRole === UserRole.PARENT) {
+      // Validate phone number for parent registration
+      const phoneNumber = profileData.phoneNumber || profileData.contactNumber;
+      if (phoneNumber) {
+        const phoneValidation = validatePhoneNumber(phoneNumber, true);
+        if (!phoneValidation.isValid) {
+          return res.status(400).json({ message: phoneValidation.error || 'Invalid phone number' });
+        }
+        // Use normalized phone number
+        profileData.phoneNumber = phoneValidation.normalized || phoneNumber;
+        profileData.contactNumber = phoneValidation.normalized || phoneNumber;
+      } else {
+        return res.status(400).json({ message: 'Phone number is required for parent registration' });
+      }
+      
       const parentRepository = AppDataSource.getRepository(Parent);
       const parent = parentRepository.create({
         ...profileData,
@@ -491,4 +506,10 @@ export const confirmPasswordReset = async (req: Request, res: Response) => {
     console.error('Password reset confirmation error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
+};
+
+export const logout = async (_req: Request, res: Response) => {
+  // For JWT-based auth, logout is handled client-side by discarding the token.
+  // This endpoint exists to keep the contract consistent for session-based deployments.
+  return res.json({ message: 'Logged out successfully' });
 };
