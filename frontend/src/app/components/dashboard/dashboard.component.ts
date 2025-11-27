@@ -89,17 +89,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // Load students
     this.studentService.getStudents().subscribe({
       next: (students: any[]) => {
-        this.stats.totalStudents = students.length;
-        this.stats.dayScholars = students.filter(s => s.studentType === 'Day Scholar').length;
-        this.stats.boarders = students.filter(s => s.studentType === 'Boarder').length;
-        this.stats.staffChildren = students.filter(s => s.isStaffChild).length;
-        this.recentStudents = students
+        const studentsArray = Array.isArray(students) ? students : [];
+        this.stats.totalStudents = studentsArray.length;
+        this.stats.dayScholars = studentsArray.filter(s => s.studentType === 'Day Scholar').length;
+        this.stats.boarders = studentsArray.filter(s => s.studentType === 'Boarder').length;
+        this.stats.staffChildren = studentsArray.filter(s => s.isStaffChild).length;
+        this.recentStudents = studentsArray
           .sort((a, b) => new Date(b.enrollmentDate || b.createdAt || 0).getTime() - new Date(a.enrollmentDate || a.createdAt || 0).getTime())
           .slice(0, 5);
         this.checkLoadingComplete();
       },
       error: (err) => {
         console.error('Error loading students:', err);
+        this.stats.totalStudents = 0;
+        this.stats.dayScholars = 0;
+        this.stats.boarders = 0;
+        this.stats.staffChildren = 0;
+        this.recentStudents = [];
         this.checkLoadingComplete();
       }
     });
@@ -107,11 +113,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // Load teachers
     this.teacherService.getTeachers().subscribe({
       next: (teachers: any[]) => {
-        this.stats.totalTeachers = teachers.length;
+        const teachersArray = Array.isArray(teachers) ? teachers : [];
+        this.stats.totalTeachers = teachersArray.length;
         this.checkLoadingComplete();
       },
       error: (err) => {
         console.error('Error loading teachers:', err);
+        this.stats.totalTeachers = 0;
         this.checkLoadingComplete();
       }
     });
@@ -119,11 +127,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // Load classes
     this.classService.getClasses().subscribe({
       next: (classes: any[]) => {
-        this.stats.totalClasses = classes.filter(c => c.isActive).length;
+        const classesArray = Array.isArray(classes) ? classes : [];
+        this.stats.totalClasses = classesArray.filter(c => c.isActive).length;
         this.checkLoadingComplete();
       },
       error: (err) => {
         console.error('Error loading classes:', err);
+        this.stats.totalClasses = 0;
         this.checkLoadingComplete();
       }
     });
@@ -131,11 +141,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // Load subjects
     this.subjectService.getSubjects().subscribe({
       next: (subjects: any[]) => {
-        this.stats.totalSubjects = subjects.length;
+        const subjectsArray = Array.isArray(subjects) ? subjects : [];
+        this.stats.totalSubjects = subjectsArray.length;
         this.checkLoadingComplete();
       },
       error: (err) => {
         console.error('Error loading subjects:', err);
+        this.stats.totalSubjects = 0;
         this.checkLoadingComplete();
       }
     });
@@ -144,15 +156,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.isAdmin() || this.isAccountant()) {
       this.financeService.getInvoices().subscribe({
         next: (invoices: any[]) => {
-          this.stats.totalInvoices = invoices.length;
-          this.stats.totalBalance = invoices.reduce((sum, inv) => sum + (parseFloat(inv.balance) || 0), 0);
-          this.recentInvoices = invoices
+          const invoicesArray = Array.isArray(invoices) ? invoices : [];
+          this.stats.totalInvoices = invoicesArray.length;
+          this.stats.totalBalance = invoicesArray.reduce((sum, inv) => sum + (parseFloat(inv.balance) || 0), 0);
+          this.recentInvoices = invoicesArray
             .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
             .slice(0, 5);
           this.checkLoadingComplete();
         },
         error: (err) => {
           console.error('Error loading invoices:', err);
+          this.stats.totalInvoices = 0;
+          this.stats.totalBalance = 0;
+          this.recentInvoices = [];
           this.checkLoadingComplete();
         }
       });

@@ -100,10 +100,12 @@ export class AttendanceReportsComponent implements OnInit {
   loadClasses() {
     this.classService.getClasses().subscribe({
       next: (data: any) => {
-        this.classes = data.filter((c: any) => c.isActive);
+        const classesArray = Array.isArray(data) ? data : [];
+        this.classes = classesArray.filter((c: any) => c.isActive);
       },
       error: (err: any) => {
         this.error = 'Failed to load classes';
+        this.classes = [];
         console.error(err);
       }
     });
@@ -274,7 +276,7 @@ export class AttendanceReportsComponent implements OnInit {
 
   private prepareReportData() {
     const rows = Array.isArray(this.report?.report) ? [...this.report.report] : [];
-    this.rawReportRows = rows.map(item => ({
+    this.rawReportRows = Array.isArray(rows) ? rows.map(item => ({
       ...item,
       attendanceRateNumber: this.toNumber(item.attendanceRate),
       present: item.present ?? 0,
@@ -282,30 +284,31 @@ export class AttendanceReportsComponent implements OnInit {
       late: item.late ?? 0,
       excused: item.excused ?? 0,
       total: item.total ?? 0
-    }));
+    })) : [];
 
-    this.averageAttendanceRate = this.rawReportRows.length
-      ? this.rawReportRows.reduce((sum, row) => sum + (row.attendanceRateNumber ?? 0), 0) / this.rawReportRows.length
+    const reportRowsArray = Array.isArray(this.rawReportRows) ? this.rawReportRows : [];
+    this.averageAttendanceRate = reportRowsArray.length
+      ? reportRowsArray.reduce((sum, row) => sum + (row.attendanceRateNumber ?? 0), 0) / reportRowsArray.length
       : 0;
 
-    this.topPerformer = this.rawReportRows.length
-      ? [...this.rawReportRows].sort((a, b) => (b.attendanceRateNumber ?? 0) - (a.attendanceRateNumber ?? 0))[0]
+    this.topPerformer = reportRowsArray.length
+      ? [...reportRowsArray].sort((a, b) => (b.attendanceRateNumber ?? 0) - (a.attendanceRateNumber ?? 0))[0]
       : null;
 
-    this.lowestPerformer = this.rawReportRows.length
-      ? [...this.rawReportRows].sort((a, b) => (a.attendanceRateNumber ?? 0) - (b.attendanceRateNumber ?? 0))[0]
+    this.lowestPerformer = reportRowsArray.length
+      ? [...reportRowsArray].sort((a, b) => (a.attendanceRateNumber ?? 0) - (b.attendanceRateNumber ?? 0))[0]
       : null;
 
-    this.concernCount = this.rawReportRows.filter(row => (row.attendanceRateNumber ?? 0) < this.concernThreshold).length;
+    this.concernCount = reportRowsArray.filter(row => (row.attendanceRateNumber ?? 0) < this.concernThreshold).length;
 
-    this.attendanceDistribution = this.calculateDistribution(this.rawReportRows);
+    this.attendanceDistribution = this.calculateDistribution(reportRowsArray);
 
     // Calculate attendance by status totals
     this.attendanceByStatus = {
-      present: this.rawReportRows.reduce((sum, row) => sum + (row.present ?? 0), 0),
-      absent: this.rawReportRows.reduce((sum, row) => sum + (row.absent ?? 0), 0),
-      late: this.rawReportRows.reduce((sum, row) => sum + (row.late ?? 0), 0),
-      excused: this.rawReportRows.reduce((sum, row) => sum + (row.excused ?? 0), 0)
+      present: reportRowsArray.reduce((sum, row) => sum + (row.present ?? 0), 0),
+      absent: reportRowsArray.reduce((sum, row) => sum + (row.absent ?? 0), 0),
+      late: reportRowsArray.reduce((sum, row) => sum + (row.late ?? 0), 0),
+      excused: reportRowsArray.reduce((sum, row) => sum + (row.excused ?? 0), 0)
     };
 
     // Calculate trend (simplified - comparing with previous period)
@@ -515,7 +518,8 @@ export class AttendanceReportsComponent implements OnInit {
   }
 
   private applyFilters() {
-    let data = [...this.rawReportRows];
+    const reportRowsArray = Array.isArray(this.rawReportRows) ? this.rawReportRows : [];
+    let data = [...reportRowsArray];
 
     if (this.searchTerm.trim()) {
       const term = this.searchTerm.trim().toLowerCase();

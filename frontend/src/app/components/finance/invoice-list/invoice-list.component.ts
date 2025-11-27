@@ -156,8 +156,13 @@ export class InvoiceListComponent implements OnInit {
 
   loadStudents() {
     this.studentService.getStudents().subscribe({
-      next: (data: any) => this.students = data,
-      error: (err: any) => console.error(err)
+      next: (data: any) => {
+        this.students = Array.isArray(data) ? data : [];
+      },
+      error: (err: any) => {
+        console.error(err);
+        this.students = [];
+      }
     });
   }
 
@@ -165,7 +170,8 @@ export class InvoiceListComponent implements OnInit {
     this.loading = true;
     this.financeService.getInvoices().subscribe({
       next: (data: any[]) => {
-        this.invoices = (data || []).sort((a, b) => {
+        const invoicesArray = Array.isArray(data) ? data : [];
+        this.invoices = invoicesArray.sort((a, b) => {
           const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           return dateB - dateA;
@@ -180,6 +186,8 @@ export class InvoiceListComponent implements OnInit {
       },
       error: (err: any) => {
         console.error('Error loading invoices:', err);
+        this.invoices = [];
+        this.filteredInvoices = [];
         this.error = 'Failed to load invoices';
         this.loading = false;
         setTimeout(() => this.error = '', 5000);
@@ -200,7 +208,8 @@ export class InvoiceListComponent implements OnInit {
   }
 
   filterInvoices() {
-    let filtered = [...this.invoices];
+    const invoicesArray = Array.isArray(this.invoices) ? this.invoices : [];
+    let filtered = [...invoicesArray];
 
     // Apply search query filter
     if (this.invoiceSearchQuery && this.invoiceSearchQuery.trim()) {
@@ -261,7 +270,8 @@ export class InvoiceListComponent implements OnInit {
     this.selectedTermFilter = '';
     this.selectedStudent = '';
     // After clearing filters, show all invoices
-    this.filteredInvoices = [...this.invoices];
+    const invoicesArray = Array.isArray(this.invoices) ? this.invoices : [];
+    this.filteredInvoices = [...invoicesArray];
   }
 
   hasActiveInvoiceFilters(): boolean {
@@ -289,18 +299,21 @@ export class InvoiceListComponent implements OnInit {
 
   getTotalAmount(): number {
     // Grand Total = Sum of all invoice amounts (current term fees only)
-    return this.filteredInvoices.reduce((sum, inv) => sum + parseFloat(String(inv.amount || 0)), 0);
+    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
+    return invoicesArray.reduce((sum, inv) => sum + parseFloat(String(inv.amount || 0)), 0);
   }
 
   getPaidAmount(): number {
     // Total Paid = Sum of all paid amounts
-    return this.filteredInvoices.reduce((sum, inv) => sum + parseFloat(String(inv.paidAmount || 0)), 0);
+    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
+    return invoicesArray.reduce((sum, inv) => sum + parseFloat(String(inv.paidAmount || 0)), 0);
   }
 
   getOutstandingAmount(): number {
     // Outstanding Balance = Sum of all current balances
     // Note: balance includes previousBalance, so this represents total outstanding across all invoices
-    return this.filteredInvoices.reduce((sum, inv) => sum + parseFloat(String(inv.balance || 0)), 0);
+    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
+    return invoicesArray.reduce((sum, inv) => sum + parseFloat(String(inv.balance || 0)), 0);
   }
 
   getTotalInvoiceAmount(): number {
@@ -318,7 +331,8 @@ export class InvoiceListComponent implements OnInit {
     // Alternative calculation: Sum of (amount + previousBalance) for all invoices
     // Note: This may double-count previousBalance if a student has multiple invoices
     // But it's useful for verification
-    return this.filteredInvoices.reduce((sum, inv) => {
+    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
+    return invoicesArray.reduce((sum, inv) => {
       const amount = parseFloat(String(inv.amount || 0));
       const previousBalance = parseFloat(String(inv.previousBalance || 0));
       return sum + amount + previousBalance;
@@ -337,8 +351,9 @@ export class InvoiceListComponent implements OnInit {
   }
 
   getOverdueCount(): number {
+    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
     const today = new Date();
-    return this.filteredInvoices.filter(inv => {
+    return invoicesArray.filter(inv => {
       const status = (inv.status || '').toLowerCase();
       if (status === 'paid') return false;
       if (!inv.dueDate) return false;
@@ -348,21 +363,24 @@ export class InvoiceListComponent implements OnInit {
   }
 
   getUniformTotal(): number {
-    return this.filteredInvoices.reduce((sum, inv) => {
+    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
+    return invoicesArray.reduce((sum, inv) => {
       const uniformTotal = parseFloat(String(inv.uniformTotal || 0));
       return sum + uniformTotal;
     }, 0);
   }
 
   getTotalPrepaidCredit(): number {
-    return this.filteredInvoices.reduce((sum, inv) => {
+    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
+    return invoicesArray.reduce((sum, inv) => {
       const prepaidAmount = parseFloat(String(inv.prepaidAmount || 0));
       return sum + prepaidAmount;
     }, 0);
   }
 
   getPrepaidCreditCount(): number {
-    return this.filteredInvoices.filter(inv => {
+    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
+    return invoicesArray.filter(inv => {
       const prepaidAmount = parseFloat(String(inv.prepaidAmount || 0));
       return prepaidAmount > 0;
     }).length;
