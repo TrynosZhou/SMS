@@ -314,8 +314,6 @@
             <table class="report-table">
               <thead>
                 <tr>
-                  <th>Subject</th>
-                  <th>Subject Code</th>
                   <th>Mark Obtained</th>
                   <th>Possible Mark</th>
                   <th>Class Average</th>
@@ -325,10 +323,6 @@
               </thead>
               <tbody>
                 <tr *ngFor="let subject of reportCard.subjects" [class.high-score]="subject.percentage >= 80" [class.low-score]="subject.percentage < 50">
-                  <td class="subject-name">
-                    <strong>{{ subject.subject }}</strong>
-                  </td>
-                  <td class="subject-code-cell">{{ subject.subjectCode || '-' }}</td>
                   <td class="score">{{ subject.score | number:'1.0-0' }}</td>
                   <td class="max-score">{{ subject.maxScore | number:'1.0-0' }}</td>
                   <td class="class-average">{{ subject.classAverage || 0 }}</td>
