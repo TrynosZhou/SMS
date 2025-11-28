@@ -232,52 +232,5 @@ export class StudentService {
     );
   }
 
-  transferStudent(payload: { 
-    studentId: string; 
-    toClassId?: string; 
-    reason?: string;
-    transferType?: 'internal' | 'external';
-    externalSchoolName?: string;
-    externalSchoolAddress?: string;
-    externalSchoolPhone?: string;
-    externalSchoolEmail?: string;
-  }): Observable<any> {
-    return this.http.post(`${this.apiUrl}/students/transfer`, payload);
-  }
-
-  getStudentTransfers(studentId: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/students/${studentId}/transfers`).pipe(
-      map(response => {
-        // If response is an array, return it
-        if (Array.isArray(response)) {
-          return response;
-        }
-        // If response has data array, return it
-        if (response && Array.isArray((response as any).data)) {
-          return (response as any).data;
-        }
-        // If response is an error object or null, return empty array
-        if (!response || (response as any).message || (response as any).error) {
-          console.warn('API returned error object or null instead of array, normalizing to empty array:', response);
-          return [];
-        }
-        // Unexpected response format
-        console.warn('Unexpected response format for student transfers, normalizing to empty array:', response);
-        return [];
-      }),
-      map(data => {
-        // Double-check that we have an array before emitting
-        if (!Array.isArray(data)) {
-          console.error('ERROR: Expected array but got:', typeof data, data);
-          return [];
-        }
-        return data;
-      }),
-      catchError((error: any) => {
-        console.error('Error loading student transfer history:', error);
-        return of([]);
-      })
-    );
-  }
 }
 

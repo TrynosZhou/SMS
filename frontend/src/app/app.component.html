@@ -49,9 +49,6 @@
           <a routerLink="/students" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('students') || isAdmin() || isSuperAdmin()">
             <span class="sidebar-text">Student Listing</span>
           </a>
-          <a routerLink="/students/transfer" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('students') || isAdmin() || isSuperAdmin() || authService.hasRole('accountant')">
-            <span class="sidebar-text">Student Transfer</span>
-          </a>
           <a routerLink="/admin/class-promotion" routerLinkActive="active" class="sidebar-subitem" *ngIf="isSuperAdmin()">
             <span class="sidebar-text">Class Promotion</span>
           </a>

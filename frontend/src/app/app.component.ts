@@ -2,7 +2,6 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { AuthService } from './services/auth.service';
 import { SettingsService } from './services/settings.service';
 import { ModuleAccessService } from './services/module-access.service';
-import { SessionTimeoutService } from './services/session-timeout.service';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -20,8 +19,7 @@ export class AppComponent implements OnInit, OnDestroy {
   constructor(
     public authService: AuthService, 
     private settingsService: SettingsService,
-    public moduleAccessService: ModuleAccessService,
-    private sessionTimeoutService: SessionTimeoutService
+    public moduleAccessService: ModuleAccessService
   ) { }
 
   ngOnInit(): void {
