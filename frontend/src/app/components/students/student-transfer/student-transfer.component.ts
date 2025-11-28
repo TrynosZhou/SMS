@@ -69,7 +69,8 @@ export class StudentTransferComponent implements OnInit {
     this.loadingStudents = true;
     this.studentService.getStudentsPaginated({ page: 1, limit: 300 }).subscribe({
       next: response => {
-        this.students = response?.data || [];
+        const studentsData = response?.data;
+        this.students = Array.isArray(studentsData) ? studentsData : [];
         this.filteredStudents = [...this.students];
         this.loadingStudents = false;
       },

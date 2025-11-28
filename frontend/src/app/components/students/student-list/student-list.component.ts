@@ -65,7 +65,9 @@ export class StudentListComponent implements OnInit {
       limit: this.pagination.limit
     }).subscribe({
       next: (response: any) => {
-        this.students = response?.data || [];
+        // Ensure response.data is an array
+        const studentsData = response?.data;
+        this.students = Array.isArray(studentsData) ? studentsData : [];
         this.pagination = {
           page: response?.page || page,
           limit: response?.limit || this.pagination.limit,
