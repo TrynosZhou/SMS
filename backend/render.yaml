@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: sms-backend
+    env: node
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: rm -rf dist node_modules/.cache && npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DB_HOST
+        fromService:
+          type: postgresql
+          name: sms-database
+          property: host
+      - key: DB_PORT
+        fromService:
+          type: postgresql
+          name: sms-database
+          property: port
+      - key: DB_USERNAME
+        fromService:
+          type: postgresql
+          name: sms-database
+          property: user
+      - key: DB_PASSWORD
+        fromService:
+          type: postgresql
+          name: sms-database
+          property: password
+      - key: DB_NAME
+        fromService:
+          type: postgresql
+          name: sms-database
+          property: database
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+databases:
+  - name: sms-database
+    databaseName: sms_db
+    user: sms_user
+    plan: free
+

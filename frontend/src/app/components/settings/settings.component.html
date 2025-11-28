@@ -1,0 +1,1060 @@
+<div class="container">
+  <div class="card">
+    <h1>System Settings</h1>
+    <div class="alert alert-success" *ngIf="success" style="display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; padding: 16px 20px; margin-bottom: 20px; animation: slideIn 0.3s ease-out;">
+      <span style="font-size: 20px;">✓</span>
+      <span>{{ success }}</span>
+    </div>
+    <div class="alert alert-error" *ngIf="error" style="display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; padding: 16px 20px; margin-bottom: 20px;">
+      <span style="font-size: 20px;">✗</span>
+      <span>{{ error }}</span>
+    </div>
+
+    <div *ngIf="loading && !settings.studentIdPrefix">Loading settings...</div>
+
+    <div class="demo-settings-banner" *ngIf="isDemoUser()">
+      <div class="demo-settings-icon">🧪</div>
+      <div>
+        <h3>Demo Mode — Read Only</h3>
+        <p>Settings are locked for the shared demo account. Switch to your own admin account to make permanent changes.</p>
+      </div>
+    </div>
+
+    <form (ngSubmit)="onSubmit()" *ngIf="settings.studentIdPrefix">
+      <fieldset
+        [attr.disabled]="isDemoUser() ? true : null"
+        [class.demo-readonly]="isDemoUser()">
+      <!-- Student ID Prefix -->
+      <div class="form-section">
+        <h2>Student ID Settings</h2>
+        <div class="form-group">
+          <label>Student ID Prefix *</label>
+          <input type="text" [(ngModel)]="settings.studentIdPrefix" name="studentIdPrefix" required maxlength="10">
+          <small>Prefix for auto-generated student IDs (e.g., JPS, ABC)</small>
+        </div>
+      </div>
+
+      <!-- Fees Settings -->
+      <div class="form-section">
+        <h2>Fees Settings</h2>
+        <div class="form-group">
+          <label>Day Scholar Tuition Fee *</label>
+          <input type="number" [(ngModel)]="settings.feesSettings.dayScholarTuitionFee" name="dayScholarTuitionFee" min="0" step="0.01" required>
+          <small>Tuition fee for day scholar students</small>
+        </div>
+        <div class="form-group">
+          <label>Boarder Tuition Fee *</label>
+          <input type="number" [(ngModel)]="settings.feesSettings.boarderTuitionFee" name="boarderTuitionFee" min="0" step="0.01" required>
+          <small>Tuition fee for boarder students</small>
+        </div>
+        <div class="form-group">
+          <label>Registration Fee</label>
+          <input type="number" [(ngModel)]="settings.feesSettings.registrationFee" name="registrationFee" min="0" step="0.01">
+          <small>Registration fee charged once at student registration (not for staff children)</small>
+        </div>
+        <div class="form-group">
+          <label>Desk Fee</label>
+          <input type="number" [(ngModel)]="settings.feesSettings.deskFee" name="deskFee" min="0" step="0.01">
+          <small>One-time desk fee for new students (both boarders and day scholars)</small>
+        </div>
+        <div class="form-group">
+          <label>Library Fee</label>
+          <input type="number" [(ngModel)]="settings.feesSettings.libraryFee" name="libraryFee" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Sports Fee</label>
+          <input type="number" [(ngModel)]="settings.feesSettings.sportsFee" name="sportsFee" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Transport Cost (Day Scholars) *</label>
+          <input type="number" [(ngModel)]="settings.feesSettings.transportCost" name="transportCost" min="0" step="0.01" required>
+          <small>Cost for school transport service (applies to day scholars who use transport)</small>
+        </div>
+        <div class="form-group">
+          <label>Dining Hall (DH) Cost (Day Scholars) *</label>
+          <input type="number" [(ngModel)]="settings.feesSettings.diningHallCost" name="diningHallCost" min="0" step="0.01" required>
+          <small>Cost for dining hall meals (applies to day scholars who use dining hall)</small>
+        </div>
+        <div class="form-group">
+          <label>Other Fees</label>
+          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <input type="text" [(ngModel)]="newFeeName" name="newFeeName" placeholder="Fee Name" style="flex: 1;">
+            <input type="number" [(ngModel)]="newFeeAmount" name="newFeeAmount" placeholder="Amount" min="0" step="0.01" style="width: 150px;">
+            <button type="button" class="btn btn-secondary" (click)="addOtherFee()">Add</button>
+          </div>
+          <div *ngFor="let fee of settings.feesSettings.otherFees; let i = index" style="display: flex; justify-content: space-between; align-items: center; padding: 5px; background: #f5f5f5; margin-bottom: 5px;">
+            <span>{{ fee.name }}: {{ fee.amount | number:'1.2-2' }}</span>
+            <button type="button" class="btn btn-danger btn-sm" (click)="removeOtherFee(i)">Remove</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Uniform Items -->
+      <div class="form-section">
+        <h2>Uniform Items</h2>
+        <p class="section-description">Manage uniform items and pricing. Items listed here will be available when creating student invoices.</p>
+        <div style="margin-bottom: 15px;">
+          <button type="button" class="btn btn-secondary" (click)="openUniformItemModal()">➕ Add Uniform Item</button>
+        </div>
+        <div *ngIf="uniformItems.length === 0" class="alert alert-info" style="margin-bottom: 15px;">
+          No uniform items configured yet. Click "Add Uniform Item" to create one.
+        </div>
+        <div *ngIf="uniformItems.length > 0" class="uniform-table-wrapper">
+          <table class="uniform-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Description</th>
+                <th>Unit Price ({{ settings.currencySymbol }})</th>
+                <th>Status</th>
+                <th style="text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of uniformItems">
+                <td>{{ item.name }}</td>
+                <td>{{ item.description || '—' }}</td>
+                <td>{{ item.unitPrice | number:'1.2-2' }}</td>
+                <td>
+                  <span [ngClass]="item.isActive ? 'status-active' : 'status-inactive'">
+                    {{ item.isActive ? 'Active' : 'Inactive' }}
+                  </span>
+                </td>
+                <td style="text-align: center;">
+                  <button type="button" class="btn btn-secondary btn-sm" (click)="openUniformItemModal(item)">✏️ Edit</button>
+                  <button type="button" class="btn btn-danger btn-sm" (click)="deleteUniformItem(item)">🗑️ Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Grade Thresholds and Labels -->
+      <div class="form-section" *ngIf="authService.hasRole('admin') || authService.hasRole('superadmin')">
+        <h2>📊 Grade Thresholds and Labels for Student Performance</h2>
+        <p class="section-description" style="color: #6c757d; margin-bottom: 20px;">
+          Configure both the mark range (percentage thresholds) and grade labels/remarks for each performance level. These settings determine how student performance is graded and displayed on report cards.
+          <strong>Only Administrators and SuperAdmins can modify these settings.</strong>
+        </p>
+        
+        <div class="grade-settings-container" style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6;">
+          <!-- Grade 1: Excellent -->
+          <div class="grade-item" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #28a745;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start;">
+              <div class="form-group">
+                <label>
+                  Mark Range (Minimum %)
+                  <span style="color: #28a745; font-weight: 600;">★</span>
+                </label>
+                <input 
+                  type="number" 
+                  [(ngModel)]="settings.gradeThresholds.excellent" 
+                  name="excellent" 
+                  min="0" 
+                  max="100" 
+                  required
+                  (blur)="validateGradeThresholds()"
+                  style="width: 100%;">
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                  Range: {{ settings.gradeThresholds.excellent }}% - 100%
+                </small>
+              </div>
+              <div class="form-group">
+                <label>
+                  Grade Label/Remark
+                  <span style="color: #28a745; font-weight: 600;">★</span>
+                </label>
+                <input 
+                  type="text" 
+                  [(ngModel)]="settings.gradeLabels.excellent" 
+                  name="gradeLabelExcellent" 
+                  maxlength="50"
+                  required
+                  placeholder="e.g., Outstanding"
+                  style="width: 100%; padding: 10px; border: 2px solid #28a745; border-radius: 4px; font-size: 14px;"
+                  class="editable-grade-label">
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                  This label will appear on report cards (Editable)
+                </small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grade 2: Very Good -->
+          <div class="grade-item" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #17a2b8;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start;">
+              <div class="form-group">
+                <label>
+                  Mark Range (Minimum %)
+                  <span style="color: #17a2b8; font-weight: 600;">★</span>
+                </label>
+                <input 
+                  type="number" 
+                  [(ngModel)]="settings.gradeThresholds.veryGood" 
+                  name="veryGood" 
+                  min="0" 
+                  max="100" 
+                  required
+                  (blur)="validateGradeThresholds()"
+                  style="width: 100%;">
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                  Range: {{ settings.gradeThresholds.veryGood }}% - {{ settings.gradeThresholds.excellent - 1 }}%
+                </small>
+              </div>
+              <div class="form-group">
+                <label>
+                  Grade Label/Remark
+                  <span style="color: #17a2b8; font-weight: 600;">★</span>
+                </label>
+                <input 
+                  type="text" 
+                  [(ngModel)]="settings.gradeLabels.veryGood" 
+                  name="gradeLabelVeryGood" 
+                  maxlength="50"
+                  required
+                  placeholder="e.g., Very High"
+                  style="width: 100%; padding: 10px; border: 2px solid #17a2b8; border-radius: 4px; font-size: 14px;"
+                  class="editable-grade-label">
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                  This label will appear on report cards (Editable)
+                </small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grade 3: Good -->
+          <div class="grade-item" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #007bff;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start;">
+              <div class="form-group">
+                <label>
+                  Mark Range (Minimum %)
+                  <span style="color: #007bff; font-weight: 600;">★</span>
+                </label>
+                <input 
+                  type="number" 
+                  [(ngModel)]="settings.gradeThresholds.good" 
+                  name="good" 
+                  min="0" 
+                  max="100" 
+                  required
+                  (blur)="validateGradeThresholds()"
+                  style="width: 100%;">
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                  Range: {{ settings.gradeThresholds.good }}% - {{ settings.gradeThresholds.veryGood - 1 }}%
+                </small>
+              </div>
+              <div class="form-group">
+                <label>
+                  Grade Label/Remark
+                  <span style="color: #007bff; font-weight: 600;">★</span>
+                </label>
+                <input 
+                  type="text" 
+                  [(ngModel)]="settings.gradeLabels.good" 
+                  name="gradeLabelGood" 
+                  maxlength="50"
+                  required
+                  placeholder="e.g., Good"
+                  style="width: 100%; padding: 10px; border: 2px solid #007bff; border-radius: 4px; font-size: 14px;"
+                  class="editable-grade-label">
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                  This label will appear on report cards (Editable)
+                </small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grade 4: Satisfactory -->
+          <div class="grade-item" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ffc107;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start;">
+              <div class="form-group">
+                <label>
+                  Mark Range (Minimum %)
+                  <span style="color: #ffc107; font-weight: 600;">★</span>
+                </label>
+                <input 
+                  type="number" 
+                  [(ngModel)]="settings.gradeThresholds.satisfactory" 
+                  name="satisfactory" 
+                  min="0" 
+                  max="100" 
+                  required
+                  (blur)="validateGradeThresholds()"
+                  style="width: 100%;">
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                  Range: {{ settings.gradeThresholds.satisfactory }}% - {{ settings.gradeThresholds.good - 1 }}%
+                </small>
+              </div>
+              <div class="form-group">
+                <label>
+                  Grade Label/Remark
+                  <span style="color: #ffc107; font-weight: 600;">★</span>
+                </label>
+                <input 
+                  type="text" 
+                  [(ngModel)]="settings.gradeLabels.satisfactory" 
+                  name="gradeLabelSatisfactory" 
+                  maxlength="50"
+                  required
+                  placeholder="e.g., Satisfactory"
+                  style="width: 100%; padding: 10px; border: 2px solid #ffc107; border-radius: 4px; font-size: 14px;"
+                  class="editable-grade-label">
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                  This label will appear on report cards (Editable)
+                </small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grade 5: Needs Improvement -->
+          <div class="grade-item" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #fd7e14;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start;">
+              <div class="form-group">
+                <label>
+                  Mark Range (Minimum %)
+                  <span style="color: #fd7e14; font-weight: 600;">★</span>
+                </label>
+                <input 
+                  type="number" 
+                  [(ngModel)]="settings.gradeThresholds.needsImprovement" 
+                  name="needsImprovement" 
+                  min="0" 
+                  max="100" 
+                  required
+                  (blur)="validateGradeThresholds()"
+                  style="width: 100%;">
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                  Range: {{ settings.gradeThresholds.needsImprovement }}% - {{ (settings.gradeThresholds.basic || 1) - 1 }}%
+                </small>
+              </div>
+              <div class="form-group">
+                <label>
+                  Grade Label/Remark
+                  <span style="color: #fd7e14; font-weight: 600;">★</span>
+                </label>
+                <input 
+                  type="text" 
+                  [(ngModel)]="settings.gradeLabels.needsImprovement" 
+                  name="gradeLabelNeedsImprovement" 
+                  maxlength="50"
+                  required
+                  placeholder="e.g., Needs Improvement"
+                  style="width: 100%; padding: 10px; border: 2px solid #fd7e14; border-radius: 4px; font-size: 14px;"
+                  class="editable-grade-label">
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                  This label will appear on report cards (Editable)
+                </small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grade 6: Basic -->
+          <div class="grade-item" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #6c757d;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start;">
+              <div class="form-group">
+                <label>
+                  Mark Range (Minimum %)
+                  <span style="color: #6c757d; font-weight: 600;">★</span>
+                </label>
+                <input 
+                  type="number" 
+                  [(ngModel)]="settings.gradeThresholds.basic" 
+                  name="basic" 
+                  min="0" 
+                  max="100" 
+                  required
+                  (blur)="validateGradeThresholds()"
+                  style="width: 100%;">
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                  Range: {{ settings.gradeThresholds.basic || 1 }}% - {{ (settings.gradeThresholds.needsImprovement || 20) - 1 }}%
+                </small>
+              </div>
+              <div class="form-group">
+                <label>
+                  Grade Label/Remark
+                  <span style="color: #6c757d; font-weight: 600;">★</span>
+                </label>
+                <input 
+                  type="text" 
+                  [(ngModel)]="settings.gradeLabels.basic" 
+                  name="gradeLabelBasic" 
+                  maxlength="50"
+                  required
+                  placeholder="e.g., Basic"
+                  style="width: 100%; padding: 10px; border: 2px solid #6c757d; border-radius: 4px; font-size: 14px;"
+                  class="editable-grade-label">
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                  This label will appear on report cards (Editable)
+                </small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grade 7: Fail/Unclassified -->
+          <div class="grade-item" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #dc3545;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start;">
+              <div class="form-group">
+                <label style="color: #dc3545; font-weight: 600;">
+                  Mark Range
+                </label>
+                <input 
+                  type="text" 
+                  value="0%" 
+                  disabled
+                  style="background: #e9ecef; cursor: not-allowed; width: 100%;">
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                  Range: 0% only
+                </small>
+              </div>
+              <div class="form-group">
+                <label style="color: #dc3545; font-weight: 600;">
+                  Grade Label/Remark
+                </label>
+                <input 
+                  type="text" 
+                  [(ngModel)]="settings.gradeLabels.fail" 
+                  name="gradeLabelFail" 
+                  maxlength="50"
+                  required
+                  placeholder="e.g., Unclassified"
+                  style="width: 100%; padding: 10px; border: 2px solid #dc3545; border-radius: 4px; font-size: 14px;"
+                  class="editable-grade-label">
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                  This label will appear on report cards (Editable)
+                </small>
+              </div>
+            </div>
+          </div>
+          
+          <div class="alert alert-info" style="margin-top: 15px; padding: 12px; background: #e3f2fd; border-left: 4px solid #2196f3; color: #1565c0;">
+            <strong>ℹ️ Important:</strong>
+            <ul style="margin: 8px 0 0 20px; padding: 0;">
+              <li>Mark ranges must be in descending order (Excellent ≥ Very Good ≥ Good ≥ Satisfactory ≥ Needs Improvement ≥ Basic)</li>
+              <li>Grade labels can be customized to match your school's grading system</li>
+              <li>Changes will apply to all new report cards generated after saving</li>
+              <li>Existing report cards will not be affected</li>
+              <li>Grade labels should be clear and concise (max 50 characters)</li>
+              <li>The "Fail/Unclassified" grade applies only to scores of exactly 0%</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- School Information -->
+      <div class="form-section">
+        <h2>School Information</h2>
+        <div class="form-group">
+          <label>School Name *</label>
+            <input 
+              type="text" 
+              [(ngModel)]="settings.schoolName" 
+              name="schoolName"
+              [disabled]="isDemoUser()"
+              required
+              placeholder="Enter the official school name">
+            <small *ngIf="isDemoUser()" class="demo-disabled-text">
+              School name is locked to "Demo School" for demo accounts.
+            </small>
+        </div>
+        <div class="form-group">
+          <label>School Address</label>
+          <textarea [(ngModel)]="settings.schoolAddress" name="schoolAddress" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label>School Phone</label>
+          <input 
+            type="tel" 
+            [(ngModel)]="settings.schoolPhone" 
+            name="schoolPhone"
+            placeholder="e.g., 0771234567 or +263771234567"
+            [class.error]="schoolPhoneError"
+            (blur)="validateSchoolPhone()"
+            (input)="schoolPhoneError = ''">
+          <small class="form-hint" *ngIf="!schoolPhoneError">Zimbabwean format: 07XXXXXXXX or +2637XXXXXXXX</small>
+          <small class="form-error" *ngIf="schoolPhoneError">{{ schoolPhoneError }}</small>
+        </div>
+        <div class="form-group">
+          <label>School Email</label>
+          <input type="email" [(ngModel)]="settings.schoolEmail" name="schoolEmail">
+        </div>
+        <div class="form-group">
+          <label>School Logo 1 (Left Side)</label>
+          <input type="file" accept="image/*" (change)="onLogoChange($event, 1)">
+          <div *ngIf="settings.schoolLogo" style="margin-top: 10px;">
+            <img [src]="settings.schoolLogo" alt="School Logo 1" style="max-width: 200px; max-height: 200px;">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>School Logo 2 (Right Side)</label>
+          <input type="file" accept="image/*" (change)="onLogoChange($event, 2)">
+          <div *ngIf="settings.schoolLogo2" style="margin-top: 10px;">
+            <img [src]="settings.schoolLogo2" alt="School Logo 2" style="max-width: 200px; max-height: 200px;">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Headmaster Name</label>
+          <input type="text" [(ngModel)]="settings.headmasterName" name="headmasterName" placeholder="Enter the headmaster's full name">
+        </div>
+        <div class="form-group">
+          <label>School Motto</label>
+          <input type="text" [(ngModel)]="settings.schoolMotto" name="schoolMotto" placeholder="Enter the school motto or tagline">
+          <small>School motto or tagline (e.g., "After instruction we soar")</small>
+        </div>
+      </div>
+
+      <!-- Academic Year & Term Management -->
+      <div class="form-section">
+        <h2>Academic Year & Term Management</h2>
+        <div class="form-group">
+          <label>Academic Year</label>
+          <input type="text" [(ngModel)]="settings.academicYear" name="academicYear" placeholder="e.g., 2024/2025">
+        </div>
+        <div class="form-group">
+          <label>Current Term</label>
+          <input type="text" [(ngModel)]="settings.currentTerm" name="currentTerm" placeholder="e.g., Term 1 2024">
+          <small>Current term for the academic year (e.g., Term 1 2024, Term 2 2024, Term 3 2024)</small>
+        </div>
+        <div class="form-group">
+          <label>Active Term *</label>
+          <input type="text" [(ngModel)]="settings.activeTerm" name="activeTerm" placeholder="e.g., Term 1 2024" required>
+          <small>The active term that will be fetched by all pages when necessary. This should match the current term.</small>
+        </div>
+        <div class="form-group">
+          <label>Term Start Date (Opening Day) *</label>
+          <input type="date" [(ngModel)]="termStartDateInput" name="termStartDate" required>
+          <small>On this date, all fees become due (current invoice balance will be due for all students)</small>
+        </div>
+        <div class="form-group">
+          <label>Term End Date (Closing Day) *</label>
+          <input type="date" [(ngModel)]="termEndDateInput" name="termEndDate" required>
+          <small>On this date, the system will compute closing invoice balances (current balance + fees for next term)</small>
+        </div>
+        <div class="alert alert-info" style="margin-top: 15px; padding: 12px; background: #e3f2fd; border-left: 4px solid #2196f3; color: #1565c0;">
+          <strong>ℹ️ Important:</strong>
+          <ul style="margin: 8px 0 0 20px; padding: 0;">
+            <li>Class promotion is done at the end of the current academic year</li>
+            <li>The system will remind you to perform year-end updates (class promotion) and calculate fees/invoice balances</li>
+            <li>Make sure to update these dates when starting a new term</li>
+          </ul>
+        </div>
+
+        <!-- Year-End Reminders -->
+        <div *ngIf="reminders && reminders.length > 0" class="alert alert-warning" style="margin-top: 15px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; color: #856404;">
+          <strong>⚠️ Reminders:</strong>
+          <ul style="margin: 8px 0 0 20px; padding: 0;">
+            <li *ngFor="let reminder of reminders">{{ reminder }}</li>
+          </ul>
+          <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button *ngIf="needsFeeCalculation" type="button" class="btn btn-warning" (click)="processClosingDay()" [disabled]="processingClosingDay">
+              {{ processingClosingDay ? 'Processing...' : '📊 Process Closing Day' }}
+            </button>
+            <button *ngIf="needsPromotion" type="button" class="btn btn-primary" routerLink="/admin/class-promotion" [disabled]="false">
+              🎓 Go to Class Promotion
+            </button>
+          </div>
+        </div>
+
+        <!-- Term Operations -->
+        <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+          <h3 style="margin-top: 0;">Term Operations</h3>
+          <p style="color: #6c757d; margin-bottom: 15px;">Perform term-related operations when needed.</p>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" class="btn btn-success" (click)="processOpeningDay()" [disabled]="processingOpeningDay">
+              {{ processingOpeningDay ? 'Processing...' : '📅 Process Opening Day' }}
+            </button>
+            <button type="button" class="btn btn-warning" (click)="processClosingDay()" [disabled]="processingClosingDay">
+              {{ processingClosingDay ? 'Processing...' : '📊 Process Closing Day' }}
+            </button>
+            <button type="button" class="btn btn-info" (click)="loadReminders()" [disabled]="loadingReminders">
+              {{ loadingReminders ? 'Loading...' : '🔄 Refresh Reminders' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Currency Settings -->
+      <div class="form-section">
+        <h2>Currency Settings</h2>
+        <div class="form-group">
+          <label>Currency Symbol *</label>
+          <input type="text" [(ngModel)]="settings.currencySymbol" name="currencySymbol" required maxlength="10">
+          <small>Currency symbol to display with amounts (e.g., KES, $, €, £, ₹)</small>
+        </div>
+      </div>
+
+      <!-- Promotion Rules -->
+      <div class="form-section">
+        <h2>⬆️ Class Promotion Rules</h2>
+        <p class="section-description">Configure how students move from one class to another during promotion. This determines the promotion path for all students.</p>
+        
+        <div class="promotion-rules-container">
+          <!-- Add/Edit Form -->
+          <div class="promotion-rule-form" style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #e0e0e0;">
+            <h3 style="margin-top: 0; margin-bottom: 15px; color: #333;">
+              {{ editingPromotionRule ? '✏️ Edit Promotion Rule' : '➕ Add New Promotion Rule' }}
+            </h3>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+              <div class="form-group">
+                <label>From Class *</label>
+                <select 
+                  [(ngModel)]="promotionRuleForm.fromClassId" 
+                  name="fromClassId"
+                  class="form-control"
+                  [disabled]="!!editingPromotionRule">
+                  <option value="">-- Select From Class --</option>
+                  <option *ngFor="let cls of getAvailableFromClasses()" [value]="cls.id">
+                    {{ getClassDisplayName(cls) }} ({{ cls.form }})
+                  </option>
+                </select>
+                <small>Select the class students are currently in</small>
+              </div>
+              
+              <div class="form-group">
+                <label>To Class *</label>
+                <select 
+                  [(ngModel)]="promotionRuleForm.toClassId" 
+                  name="toClassId"
+                  class="form-control"
+                  [disabled]="promotionRuleForm.isFinalClass"
+                  (change)="promotionRuleForm.toClassId === 'COMPLETED' ? promotionRuleForm.isFinalClass = true : null">
+                  <option value="">-- Select To Class --</option>
+                  <option value="COMPLETED">✅ Completed/Graduated</option>
+                  <option *ngFor="let cls of getAvailableToClasses()" [value]="cls.id">
+                    {{ getClassDisplayName(cls) }} ({{ cls.form }})
+                  </option>
+                </select>
+                <small>Select the class students will be promoted to, or "Completed" for final classes</small>
+              </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+              <div class="form-group">
+                <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input 
+                    type="checkbox" 
+                    [(ngModel)]="promotionRuleForm.isFinalClass" 
+                    name="isFinalClass"
+                    (change)="promotionRuleForm.isFinalClass ? promotionRuleForm.toClassId = null : null">
+                  <span><strong>Is Final Class?</strong></span>
+                </label>
+                <small>Check if this class leads to completion/graduation (no further promotion)</small>
+              </div>
+              
+              <div class="form-group">
+                <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input 
+                    type="checkbox" 
+                    [(ngModel)]="promotionRuleForm.isActive" 
+                    name="isActive">
+                  <span><strong>Active</strong></span>
+                </label>
+                <small>Uncheck to temporarily disable this rule without deleting it</small>
+              </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+              <button 
+                type="button" 
+                [class]="editingPromotionRule ? 'btn btn-primary' : 'btn btn-secondary'" 
+                (click)="savePromotionRule()"
+                [disabled]="!promotionRuleForm.fromClassId || (!promotionRuleForm.isFinalClass && !promotionRuleForm.toClassId)">
+                {{ editingPromotionRule ? '💾 Update Rule' : '➕ Add Rule' }}
+              </button>
+              <button 
+                *ngIf="editingPromotionRule"
+                type="button" 
+                class="btn btn-secondary" 
+                (click)="cancelEditPromotionRule()">
+                Cancel
+              </button>
+            </div>
+            
+            <div *ngIf="editingPromotionRule" class="alert alert-info" style="margin-top: 15px; padding: 10px 15px; background: #e3f2fd; border-left: 3px solid #2196f3; color: #1565c0;">
+              <strong>✏️ Editing:</strong> {{ getClassDisplayName(editingPromotionRule.fromClass) }} → 
+              {{ editingPromotionRule.isFinalClass ? 'Completed' : getClassDisplayName(editingPromotionRule.toClass) }}
+            </div>
+          </div>
+
+          <!-- Rules Table -->
+          <div *ngIf="loadingPromotionRules" style="text-align: center; padding: 20px;">
+            Loading promotion rules...
+          </div>
+          
+          <div *ngIf="!loadingPromotionRules && promotionRules.length > 0" class="promotion-rules-table-wrapper" style="overflow-x: auto;">
+            <table class="promotion-rules-table" style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background: #f5f5f5;">
+                  <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">From Class</th>
+                  <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">To Class</th>
+                  <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Final Class</th>
+                  <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Status</th>
+                  <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let rule of promotionRules" [class.editing]="editingPromotionRule?.id === rule.id" style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 12px;">
+                    <strong>{{ getClassDisplayName(rule.fromClass) }}</strong>
+                    <br>
+                    <small style="color: #666;">{{ rule.fromClass?.form }}</small>
+                  </td>
+                  <td style="padding: 12px;">
+                    <span *ngIf="rule.isFinalClass" style="color: #28a745; font-weight: bold;">✅ Completed</span>
+                    <span *ngIf="!rule.isFinalClass">
+                      <strong>{{ getClassDisplayName(rule.toClass) }}</strong>
+                      <br>
+                      <small style="color: #666;">{{ rule.toClass?.form }}</small>
+                    </span>
+                  </td>
+                  <td style="padding: 12px; text-align: center;">
+                    <span *ngIf="rule.isFinalClass" style="color: #28a745; font-weight: bold;">✓</span>
+                    <span *ngIf="!rule.isFinalClass" style="color: #999;">-</span>
+                  </td>
+                  <td style="padding: 12px; text-align: center;">
+                    <label class="toggle-switch" style="cursor: pointer;">
+                      <input 
+                        type="checkbox" 
+                        [checked]="rule.isActive"
+                        (change)="toggleRuleStatus(rule)">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <br>
+                    <small [style.color]="rule.isActive ? '#28a745' : '#dc3545'">
+                      {{ rule.isActive ? 'Active' : 'Inactive' }}
+                    </small>
+                  </td>
+                  <td style="padding: 12px; text-align: center;">
+                    <div style="display: flex; gap: 8px; justify-content: center;">
+                      <button 
+                        type="button" 
+                        class="btn btn-primary btn-sm" 
+                        (click)="editPromotionRule(rule)"
+                        [disabled]="!!editingPromotionRule && editingPromotionRule.id !== rule.id"
+                        title="Edit this rule">
+                        ✏️
+                      </button>
+                      <button 
+                        type="button" 
+                        class="btn btn-danger btn-sm" 
+                        (click)="deletePromotionRule(rule)"
+                        [disabled]="editingPromotionRule?.id === rule.id"
+                        title="Delete this rule">
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div *ngIf="!loadingPromotionRules && promotionRules.length === 0" class="no-rules-message" style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px; color: #666;">
+            <p style="font-size: 16px; margin: 0;">No promotion rules configured yet.</p>
+            <p style="font-size: 14px; margin-top: 10px;">Add rules above to define how students move between classes.</p>
+          </div>
+          
+          <!-- Warning for classes without rules -->
+          <div *ngIf="!loadingPromotionRules && classes.length > 0" style="margin-top: 20px;">
+            <div *ngFor="let cls of classes" style="margin-bottom: 5px;">
+              <div *ngIf="cls.isActive && hasNoPromotionRule(cls.id)" class="alert alert-warning" style="padding: 8px 12px; margin-bottom: 5px; background: #fff3cd; border-left: 3px solid #ffc107; color: #856404; font-size: 13px;">
+                ⚠️ <strong>{{ getClassDisplayName(cls) }}</strong> has no active promotion rule defined
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Module Access Control -->
+      <div class="form-section">
+        <h2>Module Access Control</h2>
+        <p class="section-description">Select which modules teachers and parents can access and view on the system.</p>
+        
+        <!-- Teacher Module Access -->
+        <div class="module-access-group">
+          <h3>👨‍🏫 Teacher Access</h3>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.students" name="teacherStudents">
+              <span>Students</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.classes" name="teacherClasses">
+              <span>Classes</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.subjects" name="teacherSubjects">
+              <span>Subjects</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.exams" name="teacherExams">
+              <span>Exams</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.reportCards" name="teacherReportCards">
+              <span>Report Cards</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.rankings" name="teacherRankings">
+              <span>Rankings</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.finance" name="teacherFinance">
+              <span>Finance</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.settings" name="teacherSettings">
+              <span>Settings</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Parent Module Access -->
+        <div class="module-access-group">
+          <h3>👨‍👩‍👧 Parent Access</h3>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.parents.dashboard" name="parentDashboard">
+              <span>Dashboard</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.parents.reportCards" name="parentReportCards">
+              <span>Report Cards</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.parents.invoices" name="parentInvoices">
+              <span>Invoices</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Accountant Module Access -->
+        <div class="module-access-group">
+          <h3>💰 Accountant Access</h3>
+          <p class="section-description" style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
+            Control which modules the Accountant role can access. Accountants typically manage financial operations.
+          </p>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.accountant.dashboard" name="accountantDashboard">
+              <span>Dashboard</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.accountant.students" name="accountantStudents">
+              <span>Students</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.accountant.invoices" name="accountantInvoices">
+              <span>Invoices</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.accountant.finance" name="accountantFinance">
+              <span>Finance</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.accountant.settings" name="accountantSettings">
+              <span>Settings</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Administrator Module Access -->
+        <div class="module-access-group">
+          <h3>👔 Administrator Access</h3>
+          <p class="section-description" style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
+            Control which modules the Administrator role can access. Administrators typically have broad system access.
+          </p>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.dashboard" name="adminDashboard">
+              <span>Dashboard</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.students" name="adminStudents">
+              <span>Students</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.teachers" name="adminTeachers">
+              <span>Teachers</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.classes" name="adminClasses">
+              <span>Classes</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.subjects" name="adminSubjects">
+              <span>Subjects</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.exams" name="adminExams">
+              <span>Exams</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.reportCards" name="adminReportCards">
+              <span>Report Cards</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.rankings" name="adminRankings">
+              <span>Rankings</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.finance" name="adminFinance">
+              <span>Finance</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.attendance" name="adminAttendance">
+              <span>Attendance</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.settings" name="adminSettings">
+              <span>Settings</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Demo Account Module Access -->
+        <div class="module-access-group">
+          <h3>🧪 Demo Account Access</h3>
+          <p class="section-description" style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
+            Limit what the shared demo login can access. Useful when sharing the system publicly.
+          </p>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.dashboard" name="demoDashboard">
+              <span>Dashboard</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.students" name="demoStudents">
+              <span>Students</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.teachers" name="demoTeachers">
+              <span>Teachers</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.classes" name="demoClasses">
+              <span>Classes</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.subjects" name="demoSubjects">
+              <span>Subjects</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.exams" name="demoExams">
+              <span>Exams</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.reportCards" name="demoReportCards">
+              <span>Report Cards</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.rankings" name="demoRankings">
+              <span>Rankings</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.finance" name="demoFinance">
+              <span>Finance</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.attendance" name="demoAttendance">
+              <span>Attendance</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.assignments" name="demoAssignments">
+              <span>Assignments</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.messages" name="demoMessages">
+              <span>Messages</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.accounts" name="demoAccounts">
+              <span>Accounts</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.settings" name="demoSettings">
+              <span>Settings</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Student Module Access -->
+        <div class="module-access-group">
+          <h3>🎓 Student Access</h3>
+          <p class="section-description" style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
+            Decide what logged-in students can see when student accounts are enabled.
+          </p>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.students.dashboard" name="studentDashboard">
+              <span>Dashboard</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.students.subjects" name="studentSubjects">
+              <span>Subjects</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.students.assignments" name="studentAssignments">
+              <span>Assignments</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.students.reportCards" name="studentReportCards">
+              <span>Report Cards</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.students.finance" name="studentFinance">
+              <span>Finance</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      </fieldset>
+
+      <div style="margin-top: 20px;">
+        <button type="submit" class="btn btn-primary" [disabled]="loading || isDemoUser()">
+          {{ loading ? 'Saving...' : '💾 Save Settings' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Uniform Item Modal -->
+<div class="modal-backdrop" *ngIf="uniformItemModalOpen" (click)="closeUniformItemModal()"></div>
+<div class="modal-dialog" *ngIf="uniformItemModalOpen">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>{{ uniformItemForm.id ? 'Edit Uniform Item' : 'Add Uniform Item' }}</h3>
+      <button type="button" class="modal-close" (click)="closeUniformItemModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div *ngIf="uniformItemError" class="alert alert-error" style="margin-bottom: 15px;">
+        {{ uniformItemError }}
+      </div>
+      <div class="form-group">
+        <label>Item Name *</label>
+        <input type="text" [(ngModel)]="uniformItemForm.name" name="uniformItemName" required>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea [(ngModel)]="uniformItemForm.description" name="uniformItemDescription" rows="3" placeholder="Optional item details"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Unit Price ({{ settings.currencySymbol }}) *</label>
+        <input type="number" [(ngModel)]="uniformItemForm.unitPrice" name="uniformItemPrice" min="0" step="0.01" required>
+      </div>
+      <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+        <input type="checkbox" [(ngModel)]="uniformItemForm.isActive" name="uniformItemActive" id="uniformItemActive">
+        <label for="uniformItemActive" style="margin: 0;">Active</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" (click)="closeUniformItemModal()" [disabled]="uniformItemSubmitting">Cancel</button>
+      <button type="button" class="btn btn-primary" (click)="saveUniformItem()" [disabled]="uniformItemSubmitting">
+        {{ uniformItemSubmitting ? 'Saving...' : 'Save Item' }}
+      </button>
+    </div>
+  </div>
+</div>
+

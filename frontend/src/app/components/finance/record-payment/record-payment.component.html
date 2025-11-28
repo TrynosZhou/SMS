@@ -1,0 +1,202 @@
+<div class="record-payment-container">
+  <div class="page-header">
+    <h1>Check Student Balance</h1>
+  </div>
+
+  <!-- Check Student Balance Section -->
+  <div class="search-section">
+    <div class="search-form">
+      <label for="studentId">Student ID</label>
+      <div class="input-group">
+        <input
+          type="text"
+          id="studentId"
+          [(ngModel)]="studentId"
+          placeholder="Enter Student ID or Student Number"
+          class="form-control"
+          (keyup.enter)="getBalance()"
+        />
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="getBalance()"
+          [disabled]="loading"
+        >
+          <span class="icon">🔍</span> Get Balance
+        </button>
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="clear()"
+        >
+          <span class="icon">🗑️</span> Clear
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error and Success Messages -->
+  <div *ngIf="error" class="alert alert-error">
+    {{ error }}
+  </div>
+  <div *ngIf="success" class="alert alert-success">
+    {{ success }}
+  </div>
+
+  <!-- Student Information and Record Payment Section -->
+  <div *ngIf="studentData" class="info-container">
+    <div class="info-section">
+      <!-- Student Information -->
+      <div class="info-card">
+        <h2>Student Information</h2>
+        <div class="info-row">
+          <div class="info-item">
+            <label>Full Name:</label>
+            <div class="info-value">{{ studentData.fullName }}</div>
+          </div>
+          <div class="info-item">
+            <label>Student Number:</label>
+            <div class="info-value">{{ studentData.studentNumber }}</div>
+          </div>
+        </div>
+        <div class="info-row">
+          <div class="info-item">
+            <label>Fees Balance:</label>
+            <div class="info-value balance-amount">{{ currencySymbol }} {{ formatCurrency(studentData.balance) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Record Payment -->
+      <div class="info-card">
+        <h2>Record Payment</h2>
+        <form (ngSubmit)="recordPayment()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="amount">Amount to be Paid *</label>
+              <input
+                type="number"
+                id="amount"
+                [(ngModel)]="paymentForm.amount"
+                name="amount"
+                class="form-control"
+                step="0.01"
+                min="0.01"
+                required
+              />
+              <small class="form-hint">Default is set to the balance</small>
+            </div>
+            <div class="form-group">
+              <label for="term">Term *</label>
+              <input
+                type="text"
+                id="term"
+                [(ngModel)]="paymentForm.term"
+                name="term"
+                class="form-control"
+                required
+              />
+              <small class="form-hint">Term for this payment (from settings: {{ currentTerm }})</small>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="paymentDate">Payment Date *</label>
+              <input
+                type="date"
+                id="paymentDate"
+                [(ngModel)]="paymentForm.paymentDate"
+                name="paymentDate"
+                class="form-control"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="paymentMethod">Payment Method *</label>
+              <select
+                id="paymentMethod"
+                [(ngModel)]="paymentForm.paymentMethod"
+                name="paymentMethod"
+                class="form-control"
+                required
+              >
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Mobile Money">Mobile Money</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea
+              id="notes"
+              [(ngModel)]="paymentForm.notes"
+              name="notes"
+              class="form-control"
+              rows="3"
+            ></textarea>
+          </div>
+          <div class="form-actions">
+            <button
+              type="submit"
+              class="btn btn-success"
+              [disabled]="submitting || loading"
+            >
+              <span *ngIf="submitting" class="spinner"></span>
+              {{ submitting ? 'Recording...' : 'Record Payment' }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-info"
+              (click)="showReceiptPreview()"
+              [disabled]="loadingReceipt || (!success && !paymentRecorded)"
+            >
+              <span class="icon">🧾</span> Receipt
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Receipt Preview -->
+  <div *ngIf="showReceipt" class="receipt-preview">
+    <div class="receipt-header">
+      <h3>Receipt Preview</h3>
+      <button class="btn btn-close" (click)="closeReceipt()" title="Close Receipt">×</button>
+    </div>
+    <div *ngIf="loadingReceipt" class="receipt-loading">
+      <div class="spinner-large"></div>
+      <p>Loading Receipt...</p>
+    </div>
+    <div *ngIf="!loadingReceipt && !receiptPdfUrl" class="receipt-loading">
+      <p>Receipt not available</p>
+    </div>
+    <div *ngIf="receiptPdfUrl && !loadingReceipt" class="receipt-content">
+      <iframe 
+        [src]="receiptPdfUrl" 
+        class="receipt-iframe"
+        title="Receipt PDF"
+        type="application/pdf">
+      </iframe>
+      <div class="receipt-actions">
+        <button 
+          type="button" 
+          class="btn btn-primary"
+          (click)="openReceiptInNewWindow()"
+          title="Open in New Window">
+          <span class="icon">🔗</span> Open in New Window
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-success"
+          (click)="downloadReceipt()"
+          title="Download Receipt">
+          <span class="icon">💾</span> Download Receipt
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

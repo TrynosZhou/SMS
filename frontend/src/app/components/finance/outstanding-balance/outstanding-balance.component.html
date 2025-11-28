@@ -1,0 +1,100 @@
+<div class="container">
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="header-icon">⚠️</span>
+        Unpaid Invoices
+      </h1>
+      <p class="subtitle">Students with outstanding invoice balances</p>
+    </div>
+  </div>
+  
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+  
+  <!-- Search and Filter Section -->
+  <div class="filters-section" *ngIf="!loading && outstandingBalances.length > 0">
+    <div class="search-input-wrapper">
+      <span class="search-icon">🔍</span>
+      <input 
+        type="text" 
+        [(ngModel)]="searchQuery" 
+        (input)="filterBalances()"
+        (keyup.enter)="filterBalances()"
+        placeholder="Search by Student ID, First Name, or Last Name" 
+        class="form-control search-input">
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading outstanding balances...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && outstandingBalances.length === 0" class="empty-state">
+    <div class="empty-icon">✅</div>
+    <h2>No Outstanding Balances</h2>
+    <p>All students have paid their invoices in full.</p>
+  </div>
+
+  <!-- Table Section -->
+  <div *ngIf="!loading && outstandingBalances.length > 0" class="table-section">
+    <div class="table-header">
+      <div class="table-info">
+        <span class="table-count">{{ filteredBalances.length }}</span>
+        <span>student(s) with outstanding balances</span>
+      </div>
+      <div class="table-summary">
+        <strong>Total Outstanding: {{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</strong>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Student ID</th>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Phone Number</th>
+            <th style="text-align: right;">Invoice Balance</th>
+            <th style="text-align: center; width: 120px;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let balance of filteredBalances">
+            <td>{{ balance.studentNumber || balance.studentId }}</td>
+            <td>{{ balance.firstName }}</td>
+            <td>{{ balance.lastName }}</td>
+            <td>{{ balance.phoneNumber || '—' }}</td>
+            <td style="text-align: right; font-weight: 600; color: #dc3545;">
+              {{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}
+            </td>
+            <td style="text-align: center;">
+              <button 
+                *ngIf="canManageFinance()"
+                class="btn-pay-invoice" 
+                (click)="payInvoice(balance)"
+                title="Pay Invoice">
+                Pay Invoice
+              </button>
+            </td>
+          </tr>
+        </tbody>
+        <tfoot *ngIf="filteredBalances.length > 0">
+          <tr>
+            <td colspan="4" style="text-align: right; font-weight: 700; padding: 15px;">
+              <strong>Total Outstanding:</strong>
+            </td>
+            <td style="text-align: right; font-weight: 700; color: #dc3545; padding: 15px;">
+              {{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}
+            </td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+

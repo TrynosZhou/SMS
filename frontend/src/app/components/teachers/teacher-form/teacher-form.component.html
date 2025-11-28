@@ -1,0 +1,245 @@
+<div class="form-container">
+  <div class="form-header">
+    <div class="header-content">
+      <h1>
+        <span class="icon">👨‍🏫</span>
+        {{ isEdit ? 'Edit Teacher' : 'Register New Teacher' }}
+      </h1>
+      <p class="subtitle">{{ isEdit ? 'Update teacher information' : 'Fill in the details to register a new teacher' }}</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="btn btn-secondary" (click)="router.navigate(['/teachers'])">
+        <span>←</span> Back to Teachers
+      </button>
+    </div>
+  </div>
+
+  <!-- Alert Messages -->
+  <div class="alert alert-success" *ngIf="success">
+    <span class="alert-icon">✓</span>
+    {{ success }}
+  </div>
+  <div class="alert alert-error" *ngIf="error">
+    <span class="alert-icon">⚠</span>
+    {{ error }}
+  </div>
+
+  <form (ngSubmit)="onSubmit()" #teacherForm="ngForm" class="teacher-form">
+    <!-- Personal Information Section -->
+    <div class="form-section">
+      <div class="section-header">
+        <h2>
+          <span class="section-icon">👤</span>
+          Personal Information
+        </h2>
+        <p class="section-description">Basic details about the teacher</p>
+      </div>
+      
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="firstName">
+            First Name <span class="required">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="firstName"
+            [(ngModel)]="teacher.firstName" 
+            name="firstName" 
+            required
+            placeholder="Enter first name"
+            class="form-input"
+            [class.error]="teacherForm.submitted && !teacher.firstName">
+          <small class="form-hint">Teacher's first name</small>
+        </div>
+
+        <div class="form-group">
+          <label for="lastName">
+            Last Name <span class="required">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="lastName"
+            [(ngModel)]="teacher.lastName" 
+            name="lastName" 
+            required
+            placeholder="Enter last name"
+            class="form-input"
+            [class.error]="teacherForm.submitted && !teacher.lastName">
+          <small class="form-hint">Teacher's last name</small>
+        </div>
+
+        <div class="form-group">
+          <label for="dateOfBirth">Date of Birth</label>
+          <input 
+            type="date" 
+            id="dateOfBirth"
+            [(ngModel)]="teacher.dateOfBirth" 
+            name="dateOfBirth"
+            class="form-input"
+            [max]="maxDate">
+          <small class="form-hint">Select date of birth</small>
+        </div>
+
+        <div class="form-group">
+          <label for="phoneNumber">Phone Number</label>
+          <input 
+            type="tel" 
+            id="phoneNumber"
+            [(ngModel)]="teacher.phoneNumber" 
+            name="phoneNumber"
+            placeholder="e.g., 0771234567 or +263771234567"
+            class="form-input"
+            [class.error]="phoneNumberError"
+            (blur)="validatePhoneNumber()"
+            (input)="phoneNumberError = ''">
+          <small class="form-hint" *ngIf="!phoneNumberError">Contact phone number (Zimbabwean format: 07XXXXXXXX or +2637XXXXXXXX)</small>
+          <small class="form-error" *ngIf="phoneNumberError">{{ phoneNumberError }}</small>
+        </div>
+      </div>
+
+      <div class="form-group full-width">
+        <label for="address">Address</label>
+        <textarea 
+          id="address"
+          [(ngModel)]="teacher.address" 
+          name="address"
+          placeholder="Enter full address"
+          class="form-input"
+          rows="3"></textarea>
+        <small class="form-hint">Residential or postal address</small>
+      </div>
+    </div>
+
+    <!-- Employee Information Section -->
+    <div class="form-section">
+      <div class="section-header">
+        <h2>
+          <span class="section-icon">🆔</span>
+          Employee Information
+        </h2>
+        <p class="section-description">Employee identification details</p>
+      </div>
+
+      <div class="form-group">
+        <label>Teacher ID</label>
+        <div class="info-box">
+          <div class="info-content">
+            <span class="info-icon">🔢</span>
+            <div>
+              <strong *ngIf="isEdit">{{ teacher.teacherId }}</strong>
+              <strong *ngIf="!isEdit">Auto-generated (JPST format)</strong>
+              <p class="info-text">
+                {{ isEdit ? 'Employee number cannot be changed' : 'A unique 7-digit number with prefix JPST will be automatically generated (e.g., JPST1234567)' }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Teaching Assignments Section -->
+    <div class="form-section">
+      <div class="section-header">
+        <h2>
+          <span class="section-icon">📚</span>
+          Teaching Assignments
+        </h2>
+        <p class="section-description">Select subjects and classes this teacher will teach</p>
+      </div>
+
+      <!-- Subjects Selection -->
+      <div class="form-group">
+        <label for="subjectSearch">
+          Subjects <span class="badge">{{ teacher.subjectIds.length }} selected</span>
+        </label>
+        <div class="search-box">
+          <input 
+            type="text" 
+            id="subjectSearch"
+            [(ngModel)]="subjectSearchQuery" 
+            name="subjectSearch"
+            placeholder="Search subjects..."
+            class="search-input"
+            (input)="filterSubjects()">
+          <span class="search-icon">🔍</span>
+        </div>
+        <div class="checkbox-group" *ngIf="filteredSubjects.length > 0">
+          <div 
+            *ngFor="let subject of filteredSubjects" 
+            class="checkbox-item"
+            [class.selected]="teacher.subjectIds.includes(subject.id)">
+            <label class="checkbox-label">
+              <input 
+                type="checkbox" 
+                [checked]="teacher.subjectIds.includes(subject.id)" 
+                (change)="toggleSubject(subject.id)"
+                class="checkbox-input">
+              <span class="checkbox-custom"></span>
+              <span class="checkbox-text">{{ subject.name }}</span>
+            </label>
+          </div>
+        </div>
+        <div class="empty-state" *ngIf="filteredSubjects.length === 0">
+          <p>No subjects found. Try a different search term.</p>
+        </div>
+        <small class="form-hint">Select all subjects this teacher will teach</small>
+      </div>
+
+      <!-- Classes Selection -->
+      <div class="form-group">
+        <label for="classSearch">
+          Classes <span class="badge">{{ teacher.classIds.length }} selected</span>
+        </label>
+        <div class="search-box">
+          <input 
+            type="text" 
+            id="classSearch"
+            [(ngModel)]="classSearchQuery" 
+            name="classSearch"
+            placeholder="Search classes..."
+            class="search-input"
+            (input)="filterClasses()">
+          <span class="search-icon">🔍</span>
+        </div>
+        <div class="checkbox-group" *ngIf="filteredClasses.length > 0">
+          <div 
+            *ngFor="let cls of filteredClasses" 
+            class="checkbox-item"
+            [class.selected]="teacher.classIds.includes(cls.id)">
+            <label class="checkbox-label">
+              <input 
+                type="checkbox" 
+                [checked]="teacher.classIds.includes(cls.id)" 
+                (change)="toggleClass(cls.id)"
+                class="checkbox-input">
+              <span class="checkbox-custom"></span>
+              <span class="checkbox-text">{{ cls.name }}</span>
+            </label>
+          </div>
+        </div>
+        <div class="empty-state" *ngIf="filteredClasses.length === 0">
+          <p>No classes found. Try a different search term.</p>
+        </div>
+        <small class="form-hint">Select all classes this teacher will be assigned to</small>
+      </div>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="form-actions">
+      <button 
+        type="button" 
+        class="btn btn-secondary" 
+        (click)="router.navigate(['/teachers'])">
+        <span>❌</span> Cancel
+      </button>
+      <button 
+        type="submit" 
+        class="btn btn-primary"
+        [disabled]="submitting">
+        <span *ngIf="!submitting">{{ isEdit ? '💾' : '➕' }}</span>
+        <span *ngIf="submitting" class="spinner"></span>
+        {{ submitting ? 'Processing...' : (isEdit ? 'Update Teacher' : 'Register Teacher') }}
+      </button>
+    </div>
+  </form>
+</div>

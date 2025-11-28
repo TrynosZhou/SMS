@@ -1,0 +1,589 @@
+<div class="container">
+  <!-- Header Section -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="icon">👤</span>
+        Manage Teacher Accounts
+      </h1>
+      <p class="subtitle">Create and manage user accounts for teachers in the system</p>
+    </div>
+    <button class="btn btn-icon" routerLink="/teachers/new" title="Add New Teacher">
+      ➕ Add Teacher
+    </button>
+  </div>
+
+  <!-- Alert Messages -->
+  <div class="alert alert-success" *ngIf="success" [@fadeInOut]>
+    <span class="alert-icon">✓</span>
+    <span [innerHTML]="success"></span>
+  </div>
+  <div class="alert alert-error" *ngIf="error" [@fadeInOut]>
+    <span class="alert-icon">✕</span>
+    <span>{{ error }}</span>
+  </div>
+
+  <!-- Manual User Account Creation -->
+  <div class="manual-account-card" *ngIf="canCreateManualAccounts()" [@fadeInUp]>
+    <div class="manual-account-header">
+      <div>
+        <h2>Create User Account</h2>
+        <p>Create login credentials for administrators, accountants, parents, students, or teachers. For teachers, only username and password are required (email is not needed).</p>
+      </div>
+      <div class="manual-account-meta">
+        <span class="meta-item"><strong>Admins</strong> can create Admin/Accountant/Parent/Student accounts</span>
+        <span class="meta-item" *ngIf="isSuperAdmin()"><strong>Super Admins</strong> can also create Super Admin & Demo accounts</span>
+      </div>
+    </div>
+    <form class="manual-account-form" (ngSubmit)="createManualAccount()">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Role *</label>
+          <select [(ngModel)]="manualAccount.role" name="manualRole" required [disabled]="creatingUserAccount" (change)="onRoleChange()">
+            <option *ngFor="let option of manualAccountRoles" [ngValue]="option.value" [disabled]="option.value === 'superadmin' && !isSuperAdmin()">
+              {{ option.label }}{{ option.value === 'superadmin' ? ' (Super Admin only)' : '' }}
+            </option>
+          </select>
+          <small class="form-text" *ngIf="manualAccount.role === 'demo-user'">
+            Demo User accounts are flagged as read-only demo logins and automatically receive demo permissions.
+          </small>
+        </div>
+        <div class="form-group" *ngIf="manualAccount.role === 'teacher'">
+          <label>Username *</label>
+          <input type="text" [(ngModel)]="manualAccount.username" name="manualUsernameTeacher" 
+            placeholder="Enter username (required)" 
+            required
+            [disabled]="creatingUserAccount">
+          <small class="form-text">Username is mandatory for teacher accounts. Teachers login with username and password only. Email is not required.</small>
+        </div>
+        <div class="form-group" *ngIf="manualAccount.role !== 'teacher'">
+          <label>Email Address *</label>
+          <input type="email" [(ngModel)]="manualAccount.email" name="manualEmail" placeholder="user@example.com" required [disabled]="creatingUserAccount">
+        </div>
+        <div class="form-group" *ngIf="manualAccount.role !== 'teacher'">
+          <label>Username (optional)</label>
+          <input type="text" [(ngModel)]="manualAccount.username" name="manualUsername" 
+            placeholder="Leave blank to auto-generate" 
+            [disabled]="creatingUserAccount">
+        </div>
+        <div class="form-group checkbox-inline">
+          <label class="checkbox-label">
+            <input type="checkbox" [(ngModel)]="manualAccount.generatePassword" name="manualGeneratePassword" [disabled]="creatingUserAccount">
+            <span>Generate secure password automatically</span>
+          </label>
+        </div>
+        <div class="form-group" *ngIf="!manualAccount.generatePassword">
+          <label>Temporary Password *</label>
+          <div class="password-input-wrapper">
+            <input
+              [type]="showManualPassword ? 'text' : 'password'"
+              [(ngModel)]="manualAccount.password"
+              name="manualPassword"
+              minlength="8"
+              placeholder="Minimum 8 characters"
+              autocomplete="new-password"
+              [disabled]="creatingUserAccount"
+              required>
+            <button type="button" class="password-toggle-btn" (click)="toggleManualPasswordVisibility()" tabindex="-1">
+              <span>{{ showManualPassword ? '👁️' : '👁️‍🗨️' }}</span>
+            </button>
+          </div>
+          <small class="form-text" *ngIf="manualAccount.role === 'teacher'">This is a temporary password. The teacher must change it on first login.</small>
+        </div>
+        <div class="info-box" *ngIf="manualAccount.role === 'teacher' && manualAccount.generatePassword">
+          <span class="info-box-icon">💡</span>
+          <p>A temporary password will be generated. The teacher must change it on first login.</p>
+        </div>
+        <div class="form-group checkbox-inline" *ngIf="isSuperAdmin()">
+          <label class="checkbox-label">
+            <input type="checkbox" [(ngModel)]="manualAccount.isDemo" name="manualIsDemo" [disabled]="creatingUserAccount">
+            <span>Mark as Demo Account (restricted permissions)</span>
+          </label>
+        </div>
+        <div class="info-box demo-info" *ngIf="manualAccount.role === 'demo-user'">
+          <span class="info-icon">🧪</span>
+          <div>
+            <p class="info-title">Demo User</p>
+            <p class="info-text">
+              This account will automatically sign in as a demo administrator with limited editing rights. Use it when sharing the system publicly.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="manual-account-actions">
+        <button type="button" class="btn btn-secondary" (click)="resetManualAccountForm()" [disabled]="creatingUserAccount">
+          Reset
+        </button>
+        <button type="submit" class="btn btn-primary" [disabled]="creatingUserAccount">
+          <span *ngIf="!creatingUserAccount">Create Account</span>
+          <span *ngIf="creatingUserAccount" class="submit-loading">
+            <span class="spinner-small"></span>
+            Creating...
+          </span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Demo Account Notice -->
+  <div class="demo-notice-card" *ngIf="isAdmin() && isDemoUser()" [@fadeInUp]>
+    <div class="demo-notice-content">
+      <span class="demo-notice-icon">🔒</span>
+      <div>
+        <h3>Demo Account - Password Change Disabled</h3>
+        <p>You are logged in as a demo user. Password changes are disabled in the demo environment. This account is for testing purposes only.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Password Change Section -->
+  <!-- Show password change section for admin/superadmin users (not demo) -->
+  <div class="admin-password-section" *ngIf="(isAdmin() || getCurrentAdminInfo()) && !isDemoUser()" [@fadeInUp]>
+    <div class="password-section-header" (click)="togglePasswordChangeSection()">
+      <div class="password-section-title">
+        <span class="password-icon">🔐</span>
+        <div>
+          <h3>Change My Password</h3>
+          <p>Update your administrator account password</p>
+        </div>
+      </div>
+      <button class="toggle-btn" [class.expanded]="showPasswordChangeSection">
+        <span>{{ showPasswordChangeSection ? '▼' : '▶' }}</span>
+      </button>
+    </div>
+
+    <div class="password-section-content" *ngIf="showPasswordChangeSection" [@slideInUp]>
+      <div class="admin-info-box">
+        <div class="admin-info-item">
+          <span class="admin-info-label">Email:</span>
+          <span class="admin-info-value">{{ getCurrentAdminInfo()?.email }}</span>
+        </div>
+        <div class="admin-info-item">
+          <span class="admin-info-label">Username:</span>
+          <span class="admin-info-value">{{ getCurrentAdminInfo()?.username }}</span>
+        </div>
+      </div>
+
+      <form (ngSubmit)="changePassword()" class="password-change-form">
+        <div class="form-group">
+          <label for="currentPassword" class="form-label">
+            <span class="label-icon">🔑</span>
+            Current Password
+          </label>
+          <div class="password-input-wrapper">
+            <input
+              type="{{ showCurrentPassword ? 'text' : 'password' }}"
+              id="currentPassword"
+              class="form-input"
+              [(ngModel)]="currentPassword"
+              name="currentPassword"
+              placeholder="Enter your current password"
+              [disabled]="changingPassword"
+              required>
+            <button
+              type="button"
+              class="password-toggle-btn"
+              (click)="toggleCurrentPasswordVisibility()"
+              tabindex="-1">
+              <span>{{ showCurrentPassword ? '👁️' : '👁️‍🗨️' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="newPassword" class="form-label">
+            <span class="label-icon">🔒</span>
+            New Password
+          </label>
+          <div class="password-input-wrapper">
+            <input
+              type="{{ showNewPassword ? 'text' : 'password' }}"
+              id="newPassword"
+              class="form-input"
+              [(ngModel)]="newPassword"
+              name="newPassword"
+              placeholder="Enter your new password (min. 8 characters)"
+              [disabled]="changingPassword"
+              required>
+            <button
+              type="button"
+              class="password-toggle-btn"
+              (click)="toggleNewPasswordVisibility()"
+              tabindex="-1">
+              <span>{{ showNewPassword ? '👁️' : '👁️‍🗨️' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword" class="form-label">
+            <span class="label-icon">✓</span>
+            Confirm New Password
+          </label>
+          <div class="password-input-wrapper">
+            <input
+              type="{{ showConfirmPassword ? 'text' : 'password' }}"
+              id="confirmPassword"
+              class="form-input"
+              [(ngModel)]="confirmPassword"
+              name="confirmPassword"
+              placeholder="Confirm your new password"
+              [disabled]="changingPassword"
+              required>
+            <button
+              type="button"
+              class="password-toggle-btn"
+              (click)="toggleConfirmPasswordVisibility()"
+              tabindex="-1">
+              <span>{{ showConfirmPassword ? '👁️' : '👁️‍🗨️' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="togglePasswordChangeSection()"
+            [disabled]="changingPassword">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="changingPassword || !currentPassword || !newPassword || !confirmPassword">
+            <span *ngIf="!changingPassword">🔐 Change Password</span>
+            <span *ngIf="changingPassword" class="submit-loading">
+              <span class="spinner-small"></span>
+              Changing...
+            </span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-container" *ngIf="!loading && teachers.length > 0">
+    <div class="stat-card">
+      <div class="stat-icon total">👥</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ teachers.length }}</div>
+        <div class="stat-label">Total Teachers</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon active">✓</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ getAccountsWithAccount() }}</div>
+        <div class="stat-label">With Accounts</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon pending">⚠️</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ getAccountsWithoutAccount() }}</div>
+        <div class="stat-label">Without Accounts</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon percentage">📊</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ getAccountPercentage() }}%</div>
+        <div class="stat-label">Account Coverage</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search and Filter Section -->
+  <div class="search-filter-section" *ngIf="!loading && teachers.length > 0">
+    <div class="search-wrapper">
+      <span class="search-icon">🔍</span>
+      <input 
+        type="text" 
+        class="search-input" 
+        placeholder="Search by name, employee number, or status..."
+        [(ngModel)]="searchQuery"
+        (input)="filterTeachers()">
+      <button class="clear-search" *ngIf="searchQuery" (click)="clearSearch()" title="Clear search">
+        ✕
+      </button>
+    </div>
+    <div class="filter-options">
+      <button 
+        class="filter-btn" 
+        [class.active]="filterStatus === 'all'"
+        (click)="setFilter('all')">
+        All ({{ teachers.length }})
+      </button>
+      <button 
+        class="filter-btn" 
+        [class.active]="filterStatus === 'with-account'"
+        (click)="setFilter('with-account')">
+        With Account ({{ getAccountsWithAccount() }})
+      </button>
+      <button 
+        class="filter-btn" 
+        [class.active]="filterStatus === 'without-account'"
+        (click)="setFilter('without-account')">
+        Without Account ({{ getAccountsWithoutAccount() }})
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading && teachers.length === 0" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading teachers...</p>
+  </div>
+
+  <!-- Teachers Table -->
+  <div *ngIf="!loading" class="table-container">
+    <div *ngIf="filteredTeachers.length > 0">
+      <table class="teachers-table">
+        <thead>
+          <tr>
+            <th>Employee Number</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Account Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let teacher of filteredTeachers" [@fadeInUp]>
+            <td>
+              <div class="employee-number">
+                <span class="employee-icon">🆔</span>
+                {{ teacher.teacherId }}
+              </div>
+            </td>
+            <td>
+              <div class="teacher-name">
+                <strong>{{ teacher.firstName }} {{ teacher.lastName }}</strong>
+              </div>
+            </td>
+            <td>
+              <div class="teacher-email">
+                {{ teacher.email ? teacher.email : '—' }}
+              </div>
+            </td>
+            <td>
+              <span class="status-badge" 
+                    [class.has-account]="teacher.hasAccount" 
+                    [class.no-account]="!teacher.hasAccount">
+                <span class="status-icon">{{ teacher.hasAccount ? '✓' : '⚠️' }}</span>
+                {{ teacher.accountStatus }}
+              </span>
+            </td>
+            <td>
+              <div class="action-buttons">
+                <button 
+                  *ngIf="!teacher.hasAccount" 
+                  class="btn btn-primary btn-sm" 
+                  (click)="openCreateAccountModal(teacher)"
+                  [disabled]="creatingAccount">
+                  <span *ngIf="!creatingAccount || selectedTeacher?.id !== teacher.id">
+                    ➕ Create Account
+                  </span>
+                  <span *ngIf="creatingAccount && selectedTeacher?.id === teacher.id" class="btn-loading">
+                    <span class="spinner-small"></span>
+                    Creating...
+                  </span>
+                </button>
+                <button 
+                  *ngIf="teacher.hasAccount" 
+                  class="btn btn-info btn-sm" 
+                  (click)="viewAccountDetails(teacher)">
+                  👁️ View Details
+                </button>
+                <button 
+                  *ngIf="teacher.hasAccount" 
+                  class="btn btn-secondary btn-sm" 
+                  (click)="resetPassword(teacher)">
+                  🔑 Reset Password
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="filteredTeachers.length === 0 && !loading" class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <h3>{{ searchQuery || filterStatus !== 'all' ? 'No matching teachers found' : 'No teachers found' }}</h3>
+      <p *ngIf="!searchQuery && filterStatus === 'all'">
+        Get started by adding teachers to the system.
+      </p>
+      <p *ngIf="searchQuery || filterStatus !== 'all'">
+        Try adjusting your search or filter criteria.
+      </p>
+      <button *ngIf="!searchQuery && filterStatus === 'all'" class="btn btn-primary" routerLink="/teachers/new">
+        ➕ Add Teacher
+      </button>
+      <button *ngIf="searchQuery || filterStatus !== 'all'" class="btn btn-secondary" (click)="clearFilters()">
+        🔄 Clear Filters
+      </button>
+    </div>
+  </div>
+
+  <!-- Create Account Modal -->
+  <div *ngIf="showCreateModal" class="modal-overlay" (click)="closeCreateModal()" [@fadeInOut]>
+    <div class="modal-content" (click)="$event.stopPropagation()" [@slideInUp]>
+      <div class="modal-header">
+        <div class="modal-header-content">
+          <h2>
+            <span class="modal-icon">➕</span>
+            Create Account
+          </h2>
+          <p class="modal-subtitle">Create a user account for this teacher</p>
+        </div>
+        <button class="modal-close-btn" (click)="closeCreateModal()" title="Close">
+          <span>&times;</span>
+        </button>
+      </div>
+
+      <div *ngIf="selectedTeacher" class="teacher-info-card">
+        <div class="info-header">
+          <span class="info-icon">👤</span>
+          <h3>Teacher Information</h3>
+        </div>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Name:</span>
+            <span class="info-value">{{ selectedTeacher.firstName }} {{ selectedTeacher.lastName }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Teacher ID:</span>
+            <span class="info-value">{{ selectedTeacher.teacherId }}</span>
+          </div>
+          <div class="info-item" *ngIf="selectedTeacher.email">
+            <span class="info-label">Email:</span>
+            <span class="info-value">{{ selectedTeacher.email }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>
+            <input type="checkbox" [(ngModel)]="sendCredentials" class="checkbox-input">
+            <span class="checkbox-label">Send credentials via email (if email is available)</span>
+          </label>
+        </div>
+        <div class="info-box">
+          <span class="info-box-icon">💡</span>
+          <p>The account will be created with a temporary password. The teacher will need to change it on first login.</p>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button 
+          type="button" 
+          class="btn btn-secondary" 
+          (click)="closeCreateModal()"
+          [disabled]="creatingAccount">
+          ❌ Cancel
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-primary" 
+          (click)="confirmCreateAccount()"
+          [disabled]="creatingAccount">
+          <span *ngIf="!creatingAccount">
+            ➕ Create Account
+          </span>
+          <span *ngIf="creatingAccount" class="submit-loading">
+            <span class="spinner-small"></span>
+            Creating...
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Account Details Modal -->
+  <div *ngIf="showDetailsModal && selectedTeacher" class="modal-overlay" (click)="closeDetailsModal()" [@fadeInOut]>
+    <div class="modal-content details-modal" (click)="$event.stopPropagation()" [@slideInUp]>
+      <div class="modal-header">
+        <div class="modal-header-content">
+          <h2>
+            <span class="modal-icon">👁️</span>
+            Account Details
+          </h2>
+          <p class="modal-subtitle">View account information for this teacher</p>
+        </div>
+        <button class="modal-close-btn" (click)="closeDetailsModal()" title="Close">
+          <span>&times;</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="details-section">
+          <h3>Teacher Information</h3>
+          <div class="details-grid">
+            <div class="detail-item">
+              <span class="detail-label">Name:</span>
+              <span class="detail-value">{{ selectedTeacher.firstName }} {{ selectedTeacher.lastName }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Teacher ID:</span>
+              <span class="detail-value">{{ selectedTeacher.teacherId }}</span>
+            </div>
+            <div class="detail-item" *ngIf="selectedTeacher.email">
+              <span class="detail-label">Email:</span>
+              <span class="detail-value">{{ selectedTeacher.email }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="details-section" *ngIf="selectedTeacher.hasAccount">
+          <h3>Account Information</h3>
+          <div class="details-grid">
+            <div class="detail-item">
+              <span class="detail-label">User ID:</span>
+              <span class="detail-value">{{ selectedTeacher.userId || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Status:</span>
+              <span class="detail-value">
+                <span class="status-badge has-account">
+                  <span class="status-icon">✓</span>
+                  Active
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="details-section" *ngIf="!selectedTeacher.hasAccount">
+          <div class="no-account-message">
+            <span class="no-account-icon">⚠️</span>
+            <p>No account has been created for this teacher yet.</p>
+            <button class="btn btn-primary" (click)="closeDetailsModal(); openCreateAccountModal(selectedTeacher)">
+              ➕ Create Account Now
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button 
+          type="button" 
+          class="btn btn-secondary" 
+          (click)="closeDetailsModal()">
+          Close
+        </button>
+        <button 
+          *ngIf="selectedTeacher.hasAccount"
+          type="button" 
+          class="btn btn-primary" 
+          (click)="closeDetailsModal(); resetPassword(selectedTeacher)">
+          🔑 Reset Password
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
