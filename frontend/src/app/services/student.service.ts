@@ -50,7 +50,42 @@ export class StudentService {
     if (params.classId) {
       queryParams.classId = params.classId;
     }
-    return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/students`, { params: queryParams });
+    return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/students`, { params: queryParams }).pipe(
+      map(response => {
+        // Ensure response is valid and has data array
+        if (!response) {
+          return { data: [], total: 0, page: queryParams.page, limit: queryParams.limit, totalPages: 0 };
+        }
+        // If response.data exists, ensure it's an array
+        if (response.data !== undefined) {
+          return {
+            ...response,
+            data: Array.isArray(response.data) ? response.data : []
+          };
+        }
+        // If response is an array directly, wrap it
+        if (Array.isArray(response)) {
+          return {
+            data: response,
+            total: response.length,
+            page: queryParams.page,
+            limit: queryParams.limit,
+            totalPages: Math.ceil(response.length / queryParams.limit)
+          };
+        }
+        // If response is an error object, return empty paginated response
+        if (typeof response === 'object' && response !== null && 'message' in response && !('data' in response)) {
+          return { data: [], total: 0, page: queryParams.page, limit: queryParams.limit, totalPages: 0 };
+        }
+        // Default: return empty paginated response
+        return { data: [], total: 0, page: queryParams.page, limit: queryParams.limit, totalPages: 0 };
+      }),
+      catchError((error: any) => {
+        // Always return empty paginated response on any error
+        console.error('Error loading students (paginated):', error);
+        return of({ data: [], total: 0, page: queryParams.page, limit: queryParams.limit, totalPages: 0 });
+      })
+    );
   }
 
   getStudentById(id: string): Observable<any> {
