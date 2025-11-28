@@ -306,12 +306,13 @@ export class StudentFormComponent implements OnInit {
         updateData.phoneNumber = this.student.phoneNumber;
       }
 
-      // Always include classId if it's set
-      if (this.student.classId) {
-        updateData.classId = this.student.classId;
-      } else {
-        updateData.classId = null;
+      // Always include classId - it's required
+      if (!this.student.classId) {
+        this.error = 'Class is required. Students must be enrolled in a class.';
+        this.submitting = false;
+        return;
       }
+      updateData.classId = this.student.classId;
 
       // Only include parentId if it exists
       if (this.student.parentId) {

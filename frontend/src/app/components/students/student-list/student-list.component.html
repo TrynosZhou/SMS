@@ -193,9 +193,9 @@
             <span class="info-label">Student #</span>
             <span class="info-value student-id-link" (click)="viewStudentIdCard(student.id)" title="View Student ID Card">{{ student.studentNumber }}</span>
           </div>
-          <div class="info-item" *ngIf="student.class">
+          <div class="info-item">
             <span class="info-label">Class</span>
-            <span class="info-value">{{ student.class.name }}</span>
+            <span class="info-value">{{ student.class?.name || student.classEntity?.name || 'N/A' }}</span>
           </div>
           <div class="info-item" *ngIf="student.contactNumber || student.phoneNumber">
             <span class="info-label">Contact</span>
@@ -315,7 +315,16 @@
           <div class="detail-grid">
             <div class="detail-item">
               <span class="detail-label">Class</span>
-              <span class="detail-value">{{ selectedStudent.class?.name || 'Not assigned' }}</span>
+              <span class="detail-value">
+                <span *ngIf="selectedStudent.class?.name">{{ selectedStudent.class.name }}</span>
+                <span *ngIf="!selectedStudent.class?.name && selectedStudent.classEntity?.name">{{ selectedStudent.classEntity.name }}</span>
+                <span *ngIf="!selectedStudent.class?.name && !selectedStudent.classEntity?.name && selectedStudent.classId">
+                  <span class="loading-text">Loading class...</span>
+                </span>
+                <span *ngIf="!selectedStudent.class?.name && !selectedStudent.classEntity?.name && !selectedStudent.classId" class="error-text">
+                  Class not found
+                </span>
+              </span>
             </div>
             <div class="detail-item">
               <span class="detail-label">Student Type</span>

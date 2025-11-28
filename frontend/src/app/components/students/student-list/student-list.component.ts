@@ -67,7 +67,16 @@ export class StudentListComponent implements OnInit {
       next: (response: any) => {
         // Ensure response.data is an array
         const studentsData = response?.data;
-        this.students = Array.isArray(studentsData) ? studentsData : [];
+        const studentsArray = Array.isArray(studentsData) ? studentsData : [];
+        
+        // Normalize class property - ensure 'class' maps to 'classEntity' if needed
+        this.students = studentsArray.map((student: any) => {
+          if (student.classEntity && !student.class) {
+            student.class = student.classEntity;
+          }
+          return student;
+        });
+        
         this.pagination = {
           page: response?.page || page,
           limit: response?.limit || this.pagination.limit,
@@ -145,7 +154,37 @@ export class StudentListComponent implements OnInit {
   }
 
   viewStudentDetails(student: any) {
-    this.selectedStudent = student;
+    // Fetch full student data with class relation to ensure class is loaded
+    this.studentService.getStudentById(student.id).subscribe({
+      next: (fullStudent: any) => {
+        // Ensure class information is available - check both 'class' and 'classEntity'
+        if (!fullStudent.class && fullStudent.classEntity) {
+          fullStudent.class = fullStudent.classEntity;
+        }
+        // Also ensure the student has a class - if not, try to get it from classId
+        if (!fullStudent.class && fullStudent.classId) {
+          const foundClass = this.classes.find(c => c.id === fullStudent.classId);
+          if (foundClass) {
+            fullStudent.class = foundClass;
+          }
+        }
+        this.selectedStudent = fullStudent;
+      },
+      error: (err: any) => {
+        console.error('Error loading student details:', err);
+        // Fallback to using the student from the list, but ensure class is set
+        if (!student.class && student.classEntity) {
+          student.class = student.classEntity;
+        }
+        if (!student.class && student.classId) {
+          const foundClass = this.classes.find(c => c.id === student.classId);
+          if (foundClass) {
+            student.class = foundClass;
+          }
+        }
+        this.selectedStudent = student;
+      }
+    });
   }
 
   closeStudentDetails() {

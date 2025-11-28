@@ -10,6 +10,7 @@ import { LoginComponent } from './components/login/login.component';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { StudentListComponent } from './components/students/student-list/student-list.component';
 import { StudentFormComponent } from './components/students/student-form/student-form.component';
+import { StudentTransferComponent } from './components/students/student-transfer/student-transfer.component';
 import { TeacherListComponent } from './components/teachers/teacher-list/teacher-list.component';
 import { TeacherFormComponent } from './components/teachers/teacher-form/teacher-form.component';
 import { ExamListComponent } from './components/exams/exam-list/exam-list.component';
@@ -51,6 +52,7 @@ import { SplashComponent } from './components/splash/splash.component';
     DashboardComponent,
     StudentListComponent,
     StudentFormComponent,
+    StudentTransferComponent,
     TeacherListComponent,
     TeacherFormComponent,
     ExamListComponent,

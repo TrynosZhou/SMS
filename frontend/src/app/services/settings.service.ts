@@ -14,6 +14,11 @@ export class SettingsService {
 
   private handleError<T>(operation: string, fallback: T) {
     return (error: any): Observable<T> => {
+      // Don't log connection errors (backend not running)
+      if (error?.status === 0 || error?.message?.includes('Connection refused')) {
+        // Backend is not running - silently return fallback
+        return of(fallback);
+      }
       if (error?.status === 401) {
         console.warn(`[SettingsService] ${operation} failed with 401 (unauthorized).`);
       } else {

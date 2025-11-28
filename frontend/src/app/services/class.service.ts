@@ -81,7 +81,10 @@ export class ClassService {
       }),
       catchError((error: any) => {
         // Always return empty paginated response on any error
-        console.error('Error loading classes (paginated):', error);
+        // Only log if it's not a connection error (backend not running)
+        if (error.status !== 0) {
+          console.error('Error loading classes (paginated):', error);
+        }
         return of({ data: [], total: 0, page, limit, totalPages: 0 });
       })
     );

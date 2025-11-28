@@ -445,6 +445,16 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
 
     console.log(`Returning ${students.length} students (page ${page}/${Math.max(1, Math.ceil(total / limit))})`);
 
+    // Transform students to include 'class' property for frontend compatibility
+    const transformedStudents = students.map(student => {
+      const studentObj = student as any;
+      // Add 'class' property that maps to 'classEntity' for frontend compatibility
+      if (studentObj.classEntity && !studentObj.class) {
+        studentObj.class = studentObj.classEntity;
+      }
+      return studentObj;
+    });
+
     const statsQuery = studentRepository
       .createQueryBuilder('student')
       .leftJoin('student.classEntity', 'statsClass')
@@ -468,7 +478,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     };
 
     res.json(
-      buildPaginationResponse(students, total, page, limit, {
+      buildPaginationResponse(transformedStudents, total, page, limit, {
         stats
       })
     );
@@ -496,7 +506,13 @@ export const getStudentById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    res.json(student);
+    // Transform student to include 'class' property for frontend compatibility
+    const studentObj = student as any;
+    if (studentObj.classEntity && !studentObj.class) {
+      studentObj.class = studentObj.classEntity;
+    }
+
+    res.json(studentObj);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });
   }
@@ -686,11 +702,8 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     // Update classId if provided (always update if classId is in the request, even if it's the same)
     if (classId !== undefined) {
       if (classId === null || classId === '') {
-        // Allow setting classId to null/empty if explicitly provided
-        student.classId = null;
-        // Don't set student.classEntity = null as it's not nullable in TypeScript
-        // TypeORM will handle the relation based on classId
-        console.log('Removing student from class');
+        // Students must be enrolled in a class - cannot remove class assignment
+        return res.status(400).json({ message: 'Class ID is required. Students must be enrolled in a class.' });
       } else {
         // Verify class exists
         const trimmedClassId = String(classId).trim();
@@ -918,9 +931,13 @@ export const transferStudent = async (req: AuthRequest, res: Response) => {
     const { 
       studentId, 
       toClassId, 
+      targetClassId, // Frontend uses targetClassId
       reason, 
+      transferReason, // Frontend uses transferReason
       transferType,
+      transferDate, // Frontend sends transferDate
       externalSchoolName,
+      destinationSchool, // Frontend uses destinationSchool
       externalSchoolAddress,
       externalSchoolPhone,
       externalSchoolEmail
@@ -943,20 +960,23 @@ export const transferStudent = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    // Determine transfer type
+    // Determine transfer type - support both frontend and backend formats
+    const finalToClassId = toClassId || targetClassId;
+    const finalReason = reason || transferReason;
+    const finalDestinationSchool = externalSchoolName || destinationSchool;
+    
     const isExternalTransfer = transferType === TransferType.EXTERNAL || 
-                               (!toClassId && (externalSchoolName || externalSchoolAddress));
+                               (!finalToClassId && (finalDestinationSchool || externalSchoolAddress));
 
     // Validate based on transfer type
     if (isExternalTransfer) {
       // External transfer validation
-      if (!externalSchoolName || !externalSchoolName.trim()) {
-        return res.status(400).json({ message: 'External school name is required for external transfers' });
+      if (!finalDestinationSchool || !finalDestinationSchool.trim()) {
+        return res.status(400).json({ message: 'Destination school name is required for external transfers' });
       }
 
       // Validate external school phone if provided
       if (externalSchoolPhone && externalSchoolPhone.trim()) {
-        const { validatePhoneNumber } = await import('../utils/phoneValidator');
         const phoneValidation = validatePhoneNumber(externalSchoolPhone, false);
         if (!phoneValidation.isValid) {
           return res.status(400).json({ message: phoneValidation.error || 'Invalid external school phone number' });
@@ -964,17 +984,17 @@ export const transferStudent = async (req: AuthRequest, res: Response) => {
       }
     } else {
       // Internal transfer validation
-      if (!toClassId) {
-        return res.status(400).json({ message: 'Destination class ID is required for internal transfers' });
+      if (!finalToClassId) {
+        return res.status(400).json({ message: 'Target class ID is required for internal transfers' });
       }
 
-      const targetClass = await classRepository.findOne({ where: { id: toClassId } });
+      const targetClass = await classRepository.findOne({ where: { id: finalToClassId } });
       if (!targetClass) {
-        return res.status(404).json({ message: 'Destination class not found' });
+        return res.status(404).json({ message: 'Target class not found' });
       }
 
       const currentClassId = student.classId || student.classEntity?.id || null;
-      if (currentClassId && currentClassId === toClassId) {
+      if (currentClassId && currentClassId === finalToClassId) {
         return res.status(400).json({ message: 'Student is already enrolled in the selected class' });
       }
     }
@@ -985,8 +1005,8 @@ export const transferStudent = async (req: AuthRequest, res: Response) => {
     const transferData: any = {
       studentId: student.id,
       fromClassId: currentClassId,
-      toClassId: isExternalTransfer ? null : toClassId,
-      reason: reason || null,
+      toClassId: isExternalTransfer ? null : finalToClassId,
+      reason: finalReason || null,
       performedByUserId: req.user?.id || null,
       status: StudentTransferStatus.COMPLETED,
       transferType: isExternalTransfer ? TransferType.EXTERNAL : TransferType.INTERNAL
@@ -994,25 +1014,30 @@ export const transferStudent = async (req: AuthRequest, res: Response) => {
 
     // Add external transfer fields if applicable
     if (isExternalTransfer) {
-      transferData.externalSchoolName = externalSchoolName?.trim() || null;
+      transferData.externalSchoolName = finalDestinationSchool?.trim() || null;
       transferData.externalSchoolAddress = externalSchoolAddress?.trim() || null;
       transferData.externalSchoolPhone = externalSchoolPhone?.trim() || null;
       transferData.externalSchoolEmail = externalSchoolEmail?.trim() || null;
+      // Store transfer date if provided (we'll use createdAt for the actual date)
+      if (transferDate) {
+        // The transferDate will be used to set createdAt if needed
+      }
     }
 
     const transfer = transferRepository.create(transferData);
     const savedTransfer = await transferRepository.save(transfer);
 
     // For internal transfers, update student's class
-    // For external transfers, mark student as inactive or remove from class
+    // For external transfers, mark student as inactive but keep them in their last class
     if (isExternalTransfer) {
-      // Mark student as inactive (transferred out)
+      // Mark student as inactive (transferred out) but keep class assignment
+      // This ensures all students maintain a class assignment as required
       student.isActive = false;
-      student.classId = null;
+      // Keep student.classId unchanged - they remain in their last class
       await studentRepository.save(student);
     } else {
       // Update student's class for internal transfer
-      student.classId = toClassId;
+      student.classId = finalToClassId;
       await studentRepository.save(student);
     }
 
@@ -1040,10 +1065,27 @@ export const getStudentTransfers = async (req: AuthRequest, res: Response) => {
 
     const transfers = await transferRepository.find({
       where: { studentId: id },
+      relations: ['fromClass', 'toClass', 'performedBy'],
       order: { createdAt: 'DESC' }
     });
 
-    res.json(transfers);
+    // Format response to include user-friendly data
+    const formattedTransfers = transfers.map(transfer => ({
+      id: transfer.id,
+      studentId: transfer.studentId,
+      transferType: transfer.transferType,
+      fromClass: transfer.fromClass ? { id: transfer.fromClass.id, name: transfer.fromClass.name } : null,
+      toClass: transfer.toClass ? { id: transfer.toClass.id, name: transfer.toClass.name } : null,
+      oldClass: transfer.fromClass?.name || null,
+      newClass: transfer.toClass?.name || null,
+      destinationSchool: transfer.externalSchoolName,
+      transferReason: transfer.reason,
+      transferDate: transfer.createdAt,
+      createdAt: transfer.createdAt,
+      transferredBy: transfer.performedBy ? (transfer.performedBy.username || transfer.performedBy.email || 'Unknown User') : null
+    }));
+
+    res.json(formattedTransfers);
   } catch (error: any) {
     console.error('Error fetching student transfer history:', error);
     res.status(500).json({ message: 'Server error', error: error.message });

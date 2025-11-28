@@ -57,12 +57,12 @@ export class Student {
   @Column({ default: true })
   isActive: boolean;
 
-  @ManyToOne(() => Class, classEntity => classEntity.students)
+  @ManyToOne(() => Class, classEntity => classEntity.students, { nullable: false })
   @JoinColumn({ name: 'classId' })
   classEntity: Class;
 
-  @Column({ nullable: true })
-  classId: string | null;
+  @Column({ nullable: false })
+  classId: string;
 
   @OneToOne(() => User, user => user.student)
   user: User;

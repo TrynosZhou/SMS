@@ -43,7 +43,10 @@ export class StudentService {
       }),
       catchError((error: any) => {
         // Always return empty array on any error (401, 500, network, etc.)
-        console.error('Error loading students:', error);
+        // Only log if it's not a connection error (backend not running)
+        if (error.status !== 0) {
+          console.error('Error loading students:', error);
+        }
         return of([]);
       })
     );
@@ -90,7 +93,10 @@ export class StudentService {
       }),
       catchError((error: any) => {
         // Always return empty paginated response on any error
-        console.error('Error loading students (paginated):', error);
+        // Only log if it's not a connection error (backend not running)
+        if (error.status !== 0) {
+          console.error('Error loading students (paginated):', error);
+        }
         return of({ data: [], total: 0, page: queryParams.page, limit: queryParams.limit, totalPages: 0 });
       })
     );
@@ -228,6 +234,45 @@ export class StudentService {
         }
         // For non-blob errors, return as-is
         return throwError(() => error);
+      })
+    );
+  }
+
+  transferStudent(transferData: {
+    studentId: string;
+    transferType: 'internal' | 'external';
+    targetClassId?: string;
+    destinationSchool?: string;
+    transferReason?: string;
+    transferDate?: string;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/students/transfer`, transferData).pipe(
+      catchError((error: any) => {
+        console.error('Error transferring student:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  getStudentTransfers(studentId: string): Observable<any[]> {
+    return this.http.get<any>(`${this.apiUrl}/students/${studentId}/transfers`).pipe(
+      map(response => {
+        if (Array.isArray(response)) {
+          return response;
+        }
+        if (response && Array.isArray(response.data)) {
+          return response.data;
+        }
+        if (!response || (typeof response === 'object' && ('message' in response || 'error' in response))) {
+          console.warn('Normalizing invalid transfers response to empty array', response);
+          return [];
+        }
+        console.warn('Unexpected response for student transfers, normalizing to empty array', response);
+        return [];
+      }),
+      catchError((error: any) => {
+        console.error('Error loading student transfer history:', error);
+        return of([]);
       })
     );
   }
