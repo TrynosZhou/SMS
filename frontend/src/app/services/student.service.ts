@@ -80,8 +80,9 @@ export class StudentService {
             totalPages: Math.ceil(response.length / queryParams.limit)
           };
         }
-        // If response is an error object, return empty paginated response
-        if (typeof response === 'object' && response !== null && 'message' in response && !('data' in response)) {
+        // If response is an error object (has message or error property), return empty paginated response
+        if (typeof response === 'object' && response !== null && !('data' in response) && ((response as any).message || (response as any).error)) {
+          console.warn('API returned error object instead of array, normalizing to empty array:', response);
           return { data: [], total: 0, page: queryParams.page, limit: queryParams.limit, totalPages: 0 };
         }
         // Default: return empty paginated response
@@ -247,16 +248,25 @@ export class StudentService {
   getStudentTransfers(studentId: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/students/${studentId}/transfers`).pipe(
       map(response => {
+        // If response is an array, return it
         if (Array.isArray(response)) {
           return response;
         }
+        // If response has data array, return it
         if (response && Array.isArray((response as any).data)) {
           return (response as any).data;
         }
-        console.error('ERROR: Expected array but got:', typeof response, response);
+        // If response is an error object or null, return empty array
+        if (!response || (response as any).message || (response as any).error) {
+          console.warn('API returned error object or null instead of array, normalizing to empty array:', response);
+          return [];
+        }
+        // Unexpected response format
+        console.warn('Unexpected response format for student transfers, normalizing to empty array:', response);
         return [];
       }),
       map(data => {
+        // Double-check that we have an array before emitting
         if (!Array.isArray(data)) {
           console.error('ERROR: Expected array but got:', typeof data, data);
           return [];

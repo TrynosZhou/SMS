@@ -71,8 +71,9 @@ export class ClassService {
             totalPages: Math.ceil(response.length / limit)
           };
         }
-        // If response is an error object, return empty paginated response
-        if (typeof response === 'object' && response !== null && 'message' in response && !('data' in response)) {
+        // If response is an error object (has message or error property), return empty paginated response
+        if (typeof response === 'object' && response !== null && !('data' in response) && ((response as any).message || (response as any).error)) {
+          console.warn('API returned error object instead of array, normalizing to empty array:', response);
           return { data: [], total: 0, page, limit, totalPages: 0 };
         }
         // Default: return empty paginated response
