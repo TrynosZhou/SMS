@@ -78,6 +78,9 @@ export class StudentTransferComponent implements OnInit {
       error: err => {
         console.error('Error loading students for transfer:', err);
         this.errorMessage = this.formatApiError(err, 'Failed to load students');
+        // Ensure arrays are reset to empty on error
+        this.students = [];
+        this.filteredStudents = [];
         this.loadingStudents = false;
       }
     });
@@ -93,6 +96,8 @@ export class StudentTransferComponent implements OnInit {
       error: err => {
         console.error('Error loading classes for transfer:', err);
         this.errorMessage = this.formatApiError(err, 'Failed to load classes');
+        // Ensure array is reset to empty on error
+        this.classes = [];
         this.loadingClasses = false;
       }
     });
@@ -145,6 +150,8 @@ export class StudentTransferComponent implements OnInit {
       error: err => {
         console.error('Error loading transfer history:', err);
         this.errorMessage = this.formatApiError(err, 'Failed to load transfer history');
+        // Ensure array is reset to empty on error
+        this.transferHistory = [];
         this.loadingHistory = false;
       }
     });
