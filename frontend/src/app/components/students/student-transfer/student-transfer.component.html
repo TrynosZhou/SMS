@@ -77,7 +77,7 @@
               (change)="onStudentChange()" 
               [disabled]="loadingStudents">
               <option value="">{{ loadingStudents ? 'Loading students...' : 'Choose a student' }}</option>
-              <option *ngFor="let student of filteredStudents" [value]="student.id">
+              <option *ngFor="let student of (filteredStudents | safeArray)" [value]="student.id">
                 {{ student.firstName }} {{ student.lastName }} - {{ student.studentNumber }}
               </option>
             </select>
@@ -168,7 +168,7 @@
               [(ngModel)]="targetClassId" 
               [disabled]="loadingClasses || !selectedStudent">
               <option value="">{{ loadingClasses ? 'Loading classes...' : (!selectedStudent ? 'Select student first' : 'Choose destination class') }}</option>
-              <option *ngFor="let cls of classes" [value]="cls.id" [disabled]="cls.id === selectedStudent?.classId">
+              <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id" [disabled]="cls.id === selectedStudent?.classId">
                 {{ cls.name }} ({{ cls.form }})
               </option>
             </select>
@@ -319,7 +319,7 @@
 
         <!-- History Timeline -->
         <div class="history-timeline" *ngIf="!loadingHistory && transferHistory.length > 0">
-          <div class="timeline-item" *ngFor="let transfer of transferHistory; trackBy: trackByTransferId" [attr.data-index]="$index">
+          <div class="timeline-item" *ngFor="let transfer of (transferHistory | safeArray); trackBy: trackByTransferId" [attr.data-index]="$index">
             <div class="timeline-marker"></div>
             <div class="timeline-content">
               <div class="transfer-path">

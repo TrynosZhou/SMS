@@ -44,6 +44,7 @@ import { RecordPaymentComponent } from './components/finance/record-payment/reco
 import { OutstandingBalanceComponent } from './components/finance/outstanding-balance/outstanding-balance.component';
 import { SplashComponent } from './components/splash/splash.component';
 import { StudentTransferComponent } from './components/students/student-transfer/student-transfer.component';
+import { SafeArrayPipe } from './pipes/safe-array.pipe';
 
 @NgModule({
   declarations: [
@@ -84,7 +85,8 @@ import { StudentTransferComponent } from './components/students/student-transfer
     RecordPaymentComponent,
     OutstandingBalanceComponent,
     SplashComponent,
-    StudentTransferComponent
+    StudentTransferComponent,
+    SafeArrayPipe
   ],
   imports: [
     BrowserModule,
