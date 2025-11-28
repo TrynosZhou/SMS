@@ -4,6 +4,7 @@ import { RecordBookService } from '../../../services/record-book.service';
 import { SettingsService } from '../../../services/settings.service';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { safeArray } from '../../../utils/array-utils';
 
 @Component({
   selector: 'app-teacher-record-book',
@@ -98,7 +99,7 @@ export class TeacherRecordBookComponent implements OnInit {
     this.teacherService.getTeachers().subscribe({
       next: (teachers: any[]) => {
         this.teachers = teachers || [];
-        this.filteredTeachers = [...this.teachers];
+        this.filteredTeachers = [...safeArray(this.teachers)];
         this.loading = false;
         this.error = ''; // Clear any previous errors
       },
@@ -120,12 +121,12 @@ export class TeacherRecordBookComponent implements OnInit {
 
   searchTeachers() {
     if (!this.searchTerm.trim()) {
-      this.filteredTeachers = [...this.teachers];
+      this.filteredTeachers = [...safeArray(this.teachers)];
       return;
     }
 
     const term = this.searchTerm.toLowerCase().trim();
-    this.filteredTeachers = this.teachers.filter(teacher =>
+    this.filteredTeachers = safeArray(this.teachers).filter(teacher =>
       teacher.teacherId?.toLowerCase().includes(term) ||
       teacher.firstName?.toLowerCase().includes(term) ||
       teacher.lastName?.toLowerCase().includes(term)
@@ -144,7 +145,7 @@ export class TeacherRecordBookComponent implements OnInit {
 
   clearSearch() {
     this.searchTerm = '';
-    this.filteredTeachers = [...this.teachers];
+    this.filteredTeachers = [...safeArray(this.teachers)];
     this.selectedTeacher = null;
     this.teacherClasses = [];
     this.selectedClassId = '';
@@ -210,7 +211,7 @@ export class TeacherRecordBookComponent implements OnInit {
           }
         }
         
-        this.filteredStudents = [...this.students];
+        this.filteredStudents = [...safeArray(this.students)];
         this.loading = false;
       },
       error: (err: any) => {
@@ -229,12 +230,12 @@ export class TeacherRecordBookComponent implements OnInit {
 
   filterStudents() {
     if (!this.studentSearchTerm.trim()) {
-      this.filteredStudents = [...this.students];
+      this.filteredStudents = [...safeArray(this.students)];
       return;
     }
 
     const term = this.studentSearchTerm.toLowerCase().trim();
-    this.filteredStudents = this.students.filter(student =>
+    this.filteredStudents = safeArray(this.students).filter(student =>
       student.firstName?.toLowerCase().includes(term) ||
       student.lastName?.toLowerCase().includes(term) ||
       student.studentNumber?.toLowerCase().includes(term)
@@ -370,7 +371,7 @@ export class TeacherRecordBookComponent implements OnInit {
     data.push(topicRow);
     
     // Convert to CSV
-    const csv = data.map(row => row.join(',')).join('\n');
+    const csv = safeArray(data).map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');

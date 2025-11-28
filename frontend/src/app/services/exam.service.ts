@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -85,7 +86,25 @@ export class ExamService {
     }
     
     console.log('Requesting report card:', url, params);
-    return this.http.get(url, { params });
+    return this.http.get(url, { params }).pipe(
+      map((response: any) => {
+        const normalized = {
+          ...response,
+          reportCards: Array.isArray(response?.reportCards) ? response.reportCards : []
+        };
+
+        normalized.reportCards = normalized.reportCards.map((card: any) => ({
+          ...card,
+          subjects: Array.isArray(card?.subjects) ? card.subjects : []
+        }));
+
+        return normalized;
+      }),
+      catchError((error: any) => {
+        console.error('Report card request failed:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   downloadReportCardPDF(studentId: string, examId: string): Observable<Blob> {

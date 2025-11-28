@@ -379,7 +379,7 @@ export class ReportCardComponent implements OnInit {
       studentIdParam
     ).subscribe({
       next: (data: any) => {
-        let cards = data.reportCards || [];
+        let cards = Array.isArray(data?.reportCards) ? data.reportCards : [];
         
         // For parents, filter to only their student
         if (this.isParent && this.parentStudentId) {
@@ -394,6 +394,9 @@ export class ReportCardComponent implements OnInit {
               classTeacherRemarks: null,
               headmasterRemarks: null
             };
+          }
+          if (!Array.isArray(card.subjects)) {
+            card.subjects = [];
           }
           return card;
         });

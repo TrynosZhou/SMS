@@ -4,6 +4,7 @@ import { AccountService } from '../../../services/account.service';
 import { AuthService } from '../../../services/auth.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 import { Subscription } from 'rxjs';
+import { safeArray } from '../../../utils/array-utils';
 
 @Component({
   selector: 'app-manage-accounts',
@@ -127,7 +128,7 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
         this.teachers = Array.isArray(data) ? data : (data.teachers || []);
         
         // Load account info for each teacher
-        this.teachers.forEach((teacher: any) => {
+        safeArray(this.teachers).forEach((teacher: any) => {
           if (teacher.userId) {
             teacher.hasAccount = true;
             teacher.accountStatus = 'Active';
@@ -149,19 +150,19 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   }
 
   filterTeachers() {
-    let filtered = [...this.teachers];
+    let filtered = [...safeArray(this.teachers)];
 
     // Apply status filter
     if (this.filterStatus === 'with-account') {
-      filtered = filtered.filter(t => t.hasAccount);
+      filtered = safeArray(filtered).filter(t => t.hasAccount);
     } else if (this.filterStatus === 'without-account') {
-      filtered = filtered.filter(t => !t.hasAccount);
+      filtered = safeArray(filtered).filter(t => !t.hasAccount);
     }
 
     // Apply search filter
     if (this.searchQuery) {
       const query = this.searchQuery.toLowerCase();
-      filtered = filtered.filter(teacher => 
+      filtered = safeArray(filtered).filter(teacher => 
         teacher.firstName?.toLowerCase().includes(query) ||
         teacher.lastName?.toLowerCase().includes(query) ||
         teacher.teacherId?.toLowerCase().includes(query) ||
@@ -191,16 +192,17 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
 
   // Statistics
   getAccountsWithAccount(): number {
-    return this.teachers.filter(t => t.hasAccount).length;
+    return safeArray(this.teachers).filter(t => t.hasAccount).length;
   }
 
   getAccountsWithoutAccount(): number {
-    return this.teachers.filter(t => !t.hasAccount).length;
+    return safeArray(this.teachers).filter(t => !t.hasAccount).length;
   }
 
   getAccountPercentage(): number {
-    if (this.teachers.length === 0) return 0;
-    return Math.round((this.getAccountsWithAccount() / this.teachers.length) * 100);
+    const teacherList = safeArray(this.teachers);
+    if (teacherList.length === 0) return 0;
+    return Math.round((this.getAccountsWithAccount() / teacherList.length) * 100);
   }
 
   // Modal Management

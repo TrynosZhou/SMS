@@ -3,6 +3,7 @@ import { ClassService } from '../../../services/class.service';
 import { StudentService } from '../../../services/student.service';
 import { SettingsService } from '../../../services/settings.service';
 import { PromotionRuleService } from '../../../services/promotion-rule.service';
+import { safeArray } from '../../../utils/array-utils';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 
 interface PromotionData {
@@ -164,7 +165,7 @@ export class ClassPromotionComponent implements OnInit {
     
     // Debug: Log promotion rules and classes
     console.log('Promotion Rules:', this.promotionRules);
-    console.log('Available Classes:', this.classes.map(c => ({ name: c.name, form: c.form })));
+    console.log('Available Classes:', safeArray(this.classes).map(c => ({ name: c.name, form: c.form })));
     
     // Build promotion data for each class
     this.classes.forEach(classItem => {
@@ -176,7 +177,7 @@ export class ClassPromotionComponent implements OnInit {
         if (!nextClass) {
           console.log(`No next class found for: ${classItem.name} (Form: ${classItem.form})`);
           console.log(`  - Promotion rules keys:`, Object.keys(this.promotionRules));
-          console.log(`  - Looking for match in:`, this.classes.map(c => c.name));
+          console.log(`  - Looking for match in:`, safeArray(this.classes).map(c => c.name));
         }
         
         this.promotionData.push({
@@ -252,7 +253,7 @@ export class ClassPromotionComponent implements OnInit {
         classData.filteredStudents = [...classData.students];
       } else {
         const query = this.searchQuery.toLowerCase();
-        classData.filteredStudents = classData.students.filter(student =>
+        classData.filteredStudents = safeArray(classData.students).filter(student =>
           student.firstName?.toLowerCase().includes(query) ||
           student.lastName?.toLowerCase().includes(query) ||
           student.studentNumber?.toLowerCase().includes(query) ||
@@ -266,7 +267,7 @@ export class ClassPromotionComponent implements OnInit {
     if (this.filterClass === 'all') {
       this.filteredPromotionData = [...this.promotionData];
     } else {
-      this.filteredPromotionData = this.promotionData.filter(
+      this.filteredPromotionData = safeArray(this.promotionData).filter(
         data => data.class.id === this.filterClass
       );
     }
@@ -355,20 +356,20 @@ export class ClassPromotionComponent implements OnInit {
   }
 
   getSelectedCountForClass(classData: PromotionData): number {
-    return classData.filteredStudents.filter(student => 
+    return safeArray(classData.filteredStudents).filter(student => 
       this.selectedStudents.has(student.id)
     ).length;
   }
 
   // Statistics
   getTotalStudents(): number {
-    return this.promotionData.reduce((sum, data) => sum + data.students.length, 0);
+    return safeArray(this.promotionData).reduce((sum, data) => sum + safeArray(data.students).length, 0);
   }
 
   getEligibleStudents(): number {
     return this.promotionData
       .filter(data => data.nextClass !== null)
-      .reduce((sum, data) => sum + data.students.length, 0);
+      .reduce((sum, data) => sum + safeArray(data.students).length, 0);
   }
 
   getClassesWithStudents(): number {
@@ -385,7 +386,7 @@ export class ClassPromotionComponent implements OnInit {
 
   getAffectedClassesCount(): number {
     if (this.promotionMode === 'all') {
-      return this.promotionData.filter(data => data.nextClass !== null).length;
+      return safeArray(this.promotionData).filter(data => data.nextClass !== null).length;
     } else {
       const affectedClasses = new Set<string>();
       this.promotionData.forEach(classData => {
@@ -436,7 +437,7 @@ export class ClassPromotionComponent implements OnInit {
       
       this.promotionData.forEach(classData => {
         if (classData.nextClass) {
-          const selected = classData.students.filter(student => 
+          const selected = safeArray(classData.students).filter(student => 
             this.selectedStudents.has(student.id)
           );
           
@@ -487,7 +488,7 @@ export class ClassPromotionComponent implements OnInit {
     
     console.log('=== PROMOTION START ===');
     console.log('Promotion mode:', this.promotionMode);
-    console.log('Promotion data:', this.promotionData.map(d => ({
+    console.log('Promotion data:', safeArray(this.promotionData).map(d => ({
       class: d.class.name,
       form: d.class.form,
       nextClass: d.nextClass?.name || 'NONE',

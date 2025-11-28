@@ -104,8 +104,23 @@ export class FinanceService {
     });
   }
 
-  getOutstandingBalances(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/finance/outstanding-balances`);
+  getOutstandingBalances(): Observable<any[]> {
+    return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/finance/outstanding-balances`).pipe(
+      map(response => {
+        if (!response) return [];
+        if (Array.isArray(response)) {
+          return response;
+        }
+        if (typeof response === 'object' && response !== null && Array.isArray((response as any).data)) {
+          return (response as any).data;
+        }
+        return [];
+      }),
+      catchError((error: any) => {
+        console.error('Error loading outstanding balances:', error);
+        return of([]);
+      })
+    );
   }
 }
 

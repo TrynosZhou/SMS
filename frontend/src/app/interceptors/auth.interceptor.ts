@@ -7,10 +7,20 @@ import { catchError } from 'rxjs/operators';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
+  private readonly publicEndpoints = [
+    '/auth/login',
+    '/auth/register',
+    '/auth/reset-password'
+  ];
+
   constructor(
     private authService: AuthService,
     private router: Router
   ) { }
+
+  private isPublicEndpoint(url: string): boolean {
+    return this.publicEndpoints.some(endpoint => url.includes(endpoint));
+  }
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<any> {
     const token = this.authService.getToken();
@@ -34,14 +44,30 @@ export class AuthInterceptor implements HttpInterceptor {
       }
     }
     
+    const requiresAuth = !this.isPublicEndpoint(cleanedUrl);
+
+    if (requiresAuth) {
+      if (!token) {
+        console.warn('No authentication token found for secure request. Redirecting to login.');
+        this.authService.logout('unauthorized');
+        return throwError(() => new Error('Authentication required'));
+      }
+
+      if (this.authService.isTokenExpired(token)) {
+        console.warn('Authentication token has expired. Redirecting to login.');
+        this.authService.logout('session-timeout');
+        return throwError(() => new Error('Session expired'));
+      }
+    }
+
     // Clone the request with cleaned URL and add the authorization header if token exists
     let authReq = req;
-    if (cleanedUrl !== req.url || token) {
+    if (cleanedUrl !== req.url || (requiresAuth && token)) {
       const update: any = {};
       if (cleanedUrl !== req.url) {
         update.url = cleanedUrl;
       }
-      if (token) {
+      if (requiresAuth && token) {
         update.setHeaders = {
           Authorization: `Bearer ${token}`
         };
@@ -54,13 +80,10 @@ export class AuthInterceptor implements HttpInterceptor {
         // Handle 401 errors
         if (error.status === 401) {
           // Skip auto-logout for auth endpoints (login, register, reset-password)
-          const isAuthEndpoint = req.url.includes('/auth/login') || 
-                                 req.url.includes('/auth/register') || 
-                                 req.url.includes('/auth/reset-password');
+          const isAuthEndpoint = this.isPublicEndpoint(req.url);
           
-          if (!isAuthEndpoint && token) {
-            // Token is invalid or expired - clear it and redirect to login
-            console.warn('Authentication failed - token may be expired or invalid');
+          if (!isAuthEndpoint) {
+            console.warn('Authentication failed with 401 - redirecting to login.');
             this.authService.logout('unauthorized');
           }
         }

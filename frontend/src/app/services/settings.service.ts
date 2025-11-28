@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -11,8 +12,21 @@ export class SettingsService {
 
   constructor(private http: HttpClient) { }
 
+  private handleError<T>(operation: string, fallback: T) {
+    return (error: any): Observable<T> => {
+      if (error?.status === 401) {
+        console.warn(`[SettingsService] ${operation} failed with 401 (unauthorized).`);
+      } else {
+        console.error(`[SettingsService] ${operation} failed:`, error);
+      }
+      return of(fallback);
+    };
+  }
+
   getSettings(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/settings`);
+    return this.http.get(`${this.apiUrl}/settings`).pipe(
+      catchError(this.handleError('getSettings', {}))
+    );
   }
 
   updateSettings(settings: any): Observable<any> {
@@ -20,11 +34,15 @@ export class SettingsService {
   }
 
   getActiveTerm(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/settings/active-term`);
+    return this.http.get(`${this.apiUrl}/settings/active-term`).pipe(
+      catchError(this.handleError('getActiveTerm', { activeTerm: null }))
+    );
   }
 
   getYearEndReminders(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/settings/reminders`);
+    return this.http.get(`${this.apiUrl}/settings/reminders`).pipe(
+      catchError(this.handleError('getYearEndReminders', []))
+    );
   }
 
   processOpeningDay(): Observable<any> {
@@ -36,7 +54,9 @@ export class SettingsService {
   }
 
   getUniformItems(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/settings/uniform-items`);
+    return this.http.get(`${this.apiUrl}/settings/uniform-items`).pipe(
+      catchError(this.handleError('getUniformItems', []))
+    );
   }
 
   createUniformItem(data: any): Observable<any> {

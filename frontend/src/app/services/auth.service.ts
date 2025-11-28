@@ -91,6 +91,34 @@ export class AuthService {
     return localStorage.getItem('token');
   }
 
+  /**
+   * Decode a JWT token payload.
+   */
+  private decodeToken(token: string): any | null {
+    try {
+      const payload = token.split('.')[1];
+      if (!payload) {
+        return null;
+      }
+      return JSON.parse(atob(payload));
+    } catch (error) {
+      console.warn('Failed to decode token payload:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Checks whether the provided token has expired.
+   */
+  isTokenExpired(token: string): boolean {
+    const payload = this.decodeToken(token);
+    if (!payload || !payload.exp) {
+      return false;
+    }
+    const expiry = Number(payload.exp) * 1000;
+    return Number.isFinite(expiry) && Date.now() >= expiry;
+  }
+
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;
   }
@@ -107,8 +135,18 @@ export class AuthService {
   isAuthenticated(): boolean {
     const token = this.getToken();
     const user = this.getCurrentUser();
-    // Check both token and user to ensure authentication is complete
-    return !!(token && user);
+
+    if (!token || !user) {
+      return false;
+    }
+
+    if (this.isTokenExpired(token)) {
+      console.warn('Stored authentication token has expired. Logging out.');
+      this.logout('session-timeout');
+      return false;
+    }
+
+    return true;
   }
 
   hasRole(role: string): boolean {

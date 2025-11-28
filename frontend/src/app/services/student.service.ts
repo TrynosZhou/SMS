@@ -238,7 +238,21 @@ export class StudentService {
   }
 
   getStudentTransfers(studentId: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/students/${studentId}/transfers`);
+    return this.http.get(`${this.apiUrl}/students/${studentId}/transfers`).pipe(
+      map(response => {
+        if (Array.isArray(response)) {
+          return response;
+        }
+        if (response && Array.isArray((response as any).data)) {
+          return (response as any).data;
+        }
+        return [];
+      }),
+      catchError((error: any) => {
+        console.error('Error loading student transfer history:', error);
+        return of([]);
+      })
+    );
   }
 }
 

@@ -99,7 +99,12 @@ export class TeacherService {
   }
 
   getTeacherClasses(id: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/teachers/${id}/classes`);
+    return this.http.get(`${this.apiUrl}/teachers/${id}/classes`).pipe(
+      catchError((error: any) => {
+        console.error('Error loading teacher classes:', error);
+        return of({ classes: [] });
+      })
+    );
   }
 
   createTeacherAccount(teacherId: string): Observable<any> {
