@@ -3,6 +3,7 @@ import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { validatePhoneNumber } from '../../../utils/phone-validator';
+import { safeArray } from '../../../utils/array-utils';
 
 @Component({
   selector: 'app-student-transfer',
@@ -69,14 +70,14 @@ export class StudentTransferComponent implements OnInit {
     this.loadingStudents = true;
     this.studentService.getStudentsPaginated({ page: 1, limit: 300 }).subscribe({
       next: response => {
-        const studentsData = response?.data;
-        this.students = Array.isArray(studentsData) ? studentsData : [];
-        this.filteredStudents = [...this.students];
+        const studentsData = safeArray(response?.data ?? response);
+        this.students = studentsData;
+        this.filteredStudents = [...studentsData];
         this.loadingStudents = false;
       },
       error: err => {
         console.error('Error loading students for transfer:', err);
-        this.errorMessage = err.error?.message || 'Failed to load students';
+        this.errorMessage = this.formatApiError(err, 'Failed to load students');
         this.loadingStudents = false;
       }
     });
@@ -86,19 +87,20 @@ export class StudentTransferComponent implements OnInit {
     this.loadingClasses = true;
     this.classService.getClassesPaginated(1, 200).subscribe({
       next: response => {
-        this.classes = response?.data || [];
+        this.classes = safeArray(response?.data ?? response);
         this.loadingClasses = false;
       },
       error: err => {
         console.error('Error loading classes for transfer:', err);
-        this.errorMessage = err.error?.message || 'Failed to load classes';
+        this.errorMessage = this.formatApiError(err, 'Failed to load classes');
         this.loadingClasses = false;
       }
     });
   }
 
   onStudentChange(): void {
-    this.selectedStudent = this.students.find(student => student.id === this.selectedStudentId) || null;
+    const studentList = safeArray(this.students);
+    this.selectedStudent = studentList.find(student => student.id === this.selectedStudentId) || null;
     this.targetClassId = '';
     this.resetExternalFields();
     if (this.selectedStudent) {
@@ -122,11 +124,11 @@ export class StudentTransferComponent implements OnInit {
 
   filterStudentList(): void {
     if (!this.searchTerm.trim()) {
-      this.filteredStudents = [...this.students];
+      this.filteredStudents = [...safeArray(this.students)];
       return;
     }
     const query = this.searchTerm.toLowerCase().trim();
-    this.filteredStudents = this.students.filter(student => {
+    this.filteredStudents = safeArray(this.students).filter(student => {
       const fullName = `${student.firstName || ''} ${student.lastName || ''}`.toLowerCase();
       const studentNumber = (student.studentNumber || '').toLowerCase();
       return fullName.includes(query) || studentNumber.includes(query);
@@ -137,11 +139,12 @@ export class StudentTransferComponent implements OnInit {
     this.loadingHistory = true;
     this.studentService.getStudentTransfers(studentId).subscribe({
       next: history => {
-        this.transferHistory = history || [];
+        this.transferHistory = safeArray(history);
         this.loadingHistory = false;
       },
       error: err => {
         console.error('Error loading transfer history:', err);
+        this.errorMessage = this.formatApiError(err, 'Failed to load transfer history');
         this.loadingHistory = false;
       }
     });
@@ -240,7 +243,8 @@ export class StudentTransferComponent implements OnInit {
           if (this.selectedStudent) {
             if (this.transferType === 'internal') {
               this.selectedStudent.classId = this.targetClassId;
-              this.selectedStudent.classEntity = this.classes.find(cls => cls.id === this.targetClassId) || this.selectedStudent.classEntity;
+              const classList = safeArray(this.classes);
+              this.selectedStudent.classEntity = classList.find(cls => cls.id === this.targetClassId) || this.selectedStudent.classEntity;
             } else {
               // External transfer - student is no longer active
               this.selectedStudent.isActive = false;
@@ -253,7 +257,7 @@ export class StudentTransferComponent implements OnInit {
       },
       error: err => {
         console.error('Error transferring student:', err);
-        this.errorMessage = err.error?.message || 'Failed to transfer student. Please try again.';
+        this.errorMessage = this.formatApiError(err, 'Failed to transfer student. Please try again.');
         this.submitting = false;
       }
     });
@@ -261,7 +265,8 @@ export class StudentTransferComponent implements OnInit {
 
   getCurrentClassName(): string {
     if (!this.selectedStudent) return 'Not assigned';
-    return this.selectedStudent.classEntity?.name || this.classes.find(c => c.id === this.selectedStudent.classId)?.name || 'Not assigned';
+    const classesList = safeArray(this.classes);
+    return this.selectedStudent.classEntity?.name || classesList.find(c => c.id === this.selectedStudent.classId)?.name || 'Not assigned';
   }
 
   clearSearch(): void {
@@ -279,7 +284,8 @@ export class StudentTransferComponent implements OnInit {
 
   getTargetClassName(): string {
     if (!this.targetClassId) return 'Selected Class';
-    const targetClass = this.classes.find(c => c.id === this.targetClassId);
+    const classesList = safeArray(this.classes);
+    const targetClass = classesList.find(c => c.id === this.targetClassId);
     return targetClass?.name || 'Selected Class';
   }
 
@@ -300,6 +306,16 @@ export class StudentTransferComponent implements OnInit {
 
   isTransferCancelled(transfer: any): boolean {
     return transfer.status === 'cancelled';
+  }
+
+  private formatApiError(error: any, fallback: string): string {
+    if (error?.status === 401) {
+      return 'Your session has expired. Please log in again.';
+    }
+    if (error?.status === 403) {
+      return 'You are not authorized to perform this action.';
+    }
+    return error?.error?.message || error?.message || fallback;
   }
 }
 
