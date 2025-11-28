@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { TeacherService } from '../../../services/teacher.service';
 import { SubjectService } from '../../../services/subject.service';
@@ -34,7 +34,8 @@ export class TeacherListComponent implements OnInit {
     private teacherService: TeacherService,
     private subjectService: SubjectService,
     private classService: ClassService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit() {
@@ -62,8 +63,11 @@ export class TeacherListComponent implements OnInit {
           this.pagination.page = page;
         }
         this.filteredTeachers = this.teachers;
-        this.filterTeachers();
         this.loading = false;
+        // Defer filtering to avoid NG0900 error
+        setTimeout(() => {
+          this.filterTeachers();
+        }, 0);
       },
       error: (err: any) => {
         console.error('Error loading teachers:', err);

@@ -16,6 +16,7 @@ export class OutstandingBalanceComponent implements OnInit {
   error = '';
   searchQuery = '';
   currencySymbol = 'KES';
+  private _cachedTotalOutstanding = 0;
 
   constructor(
     private financeService: FinanceService,
@@ -48,8 +49,10 @@ export class OutstandingBalanceComponent implements OnInit {
     
     this.financeService.getOutstandingBalances().subscribe({
       next: (data: any) => {
-        this.outstandingBalances = data;
-        this.filteredBalances = data;
+        const balancesArray = Array.isArray(data) ? data : [];
+        this.outstandingBalances = balancesArray;
+        this.filteredBalances = balancesArray;
+        this.updateCachedTotal();
         this.loading = false;
       },
       error: (error: any) => {
@@ -57,6 +60,7 @@ export class OutstandingBalanceComponent implements OnInit {
         this.loading = false;
         this.outstandingBalances = [];
         this.filteredBalances = [];
+        this.updateCachedTotal();
       }
     });
   }
@@ -64,25 +68,30 @@ export class OutstandingBalanceComponent implements OnInit {
   filterBalances(): void {
     if (!this.searchQuery || this.searchQuery.trim() === '') {
       this.filteredBalances = this.outstandingBalances;
-      return;
+    } else {
+      const query = this.searchQuery.toLowerCase().trim();
+      this.filteredBalances = this.outstandingBalances.filter(balance => {
+        return (
+          balance.studentNumber?.toLowerCase().includes(query) ||
+          balance.firstName?.toLowerCase().includes(query) ||
+          balance.lastName?.toLowerCase().includes(query) ||
+          balance.studentId?.toLowerCase().includes(query) ||
+          balance.phoneNumber?.toLowerCase().includes(query)
+        );
+      });
     }
-
-    const query = this.searchQuery.toLowerCase().trim();
-    this.filteredBalances = this.outstandingBalances.filter(balance => {
-      return (
-        balance.studentNumber?.toLowerCase().includes(query) ||
-        balance.firstName?.toLowerCase().includes(query) ||
-        balance.lastName?.toLowerCase().includes(query) ||
-        balance.studentId?.toLowerCase().includes(query) ||
-        balance.phoneNumber?.toLowerCase().includes(query)
-      );
-    });
+    this.updateCachedTotal();
+  }
+  
+  private updateCachedTotal(): void {
+    const balancesArray = Array.isArray(this.filteredBalances) ? this.filteredBalances : [];
+    this._cachedTotalOutstanding = balancesArray.reduce((sum, balance) => {
+      return sum + parseFloat(String(balance.invoiceBalance || 0));
+    }, 0);
   }
 
   getTotalOutstanding(): number {
-    return this.filteredBalances.reduce((sum, balance) => {
-      return sum + parseFloat(String(balance.invoiceBalance || 0));
-    }, 0);
+    return this._cachedTotalOutstanding;
   }
 
   formatCurrency(amount: number): string {

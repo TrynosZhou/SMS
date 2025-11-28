@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Observable, throwError, Observer } from 'rxjs';
+import { Observable, throwError, Observer, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { PaginatedResponse } from '../types/pagination';
@@ -19,7 +19,26 @@ export class StudentService {
       params.classId = classId;
     }
     return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/students`, { params }).pipe(
-      map(response => Array.isArray(response) ? response : (response?.data || []))
+      map(response => {
+        // Ensure response is valid before processing
+        if (!response) return [];
+        if (Array.isArray(response)) {
+          return response;
+        }
+        if (typeof response === 'object' && response !== null && Array.isArray(response.data)) {
+          return response.data;
+        }
+        // If response is an error object (has message but no data), return empty array
+        if (typeof response === 'object' && response !== null && 'message' in response && !('data' in response)) {
+          return [];
+        }
+        return [];
+      }),
+      catchError((error: any) => {
+        // Always return empty array on any error (401, 500, network, etc.)
+        console.error('Error loading students:', error);
+        return of([]);
+      })
     );
   }
 

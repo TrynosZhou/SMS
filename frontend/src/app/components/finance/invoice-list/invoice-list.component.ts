@@ -53,6 +53,18 @@ export class InvoiceListComponent implements OnInit {
   quickPaymentReceiptNeeded = false;
   lastQuickPaymentInvoiceId: string | null = null;
   
+  // Cached computed values to prevent NG0900 errors
+  private _cachedStats = {
+    totalAmount: 0,
+    paidAmount: 0,
+    outstandingAmount: 0,
+    totalInvoiceAmount: 0,
+    uniformTotal: 0,
+    overdueCount: 0,
+    prepaidCreditCount: 0,
+    totalPrepaidCredit: 0
+  };
+  
   // PDF Viewer properties
   showPdfViewer = false;
   pdfUrl: string | null = null;
@@ -182,12 +194,14 @@ export class InvoiceListComponent implements OnInit {
         } else {
           this.filterInvoices();
         }
+        this.updateCachedStats();
         this.loading = false;
       },
       error: (err: any) => {
         console.error('Error loading invoices:', err);
         this.invoices = [];
         this.filteredInvoices = [];
+        this.updateCachedStats();
         this.error = 'Failed to load invoices';
         this.loading = false;
         setTimeout(() => this.error = '', 5000);
@@ -262,6 +276,36 @@ export class InvoiceListComponent implements OnInit {
     }
 
     this.filteredInvoices = filtered;
+    this.updateCachedStats();
+  }
+  
+  private updateCachedStats() {
+    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
+    const today = new Date();
+    
+    this._cachedStats.totalAmount = invoicesArray.reduce((sum, inv) => sum + parseFloat(String(inv.amount || 0)), 0);
+    this._cachedStats.paidAmount = invoicesArray.reduce((sum, inv) => sum + parseFloat(String(inv.paidAmount || 0)), 0);
+    this._cachedStats.outstandingAmount = invoicesArray.reduce((sum, inv) => sum + parseFloat(String(inv.balance || 0)), 0);
+    this._cachedStats.totalInvoiceAmount = this._cachedStats.paidAmount + this._cachedStats.outstandingAmount;
+    this._cachedStats.uniformTotal = invoicesArray.reduce((sum, inv) => {
+      const uniformTotal = parseFloat(String(inv.uniformTotal || 0));
+      return sum + uniformTotal;
+    }, 0);
+    this._cachedStats.overdueCount = invoicesArray.filter(inv => {
+      const status = (inv.status || '').toLowerCase();
+      if (status === 'paid') return false;
+      if (!inv.dueDate) return false;
+      const dueDate = new Date(inv.dueDate);
+      return dueDate < today;
+    }).length;
+    this._cachedStats.prepaidCreditCount = invoicesArray.filter(inv => {
+      const prepaidAmount = parseFloat(String(inv.prepaidAmount || 0));
+      return prepaidAmount > 0;
+    }).length;
+    this._cachedStats.totalPrepaidCredit = invoicesArray.reduce((sum, inv) => {
+      const prepaidAmount = parseFloat(String(inv.prepaidAmount || 0));
+      return sum + prepaidAmount;
+    }, 0);
   }
 
   clearInvoiceFilters() {
@@ -272,6 +316,7 @@ export class InvoiceListComponent implements OnInit {
     // After clearing filters, show all invoices
     const invoicesArray = Array.isArray(this.invoices) ? this.invoices : [];
     this.filteredInvoices = [...invoicesArray];
+    this.updateCachedStats();
   }
 
   hasActiveInvoiceFilters(): boolean {
@@ -299,21 +344,18 @@ export class InvoiceListComponent implements OnInit {
 
   getTotalAmount(): number {
     // Grand Total = Sum of all invoice amounts (current term fees only)
-    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
-    return invoicesArray.reduce((sum, inv) => sum + parseFloat(String(inv.amount || 0)), 0);
+    return this._cachedStats.totalAmount;
   }
 
   getPaidAmount(): number {
     // Total Paid = Sum of all paid amounts
-    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
-    return invoicesArray.reduce((sum, inv) => sum + parseFloat(String(inv.paidAmount || 0)), 0);
+    return this._cachedStats.paidAmount;
   }
 
   getOutstandingAmount(): number {
     // Outstanding Balance = Sum of all current balances
     // Note: balance includes previousBalance, so this represents total outstanding across all invoices
-    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
-    return invoicesArray.reduce((sum, inv) => sum + parseFloat(String(inv.balance || 0)), 0);
+    return this._cachedStats.outstandingAmount;
   }
 
   getTotalInvoiceAmount(): number {
@@ -322,9 +364,7 @@ export class InvoiceListComponent implements OnInit {
     // - Outstanding Balance already includes previousBalance in its calculation
     // - Total Paid is what has been collected
     // - Together they represent the total amount that should have been collected
-    const totalPaid = this.getPaidAmount();
-    const outstanding = this.getOutstandingAmount();
-    return totalPaid + outstanding;
+    return this._cachedStats.totalInvoiceAmount;
   }
 
   getTotalInvoiceAmountAlternative(): number {
@@ -351,39 +391,19 @@ export class InvoiceListComponent implements OnInit {
   }
 
   getOverdueCount(): number {
-    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
-    const today = new Date();
-    return invoicesArray.filter(inv => {
-      const status = (inv.status || '').toLowerCase();
-      if (status === 'paid') return false;
-      if (!inv.dueDate) return false;
-      const dueDate = new Date(inv.dueDate);
-      return dueDate < today;
-    }).length;
+    return this._cachedStats.overdueCount;
   }
 
   getUniformTotal(): number {
-    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
-    return invoicesArray.reduce((sum, inv) => {
-      const uniformTotal = parseFloat(String(inv.uniformTotal || 0));
-      return sum + uniformTotal;
-    }, 0);
+    return this._cachedStats.uniformTotal;
   }
 
   getTotalPrepaidCredit(): number {
-    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
-    return invoicesArray.reduce((sum, inv) => {
-      const prepaidAmount = parseFloat(String(inv.prepaidAmount || 0));
-      return sum + prepaidAmount;
-    }, 0);
+    return this._cachedStats.totalPrepaidCredit;
   }
 
   getPrepaidCreditCount(): number {
-    const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
-    return invoicesArray.filter(inv => {
-      const prepaidAmount = parseFloat(String(inv.prepaidAmount || 0));
-      return prepaidAmount > 0;
-    }).length;
+    return this._cachedStats.prepaidCreditCount;
   }
 
   openInvoiceDetails(invoice: any) {

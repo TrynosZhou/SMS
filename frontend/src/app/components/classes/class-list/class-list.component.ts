@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { ClassService } from '../../../services/class.service';
 
@@ -31,7 +31,8 @@ export class ClassListComponent implements OnInit {
   constructor(
     private classService: ClassService,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit() {
@@ -131,8 +132,12 @@ export class ClassListComponent implements OnInit {
           this.pagination.page = page;
         }
         this.filteredClasses = [...this.classes];
-        this.filterClasses();
         this.loading = false;
+        // Use setTimeout to avoid NG0900 error - filter after change detection completes
+        setTimeout(() => {
+          this.filterClasses();
+          this.cdr.detectChanges();
+        }, 0);
       },
       error: (err: any) => {
         console.error('Error loading classes:', err);

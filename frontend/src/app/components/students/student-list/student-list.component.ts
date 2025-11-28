@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
@@ -37,7 +37,8 @@ export class StudentListComponent implements OnInit {
   constructor(
     private studentService: StudentService,
     private classService: ClassService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit() {
@@ -76,8 +77,11 @@ export class StudentListComponent implements OnInit {
           totalBoarders: response?.stats?.totalBoarders ?? 0,
           classCount: response?.stats?.classCount ?? this.classes.length
         };
-        this.applyFilters();
         this.loading = false;
+        // Defer filtering to avoid NG0900 error
+        setTimeout(() => {
+          this.applyFilters();
+        }, 0);
       },
       error: (err: any) => {
         console.error('Error loading students:', err);
