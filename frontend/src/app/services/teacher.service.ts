@@ -30,6 +30,13 @@ export class TeacherService {
         }
         return [];
       }),
+      map(data => {
+        if (!Array.isArray(data)) {
+          console.error('ERROR: Expected array but got:', typeof data, data);
+          return [];
+        }
+        return data;
+      }),
       catchError((error: any) => {
         // Always return empty array on any error (401, 500, network, etc.)
         console.error('Error loading teachers:', error);

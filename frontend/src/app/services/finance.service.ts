@@ -33,6 +33,13 @@ export class FinanceService {
         }
         return [];
       }),
+      map(data => {
+        if (!Array.isArray(data)) {
+          console.error('ERROR: Expected array but got:', typeof data, data);
+          return [];
+        }
+        return data;
+      }),
       catchError((error: any) => {
         // Always return empty array on any error (401, 500, network, etc.)
         console.error('Error loading invoices:', error);
@@ -114,7 +121,15 @@ export class FinanceService {
         if (typeof response === 'object' && response !== null && Array.isArray((response as any).data)) {
           return (response as any).data;
         }
+        console.error('ERROR: Expected array but got:', typeof response, response);
         return [];
+      }),
+      map(data => {
+        if (!Array.isArray(data)) {
+          console.error('ERROR: Expected array but got:', typeof data, data);
+          return [];
+        }
+        return data;
       }),
       catchError((error: any) => {
         console.error('Error loading outstanding balances:', error);
