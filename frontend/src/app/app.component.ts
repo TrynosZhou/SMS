@@ -36,23 +36,15 @@ export class AppComponent implements OnInit, OnDestroy {
       
       // Load module access settings
       this.moduleAccessService.loadModuleAccess();
-
-      // Start inactivity monitoring
-      this.sessionTimeoutService.start();
     }
 
     this.authSubscription = this.authService.currentUser$.subscribe(user => {
-      if (user) {
-        this.sessionTimeoutService.start();
-      } else {
-        this.sessionTimeoutService.stop();
-      }
+      // User state changes handled by auth service
     });
   }
 
   ngOnDestroy(): void {
     this.authSubscription?.unsubscribe();
-    this.sessionTimeoutService.stop();
   }
 
   isAuthenticated(): boolean {
