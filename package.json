@@ -1,6 +1,7 @@
 {
   "name": "sms-root",
   "private": true,
+  "main": "backend/dist/server.js",
   "scripts": {
     "install-backend": "npm install --prefix backend",
     "build": "npm run build --prefix backend",
