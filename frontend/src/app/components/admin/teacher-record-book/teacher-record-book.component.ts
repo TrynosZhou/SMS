@@ -135,7 +135,21 @@ export class TeacherRecordBookComponent implements OnInit {
 
   selectTeacher(teacher: any) {
     this.selectedTeacher = teacher;
-    this.teacherClasses = teacher.classes || [];
+    const classes = Array.isArray(teacher.classes) ? teacher.classes : [];
+
+    // De-duplicate classes strictly by class ID so each class appears only once,
+    // even if there are multiple records with the same name or duplicated entries.
+    const uniqueClassesMap = new Map<string, any>();
+    for (const cls of classes) {
+      if (!cls || !cls.id) {
+        continue;
+      }
+      if (!uniqueClassesMap.has(cls.id)) {
+        uniqueClassesMap.set(cls.id, cls);
+      }
+    }
+
+    this.teacherClasses = Array.from(uniqueClassesMap.values());
     this.selectedClassId = '';
     this.selectedClass = null;
     this.students = [];
@@ -163,12 +177,26 @@ export class TeacherRecordBookComponent implements OnInit {
   loadRecordBook(classId: string) {
     if (!classId || !this.selectedTeacher) return;
 
+    // The admin record-book endpoint requires both teacherId and subjectId.
+    // For now, use the first subject assigned to the selected teacher so that
+    // all students in the class are loaded for that subject.
+    const subjects = (this.selectedTeacher as any)?.subjects || [];
+    const defaultSubject = Array.isArray(subjects) ? subjects[0] : null;
+    const subjectId = defaultSubject?.id;
+
+    if (!subjectId) {
+      this.error = 'Selected teacher has no subject assigned. Please assign at least one subject to this teacher.';
+      this.students = [];
+      this.filteredStudents = [];
+      return;
+    }
+
     this.loading = true;
     this.error = '';
     
     // Use admin endpoint to get record book for any teacher's class
     const apiUrl = environment.apiUrl;
-    this.http.get(`${apiUrl}/record-book/admin/class/${classId}?teacherId=${this.selectedTeacher.id}`).subscribe({
+    this.http.get(`${apiUrl}/record-book/admin/class/${classId}?teacherId=${this.selectedTeacher.id}&subjectId=${subjectId}`).subscribe({
       next: (response: any) => {
         this.students = response.students || [];
         this.currentTerm = response.term || this.currentTerm;

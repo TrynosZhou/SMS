@@ -15,7 +15,8 @@ export interface PaginationResponse<T> {
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
-const MAX_LIMIT = 100;
+// Allow larger result sets when explicitly requested (e.g. loading all classes for teacher edit)
+const MAX_LIMIT = 1000;
 
 export const resolvePaginationParams = (
   pageParam?: string,

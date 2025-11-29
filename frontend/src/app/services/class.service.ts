@@ -14,7 +14,11 @@ export class ClassService {
   constructor(private http: HttpClient) { }
 
   getClasses(): Observable<any[]> {
-    return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/classes`).pipe(
+    // Request a very high limit so that callers (like teacher edit, settings, etc.)
+    // receive the full list of classes in a single request.
+    const params: any = { page: 1, limit: 1000 };
+
+    return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/classes`, { params }).pipe(
       map(response => {
         // Ensure response is valid before processing
         if (!response) return [];

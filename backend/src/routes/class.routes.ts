@@ -468,17 +468,72 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
     console.log('Filtered student count:', studentCount);
     console.log('Filtered teacher count:', teacherCount);
 
-    // Prevent deletion if there are associated records
+    // If this class has associated records, check for duplicate classes with the same name.
+    // This allows admins to clean up duplicate classes by migrating associations to a single canonical class.
     if (studentCount > 0 || teacherCount > 0 || examCount > 0) {
-      console.log('Cannot delete class - has associated records');
-      return res.status(400).json({
-        message: 'Cannot delete class with associated records',
-        details: {
-          students: studentCount,
-          teachers: teacherCount,
-          exams: examCount
-        }
+      // Look for another class with the same name but a different ID
+      const classRepositoryAll = AppDataSource.getRepository(Class);
+      const duplicateCandidates = await classRepositoryAll.find({
+        where: { name: classEntity.name }
       });
+
+      const targetClass = duplicateCandidates.find(c => c.id !== cleanId);
+
+      if (!targetClass) {
+        console.log('Cannot delete class - has associated records and no duplicate class found');
+        return res.status(400).json({
+          message: 'Cannot delete class with associated records',
+          details: {
+            students: studentCount,
+            teachers: teacherCount,
+            exams: examCount
+          }
+        });
+      }
+
+      console.log('Duplicate class detected. Migrating associations from', cleanId, 'to', targetClass.id);
+
+      // Reassign students to the duplicate (target) class
+      if (studentCount > 0) {
+        const studentRepository = AppDataSource.getRepository(Student);
+        await studentRepository
+          .createQueryBuilder()
+          .update(Student)
+          .set({ classId: targetClass.id })
+          .where('classId = :oldClassId', { oldClassId: cleanId })
+          .execute();
+      }
+
+      // Reassign exams to the duplicate (target) class
+      if (examCount > 0) {
+        await examRepository
+          .createQueryBuilder()
+          .update(Exam)
+          .set({ classId: targetClass.id })
+          .where('classId = :oldClassId', { oldClassId: cleanId })
+          .execute();
+      }
+
+      // Reassign report card remarks to the duplicate (target) class
+      const remarksRepositoryForMigration = AppDataSource.getRepository(ReportCardRemarks);
+      const remarksToMove = await remarksRepositoryForMigration.find({
+        where: { classId: cleanId }
+      });
+
+      if (remarksToMove.length > 0) {
+        console.log(`Migrating ${remarksToMove.length} report card remarks to class`, targetClass.id);
+        await remarksRepositoryForMigration
+          .createQueryBuilder()
+          .update(ReportCardRemarks)
+          .set({ classId: targetClass.id })
+          .where('classId = :oldClassId', { oldClassId: cleanId })
+          .execute();
+      }
+
+      // Refresh counts after migration
+      studentCount = 0;
+      teacherCount = 0;
+      // Exams were migrated, so examCount is effectively 0 for this class now
     }
 
     // Delete all report card remarks associated with this class
