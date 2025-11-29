@@ -151,7 +151,9 @@ export class AuthService {
 
   hasRole(role: string): boolean {
     const user = this.getCurrentUser();
-    return user?.role === role;
+    if (!user || !user.role) return false;
+    // Case-insensitive comparison for role checking
+    return user.role.toLowerCase() === role.toLowerCase();
   }
 
   requestPasswordReset(email: string): Observable<any> {

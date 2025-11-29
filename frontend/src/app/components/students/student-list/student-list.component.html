@@ -88,7 +88,7 @@
             (change)="onClassFilterChange()"
             class="filter-select">
             <option value="">All Classes</option>
-            <option *ngFor="let cls of classes" [value]="cls.id">
+            <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">
               {{ cls.name }}
             </option>
           </select>
@@ -172,7 +172,7 @@
 
   <!-- Students Grid View -->
   <div class="students-grid" *ngIf="!loading && viewMode === 'grid' && filteredStudents.length > 0">
-    <div *ngFor="let student of filteredStudents" class="student-card">
+    <div *ngFor="let student of (filteredStudents | safeArray)" class="student-card">
       <div class="card-header">
         <div class="student-avatar" [class.male]="student.gender === 'Male'" [class.female]="student.gender === 'Female'">
           <img *ngIf="student.photo" 
@@ -315,16 +315,7 @@
           <div class="detail-grid">
             <div class="detail-item">
               <span class="detail-label">Class</span>
-              <span class="detail-value">
-                <span *ngIf="selectedStudent.class?.name">{{ selectedStudent.class.name }}</span>
-                <span *ngIf="!selectedStudent.class?.name && selectedStudent.classEntity?.name">{{ selectedStudent.classEntity.name }}</span>
-                <span *ngIf="!selectedStudent.class?.name && !selectedStudent.classEntity?.name && selectedStudent.classId">
-                  <span class="loading-text">Loading class...</span>
-                </span>
-                <span *ngIf="!selectedStudent.class?.name && !selectedStudent.classEntity?.name && !selectedStudent.classId" class="error-text">
-                  Class not found
-                </span>
-              </span>
+              <span class="detail-value">{{ getStudentClassName(selectedStudent) }}</span>
             </div>
             <div class="detail-item">
               <span class="detail-label">Student Type</span>

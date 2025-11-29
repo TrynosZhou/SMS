@@ -22,7 +22,7 @@
             (change)="onClassChange()"
             class="form-control">
             <option value="">-- Select Class --</option>
-            <option *ngFor="let cls of classes" [value]="cls.id">
+            <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">
               {{ cls.name }} ({{ cls.form }})
             </option>
           </select>
@@ -185,7 +185,7 @@
               </th>
             </tr>
             <tr>
-              <th *ngFor="let subject of markSheetData.subjects" class="subject-col">
+              <th *ngFor="let subject of (markSheetData?.subjects | safeArray)" class="subject-col">
                 <div class="subject-header">
                   <div>{{ subject.name }}</div>
                   <div class="subject-average">{{ getSubjectAverage(subject.id) }}%</div>
@@ -194,7 +194,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let row of filteredMarkSheet" [class]="'performance-' + getPerformanceClass(row.average)">
+            <tr *ngFor="let row of (filteredMarkSheet | safeArray)" [class]="'performance-' + getPerformanceClass(row.average)">
               <td class="position-cell">
                 <span class="position-badge" [style.background-color]="row.position <= 3 ? '#ffc107' : 'transparent'">
                   {{ row.position }}

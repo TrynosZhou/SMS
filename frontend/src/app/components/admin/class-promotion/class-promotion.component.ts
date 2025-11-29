@@ -152,10 +152,14 @@ export class ClassPromotionComponent implements OnInit {
   buildPromotionData() {
     this.promotionData = [];
     
+    // Ensure students and classes are arrays
+    const studentsArray = Array.isArray(this.students) ? this.students : [];
+    const classesArray = Array.isArray(this.classes) ? this.classes : [];
+    
     // Group students by class
     const studentsByClass = new Map<string, any[]>();
-    this.students.forEach(student => {
-      if (student.classId) {
+    studentsArray.forEach(student => {
+      if (student && student.classId) {
         if (!studentsByClass.has(student.classId)) {
           studentsByClass.set(student.classId, []);
         }
@@ -165,10 +169,11 @@ export class ClassPromotionComponent implements OnInit {
     
     // Debug: Log promotion rules and classes
     console.log('Promotion Rules:', this.promotionRules);
-    console.log('Available Classes:', safeArray(this.classes).map(c => ({ name: c.name, form: c.form })));
+    console.log('Available Classes:', safeArray(classesArray).map(c => ({ name: c.name, form: c.form })));
     
     // Build promotion data for each class
-    this.classes.forEach(classItem => {
+    classesArray.forEach(classItem => {
+      if (!classItem || !classItem.id) return;
       const classStudents = studentsByClass.get(classItem.id) || [];
       if (classStudents.length > 0) {
         const nextClass = this.findNextClass(classItem);
@@ -177,7 +182,7 @@ export class ClassPromotionComponent implements OnInit {
         if (!nextClass) {
           console.log(`No next class found for: ${classItem.name} (Form: ${classItem.form})`);
           console.log(`  - Promotion rules keys:`, Object.keys(this.promotionRules));
-          console.log(`  - Looking for match in:`, safeArray(this.classes).map(c => c.name));
+          console.log(`  - Looking for match in:`, safeArray(classesArray).map(c => c.name));
         }
         
         this.promotionData.push({
@@ -226,8 +231,10 @@ export class ClassPromotionComponent implements OnInit {
       return null;
     }
 
+    // Ensure classes is an array before using find
+    const classesArray = Array.isArray(this.classes) ? this.classes : [];
     // Find the actual class object by toClassId
-    const nextClass = this.classes.find(c => c.id === rule.toClassId);
+    const nextClass = classesArray.find(c => c && c.id === rule.toClassId);
     
     if (nextClass) {
       console.log(`Found next class: ${nextClass.name} (form: ${nextClass.form}) for ${classItem.name}`);

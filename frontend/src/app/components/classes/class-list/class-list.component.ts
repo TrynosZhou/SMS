@@ -131,7 +131,8 @@ export class ClassListComponent implements OnInit {
           this.pagination.totalPages = Math.max(1, Math.ceil(this.pagination.total / this.pagination.limit));
           this.pagination.page = page;
         }
-        this.filteredClasses = [...this.classes];
+        const classesArray = Array.isArray(this.classes) ? this.classes : [];
+        this.filteredClasses = [...classesArray];
         this.loading = false;
         // Use setTimeout to avoid NG0900 error - filter after change detection completes
         setTimeout(() => {

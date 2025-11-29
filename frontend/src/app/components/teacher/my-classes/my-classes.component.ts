@@ -92,12 +92,16 @@ export class MyClassesComponent implements OnInit {
     // Fetch classes from dedicated endpoint (uses junction table)
     this.teacherService.getTeacherClasses(teacherId).subscribe({
       next: (response: any) => {
-        this.classes = response.classes || [];
-        this.filteredClasses = [...this.classes];
+        const classesData = response?.classes || response || [];
+        this.classes = Array.isArray(classesData) ? classesData : [];
+        const classesArray = Array.isArray(this.classes) ? this.classes : [];
+        this.filteredClasses = [...classesArray];
         this.loading = false;
         
         console.log('✓ Classes loaded from junction table:', this.classes.length);
-        console.log('Classes:', this.classes.map(c => c.name).join(', '));
+        if (this.classes.length > 0) {
+          console.log('Classes:', this.classes.map(c => c?.name || 'Unknown').join(', '));
+        }
       },
       error: (err: any) => {
         console.error('Error loading classes:', err);
@@ -110,13 +114,14 @@ export class MyClassesComponent implements OnInit {
   }
 
   filterClasses() {
+    const classesArray = Array.isArray(this.classes) ? this.classes : [];
     if (!this.searchTerm.trim()) {
-      this.filteredClasses = [...this.classes];
+      this.filteredClasses = [...classesArray];
       return;
     }
 
     const term = this.searchTerm.toLowerCase().trim();
-    this.filteredClasses = this.classes.filter(classItem =>
+    this.filteredClasses = classesArray.filter(classItem =>
       classItem.name.toLowerCase().includes(term) ||
       classItem.form.toLowerCase().includes(term) ||
       (classItem.description && classItem.description.toLowerCase().includes(term))

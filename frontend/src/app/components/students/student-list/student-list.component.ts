@@ -69,12 +69,15 @@ export class StudentListComponent implements OnInit {
         const studentsData = response?.data;
         const studentsArray = Array.isArray(studentsData) ? studentsData : [];
         
-        // Normalize class property - ensure 'class' maps to 'classEntity' if needed
+        // Normalize class property - create new objects instead of mutating
         this.students = studentsArray.map((student: any) => {
-          if (student.classEntity && !student.class) {
-            student.class = student.classEntity;
+          // Create a new object to avoid mutation issues
+          const normalizedStudent = { ...student };
+          // Ensure 'class' maps to 'classEntity' if needed
+          if (normalizedStudent.classEntity && !normalizedStudent.class) {
+            normalizedStudent.class = normalizedStudent.classEntity;
           }
-          return student;
+          return normalizedStudent;
         });
         
         this.pagination = {
@@ -89,6 +92,8 @@ export class StudentListComponent implements OnInit {
           classCount: response?.stats?.classCount ?? this.classes.length
         };
         this.loading = false;
+        // Use ChangeDetectorRef to properly trigger change detection
+        this.cdr.detectChanges();
         // Defer filtering to avoid NG0900 error
         setTimeout(() => {
           this.applyFilters();
@@ -106,6 +111,7 @@ export class StudentListComponent implements OnInit {
   }
 
   applyFilters() {
+    // Use a copy to avoid mutation issues
     let filtered = [...this.students];
 
     // Search filter
@@ -133,6 +139,7 @@ export class StudentListComponent implements OnInit {
       });
     }
 
+    // Update filtered students - Angular will handle change detection
     this.filteredStudents = filtered;
   }
 
@@ -157,32 +164,38 @@ export class StudentListComponent implements OnInit {
     // Fetch full student data with class relation to ensure class is loaded
     this.studentService.getStudentById(student.id).subscribe({
       next: (fullStudent: any) => {
+        // Create a new object to avoid mutation issues
+        const normalizedStudent = { ...fullStudent };
         // Ensure class information is available - check both 'class' and 'classEntity'
-        if (!fullStudent.class && fullStudent.classEntity) {
-          fullStudent.class = fullStudent.classEntity;
+        if (!normalizedStudent.class && normalizedStudent.classEntity) {
+          normalizedStudent.class = normalizedStudent.classEntity;
         }
         // Also ensure the student has a class - if not, try to get it from classId
-        if (!fullStudent.class && fullStudent.classId) {
-          const foundClass = this.classes.find(c => c.id === fullStudent.classId);
+        if (!normalizedStudent.class && normalizedStudent.classId) {
+          const foundClass = this.classes.find(c => c.id === normalizedStudent.classId);
           if (foundClass) {
-            fullStudent.class = foundClass;
+            normalizedStudent.class = foundClass;
           }
         }
-        this.selectedStudent = fullStudent;
+        this.selectedStudent = normalizedStudent;
+        this.cdr.detectChanges();
       },
       error: (err: any) => {
         console.error('Error loading student details:', err);
         // Fallback to using the student from the list, but ensure class is set
-        if (!student.class && student.classEntity) {
-          student.class = student.classEntity;
+        // Create a new object to avoid mutation
+        const fallbackStudent = { ...student };
+        if (!fallbackStudent.class && fallbackStudent.classEntity) {
+          fallbackStudent.class = fallbackStudent.classEntity;
         }
-        if (!student.class && student.classId) {
-          const foundClass = this.classes.find(c => c.id === student.classId);
+        if (!fallbackStudent.class && fallbackStudent.classId) {
+          const foundClass = this.classes.find(c => c.id === fallbackStudent.classId);
           if (foundClass) {
-            student.class = foundClass;
+            fallbackStudent.class = foundClass;
           }
         }
-        this.selectedStudent = student;
+        this.selectedStudent = fallbackStudent;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -318,5 +331,16 @@ export class StudentListComponent implements OnInit {
     this.pagination.limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : this.pagination.limit;
     this.pagination.page = 1;
     this.loadStudents(1);
+  }
+
+  getStudentClassName(student: any): string {
+    if (!student) return 'N/A';
+    if (student.class?.name) return student.class.name;
+    if (student.classEntity?.name) return student.classEntity.name;
+    if (student.classId) {
+      const foundClass = this.classes.find(c => c.id === student.classId);
+      if (foundClass?.name) return foundClass.name;
+    }
+    return 'N/A';
   }
 }

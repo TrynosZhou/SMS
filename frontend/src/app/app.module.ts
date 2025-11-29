@@ -44,6 +44,7 @@ import { TeacherDashboardComponent } from './components/teacher/teacher-dashboar
 import { RecordPaymentComponent } from './components/finance/record-payment/record-payment.component';
 import { OutstandingBalanceComponent } from './components/finance/outstanding-balance/outstanding-balance.component';
 import { SplashComponent } from './components/splash/splash.component';
+import { SafeArrayPipe } from './pipes/safe-array.pipe';
 
 @NgModule({
   declarations: [
@@ -84,7 +85,8 @@ import { SplashComponent } from './components/splash/splash.component';
     TeacherDashboardComponent,
     RecordPaymentComponent,
     OutstandingBalanceComponent,
-    SplashComponent
+    SplashComponent,
+    SafeArrayPipe
   ],
   imports: [
     BrowserModule,

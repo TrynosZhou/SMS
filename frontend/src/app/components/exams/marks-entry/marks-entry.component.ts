@@ -109,7 +109,8 @@ export class MarksEntryComponent implements OnInit {
   loadExistingMarks() {
     this.examService.getMarks(this.examId).subscribe({
       next: (data: any) => {
-        data.forEach((mark: any) => {
+        const marksArray = Array.isArray(data) ? data : [];
+        marksArray.forEach((mark: any) => {
           const key = `${mark.studentId}_${mark.subjectId}`;
           this.marks[key] = {
             score: mark.score,
@@ -123,8 +124,10 @@ export class MarksEntryComponent implements OnInit {
   }
 
   initializeMarks() {
-    this.students.forEach(student => {
-      this.subjects.forEach(subject => {
+    const studentsArray = Array.isArray(this.students) ? this.students : [];
+    const subjectsArray = Array.isArray(this.subjects) ? this.subjects : [];
+    studentsArray.forEach(student => {
+      subjectsArray.forEach(subject => {
         const key = `${student.id}_${subject.id}`;
         if (!this.marks[key]) {
           this.marks[key] = { score: null, maxScore: 100, comments: '' };
@@ -152,8 +155,10 @@ export class MarksEntryComponent implements OnInit {
     }
 
     const marksData: any[] = [];
-    this.students.forEach(student => {
-      this.subjects.forEach(subject => {
+    const studentsArray = Array.isArray(this.students) ? this.students : [];
+    const subjectsArray = Array.isArray(this.subjects) ? this.subjects : [];
+    studentsArray.forEach(student => {
+      subjectsArray.forEach(subject => {
         const key = `${student.id}_${subject.id}`;
         const mark = this.marks[key];
         // Include marks even if score is 0, but require a valid number

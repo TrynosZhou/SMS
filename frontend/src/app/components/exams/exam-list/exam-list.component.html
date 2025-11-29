@@ -124,7 +124,7 @@
             [class.invalid]="isFieldInvalid('class')"
             class="form-control">
             <option value="">Select Class</option>
-            <option *ngFor="let cls of classes" [value]="cls.id">{{ cls.name }}</option>
+            <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">{{ cls.name }}</option>
           </select>
           <div class="field-error" *ngIf="isFieldInvalid('class')">
             {{ getFieldError('class') }}
@@ -321,7 +321,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let student of filteredStudents; let i = index" 
+              <tr *ngFor="let student of (filteredStudents | safeArray); let i = index" 
                   [class.has-marks]="hasMarks(student.id)"
                   [class.no-marks]="!hasMarks(student.id)">
                 <td class="row-number">{{ i + 1 }}</td>

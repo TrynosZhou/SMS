@@ -395,12 +395,18 @@ export class ReportCardComponent implements OnInit {
               headmasterRemarks: null
             };
           }
+          // Ensure subjects is always an array
           if (!Array.isArray(card.subjects)) {
             card.subjects = [];
           }
+          // Ensure exams is always an array
+          if (!Array.isArray(card.exams)) {
+            card.exams = [];
+          }
           return card;
         });
-        this.filteredReportCards = [...this.reportCards];
+        const reportCardsArray = Array.isArray(this.reportCards) ? this.reportCards : [];
+        this.filteredReportCards = [...reportCardsArray];
         this.classInfo = { name: data.class, examType: data.examType, term: data.term || this.selectedTerm };
         this.success = `Generated ${this.reportCards.length} report card(s) for ${data.class} - ${this.selectedTerm}`;
         this.loading = false;

@@ -41,7 +41,7 @@
           <span class="section-icon">🎯</span>
           Generate Report Cards
         </h2>
-        <p class="section-description">Select class, term, and exam type to generate report cards</p>
+        <p class="section-description">Select class, term, and exam type to generate report cards. Subject selection is not required.</p>
       </div>
 
       <form (ngSubmit)="generateReportCards()">
@@ -58,7 +58,7 @@
               class="form-control"
               (change)="onSelectionChange()">
               <option value="">Select Class</option>
-              <option *ngFor="let class of classes" [value]="class.id">
+              <option *ngFor="let class of (classes | safeArray)" [value]="class.id">
                 {{ class.name }}
               </option>
             </select>
@@ -94,7 +94,7 @@
               class="form-control"
               (change)="onSelectionChange()">
               <option value="">{{ loadingTerms ? 'Loading terms...' : 'Select Term' }}</option>
-              <option *ngFor="let term of availableTerms" [value]="term">
+              <option *ngFor="let term of (availableTerms | safeArray)" [value]="term">
                 {{ term }}
               </option>
             </select>
@@ -214,7 +214,7 @@
       <!-- Report Cards List -->
       <div class="report-cards-list">
         <div 
-          *ngFor="let reportCard of filteredReportCards; let i = index" 
+          *ngFor="let reportCard of (filteredReportCards | safeArray); let i = index" 
           class="report-card-preview"
           [@fadeInUp]>
           <!-- Report Card Header -->
@@ -302,8 +302,8 @@
             <div class="info-item full-width">
               <span class="info-label">Exams Included:</span>
               <span class="info-value">
-                <span *ngFor="let exam of reportCard.exams; let i = index" class="exam-tag">
-                  {{ exam.name }}<span *ngIf="i < reportCard.exams.length - 1">, </span>
+                <span *ngFor="let exam of (reportCard.exams | safeArray); let i = index; let last = last" class="exam-tag">
+                  {{ exam.name }}<span *ngIf="!last">, </span>
                 </span>
               </span>
             </div>
@@ -322,7 +322,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let subject of reportCard.subjects" [class.high-score]="subject.percentage >= 80" [class.low-score]="subject.percentage < 50">
+                <tr *ngFor="let subject of (reportCard.subjects | safeArray)" [class.high-score]="subject.percentage >= 80" [class.low-score]="subject.percentage < 50">
                   <td class="score">{{ subject.score | number:'1.0-0' }}</td>
                   <td class="max-score">{{ subject.maxScore | number:'1.0-0' }}</td>
                   <td class="class-average">{{ subject.classAverage || 0 }}</td>

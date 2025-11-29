@@ -17,7 +17,30 @@ export class ExamService {
     if (classId) {
       options.params = { classId };
     }
-    return this.http.get(`${this.apiUrl}/exams`, options);
+    return this.http.get(`${this.apiUrl}/exams`, options).pipe(
+      map((response: any) => {
+        // Ensure response is an array
+        if (Array.isArray(response)) {
+          return response;
+        }
+        if (response && Array.isArray(response.data)) {
+          return response.data;
+        }
+        if (response && Array.isArray(response.exams)) {
+          return response.exams;
+        }
+        // If response is an error object or non-array, return empty array
+        if (response && typeof response === 'object' && !Array.isArray(response)) {
+          console.warn('getExams: Received non-array response, normalizing to empty array:', response);
+          return [];
+        }
+        return [];
+      }),
+      catchError((error: any) => {
+        console.error('Error loading exams:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   getExamById(id: string): Observable<any> {
@@ -37,7 +60,30 @@ export class ExamService {
     if (examId) params.examId = examId;
     if (studentId) params.studentId = studentId;
     if (classId) params.classId = classId;
-    return this.http.get(`${this.apiUrl}/exams/marks`, { params });
+    return this.http.get(`${this.apiUrl}/exams/marks`, { params }).pipe(
+      map((response: any) => {
+        // Ensure response is an array
+        if (Array.isArray(response)) {
+          return response;
+        }
+        if (response && Array.isArray(response.data)) {
+          return response.data;
+        }
+        if (response && Array.isArray(response.marks)) {
+          return response.marks;
+        }
+        // If response is an error object or non-array, return empty array
+        if (response && typeof response === 'object' && !Array.isArray(response)) {
+          console.warn('getMarks: Received non-array response, normalizing to empty array:', response);
+          return [];
+        }
+        return [];
+      }),
+      catchError((error: any) => {
+        console.error('Error loading marks:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   getClassRankings(examId: string, classId?: string): Observable<any> {

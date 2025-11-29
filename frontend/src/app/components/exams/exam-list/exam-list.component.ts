@@ -507,7 +507,8 @@ export class ExamListComponent implements OnInit, OnDestroy {
 
   initializeMarks() {
     this.marks = {};
-    this.students.forEach((student: any) => {
+    const studentsArray = Array.isArray(this.students) ? this.students : [];
+    studentsArray.forEach((student: any) => {
       const key = this.getMarkKey(student.id, this.selectedSubjectId);
       this.marks[key] = {
         score: null,
@@ -522,8 +523,10 @@ export class ExamListComponent implements OnInit, OnDestroy {
 
     this.examService.getMarks(this.currentExam.id).subscribe({
       next: (marksData: any) => {
+        // Ensure marksData is an array
+        const marksArray = Array.isArray(marksData) ? marksData : [];
         // Filter marks for the selected subject
-        const subjectMarks = marksData.filter((m: any) => m.subjectId === this.selectedSubjectId);
+        const subjectMarks = marksArray.filter((m: any) => m.subjectId === this.selectedSubjectId);
         
         subjectMarks.forEach((mark: any) => {
           const key = this.getMarkKey(mark.studentId, this.selectedSubjectId);
