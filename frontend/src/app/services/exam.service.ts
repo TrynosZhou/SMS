@@ -186,17 +186,15 @@ export class ExamService {
     return this.http.delete(`${this.apiUrl}/exams/all`);
   }
 
-  generateMarkSheet(classId: string, examType: string, term?: string, subjectId?: string): Observable<any> {
+  generateMarkSheet(classId: string, examType: string, term?: string): Observable<any> {
     const params: any = { classId, examType };
     if (term) params.term = term;
-    if (subjectId) params.subjectId = subjectId;
     return this.http.get(`${this.apiUrl}/exams/mark-sheet`, { params });
   }
 
-  downloadMarkSheetPDF(classId: string, examType: string, term?: string, subjectId?: string): Observable<Blob> {
+  downloadMarkSheetPDF(classId: string, examType: string, term?: string): Observable<Blob> {
     const params: any = { classId, examType };
     if (term) params.term = term;
-    if (subjectId) params.subjectId = subjectId;
     return this.http.get(`${this.apiUrl}/exams/mark-sheet/pdf`, {
       params,
       responseType: 'blob'

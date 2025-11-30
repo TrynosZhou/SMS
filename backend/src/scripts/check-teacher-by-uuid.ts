@@ -9,7 +9,7 @@ async function checkTeacherByUUID() {
   
   // Check if this UUID exists
   const teacher = await AppDataSource.getRepository(Teacher).findOne({
-    where: { id: uuidFromConsole }
+    where: { id: uuidFromConsole}
   });
   
   if (teacher) {

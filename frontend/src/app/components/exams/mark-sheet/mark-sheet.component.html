@@ -26,15 +26,6 @@
               {{ cls.name }} ({{ cls.form }})
             </option>
           </select>
-          <div class="button-container">
-            <button 
-              class="btn btn-primary" 
-              (click)="generateMarkSheet()" 
-              [disabled]="loading || !selectedClassId || !selectedExamType || !selectedTerm || (!selectedSubjectId && !isAdmin)">
-              <span *ngIf="!loading">📊 Generate Mark Sheet</span>
-              <span *ngIf="loading">⏳ Generating...</span>
-            </button>
-          </div>
         </div>
 
         <div class="form-group">
@@ -55,38 +46,29 @@
 
         <div class="form-group">
           <label for="examType">Select Exam Type <span class="required">*</span></label>
-          <select 
-            id="examType"
-            [(ngModel)]="selectedExamType" 
-            [ngModelOptions]="{standalone: true}"
-            class="form-control">
-            <option value="">-- Select Exam Type --</option>
-            <option *ngFor="let type of examTypes" [value]="type.value">
-              {{ type.label }}
-            </option>
-          </select>
+          <div style="display: flex; justify-content: space-between; gap: 15px; align-items: flex-start;">
+            <select 
+              id="examType"
+              [(ngModel)]="selectedExamType" 
+              [ngModelOptions]="{standalone: true}"
+              class="form-control"
+              style="flex: 0 0 auto; min-width: 200px;">
+              <option value="">-- Select Exam Type --</option>
+              <option *ngFor="let type of examTypes" [value]="type.value">
+                {{ type.label }}
+              </option>
+            </select>
+            <button 
+              class="btn btn-primary" 
+              (click)="generateMarkSheet()" 
+              [disabled]="loading || !selectedClassId || !selectedExamType || !selectedTerm"
+              style="white-space: nowrap; margin-left: auto;">
+              <span *ngIf="!loading">📊 Generate Mark Sheet</span>
+              <span *ngIf="loading">⏳ Generating...</span>
+            </button>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="subject">Select Subject <span class="required">*</span></label>
-          <select 
-            id="subject"
-            [(ngModel)]="selectedSubjectId" 
-            [ngModelOptions]="{standalone: true}"
-            [disabled]="!selectedClassId || subjects.length === 0"
-            class="form-control">
-            <option value="">{{ selectedClassId ? (subjects.length === 0 ? 'No subjects available' : 'Select Subject') : 'Select Class first' }}</option>
-            <option *ngFor="let subject of subjects" [value]="subject.id">
-              {{ subject.name }} ({{ subject.code }})
-            </option>
-          </select>
-          <small *ngIf="selectedClassId && subjects.length === 0 && !isAdmin" style="color: #e74c3c; font-style: italic; display: block; margin-top: 5px;">
-            No subjects assigned to you for this class. Please contact administrator.
-          </small>
-          <small *ngIf="selectedClassId && subjects.length > 0" style="color: #666; font-style: italic; display: block; margin-top: 5px;">
-            Showing subjects you teach for this class
-          </small>
-        </div>
       </div>
     </div>
 

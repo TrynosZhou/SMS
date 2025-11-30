@@ -2,8 +2,6 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ExamService } from '../../../services/exam.service';
 import { ClassService } from '../../../services/class.service';
-import { SubjectService } from '../../../services/subject.service';
-import { TeacherService } from '../../../services/teacher.service';
 import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
 
@@ -14,16 +12,10 @@ import { AuthService } from '../../../services/auth.service';
 })
 export class MarkSheetComponent implements OnInit {
   classes: any[] = [];
-  allSubjects: any[] = [];
-  subjects: any[] = [];
   selectedClassId = '';
   selectedExamType = '';
   selectedTerm = '';
-  selectedSubjectId = '';
   
-  // Teacher data
-  teacher: any = null;
-  teacherSubjects: any[] = [];
   isAdmin = false;
   loadingTerm = false;
   
@@ -57,8 +49,6 @@ export class MarkSheetComponent implements OnInit {
   constructor(
     private examService: ExamService,
     private classService: ClassService,
-    private subjectService: SubjectService,
-    private teacherService: TeacherService,
     private settingsService: SettingsService,
     public authService: AuthService,
     public router: Router
@@ -68,58 +58,10 @@ export class MarkSheetComponent implements OnInit {
   }
 
   ngOnInit() {
-    const user = this.authService.getCurrentUser();
-    
-    // If user is a teacher, load teacher-specific data
-    if (user && user.role === 'teacher' && !this.isAdmin) {
-      this.loadTeacherInfo();
-    } else {
-      // Admin/SuperAdmin can see all classes and subjects
-      this.loadClasses();
-      this.loadSubjects();
-    }
-    
+    this.loadClasses();
     this.loadActiveTerm();
   }
 
-  loadTeacherInfo() {
-    // Load teacher profile to get teacher ID and subjects
-    this.teacherService.getCurrentTeacher().subscribe({
-      next: (teacher: any) => {
-        this.teacher = teacher;
-        this.teacherSubjects = teacher.subjects || [];
-        
-        // Load classes assigned to this teacher
-        if (teacher.id) {
-          this.loadTeacherClasses(teacher.id);
-        } else {
-          this.classes = [];
-          this.error = 'Teacher ID not found. Please contact administrator.';
-        }
-        
-        // Load all subjects (we'll filter them later based on selected class)
-        this.loadAllSubjects();
-      },
-      error: (err: any) => {
-        console.error('Error loading teacher info:', err);
-        this.error = 'Failed to load teacher information. Please try again.';
-      }
-    });
-  }
-
-  loadTeacherClasses(teacherId: string) {
-    this.teacherService.getTeacherClasses(teacherId).subscribe({
-      next: (response: any) => {
-        this.classes = (response.classes || []).filter((c: any) => c.isActive);
-        console.log('Loaded teacher classes:', this.classes.length);
-      },
-      error: (err: any) => {
-        console.error('Error loading teacher classes:', err);
-        this.classes = [];
-        this.error = 'Failed to load assigned classes. Please try again.';
-      }
-    });
-  }
 
   loadClasses() {
     // For admin/superadmin - load all classes using pagination
@@ -183,78 +125,6 @@ export class MarkSheetComponent implements OnInit {
     });
   }
 
-  loadAllSubjects() {
-    // Load all subjects (we'll filter based on teacher and class)
-    this.subjectService.getSubjects().subscribe({
-      next: (data: any) => {
-        this.allSubjects = data || [];
-        this.updateSubjectsForSelectedClass();
-      },
-      error: (err: any) => {
-        console.error('Error loading subjects:', err);
-        this.allSubjects = [];
-      }
-    });
-  }
-
-  loadSubjects() {
-    // For admin/superadmin - load all subjects
-    this.subjectService.getSubjects().subscribe({
-      next: (data: any) => {
-        this.allSubjects = data || [];
-        this.subjects = data || [];
-      },
-      error: (err: any) => {
-        console.error('Error loading subjects:', err);
-        this.allSubjects = [];
-        this.subjects = [];
-      }
-    });
-  }
-
-  updateSubjectsForSelectedClass() {
-    if (!this.selectedClassId || this.isAdmin) {
-      // If no class selected or admin, show all subjects (or teacher's subjects if teacher)
-      if (!this.isAdmin && this.teacherSubjects.length > 0) {
-        this.subjects = this.teacherSubjects;
-      } else {
-        this.subjects = this.allSubjects;
-      }
-      return;
-    }
-
-    // For teachers: filter subjects that:
-    // 1. Teacher is assigned to teach
-    // 2. Are taught in the selected class
-    if (this.teacher && this.teacherSubjects.length > 0) {
-      // Get class details to check which subjects are taught in this class
-      this.classService.getClassById(this.selectedClassId).subscribe({
-        next: (classData: any) => {
-          const classSubjectIds = (classData.subjects || []).map((s: any) => s.id);
-          
-          // Find intersection: subjects teacher teaches AND that are in the class
-          this.subjects = this.teacherSubjects.filter((teacherSubject: any) => 
-            classSubjectIds.includes(teacherSubject.id)
-          );
-          
-          console.log('Filtered subjects for class:', this.subjects.length);
-          
-          // Reset subject selection if current selection is not in filtered list
-          if (this.selectedSubjectId && !this.subjects.find(s => s.id === this.selectedSubjectId)) {
-            this.selectedSubjectId = '';
-          }
-        },
-        error: (err: any) => {
-          console.error('Error loading class details:', err);
-          // Fallback: show only teacher's subjects
-          this.subjects = this.teacherSubjects;
-        }
-      });
-    } else {
-      // Fallback: show all subjects if teacher info not loaded
-      this.subjects = this.allSubjects;
-    }
-  }
 
   loadActiveTerm() {
     this.loadingTerm = true;
@@ -275,25 +145,19 @@ export class MarkSheetComponent implements OnInit {
   }
 
   onClassChange() {
-    this.selectedSubjectId = '';
     this.markSheetData = null;
     this.filteredMarkSheet = [];
-    
-    // If class changed and user is a teacher, update subjects list
-    if (!this.isAdmin && this.selectedClassId) {
-      this.updateSubjectsForSelectedClass();
-    }
   }
 
   generateMarkSheet() {
-    if (!this.selectedClassId || !this.selectedExamType || !this.selectedTerm) {
-      this.error = 'Please select class, exam type, and term';
+    if (!this.selectedClassId || !this.selectedExamType) {
+      this.error = 'Please select class and exam type';
       setTimeout(() => this.error = '', 5000);
       return;
     }
 
-    if (!this.selectedSubjectId && !this.isAdmin) {
-      this.error = 'Please select a subject';
+    if (!this.selectedTerm) {
+      this.error = 'Active term not found. Please configure term in settings.';
       setTimeout(() => this.error = '', 5000);
       return;
     }
@@ -303,23 +167,10 @@ export class MarkSheetComponent implements OnInit {
     this.success = '';
     this.markSheetData = null;
 
-    // Build query parameters
-    const params: any = {
-      classId: this.selectedClassId,
-      examType: this.selectedExamType,
-      term: this.selectedTerm
-    };
-    
-    // Add subjectId if selected (for teacher filtering)
-    if (this.selectedSubjectId) {
-      params.subjectId = this.selectedSubjectId;
-    }
-
     this.examService.generateMarkSheet(
       this.selectedClassId, 
       this.selectedExamType, 
-      this.selectedTerm, 
-      this.selectedSubjectId || undefined
+      this.selectedTerm
     ).subscribe({
       next: (data: any) => {
         this.markSheetData = data;
@@ -344,7 +195,7 @@ export class MarkSheetComponent implements OnInit {
 
   downloadPDF() {
     if (!this.selectedClassId || !this.selectedExamType || !this.selectedTerm) {
-      this.error = 'Please select class, exam type, and term';
+      this.error = 'Please select class and exam type, and ensure term is set';
       setTimeout(() => this.error = '', 5000);
       return;
     }
@@ -362,8 +213,7 @@ export class MarkSheetComponent implements OnInit {
     this.examService.downloadMarkSheetPDF(
       this.selectedClassId, 
       this.selectedExamType, 
-      this.selectedTerm,
-      this.selectedSubjectId || undefined
+      this.selectedTerm
     ).subscribe({
       next: (blob: Blob) => {
         const fileURL = window.URL.createObjectURL(blob);
