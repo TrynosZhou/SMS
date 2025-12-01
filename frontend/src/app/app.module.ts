@@ -24,6 +24,7 @@ import { InvoiceFormComponent } from './components/finance/invoice-form/invoice-
 import { InvoiceStatementsComponent } from './components/finance/invoice-statements/invoice-statements.component';
 import { ClassListComponent } from './components/classes/class-list/class-list.component';
 import { ClassFormComponent } from './components/classes/class-form/class-form.component';
+import { ClassListsComponent } from './components/classes/class-lists/class-lists.component';
 import { SubjectListComponent } from './components/subjects/subject-list/subject-list.component';
 import { SubjectFormComponent } from './components/subjects/subject-form/subject-form.component';
 import { SettingsComponent } from './components/settings/settings.component';
@@ -67,6 +68,7 @@ import { SafeArrayPipe } from './pipes/safe-array.pipe';
     InvoiceStatementsComponent,
     ClassListComponent,
     ClassFormComponent,
+    ClassListsComponent,
     SubjectListComponent,
     SubjectFormComponent,
     SettingsComponent,

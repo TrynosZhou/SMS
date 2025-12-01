@@ -1,0 +1,142 @@
+<div class="class-lists-container">
+  <!-- Header Section -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="header-icon">📋</span>
+        Class Lists
+      </h1>
+      <p class="subtitle">View students enrolled in a selected class for a specific term</p>
+    </div>
+  </div>
+
+  <!-- Alert Messages -->
+  <div class="alert alert-success" *ngIf="success">
+    <span class="alert-icon">✓</span>
+    {{ success }}
+  </div>
+  <div class="alert alert-error" *ngIf="error">
+    <span class="alert-icon">⚠</span>
+    {{ error }}
+  </div>
+
+  <!-- Selection Form Card -->
+  <div class="card selection-card">
+    <div class="card-header">
+      <h2>
+        <span class="section-icon">🎯</span>
+        Select Criteria
+      </h2>
+      <p class="section-description">Choose class and term to load students</p>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="classSelect">
+          Select Class <span class="required">*</span>
+        </label>
+        <select 
+          id="classSelect"
+          [(ngModel)]="selectedClassId" 
+          [ngModelOptions]="{standalone: true}"
+          class="form-control"
+          [disabled]="loading">
+          <option value="">-- Select Class --</option>
+          <option *ngFor="let cls of classes" [value]="cls.id">
+            {{ cls.name }}
+          </option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="termSelect">
+          Select Term <span class="required">*</span>
+        </label>
+        <select 
+          id="termSelect"
+          [(ngModel)]="selectedTerm" 
+          [ngModelOptions]="{standalone: true}"
+          class="form-control"
+          [disabled]="loading">
+          <option value="">-- Select Term --</option>
+          <option *ngFor="let term of availableTerms" [value]="term">
+            {{ term }}
+          </option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>&nbsp;</label>
+        <button 
+          class="btn btn-primary load-btn" 
+          (click)="loadStudents()" 
+          [disabled]="loading || loadingStudents || !selectedClassId || !selectedTerm">
+          <span *ngIf="!loadingStudents">📥 Load</span>
+          <span *ngIf="loadingStudents">⏳ Loading...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Students List Card -->
+  <div class="card students-card" *ngIf="filteredStudents.length > 0">
+    <div class="card-header">
+      <h2>
+        <span class="section-icon">👥</span>
+        Students in {{ getSelectedClassName() }} - {{ selectedTerm }}
+      </h2>
+      <p class="section-description">Total: {{ filteredStudents.length }} student(s)</p>
+    </div>
+
+    <div class="students-table-container">
+      <table class="students-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Student Number</th>
+            <th>Name</th>
+            <th>Gender</th>
+            <th>Type</th>
+            <th>Class</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let student of filteredStudents; let i = index">
+            <td>{{ i + 1 }}</td>
+            <td>
+              <span class="student-number">🆔 {{ student.studentNumber || 'N/A' }}</span>
+            </td>
+            <td>
+              <strong>{{ student.firstName }} {{ student.lastName }}</strong>
+            </td>
+            <td>{{ student.gender || 'N/A' }}</td>
+            <td>
+              <span class="badge" [class.badge-day]="student.studentType === 'Day Scholar'" 
+                    [class.badge-boarder]="student.studentType === 'Boarder'">
+                {{ student.studentType || 'Day Scholar' }}
+              </span>
+            </td>
+            <td>
+              <span *ngIf="student.class">{{ student.class.name }}</span>
+              <span *ngIf="!student.class">N/A</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!loadingStudents && !loading && selectedClassId && selectedTerm && filteredStudents.length === 0 && !error">
+    <div class="empty-icon">👥</div>
+    <h3>No Students Found</h3>
+    <p>No students are enrolled in the selected class for this term.</p>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="loadingStudents">
+    <div class="spinner"></div>
+    <p>Loading students...</p>
+  </div>
+</div>
+
