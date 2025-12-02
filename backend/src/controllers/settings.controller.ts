@@ -230,7 +230,10 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       termStartDate,
       termEndDate,
       currencySymbol,
-      moduleAccess
+      moduleAccess,
+      schoolStartTime,
+      schoolEndTime,
+      breakTimes
     } = req.body;
 
     if (!settings) {
@@ -344,6 +347,15 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       settings.moduleAccess = ensureModuleAccessDefaults(moduleAccess);
     } else if (settings.moduleAccess) {
       settings.moduleAccess = ensureModuleAccessDefaults(settings.moduleAccess);
+    }
+    if (schoolStartTime !== undefined) {
+      settings.schoolStartTime = schoolStartTime || null;
+    }
+    if (schoolEndTime !== undefined) {
+      settings.schoolEndTime = schoolEndTime || null;
+    }
+    if (breakTimes !== undefined) {
+      settings.breakTimes = breakTimes || null;
     }
 
     settings.updatedAt = new Date();

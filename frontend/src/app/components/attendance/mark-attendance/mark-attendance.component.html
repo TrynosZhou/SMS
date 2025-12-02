@@ -1,17 +1,22 @@
-<div class="attendance-container">
-  <!-- Header Section -->
-  <div class="page-header">
+<div class="attendance-container modern-container">
+  <!-- Modern Header Section -->
+  <div class="page-header modern-header-section">
     <div class="header-content">
-      <h1>
-        <span class="header-icon">✅</span>
-        Mark Attendance
-      </h1>
+      <div class="header-title-section">
+        <div class="header-icon-wrapper">
+          <span class="header-main-icon">✅</span>
+        </div>
+        <div>
+          <h1>Mark Attendance</h1>
+          <p class="header-subtitle">Record daily student attendance with ease</p>
+        </div>
+      </div>
       <div class="header-actions" *ngIf="selectedClassId && students.length > 0">
-        <div class="save-indicator" *ngIf="hasUnsavedChanges">
+        <div class="save-indicator modern-indicator" *ngIf="hasUnsavedChanges">
           <span class="indicator-dot"></span>
           <span>Unsaved changes</span>
         </div>
-        <div class="save-indicator saved" *ngIf="!hasUnsavedChanges && lastSavedDate">
+        <div class="save-indicator saved modern-indicator" *ngIf="!hasUnsavedChanges && lastSavedDate">
           <span class="indicator-dot"></span>
           <span>Saved {{ lastSavedDate | date:'short' }}</span>
         </div>
@@ -20,30 +25,38 @@
   </div>
 
   <!-- Alert Messages -->
-  <div class="alert alert-success" *ngIf="success">
+  <div class="alert alert-success modern-alert" *ngIf="success">
     <span class="alert-icon">✓</span>
     <span>{{ success }}</span>
+    <button class="alert-close" (click)="success = ''" title="Close">&times;</button>
   </div>
-  <div class="alert alert-error" *ngIf="error">
+  <div class="alert alert-error modern-alert" *ngIf="error">
     <span class="alert-icon">✗</span>
     <span>{{ error }}</span>
+    <button class="alert-close" (click)="error = ''" title="Close">&times;</button>
   </div>
 
   <!-- Selection Form -->
-  <div class="selection-card">
+  <div class="selection-card modern-card">
+    <div class="card-header-modern">
+      <h3>
+        <span class="card-icon">⚙️</span>
+        Select Criteria
+      </h3>
+    </div>
     <form (ngSubmit)="submitAttendance()" #attendanceForm="ngForm">
-      <div class="form-grid">
+      <div class="form-grid modern-grid">
         <div class="form-group">
           <label>
             <span class="label-icon">🏫</span>
-            Class *
+            Class <span class="required">*</span>
           </label>
           <select 
             [(ngModel)]="selectedClassId" 
             name="classId" 
             (change)="onClassChange()" 
             required
-            class="form-select">
+            class="form-select modern-select">
             <option value="">Select Class</option>
             <option *ngFor="let cls of classes" [value]="cls.id">{{ cls.name }}</option>
           </select>
@@ -52,29 +65,29 @@
         <div class="form-group">
           <label>
             <span class="label-icon">📅</span>
-            Date *
+            Date <span class="required">*</span>
           </label>
-          <div class="date-input-wrapper">
+          <div class="date-input-wrapper modern-date-wrapper">
             <input 
               type="date" 
               [(ngModel)]="selectedDate" 
               name="date" 
               (change)="onDateChange()" 
               required
-              class="form-input">
-            <div class="date-navigation">
-              <button type="button" class="date-nav-btn" (click)="goToYesterday()" title="Yesterday">
+              class="form-input modern-input">
+            <div class="date-navigation modern-date-nav">
+              <button type="button" class="date-nav-btn modern-nav-btn" (click)="goToYesterday()" title="Yesterday">
                 ◀
               </button>
-              <button type="button" class="date-nav-btn today-btn" (click)="goToToday()" [class.active]="isToday()" title="Today">
+              <button type="button" class="date-nav-btn today-btn modern-nav-btn" (click)="goToToday()" [class.active]="isToday()" title="Today">
                 Today
               </button>
-              <button type="button" class="date-nav-btn" (click)="goToTomorrow()" title="Tomorrow">
+              <button type="button" class="date-nav-btn modern-nav-btn" (click)="goToTomorrow()" title="Tomorrow">
                 ▶
               </button>
             </div>
           </div>
-          <div class="date-display" *ngIf="selectedDate">
+          <div class="date-display modern-date-display" *ngIf="selectedDate">
             {{ getFormattedDate() }}
           </div>
         </div>
@@ -83,37 +96,47 @@
   </div>
 
   <!-- Statistics Cards -->
-  <div class="stats-grid" *ngIf="!loading && students.length > 0">
-    <div class="stat-card present">
-      <div class="stat-icon">✓</div>
+  <div class="stats-grid modern-stats-grid" *ngIf="!loading && students.length > 0">
+    <div class="stat-card present modern-stat-card">
+      <div class="stat-icon-wrapper present-icon">
+        <div class="stat-icon">✓</div>
+      </div>
       <div class="stat-content">
         <div class="stat-value">{{ getStatistics().present }}</div>
         <div class="stat-label">Present</div>
       </div>
     </div>
-    <div class="stat-card absent">
-      <div class="stat-icon">✗</div>
+    <div class="stat-card absent modern-stat-card">
+      <div class="stat-icon-wrapper absent-icon">
+        <div class="stat-icon">✗</div>
+      </div>
       <div class="stat-content">
         <div class="stat-value">{{ getStatistics().absent }}</div>
         <div class="stat-label">Absent</div>
       </div>
     </div>
-    <div class="stat-card late">
-      <div class="stat-icon">⏰</div>
+    <div class="stat-card late modern-stat-card">
+      <div class="stat-icon-wrapper late-icon">
+        <div class="stat-icon">⏰</div>
+      </div>
       <div class="stat-content">
         <div class="stat-value">{{ getStatistics().late }}</div>
         <div class="stat-label">Late</div>
       </div>
     </div>
-    <div class="stat-card excused">
-      <div class="stat-icon">📝</div>
+    <div class="stat-card excused modern-stat-card">
+      <div class="stat-icon-wrapper excused-icon">
+        <div class="stat-icon">📝</div>
+      </div>
       <div class="stat-content">
         <div class="stat-value">{{ getStatistics().excused }}</div>
         <div class="stat-label">Excused</div>
       </div>
     </div>
-    <div class="stat-card total">
-      <div class="stat-icon">📊</div>
+    <div class="stat-card total modern-stat-card">
+      <div class="stat-icon-wrapper total-icon">
+        <div class="stat-icon">📊</div>
+      </div>
       <div class="stat-content">
         <div class="stat-value">{{ getStatistics().total }}</div>
         <div class="stat-label">Total Students</div>
@@ -131,25 +154,25 @@
   </div>
 
   <!-- Attendance Section -->
-  <div *ngIf="!loading && students.length > 0" class="attendance-section">
-    <!-- Toolbar -->
-    <div class="toolbar">
+  <div *ngIf="!loading && students.length > 0" class="attendance-section modern-section">
+    <!-- Modern Toolbar -->
+    <div class="toolbar modern-toolbar">
       <div class="toolbar-left">
-        <div class="search-box">
+        <div class="search-box modern-search-box">
           <span class="search-icon">🔍</span>
           <input 
             type="text" 
             [(ngModel)]="searchQuery" 
             (input)="onSearchChange()"
             placeholder="Search by name or student number..."
-            class="search-input">
+            class="search-input modern-search-input">
           <button 
             type="button" 
-            class="clear-btn" 
+            class="clear-btn modern-clear" 
             *ngIf="searchQuery"
             (click)="clearSearch()"
             title="Clear search">
-            ✕
+            <span>&times;</span>
           </button>
         </div>
         
@@ -157,7 +180,7 @@
           <select 
             [(ngModel)]="statusFilter" 
             (change)="onStatusFilterChange()"
-            class="filter-select">
+            class="filter-select modern-filter-select">
             <option value="all">All Status</option>
             <option value="present">Present</option>
             <option value="absent">Absent</option>
@@ -169,14 +192,14 @@
 
       <div class="toolbar-right">
         <div class="bulk-actions">
-          <button type="button" class="bulk-btn present" (click)="markAll('present')" title="Mark all as Present">
-            ✓ All Present
+          <button type="button" class="bulk-btn present modern-bulk-btn" (click)="markAll('present')" title="Mark all as Present">
+            <span>✓</span> All Present
           </button>
-          <button type="button" class="bulk-btn absent" (click)="markAll('absent')" title="Mark all as Absent">
-            ✗ All Absent
+          <button type="button" class="bulk-btn absent modern-bulk-btn" (click)="markAll('absent')" title="Mark all as Absent">
+            <span>✗</span> All Absent
           </button>
-          <button type="button" class="bulk-btn late" (click)="markAll('late')" title="Mark all as Late">
-            ⏰ All Late
+          <button type="button" class="bulk-btn late modern-bulk-btn" (click)="markAll('late')" title="Mark all as Late">
+            <span>⏰</span> All Late
           </button>
         </div>
       </div>
@@ -191,8 +214,8 @@
     </div>
 
     <!-- Attendance Table -->
-    <div class="attendance-table-wrapper">
-      <table class="attendance-table">
+    <div class="attendance-table-wrapper modern-table-wrapper">
+      <table class="attendance-table modern-table">
         <thead>
           <tr>
             <th class="col-number">#</th>
@@ -268,17 +291,17 @@
     </div>
 
     <!-- Submit Button -->
-    <div class="submit-section">
+    <div class="submit-section modern-submit-section">
       <button 
         type="button" 
-        class="btn btn-secondary" 
+        class="btn btn-secondary modern-btn-secondary" 
         (click)="attendanceForm.resetForm(); onClassChange()"
         [disabled]="submitting">
-        Reset
+        <span>🔄</span> Reset
       </button>
       <button 
         type="submit" 
-        class="btn btn-primary submit-btn" 
+        class="btn btn-primary submit-btn modern-btn-primary" 
         (click)="submitAttendance()"
         [disabled]="submitting || !hasUnsavedChanges">
         <span *ngIf="!submitting">💾 Save Attendance</span>

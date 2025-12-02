@@ -13,6 +13,7 @@ import { MarksEntryComponent } from './components/exams/marks-entry/marks-entry.
 import { ReportCardComponent } from './components/exams/report-card/report-card.component';
 import { RankingsComponent } from './components/exams/rankings/rankings.component';
 import { MarkSheetComponent } from './components/exams/mark-sheet/mark-sheet.component';
+import { PublishResultsComponent } from './components/exams/publish-results/publish-results.component';
 import { InvoiceListComponent } from './components/finance/invoice-list/invoice-list.component';
 import { InvoiceFormComponent } from './components/finance/invoice-form/invoice-form.component';
 import { InvoiceStatementsComponent } from './components/finance/invoice-statements/invoice-statements.component';
@@ -23,6 +24,7 @@ import { ClassFormComponent } from './components/classes/class-form/class-form.c
 import { ClassListsComponent } from './components/classes/class-lists/class-lists.component';
 import { SubjectListComponent } from './components/subjects/subject-list/subject-list.component';
 import { SubjectFormComponent } from './components/subjects/subject-form/subject-form.component';
+import { TeachingLoadComponent } from './components/subjects/teaching-load/teaching-load.component';
 import { SettingsComponent } from './components/settings/settings.component';
 import { ParentDashboardComponent } from './components/parent/parent-dashboard/parent-dashboard.component';
 import { LinkStudentsComponent } from './components/parent/link-students/link-students.component';
@@ -36,6 +38,8 @@ import { RecordBookComponent } from './components/teacher/record-book/record-boo
 import { MyClassesComponent } from './components/teacher/my-classes/my-classes.component';
 import { TeacherRecordBookComponent } from './components/admin/teacher-record-book/teacher-record-book.component';
 import { TeacherDashboardComponent } from './components/teacher/teacher-dashboard/teacher-dashboard.component';
+import { TimetableGenerateComponent } from './components/timetable/timetable-generate.component';
+import { TimetableConfigComponent } from './components/timetable/timetable-config.component';
 import { AuthGuard } from './guards/auth.guard';
 import { ModuleAccessGuard } from './guards/module-access.guard';
 import { SplashComponent } from './components/splash/splash.component';
@@ -69,6 +73,7 @@ const routes: Routes = [
   { path: 'report-cards', component: ReportCardComponent, canActivate: [AuthGuard] },
   { path: 'mark-sheet', component: MarkSheetComponent, canActivate: [AuthGuard] },
   { path: 'rankings', component: RankingsComponent, canActivate: [AuthGuard] },
+  { path: 'publish-results', component: PublishResultsComponent, canActivate: [AuthGuard] },
   { path: 'invoices', component: InvoiceListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'invoices/new', component: InvoiceFormComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'invoices/statements', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
@@ -81,10 +86,13 @@ const routes: Routes = [
   { path: 'subjects', component: SubjectListComponent, canActivate: [AuthGuard] },
   { path: 'subjects/new', component: SubjectFormComponent, canActivate: [AuthGuard] },
   { path: 'subjects/:id/edit', component: SubjectFormComponent, canActivate: [AuthGuard] },
+  { path: 'subjects/teaching-load', component: TeachingLoadComponent, canActivate: [AuthGuard] },
   { path: 'schools', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: 'attendance/mark', component: MarkAttendanceComponent, canActivate: [AuthGuard] },
   { path: 'attendance/reports', component: AttendanceReportsComponent, canActivate: [AuthGuard] },
-  { path: 'settings', component: SettingsComponent, canActivate: [AuthGuard] }
+  { path: 'settings', component: SettingsComponent, canActivate: [AuthGuard] },
+  { path: 'timetable/config', component: TimetableConfigComponent, canActivate: [AuthGuard] },
+  { path: 'timetable/generate', component: TimetableGenerateComponent, canActivate: [AuthGuard] }
 ];
 
 @NgModule({

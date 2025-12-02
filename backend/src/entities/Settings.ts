@@ -163,6 +163,20 @@ export class Settings {
     [currentClass: string]: string; // e.g., "ECD A": "ECD B", "Grade 1": "Grade 2"
   } | null;
 
+  // Timetable Settings
+  @Column({ type: 'time', nullable: true })
+  schoolStartTime: string | null; // e.g., "07:30:00"
+
+  @Column({ type: 'time', nullable: true })
+  schoolEndTime: string | null; // e.g., "16:10:00"
+
+  @Column({ type: 'json', nullable: true })
+  breakTimes: Array<{
+    name: string;
+    startTime: string;
+    endTime: string;
+  }> | null; // e.g., [{ name: "Tea Break", startTime: "10:00", endTime: "10:20" }]
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 

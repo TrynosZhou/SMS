@@ -1,27 +1,89 @@
-<div class="container">
-  <div class="page-header">
+<div class="container modern-container">
+  <!-- Modern Header -->
+  <div class="page-header modern-header-section">
     <div class="header-content">
-      <h1>
-        <span class="header-icon">⚠️</span>
-        Unpaid Invoices
-      </h1>
-      <p class="subtitle">Students with outstanding invoice balances</p>
+      <div class="header-title-section">
+        <div class="header-icon-wrapper">
+          <span class="header-main-icon">💰</span>
+        </div>
+        <div>
+          <h1>Unpaid Invoices</h1>
+          <p class="header-subtitle">Students with outstanding invoice balances</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert Messages -->
+  <div class="alert alert-error modern-alert" *ngIf="error">
+    <span class="alert-icon">⚠️</span>
+    <span>{{ error }}</span>
+    <button class="alert-close" (click)="error = ''" title="Close">&times;</button>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-grid" *ngIf="!loading && outstandingBalances.length > 0">
+    <div class="stat-card stat-primary">
+      <div class="stat-icon-wrapper">
+        <div class="stat-icon">👥</div>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ filteredBalances.length }}</div>
+        <div class="stat-label">Students with Balances</div>
+      </div>
+    </div>
+    <div class="stat-card stat-danger">
+      <div class="stat-icon-wrapper">
+        <div class="stat-icon">💵</div>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</div>
+        <div class="stat-label">Total Outstanding</div>
+      </div>
+    </div>
+    <div class="stat-card stat-warning">
+      <div class="stat-icon-wrapper">
+        <div class="stat-icon">📊</div>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ getAverageBalance() }}</div>
+        <div class="stat-label">Average Balance</div>
+      </div>
+    </div>
+    <div class="stat-card stat-info">
+      <div class="stat-icon-wrapper">
+        <div class="stat-icon">📋</div>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ outstandingBalances.length }}</div>
+        <div class="stat-label">Total Records</div>
+      </div>
     </div>
   </div>
   
-  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
-  
   <!-- Search and Filter Section -->
-  <div class="filters-section" *ngIf="!loading && outstandingBalances.length > 0">
-    <div class="search-input-wrapper">
+  <div class="filters-section modern-filters" *ngIf="!loading && outstandingBalances.length > 0">
+    <div class="filters-header">
+      <h3>
+        <span class="filter-icon">🔍</span>
+        Search & Filter
+      </h3>
+      <button class="btn-clear-filters" (click)="clearFilters()" *ngIf="hasActiveFilters()">
+        🗑️ Clear Filters
+      </button>
+    </div>
+    <div class="search-input-wrapper modern-search">
       <span class="search-icon">🔍</span>
       <input 
         type="text" 
         [(ngModel)]="searchQuery" 
         (input)="filterBalances()"
         (keyup.enter)="filterBalances()"
-        placeholder="Search by Student ID, First Name, or Last Name" 
-        class="form-control search-input">
+        placeholder="Search by Student ID, First Name, Last Name, or Phone Number" 
+        class="form-control search-input modern-input">
+      <button *ngIf="searchQuery" class="clear-search" (click)="clearSearch()" title="Clear search">
+        <span>&times;</span>
+      </button>
     </div>
   </div>
 
@@ -32,63 +94,76 @@
   </div>
 
   <!-- Empty State -->
-  <div *ngIf="!loading && outstandingBalances.length === 0" class="empty-state">
-    <div class="empty-icon">✅</div>
+  <div *ngIf="!loading && outstandingBalances.length === 0" class="empty-state modern-empty">
+    <div class="empty-icon-wrapper">
+      <div class="empty-icon">✅</div>
+    </div>
     <h2>No Outstanding Balances</h2>
-    <p>All students have paid their invoices in full.</p>
+    <p>All students have paid their invoices in full. Great job!</p>
+    <div class="empty-actions">
+      <button class="btn btn-primary" routerLink="/invoices">
+        <span>📋</span> View All Invoices
+      </button>
+    </div>
   </div>
 
   <!-- Table Section -->
-  <div *ngIf="!loading && outstandingBalances.length > 0" class="table-section">
-    <div class="table-header">
+  <div *ngIf="!loading && outstandingBalances.length > 0" class="table-section modern-table-section">
+    <div class="table-header modern-table-header">
       <div class="table-info">
-        <span class="table-count">{{ filteredBalances.length }}</span>
-        <span>student(s) with outstanding balances</span>
+        <span class="table-count-badge">{{ filteredBalances.length }}</span>
+        <span class="table-info-text">student(s) with outstanding balances</span>
       </div>
-      <div class="table-summary">
-        <strong>Total Outstanding: {{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</strong>
+      <div class="table-summary modern-summary">
+        <span class="summary-label">Total Outstanding:</span>
+        <span class="summary-value">{{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</span>
       </div>
     </div>
 
-    <div class="table-wrapper">
-      <table class="data-table">
+    <div class="table-wrapper modern-wrapper">
+      <table class="data-table modern-table">
         <thead>
           <tr>
+            <th>#</th>
             <th>Student ID</th>
             <th>First Name</th>
             <th>Last Name</th>
             <th>Phone Number</th>
-            <th style="text-align: right;">Invoice Balance</th>
-            <th style="text-align: center; width: 120px;">Action</th>
+            <th class="text-right">Invoice Balance</th>
+            <th class="text-center">Action</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let balance of filteredBalances">
-            <td>{{ balance.studentNumber || balance.studentId }}</td>
-            <td>{{ balance.firstName }}</td>
-            <td>{{ balance.lastName }}</td>
-            <td>{{ balance.phoneNumber || '—' }}</td>
-            <td style="text-align: right; font-weight: 600; color: #dc3545;">
-              {{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}
+          <tr *ngFor="let balance of filteredBalances; let i = index" class="table-row">
+            <td class="row-number">{{ i + 1 }}</td>
+            <td class="student-id-cell">
+              <span class="id-badge">{{ balance.studentNumber || balance.studentId }}</span>
             </td>
-            <td style="text-align: center;">
+            <td class="student-name-cell">{{ balance.firstName }}</td>
+            <td class="student-name-cell">{{ balance.lastName }}</td>
+            <td class="phone-cell">{{ balance.phoneNumber || '—' }}</td>
+            <td class="balance-cell text-right">
+              <span class="balance-badge">{{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}</span>
+            </td>
+            <td class="action-cell text-center">
               <button 
                 *ngIf="canManageFinance()"
-                class="btn-pay-invoice" 
+                class="btn-pay-invoice modern-btn" 
                 (click)="payInvoice(balance)"
-                title="Pay Invoice">
-                Pay Invoice
+                title="Record Payment">
+                <span class="btn-icon">💳</span>
+                <span>Pay Invoice</span>
               </button>
             </td>
           </tr>
         </tbody>
-        <tfoot *ngIf="filteredBalances.length > 0">
+        <tfoot *ngIf="filteredBalances.length > 0" class="table-footer">
           <tr>
-            <td colspan="4" style="text-align: right; font-weight: 700; padding: 15px;">
+            <td colspan="5" class="footer-label text-right">
               <strong>Total Outstanding:</strong>
             </td>
-            <td style="text-align: right; font-weight: 700; color: #dc3545; padding: 15px;">
-              {{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}
+            <td class="footer-value text-right">
+              <strong>{{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</strong>
             </td>
             <td></td>
           </tr>

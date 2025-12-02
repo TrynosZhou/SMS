@@ -1,0 +1,97 @@
+<div class="teaching-load-container">
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="header-icon">📊</span>
+        Teaching Load
+      </h1>
+      <p class="subtitle">View all subjects and their teaching periods</p>
+    </div>
+  </div>
+
+  <div class="alert alert-error" *ngIf="error">
+    <span class="alert-icon">⚠️</span>
+    <span>{{ error }}</span>
+    <button class="alert-close" (click)="error = ''" title="Close">&times;</button>
+  </div>
+
+  <div class="alert alert-success" *ngIf="success">
+    <span class="alert-icon">✅</span>
+    <span>{{ success }}</span>
+    <button class="alert-close" (click)="success = ''" title="Close">&times;</button>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input
+        type="text"
+        [(ngModel)]="searchQuery"
+        (input)="applyFilters()"
+        placeholder="Search subjects..."
+        class="search-input">
+      <button *ngIf="searchQuery" class="clear-btn" (click)="clearSearch()">✕</button>
+    </div>
+    <div class="toolbar-actions" *ngIf="isAdmin || isSuperAdmin">
+      <button 
+        class="btn btn-primary btn-save" 
+        (click)="saveTeachingLoads()" 
+        [disabled]="saving || !hasUnsavedChanges || loading">
+        <span *ngIf="!saving">💾 Save</span>
+        <span *ngIf="saving">⏳ Saving...</span>
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading teaching loads...</p>
+  </div>
+
+  <div *ngIf="!loading && filteredTeachingLoads.length > 0" class="teaching-load-section">
+    <div class="table-wrapper">
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Subject Name</th>
+            <th>Subject Code</th>
+            <th>Allocate Load</th>
+            <th>Teaching Periods</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of filteredTeachingLoads; let i = index">
+            <td>{{ i + 1 }}</td>
+            <td>
+              <strong>{{ item.subject.name }}</strong>
+            </td>
+            <td>{{ item.subject.code || '-' }}</td>
+            <td>
+              <div class="period-controls" *ngIf="item.isEditable">
+                <button class="period-btn period-btn-minus" (click)="decreasePeriods(item)" title="Decrease">
+                  <span>−</span>
+                </button>
+                <span class="period-value">{{ item.periods }}</span>
+                <button class="period-btn period-btn-plus" (click)="increasePeriods(item)" title="Increase">
+                  <span>+</span>
+                </button>
+              </div>
+              <span class="period-badge" *ngIf="!item.isEditable">{{ item.periods }}</span>
+            </td>
+            <td>
+              <span class="period-badge total-periods">{{ item.periods }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && filteredTeachingLoads.length === 0 && !error" class="empty-state">
+    <div class="empty-icon">📚</div>
+    <h3>No Teaching Loads Found</h3>
+    <p>No subjects with teaching periods found. Create timetables to assign periods to subjects.</p>
+  </div>
+</div>
+

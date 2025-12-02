@@ -10,11 +10,11 @@
 
 /* Header Section */
 .page-header {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 16px;
   padding: 32px;
   margin-bottom: 24px;
-  box-shadow: 0 4px 20px rgba(245, 87, 108, 0.3);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
   color: white;
 }
 
@@ -42,7 +42,7 @@
 
 .btn-add {
   background: white;
-  color: #f5576c;
+  color: #667eea;
   border: none;
   padding: 12px 24px;
   border-radius: 12px;
@@ -165,9 +165,9 @@
 
 .search-input:focus {
   outline: none;
-  border-color: #f5576c;
+  border-color: #667eea;
   background: white;
-  box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.1);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .search-clear {
@@ -213,8 +213,8 @@
 
 .filter-select:focus {
   outline: none;
-  border-color: #f5576c;
-  box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.1);
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .btn-refresh {
@@ -299,7 +299,7 @@
 }
 
 .modern-table thead {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 }
 

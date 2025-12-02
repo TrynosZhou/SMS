@@ -123,5 +123,27 @@ export class OutstandingBalanceComponent implements OnInit {
       }
     });
   }
+
+  getAverageBalance(): string {
+    if (this.filteredBalances.length === 0) {
+      return this.currencySymbol + ' 0.00';
+    }
+    const average = this.getTotalOutstanding() / this.filteredBalances.length;
+    return this.currencySymbol + ' ' + this.formatCurrency(average);
+  }
+
+  clearSearch(): void {
+    this.searchQuery = '';
+    this.filterBalances();
+  }
+
+  clearFilters(): void {
+    this.searchQuery = '';
+    this.filterBalances();
+  }
+
+  hasActiveFilters(): boolean {
+    return !!(this.searchQuery && this.searchQuery.trim() !== '');
+  }
 }
 

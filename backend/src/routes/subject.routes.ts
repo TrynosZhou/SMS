@@ -84,7 +84,7 @@ router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, Us
 router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, code, description, isActive } = req.body;
+    const { name, code, description, isActive, teachingPeriods } = req.body;
     const subjectRepository = AppDataSource.getRepository(Subject);
 
     const subject = await subjectRepository.findOne({ where: { id } });
@@ -112,6 +112,7 @@ router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, 
     if (name !== undefined) subject.name = name;
     if (description !== undefined) subject.description = description;
     if (isActive !== undefined) subject.isActive = isActive;
+    if (teachingPeriods !== undefined) subject.teachingPeriods = teachingPeriods;
 
     await subjectRepository.save(subject);
     res.json({ message: 'Subject updated successfully', subject });

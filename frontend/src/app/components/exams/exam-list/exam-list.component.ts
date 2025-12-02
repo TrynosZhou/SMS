@@ -75,13 +75,8 @@ export class ExamListComponent implements OnInit, OnDestroy {
   // Admin and publish status
   isAdmin = false;
   isPublished = false;
-  publishing = false;
   canPublish = false;
   checkingCompleteness = false;
-  
-  // Publish section (separate from marks entry)
-  publishExamType = '';
-  publishTerm = '';
 
   constructor(
     private examService: ExamService,
@@ -111,20 +106,6 @@ export class ExamListComponent implements OnInit, OnDestroy {
     }
     
     this.loadActiveTerm();
-    
-    // Set publish term from active term
-    this.settingsService.getActiveTerm().subscribe({
-      next: (data: any) => {
-        if (data.activeTerm) {
-          this.publishTerm = data.activeTerm;
-        } else if (data.currentTerm) {
-          this.publishTerm = data.currentTerm;
-        }
-      },
-      error: (err: any) => {
-        console.error('Error loading active term for publish:', err);
-      }
-    });
     
     // Save pending marks when page is about to unload
     window.addEventListener('beforeunload', this.handleBeforeUnload.bind(this));
@@ -1060,40 +1041,5 @@ export class ExamListComponent implements OnInit, OnDestroy {
     });
   }
 
-  publishResults() {
-    // For publishing, only exam type and term are required
-    if (!this.publishExamType) {
-      this.error = 'Please select an exam type to publish results.';
-      return;
-    }
-
-    if (!this.publishTerm) {
-      this.error = 'Term is required. Please ensure the active term is set in settings.';
-      return;
-    }
-
-    if (!confirm(`Are you sure you want to publish all ${this.examTypes.find(t => t.value === this.publishExamType)?.label || this.publishExamType} results for ${this.publishTerm}? Once published, results will be visible to all users (students, parents, and teachers) and marks/comments cannot be edited.`)) {
-      return;
-    }
-
-    this.publishing = true;
-    this.error = '';
-    this.success = '';
-
-    // Publish by exam type and term (all classes)
-    this.examService.publishExamByType(this.publishExamType, this.publishTerm).subscribe({
-      next: (response: any) => {
-        this.success = `Results published successfully! ${response.publishedCount || 0} exam(s) published. All users (students, parents, and teachers) can now view the results.`;
-        this.publishing = false;
-        setTimeout(() => this.success = '', 8000);
-      },
-      error: (err: any) => {
-        console.error('Error publishing exam:', err);
-        this.error = err.error?.message || 'Failed to publish results. Please try again.';
-        this.publishing = false;
-        setTimeout(() => this.error = '', 5000);
-      }
-    });
-  }
 }
 

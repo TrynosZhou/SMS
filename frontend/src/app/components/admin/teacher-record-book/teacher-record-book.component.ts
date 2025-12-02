@@ -339,6 +339,12 @@ export class TeacherRecordBookComponent implements OnInit {
     return count > 0 ? (totalMarks / count).toFixed(1) : '0.0';
   }
 
+  onVisibleTestsChange() {
+    // This method is called when the visible tests dropdown changes
+    // The visibleTests property is already bound via ngModel, so no additional logic needed
+    // But we can add any additional processing here if needed
+  }
+
   exportToExcel() {
     if (!this.selectedClass || !this.selectedTeacher) {
       this.error = 'Please select a teacher and class first';

@@ -268,6 +268,12 @@
   border-radius: 0 4px 4px 0;
 }
 
+.sidebar-subitem .sidebar-icon {
+  margin-right: 0.5rem;
+  font-size: 1rem;
+  width: 20px;
+}
+
 .submenu-section {
   margin-bottom: 1rem;
 }

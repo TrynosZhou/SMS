@@ -1,19 +1,28 @@
 <div class="record-book-container">
-  <div class="page-header">
+  <!-- Modern Header -->
+  <div class="page-header modern-header-section">
     <div class="header-content">
-      <div>
-        <h1>📚 Teacher Record Book</h1>
-        <p>View and manage teacher record books</p>
+      <div class="header-title-section">
+        <div class="header-icon-wrapper">
+          <span class="header-main-icon">📚</span>
+        </div>
+        <div>
+          <h1>Teacher Record Book</h1>
+          <p class="header-subtitle">View and manage teacher record books with advanced analytics</p>
+        </div>
       </div>
       <div class="header-actions" *ngIf="selectedClass">
-        <button class="btn btn-outline" (click)="downloadPDF()" title="Download PDF" [disabled]="loading || students.length === 0">
-          📄 Download PDF
+        <button class="btn btn-modern btn-export" (click)="downloadPDF()" title="Download PDF" [disabled]="loading || students.length === 0">
+          <span class="btn-icon">📄</span>
+          <span>PDF</span>
         </button>
-        <button class="btn btn-outline" (click)="exportToExcel()" title="Export to Excel" [disabled]="loading || students.length === 0">
-          📊 Export Excel
+        <button class="btn btn-modern btn-export" (click)="exportToExcel()" title="Export to Excel" [disabled]="loading || students.length === 0">
+          <span class="btn-icon">📊</span>
+          <span>Excel</span>
         </button>
-        <button class="btn btn-outline" (click)="printRecordBook()" title="Print Record Book" [disabled]="loading || students.length === 0">
-          🖨️ Print
+        <button class="btn btn-modern btn-print" (click)="printRecordBook()" title="Print Record Book" [disabled]="loading || students.length === 0">
+          <span class="btn-icon">🖨️</span>
+          <span>Print</span>
         </button>
       </div>
     </div>
@@ -33,20 +42,28 @@
   </div>
 
   <!-- Teacher Search Section -->
-  <div class="card search-card">
-    <div class="card-header">
-      <h3>🔍 Search Teacher</h3>
+  <div class="card search-card modern-card">
+    <div class="card-header-modern">
+      <div class="card-header-content">
+        <span class="card-icon">🔍</span>
+        <h3>Search Teacher</h3>
+      </div>
+      <div class="card-badge" *ngIf="teachers.length > 0">
+        {{ teachers.length }} teacher{{ teachers.length !== 1 ? 's' : '' }}
+      </div>
     </div>
     <div class="search-container">
-      <div class="search-box">
+      <div class="search-box modern-search">
         <span class="search-icon">🔍</span>
         <input 
           type="text" 
           [(ngModel)]="searchTerm" 
           (input)="searchTeachers()"
           placeholder="Search by Teacher ID, First Name, or Last Name..."
-          class="search-input">
-        <button *ngIf="searchTerm" class="clear-search" (click)="clearSearch()">&times;</button>
+          class="search-input modern-input">
+        <button *ngIf="searchTerm" class="clear-search modern-clear" (click)="clearSearch()" title="Clear search">
+          <span>&times;</span>
+        </button>
       </div>
       
       <!-- Teacher Results -->
@@ -75,10 +92,13 @@
   </div>
 
   <!-- Selected Teacher Classes -->
-  <div *ngIf="selectedTeacher" class="card classes-card">
-    <div class="card-header">
-      <h3>📋 Classes Assigned to {{ selectedTeacher.firstName }} {{ selectedTeacher.lastName }}</h3>
-      <span class="class-count" *ngIf="teacherClasses.length > 0">
+  <div *ngIf="selectedTeacher" class="card classes-card modern-card">
+    <div class="card-header-modern">
+      <div class="card-header-content">
+        <span class="card-icon">📋</span>
+        <h3>Classes Assigned to {{ selectedTeacher.firstName }} {{ selectedTeacher.lastName }}</h3>
+      </div>
+      <span class="card-badge" *ngIf="teacherClasses.length > 0">
         {{ teacherClasses.length }} class{{ teacherClasses.length !== 1 ? 'es' : '' }}
       </span>
     </div>
@@ -179,17 +199,32 @@
       </div>
     </div>
 
-    <!-- Search Students -->
-    <div class="toolbar">
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input 
-          type="text" 
-          [(ngModel)]="studentSearchTerm" 
-          (input)="filterStudents()"
-          placeholder="Search students by name or ID..."
-          class="search-input">
-        <button *ngIf="studentSearchTerm" class="clear-search" (click)="clearStudentSearch()">&times;</button>
+    <!-- Search and Filter Toolbar -->
+    <div class="toolbar modern-toolbar">
+      <div class="toolbar-left">
+        <div class="search-box modern-search">
+          <span class="search-icon">🔍</span>
+          <input 
+            type="text" 
+            [(ngModel)]="studentSearchTerm" 
+            (input)="filterStudents()"
+            placeholder="Search students by name or ID..."
+            class="search-input modern-input">
+          <button *ngIf="studentSearchTerm" class="clear-search modern-clear" (click)="clearStudentSearch()" title="Clear search">
+            <span>&times;</span>
+          </button>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <div class="view-options">
+          <span class="view-label">View:</span>
+          <select class="view-select" [(ngModel)]="visibleTests" (change)="onVisibleTestsChange()">
+            <option [value]="4">4 Tests</option>
+            <option [value]="6">6 Tests</option>
+            <option [value]="8">8 Tests</option>
+            <option [value]="10">10 Tests</option>
+          </select>
+        </div>
       </div>
     </div>
 

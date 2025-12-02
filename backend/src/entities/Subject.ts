@@ -18,6 +18,9 @@ export class Subject {
   @Column({ nullable: true })
   description: string;
 
+  @Column({ type: 'integer', default: 0, nullable: true })
+  teachingPeriods: number;
+
   @Column({ default: true })
   isActive: boolean;
 

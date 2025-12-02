@@ -19,6 +19,7 @@ import { MarksEntryComponent } from './components/exams/marks-entry/marks-entry.
 import { ReportCardComponent } from './components/exams/report-card/report-card.component';
 import { RankingsComponent } from './components/exams/rankings/rankings.component';
 import { MarkSheetComponent } from './components/exams/mark-sheet/mark-sheet.component';
+import { PublishResultsComponent } from './components/exams/publish-results/publish-results.component';
 import { InvoiceListComponent } from './components/finance/invoice-list/invoice-list.component';
 import { InvoiceFormComponent } from './components/finance/invoice-form/invoice-form.component';
 import { InvoiceStatementsComponent } from './components/finance/invoice-statements/invoice-statements.component';
@@ -27,6 +28,7 @@ import { ClassFormComponent } from './components/classes/class-form/class-form.c
 import { ClassListsComponent } from './components/classes/class-lists/class-lists.component';
 import { SubjectListComponent } from './components/subjects/subject-list/subject-list.component';
 import { SubjectFormComponent } from './components/subjects/subject-form/subject-form.component';
+import { TeachingLoadComponent } from './components/subjects/teaching-load/teaching-load.component';
 import { SettingsComponent } from './components/settings/settings.component';
 import { AuthInterceptor } from './interceptors/auth.interceptor';
 import { ParentDashboardComponent } from './components/parent/parent-dashboard/parent-dashboard.component';
@@ -45,6 +47,8 @@ import { TeacherDashboardComponent } from './components/teacher/teacher-dashboar
 import { RecordPaymentComponent } from './components/finance/record-payment/record-payment.component';
 import { OutstandingBalanceComponent } from './components/finance/outstanding-balance/outstanding-balance.component';
 import { SplashComponent } from './components/splash/splash.component';
+import { TimetableGenerateComponent } from './components/timetable/timetable-generate.component';
+import { TimetableConfigComponent } from './components/timetable/timetable-config.component';
 import { SafeArrayPipe } from './pipes/safe-array.pipe';
 
 @NgModule({
@@ -63,6 +67,7 @@ import { SafeArrayPipe } from './pipes/safe-array.pipe';
     ReportCardComponent,
     MarkSheetComponent,
     RankingsComponent,
+    PublishResultsComponent,
     InvoiceListComponent,
     InvoiceFormComponent,
     InvoiceStatementsComponent,
@@ -71,6 +76,7 @@ import { SafeArrayPipe } from './pipes/safe-array.pipe';
     ClassListsComponent,
     SubjectListComponent,
     SubjectFormComponent,
+    TeachingLoadComponent,
     SettingsComponent,
     ParentDashboardComponent,
     LinkStudentsComponent,
@@ -88,6 +94,8 @@ import { SafeArrayPipe } from './pipes/safe-array.pipe';
     RecordPaymentComponent,
     OutstandingBalanceComponent,
     SplashComponent,
+    TimetableGenerateComponent,
+    TimetableConfigComponent,
     SafeArrayPipe
   ],
   imports: [

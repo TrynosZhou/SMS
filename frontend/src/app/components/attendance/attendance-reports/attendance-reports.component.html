@@ -1,91 +1,136 @@
-<div class="container">
-  <div class="card">
-    <div class="card-header">
-      <div>
-        <h1>Attendance Insights</h1>
-        <p class="subtitle">Generate visual analytics to understand classroom attendance performance in real time.</p>
+<div class="container modern-container">
+  <!-- Modern Header Section -->
+  <div class="page-header modern-header-section">
+    <div class="header-content">
+      <div class="header-title-section">
+        <div class="header-icon-wrapper">
+          <span class="header-main-icon">📊</span>
+        </div>
+        <div>
+          <h1>Attendance Insights</h1>
+          <p class="header-subtitle">Generate visual analytics to understand classroom attendance performance in real time</p>
+        </div>
       </div>
-      <div class="header-actions">
-        <button type="button" class="btn btn-icon" (click)="toggleViewMode()" [disabled]="!hasReportData" title="Toggle View">
-          {{ viewMode === 'table' ? '📋' : '📊' }}
+      <div class="header-actions modern-actions" *ngIf="hasReportData">
+        <button type="button" class="btn btn-modern btn-icon-modern" (click)="toggleViewMode()" [disabled]="!hasReportData" title="Toggle View">
+          <span class="btn-icon">{{ viewMode === 'table' ? '📋' : '📊' }}</span>
         </button>
-        <button type="button" class="btn btn-icon" (click)="showCharts = !showCharts" [disabled]="!hasReportData" title="Toggle Charts">
-          {{ showCharts ? '📈' : '📉' }}
+        <button type="button" class="btn btn-modern btn-icon-modern" (click)="showCharts = !showCharts" [disabled]="!hasReportData" title="Toggle Charts">
+          <span class="btn-icon">{{ showCharts ? '📈' : '📉' }}</span>
         </button>
-        <button type="button" class="btn btn-light" (click)="resetFilters()" [disabled]="!hasReportData">
-          🔄 Reset
+        <button type="button" class="btn btn-modern btn-secondary-modern" (click)="resetFilters()" [disabled]="!hasReportData">
+          <span class="btn-icon">🔄</span>
+          <span>Reset</span>
         </button>
-        <button type="button" class="btn btn-secondary" (click)="printReport()" [disabled]="!filteredReport.length">
-          🖨️ Print
+        <button type="button" class="btn btn-modern btn-export-modern" (click)="printReport()" [disabled]="!filteredReport.length">
+          <span class="btn-icon">🖨️</span>
+          <span>Print</span>
         </button>
-        <button type="button" class="btn btn-secondary" (click)="exportToPDF()" [disabled]="!filteredReport.length">
-          📄 PDF
+        <button type="button" class="btn btn-modern btn-export-modern" (click)="exportToPDF()" [disabled]="!filteredReport.length">
+          <span class="btn-icon">📄</span>
+          <span>PDF</span>
         </button>
-        <button type="button" class="btn btn-success" (click)="exportToCSV()" [disabled]="!filteredReport.length">
-          ⬇️ CSV
+        <button type="button" class="btn btn-modern btn-success-modern" (click)="exportToCSV()" [disabled]="!filteredReport.length">
+          <span class="btn-icon">⬇️</span>
+          <span>CSV</span>
         </button>
       </div>
     </div>
-    
-    <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+  </div>
 
-    <form class="filters-section" #f="ngForm">
-      <div class="form-row">
+  <div class="card modern-card">
+    <div class="alert alert-error modern-alert" *ngIf="error">
+      <span class="alert-icon">⚠️</span>
+      <span>{{ error }}</span>
+      <button class="alert-close" (click)="error = ''" title="Close">&times;</button>
+    </div>
+
+    <form class="filters-section modern-filters" #f="ngForm">
+      <div class="filters-header-modern">
+        <h3>
+          <span class="filter-icon">⚙️</span>
+          Report Criteria
+        </h3>
+      </div>
+      <div class="form-row modern-form-row">
         <div class="form-group">
-          <label>Class *</label>
-          <select [(ngModel)]="selectedClassId" name="classId" required>
+          <label>
+            <span class="label-icon">🏫</span>
+            Class <span class="required">*</span>
+          </label>
+          <select [(ngModel)]="selectedClassId" name="classId" required class="modern-select">
             <option value="">Select Class</option>
             <option *ngFor="let cls of classes" [value]="cls.id">{{ cls.name }}</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label>Term</label>
-          <select [(ngModel)]="selectedTerm" name="term">
+          <label>
+            <span class="label-icon">📅</span>
+            Term
+          </label>
+          <select [(ngModel)]="selectedTerm" name="term" class="modern-select">
             <option value="">All Terms</option>
             <option *ngFor="let term of availableTerms" [value]="term">{{ term }}</option>
           </select>
         </div>
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label>Date Range Presets</label>
-          <div class="preset-buttons">
-            <button type="button" class="preset-btn" [class.active]="dateRangePreset === 'today'" (click)="applyDateRangePreset('today')">Today</button>
-            <button type="button" class="preset-btn" [class.active]="dateRangePreset === 'last7days'" (click)="applyDateRangePreset('last7days')">Last 7 Days</button>
-            <button type="button" class="preset-btn" [class.active]="dateRangePreset === 'last30days'" (click)="applyDateRangePreset('last30days')">Last 30 Days</button>
-            <button type="button" class="preset-btn" [class.active]="dateRangePreset === 'thisMonth'" (click)="applyDateRangePreset('thisMonth')">This Month</button>
-            <button type="button" class="preset-btn" [class.active]="dateRangePreset === 'lastMonth'" (click)="applyDateRangePreset('lastMonth')">Last Month</button>
-            <button type="button" class="preset-btn" [class.active]="dateRangePreset === 'thisTerm'" (click)="applyDateRangePreset('thisTerm')">This Term</button>
-            <button type="button" class="preset-btn" [class.active]="dateRangePreset === 'custom'" (click)="applyDateRangePreset('custom')">Custom</button>
+      <div class="form-row modern-form-row">
+        <div class="form-group full-width">
+          <label>
+            <span class="label-icon">📆</span>
+            Date Range Presets
+          </label>
+          <div class="preset-buttons modern-presets">
+            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'today'" (click)="applyDateRangePreset('today')">Today</button>
+            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'last7days'" (click)="applyDateRangePreset('last7days')">Last 7 Days</button>
+            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'last30days'" (click)="applyDateRangePreset('last30days')">Last 30 Days</button>
+            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'thisMonth'" (click)="applyDateRangePreset('thisMonth')">This Month</button>
+            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'lastMonth'" (click)="applyDateRangePreset('lastMonth')">Last Month</button>
+            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'thisTerm'" (click)="applyDateRangePreset('thisTerm')">This Term</button>
+            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'custom'" (click)="applyDateRangePreset('custom')">Custom</button>
           </div>
         </div>
       </div>
 
-      <div class="form-row" *ngIf="dateRangePreset === 'custom' || (!dateRangePreset && (startDate || endDate))">
+      <div class="form-row modern-form-row" *ngIf="dateRangePreset === 'custom' || (!dateRangePreset && (startDate || endDate))">
         <div class="form-group">
-          <label>Start Date (Optional)</label>
-          <input type="date" [(ngModel)]="startDate" name="startDate">
+          <label>
+            <span class="label-icon">📅</span>
+            Start Date <span class="optional">(Optional)</span>
+          </label>
+          <input type="date" [(ngModel)]="startDate" name="startDate" class="modern-input">
         </div>
 
         <div class="form-group">
-          <label>End Date (Optional)</label>
-          <input type="date" [(ngModel)]="endDate" name="endDate">
+          <label>
+            <span class="label-icon">📅</span>
+            End Date <span class="optional">(Optional)</span>
+          </label>
+          <input type="date" [(ngModel)]="endDate" name="endDate" class="modern-input">
         </div>
       </div>
 
-      <div class="form-actions">
-        <button type="button" class="btn btn-primary" (click)="generateReport()" [disabled]="loading || !selectedClassId">
-          {{ loading ? 'Generating...' : '📊 Generate Report' }}
+      <div class="form-actions modern-actions-section">
+        <button type="button" class="btn btn-primary modern-btn-primary" (click)="generateReport()" [disabled]="loading || !selectedClassId">
+          <span *ngIf="!loading">📊</span>
+          <span *ngIf="loading" class="loading-spinner">⏳</span>
+          <span>{{ loading ? 'Generating...' : 'Generate Report' }}</span>
         </button>
       </div>
     </form>
 
-    <div *ngIf="hasReportData" class="filters-advanced">
-      <div class="search-box">
+    <div *ngIf="hasReportData" class="filters-advanced modern-advanced-filters">
+      <div class="filters-advanced-header">
+        <h3>
+          <span class="filter-icon">🔍</span>
+          Advanced Filters
+        </h3>
+      </div>
+      <div class="search-box modern-search-box">
         <label>Search Students</label>
-        <div class="search-input">
+        <div class="search-input modern-search-input">
           <span class="search-icon">🔍</span>
           <input
             type="text"
@@ -93,7 +138,11 @@
             [(ngModel)]="searchTerm"
             name="searchTerm"
             (ngModelChange)="onSearchChange()"
+            class="modern-input-field"
           >
+          <button *ngIf="searchTerm" class="clear-search-btn" (click)="searchTerm = ''; onSearchChange()" title="Clear search">
+            <span>&times;</span>
+          </button>
         </div>
       </div>
 
@@ -295,8 +344,8 @@
       </div>
 
       <!-- Table View -->
-      <div class="report-table" *ngIf="filteredReport.length && viewMode === 'table'">
-        <table>
+      <div class="report-table modern-report-table" *ngIf="filteredReport.length && viewMode === 'table'">
+        <table class="modern-data-table">
           <thead>
             <tr>
               <th (click)="changeSort('studentNumber')" class="sortable">
