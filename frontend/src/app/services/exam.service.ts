@@ -208,5 +208,9 @@ export class ExamService {
   publishExamByType(examType: string, term: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/exams/publish-by-type`, { examType, term });
   }
+
+  unpublishExamByType(examType: string, term: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/exams/unpublish-by-type`, { examType, term });
+  }
 }
 

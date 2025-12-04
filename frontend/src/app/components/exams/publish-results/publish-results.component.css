@@ -160,6 +160,16 @@
   box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
 }
 
+.btn-warning {
+  background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+  color: #333;
+}
+
+.btn-warning:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+}
+
 .btn-load {
   min-width: 200px;
   justify-content: center;

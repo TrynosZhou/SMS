@@ -58,13 +58,25 @@
       <button 
         class="btn btn-success btn-load" 
         (click)="publishResults()" 
-        [disabled]="publishing || !publishExamType || !publishTerm">
+        [disabled]="publishing || unpublishing || !publishExamType || !publishTerm">
         <span *ngIf="!publishing">
           📢 Publish All Results
         </span>
         <span *ngIf="publishing" class="loading-content">
           <span class="spinner-small"></span>
           Publishing...
+        </span>
+      </button>
+      <button 
+        class="btn btn-warning btn-load" 
+        (click)="unpublishResults()" 
+        [disabled]="publishing || unpublishing || !publishExamType || !publishTerm">
+        <span *ngIf="!unpublishing">
+          🔓 Unpublish Results
+        </span>
+        <span *ngIf="unpublishing" class="loading-content">
+          <span class="spinner-small"></span>
+          Unpublishing...
         </span>
       </button>
     </div>

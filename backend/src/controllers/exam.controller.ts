@@ -645,6 +645,70 @@ export const publishExamByType = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const unpublishExamByType = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const examRepository = AppDataSource.getRepository(Exam);
+    const { examType, term } = req.body;
+
+    if (!examType) {
+      return res.status(400).json({ message: 'Exam type is required' });
+    }
+
+    if (!term) {
+      return res.status(400).json({ message: 'Term is required' });
+    }
+
+    // Find all exams of the specified type and term (across all classes)
+    const whereCondition: any = {
+      type: examType as ExamType,
+      term: term
+    };
+    
+    const exams = await examRepository.find({
+      where: whereCondition,
+      relations: ['classEntity', 'subjects']
+    });
+
+    if (exams.length === 0) {
+      return res.status(404).json({ 
+        message: `No exams found for ${examType} in ${term}` 
+      });
+    }
+
+    // Update all exams back to draft status
+    let unpublishedCount = 0;
+    for (const exam of exams) {
+      if (exam.status === ExamStatus.PUBLISHED) {
+        exam.status = ExamStatus.DRAFT;
+        await examRepository.save(exam);
+        unpublishedCount++;
+      }
+    }
+
+    if (unpublishedCount === 0) {
+      return res.status(400).json({ 
+        message: `No published exams found for ${examType} in ${term}. All exams are already in draft status.`
+      });
+    }
+
+    res.json({ 
+      message: `Exam results unpublished successfully. ${unpublishedCount} exam(s) unpublished across all classes. Results are no longer visible to students, parents, and teachers. Marks and comments can now be edited.`,
+      unpublishedCount: unpublishedCount,
+      totalExams: exams.length
+    });
+  } catch (error: any) {
+    console.error('Error unpublishing exams by type:', error);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message || 'Unknown error' 
+    });
+  }
+};
+
 export const captureMarks = async (req: AuthRequest, res: Response) => {
   try {
     if (!AppDataSource.isInitialized) {
@@ -1857,6 +1921,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       }
       // Get all marks for this student across all exams of this type
       const studentMarks = allMarks.filter(m => m.studentId === student.id);
+      console.log(`[getReportCard] Student ${student.studentNumber} (${student.id}): Found ${studentMarks.length} marks across ${exams.length} exams`);
 
       // Group marks by subject (across all exams)
       const subjectMarksMap: { [key: string]: { scores: number[]; maxScores: number[]; comments: string[] } } = {};
@@ -2049,7 +2114,16 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'No report cards generated. No students found in this class.' });
     }
 
-    res.json({ reportCards, class: classEntity.name, examType, term: termValue });
+    // Filter report cards if studentId is provided (for single student view)
+    let filteredReportCards = reportCards;
+    if (studentId && !isAdmin) {
+      filteredReportCards = reportCards.filter(rc => rc.student.id === studentId);
+      if (filteredReportCards.length === 0) {
+        return res.status(404).json({ message: 'No report card found for the specified student.' });
+      }
+    }
+
+    res.json({ reportCards: filteredReportCards, class: classEntity.name, examType, term: termValue });
   } catch (error: any) {
     console.error('Error generating report cards:', error);
     console.error('Error stack:', error.stack);

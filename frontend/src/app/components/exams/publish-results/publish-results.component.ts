@@ -12,6 +12,7 @@ export class PublishResultsComponent implements OnInit {
   publishExamType: string = '';
   publishTerm: string = '';
   publishing = false;
+  unpublishing = false;
   loading = false;
   
   error = '';
@@ -88,6 +89,42 @@ export class PublishResultsComponent implements OnInit {
         console.error('Error publishing exam:', err);
         this.error = err.error?.message || 'Failed to publish results. Please try again.';
         this.publishing = false;
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  unpublishResults() {
+    // For unpublishing, only exam type and term are required
+    if (!this.publishExamType) {
+      this.error = 'Please select an exam type to unpublish results.';
+      return;
+    }
+
+    if (!this.publishTerm) {
+      this.error = 'Term is required. Please ensure the active term is set in settings.';
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to unpublish all ${this.examTypes.find(t => t.value === this.publishExamType)?.label || this.publishExamType} results for ${this.publishTerm}? Once unpublished, results will no longer be visible to students, parents, and teachers. Marks and comments can be edited again.`)) {
+      return;
+    }
+
+    this.unpublishing = true;
+    this.error = '';
+    this.success = '';
+
+    // Unpublish by exam type and term (all classes)
+    this.examService.unpublishExamByType(this.publishExamType, this.publishTerm).subscribe({
+      next: (response: any) => {
+        this.success = `Results unpublished successfully! ${response.unpublishedCount || 0} exam(s) unpublished. Results are no longer visible to students, parents, and teachers. Marks and comments can now be edited.`;
+        this.unpublishing = false;
+        setTimeout(() => this.success = '', 8000);
+      },
+      error: (err: any) => {
+        console.error('Error unpublishing exam:', err);
+        this.error = err.error?.message || 'Failed to unpublish results. Please try again.';
+        this.unpublishing = false;
         setTimeout(() => this.error = '', 5000);
       }
     });

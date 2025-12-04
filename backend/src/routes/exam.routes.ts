@@ -9,6 +9,7 @@ import {
   deleteAllExams,
   publishExam,
   publishExamByType,
+  unpublishExamByType,
   captureMarks,
   getMarks,
   getStudentRankings,
@@ -30,6 +31,7 @@ router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, Us
 router.get('/', authenticate, getExams);
 router.post('/publish', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), publishExam);
 router.post('/publish-by-type', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), publishExamByType);
+router.post('/unpublish-by-type', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), unpublishExamByType);
 router.post('/marks', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), captureMarks);
 router.get('/marks', authenticate, getMarks);
 router.get('/rankings/class', authenticate, getStudentRankings);
