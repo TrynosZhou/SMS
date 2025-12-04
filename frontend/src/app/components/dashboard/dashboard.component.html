@@ -191,6 +191,24 @@
             </a>
           </p>
         </div>
+        <div *ngIf="isStudent()">
+          <h3>Student Dashboard</h3>
+          <div class="student-balance-display" style="background: #fff3f3; border: 2px solid #ff4444; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h4 style="margin: 0 0 5px 0; color: #333;">Current Invoice Balance</h4>
+                <p style="margin: 0; font-size: 24px; font-weight: bold; color: #ff0000;">
+                  {{ currencySymbol }} {{ studentBalance | number:'1.2-2' }}
+                </p>
+              </div>
+              <div *ngIf="loadingBalance" style="color: #666;">Loading...</div>
+            </div>
+          </div>
+          <ul>
+            <li>✅ View Report Card - Access your report card for {{ activeTerm || 'current term' }}</li>
+            <li>✅ View Invoice Statement - Check your invoice details and payment history</li>
+          </ul>
+        </div>
       </div>
 
       <div class="card modern-card" *ngIf="isAdmin() || isAccountant()">
@@ -279,6 +297,16 @@
           <a routerLink="/admin/class-promotion" class="action-btn modern-action-btn warning-action" *ngIf="isAdmin()">
             <span class="action-icon">⬆️</span>
             <span class="action-text">Class Promotion</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a (click)="viewReportCard()" class="action-btn modern-action-btn info-action" style="cursor: pointer;" *ngIf="isStudent()">
+            <span class="action-icon">📄</span>
+            <span class="action-text">View Report Card</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a (click)="viewInvoiceStatement()" class="action-btn modern-action-btn danger-action" style="cursor: pointer;" *ngIf="isStudent()">
+            <span class="action-icon">💰</span>
+            <span class="action-text">View Invoice Statement</span>
             <span class="action-arrow">→</span>
           </a>
         </div>

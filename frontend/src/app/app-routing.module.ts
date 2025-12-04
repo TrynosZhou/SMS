@@ -40,6 +40,8 @@ import { TeacherRecordBookComponent } from './components/admin/teacher-record-bo
 import { TeacherDashboardComponent } from './components/teacher/teacher-dashboard/teacher-dashboard.component';
 import { TimetableGenerateComponent } from './components/timetable/timetable-generate.component';
 import { TimetableConfigComponent } from './components/timetable/timetable-config.component';
+import { StudentReportCardComponent } from './components/student/student-report-card/student-report-card.component';
+import { StudentInvoiceStatementComponent } from './components/student/student-invoice-statement/student-invoice-statement.component';
 import { AuthGuard } from './guards/auth.guard';
 import { ModuleAccessGuard } from './guards/module-access.guard';
 import { SplashComponent } from './components/splash/splash.component';
@@ -92,7 +94,9 @@ const routes: Routes = [
   { path: 'attendance/reports', component: AttendanceReportsComponent, canActivate: [AuthGuard] },
   { path: 'settings', component: SettingsComponent, canActivate: [AuthGuard] },
   { path: 'timetable/config', component: TimetableConfigComponent, canActivate: [AuthGuard] },
-  { path: 'timetable/generate', component: TimetableGenerateComponent, canActivate: [AuthGuard] }
+  { path: 'timetable/generate', component: TimetableGenerateComponent, canActivate: [AuthGuard] },
+  { path: 'student/report-card', component: StudentReportCardComponent, canActivate: [AuthGuard] },
+  { path: 'student/invoice-statement', component: StudentInvoiceStatementComponent, canActivate: [AuthGuard] }
 ];
 
 @NgModule({

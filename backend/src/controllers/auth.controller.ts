@@ -9,6 +9,7 @@ import { Parent } from '../entities/Parent';
 import { resetDemoDataForLogin } from '../utils/resetDemoData';
 import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
 import { validatePhoneNumber } from '../utils/phoneValidator';
+import { parseDOB, compareDates, formatDOB } from '../utils/dateParser';
 
 export const login = async (req: Request, res: Response) => {
   try {
@@ -20,14 +21,15 @@ export const login = async (req: Request, res: Response) => {
     const { email, username, password, teacherId } = req.body;
     
     console.log('[Login] Request received:', { 
-      hasEmail: !!email, 
-      hasUsername: !!username, 
+      email: email || null,
+      username: username || null,
       hasPassword: !!password, 
       hasTeacherId: !!teacherId 
     });
     
     const userRepository = AppDataSource.getRepository(User);
     const teacherRepository = AppDataSource.getRepository(Teacher);
+    const studentRepository = AppDataSource.getRepository(Student);
 
     // Support username login (email is optional, mainly for non-teachers)
     // For teachers, only username is required
@@ -37,37 +39,233 @@ export const login = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Username and password are required' });
     }
 
-    // Try to find user by username or email (email can be null for teachers)
-    const user = await userRepository
-      .createQueryBuilder('user')
-      .leftJoinAndSelect('user.student', 'student')
-      .leftJoinAndSelect('user.teacher', 'teacher')
-      .leftJoinAndSelect('user.parent', 'parent')
-      .where(
-        'LOWER(user.username) = LOWER(:identifier) OR (user.email IS NOT NULL AND LOWER(user.email) = LOWER(:identifier))',
-        { identifier: loginIdentifier }
-      )
+    // Check if this is a student login attempt (StudentID as username, DOB as password)
+    // First, try to find a student by studentNumber (case-insensitive)
+    let user: User | null = null;
+    const student = await studentRepository
+      .createQueryBuilder('student')
+      .leftJoinAndSelect('student.user', 'user')
+      .where('LOWER(student.studentNumber) = LOWER(:studentNumber)', { studentNumber: loginIdentifier })
       .getOne();
 
-    if (!user) {
-      console.log('[Login] User not found for identifier:', loginIdentifier);
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-    
-    if (!user.isActive) {
-      console.log('[Login] User account is inactive:', user.id);
-      return res.status(401).json({ message: 'Account is inactive. Please contact the administrator.' });
-    }
+    if (student) {
+      // This is a student login attempt
+      console.log('[Login] Student found by studentNumber:', loginIdentifier);
+      console.log('[Login] Student ID:', student.id, 'Student Number:', student.studentNumber);
+      
+      try {
+      console.log('[Login] Student DOB from DB:', student.dateOfBirth);
+      console.log('[Login] Password received (DOB):', password);
+      
+      // Validate DOB format (dd/mm/yyyy)
+      const parsedDOB = parseDOB(password);
+      if (!parsedDOB) {
+        console.log('[Login] Invalid DOB format. Expected dd/mm/yyyy, received:', password);
+        return res.status(401).json({ message: 'Invalid date of birth format. Please use dd/mm/yyyy format.' });
+      }
 
-    try {
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
-        console.log('[Login] Password mismatch for user:', user.id);
+      console.log('[Login] Parsed DOB:', parsedDOB);
+
+      // Compare the parsed DOB with student's dateOfBirth
+      // Handle different date formats from database
+      let studentDOB: Date;
+      if (student.dateOfBirth instanceof Date) {
+        studentDOB = student.dateOfBirth;
+      } else if (typeof student.dateOfBirth === 'string') {
+        // If it's a string, parse it (could be ISO format or other)
+        studentDOB = new Date(student.dateOfBirth);
+        if (isNaN(studentDOB.getTime())) {
+          console.error('[Login] Invalid dateOfBirth in database:', student.dateOfBirth);
+          return res.status(500).json({ message: 'Server error: Invalid date of birth in database' });
+        }
+      } else {
+        studentDOB = new Date(student.dateOfBirth);
+      }
+      
+      console.log('[Login] Student DOB (normalized):', studentDOB);
+      console.log('[Login] Parsed DOB (from input):', parsedDOB);
+      console.log('[Login] Date comparison result:', compareDates(parsedDOB, studentDOB));
+      
+      if (!compareDates(parsedDOB, studentDOB)) {
+        console.log('[Login] DOB mismatch for student:', student.id);
+        console.log('[Login] Expected:', formatDOB(studentDOB), 'Got:', formatDOB(parsedDOB));
         return res.status(401).json({ message: 'Invalid credentials' });
       }
-    } catch (passwordError: any) {
-      console.error('[Login] Error comparing password:', passwordError);
-      return res.status(500).json({ message: 'Server error during authentication' });
+
+      // Check if student is active
+      if (!student.isActive) {
+        console.log('[Login] Student account is inactive:', student.id);
+        return res.status(401).json({ message: 'Account is inactive. Please contact the administrator.' });
+      }
+
+      // Find or create user account for this student
+      if (!student.user) {
+        console.log('[Login] Student has no linked user, checking for existing user...');
+        
+        // First, check if a user with this studentNumber as username already exists
+        const existingUser = await userRepository.findOne({
+          where: { username: student.studentNumber }
+        });
+        
+        if (existingUser) {
+          console.log('[Login] Found existing user with studentNumber as username, linking to student');
+          // Link the existing user to the student
+          student.userId = existingUser.id;
+          await studentRepository.save(student);
+          user = existingUser;
+        } else {
+          console.log('[Login] Creating new user account for student:', student.id);
+          // Create a user account for the student if it doesn't exist
+          // Use studentNumber as username, and hash the DOB as password for future use
+          const hashedPassword = await bcrypt.hash(password, 10);
+          user = userRepository.create({
+            username: student.studentNumber,
+            password: hashedPassword,
+            role: UserRole.STUDENT,
+            isActive: true
+          });
+          await userRepository.save(user);
+          
+          // Link student to user
+          student.userId = user.id;
+          await studentRepository.save(student);
+        }
+        
+        // After linking, verify the link was saved
+        console.log('[Login] Student userId after save:', student.userId);
+      } else {
+        user = student.user;
+        console.log('[Login] Using existing user linked to student');
+      }
+
+      // Ensure user is set before loading relations
+      if (!user || !user.id) {
+        console.error('[Login] User not properly initialized for student');
+        return res.status(500).json({ message: 'Server error during authentication' });
+      }
+
+      // Verify student.userId matches user.id before querying
+      if (student.userId !== user.id) {
+        console.log('[Login] Student userId mismatch, updating...');
+        student.userId = user.id;
+        await studentRepository.save(student);
+      }
+
+      // Load user with all relations (including student's class)
+      const userIdToLoad = user.id;
+      console.log('[Login] Loading user with relations, userId:', userIdToLoad, 'student.userId:', student.userId);
+      
+      // First try standard relation-based query
+      user = await userRepository
+        .createQueryBuilder('user')
+        .leftJoinAndSelect('user.student', 'student')
+        .leftJoinAndSelect('student.classEntity', 'classEntity')
+        .leftJoinAndSelect('user.teacher', 'teacher')
+        .leftJoinAndSelect('user.parent', 'parent')
+        .where('user.id = :id', { id: userIdToLoad })
+        .getOne();
+      
+      // If student relation not loaded, try querying student directly and attaching
+      if (user && !user.student) {
+        console.log('[Login] Student relation not loaded via standard query, trying direct student query...');
+        const studentDirect = await studentRepository.findOne({
+          where: { userId: userIdToLoad },
+          relations: ['classEntity']
+        });
+        if (studentDirect) {
+          user.student = studentDirect;
+          console.log('[Login] Student loaded directly and attached to user');
+        }
+      }
+
+      if (!user) {
+        console.error('[Login] Failed to create or load user for student');
+        return res.status(500).json({ message: 'Server error during authentication' });
+      }
+
+      if (!user.isActive) {
+        console.log('[Login] User account is inactive:', user.id);
+        return res.status(401).json({ message: 'Account is inactive. Please contact the administrator.' });
+      }
+
+      // Verify student data is loaded - if not, try alternative query
+      if (!user.student) {
+        console.error('[Login] ERROR: Student relation not loaded for user:', user.id);
+        console.log('[Login] Attempting alternative query using student.userId...');
+        
+        // Try querying by student's userId directly
+        const studentByUserId = await studentRepository.findOne({
+          where: { userId: user.id },
+          relations: ['classEntity']
+        });
+        
+        if (studentByUserId) {
+          console.log('[Login] Found student by userId, manually attaching to user object');
+          user.student = studentByUserId;
+        } else {
+          console.error('[Login] CRITICAL: Student not found by userId:', user.id);
+          console.error('[Login] Student ID:', student.id, 'Student userId in DB:', student.userId);
+          // Try one more time with the original student object
+          if (student.userId === user.id) {
+            console.log('[Login] Using original student object since userId matches');
+            user.student = student;
+          } else {
+            return res.status(500).json({ message: 'Failed to load student information. Please contact the administrator.' });
+          }
+        }
+      }
+
+      console.log('[Login] Student authenticated successfully:', student.studentNumber);
+      if (user.student) {
+        console.log('[Login] Student ID:', user.student.id, 'Class ID:', user.student.classId || user.student.classEntity?.id);
+      } else {
+        console.error('[Login] WARNING: Student object not attached to user after all attempts');
+      }
+      } catch (studentError: any) {
+        console.error('[Login] Error during student authentication:', studentError);
+        console.error('[Login] Error message:', studentError.message);
+        console.error('[Login] Error stack:', studentError.stack);
+        return res.status(500).json({ 
+          message: 'Server error during student authentication', 
+          error: studentError.message || 'Unknown error' 
+        });
+      }
+    } else {
+      // Not a student login, proceed with regular user authentication
+      console.log('[Login] No student found with studentNumber:', loginIdentifier);
+      console.log('[Login] Proceeding with regular user authentication...');
+      // Try to find user by username or email (email can be null for teachers)
+      user = await userRepository
+        .createQueryBuilder('user')
+        .leftJoinAndSelect('user.student', 'student')
+        .leftJoinAndSelect('user.teacher', 'teacher')
+        .leftJoinAndSelect('user.parent', 'parent')
+        .where(
+          'LOWER(user.username) = LOWER(:identifier) OR (user.email IS NOT NULL AND LOWER(user.email) = LOWER(:identifier))',
+          { identifier: loginIdentifier }
+        )
+        .getOne();
+
+      if (!user) {
+        console.log('[Login] User not found for identifier:', loginIdentifier);
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
+      
+      if (!user.isActive) {
+        console.log('[Login] User account is inactive:', user.id);
+        return res.status(401).json({ message: 'Account is inactive. Please contact the administrator.' });
+      }
+
+      try {
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+          console.log('[Login] Password mismatch for user:', user.id);
+          return res.status(401).json({ message: 'Invalid credentials' });
+        }
+      } catch (passwordError: any) {
+        console.error('[Login] Error comparing password:', passwordError);
+        return res.status(500).json({ message: 'Server error during authentication' });
+      }
     }
 
     // Load teacher with classes if user is a teacher
@@ -307,7 +505,25 @@ export const login = async (req: Request, res: Response) => {
       response.user.classes = (user as any).classes || [];
     } else {
       // For other roles, include their respective profiles
-      if (user.student) response.user.student = user.student;
+      if (user.student) {
+        // Ensure student object includes all necessary fields
+        response.user.student = {
+          id: user.student.id,
+          firstName: user.student.firstName,
+          lastName: user.student.lastName,
+          studentNumber: user.student.studentNumber,
+          classId: user.student.classId,
+          classEntity: user.student.classEntity ? {
+            id: user.student.classEntity.id,
+            name: user.student.classEntity.name,
+            form: user.student.classEntity.form
+          } : null,
+          dateOfBirth: user.student.dateOfBirth,
+          gender: user.student.gender,
+          isActive: user.student.isActive
+        };
+        console.log('[Login] Student data included in response:', response.user.student.studentNumber, 'Class:', response.user.student.classEntity?.name);
+      }
       if (user.parent) response.user.parent = user.parent;
     }
 

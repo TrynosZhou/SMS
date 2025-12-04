@@ -55,6 +55,10 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.authService.hasRole('parent');
   }
 
+  isStudent(): boolean {
+    return this.authService.hasRole('student');
+  }
+
   isTeacher(): boolean {
     return this.authService.hasRole('teacher');
   }

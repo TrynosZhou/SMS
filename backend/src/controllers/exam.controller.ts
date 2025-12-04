@@ -16,6 +16,41 @@ import { AuthRequest } from '../middleware/auth';
 import { createReportCardPDF } from '../utils/pdfGenerator';
 import { createMarkSheetPDF } from '../utils/markSheetPdfGenerator';
 
+// Helper function to normalize examType to match enum values (e.g., "Mid-Term" -> "mid_term")
+function normalizeExamType(type: string): ExamType {
+  if (!type) {
+    throw new Error('Exam type is required');
+  }
+  
+  const normalized = type.toLowerCase().replace(/-/g, '_').trim();
+  console.log('[normalizeExamType] Input:', type, 'Normalized:', normalized);
+  
+  // Map common variations to enum values
+  if (normalized === 'mid_term' || normalized === 'midterm') {
+    return ExamType.MID_TERM;
+  } else if (normalized === 'end_term' || normalized === 'endterm') {
+    return ExamType.END_TERM;
+  } else if (normalized === 'assignment') {
+    return ExamType.ASSIGNMENT;
+  } else if (normalized === 'quiz') {
+    return ExamType.QUIZ;
+  }
+  
+  // If it's already a valid enum value, return it
+  const validValues = Object.values(ExamType);
+  if (validValues.includes(type as ExamType)) {
+    return type as ExamType;
+  }
+  
+  // If normalized matches a valid enum value
+  if (validValues.includes(normalized as ExamType)) {
+    return normalized as ExamType;
+  }
+  
+  // If we can't match, throw an error with helpful message
+  throw new Error(`Invalid exam type: "${type}". Valid types are: ${validValues.join(', ')}`);
+}
+
 // Helper function to assign positions with proper tie handling
 // Students with the same score (average or percentage) get the same position, and positions are skipped after ties
 function assignPositionsWithTies<T extends { studentId: string } & ({ average?: number; percentage?: number })>(
@@ -1199,9 +1234,10 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     const isParent = user?.role === 'parent';
     const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
     const isTeacher = user?.role === 'teacher';
+    const isStudent = user?.role === 'student';
     const termValue = term ? String(term).trim() : '';
     
-    console.log('[getReportCard] Report card request received:', { classId, examType, term: termValue, studentId, subjectId, isParent, isTeacher, isAdmin, query: req.query, path: req.path });
+    console.log('[getReportCard] Report card request received:', { classId, examType, term: termValue, studentId, subjectId, isParent, isTeacher, isAdmin, isStudent, query: req.query, path: req.path });
     
     if (!classId || !examType || !termValue) {
       console.log('[getReportCard] Missing required parameters');
@@ -1212,6 +1248,58 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     if (isTeacher && !subjectId) {
       console.log('[getReportCard] Teacher request missing subjectId');
       return res.status(400).json({ message: 'Subject ID is required for teachers' });
+    }
+
+    // For students, verify they can only access their own report card
+    if (isStudent) {
+      console.log('[getReportCard] Student access detected');
+      
+      // Load student data if not available in user object
+      let loggedInStudent = user?.student;
+      if (!loggedInStudent && user?.id) {
+        console.log('[getReportCard] Student data not in user object, querying...');
+        const studentRepository = AppDataSource.getRepository(Student);
+        loggedInStudent = await studentRepository.findOne({
+          where: { userId: user.id },
+          relations: ['classEntity']
+        });
+        
+        if (!loggedInStudent) {
+          console.log('[getReportCard] Student not found for user:', user.id);
+          return res.status(403).json({ message: 'Student information not found. Please log in again.' });
+        }
+        
+        // Attach to user object for later use
+        if (user) {
+          user.student = loggedInStudent;
+        }
+      }
+      
+      if (!loggedInStudent?.id) {
+        console.log('[getReportCard] Student user missing student data');
+        return res.status(403).json({ message: 'Student information not found. Please log in again.' });
+      }
+      
+      // Verify the studentId in the request matches the logged-in student's ID
+      if (studentId && studentId !== loggedInStudent.id) {
+        console.log('[getReportCard] Student trying to access another student\'s report card');
+        return res.status(403).json({ message: 'You can only access your own report card' });
+      }
+      
+      // Ensure studentId is set to the logged-in student's ID
+      if (!studentId) {
+        console.log('[getReportCard] Student request missing studentId, using logged-in student ID');
+        // Verify classId matches student's class
+        if (classId && classId !== loggedInStudent.classId && classId !== loggedInStudent.classEntity?.id) {
+          console.log('[getReportCard] Student class mismatch');
+          return res.status(403).json({ message: 'You can only access report cards for your own class' });
+        }
+      } else {
+        // Verify the requested studentId matches the logged-in student
+        if (studentId !== loggedInStudent.id) {
+          return res.status(403).json({ message: 'You can only access your own report card' });
+        }
+      }
     }
 
     // For parents, check balance before allowing access
@@ -1316,6 +1404,25 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     console.log('Looking for students with classId:', classId);
     let students: Student[] = [];
     let parentStudentRecord: Student | null = null;
+    let studentRecord: Student | null = null;
+    
+    // For students, fetch only their own record first
+    if (isStudent && user?.student?.id) {
+      console.log('[getReportCard] Student access - fetching own record');
+      studentRecord = await studentRepository.findOne({
+        where: { id: user.student.id, classId: classId as string },
+        relations: ['classEntity']
+      });
+
+      if (!studentRecord) {
+        return res.status(404).json({ message: 'Student not found in this class' });
+      }
+      
+      // Verify classId matches
+      if (studentRecord.classId !== classId && studentRecord.classEntity?.id !== classId) {
+        return res.status(403).json({ message: 'You can only access report cards for your own class' });
+      }
+    }
     
     if (isParent && studentId) {
       // Parent access - first verify their linked student exists in this class
@@ -1330,11 +1437,22 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     }
 
     // Always fetch full class roster for accurate rankings/positions
-    students = await studentRepository.find({
-      where: { classId: classId as string },
-      relations: ['classEntity'],
-      order: { firstName: 'ASC', lastName: 'ASC' } // Sort alphabetically for sequential display
-    });
+    // For students, we still need all students for ranking calculations, but we'll filter the results later
+    if (isStudent && studentRecord) {
+      // For students, we still need all students for class rankings, but we'll only return their own report card
+      students = await studentRepository.find({
+        where: { classId: classId as string },
+        relations: ['classEntity'],
+        order: { firstName: 'ASC', lastName: 'ASC' } // Sort alphabetically for sequential display
+      });
+    } else {
+      // For other roles, fetch all students normally
+      students = await studentRepository.find({
+        where: { classId: classId as string },
+        relations: ['classEntity'],
+        order: { firstName: 'ASC', lastName: 'ASC' } // Sort alphabetically for sequential display
+      });
+    }
 
     // Ensure parent's student is included even if not returned above (e.g., data inconsistencies)
     if (isParent && parentStudentRecord && !students.find(s => s.id === parentStudentRecord!.id)) {
@@ -1367,10 +1485,21 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     
     console.log('Processing', students.length, 'students');
 
-    // Get all exams of the specified type for this class
-    console.log('Looking for exams with classId:', classId, 'term:', termValue, 'and examType:', examType);
+    // Normalize examType to match enum values
+    let normalizedExamType: ExamType;
+    try {
+      normalizedExamType = normalizeExamType(examType as string);
+      console.log('[getReportCard] Looking for exams with classId:', classId, 'term:', termValue, 'examType (original):', examType, 'examType (normalized):', normalizedExamType);
+    } catch (error: any) {
+      console.error('[getReportCard] Error normalizing examType:', error.message);
+      return res.status(400).json({ 
+        message: error.message || 'Invalid exam type',
+        requestedType: examType
+      });
+    }
+    
     let exams = await examRepository.find({
-      where: { classId: classId as string, type: examType as any, term: termValue },
+      where: { classId: classId as string, type: normalizedExamType, term: termValue },
       relations: ['subjects']
     });
     
@@ -1449,8 +1578,34 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         where: { classId: classId as string, term: termValue },
         relations: ['subjects']
       });
-      console.log('Total exams for this class and term:', allClassExams.length, allClassExams.map(e => ({ name: e.name, type: e.type })));
-      return res.status(404).json({ message: `No ${examType} exams found for ${termValue}` });
+      console.log('[getReportCard] Total exams for this class and term:', allClassExams.length);
+      console.log('[getReportCard] Available exam types:', allClassExams.map(e => ({ name: e.name, type: e.type, status: e.status })));
+      console.log('[getReportCard] Requested examType (original):', examType, 'normalized:', normalizedExamType);
+      console.log('[getReportCard] Filtered exams (after status filter):', exams.length);
+      
+      // Provide more helpful error message
+      const availableTypes = [...new Set(allClassExams.map(e => e.type))];
+      
+      // Convert enum values to user-friendly names
+      const typeNameMap: { [key: string]: string } = {
+        'mid_term': 'Mid-Term',
+        'end_term': 'End-Term',
+        'assignment': 'Assignment',
+        'quiz': 'Quiz'
+      };
+      const availableTypeNames = availableTypes.map(t => typeNameMap[t] || t);
+      
+      const message = availableTypeNames.length > 0
+        ? `No ${examType} exams found for ${termValue}. Available exam types: ${availableTypeNames.join(', ')}`
+        : `No exams found for ${termValue} in this class.`;
+      
+      return res.status(404).json({ 
+        message,
+        requestedType: examType,
+        normalizedType: normalizedExamType,
+        availableTypes: availableTypeNames, // Return user-friendly names
+        term: termValue
+      });
     }
 
     // Get settings for grade thresholds
@@ -1630,7 +1785,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       const allFormExams = await examRepository.find({
         where: { 
           classId: In(allClassIdsWithSameForms),
-          type: examType as any,
+          type: normalizedExamType, // Use normalized exam type, not the original
           term: termValue,
         },
         relations: ['subjects']
@@ -1688,8 +1843,17 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
 
     // Second pass: generate report cards for each student
     for (const student of students) {
+      // Filter for parent access
       if (isParent && studentId && student.id !== studentId) {
         continue;
+      }
+      
+      // Filter for student access - students can only see their own report card
+      if (isStudent) {
+        const loggedInStudentId = user?.student?.id;
+        if (!loggedInStudentId || student.id !== loggedInStudentId) {
+          continue;
+        }
       }
       // Get all marks for this student across all exams of this type
       const studentMarks = allMarks.filter(m => m.studentId === student.id);
@@ -1780,14 +1944,48 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       }
       
       // Get remarks for this student's report card
+      // Try both normalized and original exam type formats (in case remarks were saved with original format)
       const remarksRepository = AppDataSource.getRepository(ReportCardRemarks);
-      const remarks = await remarksRepository.findOne({
+      let remarks = await remarksRepository.findOne({
         where: {
           studentId: student.id,
           classId: classId as string,
-          examType: examType as string,
+          examType: normalizedExamType, // Try normalized exam type first
         }
       });
+      
+      // If not found with normalized type, try original format (for backward compatibility)
+      if (!remarks && examType !== normalizedExamType) {
+        console.log('[getReportCard] Remarks not found with normalized type, trying original format...');
+        remarks = await remarksRepository.findOne({
+          where: {
+            studentId: student.id,
+            classId: classId as string,
+            examType: examType as string, // Try original format
+          }
+        });
+      }
+      
+      console.log('[getReportCard] Remarks query:', {
+        studentId: student.id,
+        classId: classId as string,
+        examType: normalizedExamType,
+        originalExamType: examType,
+        found: !!remarks
+      });
+      
+      if (remarks) {
+        console.log('[getReportCard] Remarks found:', {
+          id: remarks.id,
+          examType: remarks.examType,
+          hasClassTeacherRemarks: !!remarks.classTeacherRemarks,
+          hasHeadmasterRemarks: !!remarks.headmasterRemarks,
+          classTeacherRemarks: remarks.classTeacherRemarks?.substring(0, 50) + '...',
+          headmasterRemarks: remarks.headmasterRemarks?.substring(0, 50) + '...'
+        });
+      } else {
+        console.log('[getReportCard] No remarks found for this student/exam type combination');
+      }
 
       // Get total attendance for this student for the term
       const attendanceRepository = AppDataSource.getRepository(Attendance);
@@ -1809,6 +2007,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
           studentNumber: student.studentNumber,
           class: student.classEntity?.name
         },
+        class: student.classEntity?.name || classEntity.name, // Add class at report card level for easy access
         examType: examType,
         exams: (() => {
           // Remove duplicate exams by name to avoid showing the same exam multiple times
@@ -1871,12 +2070,67 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
     const { studentId, examId, classId, examType, term } = req.query;
     const user = req.user;
     const isParent = user?.role === 'parent';
+    const isStudent = user?.role === 'student';
     const termValue = term ? String(term).trim() : null;
     
-    console.log('PDF generation request:', { studentId, examId, classId, examType, term: termValue, isParent, query: req.query });
+    console.log('[generateReportCardPDF] PDF generation request:', { studentId, examId, classId, examType, term: termValue, isParent, isStudent, query: req.query });
 
     if (!examId && (!classId || !examType || !termValue)) {
       return res.status(400).json({ message: 'Class ID, term, and exam type are required when exam ID is not provided' });
+    }
+
+    // For students, verify they can only access their own report card PDF
+    if (isStudent) {
+      console.log('[generateReportCardPDF] Student access detected');
+      
+      // Load student data if not available in user object
+      let loggedInStudent = user?.student;
+      if (!loggedInStudent && user?.id) {
+        console.log('[generateReportCardPDF] Student data not in user object, querying...');
+        const studentRepository = AppDataSource.getRepository(Student);
+        loggedInStudent = await studentRepository.findOne({
+          where: { userId: user.id },
+          relations: ['classEntity']
+        });
+        
+        if (!loggedInStudent) {
+          console.log('[generateReportCardPDF] Student not found for user:', user.id);
+          return res.status(403).json({ message: 'Student information not found. Please log in again.' });
+        }
+        
+        // Attach to user object for later use
+        if (user) {
+          user.student = loggedInStudent;
+        }
+      }
+      
+      if (!loggedInStudent?.id) {
+        console.log('[generateReportCardPDF] Student user missing student data');
+        return res.status(403).json({ message: 'Student information not found. Please log in again.' });
+      }
+      
+      // Verify the studentId in the request matches the logged-in student's ID
+      if (studentId && studentId !== loggedInStudent.id) {
+        console.log('[generateReportCardPDF] Student trying to access another student\'s report card PDF');
+        return res.status(403).json({ message: 'You can only access your own report card' });
+      }
+      
+      // Ensure studentId is set to the logged-in student's ID
+      if (!studentId) {
+        console.log('[generateReportCardPDF] Student request missing studentId, using logged-in student ID');
+        // We'll use loggedInStudent.id later, but we need to ensure it's in the query
+        const studentIdToUse = loggedInStudent.id;
+        // Verify classId matches student's class
+        if (classId && classId !== loggedInStudent.classId && classId !== loggedInStudent.classEntity?.id) {
+          console.log('[generateReportCardPDF] Student class mismatch');
+          return res.status(403).json({ message: 'You can only access report cards for your own class' });
+        }
+      } else {
+        // Verify the requested studentId matches the logged-in student
+        if (studentId !== loggedInStudent.id) {
+          return res.status(403).json({ message: 'You can only access your own report card' });
+        }
+      }
     }
 
     // For parents, check balance before allowing PDF generation
@@ -1957,9 +2211,22 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         return res.status(404).json({ message: 'Student not found' });
       }
 
+      // Normalize examType to match enum values
+      let normalizedExamType: ExamType;
+      try {
+        normalizedExamType = normalizeExamType(examType as string);
+        console.log('[generateReportCardPDF] Normalized examType:', examType, '->', normalizedExamType);
+      } catch (error: any) {
+        console.error('[generateReportCardPDF] Error normalizing examType:', error.message);
+        return res.status(400).json({ 
+          message: error.message || 'Invalid exam type',
+          requestedType: examType
+        });
+      }
+      
       // Get all exams of the specified type for this class
       const exams = await examRepository.find({
-        where: { classId: classId as string, type: examType as any, term: termValue as string },
+        where: { classId: classId as string, type: normalizedExamType, term: termValue as string },
         relations: ['subjects']
       });
 
@@ -2204,7 +2471,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         const allFormExams = await examRepository.find({
           where: { 
             classId: In(formClassIds),
-            type: examType as any,
+            type: normalizedExamType, // Use normalized exam type, not the original
             term: termValue,
           },
           relations: ['subjects']
@@ -2251,13 +2518,26 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
 
       // Get remarks for PDF
       const remarksRepository = AppDataSource.getRepository(ReportCardRemarks);
-      const remarks = await remarksRepository.findOne({
+      let remarks = await remarksRepository.findOne({
         where: {
           studentId: studentId as string,
           classId: classId as string,
-          examType: examType as string,
+          examType: normalizedExamType, // Use normalized exam type
         }
       });
+
+      // Fallback for remarks saved with old (unnormalized) examType
+      if (!remarks) {
+        console.log(`[generateReportCardPDF] No remarks found with normalized examType "${normalizedExamType}", trying original "${examType}"`);
+        remarks = await remarksRepository.findOne({
+          where: {
+            studentId: studentId as string,
+            classId: classId as string,
+            examType: examType as string, // Try original type
+          }
+        });
+      }
+      console.log('[generateReportCardPDF] Fetched remarks for PDF:', remarks);
 
       // Get total attendance for this student for the term
       const attendanceRepository = AppDataSource.getRepository(Attendance);
@@ -2464,13 +2744,35 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       // Get remarks for PDF (old format)
       const remarksRepository = AppDataSource.getRepository(ReportCardRemarks);
       const exam = marks[0]?.exam;
-      const remarks = exam ? await remarksRepository.findOne({
-        where: {
-          studentId: studentId as string,
-          classId: student.classId || '',
-          examType: exam.type,
+      let remarks = null;
+      if (exam) {
+        // Try with the exam type from database (should already be normalized)
+        remarks = await remarksRepository.findOne({
+          where: {
+            studentId: studentId as string,
+            classId: student.classId || '',
+            examType: exam.type,
+          }
+        });
+        
+        // If not found, try normalizing the exam type (fallback for edge cases)
+        if (!remarks && exam.type) {
+          try {
+            const normalizedType = normalizeExamType(exam.type);
+            remarks = await remarksRepository.findOne({
+              where: {
+                studentId: studentId as string,
+                classId: student.classId || '',
+                examType: normalizedType,
+              }
+            });
+          } catch (error) {
+            // If normalization fails, use original type (already tried above)
+            console.log('[generateReportCardPDF] Could not normalize exam type for remarks lookup:', exam.type);
+          }
         }
-      }) : null;
+      }
+      console.log('[generateReportCardPDF] Fetched remarks for PDF (old format):', remarks);
 
       reportCardData = {
         student: {
@@ -2959,6 +3261,17 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ message: 'Student ID, Class ID, and Exam Type are required' });
     }
 
+    // Normalize examType to match enum values (for consistency with how it's stored)
+    let normalizedExamType: string;
+    try {
+      normalizedExamType = normalizeExamType(examType as string);
+      console.log('[saveReportCardRemarks] Normalized examType:', examType, '->', normalizedExamType);
+    } catch (error: any) {
+      console.error('[saveReportCardRemarks] Error normalizing examType:', error.message);
+      // If normalization fails, use original (for backward compatibility)
+      normalizedExamType = examType as string;
+    }
+
     const remarksRepository = AppDataSource.getRepository(ReportCardRemarks);
     const examRepository = AppDataSource.getRepository(Exam);
     
@@ -2971,8 +3284,9 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
     }
 
     // Check if exam is published - prevent editing remarks
+    // Use normalized exam type for query
     const exams = await examRepository.find({
-      where: { classId: classId as string, type: examType as any }
+      where: { classId: classId as string, type: normalizedExamType as any }
     });
 
     if (exams.length > 0 && exams.some(exam => exam.status === ExamStatus.PUBLISHED)) {
@@ -2981,21 +3295,38 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
       });
     }
 
-    // Find existing remarks or create new
+    // Find existing remarks - try both normalized and original formats
     let remarks = await remarksRepository.findOne({
       where: {
         studentId: studentId as string,
         classId: classId as string,
-        examType: examType as string,
+        examType: normalizedExamType, // Try normalized first
       }
     });
+
+    // If not found, try original format (for backward compatibility)
+    if (!remarks && examType !== normalizedExamType) {
+      remarks = await remarksRepository.findOne({
+        where: {
+          studentId: studentId as string,
+          classId: classId as string,
+          examType: examType as string, // Try original format
+        }
+      });
+    }
 
     if (!remarks) {
       remarks = remarksRepository.create({
         studentId: studentId as string,
         classId: classId as string,
-        examType: examType as string,
+        examType: normalizedExamType, // Save with normalized format for consistency
       });
+    } else {
+      // If found with original format, update to normalized format for consistency
+      if (remarks.examType !== normalizedExamType) {
+        console.log('[saveReportCardRemarks] Updating remarks examType from', remarks.examType, 'to', normalizedExamType);
+        remarks.examType = normalizedExamType;
+      }
     }
 
     // Update remarks based on user role

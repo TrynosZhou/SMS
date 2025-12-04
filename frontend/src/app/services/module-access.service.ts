@@ -22,6 +22,11 @@ export interface ModuleAccess {
     invoices?: boolean;
     dashboard?: boolean;
   };
+  students?: {
+    dashboard?: boolean;
+    reportCards?: boolean;
+    invoices?: boolean;
+  };
   accountant?: {
     students?: boolean;
     invoices?: boolean;
@@ -82,6 +87,11 @@ export class ModuleAccessService {
       reportCards: true,
       invoices: true,
       dashboard: true
+    },
+    students: {
+      dashboard: true,
+      reportCards: true,
+      invoices: true
     },
     accountant: {
       students: true,
@@ -177,6 +187,7 @@ export class ModuleAccessService {
     const roleMap: { [key: string]: string } = {
       'teacher': 'teachers',
       'parent': 'parents',
+      'student': 'students',
       'accountant': 'accountant',
       'admin': 'admin',
       'superadmin': 'superadmin',

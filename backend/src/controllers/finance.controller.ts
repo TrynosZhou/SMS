@@ -54,16 +54,37 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     const uniformItemRepository = AppDataSource.getRepository(UniformItem);
     const invoiceUniformItemRepository = AppDataSource.getRepository(InvoiceUniformItem);
 
-    const student = await studentRepository.findOne({ where: { id: studentId } });
+    // Find student and validate
+    const student = await studentRepository.findOne({ 
+      where: { id: studentId },
+      relations: ['user']
+    });
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
 
+    // Log student information for debugging
+    console.log(`[createInvoice] Creating invoice for student: ${student.studentNumber} (ID: ${student.id}, userId: ${student.userId || 'null'})`);
+
     // Get previous balance and prepaid amount from last invoice
-    const lastInvoice = await invoiceRepository.findOne({
-      where: { studentId },
-      order: { createdAt: 'DESC' }
-    });
+    // Query using multiple criteria to handle any reference mismatches
+    const lastInvoiceQuery = invoiceRepository
+      .createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.student', 'student')
+      .where('invoice.studentId = :studentId', { studentId })
+      .orWhere('student.studentNumber = :studentNumber', { studentNumber: student.studentNumber })
+      .orderBy('invoice.createdAt', 'DESC')
+      .limit(1);
+    
+    const lastInvoice = await lastInvoiceQuery.getOne();
+    
+    if (lastInvoice && lastInvoice.studentId !== student.id) {
+      console.warn(`[createInvoice] WARNING: Last invoice ${lastInvoice.invoiceNumber} has mismatched studentId. Expected: ${student.id}, Found: ${lastInvoice.studentId}`);
+      // Fix the reference
+      lastInvoice.studentId = student.id;
+      await invoiceRepository.save(lastInvoice);
+      console.log(`[createInvoice] Fixed invoice reference for ${lastInvoice.invoiceNumber}`);
+    }
 
     // Ensure numeric values to avoid string concatenation
     const previousBalance = parseAmount(lastInvoice?.balance);
@@ -297,7 +318,19 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
       .orderBy('invoice.createdAt', 'DESC');
 
     if (studentId) {
-      queryBuilder.andWhere('invoice.studentId = :studentId', { studentId });
+      // Query by studentId, but also handle cases where studentId might be a studentNumber
+      // First check if it's a UUID (studentId) or a studentNumber
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(studentId)) {
+        // It's a UUID, query directly
+        queryBuilder.andWhere('invoice.studentId = :studentId', { studentId });
+      } else {
+        // It might be a studentNumber, query through the join
+        queryBuilder.andWhere(
+          '(invoice.studentId = :studentId OR student.studentNumber = :studentNumber)',
+          { studentId, studentNumber: studentId }
+        );
+      }
     }
     if (status) {
       queryBuilder.andWhere('invoice.status = :status', { status });
@@ -751,14 +784,19 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
   try {
     const { studentId } = req.query;
     
+    console.log(`[getStudentBalance] Request received with studentId: ${studentId} (type: ${typeof studentId})`);
+    
     if (!studentId) {
       return res.status(400).json({ message: 'Student ID or Student Number is required' });
     }
 
     // Ensure studentId is a string
     const studentIdString = typeof studentId === 'string' ? studentId : String(studentId);
+    const trimmedStudentId = studentIdString.trim();
     
-    if (!studentIdString || studentIdString.trim() === '') {
+    console.log(`[getStudentBalance] Processing studentId: "${trimmedStudentId}"`);
+    
+    if (!trimmedStudentId || trimmedStudentId === '') {
       return res.status(400).json({ message: 'Student ID or Student Number is required' });
     }
 
@@ -770,35 +808,86 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     let student;
     
-    if (uuidRegex.test(studentIdString)) {
+    if (uuidRegex.test(trimmedStudentId)) {
       // Search by ID (UUID)
+      console.log(`[getStudentBalance] Searching by UUID: ${trimmedStudentId}`);
       student = await studentRepository.findOne({
-        where: { id: studentIdString },
+        where: { id: trimmedStudentId },
         relations: ['classEntity']
       });
     } else {
-      // Search by studentNumber
-      student = await studentRepository.findOne({
-        where: { studentNumber: studentIdString },
-        relations: ['classEntity']
-      });
+      // Search by studentNumber (case-insensitive)
+      console.log(`[getStudentBalance] Searching by studentNumber: ${trimmedStudentId}`);
+      student = await studentRepository
+        .createQueryBuilder('student')
+        .where('LOWER(student.studentNumber) = LOWER(:studentNumber)', { studentNumber: trimmedStudentId })
+        .leftJoinAndSelect('student.classEntity', 'classEntity')
+        .getOne();
     }
 
     if (!student) {
+      console.log(`[getStudentBalance] Student not found for: ${trimmedStudentId}`);
       return res.status(404).json({ message: 'Student not found. Please check the Student ID or Student Number.' });
     }
+    
+    console.log(`[getStudentBalance] Student found: ${student.studentNumber} (ID: ${student.id}, userId: ${student.userId || 'null'})`);
 
-    // Get the latest invoice to get current balance
-    const lastInvoice = await invoiceRepository.findOne({
-      where: { studentId: student.id },
-      order: { createdAt: 'DESC' }
-    });
+    // Query invoices using multiple criteria to handle reference mismatches
+    // First, try direct match by studentId (most common case)
+    // Then, also check for invoices that might be linked via studentNumber through the join
+    const invoiceQueryBuilder = invoiceRepository
+      .createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.student', 'student')
+      .where('invoice.studentId = :studentId', { studentId: student.id })
+      .orWhere('student.studentNumber = :studentNumber', { studentNumber: student.studentNumber })
+      .orderBy('invoice.createdAt', 'DESC');
 
-    const balance = parseAmount(lastInvoice?.balance);
+    // Get the latest invoice - it should contain the cumulative balance
+    // In this system, each new invoice carries forward the previous balance,
+    // so the latest invoice's balance represents the total outstanding amount
+    const lastInvoice = await invoiceQueryBuilder
+      .limit(1)
+      .getOne();
+
+    // Get all invoices to check for any discrepancies
+    // Filter to ensure we only get invoices for this specific student
+    const allInvoicesRaw = await invoiceQueryBuilder.getMany();
+    const allInvoices = allInvoicesRaw.filter(inv => 
+      inv.studentId === student.id || 
+      (inv.student && inv.student.studentNumber === student.studentNumber)
+    );
+
+    let currentBalance = 0;
+    let totalPrepaidAmount = 0;
+    
+    console.log(`[getStudentBalance] Found ${allInvoices.length} invoice(s) for student ${student.studentNumber} (${student.id})`);
+    
+    if (!lastInvoice) {
+      // No invoices, balance is 0
+      currentBalance = 0;
+      console.log(`[getStudentBalance] No invoices found, balance = 0`);
+    } else {
+      // Use the latest invoice's balance as the source of truth
+      // The latest invoice should have the cumulative balance including all previous balances
+      currentBalance = parseAmount(lastInvoice.balance);
+      totalPrepaidAmount = parseAmount(lastInvoice.prepaidAmount);
+      
+      console.log(`[getStudentBalance] Latest invoice ${lastInvoice.invoiceNumber}: balance=${currentBalance}, previousBalance=${parseAmount(lastInvoice.previousBalance)}, amount=${parseAmount(lastInvoice.amount)}`);
+      
+      // Log all invoices for debugging
+      for (const invoice of allInvoices) {
+        const invBalance = parseAmount(invoice.balance);
+        const invPrevBalance = parseAmount(invoice.previousBalance);
+        console.log(`[getStudentBalance] Invoice ${invoice.invoiceNumber} (${invoice.term}): balance=${invBalance}, previousBalance=${invPrevBalance}, amount=${parseAmount(invoice.amount)}`);
+      }
+    }
+
     const lastInvoiceAmount = parseAmount(lastInvoice?.amount);
     const previousBalance = parseAmount(lastInvoice?.previousBalance);
     const paidAmount = parseAmount(lastInvoice?.paidAmount);
-    const prepaidAmount = parseAmount(lastInvoice?.prepaidAmount);
+    const lastInvoiceBalance = parseAmount(lastInvoice?.balance);
+
+    console.log(`[getStudentBalance] Final balance for student ${student.studentNumber}: ${currentBalance}`);
 
     res.json({
       studentId: student.id,
@@ -806,8 +895,8 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
       firstName: student.firstName,
       lastName: student.lastName,
       fullName: `${student.lastName} ${student.firstName}`,
-      balance: balance,
-      prepaidAmount: prepaidAmount,
+      balance: currentBalance, // Use latest invoice's balance (should be cumulative)
+      prepaidAmount: totalPrepaidAmount,
       lastInvoiceId: lastInvoice?.id || null,
       lastInvoiceNumber: lastInvoice?.invoiceNumber || null,
       lastInvoiceTerm: lastInvoice?.term || null,
@@ -815,7 +904,7 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
       lastInvoiceAmount: lastInvoiceAmount,
       lastInvoicePreviousBalance: previousBalance,
       lastInvoicePaidAmount: paidAmount,
-      lastInvoiceBalance: balance
+      lastInvoiceBalance: lastInvoiceBalance
     });
   } catch (error: any) {
     console.error('Error getting student balance:', error);

@@ -49,6 +49,8 @@ import { OutstandingBalanceComponent } from './components/finance/outstanding-ba
 import { SplashComponent } from './components/splash/splash.component';
 import { TimetableGenerateComponent } from './components/timetable/timetable-generate.component';
 import { TimetableConfigComponent } from './components/timetable/timetable-config.component';
+import { StudentReportCardComponent } from './components/student/student-report-card/student-report-card.component';
+import { StudentInvoiceStatementComponent } from './components/student/student-invoice-statement/student-invoice-statement.component';
 import { SafeArrayPipe } from './pipes/safe-array.pipe';
 
 @NgModule({
@@ -96,6 +98,8 @@ import { SafeArrayPipe } from './pipes/safe-array.pipe';
     SplashComponent,
     TimetableGenerateComponent,
     TimetableConfigComponent,
+    StudentReportCardComponent,
+    StudentInvoiceStatementComponent,
     SafeArrayPipe
   ],
   imports: [

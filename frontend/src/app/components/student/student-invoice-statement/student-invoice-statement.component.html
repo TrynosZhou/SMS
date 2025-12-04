@@ -1,0 +1,109 @@
+<div class="student-invoice-statement-container">
+  <div class="container-header">
+    <h1>💰 My Invoice Statement</h1>
+  </div>
+
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+
+  <!-- Current Balance Display -->
+  <div class="balance-card">
+    <div class="balance-header">
+      <h2>Current Invoice Balance</h2>
+    </div>
+    <div class="balance-amount" [class.has-balance]="currentBalance > 0">
+      {{ currencySymbol }} {{ currentBalance | number:'1.2-2' }}
+    </div>
+    <p class="balance-note" *ngIf="currentBalance > 0">
+      ⚠️ You have an outstanding balance. Please make payment to clear your account.
+    </p>
+    <p class="balance-note success" *ngIf="currentBalance === 0">
+      ✅ Your account is fully paid up.
+    </p>
+  </div>
+
+  <div *ngIf="loading" class="loading-message">
+    <div class="spinner"></div>
+    <p>Loading invoices...</p>
+  </div>
+
+  <div *ngIf="!loading && invoices.length > 0" class="invoices-section">
+    <h2>Invoice History</h2>
+    <div class="invoices-table-container">
+      <table class="invoices-table">
+        <thead>
+          <tr>
+            <th>Invoice #</th>
+            <th>Term</th>
+            <th>Due Date</th>
+            <th class="text-right">Amount</th>
+            <th class="text-right">Paid</th>
+            <th class="text-right">Balance</th>
+            <th>Status</th>
+            <th class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let invoice of invoices">
+            <td>{{ invoice.invoiceNumber }}</td>
+            <td>{{ invoice.term || 'N/A' }}</td>
+            <td>{{ invoice.dueDate | date:'shortDate' }}</td>
+            <td class="text-right">{{ currencySymbol }} {{ invoice.amount | number:'1.2-2' }}</td>
+            <td class="text-right">{{ currencySymbol }} {{ invoice.paidAmount | number:'1.2-2' }}</td>
+            <td class="text-right" [class.balance-warning]="invoice.balance > 0">
+              {{ currencySymbol }} {{ invoice.balance | number:'1.2-2' }}
+            </td>
+            <td>
+              <span [class]="getStatusClass(invoice.status)">
+                {{ invoice.status || 'Pending' }}
+              </span>
+            </td>
+            <td class="text-center">
+              <div class="action-buttons">
+                <button class="btn btn-sm btn-primary" (click)="previewPDF(invoice.id)" title="Preview PDF">
+                  👁️ Preview
+                </button>
+                <button class="btn btn-sm btn-success" (click)="downloadPDF(invoice.id)" title="Download PDF">
+                  ⬇️ Download
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && invoices.length === 0" class="empty-state">
+    <p>No invoices found.</p>
+  </div>
+
+  <!-- PDF Preview Modal -->
+  <div class="pdf-modal" *ngIf="showPdfPreview" (click)="closePdfPreview()">
+    <div class="pdf-modal-content" (click)="$event.stopPropagation()">
+      <div class="pdf-modal-header">
+        <h3>Invoice PDF Preview</h3>
+        <button class="btn-close" (click)="closePdfPreview()">×</button>
+      </div>
+      <div class="pdf-modal-body">
+        <div *ngIf="loadingPdf" class="loading-message">
+          <div class="spinner"></div>
+          <p>Loading PDF...</p>
+        </div>
+        <iframe 
+          *ngIf="safePdfUrl && !loadingPdf" 
+          [src]="safePdfUrl" 
+          class="pdf-iframe"
+          frameborder="0">
+        </iframe>
+      </div>
+      <div class="pdf-modal-footer">
+        <button class="btn btn-primary" (click)="downloadPDF(currentInvoiceId!)" *ngIf="currentInvoiceId">
+          ⬇️ Download PDF
+        </button>
+        <button class="btn btn-secondary" (click)="closePdfPreview()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+

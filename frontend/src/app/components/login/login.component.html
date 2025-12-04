@@ -34,6 +34,11 @@
 
     <!-- Sign In Form -->
     <div *ngIf="activeTab === 'signin'" class="tab-content">
+      <div class="info-box" style="background: #fff3e0; border-left: 4px solid #ff9800; padding: 10px 12px; margin-bottom: 14px; border-radius: 4px;">
+        <p style="margin: 0; font-size: 11px; color: #e65100; line-height: 1.4;">
+          <strong>Students:</strong> Use your StudentID as username and your Date of Birth (dd/mm/yyyy) as password.
+        </p>
+      </div>
       <form (ngSubmit)="onSignIn()">
         <div class="form-group">
           <label>Username</label>
@@ -41,9 +46,10 @@
             type="text" 
             [(ngModel)]="email" 
             name="email" 
-            placeholder="Enter username" 
+            placeholder="Enter username or StudentID" 
             required
             autocomplete="username">
+          <small class="form-text">For students: Enter your StudentID</small>
         </div>
         <div class="form-group">
           <label>Password</label>
@@ -52,13 +58,14 @@
               [type]="showPassword ? 'text' : 'password'" 
               [(ngModel)]="password" 
               name="password" 
-              placeholder="Enter password" 
+              placeholder="Enter password or DOB (dd/mm/yyyy)" 
               required
               autocomplete="current-password">
             <span class="password-toggle" (click)="togglePasswordVisibility()">
               {{ showPassword ? '👁️' : '👁️‍🗨️' }}
             </span>
           </div>
+          <small class="form-text">For students: Enter your Date of Birth in dd/mm/yyyy format</small>
         </div>
         <button type="submit" class="btn btn-primary btn-block" [disabled]="loading">
           {{ loading ? 'Signing in...' : '🔐 Sign In' }}

@@ -1,0 +1,114 @@
+<div class="student-report-card-container">
+  <div class="container-header">
+    <h1>📄 My Report Card</h1>
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="previewPDF()" [disabled]="!reportCard || loadingPdf">
+        <span *ngIf="!loadingPdf">👁️ Preview PDF</span>
+        <span *ngIf="loadingPdf">Loading...</span>
+      </button>
+      <button class="btn btn-success" (click)="downloadPDF()" [disabled]="!reportCard || loading">
+        <span *ngIf="!loading">⬇️ Download PDF</span>
+        <span *ngIf="loading">Downloading...</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+
+  <div class="filter-section" *ngIf="activeTerm">
+    <div class="form-group">
+      <label>Exam Type</label>
+      <select [(ngModel)]="selectedExamType" (change)="onExamTypeChange()" class="form-control">
+        <option *ngFor="let type of examTypes" [value]="type">{{ type }}</option>
+      </select>
+    </div>
+    <div class="term-info">
+      <strong>Active Term:</strong> {{ activeTerm }}
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-message">
+    <div class="spinner"></div>
+    <p>Loading report card...</p>
+  </div>
+
+  <div *ngIf="!loading && reportCard" class="report-card-display">
+    <div class="report-card-header">
+      <h2>{{ reportCard.student?.name || (student.firstName + ' ' + student.lastName) }}</h2>
+      <p class="student-info">
+        <span>Student ID: {{ student.studentNumber }}</span>
+        <span>Class: {{ reportCard.class || student.class?.name || 'N/A' }}</span>
+        <span>Term: {{ activeTerm }}</span>
+        <span>Exam Type: {{ selectedExamType }}</span>
+        <span>Position: {{ reportCard.classPosition || 'N/A' }}</span>
+      </p>
+    </div>
+
+    <div class="report-card-content" *ngIf="reportCard.subjects && reportCard.subjects.length > 0">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Subject Name</th>
+            <th>Subject Code</th>
+            <th>Marks</th>
+            <th>Grade</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let subject of reportCard.subjects">
+            <td>{{ subject.subject || subject.name || subject.subjectName || 'N/A' }}</td>
+            <td>{{ subject.subjectCode || subject.code || 'N/A' }}</td>
+            <td>
+              <span *ngIf="subject.score !== undefined && subject.score !== null && subject.maxScore !== undefined && subject.maxScore !== null && subject.maxScore > 0">
+                {{ subject.score }} / {{ subject.maxScore }}
+              </span>
+              <span *ngIf="subject.score === undefined || subject.score === null || subject.maxScore === undefined || subject.maxScore === null || subject.maxScore === 0">N/A</span>
+            </td>
+            <td>{{ subject.grade || 'N/A' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="remarks-section" *ngIf="reportCard.remarks">
+      <h3>Remarks</h3>
+      <div class="remark-item" *ngIf="reportCard.remarks.classTeacherRemarks">
+        <strong>Class Teacher:</strong> {{ reportCard.remarks.classTeacherRemarks }}
+      </div>
+      <div class="remark-item" *ngIf="reportCard.remarks.headmasterRemarks">
+        <strong>Headmaster:</strong> {{ reportCard.remarks.headmasterRemarks }}
+      </div>
+      <div class="remark-item" *ngIf="!reportCard.remarks.classTeacherRemarks && !reportCard.remarks.headmasterRemarks">
+        <em>No remarks available for this report card.</em>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && !reportCard && !error" class="empty-state">
+    <p>No report card available for the current term.</p>
+  </div>
+
+  <!-- PDF Preview Modal -->
+  <div class="pdf-modal" *ngIf="showPdfPreview" (click)="closePdfPreview()">
+    <div class="pdf-modal-content" (click)="$event.stopPropagation()">
+      <div class="pdf-modal-header">
+        <h3>PDF Preview</h3>
+        <button class="btn-close" (click)="closePdfPreview()">×</button>
+      </div>
+      <div class="pdf-modal-body">
+        <div *ngIf="loadingPdf" class="loading-message">
+          <div class="spinner"></div>
+          <p>Loading PDF...</p>
+        </div>
+        <iframe 
+          *ngIf="safePdfUrl && !loadingPdf" 
+          [src]="safePdfUrl" 
+          class="pdf-iframe"
+          frameborder="0">
+        </iframe>
+      </div>
+    </div>
+  </div>
+</div>
+

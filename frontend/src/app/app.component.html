@@ -29,13 +29,27 @@
 <aside class="sidebar" [class.collapsed]="sidebarCollapsed" *ngIf="isAuthenticated() && !isParent()">
   <div class="sidebar-content">
     <nav class="sidebar-nav">
-      <!-- Dashboard -->
-      <a routerLink="/dashboard" routerLinkActive="active" class="sidebar-item">
-        <span class="sidebar-icon">🏠</span>
-        <span class="sidebar-text">Dashboard</span>
-      </a>
+      <!-- Student-specific sidebar (only for students) -->
+      <div *ngIf="isStudent()">
+        <a routerLink="/student/report-card" routerLinkActive="active" class="sidebar-item">
+          <span class="sidebar-icon">📄</span>
+          <span class="sidebar-text">My Report Card</span>
+        </a>
+        <a routerLink="/student/invoice-statement" routerLinkActive="active" class="sidebar-item">
+          <span class="sidebar-icon">💰</span>
+          <span class="sidebar-text">My Invoice Statement</span>
+        </a>
+      </div>
 
-      <!-- Student Management -->
+      <!-- Regular sidebar (for non-students) -->
+      <div *ngIf="!isStudent()">
+        <!-- Dashboard -->
+        <a routerLink="/dashboard" routerLinkActive="active" class="sidebar-item">
+          <span class="sidebar-icon">🏠</span>
+          <span class="sidebar-text">Dashboard</span>
+        </a>
+
+        <!-- Student Management -->
       <div class="sidebar-menu" *ngIf="canAccessModule('students') || isAdmin() || isSuperAdmin()">
         <div class="sidebar-menu-header" (click)="toggleMenu('studentManagement')">
           <span class="sidebar-icon">👨‍🎓</span>
@@ -253,6 +267,7 @@
             <span class="sidebar-text">My Account</span>
           </a>
         </div>
+      </div>
       </div>
     </nav>
   </div>

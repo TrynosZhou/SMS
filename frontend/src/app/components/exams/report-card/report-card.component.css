@@ -680,7 +680,18 @@
   text-align: center;
 }
 
-.score, .max-score {
+.subject-name {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.subject-code {
+  font-weight: 600;
+  color: #667eea;
+  font-family: 'Courier New', monospace;
+}
+
+.score {
   font-weight: 700;
   color: #000000;
 }

@@ -49,6 +49,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   recentStudents: any[] = [];
   recentInvoices: any[] = [];
   
+  // Student-specific properties
+  studentBalance: number = 0;
+  loadingBalance = false;
+  activeTerm: string = '';
+  currencySymbol: string = 'KES';
+  private studentDataRetryCount = 0;
+  private readonly MAX_STUDENT_DATA_RETRIES = 3;
+  
   constructor(
     private authService: AuthService,
     private router: Router,
@@ -73,6 +81,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // Load teacher name if user is a teacher (this will set teacherName immediately from user.teacher)
     if (this.isTeacher()) {
       this.loadTeacherName();
+    }
+    // Load student-specific data if user is a student
+    if (this.isStudent()) {
+      this.loadStudentData();
     }
   }
 
@@ -198,6 +210,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
         this.schoolMotto = data.schoolMotto || '';
         this.moduleAccess = data.moduleAccess || {};
+        this.currencySymbol = data.currencySymbol || 'KES';
         
         // Update module access service with latest settings
         if (data.moduleAccess) {
@@ -455,6 +468,90 @@ export class DashboardComponent implements OnInit, OnDestroy {
     } else {
       this.displayedText = '';
     }
+  }
+
+  loadStudentData() {
+    const user = this.authService.getCurrentUser();
+    if (!user) {
+      // User might not be loaded yet, try again after a short delay
+      if (this.studentDataRetryCount < this.MAX_STUDENT_DATA_RETRIES) {
+        this.studentDataRetryCount++;
+        setTimeout(() => this.loadStudentData(), 500);
+      }
+      return;
+    }
+
+    if (!user.student) {
+      // Student data might not be loaded yet, wait a bit and retry
+      if (this.studentDataRetryCount < this.MAX_STUDENT_DATA_RETRIES) {
+        this.studentDataRetryCount++;
+        setTimeout(() => {
+          const retryUser = this.authService.getCurrentUser();
+          if (retryUser && retryUser.student && retryUser.student.id) {
+            this.studentDataRetryCount = 0; // Reset on success
+            this.loadStudentData();
+          }
+        }, 1000);
+      } else {
+        console.warn('Student data not available after retries');
+      }
+      return;
+    }
+
+    if (!user.student.id) {
+      console.error('Student ID not available');
+      return;
+    }
+
+    // Reset retry count on successful load
+    this.studentDataRetryCount = 0;
+    const studentId = user.student.id;
+    
+    // Load active term
+    this.settingsService.getActiveTerm().subscribe({
+      next: (data: any) => {
+        this.activeTerm = data.activeTerm || data.currentTerm || '';
+      },
+      error: (err: any) => {
+        console.error('Error loading active term:', err);
+      }
+    });
+
+    // Load student balance
+    this.loadingBalance = true;
+    this.financeService.getStudentBalance(studentId).subscribe({
+      next: (data: any) => {
+        this.loadingBalance = false;
+        this.studentBalance = parseFloat(String(data.balance || 0));
+      },
+      error: (err: any) => {
+        this.loadingBalance = false;
+        console.error('Error loading student balance:', err);
+        this.studentBalance = 0;
+      }
+    });
+  }
+
+  viewReportCard() {
+    const user = this.authService.getCurrentUser();
+    if (!user || !user.student || !user.student.id) {
+      return;
+    }
+    
+    this.router.navigate(['/report-cards'], {
+      queryParams: { studentId: user.student.id }
+    });
+  }
+
+  viewInvoiceStatement() {
+    const user = this.authService.getCurrentUser();
+    if (!user || !user.student || !user.student.id) {
+      return;
+    }
+    
+    this.router.navigate(['/invoices/statements'], {
+      queryParams: { studentId: user.student.id }
+    });
   }
 }
 
