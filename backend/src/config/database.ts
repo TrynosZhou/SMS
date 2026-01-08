@@ -80,15 +80,39 @@ try {
   if (process.env.DATABASE_URL) {
     // Parse DATABASE_URL if provided (format: postgresql://user:password@host:port/database)
     try {
-      const url = new URL(process.env.DATABASE_URL);
+      let databaseUrl = process.env.DATABASE_URL;
+      
+      // Check if hostname in DATABASE_URL is incomplete (missing domain)
+      // This can happen if Render provides incomplete hostname
+      const urlMatch = databaseUrl.match(/@([^:]+):/);
+      if (urlMatch && urlMatch[1].startsWith('dpg-') && !urlMatch[1].includes('.')) {
+        console.warn('[DB Config] ⚠️  WARNING: DATABASE_URL has incomplete hostname!');
+        console.warn('[DB Config]    Incomplete hostname:', urlMatch[1]);
+        console.warn('[DB Config]    Attempting to fix by adding domain suffix...');
+        
+        // Try to fix by adding the domain suffix
+        const incompleteHost = urlMatch[1];
+        const fixedHost = `${incompleteHost}.oregon-postgres.render.com`;
+        databaseUrl = databaseUrl.replace(`@${incompleteHost}:`, `@${fixedHost}:`);
+        console.log('[DB Config]    Fixed hostname:', fixedHost);
+        console.log('[DB Config]    Updated DATABASE_URL (hostname only, password hidden)');
+      }
+      
+      const url = new URL(databaseUrl);
       dbHost = url.hostname;
       dbPort = parseInt(url.port || '5432');
       dbUsername = url.username;
       dbPassword = url.password;
       dbName = url.pathname.slice(1); // Remove leading '/'
-      console.log('[DB Config] Using DATABASE_URL connection string');
+      console.log('[DB Config] ✅ Using DATABASE_URL connection string');
+      console.log('[DB Config]   Parsed hostname:', dbHost);
+      console.log('[DB Config]   Parsed username:', dbUsername);
+      console.log('[DB Config]   Parsed database:', dbName);
     } catch (error) {
-      console.error('[DB Config] Failed to parse DATABASE_URL, falling back to individual env vars');
+      console.error('[DB Config] ❌ Failed to parse DATABASE_URL');
+      console.error('[DB Config]   DATABASE_URL value (first 50 chars):', process.env.DATABASE_URL?.substring(0, 50) + '...');
+      console.error('[DB Config]   Error:', (error as Error).message);
+      console.error('[DB Config]   Falling back to individual env vars');
       dbHost = process.env.DB_HOST || 'localhost';
       dbPort = parseInt(process.env.DB_PORT || '5432');
       dbUsername = process.env.DB_USERNAME || 'postgres';
@@ -111,10 +135,16 @@ try {
 [DB Config]    Render.com hostnames must include the full domain suffix.
 [DB Config]    Expected format: dpg-xxxxx-a.oregon-postgres.render.com
 [DB Config]    
+[DB Config]    Debug info:
+[DB Config]    - DATABASE_URL was ${process.env.DATABASE_URL ? 'SET' : 'NOT SET'}
+[DB Config]    - DB_HOST was ${process.env.DB_HOST ? `SET to: ${process.env.DB_HOST}` : 'NOT SET'}
+[DB Config]    - Source: ${process.env.DATABASE_URL ? 'DATABASE_URL' : 'DB_HOST'}
+[DB Config]    
 [DB Config]    To fix this:
-[DB Config]    1. Check your DATABASE_URL or DB_HOST environment variable
-[DB Config]    2. Ensure the full hostname includes the domain (e.g., .oregon-postgres.render.com)
-[DB Config]    3. In Render.com dashboard, copy the complete Internal Database URL or hostname
+[DB Config]    1. If using DATABASE_URL, ensure it includes the full hostname with domain
+[DB Config]    2. If using DB_HOST, update it to include the domain suffix
+[DB Config]    3. In Render.com dashboard, copy the complete Internal Database URL
+[DB Config]    4. Expected format: dpg-xxxxx-a.oregon-postgres.render.com
 [DB Config]    
 [DB Config]    Example of correct format:
 [DB Config]    DATABASE_URL=postgresql://user:pass@dpg-xxxxx-a.oregon-postgres.render.com:5432/dbname
