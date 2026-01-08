@@ -12,39 +12,16 @@ services:
         value: production
       - key: PORT
         value: 10000
-      - key: DB_HOST
-        fromService:
-          type: postgresql
-          name: sms-database
-          property: host
-      - key: DB_PORT
-        fromService:
-          type: postgresql
-          name: sms-database
-          property: port
-      - key: DB_USERNAME
-        fromService:
-          type: postgresql
-          name: sms-database
-          property: user
-      - key: DB_PASSWORD
-        fromService:
-          type: postgresql
-          name: sms-database
-          property: password
-      - key: DB_NAME
-        fromService:
-          type: postgresql
-          name: sms-database
-          property: database
+      - key: DATABASE_URL
+        value: postgresql://school_db_primary_loib_user:PEm5uuEGHSRmm7sxpjjhgCXo5pAJZWjS@dpg-d5evptur433s7391emu0-a.oregon-postgres.render.com:5432/school_db_primary_loib
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
         value: 7d
 
 databases:
-  - name: sms-database
+  - name: school_db
     databaseName: sms_db
-    user: sms_user
+    user: school_db_primary_user
     plan: free
 

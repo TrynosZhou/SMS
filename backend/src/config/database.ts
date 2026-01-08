@@ -24,9 +24,13 @@ import { TimetableConfig } from '../entities/TimetableConfig';
 import { TimetableVersion } from '../entities/TimetableVersion';
 import { TimetableChangeLog } from '../entities/TimetableChangeLog';
 
-// Load environment variables (only if not already set, e.g., in production)
-if (process.env.NODE_ENV !== 'production') {
-  dotenv.config();
+// Load environment variables from .env file
+// Always try to load .env file, but system env vars take precedence
+const envResult = dotenv.config();
+if (envResult.error) {
+  console.log('[DB Config] No .env file found or error loading it:', envResult.error.message);
+} else {
+  console.log('[DB Config] .env file loaded successfully');
 }
 
 console.log('[DB Config] Creating DataSource configuration...');
@@ -66,13 +70,83 @@ try {
   console.log('[DB Config] Migrations path:', migrationsPath);
   console.log('[DB Config] Subscribers path:', subscribersPath);
   
+  // Check if DATABASE_URL is provided (common in cloud platforms)
+  let dbHost: string;
+  let dbPort: number;
+  let dbUsername: string;
+  let dbName: string;
+  let dbPassword: string;
+
+  if (process.env.DATABASE_URL) {
+    // Parse DATABASE_URL if provided (format: postgresql://user:password@host:port/database)
+    try {
+      const url = new URL(process.env.DATABASE_URL);
+      dbHost = url.hostname;
+      dbPort = parseInt(url.port || '5432');
+      dbUsername = url.username;
+      dbPassword = url.password;
+      dbName = url.pathname.slice(1); // Remove leading '/'
+      console.log('[DB Config] Using DATABASE_URL connection string');
+    } catch (error) {
+      console.error('[DB Config] Failed to parse DATABASE_URL, falling back to individual env vars');
+      dbHost = process.env.DB_HOST || 'localhost';
+      dbPort = parseInt(process.env.DB_PORT || '5432');
+      dbUsername = process.env.DB_USERNAME || 'postgres';
+      dbName = process.env.DB_NAME || 'sms_db';
+      dbPassword = String(process.env.DB_PASSWORD || '');
+    }
+  } else {
+    // Use individual environment variables
+    dbHost = process.env.DB_HOST || 'localhost';
+    dbPort = parseInt(process.env.DB_PORT || '5432');
+    dbUsername = process.env.DB_USERNAME || 'postgres';
+    dbName = process.env.DB_NAME || 'sms_db';
+    dbPassword = String(process.env.DB_PASSWORD || '');
+  }
+
+  // Validate hostname - check for incomplete Render.com hostnames
+  if (dbHost.startsWith('dpg-') && !dbHost.includes('.')) {
+    const errorMessage = `[DB Config] ❌ ERROR: Database hostname is incomplete!
+[DB Config]    Current hostname: ${dbHost}
+[DB Config]    Render.com hostnames must include the full domain suffix.
+[DB Config]    Expected format: dpg-xxxxx-a.oregon-postgres.render.com
+[DB Config]    
+[DB Config]    To fix this:
+[DB Config]    1. Check your DATABASE_URL or DB_HOST environment variable
+[DB Config]    2. Ensure the full hostname includes the domain (e.g., .oregon-postgres.render.com)
+[DB Config]    3. In Render.com dashboard, copy the complete Internal Database URL or hostname
+[DB Config]    
+[DB Config]    Example of correct format:
+[DB Config]    DATABASE_URL=postgresql://user:pass@dpg-xxxxx-a.oregon-postgres.render.com:5432/dbname
+[DB Config]    or
+[DB Config]    DB_HOST=dpg-xxxxx-a.oregon-postgres.render.com`;
+    console.error(errorMessage);
+    throw new Error(`Database hostname is incomplete: ${dbHost}. Please provide the full hostname with domain suffix.`);
+  }
+
+  // Validate hostname format - warn for other incomplete hostnames
+  if (dbHost && !dbHost.includes('.') && dbHost !== 'localhost' && !dbHost.startsWith('127.')) {
+    console.warn('[DB Config] ⚠️  Hostname does not contain a domain - this may cause DNS resolution issues');
+    console.warn('[DB Config]    Current hostname:', dbHost);
+  }
+  
+  const hasPassword = !!dbPassword;
+  
+  console.log('[DB Config] Database connection settings:');
+  console.log('[DB Config]   DB_HOST:', dbHost);
+  console.log('[DB Config]   DB_PORT:', dbPort);
+  console.log('[DB Config]   DB_USERNAME:', dbUsername);
+  console.log('[DB Config]   DB_NAME:', dbName);
+  console.log('[DB Config]   DB_PASSWORD:', hasPassword ? '*** (set)' : '*** (not set)');
+  console.log('[DB Config]   NODE_ENV:', process.env.NODE_ENV);
+  
   AppDataSource = new DataSource({
     type: 'postgres',
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432'),
-    username: process.env.DB_USERNAME || 'postgres',
-    password: String(process.env.DB_PASSWORD || ''),
-    database: process.env.DB_NAME || 'sms_db',
+    host: dbHost,
+    port: dbPort,
+    username: dbUsername,
+    password: dbPassword,
+    database: dbName,
     synchronize: false,
     logging: false,
     entities: entityPaths,
