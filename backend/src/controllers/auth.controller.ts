@@ -42,11 +42,25 @@ export const login = async (req: Request, res: Response) => {
     // Check if this is a student login attempt (StudentID as username, DOB as password)
     // First, try to find a student by studentNumber (case-insensitive)
     let user: User | null = null;
-    const student = await studentRepository
-      .createQueryBuilder('student')
-      .leftJoinAndSelect('student.user', 'user')
-      .where('LOWER(student.studentNumber) = LOWER(:studentNumber)', { studentNumber: loginIdentifier })
-      .getOne();
+    let student = null;
+    try {
+      student = await studentRepository
+        .createQueryBuilder('student')
+        .leftJoinAndSelect('student.user', 'user')
+        .where('LOWER(student.studentNumber) = LOWER(:studentNumber)', { studentNumber: loginIdentifier })
+        .getOne();
+    } catch (dbError: any) {
+      // Check if error is due to missing table
+      if (dbError.code === '42P01' || dbError.message?.includes('does not exist')) {
+        console.error('[Login] Database tables not found. Please ensure DB_SYNC=true or run migrations.');
+        return res.status(503).json({ 
+          message: 'Database schema not initialized. Please contact administrator or set DB_SYNC=true in development.',
+          error: 'Database tables missing'
+        });
+      }
+      // Re-throw other database errors
+      throw dbError;
+    }
 
     if (student) {
       // This is a student login attempt
@@ -235,16 +249,29 @@ export const login = async (req: Request, res: Response) => {
       console.log('[Login] No student found with studentNumber:', loginIdentifier);
       console.log('[Login] Proceeding with regular user authentication...');
       // Try to find user by username or email (email can be null for teachers)
-      user = await userRepository
-        .createQueryBuilder('user')
-        .leftJoinAndSelect('user.student', 'student')
-        .leftJoinAndSelect('user.teacher', 'teacher')
-        .leftJoinAndSelect('user.parent', 'parent')
-        .where(
-          'LOWER(user.username) = LOWER(:identifier) OR (user.email IS NOT NULL AND LOWER(user.email) = LOWER(:identifier))',
-          { identifier: loginIdentifier }
-        )
-        .getOne();
+      try {
+        user = await userRepository
+          .createQueryBuilder('user')
+          .leftJoinAndSelect('user.student', 'student')
+          .leftJoinAndSelect('user.teacher', 'teacher')
+          .leftJoinAndSelect('user.parent', 'parent')
+          .where(
+            'LOWER(user.username) = LOWER(:identifier) OR (user.email IS NOT NULL AND LOWER(user.email) = LOWER(:identifier))',
+            { identifier: loginIdentifier }
+          )
+          .getOne();
+      } catch (dbError: any) {
+        // Check if error is due to missing table
+        if (dbError.code === '42P01' || dbError.message?.includes('does not exist')) {
+          console.error('[Login] Database tables not found. Please ensure DB_SYNC=true or run migrations.');
+          return res.status(503).json({ 
+            message: 'Database schema not initialized. Please contact administrator or set DB_SYNC=true in development.',
+            error: 'Database tables missing'
+          });
+        }
+        // Re-throw other database errors
+        throw dbError;
+      }
 
       if (!user) {
         console.log('[Login] User not found for identifier:', loginIdentifier);
@@ -529,8 +556,26 @@ export const login = async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error: any) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[Login] Error:', error);
+    console.error('[Login] Error code:', error.code);
+    console.error('[Login] Error message:', error.message);
+    
+    // Check if error is due to missing database tables
+    if (error.code === '42P01' || error.message?.includes('does not exist')) {
+      console.error('[Login] Database tables not found. Please ensure DB_SYNC=true or run migrations.');
+      return res.status(503).json({ 
+        message: 'Database schema not initialized. Please contact administrator or set DB_SYNC=true in development.',
+        error: 'Database tables missing',
+        hint: 'Set DB_SYNC=true in your .env file to auto-create tables, or run migrations.'
+      });
+    }
+    
+    // Generic error response
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message || 'Unknown error',
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
   }
 };
 

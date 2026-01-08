@@ -161,6 +161,19 @@ try {
   }
   
   const hasPassword = !!dbPassword;
+  const shouldSync = (process.env.DB_SYNC || '').toLowerCase() === 'true' && process.env.NODE_ENV !== 'production';
+
+  // SSL: auto-enable for hosted DBs unless explicitly disabled
+  const sslEnv = (process.env.DB_SSL || '').toLowerCase();
+  const isLocalHost =
+    dbHost === 'localhost' ||
+    dbHost.startsWith('127.') ||
+    dbHost.startsWith('10.') ||
+    dbHost.startsWith('192.168.');
+  const isHosted = !isLocalHost;
+  const useSSL =
+    sslEnv === 'true' ||
+    (sslEnv !== 'false' && (process.env.NODE_ENV === 'production' || isHosted));
   
   console.log('[DB Config] Database connection settings:');
   console.log('[DB Config]   DB_HOST:', dbHost);
@@ -169,6 +182,44 @@ try {
   console.log('[DB Config]   DB_NAME:', dbName);
   console.log('[DB Config]   DB_PASSWORD:', hasPassword ? '*** (set)' : '*** (not set)');
   console.log('[DB Config]   NODE_ENV:', process.env.NODE_ENV);
+  console.log('[DB Config]   SSL enabled:', useSSL, '(source:', sslEnv || (isHosted ? 'auto-hosted' : 'auto-env'), ')');
+  console.log('[DB Config]   Synchronize schema:', shouldSync);
+  
+  // Connection pool and timeout settings
+  const connectionTimeout = parseInt(process.env.DB_CONNECTION_TIMEOUT || '30000'); // 30 seconds default
+  const poolSize = parseInt(process.env.DB_POOL_SIZE || '10'); // Default pool size
+  const idleTimeout = parseInt(process.env.DB_IDLE_TIMEOUT || '30000'); // 30 seconds
+  
+  console.log('[DB Config]   Connection timeout:', connectionTimeout, 'ms');
+  console.log('[DB Config]   Pool size:', poolSize);
+  console.log('[DB Config]   Idle timeout:', idleTimeout, 'ms');
+  
+  // Build SSL configuration
+  let sslConfig: any = false;
+  if (useSSL) {
+    sslConfig = {
+      rejectUnauthorized: false, // Render / many hosted PG providers require SSL; disable cert check for managed CA
+      // Additional SSL options for better compatibility
+      require: true,
+    };
+  }
+  
+  // Build extra configuration for connection pool
+  const extraConfig: any = {
+    // Connection pool configuration
+    max: poolSize, // Maximum number of clients in the pool
+    min: 2, // Minimum number of clients in the pool
+    idleTimeoutMillis: idleTimeout, // Close idle clients after this many milliseconds
+    connectionTimeoutMillis: connectionTimeout, // Return an error after this many milliseconds if connection could not be established
+    // Keep-alive settings to prevent connection drops
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000, // Start sending keep-alive packets after 10 seconds
+  };
+  
+  // Add SSL to extra if needed (for pg library compatibility)
+  if (useSSL) {
+    extraConfig.ssl = sslConfig;
+  }
   
   AppDataSource = new DataSource({
     type: 'postgres',
@@ -177,11 +228,14 @@ try {
     username: dbUsername,
     password: dbPassword,
     database: dbName,
-    synchronize: false,
+    synchronize: shouldSync,
     logging: false,
     entities: entityPaths,
     migrations: migrationsPath,
     subscribers: subscribersPath,
+    ssl: sslConfig,
+    // Connection pool and timeout settings
+    extra: extraConfig,
   });
   
   console.log('[DB Config] DataSource created successfully');
