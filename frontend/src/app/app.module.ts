@@ -29,6 +29,7 @@ import { ClassListsComponent } from './components/classes/class-lists/class-list
 import { SubjectListComponent } from './components/subjects/subject-list/subject-list.component';
 import { SubjectFormComponent } from './components/subjects/subject-form/subject-form.component';
 import { TeachingLoadComponent } from './components/subjects/teaching-load/teaching-load.component';
+import { AssignSubjectComponent } from './components/subjects/assign-subject/assign-subject.component';
 import { SettingsComponent } from './components/settings/settings.component';
 import { AuthInterceptor } from './interceptors/auth.interceptor';
 import { ParentDashboardComponent } from './components/parent/parent-dashboard/parent-dashboard.component';
@@ -79,6 +80,7 @@ import { SafeArrayPipe } from './pipes/safe-array.pipe';
     SubjectListComponent,
     SubjectFormComponent,
     TeachingLoadComponent,
+    AssignSubjectComponent,
     SettingsComponent,
     ParentDashboardComponent,
     LinkStudentsComponent,

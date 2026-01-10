@@ -88,6 +88,9 @@ async function initializeDatabase(attempt: number = 1): Promise<void> {
       console.log('[Server] ✓ Schema synchronization completed - all tables created/updated');
     }
     
+    // Set up connection monitoring and error handling
+    setupConnectionMonitoring();
+    
     // Continue with server startup
     await startServer();
   } catch (error: any) {
@@ -100,7 +103,8 @@ async function initializeDatabase(attempt: number = 1): Promise<void> {
       error.code === 'ENOTFOUND' ||
       error.message?.includes('timeout') ||
       error.message?.includes('connection') ||
-      error.message?.includes('ECONNRESET');
+      error.message?.includes('ECONNRESET') ||
+      error.message?.includes('terminated unexpectedly');
     
     if (isConnectionError && attempt < maxInitAttempts) {
       initAttempts++;
@@ -117,17 +121,116 @@ async function initializeDatabase(attempt: number = 1): Promise<void> {
     if (error instanceof Error) {
       console.error('[Server] Error message:', error.message);
       console.error('[Server] Error code:', (error as any).code);
-      console.error('[Server] Error stack:', error.stack);
+      if ((error as any).code) {
+        console.error('[Server] Error stack:', error.stack);
+      }
     }
-    console.error('[Server] Check your DATABASE_URL and ensure the database is accessible.');
-    console.error('[Server] Verify:');
-    console.error('[Server]   1. Database host is reachable');
-    console.error('[Server]   2. Database credentials are correct');
-    console.error('[Server]   3. Database exists and is running');
-    console.error('[Server]   4. Network/firewall allows connections');
-    console.error('[Server]   5. SSL settings are correct for hosted databases');
+    
+    // Check for specific error types and provide targeted guidance
+    const errorMessage = error?.message || '';
+    const errorCode = (error as any)?.code;
+    
+    console.error('\n[Server] 🔍 Diagnostic Information:');
+    
+    if (errorMessage.includes('timeout') || errorCode === 'ETIMEDOUT') {
+      console.error('[Server] ❌ Connection timeout detected!');
+      console.error('[Server] ');
+      console.error('[Server] For Render.com databases, this usually means:');
+      console.error('[Server]   1. ⏸️  Database is PAUSED (free tier databases pause after inactivity)');
+      console.error('[Server]      → Go to https://dashboard.render.com');
+      console.error('[Server]      → Find your PostgreSQL database');
+      console.error('[Server]      → Click "Wake" or "Resume" button');
+      console.error('[Server]      → Wait 30-60 seconds for database to start');
+      console.error('[Server] ');
+      console.error('[Server]   2. 🔗 Using INTERNAL Database URL from local machine');
+      console.error('[Server]      → Internal URLs only work from within Render network');
+      console.error('[Server]      → Use EXTERNAL Database URL for local connections');
+      console.error('[Server]      → In Render dashboard → Database → Connections tab');
+      console.error('[Server]      → Copy "External Database URL" (not Internal)');
+      console.error('[Server] ');
+      console.error('[Server]   3. 🌐 Network/firewall blocking connection');
+      console.error('[Server]      → Check if you can ping the database host');
+      console.error('[Server]      → Verify your ISP/network allows outbound connections');
+    } else if (errorCode === 'ECONNREFUSED') {
+      console.error('[Server] ❌ Connection refused!');
+      console.error('[Server]   1. Verify database is running and not paused');
+      console.error('[Server]   2. Check hostname and port are correct');
+      console.error('[Server]   3. Ensure you\'re using External URL for local connections');
+    } else if (errorMessage.includes('SSL') || errorCode === '28000') {
+      console.error('[Server] ❌ SSL connection error!');
+      console.error('[Server]   Render.com requires SSL connections');
+      console.error('[Server]   SSL should be auto-enabled - check DB_SSL setting');
+    } else {
+      console.error('[Server] Check your DATABASE_URL and ensure the database is accessible.');
+      console.error('[Server] Verify:');
+      console.error('[Server]   1. Database host is reachable');
+      console.error('[Server]   2. Database credentials are correct');
+      console.error('[Server]   3. Database exists and is running');
+      console.error('[Server]   4. Network/firewall allows connections');
+      console.error('[Server]   5. SSL settings are correct for hosted databases');
+    }
+    
+    console.error('[Server] ');
+    console.error('[Server] 💡 Quick Fix: Run this diagnostic script:');
+    console.error('[Server]    node scripts/test-db-connection.js');
+    console.error('');
     process.exit(1);
   }
+}
+
+// Set up connection monitoring and automatic reconnection
+function setupConnectionMonitoring(): void {
+  // Monitor connection pool for errors
+  const driver = AppDataSource.driver as any;
+  if (driver.pool) {
+    driver.pool.on('error', (err: Error) => {
+      console.error('[Server] ⚠️  Connection pool error:', err.message);
+      // Don't exit - let TypeORM handle reconnection
+    });
+    
+    driver.pool.on('connect', () => {
+      console.log('[Server] ✓ New database connection established');
+    });
+    
+    driver.pool.on('remove', () => {
+      console.log('[Server] ⚠️  Database connection removed from pool');
+    });
+  }
+  
+  // Periodic health check
+  setInterval(async () => {
+    if (!AppDataSource.isInitialized) {
+      console.warn('[Server] ⚠️  DataSource is not initialized, attempting to reconnect...');
+      try {
+        if (!AppDataSource.isInitialized) {
+          await AppDataSource.initialize();
+          console.log('[Server] ✓ Reconnected to database');
+        }
+      } catch (error: any) {
+        console.error('[Server] ✗ Failed to reconnect:', error.message);
+      }
+    } else {
+      // Test connection with a simple query
+      try {
+        await AppDataSource.query('SELECT 1');
+      } catch (error: any) {
+        console.error('[Server] ⚠️  Database health check failed:', error.message);
+        // Try to reinitialize if connection is lost
+        if (error.message?.includes('terminated') || error.message?.includes('connection')) {
+          console.log('[Server] Attempting to reinitialize connection...');
+          try {
+            if (AppDataSource.isInitialized) {
+              await AppDataSource.destroy();
+            }
+            await AppDataSource.initialize();
+            console.log('[Server] ✓ Reconnected to database');
+          } catch (reconnectError: any) {
+            console.error('[Server] ✗ Failed to reconnect:', reconnectError.message);
+          }
+        }
+      }
+    }
+  }, 60000); // Check every 60 seconds
 }
 
 // Start server after successful database connection

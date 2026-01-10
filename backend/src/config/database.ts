@@ -76,6 +76,7 @@ try {
   let dbUsername: string;
   let dbName: string;
   let dbPassword: string;
+  let fixedDatabaseUrl: string | null = null; // Store fixed URL for direct use
 
   if (process.env.DATABASE_URL) {
     // Parse DATABASE_URL if provided (format: postgresql://user:password@host:port/database)
@@ -97,6 +98,9 @@ try {
         console.log('[DB Config]    Fixed hostname:', fixedHost);
         console.log('[DB Config]    Updated DATABASE_URL (hostname only, password hidden)');
       }
+      
+      // Store the fixed URL for potential direct use
+      fixedDatabaseUrl = databaseUrl;
       
       const url = new URL(databaseUrl);
       dbHost = url.hostname;
@@ -186,7 +190,9 @@ try {
   console.log('[DB Config]   Synchronize schema:', shouldSync);
   
   // Connection pool and timeout settings
-  const connectionTimeout = parseInt(process.env.DB_CONNECTION_TIMEOUT || '30000'); // 30 seconds default
+  // Increased timeout for Render.com databases which may have slower initial connections
+  // Render free tier databases can take 30-90 seconds to wake up from paused state
+  const connectionTimeout = parseInt(process.env.DB_CONNECTION_TIMEOUT || (isHosted ? '90000' : '60000')); // 90s for hosted, 60s for local
   const poolSize = parseInt(process.env.DB_POOL_SIZE || '10'); // Default pool size
   const idleTimeout = parseInt(process.env.DB_IDLE_TIMEOUT || '30000'); // 30 seconds
   
@@ -194,13 +200,15 @@ try {
   console.log('[DB Config]   Pool size:', poolSize);
   console.log('[DB Config]   Idle timeout:', idleTimeout, 'ms');
   
-  // Build SSL configuration
+  // Build SSL configuration - enhanced for Render.com compatibility
   let sslConfig: any = false;
   if (useSSL) {
     sslConfig = {
       rejectUnauthorized: false, // Render / many hosted PG providers require SSL; disable cert check for managed CA
-      // Additional SSL options for better compatibility
+      // Additional SSL options for better compatibility with Render.com
       require: true,
+      // Explicitly set SSL mode for better compatibility
+      sslmode: 'require',
     };
   }
   
@@ -214,6 +222,11 @@ try {
     // Keep-alive settings to prevent connection drops
     keepAlive: true,
     keepAliveInitialDelayMillis: 10000, // Start sending keep-alive packets after 10 seconds
+    // Additional options for better connection reliability
+    statement_timeout: 60000, // 60 seconds for query timeout (increased for hosted DBs)
+    query_timeout: 60000,
+    // Additional timeout settings for Render.com compatibility
+    connect_timeout: isHosted ? 90 : 30, // Connection timeout in seconds
   };
   
   // Add SSL to extra if needed (for pg library compatibility)
@@ -221,22 +234,80 @@ try {
     extraConfig.ssl = sslConfig;
   }
   
-  AppDataSource = new DataSource({
-    type: 'postgres',
-    host: dbHost,
-    port: dbPort,
-    username: dbUsername,
-    password: dbPassword,
-    database: dbName,
-    synchronize: shouldSync,
-    logging: false,
-    entities: entityPaths,
-    migrations: migrationsPath,
-    subscribers: subscribersPath,
-    ssl: sslConfig,
-    // Connection pool and timeout settings
-    extra: extraConfig,
-  });
+  // Try using connection string directly if DATABASE_URL is available (better for Render.com)
+  // This avoids potential hostname resolution issues and is more reliable for hosted databases
+  // Always prefer connection string for hosted databases, regardless of synchronize setting
+  let dataSourceConfig: any;
+  
+  if (fixedDatabaseUrl && isHosted) {
+    // Use connection string directly - TypeORM supports this and it's more reliable for hosted DBs
+    // This method avoids DNS resolution issues and uses the connection string as-is
+    console.log('[DB Config] Using DATABASE_URL connection string directly (recommended for hosted databases)');
+    
+    // Add SSL parameters to the connection string if SSL is required
+    let connectionUrl = fixedDatabaseUrl;
+    if (useSSL && !connectionUrl.includes('?ssl=') && !connectionUrl.includes('?sslmode=')) {
+      // Append SSL parameters to the connection string
+      const separator = connectionUrl.includes('?') ? '&' : '?';
+      connectionUrl = `${connectionUrl}${separator}sslmode=require`;
+    }
+    
+    dataSourceConfig = {
+      type: 'postgres',
+      url: connectionUrl,
+      synchronize: shouldSync,
+      logging: false,
+      entities: entityPaths,
+      migrations: migrationsPath,
+      subscribers: subscribersPath,
+      ssl: sslConfig,
+      extra: extraConfig,
+    };
+  } else if (fixedDatabaseUrl) {
+    // Use connection string even for local if available (more reliable)
+    console.log('[DB Config] Using DATABASE_URL connection string (local database)');
+    
+    let connectionUrl = fixedDatabaseUrl;
+    if (useSSL && !connectionUrl.includes('?ssl=') && !connectionUrl.includes('?sslmode=')) {
+      const separator = connectionUrl.includes('?') ? '&' : '?';
+      connectionUrl = `${connectionUrl}${separator}sslmode=require`;
+    }
+    
+    dataSourceConfig = {
+      type: 'postgres',
+      url: connectionUrl,
+      synchronize: shouldSync,
+      logging: false,
+      entities: entityPaths,
+      migrations: migrationsPath,
+      subscribers: subscribersPath,
+      ssl: sslConfig,
+      extra: extraConfig,
+    };
+  } else {
+    // Fallback to individual parameters
+    console.log('[DB Config] Using individual connection parameters');
+    dataSourceConfig = {
+      type: 'postgres',
+      host: dbHost,
+      port: dbPort,
+      username: dbUsername,
+      password: dbPassword,
+      database: dbName,
+      synchronize: shouldSync,
+      logging: false,
+      entities: entityPaths,
+      migrations: migrationsPath,
+      subscribers: subscribersPath,
+      ssl: sslConfig,
+      extra: extraConfig,
+    };
+  }
+  
+  AppDataSource = new DataSource(dataSourceConfig);
+  
+  // Add connection error handlers for better reliability (after initialization)
+  // Note: Pool is only available after DataSource is initialized, so we'll set this up in server.ts
   
   console.log('[DB Config] DataSource created successfully');
   console.log('[DB Config] DataSource.isInitialized:', AppDataSource.isInitialized);

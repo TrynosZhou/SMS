@@ -25,6 +25,7 @@ import { ClassListsComponent } from './components/classes/class-lists/class-list
 import { SubjectListComponent } from './components/subjects/subject-list/subject-list.component';
 import { SubjectFormComponent } from './components/subjects/subject-form/subject-form.component';
 import { TeachingLoadComponent } from './components/subjects/teaching-load/teaching-load.component';
+import { AssignSubjectComponent } from './components/subjects/assign-subject/assign-subject.component';
 import { SettingsComponent } from './components/settings/settings.component';
 import { ParentDashboardComponent } from './components/parent/parent-dashboard/parent-dashboard.component';
 import { LinkStudentsComponent } from './components/parent/link-students/link-students.component';
@@ -88,6 +89,7 @@ const routes: Routes = [
   { path: 'subjects', component: SubjectListComponent, canActivate: [AuthGuard] },
   { path: 'subjects/new', component: SubjectFormComponent, canActivate: [AuthGuard] },
   { path: 'subjects/:id/edit', component: SubjectFormComponent, canActivate: [AuthGuard] },
+  { path: 'subjects/assign', component: AssignSubjectComponent, canActivate: [AuthGuard] },
   { path: 'subjects/teaching-load', component: TeachingLoadComponent, canActivate: [AuthGuard] },
   { path: 'schools', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: 'attendance/mark', component: MarkAttendanceComponent, canActivate: [AuthGuard] },
