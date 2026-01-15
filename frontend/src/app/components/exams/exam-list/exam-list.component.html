@@ -155,50 +155,9 @@
 
     <!-- Marks Entry Section -->
     <div *ngIf="showMarksEntry && students.length > 0" class="marks-entry-section">
-      <!-- Summary Card -->
-      <div class="summary-card">
-        <div class="summary-header">
-          <h3>
-            <span class="summary-icon">📊</span>
-            Marks Entry Summary
-          </h3>
-          <div *ngIf="isAdmin && showMarksEntry" style="margin-left: auto;">
-            <span *ngIf="isPublished" class="status-badge" style="background-color: #28a745; color: white; padding: 8px 16px; border-radius: 4px; font-weight: bold;">
-              ✓ Published
-            </span>
-          </div>
-        </div>
-        <div class="summary-content">
-          <div class="summary-item">
-            <span class="summary-label">Class:</span>
-            <span class="summary-value">{{ getSelectedClassName() }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="summary-label">Term:</span>
-            <span class="summary-value">{{ selectedTerm }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="summary-label">Exam Type:</span>
-            <span class="summary-value">{{ getSelectedExamTypeLabel() }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="summary-label">Subject:</span>
-            <span class="summary-value">{{ getSelectedSubjectName() }}</span>
-          </div>
-          <div class="summary-item highlight">
-            <span class="summary-label">Total Students:</span>
-            <span class="summary-value">{{ students.length }}</span>
-          </div>
-          <div class="summary-item highlight">
-            <span class="summary-label">Marks Entered:</span>
-            <span class="summary-value">{{ getEnteredMarksCount() }} / {{ students.length }}</span>
-          </div>
-        </div>
-        <div class="progress-bar-wrapper">
-          <div class="progress-bar" [style.width.%]="getMarksProgress()">
-            <span class="progress-text">{{ getMarksProgress() }}%</span>
-          </div>
-        </div>
+      <!-- Top Progress Bar -->
+      <div class="top-progress-bar-wrapper">
+        <div class="top-progress-bar" [style.width.%]="getMarksProgress()"></div>
       </div>
 
       <!-- Search and Quick Actions -->
