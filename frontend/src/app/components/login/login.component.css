@@ -1,19 +1,36 @@
 :host {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   min-height: 100vh;
   width: 100%;
   padding: 40px 16px;
   background: #f5f7fa;
   box-sizing: border-box;
+  position: relative;
 }
 
 .login-container {
   width: 100%;
   max-width: 460px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
+  align-items: center;
+  margin-left: 8%;
+  margin-right: auto;
+}
+
+@media (min-width: 1200px) {
+  .login-container {
+    margin-left: 10%;
+  }
+}
+
+@media (max-width: 768px) {
+  .login-container {
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 .login-card {
@@ -275,7 +292,7 @@
 
 @media (max-width: 480px) {
   :host {
-    align-items: flex-start;
+    align-items: center;
     padding: 20px 12px;
   }
 
