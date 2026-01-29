@@ -1,0 +1,67 @@
+<div class="user-manual-container">
+  <!-- Header -->
+  <div class="manual-header">
+    <div class="header-content">
+      <h1>
+        <span class="header-icon">📖</span>
+        User Manual
+      </h1>
+      <p class="subtitle">Complete guide to using the School Management System</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="loadManual()" [disabled]="loading">
+        <span *ngIf="!loading">🔄 Refresh</span>
+        <span *ngIf="loading">⏳ Loading...</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading user manual...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="error-container">
+    <div class="alert alert-error">
+      <span class="alert-icon">⚠️</span>
+      <span>{{ error }}</span>
+    </div>
+  </div>
+
+  <!-- Manual Content -->
+  <div *ngIf="!loading && !error" class="manual-wrapper">
+    <div class="manual-content" [innerHTML]="getSafeHtml()"></div>
+  </div>
+
+  <!-- Quick Navigation (Table of Contents) -->
+  <div *ngIf="!loading && !error" class="toc-sidebar">
+    <div class="toc-header">
+      <h3>📑 Table of Contents</h3>
+    </div>
+    <nav class="toc-nav">
+      <a (click)="scrollToSection('introduction')" class="toc-link">Introduction</a>
+      <a (click)="scrollToSection('getting-started')" class="toc-link">Getting Started</a>
+      <a (click)="scrollToSection('user-roles')" class="toc-link">User Roles</a>
+      <a (click)="scrollToSection('dashboard')" class="toc-link">Dashboard</a>
+      <a (click)="scrollToSection('student-management')" class="toc-link">Student Management</a>
+      <a (click)="scrollToSection('teacher-management')" class="toc-link">Teacher Management</a>
+      <a (click)="scrollToSection('class-management')" class="toc-link">Class Management</a>
+      <a (click)="scrollToSection('subject-management')" class="toc-link">Subject Management</a>
+      <a (click)="scrollToSection('exam-management')" class="toc-link">Exam Management</a>
+      <a (click)="scrollToSection('marks-entry')" class="toc-link">Marks Entry</a>
+      <a (click)="scrollToSection('report-cards')" class="toc-link">Report Cards</a>
+      <a (click)="scrollToSection('rankings')" class="toc-link">Rankings</a>
+      <a (click)="scrollToSection('finance-management')" class="toc-link">Finance Management</a>
+      <a (click)="scrollToSection('attendance-management')" class="toc-link">Attendance</a>
+      <a (click)="scrollToSection('record-book')" class="toc-link">Record Book</a>
+      <a (click)="scrollToSection('timetable-management')" class="toc-link">Timetable</a>
+      <a (click)="scrollToSection('settings')" class="toc-link">Settings</a>
+      <a (click)="scrollToSection('parent-portal')" class="toc-link">Parent Portal</a>
+      <a (click)="scrollToSection('teacher-portal')" class="toc-link">Teacher Portal</a>
+      <a (click)="scrollToSection('student-portal')" class="toc-link">Student Portal</a>
+      <a (click)="scrollToSection('troubleshooting')" class="toc-link">Troubleshooting</a>
+    </nav>
+  </div>
+</div>

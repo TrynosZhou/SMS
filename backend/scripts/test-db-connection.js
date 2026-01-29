@@ -1,86 +1,72 @@
-/**
- * Test database connection script
- * This will try to connect and show the exact error
- */
+const { exec } = require('child_process');
+const dns = require('dns');
 
-require('dotenv').config();
-const { Client } = require('pg');
+console.log('🔍 Testing Database Connection...\n');
 
-async function testConnection() {
-  console.log('🔍 Testing Database Connection...\n');
-  
-  let connectionUrl = process.env.DATABASE_URL;
-  if (!connectionUrl) {
-    console.error('❌ DATABASE_URL not set in environment variables');
-    process.exit(1);
+// Test DNS resolution
+const hostname = 'dpg-d5evptur433s7391emu0-a.oregon-postgres.render.com';
+console.log(`1. Testing DNS resolution for: ${hostname}`);
+
+dns.lookup(hostname, (err, address, family) => {
+  if (err) {
+    console.log('   ❌ DNS Resolution FAILED');
+    console.log(`   Error: ${err.message}`);
+    console.log('\n💡 Possible Solutions:');
+    console.log('   - The Render database might be paused (free tier)');
+    console.log('   - Check your Render dashboard and wake up the database');
+    console.log('   - Verify the hostname is correct in your .env file');
+    console.log('   - The database might have been deleted or moved');
+    console.log('\n📋 To fix:');
+    console.log('   1. Go to https://dashboard.render.com');
+    console.log('   2. Find your PostgreSQL database');
+    console.log('   3. Click "Resume" if it\'s paused');
+    console.log('   4. Copy the new Internal Database URL');
+    console.log('   5. Update DATABASE_URL in your .env file');
+  } else {
+    console.log(`   ✅ DNS Resolution SUCCESS`);
+    console.log(`   IP Address: ${address}`);
+    console.log(`   Family: IPv${family}`);
+    console.log('\n2. Testing TCP connection...');
+    
+    // Try to connect using net module
+    const net = require('net');
+    const socket = new net.Socket();
+    
+    socket.setTimeout(5000);
+    
+    socket.on('connect', () => {
+      console.log('   ✅ TCP Connection SUCCESS');
+      console.log('   The database host is reachable');
+      socket.destroy();
+    });
+    
+    socket.on('timeout', () => {
+      console.log('   ⚠️  Connection TIMEOUT');
+      console.log('   The host might be unreachable or firewall is blocking');
+      socket.destroy();
+    });
+    
+    socket.on('error', (err) => {
+      console.log('   ❌ TCP Connection FAILED');
+      console.log(`   Error: ${err.message}`);
+    });
+    
+    socket.connect(5432, hostname);
   }
+});
 
-  // Parse and display connection info (hide password)
-  try {
-    const url = new URL(connectionUrl);
-    console.log('📋 Connection Details:');
-    console.log('   Host:', url.hostname);
-    console.log('   Port:', url.port || '5432');
-    console.log('   Username:', url.username);
-    console.log('   Database:', url.pathname.slice(1));
-    console.log('   SSL: Required (auto-detected for hosted DB)\n');
-  } catch (e) {
-    console.error('❌ Error parsing DATABASE_URL:', e.message);
-    process.exit(1);
+// Test ping (if available)
+console.log('\n3. Testing network connectivity...');
+exec(`ping -n 1 ${hostname}`, (error, stdout, stderr) => {
+  if (error) {
+    console.log('   ⚠️  Ping test unavailable or failed');
+  } else {
+    console.log('   ✅ Network connectivity test completed');
   }
+});
 
-  // Test with SSL enabled (required for Render.com)
-  const client = new Client({
-    connectionString: connectionUrl,
-    ssl: {
-      rejectUnauthorized: false, // Render.com requires SSL but uses self-signed certs
-    },
-    connectionTimeoutMillis: 10000, // 10 second timeout
-  });
-
-  console.log('⏳ Attempting to connect...');
-  
-  try {
-    await client.connect();
-    console.log('✅ Connection successful!\n');
-    
-    // Test a simple query
-    console.log('⏳ Testing query...');
-    const result = await client.query('SELECT NOW(), version()');
-    console.log('✅ Query successful!');
-    console.log('   Server time:', result.rows[0].now);
-    console.log('   PostgreSQL version:', result.rows[0].version.split(',')[0]);
-    
-    await client.end();
-    console.log('\n✅ All tests passed! Database is accessible.');
-    process.exit(0);
-  } catch (error) {
-    console.error('\n❌ Connection failed!');
-    console.error('   Error code:', error.code);
-    console.error('   Error message:', error.message);
-    
-    if (error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
-      console.error('\n💡 Possible causes:');
-      console.error('   1. Database is paused (Render free tier databases pause after inactivity)');
-      console.error('      → Go to Render dashboard and wake up the database');
-      console.error('   2. Using Internal Database URL from local machine');
-      console.error('      → Use External Database URL for local connections');
-      console.error('   3. Firewall/network blocking the connection');
-      console.error('   4. Database host is unreachable');
-    } else if (error.code === '28P01') {
-      console.error('\n💡 Authentication failed - check your username and password');
-      console.error('   → Verify credentials in Render dashboard');
-    } else if (error.code === '3D000') {
-      console.error('\n💡 Database does not exist');
-      console.error('   → Check database name in DATABASE_URL');
-    } else if (error.message?.includes('SSL')) {
-      console.error('\n💡 SSL connection issue');
-      console.error('   → Render.com requires SSL connections');
-    }
-    
-    process.exit(1);
-  }
-}
-
-testConnection();
-
+console.log('\n📝 Current Configuration:');
+console.log('   Hostname:', hostname);
+console.log('   Port: 5432');
+console.log('   Database: school_db_primary_loib');
+console.log('   Username: school_db_primary_loib_user');

@@ -1,10 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToMany, JoinTable, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToMany, JoinTable } from 'typeorm';
 import { Student } from './Student';
 import { Teacher } from './Teacher';
 import { Subject } from './Subject';
 
 @Entity('classes')
-@Index(['name'], { unique: true })
 export class Class {
   @PrimaryGeneratedColumn('uuid')
   id: string;

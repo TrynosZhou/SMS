@@ -47,6 +47,8 @@ export class ReportCardComponent implements OnInit {
   success = '';
   canEditRemarks = false;
   savingRemarks = false;
+  validationError: any = null; // Store detailed validation error data
+  Math = Math; // Make Math available in template
   studentSearchQuery = '';
   
   // Form validation
@@ -355,6 +357,7 @@ export class ReportCardComponent implements OnInit {
     this.success = '';
     this.reportCards = [];
     this.accessDenied = false;
+    this.validationError = null; // Clear previous validation errors
 
     // Ensure all required parameters are strings
     const classIdParam = String(this.selectedClass).trim();
@@ -423,7 +426,25 @@ export class ReportCardComponent implements OnInit {
         } else if (err.status === 404) {
           this.error = err.error?.message || 'Report card endpoint not found. Please check the server configuration.';
         } else if (err.status === 400) {
-          this.error = err.error?.message || 'Invalid request parameters. Please check your selections.';
+          // Handle validation errors with detailed information
+          const errorData = err.error;
+          if (errorData?.subjectsWithoutExams || errorData?.subjectsWithMissingMarks) {
+            // Store detailed validation error for display
+            this.validationError = {
+              message: errorData.message || 'Cannot generate report cards.',
+              subjectsWithoutExams: errorData.subjectsWithoutExams || [],
+              subjectsWithMissingMarks: errorData.subjectsWithMissingMarks || [],
+              totalSubjects: errorData.totalSubjects,
+              subjectsComplete: errorData.subjectsComplete || 0,
+              subjectsWithExams: errorData.subjectsWithExams || 0
+            };
+            
+            // Set a concise error message
+            this.error = errorData.message || 'Cannot generate report cards. Please see details below.';
+          } else {
+            this.error = errorData?.message || 'Invalid request parameters. Please check your selections.';
+            this.validationError = null;
+          }
         } else if (err.status === 403) {
           this.error = err.error?.message || 'Access denied';
           this.accessDenied = true;

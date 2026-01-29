@@ -53,6 +53,7 @@ import { TimetableConfigComponent } from './components/timetable/timetable-confi
 import { StudentReportCardComponent } from './components/student/student-report-card/student-report-card.component';
 import { StudentInvoiceStatementComponent } from './components/student/student-invoice-statement/student-invoice-statement.component';
 import { SafeArrayPipe } from './pipes/safe-array.pipe';
+import { UserManualComponent } from './components/user-manual/user-manual.component';
 
 @NgModule({
   declarations: [
@@ -102,7 +103,8 @@ import { SafeArrayPipe } from './pipes/safe-array.pipe';
     TimetableConfigComponent,
     StudentReportCardComponent,
     StudentInvoiceStatementComponent,
-    SafeArrayPipe
+    SafeArrayPipe,
+    UserManualComponent
   ],
   imports: [
     BrowserModule,

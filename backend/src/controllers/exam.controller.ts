@@ -1728,6 +1728,85 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     });
     console.log('Found marks:', allMarks.length, subjectId ? `(filtered by subject ${subjectId})` : '(all subjects)');
 
+    // VALIDATION: Check if all subjects have exams and all students have marks
+    // Only validate if not filtering by a single subject (for teachers)
+    if (!subjectId && allClassSubjects.length > 0) {
+      console.log('[Validation] Checking if all subjects have complete marks...');
+      
+      const validationErrors: string[] = [];
+      const subjectsWithoutExams: string[] = [];
+      const subjectsWithMissingMarks: { subject: string; missingStudents: string[] }[] = [];
+      
+      // Get all exam subject IDs
+      const examSubjectIds = new Set<string>();
+      exams.forEach(exam => {
+        if (exam.subjects && exam.subjects.length > 0) {
+          exam.subjects.forEach((subject: Subject) => {
+            examSubjectIds.add(subject.id);
+          });
+        }
+      });
+      
+      // Check each subject assigned to the class
+      for (const classSubject of allClassSubjects) {
+        // Check if subject has an exam created
+        if (!examSubjectIds.has(classSubject.id)) {
+          subjectsWithoutExams.push(classSubject.name);
+          continue;
+        }
+        
+        // Check if all students have marks for this subject
+        const subjectMarks = allMarks.filter(m => m.subjectId === classSubject.id);
+        const studentsWithMarks = new Set(subjectMarks.map(m => m.studentId));
+        const missingStudents: string[] = [];
+        
+        for (const student of students) {
+          if (!studentsWithMarks.has(student.id)) {
+            missingStudents.push(`${student.firstName} ${student.lastName} (${student.studentNumber})`);
+          }
+        }
+        
+        if (missingStudents.length > 0) {
+          subjectsWithMissingMarks.push({
+            subject: classSubject.name,
+            missingStudents: missingStudents
+          });
+        }
+      }
+      
+      // Build error message if validation fails
+      if (subjectsWithoutExams.length > 0 || subjectsWithMissingMarks.length > 0) {
+        let errorMessage = 'Cannot generate report cards. ';
+        const errorDetails: string[] = [];
+        
+        if (subjectsWithoutExams.length > 0) {
+          errorDetails.push(`The following subjects do not have exams created: ${subjectsWithoutExams.join(', ')}`);
+        }
+        
+        if (subjectsWithMissingMarks.length > 0) {
+          const missingDetails = subjectsWithMissingMarks.map(item => {
+            return `${item.subject} - Missing marks for: ${item.missingStudents.slice(0, 3).join(', ')}${item.missingStudents.length > 3 ? ` and ${item.missingStudents.length - 3} more` : ''}`;
+          });
+          errorDetails.push(`The following subjects have missing marks: ${missingDetails.join('; ')}`);
+        }
+        
+        errorMessage += errorDetails.join('. ');
+        errorMessage += '. Please ensure all subjects have exams created and all students have marks entered before generating report cards.';
+        
+        console.log('[Validation] Validation failed:', errorMessage);
+        return res.status(400).json({
+          message: errorMessage,
+          subjectsWithoutExams,
+          subjectsWithMissingMarks,
+          totalSubjects: allClassSubjects.length,
+          subjectsWithExams: allClassSubjects.length - subjectsWithoutExams.length,
+          subjectsComplete: allClassSubjects.length - subjectsWithoutExams.length - subjectsWithMissingMarks.length
+        });
+      }
+      
+      console.log('[Validation] All subjects have exams and all students have marks. Proceeding with report card generation.');
+    }
+
     // Calculate class averages for each subject
     // Class Average = Total marks scored by all students in a subject / number of students who wrote the exam
     const classAverages: { [key: string]: number } = {};

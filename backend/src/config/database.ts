@@ -56,19 +56,53 @@ entities.forEach((entity, index) => {
 console.log('[DB Config] Creating DataSource instance...');
 let AppDataSource: DataSource;
 try {
-  const entityPaths = process.env.NODE_ENV === 'production'
-    ? ['dist/entities/**/*.js']
-    : ['src/entities/**/*.ts'];
-  const migrationsPath = process.env.NODE_ENV === 'production' 
-    ? ['dist/migrations/**/*.js'] 
-    : ['src/migrations/**/*.ts'];
-  const subscribersPath = process.env.NODE_ENV === 'production'
-    ? ['dist/subscribers/**/*.js']
-    : ['src/subscribers/**/*.ts'];
+  // Detect if running from compiled dist folder
+  // Check multiple ways to detect production/compiled mode
+  const isRunningFromDist = (() => {
+    try {
+      // Method 1: Check NODE_ENV
+      if (process.env.NODE_ENV === 'production') return true;
+      
+      // Method 2: Check if __dirname contains 'dist' (CommonJS)
+      if (typeof __dirname !== 'undefined' && __dirname.includes('dist')) return true;
+      
+      // Method 3: Check require.main filename (where the script was executed from)
+      if (require.main && require.main.filename && require.main.filename.includes('dist')) return true;
+      
+      // Method 4: Check current working directory
+      if (process.cwd().includes('dist')) return true;
+      
+      // Method 5: Check if we can find dist folder (fallback)
+      const fs = require('fs');
+      const path = require('path');
+      const distPath = path.join(process.cwd(), 'dist');
+      if (fs.existsSync(distPath) && fs.existsSync(path.join(distPath, 'server.js'))) {
+        // If dist/server.js exists and we're running server.js, we're likely in production
+        if (require.main && require.main.filename && require.main.filename.endsWith('dist/server.js')) {
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (e) {
+      // If any check fails, default to development mode
+      return false;
+    }
+  })();
   
-  console.log('[DB Config] Using entity paths:', entityPaths);
-  console.log('[DB Config] Migrations path:', migrationsPath);
-  console.log('[DB Config] Subscribers path:', subscribersPath);
+  // Use entity classes directly (more reliable than file paths)
+  // When running from dist: skip migrations/subscribers path loading at runtime to avoid
+  // Node loading ESM (causing "Unexpected token 'export'"). Run migrations via CLI if needed.
+  const path = require('path');
+  const migrationsPath = isRunningFromDist ? [] : ['src/migrations/**/*.ts'];
+  const subscribersPath = isRunningFromDist ? [] : ['src/subscribers/**/*.ts'];
+  
+  console.log('[DB Config] Production mode detected:', isRunningFromDist);
+  console.log('[DB Config] NODE_ENV:', process.env.NODE_ENV);
+  
+  console.log('[DB Config] Using entity classes directly (', entities.length, 'entities)');
+  console.log('[DB Config] Migrations at runtime:', isRunningFromDist ? 'disabled (run via CLI)' : migrationsPath);
+  console.log('[DB Config] Subscribers at runtime:', isRunningFromDist ? 'disabled' : subscribersPath);
   
   // Check if DATABASE_URL is provided (common in cloud platforms)
   let dbHost: string;
@@ -257,7 +291,7 @@ try {
       url: connectionUrl,
       synchronize: shouldSync,
       logging: false,
-      entities: entityPaths,
+      entities: entities, // Use entity classes directly
       migrations: migrationsPath,
       subscribers: subscribersPath,
       ssl: sslConfig,
@@ -278,7 +312,7 @@ try {
       url: connectionUrl,
       synchronize: shouldSync,
       logging: false,
-      entities: entityPaths,
+      entities: entities, // Use entity classes directly
       migrations: migrationsPath,
       subscribers: subscribersPath,
       ssl: sslConfig,
@@ -296,7 +330,7 @@ try {
       database: dbName,
       synchronize: shouldSync,
       logging: false,
-      entities: entityPaths,
+      entities: entities, // Use entity classes directly
       migrations: migrationsPath,
       subscribers: subscribersPath,
       ssl: sslConfig,

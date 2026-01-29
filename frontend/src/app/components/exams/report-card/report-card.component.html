@@ -16,9 +16,100 @@
       <span class="alert-icon">✓</span>
       <span>{{ success }}</span>
     </div>
-    <div class="alert alert-error" *ngIf="error" [@fadeInOut] [class.access-denied]="accessDenied">
+    <div class="alert alert-error" *ngIf="error && !validationError" [@fadeInOut] [class.access-denied]="accessDenied">
       <span class="alert-icon">✕</span>
       <span>{{ error }}</span>
+    </div>
+    
+    <!-- Validation Error Card - Missing Marks -->
+    <div *ngIf="validationError" class="validation-error-card" [@fadeInOut]>
+      <div class="validation-error-header">
+        <div class="validation-error-icon">⚠️</div>
+        <div class="validation-error-title">
+          <h3>Cannot Generate Report Cards</h3>
+          <p class="validation-error-subtitle">{{ validationError.message }}</p>
+        </div>
+      </div>
+      
+      <div class="validation-error-content">
+        <!-- Subjects Without Exams -->
+        <div *ngIf="validationError.subjectsWithoutExams.length > 0" class="validation-section">
+          <div class="validation-section-header">
+            <span class="validation-badge error-badge">❌</span>
+            <h4>Subjects Without Exams</h4>
+          </div>
+          <p class="validation-section-description">
+            The following subjects are assigned to this class but do not have exams created for the selected exam type and term:
+          </p>
+          <ul class="validation-list">
+            <li *ngFor="let subject of validationError.subjectsWithoutExams">
+              <strong>{{ subject }}</strong>
+            </li>
+          </ul>
+          <div class="validation-action">
+            <span class="action-text">💡 Action Required:</span> Create exams for these subjects before generating report cards.
+          </div>
+        </div>
+        
+        <!-- Subjects With Missing Marks -->
+        <div *ngIf="validationError.subjectsWithMissingMarks.length > 0" class="validation-section">
+          <div class="validation-section-header">
+            <span class="validation-badge warning-badge">⚠️</span>
+            <h4>Subjects With Missing Marks</h4>
+          </div>
+          <p class="validation-section-description">
+            The following subjects have exams created but are missing marks for some students:
+          </p>
+          <div *ngFor="let item of validationError.subjectsWithMissingMarks" class="subject-missing-marks">
+            <div class="subject-name">
+              <strong>{{ item.subject }}</strong>
+              <span class="missing-count">({{ item.missingStudents.length }} student{{ item.missingStudents.length !== 1 ? 's' : '' }} missing marks)</span>
+            </div>
+            <ul class="missing-students-list">
+              <li *ngFor="let student of item.missingStudents.slice(0, 10)">
+                {{ student }}
+              </li>
+              <li *ngIf="item.missingStudents.length > 10" class="more-students">
+                ... and {{ item.missingStudents.length - 10 }} more student{{ item.missingStudents.length - 10 !== 1 ? 's' : '' }}
+              </li>
+            </ul>
+          </div>
+          <div class="validation-action">
+            <span class="action-text">💡 Action Required:</span> Enter marks for all students in these subjects before generating report cards.
+          </div>
+        </div>
+        
+        <!-- Summary Statistics -->
+        <div *ngIf="validationError.totalSubjects !== undefined" class="validation-summary">
+          <div class="summary-header">
+            <span class="summary-icon">📊</span>
+            <h4>Progress Summary</h4>
+          </div>
+          <div class="summary-stats">
+            <div class="stat-item">
+              <span class="stat-label">Total Subjects:</span>
+              <span class="stat-value">{{ validationError.totalSubjects }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Subjects with Exams:</span>
+              <span class="stat-value success">{{ validationError.subjectsWithExams }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Subjects Complete:</span>
+              <span class="stat-value success">{{ validationError.subjectsComplete }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Remaining:</span>
+              <span class="stat-value error">{{ validationError.totalSubjects - validationError.subjectsComplete }}</span>
+            </div>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" [style.width.%]="(validationError.subjectsComplete / validationError.totalSubjects) * 100">
+              <span class="progress-text">{{ Math.round((validationError.subjectsComplete / validationError.totalSubjects) * 100) }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     
     <!-- Parent Access Denied Message -->

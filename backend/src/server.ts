@@ -8,12 +8,14 @@ import routes from './routes';
 dotenv.config(); // Load environment variables
 
 // =================== ENV VARIABLES CHECK ===================
-const requiredEnvVars = ['JWT_SECRET', 'DATABASE_URL'];
-const missingEnvVars = requiredEnvVars.filter((v) => !process.env[v]);
-
-if (missingEnvVars.length > 0) {
-  console.error('❌ Missing required environment variables:');
-  missingEnvVars.forEach((v) => console.error(`   - ${v}`));
+if (!process.env.JWT_SECRET) {
+  console.error('❌ Missing required environment variable: JWT_SECRET');
+  process.exit(1);
+}
+const hasDatabaseUrl = !!process.env.DATABASE_URL;
+const hasIndividualDb = !!(process.env.DB_HOST && process.env.DB_USERNAME && process.env.DB_NAME);
+if (!hasDatabaseUrl && !hasIndividualDb) {
+  console.error('❌ Missing database configuration. Set either DATABASE_URL or all of DB_HOST, DB_USERNAME, DB_NAME (and optionally DB_PASSWORD, DB_PORT).');
   process.exit(1);
 }
 
