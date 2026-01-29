@@ -72,7 +72,7 @@ const routes: Routes = [
   { path: 'teachers/new', component: TeacherFormComponent, canActivate: [AuthGuard] },
   { path: 'teachers/:id/edit', component: TeacherFormComponent, canActivate: [AuthGuard] },
   { path: 'exams', component: ExamListComponent, canActivate: [AuthGuard] },
-  { path: 'exams/new', component: ExamFormComponent, canActivate: [AuthGuard] },
+  // { path: 'exams/new', component: ExamFormComponent, canActivate: [AuthGuard] }, // Disabled - exam creation removed
   { path: 'exams/:id/marks', component: MarksEntryComponent, canActivate: [AuthGuard] },
   { path: 'report-cards', component: ReportCardComponent, canActivate: [AuthGuard] },
   { path: 'mark-sheet', component: MarkSheetComponent, canActivate: [AuthGuard] },

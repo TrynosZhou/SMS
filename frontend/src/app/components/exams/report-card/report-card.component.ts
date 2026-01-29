@@ -72,6 +72,15 @@ export class ReportCardComponent implements OnInit {
   // Teacher data
   teacher: any = null;
   isAdmin = false;
+  
+  // Auto-generation flag to prevent multiple simultaneous generations
+  private autoGenerationInProgress = false;
+  private autoGenerationTimeout: any = null;
+  
+  // Auto-save state for remarks
+  savedRemarks: Set<string> = new Set(); // Track saved remarks by key: "studentId_classTeacher" or "studentId_headmaster"
+  autoSaveRemarksTimeout: any = null;
+  autoSavingRemarks = false;
 
   constructor(
     private examService: ExamService,
@@ -174,6 +183,8 @@ export class ReportCardComponent implements OnInit {
           this.selectedTerm = this.availableTerms[0];
         }
         this.loadingTerms = false;
+        // Check if we can auto-generate after term is loaded
+        this.checkAndAutoGenerate();
       },
       error: (err: any) => {
         // Use default terms if active term fails to load
@@ -181,6 +192,8 @@ export class ReportCardComponent implements OnInit {
           this.selectedTerm = this.availableTerms[0];
         }
         this.loadingTerms = false;
+        // Check if we can auto-generate after term is loaded
+        this.checkAndAutoGenerate();
         // Only log error if it's not a connection error (backend might not be running)
         if (err.status !== 0) {
           console.error('Error loading active term:', err);
@@ -278,6 +291,8 @@ export class ReportCardComponent implements OnInit {
           this.parentStudentClassName = studentClass.name || '';
           // Load available exam types and let parent select
           this.loadClasses();
+          // Check if we can auto-generate after class is set (for parents)
+          setTimeout(() => this.checkAndAutoGenerate(), 500);
         } else {
           this.error = 'Student class information not available';
           this.loading = false;
@@ -317,6 +332,8 @@ export class ReportCardComponent implements OnInit {
           this.classes = allClasses;
           this.loading = false;
           console.log(`Loaded ${this.classes.length} classes for report cards`);
+          // Check if we can auto-generate after classes are loaded
+          setTimeout(() => this.checkAndAutoGenerate(), 300);
         }
       },
       error: (err: any) => {
@@ -353,6 +370,7 @@ export class ReportCardComponent implements OnInit {
     }
 
     this.loading = true;
+    this.autoGenerationInProgress = true; // Set flag to prevent duplicate calls
     this.error = '';
     this.success = '';
     this.reportCards = [];
@@ -398,6 +416,11 @@ export class ReportCardComponent implements OnInit {
               headmasterRemarks: null
             };
           }
+          // Mark remarks as saved if they have an ID (loaded from database)
+          if (card.remarks.id) {
+            this.savedRemarks.add(this.getRemarksKey(card.student.id, 'classTeacher'));
+            this.savedRemarks.add(this.getRemarksKey(card.student.id, 'headmaster'));
+          }
           // Ensure subjects is always an array
           if (!Array.isArray(card.subjects)) {
             card.subjects = [];
@@ -413,6 +436,7 @@ export class ReportCardComponent implements OnInit {
         this.classInfo = { name: data.class, examType: data.examType, term: data.term || this.selectedTerm };
         this.success = `Generated ${this.reportCards.length} report card(s) for ${data.class} - ${this.selectedTerm}`;
         this.loading = false;
+        this.autoGenerationInProgress = false; // Reset flag after successful generation
       },
       error: (err: any) => {
         console.error('Error generating report cards:', err);
@@ -452,6 +476,7 @@ export class ReportCardComponent implements OnInit {
           this.error = err.error?.message || 'Failed to generate report cards';
         }
         this.loading = false;
+        this.autoGenerationInProgress = false; // Reset flag after error
       }
     });
   }
@@ -503,10 +528,100 @@ export class ReportCardComponent implements OnInit {
     });
   }
 
+  // Get key for tracking saved remarks
+  getRemarksKey(studentId: string, remarkType: 'classTeacher' | 'headmaster'): string {
+    return `${studentId}_${remarkType}`;
+  }
+  
+  // Check if remarks are saved
+  isRemarksSaved(studentId: string, remarkType: 'classTeacher' | 'headmaster'): boolean {
+    return this.savedRemarks.has(this.getRemarksKey(studentId, remarkType));
+  }
+  
+  // Auto-save remarks when changed
+  onRemarksChange(reportCard: any, remarkType: 'classTeacher' | 'headmaster') {
+    if (!reportCard || !reportCard.student) return;
+    
+    const key = this.getRemarksKey(reportCard.student.id, remarkType);
+    // Mark as unsaved when user changes the remarks
+    this.savedRemarks.delete(key);
+    
+    // Schedule auto-save
+    this.scheduleAutoSaveRemarks(reportCard);
+  }
+  
+  // Schedule auto-save with debounce
+  scheduleAutoSaveRemarks(reportCard: any) {
+    // Clear any pending timeout
+    if (this.autoSaveRemarksTimeout) {
+      clearTimeout(this.autoSaveRemarksTimeout);
+    }
+    
+    // Schedule auto-save after 1.5 seconds of inactivity
+    this.autoSaveRemarksTimeout = setTimeout(() => {
+      this.autoSaveRemarks(reportCard);
+    }, 1500);
+  }
+  
+  // Auto-save remarks
+  autoSaveRemarks(reportCard: any) {
+    if (!reportCard || !reportCard.student || !this.selectedClass || !this.selectedExamType) {
+      return;
+    }
+    
+    if (this.autoSavingRemarks) {
+      // If already saving, reschedule
+      this.scheduleAutoSaveRemarks(reportCard);
+      return;
+    }
+    
+    this.autoSavingRemarks = true;
+    const classTeacherRemarks = reportCard.remarks?.classTeacherRemarks || '';
+    const headmasterRemarks = reportCard.remarks?.headmasterRemarks || '';
+    
+    this.examService.saveReportCardRemarks(
+      reportCard.student.id,
+      this.selectedClass,
+      this.selectedExamType,
+      classTeacherRemarks,
+      headmasterRemarks
+    ).subscribe({
+      next: (response: any) => {
+        this.autoSavingRemarks = false;
+        // Mark both remarks as saved
+        this.savedRemarks.add(this.getRemarksKey(reportCard.student.id, 'classTeacher'));
+        this.savedRemarks.add(this.getRemarksKey(reportCard.student.id, 'headmaster'));
+        
+        // Update the report card with saved remarks
+        if (!reportCard.remarks) {
+          reportCard.remarks = {};
+        }
+        reportCard.remarks.id = response.remarks.id;
+        reportCard.remarks.classTeacherRemarks = response.remarks.classTeacherRemarks;
+        reportCard.remarks.headmasterRemarks = response.remarks.headmasterRemarks;
+        
+        console.log(`✓ Auto-saved remarks for ${reportCard.student.name}`);
+      },
+      error: (err: any) => {
+        this.autoSavingRemarks = false;
+        // Remove from saved records if save failed
+        this.savedRemarks.delete(this.getRemarksKey(reportCard.student.id, 'classTeacher'));
+        this.savedRemarks.delete(this.getRemarksKey(reportCard.student.id, 'headmaster'));
+        console.error('Auto-save remarks failed:', err);
+      }
+    });
+  }
+  
+  // Manual save remarks (kept for explicit save button)
   saveRemarks(reportCard: any) {
     if (!reportCard || !reportCard.student || !this.selectedClass || !this.selectedExamType) {
       this.error = 'Invalid report card data';
       return;
+    }
+
+    // Clear any pending auto-save
+    if (this.autoSaveRemarksTimeout) {
+      clearTimeout(this.autoSaveRemarksTimeout);
     }
 
     this.savingRemarks = true;
@@ -525,6 +640,10 @@ export class ReportCardComponent implements OnInit {
     ).subscribe({
       next: (response: any) => {
         this.success = 'Remarks saved successfully';
+        // Mark both remarks as saved
+        this.savedRemarks.add(this.getRemarksKey(reportCard.student.id, 'classTeacher'));
+        this.savedRemarks.add(this.getRemarksKey(reportCard.student.id, 'headmaster'));
+        
         // Update the report card with saved remarks
         if (!reportCard.remarks) {
           reportCard.remarks = {};
@@ -540,6 +659,15 @@ export class ReportCardComponent implements OnInit {
         this.savingRemarks = false;
       }
     });
+  }
+  
+  // Handle blur event - save immediately
+  onRemarksBlur(reportCard: any) {
+    if (this.autoSaveRemarksTimeout) {
+      clearTimeout(this.autoSaveRemarksTimeout);
+    }
+    // Save immediately on blur
+    this.autoSaveRemarks(reportCard);
   }
 
   // Search and filtering
@@ -579,9 +707,50 @@ export class ReportCardComponent implements OnInit {
   onSelectionChange() {
     this.fieldErrors = {};
     this.touchedFields.clear();
+    // Check if we can auto-generate report cards
+    this.checkAndAutoGenerate();
+  }
+  
+  checkAndAutoGenerate() {
+    // Clear any pending timeout
+    if (this.autoGenerationTimeout) {
+      clearTimeout(this.autoGenerationTimeout);
+      this.autoGenerationTimeout = null;
+    }
+    
+    // Don't auto-generate if:
+    // - Already generating
+    // - Auto-generation is in progress
+    // - Still loading terms
+    // - Selection is not valid
+    if (this.loading || this.autoGenerationInProgress || this.loadingTerms || !this.isSelectionValid()) {
+      return;
+    }
+    
+    // Small delay to prevent multiple triggers within the same change event cycle
+    this.autoGenerationTimeout = setTimeout(() => {
+      if (this.isSelectionValid() && !this.loading && !this.autoGenerationInProgress && !this.loadingTerms) {
+        console.log('All criteria selected - auto-generating report cards...');
+        this.autoGenerationInProgress = true;
+        this.generateReportCards();
+        // Reset flag after generation completes (handled in generateReportCards)
+      }
+    }, 300);
   }
 
   resetSelection() {
+    // Clear any pending auto-generation
+    if (this.autoGenerationTimeout) {
+      clearTimeout(this.autoGenerationTimeout);
+      this.autoGenerationTimeout = null;
+    }
+    // Clear any pending auto-save
+    if (this.autoSaveRemarksTimeout) {
+      clearTimeout(this.autoSaveRemarksTimeout);
+    }
+    this.autoGenerationInProgress = false;
+    this.savedRemarks.clear();
+    
     if (!this.isParent) {
       this.selectedClass = '';
     }

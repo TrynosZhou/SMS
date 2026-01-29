@@ -203,27 +203,105 @@ export class SettingsComponent implements OnInit {
     this.loading = true;
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
-        this.settings = { ...this.settings, ...data };
+        console.log('📥 Settings loaded from backend:', data);
+        
+        // Deep merge to ensure all saved values are restored
+        // First, preserve the structure, then merge the loaded data
+        if (data) {
+          // Merge top-level properties
+          Object.keys(data).forEach(key => {
+            if (data[key] !== null && data[key] !== undefined) {
+              // For nested objects, do a deep merge
+              if (typeof data[key] === 'object' && !Array.isArray(data[key]) && data[key] !== null) {
+                this.settings[key] = { ...this.settings[key], ...data[key] };
+              } else {
+                // For primitive values and arrays, replace directly
+                this.settings[key] = data[key];
+              }
+            }
+          });
+        }
+        
+        console.log('✅ Settings after merge:', this.settings);
         
         // For demo users, always set school name to "Demo School"
         if (this.isDemoUser()) {
           this.settings.schoolName = 'Demo School';
         }
         
-        // Initialize term date inputs
+        // Initialize term date inputs from saved data
         if (data.termStartDate) {
-          const startDate = new Date(data.termStartDate);
-          this.termStartDateInput = startDate.toISOString().split('T')[0];
+          try {
+            const startDate = new Date(data.termStartDate);
+            if (!isNaN(startDate.getTime())) {
+              this.termStartDateInput = startDate.toISOString().split('T')[0];
+            }
+          } catch (e) {
+            console.warn('Invalid termStartDate:', data.termStartDate);
+          }
         }
         if (data.termEndDate) {
-          const endDate = new Date(data.termEndDate);
-          this.termEndDateInput = endDate.toISOString().split('T')[0];
+          try {
+            const endDate = new Date(data.termEndDate);
+            if (!isNaN(endDate.getTime())) {
+              this.termEndDateInput = endDate.toISOString().split('T')[0];
+            }
+          } catch (e) {
+            console.warn('Invalid termEndDate:', data.termEndDate);
+          }
         }
         
         // Initialize activeTerm if not present
         if (!this.settings.activeTerm && this.settings.currentTerm) {
           this.settings.activeTerm = this.settings.currentTerm;
         }
+        
+        // Ensure all saved values are properly restored
+        // Restore school phone (textarea format)
+        if (data.schoolPhone !== undefined) {
+          this.settings.schoolPhone = data.schoolPhone;
+        }
+        
+        // Restore school logo if present
+        if (data.schoolLogo !== undefined) {
+          this.settings.schoolLogo = data.schoolLogo;
+        }
+        if (data.schoolLogo2 !== undefined) {
+          this.settings.schoolLogo2 = data.schoolLogo2;
+        }
+        
+        // Restore school motto
+        if (data.schoolMotto !== undefined) {
+          this.settings.schoolMotto = data.schoolMotto;
+        }
+        
+        // Restore all other text fields
+        if (data.schoolAddress !== undefined) {
+          this.settings.schoolAddress = data.schoolAddress;
+        }
+        if (data.schoolEmail !== undefined) {
+          this.settings.schoolEmail = data.schoolEmail;
+        }
+        if (data.headmasterName !== undefined) {
+          this.settings.headmasterName = data.headmasterName;
+        }
+        if (data.schoolCode !== undefined) {
+          this.settings.schoolCode = data.schoolCode;
+        }
+        if (data.academicYear !== undefined) {
+          this.settings.academicYear = data.academicYear;
+        }
+        if (data.currentTerm !== undefined) {
+          this.settings.currentTerm = data.currentTerm;
+        }
+        if (data.activeTerm !== undefined) {
+          this.settings.activeTerm = data.activeTerm;
+        }
+        if (data.currencySymbol !== undefined) {
+          this.settings.currencySymbol = data.currencySymbol;
+        }
+        
+        console.log('✅ All settings values restored');
         
         if (!this.settings.feesSettings) {
           this.settings.feesSettings = {
@@ -410,12 +488,18 @@ export class SettingsComponent implements OnInit {
             'Grade 7': 'Completed'
           };
         }
+        
+        // Force change detection to ensure all restored values are displayed
+        this.cdr.detectChanges();
         this.loading = false;
+        
+        console.log('✅ Settings loading complete. All saved values restored.');
       },
       error: (err: any) => {
-        console.error('Error loading settings:', err);
-        this.error = 'Failed to load settings';
+        console.error('❌ Error loading settings:', err);
+        this.error = 'Failed to load settings. Please refresh the page.';
         this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -692,10 +776,14 @@ export class SettingsComponent implements OnInit {
 
   validateSchoolPhone(): void {
     if (this.settings.schoolPhone && this.settings.schoolPhone.trim()) {
-      const result = validatePhoneNumber(this.settings.schoolPhone, false);
-      this.schoolPhoneError = result.isValid ? '' : (result.error || '');
-      if (result.isValid && result.normalized) {
-        this.settings.schoolPhone = result.normalized;
+      // For textarea format, allow free-form text with phone numbers and labels
+      // Allow: letters, numbers, spaces, dashes, colons, commas, plus signs, parentheses
+      const allowedPattern = /^[a-zA-Z0-9\s\-:,\+()]+$/;
+      
+      if (!allowedPattern.test(this.settings.schoolPhone)) {
+        this.schoolPhoneError = 'Phone information can only contain letters, numbers, spaces, and common punctuation (dashes, colons, commas, plus signs, parentheses)';
+      } else {
+        this.schoolPhoneError = '';
       }
     } else {
       this.schoolPhoneError = '';
@@ -731,8 +819,17 @@ export class SettingsComponent implements OnInit {
   }
 
   onSubmit() {
+    console.log('onSubmit() called, loading state:', this.loading);
+    
+    // Prevent multiple simultaneous submissions
+    if (this.loading) {
+      console.log('⚠️ Already saving - ignoring duplicate submission');
+      return;
+    }
+    
     // Prevent demo users from saving settings
     if (this.isDemoUser()) {
+      console.log('Demo user detected - blocking save');
       this.error = 'Demo accounts cannot modify system settings. This is a demo environment.';
       this.loading = false;
       setTimeout(() => this.error = '', 5000);
@@ -740,20 +837,28 @@ export class SettingsComponent implements OnInit {
       return;
     }
 
+    console.log('Starting settings save...');
     this.loading = true;
     this.error = '';
     this.success = '';
+    this.cdr.detectChanges(); // Ensure UI reflects loading state
+    console.log('Loading state set to true');
 
     const normalizedSchoolName = (this.settings.schoolName || '').toString().trim();
+    console.log('School name validation:', normalizedSchoolName);
 
     if (!normalizedSchoolName) {
+      console.error('❌ Validation failed: School name is required');
       this.error = 'School name is required.';
       this.loading = false;
+      this.cdr.detectChanges();
       setTimeout(() => this.error = '', 5000);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     this.settings.schoolName = normalizedSchoolName;
+    console.log('✅ School name validated');
 
     // Convert date inputs to Date objects for backend
     if (this.termStartDateInput) {
@@ -778,8 +883,10 @@ export class SettingsComponent implements OnInit {
       this.settings.feesSettings.transportCost = Number(this.settings.feesSettings.transportCost) || 0;
       this.settings.feesSettings.diningHallCost = Number(this.settings.feesSettings.diningHallCost) || 0;
     }
+    console.log('✅ Fees settings processed');
 
     if (this.settings.gradeThresholds) {
+      console.log('Validating grade thresholds...');
       // Validate grade thresholds are in descending order
       const thresholds = {
         excellent: Number(this.settings.gradeThresholds.excellent),
@@ -796,9 +903,12 @@ export class SettingsComponent implements OnInit {
           thresholds.good < thresholds.satisfactory ||
           thresholds.satisfactory < thresholds.needsImprovement ||
           thresholds.needsImprovement < thresholds.basic) {
+        console.error('❌ Validation failed: Grade thresholds not in descending order');
         this.error = 'Grade thresholds must be in descending order (Excellent ≥ Very Good ≥ Good ≥ Satisfactory ≥ Needs Improvement ≥ Basic)';
         this.loading = false;
+        this.cdr.detectChanges();
         setTimeout(() => this.error = '', 5000);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
 
@@ -809,11 +919,15 @@ export class SettingsComponent implements OnInit {
           thresholds.satisfactory > 100 || thresholds.satisfactory < 0 ||
           thresholds.needsImprovement > 100 || thresholds.needsImprovement < 0 ||
           thresholds.basic > 100 || thresholds.basic < 0) {
+        console.error('❌ Validation failed: Grade thresholds out of range');
         this.error = 'All grade thresholds must be between 0 and 100';
         this.loading = false;
+        this.cdr.detectChanges();
         setTimeout(() => this.error = '', 5000);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
+      console.log('✅ Grade thresholds validated');
 
       this.settings.gradeThresholds.excellent = thresholds.excellent;
       this.settings.gradeThresholds.veryGood = thresholds.veryGood;
@@ -825,10 +939,14 @@ export class SettingsComponent implements OnInit {
 
     // Validate and trim grade labels
     if (this.settings.gradeLabels) {
+      console.log('Validating grade labels...');
       if (!this.settings.gradeLabels.excellent || this.settings.gradeLabels.excellent.trim() === '') {
+        console.error('❌ Validation failed: Excellent grade label required');
         this.error = 'Grade label for Excellent is required';
         this.loading = false;
+        this.cdr.detectChanges();
         setTimeout(() => this.error = '', 5000);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
       if (!this.settings.gradeLabels.veryGood || this.settings.gradeLabels.veryGood.trim() === '') {
@@ -876,21 +994,35 @@ export class SettingsComponent implements OnInit {
       this.settings.gradeLabels.needsImprovement = this.settings.gradeLabels.needsImprovement.trim();
       this.settings.gradeLabels.basic = this.settings.gradeLabels.basic.trim();
       this.settings.gradeLabels.fail = this.settings.gradeLabels.fail.trim();
+      console.log('✅ Grade labels validated');
     }
 
-    // Validate school phone if provided
+    // Validate school phone if provided (textarea format - allows multiple phones with labels)
     if (this.settings.schoolPhone && this.settings.schoolPhone.trim()) {
-      const phoneResult = validatePhoneNumber(this.settings.schoolPhone, false);
-      if (!phoneResult.isValid) {
-        this.schoolPhoneError = phoneResult.error || 'Invalid phone number';
-        this.error = phoneResult.error || 'Please enter a valid school phone number';
+      console.log('Validating school phone (textarea format):', this.settings.schoolPhone);
+      
+      // For textarea format, we allow free-form text with phone numbers
+      // Just check that it doesn't contain obviously invalid characters
+      // Allow: letters, numbers, spaces, dashes, colons, commas, plus signs, parentheses
+      const allowedPattern = /^[a-zA-Z0-9\s\-:,\+()]+$/;
+      
+      if (!allowedPattern.test(this.settings.schoolPhone)) {
+        // Contains invalid characters
+        console.error('❌ Validation failed: Phone text contains invalid characters');
+        this.schoolPhoneError = 'Phone information can only contain letters, numbers, spaces, and common punctuation (dashes, colons, commas, plus signs, parentheses)';
+        this.error = 'Please enter valid phone information. Only letters, numbers, and common punctuation are allowed.';
         this.loading = false;
+        this.cdr.detectChanges();
         setTimeout(() => this.error = '', 5000);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
-      if (phoneResult.normalized) {
-        this.settings.schoolPhone = phoneResult.normalized;
-      }
+      
+      // Trim the phone text
+      this.settings.schoolPhone = this.settings.schoolPhone.trim();
+      console.log('✅ Phone text validated (free-form format allowed)');
+    } else {
+      console.log('✅ No phone number provided (optional field)');
     }
 
     // Ensure currencySymbol is set and not empty
@@ -898,40 +1030,98 @@ export class SettingsComponent implements OnInit {
       this.settings.currencySymbol = 'KES';
     }
 
+    console.log('✅ All validations passed, preparing payload...');
     const payload = { ...this.settings, schoolName: normalizedSchoolName };
 
-    this.settingsService.updateSettings(payload).subscribe({
+    console.log('Submitting settings...', payload);
+    console.log('Settings service:', this.settingsService);
+    
+    const subscription = this.settingsService.updateSettings(payload).subscribe({
       next: (response: any) => {
-        this.success = 'Settings saved successfully!';
+        console.log('✅ Settings saved successfully! Response:', response);
+        console.log('Response type:', typeof response);
+        console.log('Response keys:', response ? Object.keys(response) : 'null');
+        
+        // Clear any previous errors first
+        this.error = '';
+        
+        // Set success message - use backend message if available, otherwise use default
+        const successMsg = response?.message || '✅ Settings saved successfully! Your changes have been applied.';
+        this.success = successMsg;
         this.loading = false;
-        this.error = ''; // Clear any previous errors
+        
+        // Force change detection to ensure UI updates immediately
+        this.cdr.detectChanges();
+        
+        // Double-check success is set
+        console.log('Success message after setting:', this.success);
+        console.log('Success message length:', this.success?.length);
+        console.log('Component success property:', this.success);
+        
+        // Verify the HTML will show it
+        setTimeout(() => {
+          const successElement = document.querySelector('.alert-success');
+          console.log('Success element in DOM:', successElement);
+          console.log('Success element text:', successElement?.textContent);
+        }, 200);
         
         // Scroll to top to show success message
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
         
-        // Clear success message after 5 seconds (increased from 3)
-        setTimeout(() => this.success = '', 5000);
+        // Reload settings to reflect changes (but don't clear success message)
+        setTimeout(() => {
+          this.loadSettings();
+        }, 1000); // Wait 1 second before reloading to ensure success message is visible
+        
+        // Clear success message after 8 seconds (increased visibility time)
+        setTimeout(() => {
+          console.log('Clearing success message after timeout');
+          this.success = '';
+          this.cdr.detectChanges();
+        }, 8000);
       },
       error: (err: any) => {
-        console.error('Error saving settings:', err);
+        console.error('❌ Error saving settings:', err);
+        console.error('Error status:', err.status);
+        console.error('Error message:', err.message);
+        console.error('Error body:', err.error);
+        console.error('Full error object:', JSON.stringify(err, null, 2));
         
         // Handle specific error cases
-        if (err.status === 413 || err.error?.status === 413) {
-          this.error = 'The data being saved is too large. Please reduce the size of the school logo or other large data and try again.';
+        let errorMessage = 'Failed to save settings. Please try again.';
+        
+        if (err.status === 0) {
+          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+        } else if (err.status === 413 || err.error?.status === 413) {
+          errorMessage = 'The data being saved is too large. Please reduce the size of the school logo or other large data and try again.';
         } else if (err.error?.message) {
-          this.error = err.error.message;
-        } else {
-          this.error = 'Failed to save settings. Please try again.';
+          errorMessage = err.error.message;
+        } else if (err.message) {
+          errorMessage = err.message;
         }
         
+        this.error = errorMessage;
         this.loading = false;
         this.success = ''; // Clear any previous success message
         
+        // Force change detection
+        this.cdr.detectChanges();
+        
         // Scroll to top to show error message
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
         
         // Clear error message after 5 seconds
-        setTimeout(() => this.error = '', 5000);
+        setTimeout(() => {
+          this.error = '';
+          this.cdr.detectChanges();
+        }, 5000);
+      },
+      complete: () => {
+        console.log('Settings update observable completed');
       }
     });
   }

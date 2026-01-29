@@ -113,13 +113,14 @@ export function createReportCardPDF(
 
       // Helper function to add logo with preserved aspect ratio
       // Aligns logo at the top (startY) to match school name alignment
+      // Returns the actual width and height of the added logo
       const addLogoWithAspectRatio = (
         imageBuffer: Buffer,
         startX: number,
         startY: number,
         maxWidth: number,
         maxHeight: number
-      ) => {
+      ): { width: number; height: number; x: number } => {
         try {
           // Get image dimensions
           const dimensions = sizeOf(imageBuffer);
@@ -144,6 +145,8 @@ export function createReportCardPDF(
             width: finalWidth,
             height: finalHeight
           });
+          
+          return { width: finalWidth, height: finalHeight, x: centeredX };
         } catch (error) {
           console.error('Error adding logo with aspect ratio:', error);
           // Fallback: try to add image with max width (pdfkit will maintain aspect ratio)
@@ -154,8 +157,12 @@ export function createReportCardPDF(
           } catch (fallbackError) {
             console.error('Fallback logo addition also failed:', fallbackError);
           }
+          return { width: maxWidth, height: maxHeight, x: startX };
         }
       };
+
+      let logo1Info: { width: number; height: number; x: number } | null = null;
+      let logo2Info: { width: number; height: number; x: number } | null = null;
 
       // Add school logo if available (left side)
       if (settings?.schoolLogo) {
@@ -165,7 +172,7 @@ export function createReportCardPDF(
             const base64Data = settings.schoolLogo.split(',')[1];
             if (base64Data) {
               const imageBuffer = Buffer.from(base64Data, 'base64');
-              addLogoWithAspectRatio(imageBuffer, logoX, logoY, logoWidth, logoHeight);
+              logo1Info = addLogoWithAspectRatio(imageBuffer, logoX, logoY, logoWidth, logoHeight);
               textStartX = logoX + logoWidth + 20; // Start text after logo
               console.log('School logo added to PDF successfully');
             } else {
@@ -184,18 +191,30 @@ export function createReportCardPDF(
         console.log('No school logo found in settings');
       }
 
-      // Add school logo 2 if available (right side)
+      // Add school logo 2 if available (right side) - positioned on extreme right
       if (settings?.schoolLogo2) {
         try {
           if (settings.schoolLogo2.startsWith('data:image')) {
             const base64Data = settings.schoolLogo2.split(',')[1];
             if (base64Data) {
               const imageBuffer = Buffer.from(base64Data, 'base64');
-              // Position logo on the right side
-              const logo2X = pageWidth - logoWidth - 50; // 50px margin from right edge
-              addLogoWithAspectRatio(imageBuffer, logo2X, logoY, logoWidth, logoHeight);
-              textEndX = logo2X - 20; // Adjust text end position to leave space for logo
-              console.log('School logo 2 added to PDF successfully');
+              
+              // Calculate position for right-side logo
+              // Position it on the extreme right with appropriate margin
+              const rightMargin = 50; // 50px margin from right edge
+              const logo2MaxX = pageWidth - rightMargin; // Maximum X position (right edge minus margin)
+              
+              // Calculate the starting X position (accounting for max width)
+              // We'll position it so the logo's right edge aligns with the page margin
+              const logo2StartX = logo2MaxX - logoWidth;
+              
+              // Add the logo and get its actual dimensions
+              logo2Info = addLogoWithAspectRatio(imageBuffer, logo2StartX, logoY, logoWidth, logoHeight);
+              
+              // Adjust text end position to leave space for logo (use actual logo width)
+              textEndX = logo2Info.x - 20; // Leave 20px gap between text and logo
+              
+              console.log('School logo 2 added to PDF successfully on the right side');
             } else {
               console.warn('School logo 2 base64 data is empty');
             }
@@ -210,6 +229,7 @@ export function createReportCardPDF(
       }
 
       // School Name and Address
+      // Always left-align school name with address and other text
       doc.fontSize(schoolNameFontSize).font('Helvetica-Bold').text(schoolName, textStartX, logoY);
       
       // Calculate positions for address and academic year
@@ -390,14 +410,15 @@ export function createReportCardPDF(
       const tableStartX = 50;
       const tableEndX = 545;
       const rowHeight = 18; // Reduced to fit more rows on one page
+      const headerRowHeight = 26; // Increased to accommodate multi-line headers and descenders (g, p, y, etc.)
       const colWidths = {
         subject: 70,        // Reduced from 90
         subjectCode: 55,    // Reduced from 70
-        markObtained: 75,   // Increased to fit "Mark Obtained"
-        possibleMark: 75,   // Increased to fit "Possible Mark"
-        classAverage: 55,   // Reduced from 70
-        grade: 80,          // Increased from 60 to fit longer grade names
-        comments: 180
+        markObtained: 50,   // Reduced from 75 to fit "Mark\nObtained" (two lines)
+        possibleMark: 50,   // Reduced from 75 to fit "Possible\nMark" (two lines)
+        classAverage: 45,   // Reduced from 55 to fit "Class\nAvg" (two lines)
+        grade: 70,          // Reduced from 80 to give more space to comments
+        comments: 210       // Increased from 200 to accommodate full comments without trimming
       };
       
       // Calculate total width and adjust if needed
@@ -409,7 +430,7 @@ export function createReportCardPDF(
         // Calculate available space for comments (reserve space for other columns + padding)
         const reservedWidth = colWidths.subject + colWidths.subjectCode + colWidths.markObtained + colWidths.possibleMark + 
                               colWidths.classAverage + colWidths.grade + 30;
-        colWidths.comments = Math.max(120, availableWidth - reservedWidth); // Minimum 120 for comments
+        colWidths.comments = Math.max(180, availableWidth - reservedWidth); // Minimum 180 for comments to prevent trimming
       }
       const colPositions = {
         subject: tableStartX + 5,
@@ -423,23 +444,29 @@ export function createReportCardPDF(
 
       // Table Header with background color
       const headerY = yPos;
-      doc.rect(tableStartX, headerY, tableEndX - tableStartX, rowHeight)
+      doc.rect(tableStartX, headerY, tableEndX - tableStartX, headerRowHeight)
         .fillColor('#4A90E2')
         .fill()
         .fillColor('#FFFFFF')
         .strokeColor('#000000')
         .lineWidth(1);
 
-      // Header text
+      // Header text with multi-line labels for narrower columns
       doc.fontSize(9).font('Helvetica-Bold').fillColor('#FFFFFF');
-      doc.text('Subject', colPositions.subject, headerY + 8, { width: colWidths.subject - 10 });
-      doc.text('Subject Code', colPositions.subjectCode, headerY + 8, { width: colWidths.subjectCode - 10 });
-      // Ensure full text displays for Mark Obtained and Possible Mark
-      doc.text('Mark Obtained', colPositions.markObtained, headerY + 8, { width: colWidths.markObtained - 5 });
-      doc.text('Possible Mark', colPositions.possibleMark, headerY + 8, { width: colWidths.possibleMark - 5 });
-      doc.text('Class Avg', colPositions.classAverage, headerY + 8, { width: colWidths.classAverage - 10 });
-      doc.text('Grade', colPositions.grade, headerY + 8, { width: colWidths.grade - 10 });
-      doc.text('Comments', colPositions.comments, headerY + 8, { width: colWidths.comments - 10 });
+      
+      // Single-line headers (centered vertically in 26pt row)
+      const singleLineY = headerY + (headerRowHeight / 2) - 3; // Center vertically, accounting for font height
+      doc.text('Subject', colPositions.subject, singleLineY, { width: colWidths.subject - 10, align: 'center' });
+      doc.text('Grade', colPositions.grade, singleLineY, { width: colWidths.grade - 10, align: 'center' });
+      doc.text('Comments', colPositions.comments, singleLineY, { width: colWidths.comments - 10, align: 'center' });
+      
+      // Multi-line headers - positioned to allow space for descenders (g in "Avg", p, y, etc.)
+      // Start at headerY + 4 to give adequate top padding, leaving room at bottom for descenders
+      const multiLineY = headerY + 4;
+      doc.text('Subject\nCode', colPositions.subjectCode, multiLineY, { width: colWidths.subjectCode - 10, align: 'center' });
+      doc.text('Mark\nObtained', colPositions.markObtained, multiLineY, { width: colWidths.markObtained - 5, align: 'center' });
+      doc.text('Possible\nMark', colPositions.possibleMark, multiLineY, { width: colWidths.possibleMark - 5, align: 'center' });
+      doc.text('Class\nAvg', colPositions.classAverage, multiLineY, { width: colWidths.classAverage - 10, align: 'center' });
 
       // Calculate column boundaries for proper alignment
       const colBoundaries = [
@@ -458,15 +485,15 @@ export function createReportCardPDF(
       // Top border
       doc.moveTo(tableStartX, headerY).lineTo(tableEndX, headerY).stroke();
       // Bottom border
-      doc.moveTo(tableStartX, headerY + rowHeight).lineTo(tableEndX, headerY + rowHeight).stroke();
+      doc.moveTo(tableStartX, headerY + headerRowHeight).lineTo(tableEndX, headerY + headerRowHeight).stroke();
       // Vertical borders at column boundaries
       colBoundaries.forEach((boundary, index) => {
         if (index > 0 && index < colBoundaries.length) {
-          doc.moveTo(boundary, headerY).lineTo(boundary, headerY + rowHeight).stroke();
+          doc.moveTo(boundary, headerY).lineTo(boundary, headerY + headerRowHeight).stroke();
         }
       });
 
-      yPos = headerY + rowHeight;
+      yPos = headerY + headerRowHeight;
 
       // Subjects Data with alternating row colors
       doc.fontSize(10).font('Helvetica').fillColor('#000000');
@@ -474,34 +501,40 @@ export function createReportCardPDF(
         const subject = reportCard.subjects[index];
         const rowY = yPos;
         const isEvenRow = index % 2 === 0;
-        
-        // Alternate row background color
-        if (isEvenRow) {
-          doc.rect(tableStartX, rowY, tableEndX - tableStartX, rowHeight)
-            .fillColor('#F8F9FA')
-            .fill();
-        } else {
-          doc.rect(tableStartX, rowY, tableEndX - tableStartX, rowHeight)
-            .fillColor('#FFFFFF')
-            .fill();
-        }
 
         const percentage = parseFloat(subject.percentage);
         const grade = subject.grade || (subject.grade === 'N/A' ? 'N/A' : getGrade(percentage));
         const scoreText = subject.grade === 'N/A' ? 'N/A' : Math.round(subject.score).toString();
         const maxScoreText = subject.grade === 'N/A' ? 'N/A' : Math.round(subject.maxScore).toString();
         const commentsText = subject.comments || '-';
+        
+        // Calculate comments height BEFORE drawing row background
+        const commentsWidth = colWidths.comments - 20;
+        const commentsHeight = doc.heightOfString(commentsText, { width: commentsWidth });
+        const minRowHeight = 18;
+        const actualRowHeight = Math.max(minRowHeight, commentsHeight + 10);
+        
+        // Alternate row background color with calculated height
+        if (isEvenRow) {
+          doc.rect(tableStartX, rowY, tableEndX - tableStartX, actualRowHeight)
+            .fillColor('#F8F9FA')
+            .fill();
+        } else {
+          doc.rect(tableStartX, rowY, tableEndX - tableStartX, actualRowHeight)
+            .fillColor('#FFFFFF')
+            .fill();
+        }
 
-        // Draw cell borders using same column boundaries
+        // Draw cell borders using same column boundaries with calculated height
         doc.strokeColor('#CCCCCC').lineWidth(0.5);
         // Top border
         doc.moveTo(tableStartX, rowY).lineTo(tableEndX, rowY).stroke();
         // Bottom border
-        doc.moveTo(tableStartX, rowY + rowHeight).lineTo(tableEndX, rowY + rowHeight).stroke();
+        doc.moveTo(tableStartX, rowY + actualRowHeight).lineTo(tableEndX, rowY + actualRowHeight).stroke();
         // Vertical borders at column boundaries
-        colBoundaries.forEach((boundary, index) => {
-          if (index > 0 && index < colBoundaries.length) {
-            doc.moveTo(boundary, rowY).lineTo(boundary, rowY + rowHeight).stroke();
+        colBoundaries.forEach((boundary, idx) => {
+          if (idx > 0 && idx < colBoundaries.length) {
+            doc.moveTo(boundary, rowY).lineTo(boundary, rowY + actualRowHeight).stroke();
           }
         });
 
@@ -516,14 +549,14 @@ export function createReportCardPDF(
           align: 'center'
         });
         
-        doc.text(scoreText, colPositions.markObtained, rowY + 8, { width: colWidths.markObtained - 10 });
-        doc.text(maxScoreText, colPositions.possibleMark, rowY + 8, { width: colWidths.possibleMark - 10 });
+        doc.text(scoreText, colPositions.markObtained, rowY + 8, { width: colWidths.markObtained - 10, align: 'center' });
+        doc.text(maxScoreText, colPositions.possibleMark, rowY + 8, { width: colWidths.possibleMark - 10, align: 'center' });
         
         // Class Average (without % symbol)
         const classAverageText = subject.classAverage !== undefined && subject.classAverage !== null
           ? `${Math.round(subject.classAverage)}`
           : 'N/A';
-        doc.text(classAverageText, colPositions.classAverage, rowY + 8, { width: colWidths.classAverage - 10 });
+        doc.text(classAverageText, colPositions.classAverage, rowY + 8, { width: colWidths.classAverage - 10, align: 'center' });
         
         // Grade - always black color, ensure text fits well
         if (grade === 'N/A') {
@@ -541,9 +574,17 @@ export function createReportCardPDF(
         doc.fontSize(10); // Reset font size
         doc.fillColor('#000000'); // Reset to black
         
-        doc.text(commentsText, colPositions.comments, rowY + 8, { width: colWidths.comments - 10 });
-
-        yPos += rowHeight;
+        // Render comments with proper text wrapping - ensure NO trimming occurs
+        // commentsWidth is already calculated above, reuse it here
+        // Draw comments with full text wrapping - no ellipsis, no truncation
+        doc.text(commentsText, colPositions.comments, rowY + 8, { 
+          width: commentsWidth,
+          align: 'left',
+          ellipsis: false // Prevent ellipsis - ensure full text is displayed with wrapping
+        });
+        
+        // Use the calculated actual row height for this row (already calculated before drawing)
+        yPos += actualRowHeight;
 
         // Calculate remaining space dynamically to show all subjects
         // A4 page height is 842pt, with 50pt margins = 742pt usable

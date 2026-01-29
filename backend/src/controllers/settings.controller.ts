@@ -304,14 +304,21 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       settings.schoolAddress = schoolAddress;
     }
     if (schoolPhone !== undefined) {
-      // Validate phone number if provided
+      // For school phone, allow free-form text with labels (e.g., "Telephones: Landline-+263 392 263 293, Headmistress-+263 786 044 502")
+      // Only validate that it doesn't contain obviously invalid characters
       if (schoolPhone && schoolPhone.trim()) {
-        const { validatePhoneNumber } = await import('../utils/phoneValidator');
-        const phoneValidation = validatePhoneNumber(schoolPhone, false);
-        if (!phoneValidation.isValid) {
-          return res.status(400).json({ message: phoneValidation.error || 'Invalid school phone number' });
+        const trimmedPhone = schoolPhone.trim();
+        // Allow: letters, numbers, spaces, dashes, colons, commas, plus signs, parentheses
+        const allowedPattern = /^[a-zA-Z0-9\s\-:,\+()]+$/;
+        
+        if (!allowedPattern.test(trimmedPhone)) {
+          return res.status(400).json({ 
+            message: 'School phone information can only contain letters, numbers, spaces, and common punctuation (dashes, colons, commas, plus signs, parentheses)' 
+          });
         }
-        settings.schoolPhone = phoneValidation.normalized || schoolPhone.trim();
+        
+        // Store the trimmed text as-is (no normalization for free-form format)
+        settings.schoolPhone = trimmedPhone;
       } else {
         settings.schoolPhone = null;
       }

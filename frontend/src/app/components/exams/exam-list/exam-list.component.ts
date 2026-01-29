@@ -60,6 +60,7 @@ export class ExamListComponent implements OnInit, OnDestroy {
   autoSaveTimeout: any = null;
   isAutoSaving = false;
   pendingSaves: Set<string> = new Set();
+  savedRecords: Set<string> = new Set(); // Track which student+subject combinations have been saved
   
   // Form validation
   fieldErrors: any = {};
@@ -144,6 +145,11 @@ export class ExamListComponent implements OnInit, OnDestroy {
           this.selectedTerm = data.currentTerm;
         }
         this.loadingTerm = false;
+        
+        // After term is loaded, check if we can auto-load students
+        setTimeout(() => {
+          this.checkAndAutoLoadStudents();
+        }, 100);
       },
       error: (err: any) => {
         console.error('Error loading active term:', err);
@@ -335,15 +341,47 @@ export class ExamListComponent implements OnInit, OnDestroy {
     this.studentSearchQuery = '';
     this.canPublish = false;
     this.isPublished = false;
-    
-    // If class changed and user is a teacher, update subjects list
-    if (!this.isAdmin && this.selectedClassId) {
-      this.updateSubjectsForSelectedClass();
-    }
+    this.savedRecords.clear(); // Clear saved records when selection changes
     
     // Reset subject selection if class changed
     if (!this.selectedClassId) {
       this.selectedSubjectId = '';
+      this.subjects = [];
+    }
+    
+    // If class changed and user is a teacher, update subjects list
+    if (!this.isAdmin && this.selectedClassId) {
+      this.updateSubjectsForSelectedClass();
+      // Wait a bit for subjects to load before checking if we can auto-load students
+      setTimeout(() => {
+        this.checkAndAutoLoadStudents();
+      }, 300);
+    } else if (this.isAdmin && this.selectedClassId) {
+      // For admin, subjects should already be loaded, check immediately
+      this.checkAndAutoLoadStudents();
+    } else {
+      // If no class selected, check anyway (will fail validation)
+      this.checkAndAutoLoadStudents();
+    }
+  }
+
+  checkAndAutoLoadStudents() {
+    // Auto-load students when all 4 criteria are selected and subjects are available
+    if (this.isSelectionValid() && !this.loadingStudents) {
+      // Make sure subjects are loaded (for teachers)
+      if (!this.isAdmin && this.subjects.length === 0) {
+        // Subjects still loading, wait a bit more
+        setTimeout(() => this.checkAndAutoLoadStudents(), 200);
+        return;
+      }
+      
+      console.log('All criteria selected - auto-loading students...');
+      // Use setTimeout to avoid triggering during the same change event cycle
+      setTimeout(() => {
+        if (this.isSelectionValid() && !this.loadingStudents) {
+          this.loadStudents();
+        }
+      }, 100);
     }
   }
 
@@ -488,6 +526,7 @@ export class ExamListComponent implements OnInit, OnDestroy {
 
   initializeMarks() {
     this.marks = {};
+    this.savedRecords.clear(); // Clear saved records when initializing
     const studentsArray = Array.isArray(this.students) ? this.students : [];
     studentsArray.forEach((student: any) => {
       const key = this.getMarkKey(student.id, this.selectedSubjectId);
@@ -515,6 +554,10 @@ export class ExamListComponent implements OnInit, OnDestroy {
             this.marks[key].score = mark.score;
             this.marks[key].maxScore = mark.maxScore;
             this.marks[key].comments = mark.comments || '';
+            // Mark as saved if marks were loaded from backend
+            if (mark.score !== null || mark.comments) {
+              this.savedRecords.add(key);
+            }
           }
         });
       },
@@ -614,6 +657,11 @@ export class ExamListComponent implements OnInit, OnDestroy {
     return mark && (mark.score !== null && mark.score !== undefined && mark.score !== '');
   }
 
+  isRecordSaved(studentId: string): boolean {
+    const key = this.getMarkKey(studentId, this.selectedSubjectId);
+    return this.savedRecords.has(key);
+  }
+
   getEnteredMarksCount(): number {
     return this.filteredStudents.filter(student => this.hasMarks(student.id)).length;
   }
@@ -696,11 +744,16 @@ export class ExamListComponent implements OnInit, OnDestroy {
         mark.score = roundedScore;
       }
     }
+    // Remove from saved records when mark changes (will be re-added after save)
+    this.savedRecords.delete(key);
     // Schedule auto-save for this student
     this.scheduleAutoSave(studentId);
   }
 
   onCommentsChange(studentId: string) {
+    // Remove from saved records when comments change (will be re-added after save)
+    const key = this.getMarkKey(studentId, this.selectedSubjectId);
+    this.savedRecords.delete(key);
     // Schedule auto-save when comments change
     this.scheduleAutoSave(studentId);
   }
@@ -714,8 +767,14 @@ export class ExamListComponent implements OnInit, OnDestroy {
   }
 
   onStudentBlur(studentId: string) {
-    // Auto-save when leaving a student's row
+    // Auto-save immediately when leaving a student's row (faster feedback)
     this.autoSaveStudent(studentId);
+    // Clear any pending timeout since we're saving now
+    if (this.autoSaveTimeout) {
+      clearTimeout(this.autoSaveTimeout);
+      this.autoSaveTimeout = null;
+    }
+    this.pendingSaves.delete(studentId);
   }
 
   scheduleAutoSave(studentId: string) {
@@ -727,10 +786,10 @@ export class ExamListComponent implements OnInit, OnDestroy {
       clearTimeout(this.autoSaveTimeout);
     }
     
-    // Schedule auto-save after 2 seconds of inactivity
+    // Schedule auto-save after 1.5 seconds of inactivity (reduced from 2 seconds for faster feedback)
     this.autoSaveTimeout = setTimeout(() => {
       this.processPendingSaves();
-    }, 2000);
+    }, 1500);
   }
 
   processPendingSaves() {
@@ -771,6 +830,9 @@ export class ExamListComponent implements OnInit, OnDestroy {
     this.examService.captureMarks(this.currentExam.id, marksData).subscribe({
       next: (data: any) => {
         this.isAutoSaving = false;
+        // Mark this record as saved
+        this.savedRecords.add(key);
+        
         // Show brief success message
         const student = this.students.find(s => s.id === studentId);
         const studentName = student ? `${student.firstName} ${student.lastName}` : 'Student';
@@ -778,6 +840,8 @@ export class ExamListComponent implements OnInit, OnDestroy {
       },
       error: (err: any) => {
         this.isAutoSaving = false;
+        // Remove from saved records if save failed
+        this.savedRecords.delete(key);
         // Don't show error for auto-save failures, just log them
         console.error('Auto-save failed:', err);
       }
@@ -813,6 +877,14 @@ export class ExamListComponent implements OnInit, OnDestroy {
     this.examService.captureMarks(this.currentExam.id, marksData).subscribe({
       next: (data: any) => {
         this.isAutoSaving = false;
+        // Mark all saved records
+        studentIds.forEach(studentId => {
+          const key = this.getMarkKey(studentId, this.selectedSubjectId);
+          const mark = this.marks[key];
+          if (mark && (mark.score !== null || mark.comments)) {
+            this.savedRecords.add(key);
+          }
+        });
         this.showAutoSaveSuccess(`✓ Auto-saved marks for ${marksData.length} student(s)`);
       },
       error: (err: any) => {
@@ -925,6 +997,16 @@ export class ExamListComponent implements OnInit, OnDestroy {
       next: (data: any) => {
         this.success = `Successfully saved marks for ${marksData.length} student(s)`;
         this.loading = false;
+        
+        // Mark all saved records
+        this.filteredStudents.forEach((student: any) => {
+          const key = this.getMarkKey(student.id, this.selectedSubjectId);
+          const mark = this.marks[key];
+          if (mark && (mark.score !== null || mark.comments)) {
+            this.savedRecords.add(key);
+          }
+        });
+        
         // Reload existing marks to reflect saved data
         setTimeout(() => {
           this.loadExistingMarks();

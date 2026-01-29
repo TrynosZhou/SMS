@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -35,7 +35,24 @@ export class SettingsService {
   }
 
   updateSettings(settings: any): Observable<any> {
-    return this.http.put(`${this.apiUrl}/settings`, settings);
+    console.log('[SettingsService] Updating settings, API URL:', `${this.apiUrl}/settings`);
+    return this.http.put(`${this.apiUrl}/settings`, settings).pipe(
+      tap({
+        next: (response) => {
+          console.log('[SettingsService] ✅ Settings update response received:', response);
+        },
+        error: (error) => {
+          console.error('[SettingsService] ❌ Error in updateSettings:', error);
+        },
+        complete: () => {
+          console.log('[SettingsService] Settings update observable completed');
+        }
+      }),
+      catchError((error) => {
+        console.error('[SettingsService] Error caught in catchError:', error);
+        throw error; // Re-throw to let component handle it
+      })
+    );
   }
 
   getActiveTerm(): Observable<any> {

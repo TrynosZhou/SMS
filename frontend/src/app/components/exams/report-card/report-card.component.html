@@ -20,6 +20,10 @@
       <span class="alert-icon">✕</span>
       <span>{{ error }}</span>
     </div>
+    <div class="alert alert-info" *ngIf="autoSavingRemarks" [@fadeInOut] style="background-color: #d1ecf1; color: #0c5460; border-color: #bee5eb;">
+      <span class="alert-icon">💾</span>
+      <span>Auto-saving remarks...</span>
+    </div>
     
     <!-- Validation Error Card - Missing Marks -->
     <div *ngIf="validationError" class="validation-error-card" [@fadeInOut]>
@@ -147,6 +151,7 @@
               required
               [class.invalid]="isFieldInvalid('class')"
               class="form-control"
+              (ngModelChange)="onSelectionChange()"
               (change)="onSelectionChange()">
               <option value="">Select Class</option>
               <option *ngFor="let class of (classes | safeArray)" [value]="class.id">
@@ -183,6 +188,7 @@
               [disabled]="loadingTerms"
               [class.invalid]="isFieldInvalid('term')"
               class="form-control"
+              (ngModelChange)="onSelectionChange()"
               (change)="onSelectionChange()">
               <option value="">{{ loadingTerms ? 'Loading terms...' : 'Select Term' }}</option>
               <option *ngFor="let term of (availableTerms | safeArray)" [value]="term">
@@ -210,6 +216,7 @@
               required
               [class.invalid]="isFieldInvalid('examType')"
               class="form-control"
+              (ngModelChange)="onSelectionChange()"
               (change)="onSelectionChange()">
               <option value="">Select Exam Type</option>
               <option *ngFor="let type of examTypes" [value]="type.value">
@@ -454,15 +461,22 @@
               <label class="remarks-label">
                 Class Teacher Remarks
                 <span *ngIf="!canEditRemarks" class="read-only-badge">Read-only</span>
+                <span *ngIf="canEditRemarks && isRemarksSaved(reportCard.student.id, 'classTeacher')" 
+                      class="saved-badge" title="Saved">✓ Saved</span>
+                <span *ngIf="canEditRemarks && !isRemarksSaved(reportCard.student.id, 'classTeacher') && reportCard.remarks?.classTeacherRemarks" 
+                      class="unsaved-badge" title="Not saved yet">○ Entered</span>
               </label>
               <textarea 
                 *ngIf="canEditRemarks"
                 [(ngModel)]="reportCard.remarks.classTeacherRemarks" 
                 name="classTeacherRemarks_{{reportCard.student.id}}"
                 class="remarks-textarea"
+                [class.saved]="isRemarksSaved(reportCard.student.id, 'classTeacher')"
                 placeholder="Enter class teacher remarks..."
                 rows="3"
-                maxlength="500"></textarea>
+                maxlength="500"
+                (input)="onRemarksChange(reportCard, 'classTeacher')"
+                (blur)="onRemarksBlur(reportCard)"></textarea>
               <div *ngIf="!canEditRemarks" class="remarks-readonly">
                 {{ reportCard.remarks?.classTeacherRemarks ? reportCard.remarks.classTeacherRemarks : 'No remarks entered' }}
               </div>
@@ -472,36 +486,31 @@
               <label class="remarks-label">
                 Headmaster/Principal Remarks
                 <span *ngIf="!authService.hasRole('admin')" class="read-only-badge">Read-only</span>
+                <span *ngIf="authService.hasRole('admin') && isRemarksSaved(reportCard.student.id, 'headmaster')" 
+                      class="saved-badge" title="Saved">✓ Saved</span>
+                <span *ngIf="authService.hasRole('admin') && !isRemarksSaved(reportCard.student.id, 'headmaster') && reportCard.remarks?.headmasterRemarks" 
+                      class="unsaved-badge" title="Not saved yet">○ Entered</span>
               </label>
               <textarea 
                 *ngIf="authService.hasRole('admin')"
                 [(ngModel)]="reportCard.remarks.headmasterRemarks" 
                 name="headmasterRemarks_{{reportCard.student.id}}"
                 class="remarks-textarea"
+                [class.saved]="isRemarksSaved(reportCard.student.id, 'headmaster')"
                 placeholder="Enter headmaster/principal remarks..."
                 rows="3"
-                maxlength="500"></textarea>
+                maxlength="500"
+                (input)="onRemarksChange(reportCard, 'headmaster')"
+                (blur)="onRemarksBlur(reportCard)"></textarea>
               <div *ngIf="!authService.hasRole('admin')" class="remarks-readonly">
                 {{ reportCard.remarks?.headmasterRemarks ? reportCard.remarks.headmasterRemarks : 'No remarks entered' }}
               </div>
             </div>
 
             <div *ngIf="canEditRemarks" class="remarks-actions">
-              <button 
-                type="button" 
-                class="btn btn-primary" 
-                (click)="saveRemarks(reportCard)" 
-                [disabled]="savingRemarks">
-                <span *ngIf="!savingRemarks">
-                  💾 Save Remarks for {{ reportCard.student.name }}
-                </span>
-                <span *ngIf="savingRemarks" class="loading-content">
-                  <span class="spinner-small"></span>
-                  Saving...
-                </span>
-              </button>
-              <span *ngIf="reportCard.remarks?.id" class="saved-indicator">
-                ✓ Remarks saved
+              <span *ngIf="isRemarksSaved(reportCard.student.id, 'classTeacher') && isRemarksSaved(reportCard.student.id, 'headmaster')" 
+                    class="saved-indicator">
+                ✓ All remarks saved
               </span>
             </div>
           </div>

@@ -9,18 +9,6 @@
         </h1>
         <p class="subtitle">Enter and manage student exam marks</p>
       </div>
-      <div style="display: flex; gap: 10px;" *ngIf="isAdmin">
-        <button 
-          class="btn btn-danger btn-icon" 
-          (click)="deleteAllExams()" 
-          [disabled]="loading || loadingStudents"
-          title="Delete all exams">
-          🗑️ Delete All
-        </button>
-        <button class="btn btn-primary btn-icon" routerLink="/exams/new" title="Create new exam">
-          ➕ Create Exam
-        </button>
-      </div>
     </div>
 
     <!-- Alert Messages -->
@@ -55,6 +43,7 @@
           <select 
             [(ngModel)]="selectedClassId" 
             (change)="onSelectionChange()" 
+            (ngModelChange)="onSelectionChange()"
             required
             [class.invalid]="isFieldInvalid('class')"
             class="form-control">
@@ -89,7 +78,8 @@
           </label>
           <select 
             [(ngModel)]="selectedExamType" 
-            (change)="onSelectionChange()" 
+            (change)="onSelectionChange()"
+            (ngModelChange)="onSelectionChange()"
             required
             [class.invalid]="isFieldInvalid('examType')"
             class="form-control">
@@ -109,7 +99,8 @@
           </label>
           <select 
             [(ngModel)]="selectedSubjectId" 
-            (change)="onSelectionChange()" 
+            (change)="onSelectionChange()"
+            (ngModelChange)="onSelectionChange()"
             required
             [class.invalid]="isFieldInvalid('subject')"
             [disabled]="!selectedClassId || subjects.length === 0"
@@ -246,8 +237,13 @@
                     (focus)="onStudentFocus(student.id)"></textarea>
                 </td>
                 <td class="status-cell">
-                  <span class="status-badge" [class.completed]="hasMarks(student.id)" [class.pending]="!hasMarks(student.id)">
-                    {{ hasMarks(student.id) ? '✓ Entered' : '○ Pending' }}
+                  <span class="status-badge" 
+                        [class.completed]="hasMarks(student.id)" 
+                        [class.pending]="!hasMarks(student.id)"
+                        [class.saved]="isRecordSaved(student.id)">
+                    <span *ngIf="isRecordSaved(student.id)" class="saved-indicator" title="Saved">✓ Saved</span>
+                    <span *ngIf="!isRecordSaved(student.id) && hasMarks(student.id)" class="unsaved-indicator" title="Not saved yet">○ Entered</span>
+                    <span *ngIf="!hasMarks(student.id)" class="pending-indicator">○ Pending</span>
                   </span>
                 </td>
               </tr>
@@ -276,25 +272,13 @@
         </div>
 
         <!-- Form Actions -->
-        <div class="form-actions">
+        <div class="form-actions" style="display: flex; justify-content: flex-end;">
           <button 
             type="button" 
             class="btn btn-secondary" 
             (click)="cancelMarksEntry()"
             [disabled]="loading">
             ❌ Cancel
-          </button>
-          <button 
-            type="submit" 
-            class="btn btn-primary btn-submit"
-            [disabled]="loading || getEnteredMarksCount() === 0 || isPublished">
-            <span *ngIf="!loading">
-              💾 Save All Marks ({{ getEnteredMarksCount() }})
-            </span>
-            <span *ngIf="loading" class="submit-loading">
-              <span class="spinner-small"></span>
-              Saving...
-            </span>
           </button>
         </div>
         <div *ngIf="isPublished" class="alert alert-info" style="margin-top: 15px; background-color: #d1ecf1; color: #0c5460; border-color: #bee5eb;">
