@@ -4,6 +4,7 @@ import { randomBytes } from 'crypto';
 import { AppDataSource } from '../config/database';
 import { User, UserRole } from '../entities/User';
 import { AuthRequest } from '../middleware/auth';
+import { IsNull, Not } from 'typeorm';
 
 // Update user account (username and password) - works for teachers, parents, and students
 export const updateAccount = async (req: AuthRequest, res: Response) => {

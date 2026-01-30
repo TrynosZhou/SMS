@@ -252,11 +252,16 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Helper: treat "Teacher" with empty fields or "Teacher Account" as placeholder
+function isPlaceholderTeacherRecord(teacher: Teacher | null): boolean {
+  if (!teacher) return false;
+  if (teacher.firstName !== 'Teacher') return false;
+  if (!teacher.lastName || teacher.lastName === '') return true;
+  if (teacher.lastName === 'Account') return true;
+  return false;
+}
+
 export const getCurrentTeacher = async (req: AuthRequest, res: Response) => {
-  console.log('[getCurrentTeacher] ========== ENDPOINT CALLED ==========');
-  console.log('[getCurrentTeacher] Request URL:', req.url);
-  console.log('[getCurrentTeacher] Request Method:', req.method);
-  
   try {
     if (!AppDataSource.isInitialized) {
       await AppDataSource.initialize();
@@ -264,13 +269,8 @@ export const getCurrentTeacher = async (req: AuthRequest, res: Response) => {
 
     const userId = req.user?.id;
     const userRole = req.user?.role;
-    const userEmail = req.user?.email;
-    
-    console.log('[getCurrentTeacher] ============ DEBUG INFO ============');
-    console.log('[getCurrentTeacher] User ID:', userId);
-    console.log('[getCurrentTeacher] User Role:', userRole);
-    console.log('[getCurrentTeacher] User Email:', userEmail);
-    
+    const username = req.user?.username;
+
     if (!userId) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
@@ -279,83 +279,118 @@ export const getCurrentTeacher = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: 'Only teachers can access this endpoint' });
     }
 
+    const userEmail = req.user?.email;
     const teacherRepository = AppDataSource.getRepository(Teacher);
     const userRepository = AppDataSource.getRepository(User);
-    
-    try {
-      // Try to find teacher by userId
-      let teacher = await teacherRepository.findOne({
-        where: { userId },
-        relations: ['subjects', 'classes', 'user']
-      });
 
-      console.log('[getCurrentTeacher] Teacher found by userId:', teacher ? 'Yes' : 'No');
+    try {
+      // PRIORITY 1: Always try to find teacher by EmployeeID (username) first - this ensures we get the correct teacher record
+      let teacher: Teacher | null = null;
       
+      if (username) {
+        // Find ALL teachers with matching EmployeeID (case-insensitive)
+        const allMatchingByEmployeeId = await teacherRepository
+          .createQueryBuilder('teacher')
+          .where('LOWER(teacher.teacherId) = LOWER(:teacherId)', { teacherId: username })
+          .getMany();
+
+        if (allMatchingByEmployeeId.length > 0) {
+          // Prioritize non-placeholder teachers
+          const preferred = allMatchingByEmployeeId.find(t => !isPlaceholderTeacherRecord(t));
+          if (preferred) {
+            teacher = preferred;
+            console.log('[getCurrentTeacher] Found teacher by EmployeeID:', preferred.firstName, preferred.lastName, preferred.teacherId);
+          } else {
+            // If all are placeholders, use the first one
+            teacher = allMatchingByEmployeeId[0];
+            console.log('[getCurrentTeacher] Found teacher by EmployeeID (placeholder):', teacher.firstName, teacher.lastName, teacher.teacherId);
+          }
+        }
+      }
+
+      // PRIORITY 2: If not found by EmployeeID, try by userId (for backward compatibility)
       if (!teacher) {
-        console.log('[getCurrentTeacher] No teacher found for userId:', userId);
-        
-        // Try to find teacher by user email pattern (diagnostic)
-        const allTeachers = await teacherRepository.find();
-        console.log('[getCurrentTeacher] Total teachers in DB:', allTeachers.length);
-        console.log('[getCurrentTeacher] Teachers without userId:', allTeachers.filter(t => !t.userId).length);
-        
-        // Check if user has teacher relationship from User side
+        teacher = await teacherRepository.findOne({
+          where: { userId },
+          relations: ['subjects', 'classes', 'user']
+        });
+        if (teacher) {
+          console.log('[getCurrentTeacher] Found teacher by userId:', teacher.firstName, teacher.lastName, teacher.teacherId);
+        }
+      }
+
+      // PRIORITY 3: If found by userId but it's a placeholder, try to find real teacher by EmployeeID
+      if (teacher && username && isPlaceholderTeacherRecord(teacher)) {
+        const allMatching = await teacherRepository
+          .createQueryBuilder('teacher')
+          .where('LOWER(teacher.teacherId) = LOWER(:teacherId)', { teacherId: username })
+          .getMany();
+
+        const preferred = allMatching.find(t => !isPlaceholderTeacherRecord(t));
+        if (preferred && preferred.id !== teacher.id) {
+          console.log('[getCurrentTeacher] Re-linking from placeholder to real teacher:', preferred.firstName, preferred.lastName, preferred.teacherId);
+          // Unlink placeholder
+          teacher.userId = null;
+          await teacherRepository.save(teacher);
+          // Link real teacher
+          preferred.userId = userId;
+          await teacherRepository.save(preferred);
+          // Reload the real teacher
+          const reloadedTeacher = await teacherRepository.findOne({
+            where: { id: preferred.id },
+            relations: ['subjects', 'classes', 'user']
+          });
+          if (reloadedTeacher) {
+            teacher = reloadedTeacher;
+          }
+        }
+      }
+
+      // Ensure teacher is loaded with relations if we found it
+      if (teacher && (!teacher.subjects || !teacher.classes)) {
+        teacher = await teacherRepository.findOne({
+          where: { id: teacher.id },
+          relations: ['subjects', 'classes', 'user']
+        }) || teacher;
+      }
+
+      if (!teacher) {
+        // Try to find teacher via User.teacher relation (userId might not be set on teacher)
         const userWithTeacher = await userRepository.findOne({
           where: { id: userId },
           relations: ['teacher']
         });
-        
-        console.log('[getCurrentTeacher] User.teacher exists:', !!userWithTeacher?.teacher);
-        
+
         if (userWithTeacher?.teacher) {
-          // User has teacher relationship, but teacher.userId might not be set
-          console.log('[getCurrentTeacher] Found teacher via User relationship:', userWithTeacher.teacher.id);
           teacher = await teacherRepository.findOne({
             where: { id: userWithTeacher.teacher.id },
             relations: ['subjects', 'classes', 'user']
           });
-          
-          // Fix the userId if it's not set
           if (teacher && !teacher.userId) {
-            console.log('[getCurrentTeacher] Auto-fixing teacher.userId...');
             teacher.userId = userId;
             await teacherRepository.save(teacher);
-            console.log('[getCurrentTeacher] Teacher.userId fixed!');
           }
         }
-        
+
         if (!teacher) {
           return res.status(404).json({ 
             message: 'Teacher profile not found. Please contact administrator.',
             debug: {
               userId,
               userEmail,
-              totalTeachers: allTeachers.length,
-              teachersWithoutUserId: allTeachers.filter(t => !t.userId).length,
-              suggestion: 'Run: UPDATE teachers SET "userId" = \'' + userId + '\' WHERE "teacherId" = \'YOUR_TEACHER_ID\';'
+              username,
+              suggestion: `Run: UPDATE teachers SET "userId" = '${userId}' WHERE "teacherId" = '${username || 'YOUR_TEACHER_ID'}';`
             }
           });
         }
       }
 
-      console.log('[getCurrentTeacher] Teacher ID (UUID):', teacher.id);
-      console.log('[getCurrentTeacher] Teacher ID (string):', teacher.teacherId);
-      console.log('[getCurrentTeacher] Teacher Name:', teacher.firstName, teacher.lastName);
-      console.log('[getCurrentTeacher] Teacher Full Name:', `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim());
-      console.log('[getCurrentTeacher] Classes count (from initial load):', teacher.classes?.length || 0);
-      
-      // Ensure classes array is initialized
       if (!teacher.classes) {
         teacher.classes = [];
       }
-      
-      // Reset classes to ensure we fetch fresh data from junction table
       teacher.classes = [];
-      
-      // Always fetch classes from junction table (primary method)
+
       try {
-        console.log('[getCurrentTeacher] Fetching classes for teacher ID (UUID):', teacher.id, 'TeacherID (string):', teacher.teacherId);
-        
         const { TeacherClass } = await import('../entities/TeacherClass');
         const teacherClassRepository = AppDataSource.getRepository(TeacherClass);
         
@@ -366,17 +401,10 @@ export const getCurrentTeacher = async (req: AuthRequest, res: Response) => {
           .where('tc.teacherId = :teacherId', { teacherId: teacher.id })
           .andWhere('class.isActive = :isActive', { isActive: true })
           .getMany();
-        
-        console.log('[getCurrentTeacher] Found', teacherClasses.length, 'active class assignments in junction table');
-        
+
         if (teacherClasses.length > 0) {
-          // Extract class entities from junction table (already filtered for active)
-          const classes = teacherClasses.map(tc => tc.class);
-          teacher.classes = classes;
-          console.log('[getCurrentTeacher] Classes loaded from junction table:', classes.map(c => c.name).join(', '));
+          teacher.classes = teacherClasses.map(tc => tc.class);
         } else {
-          // Fallback: try ManyToMany relation if junction table has no results
-          console.log('[getCurrentTeacher] No classes in junction table, trying ManyToMany relation...');
           try {
             // Reload teacher with ManyToMany relation
             const teacherWithClasses = await teacherRepository.findOne({
@@ -385,15 +413,10 @@ export const getCurrentTeacher = async (req: AuthRequest, res: Response) => {
             });
             
             if (teacherWithClasses && teacherWithClasses.classes && teacherWithClasses.classes.length > 0) {
-              // Filter for active classes only
               teacher.classes = teacherWithClasses.classes.filter((c: any) => c.isActive === true);
-              console.log('[getCurrentTeacher] Active classes found via ManyToMany:', teacher.classes.map((c: any) => c.name).join(', '));
-              
-              // Sync to junction table for future queries
               try {
                 const classIds = teacher.classes.map((c: any) => c.id);
                 await linkTeacherToClasses(teacher.id, classIds);
-                console.log('[getCurrentTeacher] Synced classes to junction table');
               } catch (syncError: any) {
                 console.error('[getCurrentTeacher] Error syncing to junction table:', syncError.message);
               }
@@ -411,19 +434,14 @@ export const getCurrentTeacher = async (req: AuthRequest, res: Response) => {
               
               if (classesWithTeacher.length > 0) {
                 teacher.classes = classesWithTeacher;
-                console.log('[getCurrentTeacher] Active classes found via query builder:', classesWithTeacher.map(c => c.name).join(', '));
-                
-                // Sync to junction table for future queries
                 try {
                   const classIds = classesWithTeacher.map(c => c.id);
                   await linkTeacherToClasses(teacher.id, classIds);
-                  console.log('[getCurrentTeacher] Synced classes to junction table');
                 } catch (syncError: any) {
                   console.error('[getCurrentTeacher] Error syncing to junction table:', syncError.message);
                 }
               } else {
                 teacher.classes = [];
-                console.log('[getCurrentTeacher] No classes found via any method');
               }
             }
           } catch (fallbackError: any) {
@@ -433,7 +451,6 @@ export const getCurrentTeacher = async (req: AuthRequest, res: Response) => {
         }
       } catch (junctionError: any) {
         console.error('[getCurrentTeacher] Error loading classes from junction table:', junctionError.message);
-        console.error('[getCurrentTeacher] Junction table error stack:', junctionError.stack);
         // Try fallback
         try {
           const teacherWithClasses = await teacherRepository.findOne({
@@ -449,12 +466,6 @@ export const getCurrentTeacher = async (req: AuthRequest, res: Response) => {
           teacher.classes = [];
         }
       }
-      
-      console.log('[getCurrentTeacher] Final classes count:', teacher.classes?.length || 0);
-      
-      console.log('[getCurrentTeacher] Final classes count:', teacher.classes?.length || 0);
-      console.log('[getCurrentTeacher] Final teacher name:', `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim());
-      console.log('[getCurrentTeacher] =====================================');
       
       // Ensure arrays are always present
       if (!teacher.classes) {
@@ -688,29 +699,53 @@ export const deleteTeacher = async (req: AuthRequest, res: Response) => {
 
     console.log('Found teacher:', teacher.firstName, teacher.lastName, `(${teacher.teacherId})`);
 
-    // Check if teacher has associated classes or subjects
+    // Remove ManyToMany associations (classes, subjects)
     const classCount = teacher.classes?.length || 0;
     const subjectCount = teacher.subjects?.length || 0;
-
     if (classCount > 0 || subjectCount > 0) {
-      // Remove associations instead of preventing deletion
       teacher.classes = [];
       teacher.subjects = [];
       await teacherRepository.save(teacher);
     }
 
-    // Delete associated user account if it exists
-    if (teacher.userId) {
-      const user = await userRepository.findOne({ where: { id: teacher.userId } });
+    // Remove FK references that would block deletion (no CASCADE on Teacher)
+    const teacherId = teacher.id;
+
+    // Delete record_books rows that reference this teacher
+    try {
+      const { RecordBook } = await import('../entities/RecordBook');
+      const recordBookRepo = AppDataSource.getRepository(RecordBook);
+      await recordBookRepo.delete({ teacherId });
+    } catch (rbErr: any) {
+      console.warn('[deleteTeacher] RecordBook cleanup:', rbErr.message);
+    }
+
+    // Set timetable_entries.teacherId to null where they reference this teacher
+    try {
+      const { TimetableEntry } = await import('../entities/TimetableEntry');
+      const timetableEntryRepo = AppDataSource.getRepository(TimetableEntry);
+      await timetableEntryRepo.update({ teacherId }, { teacherId: null as any });
+    } catch (teErr: any) {
+      console.warn('[deleteTeacher] TimetableEntry cleanup:', teErr.message);
+    }
+
+    // Save userId before removing teacher (teachers.userId FK references users.id)
+    const linkedUserId = teacher.userId;
+
+    // Delete the teacher FIRST (so users table is no longer referenced by teachers)
+    // TeacherClass has onDelete CASCADE so junction rows are removed automatically
+    console.log('Deleting teacher:', teacher.firstName, teacher.lastName);
+    await teacherRepository.remove(teacher);
+
+    // Now safe to delete the associated user account (no FK from teachers to users)
+    if (linkedUserId) {
+      const user = await userRepository.findOne({ where: { id: linkedUserId } });
       if (user) {
         console.log('Deleting associated user account');
         await userRepository.remove(user);
       }
     }
 
-    // Delete the teacher
-    console.log('Deleting teacher:', teacher.firstName, teacher.lastName);
-    await teacherRepository.remove(teacher);
     console.log('Teacher deleted successfully');
 
     res.json({ message: 'Teacher deleted successfully' });
@@ -731,27 +766,19 @@ export const getTeacherClasses = async (req: AuthRequest, res: Response) => {
     let teacher: Teacher | null = null;
     let teacherId: string | null = null;
 
-    // Get teacherId from params or from authenticated user
     const paramId = req.params.teacherId || req.params.id;
-    
-    // If no teacherId in params, try to get from authenticated user
+
     if (!paramId && req.user) {
       const user = req.user;
-      
-      // If user is a teacher, get their teacher profile
       if (user.role === UserRole.TEACHER) {
-        // Try to find by userId first
         teacher = await teacherRepository.findOne({
           where: { userId: user.id }
         });
-        
-        // If not found by userId, try by teacherId (username)
         if (!teacher && user.username) {
           teacher = await teacherRepository.findOne({
             where: { teacherId: user.username }
           });
         }
-        
         if (teacher) {
           teacherId = teacher.id;
         }
@@ -783,83 +810,333 @@ export const getTeacherClasses = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Teacher ID is required or teacher not found' });
     }
 
-    console.log('[getTeacherClasses] Fetching classes for teacher:', {
-      id: teacher.id,
-      teacherId: teacher.teacherId,
-      name: `${teacher.firstName} ${teacher.lastName}`
+    try {
+      const { TeacherClass } = await import('../entities/TeacherClass');
+      const teacherClassRepository = AppDataSource.getRepository(TeacherClass);
+
+      const teacherClasses = await teacherClassRepository
+        .createQueryBuilder('tc')
+        .innerJoinAndSelect('tc.class', 'class')
+        .where('tc.teacherId = :teacherId', { teacherId: teacher.id })
+        .andWhere('class.isActive = :isActive', { isActive: true })
+        .getMany();
+
+      let classes: any[] = [];
+
+      if (teacherClasses.length > 0) {
+        classes = teacherClasses.map(tc => ({
+          id: tc.class.id,
+          name: tc.class.name,
+          form: tc.class.form,
+          description: tc.class.description,
+          isActive: tc.class.isActive
+        }));
+      } else {
+        const teacherWithClasses = await teacherRepository.findOne({
+          where: { id: teacher.id },
+          relations: ['classes']
+        });
+
+        if (teacherWithClasses && teacherWithClasses.classes && teacherWithClasses.classes.length > 0) {
+          // Filter for active classes only
+          classes = teacherWithClasses.classes
+            .filter((c: any) => c.isActive === true)
+            .map((c: any) => ({
+              id: c.id,
+              name: c.name,
+              form: c.form,
+              description: c.description,
+              isActive: c.isActive
+            }));
+          try {
+            const { linkTeacherToClasses } = await import('../utils/teacherClassLinker');
+            const classIds = classes.map(c => c.id);
+            await linkTeacherToClasses(teacher.id, classIds);
+          } catch (syncError: any) {
+            console.error('[getTeacherClasses] Error syncing to junction table:', syncError.message);
+          }
+        }
+      }
+
+      res.json({ classes });
+    } catch (junctionError: any) {
+      console.error('[getTeacherClasses] Error loading classes from junction table:', junctionError.message);
+      try {
+        const teacherWithClasses = await teacherRepository.findOne({
+          where: { id: teacher.id },
+          relations: ['classes']
+        });
+
+        if (teacherWithClasses && teacherWithClasses.classes) {
+          const classes = teacherWithClasses.classes
+            .filter((c: any) => c.isActive === true)
+            .map((c: any) => ({
+              id: c.id,
+              name: c.name,
+              form: c.form,
+              description: c.description,
+              isActive: c.isActive
+            }));
+          res.json({ classes });
+        } else {
+          res.json({ classes: [] });
+        }
+      } catch (fallbackError: any) {
+        console.error('[getTeacherClasses] Fallback also failed:', fallbackError.message);
+        res.status(500).json({ 
+          message: 'Failed to load teacher classes', 
+          error: fallbackError.message,
+          details: process.env.NODE_ENV === 'development' ? fallbackError.stack : undefined
+        });
+      }
+    }
+  } catch (error: any) {
+    console.error('[getTeacherClasses] General error:', error);
+    console.error('[getTeacherClasses] Error stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message || 'Unknown error',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
+// Search teacher by EmployeeID (teacherId) - for self-linking
+export const searchTeacherByEmployeeId = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const { teacherId } = req.query;
+    const currentUserId = req.user?.id;
+
+    if (!teacherId || typeof teacherId !== 'string') {
+      return res.status(400).json({ message: 'Teacher ID (EmployeeID) is required' });
+    }
+
+    const teacherRepository = AppDataSource.getRepository(Teacher);
+
+    // Find teacher by teacherId (EmployeeID)
+    const teacher = await teacherRepository.findOne({
+      where: { teacherId: teacherId.trim() },
+      relations: ['subjects', 'classes', 'user']
     });
 
-    // Use the junction table to fetch classes (primary method)
+    if (!teacher) {
+      return res.status(404).json({
+        message: 'No teacher found with this EmployeeID',
+        suggestion: 'Please check your EmployeeID and try again'
+      });
+    }
+
+    // If teacher is already linked to another user (not current user), reject
+    if (teacher.userId && teacher.userId !== currentUserId) {
+      return res.status(400).json({
+        message: 'This teacher account is already linked to another user account',
+        alreadyLinked: true
+      });
+    }
+
+    // Load assigned classes from junction table for display
+    const teacherClasses = await getTeacherClassesData(teacher.id);
+
+    const teacherInfo = {
+      id: teacher.id,
+      teacherId: teacher.teacherId,
+      firstName: teacher.firstName,
+      lastName: teacher.lastName,
+      fullName: `${teacher.lastName || ''} ${teacher.firstName || ''}`.trim() || 'Teacher',
+      subjects: teacher.subjects || [],
+      classes: teacherClasses,
+      phoneNumber: teacher.phoneNumber,
+      address: teacher.address
+    };
+
+    // If already linked to current user, return success with alreadyLinked
+    if (teacher.userId === currentUserId) {
+      return res.json({
+        message: 'Your account is already linked to this teacher profile.',
+        alreadyLinked: true,
+        teacher: teacherInfo
+      });
+    }
+
+    res.json({
+      message: 'Teacher found. Please confirm to link your account.',
+      teacher: teacherInfo
+    });
+  } catch (error: any) {
+    console.error('[searchTeacherByEmployeeId] Error:', error);
+    res.status(500).json({
+      message: 'Server error',
+      error: error.message || 'Unknown error'
+    });
+  }
+};
+
+// Link current logged-in teacher user to their teacher profile (Option A: self-link)
+export const linkTeacherAccount = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+    const username = req.user?.username;
+    const bodyTeacherId = req.body?.teacherId ? String(req.body.teacherId).trim() : null;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    if (userRole !== UserRole.TEACHER) {
+      return res.status(403).json({ message: 'Only teachers can link their account' });
+    }
+
+    const teacherRepository = AppDataSource.getRepository(Teacher);
+    const userRepository = AppDataSource.getRepository(User);
+
+    // Resolve TeacherID: use body.teacherId if provided, otherwise username (EmployeeID)
+    const teacherIdToUse = bodyTeacherId || username;
+    if (!teacherIdToUse) {
+      return res.status(400).json({
+        message: 'Teacher ID (EmployeeID) is required for linking',
+        suggestion: 'Enter your EmployeeID/TeacherID or ensure you logged in with your EmployeeID as username'
+      });
+    }
+
+    // Find teacher by teacherId (EmployeeID)
+    const teacher = await teacherRepository.findOne({
+      where: { teacherId: teacherIdToUse },
+      relations: ['subjects', 'classes', 'user']
+    });
+
+    if (!teacher) {
+      return res.status(404).json({
+        message: 'No teacher profile found matching this TeacherID (EmployeeID)',
+        suggestion: 'Please contact administrator to create your teacher profile',
+        debug: { searchedTeacherId: teacherIdToUse }
+      });
+    }
+
+    // Check if teacher is already linked to a different user
+    if (teacher.userId && teacher.userId !== userId) {
+      return res.status(400).json({ 
+        message: 'This teacher profile is already linked to another user account',
+        suggestion: 'Please contact administrator if this is an error'
+      });
+    }
+
+    // Check if teacher is already linked to current user
+    if (teacher.userId === userId) {
+      // Already linked, return success with teacher data
+      const teacherClasses = await getTeacherClassesData(teacher.id);
+      
+      return res.json({
+        message: 'Your account is already linked to this teacher profile',
+        alreadyLinked: true,
+        teacher: {
+          id: teacher.id,
+          teacherId: teacher.teacherId,
+          firstName: teacher.firstName,
+          lastName: teacher.lastName,
+          fullName: `${teacher.lastName || ''} ${teacher.firstName || ''}`.trim() || 'Teacher',
+          subjects: teacher.subjects || [],
+          classes: teacherClasses
+        }
+      });
+    }
+
+    // Link the user account to the teacher profile
+    teacher.userId = userId;
+    await teacherRepository.save(teacher);
+
+    // Also set the teacher relationship on the user if needed
+    const user = await userRepository.findOne({ where: { id: userId } });
+    if (user) {
+      user.teacher = teacher;
+      await userRepository.save(user);
+    }
+
+    // Get teacher classes after linking
+    const teacherClasses = await getTeacherClassesData(teacher.id);
+
+    const linkedTeacher = {
+      id: teacher.id,
+      teacherId: teacher.teacherId,
+      firstName: teacher.firstName,
+      lastName: teacher.lastName,
+      fullName: `${teacher.lastName || ''} ${teacher.firstName || ''}`.trim() || 'Teacher',
+      subjects: teacher.subjects || [],
+      classes: teacherClasses,
+      phoneNumber: teacher.phoneNumber,
+      address: teacher.address
+    };
+
+    console.log(`[linkTeacherAccount] Successfully linked user ${userId} to teacher ${teacher.teacherId}`);
+
+    res.json({
+      message: 'Account linked successfully! You can now access your assigned classes.',
+      teacher: linkedTeacher
+    });
+  } catch (error: any) {
+    console.error('[linkTeacherAccount] Error:', error);
+    res.status(500).json({ 
+      message: 'Server error while linking account', 
+      error: error.message || 'Unknown error' 
+    });
+  }
+};
+
+// Helper function to get teacher classes data
+async function getTeacherClassesData(teacherId: string): Promise<any[]> {
+  try {
     const { TeacherClass } = await import('../entities/TeacherClass');
     const teacherClassRepository = AppDataSource.getRepository(TeacherClass);
 
-    // Query the junction table using teacher.id (UUID) and filter for active classes only
     const teacherClasses = await teacherClassRepository
       .createQueryBuilder('tc')
       .innerJoinAndSelect('tc.class', 'class')
-      .where('tc.teacherId = :teacherId', { teacherId: teacher.id })
+      .where('tc.teacherId = :teacherId', { teacherId })
       .andWhere('class.isActive = :isActive', { isActive: true })
       .getMany();
 
-    console.log('[getTeacherClasses] Found', teacherClasses.length, 'active class assignments in junction table');
-
-    let classes: any[] = [];
-
     if (teacherClasses.length > 0) {
-      // Extract class information from junction table
-      classes = teacherClasses.map(tc => ({
+      return teacherClasses.map(tc => ({
         id: tc.class.id,
         name: tc.class.name,
         form: tc.class.form,
         description: tc.class.description,
         isActive: tc.class.isActive
       }));
-      console.log('[getTeacherClasses] Classes loaded from junction table:', classes.map(c => c.name).join(', '));
-    } else {
-      // Fallback: try ManyToMany relation if junction table has no results
-      console.log('[getTeacherClasses] No classes in junction table, trying ManyToMany relation...');
-      const teacherWithClasses = await teacherRepository.findOne({
-        where: { id: teacher.id },
-        relations: ['classes']
-      });
-
-      if (teacherWithClasses && teacherWithClasses.classes && teacherWithClasses.classes.length > 0) {
-        // Filter for active classes only
-        classes = teacherWithClasses.classes
-          .filter((c: any) => c.isActive === true)
-          .map((c: any) => ({
-            id: c.id,
-            name: c.name,
-            form: c.form,
-            description: c.description,
-            isActive: c.isActive
-          }));
-        console.log('[getTeacherClasses] Found', classes.length, 'active classes via ManyToMany relation:', classes.map(c => c.name).join(', '));
-        
-        // Sync to junction table for future queries
-        try {
-          const { linkTeacherToClasses } = await import('../utils/teacherClassLinker');
-          const classIds = classes.map(c => c.id);
-          await linkTeacherToClasses(teacher.id, classIds);
-          console.log('[getTeacherClasses] Synced classes to junction table');
-        } catch (syncError: any) {
-          console.error('[getTeacherClasses] Error syncing to junction table:', syncError.message);
-        }
-      } else {
-        console.log('[getTeacherClasses] No classes found via any method');
-      }
     }
 
-    res.json({ classes });
-  } catch (error: any) {
-    console.error('[getTeacherClasses] Error fetching teacher classes:', error);
-    console.error('[getTeacherClasses] Error stack:', error.stack);
-    res.status(500).json({ 
-      message: 'Server error', 
-      error: error.message || 'Unknown error' 
+    // Fallback to ManyToMany if junction table is empty
+    const teacher = await AppDataSource.getRepository(Teacher).findOne({
+      where: { id: teacherId },
+      relations: ['classes']
     });
+
+    if (teacher?.classes) {
+      return teacher.classes
+        .filter((c: any) => c.isActive === true)
+        .map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          form: c.form,
+          description: c.description,
+          isActive: c.isActive
+        }));
+    }
+
+    return [];
+  } catch (error: any) {
+    console.error('[getTeacherClassesData] Error:', error);
+    return [];
   }
-};
+}
 
 // Sync all ManyToMany relationships to junction table
 export const syncTeacherClasses = async (req: AuthRequest, res: Response) => {

@@ -123,6 +123,11 @@ export class AuthService {
     return this.currentUserSubject.value;
   }
 
+  setCurrentUser(user: User): void {
+    localStorage.setItem('user', JSON.stringify(user));
+    this.currentUserSubject.next(user);
+  }
+
   consumeLogoutReason(): LogoutReason | null {
     const reason = sessionStorage.getItem(this.logoutReasonKey) as LogoutReason | null;
     if (reason) {

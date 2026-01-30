@@ -8,33 +8,38 @@
   min-height: calc(100vh - 80px);
 }
 
-/* Header Section */
+/* Header Section - thin single line */
 .page-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
-  padding: 32px;
-  margin-bottom: 24px;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+  border-radius: 6px;
+  padding: 8px 14px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
   color: white;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.header-content .header-icon {
+  font-size: 18px;
+  flex-shrink: 0;
 }
 
 .header-content h1 {
   margin: 0;
-  font-size: 32px;
-  font-weight: 700;
-  color: white;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-icon {
-  font-size: 36px;
-}
-
-.subtitle {
-  margin: 8px 0 0 0;
   font-size: 16px;
+  font-weight: 600;
+  color: white;
+}
+
+.header-content .subtitle {
+  margin: 0;
+  font-size: 12px;
   opacity: 0.9;
   color: rgba(255, 255, 255, 0.95);
 }

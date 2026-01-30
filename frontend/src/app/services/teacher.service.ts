@@ -109,6 +109,16 @@ export class TeacherService {
     return this.http.get(`${this.apiUrl}/teachers/${id}/classes`).pipe(
       catchError((error: any) => {
         console.error('Error loading teacher classes:', error);
+        
+        // Handle different error types gracefully
+        if (error.status === 500) {
+          console.warn('Server error when loading teacher classes, returning empty array');
+        } else if (error.status === 404) {
+          console.warn('Teacher classes endpoint not found, returning empty array');
+        } else {
+          console.error('Unexpected error loading teacher classes:', error.message);
+        }
+        
         return of({ classes: [] });
       })
     );
@@ -120,6 +130,17 @@ export class TeacherService {
 
   deleteTeacher(id: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/teachers/${id}`);
+  }
+
+  searchTeacherByEmployeeId(teacherId: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/teachers/search`, {
+      params: { teacherId }
+    });
+  }
+
+  linkTeacherAccount(teacherId?: string): Observable<any> {
+    const body = teacherId && teacherId.trim() ? { teacherId: teacherId.trim() } : {};
+    return this.http.post(`${this.apiUrl}/teachers/link-account`, body);
   }
 }
 

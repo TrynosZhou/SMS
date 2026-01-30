@@ -6,36 +6,41 @@
   padding: 20px;
 }
 
-/* Header Section */
+/* Header Section - thin single line */
 .form-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 30px;
-  padding: 25px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 8px 14px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
+  border-radius: 6px;
   color: white;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
 }
 
-.header-content h1 {
-  margin: 0 0 8px 0;
-  font-size: 28px;
-  font-weight: 600;
+.header-content {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .header-content .icon {
-  font-size: 32px;
+  font-size: 18px;
+  flex-shrink: 0;
 }
 
-.subtitle {
+.header-content h1 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.header-content .subtitle {
   margin: 0;
   opacity: 0.9;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .btn-icon {

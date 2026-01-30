@@ -25,6 +25,15 @@
       <h2>Teacher Portal</h2>
       <p class="user-info" *ngIf="teacherName && teacherName !== 'Teacher'">{{ teacherName }}</p>
       <p class="user-info" *ngIf="!teacherName || teacherName === 'Teacher'">Loading...</p>
+      
+      <!-- Add Link Account Button -->
+      <button *ngIf="!isAccountLinked()" 
+              class="btn btn-link-account" 
+              (click)="navigateToLinkAccount()"
+              [disabled]="loading">
+        <i class="fas fa-link"></i>
+        <span>Link Teacher Account</span>
+      </button>
     </div>
     
     <nav class="sidebar-nav">
@@ -33,6 +42,28 @@
         <span class="sidebar-icon">📊</span>
         <span class="sidebar-text">Dashboard</span>
       </a>
+
+      <!-- My Classes submenu -->
+      <div class="sidebar-menu">
+        <div class="sidebar-menu-header" (click)="toggleMenu('myClasses')">
+          <span class="sidebar-icon">🏫</span>
+          <span class="sidebar-text">My Classes</span>
+          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('myClasses')">▼</span>
+        </div>
+        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('myClasses')">
+          <a *ngFor="let classItem of teacherClasses" 
+             [routerLink]="['/teacher/record-book']" 
+             [queryParams]="{classId: classItem.id}" 
+             class="sidebar-subitem"
+             routerLinkActive="active">
+            <span class="sidebar-text">{{ classItem.name }} ({{ classItem.form || 'N/A' }})</span>
+          </a>
+          <div *ngIf="teacherClasses.length === 0 && !loading" class="sidebar-subitem empty-text">
+            No classes assigned
+          </div>
+          <div *ngIf="loading" class="sidebar-subitem empty-text">Loading...</div>
+        </div>
+      </div>
 
       <!-- Exam Management -->
       <div class="sidebar-menu" *ngIf="canAccessModule('exams')">

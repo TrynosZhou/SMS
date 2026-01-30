@@ -62,14 +62,14 @@
           <span class="select-arrow">▼</span>
         </div>
       </div>
-      <div class="form-group">
+      <div class="form-group form-group-subject">
         <label>Subject(s) Teaching</label>
         <textarea 
           [(ngModel)]="teacherSubjects" 
           class="subject-textarea" 
           readonly
           placeholder="Select a class to view subject(s)..."
-          rows="3"></textarea>
+          rows="1"></textarea>
       </div>
     </div>
   </div>
@@ -82,86 +82,6 @@
 
   <!-- Record Book Table -->
   <div *ngIf="!loading && selectedClass && selectedSubject && students.length > 0" class="record-book-content">
-    <!-- Header Information -->
-    <div class="record-book-header modern-header">
-      <div class="header-grid">
-        <div class="header-item">
-          <span class="header-icon">🏫</span>
-          <div>
-            <div class="header-label">School</div>
-            <div class="header-value">{{ schoolName }}</div>
-          </div>
-        </div>
-        <div class="header-item">
-          <span class="header-icon">👨‍🏫</span>
-          <div>
-            <div class="header-label">Teacher</div>
-            <div class="header-value">{{ teacher?.firstName }} {{ teacher?.lastName }}</div>
-          </div>
-        </div>
-        <div class="header-item">
-          <span class="header-icon">🎓</span>
-          <div>
-            <div class="header-label">Class</div>
-            <div class="header-value">{{ selectedClass.name }}</div>
-          </div>
-        </div>
-        <div class="header-item" *ngIf="selectedSubject">
-          <span class="header-icon">📚</span>
-          <div>
-            <div class="header-label">Subject</div>
-            <div class="header-value">{{ selectedSubject.name }}</div>
-          </div>
-        </div>
-        <div class="header-item">
-          <span class="header-icon">📅</span>
-          <div>
-            <div class="header-label">Term</div>
-            <div class="header-value">{{ currentTerm }}</div>
-          </div>
-        </div>
-        <div class="header-item">
-          <span class="header-icon">👥</span>
-          <div>
-            <div class="header-label">Students</div>
-            <div class="header-value">{{ students.length }}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Quick Stats -->
-    <div class="stats-container">
-      <div class="stat-card">
-        <div class="stat-icon">📝</div>
-        <div class="stat-content">
-          <div class="stat-label">Total Tests</div>
-          <div class="stat-value">{{ visibleTests }}</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">✅</div>
-        <div class="stat-content">
-          <div class="stat-label">Completed</div>
-          <div class="stat-value">{{ getCompletedCount() }}</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">⏳</div>
-        <div class="stat-content">
-          <div class="stat-label">Pending</div>
-          <div class="stat-value">{{ getPendingCount() }}</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">📊</div>
-        <div class="stat-content">
-          <div class="stat-label">Avg Score</div>
-          <div class="stat-value">{{ getAverageScore() }}%</div>
-        </div>
-      </div>
-    </div>
-
     <!-- Search and Filter -->
     <div class="toolbar">
       <div class="search-box">
@@ -263,6 +183,7 @@
                 type="date" 
                 [(ngModel)]="testDates['test' + testNum]" 
                 (change)="onDateChange()"
+                (blur)="onDateChange()"
                 class="date-input"
                 required>
             </td>
@@ -271,15 +192,9 @@
       </table>
     </div>
 
-    <!-- Save Button -->
+    <!-- Action buttons (marks auto-save as you enter them) -->
     <div class="action-buttons">
-      <button 
-        class="btn btn-primary btn-large" 
-        (click)="saveAllMarks()" 
-        [disabled]="saving">
-        <span class="btn-icon">{{ saving ? '⏳' : '💾' }}</span>
-        <span>{{ saving ? 'Saving...' : 'Save All Marks' }}</span>
-      </button>
+      <span class="auto-save-hint" *ngIf="students.length > 0">Marks, topics, and dates are saved automatically when you leave a field.</span>
       <button 
         class="btn btn-outline" 
         (click)="calculateStatistics()"

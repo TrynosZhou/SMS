@@ -148,6 +148,9 @@ export class ExamService {
       }),
       catchError((error: any) => {
         console.error('Report card request failed:', error);
+        console.error('Report card error status:', error.status);
+        console.error('Report card error message:', error.error?.message || error.message);
+        console.error('Report card error details:', error.error);
         return throwError(() => error);
       })
     );

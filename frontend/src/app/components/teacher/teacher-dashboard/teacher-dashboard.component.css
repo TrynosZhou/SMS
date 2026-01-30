@@ -140,6 +140,41 @@
   opacity: 0.9;
 }
 
+/* Link Account Button */
+.btn-link-account {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  margin-top: 1rem;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.btn-link-account:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.btn-link-account:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-link-account i {
+  font-size: 1rem;
+}
+
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -262,6 +297,16 @@
   background-color: rgba(255, 255, 255, 0.12);
   color: #ffffff;
   font-weight: 600;
+}
+
+.sidebar-subitem.empty-text {
+  cursor: default;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.sidebar-subitem.empty-text:hover {
+  background-color: transparent;
 }
 
 .sidebar.collapsed .sidebar-submenu {

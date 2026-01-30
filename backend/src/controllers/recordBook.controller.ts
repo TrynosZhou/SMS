@@ -9,6 +9,20 @@ import { Settings } from '../entities/Settings';
 import { AuthRequest } from '../middleware/auth';
 import { UserRole } from '../entities/User';
 import { createRecordBookPDF } from '../utils/recordBookPdfGenerator';
+import { TeacherClass } from '../entities/TeacherClass';
+
+/** Check if teacher is assigned to class using TeacherClass junction table and/or ManyToMany classes. */
+async function isTeacherAssignedToClass(teacherId: string, classId: string, teacher?: Teacher | null): Promise<boolean> {
+  const tcRepo = AppDataSource.getRepository(TeacherClass);
+  const assignment = await tcRepo.findOne({ where: { teacherId, classId } });
+  if (assignment) return true;
+  if (teacher?.classes?.length) {
+    return teacher.classes.some((c: Class) => c.id === classId);
+  }
+  const teacherRepository = AppDataSource.getRepository(Teacher);
+  const t = await teacherRepository.findOne({ where: { id: teacherId }, relations: ['classes'] });
+  return (t?.classes ?? []).some((c: Class) => c.id === classId);
+}
 
 // Get record book data for a specific class and subject
 export const getRecordBookByClass = async (req: AuthRequest, res: Response) => {
@@ -36,7 +50,7 @@ export const getRecordBookByClass = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Teacher not found' });
     }
 
-    const isAssigned = teacher.classes?.some(c => c.id === classId);
+    const isAssigned = await isTeacherAssignedToClass(teacherId, classId, teacher);
     if (!isAssigned) {
       return res.status(403).json({ message: 'You are not assigned to this class' });
     }
@@ -175,7 +189,7 @@ export const saveRecordBookMarks = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Teacher not found' });
     }
 
-    const isAssigned = teacher.classes?.some(c => c.id === classId);
+    const isAssigned = await isTeacherAssignedToClass(teacherId, classId, teacher);
     if (!isAssigned) {
       return res.status(403).json({ message: 'You are not assigned to this class' });
     }
@@ -334,7 +348,7 @@ export const batchSaveRecordBookMarks = async (req: AuthRequest, res: Response) 
       return res.status(404).json({ message: 'Teacher not found' });
     }
 
-    const isAssigned = teacher.classes?.some(c => c.id === classId);
+    const isAssigned = await isTeacherAssignedToClass(teacherId, classId, teacher);
     if (!isAssigned) {
       return res.status(403).json({ message: 'You are not assigned to this class' });
     }

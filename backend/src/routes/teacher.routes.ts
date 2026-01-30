@@ -11,7 +11,9 @@ import {
   getTeacherClasses,
   createTeacherAccount,
   syncTeacherClasses,
-  diagnoseTeacherClasses
+  diagnoseTeacherClasses,
+  searchTeacherByEmployeeId,
+  linkTeacherAccount
 } from '../controllers/teacher.controller';
 
 const router = Router();
@@ -20,6 +22,8 @@ const router = Router();
 router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), registerTeacher);
 router.get('/', authenticate, getTeachers);
 router.get('/me', authenticate, getCurrentTeacher); // Must be before /:id
+router.get('/search', authenticate, searchTeacherByEmployeeId); // Search teacher by EmployeeID
+router.post('/link-account', authenticate, authorize(UserRole.TEACHER), linkTeacherAccount); // Link teacher account
 router.post('/sync-classes', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), syncTeacherClasses); // Sync endpoint
 router.get('/:teacherId/diagnose', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), diagnoseTeacherClasses); // Diagnostic endpoint
 router.get('/:id/classes', authenticate, getTeacherClasses); // Specific routes before /:id

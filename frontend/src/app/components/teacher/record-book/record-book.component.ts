@@ -453,10 +453,11 @@ export class RecordBookComponent implements OnInit {
 
     this.recordBookService.saveMarks(data).subscribe({
       next: () => {
-        // Silent save - no success message for individual saves
+        this.success = 'Saved';
+        setTimeout(() => { if (this.success === 'Saved') this.success = ''; }, 2000);
       },
       error: (err: any) => {
-        this.error = 'Failed to save marks';
+        this.error = err.error?.message || 'Failed to save marks';
         setTimeout(() => this.error = '', 3000);
       }
     });
@@ -488,9 +489,9 @@ export class RecordBookComponent implements OnInit {
 
     this.recordBookService.batchSaveMarks(this.selectedClassId, this.selectedSubjectId, records, this.topics, this.testDates).subscribe({
       next: () => {
-        this.success = 'All marks saved successfully';
+        this.success = 'Saved';
         this.saving = false;
-        setTimeout(() => this.success = '', 3000);
+        setTimeout(() => { if (this.success === 'Saved') this.success = ''; }, 2000);
       },
       error: (err: any) => {
         this.error = err.error?.message || 'Failed to save marks';

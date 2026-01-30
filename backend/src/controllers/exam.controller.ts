@@ -1308,12 +1308,6 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Class ID, term, and exam type are required' });
     }
 
-    // For teachers, subjectId is required
-    if (isTeacher && !subjectId) {
-      console.log('[getReportCard] Teacher request missing subjectId');
-      return res.status(400).json({ message: 'Subject ID is required for teachers' });
-    }
-
     // For students, verify they can only access their own report card
     if (isStudent) {
       console.log('[getReportCard] Student access detected');

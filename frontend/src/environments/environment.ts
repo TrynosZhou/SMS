@@ -1,5 +1,6 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:3001/api'
+  // Use relative URL so ng serve proxies /api to backend (http://localhost:3001)
+  apiUrl: '/api'
 };
 

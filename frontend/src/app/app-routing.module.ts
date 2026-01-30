@@ -39,6 +39,7 @@ import { RecordBookComponent } from './components/teacher/record-book/record-boo
 import { MyClassesComponent } from './components/teacher/my-classes/my-classes.component';
 import { TeacherRecordBookComponent } from './components/admin/teacher-record-book/teacher-record-book.component';
 import { TeacherDashboardComponent } from './components/teacher/teacher-dashboard/teacher-dashboard.component';
+import { LinkAccountComponent } from './components/teacher/link-account/link-account.component';
 import { TimetableGenerateComponent } from './components/timetable/timetable-generate.component';
 import { TimetableConfigComponent } from './components/timetable/timetable-config.component';
 import { StudentReportCardComponent } from './components/student/student-report-card/student-report-card.component';
@@ -53,11 +54,12 @@ const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
   { path: 'parent/dashboard', component: ParentDashboardComponent, canActivate: [AuthGuard] },
-  { path: 'teacher/dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
+  { path: 'teacher/dashboard', component: TeacherDashboardComponent, canActivate: [AuthGuard] },
   { path: 'parent/inbox', component: ParentInboxComponent, canActivate: [AuthGuard] },
   { path: 'parent/link-students', component: LinkStudentsComponent, canActivate: [AuthGuard] },
   { path: 'parent/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'teacher/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
+  { path: 'teacher/link-account', component: LinkAccountComponent, canActivate: [AuthGuard] },
   { path: 'teacher/record-book', component: RecordBookComponent, canActivate: [AuthGuard] },
   { path: 'teacher/my-classes', component: MyClassesComponent, canActivate: [AuthGuard] },
   { path: 'admin/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },

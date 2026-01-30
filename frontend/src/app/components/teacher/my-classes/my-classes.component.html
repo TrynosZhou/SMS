@@ -1,15 +1,14 @@
 <div class="my-classes-container">
   <div class="page-header">
     <div class="header-content">
-      <div>
-        <h1>🏫 My Classes</h1>
-        <p *ngIf="teacherName && teacherName !== 'Teacher'">
-          Welcome, <strong>{{ teacherName }}</strong> - View all classes assigned to you
-        </p>
-        <p *ngIf="!teacherName || teacherName === 'Teacher'">
-          View all classes assigned to you
-        </p>
-      </div>
+      <span class="header-icon">🏫</span>
+      <h1>My Classes</h1>
+      <span class="header-welcome" *ngIf="teacherName && teacherName !== 'Teacher'">
+        Welcome, <strong>{{ teacherName }}</strong> – View all classes assigned to you
+      </span>
+      <span class="header-welcome" *ngIf="!teacherName || teacherName === 'Teacher'">
+        View all classes assigned to you
+      </span>
     </div>
   </div>
 

@@ -223,14 +223,21 @@ export class TeacherListComponent implements OnInit {
       },
       error: (err: any) => {
         console.error('Error deleting teacher:', err);
+        console.error('Error status:', err.status, 'message:', err.error?.message || err.message);
         let errorMessage = 'Failed to delete teacher';
         if (err.status === 0 || err.status === undefined) {
           errorMessage = 'Cannot connect to server. Please ensure the backend server is running.';
+        } else if (err.status === 403) {
+          errorMessage = err.error?.message || 'You do not have permission to delete teachers.';
+        } else if (err.status === 404) {
+          errorMessage = err.error?.message || 'Teacher not found.';
         } else if (err.error) {
           if (typeof err.error === 'string') {
             errorMessage = err.error;
           } else if (err.error.message) {
             errorMessage = err.error.message;
+          } else if (err.error.error) {
+            errorMessage = err.error.error;
           }
         } else if (err.message) {
           errorMessage = err.message;

@@ -53,19 +53,13 @@ export class TeacherDashboardComponent implements OnInit {
     const first = (firstName && typeof firstName === 'string') ? firstName.trim() : '';
     const last = (lastName && typeof lastName === 'string') ? lastName.trim() : '';
     
-    console.log('getFullName called with:', { firstName: first, lastName: last });
-    
-    // Filter out default placeholder values
-    const validFirst = (first && first !== 'Teacher' && first !== 'Account') ? first : '';
-    const validLast = (last && last !== 'Teacher' && last !== 'Account') ? last : '';
-    
-    console.log('After filtering:', { validFirst, validLast });
+    // Filter out only truly empty/placeholder values, not valid names that happen to be 'Teacher' or 'Account'
+    const validFirst = first || '';
+    const validLast = last || '';
     
     // Combine as LastName + FirstName (as requested)
     const parts = [validLast, validFirst].filter(part => part.length > 0);
     const fullName = parts.join(' ').trim();
-    
-    console.log('getFullName result:', fullName);
     
     // Return full name if available, otherwise return 'Teacher'
     return fullName || 'Teacher';
@@ -174,22 +168,12 @@ export class TeacherDashboardComponent implements OnInit {
       next: (teacher: any) => {
         this.teacher = teacher;
         
-        // Debug: Log raw teacher data
-        console.log('Raw teacher data:', JSON.stringify(teacher, null, 2));
-        console.log('Teacher firstName:', teacher.firstName, 'Type:', typeof teacher.firstName, 'Value:', JSON.stringify(teacher.firstName));
-        console.log('Teacher lastName:', teacher.lastName, 'Type:', typeof teacher.lastName, 'Value:', JSON.stringify(teacher.lastName));
-        console.log('Teacher fullName from response:', teacher.fullName);
-        
         // Update teacher name - prioritize fullName from response, otherwise construct it
-        // Filter out default placeholder values ("Teacher", "Account")
+        // Check if we have actual firstName and lastName values (not empty/null)
         const hasValidName = teacher.firstName && 
                             teacher.firstName.trim() && 
-                            teacher.firstName !== 'Teacher' && 
-                            teacher.firstName !== 'Account' &&
                             teacher.lastName && 
-                            teacher.lastName.trim() && 
-                            teacher.lastName !== 'Teacher' && 
-                            teacher.lastName !== 'Account';
+                            teacher.lastName.trim();
         
         if (hasValidName) {
           // Construct fullName from firstName/lastName (LastName + FirstName format)
@@ -197,8 +181,8 @@ export class TeacherDashboardComponent implements OnInit {
           const lastName = teacher.lastName.trim();
           this.teacherName = this.getFullName(firstName, lastName);
           console.log('Using valid firstName/lastName to construct fullName:', this.teacherName);
-        } else if (teacher.fullName && teacher.fullName.trim() && teacher.fullName !== 'Teacher' && teacher.fullName !== 'Account Teacher') {
-          // Use fullName from backend response if firstName/lastName are placeholders
+        } else if (teacher.fullName && teacher.fullName.trim() && teacher.fullName !== 'Teacher') {
+          // Use fullName from backend response if firstName/lastName are empty
           this.teacherName = teacher.fullName.trim();
           console.log('Using fullName from response:', this.teacherName);
         } else {
@@ -210,18 +194,9 @@ export class TeacherDashboardComponent implements OnInit {
         }
         
         console.log('Teacher loaded successfully - Full Name:', this.teacherName);
-        console.log('Teacher details:', { 
-          rawFirstName: teacher.firstName,
-          rawLastName: teacher.lastName,
-          fullNameFromResponse: teacher.fullName,
-          finalFullName: this.teacherName,
-          teacherId: teacher.teacherId
-        });
         
-        // Force UI update
-        console.log('Forcing change detection...');
+        // Force change detection to update the view with the new name
         this.cdr.detectChanges();
-        console.log('teacherName after change detection:', this.teacherName);
         
         // Always fetch classes from dedicated endpoint to ensure we get correct classes from junction table
         if (teacher.id) {
@@ -252,7 +227,7 @@ export class TeacherDashboardComponent implements OnInit {
             } 
             // Try constructing from firstName/lastName
             else if (user.teacher.firstName && user.teacher.lastName && 
-                     user.teacher.firstName !== 'Teacher' && user.teacher.lastName !== 'Account') {
+                     user.teacher.firstName.trim() && user.teacher.lastName.trim()) {
               this.teacherName = this.getFullName(user.teacher.firstName, user.teacher.lastName);
               console.log('Fallback: Constructed teacherName from user.teacher:', this.teacherName);
             }
@@ -266,6 +241,9 @@ export class TeacherDashboardComponent implements OnInit {
       },
       error: (err: any) => {
         console.error('Error loading teacher:', err);
+        console.error('Error status:', err.status);
+        console.error('Error message:', err.error?.message || err.message);
+        console.error('Error details:', err.error);
         this.loading = false;
         
         // Fallback: Try to get name from user object if API call fails
@@ -281,7 +259,9 @@ export class TeacherDashboardComponent implements OnInit {
           this.cdr.detectChanges();
         }
         
-        if (err.status === 404) {
+        if (err.status === 0) {
+          this.error = 'Cannot reach the server. Please ensure the backend API is running (e.g. http://localhost:3001).';
+        } else if (err.status === 404) {
           this.error = 'No teacher profile found for your account. Please contact the administrator.';
         } else if (err.status === 401) {
           this.error = 'You are not authenticated. Please log in again.';
@@ -289,9 +269,10 @@ export class TeacherDashboardComponent implements OnInit {
             this.authService.logout();
           }, 2000);
         } else {
-          this.error = 'Failed to load teacher information. Please try again.';
+          const errorMsg = err.error?.message || err.message || 'Unknown error';
+          this.error = `Failed to load teacher information: ${errorMsg}. Please try again.`;
         }
-        setTimeout(() => this.error = '', 5000);
+        setTimeout(() => this.error = '', 8000);
       }
     });
   }
@@ -373,6 +354,23 @@ export class TeacherDashboardComponent implements OnInit {
 
   manageAccount() {
     this.router.navigate(['/teacher/manage-account']);
+  }
+
+  /**
+   * Checks if the current user's account is linked to a teacher profile
+   * @returns boolean indicating if the account is linked
+   */
+  isAccountLinked(): boolean {
+    const user = this.authService.getCurrentUser();
+    const isLinked = !!user?.teacher?.id;
+    return isLinked;
+  }
+
+  /**
+   * Navigates to the link account page
+   */
+  navigateToLinkAccount(): void {
+    this.router.navigate(['/teacher/link-account']);
   }
 }
 

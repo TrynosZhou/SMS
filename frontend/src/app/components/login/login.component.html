@@ -36,20 +36,23 @@
     <div *ngIf="activeTab === 'signin'" class="tab-content">
       <div class="info-box" style="background: #fff3e0; border-left: 4px solid #ff9800; padding: 10px 12px; margin-bottom: 14px; border-radius: 4px;">
         <p style="margin: 0; font-size: 11px; color: #e65100; line-height: 1.4;">
+          <strong>Teachers:</strong> Use your EmployeeID as username and your password.
+        </p>
+        <p style="margin: 6px 0 0 0; font-size: 11px; color: #e65100; line-height: 1.4;">
           <strong>Students:</strong> Use your StudentID as username and your Date of Birth (dd/mm/yyyy) as password.
         </p>
       </div>
       <form (ngSubmit)="onSignIn()">
         <div class="form-group">
-          <label>Username</label>
+          <label>Username / EmployeeID / StudentID</label>
           <input 
             type="text" 
             [(ngModel)]="email" 
             name="email" 
-            placeholder="Enter username or StudentID" 
+            placeholder="Enter EmployeeID (teachers), StudentID (students), or username" 
             required
             autocomplete="username">
-          <small class="form-text">For students: Enter your StudentID</small>
+          <small class="form-text">Teachers: EmployeeID. Students: StudentID.</small>
         </div>
         <div class="form-group">
           <label>Password</label>
@@ -80,7 +83,7 @@
     <div *ngIf="activeTab === 'signup'" class="tab-content">
       <div class="info-box" style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 10px 12px; margin-bottom: 14px; border-radius: 4px;">
         <p style="margin: 0; font-size: 11px; color: #1565c0; line-height: 1.4;">
-          <strong>Note:</strong> Teachers use temporary accounts provided by the administrator to login.
+          <strong>Note:</strong> Teachers log in with their EmployeeID as username (provided by the administrator). Use the Link button on the teacher dashboard to link with your teacher profile and access assigned classes.
         </p>
       </div>
       <form (ngSubmit)="onSignUp()">

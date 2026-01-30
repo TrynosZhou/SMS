@@ -1,15 +1,11 @@
 <div class="attendance-container modern-container">
-  <!-- Modern Header Section -->
+  <!-- Modern Header Section - thin single line -->
   <div class="page-header modern-header-section">
     <div class="header-content">
       <div class="header-title-section">
-        <div class="header-icon-wrapper">
-          <span class="header-main-icon">✅</span>
-        </div>
-        <div>
-          <h1>Mark Attendance</h1>
-          <p class="header-subtitle">Record daily student attendance with ease</p>
-        </div>
+        <span class="header-main-icon">✅</span>
+        <h1>Mark Attendance</h1>
+        <span class="header-subtitle">Record daily student attendance with ease</span>
       </div>
       <div class="header-actions" *ngIf="selectedClassId && students.length > 0">
         <div class="save-indicator modern-indicator" *ngIf="hasUnsavedChanges">

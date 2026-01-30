@@ -246,8 +246,7 @@ export const login = async (req: Request, res: Response) => {
       }
     } else {
       // Not a student login, proceed with regular user authentication
-      console.log('[Login] No student found with studentNumber:', loginIdentifier);
-      console.log('[Login] Proceeding with regular user authentication...');
+      console.log('[Login] Not a student login (username:', loginIdentifier, '), proceeding with user authentication...');
       // Try to find user by username or email (email can be null for teachers)
       try {
         user = await userRepository
@@ -300,79 +299,79 @@ export const login = async (req: Request, res: Response) => {
       try {
         console.log('[Login] Teacher login detected, loading teacher profile...');
         
-        // Step 1: Find teacher by userId (as per requirements)
-        let teacher = await teacherRepository.findOne({
-          where: { userId: user.id }
-        });
+        // PRIORITY 1: Always try to find teacher by EmployeeID (username) first - ensures correct teacher record
+        let teacher: Teacher | null = null;
         
-        // Check if the found teacher is a placeholder (wrong teacher)
-        const isPlaceholderTeacher = teacher && 
-          (teacher.firstName === 'Teacher' || teacher.lastName === 'Account' ||
-           (teacher.firstName === 'Teacher' && teacher.lastName === 'Account'));
-        
-        // If teacher is a placeholder or not found, try to find correct teacher by teacherId (username)
-        if ((!teacher || isPlaceholderTeacher) && user.username) {
-          if (isPlaceholderTeacher) {
-            console.log('[Login] ⚠️ User is linked to placeholder teacher, finding correct teacher...');
-            console.log('[Login] Placeholder teacher:', teacher.firstName, teacher.lastName, 'ID:', teacher.id);
-          } else {
-            console.log('[Login] Teacher not found by userId, trying by teacherId (username):', user.username);
-          }
-          
-          // First try to find teacher with real name (not default placeholders) matching username
-          const correctTeacher = await teacherRepository
+        if (user.username) {
+          const allMatchingByEmployeeId = await teacherRepository
             .createQueryBuilder('teacher')
             .where('LOWER(teacher.teacherId) = LOWER(:teacherId)', { teacherId: user.username })
-            .andWhere("teacher.firstName != 'Teacher'")
-            .andWhere("teacher.lastName != 'Account'")
-            .getOne();
-          
-          if (correctTeacher) {
-            console.log('[Login] ✓ Found correct teacher:', correctTeacher.firstName, correctTeacher.lastName);
-            
-            // If user was linked to wrong teacher, unlink it
-            if (teacher && teacher.id !== correctTeacher.id) {
-              console.log('[Login] 🔧 Unlinking wrong teacher (placeholder)...');
-              teacher.userId = null;
-              await teacherRepository.save(teacher);
-              console.log('[Login] ✓ Wrong teacher unlinked');
-            }
-            
-            // Link correct teacher to user
-            if (correctTeacher.userId !== user.id) {
-              console.log('[Login] 🔧 Linking correct teacher to user account...');
-              correctTeacher.userId = user.id;
-              await teacherRepository.save(correctTeacher);
-              console.log('[Login] ✓ Correct teacher linked to user account');
-            }
-            
-            teacher = correctTeacher;
-          } else {
-            // If not found with real name, try any teacher with matching teacherId (last resort)
-            const anyTeacher = await teacherRepository.findOne({
-              where: { teacherId: user.username }
-            });
-            
-            if (anyTeacher && anyTeacher.id !== teacher?.id) {
-              console.log('[Login] Found teacher by teacherId (may be placeholder):', anyTeacher.firstName, anyTeacher.lastName);
-              
-              // Unlink wrong teacher if exists
-              if (teacher && teacher.id !== anyTeacher.id) {
-                console.log('[Login] 🔧 Unlinking wrong teacher...');
-                teacher.userId = null;
-                await teacherRepository.save(teacher);
-              }
-              
-              // Link this teacher (even if placeholder, better than nothing)
-              if (anyTeacher.userId !== user.id) {
-                anyTeacher.userId = user.id;
-                await teacherRepository.save(anyTeacher);
-                console.log('[Login] Teacher linked to user account');
-              }
-              
-              teacher = anyTeacher;
+            .getMany();
+
+          if (allMatchingByEmployeeId.length > 0) {
+            // Prioritize non-placeholder teachers
+            const isPlaceholder = (t: Teacher) => (
+              (t.firstName === 'Teacher' && (!t.lastName || t.lastName === '') && (!t.teacherId || t.teacherId === '')) ||
+              (t.firstName === 'Teacher' && t.lastName === 'Account')
+            );
+            const preferred = allMatchingByEmployeeId.find(t => !isPlaceholder(t));
+            if (preferred) {
+              teacher = preferred;
+              console.log('[Login] ✓ Found teacher by EmployeeID:', preferred.firstName, preferred.lastName, preferred.teacherId);
+            } else {
+              teacher = allMatchingByEmployeeId[0];
+              console.log('[Login] Found teacher by EmployeeID (placeholder):', teacher.firstName, teacher.lastName, teacher.teacherId);
             }
           }
+        }
+
+        // PRIORITY 2: If not found by EmployeeID, try by userId (backward compatibility)
+        if (!teacher) {
+          teacher = await teacherRepository.findOne({
+            where: { userId: user.id }
+          });
+          if (teacher) {
+            console.log('[Login] Found teacher by userId:', teacher.firstName, teacher.lastName, teacher.teacherId);
+          }
+        }
+
+        // PRIORITY 3: If found by userId but it's a placeholder, try to find real teacher by EmployeeID
+        const isPlaceholderTeacher = teacher && (
+          (teacher.firstName === 'Teacher' && (!teacher.lastName || teacher.lastName === '') && (!teacher.teacherId || teacher.teacherId === '')) ||
+          (teacher.firstName === 'Teacher' && teacher.lastName === 'Account')
+        );
+        
+        if (teacher && isPlaceholderTeacher && user.username) {
+          console.log('[Login] ⚠️ User is linked to placeholder teacher, finding correct teacher by EmployeeID...');
+          const allMatchingByEmployeeId = await teacherRepository
+            .createQueryBuilder('teacher')
+            .where('LOWER(teacher.teacherId) = LOWER(:teacherId)', { teacherId: user.username })
+            .getMany();
+
+          const isPlaceholder = (t: Teacher) => (
+            (t.firstName === 'Teacher' && (!t.lastName || t.lastName === '') && (!t.teacherId || t.teacherId === '')) ||
+            (t.firstName === 'Teacher' && t.lastName === 'Account')
+          );
+          const preferred = allMatchingByEmployeeId.find(t => !isPlaceholder(t));
+          
+          if (preferred && preferred.id !== teacher.id) {
+            console.log('[Login] ✓ Found real teacher by EmployeeID:', preferred.firstName, preferred.lastName, preferred.teacherId);
+            // Unlink placeholder
+            teacher.userId = null;
+            await teacherRepository.save(teacher);
+            // Link real teacher
+            preferred.userId = user.id;
+            await teacherRepository.save(preferred);
+            teacher = preferred;
+          }
+        }
+
+        // Ensure teacher is linked to user account
+        if (teacher && teacher.userId !== user.id) {
+          console.log('[Login] 🔧 Linking teacher to user account...');
+          teacher.userId = user.id;
+          await teacherRepository.save(teacher);
+          console.log('[Login] ✓ Teacher linked to user account');
         }
         
         // If teacher profile doesn't exist, return error (don't auto-create)

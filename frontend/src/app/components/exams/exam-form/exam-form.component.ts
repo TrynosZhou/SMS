@@ -4,6 +4,8 @@ import { ExamService } from '../../../services/exam.service';
 import { ClassService } from '../../../services/class.service';
 import { SubjectService } from '../../../services/subject.service';
 import { SettingsService } from '../../../services/settings.service';
+import { AuthService } from '../../../services/auth.service';
+import { TeacherService } from '../../../services/teacher.service';
 
 @Component({
   selector: 'app-exam-form',
@@ -36,17 +38,38 @@ export class ExamFormComponent implements OnInit {
   chipsExpanded = false;
   recentExams: any[] = [];
   showRecentExams = false;
+  isTeacher = false;
+  currentUser: any = null;
+  teacherClassesOnly = false;
 
   constructor(
     private examService: ExamService,
     private classService: ClassService,
     private subjectService: SubjectService,
     private settingsService: SettingsService,
+    private authService: AuthService,
+    private teacherService: TeacherService,
     public router: Router
   ) { }
 
   ngOnInit() {
-    this.loadClasses();
+    this.currentUser = this.authService.getCurrentUser();
+    this.isTeacher = this.authService.hasRole('teacher');
+    
+    console.log('[ExamForm] Current user:', this.currentUser);
+    console.log('[ExamForm] Is teacher:', this.isTeacher);
+    console.log('[ExamForm] Teacher ID:', this.currentUser?.teacher?.id);
+    
+    if (this.isTeacher && this.currentUser?.teacher?.id) {
+      // Teacher is linked, load only their assigned classes
+      this.teacherClassesOnly = true;
+      this.loadTeacherClasses();
+    } else {
+      // Not a teacher or not linked, load all classes
+      this.teacherClassesOnly = false;
+      this.loadClasses();
+    }
+    
     this.loadSubjects();
     this.loadActiveTerm();
     this.loadRecentExams();
@@ -153,6 +176,41 @@ export class ExamFormComponent implements OnInit {
         } else {
           this.classes = [];
         }
+      }
+    });
+  }
+
+  loadTeacherClasses() {
+    if (!this.currentUser?.teacher?.id) {
+      console.error('[ExamForm] No teacher ID found for loading teacher classes');
+      this.classes = [];
+      return;
+    }
+
+    console.log('[ExamForm] Loading classes for teacher ID:', this.currentUser.teacher.id);
+    
+    this.teacherService.getTeacherClasses(this.currentUser.teacher.id).subscribe({
+      next: (response: any) => {
+        const teacherClasses = response.classes || [];
+        console.log('[ExamForm] Teacher classes response:', response);
+        console.log('[ExamForm] Teacher classes count:', teacherClasses.length);
+        
+        if (teacherClasses.length === 0) {
+          console.log('[ExamForm] Teacher has no assigned classes, loading all classes as fallback');
+          // Fallback: load all classes if teacher has no assigned classes
+          this.teacherClassesOnly = false;
+          this.loadClasses();
+        } else {
+          this.classes = teacherClasses;
+          console.log(`[ExamForm] Loaded ${this.classes.length} assigned classes for teacher`);
+        }
+      },
+      error: (err: any) => {
+        console.error('[ExamForm] Error loading teacher classes:', err);
+        console.log('[ExamForm] Falling back to loading all classes due to error');
+        // Fallback: load all classes if there's an error
+        this.teacherClassesOnly = false;
+        this.loadClasses();
       }
     });
   }

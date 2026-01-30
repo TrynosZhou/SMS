@@ -201,7 +201,20 @@ export function createRecordBookPDF(
       
       yPos += 25;
       doc.fontSize(12).font('Helvetica');
-      doc.text(`Teacher: ${teacher.firstName} ${teacher.lastName} (${teacher.teacherId})`, 40, yPos);
+      
+      // Format teacher name as LastName FirstName (consistent with system)
+      // Handle placeholder names - if it's "Teacher Account", show just EmployeeID
+      const isPlaceholder = teacher.firstName === 'Teacher' && teacher.lastName === 'Account';
+      let teacherDisplayName: string;
+      if (isPlaceholder) {
+        teacherDisplayName = teacher.teacherId || 'Teacher';
+      } else {
+        const lastName = teacher.lastName?.trim() || '';
+        const firstName = teacher.firstName?.trim() || '';
+        teacherDisplayName = `${lastName} ${firstName}`.trim() || teacher.teacherId || 'Teacher';
+      }
+      
+      doc.text(`Teacher: ${teacherDisplayName} (${teacher.teacherId})`, 40, yPos);
       doc.text(`Class: ${classEntity.name}`, doc.page.width - 200, yPos);
       
       yPos += 20;
