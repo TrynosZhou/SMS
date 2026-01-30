@@ -33,11 +33,16 @@ export const login = async (req: Request, res: Response) => {
 
     // Support username login (email is optional, mainly for non-teachers)
     // For teachers, only username is required
-    const loginIdentifier = username || email;
-    if (!loginIdentifier || !password) {
-      console.log('[Login] Missing credentials:', { loginIdentifier: !!loginIdentifier, password: !!password });
+    // Trim to avoid whitespace issues
+    const loginIdentifier = (username || email)?.trim();
+    const trimmedPassword = password?.trim();
+    
+    if (!loginIdentifier || !trimmedPassword) {
+      console.log('[Login] Missing credentials:', { loginIdentifier: !!loginIdentifier, password: !!trimmedPassword });
       return res.status(400).json({ message: 'Username and password are required' });
     }
+    
+    console.log('[Login] Attempting login with identifier:', loginIdentifier, 'password length:', trimmedPassword.length);
 
     // Check if this is a student login attempt (StudentID as username, DOB as password)
     // First, try to find a student by studentNumber (case-insensitive)
@@ -71,8 +76,8 @@ export const login = async (req: Request, res: Response) => {
       console.log('[Login] Student DOB from DB:', student.dateOfBirth);
       console.log('[Login] Password received (DOB):', password);
       
-      // Validate DOB format (dd/mm/yyyy)
-      const parsedDOB = parseDOB(password);
+      // Validate DOB format (dd/mm/yyyy) - use trimmed password
+      const parsedDOB = parseDOB(trimmedPassword);
       if (!parsedDOB) {
         console.log('[Login] Invalid DOB format. Expected dd/mm/yyyy, received:', password);
         return res.status(401).json({ message: 'Invalid date of birth format. Please use dd/mm/yyyy format.' });
@@ -272,9 +277,36 @@ export const login = async (req: Request, res: Response) => {
         throw dbError;
       }
 
+      // If user not found by username/email, try finding by teacher Employee Number (for teachers)
+      if (!user && loginIdentifier.toUpperCase().startsWith('JPST')) {
+        console.log('[Login] User not found by username/email, trying to find by teacher Employee Number:', loginIdentifier);
+        try {
+          const teacherByEmployeeId = await teacherRepository
+            .createQueryBuilder('teacher')
+            .leftJoinAndSelect('teacher.user', 'user')
+            .where('LOWER(teacher.teacherId) = LOWER(:teacherId)', { teacherId: loginIdentifier })
+            .getOne();
+          
+          if (teacherByEmployeeId && teacherByEmployeeId.user) {
+            console.log('[Login] Found teacher by Employee Number, using linked user account');
+            user = teacherByEmployeeId.user;
+            // Also load relations for the user
+            user = await userRepository.findOne({
+              where: { id: user.id },
+              relations: ['student', 'teacher', 'parent']
+            });
+          }
+        } catch (teacherLookupError: any) {
+          console.log('[Login] Error looking up teacher by Employee Number:', teacherLookupError.message);
+        }
+      }
+
       if (!user) {
         console.log('[Login] User not found for identifier:', loginIdentifier);
-        return res.status(401).json({ message: 'Invalid credentials' });
+        return res.status(401).json({ 
+          message: 'Invalid credentials',
+          hint: 'Username/email or password is incorrect. Please check your credentials and try again.'
+        });
       }
       
       if (!user.isActive) {
@@ -283,10 +315,53 @@ export const login = async (req: Request, res: Response) => {
       }
 
       try {
-        const isValidPassword = await bcrypt.compare(password, user.password);
+        // Password already trimmed above, use it directly
+        console.log('[Login] Comparing password for user:', user.id, 'username:', user.username);
+        console.log('[Login] Password input length:', trimmedPassword.length, 'hash exists:', !!user.password, 'hash length:', user.password?.length);
+        console.log('[Login] User mustChangePassword:', user.mustChangePassword, 'isTemporaryAccount:', user.isTemporaryAccount);
+        
+        let isValidPassword = await bcrypt.compare(trimmedPassword, user.password);
+        
+        // If password doesn't match, try reloading user from database (in case of caching/transaction issues)
         if (!isValidPassword) {
-          console.log('[Login] Password mismatch for user:', user.id);
-          return res.status(401).json({ message: 'Invalid credentials' });
+          console.log('[Login] ❌ Initial password comparison failed. Reloading user from database...');
+          const reloadedUser = await userRepository.findOne({ where: { id: user.id } });
+          if (reloadedUser) {
+            console.log('[Login] Reloaded user - hash changed:', reloadedUser.password !== user.password);
+            console.log('[Login] Reloaded hash starts with:', reloadedUser.password?.substring(0, 20));
+            // Try comparing with reloaded user's password
+            isValidPassword = await bcrypt.compare(trimmedPassword, reloadedUser.password);
+            if (isValidPassword) {
+              console.log('[Login] ✓ Password verified with reloaded user (cache/transaction issue resolved)');
+              // Update user object with reloaded data
+              user.password = reloadedUser.password;
+              user.mustChangePassword = reloadedUser.mustChangePassword;
+              user.isTemporaryAccount = reloadedUser.isTemporaryAccount;
+            } else {
+              console.log('[Login] Password still does not match after reload');
+            }
+          }
+        }
+        
+        if (!isValidPassword) {
+          console.log('[Login] ❌ Password mismatch for user:', user.id, 'username:', user.username);
+          console.log('[Login] User role:', user.role, 'mustChangePassword:', user.mustChangePassword);
+          console.log('[Login] Password length received:', password.length, 'trimmed:', trimmedPassword.length);
+          console.log('[Login] User password hash exists:', !!user.password, 'hash starts with:', user.password?.substring(0, 20));
+          
+          return res.status(401).json({ 
+            message: 'Invalid credentials',
+            hint: user.mustChangePassword 
+              ? 'Password may have been reset. Please use the new password provided by your administrator. Make sure there are no extra spaces and use the exact password.'
+              : 'Username/email or password is incorrect. Please check your credentials and try again.'
+          });
+        }
+        
+        console.log('[Login] ✓ Password verified for user:', user.id, 'username:', user.username, 'role:', user.role);
+        
+        // For teachers, log the Employee Number for reference
+        if (user.role === UserRole.TEACHER && user.teacher) {
+          console.log('[Login] Teacher Employee Number:', user.teacher.teacherId, 'matches username:', user.username);
         }
       } catch (passwordError: any) {
         console.error('[Login] Error comparing password:', passwordError);

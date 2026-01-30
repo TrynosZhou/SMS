@@ -29,5 +29,12 @@ export class AccountService {
   }): Observable<any> {
     return this.http.post(`${this.apiUrl}/account/users`, data);
   }
+
+  resetUserPassword(userId: string, newPassword: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/account/reset-password`, {
+      userId,
+      newPassword
+    });
+  }
 }
 

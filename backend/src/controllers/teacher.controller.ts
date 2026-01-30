@@ -14,6 +14,7 @@ import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagin
 import { validatePhoneNumber } from '../utils/phoneValidator';
 import { createTeacherIdCardPDF } from '../utils/teacherIdCardPdfGenerator';
 import { Settings } from '../entities/Settings';
+import QRCode from 'qrcode';
 
 export const registerTeacher = async (req: AuthRequest, res: Response) => {
   try {
@@ -187,12 +188,14 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
     // Try to load with relations, but handle errors gracefully
     let teachers: Teacher[] = [];
     let total = 0;
+    // Exclude placeholder "Teacher Account" records (stub records from old flow)
     try {
       const queryBuilder = teacherRepository
         .createQueryBuilder('teacher')
         .leftJoinAndSelect('teacher.subjects', 'subjects')
         .leftJoinAndSelect('teacher.classes', 'classes')
-        .leftJoinAndSelect('teacher.user', 'user');
+        .leftJoinAndSelect('teacher.user', 'user')
+        .where("NOT (teacher.firstName = 'Teacher' AND teacher.lastName = 'Account')");
       
       [teachers, total] = await queryBuilder
         .orderBy('teacher.lastName', 'ASC')
@@ -216,7 +219,8 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
           const queryBuilder = teacherRepository
             .createQueryBuilder('teacher')
             .leftJoinAndSelect('teacher.subjects', 'subjects')
-            .leftJoinAndSelect('teacher.user', 'user');
+            .leftJoinAndSelect('teacher.user', 'user')
+            .where("NOT (teacher.firstName = 'Teacher' AND teacher.lastName = 'Account')");
           
           const fallbackResults = await queryBuilder.getMany();
           total = fallbackResults.length;
@@ -229,10 +233,13 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
           }));
         } catch (fallbackError: any) {
           console.error('[getTeachers] Error in fallback query:', fallbackError.message);
-          // Last resort: load without any relations
-          const finalFallback = await teacherRepository.find();
-          total = finalFallback.length;
-          teachers = finalFallback.slice(skip, skip + limit).map((t: any) => ({
+          // Last resort: load without any relations, excluding placeholder "Teacher Account"
+          const allTeachers = await teacherRepository
+            .createQueryBuilder('teacher')
+            .where("NOT (teacher.firstName = 'Teacher' AND teacher.lastName = 'Account')")
+            .getMany();
+          total = allTeachers.length;
+          teachers = allTeachers.slice(skip, skip + limit).map((t: any) => ({
             ...t,
             classes: [],
             subjects: t.subjects || []
@@ -1354,13 +1361,26 @@ export const generateTeacherIdCardPDF = async (req: AuthRequest, res: Response) 
     });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
+    // Generate QR code with teacher basic data
+    const qrPayload = {
+      teacherId: teacher.teacherId,
+      name: `${teacher.firstName} ${teacher.lastName}`.trim(),
+      employeeNumber: teacher.teacherId,
+      subjects: teacher.subjects ? teacher.subjects.map((s: any) => s.name).join(', ') : 'Not assigned',
+      schoolName: settings?.schoolName || 'School',
+      issuedAt: new Date().toISOString()
+    };
+
+    const qrDataUrl = await QRCode.toDataURL(JSON.stringify(qrPayload));
+
     const teacherData = {
       id: teacher.id,
       firstName: teacher.firstName,
       lastName: teacher.lastName,
       teacherId: teacher.teacherId,
       photo: (teacher as any).photo ?? null,
-      subjects: teacher.subjects ? teacher.subjects.map((s: any) => ({ id: s.id, name: s.name })) : []
+      subjects: teacher.subjects ? teacher.subjects.map((s: any) => ({ id: s.id, name: s.name })) : [],
+      qrDataUrl: qrDataUrl
     };
 
     const pdfBuffer = await createTeacherIdCardPDF(teacherData, settings);

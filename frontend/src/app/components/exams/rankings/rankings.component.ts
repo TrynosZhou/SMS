@@ -25,9 +25,7 @@ export class RankingsComponent implements OnInit {
   
   examTypes = [
     { value: 'mid_term', label: 'Mid Term' },
-    { value: 'end_term', label: 'End Term' },
-    { value: 'assignment', label: 'Assignment' },
-    { value: 'quiz', label: 'Quiz' }
+    { value: 'end_term', label: 'End Term' }
   ];
 
   constructor(

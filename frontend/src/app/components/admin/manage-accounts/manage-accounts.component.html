@@ -49,12 +49,12 @@
           </small>
         </div>
         <div class="form-group" *ngIf="manualAccount.role === 'teacher'">
-          <label>Username *</label>
+          <label>Employee Number (Username) *</label>
           <input type="text" [(ngModel)]="manualAccount.username" name="manualUsernameTeacher" 
-            placeholder="Enter username (required)" 
+            placeholder="e.g., JPST1234567 (must match an existing teacher)" 
             required
             [disabled]="creatingUserAccount">
-          <small class="form-text">Username is mandatory for teacher accounts. Teachers login with username and password only. Email is not required.</small>
+          <small class="form-text">Enter the <strong>Employee Number</strong> of an existing teacher (Teachers → Add Teacher). The teacher must already exist in the system. No placeholder accounts are created.</small>
         </div>
         <div class="form-group" *ngIf="manualAccount.role !== 'teacher'">
           <label>Email Address *</label>
@@ -400,7 +400,7 @@
                 <button 
                   *ngIf="teacher.hasAccount" 
                   class="btn btn-secondary btn-sm" 
-                  (click)="resetPassword(teacher)">
+                  (click)="openResetPasswordModal(teacher)">
                   🔑 Reset Password
                 </button>
               </div>
@@ -580,8 +580,133 @@
           *ngIf="selectedTeacher.hasAccount"
           type="button" 
           class="btn btn-primary" 
-          (click)="closeDetailsModal(); resetPassword(selectedTeacher)">
+          (click)="closeDetailsModal(); openResetPasswordModal(selectedTeacher)">
           🔑 Reset Password
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Password Modal -->
+  <div *ngIf="showResetPasswordModal && selectedTeacher" class="modal-overlay" (click)="closeResetPasswordModal()" [@fadeInOut]>
+    <div class="modal-content" (click)="$event.stopPropagation()" [@slideInUp]>
+      <div class="modal-header">
+        <div class="modal-header-content">
+          <h2>
+            <span class="modal-icon">🔑</span>
+            Reset Password
+          </h2>
+          <p class="modal-subtitle">Set a new password for this teacher</p>
+        </div>
+        <button class="modal-close-btn" (click)="closeResetPasswordModal()" title="Close" [disabled]="resettingPassword">
+          <span>&times;</span>
+        </button>
+      </div>
+
+      <div *ngIf="selectedTeacher" class="teacher-info-card">
+        <div class="info-header">
+          <span class="info-icon">👤</span>
+          <h3>Teacher Information</h3>
+        </div>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Name:</span>
+            <span class="info-value">{{ selectedTeacher.firstName }} {{ selectedTeacher.lastName }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Employee Number:</span>
+            <span class="info-value">{{ selectedTeacher.teacherId }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="alert alert-error" *ngIf="error" [@fadeInOut]>
+          <span class="alert-icon">✕</span>
+          <span>{{ error }}</span>
+        </div>
+
+        <form (ngSubmit)="resetPassword()" class="reset-password-form">
+          <div class="form-group">
+            <label for="resetNewPassword" class="form-label">
+              <span class="label-icon">🔒</span>
+              New Password *
+            </label>
+            <div class="password-input-wrapper">
+              <input
+                type="{{ showResetPasswordNew ? 'text' : 'password' }}"
+                id="resetNewPassword"
+                class="form-input"
+                [(ngModel)]="resetPasswordNewPassword"
+                name="resetNewPassword"
+                placeholder="Enter new password (min. 8 characters)"
+                [disabled]="resettingPassword"
+                required
+                minlength="8">
+              <button
+                type="button"
+                class="password-toggle-btn"
+                (click)="toggleResetPasswordNewVisibility()"
+                tabindex="-1">
+                <span>{{ showResetPasswordNew ? '👁️' : '👁️‍🗨️' }}</span>
+              </button>
+            </div>
+            <small class="form-text">Password must be at least 8 characters long. The teacher will be required to change it on next login.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="resetConfirmPassword" class="form-label">
+              <span class="label-icon">✓</span>
+              Confirm New Password *
+            </label>
+            <div class="password-input-wrapper">
+              <input
+                type="{{ showResetPasswordConfirm ? 'text' : 'password' }}"
+                id="resetConfirmPassword"
+                class="form-input"
+                [(ngModel)]="resetPasswordConfirm"
+                name="resetConfirmPassword"
+                placeholder="Confirm new password"
+                [disabled]="resettingPassword"
+                required
+                minlength="8">
+              <button
+                type="button"
+                class="password-toggle-btn"
+                (click)="toggleResetPasswordConfirmVisibility()"
+                tabindex="-1">
+                <span>{{ showResetPasswordConfirm ? '👁️' : '👁️‍🗨️' }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="info-box">
+            <span class="info-box-icon">⚠️</span>
+            <p>This will replace the teacher's current password. They will be required to change it on their next login.</p>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-actions">
+        <button 
+          type="button" 
+          class="btn btn-secondary" 
+          (click)="closeResetPasswordModal()"
+          [disabled]="resettingPassword">
+          ❌ Cancel
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-primary" 
+          (click)="resetPassword()"
+          [disabled]="resettingPassword || !resetPasswordNewPassword || !resetPasswordConfirm || resetPasswordNewPassword.length < 8 || resetPasswordNewPassword !== resetPasswordConfirm">
+          <span *ngIf="!resettingPassword">
+            🔑 Reset Password
+          </span>
+          <span *ngIf="resettingPassword" class="submit-loading">
+            <span class="spinner-small"></span>
+            Resetting...
+          </span>
         </button>
       </div>
     </div>

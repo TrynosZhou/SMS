@@ -192,7 +192,9 @@ export class LoginComponent implements OnInit {
           this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
         } else if (err.status === 401) {
           // Unauthorized - invalid credentials
-          this.error = err.error?.message || 'Invalid username or password. Please try again.';
+          const errorMessage = err.error?.message || 'Invalid username or password. Please try again.';
+          const hint = err.error?.hint;
+          this.error = hint ? `${errorMessage} ${hint}` : errorMessage;
         } else if (err.status === 500) {
           // Server error
           this.error = 'Server error. Please try again later.';

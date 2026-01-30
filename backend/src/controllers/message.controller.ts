@@ -10,6 +10,10 @@ import { AuthRequest } from '../middleware/auth';
 
 export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
   try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    
     const { subject, message, recipients } = req.body;
     const user = req.user;
 
@@ -108,31 +112,55 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
 
     // Save messages to database for parents if they are recipients
     const messageRepository = AppDataSource.getRepository(Message);
+    let savedMessageCount = 0;
+    let failedMessageCount = 0;
     
     if (recipients === 'all' || recipients === 'parents') {
+      console.log('[sendBulkMessage] Saving messages to database for parents...');
       const parents = await parentRepository.find({
         relations: ['user']
       });
       
+      console.log(`[sendBulkMessage] Found ${parents.length} parents in database`);
+      
       // Create message records for each parent
       const messagePromises = parents.map(async (parent) => {
-        // Replace [Recipient Name] with actual parent name
-        const personalizedMessage = processedMessage.replace(/\[Name\]/g, `${parent.firstName} ${parent.lastName}`);
-        
-        const messageRecord = messageRepository.create({
-          subject,
-          message: personalizedMessage,
-          recipients,
-          senderId: user.id,
-          senderName,
-          parentId: parent.id,
-          isRead: false
-        });
-        
-        return messageRepository.save(messageRecord);
+        try {
+          // Only save if parent has an ID
+          if (!parent.id) {
+            console.warn(`[sendBulkMessage] Skipping parent without ID: ${parent.firstName} ${parent.lastName}`);
+            return null;
+          }
+          
+          // Replace [Recipient Name] with actual parent name
+          const personalizedMessage = processedMessage.replace(/\[Name\]/g, `${parent.firstName} ${parent.lastName}`);
+          
+          const messageRecord = messageRepository.create({
+            subject,
+            message: personalizedMessage,
+            recipients,
+            senderId: user.id,
+            senderName,
+            parentId: parent.id,
+            isRead: false
+          });
+          
+          const saved = await messageRepository.save(messageRecord);
+          console.log(`[sendBulkMessage] ✓ Saved message for parent: ${parent.firstName} ${parent.lastName} (ID: ${parent.id})`);
+          return saved;
+        } catch (error: any) {
+          console.error(`[sendBulkMessage] ✗ Failed to save message for parent ${parent.firstName} ${parent.lastName}:`, error.message);
+          failedMessageCount++;
+          return null;
+        }
       });
       
-      await Promise.all(messagePromises);
+      const results = await Promise.all(messagePromises);
+      savedMessageCount = results.filter(r => r !== null).length;
+      console.log(`[sendBulkMessage] Successfully saved ${savedMessageCount} messages to database`);
+      if (failedMessageCount > 0) {
+        console.warn(`[sendBulkMessage] ⚠️  Failed to save ${failedMessageCount} messages`);
+      }
     }
 
     // In a real implementation, you would:
@@ -141,16 +169,36 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
 
     // For now, we'll simulate sending and return success
     // TODO: Implement actual email sending service
-    console.log(`Bulk message sent to ${recipientCount} recipients`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Recipients: ${recipients}`);
-    console.log(`Sample message: ${processedMessage.substring(0, 100)}...`);
+    console.log(`[sendBulkMessage] Bulk message processed`);
+    console.log(`[sendBulkMessage] Subject: ${subject}`);
+    console.log(`[sendBulkMessage] Recipients type: ${recipients}`);
+    console.log(`[sendBulkMessage] Total recipients: ${recipientCount}`);
+    console.log(`[sendBulkMessage] Messages saved to database: ${savedMessageCount}`);
+    if (failedMessageCount > 0) {
+      console.log(`[sendBulkMessage] Failed saves: ${failedMessageCount}`);
+    }
+
+    // Build success message with details
+    let successMessage = `Bulk message sent successfully to ${recipientCount} recipient(s)`;
+    if (recipients === 'all' || recipients === 'parents') {
+      if (savedMessageCount > 0) {
+        successMessage += `. ${savedMessageCount} message(s) saved to parent inboxes.`;
+      }
+      if (failedMessageCount > 0) {
+        successMessage += ` (${failedMessageCount} message(s) failed to save)`;
+      }
+    }
 
     res.json({
-      message: `Bulk message sent successfully to ${recipientCount} recipient(s)`,
+      success: true,
+      message: successMessage,
       recipientCount,
+      savedMessageCount: savedMessageCount > 0 ? savedMessageCount : undefined,
+      failedMessageCount: failedMessageCount > 0 ? failedMessageCount : undefined,
       recipients: recipientList.length > 0 ? recipientList.slice(0, 10) : [], // Return first 10 as sample
-      note: 'In production, emails would be sent via email service. This is a simulation.'
+      note: recipients === 'all' || recipients === 'parents' 
+        ? 'Messages have been saved to parent inboxes and are now visible in their message center.'
+        : 'In production, emails would be sent via email service. This is a simulation.'
     });
   } catch (error: any) {
     console.error('Error sending bulk message:', error);
@@ -160,6 +208,10 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
 
 export const getParentMessages = async (req: AuthRequest, res: Response) => {
   try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    
     const user = req.user;
 
     if (!user || user.role !== 'parent') {

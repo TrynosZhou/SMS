@@ -261,68 +261,41 @@ export const createUserAccount = async (req: AuthRequest, res: Response) => {
 
     await userRepository.save(user);
 
-    // If role is TEACHER, create or link teacher profile
+    // If role is TEACHER, link to an existing teacher only (do not create placeholder "Teacher Account")
     if (requestedRole === UserRole.TEACHER) {
       const { Teacher } = await import('../entities/Teacher');
       const teacherRepository = AppDataSource.getRepository(Teacher);
       
-      // Check if teacher profile already exists for this user
-      let existingTeacher = await teacherRepository.findOne({ where: { userId: user.id } });
+      // Username must be the Employee Number (teacherId) of an existing teacher; match case-insensitively
+      const teacher = await teacherRepository
+        .createQueryBuilder('teacher')
+        .leftJoinAndSelect('teacher.user', 'user')
+        .where('LOWER(teacher.teacherId) = LOWER(:teacherId)', { teacherId: baseUsername })
+        .getOne();
       
-      // Also check if a teacher with the provided username (as teacherId) already exists
-      let teacher = await teacherRepository.findOne({ where: { teacherId: finalUsername } });
-      
-      if (teacher && !teacher.userId) {
-        // Teacher profile exists but not linked - link it to this user
-        teacher.userId = user.id;
-        await teacherRepository.save(teacher);
-        // Ensure username matches teacherId
-        if (user.username !== teacher.teacherId) {
-          user.username = teacher.teacherId;
-          await userRepository.save(user);
-        }
-        console.log(`[CreateUserAccount] Linked existing teacher profile (teacherId: ${teacher.teacherId}) to user ${user.id}`);
-      } else if (!existingTeacher && !teacher) {
-        // No teacher profile exists - create one with username as teacherId
-        // The username provided is the TeacherID
-        const teacherId = finalUsername;
-        
-        // Ensure teacherId is unique by checking if it exists
-        let uniqueTeacherId = teacherId;
-        let counter = 1;
-        while (await teacherRepository.findOne({ where: { teacherId: uniqueTeacherId } })) {
-          uniqueTeacherId = `${teacherId}_${counter}`;
-          counter++;
-        }
-        
-        // Create a basic teacher profile
-        teacher = teacherRepository.create({
-          teacherId: uniqueTeacherId,
-          firstName: 'Teacher', // Default, can be updated later
-          lastName: 'Account',
-          userId: user.id,
-          phoneNumber: null,
-          address: null,
-          dateOfBirth: null,
-          isActive: true
+      if (!teacher) {
+        await userRepository.remove(user);
+        return res.status(400).json({
+          message: 'No teacher found with this Employee Number. Add the teacher first (Teachers → Add Teacher) and use their Employee Number as the username.',
+          hint: 'Use the exact Employee Number (e.g. JPST1234567) of an existing teacher.'
         });
-        
-        await teacherRepository.save(teacher);
-        
-        // Update username to match teacherId (in case it was made unique)
-        if (user.username !== uniqueTeacherId) {
-          user.username = uniqueTeacherId;
-          await userRepository.save(user);
-        }
-        
-        console.log(`[CreateUserAccount] Created teacher profile for user ${user.id} with teacherId: ${uniqueTeacherId}`);
-      } else if (existingTeacher) {
-        // Teacher profile already linked - ensure username matches teacherId
-        if (user.username !== existingTeacher.teacherId) {
-          user.username = existingTeacher.teacherId;
-          await userRepository.save(user);
-        }
       }
+      
+      if (teacher.userId) {
+        await userRepository.remove(user);
+        return res.status(400).json({
+          message: 'This teacher already has a user account.',
+          hint: 'Use "Create Account" next to the teacher in the list instead.'
+        });
+      }
+      
+      teacher.userId = user.id;
+      await teacherRepository.save(teacher);
+      if (user.username !== teacher.teacherId) {
+        user.username = teacher.teacherId;
+        await userRepository.save(user);
+      }
+      console.log(`[CreateUserAccount] Linked existing teacher (${teacher.firstName} ${teacher.lastName}, teacherId: ${teacher.teacherId}) to user ${user.id}`);
     }
 
     res.status(201).json({
@@ -338,6 +311,123 @@ export const createUserAccount = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error creating user account:', error);
+    res.status(500).json({
+      message: 'Server error',
+      error: error.message || 'Unknown error'
+    });
+  }
+};
+
+// Admin: Reset password for a user (teacher, parent, student, etc.)
+export const resetUserPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const actingRole = req.user.role;
+    if (actingRole !== UserRole.ADMIN && actingRole !== UserRole.SUPERADMIN) {
+      return res.status(403).json({ message: 'Only Administrators can reset passwords' });
+    }
+
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const { userId, newPassword } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    if (!newPassword || newPassword.trim().length < 8) {
+      return res.status(400).json({ message: 'New password is required and must be at least 8 characters long' });
+    }
+
+    const userRepository = AppDataSource.getRepository(User);
+    const user = await userRepository.findOne({ where: { id: userId } });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Prevent resetting demo user passwords
+    if (user.isDemo) {
+      return res.status(403).json({ message: 'Cannot reset password for demo accounts' });
+    }
+
+    // Hash and update password (trim to avoid whitespace issues)
+    const trimmedPassword = newPassword.trim();
+    console.log(`[ResetUserPassword] Resetting password for user ${user.id} (username: ${user.username}, role: ${user.role})`);
+    console.log(`[ResetUserPassword] New password length: ${trimmedPassword.length}`);
+    
+    const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
+    console.log(`[ResetUserPassword] Password hashed successfully, hash length: ${hashedPassword.length}`);
+    
+    // Verify the hash was created successfully BEFORE saving
+    const verifyHashBeforeSave = await bcrypt.compare(trimmedPassword, hashedPassword);
+    if (!verifyHashBeforeSave) {
+      console.error('[ResetUserPassword] ERROR: Password hash verification failed BEFORE saving!');
+      return res.status(500).json({ message: 'Failed to hash password. Please try again.' });
+    }
+    console.log(`[ResetUserPassword] ✓ Hash verification BEFORE save: ${verifyHashBeforeSave}`);
+    
+    // Save the new password
+    user.password = hashedPassword;
+    user.mustChangePassword = true; // Require password change on next login
+    user.isTemporaryAccount = true; // Mark as temporary so user must change it
+    await userRepository.save(user);
+    console.log(`[ResetUserPassword] User saved to database`);
+
+    // CRITICAL: Reload user from database to ensure we have the latest password hash
+    const reloadedUser = await userRepository.findOne({ where: { id: user.id } });
+    if (!reloadedUser) {
+      console.error('[ResetUserPassword] ERROR: Could not reload user after saving!');
+      return res.status(500).json({ message: 'Failed to verify password reset. Please try again.' });
+    }
+
+    // Verify the password works with the reloaded user (from database)
+    const verifyHashAfterSave = await bcrypt.compare(trimmedPassword, reloadedUser.password);
+    if (!verifyHashAfterSave) {
+      console.error('[ResetUserPassword] ERROR: Password hash verification failed AFTER saving and reloading!');
+      console.error(`[ResetUserPassword] Original hash: ${hashedPassword.substring(0, 20)}...`);
+      console.error(`[ResetUserPassword] Reloaded hash: ${reloadedUser.password.substring(0, 20)}...`);
+      return res.status(500).json({ message: 'Password was saved but verification failed. Please contact administrator.' });
+    }
+    console.log(`[ResetUserPassword] ✓ Hash verification AFTER save and reload: ${verifyHashAfterSave}`);
+
+    // For teachers, ensure username matches teacherId (fix if it doesn't)
+    if (reloadedUser.role === UserRole.TEACHER) {
+      const { Teacher } = await import('../entities/Teacher');
+      const teacherRepository = AppDataSource.getRepository(Teacher);
+      const teacher = await teacherRepository.findOne({ where: { userId: reloadedUser.id } });
+      if (teacher && teacher.teacherId) {
+        console.log(`[ResetUserPassword] Teacher info - Employee Number: ${teacher.teacherId}, Current Username: ${reloadedUser.username}`);
+        if (teacher.teacherId.toLowerCase() !== reloadedUser.username.toLowerCase()) {
+          console.warn(`[ResetUserPassword] ⚠️  Username mismatch detected. Updating username from "${reloadedUser.username}" to "${teacher.teacherId}"`);
+          reloadedUser.username = teacher.teacherId;
+          await userRepository.save(reloadedUser);
+          console.log(`[ResetUserPassword] ✓ Username updated to match Employee Number: ${teacher.teacherId}`);
+        } else {
+          console.log(`[ResetUserPassword] ✓ Username matches Employee Number`);
+        }
+      }
+    }
+
+    console.log(`[ResetUserPassword] ✓ Admin ${req.user.id} reset password for user ${reloadedUser.id} (username: ${reloadedUser.username}, role: ${reloadedUser.role})`);
+    console.log(`[ResetUserPassword] Password reset complete and verified. User can now login with the new password.`);
+
+    res.json({
+      message: 'Password reset successfully',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error: any) {
+    console.error('Error resetting user password:', error);
     res.status(500).json({
       message: 'Server error',
       error: error.message || 'Unknown error'

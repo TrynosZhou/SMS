@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
-import { updateAccount, getAccountInfo, createUserAccount } from '../controllers/account.controller';
+import { updateAccount, getAccountInfo, createUserAccount, resetUserPassword } from '../controllers/account.controller';
 import { UserRole } from '../entities/User';
 
 const router = Router();
@@ -19,6 +19,13 @@ router.post(
   '/users',
   authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
   createUserAccount
+);
+
+// Admin/SuperAdmin can reset user passwords
+router.post(
+  '/reset-password',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  resetUserPassword
 );
 
 export default router;

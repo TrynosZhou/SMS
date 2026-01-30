@@ -62,7 +62,15 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   // Modals
   showCreateModal = false;
   showDetailsModal = false;
+  showResetPasswordModal = false;
   sendCredentials = false;
+  
+  // Reset password form (for teacher accounts)
+  resetPasswordNewPassword = '';
+  resetPasswordConfirm = '';
+  showResetPasswordNew = false;
+  showResetPasswordConfirm = false;
+  resettingPassword = false;
 
   // Password change
   showPasswordChangeSection = false;
@@ -258,35 +266,76 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     this.selectedTeacher = null;
   }
 
-  resetPassword(teacher: any) {
-    if (!confirm(`Reset password for ${teacher.firstName} ${teacher.lastName}? A new temporary password will be generated.`)) {
+  openResetPasswordModal(teacher: any) {
+    this.selectedTeacher = teacher;
+    this.resetPasswordNewPassword = '';
+    this.resetPasswordConfirm = '';
+    this.showResetPasswordNew = false;
+    this.showResetPasswordConfirm = false;
+    this.error = '';
+    this.success = '';
+    this.showResetPasswordModal = true;
+  }
+
+  closeResetPasswordModal() {
+    this.showResetPasswordModal = false;
+    this.selectedTeacher = null;
+    this.resetPasswordNewPassword = '';
+    this.resetPasswordConfirm = '';
+    this.showResetPasswordNew = false;
+    this.showResetPasswordConfirm = false;
+    this.error = '';
+  }
+
+  resetPassword() {
+    if (!this.selectedTeacher || !this.selectedTeacher.userId) {
+      this.error = 'Teacher account not found';
+      setTimeout(() => this.error = '', 5000);
       return;
     }
 
+    // Validation
+    if (!this.resetPasswordNewPassword || this.resetPasswordNewPassword.trim().length < 8) {
+      this.error = 'Password must be at least 8 characters long';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    if (this.resetPasswordNewPassword !== this.resetPasswordConfirm) {
+      this.error = 'Passwords do not match';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    this.resettingPassword = true;
     this.error = '';
     this.success = '';
 
-    // Note: This feature requires a backend endpoint for password reset
-    // For now, we'll show a message that this feature needs to be implemented
-    // You can implement the endpoint and update this method accordingly
-    this.error = 'Password reset feature is not yet implemented. Please contact the system administrator.';
-    setTimeout(() => this.error = '', 5000);
+    // Trim password to avoid whitespace issues
+    const trimmedPassword = this.resetPasswordNewPassword.trim();
     
-    // Uncomment and update when backend endpoint is available:
-    /*
-    this.accountService.resetPassword(teacher.userId).subscribe({
+    this.accountService.resetUserPassword(this.selectedTeacher.userId, trimmedPassword).subscribe({
       next: (response: any) => {
-        const newPassword = response.temporaryPassword || 'N/A';
-        this.success = `Password reset successfully for ${teacher.firstName} ${teacher.lastName}. ` +
-                      `<strong>New Temporary Password:</strong> ${newPassword}`;
+        this.resettingPassword = false;
+        this.success = `Password reset successfully for ${this.selectedTeacher.firstName} ${this.selectedTeacher.lastName}. ` +
+                      `The teacher will be required to change it on next login.`;
+        this.closeResetPasswordModal();
         setTimeout(() => this.success = '', 10000);
       },
       error: (err: any) => {
+        this.resettingPassword = false;
         this.error = err.error?.message || 'Failed to reset password';
         setTimeout(() => this.error = '', 5000);
       }
     });
-    */
+  }
+
+  toggleResetPasswordNewVisibility() {
+    this.showResetPasswordNew = !this.showResetPasswordNew;
+  }
+
+  toggleResetPasswordConfirmVisibility() {
+    this.showResetPasswordConfirm = !this.showResetPasswordConfirm;
   }
 
   createAccountForTeacher(teacher: any) {
@@ -518,7 +567,7 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
           messageParts.push(`<strong>Temporary Password:</strong> ${password}`);
         }
         if (resolvedRole === 'teacher') {
-          messageParts.push(`<small>Note: A basic teacher profile has been created. You can update the teacher details later.</small>`);
+          messageParts.push(`<small>Account linked to existing teacher. Share the credentials with the teacher.</small>`);
         }
         this.success = messageParts.join('<br>');
         this.resetManualAccountForm();

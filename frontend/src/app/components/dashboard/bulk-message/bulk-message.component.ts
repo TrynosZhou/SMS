@@ -108,13 +108,30 @@ Best regards,
     }).subscribe({
       next: (response: any) => {
         this.loading = false;
-        this.success = response.message || 'Bulk message sent successfully!';
+        
+        // Build detailed success message
+        let successMsg = response.message || 'Bulk message sent successfully!';
+        if (response.savedMessageCount) {
+          successMsg += ` ${response.savedMessageCount} message(s) have been saved to parent inboxes.`;
+        }
+        if (response.failedMessageCount && response.failedMessageCount > 0) {
+          successMsg += ` Note: ${response.failedMessageCount} message(s) failed to save.`;
+        }
+        if (response.note) {
+          successMsg += ` ${response.note}`;
+        }
+        
+        this.success = successMsg;
+        
+        // Show success message longer if messages were saved
+        const delay = (response.savedMessageCount && response.savedMessageCount > 0) ? 5000 : 2000;
         setTimeout(() => {
           this.closeModal();
-        }, 2000);
+        }, delay);
       },
       error: (err: any) => {
         this.loading = false;
+        console.error('Bulk message error:', err);
         this.error = err.error?.message || 'Failed to send bulk message. Please try again.';
         setTimeout(() => this.error = '', 5000);
       }
