@@ -42,8 +42,20 @@ export class ClassService {
         return data;
       }),
       catchError((error: any) => {
-        // Always return empty array on any error (401, 500, network, etc.)
-        console.error('Error loading classes:', error);
+        const status = error?.status;
+        const msg = error?.error?.message || error?.message || '';
+        if (status === 0) {
+          console.warn(
+            'Error loading classes: backend not reachable (status 0). Start the backend on port 3001.'
+          );
+        } else if (status === 504) {
+          console.warn(
+            'Error loading classes: 504 Gateway Timeout. Backend took too long. ' +
+            'Ensure backend is running and DB is up; restart ng serve to use longer proxy timeout.'
+          );
+        } else {
+          console.error(`Error loading classes: status ${status} ${msg ? '- ' + msg : ''}`, error);
+        }
         return of([]);
       })
     );
@@ -84,10 +96,19 @@ export class ClassService {
         return { data: [], total: 0, page, limit, totalPages: 0 };
       }),
       catchError((error: any) => {
-        // Always return empty paginated response on any error
-        // Only log if it's not a connection error (backend not running)
-        if (error.status !== 0) {
-          console.error('Error loading classes (paginated):', error);
+        const status = error?.status;
+        const msg = error?.error?.message || error?.message || '';
+        if (status === 0) {
+          console.warn(
+            'Error loading classes (paginated): backend not reachable (status 0). Start the backend on port 3001.'
+          );
+        } else if (status === 504) {
+          console.warn(
+            'Error loading classes (paginated): 504 Gateway Timeout. Backend took too long. ' +
+            'Ensure backend is running and DB is up; restart ng serve to use longer proxy timeout.'
+          );
+        } else {
+          console.error(`Error loading classes (paginated): status ${status} ${msg ? '- ' + msg : ''}`, error);
         }
         return of({ data: [], total: 0, page, limit, totalPages: 0 });
       })

@@ -14,15 +14,25 @@ export class SettingsService {
 
   private handleError<T>(operation: string, fallback: T) {
     return (error: any): Observable<T> => {
-      // Don't log connection errors (backend not running)
-      if (error?.status === 0 || error?.message?.includes('Connection refused')) {
-        // Backend is not running - silently return fallback
+      const status = error?.status;
+      const msg = error?.error?.message || error?.message || error?.statusText || 'Unknown error';
+      if (status === 0 || error?.message?.includes('Connection refused')) {
+        console.warn(
+          `[SettingsService] ${operation} failed: backend not reachable (status 0). ` +
+          'Ensure the backend is running (e.g. npm run start in backend folder) and listening on port 3001.'
+        );
         return of(fallback);
       }
-      if (error?.status === 401) {
-        console.warn(`[SettingsService] ${operation} failed with 401 (unauthorized).`);
+      if (status === 401) {
+        console.warn(`[SettingsService] ${operation} failed: 401 Unauthorized. Please log in.`);
+      } else if (status === 504) {
+        console.warn(
+          `[SettingsService] ${operation} failed: 504 Gateway Timeout. ` +
+          'The backend took too long to respond. Ensure the backend is running (npm start in backend folder), ' +
+          'the database is up, and restart the Angular dev server (ng serve) so the proxy uses a longer timeout.'
+        );
       } else {
-        console.error(`[SettingsService] ${operation} failed:`, error);
+        console.error(`[SettingsService] ${operation} failed: status ${status} - ${msg}`, error);
       }
       return of(fallback);
     };

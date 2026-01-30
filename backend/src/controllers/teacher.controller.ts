@@ -12,6 +12,8 @@ import { linkTeacherToClasses, syncManyToManyToJunctionTable } from '../utils/te
 import { calculateAge } from '../utils/ageUtils';
 import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
 import { validatePhoneNumber } from '../utils/phoneValidator';
+import { createTeacherIdCardPDF } from '../utils/teacherIdCardPdfGenerator';
+import { Settings } from '../entities/Settings';
 
 export const registerTeacher = async (req: AuthRequest, res: Response) => {
   try {
@@ -20,7 +22,7 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
-    const { firstName, lastName, phoneNumber, address, dateOfBirth, subjectIds, classIds } = req.body;
+    const { firstName, lastName, phoneNumber, address, dateOfBirth, subjectIds, classIds, photo } = req.body;
     
     // Validate required fields
     if (!firstName || !lastName) {
@@ -70,7 +72,8 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
       lastName: lastName.trim(),
       teacherId,
       phoneNumber: normalizedPhoneNumber,
-      address: address?.trim() || null
+      address: address?.trim() || null,
+      photo: photo && typeof photo === 'string' && photo.trim() ? photo.trim() : null
     };
 
     // Only include dateOfBirth if it's provided
@@ -581,7 +584,7 @@ export const updateTeacher = async (req: AuthRequest, res: Response) => {
     }
 
     const { id } = req.params;
-    const { firstName, lastName, phoneNumber, address, dateOfBirth, subjectIds, classIds } = req.body;
+    const { firstName, lastName, phoneNumber, address, dateOfBirth, subjectIds, classIds, photo } = req.body;
     
     const teacherRepository = AppDataSource.getRepository(Teacher);
     const teacher = await teacherRepository.findOne({
@@ -610,6 +613,9 @@ export const updateTeacher = async (req: AuthRequest, res: Response) => {
     }
     
     if (address !== undefined) teacher.address = address?.trim() || null;
+    if (photo !== undefined) {
+      (teacher as any).photo = photo && typeof photo === 'string' && photo.trim() ? photo.trim() : null;
+    }
     if (dateOfBirth) {
       const parsedDate = typeof dateOfBirth === 'string' ? new Date(dateOfBirth) : dateOfBirth;
       if (!isNaN(parsedDate.getTime())) {
@@ -1318,6 +1324,58 @@ export const createTeacherAccount = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ 
       message: 'Server error', 
       error: error.message || 'Unknown error' 
+    });
+  }
+};
+
+export const generateTeacherIdCardPDF = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const { id } = req.params;
+    const teacherRepository = AppDataSource.getRepository(Teacher);
+    const settingsRepository = AppDataSource.getRepository(Settings);
+
+    const teacher = await teacherRepository.findOne({
+      where: { id },
+      relations: ['subjects']
+    });
+
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+
+    // Load settings the same way as the Settings page (getSettings): same record, no demo overlay
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' as const },
+      take: 1
+    });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+
+    const teacherData = {
+      id: teacher.id,
+      firstName: teacher.firstName,
+      lastName: teacher.lastName,
+      teacherId: teacher.teacherId,
+      photo: (teacher as any).photo ?? null,
+      subjects: teacher.subjects ? teacher.subjects.map((s: any) => ({ id: s.id, name: s.name })) : []
+    };
+
+    const pdfBuffer = await createTeacherIdCardPDF(teacherData, settings);
+
+    const safeName = `${teacher.firstName}-${teacher.lastName}`.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '-');
+    const filename = `Teacher-ID-${teacher.teacherId}-${safeName}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error('Error generating teacher ID card PDF:', error);
+    res.status(500).json({
+      message: 'Server error',
+      error: error.message || 'Unknown error'
     });
   }
 };

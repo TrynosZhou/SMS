@@ -98,14 +98,12 @@ export function createReportCardPDF(
       });
 
       let logoX = 50;
-      // Align logos with the top of the school name text (16pt bold)
-      // In PDFKit, text Y is baseline, so we adjust logo Y to align with text top
+      // Single header top Y: both logos and school name start at the same height
+      const headerTopY = 55;
       const schoolNameFontSize = 16;
-      const textBaselineY = 50;
-      // Approximate ascender height for 18pt bold text (typically ~70% of font size)
-      // Add extra adjustment to align logo top with text top visually
+      // In PDFKit, text Y is baseline; ascender is the height from baseline to top of letters
       const textAscender = schoolNameFontSize * 0.7;
-      const logoY = textBaselineY - textAscender - 8; // Position logo top to match text top (adjusted for proper alignment)
+      const logoY = headerTopY; // Both logos: top edge at headerTopY
       let logoWidth = 120; // Maximum width for logo
       let logoHeight = 100; // Maximum height for logo
       let textStartX = 180; // Adjusted to accommodate wider logo
@@ -140,20 +138,22 @@ export function createReportCardPDF(
           const centeredX = startX + (maxWidth - finalWidth) / 2;
           const alignedY = startY; // Align at top, not centered vertically
           
-          // Draw the image with calculated dimensions (preserving aspect ratio)
+          // Draw the image only (save/restore so no path or stroke affects logos)
+          doc.save();
           doc.image(imageBuffer, centeredX, alignedY, {
             width: finalWidth,
             height: finalHeight
           });
+          doc.restore();
           
           return { width: finalWidth, height: finalHeight, x: centeredX };
         } catch (error) {
           console.error('Error adding logo with aspect ratio:', error);
           // Fallback: try to add image with max width (pdfkit will maintain aspect ratio)
           try {
-            doc.image(imageBuffer, startX, startY, {
-              width: maxWidth
-            });
+            doc.save();
+            doc.image(imageBuffer, startX, startY, { width: maxWidth });
+            doc.restore();
           } catch (fallbackError) {
             console.error('Fallback logo addition also failed:', fallbackError);
           }
@@ -163,6 +163,10 @@ export function createReportCardPDF(
 
       let logo1Info: { width: number; height: number; x: number } | null = null;
       let logo2Info: { width: number; height: number; x: number } | null = null;
+
+      // Draw logos with no stroke/border (save state, disable stroke, then restore after)
+      doc.save();
+      doc.lineWidth(0);
 
       // Add school logo if available (left side)
       if (settings?.schoolLogo) {
@@ -228,12 +232,13 @@ export function createReportCardPDF(
         }
       }
 
-      // School Name and Address
-      // Always left-align school name with address and other text
-      doc.fontSize(schoolNameFontSize).font('Helvetica-Bold').text(schoolName, textStartX, logoY);
+      doc.restore();
+
+      // School Name and Address — school name top aligned with headerTopY (baseline = top + ascender)
+      doc.fontSize(schoolNameFontSize).font('Helvetica-Bold').text(schoolName, textStartX, headerTopY + textAscender);
       
-      // Calculate positions for address and academic year
-      let currentY = logoY + 25;
+      // Calculate positions for address and academic year (below school name line)
+      let currentY = headerTopY + textAscender + 18;
       
       // Calculate available width for text (accounting for both logos if present)
       const maxTextWidth = textEndX - textStartX; // Space between logo1 and logo2 (or end of page)
@@ -276,13 +281,10 @@ export function createReportCardPDF(
       const titleY = Math.max(currentY + 20, logoY + logoHeight + 20);
       const titleBoxHeight = 35; // Increased to accommodate multiple lines
       
-      // Title background box - Blue color
+      // Title background box - Blue color (fill only, no stroke to avoid lines near logos)
       doc.rect(50, titleY - 10, 500, titleBoxHeight)
         .fillColor('#4A90E2') // Standard blue
-        .fill()
-        .strokeColor('#357ABD') // Slightly darker blue for border
-        .lineWidth(2)
-        .stroke();
+        .fill();
       
       // Get exam type and academic year for the title bar
       const examTypeText = reportCard.examType || reportCard.exam?.type || '';

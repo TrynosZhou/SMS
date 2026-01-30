@@ -56,12 +56,17 @@
             (Clear term balance to access)
           </span>
         </button>
-        <button 
-          class="quick-action-btn" 
-          (click)="viewCurrentInvoice()">
-          <span class="action-icon">💰</span>
-          <span class="action-label">View Current Invoice</span>
-        </button>
+        <div class="invoice-actions-wrap">
+          <span class="invoice-label">Invoice statement:</span>
+          <button type="button" class="btn btn-preview" (click)="previewCurrentInvoice()" [disabled]="invoiceLoading">
+            <span *ngIf="!invoiceLoading">👁</span><span *ngIf="invoiceLoading" class="spinner-small"></span>
+            {{ invoiceLoading ? 'Loading...' : 'Preview' }}
+          </button>
+          <button type="button" class="btn btn-download" (click)="downloadCurrentInvoice()" [disabled]="invoiceLoading">
+            <span *ngIf="!invoiceLoading">⬇</span><span *ngIf="invoiceLoading" class="spinner-small"></span>
+            {{ invoiceLoading ? 'Loading...' : 'Download' }}
+          </button>
+        </div>
       </div>
     </div>
 

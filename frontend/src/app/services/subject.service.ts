@@ -38,8 +38,20 @@ export class SubjectService {
         return data;
       }),
       catchError((error: any) => {
-        // Always return empty array on any error (401, 500, network, etc.)
-        console.error('Error loading subjects:', error);
+        const status = error?.status;
+        const msg = error?.error?.message || error?.message || '';
+        if (status === 0) {
+          console.warn(
+            'Error loading subjects: backend not reachable (status 0). Start the backend on port 3001.'
+          );
+        } else if (status === 504) {
+          console.warn(
+            'Error loading subjects: 504 Gateway Timeout. Backend took too long. ' +
+            'Ensure backend is running and DB is up; restart ng serve to use longer proxy timeout.'
+          );
+        } else {
+          console.error(`Error loading subjects: status ${status} ${msg ? '- ' + msg : ''}`, error);
+        }
         return of([]);
       })
     );

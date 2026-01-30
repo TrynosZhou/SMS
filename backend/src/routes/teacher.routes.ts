@@ -13,7 +13,8 @@ import {
   syncTeacherClasses,
   diagnoseTeacherClasses,
   searchTeacherByEmployeeId,
-  linkTeacherAccount
+  linkTeacherAccount,
+  generateTeacherIdCardPDF
 } from '../controllers/teacher.controller';
 
 const router = Router();
@@ -26,6 +27,7 @@ router.get('/search', authenticate, searchTeacherByEmployeeId); // Search teache
 router.post('/link-account', authenticate, authorize(UserRole.TEACHER), linkTeacherAccount); // Link teacher account
 router.post('/sync-classes', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), syncTeacherClasses); // Sync endpoint
 router.get('/:teacherId/diagnose', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), diagnoseTeacherClasses); // Diagnostic endpoint
+router.get('/:id/id-card/pdf', authenticate, generateTeacherIdCardPDF);
 router.get('/:id/classes', authenticate, getTeacherClasses); // Specific routes before /:id
 router.get('/:id', authenticate, getTeacherById);
 router.post('/:id/create-account', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), createTeacherAccount);

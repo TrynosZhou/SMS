@@ -82,8 +82,15 @@ export class TeacherService {
         return { data: [], total: 0, page, limit, totalPages: 0 };
       }),
       catchError((error: any) => {
-        // Always return empty paginated response on any error
-        console.error('Error loading teachers (paginated):', error);
+        const status = error?.status;
+        const msg = error?.error?.message || error?.message || '';
+        if (status === 0) {
+          console.warn(
+            'Error loading teachers (paginated): backend not reachable (status 0). Start the backend on port 3001.'
+          );
+        } else {
+          console.error(`Error loading teachers (paginated): status ${status} ${msg ? '- ' + msg : ''}`, error);
+        }
         return of({ data: [], total: 0, page, limit, totalPages: 0 });
       })
     );
@@ -141,6 +148,12 @@ export class TeacherService {
   linkTeacherAccount(teacherId?: string): Observable<any> {
     const body = teacherId && teacherId.trim() ? { teacherId: teacherId.trim() } : {};
     return this.http.post(`${this.apiUrl}/teachers/link-account`, body);
+  }
+
+  getTeacherIdCardPdf(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/teachers/${id}/id-card/pdf`, {
+      responseType: 'blob'
+    });
   }
 }
 

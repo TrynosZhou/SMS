@@ -17,6 +17,7 @@ export class ParentDashboardComponent implements OnInit {
   error = '';
   currencySymbol = 'KES';
   parentName = '';
+  invoiceLoading = false;
 
   constructor(
     private parentService: ParentService,
@@ -129,47 +130,49 @@ export class ParentDashboardComponent implements OnInit {
     }
   }
 
-  viewCurrentInvoice() {
+  private fetchLatestInvoicePdf(action: 'preview' | 'download') {
     if (this.students.length === 0) {
       this.error = 'No linked students found. Please link a student first.';
       setTimeout(() => this.error = '', 5000);
       return;
     }
-
-    // Get the first linked student's invoices
     const firstStudent = this.students[0];
-    
-    // Fetch invoices for this student
+    this.invoiceLoading = true;
+    this.error = '';
+
     this.financeService.getInvoices(firstStudent.id).subscribe({
       next: (invoices: any[]) => {
         if (invoices.length === 0) {
+          this.invoiceLoading = false;
           this.error = 'No invoices found for this student.';
           setTimeout(() => this.error = '', 5000);
           return;
         }
-
-        // Get the most recent invoice
         const latestInvoice = invoices.sort((a: any, b: any) => {
           const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           return dateB - dateA;
         })[0];
 
-        // View the invoice PDF
         this.financeService.getInvoicePDF(latestInvoice.id).subscribe({
           next: (result: { blob: Blob; filename: string }) => {
+            this.invoiceLoading = false;
             const url = window.URL.createObjectURL(result.blob);
-            // Create a download link with the proper filename
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = result.filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            // Clean up the URL after a delay to free memory
-            setTimeout(() => window.URL.revokeObjectURL(url), 100);
+            if (action === 'preview') {
+              window.open(url, '_blank', 'noopener,noreferrer');
+              setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+            } else {
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = result.filename;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              setTimeout(() => window.URL.revokeObjectURL(url), 100);
+            }
           },
           error: (err: any) => {
+            this.invoiceLoading = false;
             console.error('Error loading invoice PDF:', err);
             this.error = err.error?.message || 'Failed to load invoice PDF';
             setTimeout(() => this.error = '', 5000);
@@ -177,10 +180,19 @@ export class ParentDashboardComponent implements OnInit {
         });
       },
       error: (err: any) => {
+        this.invoiceLoading = false;
         console.error('Error fetching invoices:', err);
         this.error = err.error?.message || 'Failed to fetch invoices';
         setTimeout(() => this.error = '', 5000);
       }
     });
+  }
+
+  previewCurrentInvoice() {
+    this.fetchLatestInvoicePdf('preview');
+  }
+
+  downloadCurrentInvoice() {
+    this.fetchLatestInvoicePdf('download');
   }
 }

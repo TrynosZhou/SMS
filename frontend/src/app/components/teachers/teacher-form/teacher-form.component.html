@@ -8,6 +8,16 @@
       <p class="subtitle">{{ isEdit ? 'Update teacher information' : 'Fill in the details to register a new teacher' }}</p>
     </div>
     <div class="header-actions">
+      <ng-container *ngIf="isEdit && teacher?.id">
+        <button type="button" class="btn btn-secondary" (click)="previewIdCard()" [disabled]="idCardLoading">
+          <span *ngIf="!idCardLoading">🪪</span><span *ngIf="idCardLoading" class="spinner-small"></span>
+          {{ idCardLoading ? 'Loading...' : 'Preview ID Card' }}
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="downloadIdCard()" [disabled]="idCardLoading">
+          <span *ngIf="!idCardLoading">⬇</span><span *ngIf="idCardLoading" class="spinner-small"></span>
+          {{ idCardLoading ? 'Loading...' : 'Download ID Card' }}
+        </button>
+      </ng-container>
       <button type="button" class="btn btn-secondary" (click)="router.navigate(['/teachers'])">
         <span>←</span> Back to Teachers
       </button>
@@ -78,6 +88,23 @@
             class="form-input"
             [max]="maxDate">
           <small class="form-hint">Select date of birth</small>
+        </div>
+
+        <!-- Passport-size photo (optional on new; can upload when editing) -->
+        <div class="form-group photo-upload-group">
+          <label>Passport-size Photo</label>
+          <div class="photo-upload-area">
+            <div class="photo-preview" *ngIf="teacher.photo">
+              <img [src]="teacher.photo" alt="Teacher photo" class="photo-preview-img">
+              <button type="button" class="btn-remove-photo" (click)="removePhoto()" title="Remove photo">×</button>
+            </div>
+            <div class="photo-placeholder" *ngIf="!teacher.photo">
+              <span class="photo-icon">📷</span>
+              <span class="photo-hint">{{ isEdit ? 'Upload or change photo' : 'Upload photo (optional)' }}</span>
+              <input type="file" accept="image/*" (change)="onPhotoSelected($event)" class="photo-input">
+            </div>
+          </div>
+          <small class="form-hint">Passport-size photo for ID card. Optional when registering; can be added when editing.</small>
         </div>
 
         <div class="form-group">

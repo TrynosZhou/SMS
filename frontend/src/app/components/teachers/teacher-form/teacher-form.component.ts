@@ -18,7 +18,8 @@ export class TeacherFormComponent implements OnInit {
     address: '',
     dateOfBirth: '',
     subjectIds: [],
-    classIds: []
+    classIds: [],
+    photo: null as string | null
   };
   subjects: any[] = [];
   classes: any[] = [];
@@ -31,7 +32,8 @@ export class TeacherFormComponent implements OnInit {
   success = '';
   submitting = false;
   maxDate = '';
-  
+  idCardLoading = false;
+
   // Phone validation error
   phoneNumberError = '';
 
@@ -92,7 +94,8 @@ export class TeacherFormComponent implements OnInit {
           ...data,
           dateOfBirth: data.dateOfBirth?.split('T')[0],
           subjectIds: data.subjects?.map((s: any) => s.id) || [],
-          classIds: data.classes?.map((c: any) => c.id) || []
+          classIds: data.classes?.map((c: any) => c.id) || [],
+          photo: data.photo ?? null
         };
       },
       error: (err: any) => {
@@ -237,5 +240,62 @@ export class TeacherFormComponent implements OnInit {
     } else {
       this.teacher.classIds.push(classId);
     }
+  }
+
+  onPhotoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input?.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      this.error = 'Please select an image file (JPEG, PNG, etc.)';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.teacher.photo = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
+  }
+
+  removePhoto(): void {
+    this.teacher.photo = null;
+  }
+
+  private fetchIdCardPdf(action: 'preview' | 'download'): void {
+    if (!this.teacher?.id) return;
+    this.idCardLoading = true;
+    this.error = '';
+    this.teacherService.getTeacherIdCardPdf(this.teacher.id).subscribe({
+      next: (blob) => {
+        this.idCardLoading = false;
+        const url = window.URL.createObjectURL(blob);
+        const filename = `Teacher-ID-${this.teacher.teacherId || this.teacher.id}.pdf`;
+        if (action === 'preview') {
+          window.open(url, '_blank', 'noopener,noreferrer');
+          setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+        } else {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          a.click();
+          window.URL.revokeObjectURL(url);
+        }
+      },
+      error: (err) => {
+        this.idCardLoading = false;
+        this.error = err.error?.message || 'Failed to generate ID card';
+        setTimeout(() => (this.error = ''), 5000);
+      }
+    });
+  }
+
+  previewIdCard(): void {
+    this.fetchIdCardPdf('preview');
+  }
+
+  downloadIdCard(): void {
+    this.fetchIdCardPdf('download');
   }
 }
