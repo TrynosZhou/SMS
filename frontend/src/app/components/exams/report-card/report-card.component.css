@@ -27,20 +27,20 @@
 }
 
 .header-content .icon {
-  font-size: 18px;
+  font-size: 26px;
   flex-shrink: 0;
 }
 
 .header-content h1 {
   margin: 0;
-  font-size: 16px;
+  font-size: 24px;
   font-weight: 600;
 }
 
 .header-content .subtitle {
   margin: 0;
   opacity: 0.9;
-  font-size: 12px;
+  font-size: 20px;
 }
 
 /* Alert Messages */

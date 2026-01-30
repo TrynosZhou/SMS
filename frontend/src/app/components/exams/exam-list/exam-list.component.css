@@ -33,14 +33,15 @@
 
 .header-content h1 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 21px;
+  font-weight: 700;
 }
 
 .header-content .subtitle {
   margin: 0;
   opacity: 0.9;
-  font-size: 12px;
+  font-size: 17px;
+  font-weight: 700;
 }
 
 .btn-icon {

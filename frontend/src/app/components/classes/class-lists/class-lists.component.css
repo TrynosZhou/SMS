@@ -26,20 +26,20 @@
 }
 
 .header-content .header-icon {
-  font-size: 18px;
+  font-size: 23px;
   flex-shrink: 0;
 }
 
 .header-content h1 {
   margin: 0;
-  font-size: 16px;
+  font-size: 21px;
   font-weight: 600;
   color: white;
 }
 
 .header-content .subtitle {
   margin: 0;
-  font-size: 12px;
+  font-size: 17px;
   opacity: 0.9;
   color: rgba(255, 255, 255, 0.95);
 }

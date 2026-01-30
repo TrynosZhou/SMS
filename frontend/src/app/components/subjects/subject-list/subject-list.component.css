@@ -8,13 +8,13 @@
   min-height: calc(100vh - 80px);
 }
 
-/* Header Section */
+/* Header Section - reduced by 30% */
 .page-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
-  padding: 32px;
-  margin-bottom: 24px;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+  border-radius: 11px;
+  padding: 22px;
+  margin-bottom: 17px;
+  box-shadow: 0 3px 14px rgba(102, 126, 234, 0.28);
   color: white;
 }
 
@@ -23,19 +23,19 @@
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 14px;
 }
 
 .header-title h1 {
   margin: 0;
-  font-size: 32px;
+  font-size: 22px;
   font-weight: 700;
   color: white;
 }
 
 .subtitle {
-  margin: 8px 0 0 0;
-  font-size: 16px;
+  margin: 6px 0 0 0;
+  font-size: 11px;
   opacity: 0.9;
   color: rgba(255, 255, 255, 0.95);
 }
@@ -44,16 +44,16 @@
   background: white;
   color: #667eea;
   border: none;
-  padding: 12px 24px;
-  border-radius: 12px;
+  padding: 8px 17px;
+  border-radius: 8px;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 11px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .btn-add:hover {

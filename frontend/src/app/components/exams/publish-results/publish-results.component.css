@@ -7,29 +7,29 @@
 .page-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 30px;
-  border-radius: 12px;
-  margin-bottom: 24px;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+  padding: 21px;
+  border-radius: 8px;
+  margin-bottom: 17px;
+  box-shadow: 0 3px 14px rgba(102, 126, 234, 0.28);
 }
 
 .header-content h1 {
-  margin: 0 0 8px 0;
-  font-size: 28px;
+  margin: 0 0 6px 0;
+  font-size: 20px;
   font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .header-icon {
-  font-size: 32px;
+  font-size: 22px;
 }
 
 .subtitle {
   margin: 0;
   opacity: 0.9;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .alert {

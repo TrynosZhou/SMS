@@ -8,13 +8,13 @@
   min-height: 100vh;
 }
 
-/* Header Styles */
+/* Header Styles - reduced by 30% */
 .form-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
-  padding: 30px 40px;
-  margin-bottom: 30px;
-  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  border-radius: 11px;
+  padding: 21px 28px;
+  margin-bottom: 21px;
+  box-shadow: 0 7px 21px rgba(102, 126, 234, 0.28);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -22,27 +22,27 @@
 }
 
 .header-content h1 {
-  margin: 0 0 8px 0;
-  font-size: 32px;
+  margin: 0 0 6px 0;
+  font-size: 22px;
   font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .header-content .icon {
-  font-size: 36px;
+  font-size: 25px;
 }
 
 .subtitle {
   margin: 0;
-  font-size: 16px;
+  font-size: 11px;
   opacity: 0.9;
 }
 
 .header-actions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
 }
 
 /* Alert Styles */
