@@ -82,6 +82,10 @@ export function createTeacherIdCardPDF(
       const photoX = MAIN_LEFT + MARGIN;
       const photoBoxWidth = 52;
       const photoBoxHeight = 62;
+      // Logo position (used for centering Employee ID between photo and logo)
+      const logoBoxSize = 72;
+      const logoX = MAIN_LEFT + MAIN_WIDTH - MARGIN - logoBoxSize;
+      const logoY = 32;
 
       if (teacher.photo && teacher.photo.startsWith('data:image')) {
         try {
@@ -129,9 +133,6 @@ export function createTeacherIdCardPDF(
       });
 
       // Right side: School logo (large, prominent)
-      const logoBoxSize = 72;
-      const logoX = MAIN_LEFT + MAIN_WIDTH - MARGIN - logoBoxSize;
-      const logoY = 32;
       if (settings?.schoolLogo && settings.schoolLogo.startsWith('data:image')) {
         try {
           const base64Data = settings.schoolLogo.split(',')[1];
