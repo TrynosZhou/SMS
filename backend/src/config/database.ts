@@ -1,5 +1,6 @@
 import { DataSource } from 'typeorm';
 import dotenv from 'dotenv';
+import path from 'path';
 import { User } from '../entities/User';
 import { Student } from '../entities/Student';
 import { Teacher } from '../entities/Teacher';
@@ -25,13 +26,19 @@ import { TimetableVersion } from '../entities/TimetableVersion';
 import { TimetableChangeLog } from '../entities/TimetableChangeLog';
 import { TeacherClass } from '../entities/TeacherClass';
 
-// Load environment variables from .env file
-// Always try to load .env file, but system env vars take precedence
-const envResult = dotenv.config();
+// Load environment variables from .env file (backend folder so it works regardless of cwd)
+const backendRoot = path.resolve(__dirname, '../..');
+const envPath = path.join(backendRoot, '.env');
+const envResult = dotenv.config({ path: envPath });
 if (envResult.error) {
-  console.log('[DB Config] No .env file found or error loading it:', envResult.error.message);
+  const fallback = dotenv.config();
+  if (fallback.error) {
+    console.log('[DB Config] No .env file found or error loading it:', envResult.error.message);
+  } else {
+    console.log('[DB Config] .env file loaded from cwd');
+  }
 } else {
-  console.log('[DB Config] .env file loaded successfully');
+  console.log('[DB Config] .env file loaded from backend root:', envPath);
 }
 
 console.log('[DB Config] Creating DataSource configuration...');
@@ -200,7 +207,16 @@ try {
   }
   
   const hasPassword = !!dbPassword;
-  const shouldSync = (process.env.DB_SYNC || '').toLowerCase() === 'true' && process.env.NODE_ENV !== 'production';
+  // Sync: in development default to true (so tables are created); in production only if DB_SYNC=true
+  const dbSyncRaw = (process.env.DB_SYNC || '').toLowerCase().trim();
+  const explicitlyTrue = ['true', '1', 'yes', 'on'].includes(dbSyncRaw);
+  const explicitlyFalse = ['false', '0', 'no', 'off'].includes(dbSyncRaw);
+  const isProduction = process.env.NODE_ENV === 'production';
+  const shouldSync = explicitlyTrue || (!isProduction && !explicitlyFalse);
+  console.log('[DB Config]   NODE_ENV:', process.env.NODE_ENV ?? '(not set)', '| DB_SYNC:', process.env.DB_SYNC ?? '(not set)', '→ synchronize:', shouldSync);
+  if (shouldSync && isProduction) {
+    console.warn('[DB Config] ⚠️  DB_SYNC enabled in production: tables will be auto-created/updated. Set DB_SYNC=false after first run if desired.');
+  }
 
   // SSL: auto-enable for hosted DBs unless explicitly disabled
   const sslEnv = (process.env.DB_SSL || '').toLowerCase();
