@@ -51,7 +51,8 @@ import { SplashComponent } from './components/splash/splash.component';
 
 const routes: Routes = [
   { path: '', component: SplashComponent },
-  { path: 'login', component: LoginComponent },
+  { path: 'login', redirectTo: '', pathMatch: 'full' },
+  { path: 'sign-in', component: LoginComponent },
   { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
   { path: 'parent/dashboard', component: ParentDashboardComponent, canActivate: [AuthGuard] },
   { path: 'teacher/dashboard', component: TeacherDashboardComponent, canActivate: [AuthGuard] },

@@ -13,7 +13,7 @@ export class SplashComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.navigateTimeoutId = setTimeout(() => {
-      this.router.navigate(['/login']);
+      this.router.navigate(['/sign-in']);
     }, 3500);
   }
 
