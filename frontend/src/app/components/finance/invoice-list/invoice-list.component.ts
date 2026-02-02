@@ -1111,5 +1111,10 @@ export class InvoiceListComponent implements OnInit {
   canManageFinance(): boolean {
     return this.authService.hasRole('admin') || this.authService.hasRole('superadmin') || this.authService.hasRole('accountant');
   }
+
+  // Only SuperAdmin can access /invoices/new (create invoice page)
+  canCreateInvoice(): boolean {
+    return this.authService.hasRole('superadmin');
+  }
 }
 

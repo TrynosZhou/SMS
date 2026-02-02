@@ -195,13 +195,19 @@
         </div>
       </div>
       <div class="card-actions">
-        <button class="btn-action btn-view" (click)="viewTeacherDetails(teacher)">
+        <button class="btn-action btn-view" (click)="viewTeacherDetails(teacher)" title="View Details">
           👁️ View
         </button>
-        <button class="btn-action btn-edit" (click)="editTeacher(teacher.id)">
+        <button class="btn-action btn-edit" (click)="editTeacher(teacher.id)" title="Edit Teacher">
           ✏️ Edit
         </button>
-        <button class="btn-action btn-delete" (click)="deleteTeacher(teacher.id, teacher.firstName + ' ' + teacher.lastName, teacher.teacherId)" [disabled]="loading" title="Delete">
+        <button class="btn-action btn-idcard" (click)="downloadIdCard(teacher)" title="Download ID Card">
+          🪪 ID Card
+        </button>
+        <button class="btn-action btn-account" (click)="createTeacherAccount(teacher)" *ngIf="!teacher.userId" title="Create Login Account" [disabled]="loading">
+          👤 Create Account
+        </button>
+        <button class="btn-action btn-delete" (click)="deleteTeacher(teacher.id, teacher.firstName + ' ' + teacher.lastName, teacher.teacherId)" [disabled]="loading" title="Delete Teacher">
           🗑️ Delete
         </button>
       </div>
@@ -245,15 +251,11 @@
       </div>
       <div class="list-col actions-col">
         <div class="action-buttons">
-          <button class="btn-icon-small" (click)="viewTeacherDetails(teacher)" title="View Details">
-            👁️
-          </button>
-          <button class="btn-icon-small" (click)="editTeacher(teacher.id)" title="Edit">
-            ✏️
-          </button>
-          <button class="btn-icon-small btn-delete" (click)="deleteTeacher(teacher.id, teacher.firstName + ' ' + teacher.lastName, teacher.teacherId)" title="Delete" [disabled]="loading">
-            🗑️
-          </button>
+          <button class="btn-icon-small" (click)="viewTeacherDetails(teacher)" title="View Details">👁️</button>
+          <button class="btn-icon-small" (click)="editTeacher(teacher.id)" title="Edit Teacher">✏️</button>
+          <button class="btn-icon-small" (click)="downloadIdCard(teacher)" title="Download ID Card">🪪</button>
+          <button class="btn-icon-small" (click)="createTeacherAccount(teacher)" *ngIf="!teacher.userId" title="Create Account" [disabled]="loading">👤</button>
+          <button class="btn-icon-small btn-delete" (click)="deleteTeacher(teacher.id, teacher.firstName + ' ' + teacher.lastName, teacher.teacherId)" title="Delete" [disabled]="loading">🗑️</button>
         </div>
       </div>
     </div>
@@ -324,9 +326,9 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="closeTeacherDetails()">Close</button>
-        <button class="btn btn-primary" (click)="editTeacher(selectedTeacher.id)">
-          ✏️ Edit Teacher
-        </button>
+        <button class="btn btn-secondary" (click)="downloadIdCard(selectedTeacher)" title="Download ID Card">🪪 ID Card</button>
+        <button class="btn btn-secondary" (click)="createTeacherAccount(selectedTeacher)" *ngIf="!selectedTeacher.userId" [disabled]="loading">👤 Create Account</button>
+        <button class="btn btn-primary" (click)="editTeacher(selectedTeacher.id)">✏️ Edit Teacher</button>
       </div>
     </div>
   </div>

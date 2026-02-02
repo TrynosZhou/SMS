@@ -162,7 +162,47 @@ export class TeacherListComponent implements OnInit {
   }
 
   editTeacher(id: string) {
+    this.closeTeacherDetails();
     this.router.navigate([`/teachers/${id}/edit`]);
+  }
+
+  createTeacherAccount(teacher: any) {
+    if (!teacher?.id) return;
+    this.error = '';
+    this.success = '';
+    this.teacherService.createTeacherAccount(teacher.id).subscribe({
+      next: (data: any) => {
+        this.success = data.message || 'Account created successfully';
+        this.closeTeacherDetails();
+        this.loadTeachers(this.pagination.page);
+        setTimeout(() => this.success = '', 5000);
+      },
+      error: (err: any) => {
+        this.error = err.error?.message || 'Failed to create account';
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  downloadIdCard(teacher: any) {
+    if (!teacher?.id) return;
+    this.error = '';
+    this.teacherService.getTeacherIdCardPdf(teacher.id).subscribe({
+      next: (blob: Blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `teacher-id-card-${teacher.teacherId || teacher.id}.pdf`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        this.success = 'ID card downloaded';
+        setTimeout(() => this.success = '', 3000);
+      },
+      error: (err: any) => {
+        this.error = err.error?.message || 'Failed to download ID card';
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
   }
 
   getTotalSubjects(): number {
@@ -211,6 +251,9 @@ export class TeacherListComponent implements OnInit {
     if (!confirm(`Are you sure you want to delete teacher "${teacherName}" (${teacherId})? This action cannot be undone.`)) {
       return;
     }
+    if (this.selectedTeacher?.id === id) {
+      this.closeTeacherDetails();
+    }
     this.loading = true;
     this.error = '';
     this.success = '';
@@ -218,7 +261,7 @@ export class TeacherListComponent implements OnInit {
       next: (data: any) => {
         this.success = data.message || 'Teacher deleted successfully';
         this.loading = false;
-        this.loadTeachers();
+        this.loadTeachers(this.pagination.page);
         setTimeout(() => this.success = '', 5000);
       },
       error: (err: any) => {

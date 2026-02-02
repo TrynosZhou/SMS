@@ -46,6 +46,7 @@ import { StudentInvoiceStatementComponent } from './components/student/student-i
 import { UserManualComponent } from './components/user-manual/user-manual.component';
 import { AuthGuard } from './guards/auth.guard';
 import { ModuleAccessGuard } from './guards/module-access.guard';
+import { SuperAdminGuard } from './guards/super-admin.guard';
 import { SplashComponent } from './components/splash/splash.component';
 
 const routes: Routes = [
@@ -79,7 +80,7 @@ const routes: Routes = [
   { path: 'rankings', component: RankingsComponent, canActivate: [AuthGuard] },
   { path: 'publish-results', component: PublishResultsComponent, canActivate: [AuthGuard] },
   { path: 'invoices', component: InvoiceListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
-  { path: 'invoices/new', component: InvoiceFormComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
+  { path: 'invoices/new', component: InvoiceFormComponent, canActivate: [AuthGuard, ModuleAccessGuard, SuperAdminGuard], data: { module: 'finance' } },
   { path: 'invoices/statements', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'payments/record', component: RecordPaymentComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'outstanding-balance', component: OutstandingBalanceComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },

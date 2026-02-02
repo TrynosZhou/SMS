@@ -284,7 +284,7 @@
             <span class="action-text">Finance Overview</span>
             <span class="action-arrow">→</span>
           </a>
-          <a routerLink="/invoices/new" class="action-btn modern-action-btn danger-action" *ngIf="isAdmin() || isAccountant()">
+          <a routerLink="/invoices/new" class="action-btn modern-action-btn danger-action" *ngIf="isSuperAdmin()">
             <span class="action-icon">📝</span>
             <span class="action-text">Create Invoice</span>
             <span class="action-arrow">→</span>

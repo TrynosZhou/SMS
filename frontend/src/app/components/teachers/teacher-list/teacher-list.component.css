@@ -506,6 +506,37 @@
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
+.btn-idcard {
+  background: #0d9488;
+  color: white;
+}
+
+.btn-idcard:hover {
+  background: #0f766e;
+  transform: translateY(-2px);
+}
+
+.btn-account {
+  background: #059669;
+  color: white;
+}
+
+.btn-account:hover {
+  background: #047857;
+  transform: translateY(-2px);
+}
+
+.btn-action.btn-delete {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.btn-action.btn-delete:hover {
+  background: #dc3545;
+  color: white;
+  transform: translateY(-2px);
+}
+
 /* List View */
 .teachers-list-view {
   background: white;

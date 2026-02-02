@@ -11,7 +11,7 @@
       <button class="btn btn-primary" (click)="openBulkInvoiceForm()" *ngIf="canManageFinance()">
         <span>📋</span> Bulk Create
       </button>
-      <button class="btn btn-secondary" routerLink="/invoices/new" *ngIf="canManageFinance()">
+      <button class="btn btn-secondary" routerLink="/invoices/new" *ngIf="canCreateInvoice()">
         <span>➕</span> Create Invoice
       </button>
     </div>
