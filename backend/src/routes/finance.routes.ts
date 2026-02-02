@@ -15,7 +15,8 @@ import {
 
 const router = Router();
 
-router.post('/', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), createInvoice);
+// Only SuperAdmin can create invoices (single) - matches /invoices/new page restriction
+router.post('/', authenticate, authorize(UserRole.SUPERADMIN), createInvoice);
 router.post('/bulk', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), createBulkInvoices);
 router.get('/', authenticate, getInvoices);
 router.get('/balance', authenticate, getStudentBalance);
@@ -26,4 +27,3 @@ router.put('/:id/payment', authenticate, authorize(UserRole.ADMIN, UserRole.SUPE
 router.post('/calculate-balance', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), calculateNextTermBalance);
 
 export default router;
-
