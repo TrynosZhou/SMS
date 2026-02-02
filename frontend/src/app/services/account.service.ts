@@ -36,5 +36,13 @@ export class AccountService {
       newPassword
     });
   }
+
+  getUniversalTeacherStatus(): Observable<{ exists: boolean; username?: string; userId?: string; universalTeacherEnabled?: boolean }> {
+    return this.http.get<{ exists: boolean; username?: string; userId?: string; universalTeacherEnabled?: boolean }>(`${this.apiUrl}/account/universal-teacher`);
+  }
+
+  createUniversalTeacherAccount(payload?: { password?: string; generatePassword?: boolean }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/account/universal-teacher`, payload || { generatePassword: true });
+  }
 }
 

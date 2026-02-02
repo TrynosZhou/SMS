@@ -47,6 +47,7 @@ export class LinkAccountComponent implements OnInit {
     }
 
     this.loading = true;
+    this.linkForm.get('teacherId')?.disable();
     this.error = '';
     this.foundTeacher = null;
 
@@ -55,11 +56,13 @@ export class LinkAccountComponent implements OnInit {
     this.teacherService.searchTeacherByEmployeeId(teacherId).subscribe({
       next: (response) => {
         this.loading = false;
+        this.linkForm.get('teacherId')?.enable();
         this.foundTeacher = response.teacher;
         this.success = response.message;
       },
       error: (err) => {
         this.loading = false;
+        this.linkForm.get('teacherId')?.enable();
         this.error = err.error?.message || 'Failed to find teacher profile';
         
         if (err.error?.alreadyLinked) {

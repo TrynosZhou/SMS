@@ -11,6 +11,40 @@ import { UserRole } from '../entities/User';
 import { createRecordBookPDF } from '../utils/recordBookPdfGenerator';
 import { TeacherClass } from '../entities/TeacherClass';
 
+/** teacherId value for the shared universal teacher placeholder record */
+const UNIVERSAL_TEACHER_EMPLOYEE_ID = 'teacher';
+
+/** Get or create the single "Universal Teacher" Teacher record used for record book when user is universal teacher. */
+async function getOrCreateUniversalTeacher(): Promise<Teacher> {
+  const teacherRepository = AppDataSource.getRepository(Teacher);
+  let teacher = await teacherRepository.findOne({
+    where: { teacherId: UNIVERSAL_TEACHER_EMPLOYEE_ID },
+    relations: ['classes', 'subjects']
+  });
+  if (!teacher) {
+    teacher = teacherRepository.create({
+      teacherId: UNIVERSAL_TEACHER_EMPLOYEE_ID,
+      firstName: 'Universal',
+      lastName: 'Teacher',
+      isActive: true
+    });
+    await teacherRepository.save(teacher);
+  }
+  return teacher;
+}
+
+/** Resolve teacherId for record book: use req.user.teacher for normal teachers, or universal teacher placeholder for universal teacher. */
+async function resolveTeacherIdForRecordBook(req: AuthRequest): Promise<{ teacherId: string; skipAssignmentCheck: boolean } | null> {
+  if (!req.user || req.user.role !== UserRole.TEACHER) return null;
+  if ((req.user as any).isUniversalTeacher) {
+    const universalTeacher = await getOrCreateUniversalTeacher();
+    return { teacherId: universalTeacher.id, skipAssignmentCheck: true };
+  }
+  const teacherId = req.user.teacher?.id;
+  if (!teacherId) return null;
+  return { teacherId, skipAssignmentCheck: false };
+}
+
 /** Check if teacher is assigned to class using TeacherClass junction table and/or ManyToMany classes. */
 async function isTeacherAssignedToClass(teacherId: string, classId: string, teacher?: Teacher | null): Promise<boolean> {
   const tcRepo = AppDataSource.getRepository(TeacherClass);
@@ -29,36 +63,40 @@ export const getRecordBookByClass = async (req: AuthRequest, res: Response) => {
   try {
     const { classId } = req.params;
     const { subjectId } = req.query;
-    const teacherId = req.user?.teacher?.id;
+    const resolved = await resolveTeacherIdForRecordBook(req);
 
-    if (!teacherId) {
+    if (!resolved) {
       return res.status(403).json({ message: 'Only teachers can access record books' });
     }
+
+    const { teacherId, skipAssignmentCheck } = resolved;
 
     if (!subjectId) {
       return res.status(400).json({ message: 'Subject ID is required' });
     }
 
-    // Verify teacher is assigned to this class
-    const teacherRepository = AppDataSource.getRepository(Teacher);
-    const teacher = await teacherRepository.findOne({
-      where: { id: teacherId },
-      relations: ['classes', 'subjects']
-    });
+    if (!skipAssignmentCheck) {
+      // Verify teacher is assigned to this class
+      const teacherRepository = AppDataSource.getRepository(Teacher);
+      const teacher = await teacherRepository.findOne({
+        where: { id: teacherId },
+        relations: ['classes', 'subjects']
+      });
 
-    if (!teacher) {
-      return res.status(404).json({ message: 'Teacher not found' });
-    }
+      if (!teacher) {
+        return res.status(404).json({ message: 'Teacher not found' });
+      }
 
-    const isAssigned = await isTeacherAssignedToClass(teacherId, classId, teacher);
-    if (!isAssigned) {
-      return res.status(403).json({ message: 'You are not assigned to this class' });
-    }
+      const isAssigned = await isTeacherAssignedToClass(teacherId, classId, teacher);
+      if (!isAssigned) {
+        return res.status(403).json({ message: 'You are not assigned to this class' });
+      }
 
-    // Verify teacher teaches this subject
-    const teachesSubject = teacher.subjects?.some(s => s.id === subjectId);
-    if (!teachesSubject) {
-      return res.status(403).json({ message: 'You are not assigned to teach this subject' });
+      // Verify teacher teaches this subject
+      const teachesSubject = teacher.subjects?.some(s => s.id === subjectId);
+      if (!teachesSubject) {
+        return res.status(403).json({ message: 'You are not assigned to teach this subject' });
+      }
     }
 
     // Get current term and year from settings
@@ -168,36 +206,38 @@ export const saveRecordBookMarks = async (req: AuthRequest, res: Response) => {
     const { classId, studentId, subjectId, test1, test2, test3, test4, test5, test6, test7, test8, test9, test10, 
             test1Topic, test2Topic, test3Topic, test4Topic, test5Topic, test6Topic, test7Topic, test8Topic, test9Topic, test10Topic,
             test1Date, test2Date, test3Date, test4Date, test5Date, test6Date, test7Date, test8Date, test9Date, test10Date } = req.body;
-    const teacherId = req.user?.teacher?.id;
+    const resolved = await resolveTeacherIdForRecordBook(req);
 
-    if (!teacherId) {
+    if (!resolved) {
       return res.status(403).json({ message: 'Only teachers can save record book marks' });
     }
+
+    const { teacherId, skipAssignmentCheck } = resolved;
 
     if (!classId || !studentId || !subjectId) {
       return res.status(400).json({ message: 'Class ID, Student ID, and Subject ID are required' });
     }
 
-    // Verify teacher is assigned to this class
-    const teacherRepository = AppDataSource.getRepository(Teacher);
-    const teacher = await teacherRepository.findOne({
-      where: { id: teacherId },
-      relations: ['classes', 'subjects']
-    });
+    if (!skipAssignmentCheck) {
+      const teacherRepository = AppDataSource.getRepository(Teacher);
+      const teacher = await teacherRepository.findOne({
+        where: { id: teacherId },
+        relations: ['classes', 'subjects']
+      });
 
-    if (!teacher) {
-      return res.status(404).json({ message: 'Teacher not found' });
-    }
+      if (!teacher) {
+        return res.status(404).json({ message: 'Teacher not found' });
+      }
 
-    const isAssigned = await isTeacherAssignedToClass(teacherId, classId, teacher);
-    if (!isAssigned) {
-      return res.status(403).json({ message: 'You are not assigned to this class' });
-    }
+      const isAssigned = await isTeacherAssignedToClass(teacherId, classId, teacher);
+      if (!isAssigned) {
+        return res.status(403).json({ message: 'You are not assigned to this class' });
+      }
 
-    // Verify teacher teaches this subject
-    const teachesSubject = teacher.subjects?.some(s => s.id === subjectId);
-    if (!teachesSubject) {
-      return res.status(403).json({ message: 'You are not assigned to teach this subject' });
+      const teachesSubject = teacher.subjects?.some(s => s.id === subjectId);
+      if (!teachesSubject) {
+        return res.status(403).json({ message: 'You are not assigned to teach this subject' });
+      }
     }
 
     // Get current term and year from settings
@@ -327,36 +367,38 @@ export const saveRecordBookMarks = async (req: AuthRequest, res: Response) => {
 export const batchSaveRecordBookMarks = async (req: AuthRequest, res: Response) => {
   try {
     const { classId, subjectId, records, topics, testDates } = req.body;
-    const teacherId = req.user?.teacher?.id;
+    const resolved = await resolveTeacherIdForRecordBook(req);
 
-    if (!teacherId) {
+    if (!resolved) {
       return res.status(403).json({ message: 'Only teachers can save record book marks' });
     }
+
+    const { teacherId, skipAssignmentCheck } = resolved;
 
     if (!classId || !subjectId || !records || !Array.isArray(records)) {
       return res.status(400).json({ message: 'Class ID, Subject ID, and records array are required' });
     }
 
-    // Verify teacher is assigned to this class
-    const teacherRepository = AppDataSource.getRepository(Teacher);
-    const teacher = await teacherRepository.findOne({
-      where: { id: teacherId },
-      relations: ['classes', 'subjects']
-    });
+    if (!skipAssignmentCheck) {
+      const teacherRepository = AppDataSource.getRepository(Teacher);
+      const teacher = await teacherRepository.findOne({
+        where: { id: teacherId },
+        relations: ['classes', 'subjects']
+      });
 
-    if (!teacher) {
-      return res.status(404).json({ message: 'Teacher not found' });
-    }
+      if (!teacher) {
+        return res.status(404).json({ message: 'Teacher not found' });
+      }
 
-    const isAssigned = await isTeacherAssignedToClass(teacherId, classId, teacher);
-    if (!isAssigned) {
-      return res.status(403).json({ message: 'You are not assigned to this class' });
-    }
+      const isAssigned = await isTeacherAssignedToClass(teacherId, classId, teacher);
+      if (!isAssigned) {
+        return res.status(403).json({ message: 'You are not assigned to this class' });
+      }
 
-    // Verify teacher teaches this subject
-    const teachesSubject = teacher.subjects?.some(s => s.id === subjectId);
-    if (!teachesSubject) {
-      return res.status(403).json({ message: 'You are not assigned to teach this subject' });
+      const teachesSubject = teacher.subjects?.some(s => s.id === subjectId);
+      if (!teachesSubject) {
+        return res.status(403).json({ message: 'You are not assigned to teach this subject' });
+      }
     }
 
     // Get current term and year from settings

@@ -369,9 +369,11 @@ export const login = async (req: Request, res: Response) => {
       }
     }
 
-    // Load teacher with classes if user is a teacher
+    // Load teacher with classes if user is a teacher (skip for universal teacher - no linked Teacher record)
     if (user.role === UserRole.TEACHER) {
-      try {
+      if (user.isUniversalTeacher) {
+        console.log('[Login] Universal teacher login - no teacher profile required');
+      } else try {
         console.log('[Login] Teacher login detected, loading teacher profile...');
         
         // PRIORITY 1: Always try to find teacher by EmployeeID (username) first - ensures correct teacher record
@@ -449,14 +451,18 @@ export const login = async (req: Request, res: Response) => {
           console.log('[Login] ✓ Teacher linked to user account');
         }
         
-        // If teacher profile doesn't exist, return error (don't auto-create)
+        // If teacher profile doesn't exist: universal teacher (username "teacher") is allowed; others get 404
         if (!teacher) {
-          console.log('[Login] Teacher profile not found for userId:', user.id);
-          return res.status(404).json({ 
-            message: 'Teacher profile not found. Please contact the administrator.' 
-          });
-        }
-        
+          if (user.username && user.username.toLowerCase() === 'teacher') {
+            (user as any).isUniversalTeacher = true;
+            console.log('[Login] Universal teacher (username "teacher") - no teacher profile required');
+          } else {
+            console.log('[Login] Teacher profile not found for userId:', user.id);
+            return res.status(404).json({
+              message: 'Teacher profile not found. Please contact the administrator.'
+            });
+          }
+        } else {
         // Log final teacher info
         console.log('[Login] Using teacher:', teacher.firstName, teacher.lastName, 'ID:', teacher.id, 'TeacherID:', teacher.teacherId);
         
@@ -546,6 +552,7 @@ export const login = async (req: Request, res: Response) => {
         console.log('[Login] Teacher ID:', teacher.teacherId);
         console.log('[Login] Full Name:', fullName);
         console.log('[Login] Classes:', classes.length);
+        }
       } catch (teacherError: any) {
         console.error('[Login] Error loading teacher profile:', teacherError);
         console.error('[Login] Error stack:', teacherError.stack);
@@ -596,11 +603,12 @@ export const login = async (req: Request, res: Response) => {
         role: user.role,
         mustChangePassword: user.mustChangePassword,
         isTemporaryAccount: user.isTemporaryAccount,
-        isDemo: user.isDemo
+        isDemo: user.isDemo,
+        isUniversalTeacher: user.isUniversalTeacher === true
       }
     };
 
-    // For teachers, include teacher object with full name and classes list
+    // For teachers, include teacher object with full name and classes list (not for universal teacher)
     if (user.role === UserRole.TEACHER && user.teacher) {
       response.user.teacher = user.teacher;
       response.user.classes = (user as any).classes || [];

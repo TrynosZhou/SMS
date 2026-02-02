@@ -125,6 +125,58 @@
     </form>
   </div>
 
+  <!-- Universal Teacher Account -->
+  <div class="manual-account-card universal-teacher-card" *ngIf="canCreateManualAccounts()" [@fadeInUp]>
+    <div class="manual-account-header">
+      <div>
+        <h2>👥 Universal Teacher Account</h2>
+        <p>Create a shared teacher account that all teachers can use to test and use the system. Configure access in Settings → Module Access Control → Universal Teacher.</p>
+      </div>
+    </div>
+    <div *ngIf="loadingUniversalTeacher" class="loading-inline">Loading...</div>
+    <div *ngIf="!loadingUniversalTeacher">
+      <div *ngIf="!universalTeacherStatus.universalTeacherEnabled" class="alert alert-warning" style="margin-bottom: 15px;">
+        <strong>Enable first:</strong> Go to <strong>Settings</strong> → <strong>Module Access Control</strong> → turn on <strong>Enable Universal Teacher</strong>, then save. Return here to create the account.
+      </div>
+      <div *ngIf="universalTeacherStatus.universalTeacherEnabled && !universalTeacherStatus.exists" class="universal-teacher-create">
+        <p style="margin-bottom: 12px;">No universal teacher account yet. Create one below.</p>
+        <div class="form-group checkbox-inline" style="margin-bottom: 10px;">
+          <label class="checkbox-label">
+            <input type="checkbox" [(ngModel)]="universalTeacherGeneratePassword" name="utGeneratePassword" [disabled]="creatingUniversalTeacher">
+            <span>Generate secure password automatically</span>
+          </label>
+        </div>
+        <div class="form-group" *ngIf="!universalTeacherGeneratePassword" style="margin-bottom: 10px;">
+          <label>Password *</label>
+          <div class="password-input-wrapper">
+            <input
+              [type]="showUniversalTeacherPassword ? 'text' : 'password'"
+              [(ngModel)]="universalTeacherPassword"
+              name="utPassword"
+              placeholder="Min. 8 characters"
+              minlength="8"
+              [disabled]="creatingUniversalTeacher">
+            <button type="button" class="password-toggle-btn" (click)="showUniversalTeacherPassword = !showUniversalTeacherPassword" tabindex="-1">
+              <span>{{ showUniversalTeacherPassword ? '👁️' : '👁️‍🗨️' }}</span>
+            </button>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary" (click)="createUniversalTeacherAccount()"
+          [disabled]="creatingUniversalTeacher || (!universalTeacherGeneratePassword && (!universalTeacherPassword || universalTeacherPassword.length < 8))">
+          <span *ngIf="!creatingUniversalTeacher">➕ Create Universal Teacher Account</span>
+          <span *ngIf="creatingUniversalTeacher" class="submit-loading"><span class="spinner-small"></span> Creating...</span>
+        </button>
+      </div>
+      <div *ngIf="universalTeacherStatus.universalTeacherEnabled && universalTeacherStatus.exists" class="universal-teacher-exists">
+        <p style="margin-bottom: 8px;"><strong>Username:</strong> <code>{{ universalTeacherStatus.username || 'teacher' }}</code></p>
+        <p style="margin-bottom: 12px; color: #6c757d; font-size: 0.9em;">Teachers can log in with this username and the password you set. Reset the password below if needed.</p>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="openResetPasswordForUniversalTeacher()">
+          🔑 Reset Password
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Demo Account Notice -->
   <div class="demo-notice-card" *ngIf="isAdmin() && isDemoUser()" [@fadeInUp]>
     <div class="demo-notice-content">

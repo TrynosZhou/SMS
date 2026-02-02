@@ -94,9 +94,24 @@ export class Settings {
   @Column({ type: 'varchar', default: 'KES' })
   currencySymbol: string; // e.g., "KES", "$", "€", "£"
 
+  /** When true, universal teacher account can be created and used; access controlled by moduleAccess.universalTeacher */
+  @Column({ type: 'boolean', default: false })
+  universalTeacherEnabled: boolean;
+
   // Module Access Control (JSON)
   @Column({ type: 'json', nullable: true })
   moduleAccess: {
+    /** Access for the shared universal teacher account (when universalTeacherEnabled) */
+    universalTeacher?: {
+      students?: boolean;
+      classes?: boolean;
+      subjects?: boolean;
+      exams?: boolean;
+      reportCards?: boolean;
+      rankings?: boolean;
+      finance?: boolean;
+      settings?: boolean;
+    };
     teachers?: {
       students?: boolean;
       classes?: boolean;

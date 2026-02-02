@@ -14,6 +14,7 @@ import { ClassService } from '../../../services/class.service';
 export class RecordBookComponent implements OnInit {
   teacher: any = null;
   teacherClasses: any[] = [];
+  isUniversalTeacher = false;
   selectedClassId: string = '';
   selectedClass: any = null;
   availableSubjects: any[] = [];
@@ -65,6 +66,9 @@ export class RecordBookComponent implements OnInit {
   visibleTests = 4;
   maxTests = 10;
 
+  /** When navigating with ?classId=&subjectId=, set after class/subjects load */
+  pendingSubjectIdFromParams: string | null = null;
+
   constructor(
     private authService: AuthService,
     private teacherService: TeacherService,
@@ -78,6 +82,16 @@ export class RecordBookComponent implements OnInit {
   ngOnInit() {
     this.loadSettings();
     this.loadTeacherInfo();
+    // If user wasn't ready (e.g. async restore), retry when currentUser$ emits
+    const user = this.authService.getCurrentUser();
+    if (!user) {
+      const sub = this.authService.currentUser$.subscribe(u => {
+        if (u && !this.teacherClasses.length && !this.teacher) {
+          this.loadTeacherInfo();
+        }
+        sub.unsubscribe();
+      });
+    }
   }
 
   loadSettings() {
@@ -99,10 +113,35 @@ export class RecordBookComponent implements OnInit {
 
   loadTeacherInfo() {
     const user = this.authService.getCurrentUser();
-    
-    // Check if user is a teacher
-    if (!user || user.role !== 'teacher') {
+    const role = (user?.role || '').toLowerCase();
+    const isUniversalTeacher = (user as any)?.isUniversalTeacher === true;
+    const isTeacher = role === 'teacher' || isUniversalTeacher;
+
+    if (!user || !isTeacher) {
       this.error = 'Only teachers can access the record book';
+      return;
+    }
+
+    this.error = ''; // Clear any previous error when we have a valid teacher
+
+    // Universal teacher: load all classes with no filtering (no teacher assignment)
+    if (isUniversalTeacher) {
+      this.isUniversalTeacher = true;
+      this.teacher = { id: null, fullName: 'Universal Teacher' };
+      this.loading = true;
+      this.classService.getClasses().subscribe({
+        next: (classes: any[]) => {
+          this.teacherClasses = classes || [];
+          this.loading = false;
+          this.handleQueryParams();
+        },
+        error: (err: any) => {
+          console.error('Error loading classes for universal teacher:', err);
+          this.teacherClasses = [];
+          this.loading = false;
+          this.handleQueryParams();
+        }
+      });
       return;
     }
 
@@ -181,17 +220,18 @@ export class RecordBookComponent implements OnInit {
   }
 
   handleQueryParams() {
-    // Check for classId in query params after classes are loaded
+    // Check for classId (and optionally subjectId) in query params after classes are loaded
     this.route.queryParams.subscribe(params => {
       const classId = params['classId'];
+      const subjectId = params['subjectId'] || null;
       if (classId && this.teacherClasses.length > 0) {
-        // Check if the classId exists in teacher's classes
         const classExists = this.teacherClasses.find((c: any) => c.id === classId);
         if (classExists) {
           this.selectedClassId = classId;
+          this.pendingSubjectIdFromParams = subjectId;
           this.onClassChange();
         } else {
-          this.error = 'You are not assigned to this class.';
+          this.error = this.isUniversalTeacher ? 'Class not found.' : 'You are not assigned to this class.';
           setTimeout(() => this.error = '', 5000);
         }
       }
@@ -239,41 +279,51 @@ export class RecordBookComponent implements OnInit {
   }
 
   loadTeacherSubjectsForClass(classData: any) {
-    // Get subjects that the teacher teaches AND that are taught in the selected class
-    if (!this.teacher || !this.teacher.subjects || this.teacher.subjects.length === 0) {
-      this.teacherSubjects = 'No subjects assigned';
-      this.availableSubjects = [];
-      return;
-    }
-
     if (!classData || !classData.subjects || classData.subjects.length === 0) {
       this.teacherSubjects = 'No subjects assigned to this class';
       this.availableSubjects = [];
       return;
     }
 
-    // Find intersection: subjects that teacher teaches AND that are in the class
-    const teacherSubjectIds = this.teacher.subjects.map((s: any) => s.id);
+    // Universal teacher: show all subjects in the class (no filtering by teacher assignment)
+    if (this.isUniversalTeacher) {
+      this.availableSubjects = classData.subjects;
+      this.teacherSubjects = this.availableSubjects.map((s: any) => s.name).join(', ');
+      this.applyPendingSubjectFromParams();
+      if (!this.selectedSubjectId && this.availableSubjects.length === 1) {
+        this.selectedSubjectId = this.availableSubjects[0].id;
+        this.selectedSubject = this.availableSubjects[0];
+        this.onSubjectChange();
+      } else if (!this.selectedSubjectId) {
+        this.selectedSubjectId = '';
+        this.selectedSubject = null;
+        this.students = [];
+        this.filteredStudents = [];
+      }
+      return;
+    }
+
+    // Regular teacher: subjects that the teacher teaches AND that are taught in the selected class
+    if (!this.teacher || !this.teacher.subjects || this.teacher.subjects.length === 0) {
+      this.teacherSubjects = 'No subjects assigned';
+      this.availableSubjects = [];
+      return;
+    }
+
     const classSubjectIds = classData.subjects.map((s: any) => s.id);
-    
-    // Filter teacher's subjects to only include those in the class
-    const matchingSubjects = this.teacher.subjects.filter((teacherSubject: any) => 
+    const matchingSubjects = this.teacher.subjects.filter((teacherSubject: any) =>
       classSubjectIds.includes(teacherSubject.id)
     );
 
     if (matchingSubjects.length > 0) {
-      // Store available subjects for the dropdown
       this.availableSubjects = matchingSubjects;
-      const subjectNames = matchingSubjects.map((s: any) => s.name).join(', ');
-      this.teacherSubjects = subjectNames;
-      
-      // Auto-select first subject if only one is available
-      if (matchingSubjects.length === 1) {
+      this.teacherSubjects = matchingSubjects.map((s: any) => s.name).join(', ');
+      this.applyPendingSubjectFromParams();
+      if (!this.selectedSubjectId && matchingSubjects.length === 1) {
         this.selectedSubjectId = matchingSubjects[0].id;
         this.selectedSubject = matchingSubjects[0];
         this.onSubjectChange();
-      } else {
-        // Reset subject selection if multiple subjects
+      } else if (!this.selectedSubjectId) {
         this.selectedSubjectId = '';
         this.selectedSubject = null;
         this.students = [];
@@ -287,6 +337,17 @@ export class RecordBookComponent implements OnInit {
       this.students = [];
       this.filteredStudents = [];
     }
+  }
+
+  private applyPendingSubjectFromParams(): void {
+    if (!this.pendingSubjectIdFromParams || !this.availableSubjects?.length) return;
+    const subject = this.availableSubjects.find((s: any) => s.id === this.pendingSubjectIdFromParams);
+    if (subject) {
+      this.selectedSubjectId = subject.id;
+      this.selectedSubject = subject;
+      this.onSubjectChange();
+    }
+    this.pendingSubjectIdFromParams = null;
   }
 
   onSubjectChange() {

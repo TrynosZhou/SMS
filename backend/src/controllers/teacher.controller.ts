@@ -943,16 +943,17 @@ export const searchTeacherByEmployeeId = async (req: AuthRequest, res: Response)
       });
     }
 
-    // If teacher is already linked to another user (not current user), reject
-    if (teacher.userId && teacher.userId !== currentUserId) {
+    const isUniversalTeacher = (req.user as any)?.isUniversalTeacher === true;
+    // If teacher is already linked to another user (not current user), reject unless universal teacher (view-only lookup)
+    if (!isUniversalTeacher && teacher.userId && teacher.userId !== currentUserId) {
       return res.status(400).json({
         message: 'This teacher account is already linked to another user account',
         alreadyLinked: true
       });
     }
 
-    // Load assigned classes from junction table for display
-    const teacherClasses = await getTeacherClassesData(teacher.id);
+    // Load assigned classes with subjects taught (for my-classes / universal teacher)
+    const teacherClasses = await getTeacherClassesWithSubjects(teacher.id);
 
     const teacherInfo = {
       id: teacher.id,
@@ -1148,6 +1149,58 @@ async function getTeacherClassesData(teacherId: string): Promise<any[]> {
   } catch (error: any) {
     console.error('[getTeacherClassesData] Error:', error);
     return [];
+  }
+}
+
+// Helper: get teacher classes with subjects taught (for universal teacher lookup / my-classes)
+async function getTeacherClassesWithSubjects(teacherId: string): Promise<any[]> {
+  try {
+    const teacher = await AppDataSource.getRepository(Teacher).findOne({
+      where: { id: teacherId },
+      relations: ['subjects']
+    });
+    if (!teacher?.subjects?.length) {
+      return getTeacherClassesData(teacherId);
+    }
+    const teacherSubjectIds = new Set(teacher.subjects.map((s: any) => s.id));
+
+    const { TeacherClass } = await import('../entities/TeacherClass');
+    const { Class } = await import('../entities/Class');
+    const teacherClassRepository = AppDataSource.getRepository(TeacherClass);
+    const classRepository = AppDataSource.getRepository(Class);
+
+    const teacherClasses = await teacherClassRepository
+      .createQueryBuilder('tc')
+      .innerJoinAndSelect('tc.class', 'class')
+      .where('tc.teacherId = :teacherId', { teacherId })
+      .andWhere('class.isActive = :isActive', { isActive: true })
+      .getMany();
+
+    if (teacherClasses.length === 0) {
+      const fallback = await getTeacherClassesData(teacherId);
+      return fallback.map((c: any) => ({ ...c, subjects: [] }));
+    }
+
+    const result: any[] = [];
+    for (const tc of teacherClasses) {
+      const classEntity = await classRepository.findOne({
+        where: { id: tc.classId },
+        relations: ['subjects']
+      });
+      const classSubjects = (classEntity?.subjects || []).filter((s: any) => teacherSubjectIds.has(s.id));
+      result.push({
+        id: tc.class.id,
+        name: tc.class.name,
+        form: tc.class.form,
+        description: tc.class.description,
+        isActive: tc.class.isActive,
+        subjects: classSubjects.map((s: any) => ({ id: s.id, name: s.name }))
+      });
+    }
+    return result;
+  } catch (error: any) {
+    console.error('[getTeacherClassesWithSubjects] Error:', error);
+    return getTeacherClassesData(teacherId);
   }
 }
 

@@ -772,6 +772,54 @@
         <h2>Module Access Control</h2>
         <p class="section-description">Select which modules teachers and parents can access and view on the system.</p>
         
+        <!-- Universal Teacher -->
+        <div class="module-access-group universal-teacher-group">
+          <h3>👥 Universal Teacher</h3>
+          <p class="section-description" style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
+            A shared teacher account that all teachers can use to test the system. Enable below and create the account in Admin → Manage Accounts. You can restrict which modules this account can access.
+          </p>
+          <div class="form-group checkbox-inline" style="margin-bottom: 12px;">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.universalTeacherEnabled" name="universalTeacherEnabled">
+              <span>Enable Universal Teacher (allow creating and using the shared teacher account)</span>
+            </label>
+          </div>
+          <div class="checkbox-group" *ngIf="settings.universalTeacherEnabled && settings.moduleAccess?.universalTeacher">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.students" name="universalTeacherStudents">
+              <span>Students</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.classes" name="universalTeacherClasses">
+              <span>Classes</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.subjects" name="universalTeacherSubjects">
+              <span>Subjects</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.exams" name="universalTeacherExams">
+              <span>Exams</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.reportCards" name="universalTeacherReportCards">
+              <span>Report Cards</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.rankings" name="universalTeacherRankings">
+              <span>Rankings</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.finance" name="universalTeacherFinance">
+              <span>Finance</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.settings" name="universalTeacherSettings">
+              <span>Settings</span>
+            </label>
+          </div>
+        </div>
+
         <!-- Teacher Module Access -->
         <div class="module-access-group">
           <h3>👨‍🏫 Teacher Access</h3>

@@ -45,7 +45,6 @@ import { RecordBookComponent } from './components/teacher/record-book/record-boo
 import { MyClassesComponent } from './components/teacher/my-classes/my-classes.component';
 import { TeacherRecordBookComponent } from './components/admin/teacher-record-book/teacher-record-book.component';
 import { TeacherDashboardComponent } from './components/teacher/teacher-dashboard/teacher-dashboard.component';
-import { LinkAccountComponent } from './components/teacher/link-account/link-account.component';
 import { RecordPaymentComponent } from './components/finance/record-payment/record-payment.component';
 import { OutstandingBalanceComponent } from './components/finance/outstanding-balance/outstanding-balance.component';
 import { SplashComponent } from './components/splash/splash.component';
@@ -97,7 +96,6 @@ import { UserManualComponent } from './components/user-manual/user-manual.compon
     MyClassesComponent,
     TeacherRecordBookComponent,
     TeacherDashboardComponent,
-    LinkAccountComponent,
     RecordPaymentComponent,
     OutstandingBalanceComponent,
     SplashComponent,

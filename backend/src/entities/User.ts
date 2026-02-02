@@ -48,6 +48,10 @@ export class User {
   @Column({ default: false })
   isDemo: boolean;
 
+  /** Shared teacher account used by all teachers for testing; uses moduleAccess.universalTeacher */
+  @Column({ default: false })
+  isUniversalTeacher: boolean;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 

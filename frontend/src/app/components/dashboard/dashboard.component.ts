@@ -338,6 +338,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Universal teacher has no linked teacher profile
+    if ((user as any).isUniversalTeacher) {
+      this.teacherName = 'Universal Teacher';
+      return;
+    }
+
     // First, try to get name from user object (from login response)
     if (user.teacher) {
       // Prioritize fullName from login response

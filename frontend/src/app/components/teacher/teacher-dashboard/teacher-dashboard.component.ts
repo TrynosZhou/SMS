@@ -125,7 +125,9 @@ export class TeacherDashboardComponent implements OnInit {
   private updateAvailableModules() {
     // Get module access (use service which has defaults)
     const access = this.moduleAccessService.getModuleAccess();
-    const teacherModules = access?.teachers || {};
+    const user = this.authService.getCurrentUser();
+    const isUniversal = user?.role === 'teacher' && (user as any).isUniversalTeacher;
+    const teacherModules = (isUniversal ? access?.universalTeacher : access?.teachers) || {};
     
     const allModules = [
       { key: 'students', name: 'Students', route: '/students', icon: '👥', description: 'View and manage students' },
@@ -157,6 +159,17 @@ export class TeacherDashboardComponent implements OnInit {
     // Check if user is a teacher
     if (!user || user.role !== 'teacher') {
       this.error = 'Only teachers can access this dashboard';
+      return;
+    }
+
+    // Universal teacher has no linked Teacher record; use placeholder so dashboard still works
+    if ((user as any).isUniversalTeacher) {
+      this.teacherName = 'Universal Teacher';
+      this.teacher = { id: null, fullName: 'Universal Teacher', firstName: 'Universal', lastName: 'Teacher', classes: [] };
+      this.teacherClasses = [];
+      this.loading = false;
+      this.updateAvailableModules();
+      this.cdr.detectChanges();
       return;
     }
 
@@ -354,23 +367,6 @@ export class TeacherDashboardComponent implements OnInit {
 
   manageAccount() {
     this.router.navigate(['/teacher/manage-account']);
-  }
-
-  /**
-   * Checks if the current user's account is linked to a teacher profile
-   * @returns boolean indicating if the account is linked
-   */
-  isAccountLinked(): boolean {
-    const user = this.authService.getCurrentUser();
-    const isLinked = !!user?.teacher?.id;
-    return isLinked;
-  }
-
-  /**
-   * Navigates to the link account page
-   */
-  navigateToLinkAccount(): void {
-    this.router.navigate(['/teacher/link-account']);
   }
 }
 

@@ -86,6 +86,14 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   private userSubscription?: Subscription;
   currentUser: any = null;
 
+  // Universal teacher account
+  universalTeacherStatus: { exists: boolean; username?: string; userId?: string; universalTeacherEnabled?: boolean } = { exists: false };
+  loadingUniversalTeacher = false;
+  creatingUniversalTeacher = false;
+  universalTeacherPassword = '';
+  universalTeacherGeneratePassword = true;
+  showUniversalTeacherPassword = false;
+
   constructor(
     private teacherService: TeacherService,
     private accountService: AccountService,
@@ -95,7 +103,8 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadTeachers();
-    
+    this.loadUniversalTeacherStatus();
+
     // Get current user immediately
     this.currentUser = this.authService.getCurrentUser();
     
@@ -125,6 +134,25 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     if (this.userSubscription) {
       this.userSubscription.unsubscribe();
     }
+  }
+
+  loadUniversalTeacherStatus() {
+    if (!this.isAdmin()) return;
+    this.loadingUniversalTeacher = true;
+    this.accountService.getUniversalTeacherStatus().subscribe({
+      next: (data: any) => {
+        this.universalTeacherStatus = {
+          exists: !!data.exists,
+          username: data.username,
+          userId: data.userId,
+          universalTeacherEnabled: data.universalTeacherEnabled
+        };
+        this.loadingUniversalTeacher = false;
+      },
+      error: () => {
+        this.loadingUniversalTeacher = false;
+      }
+    });
   }
 
   loadTeachers() {
@@ -341,6 +369,60 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   createAccountForTeacher(teacher: any) {
     // Legacy method - redirects to modal
     this.openCreateAccountModal(teacher);
+  }
+
+  createUniversalTeacherAccount() {
+    if (!this.universalTeacherStatus.universalTeacherEnabled) {
+      this.error = 'Enable Universal Teacher in Settings first (Settings → Module Access Control).';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+    if (this.universalTeacherStatus.exists) {
+      this.error = 'Universal teacher account already exists.';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+    const payload: any = { generatePassword: this.universalTeacherGeneratePassword };
+    if (!this.universalTeacherGeneratePassword) {
+      if (!this.universalTeacherPassword || this.universalTeacherPassword.trim().length < 8) {
+        this.error = 'Password must be at least 8 characters long.';
+        setTimeout(() => this.error = '', 5000);
+        return;
+      }
+      payload.password = this.universalTeacherPassword.trim();
+    }
+    this.creatingUniversalTeacher = true;
+    this.error = '';
+    this.success = '';
+    this.accountService.createUniversalTeacherAccount(payload).subscribe({
+      next: (response: any) => {
+        this.creatingUniversalTeacher = false;
+        const password = response.temporaryCredentials?.password || payload.password;
+        this.success = `Universal teacher account created. <strong>Username:</strong> ${response.user?.username || 'teacher'}<br>` +
+          (password ? `<strong>Password:</strong> ${password}<br>` : '') +
+          `<small>Share these credentials with teachers so they can test the system.</small>`;
+        this.loadUniversalTeacherStatus();
+        this.universalTeacherPassword = '';
+        this.universalTeacherGeneratePassword = true;
+        setTimeout(() => this.success = '', 15000);
+      },
+      error: (err: any) => {
+        this.creatingUniversalTeacher = false;
+        this.error = err.error?.message || 'Failed to create universal teacher account';
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  openResetPasswordForUniversalTeacher() {
+    if (!this.universalTeacherStatus.userId) return;
+    this.selectedTeacher = {
+      userId: this.universalTeacherStatus.userId,
+      firstName: 'Universal',
+      lastName: 'Teacher',
+      teacherId: this.universalTeacherStatus.username || 'teacher'
+    };
+    this.openResetPasswordModal(this.selectedTeacher);
   }
 
   // Password change methods

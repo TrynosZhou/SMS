@@ -5,6 +5,16 @@ import { Observable, of } from 'rxjs';
 import { map, catchError, filter } from 'rxjs/operators';
 
 export interface ModuleAccess {
+  universalTeacher?: {
+    students?: boolean;
+    classes?: boolean;
+    subjects?: boolean;
+    exams?: boolean;
+    reportCards?: boolean;
+    rankings?: boolean;
+    finance?: boolean;
+    settings?: boolean;
+  };
   teachers?: {
     students?: boolean;
     classes?: boolean;
@@ -71,6 +81,16 @@ export interface ModuleAccess {
 export class ModuleAccessService {
   private moduleAccess: ModuleAccess | null = null;
   private defaultAccess: ModuleAccess = {
+    universalTeacher: {
+      students: true,
+      classes: true,
+      subjects: true,
+      exams: true,
+      reportCards: true,
+      rankings: true,
+      finance: false,
+      settings: false
+    },
     teachers: {
       students: true,
       classes: true,
@@ -194,7 +214,11 @@ export class ModuleAccessService {
       'demo_user': 'demo_user'
     };
 
-    const accessKey = roleMap[role] || role;
+    let accessKey = roleMap[role] || role;
+    // Universal teacher account uses its own module access (settings.moduleAccess.universalTeacher)
+    if (role === 'teacher' && (user as any).isUniversalTeacher) {
+      accessKey = 'universalTeacher';
+    }
 
     // Get module access for the user's role
     const access = this.moduleAccess || this.defaultAccess;

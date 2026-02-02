@@ -96,12 +96,15 @@ export class ExamListComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     const user = this.authService.getCurrentUser();
-    
-    // If user is a teacher, load teacher-specific data
-    if (user && user.role === 'teacher' && !this.isAdmin) {
+    const isUniversalTeacher = user?.role === 'teacher' && (user as any).isUniversalTeacher;
+
+    // Universal teacher or Admin/SuperAdmin: load all classes and subjects
+    if (this.isAdmin || isUniversalTeacher) {
+      this.loadClasses();
+      this.loadSubjects();
+    } else if (user && user.role === 'teacher') {
       this.loadTeacherInfo();
     } else {
-      // Admin/SuperAdmin can see all classes and subjects
       this.loadClasses();
       this.loadSubjects();
     }

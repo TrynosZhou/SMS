@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
-import { updateAccount, getAccountInfo, createUserAccount, resetUserPassword } from '../controllers/account.controller';
+import { updateAccount, getAccountInfo, createUserAccount, resetUserPassword, getUniversalTeacherStatus, createUniversalTeacherAccount } from '../controllers/account.controller';
 import { UserRole } from '../entities/User';
 
 const router = Router();
@@ -26,6 +26,18 @@ router.post(
   '/reset-password',
   authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
   resetUserPassword
+);
+
+// Universal teacher account (admin/superadmin only)
+router.get(
+  '/universal-teacher',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  getUniversalTeacherStatus
+);
+router.post(
+  '/universal-teacher',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  createUniversalTeacherAccount
 );
 
 export default router;

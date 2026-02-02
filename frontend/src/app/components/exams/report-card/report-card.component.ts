@@ -109,12 +109,14 @@ export class ReportCardComponent implements OnInit {
         this.parentStudentId = params['studentId'];
         this.checkStudentBalance();
       } else {
-        // If user is a teacher, load teacher-specific data
         const user = this.authService.getCurrentUser();
-        if (user && user.role === 'teacher' && !this.isAdmin && !this.isParent) {
+        const isUniversalTeacher = user?.role === 'teacher' && (user as any).isUniversalTeacher;
+        // Universal teacher or Admin/SuperAdmin: load all classes
+        if (this.isAdmin || isUniversalTeacher) {
+          this.loadClasses();
+        } else if (user && user.role === 'teacher' && !this.isParent) {
           this.loadTeacherInfo();
         } else {
-          // Admin/SuperAdmin can see all classes and subjects
           this.loadClasses();
         }
       }

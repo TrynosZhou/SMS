@@ -53,7 +53,18 @@ export class SettingsComponent implements OnInit {
     schoolLogo: null,
     schoolLogo2: null,
     currencySymbol: 'KES',
+    universalTeacherEnabled: false,
     moduleAccess: {
+      universalTeacher: {
+        students: true,
+        classes: true,
+        subjects: true,
+        exams: true,
+        reportCards: true,
+        rankings: true,
+        finance: false,
+        settings: false
+      },
       teachers: {
         students: true,
         classes: true,
@@ -368,6 +379,16 @@ export class SettingsComponent implements OnInit {
         }
         if (!this.settings.moduleAccess) {
           this.settings.moduleAccess = {
+            universalTeacher: {
+              students: true,
+              classes: true,
+              subjects: true,
+              exams: true,
+              reportCards: true,
+              rankings: true,
+              finance: false,
+              settings: false
+            },
             teachers: {
               students: true,
               classes: true,
@@ -425,6 +446,18 @@ export class SettingsComponent implements OnInit {
             }
           };
         } else {
+          if (!this.settings.moduleAccess.universalTeacher) {
+            this.settings.moduleAccess.universalTeacher = {
+              students: true,
+              classes: true,
+              subjects: true,
+              exams: true,
+              reportCards: true,
+              rankings: true,
+              finance: false,
+              settings: false
+            };
+          }
           // Ensure accountant and admin module access exist
           if (!this.settings.moduleAccess.accountant) {
             this.settings.moduleAccess.accountant = {

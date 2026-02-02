@@ -325,6 +325,155 @@
   font-size: 1rem;
 }
 
+/* Universal teacher: EmployeeID modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  max-width: 420px;
+  width: 90%;
+  padding: 1.5rem;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #2c3e50;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.75rem;
+  color: #7f8c8d;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.modal-close:hover {
+  background: #f0f0f0;
+  color: #2c3e50;
+}
+
+.modal-description {
+  color: #555;
+  font-size: 0.95rem;
+  margin: 0 0 1rem 0;
+  line-height: 1.5;
+}
+
+.modal-alert {
+  margin-bottom: 1rem;
+}
+
+.modal-body {
+  margin-bottom: 1.25rem;
+}
+
+.modal-label {
+  display: block;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.modal-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.btn-secondary {
+  background: #e0e0e0;
+  color: #2c3e50;
+}
+
+.btn-secondary:hover {
+  background: #d0d0d0;
+}
+
+.btn-outline {
+  background: transparent;
+  color: #667eea;
+  border: 2px solid #667eea;
+}
+
+.btn-outline:hover {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.universal-actions {
+  margin-bottom: 1rem;
+}
+
+.universal-prompt {
+  text-align: center;
+  padding: 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.universal-prompt p {
+  margin: 0 0 1rem 0;
+  color: #555;
+}
+
+.class-subjects {
+  margin: 0 0 0.5rem 0;
+  color: #2c3e50;
+  font-size: 0.95rem;
+}
+
+.class-card-footer .record-book-link {
+  margin-bottom: 0.5rem;
+}
+
+.class-card-footer .record-book-link:last-child {
+  margin-bottom: 0;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .my-classes-container {

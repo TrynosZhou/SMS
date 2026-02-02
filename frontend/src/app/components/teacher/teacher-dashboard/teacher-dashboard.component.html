@@ -25,15 +25,6 @@
       <h2>Teacher Portal</h2>
       <p class="user-info" *ngIf="teacherName && teacherName !== 'Teacher'">{{ teacherName }}</p>
       <p class="user-info" *ngIf="!teacherName || teacherName === 'Teacher'">Loading...</p>
-      
-      <!-- Add Link Account Button -->
-      <button *ngIf="!isAccountLinked()" 
-              class="btn btn-link-account" 
-              (click)="navigateToLinkAccount()"
-              [disabled]="loading">
-        <i class="fas fa-link"></i>
-        <span>Link Teacher Account</span>
-      </button>
     </div>
     
     <nav class="sidebar-nav">

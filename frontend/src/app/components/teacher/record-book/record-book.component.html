@@ -34,12 +34,13 @@
     <div class="card-header">
       <h3>📋 Select Class</h3>
       <span class="class-count" *ngIf="teacherClasses.length > 0">
-        {{ teacherClasses.length }} class{{ teacherClasses.length !== 1 ? 'es' : '' }} assigned
+        <span *ngIf="isUniversalTeacher">All {{ teacherClasses.length }} class{{ teacherClasses.length !== 1 ? 'es' : '' }}</span>
+        <span *ngIf="!isUniversalTeacher">{{ teacherClasses.length }} class{{ teacherClasses.length !== 1 ? 'es' : '' }} assigned</span>
       </span>
     </div>
     <div class="class-subject-container">
       <div class="form-group">
-        <label>Your Classes</label>
+        <label>{{ isUniversalTeacher ? 'All Classes' : 'Your Classes' }}</label>
         <div class="select-wrapper">
           <select [(ngModel)]="selectedClassId" (change)="onClassChange()" class="form-control modern-select">
             <option value="">-- Select a class --</option>

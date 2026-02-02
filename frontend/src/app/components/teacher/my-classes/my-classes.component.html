@@ -12,6 +12,39 @@
     </div>
   </div>
 
+  <!-- Universal teacher: EmployeeID lookup modal -->
+  <div *ngIf="showEmployeeIdModal" class="modal-overlay" (click)="$event.target === $event.currentTarget && closeEmployeeIdModal()">
+    <div class="modal-content" role="dialog" aria-labelledby="employee-id-modal-title">
+      <div class="modal-header">
+        <h2 id="employee-id-modal-title">Enter EmployeeID</h2>
+        <button type="button" class="modal-close" aria-label="Close" (click)="closeEmployeeIdModal()">&times;</button>
+      </div>
+      <p class="modal-description">Enter the teacher's EmployeeID to view their assigned classes and open the record book.</p>
+      <div *ngIf="lookupError" class="alert alert-error modal-alert">
+        <span class="alert-icon">⚠️</span>
+        <span>{{ lookupError }}</span>
+      </div>
+      <div class="modal-body">
+        <label for="employee-id-input" class="modal-label">EmployeeID</label>
+        <input
+          id="employee-id-input"
+          type="text"
+          [(ngModel)]="employeeIdInput"
+          (keydown.enter)="searchByEmployeeId()"
+          placeholder="e.g. JPST001"
+          class="modal-input"
+          autofocus>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeEmployeeIdModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="searchByEmployeeId()" [disabled]="lookupLoading">
+          <span *ngIf="!lookupLoading">Look up</span>
+          <span *ngIf="lookupLoading">Looking up...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Error Message -->
   <div *ngIf="error" class="alert alert-error">
     <span class="alert-icon">⚠️</span>
@@ -25,8 +58,8 @@
     <p>Loading classes...</p>
   </div>
 
-  <!-- Classes Content -->
-  <div *ngIf="!loading && !error">
+  <!-- Classes Content (for linked teacher always; for universal teacher only after EmployeeID lookup) -->
+  <div *ngIf="!loading && !error && (!isUniversalTeacher || lookedUpTeacher)">
     <!-- Search Box -->
     <div class="search-container">
       <div class="search-box">
@@ -49,6 +82,13 @@
       </div>
     </div>
 
+    <!-- Universal teacher: change teacher / re-open modal -->
+    <div *ngIf="isUniversalTeacher && lookedUpTeacher && filteredClasses.length > 0" class="universal-actions">
+      <button type="button" class="btn btn-outline" (click)="openEmployeeIdModal()">
+        Look up another EmployeeID
+      </button>
+    </div>
+
     <!-- Classes Grid -->
     <div *ngIf="filteredClasses.length > 0" class="classes-grid">
       <div *ngFor="let classItem of filteredClasses" class="class-card">
@@ -63,18 +103,32 @@
           </span>
         </div>
         <div class="class-card-body">
+          <p class="class-subjects" *ngIf="classItem.subjects?.length">
+            <strong>Subject(s) taught:</strong> {{ getSubjectNames(classItem.subjects) }}
+          </p>
           <p class="class-description" *ngIf="classItem.description">
             {{ classItem.description }}
           </p>
-          <p class="class-description" *ngIf="!classItem.description">
+          <p class="class-description" *ngIf="!classItem.description && !classItem.subjects?.length">
+            <em>No description available</em>
+          </p>
+          <p class="class-description" *ngIf="!classItem.description && classItem.subjects?.length">
             <em>No description available</em>
           </p>
         </div>
         <div class="class-card-footer">
-          <button class="btn btn-primary" routerLink="/teacher/record-book" [queryParams]="{classId: classItem.id}">
+          <ng-container *ngIf="classItem.subjects?.length">
+            <a *ngFor="let sub of classItem.subjects" class="btn btn-primary record-book-link"
+               [routerLink]="['/teacher/record-book']" [queryParams]="{classId: classItem.id, subjectId: sub.id}">
+              <span class="btn-icon">📚</span>
+              <span>Record Book – {{ sub.name }}</span>
+            </a>
+          </ng-container>
+          <a *ngIf="!classItem.subjects?.length" class="btn btn-primary record-book-link"
+             [routerLink]="['/teacher/record-book']" [queryParams]="{classId: classItem.id}">
             <span class="btn-icon">📚</span>
             <span>Open Record Book</span>
-          </button>
+          </a>
         </div>
       </div>
     </div>
@@ -86,10 +140,19 @@
       <p *ngIf="searchTerm">
         No classes match your search criteria. Try a different search term.
       </p>
-      <p *ngIf="!searchTerm">
+      <p *ngIf="!searchTerm && !isUniversalTeacher">
         You are not assigned to any classes yet. Please contact the administrator.
       </p>
+      <p *ngIf="!searchTerm && isUniversalTeacher">
+        No classes assigned to this teacher. Try another EmployeeID.
+      </p>
     </div>
+  </div>
+
+  <!-- Universal teacher: prompt to enter EmployeeID when modal is not shown and no lookup yet -->
+  <div *ngIf="!loading && !error && isUniversalTeacher && !lookedUpTeacher && !showEmployeeIdModal" class="universal-prompt">
+    <p>Enter an EmployeeID to view that teacher's classes and open the record book.</p>
+    <button type="button" class="btn btn-primary" (click)="openEmployeeIdModal()">Enter EmployeeID</button>
   </div>
 </div>
 

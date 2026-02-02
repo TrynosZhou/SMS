@@ -16,6 +16,14 @@ export class MyClassesComponent implements OnInit {
   searchTerm = '';
   filteredClasses: any[] = [];
 
+  // Universal teacher: lookup by EmployeeID
+  isUniversalTeacher = false;
+  showEmployeeIdModal = false;
+  employeeIdInput = '';
+  lookedUpTeacher: any = null;
+  lookupLoading = false;
+  lookupError = '';
+
   constructor(
     private authService: AuthService,
     private teacherService: TeacherService
@@ -53,6 +61,18 @@ export class MyClassesComponent implements OnInit {
 
     this.loading = true;
     this.error = '';
+
+    // Universal teacher: show modal to enter EmployeeID and lookup teacher's classes
+    if ((user as any).isUniversalTeacher) {
+      this.isUniversalTeacher = true;
+      this.teacher = { id: null, firstName: 'Universal', lastName: 'Teacher' };
+      this.teacherName = 'Universal Teacher';
+      this.classes = [];
+      this.filteredClasses = [];
+      this.loading = false;
+      this.showEmployeeIdModal = true;
+      return;
+    }
     
     // First, get the teacher profile to get teacherId and full name
     this.teacherService.getCurrentTeacher().subscribe({
@@ -139,6 +159,51 @@ export class MyClassesComponent implements OnInit {
 
   getClassStatusText(isActive: boolean): string {
     return isActive ? 'Active' : 'Inactive';
+  }
+
+  searchByEmployeeId(): void {
+    const id = (this.employeeIdInput || '').trim();
+    if (!id) {
+      this.lookupError = 'Please enter an EmployeeID';
+      return;
+    }
+    this.lookupLoading = true;
+    this.lookupError = '';
+    this.teacherService.searchTeacherByEmployeeId(id).subscribe({
+      next: (response: any) => {
+        this.lookupLoading = false;
+        const teacherInfo = response.teacher;
+        if (!teacherInfo) {
+          this.lookupError = response.message || 'Teacher not found';
+          return;
+        }
+        this.lookedUpTeacher = teacherInfo;
+        this.classes = teacherInfo.classes || [];
+        this.filteredClasses = [...this.classes];
+        this.showEmployeeIdModal = false;
+        this.employeeIdInput = '';
+      },
+      error: (err: any) => {
+        this.lookupLoading = false;
+        this.lookupError = err.error?.message || 'Failed to find teacher. Please check the EmployeeID.';
+      }
+    });
+  }
+
+  openEmployeeIdModal(): void {
+    this.showEmployeeIdModal = true;
+    this.lookupError = '';
+    this.employeeIdInput = '';
+  }
+
+  closeEmployeeIdModal(): void {
+    this.showEmployeeIdModal = false;
+    this.lookupError = '';
+  }
+
+  getSubjectNames(subjects: any[]): string {
+    if (!subjects || !Array.isArray(subjects)) return '';
+    return subjects.map(s => s?.name).filter(Boolean).join(', ');
   }
 }
 

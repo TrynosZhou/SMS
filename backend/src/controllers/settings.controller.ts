@@ -7,6 +7,16 @@ import { UniformItem } from '../entities/UniformItem';
 import { AuthRequest } from '../middleware/auth';
 
 const DEFAULT_MODULE_ACCESS: Settings['moduleAccess'] = {
+  universalTeacher: {
+    students: true,
+    classes: true,
+    subjects: true,
+    exams: true,
+    reportCards: true,
+    rankings: true,
+    finance: false,
+    settings: false
+  },
   teachers: {
     students: true,
     classes: true,
@@ -70,6 +80,7 @@ const DEFAULT_MODULE_ACCESS: Settings['moduleAccess'] = {
 const ensureModuleAccessDefaults = (current?: Settings['moduleAccess'] | null): Settings['moduleAccess'] => {
   const existing = current || {};
   return {
+    universalTeacher: { ...DEFAULT_MODULE_ACCESS?.universalTeacher, ...(existing.universalTeacher || {}) },
     teachers: { ...DEFAULT_MODULE_ACCESS?.teachers, ...(existing.teachers || {}) },
     parents: { ...DEFAULT_MODULE_ACCESS?.parents, ...(existing.parents || {}) },
     accountant: { ...DEFAULT_MODULE_ACCESS?.accountant, ...(existing.accountant || {}) },
@@ -231,6 +242,7 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       termEndDate,
       currencySymbol,
       moduleAccess,
+      universalTeacherEnabled,
       schoolStartTime,
       schoolEndTime,
       breakTimes
@@ -354,6 +366,9 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       settings.moduleAccess = ensureModuleAccessDefaults(moduleAccess);
     } else if (settings.moduleAccess) {
       settings.moduleAccess = ensureModuleAccessDefaults(settings.moduleAccess);
+    }
+    if (universalTeacherEnabled !== undefined) {
+      settings.universalTeacherEnabled = Boolean(universalTeacherEnabled);
     }
     if (schoolStartTime !== undefined) {
       settings.schoolStartTime = schoolStartTime || null;

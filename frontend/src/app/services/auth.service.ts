@@ -13,6 +13,7 @@ export interface User {
   mustChangePassword?: boolean;
   isTemporaryAccount?: boolean;
   isDemo?: boolean;
+  isUniversalTeacher?: boolean;
   student?: any;
   teacher?: any;
   parent?: any;
