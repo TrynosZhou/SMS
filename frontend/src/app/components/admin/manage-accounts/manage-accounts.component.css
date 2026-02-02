@@ -1027,6 +1027,29 @@
   font-size: 14px;
 }
 
+.detail-item-full {
+  grid-column: 1 / -1;
+}
+
+.detail-value-role {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.role-select {
+  padding: 6px 10px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 14px;
+  min-width: 160px;
+}
+
+.btn-update-role {
+  flex-shrink: 0;
+}
+
 .no-account-message {
   text-align: center;
   padding: 30px;

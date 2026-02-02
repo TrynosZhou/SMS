@@ -492,67 +492,63 @@
           </h2>
           <p class="modal-subtitle">Create a user account for this teacher</p>
         </div>
-        <button class="modal-close-btn" (click)="closeCreateModal()" title="Close">
+        <button type="button" class="modal-close-btn" (click)="closeCreateModal()" title="Close">
           <span>&times;</span>
         </button>
       </div>
 
-      <div *ngIf="selectedTeacher" class="teacher-info-card">
-        <div class="info-header">
-          <span class="info-icon">👤</span>
-          <h3>Teacher Information</h3>
+      <form (ngSubmit)="confirmCreateAccount()" class="modal-form">
+        <div *ngIf="selectedTeacher" class="teacher-info-card">
+          <div class="info-header">
+            <span class="info-icon">👤</span>
+            <h3>Teacher Information</h3>
+          </div>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">Name:</span>
+              <span class="info-value">{{ selectedTeacher.firstName }} {{ selectedTeacher.lastName }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Teacher ID:</span>
+              <span class="info-value">{{ selectedTeacher.teacherId }}</span>
+            </div>
+            <div class="info-item" *ngIf="selectedTeacher.email">
+              <span class="info-label">Email:</span>
+              <span class="info-value">{{ selectedTeacher.email }}</span>
+            </div>
+          </div>
         </div>
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="info-label">Name:</span>
-            <span class="info-value">{{ selectedTeacher.firstName }} {{ selectedTeacher.lastName }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Teacher ID:</span>
-            <span class="info-value">{{ selectedTeacher.teacherId }}</span>
-          </div>
-          <div class="info-item" *ngIf="selectedTeacher.email">
-            <span class="info-label">Email:</span>
-            <span class="info-value">{{ selectedTeacher.email }}</span>
-          </div>
-        </div>
-      </div>
 
-      <div class="modal-body">
-        <div class="form-group">
-          <label>
-            <input type="checkbox" [(ngModel)]="sendCredentials" class="checkbox-input">
-            <span class="checkbox-label">Send credentials via email (if email is available)</span>
-          </label>
+        <div class="modal-body">
+          <div class="alert alert-error" *ngIf="error && showCreateModal">
+            <span class="alert-icon">✕</span>
+            <span>{{ error }}</span>
+          </div>
+          <div class="form-group">
+            <label>
+              <input type="checkbox" [(ngModel)]="sendCredentials" name="sendCredentials" class="checkbox-input">
+              <span class="checkbox-label">Send credentials via email (if email is available)</span>
+            </label>
+          </div>
+          <div class="info-box">
+            <span class="info-box-icon">💡</span>
+            <p>The account will be created with a temporary password. The teacher will need to change it on first login.</p>
+          </div>
         </div>
-        <div class="info-box">
-          <span class="info-box-icon">💡</span>
-          <p>The account will be created with a temporary password. The teacher will need to change it on first login.</p>
-        </div>
-      </div>
 
-      <div class="modal-actions">
-        <button 
-          type="button" 
-          class="btn btn-secondary" 
-          (click)="closeCreateModal()"
-          [disabled]="creatingAccount">
-          ❌ Cancel
-        </button>
-        <button 
-          type="button" 
-          class="btn btn-primary" 
-          (click)="confirmCreateAccount()"
-          [disabled]="creatingAccount">
-          <span *ngIf="!creatingAccount">
-            ➕ Create Account
-          </span>
-          <span *ngIf="creatingAccount" class="submit-loading">
-            <span class="spinner-small"></span>
-            Creating...
-          </span>
-        </button>
-      </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeCreateModal()" [disabled]="creatingAccount">
+            ❌ Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="creatingAccount || !selectedTeacher?.id">
+            <span *ngIf="!creatingAccount">➕ Create Account</span>
+            <span *ngIf="creatingAccount" class="submit-loading">
+              <span class="spinner-small"></span>
+              Creating...
+            </span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -607,6 +603,18 @@
                 </span>
               </span>
             </div>
+            <div class="detail-item detail-item-full">
+              <span class="detail-label">Role:</span>
+              <span class="detail-value detail-value-role">
+                <select [(ngModel)]="selectedUserRoleForEdit" name="userRole" class="role-select" [disabled]="updatingRole">
+                  <option *ngFor="let opt of getEditableRoleOptions()" [value]="opt.value">{{ opt.label }}</option>
+                </select>
+                <button type="button" class="btn btn-primary btn-sm btn-update-role" (click)="updateUserRole()" [disabled]="updatingRole || !isRoleChanged()">
+                  <span *ngIf="!updatingRole">Update Role</span>
+                  <span *ngIf="updatingRole" class="submit-loading"><span class="spinner-small"></span> Updating...</span>
+                </button>
+              </span>
+            </div>
           </div>
         </div>
 
@@ -622,17 +630,8 @@
       </div>
 
       <div class="modal-actions">
-        <button 
-          type="button" 
-          class="btn btn-secondary" 
-          (click)="closeDetailsModal()">
-          Close
-        </button>
-        <button 
-          *ngIf="selectedTeacher.hasAccount"
-          type="button" 
-          class="btn btn-primary" 
-          (click)="closeDetailsModal(); openResetPasswordModal(selectedTeacher)">
+        <button type="button" class="btn btn-secondary" (click)="closeDetailsModal()">Close</button>
+        <button *ngIf="selectedTeacher.hasAccount" type="button" class="btn btn-primary" (click)="closeDetailsModal(); openResetPasswordModal(selectedTeacher)">
           🔑 Reset Password
         </button>
       </div>

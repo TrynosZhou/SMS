@@ -1,37 +1,101 @@
-<div class="container">
-  <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <h1>Invoice Statements</h1>
-      <button class="btn btn-secondary" (click)="router.navigate(['/invoices'])">
-        ⬅️ Back to Invoices
+<div class="page-container">
+  <div class="page-card">
+    <!-- Page header -->
+    <header class="page-header">
+      <div class="page-header-content">
+        <h1 class="page-title">
+          <span class="page-title-icon">📋</span>
+          Invoice Statements
+        </h1>
+        <p class="page-subtitle">View and manage invoice statements by student and status</p>
+      </div>
+      <button type="button" class="btn-back" (click)="router.navigate(['/invoices'])">
+        <span class="btn-back-icon">←</span>
+        Back to Invoices
       </button>
-    </div>
+    </header>
+
+    <!-- Alerts -->
     <div class="alert alert-success" *ngIf="success">{{ success }}</div>
     <div class="alert alert-error" *ngIf="error">{{ error }}</div>
-    
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-      <div class="form-group">
-        <label>Filter by Student</label>
-        <select [(ngModel)]="selectedStudent" [ngModelOptions]="{standalone: true}" (change)="onFilterChange()">
-          <option value="">All Students</option>
-          <option *ngFor="let student of students" [value]="student.id">
-            {{ student.firstName }} {{ student.lastName }}
-          </option>
-        </select>
+
+    <!-- Stats cards -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <span class="stat-icon">📄</span>
+        <div class="stat-content">
+          <span class="stat-value">{{ invoices?.length || 0 }}</span>
+          <span class="stat-label">Invoices</span>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Filter by Status</label>
-        <select [(ngModel)]="selectedStatus" [ngModelOptions]="{standalone: true}" (change)="onFilterChange()">
-          <option value="">All Statuses</option>
-          <option value="pending">Pending</option>
-          <option value="paid">Paid</option>
-          <option value="partial">Partial</option>
-          <option value="overdue">Overdue</option>
-        </select>
+      <div class="stat-card stat-balance">
+        <span class="stat-icon">💰</span>
+        <div class="stat-content">
+          <span class="stat-value">{{ currencySymbol }} {{ totalBalance | number:'1.2-2' }}</span>
+          <span class="stat-label">Total Balance</span>
+        </div>
+      </div>
+      <div class="stat-card stat-paid">
+        <span class="stat-icon">✓</span>
+        <div class="stat-content">
+          <span class="stat-value">{{ paidCount }}</span>
+          <span class="stat-label">Paid</span>
+        </div>
+      </div>
+      <div class="stat-card stat-overdue">
+        <span class="stat-icon">⚠</span>
+        <div class="stat-content">
+          <span class="stat-value">{{ overdueCount }}</span>
+          <span class="stat-label">Overdue</span>
+        </div>
       </div>
     </div>
-    <div *ngIf="loading">Loading...</div>
-    <table *ngIf="!loading">
+
+    <!-- Filters -->
+    <div class="filters-bar">
+      <div class="filters-label">
+        <span class="filters-icon">🔍</span>
+        Filters
+      </div>
+      <div class="filters-controls">
+        <div class="filter-group">
+          <label class="filter-label">Student</label>
+          <select class="filter-select" [(ngModel)]="selectedStudent" [ngModelOptions]="{standalone: true}" (change)="onFilterChange()">
+            <option value="">All Students</option>
+            <option *ngFor="let student of students" [value]="student.id">
+              {{ student.firstName }} {{ student.lastName }}
+            </option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Status</label>
+          <select class="filter-select" [(ngModel)]="selectedStatus" [ngModelOptions]="{standalone: true}" (change)="onFilterChange()">
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="paid">Paid</option>
+            <option value="partial">Partial</option>
+            <option value="overdue">Overdue</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading state -->
+    <div *ngIf="loading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">Loading statements...</p>
+    </div>
+
+    <!-- Empty state -->
+    <div *ngIf="!loading && (!invoices || invoices.length === 0)" class="empty-state">
+      <span class="empty-icon">📭</span>
+      <h3 class="empty-title">No invoices found</h3>
+      <p class="empty-text">Adjust filters or create invoices from the invoice list.</p>
+    </div>
+
+    <!-- Table -->
+    <div *ngIf="!loading && invoices?.length > 0" class="table-wrapper">
+    <table class="statements-table">
       <thead>
         <tr>
           <th>Invoice Number</th>
@@ -93,7 +157,8 @@
         </tr>
       </tbody>
     </table>
-    
+    </div>
+
     <!-- Payment Form Modal -->
     <div *ngIf="showPaymentForm" class="modal-overlay" (click)="closePaymentForm()" [@fadeInOut]>
       <div class="payment-modal" (click)="$event.stopPropagation()" [@slideInUp]>
@@ -294,9 +359,8 @@
         </form>
       </div>
     </div>
-  </div>
 
-  <!-- PDF Viewer Modal -->
+    <!-- PDF Viewer Modal -->
   <div *ngIf="showPdfViewer" class="pdf-viewer-overlay" (click)="closePdfViewer()" [@fadeInOut]>
     <div class="pdf-viewer-modal" (click)="$event.stopPropagation()" [@slideInUp]>
       <div class="pdf-viewer-header">
@@ -338,6 +402,7 @@
         </div>
       </div>
     </div>
+  </div>
   </div>
 </div>
 

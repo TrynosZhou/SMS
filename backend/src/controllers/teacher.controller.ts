@@ -5,6 +5,7 @@ import { AppDataSource } from '../config/database';
 import { Teacher } from '../entities/Teacher';
 import { User, UserRole } from '../entities/User';
 import { AuthRequest } from '../middleware/auth';
+import { UNIVERSAL_TEACHER_USERNAME } from './account.controller';
 import { generateTeacherId } from '../utils/teacherIdGenerator';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
@@ -1342,6 +1343,18 @@ export const createTeacherAccount = async (req: AuthRequest, res: Response) => {
       const existingUser = await userRepository.findOne({ where: { id: teacher.userId } });
       if (existingUser) {
         return res.status(400).json({ message: 'Teacher already has an account' });
+      }
+    }
+
+    // Universal teacher account (username "teacher") is managed via Settings > Manage Accounts
+    if (teacher.teacherId && teacher.teacherId.toLowerCase() === UNIVERSAL_TEACHER_USERNAME.toLowerCase()) {
+      const existingUniversalUser = await userRepository.findOne({
+        where: { username: UNIVERSAL_TEACHER_USERNAME }
+      });
+      if (existingUniversalUser) {
+        return res.status(400).json({
+          message: 'The universal teacher account already exists. Manage it (create or reset password) from Settings → Manage Accounts → Universal Teacher Account.'
+        });
       }
     }
 

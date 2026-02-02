@@ -72,6 +72,10 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   showResetPasswordConfirm = false;
   resettingPassword = false;
 
+  // Change user role (in Account Details modal)
+  selectedUserRoleForEdit = '';
+  updatingRole = false;
+
   // Password change
   showPasswordChangeSection = false;
   currentPassword = '';
@@ -246,6 +250,7 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     this.selectedTeacher = teacher;
     this.showCreateModal = true;
     this.sendCredentials = false;
+    this.error = '';
   }
 
   closeCreateModal() {
@@ -286,12 +291,53 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
 
   viewAccountDetails(teacher: any) {
     this.selectedTeacher = teacher;
+    const rawRole = teacher.user?.role || teacher.role || 'teacher';
+    this.selectedUserRoleForEdit = typeof rawRole === 'string' ? rawRole.toLowerCase() : 'teacher';
     this.showDetailsModal = true;
   }
 
   closeDetailsModal() {
     this.showDetailsModal = false;
     this.selectedTeacher = null;
+    this.selectedUserRoleForEdit = '';
+  }
+
+  getEditableRoleOptions(): { value: string; label: string }[] {
+    const all = this.manualAccountRoles;
+    if (this.isSuperAdmin()) return all;
+    return all.filter(o => o.value !== 'superadmin');
+  }
+
+  updateUserRole() {
+    if (!this.selectedTeacher?.userId) return;
+    const newRole = (this.selectedUserRoleForEdit || '').trim().toLowerCase();
+    if (!newRole) return;
+    this.updatingRole = true;
+    this.error = '';
+    this.accountService.updateUserRole(this.selectedTeacher.userId, newRole).subscribe({
+      next: (res: any) => {
+        this.updatingRole = false;
+        if (this.selectedTeacher.user) {
+          this.selectedTeacher.user.role = newRole;
+        } else {
+          this.selectedTeacher.user = { id: this.selectedTeacher.userId, role: newRole };
+        }
+        this.success = `User role updated to ${newRole}.`;
+        setTimeout(() => this.success = '', 5000);
+      },
+      error: (err: any) => {
+        this.updatingRole = false;
+        this.error = err.error?.message || 'Failed to update role';
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  isRoleChanged(): boolean {
+    if (!this.selectedTeacher?.userId) return false;
+    const current = (this.selectedTeacher.user?.role || '').toString().toLowerCase();
+    const selected = (this.selectedUserRoleForEdit || '').toString().toLowerCase();
+    return current !== selected;
   }
 
   openResetPasswordModal(teacher: any) {

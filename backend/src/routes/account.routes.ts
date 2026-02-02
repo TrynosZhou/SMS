@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
-import { updateAccount, getAccountInfo, createUserAccount, resetUserPassword, getUniversalTeacherStatus, createUniversalTeacherAccount } from '../controllers/account.controller';
+import { updateAccount, getAccountInfo, createUserAccount, resetUserPassword, updateUserRole, getUniversalTeacherStatus, createUniversalTeacherAccount } from '../controllers/account.controller';
 import { UserRole } from '../entities/User';
 
 const router = Router();
@@ -26,6 +26,13 @@ router.post(
   '/reset-password',
   authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
   resetUserPassword
+);
+
+// Admin/SuperAdmin can change a user's role (Admin cannot set role to superadmin)
+router.patch(
+  '/users/:id/role',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  updateUserRole
 );
 
 // Universal teacher account (admin/superadmin only)

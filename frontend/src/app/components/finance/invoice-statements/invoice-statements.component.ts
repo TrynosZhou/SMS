@@ -417,12 +417,32 @@ export class InvoiceStatementsComponent implements OnInit {
 
   getStatusClass(status: string): string {
     const statusMap: any = {
-      'paid': 'alert-success',
-      'pending': 'alert-info',
-      'partial': 'alert-info',
-      'overdue': 'alert-error'
+      'paid': 'status-pill status-paid',
+      'pending': 'status-pill status-pending',
+      'partial': 'status-pill status-partial',
+      'overdue': 'status-pill status-overdue'
     };
-    return statusMap[status] || '';
+    return statusMap[status] || 'status-pill status-default';
+  }
+
+  /** Total balance across filtered invoices */
+  get totalBalance(): number {
+    return (this.invoices || []).reduce((sum, inv) => sum + parseFloat(String(inv.balance || 0)), 0);
+  }
+
+  /** Total paid amount across filtered invoices */
+  get totalPaid(): number {
+    return (this.invoices || []).reduce((sum, inv) => sum + parseFloat(String(inv.paidAmount || 0)), 0);
+  }
+
+  /** Count of paid invoices */
+  get paidCount(): number {
+    return (this.invoices || []).filter(inv => (inv.status || '').toLowerCase() === 'paid').length;
+  }
+
+  /** Count of overdue invoices */
+  get overdueCount(): number {
+    return (this.invoices || []).filter(inv => (inv.status || '').toLowerCase() === 'overdue').length;
   }
 
   private base64ToBlob(base64: string, mimeType: string): Blob {

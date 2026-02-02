@@ -8,6 +8,8 @@ interface InvoicePDFData {
   invoice: Invoice;
   student: Student;
   settings: Settings | null;
+  /** When true, registration and desk fee line items are shown (charged once at registration). Omit for backward compatibility. */
+  isFirstInvoice?: boolean;
 }
 
 export function createInvoicePDF(
@@ -24,7 +26,7 @@ export function createInvoicePDF(
       });
       doc.on('error', reject);
 
-      const { invoice, student, settings } = data;
+      const { invoice, student, settings, isFirstInvoice } = data;
       const currencySymbol = settings?.currencySymbol || 'KES';
 
       // School Header
@@ -237,21 +239,11 @@ export function createInvoicePDF(
       let displayedFeesTotal = 0;
 
       // Always display fees as separate line items based on student data
-      // These fees should be charged for every term (except desk fee and registration fee which are only once)
-      // Display registration fee: only on first invoice (registration) and only for non-staff children
-      // Check if this is likely the first invoice by checking if baseAmount includes registration fee
-      if (registrationFee > 0 && !student.isStaffChild) {
-        // Calculate expected fees without registration fee (but with desk fee since both are charged at registration)
-        const feesWithoutReg = tuitionFee + transportFee + diningHallFee + deskFee +
-          (student.isStaffChild ? 0 : (libraryFee + sportsFee + otherFeesTotal));
-        const expectedWithReg = feesWithoutReg + registrationFee;
-        
-        // Show registration fee if baseAmount is close to expectedWithReg (within 1 unit tolerance)
-        // This indicates registration fee is likely included in the invoice
-        if (Math.abs(baseAmount - expectedWithReg) <= Math.abs(baseAmount - feesWithoutReg) + 1) {
-          renderTableRow('Registration Fee', registrationFee, { fill: '#F8F9FA' });
-          displayedFeesTotal += registrationFee;
-        }
+      // Registration and desk fee: only on first invoice (registration), never for staff children; must not appear twice
+      const showOneTimeFees = isFirstInvoice === true && !student.isStaffChild;
+      if (registrationFee > 0 && showOneTimeFees) {
+        renderTableRow('Registration Fee', registrationFee, { fill: '#F8F9FA' });
+        displayedFeesTotal += registrationFee;
       }
 
       // Display tuition fee - always show if student is not a staff child
@@ -264,21 +256,10 @@ export function createInvoicePDF(
         }
       }
 
-      // Desk fee: only for non-staff children and only on first invoice (registration)
-      // Check if this is likely the first invoice by checking if baseAmount includes desk fee
-      // We'll show desk fee if the invoice amount suggests it's included
-      if (deskFee > 0 && !student.isStaffChild) {
-        // Calculate expected fees without desk fee
-        const feesWithoutDesk = tuitionFee + transportFee + diningHallFee + 
-          (student.isStaffChild ? 0 : (libraryFee + sportsFee + otherFeesTotal));
-        const expectedWithDesk = feesWithoutDesk + deskFee;
-        
-        // Show desk fee if baseAmount is close to expectedWithDesk (within 1 unit tolerance)
-        // This indicates desk fee is likely included in the invoice
-        if (Math.abs(baseAmount - expectedWithDesk) <= Math.abs(baseAmount - feesWithoutDesk) + 1) {
-          renderTableRow('Desk Fee', deskFee, { fill: '#F8F9FA' });
-          displayedFeesTotal += deskFee;
-        }
+      // Desk fee: only on first invoice (registration), never for staff children; must not appear twice
+      if (deskFee > 0 && showOneTimeFees) {
+        renderTableRow('Desk Fee', deskFee, { fill: '#F8F9FA' });
+        displayedFeesTotal += deskFee;
       }
 
       // Always show transport fee if student uses transport (for Day Scholars)

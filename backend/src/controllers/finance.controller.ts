@@ -107,6 +107,7 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
         const fees = settings.feesSettings;
         const dayScholarTuitionFee = parseAmount(fees.dayScholarTuitionFee);
         const boarderTuitionFee = parseAmount(fees.boarderTuitionFee);
+        const registrationFee = parseAmount(fees.registrationFee);
         const deskFee = parseAmount(fees.deskFee);
         const transportCost = parseAmount(fees.transportCost);
         const diningHallCost = parseAmount(fees.diningHallCost);
@@ -115,9 +116,9 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
         const otherFees = Array.isArray(fees.otherFees) ? fees.otherFees : [];
         const otherFeesTotal = otherFees.reduce((sum: number, fee: any) => sum + parseAmount(fee?.amount), 0);
 
-        // Check if desk fee was already charged (only charge once at registration)
+        // Desk fee and registration fee: charged once at registration only (not for staff children)
         const hasPreviousInvoice = Boolean(lastInvoice);
-        const shouldChargeDeskFee = !hasPreviousInvoice;
+        const shouldChargeOneTimeFees = !hasPreviousInvoice;
 
         // Calculate fees based on staff child status
         if (!student.isStaffChild) {
@@ -125,8 +126,13 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
           calculatedFees += tuitionFee;
         }
 
-        // Desk fee: only charged once at registration
-        if (!student.isStaffChild && shouldChargeDeskFee) {
+        // Registration fee: only charged once at registration (does not apply to staff children)
+        if (!student.isStaffChild && shouldChargeOneTimeFees) {
+          calculatedFees += registrationFee;
+        }
+
+        // Desk fee: only charged once at registration (does not apply to staff children)
+        if (!student.isStaffChild && shouldChargeOneTimeFees) {
           calculatedFees += deskFee;
         }
 
@@ -272,10 +278,13 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       });
 
       try {
+        // This invoice is the student's first if they had no previous invoice before we created this one
+        const isFirstInvoiceForPdf = !lastInvoice;
         const invoicePDF = await createInvoicePDF({
           invoice: (invoiceWithRelations || savedInvoice),
           student: studentWithClass,
-          settings
+          settings,
+          isFirstInvoice: isFirstInvoiceForPdf
         });
 
         res.status(201).json({ 
@@ -508,6 +517,7 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
     const feesConfig = settings.feesSettings;
     const dayScholarTuitionFee = parseAmount(feesConfig.dayScholarTuitionFee);
     const boarderTuitionFee = parseAmount(feesConfig.boarderTuitionFee);
+    const registrationFee = parseAmount(feesConfig.registrationFee);
     const transportCost = parseAmount(feesConfig.transportCost);
     const diningHallCost = parseAmount(feesConfig.diningHallCost);
     const deskFee = parseAmount(feesConfig.deskFee);
@@ -555,9 +565,8 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
         // The term provided is the current term, so we calculate fees for the following term
         const nextTerm = getNextTerm(term);
         
-        // Desk fee is only charged once at registration
-        // Get the first invoice to check if desk fee was already charged
-        const shouldChargeDeskFee = !lastInvoice;
+        // Desk fee and registration fee: only charged once at registration (first invoice only; does not apply to staff children)
+        const shouldChargeOneTimeFees = !lastInvoice;
         
         // Calculate fees based on staff child status
         let termFees = 0;
@@ -577,8 +586,13 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
           termFees += tuitionFeeNum;
         }
 
+        // Registration fee: only charged once at registration (first invoice only)
+        if (!student.isStaffChild && shouldChargeOneTimeFees) {
+          termFees += registrationFee;
+        }
+
         // Desk fee: only charged once at registration (first invoice only)
-        if (!student.isStaffChild && shouldChargeDeskFee) {
+        if (!student.isStaffChild && shouldChargeOneTimeFees) {
           termFees += deskFee;
         }
         
@@ -696,10 +710,19 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
     });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
+    // Only show registration/desk fee on the student's first invoice (charged once at registration)
+    const firstInvoiceForStudent = await invoiceRepository.findOne({
+      where: { studentId: student.id },
+      order: { createdAt: 'ASC' },
+      select: ['id']
+    });
+    const isFirstInvoice = firstInvoiceForStudent?.id === invoice.id;
+
     const pdfBuffer = await createInvoicePDF({
       invoice,
       student,
-      settings
+      settings,
+      isFirstInvoice
     });
 
     // Create filename with student's full name

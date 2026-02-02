@@ -439,6 +439,78 @@ export const resetUserPassword = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Admin/SuperAdmin: Update a user's role
+export const updateUserRole = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const actingRole = req.user.role;
+    if (actingRole !== UserRole.ADMIN && actingRole !== UserRole.SUPERADMIN) {
+      return res.status(403).json({ message: 'Only Administrators can change user roles' });
+    }
+
+    const userId = req.params.id;
+    const { role: requestedRole } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    if (!requestedRole || typeof requestedRole !== 'string') {
+      return res.status(400).json({ message: 'Role is required' });
+    }
+
+    let role = String(requestedRole).trim().toLowerCase();
+    if (role === 'demo-user') role = UserRole.DEMO_USER;
+    if (!Object.values(UserRole).includes(role as UserRole)) {
+      return res.status(400).json({ message: 'Invalid role specified' });
+    }
+
+    // Admin cannot set or change role to superadmin
+    if (actingRole === UserRole.ADMIN && role === UserRole.SUPERADMIN) {
+      return res.status(403).json({ message: 'Only a Super Admin can assign the Super Admin role' });
+    }
+
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const userRepository = AppDataSource.getRepository(User);
+    const user = await userRepository.findOne({ where: { id: userId } });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.role = role as UserRole;
+    if (role === UserRole.DEMO_USER) {
+      user.isDemo = true;
+    } else if (user.isDemo && role !== UserRole.DEMO_USER) {
+      user.isDemo = false;
+    }
+
+    await userRepository.save(user);
+
+    res.json({
+      message: 'User role updated successfully',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error: any) {
+    console.error('Error updating user role:', error);
+    res.status(500).json({
+      message: 'Server error',
+      error: error.message || 'Unknown error'
+    });
+  }
+};
+
 // Get universal teacher account status (admin/superadmin only)
 export const getUniversalTeacherStatus = async (req: AuthRequest, res: Response) => {
   try {

@@ -8,41 +8,46 @@
   min-height: 100vh;
 }
 
-/* Header Styles */
+/* Header Styles (reduced by 30%) */
 .form-header {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  border-radius: 16px;
-  padding: 30px 40px;
-  margin-bottom: 30px;
-  box-shadow: 0 10px 30px rgba(245, 87, 108, 0.3);
+  background: linear-gradient(90deg, #6A7EDC 0%, #8257B9 100%);
+  border-radius: 11px;
+  padding: 21px 28px;
+  margin-bottom: 21px;
+  box-shadow: 0 7px 21px rgba(106, 126, 220, 0.35);
   display: flex;
   justify-content: space-between;
   align-items: center;
   color: white;
 }
 
+.form-header .btn {
+  padding: 10px 20px;
+  font-size: 13px;
+}
+
 .header-content h1 {
-  margin: 0 0 8px 0;
-  font-size: 32px;
+  margin: 0 0 6px 0;
+  font-size: 22px;
   font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .header-content .icon {
-  font-size: 36px;
+  font-size: 25px;
 }
 
-.subtitle {
+.form-header .subtitle {
   margin: 0;
-  font-size: 16px;
+  font-size: 13px;
   opacity: 0.9;
 }
 
 .header-actions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
 }
 
 /* Alert Styles */
@@ -699,12 +704,12 @@ textarea.form-input {
   .form-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 20px;
-    padding: 24px;
+    gap: 14px;
+    padding: 17px;
   }
 
   .header-content h1 {
-    font-size: 24px;
+    font-size: 17px;
   }
 
   .invoice-form {
@@ -732,11 +737,11 @@ textarea.form-input {
 
 @media (max-width: 480px) {
   .form-header {
-    padding: 20px;
+    padding: 14px;
   }
 
   .header-content h1 {
-    font-size: 20px;
+    font-size: 14px;
     flex-direction: column;
     align-items: flex-start;
   }
