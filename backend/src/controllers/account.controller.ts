@@ -14,7 +14,7 @@ export const UNIVERSAL_TEACHER_USERNAME = 'teacher';
 export const updateAccount = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-    const { newUsername, newEmail, currentPassword, newPassword } = req.body;
+    const { newUsername, newEmail, currentPassword, newPassword, firstName, lastName } = req.body;
 
     if (!userId) {
       return res.status(401).json({ message: 'Authentication required' });
@@ -86,6 +86,9 @@ export const updateAccount = async (req: AuthRequest, res: Response) => {
       user.email = newEmail;
     }
 
+    if (firstName !== undefined) user.firstName = firstName ? String(firstName).trim() || null : null;
+    if (lastName !== undefined) user.lastName = lastName ? String(lastName).trim() || null : null;
+
     // Update password
     user.password = await bcrypt.hash(newPassword, 10);
     user.mustChangePassword = false;
@@ -93,13 +96,17 @@ export const updateAccount = async (req: AuthRequest, res: Response) => {
 
     await userRepository.save(user);
 
+    const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || undefined;
     res.json({ 
       message: 'Account updated successfully',
       user: {
         id: user.id,
         email: user.email,
         username: user.username,
-        role: user.role
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        fullName: fullName || undefined
       }
     });
   } catch (error: any) {
@@ -127,11 +134,15 @@ export const getAccountInfo = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || undefined;
     res.json({
       id: user.id,
       email: user.email,
       username: user.username,
       role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: fullName || undefined,
       mustChangePassword: user.mustChangePassword,
       isTemporaryAccount: user.isTemporaryAccount,
       isDemo: user.isDemo,

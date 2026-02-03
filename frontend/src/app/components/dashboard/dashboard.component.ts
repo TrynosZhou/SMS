@@ -8,6 +8,7 @@ import { ClassService } from '../../services/class.service';
 import { FinanceService } from '../../services/finance.service';
 import { SubjectService } from '../../services/subject.service';
 import { ModuleAccessService } from '../../services/module-access.service';
+import { ThemeService } from '../../services/theme.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -66,12 +67,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private classService: ClassService,
     private financeService: FinanceService,
     private subjectService: SubjectService,
-    private moduleAccessService: ModuleAccessService
+    private moduleAccessService: ModuleAccessService,
+    public themeService: ThemeService
   ) { }
 
   ngOnInit() {
     this.user = this.authService.getCurrentUser();
-    
     // Load module access from service
     this.moduleAccessService.loadModuleAccess();
     this.loadSettings();
@@ -94,7 +95,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       clearInterval(this.textToggleInterval);
     }
   }
-  
+
   loadStatistics() {
     this.loadingStats = true;
     
@@ -416,36 +417,46 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return 'User';
     }
 
-    // For teachers, prioritize teacher fullName from login response
+    // Prefer full name from database (set by login for teacher/student/parent)
+    if (user.fullName && user.fullName.trim()) {
+      return user.fullName.trim();
+    }
+
+    // For teachers, fallback to teacher fullName from login response
     if (user.role === 'teacher') {
-      // First check if we have a cached teacher name
       if (this.teacherName && this.teacherName !== 'Teacher' && this.teacherName.trim()) {
         return this.teacherName;
       }
-      
-      // Then check user.teacher object from login response (most reliable)
       if (user.teacher) {
-        // Prioritize fullName from login response
-        if (user.teacher.fullName && 
-            user.teacher.fullName.trim() && 
-            user.teacher.fullName !== 'Teacher' && 
-            user.teacher.fullName !== 'Account Teacher') {
+        if (user.teacher.fullName && user.teacher.fullName.trim() && user.teacher.fullName !== 'Teacher' && user.teacher.fullName !== 'Account Teacher') {
           return user.teacher.fullName.trim();
         }
-        
-        // Fallback to extracting from firstName/lastName
         const extractedName = this.extractTeacherName(user.teacher);
         if (extractedName && extractedName !== 'Teacher' && extractedName.trim()) {
           return extractedName;
         }
       }
-      
-      // If teacher name is still not available, return generic 'Teacher' instead of username
       return 'Teacher';
     }
 
-    // For other roles, return email or username
-    return user.email || user.username || 'User';
+    // For students/parents, build from linked profile if fullName was not set
+    if (user.student && (user.student.firstName || user.student.lastName)) {
+      return [user.student.firstName, user.student.lastName].filter(Boolean).join(' ').trim();
+    }
+    if (user.parent && (user.parent.firstName || user.parent.lastName)) {
+      return [user.parent.firstName, user.parent.lastName].filter(Boolean).join(' ').trim();
+    }
+
+    // Fallback: show a friendly label instead of raw email/username (e.g. "changamire2026@admin.local" -> "Changamire2026")
+    return this.formatFriendlyDisplay(user.email || user.username || '') || 'User';
+  }
+
+  /** Derives a display-friendly label from email/username when full name is not available */
+  private formatFriendlyDisplay(emailOrUsername: string): string {
+    if (!emailOrUsername || !emailOrUsername.trim()) return '';
+    const local = emailOrUsername.split('@')[0].trim();
+    if (!local) return emailOrUsername;
+    return local.replace(/[._-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
   }
 
   initializeTextToggle() {

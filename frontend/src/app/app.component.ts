@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { AuthService } from './services/auth.service';
 import { SettingsService } from './services/settings.service';
 import { ModuleAccessService } from './services/module-access.service';
+import { ThemeService } from './services/theme.service';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -19,7 +20,8 @@ export class AppComponent implements OnInit, OnDestroy {
   constructor(
     public authService: AuthService, 
     private settingsService: SettingsService,
-    public moduleAccessService: ModuleAccessService
+    public moduleAccessService: ModuleAccessService,
+    public themeService: ThemeService
   ) { }
 
   ngOnInit(): void {
@@ -118,6 +120,10 @@ export class AppComponent implements OnInit, OnDestroy {
 
   isMenuExpanded(menuKey: string): boolean {
     return this.expandedMenus[menuKey] || false;
+  }
+
+  toggleTheme(): void {
+    this.themeService.toggleTheme();
   }
 
   getCurrentUserRole(): string {

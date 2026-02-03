@@ -19,6 +19,7 @@ import { InvoiceFormComponent } from './components/finance/invoice-form/invoice-
 import { InvoiceStatementsComponent } from './components/finance/invoice-statements/invoice-statements.component';
 import { RecordPaymentComponent } from './components/finance/record-payment/record-payment.component';
 import { OutstandingBalanceComponent } from './components/finance/outstanding-balance/outstanding-balance.component';
+import { ViewBalancesComponent } from './components/finance/view-balances/view-balances.component';
 import { ClassListComponent } from './components/classes/class-list/class-list.component';
 import { ClassFormComponent } from './components/classes/class-form/class-form.component';
 import { ClassListsComponent } from './components/classes/class-lists/class-lists.component';
@@ -85,6 +86,7 @@ const routes: Routes = [
   { path: 'invoices/statements', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'payments/record', component: RecordPaymentComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'outstanding-balance', component: OutstandingBalanceComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
+  { path: 'view_balances', component: ViewBalancesComponent, canActivate: [AuthGuard] },
   { path: 'classes', component: ClassListComponent, canActivate: [AuthGuard] },
   { path: 'classes/lists', component: ClassListsComponent, canActivate: [AuthGuard] },
   { path: 'classes/new', component: ClassFormComponent, canActivate: [AuthGuard] },

@@ -83,8 +83,38 @@
   text-overflow: ellipsis;
 }
 
-.logout-btn {
+.top-navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   margin-left: auto;
+}
+
+.top-navbar .theme-toggle {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.top-navbar .theme-toggle:hover {
+  background: rgba(0, 0, 0, 0.1);
+  transform: scale(1.05);
+}
+
+.top-navbar .theme-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.logout-btn {
+  flex-shrink: 0;
 }
 
 /* ========================================

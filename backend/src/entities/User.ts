@@ -26,6 +26,12 @@ export class User {
   @Column()
   username: string;
 
+  @Column({ nullable: true })
+  firstName: string | null;
+
+  @Column({ nullable: true })
+  lastName: string | null;
+
   @Column()
   password: string;
 

@@ -43,6 +43,15 @@ export class OutstandingBalanceComponent implements OnInit {
     });
   }
 
+  /** Sort by invoice balance descending (largest amounts first). */
+  private sortByBalanceDesc(balances: any[]): any[] {
+    return [...balances].sort((a, b) => {
+      const balA = parseFloat(String(a.invoiceBalance ?? 0));
+      const balB = parseFloat(String(b.invoiceBalance ?? 0));
+      return balB - balA;
+    });
+  }
+
   loadOutstandingBalances(): void {
     this.loading = true;
     this.error = '';
@@ -50,8 +59,9 @@ export class OutstandingBalanceComponent implements OnInit {
     this.financeService.getOutstandingBalances().subscribe({
       next: (data: any) => {
         const balancesArray = Array.isArray(data) ? data : [];
-        this.outstandingBalances = balancesArray;
-        this.filteredBalances = balancesArray;
+        const sorted = this.sortByBalanceDesc(balancesArray);
+        this.outstandingBalances = sorted;
+        this.filteredBalances = sorted;
         this.updateCachedTotal();
         this.loading = false;
       },
@@ -66,11 +76,12 @@ export class OutstandingBalanceComponent implements OnInit {
   }
 
   filterBalances(): void {
+    let list: any[];
     if (!this.searchQuery || this.searchQuery.trim() === '') {
-      this.filteredBalances = this.outstandingBalances;
+      list = this.outstandingBalances;
     } else {
       const query = this.searchQuery.toLowerCase().trim();
-      this.filteredBalances = this.outstandingBalances.filter(balance => {
+      list = this.outstandingBalances.filter(balance => {
         return (
           balance.studentNumber?.toLowerCase().includes(query) ||
           balance.firstName?.toLowerCase().includes(query) ||
@@ -80,6 +91,7 @@ export class OutstandingBalanceComponent implements OnInit {
         );
       });
     }
+    this.filteredBalances = this.sortByBalanceDesc(list);
     this.updateCachedTotal();
   }
   

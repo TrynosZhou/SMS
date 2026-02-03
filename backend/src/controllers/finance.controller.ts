@@ -6,6 +6,7 @@ import { Settings } from '../entities/Settings';
 import { AuthRequest } from '../middleware/auth';
 import { createInvoicePDF } from '../utils/invoicePdfGenerator';
 import { createReceiptPDF } from '../utils/receiptPdfGenerator';
+import { createOutstandingBalancePDF } from '../utils/outstandingBalancePdfGenerator';
 import { UniformItem } from '../entities/UniformItem';
 import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
 import { isDemoUser } from '../utils/demoDataFilter';
@@ -799,6 +800,75 @@ export const getOutstandingBalances = async (req: AuthRequest, res: Response) =>
     res.status(500).json({ 
       message: 'Server error', 
       error: error.message || 'Unknown error' 
+    });
+  }
+};
+
+export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const invoiceRepository = AppDataSource.getRepository(Invoice);
+    const studentRepository = AppDataSource.getRepository(Student);
+    const settingsRepository = AppDataSource.getRepository(Settings);
+
+    const allStudents = await studentRepository.find({
+      order: { studentNumber: 'ASC' }
+    });
+
+    const outstandingBalances: { studentNumber?: string; studentId?: string; firstName?: string; lastName?: string; invoiceBalance: number }[] = [];
+
+    for (const student of allStudents) {
+      const latestInvoice = await invoiceRepository.findOne({
+        where: { studentId: student.id },
+        order: { createdAt: 'DESC' }
+      });
+
+      if (latestInvoice) {
+        const balance = parseAmount(latestInvoice.balance);
+        if (balance > 0) {
+          outstandingBalances.push({
+            studentNumber: student.studentNumber,
+            studentId: student.id,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            invoiceBalance: balance
+          });
+        }
+      }
+    }
+
+    // Fetch settings the same way as the settings page (canonical record)
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
+    });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+    const schoolName = (settings?.schoolName != null && String(settings.schoolName).trim() !== '')
+      ? String(settings.schoolName).trim()
+      : 'School';
+    // Currency symbol must always come from Settings (same as settings page)
+    const currencySymbol = (settings?.currencySymbol != null && String(settings.currencySymbol).trim() !== '')
+      ? String(settings.currencySymbol).trim()
+      : 'KES';
+
+    const pdfBuffer = await createOutstandingBalancePDF({
+      schoolName,
+      currencySymbol,
+      reportDate: new Date(),
+      balances: outstandingBalances
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="outstanding-invoices.pdf"');
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error('Error generating outstanding balances PDF:', error);
+    res.status(500).json({
+      message: 'Server error',
+      error: error.message || 'Unknown error'
     });
   }
 };

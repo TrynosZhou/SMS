@@ -593,7 +593,7 @@ export const login = async (req: Request, res: Response) => {
       { expiresIn }
     );
 
-    // Build response based on user role
+    // Build response based on user role and set fullName from database for dashboard display
     const response: any = {
       token,
       user: {
@@ -612,10 +612,15 @@ export const login = async (req: Request, res: Response) => {
     if (user.role === UserRole.TEACHER && user.teacher) {
       response.user.teacher = user.teacher;
       response.user.classes = (user as any).classes || [];
+      if ((user.teacher as any).fullName) {
+        response.user.fullName = (user.teacher as any).fullName;
+      } else if (user.teacher.firstName || user.teacher.lastName) {
+        response.user.fullName = [user.teacher.lastName, user.teacher.firstName].filter(Boolean).join(' ').trim();
+      }
     } else {
-      // For other roles, include their respective profiles
+      // For other roles, include their respective profiles and fullName from database
       if (user.student) {
-        // Ensure student object includes all necessary fields
+        response.user.fullName = [user.student.firstName, user.student.lastName].filter(Boolean).join(' ').trim();
         response.user.student = {
           id: user.student.id,
           firstName: user.student.firstName,
@@ -633,7 +638,17 @@ export const login = async (req: Request, res: Response) => {
         };
         console.log('[Login] Student data included in response:', response.user.student.studentNumber, 'Class:', response.user.student.classEntity?.name);
       }
-      if (user.parent) response.user.parent = user.parent;
+      if (user.parent) {
+        response.user.parent = user.parent;
+        if (!response.user.fullName) {
+          response.user.fullName = [user.parent.firstName, user.parent.lastName].filter(Boolean).join(' ').trim();
+        }
+      }
+    }
+
+    // For admin/accountant/superadmin (or any user without fullName yet): use User.firstName/lastName if set
+    if (!response.user.fullName && (user.firstName || user.lastName)) {
+      response.user.fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
     }
 
     res.json(response);

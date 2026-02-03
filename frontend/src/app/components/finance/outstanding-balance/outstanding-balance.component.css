@@ -39,10 +39,10 @@
 }
 
 .header-icon-wrapper {
-  width: 45px;
-  height: 45px;
+  width: 31.5px;
+  height: 31.5px;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 11px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -50,7 +50,7 @@
 }
 
 .header-main-icon {
-  font-size: 25px;
+  font-size: 17.5px;
 }
 
 .modern-header-section h1 {
@@ -63,7 +63,8 @@
 .header-subtitle {
   margin: 0;
   color: rgba(255, 255, 255, 0.9);
-  font-size: 11px;
+  font-size: 13px;
+  font-weight: bold;
 }
 
 .header-content h1 {

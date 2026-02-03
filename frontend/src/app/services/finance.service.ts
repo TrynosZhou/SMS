@@ -111,6 +111,12 @@ export class FinanceService {
     });
   }
 
+  getOutstandingBalancePDF(): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/finance/outstanding-balances/pdf`, {
+      responseType: 'blob'
+    });
+  }
+
   getOutstandingBalances(): Observable<any[]> {
     return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/finance/outstanding-balances`).pipe(
       map(response => {

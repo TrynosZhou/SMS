@@ -19,9 +19,15 @@
       </svg>
     </button>
     <h1 class="top-navbar-title">{{ schoolName }}</h1>
-    <button class="btn btn-secondary logout-btn" (click)="logout()">
-      <span>Logout</span>
-    </button>
+    <div class="top-navbar-actions">
+      <button type="button" class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="themeService.darkMode ? 'Switch to light mode' : 'Switch to dark mode'" [title]="themeService.darkMode ? 'Light mode' : 'Dark mode'">
+        <span class="theme-icon" *ngIf="!themeService.darkMode">🌙</span>
+        <span class="theme-icon" *ngIf="themeService.darkMode">☀️</span>
+      </button>
+      <button class="btn btn-secondary logout-btn" (click)="logout()">
+        <span>Logout</span>
+      </button>
+    </div>
   </div>
 </nav>
 
@@ -207,7 +213,7 @@
       <div class="sidebar-menu" *ngIf="canAccessModule('reportCards') || canAccessModule('attendance') || isAdmin() || isSuperAdmin()">
         <div class="sidebar-menu-header" (click)="toggleMenu('reports')">
           <span class="sidebar-icon">📊</span>
-          <span class="sidebar-text">Reports</span>
+          <span class="sidebar-text">Reports Management</span>
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('reports')">▼</span>
         </div>
         <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('reports')">
@@ -218,6 +224,10 @@
           <a routerLink="/attendance/reports" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('attendance') || isAdmin() || isSuperAdmin()">
             <span class="sidebar-icon">📈</span>
             <span class="sidebar-text">Attendance Reports</span>
+          </a>
+          <a routerLink="/view_balances" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || canAccessModule('reportCards') || canAccessModule('attendance') || isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">📋</span>
+            <span class="sidebar-text">Outstanding Invoices</span>
           </a>
         </div>
       </div>

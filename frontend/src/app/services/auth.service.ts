@@ -10,6 +10,8 @@ export interface User {
   email: string;
   username?: string;
   role: string;
+  /** Full name from database (teacher/student/parent); set by login for dashboard display */
+  fullName?: string;
   mustChangePassword?: boolean;
   isTemporaryAccount?: boolean;
   isDemo?: boolean;
