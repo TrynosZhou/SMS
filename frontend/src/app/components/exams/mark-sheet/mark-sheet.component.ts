@@ -113,13 +113,24 @@ export class MarkSheetComponent implements OnInit {
       },
       error: (err: any) => {
         console.error('Error loading classes:', err);
-        this.error = 'Failed to load classes';
-        this.loading = false;
-        // Use accumulated classes if we got some before the error
-        if (accumulatedClasses.length > 0) {
-          this.classes = accumulatedClasses.filter(c => c.isActive);
-          console.warn(`Loaded partial class list (${this.classes.length} classes) due to error`);
+        
+        // Handle authentication errors specifically
+        if (err.status === 401) {
+          this.error = 'Your session has expired. Please log in again.';
+          // Redirect to login after a short delay
+          setTimeout(() => {
+            this.router.navigate(['/login']);
+          }, 2000);
+        } else {
+          this.error = 'Failed to load classes';
+          // Use accumulated classes if we got some before the error
+          if (accumulatedClasses.length > 0) {
+            this.classes = accumulatedClasses.filter(c => c.isActive);
+            console.warn(`Loaded partial class list (${this.classes.length} classes) due to error`);
+          }
         }
+        
+        this.loading = false;
         setTimeout(() => this.error = '', 5000);
       }
     });
@@ -182,7 +193,22 @@ export class MarkSheetComponent implements OnInit {
       },
       error: (err: any) => {
         console.error('Error generating mark sheet:', err);
-        this.error = err.error?.message || 'Failed to generate mark sheet';
+        console.error('Error status:', err.status);
+        console.error('Error message:', err.message);
+        console.error('Error error:', err.error);
+        console.error('Error url:', err.url);
+        
+        // Handle authentication errors specifically
+        if (err.status === 401) {
+          this.error = 'Your session has expired. Please log in again.';
+          // Redirect to login after a short delay
+          setTimeout(() => {
+            this.router.navigate(['/login']);
+          }, 2000);
+        } else {
+          this.error = err.error?.message || 'Failed to generate mark sheet';
+        }
+        
         this.loading = false;
         setTimeout(() => this.error = '', 5000);
       }

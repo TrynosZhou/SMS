@@ -2995,11 +2995,6 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Class ID and exam type are required' });
     }
 
-    // For teachers, subjectId is required
-    if (isTeacher && !subjectId) {
-      return res.status(400).json({ message: 'Subject ID is required for teachers' });
-    }
-
     const studentRepository = AppDataSource.getRepository(Student);
     const examRepository = AppDataSource.getRepository(Exam);
     const marksRepository = AppDataSource.getRepository(Marks);
@@ -3017,7 +3012,7 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Class not found' });
     }
 
-    // For teachers, verify assignment to class and subject
+    // For teachers, verify assignment to class and (optionally) subject
     if (isTeacher && user?.teacher?.id) {
       const teacher = await teacherRepository.findOne({
         where: { id: user.teacher.id },
@@ -3034,7 +3029,7 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
         return res.status(403).json({ message: 'You are not assigned to this class' });
       }
 
-      // Verify teacher teaches this subject
+      // If a specific subject is requested, verify teacher teaches this subject
       if (subjectId) {
         const teachesSubject = teacher.subjects?.some(s => s.id === subjectId);
         if (!teachesSubject) {
@@ -3186,11 +3181,6 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Class ID and exam type are required' });
     }
 
-    // For teachers, subjectId is required
-    if (isTeacher && !subjectId) {
-      return res.status(400).json({ message: 'Subject ID is required for teachers' });
-    }
-
     const studentRepository = AppDataSource.getRepository(Student);
     const examRepository = AppDataSource.getRepository(Exam);
     const marksRepository = AppDataSource.getRepository(Marks);
@@ -3209,7 +3199,7 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Class not found' });
     }
 
-    // For teachers, verify assignment to class and subject
+    // For teachers, verify assignment to class and (optionally) subject
     if (isTeacher && user?.teacher?.id) {
       const teacher = await teacherRepository.findOne({
         where: { id: user.teacher.id },
@@ -3226,7 +3216,7 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
         return res.status(403).json({ message: 'You are not assigned to this class' });
       }
 
-      // Verify teacher teaches this subject
+      // If a specific subject is requested, verify teacher teaches this subject
       if (subjectId) {
         const teachesSubject = teacher.subjects?.some(s => s.id === subjectId);
         if (!teachesSubject) {
