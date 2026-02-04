@@ -3012,7 +3012,7 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Class not found' });
     }
 
-    // For teachers, verify assignment to class and (optionally) subject
+    // For teachers, optionally verify subject when a specific subject is requested
     if (isTeacher && user?.teacher?.id) {
       const teacher = await teacherRepository.findOne({
         where: { id: user.teacher.id },
@@ -3021,12 +3021,6 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
 
       if (!teacher) {
         return res.status(404).json({ message: 'Teacher not found' });
-      }
-
-      // Verify teacher is assigned to this class
-      const isAssignedToClass = teacher.classes?.some(c => c.id === classId);
-      if (!isAssignedToClass) {
-        return res.status(403).json({ message: 'You are not assigned to this class' });
       }
 
       // If a specific subject is requested, verify teacher teaches this subject
@@ -3199,7 +3193,7 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Class not found' });
     }
 
-    // For teachers, verify assignment to class and (optionally) subject
+    // For teachers, optionally verify subject when a specific subject is requested
     if (isTeacher && user?.teacher?.id) {
       const teacher = await teacherRepository.findOne({
         where: { id: user.teacher.id },
@@ -3208,12 +3202,6 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
 
       if (!teacher) {
         return res.status(404).json({ message: 'Teacher not found' });
-      }
-
-      // Verify teacher is assigned to this class
-      const isAssignedToClass = teacher.classes?.some(c => c.id === classId);
-      if (!isAssignedToClass) {
-        return res.status(403).json({ message: 'You are not assigned to this class' });
       }
 
       // If a specific subject is requested, verify teacher teaches this subject
