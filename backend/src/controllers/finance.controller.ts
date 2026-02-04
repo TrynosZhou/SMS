@@ -840,6 +840,9 @@ export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response)
       }
     }
 
+    // Display records in descending order of invoice balance (highest first)
+    outstandingBalances.sort((a, b) => (b.invoiceBalance ?? 0) - (a.invoiceBalance ?? 0));
+
     // Fetch settings the same way as the settings page (canonical record)
     const settingsList = await settingsRepository.find({
       order: { createdAt: 'DESC' },

@@ -48,6 +48,7 @@ import { UserManualComponent } from './components/user-manual/user-manual.compon
 import { AuthGuard } from './guards/auth.guard';
 import { ModuleAccessGuard } from './guards/module-access.guard';
 import { SuperAdminGuard } from './guards/super-admin.guard';
+import { OutstandingInvoicesGuard } from './guards/outstanding-invoices.guard';
 import { SplashComponent } from './components/splash/splash.component';
 
 const routes: Routes = [
@@ -86,7 +87,7 @@ const routes: Routes = [
   { path: 'invoices/statements', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'payments/record', component: RecordPaymentComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'outstanding-balance', component: OutstandingBalanceComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
-  { path: 'view_balances', component: ViewBalancesComponent, canActivate: [AuthGuard] },
+  { path: 'view_balances', component: ViewBalancesComponent, canActivate: [AuthGuard, OutstandingInvoicesGuard] },
   { path: 'classes', component: ClassListComponent, canActivate: [AuthGuard] },
   { path: 'classes/lists', component: ClassListsComponent, canActivate: [AuthGuard] },
   { path: 'classes/new', component: ClassFormComponent, canActivate: [AuthGuard] },

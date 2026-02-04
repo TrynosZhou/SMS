@@ -73,6 +73,15 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.authService.hasRole('admin') || this.authService.hasRole('superadmin');
   }
 
+  isAccountant(): boolean {
+    return this.authService.hasRole('accountant');
+  }
+
+  /** Only SuperAdmin, Admin, and Accountant can access Outstanding Invoices (teachers cannot). */
+  canAccessOutstandingInvoices(): boolean {
+    return this.isSuperAdmin() || this.isAdmin() || this.isAccountant();
+  }
+
   isDemoUser(): boolean {
     const user = this.authService.getCurrentUser();
     return user?.isDemo === true || user?.email === 'demo@school.com' || user?.username === 'demo@school.com';
