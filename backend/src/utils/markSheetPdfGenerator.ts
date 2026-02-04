@@ -64,6 +64,29 @@ export function createMarkSheetPDF(
         .fillColor('#4a90e2')
         .fill();
 
+      // School Logo (if available in Settings; supports base64 data URLs)
+      let hasLogo = false;
+      if (settings?.schoolLogo) {
+        try {
+          if (settings.schoolLogo.startsWith('data:image')) {
+            const base64Data = settings.schoolLogo.split(',')[1];
+            if (base64Data) {
+              const imageBuffer = Buffer.from(base64Data, 'base64');
+              // Place logo on the left side of the header bar
+              const logoWidth = 60;
+              const logoHeight = 60;
+              const logoX = 40;
+              const logoY = 10;
+              doc.image(imageBuffer, logoX, logoY, { width: logoWidth, height: logoHeight });
+              hasLogo = true;
+            }
+          }
+        } catch (error) {
+          console.error('Could not add school logo to mark sheet header:', error);
+        }
+      }
+
+      // School name and contact info (centered)
       doc.fontSize(20).font('Helvetica-Bold').fillColor('#FFFFFF');
       doc.text(schoolName, 40, 25, { width: doc.page.width - 80, align: 'center' });
 
