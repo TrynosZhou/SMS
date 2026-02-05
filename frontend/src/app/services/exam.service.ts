@@ -14,54 +14,52 @@ export class ExamService {
   constructor(private http: HttpClient) {}
 
   // ---------------- Utility ----------------
-  // src/app/services/exam.service.ts
-
-private normalizeExamType(examType: string, forReportCard: boolean = false): string {
-  if (!examType) return examType;
-  
-  const trimmed = examType.trim();
-  
-  // For report card endpoint - expects "Mid-Term", "End-Term"
-  if (forReportCard) {
-    const reportCardMap: Record<string, string> = {
-      'mid_term': 'Mid-Term',
-      'mid-term': 'Mid-Term',
-      'MID_TERM': 'Mid-Term',
-      'Mid-Term': 'Mid-Term',
-      'Mid Term': 'Mid-Term',
+  private normalizeExamType(examType: string, forReportCard: boolean = false): string {
+    if (!examType) return examType;
+    
+    const trimmed = examType.trim();
+    
+    // For report card endpoint - expects "Mid-Term", "End-Term"
+    if (forReportCard) {
+      const reportCardMap: Record<string, string> = {
+        'mid_term': 'Mid-Term',
+        'mid-term': 'Mid-Term',
+        'MID_TERM': 'Mid-Term',
+        'Mid-Term': 'Mid-Term',
+        'Mid Term': 'Mid-Term',
+        
+        'end_term': 'End-Term',
+        'end-term': 'End-Term',
+        'END_TERM': 'End-Term',
+        'End-Term': 'End-Term',
+        'End Term': 'End-Term'
+      };
+      return reportCardMap[trimmed] ?? trimmed;
+    }
+    
+    // For other endpoints - expects "mid_term", "end_term"
+    const standardMap: Record<string, string> = {
+      'Mid-Term': 'mid_term',
+      'mid-term': 'mid_term',
+      'MID_TERM': 'mid_term',
+      'mid_term': 'mid_term',
+      'Mid Term': 'mid_term',
       
-      'end_term': 'End-Term',
-      'end-term': 'End-Term',
-      'END_TERM': 'End-Term',
-      'End-Term': 'End-Term',
-      'End Term': 'End-Term'
+      'End-Term': 'end_term',
+      'end-term': 'end_term',
+      'END_TERM': 'end_term',
+      'end_term': 'end_term',
+      'End Term': 'end_term',
+      
+      'Assignment': 'assignment',
+      'assignment': 'assignment',
+      
+      'Quiz': 'quiz',
+      'quiz': 'quiz'
     };
-    return reportCardMap[trimmed] ?? trimmed;
+    
+    return standardMap[trimmed] ?? trimmed.toLowerCase().replace(/[\s-]/g, '_');
   }
-  
-  // For other endpoints - expects "mid_term", "end_term"
-  const standardMap: Record<string, string> = {
-    'Mid-Term': 'mid_term',
-    'mid-term': 'mid_term',
-    'MID_TERM': 'mid_term',
-    'mid_term': 'mid_term',
-    'Mid Term': 'mid_term',
-    
-    'End-Term': 'end_term',
-    'end-term': 'end_term',
-    'END_TERM': 'end_term',
-    'end_term': 'end_term',
-    'End Term': 'end_term',
-    
-    'Assignment': 'assignment',
-    'assignment': 'assignment',
-    
-    'Quiz': 'quiz',
-    'quiz': 'quiz'
-  };
-  
-  return standardMap[trimmed] ?? trimmed.toLowerCase().replace(/[\s-]/g, '_');
-}
 
   // ---------------- Exams ----------------
   getExams(classId?: string): Observable<any> {
@@ -121,7 +119,7 @@ private normalizeExamType(examType: string, forReportCard: boolean = false): str
   ): Observable<any> {
     let params = new HttpParams()
       .set('classId', classId)
-      .set('examType', this.normalizeExamType(examType))
+      .set('examType', this.normalizeExamType(examType, true))  // ← CHANGED: Added true
       .set('term', term);
 
     if (studentId) params = params.set('studentId', studentId);
@@ -149,7 +147,7 @@ private normalizeExamType(examType: string, forReportCard: boolean = false): str
   ): Observable<Blob> {
     let params = new HttpParams()
       .set('classId', classId)
-      .set('examType', this.normalizeExamType(examType))
+      .set('examType', this.normalizeExamType(examType, true))  // ← CHANGED: Added true
       .set('term', term);
 
     if (studentId) params = params.set('studentId', studentId);
@@ -174,7 +172,7 @@ private normalizeExamType(examType: string, forReportCard: boolean = false): str
   generateMarkSheet(classId: string, examType: string, term?: string): Observable<any> {
     let params = new HttpParams()
       .set('classId', classId)
-      .set('examType', this.normalizeExamType(examType));
+      .set('examType', this.normalizeExamType(examType, true));  // ← CHANGED: Added true
 
     if (term) params = params.set('term', term);
 
@@ -186,7 +184,7 @@ private normalizeExamType(examType: string, forReportCard: boolean = false): str
   downloadMarkSheetPDF(classId: string, examType: string, term?: string): Observable<Blob> {
     let params = new HttpParams()
       .set('classId', classId)
-      .set('examType', this.normalizeExamType(examType));
+      .set('examType', this.normalizeExamType(examType, true));  // ← CHANGED: Added true
 
     if (term) params = params.set('term', term);
 
@@ -195,19 +193,19 @@ private normalizeExamType(examType: string, forReportCard: boolean = false): str
 
   // ---------------- Rankings ----------------
   getClassRankingsByType(examType: string, className: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/rankings/class/${className}/${this.normalizeExamType(examType)}`).pipe(
+    return this.http.get(`${this.apiUrl}/rankings/class/${className}/${this.normalizeExamType(examType, false)}`).pipe(
       catchError(err => throwError(() => err))
     );
   }
 
   getSubjectRankingsByType(examType: string, subject: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/rankings/subject/${subject}/${this.normalizeExamType(examType)}`).pipe(
+    return this.http.get(`${this.apiUrl}/rankings/subject/${subject}/${this.normalizeExamType(examType, false)}`).pipe(
       catchError(err => throwError(() => err))
     );
   }
 
   getOverallPerformanceRankings(form: string, examType: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/rankings/overall/${form}/${this.normalizeExamType(examType)}`).pipe(
+    return this.http.get(`${this.apiUrl}/rankings/overall/${form}/${this.normalizeExamType(examType, false)}`).pipe(
       catchError(err => throwError(() => err))
     );
   }
@@ -215,14 +213,14 @@ private normalizeExamType(examType: string, forReportCard: boolean = false): str
   // ---------------- Publish/Unpublish ----------------
   publishExamByType(examType: string, term: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/exams/publish-by-type`, {
-      examType: this.normalizeExamType(examType),
+      examType: this.normalizeExamType(examType, false),  // Keep as false for these
       term
     }).pipe(catchError(err => throwError(() => err)));
   }
 
   unpublishExamByType(examType: string, term: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/exams/unpublish-by-type`, {
-      examType: this.normalizeExamType(examType),
+      examType: this.normalizeExamType(examType, false),  // Keep as false for these
       term
     }).pipe(catchError(err => throwError(() => err)));
   }
