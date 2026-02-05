@@ -21,7 +21,11 @@ router.post('/marks/batch', authorize(UserRole.TEACHER, UserRole.DEMO_USER), bat
 
 // Admin routes
 router.get('/admin/class/:classId', authorize(UserRole.ADMIN, UserRole.SUPERADMIN), getRecordBookByClassForAdmin);
-router.get('/admin/pdf/:classId', authorize(UserRole.ADMIN, UserRole.SUPERADMIN), generateRecordBookPDF);
+router.get(
+  '/admin/pdf/:classId',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.TEACHER, UserRole.DEMO_USER),
+  generateRecordBookPDF
+);
 
 export default router;
 

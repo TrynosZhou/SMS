@@ -128,6 +128,7 @@
             <th>Student ID</th>
             <th>First Name</th>
             <th>Last Name</th>
+            <th>Sex</th>
             <th>Phone Number</th>
             <th class="text-right">Invoice Balance</th>
             <th class="text-center">Action</th>
@@ -141,6 +142,7 @@
             </td>
             <td class="student-name-cell">{{ balance.firstName }}</td>
             <td class="student-name-cell">{{ balance.lastName }}</td>
+            <td class="student-name-cell">{{ balance.gender || '—' }}</td>
             <td class="phone-cell">{{ balance.phoneNumber || '—' }}</td>
             <td class="balance-cell text-right">
               <span class="balance-badge">{{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}</span>
@@ -159,7 +161,7 @@
         </tbody>
         <tfoot *ngIf="filteredBalances.length > 0" class="table-footer">
           <tr>
-            <td colspan="5" class="footer-label text-right">
+            <td colspan="6" class="footer-label text-right">
               <strong>Total Outstanding:</strong>
             </td>
             <td class="footer-value text-right">

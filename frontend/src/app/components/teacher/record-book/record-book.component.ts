@@ -653,7 +653,7 @@ export class RecordBookComponent implements OnInit {
     
     // Header row
     const headers = ['#', 'Student ID', 'Last Name', 'First Name'];
-    for (let i = 1; i <= this.visibleTests; i++) {
+    for (let i = 1; i <= this.maxTests; i++) {
       headers.push(`Test ${i}`);
     }
     data.push(headers);
@@ -667,9 +667,9 @@ export class RecordBookComponent implements OnInit {
         student.firstName
       ];
       
-      for (let i = 1; i <= this.visibleTests; i++) {
+      for (let i = 1; i <= this.maxTests; i++) {
         const mark = student[`test${i}`];
-        row.push(mark !== null && mark !== '' ? mark : '—');
+        row.push(mark !== null && mark !== '' && mark !== undefined ? mark : '');
       }
       
       data.push(row);
@@ -677,17 +677,19 @@ export class RecordBookComponent implements OnInit {
     
     // Topic row
     const topicRow = ['', '', 'Topic', ''];
-    for (let i = 1; i <= this.visibleTests; i++) {
+    for (let i = 1; i <= this.maxTests; i++) {
       const key = `test${i}` as keyof typeof this.topics;
-      topicRow.push(this.topics[key] || '—');
+      const value = this.topics[key];
+      topicRow.push(value && String(value).trim() !== '' ? value : '');
     }
     data.push(topicRow);
     
     // Date row
     const dateRow = ['', '', 'Date', ''];
-    for (let i = 1; i <= this.visibleTests; i++) {
+    for (let i = 1; i <= this.maxTests; i++) {
       const key = `test${i}` as keyof typeof this.testDates;
-      dateRow.push(this.testDates[key] || '—');
+      const value = this.testDates[key];
+      dateRow.push(value && String(value).trim() !== '' ? value : '');
     }
     data.push(dateRow);
     
@@ -708,7 +710,43 @@ export class RecordBookComponent implements OnInit {
   }
 
   printRecordBook() {
-    window.print();
+    const previousVisibleTests = this.visibleTests;
+    this.visibleTests = this.maxTests;
+
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        this.visibleTests = previousVisibleTests;
+      }, 0);
+    }, 0);
+  }
+
+  previewRecordBookPDF() {
+    if (!this.selectedClassId || !this.selectedSubjectId) {
+      this.error = 'Please select a class and subject first';
+      setTimeout(() => this.error = '', 3000);
+      return;
+    }
+
+    this.loading = true;
+    this.error = '';
+
+    this.recordBookService.downloadRecordBookPDF(this.selectedClassId, this.selectedSubjectId).subscribe({
+      next: (blob: Blob) => {
+        this.loading = false;
+        if (!blob || blob.size === 0) {
+          this.error = 'Received empty PDF file';
+          return;
+        }
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank', 'noopener');
+        setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+      },
+      error: (err: any) => {
+        this.loading = false;
+        this.error = err.error?.message || err.message || 'Failed to load record book PDF preview';
+      }
+    });
   }
 
   calculateStatistics() {

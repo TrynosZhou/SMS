@@ -764,7 +764,8 @@ export const getOutstandingBalances = async (req: AuthRequest, res: Response) =>
 
     // Get all students
     const allStudents = await studentRepository.find({
-      order: { studentNumber: 'ASC' }
+      order: { studentNumber: 'ASC' },
+      relations: ['classEntity']
     });
 
     // Get latest invoice for each student in a single query
@@ -787,6 +788,8 @@ export const getOutstandingBalances = async (req: AuthRequest, res: Response) =>
             studentNumber: student.studentNumber,
             firstName: student.firstName,
             lastName: student.lastName,
+            gender: student.gender,
+            className: student.classEntity?.name || null,
             phoneNumber: student.phoneNumber || '',
             invoiceBalance: balance
           });
@@ -815,10 +818,20 @@ export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response)
     const settingsRepository = AppDataSource.getRepository(Settings);
 
     const allStudents = await studentRepository.find({
-      order: { studentNumber: 'ASC' }
+      order: { studentNumber: 'ASC' },
+      relations: ['classEntity']
     });
 
-    const outstandingBalances: { studentNumber?: string; studentId?: string; firstName?: string; lastName?: string; invoiceBalance: number }[] = [];
+    const outstandingBalances: {
+      studentNumber?: string;
+      studentId?: string;
+      firstName?: string;
+      lastName?: string;
+      gender?: string;
+      className?: string | null;
+      phoneNumber?: string | null;
+      invoiceBalance: number;
+    }[] = [];
 
     for (const student of allStudents) {
       const latestInvoice = await invoiceRepository.findOne({
@@ -834,6 +847,9 @@ export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response)
             studentId: student.id,
             firstName: student.firstName,
             lastName: student.lastName,
+            gender: student.gender,
+            className: student.classEntity?.name || null,
+            phoneNumber: student.phoneNumber || null,
             invoiceBalance: balance
           });
         }

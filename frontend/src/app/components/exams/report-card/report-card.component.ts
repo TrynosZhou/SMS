@@ -585,6 +585,7 @@ export class ReportCardComponent implements OnInit {
       reportCard.student.id,
       this.selectedClass,
       this.selectedExamType,
+      this.selectedTerm,
       classTeacherRemarks,
       headmasterRemarks
     ).subscribe({
@@ -637,6 +638,7 @@ export class ReportCardComponent implements OnInit {
       reportCard.student.id,
       this.selectedClass,
       this.selectedExamType,
+      this.selectedTerm,
       classTeacherRemarks,
       headmasterRemarks
     ).subscribe({

@@ -48,6 +48,8 @@
             <th>#</th>
             <th>Student ID</th>
             <th>Full Name</th>
+            <th>Sex</th>
+            <th>Class</th>
             <th>Phone Number</th>
             <th class="text-right">Invoice Balance</th>
           </tr>
@@ -57,13 +59,15 @@
             <td class="row-num">{{ i + 1 }}</td>
             <td class="student-id">{{ row.studentNumber || row.studentId || '—' }}</td>
             <td class="full-name">{{ getFullName(row) }}</td>
+            <td class="full-name">{{ row.gender || '—' }}</td>
+            <td class="full-name">{{ row.className || '—' }}</td>
             <td class="phone">{{ row.phoneNumber || '—' }}</td>
             <td class="balance text-right">{{ currencySymbol }} {{ formatCurrency(row.invoiceBalance) }}</td>
           </tr>
         </tbody>
         <tfoot>
           <tr>
-            <td colspan="4" class="footer-label text-right"><strong>Total Outstanding:</strong></td>
+            <td colspan="6" class="footer-label text-right"><strong>Total Outstanding:</strong></td>
             <td class="footer-value text-right">
               <strong>{{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</strong>
             </td>

@@ -4,6 +4,9 @@ export interface OutstandingBalanceRow {
   studentNumber?: string;
   firstName?: string;
   lastName?: string;
+  gender?: string;
+  className?: string | null;
+  phoneNumber?: string | null;
   invoiceBalance: number;
 }
 
@@ -53,14 +56,20 @@ export function createOutstandingBalancePDF(
       }
 
       const colStudentId = 50;
-      const colName = 140;
-      const colBalance = 420;
+      const colName = 120;
+      const colGender = 260;
+      const colClass = 300;
+      const colPhone = 380;
+      const colBalance = 470;
       const rowHeight = 20;
 
       doc.fontSize(9).font('Helvetica-Bold').fillColor('#333');
       doc.rect(colStudentId, yPos, 490, rowHeight).fillColor('#f0f0f0').fill().strokeColor('#ddd').stroke();
-      doc.fillColor('#333').text('Student ID', colStudentId + 6, yPos + 5, { width: 85 });
-      doc.text('Student Name', colName + 6, yPos + 5, { width: 270 });
+      doc.fillColor('#333').text('Student ID', colStudentId + 6, yPos + 5, { width: 60 });
+      doc.text('Student Name', colName + 6, yPos + 5, { width: 130 });
+      doc.text('Sex', colGender + 6, yPos + 5, { width: 30 });
+      doc.text('Class', colClass + 6, yPos + 5, { width: 60 });
+      doc.text('Phone', colPhone + 6, yPos + 5, { width: 70 });
       doc.text('Balance', colBalance + 6, yPos + 5, { width: 70 });
       yPos += rowHeight;
 
@@ -71,11 +80,17 @@ export function createOutstandingBalancePDF(
         total += balance;
         const name = [row.firstName, row.lastName].filter(Boolean).join(' ') || '—';
         const studentId = row.studentNumber || (row as any).studentId || '—';
+        const gender = (row as any).gender || '';
+        const className = (row as any).className || '';
+        const phone = (row as any).phoneNumber || '';
         const balanceStr = `${currencySymbol} ${balance.toFixed(2)}`;
 
         doc.rect(colStudentId, yPos, 490, rowHeight).strokeColor('#eee').stroke();
-        doc.text(String(studentId).slice(0, 20), colStudentId + 6, yPos + 5, { width: 85 });
-        doc.text(name.slice(0, 45), colName + 6, yPos + 5, { width: 270 });
+        doc.text(String(studentId).slice(0, 18), colStudentId + 6, yPos + 5, { width: 60 });
+        doc.text(name.slice(0, 28), colName + 6, yPos + 5, { width: 130 });
+        doc.text(String(gender).slice(0, 8), colGender + 6, yPos + 5, { width: 30 });
+        doc.text(String(className).slice(0, 12), colClass + 6, yPos + 5, { width: 60 });
+        doc.text(String(phone).slice(0, 16), colPhone + 6, yPos + 5, { width: 70 });
         doc.text(balanceStr, colBalance + 6, yPos + 5, { width: 70 });
         yPos += rowHeight;
 

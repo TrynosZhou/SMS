@@ -15,6 +15,12 @@ export class RecordBookService {
     return this.http.get(`${this.apiUrl}/record-book/class/${classId}?subjectId=${subjectId}`);
   }
 
+  downloadRecordBookPDF(classId: string, subjectId: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/record-book/admin/pdf/${classId}?subjectId=${subjectId}`, {
+      responseType: 'blob'
+    });
+  }
+
   saveMarks(data: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/record-book/marks`, data);
   }

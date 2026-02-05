@@ -156,13 +156,21 @@ export class ExamService {
   }
 
   saveReportCardRemarks(
-    selectedClass: string,
-    selectedExamType: string,
+    studentId: string,
+    classId: string,
+    examType: string,
+    term: string,
     classTeacherRemarks: string,
-    headmasterRemarks: string,
-    studentId?: string
+    headmasterRemarks: string
   ): Observable<any> {
-    const payload = { selectedClass, selectedExamType, classTeacherRemarks, headmasterRemarks, studentId };
+    const payload = {
+      studentId,
+      classId,
+      examType: this.normalizeExamType(examType, true),
+      term,
+      classTeacherRemarks,
+      headmasterRemarks
+    };
     return this.http.post(`${this.apiUrl}/exams/report-card/remarks`, payload).pipe(
       catchError(err => throwError(() => err))
     );
@@ -192,20 +200,29 @@ export class ExamService {
   }
 
   // ---------------- Rankings ----------------
-  getClassRankingsByType(examType: string, className: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/rankings/class/${className}/${this.normalizeExamType(examType, false)}`).pipe(
+  getClassRankingsByType(examType: string, classId: string): Observable<any> {
+    let params = new HttpParams()
+      .set('examType', this.normalizeExamType(examType, false))
+      .set('classId', classId);
+    return this.http.get(`${this.apiUrl}/exams/rankings/class-by-type`, { params }).pipe(
       catchError(err => throwError(() => err))
     );
   }
 
-  getSubjectRankingsByType(examType: string, subject: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/rankings/subject/${subject}/${this.normalizeExamType(examType, false)}`).pipe(
+  getSubjectRankingsByType(examType: string, subjectId: string): Observable<any> {
+    let params = new HttpParams()
+      .set('examType', this.normalizeExamType(examType, false))
+      .set('subjectId', subjectId);
+    return this.http.get(`${this.apiUrl}/exams/rankings/subject-by-type`, { params }).pipe(
       catchError(err => throwError(() => err))
     );
   }
 
   getOverallPerformanceRankings(form: string, examType: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/rankings/overall/${form}/${this.normalizeExamType(examType, false)}`).pipe(
+    let params = new HttpParams()
+      .set('form', form)
+      .set('examType', this.normalizeExamType(examType, false));
+    return this.http.get(`${this.apiUrl}/exams/rankings/overall-performance`, { params }).pipe(
       catchError(err => throwError(() => err))
     );
   }

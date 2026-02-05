@@ -6,11 +6,11 @@
         <p>Manage and track student test marks</p>
       </div>
       <div class="header-actions" *ngIf="selectedClass && students.length > 0">
+        <button class="btn btn-outline" (click)="previewRecordBookPDF()" title="Preview Record Book as PDF">
+          📄 Preview
+        </button>
         <button class="btn btn-outline" (click)="exportToExcel()" title="Export to Excel">
           📊 Export
-        </button>
-        <button class="btn btn-outline" (click)="printRecordBook()" title="Print Record Book">
-          🖨️ Print
         </button>
       </div>
     </div>

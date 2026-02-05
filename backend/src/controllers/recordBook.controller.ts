@@ -646,23 +646,40 @@ export const generateRecordBookPDF = async (req: AuthRequest, res: Response) => 
     const { teacherId, subjectId } = req.query;
     const userRole = req.user?.role;
 
-    // Check if user is admin or superAdmin
-    if (userRole !== UserRole.ADMIN && userRole !== UserRole.SUPERADMIN) {
-      return res.status(403).json({ message: 'Only administrators can generate PDFs' });
-    }
+    // Teachers can generate PDFs for their own record books; admins can generate for any teacher
+    const isAdmin = userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN;
+    const isTeacher = userRole === UserRole.TEACHER;
 
-    if (!teacherId) {
-      return res.status(400).json({ message: 'Teacher ID is required' });
+    if (!isAdmin && !isTeacher) {
+      return res.status(403).json({ message: 'Only teachers and administrators can generate PDFs' });
     }
 
     if (!subjectId) {
       return res.status(400).json({ message: 'Subject ID is required' });
     }
 
-    // Get teacher info
     const teacherRepository = AppDataSource.getRepository(Teacher);
+
+    // Resolve teacherId:
+    // - Admins: must provide teacherId explicitly (can generate for any teacher)
+    // - Teachers: use the same resolution logic as other record-book endpoints
+    let resolvedTeacherId: string | null = null;
+
+    if (isAdmin) {
+      if (!teacherId) {
+        return res.status(400).json({ message: 'Teacher ID is required for admin PDF generation' });
+      }
+      resolvedTeacherId = teacherId as string;
+    } else if (isTeacher) {
+      const resolved = await resolveTeacherIdForRecordBook(req);
+      if (!resolved) {
+        return res.status(403).json({ message: 'Only teachers can generate their own record books' });
+      }
+      resolvedTeacherId = resolved.teacherId;
+    }
+
     const teacher = await teacherRepository.findOne({
-      where: { id: teacherId as string }
+      where: { id: resolvedTeacherId as string }
     });
 
     if (!teacher) {
@@ -710,7 +727,7 @@ export const generateRecordBookPDF = async (req: AuthRequest, res: Response) => 
     const records = await recordBookRepository.find({
       where: {
         classId,
-        teacherId: teacherId as string,
+        teacherId: resolvedTeacherId as string,
         subjectId: subjectId as string,
         term: currentTerm,
         year: currentYear

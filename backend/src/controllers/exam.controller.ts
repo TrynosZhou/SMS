@@ -1561,8 +1561,11 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       relations: ['subjects']
     });
     
-    // Filter by exam status: non-admin users can only see published exams
-    if (!isAdmin) {
+    // Filter by exam status:
+    // - Parents and students can only see published exams
+    // - Admins and teachers can view draft exams for report generation
+    const requirePublished = (isParent || isStudent) && !isAdmin;
+    if (requirePublished) {
       exams = exams.filter(exam => exam.status === ExamStatus.PUBLISHED);
     }
     
@@ -3379,7 +3382,7 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
       await AppDataSource.initialize();
     }
 
-    const { studentId, classId, examType, classTeacherRemarks, headmasterRemarks } = req.body;
+    const { studentId, classId, examType, term, classTeacherRemarks, headmasterRemarks } = req.body;
     const user = req.user;
 
     if (!studentId || !classId || !examType) {
@@ -3410,8 +3413,13 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
 
     // Check if exam is published - prevent editing remarks
     // Use normalized exam type for query
+    const examWhere: any = { classId: classId as string, type: normalizedExamType as any };
+    if (term) {
+      examWhere.term = term as string;
+    }
+
     const exams = await examRepository.find({
-      where: { classId: classId as string, type: normalizedExamType as any }
+      where: examWhere
     });
 
     if (exams.length > 0 && exams.some(exam => exam.status === ExamStatus.PUBLISHED)) {
