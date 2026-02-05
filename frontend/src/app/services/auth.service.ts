@@ -143,20 +143,19 @@ export class AuthService {
   isAuthenticated(): boolean {
     const token = this.getToken();
     const user = this.getCurrentUser();
-
+  
     if (!token || !user) {
       return false;
     }
-
+  
     if (this.isTokenExpired(token)) {
       console.warn('Stored authentication token has expired. Logging out.');
-      this.logout('session-timeout');
+      this.logout('session-timeout');  // ← REMOVE THIS LINE
       return false;
     }
-
+  
     return true;
   }
-
   hasRole(role: string): boolean {
     const user = this.getCurrentUser();
     if (!user || !user.role) return false;

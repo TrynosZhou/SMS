@@ -227,6 +227,20 @@
   animation: graduationCapPop 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
 }
 
+.splash-kids-top-left {
+  position: absolute;
+  top: 16px;
+  left: 20px;
+  width: 64px;
+  height: auto;
+  object-fit: contain;
+  border-radius: 999px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 6px;
+  animation: graduationCapPop 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.45s both;
+}
+
 @keyframes graduationCapPop {
   from {
     opacity: 0;
