@@ -14,22 +14,44 @@ export class ExamService {
   constructor(private http: HttpClient) {}
 
   // ---------------- Utility ----------------
- // src/app/services/exam.service.ts
+  // src/app/services/exam.service.ts
 
-private normalizeExamType(examType: string): string {
+private normalizeExamType(examType: string, forReportCard: boolean = false): string {
   if (!examType) return examType;
   
-  // Convert display format to API format
-  const map: Record<string, string> = {
+  const trimmed = examType.trim();
+  
+  // For report card endpoint - expects "Mid-Term", "End-Term"
+  if (forReportCard) {
+    const reportCardMap: Record<string, string> = {
+      'mid_term': 'Mid-Term',
+      'mid-term': 'Mid-Term',
+      'MID_TERM': 'Mid-Term',
+      'Mid-Term': 'Mid-Term',
+      'Mid Term': 'Mid-Term',
+      
+      'end_term': 'End-Term',
+      'end-term': 'End-Term',
+      'END_TERM': 'End-Term',
+      'End-Term': 'End-Term',
+      'End Term': 'End-Term'
+    };
+    return reportCardMap[trimmed] ?? trimmed;
+  }
+  
+  // For other endpoints - expects "mid_term", "end_term"
+  const standardMap: Record<string, string> = {
     'Mid-Term': 'mid_term',
     'mid-term': 'mid_term',
     'MID_TERM': 'mid_term',
     'mid_term': 'mid_term',
+    'Mid Term': 'mid_term',
     
     'End-Term': 'end_term',
     'end-term': 'end_term',
     'END_TERM': 'end_term',
     'end_term': 'end_term',
+    'End Term': 'end_term',
     
     'Assignment': 'assignment',
     'assignment': 'assignment',
@@ -38,8 +60,9 @@ private normalizeExamType(examType: string): string {
     'quiz': 'quiz'
   };
   
-  return map[examType.trim()] ?? examType.trim().toLowerCase().replace(/-/g, '_');
+  return standardMap[trimmed] ?? trimmed.toLowerCase().replace(/[\s-]/g, '_');
 }
+
   // ---------------- Exams ----------------
   getExams(classId?: string): Observable<any> {
     let params = new HttpParams();
