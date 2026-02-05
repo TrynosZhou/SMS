@@ -150,7 +150,7 @@ export class AuthService {
   
     if (this.isTokenExpired(token)) {
       console.warn('Stored authentication token has expired. Logging out.');
-      this.logout('session-timeout');  // ← REMOVE THIS LINE
+      
       return false;
     }
   
