@@ -72,7 +72,18 @@ export class ExamService {
       catchError(error => throwError(() => error))
     );
   }
-
+  saveReportCardRemarks(payload: {
+    studentId: string;
+    term: string;
+    examType: string;
+    remarks: string;
+  }) {
+    return this.http.post(
+      `${this.apiUrl}/exams/report-card/remarks`,
+      payload
+    );
+  }
+  
   getReportCard(
     classId: string,
     examType: string,
