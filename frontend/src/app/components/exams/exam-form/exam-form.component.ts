@@ -15,7 +15,7 @@ import { TeacherService } from '../../../services/teacher.service';
 export class ExamFormComponent implements OnInit {
   exam: any = {
     name: '',
-    type: 'mid_term',
+    type: 'Mid Term',
     examDate: '',
     term: '',
     description: '',
@@ -250,7 +250,7 @@ export class ExamFormComponent implements OnInit {
         label: 'Mid-Term (Core Subjects)',
         value: {
           name: `Mid-Term Assessment ${currentYear}`,
-          type: 'mid_term',
+          type: 'Mid Term',
           description: 'Mid-term assessment focusing on core learning areas.',
           subjectSuggestion: 'core'
         }
@@ -268,7 +268,7 @@ export class ExamFormComponent implements OnInit {
         label: 'Spot Test (Single Subject)',
         value: {
           name: `Spot Test ${currentYear}`,
-          type: 'mid_term',
+          type: 'Mid Term',
           description: 'Short assessment focusing on a specific subject.',
           subjectSuggestion: 'single'
         }
