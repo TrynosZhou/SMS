@@ -100,13 +100,13 @@ export function createReportCardPDF(
       let logoX = 50;
       // Single header top Y: both logos and school name start at the same height
       const headerTopY = 55;
-      const schoolNameFontSize = 16;
+      const schoolNameFontSize = 14;
       // In PDFKit, text Y is baseline; ascender is the height from baseline to top of letters
       const textAscender = schoolNameFontSize * 0.7;
-      const logoY = headerTopY; // Both logos: top edge at headerTopY
-      let logoWidth = 120; // Maximum width for logo
-      let logoHeight = 100; // Maximum height for logo
-      let textStartX = 180; // Adjusted to accommodate wider logo
+      const logoY = headerTopY;
+      let logoWidth = 90;
+      let logoHeight = 60;
+      let textStartX = 160;
       let textEndX = pageWidth - 50; // Default end position (will be adjusted if logo2 exists)
 
       // Helper function to add logo with preserved aspect ratio
@@ -661,25 +661,13 @@ export function createReportCardPDF(
       // Remarks Section - Always display both sections (proper spacing to prevent overlap)
       yPos += 12; // Increased spacing between Summary and Remarks
       
-      // Calculate dynamic height for remarks section
+      // Calculate dynamic height for remarks section (Class Teacher only)
       const classTeacherRemarks = reportCard.remarks?.classTeacherRemarks || 'No remarks provided.';
-      const headmasterRemarks = reportCard.remarks?.headmasterRemarks || 'No remarks provided.';
-      
-      // Get headmaster name from settings for height calculation
-      const headmasterName = settings?.headmasterName || '';
-      const signatureHeight = headmasterName ? 12 : 0;
-      
-      // Limit remarks height to fit on one page (more compact)
-      const maxRemarksTextHeight = 22; // Maximum height for each remarks box (reduced)
+      const maxRemarksTextHeight = 22;
       const teacherRemarksTextHeight = doc.heightOfString(classTeacherRemarks, { width: 480 });
-      const headmasterRemarksTextHeight = doc.heightOfString(headmasterRemarks, { width: 480 });
-      
       const teacherRemarksHeight = Math.min(maxRemarksTextHeight, Math.max(22, teacherRemarksTextHeight + 4));
-      const headmasterRemarksHeight = Math.min(maxRemarksTextHeight, Math.max(22, headmasterRemarksTextHeight + 4)) + signatureHeight;
-      
-      // Calculate total remarks section height (proper spacing to prevent overlapping)
       const remarksTitleHeight = 24;
-      const remarksBoxHeight = remarksTitleHeight + 18 + teacherRemarksHeight + 18 + headmasterRemarksHeight + 15;
+      const remarksBoxHeight = remarksTitleHeight + 18 + teacherRemarksHeight + 15;
       
       // Remarks title with styled box - full blue background
       const remarksBoxY = yPos;
@@ -717,130 +705,88 @@ export function createReportCardPDF(
       doc.text(teacherRemarksToShow, 65, yPos, { width: 480 });
       yPos += teacherRemarksHeight + 12; // Increased spacing after teacher remarks
 
-      // Headmaster/Principal Remarks - Always display
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#FFFFFF'); // Bold white text for label
-      doc.text('Headmaster/Principal Remarks:', 60, yPos);
-      yPos += 15; // Increased spacing before box
-      
-      // Calculate height needed for remarks + signature
-      // headmasterName and signatureHeight are already declared above
-      const totalHeadmasterBoxHeight = headmasterRemarksHeight;
-      
-      // White rectangular box for Headmaster/Principal Remarks (extended to include signature)
-      doc.rect(60, yPos - 3, 480, totalHeadmasterBoxHeight)
-        .fillColor('#FFFFFF')
-        .fill()
-        .strokeColor('#CCCCCC')
-        .lineWidth(1)
-        .stroke();
-      
-      doc.fontSize(8).font('Helvetica').fillColor('#000000'); // Black text for remarks content
-      // Calculate available height for remarks (excluding signature space)
-      const remarksOnlyHeight = headmasterRemarksHeight - signatureHeight;
-      const availableRemarksHeight = Math.min(maxRemarksTextHeight, Math.max(22, headmasterRemarksTextHeight + 4));
-      const headmasterRemarksToShow = headmasterRemarksTextHeight > availableRemarksHeight 
-        ? headmasterRemarks.substring(0, Math.floor(headmasterRemarks.length * 0.8)) + '...'
-        : headmasterRemarks;
-      doc.text(headmasterRemarksToShow, 65, yPos, { width: 480 });
-      
-      // Add headmaster name as signature after remarks
-      if (headmasterName) {
-        const signatureY = yPos + remarksOnlyHeight - 2; // Position signature at bottom of remarks text area
-        doc.fontSize(8).font('Helvetica-Bold').fillColor('#000000'); // Bold black for signature
-        // Position signature with left padding (move left by approximately 3 spaces)
-        // Calculate right-aligned position then subtract space for 3 characters
-        const signatureWidth = doc.widthOfString(headmasterName);
-        const rightAlignedX = 65 + 480 - signatureWidth; // Right-aligned position
-        const leftOffset = doc.widthOfString('   '); // Width of 3 spaces
-        const signatureX = Math.max(65, rightAlignedX - leftOffset); // Move left by 3 spaces, but don't go past left margin
-        doc.text(headmasterName, signatureX, signatureY, { width: 480 - (signatureX - 65) }); // Left-aligned from adjusted position
-      }
-      
-      yPos += totalHeadmasterBoxHeight + 10; // Increased spacing after headmaster remarks
+      // Removed Headmaster/Principal Remarks section
+      yPos += 10;
 
-      // Grade Scale Footer Section
-      yPos += 20; // Add spacing after remarks
+      // Grade Scale Footer Section (fit within single page, no new pages)
+      yPos += 8; // Compact spacing after remarks
       
-      // Get page height for calculations
       const pageHeight = doc.page.height;
+
+      // Calculate space available before footer
+      const footerY = pageHeight - 25;
+      const availableHeight = Math.max(0, footerY - yPos - 10); // keep small gap before footer
       
-      // Check if we need a new page for grade scale
-      const gradeScaleHeight = 120; // Estimated height for grade scale section
-      if (yPos + gradeScaleHeight > pageHeight - 50) {
-        doc.addPage();
-        yPos = 50;
+      // Only render grade scale if there is reasonable space
+      if (availableHeight > 40) {
+        // Grade Scale Title
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#003366');
+        doc.text('Grade Scale / Attainment Levels', 50, yPos, { align: 'center', width: 500 });
+        yPos += 12;
+
+        // Grade Scale Box sized to available height
+        const gradeScaleBoxY = yPos;
+        const gradeScaleBoxHeight = Math.min(80, availableHeight - 12);
+        doc.rect(50, gradeScaleBoxY, 500, gradeScaleBoxHeight)
+          .fillColor('#F8F9FA')
+          .fill()
+          .strokeColor('#DEE2E6')
+          .lineWidth(1)
+          .stroke();
+
+        // Grade Scale Items - arranged in rows
+        const gradeItems = [
+          { range: '90 – 100', label: gradeLabels.excellent || 'OUTSTANDING' },
+          { range: '80 – 89', label: gradeLabels.veryGood || 'VERY HIGH' },
+          { range: '60 – 79', label: gradeLabels.good || 'HIGH' },
+          { range: '40 – 59', label: gradeLabels.satisfactory || 'GOOD' },
+          { range: '20 – 39', label: gradeLabels.needsImprovement || 'ASPIRING' },
+          { range: '1 – 19', label: gradeLabels.basic || 'BASIC' },
+          { range: '0', label: gradeLabels.fail || 'UNCLASSIFIED' }
+        ];
+
+        // Calculate positions for grid layout (compact)
+        const itemWidth = 115;
+        const startX = 60;
+        const startY = gradeScaleBoxY + 8;
+        const rowGap = Math.max(28, gradeScaleBoxHeight / 3); // compact rows
+        const colGap = 20;
+
+        gradeItems.forEach((item, index) => {
+          let row = Math.floor(index / 4);
+          let col = index % 4;
+          
+          if (row === 1 && col >= 3) {
+            col = col - 1;
+          }
+          
+          let xPos;
+          if (row === 1) {
+            const lastRowStartX = startX + (itemWidth + colGap) * 0.5;
+            xPos = lastRowStartX + col * (itemWidth + colGap);
+          } else {
+            xPos = startX + col * (itemWidth + colGap);
+          }
+
+          const yPosItem = startY + row * rowGap;
+
+          doc.fontSize(8).font('Helvetica-Bold').fillColor('#003366');
+          doc.text(item.range, xPos, yPosItem, { width: itemWidth });
+          
+          doc.fontSize(7).font('Helvetica').fillColor('#495057');
+          doc.text(item.label, xPos, yPosItem + 10, { width: itemWidth });
+        });
       }
 
-      // Grade Scale Title
-      doc.fontSize(10).font('Helvetica-Bold').fillColor('#003366');
-      doc.text('Grade Scale / Attainment Levels', 50, yPos, { align: 'center', width: 500 });
-      yPos += 15;
-
-      // Grade Scale Box
-      const gradeScaleBoxY = yPos;
-      const gradeScaleBoxHeight = 80;
-      doc.rect(50, gradeScaleBoxY, 500, gradeScaleBoxHeight)
-        .fillColor('#F8F9FA')
-        .fill()
-        .strokeColor('#DEE2E6')
-        .lineWidth(1)
-        .stroke();
-
-      // Grade Scale Items - arranged in rows
-      const gradeItems = [
-        { range: '90 – 100', label: gradeLabels.excellent || 'OUTSTANDING' },
-        { range: '80 – 89', label: gradeLabels.veryGood || 'VERY HIGH' },
-        { range: '60 – 79', label: gradeLabels.good || 'HIGH' },
-        { range: '40 – 59', label: gradeLabels.satisfactory || 'GOOD' },
-        { range: '20 – 39', label: gradeLabels.needsImprovement || 'ASPIRING' },
-        { range: '1 – 19', label: gradeLabels.basic || 'BASIC' },
-        { range: '0', label: gradeLabels.fail || 'UNCLASSIFIED' }
-      ];
-
-      // Calculate positions for grid layout (2 rows: 4 items in first row, 3 items in second row)
-      const itemWidth = 115; // Width for each item
-      const startX = 60;
-      const startY = gradeScaleBoxY + 10;
-      const rowGap = 35;
-      const colGap = 20;
-
-      gradeItems.forEach((item, index) => {
-        let row = Math.floor(index / 4);
-        let col = index % 4;
-        
-        // Adjust for last row (only 3 items) - center them
-        if (row === 1 && col >= 3) {
-          col = col - 1;
-        }
-        
-        // Center the last row items
-        let xPos;
-        if (row === 1) {
-          // Last row: center the 3 items
-          const lastRowStartX = startX + (itemWidth + colGap) * 0.5;
-          xPos = lastRowStartX + col * (itemWidth + colGap);
-        } else {
-          // First row: normal positioning
-          xPos = startX + col * (itemWidth + colGap);
-        }
-
-        const yPosItem = startY + row * rowGap;
-
-        // Range
-        doc.fontSize(8).font('Helvetica-Bold').fillColor('#003366');
-        doc.text(item.range, xPos, yPosItem, { width: itemWidth });
-        
-        // Label
-        doc.fontSize(7).font('Helvetica').fillColor('#495057');
-        doc.text(item.label, xPos, yPosItem + 12, { width: itemWidth });
-      });
-
-      // Footer - Position at bottom of page
-      const footerY = pageHeight - 25; // Position footer 25pt from bottom
-      doc.fontSize(7).font('Helvetica').fillColor('#000000').text(
-        `Generated on: ${new Date(reportCard.generatedAt).toLocaleString()}`,
+      // Footer - Position at bottom of page, formatted date/time
+      const genDate = new Date(reportCard.generatedAt);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const formatted = `${pad(genDate.getDate())}/${pad(genDate.getMonth() + 1)}/${genDate.getFullYear()}, ${pad(genDate.getHours())}:${pad(genDate.getMinutes())}:${pad(genDate.getSeconds())}`;
+      const footerYFinal = pageHeight - 25;
+      doc.fontSize(8).font('Helvetica').fillColor('#000000').text(
+        `Generated on: ${formatted}`,
         50,
-        footerY,
+        footerYFinal,
         { align: 'center', width: 500 }
       );
 

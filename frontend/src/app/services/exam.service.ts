@@ -172,7 +172,7 @@ export class ExamService {
   generateMarkSheet(classId: string, examType: string, term?: string): Observable<any> {
     let params = new HttpParams()
       .set('classId', classId)
-      .set('examType', this.normalizeExamType(examType, true));  // ← CHANGED: Added true
+      .set('examType', this.normalizeExamType(examType, false));
 
     if (term) params = params.set('term', term);
 
@@ -184,7 +184,7 @@ export class ExamService {
   downloadMarkSheetPDF(classId: string, examType: string, term?: string): Observable<Blob> {
     let params = new HttpParams()
       .set('classId', classId)
-      .set('examType', this.normalizeExamType(examType, true));  // ← CHANGED: Added true
+      .set('examType', this.normalizeExamType(examType, false));
 
     if (term) params = params.set('term', term);
 

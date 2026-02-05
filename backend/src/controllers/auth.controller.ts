@@ -700,12 +700,12 @@ export const register = async (req: Request, res: Response) => {
       }
     }
 
-    // Validate role - only allow SUPERADMIN, ADMIN, and PARENT for self-registration
-    const allowedRoles = [UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.PARENT];
+    // Validate role - only allow PARENT and STUDENT for self-registration
+    const allowedRoles = [UserRole.PARENT, UserRole.STUDENT];
     const requestedRole = role ? (role.toLowerCase() as UserRole) : UserRole.STUDENT;
     
     if (!allowedRoles.includes(requestedRole)) {
-      return res.status(400).json({ message: 'Invalid role for self-registration. Teachers must use temporary accounts provided by administrator.' });
+      return res.status(400).json({ message: 'Invalid role for self-registration. Only Parent and Student can sign up here. Other roles are created by the Administrator under User Management.' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);

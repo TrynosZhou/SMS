@@ -458,7 +458,6 @@
             <div class="remarks-item">
               <label class="remarks-label">
                 Class Teacher Remarks
-                <span *ngIf="!canEditRemarks" class="read-only-badge">Read-only</span>
                 <span *ngIf="canEditRemarks && isRemarksSaved(reportCard.student.id, 'classTeacher')" 
                       class="saved-badge" title="Saved">✓ Saved</span>
                 <span *ngIf="canEditRemarks && !isRemarksSaved(reportCard.student.id, 'classTeacher') && reportCard.remarks?.classTeacherRemarks" 
@@ -480,35 +479,10 @@
               </div>
             </div>
 
-            <div class="remarks-item">
-              <label class="remarks-label">
-                Headmaster/Principal Remarks
-                <span *ngIf="!authService.hasRole('admin')" class="read-only-badge">Read-only</span>
-                <span *ngIf="authService.hasRole('admin') && isRemarksSaved(reportCard.student.id, 'headmaster')" 
-                      class="saved-badge" title="Saved">✓ Saved</span>
-                <span *ngIf="authService.hasRole('admin') && !isRemarksSaved(reportCard.student.id, 'headmaster') && reportCard.remarks?.headmasterRemarks" 
-                      class="unsaved-badge" title="Not saved yet">○ Entered</span>
-              </label>
-              <textarea 
-                *ngIf="authService.hasRole('admin')"
-                [(ngModel)]="reportCard.remarks.headmasterRemarks" 
-                name="headmasterRemarks_{{reportCard.student.id}}"
-                class="remarks-textarea"
-                [class.saved]="isRemarksSaved(reportCard.student.id, 'headmaster')"
-                placeholder="Enter headmaster/principal remarks..."
-                rows="3"
-                maxlength="500"
-                (input)="onRemarksChange(reportCard, 'headmaster')"
-                (blur)="onRemarksBlur(reportCard)"></textarea>
-              <div *ngIf="!authService.hasRole('admin')" class="remarks-readonly">
-                {{ reportCard.remarks?.headmasterRemarks ? reportCard.remarks.headmasterRemarks : 'No remarks entered' }}
-              </div>
-            </div>
-
             <div *ngIf="canEditRemarks" class="remarks-actions">
-              <span *ngIf="isRemarksSaved(reportCard.student.id, 'classTeacher') && isRemarksSaved(reportCard.student.id, 'headmaster')" 
+              <span *ngIf="isRemarksSaved(reportCard.student.id, 'classTeacher')" 
                     class="saved-indicator">
-                ✓ All remarks saved
+                ✓ Remarks saved
               </span>
             </div>
           </div>

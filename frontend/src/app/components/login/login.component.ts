@@ -261,7 +261,7 @@ export class LoginComponent implements OnInit {
     }
 
     // Validate role
-    const validRoles = ['SUPERADMIN', 'ADMIN', 'ACCOUNTANT', 'PARENT'];
+    const validRoles = ['PARENT', 'STUDENT'];
     if (!validRoles.includes(this.signupRole)) {
       this.error = 'Please select a valid role';
       return;
@@ -279,15 +279,9 @@ export class LoginComponent implements OnInit {
       case 'PARENT':
         generatedEmail = this.signupEmail.trim();
         break;
-      case 'ACCOUNTANT':
-        generatedEmail = `${this.signupUsername}@accountant.local`;
-        break;
-      case 'SUPERADMIN':
-        generatedEmail = `${this.signupUsername}@superadmin.local`;
-        break;
-      case 'ADMIN':
+      case 'STUDENT':
       default:
-        generatedEmail = `${this.signupUsername}@admin.local`;
+        generatedEmail = `${this.signupUsername}@student.local`;
         break;
     }
 

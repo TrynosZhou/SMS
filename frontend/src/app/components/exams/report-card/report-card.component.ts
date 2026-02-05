@@ -39,8 +39,8 @@ export class ReportCardComponent implements OnInit {
   filteredReportCards: any[] = [];
   classInfo: any = null;
   examTypes = [
-    { value: 'mid_term', label: 'Mid Term' },
-    { value: 'end_erm', label: 'End Term' }
+    { value: 'mid_term', label: 'mid_term' },
+    { value: 'end_erm', label: 'end_term' }
   ];
   loading = false;
   error = '';

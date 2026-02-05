@@ -76,10 +76,7 @@
       <div class="remark-item" *ngIf="reportCard.remarks && reportCard.remarks.classTeacherRemarks">
         <strong>Class Teacher:</strong> {{ reportCard.remarks.classTeacherRemarks }}
       </div>
-      <div class="remark-item" *ngIf="reportCard.remarks && reportCard.remarks.headmasterRemarks">
-        <strong>Headmaster:</strong> {{ reportCard.remarks.headmasterRemarks }}
-      </div>
-      <div class="remark-item" *ngIf="!reportCard.remarks || (!reportCard.remarks.classTeacherRemarks && !reportCard.remarks.headmasterRemarks)">
+      <div class="remark-item" *ngIf="!reportCard.remarks || (!reportCard.remarks.classTeacherRemarks)">
         <em>No remarks available for this report card.</em>
       </div>
     </div>

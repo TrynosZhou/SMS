@@ -2685,61 +2685,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         });
       }
       console.log('[generateReportCardPDF] Fetched remarks for PDF:', remarks);
-// backend/src/controllers/exam.controller.js
 
-// Add this helper function at the top of the file
-function normalizeExamType(examType) {
-  const map = {
-    'Mid-Term': 'mid_term',
-    'mid-term': 'mid_term',
-    'MID_TERM': 'mid_term',
-    'mid_term': 'mid_term',
-    
-    'End-Term': 'end_term',
-    'end-term': 'end_term',
-    'END_TERM': 'end_term',
-    'end_term': 'end_term',
-    
-    'Assignment': 'assignment',
-    'assignment': 'assignment',
-    
-    'Quiz': 'quiz',
-    'quiz': 'quiz'
-  };
-  
-  return map[examType?.trim()] || examType?.toLowerCase().replace(/[-\s]/g, '_');
-}
-
-// Then in your generateMarkSheet function:
-async function generateMarkSheet(req, res) {
-  try {
-    const { classId, examType, term } = req.query;
-    
-    // NORMALIZE the exam type before database query
-    const normalizedExamType = normalizeExamType(examType);
-    
-    console.log(`Normalized exam type: ${examType} -> ${normalizedExamType}`);
-    
-    // Use normalizedExamType in your database query
-    const exams = await examRepository.find({
-      where: {
-        classId,
-        type: normalizedExamType,  // ← Use normalized type
-        ...(term && { term })
-      },
-      relations: ['subjects']
-    });
-    
-    // ... rest of your code
-    
-  } catch (error) {
-    console.error('Error generating mark sheet:', error);
-    res.status(500).json({ 
-      error: 'Error generating mark sheet',
-      details: error.message 
-    });
-  }
-}
       // Get total attendance for this student for the term
       const attendanceRepository = AppDataSource.getRepository(Attendance);
       const attendanceRecords = await attendanceRepository.find({
