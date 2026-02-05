@@ -149,7 +149,7 @@ export class AuthService {
     }
   
     if (this.isTokenExpired(token)) {
-      console.warn('Stored authentication token has expired. Logging out.');
+      
       
       return false;
     }
