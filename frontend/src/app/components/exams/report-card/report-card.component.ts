@@ -39,8 +39,8 @@ export class ReportCardComponent implements OnInit {
   filteredReportCards: any[] = [];
   classInfo: any = null;
   examTypes = [
-    { value: 'mid_term', label: 'Mid Term' },
-    { value: 'end_term', label: 'End of Term' }
+    { value: 'Mid Term', label: 'Mid Term' },
+    { value: 'End Term', label: 'End Term' }
   ];
   loading = false;
   error = '';
@@ -59,7 +59,7 @@ export class ReportCardComponent implements OnInit {
   isParent = false;
   parentStudentId: string | null = null;
   studentBalance: number | null = null;
-  currencySymbol = 'KES';
+  currencySymbol = '$';
   accessDenied = false;
   availableTerms: string[] = [];
   loadingTerms = false;
