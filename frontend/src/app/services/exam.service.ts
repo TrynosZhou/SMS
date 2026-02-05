@@ -14,19 +14,32 @@ export class ExamService {
   constructor(private http: HttpClient) {}
 
   // ---------------- Utility ----------------
-  private normalizeExamType(examType: string): string {
-    if (!examType) return examType;
-    const map: Record<string, string> = {
-      'mid_term': 'Mid-Term',
-      'MID_TERM': 'Mid-Term',
-      'Mid-Term': 'Mid-Term',
-      'end_term': 'End-Term',
-      'END_TERM': 'End-Term',
-      'End-Term': 'End-Term'
-    };
-    return map[examType.trim()] ?? examType.trim();
-  }
+ // src/app/services/exam.service.ts
 
+private normalizeExamType(examType: string): string {
+  if (!examType) return examType;
+  
+  // Convert display format to API format
+  const map: Record<string, string> = {
+    'Mid-Term': 'mid_term',
+    'mid-term': 'mid_term',
+    'MID_TERM': 'mid_term',
+    'mid_term': 'mid_term',
+    
+    'End-Term': 'end_term',
+    'end-term': 'end_term',
+    'END_TERM': 'end_term',
+    'end_term': 'end_term',
+    
+    'Assignment': 'assignment',
+    'assignment': 'assignment',
+    
+    'Quiz': 'quiz',
+    'quiz': 'quiz'
+  };
+  
+  return map[examType.trim()] ?? examType.trim().toLowerCase().replace(/-/g, '_');
+}
   // ---------------- Exams ----------------
   getExams(classId?: string): Observable<any> {
     let params = new HttpParams();
