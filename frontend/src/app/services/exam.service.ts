@@ -1,5 +1,6 @@
+// src/app/services/exam.service.ts
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
@@ -12,78 +13,69 @@ export class ExamService {
 
   constructor(private http: HttpClient) {}
 
-  // ✅ NORMALIZE examType BEFORE sending to backend
+  // ---------------- Utility ----------------
   private normalizeExamType(examType: string): string {
     if (!examType) return examType;
-
     const map: Record<string, string> = {
       'mid_term': 'Mid-Term',
       'MID_TERM': 'Mid-Term',
       'Mid-Term': 'Mid-Term',
-
       'end_term': 'End-Term',
       'END_TERM': 'End-Term',
       'End-Term': 'End-Term'
     };
-
     return map[examType.trim()] ?? examType.trim();
   }
 
+  // ---------------- Exams ----------------
   getExams(classId?: string): Observable<any> {
-    const options: any = {};
-    if (classId) options.params = { classId };
+    let params = new HttpParams();
+    if (classId) params = params.set('classId', classId);
 
-    return this.http.get(`${this.apiUrl}/exams`, options).pipe(
-      map((response: any) => {
-        if (Array.isArray(response)) return response;
-        if (Array.isArray(response?.data)) return response.data;
-        if (Array.isArray(response?.exams)) return response.exams;
-        return [];
-      }),
-      catchError(error => throwError(() => error))
+    return this.http.get(`${this.apiUrl}/exams`, { params }).pipe(
+      map((res: any) => Array.isArray(res?.data) ? res.data : res),
+      catchError(err => throwError(() => err))
     );
   }
 
   getExamById(id: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/exams/${id}`);
+    return this.http.get(`${this.apiUrl}/exams/${id}`).pipe(
+      catchError(err => throwError(() => err))
+    );
   }
 
   createExam(exam: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/exams`, exam);
+    return this.http.post(`${this.apiUrl}/exams`, exam).pipe(
+      catchError(err => throwError(() => err))
+    );
   }
 
+  deleteAllExams(): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/exams`).pipe(
+      catchError(err => throwError(() => err))
+    );
+  }
+
+  // ---------------- Marks ----------------
   captureMarks(examId: string, marksData: any[]): Observable<any> {
-    return this.http.post(`${this.apiUrl}/exams/marks`, { examId, marksData });
+    return this.http.post(`${this.apiUrl}/exams/marks`, { examId, marksData }).pipe(
+      catchError(err => throwError(() => err))
+    );
   }
 
   getMarks(examId?: string, studentId?: string, classId?: string): Observable<any> {
-    const params: any = {};
-    if (examId) params.examId = examId;
-    if (studentId) params.studentId = studentId;
-    if (classId) params.classId = classId;
+    let params = new HttpParams();
+    if (examId) params = params.set('examId', examId);
+    if (studentId) params = params.set('studentId', studentId);
+    if (classId) params = params.set('classId', classId);
 
     return this.http.get(`${this.apiUrl}/exams/marks`, { params }).pipe(
-      map((response: any) => {
-        if (Array.isArray(response)) return response;
-        if (Array.isArray(response?.data)) return response.data;
-        if (Array.isArray(response?.marks)) return response.marks;
-        return [];
-      }),
-      catchError(error => throwError(() => error))
+      map((res: any) => Array.isArray(res?.marks) ? res.marks : res),
+      catchError(err => throwError(() => err))
     );
   }
-  saveReportCardRemarks(payload: {
-    studentId: string;
-    term: string;
-    examType: string;
-    remarks: string;
-  }) {
-    return this.http.post(
-      `${this.apiUrl}/exams/report-card/remarks`,
-      payload
-    );
-  }
-  
+
+  // ---------------- Report Cards ----------------
   getReportCard(
     classId: string,
     examType: string,
@@ -91,27 +83,25 @@ export class ExamService {
     studentId?: string,
     subjectId?: string
   ): Observable<any> {
-    const params: any = {};
+    let params = new HttpParams()
+      .set('classId', classId)
+      .set('examType', this.normalizeExamType(examType))
+      .set('term', term);
 
-    if (classId) params.classId = classId.trim();
-    if (examType) params.examType = this.normalizeExamType(examType);
-    if (term) params.term = term.trim();
-    if (studentId) params.studentId = studentId.trim();
-    if (subjectId) params.subjectId = subjectId.trim();
-
-    console.log('Requesting report card:', params);
+    if (studentId) params = params.set('studentId', studentId);
+    if (subjectId) params = params.set('subjectId', subjectId);
 
     return this.http.get(`${this.apiUrl}/exams/report-card`, { params }).pipe(
-      map((response: any) => ({
-        ...response,
-        reportCards: Array.isArray(response?.reportCards)
-          ? response.reportCards.map((card: any) => ({
+      map((res: any) => ({
+        ...res,
+        reportCards: Array.isArray(res?.reportCards)
+          ? res.reportCards.map((card: any) => ({
               ...card,
               subjects: Array.isArray(card?.subjects) ? card.subjects : []
             }))
           : []
       })),
-      catchError(error => throwError(() => error))
+      catchError(err => throwError(() => err))
     );
   }
 
@@ -119,53 +109,85 @@ export class ExamService {
     classId: string,
     examType: string,
     term: string,
-    studentId: string
+    studentId?: string
   ): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/exams/report-card/pdf`, {
-      params: {
-        classId,
-        examType: this.normalizeExamType(examType),
-        term,
-        studentId
-      },
-      responseType: 'blob'
-    });
+    let params = new HttpParams()
+      .set('classId', classId)
+      .set('examType', this.normalizeExamType(examType))
+      .set('term', term);
+
+    if (studentId) params = params.set('studentId', studentId);
+
+    return this.http.get(`${this.apiUrl}/exams/report-card/pdf`, { params, responseType: 'blob' });
   }
 
-  generateMarkSheet(classId: string, examType: string, term?: string): Observable<any> {
-    const params: any = {
-      classId,
-      examType: this.normalizeExamType(examType)
-    };
-    if (term) params.term = term;
+  saveReportCardRemarks(
+    selectedClass: string,
+    selectedExamType: string,
+    classTeacherRemarks: string,
+    headmasterRemarks: string,
+    studentId?: string
+  ): Observable<any> {
+    const payload = { selectedClass, selectedExamType, classTeacherRemarks, headmasterRemarks, studentId };
+    return this.http.post(`${this.apiUrl}/exams/report-card/remarks`, payload).pipe(
+      catchError(err => throwError(() => err))
+    );
+  }
 
-    return this.http.get(`${this.apiUrl}/exams/mark-sheet`, { params });
+  // ---------------- Mark Sheets ----------------
+  generateMarkSheet(classId: string, examType: string, term?: string): Observable<any> {
+    let params = new HttpParams()
+      .set('classId', classId)
+      .set('examType', this.normalizeExamType(examType));
+
+    if (term) params = params.set('term', term);
+
+    return this.http.get(`${this.apiUrl}/exams/mark-sheet`, { params }).pipe(
+      catchError(err => throwError(() => err))
+    );
   }
 
   downloadMarkSheetPDF(classId: string, examType: string, term?: string): Observable<Blob> {
-    const params: any = {
-      classId,
-      examType: this.normalizeExamType(examType)
-    };
-    if (term) params.term = term;
+    let params = new HttpParams()
+      .set('classId', classId)
+      .set('examType', this.normalizeExamType(examType));
 
-    return this.http.get(`${this.apiUrl}/exams/mark-sheet/pdf`, {
-      params,
-      responseType: 'blob'
-    });
+    if (term) params = params.set('term', term);
+
+    return this.http.get(`${this.apiUrl}/exams/mark-sheet/pdf`, { params, responseType: 'blob' });
   }
 
+  // ---------------- Rankings ----------------
+  getClassRankingsByType(examType: string, className: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/rankings/class/${className}/${this.normalizeExamType(examType)}`).pipe(
+      catchError(err => throwError(() => err))
+    );
+  }
+
+  getSubjectRankingsByType(examType: string, subject: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/rankings/subject/${subject}/${this.normalizeExamType(examType)}`).pipe(
+      catchError(err => throwError(() => err))
+    );
+  }
+
+  getOverallPerformanceRankings(form: string, examType: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/rankings/overall/${form}/${this.normalizeExamType(examType)}`).pipe(
+      catchError(err => throwError(() => err))
+    );
+  }
+
+  // ---------------- Publish/Unpublish ----------------
   publishExamByType(examType: string, term: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/exams/publish-by-type`, {
       examType: this.normalizeExamType(examType),
       term
-    });
+    }).pipe(catchError(err => throwError(() => err)));
   }
 
   unpublishExamByType(examType: string, term: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/exams/unpublish-by-type`, {
       examType: this.normalizeExamType(examType),
       term
-    });
+    }).pipe(catchError(err => throwError(() => err)));
   }
 }
