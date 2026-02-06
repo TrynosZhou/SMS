@@ -1058,6 +1058,46 @@
           </div>
         </div>
       </div>
+
+      <!-- Danger Zone: Reset System -->
+      <div class="form-section" *ngIf="(authService.hasRole('admin') || authService.hasRole('superadmin')) && !isDemoUser()">
+        <h2 style="color: #c53030;">Danger Zone: Reset System / Wipe Database</h2>
+        <div class="alert alert-error" style="margin-top: 10px; padding: 12px; background: #fff5f5; border-left: 4px solid #c53030; color: #742a2a;">
+          <p style="margin: 0 0 6px 0;">
+            This operation will permanently delete:
+          </p>
+          <ul style="margin: 0 0 6px 18px; padding: 0;">
+            <li>All students, parents and their links</li>
+            <li>All invoices, payments, uniform invoice items and balances</li>
+            <li>All marks, report card remarks, attendance and record books</li>
+            <li>All timetables and timetable change history</li>
+            <li>All messages and student transfer records</li>
+            <li>All non-admin user accounts (teachers, parents, students, demo users)</li>
+          </ul>
+          <p style="margin: 0;">
+            Admin and SuperAdmin accounts plus core system settings will be preserved so you can log in and configure real production data.
+          </p>
+        </div>
+        <div style="margin-top: 12px;">
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label style="font-weight: 600; color: #742a2a;">Type RESET to confirm *</label>
+            <input
+              type="text"
+              [(ngModel)]="resetConfirmText"
+              name="resetConfirmText"
+              placeholder="Type RESET to enable the button"
+              style="max-width: 260px;">
+          </div>
+          <button
+            type="button"
+            class="btn btn-danger"
+            (click)="resetSystemData()"
+            [disabled]="resettingSystem">
+            {{ resettingSystem ? 'Resetting system...' : '🧨 Reset System / Wipe Database' }}
+          </button>
+        </div>
+      </div>
+
       </fieldset>
 
       <div style="margin-top: 20px;">

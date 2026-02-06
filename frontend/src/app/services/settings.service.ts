@@ -102,5 +102,9 @@ export class SettingsService {
   deleteUniformItem(id: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/settings/uniform-items/${id}`);
   }
+
+  resetSystemData(payload: { confirm: boolean }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/settings/reset-system`, payload);
+  }
 }
 

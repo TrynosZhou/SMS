@@ -4,6 +4,21 @@ import { Settings } from '../entities/Settings';
 import { Invoice, InvoiceStatus } from '../entities/Invoice';
 import { Student } from '../entities/Student';
 import { UniformItem } from '../entities/UniformItem';
+import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
+import { Marks } from '../entities/Marks';
+import { Attendance } from '../entities/Attendance';
+import { ReportCardRemarks } from '../entities/ReportCardRemarks';
+import { RecordBook } from '../entities/RecordBook';
+import { StudentTransfer } from '../entities/StudentTransfer';
+import { Timetable } from '../entities/Timetable';
+import { TimetableEntry } from '../entities/TimetableEntry';
+import { TimetableVersion } from '../entities/TimetableVersion';
+import { TimetableChangeLog } from '../entities/TimetableChangeLog';
+import { TeacherClass } from '../entities/TeacherClass';
+import { Message } from '../entities/Message';
+import { Parent } from '../entities/Parent';
+import { ParentStudent } from '../entities/ParentStudent';
+import { User, UserRole } from '../entities/User';
 import { AuthRequest } from '../middleware/auth';
 
 const DEFAULT_MODULE_ACCESS: Settings['moduleAccess'] = {
@@ -860,6 +875,82 @@ export const deleteUniformItem = async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     console.error('Error deleting uniform item:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const resetSystemData = async (req: AuthRequest, res: Response) => {
+  try {
+    if (req.user?.isDemo) {
+      return res.status(403).json({ message: 'Demo accounts cannot reset system data.' });
+    }
+
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const user = req.user;
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPERADMIN)) {
+      return res.status(403).json({ message: 'Only administrators can reset system data.' });
+    }
+
+    const { confirm } = req.body || {};
+    if (!confirm) {
+      return res.status(400).json({ message: 'Reset confirmation is required.' });
+    }
+
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const manager = queryRunner.manager;
+
+      await manager.getRepository(InvoiceUniformItem).clear();
+      await manager.getRepository(Invoice).clear();
+      await manager.getRepository(Marks).clear();
+      await manager.getRepository(Attendance).clear();
+      await manager.getRepository(ReportCardRemarks).clear();
+      await manager.getRepository(RecordBook).clear();
+      await manager.getRepository(StudentTransfer).clear();
+      await manager.getRepository(TimetableChangeLog).clear();
+      await manager.getRepository(TimetableVersion).clear();
+      await manager.getRepository(TimetableEntry).clear();
+      await manager.getRepository(Timetable).clear();
+      await manager.getRepository(TeacherClass).clear();
+      await manager.getRepository(Message).clear();
+      await manager.getRepository(ParentStudent).clear();
+      await manager.getRepository(Student).clear();
+      await manager.getRepository(Parent).clear();
+      await manager.getRepository(UniformItem).clear();
+
+      await manager
+        .createQueryBuilder()
+        .delete()
+        .from(User)
+        .where('role NOT IN (:...roles)', { roles: [UserRole.ADMIN, UserRole.SUPERADMIN] })
+        .execute();
+
+      await queryRunner.commitTransaction();
+
+      res.json({
+        message: 'System data reset successfully. Admin accounts and core settings have been preserved.'
+      });
+    } catch (error: any) {
+      await queryRunner.rollbackTransaction();
+      console.error('Error resetting system data:', error);
+      res.status(500).json({
+        message: 'Server error during system reset',
+        error: error.message || 'Unknown error'
+      });
+    } finally {
+      await queryRunner.release();
+    }
+  } catch (error: any) {
+    console.error('Error in resetSystemData handler:', error);
+    res.status(500).json({
+      message: 'Server error',
+      error: error.message || 'Unknown error'
+    });
   }
 };
 

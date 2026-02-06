@@ -11,7 +11,8 @@ import {
   getUniformItems,
   createUniformItem,
   updateUniformItem,
-  deleteUniformItem
+  deleteUniformItem,
+  resetSystemData
 } from '../controllers/settings.controller';
 
 const router = Router();
@@ -26,6 +27,7 @@ router.put('/uniform-items/:id', authenticate, authorize(UserRole.ADMIN, UserRol
 router.delete('/uniform-items/:id', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), deleteUniformItem);
 router.post('/opening-day', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), processOpeningDay);
 router.post('/closing-day', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), processClosingDay);
+router.post('/reset-system', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), resetSystemData);
 
 export default router;
 

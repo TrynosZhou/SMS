@@ -166,6 +166,8 @@ export class SettingsComponent implements OnInit {
   processingOpeningDay: boolean = false;
   processingClosingDay: boolean = false;
   loadingReminders: boolean = false;
+  resettingSystem: boolean = false;
+  resetConfirmText: string = '';
   uniformItems: any[] = [];
   uniformItemForm: {
     id?: string;
@@ -1319,6 +1321,51 @@ export class SettingsComponent implements OnInit {
         this.error = err.error?.message || 'Failed to process closing day. Please try again.';
         this.processingClosingDay = false;
         setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  resetSystemData() {
+    if (!(this.authService.hasRole('admin') || this.authService.hasRole('superadmin'))) {
+      return;
+    }
+
+    if (this.isDemoUser()) {
+      return;
+    }
+
+    if ((this.resetConfirmText || '').trim().toUpperCase() !== 'RESET') {
+      alert('To confirm, please type RESET in the confirmation box before proceeding.');
+      return;
+    }
+
+    const confirmed = confirm(
+      'This will permanently delete all students, parents, invoices, attendance, marks, timetables, messages and other transactional data. ' +
+      'Admin accounts and core settings will be kept so you can continue logging in. ' +
+      'This action cannot be undone. Do you want to continue?'
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.resettingSystem = true;
+    this.error = '';
+    this.success = '';
+
+    this.settingsService.resetSystemData({ confirm: true }).subscribe({
+      next: (response: any) => {
+        this.success = response?.message || 'System data reset successfully.';
+        this.resettingSystem = false;
+        this.resetConfirmText = '';
+        setTimeout(() => this.success = '', 7000);
+      },
+      error: (err: any) => {
+        console.error('Error resetting system data:', err);
+        this.error = err.error?.message || 'Failed to reset system data. Please try again.';
+        this.resettingSystem = false;
+        this.resetConfirmText = '';
+        setTimeout(() => this.error = '', 7000);
       }
     });
   }

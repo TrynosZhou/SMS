@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterTestingModule } from '@angular/router/testing';
 import { AppComponent } from './app.component';
 import { AuthService } from './services/auth.service';
@@ -31,7 +32,7 @@ describe('AppComponent', () => {
 
     await TestBed.configureTestingModule({
       declarations: [AppComponent],
-      imports: [CommonModule, RouterTestingModule],
+      imports: [CommonModule, FormsModule, RouterTestingModule],
       providers: [
         { provide: AuthService, useValue: authServiceSpy },
         { provide: SettingsService, useValue: settingsServiceSpy },
