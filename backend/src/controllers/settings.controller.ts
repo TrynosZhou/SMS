@@ -3,6 +3,7 @@ import { AppDataSource } from '../config/database';
 import { Settings } from '../entities/Settings';
 import { Invoice, InvoiceStatus } from '../entities/Invoice';
 import { Student } from '../entities/Student';
+import { Teacher } from '../entities/Teacher';
 import { UniformItem } from '../entities/UniformItem';
 import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
 import { Marks } from '../entities/Marks';
@@ -905,23 +906,24 @@ export const resetSystemData = async (req: AuthRequest, res: Response) => {
     try {
       const manager = queryRunner.manager;
 
-      await manager.getRepository(InvoiceUniformItem).clear();
-      await manager.getRepository(Invoice).clear();
-      await manager.getRepository(Marks).clear();
-      await manager.getRepository(Attendance).clear();
-      await manager.getRepository(ReportCardRemarks).clear();
-      await manager.getRepository(RecordBook).clear();
-      await manager.getRepository(StudentTransfer).clear();
-      await manager.getRepository(TimetableChangeLog).clear();
-      await manager.getRepository(TimetableVersion).clear();
-      await manager.getRepository(TimetableEntry).clear();
-      await manager.getRepository(Timetable).clear();
-      await manager.getRepository(TeacherClass).clear();
-      await manager.getRepository(Message).clear();
-      await manager.getRepository(ParentStudent).clear();
-      await manager.getRepository(Student).clear();
-      await manager.getRepository(Parent).clear();
-      await manager.getRepository(UniformItem).clear();
+      await manager.getRepository(InvoiceUniformItem).createQueryBuilder().delete().execute();
+      await manager.getRepository(Invoice).createQueryBuilder().delete().execute();
+      await manager.getRepository(Marks).createQueryBuilder().delete().execute();
+      await manager.getRepository(Attendance).createQueryBuilder().delete().execute();
+      await manager.getRepository(ReportCardRemarks).createQueryBuilder().delete().execute();
+      await manager.getRepository(RecordBook).createQueryBuilder().delete().execute();
+      await manager.getRepository(StudentTransfer).createQueryBuilder().delete().execute();
+      await manager.getRepository(TimetableChangeLog).createQueryBuilder().delete().execute();
+      await manager.getRepository(TimetableVersion).createQueryBuilder().delete().execute();
+      await manager.getRepository(TimetableEntry).createQueryBuilder().delete().execute();
+      await manager.getRepository(Timetable).createQueryBuilder().delete().execute();
+      await manager.getRepository(TeacherClass).createQueryBuilder().delete().execute();
+      await manager.getRepository(Message).createQueryBuilder().delete().execute();
+      await manager.getRepository(ParentStudent).createQueryBuilder().delete().execute();
+      await manager.getRepository(Teacher).createQueryBuilder().delete().execute();
+      await manager.getRepository(Student).createQueryBuilder().delete().execute();
+      await manager.getRepository(Parent).createQueryBuilder().delete().execute();
+      await manager.getRepository(UniformItem).createQueryBuilder().delete().execute();
 
       await manager
         .createQueryBuilder()

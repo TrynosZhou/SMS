@@ -49,25 +49,20 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'First name and last name are required' });
     }
 
-    if (!dateOfBirth) {
-      return res.status(400).json({ message: 'Date of birth is required' });
-    }
-
     if (!gender) {
       return res.status(400).json({ message: 'Gender is required' });
     }
 
-    if (!contactNumber && !phoneNumber) {
-      return res.status(400).json({ message: 'Contact number is required' });
+    // Validate contact / phone numbers if provided (optional)
+    const primaryContact = (contactNumber || phoneNumber || '').trim();
+    if (primaryContact) {
+      const contactValidation = validatePhoneNumber(primaryContact, true);
+      if (!contactValidation.isValid) {
+        return res.status(400).json({ message: contactValidation.error || 'Invalid contact number' });
+      }
     }
 
-    // Validate contact number
-    const contactValidation = validatePhoneNumber(contactNumber || phoneNumber, true);
-    if (!contactValidation.isValid) {
-      return res.status(400).json({ message: contactValidation.error || 'Invalid contact number' });
-    }
-
-    // Validate phone number if provided
+    // Validate secondary phone number if provided and different from primary
     if (phoneNumber && phoneNumber.trim() && phoneNumber !== contactNumber) {
       const phoneValidation = validatePhoneNumber(phoneNumber, false);
       if (!phoneValidation.isValid) {
@@ -100,20 +95,25 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
     // Generate unique student ID with prefix from settings
     const studentNumber = await generateStudentId();
 
-    // Parse dateOfBirth if it's a string
-    let parsedDateOfBirth: Date;
-    if (typeof dateOfBirth === 'string') {
-      parsedDateOfBirth = new Date(dateOfBirth);
-      if (isNaN(parsedDateOfBirth.getTime())) {
-        return res.status(400).json({ message: 'Invalid date of birth format' });
+    // Parse dateOfBirth if provided
+    let parsedDateOfBirth: Date | null = null;
+    if (dateOfBirth) {
+      if (typeof dateOfBirth === 'string') {
+        parsedDateOfBirth = new Date(dateOfBirth);
+        if (isNaN(parsedDateOfBirth.getTime())) {
+          return res.status(400).json({ message: 'Invalid date of birth format' });
+        }
+      } else {
+        parsedDateOfBirth = dateOfBirth;
       }
-    } else {
-      parsedDateOfBirth = dateOfBirth;
     }
 
-    const studentAge = calculateAge(parsedDateOfBirth);
-    if (studentAge < 4 || studentAge > 12) {
-      return res.status(400).json({ message: 'Student age must be between 4 and 12 years' });
+    // If date of birth is provided, enforce age range 3–13 years
+    if (parsedDateOfBirth) {
+      const studentAge = calculateAge(parsedDateOfBirth);
+      if (studentAge < 3 || studentAge > 13) {
+        return res.status(400).json({ message: 'Student age must be between 3 and 13 years' });
+      }
     }
 
     // Use contactNumber if provided, otherwise fall back to phoneNumber
@@ -594,26 +594,35 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       student.lastName = String(lastName).trim();
     }
 
-    // Update dateOfBirth
+    // Update dateOfBirth (optional)
     if (dateOfBirth !== undefined && dateOfBirth !== null) {
-      let parsedDate: Date;
-      if (typeof dateOfBirth === 'string') {
-        // Handle HTML date input format (YYYY-MM-DD)
-        if (dateOfBirth.match(/^\d{4}-\d{2}-\d{2}$/)) {
-          const [year, month, day] = dateOfBirth.split('-').map(Number);
-          parsedDate = new Date(year, month - 1, day);
+      const dobString = typeof dateOfBirth === 'string' ? dateOfBirth.trim() : dateOfBirth;
+
+      // If empty string was sent, treat as clearing the DOB
+      if (dobString === '') {
+        student.dateOfBirth = null;
+      } else {
+        let parsedDate: Date;
+        if (typeof dobString === 'string') {
+          // Handle HTML date input format (YYYY-MM-DD)
+          if (dobString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const [year, month, day] = dobString.split('-').map(Number);
+            parsedDate = new Date(year, month - 1, day);
+          } else {
+            parsedDate = new Date(dobString);
+          }
+        } else if (dobString instanceof Date) {
+          parsedDate = dobString;
         } else {
-          parsedDate = new Date(dateOfBirth);
+          parsedDate = new Date(dobString as any);
         }
-        
+
         if (!isNaN(parsedDate.getTime())) {
           student.dateOfBirth = parsedDate;
         } else {
           console.error('Invalid date format:', dateOfBirth);
           return res.status(400).json({ message: 'Invalid date of birth format' });
         }
-      } else if (dateOfBirth instanceof Date) {
-        student.dateOfBirth = dateOfBirth;
       }
     }
 

@@ -214,7 +214,7 @@ export class StudentFormComponent implements OnInit {
   }
 
   validateContactNumber(): void {
-    const result = validatePhoneNumber(this.student.contactNumber, true);
+    const result = validatePhoneNumber(this.student.contactNumber, false);
     this.contactNumberError = result.isValid ? '' : (result.error || '');
     if (result.isValid && result.normalized) {
       this.student.contactNumber = result.normalized;
@@ -240,16 +240,20 @@ export class StudentFormComponent implements OnInit {
     this.phoneNumberError = '';
     this.submitting = true;
 
-    // Validate phone numbers
-    const contactResult = validatePhoneNumber(this.student.contactNumber, true);
-    if (!contactResult.isValid) {
-      this.contactNumberError = contactResult.error || 'Invalid contact number';
-      this.error = contactResult.error || 'Please enter a valid contact number';
-      this.submitting = false;
-      return;
-    }
-    if (contactResult.normalized) {
-      this.student.contactNumber = contactResult.normalized;
+    // Validate contact number if provided (optional)
+    if (this.student.contactNumber && this.student.contactNumber.trim()) {
+      const contactResult = validatePhoneNumber(this.student.contactNumber, true);
+      if (!contactResult.isValid) {
+        this.contactNumberError = contactResult.error || 'Invalid contact number';
+        this.error = contactResult.error || 'Please enter a valid contact number';
+        this.submitting = false;
+        return;
+      }
+      if (contactResult.normalized) {
+        this.student.contactNumber = contactResult.normalized;
+      }
+    } else {
+      this.contactNumberError = '';
     }
 
     if (this.student.phoneNumber && this.student.phoneNumber.trim()) {
@@ -265,8 +269,8 @@ export class StudentFormComponent implements OnInit {
       }
     }
 
-    // Validate required fields
-    if (!this.student.firstName || !this.student.lastName || !this.student.dateOfBirth || 
+    // Validate required fields (DOB is optional)
+    if (!this.student.firstName || !this.student.lastName || 
         !this.student.gender || !this.student.studentType) {
       this.error = 'Please fill in all required fields';
       this.submitting = false;
@@ -279,11 +283,14 @@ export class StudentFormComponent implements OnInit {
       return;
     }
 
-    const studentAge = this.calculateAge(this.student.dateOfBirth);
-    if (studentAge < 4 || studentAge > 12) {
-      this.error = 'Students must be between 4 and 12 years old at registration';
-      this.submitting = false;
-      return;
+    // If DOB is provided, enforce age range 3–13 years
+    if (this.student.dateOfBirth) {
+      const studentAge = this.calculateAge(this.student.dateOfBirth);
+      if (studentAge < 3 || studentAge > 13) {
+        this.error = 'Students must be between 3 and 13 years old at registration';
+        this.submitting = false;
+        return;
+      }
     }
     
     if (this.isEdit) {
@@ -348,7 +355,7 @@ export class StudentFormComponent implements OnInit {
       
       this.studentService.createStudent(studentData, this.selectedPhoto || undefined).subscribe({
         next: (response: any) => {
-          this.success = response.message || 'Student created and enrolled successfully';
+          this.success = 'Record saved successfully';
           this.submitting = false;
           setTimeout(() => this.router.navigate(['/students']), 1500);
         },

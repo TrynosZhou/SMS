@@ -100,18 +100,16 @@
 
         <div class="form-group">
           <label for="dateOfBirth">
-            Date of Birth <span class="required">*</span>
+            Date of Birth
           </label>
           <input 
             type="date" 
             id="dateOfBirth"
             [(ngModel)]="student.dateOfBirth" 
             name="dateOfBirth"
-            required
             class="form-input"
-            [max]="maxDate"
-            [class.error]="studentForm.submitted && !student.dateOfBirth">
-          <small class="form-hint">Select date of birth</small>
+            [max]="maxDate">
+          <small class="form-hint">Select date of birth (optional)</small>
         </div>
 
         <div class="form-group">
@@ -147,20 +145,19 @@
       <div class="form-grid">
         <div class="form-group">
           <label for="contactNumber">
-            Contact Number <span class="required">*</span>
+            Contact Number
           </label>
           <input 
             type="tel" 
             id="contactNumber"
             [(ngModel)]="student.contactNumber" 
             name="contactNumber"
-            required
             placeholder="e.g., 0771234567 or +263771234567"
             class="form-input"
-            [class.error]="(studentForm.submitted && !student.contactNumber) || contactNumberError"
+            [class.error]="contactNumberError"
             (blur)="validateContactNumber()"
             (input)="contactNumberError = ''">
-          <small class="form-hint" *ngIf="!contactNumberError">Primary contact number (Zimbabwean format: 07XXXXXXXX or +2637XXXXXXXX)</small>
+          <small class="form-hint" *ngIf="!contactNumberError">Primary contact number (Zimbabwean format: 07XXXXXXXX or +2637XXXXXXXX, optional)</small>
           <small class="form-error" *ngIf="contactNumberError">{{ contactNumberError }}</small>
         </div>
 
