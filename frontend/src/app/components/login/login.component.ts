@@ -25,6 +25,7 @@ export class LoginComponent implements OnInit {
   signupLastName = '';
   signupContactNumber = '';
   signupEmail = '';
+  signupAddress = '';
   
   // Password Reset fields
   resetEmail = '';
@@ -92,6 +93,7 @@ export class LoginComponent implements OnInit {
     this.signupLastName = '';
     this.signupContactNumber = '';
     this.signupEmail = '';
+    this.signupAddress = '';
     this.resetEmail = '';
   }
 
@@ -241,6 +243,10 @@ export class LoginComponent implements OnInit {
         this.error = 'Please enter a valid email address';
         return;
       }
+      if (!this.signupAddress || !this.signupAddress.trim()) {
+        this.error = 'Please provide your physical address for parent accounts';
+        return;
+      }
     }
 
     if (this.signupPassword.length < 8) {
@@ -288,9 +294,10 @@ export class LoginComponent implements OnInit {
       phoneNumber: this.signupContactNumber
     };
 
-    // Only add contact number for parents
+    // Only add parent-specific fields for parents
     if (this.signupRole === 'PARENT') {
       registerData.contactNumber = this.signupContactNumber;
+      registerData.address = this.signupAddress.trim();
     }
 
     this.authService.register(registerData).subscribe({

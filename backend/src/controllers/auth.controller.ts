@@ -747,6 +747,12 @@ export const register = async (req: Request, res: Response) => {
       } else {
         return res.status(400).json({ message: 'Phone number is required for parent registration' });
       }
+
+      // Require physical address for parent registration
+      if (!profileData.address || !String(profileData.address).trim()) {
+        return res.status(400).json({ message: 'Physical address is required for parent registration' });
+      }
+      profileData.address = String(profileData.address).trim();
       
       const parentRepository = AppDataSource.getRepository(Parent);
       const parent = parentRepository.create({

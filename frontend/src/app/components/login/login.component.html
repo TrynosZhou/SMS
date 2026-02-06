@@ -155,6 +155,16 @@
           <small class="form-text" *ngIf="!signupContactNumberError">Zimbabwean format: 07XXXXXXXX or +2637XXXXXXXX</small>
           <small class="form-error" *ngIf="signupContactNumberError">{{ signupContactNumberError }}</small>
         </div>
+        <div class="form-group" *ngIf="signupRole === 'PARENT'">
+          <label>Physical Address *</label>
+          <textarea
+            [(ngModel)]="signupAddress"
+            name="signupAddress"
+            rows="3"
+            placeholder="Enter your physical address"
+            required></textarea>
+          <small class="form-text">Include house number, street, and suburb.</small>
+        </div>
         <div class="form-group">
           <label>Password *</label>
           <div class="password-input-wrapper">

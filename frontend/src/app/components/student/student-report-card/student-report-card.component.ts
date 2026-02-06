@@ -20,6 +20,7 @@ export class StudentReportCardComponent implements OnInit {
   selectedExamType: string = 'End-Term'; // Default to End-Term as it's more commonly available
   examTypes: string[] = ['Mid-Term', 'End-Term'];
   classId: string = '';
+  headmasterName: string = '';
   
   // PDF Preview
   showPdfPreview = false;
@@ -36,6 +37,7 @@ export class StudentReportCardComponent implements OnInit {
 
   ngOnInit() {
     this.loadStudentData();
+    this.loadSettings();
   }
 
   loadStudentData(retryCount = 0) {
@@ -131,6 +133,17 @@ export class StudentReportCardComponent implements OnInit {
     });
   }
 
+  loadSettings() {
+    this.settingsService.getSettings().subscribe({
+      next: (data: any) => {
+        this.headmasterName = data.headmasterName || '';
+      },
+      error: (_: any) => {
+        this.headmasterName = '';
+      }
+    });
+  }
+
   loadReportCard() {
     if (!this.classId || !this.activeTerm || !this.selectedExamType) {
       this.error = 'Missing required information to load report card';
@@ -163,6 +176,17 @@ export class StudentReportCardComponent implements OnInit {
           if (this.reportCard.remarks) {
             console.log('[StudentReportCard] Class Teacher Remarks:', this.reportCard.remarks.classTeacherRemarks);
             console.log('[StudentReportCard] Headmaster Remarks:', this.reportCard.remarks.headmasterRemarks);
+          }
+          if (!this.reportCard.remarks) {
+            this.reportCard.remarks = {
+              classTeacherRemarks: null,
+              headmasterRemarks: null
+            };
+          }
+          const existingHead = this.reportCard.remarks.headmasterRemarks;
+          if (!existingHead || !String(existingHead).trim().length) {
+            const autoHead = this.generateHeadmasterRemark(this.reportCard);
+            this.reportCard.remarks.headmasterRemarks = autoHead;
           }
         } else if (data && data.student) {
           // Single report card format
@@ -297,6 +321,42 @@ export class StudentReportCardComponent implements OnInit {
         this.error = err.error?.message || 'Failed to download PDF';
       }
     });
+  }
+
+  generateHeadmasterRemark(reportCard: any): string {
+    if (!reportCard) {
+      return '';
+    }
+    const headName = (this.headmasterName || '').trim();
+    const studentName = reportCard.student && reportCard.student.name
+      ? String(reportCard.student.name).trim()
+      : '';
+    const namePart = studentName ? ` by ${studentName}` : '';
+    const signature = headName ? `. ${headName}` : '';
+    const rawAverage = reportCard.overallAverage;
+    let average = 0;
+    if (typeof rawAverage === 'number') {
+      average = rawAverage;
+    } else if (typeof rawAverage === 'string') {
+      const parsed = parseFloat(rawAverage);
+      average = isNaN(parsed) ? 0 : parsed;
+    }
+    if (average >= 80) {
+      return `Excellent performance${namePart}. Keep up the outstanding performance${signature}`;
+    }
+    if (average >= 70) {
+      return `Very good performance${namePart}. Maintain this strong level of effort${signature}`;
+    }
+    if (average >= 60) {
+      return `Good results${namePart}. Continued hard work will yield even better outcomes${signature}`;
+    }
+    if (average >= 50) {
+      return `Satisfactory performance${namePart}. Greater consistency and focus are encouraged${signature}`;
+    }
+    if (average >= 40) {
+      return `Performance is below expected level${namePart}. Increased effort and support at home and school are needed${signature}`;
+    }
+    return `The learner requires urgent and sustained support${namePart}. Close follow-up and serious commitment are essential for improvement${signature}`;
   }
 }
 

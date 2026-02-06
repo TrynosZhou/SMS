@@ -68,6 +68,7 @@ export class ReportCardComponent implements OnInit {
   schoolLogo2: string | null = null;
   gradeThresholds: any = null;
   gradeLabels: any = null;
+  headmasterName: string = '';
   
   // Teacher data
   teacher: any = null;
@@ -210,6 +211,7 @@ export class ReportCardComponent implements OnInit {
         this.currencySymbol = data.currencySymbol || 'KES';
         this.schoolLogo = data.schoolLogo || null;
         this.schoolLogo2 = data.schoolLogo2 || null;
+        this.headmasterName = data.headmasterName || '';
         this.gradeThresholds = data.gradeThresholds || {
           excellent: 90,
           veryGood: 80,
@@ -231,6 +233,7 @@ export class ReportCardComponent implements OnInit {
       error: (err: any) => {
         // Use default values if settings fail to load
         this.currencySymbol = 'KES';
+        this.headmasterName = '';
         this.gradeThresholds = {
           excellent: 90,
           veryGood: 80,
@@ -410,7 +413,6 @@ export class ReportCardComponent implements OnInit {
         }
         
         this.reportCards = cards.map((card: any) => {
-          // Ensure remarks object exists
           if (!card.remarks) {
             card.remarks = {
               id: null,
@@ -418,19 +420,28 @@ export class ReportCardComponent implements OnInit {
               headmasterRemarks: null
             };
           }
-          // Mark remarks as saved if they have an ID (loaded from database)
           if (card.remarks.id) {
             this.savedRemarks.add(this.getRemarksKey(card.student.id, 'classTeacher'));
             this.savedRemarks.add(this.getRemarksKey(card.student.id, 'headmaster'));
           }
-          // Ensure subjects is always an array
           if (!Array.isArray(card.subjects)) {
             card.subjects = [];
           }
-          // Ensure exams is always an array
           if (!Array.isArray(card.exams)) {
             card.exams = [];
           }
+
+          const autoHeadRemark = this.generateHeadmasterRemark(card);
+          card.headmasterAutoRemarks = autoHeadRemark;
+
+          const existingHeadRemark = card.remarks.headmasterRemarks;
+          const hasExistingHeadRemark = !!(existingHeadRemark && String(existingHeadRemark).trim().length > 0);
+
+          if (!hasExistingHeadRemark && this.isAdmin && autoHeadRemark) {
+            card.remarks.headmasterRemarks = autoHeadRemark;
+            this.onRemarksChange(card, 'headmaster');
+          }
+
           return card;
         });
         const reportCardsArray = Array.isArray(this.reportCards) ? this.reportCards : [];
@@ -693,6 +704,42 @@ export class ReportCardComponent implements OnInit {
     if (this.filteredReportCards.length === 0) return 0;
     const sum = this.filteredReportCards.reduce((acc, card) => acc + (card.overallAverage || 0), 0);
     return sum / this.filteredReportCards.length;
+  }
+
+  generateHeadmasterRemark(card: any): string {
+    if (!card) {
+      return '';
+    }
+    const headName = (this.headmasterName || '').trim();
+    const studentName = card.student && card.student.name
+      ? String(card.student.name).trim()
+      : '';
+    const namePart = studentName ? ` by ${studentName}` : '';
+    const signature = headName ? `. ${headName}` : '';
+    const rawAverage = card.overallAverage;
+    let average = 0;
+    if (typeof rawAverage === 'number') {
+      average = rawAverage;
+    } else if (typeof rawAverage === 'string') {
+      const parsed = parseFloat(rawAverage);
+      average = isNaN(parsed) ? 0 : parsed;
+    }
+    if (average >= 80) {
+      return `Excellent performance${namePart}. Keep up the outstanding performance${signature}`;
+    }
+    if (average >= 70) {
+      return `Very good performance${namePart}. Maintain this strong level of effort${signature}`;
+    }
+    if (average >= 60) {
+      return `Good results${namePart}. Continued hard work will yield even better outcomes${signature}`;
+    }
+    if (average >= 50) {
+      return `Satisfactory performance${namePart}. Greater consistency and focus are encouraged${signature}`;
+    }
+    if (average >= 40) {
+      return `Performance is below expected level${namePart}. Increased effort and support at home and school are needed${signature}`;
+    }
+    return `The learner requires urgent and sustained support${namePart}. Close follow-up and serious commitment are essential for improvement${signature}`;
   }
 
   // Validation

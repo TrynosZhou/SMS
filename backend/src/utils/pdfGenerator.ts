@@ -392,6 +392,8 @@ export function createReportCardPDF(
         fail: 'UNCLASSIFIED'
       };
 
+      const headmasterName = settings?.headmasterName ? String(settings.headmasterName).trim() : '';
+
       function getGrade(percentage: number): string {
         if (percentage === 0) return gradeLabels.fail || 'UNCLASSIFIED';
         if (percentage >= (thresholds.excellent || 90)) return gradeLabels.excellent || 'OUTSTANDING';
@@ -402,6 +404,45 @@ export function createReportCardPDF(
         if (percentage >= (thresholds.basic || 1)) return gradeLabels.basic || 'BASIC';
         return gradeLabels.fail || 'UNCLASSIFIED';
       }
+
+      function generateHeadmasterRemarkText(): string {
+        const studentName = reportCard.student?.name ? String(reportCard.student.name).trim() : '';
+        const namePart = studentName ? ` by ${studentName}` : '';
+        const signature = headmasterName ? `. ${headmasterName}` : '';
+        const rawAverage = reportCard.overallAverage;
+        let average = 0;
+        if (typeof rawAverage === 'number') {
+          average = rawAverage;
+        } else if (typeof rawAverage === 'string') {
+          const parsed = parseFloat(rawAverage);
+          average = isNaN(parsed) ? 0 : parsed;
+        } else if (rawAverage != null) {
+          const parsed = parseFloat(String(rawAverage));
+          average = isNaN(parsed) ? 0 : parsed;
+        }
+        if (average >= 80) {
+          return `Excellent performance${namePart}. Keep up the outstanding performance${signature}`;
+        }
+        if (average >= 70) {
+          return `Very good performance${namePart}. Maintain this strong level of effort${signature}`;
+        }
+        if (average >= 60) {
+          return `Good results${namePart}. Continued hard work will yield even better outcomes${signature}`;
+        }
+        if (average >= 50) {
+          return `Satisfactory performance${namePart}. Greater consistency and focus are encouraged${signature}`;
+        }
+        if (average >= 40) {
+          return `Performance is below expected level${namePart}. Increased effort and support at home and school are needed${signature}`;
+        }
+        return `The learner requires urgent and sustained support${namePart}. Close follow-up and serious commitment are essential for improvement${signature}`;
+      }
+
+      const storedHeadmasterRemarks =
+        reportCard.remarks?.headmasterRemarks && String(reportCard.remarks.headmasterRemarks).trim().length
+          ? String(reportCard.remarks.headmasterRemarks).trim()
+          : '';
+      const headmasterRemarks = storedHeadmasterRemarks || generateHeadmasterRemarkText();
 
       // Subjects Table - adjust position based on info section (reduced spacing for one page)
       let yPos = infoStartY + 100;
@@ -661,13 +702,15 @@ export function createReportCardPDF(
       // Remarks Section - Always display both sections (proper spacing to prevent overlap)
       yPos += 12; // Increased spacing between Summary and Remarks
       
-      // Calculate dynamic height for remarks section (Class Teacher only)
+      // Calculate dynamic height for remarks section (Class Teacher and Headmaster)
       const classTeacherRemarks = reportCard.remarks?.classTeacherRemarks || 'No remarks provided.';
       const maxRemarksTextHeight = 22;
       const teacherRemarksTextHeight = doc.heightOfString(classTeacherRemarks, { width: 480 });
       const teacherRemarksHeight = Math.min(maxRemarksTextHeight, Math.max(22, teacherRemarksTextHeight + 4));
+      const headRemarksTextHeight = doc.heightOfString(headmasterRemarks, { width: 480 });
+      const headRemarksHeight = Math.min(maxRemarksTextHeight, Math.max(22, headRemarksTextHeight + 4));
       const remarksTitleHeight = 24;
-      const remarksBoxHeight = remarksTitleHeight + 18 + teacherRemarksHeight + 15;
+      const remarksBoxHeight = remarksTitleHeight + 18 + teacherRemarksHeight + 12 + headRemarksHeight + 27;
       
       // Remarks title with styled box - full blue background
       const remarksBoxY = yPos;
@@ -705,7 +748,24 @@ export function createReportCardPDF(
       doc.text(teacherRemarksToShow, 65, yPos, { width: 480 });
       yPos += teacherRemarksHeight + 12; // Increased spacing after teacher remarks
 
-      // Removed Headmaster/Principal Remarks section
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#FFFFFF');
+      doc.text("Head's Remarks:", 60, yPos);
+      yPos += 15;
+
+      doc.rect(60, yPos - 3, 480, headRemarksHeight)
+        .fillColor('#FFFFFF')
+        .fill()
+        .strokeColor('#CCCCCC')
+        .lineWidth(1)
+        .stroke();
+
+      doc.fontSize(8).font('Helvetica').fillColor('#000000');
+      const headRemarksToShow = headRemarksTextHeight > maxRemarksTextHeight
+        ? headmasterRemarks.substring(0, Math.floor(headmasterRemarks.length * 0.8)) + '...'
+        : headmasterRemarks;
+      doc.text(headRemarksToShow, 65, yPos, { width: 480 });
+      yPos += headRemarksHeight + 12;
+
       yPos += 10;
 
       // Grade Scale Footer Section (fit within single page, no new pages)
