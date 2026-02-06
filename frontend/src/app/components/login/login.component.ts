@@ -121,14 +121,6 @@ export class LoginComponent implements OnInit {
           return;
         }
         
-        // Verify authentication is complete before navigation
-        // The tap operator in authService.login() already stored token and user
-        if (!this.authService.isAuthenticated()) {
-          console.error('Authentication not complete after login');
-          this.error = 'Authentication failed. Please try again.';
-          return;
-        }
-        
         // Navigate immediately - token and user are already stored
         // Check if teacher must change password
         if (user.role === 'teacher' && user.mustChangePassword) {
@@ -150,7 +142,8 @@ export class LoginComponent implements OnInit {
         else if (user.role === 'parent' && user.parent) {
           // Check if parent has linked students
           this.authService.getParentStudents().subscribe({
-            next: (students: any[]) => {
+            next: (res: any) => {
+              const students = Array.isArray(res) ? res : (res?.students || []);
               if (students.length === 0) {
                 // Navigate to student linking page
                 this.router.navigate(['/parent/link-students']).catch(err => {

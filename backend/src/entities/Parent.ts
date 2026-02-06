@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, OneToMany } from 'typeorm';
 import { User } from './User';
 import { Student } from './Student';
+import { ParentStudent } from './ParentStudent';
 
 @Entity('parents')
 export class Parent {
@@ -30,5 +31,8 @@ export class Parent {
 
   @OneToMany(() => Student, student => student.parent)
   students: Student[];
+
+  @OneToMany(() => ParentStudent, parentStudent => parentStudent.parent)
+  parentStudents: ParentStudent[];
 }
 

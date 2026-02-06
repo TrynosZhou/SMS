@@ -1,0 +1,301 @@
+<div class="container">
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="icon">👨‍👩‍👧‍👦</span>
+        Parent Management
+      </h1>
+      <p class="subtitle">
+        View registered parents and manage their linked students and guardianship relationships.
+      </p>
+    </div>
+  </div>
+
+  <div class="alert alert-success" *ngIf="success">
+    <span class="alert-icon">✓</span>
+    <span>{{ success }}</span>
+  </div>
+  <div class="alert alert-error" *ngIf="error">
+    <span class="alert-icon">✕</span>
+    <span>{{ error }}</span>
+  </div>
+
+  <div class="layout">
+    <div class="panel panel-left">
+      <div class="panel-header">
+        <h2>Registered Parents</h2>
+        <span class="badge" *ngIf="filteredParents?.length >= 0">
+          {{ filteredParents.length }} found
+        </span>
+      </div>
+
+      <div class="search-bar">
+        <input
+          type="text"
+          [(ngModel)]="searchQuery"
+          (ngModelChange)="filterParents()"
+          placeholder="Search by name, email, or phone..." />
+        <button class="btn btn-secondary" (click)="clearSearch()" *ngIf="searchQuery">
+          ✕
+        </button>
+      </div>
+
+      <div class="list-container" *ngIf="!loading; else loadingParents">
+        <div class="empty-state" *ngIf="filteredParents.length === 0">
+          <p>No parents found.</p>
+          <p class="hint">
+            Parents can be created through self-registration or via Manage Accounts.
+          </p>
+        </div>
+
+        <div
+          class="parent-item"
+          *ngFor="let parent of filteredParents"
+          [class.selected]="selectedParent?.id === parent.id"
+          (click)="selectParent(parent)">
+          <div class="parent-main">
+            <div class="avatar">
+              {{ (parent.firstName || parent.lastName || 'P').charAt(0) | uppercase }}
+            </div>
+            <div class="parent-info">
+              <div class="parent-name">
+                {{ parent.firstName || 'Unknown' }} {{ parent.lastName || '' }}
+              </div>
+              <div class="parent-meta">
+                <span *ngIf="parent.email">📧 {{ parent.email }}</span>
+                <span *ngIf="parent.phoneNumber">📞 {{ parent.phoneNumber }}</span>
+                <span *ngIf="parent.address">📍 {{ parent.address }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="parent-stats">
+            <span class="badge small">
+              {{ (parent.parentStudents || []).length }} student(s)
+            </span>
+          </div>
+        </div>
+      </div>
+      <ng-template #loadingParents>
+        <div class="loading-inline">Loading parents...</div>
+      </ng-template>
+    </div>
+
+    <div class="panel panel-right" *ngIf="selectedParent; else noParentSelected">
+      <div class="panel-header">
+        <div>
+          <h2>Parent Details</h2>
+          <p>{{ selectedParent.firstName || 'Unknown' }} {{ selectedParent.lastName || '' }}</p>
+        </div>
+        <div class="header-actions">
+          <button
+            class="btn btn-secondary"
+            (click)="startEditParent()"
+            *ngIf="!editMode"
+            [disabled]="savingParent || deletingParent">
+            Edit
+          </button>
+          <button
+            class="btn btn-secondary"
+            (click)="cancelEditParent()"
+            *ngIf="editMode"
+            [disabled]="savingParent || deletingParent">
+            Cancel Edit
+          </button>
+          <button
+            class="btn btn-secondary"
+            (click)="deleteSelectedParent()"
+            [disabled]="deletingParent">
+            Delete
+          </button>
+          <button class="btn btn-secondary" (click)="clearSelectedParent()">
+            Close
+          </button>
+        </div>
+      </div>
+
+      <div class="details-grid">
+        <div>
+          <label>First Name</label>
+          <div class="value" *ngIf="!editMode">
+            {{ selectedParent.firstName || '—' }}
+          </div>
+          <input
+            *ngIf="editMode"
+            type="text"
+            [(ngModel)]="editParent.firstName"
+            class="form-input" />
+        </div>
+        <div>
+          <label>Last Name</label>
+          <div class="value" *ngIf="!editMode">
+            {{ selectedParent.lastName || '—' }}
+          </div>
+          <input
+            *ngIf="editMode"
+            type="text"
+            [(ngModel)]="editParent.lastName"
+            class="form-input" />
+        </div>
+        <div>
+          <label>Email</label>
+          <div class="value" *ngIf="!editMode">
+            {{ selectedParent.email || '—' }}
+          </div>
+          <input
+            *ngIf="editMode"
+            type="email"
+            [(ngModel)]="editParent.email"
+            class="form-input" />
+          <div class="field-error" *ngIf="emailError">
+            {{ emailError }}
+          </div>
+        </div>
+        <div>
+          <label>Phone</label>
+          <div class="value" *ngIf="!editMode">
+            {{ selectedParent.phoneNumber || '—' }}
+          </div>
+          <input
+            *ngIf="editMode"
+            type="text"
+            [(ngModel)]="editParent.phoneNumber"
+            class="form-input" />
+          <div class="field-error" *ngIf="phoneNumberError">
+            {{ phoneNumberError }}
+          </div>
+        </div>
+        <div class="full-width">
+          <label>Address</label>
+          <div class="value" *ngIf="!editMode">
+            {{ selectedParent.address || '—' }}
+          </div>
+          <textarea
+            *ngIf="editMode"
+            [(ngModel)]="editParent.address"
+            rows="2"
+            class="form-input"></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions" *ngIf="editMode">
+        <button
+          class="btn btn-primary"
+          (click)="saveParentChanges()"
+          [disabled]="savingParent">
+          <span *ngIf="!savingParent">Save Changes</span>
+          <span *ngIf="savingParent">Saving...</span>
+        </button>
+        <button
+          class="btn btn-secondary"
+          (click)="cancelEditParent()"
+          [disabled]="savingParent">
+          Cancel
+        </button>
+      </div>
+
+      <div class="section">
+        <h3>Linked Students</h3>
+        <div class="linked-students" *ngIf="(selectedParent.parentStudents || []).length > 0; else noLinkedStudents">
+          <div
+            class="linked-student"
+            *ngFor="let link of selectedParent.parentStudents">
+            <div class="student-main">
+              <div class="avatar student-avatar">
+                {{ (link.student?.firstName || 'S').charAt(0) | uppercase }}
+              </div>
+              <div class="student-info">
+                <div class="student-name">
+                  {{ link.student?.firstName }} {{ link.student?.lastName }}
+                </div>
+                <div class="student-meta">
+                  <span *ngIf="link.student?.studentNumber">🆔 {{ link.student.studentNumber }}</span>
+                  <span *ngIf="link.student?.classEntity?.name">🏫 {{ link.student.classEntity.name }}</span>
+                  <span>👤 {{ link.relationshipType || 'guardian' }}</span>
+                </div>
+              </div>
+            </div>
+            <button
+              class="btn btn-link btn-danger"
+              (click)="unlinkStudent(link)"
+              [disabled]="unlinking">
+              Unlink
+            </button>
+          </div>
+        </div>
+        <ng-template #noLinkedStudents>
+          <div class="empty-state small">
+            <p>No students linked to this parent yet.</p>
+          </div>
+        </ng-template>
+      </div>
+
+      <div class="section">
+        <h3>Link New Student</h3>
+        <div class="link-form">
+          <div class="form-row">
+            <input
+              type="text"
+              [(ngModel)]="searchQuery"
+              placeholder="Enter Student ID or name to search..." />
+            <button
+              class="btn btn-secondary"
+              (click)="searchStudents()"
+              [disabled]="searchingStudents">
+              <span *ngIf="!searchingStudents">Search</span>
+              <span *ngIf="searchingStudents">Searching...</span>
+            </button>
+          </div>
+          <div class="form-row">
+            <label>Relationship Type</label>
+            <select [(ngModel)]="relationshipType">
+              <option value="father">Father</option>
+              <option value="mother">Mother</option>
+              <option value="guardian">Guardian</option>
+              <option value="sponsor">Sponsor</option>
+            </select>
+          </div>
+
+          <div class="search-results" *ngIf="studentsSearchResults.length > 0">
+            <div
+              class="search-result-item"
+              *ngFor="let student of studentsSearchResults"
+              [class.selected]="selectedStudentId === student.id"
+              (click)="selectStudent(student)">
+              <div class="student-main">
+                <div class="avatar student-avatar">
+                  {{ (student.firstName || 'S').charAt(0) | uppercase }}
+                </div>
+                <div class="student-info">
+                  <div class="student-name">
+                    {{ student.firstName }} {{ student.lastName }}
+                  </div>
+                  <div class="student-meta">
+                    <span *ngIf="student.studentNumber">🆔 {{ student.studentNumber }}</span>
+                    <span *ngIf="student.classEntity?.name">🏫 {{ student.classEntity.name }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button
+              class="btn btn-primary"
+              (click)="linkSelectedStudent()
+"
+              [disabled]="linking">
+              <span *ngIf="!linking">Link Selected Student</span>
+              <span *ngIf="linking">Linking...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #noParentSelected>
+      <div class="panel panel-right empty-panel">
+        <p>Select a parent from the list to view details and manage their students.</p>
+      </div>
+    </ng-template>
+  </div>
+</div>

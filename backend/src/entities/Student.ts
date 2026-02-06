@@ -5,6 +5,7 @@ import { Parent } from './Parent';
 import { Marks } from './Marks';
 import { Invoice } from './Invoice';
 import { StudentTransfer } from './StudentTransfer';
+import { ParentStudent } from './ParentStudent';
 
 @Entity('students')
 @Index(['studentNumber'], { unique: true })
@@ -85,5 +86,8 @@ export class Student {
 
   @OneToMany(() => StudentTransfer, transfer => transfer.student)
   transfers: StudentTransfer[];
+
+  @OneToMany(() => ParentStudent, parentStudent => parentStudent.student)
+  parentStudents: ParentStudent[];
 }
 

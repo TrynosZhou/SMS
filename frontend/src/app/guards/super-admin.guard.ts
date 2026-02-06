@@ -10,11 +10,11 @@ export class SuperAdminGuard implements CanActivate {
 
   canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
     if (!this.authService.isAuthenticated()) {
-      this.router.navigate(['/login']);
+      this.router.navigate(['/sign-in']);
       return false;
     }
     if (!this.authService.hasRole('superadmin')) {
-      this.router.navigate(['/invoices']);
+      this.router.navigate(['/dashboard']);
       return false;
     }
     return true;

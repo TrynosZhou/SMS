@@ -13,6 +13,8 @@ export class OutstandingBalanceComponent implements OnInit {
   outstandingBalances: any[] = [];
   filteredBalances: any[] = [];
   loading = false;
+  loadingPdf = false;
+  downloadingPdf = false;
   error = '';
   searchQuery = '';
   currencySymbol = 'KES';
@@ -104,6 +106,50 @@ export class OutstandingBalanceComponent implements OnInit {
 
   getTotalOutstanding(): number {
     return this._cachedTotalOutstanding;
+  }
+
+  previewPdf(): void {
+    this.loadingPdf = true;
+    this.error = '';
+    this.financeService.getOutstandingBalancePDF().subscribe({
+      next: (blob: Blob) => {
+        this.loadingPdf = false;
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank', 'noopener');
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      },
+      error: (err: any) => {
+        this.loadingPdf = false;
+        this.error = err?.error?.message || err?.message || 'Failed to load PDF.';
+      }
+    });
+  }
+
+  downloadPdf(): void {
+    this.downloadingPdf = true;
+    this.error = '';
+    this.financeService.getOutstandingBalancePDF().subscribe({
+      next: (blob: Blob) => {
+        this.downloadingPdf = false;
+        if (!blob || blob.size === 0) {
+          this.error = 'Received empty PDF file';
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const dateStr = new Date().toISOString().split('T')[0];
+        link.download = `Outstanding_Balances_${dateStr}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      },
+      error: (err: any) => {
+        this.downloadingPdf = false;
+        this.error = err?.error?.message || err?.message || 'Failed to download PDF.';
+      }
+    });
   }
 
   formatCurrency(amount: number): string {

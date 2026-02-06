@@ -201,7 +201,7 @@
         <button class="btn-action btn-edit" (click)="editTeacher(teacher.id)" title="Edit Teacher">
           ✏️ Edit
         </button>
-        <button class="btn-action btn-idcard" (click)="downloadIdCard(teacher)" title="Download ID Card">
+        <button class="btn-action btn-idcard" (click)="previewIdCard(teacher)" title="Preview ID Card">
           🪪 ID Card
         </button>
         <button class="btn-action btn-account" (click)="createTeacherAccount(teacher)" *ngIf="!teacher.userId" title="Create Login Account" [disabled]="loading">
@@ -253,7 +253,7 @@
         <div class="action-buttons">
           <button class="btn-icon-small" (click)="viewTeacherDetails(teacher)" title="View Details">👁️</button>
           <button class="btn-icon-small" (click)="editTeacher(teacher.id)" title="Edit Teacher">✏️</button>
-          <button class="btn-icon-small" (click)="downloadIdCard(teacher)" title="Download ID Card">🪪</button>
+          <button class="btn-icon-small" (click)="previewIdCard(teacher)" title="Preview ID Card">🪪</button>
           <button class="btn-icon-small" (click)="createTeacherAccount(teacher)" *ngIf="!teacher.userId" title="Create Account" [disabled]="loading">👤</button>
           <button class="btn-icon-small btn-delete" (click)="deleteTeacher(teacher.id, teacher.firstName + ' ' + teacher.lastName, teacher.teacherId)" title="Delete" [disabled]="loading">🗑️</button>
         </div>
@@ -326,7 +326,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="closeTeacherDetails()">Close</button>
-        <button class="btn btn-secondary" (click)="downloadIdCard(selectedTeacher)" title="Download ID Card">🪪 ID Card</button>
+        <button class="btn btn-secondary" (click)="previewIdCard(selectedTeacher)" title="Preview ID Card">🪪 ID Card</button>
         <button class="btn btn-secondary" (click)="createTeacherAccount(selectedTeacher)" *ngIf="!selectedTeacher.userId" [disabled]="loading">👤 Create Account</button>
         <button class="btn btn-primary" (click)="editTeacher(selectedTeacher.id)">✏️ Edit Teacher</button>
       </div>

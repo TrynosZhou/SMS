@@ -36,6 +36,7 @@ import { ParentDashboardComponent } from './components/parent/parent-dashboard/p
 import { LinkStudentsComponent } from './components/parent/link-students/link-students.component';
 import { ManageAccountComponent } from './components/teachers/manage-account/manage-account.component';
 import { ManageAccountsComponent } from './components/admin/manage-accounts/manage-accounts.component';
+import { ParentManagementComponent } from './components/admin/parent-management/parent-management.component';
 import { ClassPromotionComponent } from './components/admin/class-promotion/class-promotion.component';
 import { BulkMessageComponent } from './components/dashboard/bulk-message/bulk-message.component';
 import { ParentInboxComponent } from './components/parent/parent-inbox/parent-inbox.component';
@@ -88,6 +89,7 @@ import { UserManualComponent } from './components/user-manual/user-manual.compon
     LinkStudentsComponent,
     ManageAccountComponent,
     ManageAccountsComponent,
+    ParentManagementComponent,
     ClassPromotionComponent,
     BulkMessageComponent,
     ParentInboxComponent,

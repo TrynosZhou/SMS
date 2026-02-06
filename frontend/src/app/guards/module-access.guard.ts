@@ -24,7 +24,6 @@ export class ModuleAccessGuard implements CanActivate {
     const hasAccess = this.moduleAccessService.canAccessModule(moduleName);
     
     if (!hasAccess) {
-      // Redirect to appropriate dashboard based on role
       const user = this.authService.getCurrentUser();
       if (user) {
         const role = user.role.toLowerCase();
@@ -37,13 +36,13 @@ export class ModuleAccessGuard implements CanActivate {
             break;
           case 'admin':
           case 'superadmin':
-            this.router.navigate(['/admin/dashboard']);
+            this.router.navigate(['/dashboard']);
             break;
           default:
-            this.router.navigate(['/']);
+            this.router.navigate(['/dashboard']);
         }
       } else {
-        this.router.navigate(['/login']);
+        this.router.navigate(['/sign-in']);
       }
       return false;
     }

@@ -294,6 +294,11 @@
             <span class="action-text">Manage Accounts</span>
             <span class="action-arrow">→</span>
           </a>
+          <a routerLink="/admin/parents" class="action-btn modern-action-btn secondary-action" *ngIf="isAdmin()">
+            <span class="action-icon">👨‍👩‍👧‍👦</span>
+            <span class="action-text">Parent Management</span>
+            <span class="action-arrow">→</span>
+          </a>
           <a routerLink="/admin/class-promotion" class="action-btn modern-action-btn warning-action" *ngIf="isAdmin()">
             <span class="action-icon">⬆️</span>
             <span class="action-text">Class Promotion</span>

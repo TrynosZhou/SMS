@@ -10,6 +10,7 @@ import { Exam } from '../entities/Exam';
 import { Marks } from '../entities/Marks';
 import { Invoice } from '../entities/Invoice';
 import { Parent } from '../entities/Parent';
+import { ParentStudent } from '../entities/ParentStudent';
 import { Settings } from '../entities/Settings';
 import { ReportCardRemarks } from '../entities/ReportCardRemarks';
 import { Message } from '../entities/Message';
@@ -49,7 +50,7 @@ console.log('[DB Config] Module type check - typeof module:', typeof module);
 
 console.log('[DB Config] Preparing entity list...');
 // Try using entity classes first, fallback to paths if needed
-const entities = [User, Student, Teacher, Class, Subject, Exam, Marks, Invoice, Parent, Settings, ReportCardRemarks, Message, UniformItem, InvoiceUniformItem, Attendance, PromotionRule, RecordBook, StudentTransfer, Timetable, TimetableEntry, TimetableConfig, TimetableVersion, TimetableChangeLog, TeacherClass];
+const entities = [User, Student, Teacher, Class, Subject, Exam, Marks, Invoice, Parent, ParentStudent, Settings, ReportCardRemarks, Message, UniformItem, InvoiceUniformItem, Attendance, PromotionRule, RecordBook, StudentTransfer, Timetable, TimetableEntry, TimetableConfig, TimetableVersion, TimetableChangeLog, TeacherClass];
 console.log('[DB Config] Entity count:', entities.length);
 console.log('[DB Config] Entity names:', entities.map(e => e?.name || 'unknown').join(', '));
 console.log('[DB Config] Checking each entity...');

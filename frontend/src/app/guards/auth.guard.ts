@@ -10,7 +10,7 @@ export class AuthGuard implements CanActivate {
 
   canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
     if (!this.authService.isAuthenticated()) {
-      this.router.navigate(['/login']);
+      this.router.navigate(['/sign-in']);
       return false;
     }
 
@@ -19,7 +19,7 @@ export class AuthGuard implements CanActivate {
       const allowedPrefixes = ['/dashboard', '/students', '/invoices'];
       const isAllowed = allowedPrefixes.some(prefix => state.url.startsWith(prefix));
       if (!isAllowed) {
-        this.router.navigate(['/invoices']);
+        this.router.navigate(['/dashboard']);
         return false;
       }
     }

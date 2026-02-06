@@ -117,6 +117,24 @@
       <div class="table-summary modern-summary">
         <span class="summary-label">Total Outstanding:</span>
         <span class="summary-value">{{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</span>
+        <button 
+          class="btn btn-modern btn-export"
+          (click)="previewPdf()"
+          [disabled]="loadingPdf || filteredBalances.length === 0"
+          title="Preview Outstanding Balances as PDF">
+          <span class="btn-icon">📄</span>
+          <span *ngIf="!loadingPdf">Preview PDF</span>
+          <span *ngIf="loadingPdf">Loading...</span>
+        </button>
+        <button 
+          class="btn btn-modern btn-export"
+          (click)="downloadPdf()"
+          [disabled]="downloadingPdf || filteredBalances.length === 0"
+          title="Download Outstanding Balances as PDF">
+          <span class="btn-icon">⬇️</span>
+          <span *ngIf="!downloadingPdf">Download PDF</span>
+          <span *ngIf="downloadingPdf">Downloading...</span>
+        </button>
       </div>
     </div>
 

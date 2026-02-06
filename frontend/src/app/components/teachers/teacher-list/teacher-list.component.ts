@@ -205,6 +205,22 @@ export class TeacherListComponent implements OnInit {
     });
   }
 
+  previewIdCard(teacher: any) {
+    if (!teacher?.id) return;
+    this.error = '';
+    this.teacherService.getTeacherIdCardPdf(teacher.id).subscribe({
+      next: (blob: Blob) => {
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank', 'noopener,noreferrer');
+        setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+      },
+      error: (err: any) => {
+        this.error = err.error?.message || 'Failed to generate ID card';
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
   getTotalSubjects(): number {
     const subjectSet = new Set();
     this.teachers.forEach(teacher => {

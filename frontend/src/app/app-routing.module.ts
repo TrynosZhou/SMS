@@ -33,6 +33,7 @@ import { LinkStudentsComponent } from './components/parent/link-students/link-st
 import { ParentInboxComponent } from './components/parent/parent-inbox/parent-inbox.component';
 import { ManageAccountComponent } from './components/teachers/manage-account/manage-account.component';
 import { ManageAccountsComponent } from './components/admin/manage-accounts/manage-accounts.component';
+import { ParentManagementComponent } from './components/admin/parent-management/parent-management.component';
 import { ClassPromotionComponent } from './components/admin/class-promotion/class-promotion.component';
 import { MarkAttendanceComponent } from './components/attendance/mark-attendance/mark-attendance.component';
 import { AttendanceReportsComponent } from './components/attendance/attendance-reports/attendance-reports.component';
@@ -66,6 +67,7 @@ const routes: Routes = [
   { path: 'teacher/my-classes', component: MyClassesComponent, canActivate: [AuthGuard] },
   { path: 'admin/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'admin/manage-accounts', component: ManageAccountsComponent, canActivate: [AuthGuard] },
+  { path: 'admin/parents', component: ParentManagementComponent, canActivate: [AuthGuard] },
   { path: 'admin/class-promotion', component: ClassPromotionComponent, canActivate: [AuthGuard] },
   { path: 'admin/teacher-record-book', component: TeacherRecordBookComponent, canActivate: [AuthGuard] },
   { path: 'students', component: StudentListComponent, canActivate: [AuthGuard] },

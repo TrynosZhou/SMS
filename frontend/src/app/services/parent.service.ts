@@ -33,5 +33,29 @@ export class ParentService {
   unlinkStudent(studentId: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/parent/unlink-student/${studentId}`);
   }
+
+  getAllParentsAdmin(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/parent/admin/parents`);
+  }
+
+  adminLinkStudentToParent(parentId: string, studentId: string, relationshipType: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/parent/admin/link-student`, {
+      parentId,
+      studentId,
+      relationshipType
+    });
+  }
+
+  adminUnlinkStudentFromParent(linkId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/parent/admin/unlink-student/${linkId}`);
+  }
+
+  updateParentAdmin(parentId: string, data: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/parent/admin/parents/${parentId}`, data);
+  }
+
+  deleteParentAdmin(parentId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/parent/admin/parents/${parentId}`);
+  }
 }
 

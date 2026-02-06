@@ -51,6 +51,9 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
     // Get recipients based on selection
     let recipientList: any[] = [];
     let recipientCount = 0;
+    let studentCount = 0;
+    let parentCount = 0;
+    let teacherCount = 0;
 
     if (recipients === 'all' || recipients === 'students') {
       const students = await studentRepository.find({
@@ -64,6 +67,7 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
             name: `${student.firstName} ${student.lastName}`,
             type: 'student'
           });
+          studentCount++;
         }
       });
     }
@@ -79,6 +83,7 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
             name: `${parent.firstName} ${parent.lastName}`,
             type: 'parent'
           });
+          parentCount++;
         }
       });
     }
@@ -95,6 +100,7 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
             name: `${teacher.firstName} ${teacher.lastName}`,
             type: 'teacher'
           });
+          teacherCount++;
         }
       });
     }
@@ -173,13 +179,23 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
     console.log(`[sendBulkMessage] Subject: ${subject}`);
     console.log(`[sendBulkMessage] Recipients type: ${recipients}`);
     console.log(`[sendBulkMessage] Total recipients: ${recipientCount}`);
+    console.log(`[sendBulkMessage] Students: ${studentCount}, Parents: ${parentCount}, Teachers: ${teacherCount}`);
     console.log(`[sendBulkMessage] Messages saved to database: ${savedMessageCount}`);
     if (failedMessageCount > 0) {
       console.log(`[sendBulkMessage] Failed saves: ${failedMessageCount}`);
     }
 
     // Build success message with details
-    let successMessage = `Bulk message sent successfully to ${recipientCount} recipient(s)`;
+    let successMessage: string;
+    if (recipients === 'students') {
+      successMessage = `Bulk message sent successfully to ${studentCount} student${studentCount === 1 ? '' : 's'}`;
+    } else if (recipients === 'parents') {
+      successMessage = `Bulk message sent successfully to ${parentCount} parent${parentCount === 1 ? '' : 's'}`;
+    } else if (recipients === 'teachers') {
+      successMessage = `Bulk message sent successfully to ${teacherCount} teacher${teacherCount === 1 ? '' : 's'}`;
+    } else {
+      successMessage = `Bulk message sent successfully to ${recipientCount} recipient${recipientCount === 1 ? '' : 's'} (${studentCount} student${studentCount === 1 ? '' : 's'}, ${parentCount} parent${parentCount === 1 ? '' : 's'}, ${teacherCount} teacher${teacherCount === 1 ? '' : 's'})`;
+    }
     if (recipients === 'all' || recipients === 'parents') {
       if (savedMessageCount > 0) {
         successMessage += `. ${savedMessageCount} message(s) saved to parent inboxes.`;
@@ -193,6 +209,9 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
       success: true,
       message: successMessage,
       recipientCount,
+      studentCount,
+      parentCount,
+      teacherCount,
       savedMessageCount: savedMessageCount > 0 ? savedMessageCount : undefined,
       failedMessageCount: failedMessageCount > 0 ? failedMessageCount : undefined,
       recipients: recipientList.length > 0 ? recipientList.slice(0, 10) : [], // Return first 10 as sample

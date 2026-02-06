@@ -6,20 +6,77 @@ import {
   linkStudent,
   linkStudentByIdAndDob,
   unlinkStudent,
-  searchStudents
+  searchStudents,
+  adminListParents,
+  adminLinkStudentToParent,
+  adminUnlinkStudentFromParent,
+  adminUpdateParent,
+  adminDeleteParent
 } from '../controllers/parent.controller';
 
 const router = Router();
 
-// All routes require authentication and parent role (or demo user for testing)
 router.use(authenticate);
-router.use(authorize(UserRole.PARENT, UserRole.DEMO_USER, UserRole.ADMIN, UserRole.SUPERADMIN));
 
-router.get('/students', getParentStudents);
-router.post('/link-student', linkStudent);
-router.post('/link-student-by-id-dob', linkStudentByIdAndDob);
-router.delete('/unlink-student/:studentId', unlinkStudent);
-router.get('/search-students', searchStudents);
+router.get(
+  '/students',
+  authorize(UserRole.PARENT, UserRole.DEMO_USER, UserRole.ADMIN, UserRole.SUPERADMIN),
+  getParentStudents
+);
+
+router.post(
+  '/link-student',
+  authorize(UserRole.PARENT, UserRole.DEMO_USER, UserRole.ADMIN, UserRole.SUPERADMIN),
+  linkStudent
+);
+
+router.post(
+  '/link-student-by-id-dob',
+  authorize(UserRole.PARENT, UserRole.DEMO_USER, UserRole.ADMIN, UserRole.SUPERADMIN),
+  linkStudentByIdAndDob
+);
+
+router.delete(
+  '/unlink-student/:studentId',
+  authorize(UserRole.PARENT, UserRole.DEMO_USER, UserRole.ADMIN, UserRole.SUPERADMIN),
+  unlinkStudent
+);
+
+router.get(
+  '/search-students',
+  authorize(UserRole.PARENT, UserRole.DEMO_USER, UserRole.ADMIN, UserRole.SUPERADMIN),
+  searchStudents
+);
+
+router.get(
+  '/admin/parents',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  adminListParents
+);
+
+router.put(
+  '/admin/parents/:parentId',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  adminUpdateParent
+);
+
+router.delete(
+  '/admin/parents/:parentId',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  adminDeleteParent
+);
+
+router.post(
+  '/admin/link-student',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  adminLinkStudentToParent
+);
+
+router.delete(
+  '/admin/unlink-student/:linkId',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  adminUnlinkStudentFromParent
+);
 
 export default router;
 

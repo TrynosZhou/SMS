@@ -10,6 +10,7 @@ import { Teacher } from '../entities/Teacher';
 import { Settings } from '../entities/Settings';
 import { ReportCardRemarks } from '../entities/ReportCardRemarks';
 import { Parent } from '../entities/Parent';
+import { ParentStudent } from '../entities/ParentStudent';
 import { Invoice } from '../entities/Invoice';
 import { Attendance, AttendanceStatus } from '../entities/Attendance';
 import { AuthRequest } from '../middleware/auth';
@@ -1363,28 +1364,30 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     // For parents, check balance before allowing access
     if (isParent && studentId) {
       const parentRepository = AppDataSource.getRepository(Parent);
+      const parentStudentRepository = AppDataSource.getRepository(ParentStudent);
       const invoiceRepository = AppDataSource.getRepository(Invoice);
       const settingsRepository = AppDataSource.getRepository(Settings);
       const studentRepository = AppDataSource.getRepository(Student);
 
-      // Get parent
       const parent = await parentRepository.findOne({
-        where: { userId: user.id },
-        relations: ['students']
+        where: { userId: user.id }
       });
 
       if (!parent) {
         return res.status(404).json({ message: 'Parent profile not found' });
       }
 
-      // Verify student is linked to this parent
-      const student = await studentRepository.findOne({
-        where: { id: studentId as string, parentId: parent.id }
+      const link = await parentStudentRepository.findOne({
+        where: { parentId: parent.id, studentId: studentId as string }
       });
 
-      if (!student) {
+      if (!link) {
         return res.status(403).json({ message: 'Student not found or not linked to your account' });
       }
+
+      const student = await studentRepository.findOne({
+        where: { id: studentId as string }
+      });
 
       // Get settings for next term fees
       const settingsList = await settingsRepository.find({
@@ -2286,11 +2289,11 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
     // For parents, check balance before allowing PDF generation
     if (isParent && studentId) {
       const parentRepository = AppDataSource.getRepository(Parent);
+      const parentStudentRepository = AppDataSource.getRepository(ParentStudent);
       const invoiceRepository = AppDataSource.getRepository(Invoice);
       const settingsRepository = AppDataSource.getRepository(Settings);
       const studentRepository = AppDataSource.getRepository(Student);
 
-      // Get parent
       const parent = await parentRepository.findOne({
         where: { userId: user.id }
       });
@@ -2299,14 +2302,17 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         return res.status(404).json({ message: 'Parent profile not found' });
       }
 
-      // Verify student is linked to this parent
-      const student = await studentRepository.findOne({
-        where: { id: studentId as string, parentId: parent.id }
+      const link = await parentStudentRepository.findOne({
+        where: { parentId: parent.id, studentId: studentId as string }
       });
 
-      if (!student) {
+      if (!link) {
         return res.status(403).json({ message: 'Student not found or not linked to your account' });
       }
+
+      const student = await studentRepository.findOne({
+        where: { id: studentId as string }
+      });
 
       // Get settings for next term fees
       const settingsList = await settingsRepository.find({
