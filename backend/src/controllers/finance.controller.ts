@@ -351,7 +351,34 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
 
     const [invoices, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
 
-    res.json(buildPaginationResponse(invoices, total, page, limit));
+    // Compute total outstanding balance across all matching invoices (ignoring pagination)
+    const sumQuery = invoiceRepository
+      .createQueryBuilder('invoice')
+      .select('COALESCE(SUM(invoice.balance), 0)', 'totalBalance');
+
+    if (studentId) {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(studentId)) {
+        sumQuery.andWhere('invoice.studentId = :studentId', { studentId });
+      } else {
+        sumQuery.andWhere('invoice.studentId = :studentId', { studentId });
+      }
+    }
+    if (status) {
+      sumQuery.andWhere('invoice.status = :status', { status });
+    }
+    if (invoiceId) {
+      sumQuery.andWhere('invoice.id = :invoiceId', { invoiceId });
+    }
+
+    const sumRaw = await sumQuery.getRawOne();
+    const totalBalance = Number(sumRaw?.totalBalance ?? 0);
+
+    res.json(
+      buildPaginationResponse(invoices, total, page, limit, {
+        totalBalance
+      })
+    );
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });
   }

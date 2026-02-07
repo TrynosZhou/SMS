@@ -99,16 +99,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loadStatistics() {
     this.loadingStats = true;
     
-    // Load students
-    this.studentService.getStudents().subscribe({
-      next: (students: any[]) => {
-        const studentsArray = Array.isArray(students) ? students : [];
-        this.stats.totalStudents = studentsArray.length;
-        this.stats.dayScholars = studentsArray.filter(s => s.studentType === 'Day Scholar').length;
-        this.stats.boarders = studentsArray.filter(s => s.studentType === 'Boarder').length;
-        this.stats.staffChildren = studentsArray.filter(s => s.isStaffChild).length;
+    this.studentService.getStudentsPaginated({ page: 1, limit: 5 }).subscribe({
+      next: (response: any) => {
+        const studentsArray = Array.isArray(response?.data) ? response.data : [];
+        const statsObj = response?.stats || {};
+        this.stats.totalStudents = Number(response?.total || studentsArray.length || 0);
+        this.stats.dayScholars = Number(statsObj?.totalDayScholars || 0);
+        this.stats.boarders = Number(statsObj?.totalBoarders || 0);
+        this.stats.staffChildren = Number(statsObj?.staffChildren || 0);
         this.recentStudents = studentsArray
-          .sort((a, b) => new Date(b.enrollmentDate || b.createdAt || 0).getTime() - new Date(a.enrollmentDate || a.createdAt || 0).getTime())
+          .sort((a: any, b: any) => new Date(b.enrollmentDate || b.createdAt || 0).getTime() - new Date(a.enrollmentDate || a.createdAt || 0).getTime())
           .slice(0, 5);
         this.checkLoadingComplete();
       },
@@ -123,11 +123,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
     });
     
-    // Load teachers
-    this.teacherService.getTeachers().subscribe({
-      next: (teachers: any[]) => {
-        const teachersArray = Array.isArray(teachers) ? teachers : [];
-        this.stats.totalTeachers = teachersArray.length;
+    this.teacherService.getTeachersPaginated(1, 1).subscribe({
+      next: (response: any) => {
+        this.stats.totalTeachers = Number(response?.total || 0);
         this.checkLoadingComplete();
       },
       error: (err) => {
@@ -165,15 +163,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
     });
     
-    // Load invoices (for admin/accountant)
     if (this.isAdmin() || this.isAccountant()) {
-      this.financeService.getInvoices().subscribe({
-        next: (invoices: any[]) => {
-          const invoicesArray = Array.isArray(invoices) ? invoices : [];
-          this.stats.totalInvoices = invoicesArray.length;
-          this.stats.totalBalance = invoicesArray.reduce((sum, inv) => sum + (parseFloat(inv.balance) || 0), 0);
+      this.financeService.getInvoicesPaginated({ page: 1, limit: 5 }).subscribe({
+        next: (response: any) => {
+          const invoicesArray = Array.isArray(response?.data) ? response.data : [];
+          this.stats.totalInvoices = Number(response?.total || invoicesArray.length || 0);
+          this.stats.totalBalance = Number(response?.totalBalance || 0);
           this.recentInvoices = invoicesArray
-            .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+            .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
             .slice(0, 5);
           this.checkLoadingComplete();
         },

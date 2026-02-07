@@ -460,6 +460,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       .leftJoin('student.classEntity', 'statsClass')
       .select("SUM(CASE WHEN student.studentType = 'Boarder' THEN 1 ELSE 0 END)", 'boarders')
       .addSelect("SUM(CASE WHEN student.studentType = 'Day Scholar' THEN 1 ELSE 0 END)", 'dayScholars')
+      .addSelect("SUM(CASE WHEN student.isStaffChild = true THEN 1 ELSE 0 END)", 'staffChildren')
       .addSelect('COUNT(DISTINCT COALESCE(student.classId, statsClass.id))', 'classCount')
       .where('(student.isActive IS NULL OR student.isActive = :active)', { active: true });
 
@@ -474,6 +475,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     const stats = {
       totalBoarders: Number(statsRaw?.boarders ?? 0),
       totalDayScholars: Number(statsRaw?.dayScholars ?? 0),
+      staffChildren: Number(statsRaw?.staffChildren ?? 0),
       classCount: Number(statsRaw?.classCount ?? 0)
     };
 

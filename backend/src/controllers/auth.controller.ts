@@ -585,7 +585,7 @@ export const login = async (req: Request, res: Response) => {
     if (!secret) {
       return res.status(500).json({ message: 'Server configuration error' });
     }
-    const expiresIn = process.env.JWT_EXPIRES_IN || '30m';
+    const expiresIn = process.env.JWT_EXPIRES_IN || '40m';
     // @ts-ignore - expiresIn accepts string values like '30m' which is valid
     const token = jwt.sign(
       { userId: user.id, role: user.role },
