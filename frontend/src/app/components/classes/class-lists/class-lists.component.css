@@ -247,6 +247,38 @@
   color: #667eea;
 }
 
+.student-id-link {
+  color: #1f6feb;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: all 0.2s ease;
+  display: inline-block;
+  font-weight: 600;
+  position: relative;
+}
+
+.student-id-link:hover {
+  color: #0b4ea2;
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.student-id-link:active {
+  transform: translateY(0);
+}
+
+.student-id-link::after {
+  content: '🆔';
+  margin-left: 4px;
+  font-size: 0.9em;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.student-id-link:hover::after {
+  opacity: 1;
+}
+
 .badge {
   display: inline-block;
   padding: 4px 12px;

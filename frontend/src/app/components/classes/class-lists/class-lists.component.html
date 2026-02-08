@@ -76,7 +76,6 @@
     </div>
   </div>
 
-  <!-- Students List Card -->
   <div class="card students-card" *ngIf="filteredStudents.length > 0">
     <div class="card-header">
       <h2>
@@ -84,9 +83,25 @@
         Students in {{ getSelectedClassName() }} - {{ selectedTerm }}
       </h2>
       <p class="section-description">Total: {{ filteredStudents.length }} student(s)</p>
+      <div class="header-actions">
+        <button
+          class="btn btn-primary"
+          (click)="previewPdf()"
+          [disabled]="loadingPdf || filteredStudents.length === 0">
+          <span *ngIf="!loadingPdf">📄 Preview PDF</span>
+          <span *ngIf="loadingPdf">⏳ Loading...</span>
+        </button>
+        <button
+          class="btn btn-primary"
+          (click)="downloadPdf()"
+          [disabled]="downloadingPdf || filteredStudents.length === 0">
+          <span *ngIf="!downloadingPdf">⬇️ Download PDF</span>
+          <span *ngIf="downloadingPdf">⏳ Downloading...</span>
+        </button>
+      </div>
     </div>
 
-    <div class="students-table-container">
+    <div class="students-table-container" id="class-list-pdf">
       <table class="students-table">
         <thead>
           <tr>
@@ -102,7 +117,12 @@
           <tr *ngFor="let student of filteredStudents; let i = index">
             <td>{{ i + 1 }}</td>
             <td>
-              <span class="student-number">🆔 {{ student.studentNumber || 'N/A' }}</span>
+              <span 
+                class="student-number student-id-link" 
+                (click)="viewStudentIdCard(student.id)"
+                title="Click to view Student ID Card">
+                {{ student.studentNumber || 'N/A' }}
+              </span>
             </td>
             <td>
               <strong>{{ student.firstName }} {{ student.lastName }}</strong>

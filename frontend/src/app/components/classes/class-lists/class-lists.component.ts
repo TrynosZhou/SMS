@@ -3,6 +3,8 @@ import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
 import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 @Component({
   selector: 'app-class-lists',
@@ -21,6 +23,8 @@ export class ClassListsComponent implements OnInit {
   loadingStudents = false;
   error = '';
   success = '';
+  loadingPdf = false;
+  downloadingPdf = false;
   
   // User role checks
   isAdmin = false;
@@ -151,17 +155,22 @@ export class ClassListsComponent implements OnInit {
         const studentsData = Array.isArray(response) ? response : (response?.data || response?.students || []);
         this.students = Array.isArray(studentsData) ? studentsData : [];
         this.filteredStudents = [...this.students];
-        
-        // Sort by student number or name
         this.filteredStudents.sort((a: any, b: any) => {
+          const lastA = (a.lastName || '').toLowerCase();
+          const lastB = (b.lastName || '').toLowerCase();
+          const lastCompare = lastA.localeCompare(lastB);
+          if (lastCompare !== 0) {
+            return lastCompare;
+          }
+          const firstA = (a.firstName || '').toLowerCase();
+          const firstB = (b.firstName || '').toLowerCase();
+          const firstCompare = firstA.localeCompare(firstB);
+          if (firstCompare !== 0) {
+            return firstCompare;
+          }
           const numA = (a.studentNumber || '').toLowerCase();
           const numB = (b.studentNumber || '').toLowerCase();
-          if (numA && numB) {
-            return numA.localeCompare(numB);
-          }
-          const nameA = `${a.firstName || ''} ${a.lastName || ''}`.toLowerCase();
-          const nameB = `${b.firstName || ''} ${b.lastName || ''}`.toLowerCase();
-          return nameA.localeCompare(nameB);
+          return numA.localeCompare(numB);
         });
         
         this.loadingStudents = false;
@@ -185,6 +194,141 @@ export class ClassListsComponent implements OnInit {
   getSelectedClassName(): string {
     const selectedClass = this.classes.find(c => c.id === this.selectedClassId);
     return selectedClass ? selectedClass.name : 'Selected Class';
+  }
+
+  viewStudentIdCard(studentId: string) {
+    if (!studentId) {
+      return;
+    }
+
+    this.loading = true;
+    this.error = '';
+    this.studentService.getStudentIdCard(studentId).subscribe({
+      next: (blob: Blob) => {
+        this.loading = false;
+        const fileURL = window.URL.createObjectURL(blob);
+        window.open(fileURL, '_blank');
+        setTimeout(() => window.URL.revokeObjectURL(fileURL), 100);
+      },
+      error: (err: any) => {
+        this.loading = false;
+        console.error('Error loading student ID card:', err);
+        console.error('Error details:', {
+          status: err.status,
+          statusText: err.statusText,
+          error: err.error,
+          message: err.message
+        });
+
+        let errorMessage = 'Failed to load student ID card';
+
+        if (err.status === 403) {
+          const errorObj = typeof err.error === 'string' ? JSON.parse(err.error) : err.error;
+          errorMessage = errorObj?.message || 'You do not have permission to view this student\'s ID card. Please ensure you have the required role (Admin, Super Admin, Accountant, or Teacher).';
+          if (errorObj?.userRole) {
+            errorMessage += ` Your current role: ${errorObj.userRole}.`;
+          }
+        } else if (err.status === 404) {
+          errorMessage = 'Student not found';
+        } else if (err.status === 401) {
+          errorMessage = 'Authentication required. Please log in again.';
+        } else if (err.status === 0 || err.status === undefined) {
+          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+        } else if (err.error) {
+          if (typeof err.error === 'object' && err.error.message) {
+            errorMessage = err.error.message;
+          } else if (typeof err.error === 'string') {
+            try {
+              const parsed = JSON.parse(err.error);
+              errorMessage = parsed.message || errorMessage;
+            } catch (e) {
+              errorMessage = err.error;
+            }
+          }
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+
+        this.error = errorMessage;
+        setTimeout(() => {
+          if (this.error === errorMessage) {
+            this.error = '';
+          }
+        }, 7000);
+      }
+    });
+  }
+
+  async previewPdf() {
+    const element = document.getElementById('class-list-pdf');
+    if (!element) {
+      this.error = 'Class list content not found.';
+      return;
+    }
+    this.loadingPdf = true;
+    this.error = '';
+    try {
+      const canvas = await html2canvas(element, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      const pdfBlob = pdf.output('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      window.open(pdfUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(pdfUrl), 60000);
+    } catch (error: any) {
+      this.error = error?.message || 'Failed to generate PDF preview.';
+    } finally {
+      this.loadingPdf = false;
+    }
+  }
+
+  async downloadPdf() {
+    const element = document.getElementById('class-list-pdf');
+    if (!element) {
+      this.error = 'Class list content not found.';
+      return;
+    }
+    this.downloadingPdf = true;
+    this.error = '';
+    try {
+      const canvas = await html2canvas(element, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      const className = this.getSelectedClassName().replace(/\s+/g, '_');
+      const term = (this.selectedTerm || '').replace(/\s+/g, '_');
+      const filename = `Class_List_${className}_${term || 'Term'}.pdf`;
+      pdf.save(filename);
+    } catch (error: any) {
+      this.error = error?.message || 'Failed to download PDF.';
+    } finally {
+      this.downloadingPdf = false;
+    }
   }
 }
 
