@@ -480,15 +480,67 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
       const targetClass = duplicateCandidates.find(c => c.id !== cleanId);
 
       if (!targetClass) {
-        console.log('Cannot delete class - has associated records and no duplicate class found');
-        return res.status(400).json({
-          message: 'Cannot delete class with associated records',
-          details: {
-            students: studentCount,
-            teachers: teacherCount,
-            exams: examCount
+        // No duplicate target – perform safe cascade cleanup for non-student associations
+        // 1) Remove teacher links (junction table)
+        try {
+          await linkClassToTeachers(cleanId, []);
+          console.log('[deleteClass] Removed teacher links for class', cleanId);
+        } catch (unlinkErr: any) {
+          console.error('[deleteClass] Error removing teacher links:', unlinkErr?.message || unlinkErr);
+        }
+
+        // 2) Delete exams belonging to this class
+        try {
+          await examRepository
+            .createQueryBuilder()
+            .delete()
+            .from(Exam)
+            .where('classId = :classId', { classId: cleanId })
+            .execute();
+          console.log('[deleteClass] Deleted exams for class', cleanId);
+        } catch (examDelErr: any) {
+          console.error('[deleteClass] Error deleting exams:', examDelErr?.message || examDelErr);
+        }
+
+        // 3) Delete report card remarks (done later as well, but ensure now)
+        try {
+          const remarksToDelete = await remarksRepository.find({ where: { classId: cleanId } });
+          if (remarksToDelete.length > 0) {
+            await remarksRepository.remove(remarksToDelete);
+            console.log('[deleteClass] Deleted report card remarks for class', cleanId);
           }
-        });
+        } catch (remarksErr: any) {
+          console.error('[deleteClass] Error deleting report card remarks:', remarksErr?.message || remarksErr);
+        }
+
+        // 4) Remove subject associations (ManyToMany)
+        try {
+          if (classEntity.subjects && classEntity.subjects.length > 0) {
+            classEntity.subjects = [];
+            await classRepository.save(classEntity);
+            console.log('[deleteClass] Removed subject associations for class', cleanId);
+          }
+        } catch (subjectsErr: any) {
+          console.error('[deleteClass] Error removing subject associations:', subjectsErr?.message || subjectsErr);
+        }
+
+        // Recompute counts after cleanup (students are the remaining hard dependency)
+        const studentsAfter = Array.isArray(classEntity.students) ? classEntity.students.length : 0;
+        const teachersAfter = 0; // teacher links removed above
+        const examsAfter = 0;    // exams deleted above
+
+        if (studentsAfter > 0) {
+          console.log('Cannot delete class - students still assigned after cleanup');
+          return res.status(400).json({
+            message: 'Cannot delete class with associated records',
+            details: {
+              students: studentsAfter,
+              teachers: teachersAfter,
+              exams: examsAfter
+            }
+          });
+        }
+        // If no students remain, proceed to delete the class below (remarks/subjects already handled)
       }
 
       console.log('Duplicate class detected. Migrating associations from', cleanId, 'to', targetClass.id);

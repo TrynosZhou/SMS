@@ -20,6 +20,10 @@ export class ClassListsComponent implements OnInit {
   availableTerms: string[] = [];
   schoolName = '';
   schoolAddress = '';
+  schoolPhone = '';
+  schoolEmail = '';
+  schoolMotto = '';
+  academicYear = '';
   schoolLogo: string | null = null;
   schoolLogo2: string | null = null;
   
@@ -34,6 +38,7 @@ export class ClassListsComponent implements OnInit {
   isAdmin = false;
   isTeacher = false;
   isSuperAdmin = false;
+  generatedAt: Date = new Date();
 
   constructor(
     private studentService: StudentService,
@@ -95,6 +100,10 @@ export class ClassListsComponent implements OnInit {
       next: (settings: any) => {
         this.schoolName = settings.schoolName || '';
         this.schoolAddress = settings.schoolAddress || '';
+        this.schoolPhone = settings.schoolPhone || '';
+        this.schoolEmail = settings.schoolEmail || '';
+        this.schoolMotto = settings.schoolMotto || '';
+        this.academicYear = settings.academicYear || '';
         this.schoolLogo = settings.schoolLogo || null;
         this.schoolLogo2 = settings.schoolLogo2 || null;
 

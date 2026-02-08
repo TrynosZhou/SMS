@@ -102,18 +102,45 @@
     </div>
 
     <div class="students-table-container" id="class-list-pdf">
-      <div *ngIf="schoolName || schoolAddress || schoolLogo || schoolLogo2" class="school-header">
+      <div *ngIf="schoolName || schoolAddress || schoolLogo || schoolLogo2 || schoolMotto || schoolPhone || schoolEmail" class="school-header">
         <div class="school-logo-wrapper school-logo-left" *ngIf="schoolLogo">
           <img [src]="schoolLogo" alt="School Logo" class="school-logo">
         </div>
         <div class="school-text">
           <h3 *ngIf="schoolName">{{ schoolName }}</h3>
+          <p *ngIf="schoolMotto" class="school-motto">
+            {{ schoolMotto }}
+          </p>
           <p *ngIf="schoolAddress" class="school-address">
             {{ schoolAddress }}
+          </p>
+          <p *ngIf="schoolPhone" class="school-contact">
+            {{ schoolPhone }}
+          </p>
+          <p *ngIf="schoolEmail" class="school-contact">
+            {{ schoolEmail }}
           </p>
         </div>
         <div class="school-logo-wrapper school-logo-right" *ngIf="schoolLogo2">
           <img [src]="schoolLogo2" alt="School Logo 2" class="school-logo">
+        </div>
+      </div>
+      <div class="class-list-meta">
+        <div class="meta-item">
+          <span class="meta-label">Class:</span>
+          <span class="meta-value">{{ getSelectedClassName() }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Term:</span>
+          <span class="meta-value">{{ selectedTerm }}</span>
+        </div>
+        <div class="meta-item" *ngIf="academicYear">
+          <span class="meta-label">Academic Year:</span>
+          <span class="meta-value">{{ academicYear }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Generated:</span>
+          <span class="meta-value">{{ generatedAt | date:'mediumDate' }}</span>
         </div>
       </div>
       <table class="students-table">

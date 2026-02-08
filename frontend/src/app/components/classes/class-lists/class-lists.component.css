@@ -271,6 +271,48 @@
   font-size: 14px;
 }
 
+.school-motto {
+  margin: 0 0 4px 0;
+  color: #2d3748;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.school-contact {
+  margin: 0;
+  color: #4a5568;
+  font-size: 13px;
+}
+
+.class-list-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px 0;
+  padding: 8px 12px;
+  background: #edf2f7;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #2d3748;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.meta-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.meta-value {
+  font-weight: 500;
+}
+
 .students-table {
   width: 100%;
   border-collapse: collapse;
