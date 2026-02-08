@@ -207,6 +207,70 @@
   margin-top: 20px;
 }
 
+.school-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 8px;
+  position: relative;
+}
+
+.school-logo-wrapper {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.school-logo-wrapper.school-logo-left {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  margin: 0;
+}
+
+.school-logo-wrapper.school-logo-right {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  margin: 0;
+}
+
+.school-logo {
+  max-height: 70px;
+  max-width: 140px;
+  object-fit: contain;
+}
+
+.school-text {
+  text-align: center;
+  min-width: 200px;
+  flex: 1;
+  margin: 0 auto;
+  max-width: calc(100% - 320px);
+}
+
+.school-header h3 {
+  margin: 0 0 6px 0;
+  font-size: 22px;
+  color: #000000;
+  font-weight: 700;
+}
+
+.school-address {
+  margin: 0;
+  color: #4a5568;
+  font-size: 14px;
+}
+
 .students-table {
   width: 100%;
   border-collapse: collapse;

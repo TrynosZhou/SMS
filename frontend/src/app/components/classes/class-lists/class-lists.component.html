@@ -102,6 +102,20 @@
     </div>
 
     <div class="students-table-container" id="class-list-pdf">
+      <div *ngIf="schoolName || schoolAddress || schoolLogo || schoolLogo2" class="school-header">
+        <div class="school-logo-wrapper school-logo-left" *ngIf="schoolLogo">
+          <img [src]="schoolLogo" alt="School Logo" class="school-logo">
+        </div>
+        <div class="school-text">
+          <h3 *ngIf="schoolName">{{ schoolName }}</h3>
+          <p *ngIf="schoolAddress" class="school-address">
+            {{ schoolAddress }}
+          </p>
+        </div>
+        <div class="school-logo-wrapper school-logo-right" *ngIf="schoolLogo2">
+          <img [src]="schoolLogo2" alt="School Logo 2" class="school-logo">
+        </div>
+      </div>
       <table class="students-table">
         <thead>
           <tr>
@@ -125,7 +139,7 @@
               </span>
             </td>
             <td>
-              <strong>{{ student.firstName }} {{ student.lastName }}</strong>
+              <strong>{{ student.lastName }} {{ student.firstName }}</strong>
             </td>
             <td>{{ student.gender || 'N/A' }}</td>
             <td>

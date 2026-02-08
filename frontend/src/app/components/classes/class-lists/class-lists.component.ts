@@ -18,6 +18,10 @@ export class ClassListsComponent implements OnInit {
   selectedClassId = '';
   selectedTerm = '';
   availableTerms: string[] = [];
+  schoolName = '';
+  schoolAddress = '';
+  schoolLogo: string | null = null;
+  schoolLogo2: string | null = null;
   
   loading = false;
   loadingStudents = false;
@@ -89,8 +93,11 @@ export class ClassListsComponent implements OnInit {
   loadTerms() {
     this.settingsService.getSettings().subscribe({
       next: (settings: any) => {
-        // Get available terms from settings
-        // Terms are typically stored as currentTerm and activeTerm
+        this.schoolName = settings.schoolName || '';
+        this.schoolAddress = settings.schoolAddress || '';
+        this.schoolLogo = settings.schoolLogo || null;
+        this.schoolLogo2 = settings.schoolLogo2 || null;
+
         const terms: string[] = [];
         
         if (settings.activeTerm) {
