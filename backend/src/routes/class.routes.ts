@@ -468,10 +468,7 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
     console.log('Filtered student count:', studentCount);
     console.log('Filtered teacher count:', teacherCount);
 
-    // If this class has associated records, check for duplicate classes with the same name.
-    // This allows admins to clean up duplicate classes by migrating associations to a single canonical class.
     if (studentCount > 0 || teacherCount > 0 || examCount > 0) {
-      // Look for another class with the same name but a different ID
       const classRepositoryAll = AppDataSource.getRepository(Class);
       const duplicateCandidates = await classRepositoryAll.find({
         where: { name: classEntity.name }
@@ -480,8 +477,6 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
       const targetClass = duplicateCandidates.find(c => c.id !== cleanId);
 
       if (!targetClass) {
-        // No duplicate target – perform safe cascade cleanup for non-student associations
-        // 1) Remove teacher links (junction table)
         try {
           await linkClassToTeachers(cleanId, []);
           console.log('[deleteClass] Removed teacher links for class', cleanId);
@@ -489,7 +484,6 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
           console.error('[deleteClass] Error removing teacher links:', unlinkErr?.message || unlinkErr);
         }
 
-        // 2) Delete exams belonging to this class
         try {
           await examRepository
             .createQueryBuilder()
@@ -502,7 +496,6 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
           console.error('[deleteClass] Error deleting exams:', examDelErr?.message || examDelErr);
         }
 
-        // 3) Delete report card remarks (done later as well, but ensure now)
         try {
           const remarksToDelete = await remarksRepository.find({ where: { classId: cleanId } });
           if (remarksToDelete.length > 0) {
@@ -513,7 +506,6 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
           console.error('[deleteClass] Error deleting report card remarks:', remarksErr?.message || remarksErr);
         }
 
-        // 4) Remove subject associations (ManyToMany)
         try {
           if (classEntity.subjects && classEntity.subjects.length > 0) {
             classEntity.subjects = [];
@@ -540,52 +532,44 @@ router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMI
             }
           });
         }
-        // If no students remain, proceed to delete the class below (remarks/subjects already handled)
+      } else {
+        console.log('Duplicate class detected. Migrating associations from', cleanId, 'to', targetClass.id);
+
+        if (studentCount > 0) {
+          const studentRepository = AppDataSource.getRepository(Student);
+          await studentRepository
+            .createQueryBuilder()
+            .update(Student)
+            .set({ classId: targetClass.id })
+            .where('classId = :oldClassId', { oldClassId: cleanId })
+            .execute();
+        }
+
+        if (examCount > 0) {
+          await examRepository
+            .createQueryBuilder()
+            .update(Exam)
+            .set({ classId: targetClass.id })
+            .where('classId = :oldClassId', { oldClassId: cleanId })
+            .execute();
+        }
+
+        const remarksRepositoryForMigration = AppDataSource.getRepository(ReportCardRemarks);
+        const remarksToMove = await remarksRepositoryForMigration.find({
+          where: { classId: cleanId }
+        });
+
+        if (remarksToMove.length > 0) {
+          console.log(`Migrating ${remarksToMove.length} report card remarks to class`, targetClass.id);
+          await remarksRepositoryForMigration
+            .createQueryBuilder()
+            .update(ReportCardRemarks)
+            .set({ classId: targetClass.id })
+            .where('classId = :oldClassId', { oldClassId: cleanId })
+            .execute();
+        }
+
       }
-
-      console.log('Duplicate class detected. Migrating associations from', cleanId, 'to', targetClass.id);
-
-      // Reassign students to the duplicate (target) class
-      if (studentCount > 0) {
-        const studentRepository = AppDataSource.getRepository(Student);
-        await studentRepository
-          .createQueryBuilder()
-          .update(Student)
-          .set({ classId: targetClass.id })
-          .where('classId = :oldClassId', { oldClassId: cleanId })
-          .execute();
-      }
-
-      // Reassign exams to the duplicate (target) class
-      if (examCount > 0) {
-        await examRepository
-          .createQueryBuilder()
-          .update(Exam)
-          .set({ classId: targetClass.id })
-          .where('classId = :oldClassId', { oldClassId: cleanId })
-          .execute();
-      }
-
-      // Reassign report card remarks to the duplicate (target) class
-      const remarksRepositoryForMigration = AppDataSource.getRepository(ReportCardRemarks);
-      const remarksToMove = await remarksRepositoryForMigration.find({
-        where: { classId: cleanId }
-      });
-
-      if (remarksToMove.length > 0) {
-        console.log(`Migrating ${remarksToMove.length} report card remarks to class`, targetClass.id);
-        await remarksRepositoryForMigration
-          .createQueryBuilder()
-          .update(ReportCardRemarks)
-          .set({ classId: targetClass.id })
-          .where('classId = :oldClassId', { oldClassId: cleanId })
-          .execute();
-      }
-
-      // Refresh counts after migration
-      studentCount = 0;
-      teacherCount = 0;
-      // Exams were migrated, so examCount is effectively 0 for this class now
     }
 
     // Delete all report card remarks associated with this class
