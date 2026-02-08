@@ -52,13 +52,16 @@ export class StudentService {
     );
   }
 
-  getStudentsPaginated(params: { classId?: string; page?: number; limit?: number } = {}): Observable<PaginatedResponse<any>> {
+  getStudentsPaginated(params: { classId?: string; page?: number; limit?: number; search?: string } = {}): Observable<PaginatedResponse<any>> {
     const queryParams: any = {
       page: params.page ?? 1,
       limit: params.limit ?? 20
     };
     if (params.classId) {
       queryParams.classId = params.classId;
+    }
+    if (params.search && params.search.trim()) {
+      queryParams.search = params.search.trim();
     }
     return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/students`, { params: queryParams }).pipe(
       map(response => {

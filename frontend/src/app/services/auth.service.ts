@@ -32,6 +32,9 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
   private logoutReasonKey = 'logoutReason';
+  private inactivityTimeoutMs = 30 * 60 * 1000;
+  private inactivityTimerId: any = null;
+  private lastActivityKey = 'lastActivityTimestamp';
 
   constructor(private http: HttpClient, private router: Router) {
     const token = localStorage.getItem('token');
@@ -39,6 +42,7 @@ export class AuthService {
     if (token && user) {
       this.currentUserSubject.next(JSON.parse(user));
     }
+    this.initInactivityTracking();
   }
 
   login(identifier: string, password: string, teacherId?: string): Observable<any> {
@@ -87,6 +91,7 @@ export class AuthService {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     this.currentUserSubject.next(null);
+    this.clearInactivityTimer();
     this.router.navigate(['/sign-in']);
   }
 
@@ -149,8 +154,7 @@ export class AuthService {
     }
   
     if (this.isTokenExpired(token)) {
-      
-      
+      this.logout('session-timeout');
       return false;
     }
   
@@ -181,6 +185,51 @@ export class AuthService {
 
   unlinkStudent(studentId: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/parent/unlink-student/${studentId}`);
+  }
+
+  private initInactivityTracking(): void {
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach(event => {
+      window.addEventListener(event, () => this.handleActivity(), true);
+    });
+    if (this.isAuthenticated()) {
+      this.handleActivity();
+    }
+  }
+
+  private handleActivity(): void {
+    if (!this.isAuthenticated()) {
+      this.clearInactivityTimer();
+      return;
+    }
+    localStorage.setItem(this.lastActivityKey, Date.now().toString());
+    this.resetInactivityTimer();
+  }
+
+  private resetInactivityTimer(): void {
+    if (this.inactivityTimerId) {
+      clearTimeout(this.inactivityTimerId);
+    }
+    if (!this.isAuthenticated()) {
+      return;
+    }
+    this.inactivityTimerId = setTimeout(() => this.handleInactivityTimeout(), this.inactivityTimeoutMs);
+  }
+
+  private clearInactivityTimer(): void {
+    if (this.inactivityTimerId) {
+      clearTimeout(this.inactivityTimerId);
+      this.inactivityTimerId = null;
+    }
+  }
+
+  private handleInactivityTimeout(): void {
+    if (!this.isAuthenticated()) {
+      this.clearInactivityTimer();
+      return;
+    }
+    this.logout('session-timeout');
+    alert('You have been logged out due to inactivity. Please sign in again.');
   }
 }
 

@@ -62,7 +62,8 @@ export class StudentListComponent implements OnInit {
     this.studentService.getStudentsPaginated({
       classId: this.selectedClass || undefined,
       page,
-      limit: this.pagination.limit
+      limit: this.pagination.limit,
+      search: this.searchQuery.trim() || undefined
     }).subscribe({
       next: (response: any) => {
         // Ensure response.data is an array
@@ -111,36 +112,23 @@ export class StudentListComponent implements OnInit {
   }
 
   applyFilters() {
-    // Use a copy to avoid mutation issues
     let filtered = [...this.students];
-
-    // Search filter
-    if (this.searchQuery.trim()) {
-      const query = this.searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(student => {
-        const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
-        const studentNumber = (student.studentNumber || '').toLowerCase();
-        const contact = ((student.contactNumber || student.phoneNumber) || '').toLowerCase();
-        return fullName.includes(query) || studentNumber.includes(query) || contact.includes(query);
-      });
-    }
-
-    // Type filter
     if (this.selectedType) {
       filtered = filtered.filter(student => {
         return (student.studentType || 'Day Scholar') === this.selectedType;
       });
     }
-
-    // Gender filter
     if (this.selectedGender) {
       filtered = filtered.filter(student => {
         return student.gender === this.selectedGender;
       });
     }
-
-    // Update filtered students - Angular will handle change detection
     this.filteredStudents = filtered;
+  }
+
+  onSearchChange() {
+    this.pagination.page = 1;
+    this.loadStudents(1);
   }
 
   clearFilters() {

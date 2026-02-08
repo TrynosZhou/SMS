@@ -103,7 +103,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       next: (response: any) => {
         const studentsArray = Array.isArray(response?.data) ? response.data : [];
         const statsObj = response?.stats || {};
-        this.stats.totalStudents = Number(response?.total || studentsArray.length || 0);
+        const totalFromStats = Number(statsObj?.totalStudents || 0);
+        this.stats.totalStudents = totalFromStats || Number(response?.total || studentsArray.length || 0);
         this.stats.dayScholars = Number(statsObj?.totalDayScholars || 0);
         this.stats.boarders = Number(statsObj?.totalBoarders || 0);
         this.stats.staffChildren = Number(statsObj?.staffChildren || 0);

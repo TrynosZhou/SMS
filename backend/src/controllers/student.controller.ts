@@ -116,6 +116,32 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    const normalizedFirstName = firstName.trim();
+    const normalizedLastName = lastName.trim();
+    const normalizedAddress = address && String(address).trim() ? String(address).trim() : null;
+
+    let duplicateQuery = studentRepository
+      .createQueryBuilder('student')
+      .where('LOWER(student.firstName) = LOWER(:firstName)', { firstName: normalizedFirstName })
+      .andWhere('LOWER(student.lastName) = LOWER(:lastName)', { lastName: normalizedLastName })
+      .andWhere('student.gender = :gender', { gender })
+      .andWhere(
+        'COALESCE(LOWER(student.address), \'\') = COALESCE(LOWER(:address), \'\')',
+        { address: normalizedAddress || '' }
+      );
+
+    if (parsedDateOfBirth) {
+      duplicateQuery = duplicateQuery.andWhere('student.dateOfBirth = :dob', { dob: parsedDateOfBirth });
+    } else {
+      duplicateQuery = duplicateQuery.andWhere('student.dateOfBirth IS NULL');
+    }
+
+    const existingStudent = await duplicateQuery.getOne();
+    if (existingStudent) {
+      const fullName = `${normalizedFirstName} ${normalizedLastName}`.trim();
+      return res.status(400).json({ message: `The record for ${fullName} already exists.` });
+    }
+
     // Use contactNumber if provided, otherwise fall back to phoneNumber
     const finalContactNumber = contactNumber?.trim() || phoneNumber?.trim() || null;
     
@@ -135,12 +161,12 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
 
     // Create student with auto-generated ID and auto-enrollment
     const student = studentRepository.create({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
+      firstName: normalizedFirstName,
+      lastName: normalizedLastName,
       studentNumber,
       dateOfBirth: parsedDateOfBirth,
       gender,
-      address: address?.trim() || null,
+      address: normalizedAddress,
       phoneNumber: finalContactNumber,
       contactNumber: finalContactNumber,
       studentType: validStudentType,
@@ -363,12 +389,15 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     }
 
     const studentRepository = AppDataSource.getRepository(Student);
-    const { classId, page: pageParam, limit: limitParam } = req.query;
+    const { classId, page: pageParam, limit: limitParam, search } = req.query;
     const { page, limit, skip } = resolvePaginationParams(
       pageParam as string,
-      limitParam as string
+      limitParam as string,
+      1000
     );
     const trimmedClassId = classId ? String(classId).trim() : null;
+    const trimmedSearch = search ? String(search).trim() : null;
+    const normalizedSearch = trimmedSearch ? trimmedSearch.toLowerCase() : null;
 
     console.log('Fetching students with classId:', classId || 'ALL');
 
@@ -383,6 +412,14 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       queryBuilder = queryBuilder.andWhere(
         '(student.classId = :classId OR classEntity.id = :classId)',
         { classId: trimmedClassId }
+      );
+    }
+
+    if (normalizedSearch) {
+      const like = `%${normalizedSearch}%`;
+      queryBuilder = queryBuilder.andWhere(
+        '(LOWER(student.firstName) LIKE :like OR LOWER(student.lastName) LIKE :like OR LOWER(student.studentNumber) LIKE :like OR LOWER(CONCAT(student.firstName, \' \', student.lastName)) LIKE :like OR LOWER(COALESCE(student.contactNumber, student.phoneNumber, \'\')) LIKE :like)',
+        { like }
       );
     }
 
@@ -401,14 +438,23 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
 
       const classEntity = await classRepository.findOne({ where: { id: trimmedClassId } });
       if (classEntity) {
-        const studentsByClassName = await studentRepository
+        let fallbackQuery = studentRepository
           .createQueryBuilder('student')
           .leftJoinAndSelect('student.classEntity', 'classEntity')
           .leftJoinAndSelect('student.parent', 'parent')
           .leftJoinAndSelect('student.user', 'user')
           .where('classEntity.name = :className', { className: classEntity.name })
-          .andWhere('(student.isActive IS NULL OR student.isActive = :active)', { active: true })
-          .getMany();
+          .andWhere('(student.isActive IS NULL OR student.isActive = :active)', { active: true });
+
+        if (normalizedSearch) {
+          const like = `%${normalizedSearch}%`;
+          fallbackQuery = fallbackQuery.andWhere(
+            '(LOWER(student.firstName) LIKE :like OR LOWER(student.lastName) LIKE :like OR LOWER(student.studentNumber) LIKE :like OR LOWER(CONCAT(student.firstName, \' \', student.lastName)) LIKE :like OR LOWER(COALESCE(student.contactNumber, student.phoneNumber, \'\')) LIKE :like)',
+            { like }
+          );
+        }
+
+        const studentsByClassName = await fallbackQuery.getMany();
 
         console.log(`Fallback by class name found ${studentsByClassName.length} students`);
 
@@ -462,6 +508,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       .addSelect("SUM(CASE WHEN student.studentType = 'Day Scholar' THEN 1 ELSE 0 END)", 'dayScholars')
       .addSelect("SUM(CASE WHEN student.isStaffChild = true THEN 1 ELSE 0 END)", 'staffChildren')
       .addSelect('COUNT(DISTINCT COALESCE(student.classId, statsClass.id))', 'classCount')
+      .addSelect('COUNT(student.id)', 'totalStudents')
       .where('(student.isActive IS NULL OR student.isActive = :active)', { active: true });
 
     if (trimmedClassId) {
@@ -471,12 +518,21 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       );
     }
 
+    if (normalizedSearch) {
+      const like = `%${normalizedSearch}%`;
+      statsQuery.andWhere(
+        '(LOWER(student.firstName) LIKE :statsLike OR LOWER(student.lastName) LIKE :statsLike OR LOWER(student.studentNumber) LIKE :statsLike OR LOWER(CONCAT(student.firstName, \' \', student.lastName)) LIKE :statsLike OR LOWER(COALESCE(student.contactNumber, student.phoneNumber, \'\')) LIKE :statsLike)',
+        { statsLike: like }
+      );
+    }
+
     const statsRaw = await statsQuery.getRawOne();
     const stats = {
       totalBoarders: Number(statsRaw?.boarders ?? 0),
       totalDayScholars: Number(statsRaw?.dayScholars ?? 0),
       staffChildren: Number(statsRaw?.staffChildren ?? 0),
-      classCount: Number(statsRaw?.classCount ?? 0)
+      classCount: Number(statsRaw?.classCount ?? 0),
+      totalStudents: Number(statsRaw?.totalStudents ?? 0)
     };
 
     res.json(

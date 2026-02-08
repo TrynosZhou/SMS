@@ -59,6 +59,26 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Teacher age must be between 20 and 65 years' });
     }
 
+    const normalizedFirstName = firstName.trim();
+    const normalizedLastName = lastName.trim();
+    const normalizedAddress = address && String(address).trim() ? String(address).trim() : null;
+
+    const duplicateTeacher = await teacherRepository
+      .createQueryBuilder('teacher')
+      .where('LOWER(teacher.firstName) = LOWER(:firstName)', { firstName: normalizedFirstName })
+      .andWhere('LOWER(teacher.lastName) = LOWER(:lastName)', { lastName: normalizedLastName })
+      .andWhere('teacher.dateOfBirth = :dob', { dob: parsedDateOfBirth })
+      .andWhere(
+        'COALESCE(LOWER(teacher.address), \'\') = COALESCE(LOWER(:address), \'\')',
+        { address: normalizedAddress || '' }
+      )
+      .getOne();
+
+    if (duplicateTeacher) {
+      const fullName = `${normalizedFirstName} ${normalizedLastName}`.trim();
+      return res.status(400).json({ message: `The record for ${fullName} already exists.` });
+    }
+
     // Validate phone number if provided
     let normalizedPhoneNumber: string | null = null;
     if (phoneNumber && phoneNumber.trim()) {
@@ -70,11 +90,11 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
     }
 
     const teacherData: Partial<Teacher> = {
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
+      firstName: normalizedFirstName,
+      lastName: normalizedLastName,
       teacherId,
       phoneNumber: normalizedPhoneNumber,
-      address: address?.trim() || null,
+      address: normalizedAddress,
       photo: photo && typeof photo === 'string' && photo.trim() ? photo.trim() : null
     };
 
