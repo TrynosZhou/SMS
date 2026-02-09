@@ -369,16 +369,16 @@ export function createRecordBookPDF(
           student.studentNumber,
           student.lastName,
           student.firstName,
-          record?.test1 !== null && record?.test1 !== undefined ? record.test1.toString() : '—',
-          record?.test2 !== null && record?.test2 !== undefined ? record.test2.toString() : '—',
-          record?.test3 !== null && record?.test3 !== undefined ? record.test3.toString() : '—',
-          record?.test4 !== null && record?.test4 !== undefined ? record.test4.toString() : '—',
-          record?.test5 !== null && record?.test5 !== undefined ? record.test5.toString() : '—',
-          record?.test6 !== null && record?.test6 !== undefined ? record.test6.toString() : '—',
-          record?.test7 !== null && record?.test7 !== undefined ? record.test7.toString() : '—',
-          record?.test8 !== null && record?.test8 !== undefined ? record.test8.toString() : '—',
-          record?.test9 !== null && record?.test9 !== undefined ? record.test9.toString() : '—',
-          record?.test10 !== null && record?.test10 !== undefined ? record.test10.toString() : '—'
+          record?.test1 !== null && record?.test1 !== undefined ? record.test1.toString() : '',
+          record?.test2 !== null && record?.test2 !== undefined ? record.test2.toString() : '',
+          record?.test3 !== null && record?.test3 !== undefined ? record.test3.toString() : '',
+          record?.test4 !== null && record?.test4 !== undefined ? record.test4.toString() : '',
+          record?.test5 !== null && record?.test5 !== undefined ? record.test5.toString() : '',
+          record?.test6 !== null && record?.test6 !== undefined ? record.test6.toString() : '',
+          record?.test7 !== null && record?.test7 !== undefined ? record.test7.toString() : '',
+          record?.test8 !== null && record?.test8 !== undefined ? record.test8.toString() : '',
+          record?.test9 !== null && record?.test9 !== undefined ? record.test9.toString() : '',
+          record?.test10 !== null && record?.test10 !== undefined ? record.test10.toString() : ''
         ];
 
         // Alternate row colors
@@ -438,7 +438,7 @@ export function createRecordBookPDF(
         topics.forEach((topic, idx) => {
           if (idx < 10) {
             doc.fontSize(7).font('Helvetica').fillColor('#495057');
-            const topicText = topic || '—';
+            const topicText = topic || '';
             doc.text(topicText, xPos + 2, currentY + 6, { width: colWidths[idx + 4] - 4, align: 'center' });
             xPos += colWidths[idx + 4];
           }

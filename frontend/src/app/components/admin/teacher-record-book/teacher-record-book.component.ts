@@ -390,7 +390,7 @@ export class TeacherRecordBookComponent implements OnInit {
       
       for (let i = 1; i <= this.visibleTests; i++) {
         const mark = student[`test${i}`];
-        row.push(mark !== null && mark !== '' ? mark : '—');
+        row.push(mark !== null && mark !== '' && mark !== undefined ? mark : '');
       }
       
       data.push(row);
@@ -400,7 +400,8 @@ export class TeacherRecordBookComponent implements OnInit {
     const topicRow = ['', '', 'TOPIC', ''];
     for (let i = 1; i <= this.visibleTests; i++) {
       const key = `test${i}` as keyof typeof this.topics;
-      topicRow.push(this.topics[key] || '—');
+      const value = this.topics[key];
+      topicRow.push(value && String(value).trim() !== '' ? value : '');
     }
     data.push(topicRow);
     
@@ -420,7 +421,46 @@ export class TeacherRecordBookComponent implements OnInit {
   }
 
   printRecordBook() {
-    window.print();
+    if (!this.selectedClassId || !this.selectedTeacher) {
+      this.error = 'Please select a teacher and class first';
+      return;
+    }
+
+    const subjects = (this.selectedTeacher as any)?.subjects || [];
+    const defaultSubject = Array.isArray(subjects) ? subjects[0] : null;
+    const subjectId = defaultSubject?.id;
+
+    if (!subjectId) {
+      this.error = 'Selected teacher has no subject assigned. Please assign at least one subject to this teacher.';
+      return;
+    }
+
+    this.loading = true;
+    this.error = '';
+    const apiUrl = environment.apiUrl;
+
+    this.http.get(`${apiUrl}/record-book/admin/pdf/${this.selectedClassId}?teacherId=${this.selectedTeacher.id}&subjectId=${subjectId}`, {
+      responseType: 'blob'
+    }).subscribe({
+      next: (blob: Blob) => {
+        this.loading = false;
+        if (!blob || blob.size === 0) {
+          this.error = 'Received empty PDF file';
+          return;
+        }
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank', 'noopener');
+        setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+      },
+      error: (err: any) => {
+        this.loading = false;
+        if (err.status === 0 || err.message?.includes('Connection refused') || err.message?.includes('Failed to fetch')) {
+          this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+        } else {
+          this.error = err.error?.message || err.message || 'Failed to preview PDF. Please try again.';
+        }
+      }
+    });
   }
 
   downloadPDF() {
@@ -429,11 +469,20 @@ export class TeacherRecordBookComponent implements OnInit {
       return;
     }
 
+    const subjects = (this.selectedTeacher as any)?.subjects || [];
+    const defaultSubject = Array.isArray(subjects) ? subjects[0] : null;
+    const subjectId = defaultSubject?.id;
+
+    if (!subjectId) {
+      this.error = 'Selected teacher has no subject assigned. Please assign at least one subject to this teacher.';
+      return;
+    }
+
     this.loading = true;
     this.error = '';
     const apiUrl = environment.apiUrl;
     
-    this.http.get(`${apiUrl}/record-book/admin/pdf/${this.selectedClassId}?teacherId=${this.selectedTeacher.id}`, {
+    this.http.get(`${apiUrl}/record-book/admin/pdf/${this.selectedClassId}?teacherId=${this.selectedTeacher.id}&subjectId=${subjectId}`, {
       responseType: 'blob'
     }).subscribe({
       next: (blob: Blob) => {

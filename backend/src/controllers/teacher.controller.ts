@@ -24,7 +24,7 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
-    const { firstName, lastName, phoneNumber, address, dateOfBirth, subjectIds, classIds, photo } = req.body;
+    const { firstName, lastName, phoneNumber, address, dateOfBirth, subjectIds, classIds, photo, sex } = req.body;
     
     // Validate required fields
     if (!firstName || !lastName) {
@@ -55,8 +55,13 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
     }
 
     const teacherAge = calculateAge(parsedDateOfBirth);
-    if (teacherAge < 20 || teacherAge > 65) {
-      return res.status(400).json({ message: 'Teacher age must be between 20 and 65 years' });
+    if (teacherAge < 20 || teacherAge > 70) {
+      return res.status(400).json({ message: 'Teacher age must be between 20 and 70 years' });
+    }
+
+    const normalizedSex = typeof sex === 'string' ? sex.trim() : '';
+    if (!normalizedSex || (normalizedSex.toLowerCase() !== 'male' && normalizedSex.toLowerCase() !== 'female')) {
+      return res.status(400).json({ message: 'Sex must be either Male or Female' });
     }
 
     const normalizedFirstName = firstName.trim();
@@ -95,7 +100,8 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
       teacherId,
       phoneNumber: normalizedPhoneNumber,
       address: normalizedAddress,
-      photo: photo && typeof photo === 'string' && photo.trim() ? photo.trim() : null
+      photo: photo && typeof photo === 'string' && photo.trim() ? photo.trim() : null,
+      sex: normalizedSex.charAt(0).toUpperCase() + normalizedSex.slice(1).toLowerCase()
     };
 
     // Only include dateOfBirth if it's provided
@@ -612,7 +618,7 @@ export const updateTeacher = async (req: AuthRequest, res: Response) => {
     }
 
     const { id } = req.params;
-    const { firstName, lastName, phoneNumber, address, dateOfBirth, subjectIds, classIds, photo } = req.body;
+    const { firstName, lastName, phoneNumber, address, dateOfBirth, subjectIds, classIds, photo, sex } = req.body;
     
     const teacherRepository = AppDataSource.getRepository(Teacher);
     const teacher = await teacherRepository.findOne({
@@ -626,6 +632,19 @@ export const updateTeacher = async (req: AuthRequest, res: Response) => {
 
     if (firstName) teacher.firstName = firstName.trim();
     if (lastName) teacher.lastName = lastName.trim();
+
+    if (sex !== undefined) {
+      const normalizedSex = typeof sex === 'string' ? sex.trim() : '';
+      if (normalizedSex) {
+        const lower = normalizedSex.toLowerCase();
+        if (lower !== 'male' && lower !== 'female') {
+          return res.status(400).json({ message: 'Sex must be either Male or Female' });
+        }
+        teacher.sex = lower.charAt(0).toUpperCase() + lower.slice(1);
+      } else {
+        teacher.sex = null as any;
+      }
+    }
     
     // Update and validate phone number
     if (phoneNumber !== undefined) {

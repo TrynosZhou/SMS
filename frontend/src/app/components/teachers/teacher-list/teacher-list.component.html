@@ -169,6 +169,10 @@
             <span class="info-label">Teacher ID</span>
             <span class="info-value">{{ teacher.teacherId }}</span>
           </div>
+          <div class="info-item" *ngIf="teacher.sex">
+            <span class="info-label">Sex</span>
+            <span class="info-value">{{ teacher.sex }}</span>
+          </div>
           <div class="info-item" *ngIf="teacher.phoneNumber">
             <span class="info-label">Phone</span>
             <span class="info-value">{{ teacher.phoneNumber }}</span>
@@ -296,6 +300,10 @@
             <div class="detail-item">
               <span class="detail-label">Phone Number</span>
               <span class="detail-value">{{ selectedTeacher.phoneNumber || 'Not provided' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Sex</span>
+              <span class="detail-value">{{ selectedTeacher.sex || 'Not provided' }}</span>
             </div>
             <div class="detail-item">
               <span class="detail-label">Address</span>

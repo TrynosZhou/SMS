@@ -14,6 +14,7 @@ export class TeacherFormComponent implements OnInit {
   teacher: any = {
     firstName: '',
     lastName: '',
+    sex: '',
     phoneNumber: '',
     address: '',
     dateOfBirth: '',
@@ -92,6 +93,7 @@ export class TeacherFormComponent implements OnInit {
       next: (data: any) => {
         this.teacher = {
           ...data,
+          sex: data.sex || '',
           dateOfBirth: data.dateOfBirth?.split('T')[0],
           subjectIds: data.subjects?.map((s: any) => s.id) || [],
           classIds: data.classes?.map((c: any) => c.id) || [],
@@ -174,15 +176,15 @@ export class TeacherFormComponent implements OnInit {
     }
 
     // Validate required fields
-    if (!this.teacher.firstName || !this.teacher.lastName || !this.teacher.dateOfBirth) {
+    if (!this.teacher.firstName || !this.teacher.lastName || !this.teacher.dateOfBirth || !this.teacher.sex) {
       this.error = 'Please fill in all required fields';
       this.submitting = false;
       return;
     }
 
     const age = this.calculateAge(this.teacher.dateOfBirth);
-    if (age < 20 || age > 65) {
-      this.error = 'Teacher age must be between 20 and 65 years';
+    if (age < 20 || age > 70) {
+      this.error = 'Teacher age must be between 20 and 70 years';
       this.submitting = false;
       return;
     }

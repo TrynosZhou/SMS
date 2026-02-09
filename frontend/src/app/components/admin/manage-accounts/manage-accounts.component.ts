@@ -652,12 +652,6 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     const isDemoRole = this.manualAccount.role === 'demo-user';
     const resolvedRole = isDemoRole ? 'admin' : this.manualAccount.role;
 
-    if (resolvedRole === 'superadmin' && !this.isSuperAdmin()) {
-      this.error = 'Only Super Admins can create another Super Admin account';
-      setTimeout(() => this.error = '', 5000);
-      return;
-    }
-
     this.creatingUserAccount = true;
     this.error = '';
     this.success = '';

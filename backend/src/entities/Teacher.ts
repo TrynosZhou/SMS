@@ -27,6 +27,9 @@ export class Teacher {
   @Column({ type: 'date', nullable: true })
   dateOfBirth: Date;
 
+  @Column({ nullable: true })
+  sex: string | null;
+
   /** Passport-size photo (base64 data URL) for ID card; optional on register, can be set when editing */
   @Column({ type: 'text', nullable: true })
   photo: string | null;

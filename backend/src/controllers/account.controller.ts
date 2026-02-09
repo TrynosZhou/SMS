@@ -207,10 +207,6 @@ export const createUserAccount = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Invalid role specified' });
     }
 
-    if (actingRole !== UserRole.SUPERADMIN && requestedRole === UserRole.SUPERADMIN) {
-      return res.status(403).json({ message: 'Only Super Admins can create Super Admin accounts' });
-    }
-
     const userRepository = AppDataSource.getRepository(User);
     
     // Only check email if provided (not required for teachers)
@@ -493,6 +489,21 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
+    }
+
+    const currentRole = user.role as UserRole;
+
+    // Non-SuperAdmins cannot modify SuperAdmin accounts
+    if (currentRole === UserRole.SUPERADMIN && actingRole !== UserRole.SUPERADMIN) {
+      return res.status(403).json({ message: 'Only a Super Admin can modify a Super Admin account' });
+    }
+
+    // Prevent removing the last SuperAdmin
+    if (currentRole === UserRole.SUPERADMIN && role !== UserRole.SUPERADMIN) {
+      const superadminCount = await userRepository.count({ where: { role: UserRole.SUPERADMIN } });
+      if (superadminCount <= 1) {
+        return res.status(400).json({ message: 'Cannot change role of the last Super Admin account' });
+      }
     }
 
     user.role = role as UserRole;

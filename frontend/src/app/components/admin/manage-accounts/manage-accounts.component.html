@@ -31,8 +31,9 @@
         <p>Create login credentials for administrators, accountants, parents, students, or teachers. For teachers, only username and password are required (email is not needed).</p>
       </div>
       <div class="manual-account-meta">
-        <span class="meta-item"><strong>Admins</strong> can create Admin/Accountant/Parent/Student accounts</span>
-        <span class="meta-item" *ngIf="isSuperAdmin()"><strong>Super Admins</strong> can also create Super Admin & Demo accounts</span>
+        <span class="meta-item">
+          <strong>Admins & Super Admins</strong> can create all roles, including Super Admin and Demo accounts
+        </span>
       </div>
     </div>
     <form class="manual-account-form" (ngSubmit)="createManualAccount()">
@@ -40,8 +41,8 @@
         <div class="form-group">
           <label>Role *</label>
           <select [(ngModel)]="manualAccount.role" name="manualRole" required [disabled]="creatingUserAccount" (change)="onRoleChange()">
-            <option *ngFor="let option of manualAccountRoles" [ngValue]="option.value" [disabled]="option.value === 'superadmin' && !isSuperAdmin()">
-              {{ option.label }}{{ option.value === 'superadmin' ? ' (Super Admin only)' : '' }}
+            <option *ngFor="let option of manualAccountRoles" [ngValue]="option.value">
+              {{ option.label }}
             </option>
           </select>
           <small class="form-text" *ngIf="manualAccount.role === 'demo-user'">
