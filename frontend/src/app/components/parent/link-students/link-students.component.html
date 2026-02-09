@@ -66,7 +66,7 @@
           </div>
           <div class="student-info">
             <span><strong>Student Number:</strong> {{ student.studentNumber }}</span>
-            <span><strong>Class:</strong> {{ student.class?.name || 'N/A' }}</span>
+            <span><strong>Class:</strong> {{ (student.class || student.classEntity)?.name || 'N/A' }}</span>
             <span><strong>Type:</strong> {{ student.studentType || 'Day Scholar' }}</span>
           </div>
         </div>

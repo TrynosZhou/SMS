@@ -39,6 +39,8 @@ export class ClassListsComponent implements OnInit {
   isTeacher = false;
   isSuperAdmin = false;
   generatedAt: Date = new Date();
+  lastLoadedClassId: string | null = null;
+  lastLoadedTerm: string | null = null;
 
   constructor(
     private studentService: StudentService,
@@ -160,6 +162,10 @@ export class ClassListsComponent implements OnInit {
       return;
     }
     
+    if (this.loadingStudents) {
+      return;
+    }
+
     this.loadingStudents = true;
     this.error = '';
     this.success = '';
@@ -190,6 +196,8 @@ export class ClassListsComponent implements OnInit {
         });
         
         this.loadingStudents = false;
+        this.lastLoadedClassId = this.selectedClassId;
+        this.lastLoadedTerm = this.selectedTerm;
         
         if (this.filteredStudents.length === 0) {
           this.error = 'No students found in the selected class for this term.';
@@ -205,6 +213,23 @@ export class ClassListsComponent implements OnInit {
         this.filteredStudents = [];
       }
     });
+  }
+
+  onSelectionChange() {
+    if (!this.selectedClassId || !this.selectedTerm) {
+      return;
+    }
+    if (this.loadingStudents) {
+      return;
+    }
+    if (
+      this.lastLoadedClassId === this.selectedClassId &&
+      this.lastLoadedTerm === this.selectedTerm &&
+      this.filteredStudents.length > 0
+    ) {
+      return;
+    }
+    this.loadStudents();
   }
 
   getSelectedClassName(): string {

@@ -40,6 +40,7 @@
   width: 100%;
   max-width: 420px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  border: 4px solid #1e3a8a;
   animation: slideUp 0.4s ease-out;
 }
 

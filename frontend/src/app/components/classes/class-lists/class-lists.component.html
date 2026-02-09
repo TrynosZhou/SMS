@@ -36,6 +36,7 @@
         <select 
           id="classSelect"
           [(ngModel)]="selectedClassId" 
+          (ngModelChange)="onSelectionChange()"
           [ngModelOptions]="{standalone: true}"
           class="form-control"
           [disabled]="loading">
@@ -53,6 +54,7 @@
         <select 
           id="termSelect"
           [(ngModel)]="selectedTerm" 
+          (ngModelChange)="onSelectionChange()"
           [ngModelOptions]="{standalone: true}"
           class="form-control"
           [disabled]="loading">
@@ -69,7 +71,7 @@
           class="btn btn-primary load-btn" 
           (click)="loadStudents()" 
           [disabled]="loading || loadingStudents || !selectedClassId || !selectedTerm">
-          <span *ngIf="!loadingStudents">📥 Load</span>
+          <span *ngIf="!loadingStudents">📥 Reload</span>
           <span *ngIf="loadingStudents">⏳ Loading...</span>
         </button>
       </div>
