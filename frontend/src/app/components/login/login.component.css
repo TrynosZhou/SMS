@@ -302,6 +302,26 @@
   border: 1px solid #bee5eb;
 }
 
+.help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffb74d;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: help;
+}
+
+.help-icon:hover {
+  background-color: #ffe0b2;
+}
+
 @media (max-width: 480px) {
   :host {
     align-items: center;

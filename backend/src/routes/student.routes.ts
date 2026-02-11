@@ -11,7 +11,10 @@ import {
   promoteStudents,
   generateStudentIdCard,
   transferStudent,
-  getStudentTransfers
+  getStudentTransfers,
+  generateTransportBusIdCards,
+  generateTransportStudentsReport,
+  generateDiningHallStudentsReport
 } from '../controllers/student.controller';
 import { upload } from '../utils/upload';
 
@@ -22,6 +25,9 @@ router.get('/', authenticate, getStudents);
 router.post('/enroll', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), enrollStudent);
 router.post('/promote', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), promoteStudents);
 router.post('/transfer', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), transferStudent);
+router.get('/logistics/transport/bus-id-cards', authenticate, generateTransportBusIdCards);
+router.get('/logistics/transport/report', authenticate, generateTransportStudentsReport);
+router.get('/logistics/dining-hall/report', authenticate, generateDiningHallStudentsReport);
 router.get('/:id/id-card', authenticate, generateStudentIdCard);
 router.get('/:id/transfers', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.TEACHER, UserRole.DEMO_USER), getStudentTransfers);
 router.get('/:id', authenticate, getStudentById);

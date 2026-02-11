@@ -3,6 +3,9 @@ import { Router } from '@angular/router';
 import { TeacherService } from '../../../services/teacher.service';
 import { SubjectService } from '../../../services/subject.service';
 import { ClassService } from '../../../services/class.service';
+import { SettingsService } from '../../../services/settings.service';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 @Component({
   selector: 'app-teacher-list',
@@ -22,6 +25,14 @@ export class TeacherListComponent implements OnInit {
   selectedTeacher: any = null;
   error = '';
   success = '';
+  showTeachersPreview = false;
+  schoolName = '';
+  schoolAddress = '';
+  schoolMotto = '';
+  schoolLogo: string | null = null;
+  schoolLogo2: string | null = null;
+  loadingPdf = false;
+  downloadingPdf = false;
   pagination = {
     page: 1,
     limit: 20,
@@ -35,13 +46,15 @@ export class TeacherListComponent implements OnInit {
     private subjectService: SubjectService,
     private classService: ClassService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private settingsService: SettingsService
   ) { }
 
   ngOnInit() {
     this.loadTeachers();
     this.loadSubjects();
     this.loadClasses();
+    this.loadSchoolDetails();
   }
 
   loadTeachers(page = this.pagination.page) {
@@ -153,6 +166,84 @@ export class TeacherListComponent implements OnInit {
     return !!(this.searchQuery || this.selectedSubjectFilter || this.selectedClassFilter);
   }
 
+  async openTeachersPreview() {
+    if (!this.filteredTeachers.length) {
+      return;
+    }
+    const element = document.getElementById('teachers-list-pdf');
+    if (!element) {
+      this.error = 'Teacher list content not found for PDF preview.';
+      return;
+    }
+    this.loadingPdf = true;
+    this.error = '';
+    try {
+      const canvas = await html2canvas(element, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      const pdfBlob = pdf.output('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(pdfUrl), 60000);
+    } catch (error: any) {
+      this.error = error?.message || 'Failed to generate teachers PDF preview.';
+      setTimeout(() => this.error = '', 7000);
+    } finally {
+      this.loadingPdf = false;
+    }
+  }
+
+  async downloadTeachersPdf() {
+    if (!this.filteredTeachers.length) {
+      return;
+    }
+    const element = document.getElementById('teachers-list-pdf');
+    if (!element) {
+      this.error = 'Teacher list content not found for PDF download.';
+      return;
+    }
+    this.downloadingPdf = true;
+    this.error = '';
+    try {
+      const canvas = await html2canvas(element, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      const fileName = `Teachers_List_${new Date().toISOString().slice(0, 10)}.pdf`;
+      pdf.save(fileName);
+    } catch (error: any) {
+      this.error = error?.message || 'Failed to download teachers PDF.';
+      setTimeout(() => this.error = '', 7000);
+    } finally {
+      this.downloadingPdf = false;
+    }
+  }
+
   viewTeacherDetails(teacher: any) {
     this.selectedTeacher = teacher;
   }
@@ -221,6 +312,21 @@ export class TeacherListComponent implements OnInit {
     });
   }
 
+  loadSchoolDetails() {
+    this.settingsService.getSettings().subscribe({
+      next: (settings: any) => {
+        this.schoolName = settings.schoolName || '';
+        this.schoolAddress = settings.schoolAddress || '';
+        this.schoolMotto = settings.schoolMotto || '';
+        this.schoolLogo = settings.schoolLogo || null;
+        this.schoolLogo2 = settings.schoolLogo2 || null;
+      },
+      error: (err: any) => {
+        console.error('Error loading school settings for teacher list:', err);
+      }
+    });
+  }
+
   getTotalSubjects(): number {
     const subjectSet = new Set();
     this.teachers.forEach(teacher => {
@@ -261,6 +367,57 @@ export class TeacherListComponent implements OnInit {
     this.pagination.limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : this.pagination.limit;
     this.pagination.page = 1;
     this.loadTeachers(1);
+  }
+
+  exportTeachersToCSV() {
+    if (!this.filteredTeachers.length) {
+      return;
+    }
+
+    const headers = [
+      'Employee Number',
+      'First Name',
+      'Last Name',
+      'Date of Birth',
+      'Gender',
+      'Contact Phone',
+      'Number of Classes'
+    ];
+
+    const rows = this.filteredTeachers.map(teacher => {
+      const dateOfBirth = teacher.dateOfBirth
+        ? new Date(teacher.dateOfBirth).toISOString().split('T')[0]
+        : '';
+      const classCount = teacher.classes ? teacher.classes.length : 0;
+
+      return [
+        teacher.teacherId || '',
+        teacher.firstName || '',
+        teacher.lastName || '',
+        dateOfBirth,
+        teacher.sex || '',
+        teacher.phoneNumber || '',
+        classCount
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row =>
+        row
+          .map(value => `"${String(value).replace(/"/g, '""')}"`)
+          .join(',')
+      )
+    ].join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const fileName = `Teachers_List_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = fileName;
+    link.click();
+    window.URL.revokeObjectURL(url);
   }
 
   deleteTeacher(id: string, teacherName: string, teacherId: string) {

@@ -52,7 +52,15 @@ export class StudentService {
     );
   }
 
-  getStudentsPaginated(params: { classId?: string; page?: number; limit?: number; search?: string } = {}): Observable<PaginatedResponse<any>> {
+  getStudentsPaginated(params: {
+    classId?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+    usesTransport?: boolean;
+    usesDiningHall?: boolean;
+    studentType?: string;
+  } = {}): Observable<PaginatedResponse<any>> {
     const queryParams: any = {
       page: params.page ?? 1,
       limit: params.limit ?? 20
@@ -62,6 +70,15 @@ export class StudentService {
     }
     if (params.search && params.search.trim()) {
       queryParams.search = params.search.trim();
+    }
+    if (params.studentType) {
+      queryParams.studentType = params.studentType;
+    }
+    if (params.usesTransport === true) {
+      queryParams.usesTransport = 'true';
+    }
+    if (params.usesDiningHall === true) {
+      queryParams.usesDiningHall = 'true';
     }
     return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/students`, { params: queryParams }).pipe(
       map(response => {
@@ -280,5 +297,34 @@ export class StudentService {
     );
   }
 
+  generateTransportBusIdCards(params: { classId?: string } = {}): Observable<Blob> {
+    const queryParams: any = {};
+    if (params.classId) {
+      queryParams.classId = params.classId;
+    }
+
+    return this.http.get(`${this.apiUrl}/students/logistics/transport/bus-id-cards`, {
+      params: queryParams,
+      responseType: 'blob'
+    });
+  }
+
+  generateLogisticsReport(service: 'transport' | 'dining-hall', classId?: string): Observable<Blob> {
+    const queryParams: any = {};
+    if (classId) {
+      queryParams.classId = classId;
+    }
+
+    const endpoint =
+      service === 'transport'
+        ? `${this.apiUrl}/students/logistics/transport/report`
+        : `${this.apiUrl}/students/logistics/dining-hall/report`;
+
+    return this.http.get(endpoint, {
+      params: queryParams,
+      responseType: 'blob'
+    });
+  }
 }
+
 

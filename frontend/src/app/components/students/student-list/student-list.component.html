@@ -3,12 +3,18 @@
   <div class="page-header">
     <div class="header-content">
       <h1>
-        <span class="header-icon">👨‍🎓</span>
-        Students
+        <span class="header-icon">{{ pageIcon }}</span>
+        {{ pageTitle }}
       </h1>
-      <p class="subtitle">Manage and view all enrolled students</p>
+      <p class="subtitle">{{ pageSubtitle }}</p>
     </div>
     <div class="header-actions">
+      <button class="btn btn-secondary" *ngIf="isLogisticsTransport || isLogisticsDiningHall" (click)="exportToCsv()">
+        ⬇️ Export CSV
+      </button>
+      <button class="btn btn-secondary" *ngIf="isLogisticsTransport || isLogisticsDiningHall" (click)="printList()">
+        🖨️ Print
+      </button>
       <button class="btn btn-primary" routerLink="/students/new">
         <span>➕</span> Add New Student
       </button>
@@ -116,6 +122,29 @@
             <option value="Male">Male</option>
             <option value="Female">Female</option>
           </select>
+        </div>
+        <div class="filter-group">
+          <label>Logistics Filters</label>
+          <div class="checkbox-group">
+            <label class="checkbox-inline">
+              <input
+                type="checkbox"
+                [(ngModel)]="filterUsesTransport"
+                [ngModelOptions]="{standalone: true}"
+                (change)="onLogisticsFilterChange()"
+                [disabled]="isLogisticsTransport">
+              <span>Uses Transport</span>
+            </label>
+            <label class="checkbox-inline">
+              <input
+                type="checkbox"
+                [(ngModel)]="filterUsesDiningHall"
+                [ngModelOptions]="{standalone: true}"
+                (change)="onLogisticsFilterChange()"
+                [disabled]="isLogisticsDiningHall">
+              <span>Uses Dining Hall</span>
+            </label>
+          </div>
         </div>
         <div class="filter-group">
           <label>View Mode</label>

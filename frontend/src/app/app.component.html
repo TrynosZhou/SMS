@@ -209,6 +209,25 @@
         </div>
       </div>
 
+      <!-- Logistics Management -->
+      <div class="sidebar-menu" *ngIf="isAdmin() || isSuperAdmin()">
+        <div class="sidebar-menu-header" (click)="toggleMenu('logisticsManagement')">
+          <span class="sidebar-icon">🚌</span>
+          <span class="sidebar-text">Logistics Management</span>
+          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('logisticsManagement')">▼</span>
+        </div>
+        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('logisticsManagement')">
+          <a routerLink="/logistics/transport" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-icon">🚌</span>
+            <span class="sidebar-text">Transport</span>
+          </a>
+          <a routerLink="/logistics/dining-hall" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-icon">🍽️</span>
+            <span class="sidebar-text">Dining Hall</span>
+          </a>
+        </div>
+      </div>
+
       <!-- Reports -->
       <div class="sidebar-menu" *ngIf="canAccessModule('reportCards') || canAccessModule('attendance') || isAdmin() || isSuperAdmin()">
         <div class="sidebar-menu-header" (click)="toggleMenu('reports')">

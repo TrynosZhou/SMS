@@ -13,17 +13,19 @@ export interface TeacherIdCardData {
   qrDataUrl?: string; // QR code as data URL
 }
 
-/** ID card size in points (horizontal card; left blue strip + main area) */
+/** ID card size in points (horizontal card) */
 const CARD_WIDTH = 270;
 const CARD_HEIGHT = 153;
-const STRIP_WIDTH = 30; // left vertical blue strip
-const MAIN_LEFT = STRIP_WIDTH;
-const MAIN_WIDTH = CARD_WIDTH - STRIP_WIDTH;
+const HEADER_HEIGHT = 20;
+const FOOTER_HEIGHT = 24;
 const MARGIN = 10;
-const BLUE_STRIP_COLOR = '#2563eb'; // medium blue
-const BORDER_COLOR = '#1e3a8a'; // strong dark blue for border
-const BORDER_WIDTH = 3; // strong border width
-const DARK_BLUE_TEXT = '#1e3a8a'; // dark blue for full name and subject
+const MAIN_LEFT = MARGIN;
+const MAIN_WIDTH = CARD_WIDTH - 2 * MARGIN;
+const HEADER_COLOR = '#1e3a8a';
+const FOOTER_COLOR = '#1e3a8a';
+const BORDER_COLOR = '#1e3a8a';
+const BORDER_WIDTH = 3;
+const DARK_BLUE_TEXT = '#1e3a8a';
 
 export function createTeacherIdCardPDF(
   teacher: TeacherIdCardData,
@@ -53,40 +55,28 @@ export function createTeacherIdCardPDF(
         : 'Not assigned';
       const footerText = settings?.schoolMotto?.trim() || settings?.schoolEmail?.trim() || '';
 
-      // ----- Left vertical blue strip -----
-      doc.rect(0, 0, STRIP_WIDTH, CARD_HEIGHT).fill(BLUE_STRIP_COLOR);
+      doc.rect(0, 0, CARD_WIDTH, CARD_HEIGHT).fill('#ffffff');
+      doc.rect(0, 0, CARD_WIDTH, HEADER_HEIGHT).fill(HEADER_COLOR);
+      doc.rect(0, CARD_HEIGHT - FOOTER_HEIGHT, CARD_WIDTH, FOOTER_HEIGHT).fill(FOOTER_COLOR);
 
-      // Rotated text in strip: "TEACHER" and academic year (e.g. "2020-2021")
-      const stripText = `TEACHER ${academicYear.replace(/\s/g, ' ')}`;
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#ffffff');
-      const tw = doc.widthOfString(stripText);
-      const th = doc.heightOfString(stripText);
-      doc.save();
-      doc.translate(STRIP_WIDTH / 2, CARD_HEIGHT / 2);
-      doc.rotate(-90);
-      doc.text(stripText, -tw / 2, -th / 2);
-      doc.restore();
-
-      // ----- Main white area (with optional subtle background - we keep white) -----
-      doc.rect(MAIN_LEFT, 0, MAIN_WIDTH, CARD_HEIGHT).fill('#ffffff');
-
-      // Top: School name (from settings) starting from extreme left
+      // Top: School name (from settings) under the header, leaving space on the right for logo
+      const titleY = HEADER_HEIGHT + 10;
       doc.fontSize(14).font('Helvetica-Bold').fillColor(DARK_BLUE_TEXT);
-      doc.text(schoolName, MAIN_LEFT + MARGIN, 12, { width: MAIN_WIDTH - MARGIN, align: 'left' });
+      doc.text(schoolName, MAIN_LEFT, titleY, { width: MAIN_WIDTH - 70, align: 'left' });
 
       // School address (from settings) below name, aligned with school name
-      let photoY = 30;
+      let photoY = titleY + 24;
       if (schoolAddress) {
         doc.fontSize(7).font('Helvetica-Bold').fillColor(DARK_BLUE_TEXT);
-        const addressHeight = doc.heightOfString(schoolAddress, { width: MAIN_WIDTH - MARGIN });
-        doc.text(schoolAddress, MAIN_LEFT + MARGIN, 26, { width: MAIN_WIDTH - MARGIN, align: 'left' });
-        photoY = 26 + addressHeight + 4;
+        const addressHeight = doc.heightOfString(schoolAddress, { width: MAIN_WIDTH - 70 });
+        doc.text(schoolAddress, MAIN_LEFT, titleY + 18, { width: MAIN_WIDTH - 70, align: 'left' });
+        photoY = titleY + 18 + addressHeight + 6;
       }
 
-      // School logo: extreme top right of the card (before other content)
+      // School logo: top right of the card body
       const logoBoxSize = 50;
-      const logoX = MAIN_LEFT + MAIN_WIDTH - MARGIN - logoBoxSize;
-      const logoY = 8; // Top right
+      const logoX = CARD_WIDTH - MARGIN - logoBoxSize;
+      const logoY = HEADER_HEIGHT + 4;
       if (settings?.schoolLogo && settings.schoolLogo.startsWith('data:image')) {
         try {
           const base64Data = settings.schoolLogo.split(',')[1];
@@ -110,7 +100,7 @@ export function createTeacherIdCardPDF(
       }
 
       // Photo box (left side): passport-size with white border
-      const photoX = MAIN_LEFT + MARGIN;
+      const photoX = MAIN_LEFT;
       const photoBoxWidth = 52;
       const photoBoxHeight = 62;
 
@@ -138,7 +128,6 @@ export function createTeacherIdCardPDF(
         .lineWidth(0.5)
         .stroke();
 
-      // Designation: Teacher — just under the passport-size photo
       const designationY = photoY + photoBoxHeight + 4;
       doc.fontSize(8).font('Helvetica').fillColor(DARK_BLUE_TEXT);
       doc.text('Designation: Teacher', photoX, designationY, {
@@ -146,40 +135,41 @@ export function createTeacherIdCardPDF(
         align: 'left'
       });
 
-      // Employee ID: centered between photo and right edge (logo is top right now)
-      const photoRightEdge = photoX + photoBoxWidth;
-      const logoLeftEdge = logoX;
-      const centerX = (photoRightEdge + logoLeftEdge) / 2;
-      const centerWidth = logoLeftEdge - photoRightEdge;
-      const employeeIdY = photoY + photoBoxHeight / 2 - 6; // Vertically centered with photo
-      doc.fontSize(13).font('Helvetica-Bold').fillColor(DARK_BLUE_TEXT);
-      doc.text(teacher.teacherId || '—', centerX - centerWidth / 2, employeeIdY, {
-        width: centerWidth,
-        align: 'center'
-      });
-
-      // Below Employee Number: Full name (bold), then Subject(s)
+      // Name and Employee ID to the right of the photo (to match sample card)
+      const photoRightEdge = photoX + photoBoxWidth + 8;
+      const centerX = photoRightEdge + (CARD_WIDTH - MARGIN - photoRightEdge) / 2;
+      const centerWidth = CARD_WIDTH - MARGIN - photoRightEdge;
       const detailsX = centerX - centerWidth / 2;
       const detailsWidth = centerWidth;
-      let detailsY = employeeIdY + 16;
-      doc.fontSize(11).font('Helvetica-Bold').fillColor(DARK_BLUE_TEXT);
-      doc.text(fullName || '—', detailsX, detailsY, { width: detailsWidth, align: 'center' });
-      detailsY += 18;
+      let detailsY = photoY + 4;
+
+      // Teacher full name (slightly smaller so motto fits comfortably)
+      doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
+      doc.text(fullName || '—', detailsX, detailsY, { width: detailsWidth, align: 'left' });
+      detailsY += 16;
+
+      // Employee ID line: "ID# 123456"
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#000000');
+      const idLabel = 'ID# ';
+      const idValue = teacher.teacherId || '—';
+      const idLine = `${idLabel}${idValue}`;
+      doc.text(idLine, detailsX, detailsY, { width: detailsWidth, align: 'left' });
+      detailsY += 14;
+
+      // Subject(s)
       doc.fontSize(8).font('Helvetica').fillColor(DARK_BLUE_TEXT);
       doc.text(`Subject(s): ${subjectsText}`, detailsX, detailsY, { width: detailsWidth, align: 'left' });
-      detailsY += 18;
+      detailsY += 14;
 
-      // QR Code: right side, moved up so all teacher data fits on one page
       if (teacher.qrDataUrl && teacher.qrDataUrl.startsWith('data:image')) {
         try {
           const qrBase64Data = teacher.qrDataUrl.split(',')[1];
           if (qrBase64Data) {
-            const qrImageBuffer = Buffer.from(qrBase64Data, 'base64');
-            const qrSize = 35;
-            const qrX = logoX + (logoBoxSize - qrSize) / 2;
-            const qrY = detailsY - 18; // Slightly up to fit content on one page
+          const qrImageBuffer = Buffer.from(qrBase64Data, 'base64');
+          const qrSize = 30;
+          const qrX = CARD_WIDTH - MARGIN - qrSize;
+          const qrY = CARD_HEIGHT - FOOTER_HEIGHT - qrSize - 4;
 
-            // Add QR code with border
             doc.rect(qrX - 2, qrY - 2, qrSize + 4, qrSize + 4)
               .strokeColor('#e5e7eb')
               .lineWidth(0.5)
@@ -189,7 +179,6 @@ export function createTeacherIdCardPDF(
             doc.image(qrImageBuffer, qrX, qrY, { width: qrSize, height: qrSize });
             doc.restore();
 
-            // Label below QR code
             doc.fontSize(6).font('Helvetica').fillColor('#4b5563');
             doc.text('Scan for details', qrX, qrY + qrSize + 2, {
               width: qrSize,
@@ -207,15 +196,25 @@ export function createTeacherIdCardPDF(
         .lineWidth(BORDER_WIDTH)
         .stroke();
 
-      // School motto: footer of card (italic, one line down at bottom)
       if (footerText) {
-        const footerY = CARD_HEIGHT - 14; // Bottom of card, one line from edge
+        const footerY = CARD_HEIGHT - FOOTER_HEIGHT - 10;
         doc.fontSize(8).font('Helvetica-Oblique').fillColor('#4b5563');
-        doc.text(footerText, MAIN_LEFT + MARGIN, footerY, {
-          width: MAIN_WIDTH - 2 * MARGIN,
+        doc.text(footerText, MAIN_LEFT, footerY, {
+          width: MAIN_WIDTH,
           align: 'center'
         });
       }
+
+      const footerTextY = CARD_HEIGHT - FOOTER_HEIGHT / 2 - 6;
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#ffffff');
+      doc.text('TEACHER', MARGIN, footerTextY, {
+        width: CARD_WIDTH / 2 - MARGIN,
+        align: 'left'
+      });
+      doc.text(academicYear, CARD_WIDTH / 2, footerTextY, {
+        width: CARD_WIDTH / 2 - MARGIN,
+        align: 'right'
+      });
 
       doc.end();
     } catch (error) {

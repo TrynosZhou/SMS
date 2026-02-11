@@ -34,17 +34,17 @@
 
     <!-- Sign In Form -->
     <div *ngIf="activeTab === 'signin'" class="tab-content">
-      <div class="info-box" style="background: #fff3e0; border-left: 4px solid #ff9800; padding: 10px 12px; margin-bottom: 14px; border-radius: 4px;">
-        <p style="margin: 0; font-size: 11px; color: #e65100; line-height: 1.4;">
-          <strong>Teachers:</strong> Use your EmployeeID as username and your password.
-        </p>
-        <p style="margin: 6px 0 0 0; font-size: 11px; color: #e65100; line-height: 1.4;">
-          <strong>Students:</strong> Use your StudentID as username and your Date of Birth (dd/mm/yyyy) as password.
-        </p>
-      </div>
       <form (ngSubmit)="onSignIn()">
         <div class="form-group">
-          <label>Username / EmployeeID / StudentID</label>
+          <label>
+            Username / EmployeeID / StudentID
+            <span
+              class="help-icon"
+              [attr.title]="signinHelpTooltip"
+            >
+              ?
+            </span>
+          </label>
           <input 
             type="text" 
             [(ngModel)]="email" 
@@ -55,7 +55,15 @@
           <small class="form-text">Teachers: EmployeeID. Students: StudentID.</small>
         </div>
         <div class="form-group">
-          <label>Password</label>
+          <label>
+            Password
+            <span
+              class="help-icon"
+              [attr.title]="signinHelpTooltip"
+            >
+              ?
+            </span>
+          </label>
           <div class="password-input-wrapper">
             <input 
               [type]="showPassword ? 'text' : 'password'" 

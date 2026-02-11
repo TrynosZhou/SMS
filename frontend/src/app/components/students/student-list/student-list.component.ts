@@ -1,5 +1,5 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
 
@@ -33,15 +33,39 @@ export class StudentListComponent implements OnInit {
     classCount: 0
   };
   pageSizeOptions = [10, 20, 50];
+  pageTitle = 'Students';
+  pageSubtitle = 'Manage and view all enrolled students';
+  pageIcon = '👨‍🎓';
+  filterUsesTransport = false;
+  filterUsesDiningHall = false;
+  isLogisticsTransport = false;
+  isLogisticsDiningHall = false;
 
   constructor(
     private studentService: StudentService,
     private classService: ClassService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private route: ActivatedRoute
   ) { }
 
   ngOnInit() {
+    const logisticsMode = this.route.snapshot.data?.['logisticsMode'];
+    if (logisticsMode === 'transport') {
+      this.selectedType = 'Day Scholar';
+      this.isLogisticsTransport = true;
+      this.filterUsesTransport = true;
+      this.pageTitle = 'Transport';
+      this.pageSubtitle = 'Day scholar students using school transport';
+      this.pageIcon = '🚌';
+    } else if (logisticsMode === 'diningHall') {
+      this.selectedType = 'Day Scholar';
+      this.isLogisticsDiningHall = true;
+      this.filterUsesDiningHall = true;
+      this.pageTitle = 'Dining Hall';
+      this.pageSubtitle = 'Day scholar students using dining hall meals';
+      this.pageIcon = '🍽️';
+    }
     this.loadClasses();
     this.loadStudents();
   }
@@ -59,11 +83,17 @@ export class StudentListComponent implements OnInit {
 
   loadStudents(page = this.pagination.page) {
     this.loading = true;
+    const logisticsMode = this.route.snapshot.data?.['logisticsMode'];
+    const usesTransport = this.filterUsesTransport || this.isLogisticsTransport;
+    const usesDiningHall = this.filterUsesDiningHall || this.isLogisticsDiningHall;
     this.studentService.getStudentsPaginated({
       classId: this.selectedClass || undefined,
       page,
       limit: this.pagination.limit,
-      search: this.searchQuery.trim() || undefined
+      search: this.searchQuery.trim() || undefined,
+      studentType: this.selectedType || (logisticsMode ? 'Day Scholar' : undefined),
+      usesTransport: usesTransport ? true : undefined,
+      usesDiningHall: usesDiningHall ? true : undefined
     }).subscribe({
       next: (response: any) => {
         // Ensure response.data is an array
@@ -137,6 +167,10 @@ export class StudentListComponent implements OnInit {
     this.selectedClass = '';
     this.selectedType = '';
     this.selectedGender = '';
+    if (!this.isLogisticsTransport && !this.isLogisticsDiningHall) {
+      this.filterUsesTransport = false;
+      this.filterUsesDiningHall = false;
+    }
     if (hadClassFilter) {
       this.loadStudents(1);
     } else {
@@ -145,7 +179,239 @@ export class StudentListComponent implements OnInit {
   }
 
   hasActiveFilters(): boolean {
-    return !!(this.searchQuery || this.selectedClass || this.selectedType || this.selectedGender);
+    return !!(
+      this.searchQuery ||
+      this.selectedClass ||
+      this.selectedType ||
+      this.selectedGender ||
+      this.filterUsesTransport ||
+      this.filterUsesDiningHall
+    );
+  }
+
+  onLogisticsFilterChange() {
+    this.pagination.page = 1;
+    this.loadStudents(1);
+  }
+
+  exportToCsv() {
+    const rows = (this.filteredStudents || []).map((student: any) => ({
+      StudentNumber: student.studentNumber || '',
+      FirstName: student.firstName || '',
+      LastName: student.lastName || '',
+      Class: student.class?.name || student.classEntity?.name || '',
+      StudentType: student.studentType || 'Day Scholar',
+      Gender: student.gender || '',
+      UsesTransport: student.usesTransport ? 'Yes' : 'No',
+      UsesDiningHall: student.usesDiningHall ? 'Yes' : 'No',
+      Contact: student.contactNumber || student.phoneNumber || ''
+    }));
+
+    if (!rows.length) {
+      window.alert('No students available to export for the current filters.');
+      return;
+    }
+
+    const header = Object.keys(rows[0]);
+    const csvContent = [
+      header.join(','),
+      ...rows.map(row =>
+        header
+          .map(key => {
+            const value = (row as any)[key] ?? '';
+            const str = String(value).replace(/"/g, '""');
+            return `"${str}"`;
+          })
+          .join(',')
+      )
+    ].join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const filePrefix = this.isLogisticsTransport ? 'transport' : this.isLogisticsDiningHall ? 'dining-hall' : 'students';
+    a.download = `${filePrefix}-students.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  printList() {
+    const rows = (this.filteredStudents || []);
+    if (!rows.length) {
+      window.alert('No students available to print for the current filters.');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      return;
+    }
+
+    const title = this.pageTitle || 'Students';
+    const subtitle = this.pageSubtitle || '';
+
+    const tableHeaders = [
+      'Student #',
+      'Name',
+      'Class',
+      'Type',
+      'Gender',
+      'Uses Transport',
+      'Uses Dining Hall',
+      'Contact'
+    ];
+
+    const tableRows = rows
+      .map((student: any) => `
+        <tr>
+          <td>${student.studentNumber || ''}</td>
+          <td>${student.firstName || ''} ${student.lastName || ''}</td>
+          <td>${student.class?.name || student.classEntity?.name || ''}</td>
+          <td>${student.studentType || 'Day Scholar'}</td>
+          <td>${student.gender || ''}</td>
+          <td>${student.usesTransport ? 'Yes' : 'No'}</td>
+          <td>${student.usesDiningHall ? 'Yes' : 'No'}</td>
+          <td>${student.contactNumber || student.phoneNumber || ''}</td>
+        </tr>
+      `)
+      .join('');
+
+    const html = `
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+            }
+            h1 {
+              margin: 0 0 5px 0;
+              font-size: 20px;
+            }
+            p.subtitle {
+              margin: 0 0 15px 0;
+              font-size: 12px;
+              color: #555;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 10px;
+            }
+            th, td {
+              border: 1px solid #ccc;
+              padding: 6px 8px;
+              font-size: 12px;
+              text-align: left;
+            }
+            th {
+              background: #f0f0f0;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>${title}</h1>
+          <p class="subtitle">${subtitle}</p>
+          <table>
+            <thead>
+              <tr>
+                ${tableHeaders.map(h => `<th>${h}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  }
+
+  generateBusIdCards() {
+    if (!this.isLogisticsTransport) {
+      return;
+    }
+
+    if (!this.filteredStudents.length) {
+      window.alert('No transport students available for the current filters.');
+      return;
+    }
+
+    this.loading = true;
+    this.error = '';
+
+    const params: { classId?: string } = {};
+    if (this.selectedClass) {
+      params.classId = this.selectedClass;
+    }
+
+    this.studentService.generateTransportBusIdCards(params).subscribe({
+      next: (blob: Blob) => {
+        this.loading = false;
+        const fileURL = window.URL.createObjectURL(blob);
+        window.open(fileURL, '_blank');
+        setTimeout(() => window.URL.revokeObjectURL(fileURL), 100);
+      },
+      error: (err: any) => {
+        this.loading = false;
+        console.error('Error generating transport bus ID cards:', err);
+        this.error = 'Failed to generate transport bus ID cards';
+        setTimeout(() => {
+          if (this.error === 'Failed to generate transport bus ID cards') {
+            this.error = '';
+          }
+        }, 7000);
+      }
+    });
+  }
+
+  downloadLogisticsReportPdf() {
+    if (!this.isLogisticsTransport && !this.isLogisticsDiningHall) {
+      return;
+    }
+
+    if (!this.filteredStudents.length) {
+      window.alert('No students available to include in the PDF report for the current filters.');
+      return;
+    }
+
+    this.loading = true;
+    this.error = '';
+
+    const service: 'transport' | 'dining-hall' = this.isLogisticsTransport ? 'transport' : 'dining-hall';
+    const classId = this.selectedClass || undefined;
+
+    this.studentService.generateLogisticsReport(service, classId).subscribe({
+      next: (blob: Blob) => {
+        this.loading = false;
+        const fileURL = window.URL.createObjectURL(blob);
+        window.open(fileURL, '_blank');
+        setTimeout(() => window.URL.revokeObjectURL(fileURL), 100);
+      },
+      error: (err: any) => {
+        this.loading = false;
+        console.error('Error generating logistics PDF report:', err);
+        this.error = 'Failed to generate logistics PDF report';
+        setTimeout(() => {
+          if (this.error === 'Failed to generate logistics PDF report') {
+            this.error = '';
+          }
+        }, 7000);
+      }
+    });
   }
 
   viewStudentDetails(student: any) {

@@ -26,7 +26,7 @@ PORT=3000
 DB_HOST=localhost
 DB_PORT=5432
 DB_USERNAME=postgres
-DB_PASSWORD=postgres
+DB_PASSWORD=admin
 DB_NAME=sms_db
 
 # JWT Configuration
@@ -37,7 +37,7 @@ JWT_EXPIRES_IN=7d
 ## Important Notes
 
 - The `.env` file is in `.gitignore` (for security)
-- Default password is `postgres` (works with Docker)
+- Default password is `admin` (works with Docker)
 - Change `DB_PASSWORD` if using local PostgreSQL with different password
 - Change `JWT_SECRET` to a secure random string in production
 

@@ -208,6 +208,14 @@ export const createUserAccount = async (req: AuthRequest, res: Response) => {
     }
 
     const userRepository = AppDataSource.getRepository(User);
+
+    // Enforce a single SuperAdmin account in the system
+    if (requestedRole === UserRole.SUPERADMIN) {
+      const superadminCount = await userRepository.count({ where: { role: UserRole.SUPERADMIN } });
+      if (superadminCount >= 1) {
+        return res.status(400).json({ message: 'A Super Admin account already exists. Only one Super Admin is allowed.' });
+      }
+    }
     
     // Only check email if provided (not required for teachers)
     if (email) {
@@ -498,12 +506,17 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: 'Only a Super Admin can modify a Super Admin account' });
     }
 
-    // Prevent removing the last SuperAdmin
-    if (currentRole === UserRole.SUPERADMIN && role !== UserRole.SUPERADMIN) {
-      const superadminCount = await userRepository.count({ where: { role: UserRole.SUPERADMIN } });
-      if (superadminCount <= 1) {
-        return res.status(400).json({ message: 'Cannot change role of the last Super Admin account' });
-      }
+    // Enforce a single SuperAdmin account:
+    // - Prevent assigning SuperAdmin to another user if one already exists
+    // - Prevent removing the last existing SuperAdmin
+    const superadminCount = await userRepository.count({ where: { role: UserRole.SUPERADMIN } });
+
+    if (role === UserRole.SUPERADMIN && currentRole !== UserRole.SUPERADMIN && superadminCount >= 1) {
+      return res.status(400).json({ message: 'A Super Admin account already exists. Only one Super Admin is allowed.' });
+    }
+
+    if (currentRole === UserRole.SUPERADMIN && role !== UserRole.SUPERADMIN && superadminCount <= 1) {
+      return res.status(400).json({ message: 'Cannot change role of the last Super Admin account' });
     }
 
     user.role = role as UserRole;

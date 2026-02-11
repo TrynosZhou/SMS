@@ -304,8 +304,10 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
 
   getEditableRoleOptions(): { value: string; label: string }[] {
     const all = this.manualAccountRoles;
-    if (this.isSuperAdmin()) return all;
-    return all.filter(o => o.value !== 'superadmin');
+    if (!this.isSuperAdmin()) {
+      return all.filter(o => o.value !== 'superadmin');
+    }
+    return all;
   }
 
   updateUserRole() {

@@ -43,6 +43,10 @@ export class LoginComponent implements OnInit {
   // Phone validation error
   signupContactNumberError = '';
 
+  signinHelpTooltip =
+    'Teachers: Use your EmployeeID as username and your password. ' +
+    'Students: Use your StudentID as username and your Date of Birth (dd/mm/yyyy) as password.';
+
   constructor(private authService: AuthService, private router: Router) { }
 
   ngOnInit(): void {

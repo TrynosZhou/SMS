@@ -13,6 +13,24 @@
       <p class="subtitle">Manage and view all teaching staff members</p>
     </div>
     <div class="header-actions">
+      <button
+        class="btn btn-secondary"
+        (click)="openTeachersPreview()"
+        [disabled]="loading || !filteredTeachers.length || loadingPdf">
+        📄 Preview PDF
+      </button>
+      <button
+        class="btn btn-secondary"
+        (click)="downloadTeachersPdf()"
+        [disabled]="loading || !filteredTeachers.length || downloadingPdf">
+        ⬇️ Download PDF
+      </button>
+      <button
+        class="btn btn-secondary"
+        (click)="exportTeachersToCSV()"
+        [disabled]="loading || !filteredTeachers.length">
+        📊 Excel
+      </button>
       <button class="btn btn-primary" routerLink="/teachers/new">
         <span>➕</span> Add New Teacher
       </button>
@@ -339,5 +357,47 @@
         <button class="btn btn-primary" (click)="editTeacher(selectedTeacher.id)">✏️ Edit Teacher</button>
       </div>
     </div>
+  </div>
+  <div id="teachers-list-pdf" class="teachers-pdf-container">
+    <div class="teachers-pdf-header">
+      <div class="teachers-pdf-header-left">
+        <div class="teachers-pdf-logo" *ngIf="schoolLogo">
+          <img [src]="schoolLogo" alt="School Logo 1">
+        </div>
+        <div class="teachers-pdf-header-text">
+          <h1>{{ schoolName || 'School Name' }}</h1>
+          <p>{{ schoolAddress }}</p>
+          <p *ngIf="schoolMotto"><em>{{ schoolMotto }}</em></p>
+          <h2>Teachers List</h2>
+        </div>
+      </div>
+      <div class="teachers-pdf-logo-secondary" *ngIf="schoolLogo2">
+        <img [src]="schoolLogo2" alt="School Logo 2">
+      </div>
+    </div>
+    <table class="teachers-pdf-table">
+      <thead>
+        <tr>
+          <th>Employee Number</th>
+          <th>First Name</th>
+          <th>Last Name</th>
+          <th>DOB</th>
+          <th>Gender</th>
+          <th>Contact Phone</th>
+          <th>Number of Classes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let teacher of filteredTeachers">
+          <td>{{ teacher.teacherId }}</td>
+          <td>{{ teacher.firstName }}</td>
+          <td>{{ teacher.lastName }}</td>
+          <td>{{ teacher.dateOfBirth | date }}</td>
+          <td>{{ teacher.sex }}</td>
+          <td>{{ teacher.phoneNumber }}</td>
+          <td>{{ teacher.classes ? teacher.classes.length : 0 }}</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </div>

@@ -96,6 +96,8 @@ const routes: Routes = [
   { path: 'subjects/:id/edit', component: SubjectFormComponent, canActivate: [AuthGuard] },
   { path: 'subjects/assign', component: AssignSubjectComponent, canActivate: [AuthGuard] },
   { path: 'subjects/teaching-load', component: TeachingLoadComponent, canActivate: [AuthGuard] },
+  { path: 'logistics/transport', component: StudentListComponent, canActivate: [AuthGuard], data: { logisticsMode: 'transport' } },
+  { path: 'logistics/dining-hall', component: StudentListComponent, canActivate: [AuthGuard], data: { logisticsMode: 'diningHall' } },
   { path: 'schools', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: 'attendance/mark', component: MarkAttendanceComponent, canActivate: [AuthGuard] },
   { path: 'attendance/reports', component: AttendanceReportsComponent, canActivate: [AuthGuard] },

@@ -11,7 +11,8 @@ import { AuthRequest } from '../middleware/auth';
 import { generateStudentId } from '../utils/studentIdGenerator';
 import { Settings } from '../entities/Settings';
 import QRCode from 'qrcode';
-import { createStudentIdCardPDF } from '../utils/studentIdCardPdf';
+import PDFDocument from 'pdfkit';
+import { createStudentIdCardPDF, createStudentIdCardsPDFBatch } from '../utils/studentIdCardPdf';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
 import { calculateAge } from '../utils/ageUtils';
@@ -389,7 +390,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     }
 
     const studentRepository = AppDataSource.getRepository(Student);
-    const { classId, page: pageParam, limit: limitParam, search } = req.query;
+    const { classId, page: pageParam, limit: limitParam, search, usesTransport, usesDiningHall, studentType } = req.query;
     const { page, limit, skip } = resolvePaginationParams(
       pageParam as string,
       limitParam as string,
@@ -397,6 +398,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     );
     const trimmedClassId = classId ? String(classId).trim() : null;
     const trimmedSearch = search ? String(search).trim() : null;
+    const normalizedStudentType = studentType ? String(studentType).trim() : null;
     const normalizedSearch = trimmedSearch ? trimmedSearch.toLowerCase() : null;
 
     console.log('Fetching students with classId:', classId || 'ALL');
@@ -413,6 +415,32 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
         '(student.classId = :classId OR classEntity.id = :classId)',
         { classId: trimmedClassId }
       );
+    }
+
+    if (normalizedStudentType) {
+      queryBuilder = queryBuilder.andWhere('student.studentType = :studentType', {
+        studentType: normalizedStudentType
+      });
+    }
+
+    if (usesTransport !== undefined) {
+      const usesTransportFlag =
+        typeof usesTransport === 'string'
+          ? ['true', '1', 'yes', 'y'].includes(usesTransport.trim().toLowerCase())
+          : Boolean(usesTransport);
+      queryBuilder = queryBuilder.andWhere('student.usesTransport = :usesTransport', {
+        usesTransport: usesTransportFlag
+      });
+    }
+
+    if (usesDiningHall !== undefined) {
+      const usesDiningHallFlag =
+        typeof usesDiningHall === 'string'
+          ? ['true', '1', 'yes', 'y'].includes(usesDiningHall.trim().toLowerCase())
+          : Boolean(usesDiningHall);
+      queryBuilder = queryBuilder.andWhere('student.usesDiningHall = :usesDiningHall', {
+        usesDiningHall: usesDiningHallFlag
+      });
     }
 
     if (normalizedSearch) {
@@ -1241,5 +1269,286 @@ export const generateStudentIdCard = async (req: AuthRequest, res: Response) => 
   } catch (error) {
     console.error('Error generating student ID card:', error);
     return res.status(500).json({ message: 'Failed to generate student ID card' });
+  }
+};
+
+export const generateTransportBusIdCards = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const allowedRoles = [UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.TEACHER];
+    if (!allowedRoles.includes(user.role)) {
+      return res.status(403).json({
+        message: 'Insufficient permissions to generate transport bus ID cards. Required role: Admin, Super Admin, Accountant, or Teacher.',
+        userRole: user.role,
+        allowedRoles
+      });
+    }
+
+    const studentRepository = AppDataSource.getRepository(Student);
+    const settingsRepository = AppDataSource.getRepository(Settings);
+
+    const { classId } = req.query as { classId?: string };
+
+    const query = studentRepository
+      .createQueryBuilder('student')
+      .leftJoinAndSelect('student.classEntity', 'classEntity')
+      .where('student.usesTransport = :usesTransport', { usesTransport: true })
+      .andWhere('student.studentType = :studentType', { studentType: 'Day Scholar' });
+
+    if (classId) {
+      query.andWhere('classEntity.id = :classId', { classId });
+    }
+
+    const students = await query
+      .orderBy('classEntity.name', 'ASC')
+      .addOrderBy('student.lastName', 'ASC')
+      .addOrderBy('student.firstName', 'ASC')
+      .getMany();
+
+    if (!students.length) {
+      return res.status(404).json({ message: 'No day scholar students using transport found' });
+    }
+
+    const settings = await settingsRepository.findOne({
+      where: {},
+      order: { createdAt: 'DESC' }
+    });
+
+    const cardItems = await Promise.all(
+      students.map(async (student) => {
+        const qrPayload = {
+          studentId: student.id,
+          studentNumber: student.studentNumber,
+          name: `${student.firstName} ${student.lastName}`.trim(),
+          class: student.classEntity?.name || null,
+          studentType: student.studentType,
+          issuedAt: new Date().toISOString(),
+          transport: true
+        };
+
+        const qrDataUrl = await QRCode.toDataURL(JSON.stringify(qrPayload));
+
+        return {
+          student,
+          settings: settings || null,
+          qrDataUrl,
+          photoPath: student.photo,
+          mode: 'transport' as const
+        };
+      })
+    );
+
+    const pdfBuffer = await createStudentIdCardsPDFBatch(cardItems);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="transport-bus-id-cards.pdf"');
+    return res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating transport bus ID cards:', error);
+    return res.status(500).json({ message: 'Failed to generate transport bus ID cards' });
+  }
+};
+
+async function generateLogisticsReportPdf(
+  req: AuthRequest,
+  res: Response,
+  options: { service: 'transport' | 'diningHall'; title: string }
+) {
+  if (!AppDataSource.isInitialized) {
+    await AppDataSource.initialize();
+  }
+
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+
+  const allowedRoles = [UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.TEACHER];
+  if (!allowedRoles.includes(user.role)) {
+    return res.status(403).json({
+      message: 'Insufficient permissions to generate logistics reports. Required role: Admin, Super Admin, Accountant, or Teacher.',
+      userRole: user.role,
+      allowedRoles
+    });
+  }
+
+  const studentRepository = AppDataSource.getRepository(Student);
+  const settingsRepository = AppDataSource.getRepository(Settings);
+
+  const { classId } = req.query as { classId?: string };
+
+  const query = studentRepository
+    .createQueryBuilder('student')
+    .leftJoinAndSelect('student.classEntity', 'classEntity')
+    .where('student.studentType = :studentType', { studentType: 'Day Scholar' });
+
+  if (options.service === 'transport') {
+    query.andWhere('student.usesTransport = :flag', { flag: true });
+  } else {
+    query.andWhere('student.usesDiningHall = :flag', { flag: true });
+  }
+
+  if (classId) {
+    query.andWhere('classEntity.id = :classId', { classId });
+  }
+
+  const students = await query
+    .orderBy('classEntity.name', 'ASC')
+    .addOrderBy('student.lastName', 'ASC')
+    .addOrderBy('student.firstName', 'ASC')
+    .getMany();
+
+  const settings = await settingsRepository.findOne({
+    where: {},
+    order: { createdAt: 'DESC' }
+  });
+
+  const doc = new PDFDocument({ size: 'A4', margin: 40 });
+  const buffers: Buffer[] = [];
+
+  doc.on('data', (chunk) => buffers.push(chunk));
+  doc.on('end', () => {
+    const pdfBuffer = Buffer.concat(buffers);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${options.service}-students-report.pdf"`);
+    res.send(pdfBuffer);
+  });
+
+  const schoolName = settings?.schoolName || 'School Management System';
+  const schoolAddress = settings?.schoolAddress ? String(settings.schoolAddress).trim() : '';
+  const schoolMotto = settings?.schoolMotto ? String(settings.schoolMotto).trim() : '';
+
+  let cursorY = 40;
+
+  if (settings?.schoolLogo && settings.schoolLogo.startsWith('data:image')) {
+    try {
+      const base64Data = settings.schoolLogo.split(',')[1] || '';
+      const logoBuffer = Buffer.from(base64Data, 'base64');
+      doc.image(logoBuffer, 40, cursorY, { width: 60 });
+    } catch (error) {
+      console.error('Failed to render school logo in logistics report:', error);
+    }
+  }
+
+  doc.fontSize(16).font('Helvetica-Bold');
+  doc.text(schoolName, 120, cursorY, { width: 400 });
+
+  cursorY += 22;
+
+  if (schoolAddress) {
+    doc.fontSize(10).font('Helvetica');
+    doc.text(schoolAddress, 120, cursorY, { width: 400 });
+    cursorY += 16;
+  }
+
+  if (schoolMotto) {
+    doc.fontSize(10).font('Helvetica-Oblique');
+    doc.text(schoolMotto, 120, cursorY, { width: 400 });
+    cursorY += 18;
+  } else {
+    cursorY += 8;
+  }
+
+  cursorY += 10;
+
+  doc.moveTo(40, cursorY).lineTo(555, cursorY).strokeColor('#1F4B99').lineWidth(1).stroke();
+  cursorY += 20;
+
+  doc.fontSize(14).font('Helvetica-Bold').fillColor('#1F4B99');
+  doc.text(options.title, 40, cursorY, { align: 'center', width: 515 });
+
+  cursorY += 30;
+
+  doc.fontSize(10).font('Helvetica').fillColor('#000000');
+  const totalLabel =
+    options.service === 'transport'
+      ? 'Total students using school transport'
+      : 'Total students using dining hall';
+  doc.text(`${totalLabel}: ${students.length}`, 40, cursorY);
+
+  if (classId) {
+    doc.text(`Class filter applied`, 300, cursorY, { align: 'right' });
+  }
+
+  cursorY += 20;
+
+  const headerY = cursorY;
+  const colX = {
+    index: 40,
+    studentNumber: 70,
+    name: 170,
+    className: 340,
+    contact: 420
+  };
+
+  doc.fontSize(10).font('Helvetica-Bold').fillColor('#1F4B99');
+  doc.text('#', colX.index, headerY);
+  doc.text('Student No', colX.studentNumber, headerY);
+  doc.text('Name', colX.name, headerY);
+  doc.text('Class', colX.className, headerY);
+  doc.text('Contact', colX.contact, headerY);
+
+  cursorY += 14;
+  doc.moveTo(40, cursorY).lineTo(555, cursorY).strokeColor('#D7DFEB').lineWidth(1).stroke();
+  cursorY += 8;
+
+  doc.fontSize(9).font('Helvetica').fillColor('#000000');
+
+  const rowHeight = 16;
+
+  students.forEach((student, index) => {
+    if (cursorY > 780) {
+      doc.addPage();
+      cursorY = 40;
+    }
+
+    const fullName = `${student.firstName} ${student.lastName}`.trim();
+    const contact = student.contactNumber || student.phoneNumber || '';
+
+    doc.text(String(index + 1), colX.index, cursorY);
+    doc.text(student.studentNumber || '-', colX.studentNumber, cursorY, { width: 90 });
+    doc.text(fullName, colX.name, cursorY, { width: 160 });
+    doc.text(student.classEntity?.name || '-', colX.className, cursorY, { width: 70 });
+    doc.text(contact, colX.contact, cursorY, { width: 120 });
+
+    cursorY += rowHeight;
+  });
+
+  doc.end();
+}
+
+export const generateTransportStudentsReport = async (req: AuthRequest, res: Response) => {
+  try {
+    await generateLogisticsReportPdf(req, res, {
+      service: 'transport',
+      title: 'Students Using School Transport'
+    });
+  } catch (error) {
+    console.error('Error generating transport students report:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Failed to generate transport students report' });
+    }
+  }
+};
+
+export const generateDiningHallStudentsReport = async (req: AuthRequest, res: Response) => {
+  try {
+    await generateLogisticsReportPdf(req, res, {
+      service: 'diningHall',
+      title: 'Students Using Dining Hall'
+    });
+  } catch (error) {
+    console.error('Error generating dining hall students report:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Failed to generate dining hall students report' });
+    }
   }
 };
