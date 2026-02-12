@@ -6,13 +6,13 @@
   <!-- Check Student Balance Section -->
   <div class="search-section">
     <div class="search-form">
-      <label for="studentId">Student ID</label>
+      <label for="studentId">Student ID / Student Number / Last Name</label>
       <div class="input-group">
         <input
           type="text"
           id="studentId"
           [(ngModel)]="studentId"
-          placeholder="Enter Student ID or Student Number"
+          placeholder="Enter Student ID, Student Number, or Last Name"
           class="form-control"
           (keyup.enter)="getBalance()"
         />
@@ -31,6 +31,26 @@
         >
           <span class="icon">🗑️</span> Clear
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Matching students dropdown for last name search -->
+  <div class="search-section" *ngIf="matchingStudents && matchingStudents.length > 0">
+    <div class="search-form">
+      <label for="studentMatch">Select Student</label>
+      <div class="input-group">
+        <select
+          id="studentMatch"
+          [(ngModel)]="selectedMatchId"
+          (change)="onStudentMatchSelected()"
+          class="form-control"
+        >
+          <option [ngValue]="''">-- Select student --</option>
+          <option *ngFor="let s of matchingStudents" [ngValue]="s.studentId">
+            {{ s.fullName }} ({{ s.studentNumber }})
+          </option>
+        </select>
       </div>
     </div>
   </div>

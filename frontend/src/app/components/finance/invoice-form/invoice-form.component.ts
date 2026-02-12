@@ -15,6 +15,8 @@ export class InvoiceFormComponent implements OnInit {
   invoice: any = {
     studentId: '',
     amount: 0,
+    tuitionAmount: 0,
+    diningHallAmount: 0,
     dueDate: '',
     term: '',
     description: ''
@@ -119,27 +121,8 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   getSuggestedTerm(currentTerm: string): string {
-    if (!currentTerm) {
-      const currentYear = new Date().getFullYear();
-      return `Term 1 ${currentYear}`;
-    }
-
-    // Try to determine next term
-    const termMatch = currentTerm.match(/Term\s*(\d+)(?:\s*(\d{4}))?/i);
-    if (termMatch) {
-      const termNum = parseInt(termMatch[1]);
-      const year = termMatch[2] ? parseInt(termMatch[2]) : new Date().getFullYear();
-      
-      if (termNum === 1) {
-        return `Term 2 ${year}`;
-      } else if (termNum === 2) {
-        return `Term 3 ${year}`;
-      } else if (termNum === 3) {
-        return `Term 1 ${year + 1}`;
-      }
-    }
-    
-    return currentTerm;
+    const currentYear = new Date().getFullYear();
+    return `Term 1 ${currentYear}`;
   }
 
   useSuggestedTerm() {
@@ -151,7 +134,7 @@ export class InvoiceFormComponent implements OnInit {
   loadStudents() {
     this.studentService.getStudents().subscribe({
       next: (data: any) => {
-        this.students = data || [];
+        this.students = Array.isArray(data) ? data : [];
         this.filteredStudents = [];
       },
       error: (err: any) => {
@@ -168,14 +151,27 @@ export class InvoiceFormComponent implements OnInit {
       return;
     }
     const query = this.studentSearchQuery.toLowerCase().trim();
-    this.filteredStudents = this.students.filter(student => {
-      const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
-      const studentNumber = (student.studentNumber || '').toLowerCase();
-      return fullName.includes(query) || studentNumber.includes(query);
-    }).slice(0, 10); // Limit to 10 results
+
+    // Prefer backend search so we always get up-to-date students
+    this.studentService.getStudentsPaginated({ search: query, limit: 10 }).subscribe({
+      next: (response: any) => {
+        const data = response && Array.isArray(response.data) ? response.data : [];
+        this.filteredStudents = data;
+        if (this.filteredStudents.length === 1) {
+          this.selectStudent(this.filteredStudents[0]);
+        }
+      },
+      error: (err: any) => {
+        console.error('Error searching students:', err);
+        this.filteredStudents = [];
+      }
+    });
   }
 
   selectStudent(student: any) {
+    if (!student || !student.id) {
+      return;
+    }
     this.invoice.studentId = student.id;
     this.selectedStudentData = student;
     this.studentSearchQuery = `${student.firstName} ${student.lastName} (${student.studentNumber})`;
@@ -183,23 +179,29 @@ export class InvoiceFormComponent implements OnInit {
     this.calculateBalance();
     this.studentBalanceInfo = null;
     this.discountAmount = 0;
-    // Set amount to 0 for Accountants (they can only invoice uniform items)
+    this.error = '';
+    this.submitting = false;
     if (this.isAccountant) {
       this.invoice.amount = 0;
+      this.invoice.tuitionAmount = 0;
+      this.invoice.diningHallAmount = 0;
     }
   }
 
   calculateBalance() {
-    // Accountants cannot calculate balance for tuition fees (amount must be 0)
-    if (this.isAccountant && this.invoice.amount > 0) {
+    if (this.isAccountant) {
       this.invoice.amount = 0;
+      this.invoice.tuitionAmount = 0;
+      this.invoice.diningHallAmount = 0;
+      this.nextTermBalance = null;
       return;
     }
-    
-    if (this.invoice.studentId && this.invoice.amount && this.invoice.amount > 0) {
+
+    const baseAmount = this.getBaseAmount();
+    if (this.invoice.studentId && baseAmount > 0) {
       this.financeService.calculateNextTermBalance(
         this.invoice.studentId,
-        this.invoice.amount
+        baseAmount
       ).subscribe({
         next: (data: any) => {
           this.nextTermBalance = data;
@@ -219,7 +221,18 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   getInvoiceGrandTotal(): number {
-    return Number(this.invoice.amount || 0) + this.getUniformSubtotal();
+    return this.getBaseAmount() + this.getUniformSubtotal();
+  }
+
+  getBaseAmount(): number {
+    const tuition = Number(this.invoice.tuitionAmount || 0);
+    const diningHall = Number(this.invoice.diningHallAmount || 0);
+    const other = Number(this.invoice.amount || 0);
+    const total = tuition + diningHall + other;
+    if (isNaN(total) || total < 0) {
+      return 0;
+    }
+    return total;
   }
 
   getFinalInvoiceAmount(): number {
@@ -230,6 +243,14 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   fetchStudentBalance() {
+    if (!this.invoice.studentId) {
+      if (this.filteredStudents.length === 1) {
+        this.selectStudent(this.filteredStudents[0]);
+      } else if (this.selectedStudentData && this.selectedStudentData.id) {
+        this.invoice.studentId = this.selectedStudentData.id;
+      }
+    }
+
     if (!this.invoice.studentId) {
       this.error = 'Please select a student first';
       setTimeout(() => this.error = '', 3000);
@@ -309,6 +330,14 @@ export class InvoiceFormComponent implements OnInit {
     this.success = '';
     this.submitting = true;
 
+    if (!this.invoice.studentId) {
+      if (this.filteredStudents.length === 1) {
+        this.selectStudent(this.filteredStudents[0]);
+      } else if (this.selectedStudentData && this.selectedStudentData.id) {
+        this.invoice.studentId = this.selectedStudentData.id;
+      }
+    }
+
     // Validate required fields
     if (!this.invoice.studentId) {
       this.error = 'Please select a student';
@@ -316,24 +345,31 @@ export class InvoiceFormComponent implements OnInit {
       return;
     }
 
-    let baseAmount = Number(this.invoice.amount || 0);
-    if (isNaN(baseAmount) || baseAmount < 0) {
-      this.error = 'Base amount cannot be negative';
+    const tuitionAmount = Number(this.invoice.tuitionAmount || 0);
+    const diningHallAmount = Number(this.invoice.diningHallAmount || 0);
+    const otherAmount = Number(this.invoice.amount || 0);
+
+    if (tuitionAmount < 0 || diningHallAmount < 0 || otherAmount < 0) {
+      this.error = 'Amounts cannot be negative';
       this.submitting = false;
       return;
     }
 
-    // Allow invoice with only uniform items (no base amount) for Accountants
-    // SuperAdmin/Admin can also create invoices with only uniform items
+    let baseAmount = this.getBaseAmount();
+    if (isNaN(baseAmount) || baseAmount < 0) {
+      this.error = 'Total amount cannot be negative';
+      this.submitting = false;
+      return;
+    }
+
     if (baseAmount === 0 && this.selectedUniformItems.length === 0) {
       this.error = 'Please enter a base amount or add uniform items to this invoice';
       this.submitting = false;
       return;
     }
     
-    // Accountants cannot set base amount (tuition fees) - they can only invoice uniform items
     if (this.isAccountant && baseAmount > 0) {
-      this.error = 'Accountants cannot create invoices for tuition fees. Please set amount to 0 and add uniform items only.';
+      this.error = 'Accountants cannot create invoices for tuition or dining hall fees. Please set all amounts to 0 and add uniform items only.';
       this.submitting = false;
       return;
     }
@@ -378,12 +414,16 @@ export class InvoiceFormComponent implements OnInit {
 
     const finalAmount = totalBeforeDiscount - discount;
     baseAmount = Number(baseAmount.toFixed(2));
-    
-    this.invoice.amount = baseAmount;
+    const finalAmountRounded = Number(finalAmount.toFixed(2));
+
+    this.invoice.amount = otherAmount;
 
     const payload = {
       ...this.invoice,
-      amount: Number(finalAmount.toFixed(2)),
+      amount: finalAmountRounded,
+      tuitionAmount,
+      diningHallAmount,
+      otherAmount,
       uniformItems: this.selectedUniformItems.map(item => ({
         itemId: item.id,
         quantity: item.quantity
@@ -412,6 +452,8 @@ export class InvoiceFormComponent implements OnInit {
         this.invoice = {
           studentId: '',
           amount: 0,
+          tuitionAmount: 0,
+          diningHallAmount: 0,
           dueDate: '',
           term: '',
           description: ''

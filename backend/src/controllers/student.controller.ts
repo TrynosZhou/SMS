@@ -285,8 +285,26 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
         console.log('📝 Invoice items:', invoiceItems);
 
         if (totalAmount > 0) {
-          const invoiceCount = await invoiceRepository.count();
-          const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(6, '0')}`;
+          const currentYear = new Date().getFullYear();
+          const invoicePrefix = `INV-${currentYear}-`;
+
+          const lastInvoiceForYear = await invoiceRepository
+            .createQueryBuilder('invoice')
+            .where('invoice.invoiceNumber LIKE :prefix', { prefix: `${invoicePrefix}%` })
+            .orderBy('invoice.invoiceNumber', 'DESC')
+            .getOne();
+
+          let nextSequence = 1;
+          if (lastInvoiceForYear?.invoiceNumber) {
+            const parts = String(lastInvoiceForYear.invoiceNumber).split('-');
+            const lastSeqRaw = parts[2] || '';
+            const lastSeq = parseInt(lastSeqRaw, 10);
+            if (!isNaN(lastSeq) && lastSeq >= 1) {
+              nextSequence = lastSeq + 1;
+            }
+          }
+
+          const invoiceNumber = `${invoicePrefix}${String(nextSequence).padStart(6, '0')}`;
 
           const dueDate = new Date();
           dueDate.setDate(dueDate.getDate() + 30);

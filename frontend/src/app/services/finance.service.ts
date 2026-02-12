@@ -69,6 +69,13 @@ export class FinanceService {
     return this.http.put(`${this.apiUrl}/finance/${invoiceId}/payment`, paymentData);
   }
 
+  adjustInvoiceLogistics(
+    invoiceId: string,
+    payload: { addTransport?: boolean; addDiningHall?: boolean; addTuition?: boolean; diningHallAmount?: number }
+  ): Observable<any> {
+    return this.http.put(`${this.apiUrl}/finance/${invoiceId}/logistics`, payload);
+  }
+
   calculateNextTermBalance(studentId: string, nextTermAmount: number): Observable<any> {
     return this.http.post(`${this.apiUrl}/finance/calculate-balance`, { studentId, nextTermAmount });
   }

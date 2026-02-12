@@ -49,11 +49,21 @@ function getNextTerm(currentTerm: string): string {
 
 export const createInvoice = async (req: AuthRequest, res: Response) => {
   try {
-    const { studentId, amount, dueDate, term, description, uniformItems } = req.body;
+    const { studentId, amount, dueDate, term, description, uniformItems, tuitionAmount, diningHallAmount, otherAmount } = req.body;
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
     const uniformItemRepository = AppDataSource.getRepository(UniformItem);
     const invoiceUniformItemRepository = AppDataSource.getRepository(InvoiceUniformItem);
+
+    if (!studentId) {
+      return res.status(400).json({ message: 'Student ID is required' });
+    }
+    if (!dueDate) {
+      return res.status(400).json({ message: 'Due date is required' });
+    }
+    if (!term) {
+      return res.status(400).json({ message: 'Term is required' });
+    }
 
     // Find student and validate
     const student = await studentRepository.findOne({ 
@@ -87,99 +97,49 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       console.log(`[createInvoice] Fixed invoice reference for ${lastInvoice.invoiceNumber}`);
     }
 
-    // Ensure numeric values to avoid string concatenation
     const previousBalance = parseAmount(lastInvoice?.balance);
     const prepaidAmount = parseAmount(lastInvoice?.prepaidAmount);
     let baseAmount = parseAmount(amount);
-    let calculatedFees = 0;
+    let transportIncrement = 0;
+    let registrationIncrement = 0;
+    let deskIncrement = 0;
 
-    // If term is provided, automatically calculate fees for that term
-    // This ensures fees are added for the selected term (tuition, transport, DH, sports, library)
-    // The amount field can be used for manual adjustments, but if term is provided, we calculate fees
-    if (term) {
-      const settingsRepository = AppDataSource.getRepository(Settings);
-      const settingsList = await settingsRepository.find({
-        order: { createdAt: 'DESC' },
-        take: 1
-      });
-      const settings = settingsList.length > 0 ? settingsList[0] : null;
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
+    });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
 
-      if (settings && settings.feesSettings) {
-        const fees = settings.feesSettings;
-        const dayScholarTuitionFee = parseAmount(fees.dayScholarTuitionFee);
-        const boarderTuitionFee = parseAmount(fees.boarderTuitionFee);
-        const registrationFee = parseAmount(fees.registrationFee);
-        const deskFee = parseAmount(fees.deskFee);
-        const transportCost = parseAmount(fees.transportCost);
-        const diningHallCost = parseAmount(fees.diningHallCost);
-        const libraryFee = parseAmount(fees.libraryFee);
-        const sportsFee = parseAmount(fees.sportsFee);
-        const otherFees = Array.isArray(fees.otherFees) ? fees.otherFees : [];
-        const otherFeesTotal = otherFees.reduce((sum: number, fee: any) => sum + parseAmount(fee?.amount), 0);
+    if (settings && settings.feesSettings) {
+      const fees = settings.feesSettings;
+      const transportCost = parseAmount(fees.transportCost);
+      const registrationFee = parseAmount(fees.registrationFee);
+      const deskFee = parseAmount(fees.deskFee);
 
-        // Desk fee and registration fee: charged once at registration only (not for staff children)
-        const hasPreviousInvoice = Boolean(lastInvoice);
-        const shouldChargeOneTimeFees = !hasPreviousInvoice;
+      if (
+        student.studentType === 'Day Scholar' &&
+        student.usesTransport &&
+        !student.isStaffChild &&
+        Number.isFinite(transportCost) &&
+        transportCost > 0
+      ) {
+        transportIncrement = transportCost;
+      }
 
-        // Calculate fees based on staff child status
-        if (!student.isStaffChild) {
-          const tuitionFee = student.studentType === 'Boarder' ? boarderTuitionFee : dayScholarTuitionFee;
-          calculatedFees += tuitionFee;
+      const hasPreviousInvoice = !!lastInvoice;
+      if (!student.isStaffChild && !hasPreviousInvoice) {
+        if (Number.isFinite(registrationFee) && registrationFee > 0) {
+          registrationIncrement = registrationFee;
         }
-
-        // Registration fee: only charged once at registration (does not apply to staff children)
-        if (!student.isStaffChild && shouldChargeOneTimeFees) {
-          calculatedFees += registrationFee;
-        }
-
-        // Desk fee: only charged once at registration (does not apply to staff children)
-        if (!student.isStaffChild && shouldChargeOneTimeFees) {
-          calculatedFees += deskFee;
-        }
-
-        // Library fee, sports fee: charged every term
-        if (!student.isStaffChild) {
-          calculatedFees += libraryFee;
-          calculatedFees += sportsFee;
-          calculatedFees += otherFeesTotal;
-        }
-
-        // Transport cost: only for day scholars who use transport
-        if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild) {
-          calculatedFees += transportCost;
-        }
-
-        // Dining hall cost: full price for regular students, 50% for staff children
-        if (student.usesDiningHall) {
-          if (student.isStaffChild) {
-            calculatedFees += diningHallCost * 0.5; // 50% for staff children
-          } else {
-            calculatedFees += diningHallCost; // Full price for regular students
-          }
-        }
-
-        const hasUniformItems = Array.isArray(uniformItems) && uniformItems.length > 0;
-        const isUniformOnlyInvoice = hasUniformItems && baseAmount === 0;
-
-        if (calculatedFees > 0) {
-          // When the user supplied a base amount, respect it (allows discounts/adjustments)
-          // Otherwise, default to the calculated fees – except for uniform-only invoices where
-          // accountants intentionally keep tuition at 0.
-          if (!isUniformOnlyInvoice) {
-            const baseAmountMatchesCalculated = Math.abs(baseAmount - calculatedFees) < 0.01;
-            if (baseAmount === 0 || baseAmountMatchesCalculated) {
-              baseAmount = calculatedFees;
-            }
-          }
-        } else if (calculatedFees === 0 && baseAmount === 0 && !hasUniformItems) {
-          // If no fees calculated and no amount provided and no uniform items, this is an error
-          // But we'll let it pass and handle validation elsewhere
+        if (Number.isFinite(deskFee) && deskFee > 0) {
+          deskIncrement = deskFee;
         }
       }
     }
 
-    if (!Number.isFinite(calculatedFees)) {
-      calculatedFees = 0;
+    if (!Number.isFinite(baseAmount)) {
+      baseAmount = 0;
     }
 
     // Process uniform items (check if this is a uniform-only invoice)
@@ -226,7 +186,7 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    const amountNumRaw = baseAmount + uniformTotal;
+    const amountNumRaw = baseAmount + transportIncrement + registrationIncrement + deskIncrement + uniformTotal;
     const amountNum = Number.isFinite(amountNumRaw) ? amountNumRaw : 0;
     
     // Calculate total invoice amount (previous balance + new amount)
@@ -239,9 +199,46 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     const remainingPrepaidAmount = Math.max(0, prepaidAmount - appliedPrepaidAmount);
     const finalBalance = totalInvoiceAmount - appliedPrepaidAmount;
 
-    // Generate invoice number
-    const invoiceCount = await invoiceRepository.count();
-    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(6, '0')}`;
+    // Generate invoice number based on the highest existing sequence for the current year
+    const currentYear = new Date().getFullYear();
+    const invoicePrefix = `INV-${currentYear}-`;
+
+    const lastInvoiceForYear = await invoiceRepository
+      .createQueryBuilder('invoice')
+      .where('invoice.invoiceNumber LIKE :prefix', { prefix: `${invoicePrefix}%` })
+      .orderBy('invoice.invoiceNumber', 'DESC')
+      .getOne();
+
+    let nextSequence = 1;
+    if (lastInvoiceForYear?.invoiceNumber) {
+      const parts = String(lastInvoiceForYear.invoiceNumber).split('-');
+      const lastSeqRaw = parts[2] || '';
+      const lastSeq = parseInt(lastSeqRaw, 10);
+      if (!isNaN(lastSeq) && lastSeq >= 1) {
+        nextSequence = lastSeq + 1;
+      }
+    }
+
+    const invoiceNumber = `${invoicePrefix}${String(nextSequence).padStart(6, '0')}`;
+
+    let finalDescription = description;
+    const tuitionVal = parseAmount(tuitionAmount);
+    const diningVal = parseAmount(diningHallAmount);
+    const otherVal = parseAmount(otherAmount);
+    const registrationVal = registrationIncrement;
+    const deskVal = deskIncrement;
+    const breakdownParts: string[] = [];
+    if (tuitionVal > 0) breakdownParts.push(`Tuition: ${tuitionVal.toFixed(2)}`);
+    if (diningVal > 0) breakdownParts.push(`Dining Hall: ${diningVal.toFixed(2)}`);
+    if (otherVal > 0) breakdownParts.push(`Other Charges: ${otherVal.toFixed(2)}`);
+    if (registrationVal > 0) breakdownParts.push(`Registration Fee: ${registrationVal.toFixed(2)}`);
+    if (deskVal > 0) breakdownParts.push(`Desk Fee: ${deskVal.toFixed(2)}`);
+    if (breakdownParts.length > 0) {
+      const breakdownText = `Breakdown → ${breakdownParts.join(' | ')}`;
+      finalDescription = finalDescription
+        ? `${finalDescription}\n${breakdownText}`
+        : breakdownText;
+    }
 
     const invoice = invoiceRepository.create({
       invoiceNumber,
@@ -253,7 +250,7 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       balance: finalBalance,
       dueDate,
       term,
-      description,
+      description: finalDescription,
       status: finalBalance <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PENDING,
       uniformTotal,
       uniformItems: uniformItemsEntities
@@ -305,6 +302,17 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     }
   } catch (error: any) {
     console.error('Error creating invoice:', error);
+
+    if (error.code === '23502') {
+      return res.status(400).json({ message: 'Required invoice fields are missing or invalid' });
+    }
+    if (error.code === '23503') {
+      return res.status(400).json({ message: 'Invalid student reference for invoice' });
+    }
+    if (error.code === '22P02') {
+      return res.status(400).json({ message: 'Invalid data format for invoice (check amount and dates)' });
+    }
+
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };
@@ -480,6 +488,153 @@ export const updateInvoicePayment = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error updating payment:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const adjustInvoiceLogistics = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { addTransport, addDiningHall, addTuition, diningHallAmount } = req.body;
+
+    if (!addTransport && !addDiningHall && !addTuition) {
+      return res.status(400).json({ message: 'Please select Transport, Dining Hall, and/or Tuition to add' });
+    }
+
+    const invoiceRepository = AppDataSource.getRepository(Invoice);
+    const studentRepository = AppDataSource.getRepository(Student);
+    const settingsRepository = AppDataSource.getRepository(Settings);
+
+    const invoice = await invoiceRepository.findOne({
+      where: { id },
+      relations: ['student']
+    });
+
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    const student = invoice.student || (await studentRepository.findOne({ where: { id: invoice.studentId } }));
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found for this invoice' });
+    }
+
+    if (student.isStaffChild) {
+      return res.status(400).json({
+        message: 'Adjustments are not allowed for staff children'
+      });
+    }
+
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
+    });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+
+    if (!settings || !settings.feesSettings) {
+      return res.status(400).json({ message: 'Fee settings not configured. Configure fees in Settings first.' });
+    }
+
+    const fees = settings.feesSettings;
+
+    let transportAmountToAdd = 0;
+    if (addTransport) {
+      if (student.studentType !== 'Day Scholar') {
+        return res.status(400).json({ message: 'Transport cost can only be added for Day Scholar students' });
+      }
+      const transportCost = parseAmount(fees.transportCost);
+      if (!Number.isFinite(transportCost) || transportCost <= 0) {
+        return res.status(400).json({ message: 'Transport cost is not configured in Settings' });
+      }
+      transportAmountToAdd = transportCost;
+    }
+
+    let diningHallAmountToAdd = 0;
+    if (addDiningHall) {
+      const dhAmount = parseAmount(diningHallAmount);
+      if (!Number.isFinite(dhAmount) || dhAmount <= 0) {
+        return res.status(400).json({ message: 'Dining Hall amount must be greater than 0' });
+      }
+      diningHallAmountToAdd = dhAmount;
+    }
+
+    let tuitionAmountToAdd = 0;
+    if (addTuition) {
+      const dayScholarTuitionFee = parseAmount(fees.dayScholarTuitionFee);
+      const boarderTuitionFee = parseAmount(fees.boarderTuitionFee);
+      
+      if (student.studentType === 'Boarder') {
+        if (!Number.isFinite(boarderTuitionFee) || boarderTuitionFee <= 0) {
+          return res.status(400).json({ message: 'Boarder tuition fee is not configured in Settings' });
+        }
+        tuitionAmountToAdd = boarderTuitionFee;
+      } else {
+        if (!Number.isFinite(dayScholarTuitionFee) || dayScholarTuitionFee <= 0) {
+          return res.status(400).json({ message: 'Day Scholar tuition fee is not configured in Settings' });
+        }
+        tuitionAmountToAdd = dayScholarTuitionFee;
+      }
+    }
+
+    const increment = transportAmountToAdd + diningHallAmountToAdd + tuitionAmountToAdd;
+    if (!Number.isFinite(increment) || increment <= 0) {
+      return res.status(400).json({ message: 'No valid fee amount to add' });
+    }
+
+    const currentAmount = parseAmount(invoice.amount);
+    const currentBalance = parseAmount(invoice.balance);
+
+    invoice.amount = currentAmount + increment;
+    invoice.balance = currentBalance + increment;
+
+    if (invoice.balance <= 0) {
+      invoice.status = InvoiceStatus.PAID;
+    } else if (invoice.paidAmount && parseAmount(invoice.paidAmount) > 0) {
+      invoice.status = InvoiceStatus.PARTIAL;
+    } else {
+      invoice.status = InvoiceStatus.PENDING;
+    }
+
+    if (new Date() > invoice.dueDate && invoice.balance > 0) {
+      invoice.status = InvoiceStatus.OVERDUE;
+    }
+
+    const adjustments: string[] = [];
+    if (transportAmountToAdd > 0) {
+      adjustments.push(`Transport: ${transportAmountToAdd.toFixed(2)}`);
+      if (!student.usesTransport) {
+        student.usesTransport = true;
+      }
+    }
+    if (diningHallAmountToAdd > 0) {
+      adjustments.push(`Dining Hall: ${diningHallAmountToAdd.toFixed(2)}`);
+      if (!student.usesDiningHall) {
+        student.usesDiningHall = true;
+      }
+    }
+    if (tuitionAmountToAdd > 0) {
+      adjustments.push(`Tuition (${student.studentType}): ${tuitionAmountToAdd.toFixed(2)}`);
+    }
+
+    if (adjustments.length > 0) {
+      const adjustmentText = `Adjusted fees (${adjustments.join(', ')})`;
+      if (invoice.description && String(invoice.description).trim() !== '') {
+        invoice.description = `${invoice.description} | ${adjustmentText}`;
+      } else {
+        invoice.description = adjustmentText;
+      }
+    }
+
+    await studentRepository.save(student);
+    const savedInvoice = await invoiceRepository.save(invoice);
+
+    res.json({
+      message: 'Invoice adjusted successfully',
+      invoice: savedInvoice
+    });
+  } catch (error: any) {
+    console.error('Error adjusting invoice logistics:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };
@@ -710,6 +865,9 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
 export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
     const settingsRepository = AppDataSource.getRepository(Settings);
@@ -926,7 +1084,7 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
     console.log(`[getStudentBalance] Request received with studentId: ${studentId} (type: ${typeof studentId})`);
     
     if (!studentId) {
-      return res.status(400).json({ message: 'Student ID or Student Number is required' });
+      return res.status(400).json({ message: 'Student ID, Student Number, or Last Name is required' });
     }
 
     // Ensure studentId is a string
@@ -936,13 +1094,13 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
     console.log(`[getStudentBalance] Processing studentId: "${trimmedStudentId}"`);
     
     if (!trimmedStudentId || trimmedStudentId === '') {
-      return res.status(400).json({ message: 'Student ID or Student Number is required' });
+      return res.status(400).json({ message: 'Student ID, Student Number, or Last Name is required' });
     }
 
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
 
-    // Try to find student by ID (UUID) or by studentNumber
+    // Try to find student by ID (UUID), by studentNumber, or by lastName
     // Check if it's a valid UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     let student;
@@ -965,8 +1123,36 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
     }
 
     if (!student) {
-      console.log(`[getStudentBalance] Student not found for: ${trimmedStudentId}`);
-      return res.status(404).json({ message: 'Student not found. Please check the Student ID or Student Number.' });
+      console.log(`[getStudentBalance] Not found by ID or studentNumber, trying lastName search for: ${trimmedStudentId}`);
+      const studentsByLastName = await studentRepository
+        .createQueryBuilder('student')
+        .leftJoinAndSelect('student.classEntity', 'classEntity')
+        .where('LOWER(student.lastName) = LOWER(:lastName)', { lastName: trimmedStudentId })
+        .getMany();
+
+      if (studentsByLastName.length === 1) {
+        student = studentsByLastName[0];
+        console.log(`[getStudentBalance] Student found by lastName: ${student.studentNumber} (ID: ${student.id})`);
+      } else if (studentsByLastName.length > 1) {
+        console.log(`[getStudentBalance] Multiple students found with lastName "${trimmedStudentId}"`);
+        const matches = studentsByLastName.map(s => ({
+          studentId: s.id,
+          studentNumber: s.studentNumber,
+          firstName: s.firstName,
+          lastName: s.lastName,
+          fullName: `${s.lastName} ${s.firstName}`,
+          className: s.classEntity ? s.classEntity.name : null
+        }));
+        return res.json({
+          multipleMatches: true,
+          matches
+        });
+      } else {
+        console.log(`[getStudentBalance] Student not found for: ${trimmedStudentId}`);
+        return res.status(404).json({
+          message: 'Student not found. Please check the Student ID, Student Number, or Last Name.'
+        });
+      }
     }
     
     console.log(`[getStudentBalance] Student found: ${student.studentNumber} (ID: ${student.id}, userId: ${student.userId || 'null'})`);

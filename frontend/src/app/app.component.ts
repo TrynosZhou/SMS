@@ -137,17 +137,21 @@ export class AppComponent implements OnInit, OnDestroy {
 
   getCurrentUserRole(): string {
     const user = this.authService.getCurrentUser();
-    if (!user) return '';
-    
-    if (user.role) {
-      return user.role.toUpperCase();
+    if (!user || !user.role) {
+      return '';
     }
-    
-    // Fallback to checking roles
-    if (this.isSuperAdmin()) return 'SUPERADMIN';
-    if (this.isTeacher()) return 'TEACHER';
-    if (this.isParent()) return 'PARENT';
-    return 'ADMIN';
+
+    const role = user.role.toLowerCase();
+
+    if (role === 'superadmin') return 'SuperAdmin';
+    if (role === 'admin') return 'Admin';
+    if (role === 'accountant') return 'Accountant';
+    if (role === 'teacher') return 'Teacher';
+    if (role === 'parent') return 'Parent';
+    if (role === 'student') return 'Student';
+    if (role === 'demo_user' || role === 'demo-user') return 'Demo User';
+
+    return role.charAt(0).toUpperCase() + role.slice(1);
   }
 }
 

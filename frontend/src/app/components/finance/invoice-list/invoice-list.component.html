@@ -8,17 +8,14 @@
       <p class="subtitle">Manage student invoices, payments, and financial records</p>
     </div>
     <div class="header-actions">
-      <button class="btn btn-primary" (click)="openBulkInvoiceForm()" *ngIf="canManageFinance()">
-        <span>📋</span> Bulk Create
-      </button>
       <button class="btn btn-secondary" routerLink="/invoices/new" *ngIf="canCreateInvoice()">
         <span>➕</span> Create Invoice
       </button>
+      <button class="btn btn-primary" (click)="openBulkInvoiceForm()" *ngIf="canManageFinance()">
+        <span>📋</span> Bulk Create
+      </button>
     </div>
   </div>
-  
-  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
-  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
   
   <!-- Statistics Cards -->
   <div class="stats-grid" *ngIf="!loading && invoices.length > 0">
@@ -145,9 +142,6 @@
       <div class="filters-card">
         <div class="filters-header">
           <h3>🔍 Filters & Search</h3>
-          <span class="filter-badge" *ngIf="hasActiveInvoiceFilters()">
-            {{ getActiveFilterCount() }} active
-          </span>
         </div>
         <div class="filters-grid">
           <div class="filter-group">
@@ -281,6 +275,14 @@
                           title="Record Payment"
                           style="font-size: 12px; padding: 5px 10px; white-space: nowrap;">
                     💳 Payment
+                  </button>
+                  <button class="btn btn-warning"
+                          type="button"
+                          *ngIf="canAdjustLogistics(invoice)"
+                          (click)="openLogisticsForm(invoice)"
+                          title="Adjust invoice for Transport, DH cost, or Tuition fees"
+                          style="font-size: 12px; padding: 5px 10px; white-space: nowrap;">
+                    Adjust invoice
                   </button>
                 </div>
               </td>
@@ -590,6 +592,140 @@
           <p>PDF not available</p>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Logistics Adjustment Modal -->
+  <div *ngIf="showLogisticsForm" class="modal-overlay" (click)="closeLogisticsForm()">
+    <div class="payment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-content">
+          <h2>
+            <span class="modal-icon">⚙️</span>
+            Adjust Invoice
+          </h2>
+          <p class="modal-subtitle">Adjust invoice by adding Transport, Dining Hall, and/or Tuition fees</p>
+        </div>
+        <button class="modal-close-btn" (click)="closeLogisticsForm()" title="Close">
+          <span>&times;</span>
+        </button>
+      </div>
+
+      <div *ngIf="selectedInvoice" class="invoice-summary-card">
+        <div class="summary-header">
+          <span class="summary-icon">📋</span>
+          <h3>Invoice Summary</h3>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <span class="summary-label">Invoice Number</span>
+            <span class="summary-value">{{ selectedInvoice.invoiceNumber }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Student</span>
+            <span class="summary-value">
+              {{ selectedInvoice.student?.firstName }} {{ selectedInvoice.student?.lastName }}
+            </span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Current Amount</span>
+            <span class="summary-value">{{ currencySymbol }} {{ selectedInvoice.amount | number:'1.2-2' }}</span>
+          </div>
+          <div class="summary-item highlight">
+            <span class="summary-label">Current Balance</span>
+            <span class="summary-value balance">{{ currencySymbol }} {{ selectedInvoice.balance | number:'1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <form (ngSubmit)="submitLogisticsAdjustment()" class="payment-form">
+        <div class="form-section">
+          <h3 class="section-title">
+            <span class="section-icon">⚙️</span>
+            Fee Adjustment Options
+          </h3>
+
+          <div class="form-group" *ngIf="isDayScholar(selectedInvoice)">
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input 
+                type="checkbox" 
+                [(ngModel)]="logisticsForm.addTransport" 
+                name="addTransport"
+                style="width: 18px; height: 18px; cursor: pointer;">
+              <span style="font-weight: 600;">🚌 Add Transport Cost</span>
+            </label>
+            <div *ngIf="transportCostFromSettings !== null" style="margin-top: 4px; color: #555;">
+              Transport cost from Settings: 
+              <strong>{{ currencySymbol }} {{ transportCostFromSettings | number:'1.2-2' }}</strong>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input 
+                type="checkbox" 
+                [(ngModel)]="logisticsForm.addDiningHall" 
+                name="addDiningHall"
+                style="width: 18px; height: 18px; cursor: pointer;">
+              <span style="font-weight: 600;">🍽️ Add Dining Hall (DH) Cost</span>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input 
+                type="checkbox" 
+                [(ngModel)]="logisticsForm.addTuition" 
+                name="addTuition"
+                style="width: 18px; height: 18px; cursor: pointer;">
+              <span style="font-weight: 600;">🎓 Add Tuition Fee</span>
+            </label>
+            <div *ngIf="selectedInvoice?.student" style="margin-top: 4px; color: #555;">
+              Tuition fee for 
+              <strong>{{ selectedInvoice.student.studentType === 'Boarder' ? 'Boarder' : 'Day Scholar' }}</strong>: 
+              <strong>{{ currencySymbol }} {{ (selectedInvoice.student.studentType === 'Boarder' ? tuitionFeeFromSettings.boarder : tuitionFeeFromSettings.dayScholar) | number:'1.2-2' }}</strong>
+            </div>
+          </div>
+
+          <div class="form-group" *ngIf="logisticsForm.addDiningHall">
+            <label for="diningHallAmount">
+              Dining Hall Amount <span class="required">*</span>
+            </label>
+            <input 
+              type="number" 
+              id="diningHallAmount"
+              [(ngModel)]="logisticsForm.diningHallAmount" 
+              name="diningHallAmount" 
+              step="0.01" 
+              min="0.01" 
+              required
+              class="form-control"
+              placeholder="Enter DH amount">
+          </div>
+        </div>
+
+        <div class="form-actions" style="display: flex; gap: 10px; align-items: center;">
+          <button 
+            type="button" 
+            class="btn btn-secondary btn-cancel" 
+            (click)="closeLogisticsForm()"
+            [disabled]="loading">
+            ❌ Cancel
+          </button>
+          <button 
+            type="submit" 
+            class="btn btn-primary btn-submit"
+            [disabled]="loading || !canManageFinance()">
+            <span *ngIf="!loading">
+              ✅ Apply Adjustments
+            </span>
+            <span *ngIf="loading" class="submit-loading">
+              <span class="spinner-small"></span>
+              Applying...
+            </span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 

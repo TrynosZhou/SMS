@@ -85,6 +85,15 @@ export class InvoiceListComponent implements OnInit {
   updatedBalanceAfterPayment: number | null = null; // Track balance after payment
   loadingReceipt = false;
   Math = Math; // Expose Math to template for calculations
+  showLogisticsForm = false;
+  logisticsForm: any = {
+    addTransport: false,
+    addDiningHall: false,
+    addTuition: false,
+    diningHallAmount: 0
+  };
+  transportCostFromSettings: number | null = null;
+  tuitionFeeFromSettings: any = { dayScholar: 0, boarder: 0 };
   
   getFollowingTerm(currentTerm: string): string {
     if (!currentTerm) return '';
@@ -151,10 +160,20 @@ export class InvoiceListComponent implements OnInit {
         this.currencySymbol = data.currencySymbol || 'KES';
         this.academicYear = data.academicYear || new Date().getFullYear().toString();
         this.currentTermFromSettings = data.currentTerm || `Term 1 ${new Date().getFullYear()}`;
-        
-        // Always set quickPaymentTerm from currentTerm in settings to ensure it matches
-        // This ensures the term field always reflects the current term from settings
         this.quickPaymentTerm = this.currentTermFromSettings;
+
+        if (data.feesSettings && data.feesSettings.transportCost != null) {
+          const rawTransport = data.feesSettings.transportCost;
+          const parsedTransport = parseFloat(String(rawTransport));
+          if (!isNaN(parsedTransport) && parsedTransport > 0) {
+            this.transportCostFromSettings = parsedTransport;
+          }
+        }
+
+        if (data.feesSettings) {
+          this.tuitionFeeFromSettings.dayScholar = parseFloat(String(data.feesSettings.dayScholarTuitionFee || 0));
+          this.tuitionFeeFromSettings.boarder = parseFloat(String(data.feesSettings.boarderTuitionFee || 0));
+        }
       },
       error: (err: any) => {
         console.error('Error loading settings:', err);
@@ -429,6 +448,104 @@ export class InvoiceListComponent implements OnInit {
     this.showPaymentForm = true;
     this.error = '';
     this.success = '';
+  }
+
+  openLogisticsForm(invoice: any) {
+    this.selectedInvoice = invoice;
+    this.logisticsForm = {
+      addTransport: false,
+      addDiningHall: false,
+      addTuition: false,
+      diningHallAmount: 0
+    };
+    this.showLogisticsForm = true;
+    this.error = '';
+    this.success = '';
+  }
+
+  closeLogisticsForm() {
+    this.showLogisticsForm = false;
+    this.logisticsForm = {
+      addTransport: false,
+      addDiningHall: false,
+      addTuition: false,
+      diningHallAmount: 0
+    };
+  }
+
+  canAdjustLogistics(invoice: any): boolean {
+    if (!this.canManageFinance()) {
+      return false;
+    }
+    if (!invoice || !invoice.student) {
+      return false;
+    }
+    const student = invoice.student;
+    const isStaffChild = !!student.isStaffChild;
+    // Allow adjustments for both boarders and day scholars, but not staff children
+    return !isStaffChild;
+  }
+
+  isDayScholar(invoice: any): boolean {
+    return invoice?.student?.studentType === 'Day Scholar';
+  }
+
+  submitLogisticsAdjustment() {
+    if (!this.selectedInvoice) {
+      return;
+    }
+
+    const addTransport = !!this.logisticsForm.addTransport;
+    const addDiningHall = !!this.logisticsForm.addDiningHall;
+    const addTuition = !!this.logisticsForm.addTuition;
+
+    if (!addTransport && !addDiningHall && !addTuition) {
+      this.error = 'Please select Transport, Dining Hall, and/or Tuition to add.';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+
+    let diningHallAmount = 0;
+    if (addDiningHall) {
+      diningHallAmount = parseFloat(String(this.logisticsForm.diningHallAmount)) || 0;
+      if (!diningHallAmount || diningHallAmount <= 0) {
+        this.error = 'Please enter a valid Dining Hall amount.';
+        setTimeout(() => (this.error = ''), 5000);
+        return;
+      }
+    }
+
+    this.loading = true;
+    this.error = '';
+    this.success = '';
+
+    const payload: any = {
+      addTransport,
+      addDiningHall,
+      addTuition
+    };
+    if (addDiningHall) {
+      payload.diningHallAmount = diningHallAmount;
+    }
+
+    this.financeService.adjustInvoiceLogistics(this.selectedInvoice.id, payload).subscribe({
+      next: (response: any) => {
+        this.loading = false;
+        this.success = response.message || 'Invoice adjusted successfully';
+        this.closeLogisticsForm();
+        this.loadInvoices();
+        setTimeout(() => (this.success = ''), 5000);
+      },
+      error: (err: any) => {
+        this.loading = false;
+        if (err.status === 401) {
+          this.error = 'Authentication required. Please log in again.';
+        } else {
+          this.error = err.error?.message || 'Failed to adjust invoice';
+        }
+        setTimeout(() => (this.error = ''), 5000);
+      }
+    });
   }
 
   closePaymentForm() {
@@ -1112,9 +1229,8 @@ export class InvoiceListComponent implements OnInit {
     return this.authService.hasRole('admin') || this.authService.hasRole('superadmin') || this.authService.hasRole('accountant');
   }
 
-  // Only SuperAdmin can access /invoices/new (create invoice page)
   canCreateInvoice(): boolean {
-    return this.authService.hasRole('superadmin');
+    return this.canManageFinance();
   }
 }
 

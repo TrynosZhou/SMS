@@ -33,6 +33,8 @@ export class RecordPaymentComponent implements OnInit {
   receiptBlobUrl: string | null = null;
   showReceipt = false;
   loadingReceipt = false;
+  matchingStudents: any[] = [];
+  selectedMatchId: string = '';
 
   constructor(
     private financeService: FinanceService,
@@ -118,7 +120,7 @@ export class RecordPaymentComponent implements OnInit {
 
   getBalance(preservePaymentFlag: boolean = false): void {
     if (!this.studentId || this.studentId.trim() === '') {
-      this.error = 'Please enter a Student ID';
+      this.error = 'Please enter a Student ID, Student Number, or Last Name';
       return;
     }
 
@@ -148,9 +150,18 @@ export class RecordPaymentComponent implements OnInit {
     }
     this.studentData = null;
     this.paymentForm.amount = 0;
+    this.matchingStudents = [];
+    this.selectedMatchId = '';
 
     this.financeService.getStudentBalance(this.studentId.trim()).subscribe({
       next: (data: any) => {
+        this.loading = false;
+        if (data && data.multipleMatches && Array.isArray(data.matches) && data.matches.length > 0) {
+          this.matchingStudents = data.matches;
+          this.studentData = null;
+          this.paymentForm.amount = 0;
+          return;
+        }
         this.studentData = data;
         this.paymentForm.amount = data.balance || 0;
         // Restore preserved invoice ID and success message if we're refreshing after payment
@@ -162,14 +173,39 @@ export class RecordPaymentComponent implements OnInit {
             this.success = preservedSuccessMessage;
           }
         }
-        this.loading = false;
       },
       error: (error: any) => {
-        this.error = error.error?.message || 'Failed to get student balance. Please check the Student ID.';
         this.loading = false;
+        this.error = error.error?.message || 'Failed to get student balance. Please check the Student ID, Student Number, or Last Name.';
         this.studentData = null;
         this.paymentRecorded = false;
         this.lastPaymentInvoiceId = null;
+      }
+    });
+  }
+
+  onStudentMatchSelected(): void {
+    if (!this.selectedMatchId) {
+      return;
+    }
+    this.loading = true;
+    this.error = '';
+    this.success = '';
+    this.studentData = null;
+    this.paymentForm.amount = 0;
+
+    this.financeService.getStudentBalance(this.selectedMatchId).subscribe({
+      next: (data: any) => {
+        this.loading = false;
+        this.studentData = data;
+        this.paymentForm.amount = data.balance || 0;
+        this.matchingStudents = [];
+      },
+      error: (error: any) => {
+        this.loading = false;
+        this.error = error.error?.message || 'Failed to get student balance. Please check the Student ID, Student Number, or Last Name.';
+        this.studentData = null;
+        this.matchingStudents = [];
       }
     });
   }

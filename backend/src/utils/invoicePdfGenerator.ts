@@ -429,7 +429,9 @@ export function createInvoicePDF(
       doc.fontSize(11).font('Helvetica-Bold').fillColor('#2C3E50');
       doc.text('Status:', 60, statusBoxY + 10);
       doc.fontSize(10).font('Helvetica').fillColor('#000000');
-      const statusText = invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1);
+      const statusRaw = (invoice.status as any) || 'pending';
+      const statusStr = String(statusRaw);
+      const statusText = statusStr.charAt(0).toUpperCase() + statusStr.slice(1);
       doc.text(statusText, 120, statusBoxY + 10);
       yPos = statusBoxY + 50;
 

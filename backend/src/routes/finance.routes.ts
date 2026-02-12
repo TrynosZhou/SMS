@@ -11,13 +11,14 @@ import {
   generateReceiptPDF,
   getStudentBalance,
   getOutstandingBalances,
-  getOutstandingBalancesPDF
+  getOutstandingBalancesPDF,
+  adjustInvoiceLogistics
 } from '../controllers/finance.controller';
 
 const router = Router();
 
-// Only SuperAdmin can create invoices (single) - matches /invoices/new page restriction
-router.post('/', authenticate, authorize(UserRole.SUPERADMIN), createInvoice);
+// Allow SuperAdmin, Admin, Accountant, and Demo users to create single invoices
+router.post('/', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), createInvoice);
 router.post('/bulk', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), createBulkInvoices);
 router.get('/', authenticate, getInvoices);
 router.get('/balance', authenticate, getStudentBalance);
@@ -27,5 +28,11 @@ router.get('/:id/pdf', authenticate, generateInvoicePDF);
 router.get('/:id/receipt', authenticate, generateReceiptPDF);
 router.put('/:id/payment', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), updateInvoicePayment);
 router.post('/calculate-balance', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), calculateNextTermBalance);
+router.put(
+  '/:id/logistics',
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER),
+  adjustInvoiceLogistics
+);
 
 export default router;

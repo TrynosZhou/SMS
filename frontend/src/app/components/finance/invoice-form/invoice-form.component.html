@@ -173,9 +173,61 @@
 
       <div class="form-grid">
         <div class="form-group">
+          <label for="tuitionAmount">
+            Tuition Amount <span class="required" *ngIf="!isAccountant">*</span>
+            <span class="currency-badge">{{ currencySymbol }}</span>
+          </label>
+          <div class="amount-input-wrapper">
+            <span class="currency-symbol">{{ currencySymbol }}</span>
+            <input 
+              type="number" 
+              id="tuitionAmount"
+              [(ngModel)]="invoice.tuitionAmount" 
+              name="tuitionAmount" 
+              step="0.01" 
+              min="0"
+              [readonly]="isAccountant"
+              placeholder="0.00"
+              class="form-input amount-input"
+              (input)="calculateBalance()"
+              [class.error]="invoiceForm.submitted && (invoice.tuitionAmount === null || invoice.tuitionAmount === undefined || invoice.tuitionAmount < 0)"
+              [style.background-color]="isAccountant ? '#f5f5f5' : ''"
+              [style.cursor]="isAccountant ? 'not-allowed' : ''">
+          </div>
+          <small class="form-hint" *ngIf="!isAccountant">Enter the tuition fee for this invoice</small>
+          <small class="form-hint" *ngIf="isAccountant" style="color: #666;">Accountants cannot set tuition fees. Use uniform items section below.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="diningHallAmount">
+            Dining Hall Amount
+            <span class="currency-badge">{{ currencySymbol }}</span>
+          </label>
+          <div class="amount-input-wrapper">
+            <span class="currency-symbol">{{ currencySymbol }}</span>
+            <input 
+              type="number" 
+              id="diningHallAmount"
+              [(ngModel)]="invoice.diningHallAmount" 
+              name="diningHallAmount" 
+              step="0.01" 
+              min="0"
+              [readonly]="isAccountant"
+              placeholder="0.00"
+              class="form-input amount-input"
+              (input)="calculateBalance()"
+              [class.error]="invoiceForm.submitted && (invoice.diningHallAmount === null || invoice.diningHallAmount === undefined || invoice.diningHallAmount < 0)"
+              [style.background-color]="isAccountant ? '#f5f5f5' : ''"
+              [style.cursor]="isAccountant ? 'not-allowed' : ''">
+          </div>
+          <small class="form-hint" *ngIf="!isAccountant">Enter the dining hall fee for this invoice</small>
+          <small class="form-hint" *ngIf="isAccountant" style="color: #666;">Accountants cannot set dining hall fees. Use uniform items section below.</small>
+        </div>
+
+        <div class="form-group">
           <label for="amount">
-            Amount <span class="required" *ngIf="!isAccountant">*</span>
-            <span class="optional" *ngIf="isAccountant">(Set to 0 for uniform-only invoices)</span>
+            Other Charges Amount
+            <span class="optional">(Optional)</span>
             <span class="currency-badge">{{ currencySymbol }}</span>
           </label>
           <div class="amount-input-wrapper">
@@ -187,18 +239,15 @@
               name="amount" 
               step="0.01" 
               min="0"
-              [required]="!isAccountant"
               [readonly]="isAccountant"
               placeholder="0.00"
               class="form-input amount-input"
               (input)="calculateBalance()"
-              (focus)="isAccountant && (invoice.amount = 0)"
               [class.error]="invoiceForm.submitted && (invoice.amount === null || invoice.amount === undefined || invoice.amount < 0)"
               [style.background-color]="isAccountant ? '#f5f5f5' : ''"
               [style.cursor]="isAccountant ? 'not-allowed' : ''">
           </div>
-          <small class="form-hint" *ngIf="!isAccountant">Enter the invoice amount</small>
-          <small class="form-hint" *ngIf="isAccountant" style="color: #666;">Accountants cannot set tuition fees. Use uniform items section below.</small>
+          <small class="form-hint">Use this for any additional manual charges</small>
         </div>
 
         <div class="form-group">
@@ -379,34 +428,18 @@
       <div class="section-header">
         <h2>
           <span class="section-icon">📊</span>
-          Balance Calculation
+          Current Balance - Term 1
         </h2>
-        <p class="section-description">Preview of balance calculations</p>
+        <p class="section-description">
+          Total invoice amount applied as the current balance for Term 1.
+        </p>
       </div>
 
       <div class="balance-info-card">
-        <div class="balance-item">
-          <div class="balance-label">
-            <span class="balance-icon">💳</span>
-            Current Balance
-          </div>
-          <div class="balance-value current">
-            {{ currencySymbol }} {{ nextTermBalance.currentBalance | number:'1.2-2' }}
-          </div>
-        </div>
-        <div class="balance-item">
-          <div class="balance-label">
-            <span class="balance-icon">➕</span>
-            Next Term Amount
-          </div>
-          <div class="balance-value next">
-            {{ currencySymbol }} {{ nextTermBalance.nextTermAmount | number:'1.2-2' }}
-          </div>
-        </div>
         <div class="balance-item highlight">
           <div class="balance-label">
             <span class="balance-icon">📊</span>
-            Next Term Balance
+            Current Balance (Term 1)
           </div>
           <div class="balance-value total">
             {{ currencySymbol }} {{ nextTermBalance.nextTermBalance | number:'1.2-2' }}
