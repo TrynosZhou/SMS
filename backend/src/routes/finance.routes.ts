@@ -12,7 +12,8 @@ import {
   getStudentBalance,
   getOutstandingBalances,
   getOutstandingBalancesPDF,
-  adjustInvoiceLogistics
+  adjustInvoiceLogistics,
+  applyInvoiceNote
 } from '../controllers/finance.controller';
 
 const router = Router();
@@ -33,6 +34,12 @@ router.put(
   authenticate,
   authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER),
   adjustInvoiceLogistics
+);
+router.put(
+  '/:id/note',
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER),
+  applyInvoiceNote
 );
 
 export default router;

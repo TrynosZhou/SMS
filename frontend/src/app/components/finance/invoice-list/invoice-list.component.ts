@@ -52,6 +52,12 @@ export class InvoiceListComponent implements OnInit {
   quickPaymentTerm = '';
   quickPaymentReceiptNeeded = false;
   lastQuickPaymentInvoiceId: string | null = null;
+  showNoteForm = false;
+  noteForm: any = {
+    type: 'credit',
+    item: '',
+    amount: 0
+  };
   
   // Cached computed values to prevent NG0900 errors
   private _cachedStats = {
@@ -637,6 +643,105 @@ export class InvoiceListComponent implements OnInit {
       return this.selectedInvoice?.balance || 0;
     }
     return this.selectedInvoice.balance - this.paymentForm.amount;
+  }
+
+  selectInvoice(invoice: any) {
+    this.selectedInvoice = invoice;
+  }
+
+  openCreditNoteForm() {
+    if (!this.selectedInvoice && this.filteredInvoices.length > 0) {
+      this.selectedInvoice = this.filteredInvoices[0];
+    }
+    this.noteForm = {
+      type: 'credit',
+      item: '',
+      amount: 0
+    };
+    this.showNoteForm = true;
+    this.error = '';
+    this.success = '';
+  }
+
+  openDebitNoteForm() {
+    if (!this.selectedInvoice && this.filteredInvoices.length > 0) {
+      this.selectedInvoice = this.filteredInvoices[0];
+    }
+    this.noteForm = {
+      type: 'debit',
+      item: '',
+      amount: 0
+    };
+    this.showNoteForm = true;
+    this.error = '';
+    this.success = '';
+  }
+
+  closeNoteForm() {
+    this.showNoteForm = false;
+    this.noteForm = {
+      type: 'credit',
+      item: '',
+      amount: 0
+    };
+  }
+
+  submitNote() {
+    if (!this.selectedInvoice) {
+      this.error = 'Please select an invoice first.';
+      return;
+    }
+    if (!this.noteForm.item) {
+      this.error = 'Please select a cost item to adjust.';
+      return;
+    }
+    if (!this.noteForm.amount || this.noteForm.amount <= 0) {
+      this.error = 'Please enter a valid amount greater than 0.';
+      return;
+    }
+
+    this.loading = true;
+    this.error = '';
+    this.success = '';
+
+    const payload = {
+      type: this.noteForm.type,
+      item: this.noteForm.item,
+      amount: this.noteForm.amount
+    };
+
+    this.financeService.applyInvoiceNote(this.selectedInvoice.id, payload).subscribe({
+      next: (response: any) => {
+        const updatedInvoice = response.invoice || response;
+        const index = this.invoices.findIndex(inv => inv.id === updatedInvoice.id);
+        if (index !== -1) {
+          this.invoices[index] = updatedInvoice;
+        }
+        const filteredIndex = this.filteredInvoices.findIndex(inv => inv.id === updatedInvoice.id);
+        if (filteredIndex !== -1) {
+          this.filteredInvoices[filteredIndex] = updatedInvoice;
+        }
+        if (this.selectedInvoice && this.selectedInvoice.id === updatedInvoice.id) {
+          this.selectedInvoice = updatedInvoice;
+        }
+
+        this.loading = false;
+        this.success = this.noteForm.type === 'credit'
+          ? 'Credit Note applied successfully.'
+          : 'Debit Note applied successfully.';
+        this.closeNoteForm();
+        setTimeout(() => this.success = '', 5000);
+      },
+      error: (err: any) => {
+        this.loading = false;
+        if (err.status === 401) {
+          this.error = 'Authentication required. Please log in again.';
+        } else {
+          this.error = err.error?.message || 'Failed to apply note';
+        }
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
   }
 
   private base64ToBlob(base64: string, mimeType: string): Blob {

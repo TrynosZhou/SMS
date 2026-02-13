@@ -88,6 +88,10 @@ export class FinanceService {
     return this.http.get(`${this.apiUrl}/finance/balance`, { params: { studentId } });
   }
 
+  applyInvoiceNote(invoiceId: string, payload: { type: 'credit' | 'debit'; item: string; amount: number }): Observable<any> {
+    return this.http.put(`${this.apiUrl}/finance/${invoiceId}/note`, payload);
+  }
+
   getInvoice(invoiceId: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/finance`, { params: { invoiceId } });
   }

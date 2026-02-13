@@ -639,6 +639,84 @@ export const adjustInvoiceLogistics = async (req: AuthRequest, res: Response) =>
   }
 };
 
+export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { type, item, amount } = req.body;
+
+    if (!type || (type !== 'credit' && type !== 'debit')) {
+      return res.status(400).json({ message: 'Invalid note type. Must be credit or debit.' });
+    }
+    if (!item || !['tuition', 'transport', 'diningHall'].includes(item)) {
+      return res.status(400).json({ message: 'Invalid cost item. Must be tuition, transport, or diningHall.' });
+    }
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: 'Amount is required and must be greater than 0' });
+    }
+
+    const invoiceRepository = AppDataSource.getRepository(Invoice);
+
+    const invoice = await invoiceRepository.findOne({
+      where: { id }
+    });
+
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    const currentAmount = parseAmount(invoice.amount);
+    const currentBalance = parseAmount(invoice.balance);
+    const delta = type === 'credit' ? -parseAmount(amount) : parseAmount(amount);
+
+    const newAmount = currentAmount + delta;
+    const newBalance = currentBalance + delta;
+
+    invoice.amount = newAmount;
+    invoice.balance = newBalance;
+
+    if (invoice.balance <= 0) {
+      invoice.status = InvoiceStatus.PAID;
+    } else if (invoice.paidAmount && parseAmount(invoice.paidAmount) > 0) {
+      invoice.status = InvoiceStatus.PARTIAL;
+    } else {
+      invoice.status = InvoiceStatus.PENDING;
+    }
+
+    if (new Date() > invoice.dueDate && invoice.balance > 0) {
+      invoice.status = InvoiceStatus.OVERDUE;
+    }
+
+    const itemLabel =
+      item === 'tuition'
+        ? 'Tuition'
+        : item === 'transport'
+        ? 'Transport Fee'
+        : 'Dining Hall Fee';
+
+    const signedAmount = parseAmount(amount).toFixed(2);
+    const noteText =
+      type === 'credit'
+        ? `Credit Note (${itemLabel} -${signedAmount})`
+        : `Debit Note (${itemLabel} +${signedAmount})`;
+
+    if (invoice.description && String(invoice.description).trim() !== '') {
+      invoice.description = `${invoice.description} | ${noteText}`;
+    } else {
+      invoice.description = noteText;
+    }
+
+    const savedInvoice = await invoiceRepository.save(invoice);
+
+    res.json({
+      message: type === 'credit' ? 'Credit Note applied successfully' : 'Debit Note applied successfully',
+      invoice: savedInvoice
+    });
+  } catch (error: any) {
+    console.error('Error applying invoice note:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
 export const calculateNextTermBalance = async (req: AuthRequest, res: Response) => {
   try {
     const { studentId, nextTermAmount } = req.body;
@@ -896,11 +974,9 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
     });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
-    // Only show registration/desk fee on the student's first invoice (charged once at registration)
     const firstInvoiceForStudent = await invoiceRepository.findOne({
       where: { studentId: student.id },
-      order: { createdAt: 'ASC' },
-      select: ['id']
+      order: { createdAt: 'ASC' }
     });
     const isFirstInvoice = firstInvoiceForStudent?.id === invoice.id;
 

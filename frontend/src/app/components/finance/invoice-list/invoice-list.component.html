@@ -8,6 +8,22 @@
       <p class="subtitle">Manage student invoices, payments, and financial records</p>
     </div>
     <div class="header-actions">
+      <button 
+        class="btn btn-warning" 
+        type="button"
+        (click)="openCreditNoteForm()"
+        *ngIf="canManageFinance()"
+        title="Credit Note - correct overcharge">
+        Credit Note
+      </button>
+      <button 
+        class="btn btn-success" 
+        type="button"
+        (click)="openDebitNoteForm()"
+        *ngIf="canManageFinance()"
+        title="Debit Note - correct undercharge">
+        Debit Note
+      </button>
       <button class="btn btn-secondary" routerLink="/invoices/new" *ngIf="canCreateInvoice()">
         <span>➕</span> Create Invoice
       </button>
@@ -236,7 +252,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let invoice of filteredInvoices">
+            <tr *ngFor="let invoice of filteredInvoices" (click)="selectInvoice(invoice)" [class.selected-row]="selectedInvoice?.id === invoice.id">
               <td>{{ invoice.invoiceNumber }}</td>
               <td>{{ invoice.student?.firstName }} {{ invoice.student?.lastName }}</td>
               <td style="text-align: right;">{{ currencySymbol }} {{ (invoice.amount - (invoice.uniformTotal || 0)) | number:'1.2-2' }}</td>
@@ -777,6 +793,95 @@
           <p>Receipt not available</p>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Credit/Debit Note Modal -->
+  <div class="modal-overlay" *ngIf="showNoteForm">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>{{ noteForm.type === 'credit' ? 'Credit Note' : 'Debit Note' }}</h2>
+        <button class="modal-close-btn" (click)="closeNoteForm()" title="Close">
+          <span>&times;</span>
+        </button>
+      </div>
+
+      <div *ngIf="!selectedInvoice" class="alert alert-error">
+        Please select an invoice from the list to continue.
+      </div>
+
+      <div *ngIf="selectedInvoice" class="invoice-summary-card">
+        <div class="summary-header">
+          <span class="summary-icon">📋</span>
+          <h3>Invoice Summary</h3>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <span class="summary-label">Invoice Number</span>
+            <span class="summary-value">{{ selectedInvoice.invoiceNumber }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Student</span>
+            <span class="summary-value">
+              {{ selectedInvoice.student?.firstName }} {{ selectedInvoice.student?.lastName }}
+            </span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Current Amount</span>
+            <span class="summary-value">{{ currencySymbol }} {{ selectedInvoice.amount | number:'1.2-2' }}</span>
+          </div>
+          <div class="summary-item highlight">
+            <span class="summary-label">Current Balance</span>
+            <span class="summary-value balance">{{ currencySymbol }} {{ selectedInvoice.balance | number:'1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <form (ngSubmit)="submitNote()" class="payment-form">
+        <div class="form-section">
+          <h3 class="section-title">
+            <span class="section-icon">🧾</span>
+            {{ noteForm.type === 'credit' ? 'Correct Overcharge (Credit Note)' : 'Correct Undercharge (Debit Note)' }}
+          </h3>
+
+          <div class="form-group">
+            <label>Cost Item *</label>
+            <select [(ngModel)]="noteForm.item" name="noteItem" class="form-control" required>
+              <option [ngValue]="''">-- Select item --</option>
+              <option value="tuition">Tuition</option>
+              <option value="transport">Transport Fee</option>
+              <option value="diningHall">DH Fee</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Amount to {{ noteForm.type === 'credit' ? 'deduct' : 'add' }} *</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              [(ngModel)]="noteForm.amount"
+              name="noteAmount"
+              class="form-control"
+              required
+              placeholder="Enter amount"
+            />
+            <small class="form-hint">
+              {{ noteForm.type === 'credit' ? 'This amount will be subtracted from the selected cost item.' : 'This amount will be added to the selected cost item.' }}
+            </small>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeNoteForm()" [disabled]="loading">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="loading || !selectedInvoice">
+            <span *ngIf="!loading">{{ noteForm.type === 'credit' ? 'Apply Credit Note' : 'Apply Debit Note' }}</span>
+            <span *ngIf="loading" class="spinner-small"></span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </div>

@@ -209,8 +209,8 @@ export function createInvoicePDF(
       const diningHallCost = parseAmount(feesSettings.diningHallCost);
       const libraryFee = parseAmount(feesSettings.libraryFee);
       const sportsFee = parseAmount(feesSettings.sportsFee);
-      const otherFees = feesSettings.otherFees || [];
-      const otherFeesTotal = otherFees.reduce((sum: number, fee: any) => sum + parseAmount(fee?.amount), 0);
+      const rawOtherFees = Array.isArray(feesSettings.otherFees) ? feesSettings.otherFees : [];
+      const otherFeesTotal = rawOtherFees.reduce((sum: number, fee: any) => sum + parseAmount(fee?.amount), 0);
 
       // Calculate individual fees based on student status
       let tuitionFee = 0;
@@ -298,7 +298,7 @@ export function createInvoicePDF(
         
         // Other fees - show each configured fee
         if (otherFeesTotal > 0) {
-          otherFees.forEach((fee: any) => {
+          rawOtherFees.forEach((fee: any) => {
             const feeAmount = parseAmount(fee.amount);
             if (feeAmount > 0) {
               renderTableRow(fee.name || 'Other Fee', feeAmount, { fill: '#F8F9FA' });
@@ -335,6 +335,32 @@ export function createInvoicePDF(
       // Only the subtotal should be displayed, not individual items like "Track suit (x1)"
       if (uniformTotal > 0) {
         renderTableRow('School Uniform Subtotal', uniformTotal, { fill: '#FFE8CC', textColor: '#C05621' });
+      }
+
+      // Show credit/debit notes as separate lines if present in description
+      const descriptionText = (invoice.description || '').toString();
+      if (descriptionText && descriptionText.trim() !== '') {
+        const noteLines = descriptionText
+          .split('|')
+          .map(line => line.trim())
+          .filter(line => line.toLowerCase().startsWith('credit note') || line.toLowerCase().startsWith('debit note'));
+
+        noteLines.forEach(line => {
+          const match = line.match(/([+-])\s*([0-9]+(\.[0-9]+)?)/);
+          if (match) {
+            const sign = match[1];
+            const amountValue = parseFloat(match[2]);
+            if (Number.isFinite(amountValue) && amountValue > 0) {
+              const signedAmount = sign === '-' ? -amountValue : amountValue;
+              const rowLabel = line.replace(/\s*\(([+-][0-9.]+\))\s*$/, '').trim() || line;
+              const displayAmount = Math.abs(signedAmount);
+              renderTableRow(rowLabel, displayAmount, {
+                fill: '#FFF5F5',
+                textColor: sign === '-' ? '#C53030' : '#2F855A'
+              });
+            }
+          }
+        });
       }
 
       // Horizontal divider before total
