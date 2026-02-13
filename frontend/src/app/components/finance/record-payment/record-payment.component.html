@@ -13,7 +13,7 @@
           id="studentId"
           [(ngModel)]="studentId"
           placeholder="Enter Student ID, Student Number, or Last Name"
-          class="form-control"
+          class="form-control search-input-short"
           (keyup.enter)="getBalance()"
         />
         <button
@@ -30,6 +30,14 @@
           (click)="clear()"
         >
           <span class="icon">🗑️</span> Clear
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [routerLink]="['/invoices/new']"
+          title="Create Invoice"
+        >
+          <span class="icon">📝</span> Create Invoice
         </button>
       </div>
     </div>

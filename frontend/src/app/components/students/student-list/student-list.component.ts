@@ -239,6 +239,10 @@ export class StudentListComponent implements OnInit {
   }
 
   printList() {
+    if (this.isLogisticsTransport || this.isLogisticsDiningHall) {
+      this.downloadLogisticsReportPdf();
+      return;
+    }
     const rows = (this.filteredStudents || []);
     if (!rows.length) {
       window.alert('No students available to print for the current filters.');

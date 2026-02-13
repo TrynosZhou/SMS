@@ -1623,6 +1623,29 @@ async function generateLogisticsReportPdf(
   doc.fontSize(9).font('Helvetica').fillColor('#000000');
 
   const rowHeight = 16;
+  const extractGrade = (name: string | undefined | null): string => {
+    const n = (name || '').trim();
+    if (!n) return '-';
+    const hyphenIdx = n.indexOf('-');
+    if (hyphenIdx > 0) {
+      const beforeHyphen = n.slice(0, hyphenIdx).trim();
+      if (beforeHyphen) return beforeHyphen;
+    }
+    const parts = n.split(/\s+/);
+    if (parts[0]?.toLowerCase() === 'ecd' && parts[1]) {
+      return `ECD ${parts[1]}`;
+    }
+    if (parts[0]?.toLowerCase() === 'stage' && parts[1]) {
+      return `Stage ${parts[1]}`;
+    }
+    // Fallback: first two tokens if the first looks like a grade keyword
+    const gradeKeywords = ['grade', 'form', 'class', 'year', 'stage'];
+    if (gradeKeywords.includes(parts[0]?.toLowerCase()) && parts[1]) {
+      return `${parts[0][0].toUpperCase()}${parts[0].slice(1).toLowerCase()} ${parts[1]}`;
+    }
+    // Otherwise, return the first token to avoid overlapping long stream names
+    return parts[0] || n;
+  };
 
   students.forEach((student, index) => {
     if (cursorY > 780) {
@@ -1632,11 +1655,12 @@ async function generateLogisticsReportPdf(
 
     const fullName = `${student.firstName} ${student.lastName}`.trim();
     const contact = student.contactNumber || student.phoneNumber || '';
+    const displayClass = extractGrade(student.classEntity?.name);
 
     doc.text(String(index + 1), colX.index, cursorY);
     doc.text(student.studentNumber || '-', colX.studentNumber, cursorY, { width: 90 });
     doc.text(fullName, colX.name, cursorY, { width: 160 });
-    doc.text(student.classEntity?.name || '-', colX.className, cursorY, { width: 70 });
+    doc.text(displayClass || '-', colX.className, cursorY, { width: 70 });
     doc.text(contact, colX.contact, cursorY, { width: 120 });
 
     cursorY += rowHeight;
