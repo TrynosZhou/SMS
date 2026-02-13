@@ -806,8 +806,42 @@
         </button>
       </div>
 
-      <div *ngIf="!selectedInvoice" class="alert alert-error">
-        Please select an invoice from the list to continue.
+      <div class="payment-form">
+        <div class="form-section">
+          <h3 class="section-title">
+            <span class="section-icon">🧑‍🎓</span>
+            Select Student and Latest Invoice
+          </h3>
+
+          <div class="form-group">
+            <label for="noteStudentId">
+              Student ID / Number <span class="required">*</span>
+            </label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input
+                id="noteStudentId"
+                type="text"
+                [(ngModel)]="noteStudentId"
+                name="noteStudentId"
+                class="form-control"
+                placeholder="Enter Student ID / Number"
+              />
+              <button
+                type="button"
+                class="btn btn-primary"
+                (click)="lookupNoteStudentById()"
+              >
+                Find Latest Invoice
+              </button>
+            </div>
+            <small class="form-hint">
+              Enter the student's ID/number. The system will select and display their latest invoice.
+            </small>
+            <div *ngIf="noteLookupError" class="alert alert-error" style="margin-top: 8px;">
+              {{ noteLookupError }}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div *ngIf="selectedInvoice" class="invoice-summary-card">

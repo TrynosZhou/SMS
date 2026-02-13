@@ -58,6 +58,8 @@ export class InvoiceListComponent implements OnInit {
     item: '',
     amount: 0
   };
+  noteStudentId = '';
+  noteLookupError = '';
   
   // Cached computed values to prevent NG0900 errors
   private _cachedStats = {
@@ -650,9 +652,9 @@ export class InvoiceListComponent implements OnInit {
   }
 
   openCreditNoteForm() {
-    if (!this.selectedInvoice && this.filteredInvoices.length > 0) {
-      this.selectedInvoice = this.filteredInvoices[0];
-    }
+    this.selectedInvoice = null;
+    this.noteStudentId = '';
+    this.noteLookupError = '';
     this.noteForm = {
       type: 'credit',
       item: '',
@@ -664,9 +666,9 @@ export class InvoiceListComponent implements OnInit {
   }
 
   openDebitNoteForm() {
-    if (!this.selectedInvoice && this.filteredInvoices.length > 0) {
-      this.selectedInvoice = this.filteredInvoices[0];
-    }
+    this.selectedInvoice = null;
+    this.noteStudentId = '';
+    this.noteLookupError = '';
     this.noteForm = {
       type: 'debit',
       item: '',
@@ -679,6 +681,9 @@ export class InvoiceListComponent implements OnInit {
 
   closeNoteForm() {
     this.showNoteForm = false;
+    this.selectedInvoice = null;
+    this.noteStudentId = '';
+    this.noteLookupError = '';
     this.noteForm = {
       type: 'credit',
       item: '',
@@ -905,9 +910,7 @@ export class InvoiceListComponent implements OnInit {
 
   printReceipt() {
     if (!this.receiptUrl && this.lastPaidInvoiceId) {
-      // If receipt URL is not available but we have an invoice ID, load the receipt first
       this.viewReceiptPDFPreview(this.lastPaidInvoiceId);
-      // Wait a bit for the receipt to load, then print
       setTimeout(() => {
         if (this.receiptUrl) {
           const printWindow = window.open(this.receiptUrl, '_blank');
@@ -920,7 +923,7 @@ export class InvoiceListComponent implements OnInit {
       }, 1000);
       return;
     }
-    
+
     if (!this.receiptUrl) {
       this.error = 'Receipt not available for printing';
       return;
@@ -932,6 +935,32 @@ export class InvoiceListComponent implements OnInit {
         printWindow.print();
       };
     }
+  }
+
+  lookupNoteStudentById() {
+    this.noteLookupError = '';
+    this.selectedInvoice = null;
+    const rawId = (this.noteStudentId || '').trim();
+    if (!rawId) {
+      this.noteLookupError = 'Please enter a Student ID.';
+      return;
+    }
+    const normalizedId = rawId.toLowerCase();
+    const invoicesArray = Array.isArray(this.invoices) ? this.invoices : [];
+    const matchingInvoices = invoicesArray.filter(inv => {
+      const studentNumber = inv.student?.studentNumber ? String(inv.student.studentNumber).toLowerCase() : '';
+      return studentNumber === normalizedId;
+    });
+    if (matchingInvoices.length === 0) {
+      this.noteLookupError = 'No invoices found for the provided Student ID.';
+      return;
+    }
+    const latestInvoice = matchingInvoices.slice().sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    })[0];
+    this.selectedInvoice = latestInvoice;
   }
 
   openReceiptForPrint() {
