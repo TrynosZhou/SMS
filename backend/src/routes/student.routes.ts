@@ -10,6 +10,7 @@ import {
   deleteStudent,
   promoteStudents,
   generateStudentIdCard,
+  generateStudentTransportIdCard,
   transferStudent,
   getStudentTransfers,
   generateTransportBusIdCards,
@@ -29,6 +30,7 @@ router.get('/logistics/transport/bus-id-cards', authenticate, generateTransportB
 router.get('/logistics/transport/report', authenticate, generateTransportStudentsReport);
 router.get('/logistics/dining-hall/report', authenticate, generateDiningHallStudentsReport);
 router.get('/:id/id-card', authenticate, generateStudentIdCard);
+router.get('/:id/bus-id-card', authenticate, generateStudentTransportIdCard);
 router.get('/:id/transfers', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.TEACHER, UserRole.DEMO_USER), getStudentTransfers);
 router.get('/:id', authenticate, getStudentById);
 router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), upload.single('photo'), updateStudent);

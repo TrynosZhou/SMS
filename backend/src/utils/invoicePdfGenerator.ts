@@ -166,7 +166,6 @@ export function createInvoicePDF(
 
       yPos += rowHeight;
 
-      // Ensure all numeric values are properly converted to numbers
       const invoiceAmount = parseAmount(invoice.amount);
       const previousBalance = parseAmount(invoice.previousBalance);
       const paidAmount = parseAmount(invoice.paidAmount);
@@ -174,8 +173,6 @@ export function createInvoicePDF(
       const prepaidAmount = parseAmount(invoice.prepaidAmount);
       const uniformTotal = parseAmount((invoice as any).uniformTotal);
       const baseAmount = parseFloat((invoiceAmount - uniformTotal).toFixed(2));
-      // Note: uniformItems array is NOT used for display - only uniformTotal subtotal is shown
-      // Individual uniform items should NOT appear on the invoice
 
       const renderTableRow = (label: string, amountValue: number, options: { fill?: string; textColor?: string } = {}) => {
         doc.rect(tableStartX, yPos, tableWidth, rowHeight)
@@ -199,151 +196,80 @@ export function createInvoicePDF(
         renderTableRow('Previous Balance (Outstanding Fees)', previousBalance);
       }
 
-      // Calculate fee breakdown from student data and settings
-      const feesSettings = settings?.feesSettings || {};
-      const dayScholarTuitionFee = parseAmount(feesSettings.dayScholarTuitionFee);
-      const boarderTuitionFee = parseAmount(feesSettings.boarderTuitionFee);
-      const registrationFee = parseAmount(feesSettings.registrationFee);
-      const deskFee = parseAmount(feesSettings.deskFee);
-      const transportCost = parseAmount(feesSettings.transportCost);
-      const diningHallCost = parseAmount(feesSettings.diningHallCost);
-      const libraryFee = parseAmount(feesSettings.libraryFee);
-      const sportsFee = parseAmount(feesSettings.sportsFee);
-      const rawOtherFees = Array.isArray(feesSettings.otherFees) ? feesSettings.otherFees : [];
-      const otherFeesTotal = rawOtherFees.reduce((sum: number, fee: any) => sum + parseAmount(fee?.amount), 0);
-
-      // Calculate individual fees based on student status
-      let tuitionFee = 0;
-      if (!student.isStaffChild) {
-        tuitionFee = student.studentType === 'Boarder' ? boarderTuitionFee : dayScholarTuitionFee;
-      }
-
-      let transportFee = 0;
-      if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild) {
-        transportFee = transportCost;
-      }
-
-      let diningHallFee = 0;
-      if (student.usesDiningHall) {
-        if (student.isStaffChild) {
-          diningHallFee = diningHallCost * 0.5; // 50% for staff children
-        } else {
-          diningHallFee = diningHallCost; // Full price for regular students
-        }
-      }
-
-      // Calculate other fees (desk, library, sports, other fees - only for non-staff children)
-      const otherFeesAmount = (student.isStaffChild ? 0 : (deskFee + libraryFee + sportsFee + otherFeesTotal));
-
-      // Track all displayed fees to calculate correct total
-      let displayedFeesTotal = 0;
-
-      // Always display fees as separate line items based on student data
-      // Registration and desk fee: only on first invoice (registration), never for staff children; must not appear twice
-      const showOneTimeFees = isFirstInvoice === true && !student.isStaffChild;
-      if (registrationFee > 0 && showOneTimeFees) {
-        renderTableRow('Registration Fee', registrationFee, { fill: '#F8F9FA' });
-        displayedFeesTotal += registrationFee;
-      }
-
-      // Display tuition fee - always show if student is not a staff child
-      if (!student.isStaffChild) {
-        const tuitionLabel = student.studentType === 'Boarder' ? 'Tuition Fee (Boarder)' : 'Tuition Fee (Day Scholar)';
-        const tuitionToDisplay = tuitionFee > 0 ? tuitionFee : (student.studentType === 'Boarder' ? boarderTuitionFee : dayScholarTuitionFee);
-        if (tuitionToDisplay > 0) {
-          renderTableRow(tuitionLabel, tuitionToDisplay, { fill: '#F8F9FA' });
-          displayedFeesTotal += tuitionToDisplay;
-        }
-      }
-
-      // Desk fee: only on first invoice (registration), never for staff children; must not appear twice
-      if (deskFee > 0 && showOneTimeFees) {
-        renderTableRow('Desk Fee', deskFee, { fill: '#F8F9FA' });
-        displayedFeesTotal += deskFee;
-      }
-
-      // Always show transport fee if student uses transport (for Day Scholars)
-      if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild) {
-        const transportToDisplay = transportFee > 0 ? transportFee : transportCost;
-        if (transportToDisplay > 0) {
-          renderTableRow('Transport Fee', transportToDisplay, { fill: '#F8F9FA' });
-          displayedFeesTotal += transportToDisplay;
-        }
-      }
-
-      // Always show dining hall fee if student uses dining hall
-      if (student.usesDiningHall) {
-        const dhToDisplay = diningHallFee > 0 ? diningHallFee : (student.isStaffChild ? diningHallCost * 0.5 : diningHallCost);
-        if (dhToDisplay > 0) {
-          const dhLabel = student.isStaffChild ? 'Dining Hall (DH) Fee (50% - Staff Child)' : 'Dining Hall (DH) Fee';
-          renderTableRow(dhLabel, dhToDisplay, { fill: '#F8F9FA' });
-          displayedFeesTotal += dhToDisplay;
-        }
-      }
-
-      // Always show other fees for non-staff children (library, sports, other fees)
-      // These are charged every term
-      if (!student.isStaffChild) {
-        // Library fee - always show if configured
-        if (libraryFee > 0) {
-          renderTableRow('Library Fee', libraryFee, { fill: '#F8F9FA' });
-          displayedFeesTotal += libraryFee;
-        }
-        
-        // Sports fee - always show if configured (charged every term)
-        if (sportsFee > 0) {
-          renderTableRow('Sports Fee', sportsFee, { fill: '#F8F9FA' });
-          displayedFeesTotal += sportsFee;
-        }
-        
-        // Other fees - show each configured fee
-        if (otherFeesTotal > 0) {
-          rawOtherFees.forEach((fee: any) => {
-            const feeAmount = parseAmount(fee.amount);
-            if (feeAmount > 0) {
-              renderTableRow(fee.name || 'Other Fee', feeAmount, { fill: '#F8F9FA' });
-              displayedFeesTotal += feeAmount;
+      const descriptionText = (invoice.description || '').toString();
+      const breakdownLine = descriptionText.split('\n').find(l => l.startsWith('Breakdown'));
+      if (breakdownLine) {
+        const partsRaw = breakdownLine.replace('Breakdown →', '').split('|').map(s => s.trim()).filter(Boolean);
+        partsRaw.forEach(part => {
+          const idx = part.lastIndexOf(':');
+          if (idx > 0) {
+            const label = part.substring(0, idx).trim();
+            const amountStr = part.substring(idx + 1).trim();
+            const amountVal = parseAmount(amountStr);
+            if (amountVal > 0) {
+              renderTableRow(label, amountVal, { fill: '#F8F9FA' });
             }
-          });
-        }
+          }
+        });
+      }
+      const adjustedLine = descriptionText.split('|').map(s => s.trim()).find(l => l.startsWith('Adjusted fees'));
+      if (adjustedLine) {
+        const inner = adjustedLine.replace('Adjusted fees (', '').replace(')', '');
+        inner.split(',').map(s => s.trim()).forEach(item => {
+          const idx = item.lastIndexOf(':');
+          if (idx > 0) {
+            const label = item.substring(0, idx).trim();
+            const amountStr = item.substring(idx + 1).trim();
+            const amountVal = parseAmount(amountStr);
+            if (amountVal > 0) {
+              renderTableRow(label, amountVal, { fill: '#F8F9FA' });
+            }
+          }
+        });
       }
 
-      // Always display all applicable fees for the term based on student data
-      // Don't try to match baseAmount - just show what should be charged
-      // The invoice amount should already include these fees if calculated correctly
-      
-      // Calculate what the total should be based on displayed fees
-      // If there's a discrepancy with baseAmount, it might be due to discounts or adjustments
-      const displayedFeesSum = displayedFeesTotal;
-      const remainingAmount = baseAmount - displayedFeesSum;
-      
-      // If there's a significant difference, show it as an adjustment
-      // But prioritize showing all applicable fees first
-      if (Math.abs(remainingAmount) > 0.01) {
-        if (remainingAmount > 0.01) {
-          // Additional amount not accounted for in standard fees
-          renderTableRow('Additional Fees', remainingAmount, { fill: '#F8F9FA' });
-          displayedFeesTotal += remainingAmount;
-        } else if (remainingAmount < -0.01) {
-          // Negative amount indicates a discount or adjustment
-          // We'll show it, but the displayed fees are what should be charged
-          // The final total will be correct
-        }
-      }
-
-      // Show uniform items subtotal ONLY - individual items must NOT appear on the invoice
-      // Only the subtotal should be displayed, not individual items like "Track suit (x1)"
       if (uniformTotal > 0) {
         renderTableRow('School Uniform Subtotal', uniformTotal, { fill: '#FFE8CC', textColor: '#C05621' });
       }
 
-      // Show credit/debit notes as separate lines if present in description
-      const descriptionText = (invoice.description || '').toString();
-      if (descriptionText && descriptionText.trim() !== '') {
-        const noteLines = descriptionText
-          .split('|')
-          .map(line => line.trim())
-          .filter(line => line.toLowerCase().startsWith('credit note') || line.toLowerCase().startsWith('debit note'));
+      const discountLine = descriptionText.split('\n').find(l => l.toLowerCase().startsWith('discount applied'));
+      const noteLines = descriptionText
+        .split('|')
+        .map(line => line.trim())
+        .filter(line => line.toLowerCase().startsWith('credit note') || line.toLowerCase().startsWith('debit note'));
+
+      if (discountLine || noteLines.length > 0) {
+        yPos += 10;
+        doc.fontSize(14).font('Helvetica-Bold').fillColor('#2C3E50');
+        doc.text('Adjustments', 50, yPos);
+        yPos += 20;
+
+        const adjRowHeight = 24;
+        const renderAdjRow = (label: string, amountValue: number, options: { fill?: string; textColor?: string } = {}) => {
+          doc.rect(tableStartX, yPos, tableWidth, adjRowHeight)
+            .fillColor(options.fill || '#FFFFFF')
+            .fill()
+            .strokeColor('#CCCCCC')
+            .lineWidth(0.5)
+            .stroke();
+          doc.strokeColor('#E0E0E0').lineWidth(0.5);
+          doc.moveTo(amountColumnStartX, yPos + 2).lineTo(amountColumnStartX, yPos + adjRowHeight - 2).stroke();
+          doc.fontSize(10).font('Helvetica').fillColor(options.textColor || '#000000');
+          const maxDescriptionWidth = amountColumnStartX - tableStartX - 20;
+          doc.text(label, tableStartX + 10, yPos + 7, { width: maxDescriptionWidth, ellipsis: true });
+          doc.text(`${currencySymbol} ${amountValue.toFixed(2)}`, amountColumnStartX, yPos + 7, { align: 'right', width: amountColumnWidth - 10 });
+          yPos += adjRowHeight;
+        };
+
+        if (discountLine) {
+          const m = discountLine.match(/discount applied:\s*[A-Z]{0,3}\s*([0-9]+(\.[0-9]+)?)/i);
+          if (m) {
+            const amt = parseAmount(m[1]);
+            if (amt > 0) {
+              renderAdjRow('Discount Applied', amt, { fill: '#E8F5E9', textColor: '#1B5E20' });
+            }
+          }
+        }
 
         noteLines.forEach(line => {
           const match = line.match(/([+-])\s*([0-9]+(\.[0-9]+)?)/);
@@ -351,10 +277,9 @@ export function createInvoicePDF(
             const sign = match[1];
             const amountValue = parseFloat(match[2]);
             if (Number.isFinite(amountValue) && amountValue > 0) {
-              const signedAmount = sign === '-' ? -amountValue : amountValue;
               const rowLabel = line.replace(/\s*\(([+-][0-9.]+\))\s*$/, '').trim() || line;
-              const displayAmount = Math.abs(signedAmount);
-              renderTableRow(rowLabel, displayAmount, {
+              const displayAmount = Math.abs(amountValue);
+              renderAdjRow(rowLabel, displayAmount, {
                 fill: '#FFF5F5',
                 textColor: sign === '-' ? '#C53030' : '#2F855A'
               });
@@ -381,20 +306,10 @@ export function createInvoicePDF(
       doc.strokeColor('#4A90E2').lineWidth(1);
       doc.moveTo(amountColumnStartX, yPos + 2).lineTo(amountColumnStartX, yPos + rowHeight + 3).stroke();
 
-      // Calculate total from displayed items: previousBalance + displayed fees + uniform - appliedPrepaidAmount
-      // displayedFeesTotal already includes all fees (tuition, desk, sports, etc.) but NOT uniform items
-      // Uniform items are displayed separately and their subtotal is shown
-      // So total = previousBalance + displayedFeesTotal + uniformTotal
-      const totalInvoiceAmount = previousBalance + displayedFeesTotal + uniformTotal;
+      const totalInvoiceAmount = previousBalance + invoiceAmount;
       const appliedPrepaidAmount = Math.min(prepaidAmount, totalInvoiceAmount);
       const calculatedTotal = totalInvoiceAmount - appliedPrepaidAmount;
-      
-      // Always use the calculated total from displayed items as the source of truth
-      // This ensures the total matches what's actually displayed on the invoice
-      // The invoice.balance might be incorrect if fees weren't calculated properly during creation
-      // We calculate: previousBalance + displayedFeesTotal + uniformTotal - prepaidAmount
       const finalTotal = calculatedTotal;
-      
       doc.fontSize(13).font('Helvetica-Bold').fillColor('#003366');
       doc.text('Total Amount Due', tableStartX + 10, yPos + 10);
       doc.text(`${currencySymbol} ${finalTotal.toFixed(2)}`, amountColumnStartX, yPos + 10, { align: 'right', width: amountColumnWidth - 10 });

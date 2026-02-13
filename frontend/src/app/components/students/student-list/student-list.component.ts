@@ -473,7 +473,10 @@ export class StudentListComponent implements OnInit {
 
     this.loading = true;
     this.error = '';
-    this.studentService.getStudentIdCard(studentId).subscribe({
+    const request$ = this.isLogisticsTransport
+      ? this.studentService.getTransportBusIdCard(studentId)
+      : this.studentService.getStudentIdCard(studentId);
+    request$.subscribe({
       next: (blob: Blob) => {
         this.loading = false;
         const fileURL = window.URL.createObjectURL(blob);

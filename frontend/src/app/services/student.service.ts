@@ -258,6 +258,64 @@ export class StudentService {
     );
   }
 
+  getTransportBusIdCard(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/students/${id}/bus-id-card`, {
+      responseType: 'blob',
+      observe: 'response'
+    }).pipe(
+      map((response: any) => {
+        const blob = response.body;
+        const contentType = response.headers.get('content-type') || '';
+        const status = response.status;
+        if (status === 200 && contentType.includes('application/pdf')) {
+          return blob;
+        }
+        throw { status, blob, contentType };
+      }),
+      catchError((error: any) => {
+        if (error.status && error.blob) {
+          const reader = new FileReader();
+          return new Observable((observer: Observer<any>) => {
+            reader.onloadend = () => {
+              try {
+                const errorText = reader.result as string;
+                let errorJson: any;
+                try {
+                  errorJson = JSON.parse(errorText);
+                } catch (e) {
+                  errorJson = { message: errorText || 'Unknown error' };
+                }
+                const httpError = new HttpErrorResponse({
+                  error: errorJson,
+                  status: error.status,
+                  statusText: error.statusText || 'Error'
+                });
+                observer.error(httpError);
+              } catch (e) {
+                const httpError = new HttpErrorResponse({
+                  error: { message: 'Failed to parse error response' },
+                  status: error.status || 500,
+                  statusText: 'Error'
+                });
+                observer.error(httpError);
+              }
+            };
+            reader.onerror = () => {
+              const httpError = new HttpErrorResponse({
+                error: { message: 'Failed to read error response' },
+                status: error.status || 500,
+                statusText: 'Error'
+              });
+              observer.error(httpError);
+            };
+            reader.readAsText(error.blob);
+          });
+        }
+        return throwError(() => error);
+      })
+    );
+  }
+
   transferStudent(transferData: {
     studentId: string;
     transferType: 'internal' | 'external';

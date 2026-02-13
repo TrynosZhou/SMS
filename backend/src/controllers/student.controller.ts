@@ -1290,6 +1290,83 @@ export const generateStudentIdCard = async (req: AuthRequest, res: Response) => 
   }
 };
 
+export const generateStudentTransportIdCard = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: 'Student ID is required' });
+    }
+    const studentRepository = AppDataSource.getRepository(Student);
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const parentRepository = AppDataSource.getRepository(Parent);
+
+    const student = await studentRepository.findOne({
+      where: { id },
+      relations: ['classEntity', 'parent']
+    });
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+    if (!student.usesTransport || student.studentType !== 'Day Scholar') {
+      return res.status(400).json({ message: 'This student does not use school transport' });
+    }
+
+    const allowedRoles = [UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.TEACHER];
+    if (!allowedRoles.includes(user.role)) {
+      if (user.role === UserRole.PARENT) {
+        const parent = await parentRepository.findOne({ where: { userId: user.id } });
+        if (!parent || student.parentId !== parent.id) {
+          return res.status(403).json({ message: 'You do not have permission to view this student\'s bus ID card' });
+        }
+      } else {
+        return res.status(403).json({
+          message: 'Insufficient permissions to view bus ID cards. Required role: Admin, Super Admin, Accountant, or Teacher.',
+          userRole: user.role,
+          allowedRoles
+        });
+      }
+    }
+
+    const settings = await settingsRepository.findOne({
+      where: {},
+      order: { createdAt: 'DESC' }
+    });
+
+    const qrPayload = {
+      studentId: student.id,
+      studentNumber: student.studentNumber,
+      name: `${student.firstName} ${student.lastName}`.trim(),
+      class: student.classEntity?.name || null,
+      studentType: student.studentType,
+      issuedAt: new Date().toISOString(),
+      transport: true
+    };
+
+    const qrDataUrl = await QRCode.toDataURL(JSON.stringify(qrPayload));
+
+    const pdfBuffer = await createStudentIdCardPDF({
+      student,
+      settings: settings || null,
+      qrDataUrl,
+      photoPath: student.photo,
+      mode: 'transport'
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${student.studentNumber || 'student'}-bus-id-card.pdf"`);
+    return res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating transport bus ID card:', error);
+    return res.status(500).json({ message: 'Failed to generate transport bus ID card' });
+  }
+};
 export const generateTransportBusIdCards = async (req: AuthRequest, res: Response) => {
   try {
     if (!AppDataSource.isInitialized) {
@@ -1443,45 +1520,70 @@ async function generateLogisticsReportPdf(
   const schoolName = settings?.schoolName || 'School Management System';
   const schoolAddress = settings?.schoolAddress ? String(settings.schoolAddress).trim() : '';
   const schoolMotto = settings?.schoolMotto ? String(settings.schoolMotto).trim() : '';
+  const schoolPhone = settings?.schoolPhone ? String(settings.schoolPhone).trim() : '';
+  const schoolEmail = settings?.schoolEmail ? String(settings.schoolEmail).trim() : '';
 
-  let cursorY = 40;
+  const headerTextX = 40;
+  const headerTextWidth = 515;
+  const headerTopY = 40;
+  const nameFontSize = 16;
+  const textAscender = nameFontSize * 0.7;
 
   if (settings?.schoolLogo && settings.schoolLogo.startsWith('data:image')) {
     try {
       const base64Data = settings.schoolLogo.split(',')[1] || '';
       const logoBuffer = Buffer.from(base64Data, 'base64');
-      doc.image(logoBuffer, 40, cursorY, { width: 60 });
+      doc.image(logoBuffer, 40, headerTopY, { width: 70, height: 50 });
     } catch (error) {
       console.error('Failed to render school logo in logistics report:', error);
     }
   }
+  if (settings?.schoolLogo2 && settings.schoolLogo2.startsWith('data:image')) {
+    try {
+      const base64Data2 = settings.schoolLogo2.split(',')[1] || '';
+      const logoBuffer2 = Buffer.from(base64Data2, 'base64');
+      doc.image(logoBuffer2, 555 - 70, headerTopY, { width: 70, height: 50 });
+    } catch (error) {
+      console.error('Failed to render second school logo in logistics report:', error);
+    }
+  }
 
-  doc.fontSize(16).font('Helvetica-Bold');
-  doc.text(schoolName, 120, cursorY, { width: 400 });
+  doc.fontSize(nameFontSize).font('Helvetica-Bold').fillColor('#000000');
+  doc.text(schoolName, headerTextX, headerTopY + textAscender, { width: headerTextWidth, align: 'center' });
 
-  cursorY += 22;
+  let cursorY = headerTopY + textAscender + 20;
 
-  if (schoolAddress) {
-    doc.fontSize(10).font('Helvetica');
-    doc.text(schoolAddress, 120, cursorY, { width: 400 });
+  if (schoolMotto) {
+    doc.fontSize(11).font('Helvetica-Oblique');
+    doc.text(schoolMotto, headerTextX, cursorY, { width: headerTextWidth, align: 'center' });
     cursorY += 16;
   }
 
-  if (schoolMotto) {
-    doc.fontSize(10).font('Helvetica-Oblique');
-    doc.text(schoolMotto, 120, cursorY, { width: 400 });
-    cursorY += 18;
-  } else {
-    cursorY += 8;
+  if (schoolAddress) {
+    doc.fontSize(10).font('Helvetica');
+    doc.text(schoolAddress, headerTextX, cursorY, { width: headerTextWidth, align: 'center' });
+    cursorY += 16;
   }
 
-  cursorY += 10;
+  if (schoolPhone) {
+    doc.fontSize(10).font('Helvetica');
+    doc.text(`Phone: ${schoolPhone}`, headerTextX, cursorY, { width: headerTextWidth, align: 'center' });
+    cursorY += 14;
+  }
+
+  if (schoolEmail) {
+    doc.fontSize(10).font('Helvetica');
+    doc.text(`Email: ${schoolEmail}`, headerTextX, cursorY, { width: headerTextWidth, align: 'center' });
+    cursorY += 14;
+  }
+
+  cursorY += 4;
 
   doc.moveTo(40, cursorY).lineTo(555, cursorY).strokeColor('#1F4B99').lineWidth(1).stroke();
-  cursorY += 20;
+  cursorY += 18;
 
   doc.fontSize(14).font('Helvetica-Bold').fillColor('#1F4B99');
-  doc.text(options.title, 40, cursorY, { align: 'center', width: 515 });
+  doc.text(options.title, headerTextX, cursorY, { align: 'center', width: headerTextWidth });
 
   cursorY += 30;
 

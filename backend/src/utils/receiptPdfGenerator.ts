@@ -2,6 +2,7 @@ import PDFDocument from 'pdfkit';
 import { Invoice } from '../entities/Invoice';
 import { Student } from '../entities/Student';
 import { Settings } from '../entities/Settings';
+import { parseAmount } from './numberUtils';
 
 interface ReceiptPDFData {
   invoice: Invoice;
@@ -40,6 +41,7 @@ export function createReceiptPDF(
 
       // Header Section
       let yPos = 50;
+      const schoolNameFontSize = 18;
 
       // School Logo (if available)
       if (settings?.schoolLogo) {
@@ -48,7 +50,8 @@ export function createReceiptPDF(
             const base64Data = settings.schoolLogo.split(',')[1];
             if (base64Data) {
               const imageBuffer = Buffer.from(base64Data, 'base64');
-              doc.image(imageBuffer, 50, yPos, { width: 80, height: 80 });
+              const logoY = yPos - schoolNameFontSize * 0.7;
+              doc.image(imageBuffer, 50, logoY, { width: 80, height: 80 });
             }
           }
         } catch (error) {
@@ -58,7 +61,7 @@ export function createReceiptPDF(
 
       // School Information
       const textStartX = settings?.schoolLogo ? 150 : 50;
-      doc.fontSize(18).font('Helvetica-Bold').text(schoolName, textStartX, yPos);
+      doc.fontSize(schoolNameFontSize).font('Helvetica-Bold').text(schoolName, textStartX, yPos);
       yPos += 25;
 
       if (schoolAddress) {
@@ -222,6 +225,97 @@ export function createReceiptPDF(
       doc.fontSize(14).font('Helvetica-Bold').fillColor('#2C3E50');
       doc.text('Transaction Details', 50, yPos);
       yPos += 25;
+
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Charge Breakdown', 50, yPos);
+      yPos += 20;
+
+      const tableStartX2 = 50;
+      const tableEndX2 = 545;
+      const tableWidth2 = tableEndX2 - tableStartX2;
+      const amountColumnWidth2 = 150;
+      const amountColumnStartX2 = tableEndX2 - amountColumnWidth2;
+      const rowHeight2 = 25;
+
+      doc.rect(tableStartX2, yPos, tableWidth2, rowHeight2).fillColor('#EFEFEF').fill().strokeColor('#CCCCCC').lineWidth(1).stroke();
+      doc.strokeColor('#CCCCCC').lineWidth(0.5);
+      doc.moveTo(amountColumnStartX2, yPos + 2).lineTo(amountColumnStartX2, yPos + rowHeight2 - 2).stroke();
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000');
+      doc.text('Description', tableStartX2 + 10, yPos + 7);
+      doc.text('Amount', amountColumnStartX2, yPos + 7, { align: 'right', width: amountColumnWidth2 - 10 });
+      yPos += rowHeight2;
+
+      const renderRow = (label: string, amountValue: number) => {
+        doc.rect(tableStartX2, yPos, tableWidth2, rowHeight2).fillColor('#FFFFFF').fill().strokeColor('#E0E0E0').lineWidth(0.5).stroke();
+        doc.strokeColor('#E0E0E0').lineWidth(0.5);
+        doc.moveTo(amountColumnStartX2, yPos + 2).lineTo(amountColumnStartX2, yPos + rowHeight2 - 2).stroke();
+        doc.fontSize(10).font('Helvetica').fillColor('#000000');
+        const maxDescriptionWidth = amountColumnStartX2 - tableStartX2 - 20;
+        doc.text(label, tableStartX2 + 10, yPos + 7, { width: maxDescriptionWidth, ellipsis: true });
+        doc.text(`${currencySymbol} ${amountValue.toFixed(2)}`, amountColumnStartX2, yPos + 7, { align: 'right', width: amountColumnWidth2 - 10 });
+        yPos += rowHeight2;
+      };
+
+      const feesSettings = settings?.feesSettings || {};
+      const dayScholarTuitionFee = parseAmount(feesSettings.dayScholarTuitionFee);
+      const boarderTuitionFee = parseAmount(feesSettings.boarderTuitionFee);
+      const transportCost = parseAmount(feesSettings.transportCost);
+      const diningHallCost = parseAmount(feesSettings.diningHallCost);
+
+      let tuitionFee = 0;
+      if (!student.isStaffChild) {
+        tuitionFee = student.studentType === 'Boarder' ? boarderTuitionFee : dayScholarTuitionFee;
+      }
+      let transportFee = 0;
+      if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild) {
+        transportFee = transportCost;
+      }
+      let diningHallFee = 0;
+      if (student.usesDiningHall) {
+        diningHallFee = student.isStaffChild ? diningHallCost * 0.5 : diningHallCost;
+      }
+
+      if (!student.isStaffChild && tuitionFee > 0) {
+        renderRow(student.studentType === 'Boarder' ? 'Tuition Fee (Boarder)' : 'Tuition Fee (Day Scholar)', tuitionFee);
+      }
+      if (transportFee > 0) {
+        renderRow('Transport Fee', transportFee);
+      }
+      if (diningHallFee > 0) {
+        renderRow(student.isStaffChild ? 'Dining Hall (DH) Fee (50% - Staff Child)' : 'Dining Hall (DH) Fee', diningHallFee);
+      }
+
+      const descriptionText = (invoice.description || '').toString();
+      if (descriptionText && descriptionText.trim() !== '') {
+        const noteLines = descriptionText
+          .split('|')
+          .map(line => line.trim())
+          .filter(line => line.toLowerCase().startsWith('credit note') || line.toLowerCase().startsWith('debit note'));
+
+        noteLines.forEach(line => {
+          const match = line.match(/([+-])\s*([0-9]+(\.[0-9]+)?)/);
+          if (match) {
+            const sign = match[1];
+            const amountValue = parseFloat(match[2]);
+            if (Number.isFinite(amountValue) && amountValue > 0) {
+              const displayAmount = Math.abs(amountValue);
+              doc.rect(tableStartX2, yPos, tableWidth2, rowHeight2).fillColor('#FFF5F5').fill().strokeColor('#E0E0E0').lineWidth(0.5).stroke();
+              doc.strokeColor('#E0E0E0').lineWidth(0.5);
+              doc.moveTo(amountColumnStartX2, yPos + 2).lineTo(amountColumnStartX2, yPos + rowHeight2 - 2).stroke();
+              doc.fontSize(10).font('Helvetica').fillColor(sign === '-' ? '#C53030' : '#2F855A');
+              const maxDescriptionWidth = amountColumnStartX2 - tableStartX2 - 20;
+              doc.text(line, tableStartX2 + 10, yPos + 7, { width: maxDescriptionWidth, ellipsis: true });
+              doc.text(`${currencySymbol} ${displayAmount.toFixed(2)}`, amountColumnStartX2, yPos + 7, { align: 'right', width: amountColumnWidth2 - 10 });
+              yPos += rowHeight2;
+            }
+          }
+        });
+      }
+
+      yPos += 10;
+      doc.strokeColor('#CCCCCC').lineWidth(1);
+      doc.moveTo(50, yPos).lineTo(545, yPos).stroke();
+      yPos += 15;
 
       // Ensure all numeric values are properly converted to numbers
       const invoiceAmount = parseFloat(String(invoice.amount || 0));

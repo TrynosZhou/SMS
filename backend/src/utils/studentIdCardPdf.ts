@@ -99,18 +99,18 @@ function renderStudentIdCard(doc: InstanceType<typeof PDFDocument>, data: Studen
   doc.text(`${student.firstName} ${student.lastName}`.toUpperCase(), infoStartX, infoStartY, { width: 140 });
 
   doc.fontSize(10).font('Helvetica').fillColor('#344055');
-  doc.text(`Student No: ${student.studentNumber}`, infoStartX, infoStartY + 22);
-  doc.text(`Class: ${student.classEntity?.name || 'N/A'}`, infoStartX, infoStartY + 38);
-  doc.text(`Type: ${student.studentType || 'Day Scholar'}`, infoStartX, infoStartY + 54);
+  doc.text(`Student No: ${student.studentNumber}`, infoStartX, infoStartY + 30);
+  doc.text(`Class: ${student.classEntity?.name || 'N/A'}`, infoStartX, infoStartY + 48);
+  doc.text(`Type: ${student.studentType || 'Day Scholar'}`, infoStartX, infoStartY + 66);
 
   if (student.dateOfBirth) {
     const dob = student.dateOfBirth instanceof Date ? student.dateOfBirth : new Date(student.dateOfBirth);
-    doc.text(`DOB: ${dob.toLocaleDateString()}`, infoStartX, infoStartY + 70);
+    doc.text(`DOB: ${dob.toLocaleDateString()}`, infoStartX, infoStartY + 84);
   }
 
   const contactInfo = student.contactNumber || student.phoneNumber;
   if (contactInfo) {
-    doc.text(`Contact: ${contactInfo}`, infoStartX, infoStartY + 86, { width: 140 });
+    doc.text(`Contact: ${contactInfo}`, infoStartX, infoStartY + 100, { width: 140 });
   }
 
   const qrBuffer = Buffer.from(qrDataUrl.split(',')[1], 'base64');

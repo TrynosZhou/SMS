@@ -229,6 +229,17 @@ export class RecordPaymentComponent implements OnInit {
     this.receiptPdfUrl = null;
   }
 
+  hasReceiptAvailable(): boolean {
+    if (this.paymentRecorded || !!this.success) {
+      return true;
+    }
+    if (this.studentData && this.studentData.lastInvoicePaidAmount !== undefined && this.studentData.lastInvoicePaidAmount !== null) {
+      const paidAmount = parseFloat(String(this.studentData.lastInvoicePaidAmount || 0));
+      return paidAmount > 0;
+    }
+    return false;
+  }
+
   recordPayment(): void {
     if (!this.studentData || !this.studentData.lastInvoiceId) {
       this.error = 'Please get student balance first';
@@ -299,7 +310,12 @@ export class RecordPaymentComponent implements OnInit {
           }
         }, 8000);
         
-        // Note: Receipt will only be displayed when user clicks the "Receipt" button
+        // Automatically load receipt preview for the recorded payment
+        if (this.lastPaymentInvoiceId) {
+          setTimeout(() => {
+            this.showReceiptPreview();
+          }, 1000);
+        }
       },
       error: (error: any) => {
         this.error = error.error?.message || 'Failed to record payment';

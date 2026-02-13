@@ -227,12 +227,14 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     const otherVal = parseAmount(otherAmount);
     const registrationVal = registrationIncrement;
     const deskVal = deskIncrement;
+    const transportVal = transportIncrement;
     const breakdownParts: string[] = [];
     if (tuitionVal > 0) breakdownParts.push(`Tuition: ${tuitionVal.toFixed(2)}`);
     if (diningVal > 0) breakdownParts.push(`Dining Hall: ${diningVal.toFixed(2)}`);
     if (otherVal > 0) breakdownParts.push(`Other Charges: ${otherVal.toFixed(2)}`);
     if (registrationVal > 0) breakdownParts.push(`Registration Fee: ${registrationVal.toFixed(2)}`);
     if (deskVal > 0) breakdownParts.push(`Desk Fee: ${deskVal.toFixed(2)}`);
+    if (transportVal > 0) breakdownParts.push(`Transport: ${transportVal.toFixed(2)}`);
     if (breakdownParts.length > 0) {
       const breakdownText = `Breakdown → ${breakdownParts.join(' | ')}`;
       finalDescription = finalDescription
