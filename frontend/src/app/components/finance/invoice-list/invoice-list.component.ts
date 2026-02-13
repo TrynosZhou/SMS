@@ -704,6 +704,10 @@ export class InvoiceListComponent implements OnInit {
       this.error = 'Please enter a valid amount greater than 0.';
       return;
     }
+    if (this.noteForm.type === 'credit' && this.selectedInvoice && this.noteForm.amount > this.selectedInvoice.balance) {
+      this.error = 'Credit note amount cannot be greater than the current balance.';
+      return;
+    }
 
     this.loading = true;
     this.error = '';

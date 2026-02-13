@@ -626,37 +626,24 @@
 .modal-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  padding: 25px 30px;
+  align-items: center;
+  padding: 20px 24px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 16px 16px 0 0;
   color: white;
 }
 
 .modal-header-content h2 {
-  margin: 0 0 8px 0;
-  font-size: 24px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.modal-icon {
-  font-size: 28px;
-}
-
-.modal-subtitle {
   margin: 0;
-  opacity: 0.9;
-  font-size: 14px;
+  font-size: 22px;
+  font-weight: 600;
 }
 
 .modal-close-btn {
   background: rgba(255, 255, 255, 0.2);
   border: none;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
@@ -664,14 +651,13 @@
   justify-content: center;
   transition: all 0.3s ease;
   color: white;
-  font-size: 24px;
+  font-size: 20px;
   line-height: 1;
   padding: 0;
 }
 
 .modal-close-btn:hover {
   background: rgba(255, 255, 255, 0.3);
-  transform: rotate(90deg);
 }
 
 /* Invoice Summary Card */

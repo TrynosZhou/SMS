@@ -797,10 +797,12 @@
   </div>
 
   <!-- Credit/Debit Note Modal -->
-  <div class="modal-overlay" *ngIf="showNoteForm">
-    <div class="modal">
+  <div class="modal-overlay" *ngIf="showNoteForm" (click)="closeNoteForm()">
+    <div class="payment-modal" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h2>{{ noteForm.type === 'credit' ? 'Credit Note' : 'Debit Note' }}</h2>
+        <div class="modal-header-content">
+          <h2>{{ noteForm.type === 'credit' ? 'Credit Note' : 'Debit Note' }}</h2>
+        </div>
         <button class="modal-close-btn" (click)="closeNoteForm()" title="Close">
           <span>&times;</span>
         </button>
@@ -905,7 +907,6 @@
             </small>
           </div>
         </div>
-
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" (click)="closeNoteForm()" [disabled]="loading">
             Cancel
