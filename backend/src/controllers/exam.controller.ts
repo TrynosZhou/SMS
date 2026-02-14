@@ -13,6 +13,7 @@ import { Parent } from '../entities/Parent';
 import { ParentStudent } from '../entities/ParentStudent';
 import { Invoice } from '../entities/Invoice';
 import { Attendance, AttendanceStatus } from '../entities/Attendance';
+import { UserRole } from '../entities/User';
 import { AuthRequest } from '../middleware/auth';
 import { createReportCardPDF } from '../utils/pdfGenerator';
 import { createMarkSheetPDF } from '../utils/markSheetPdfGenerator';
@@ -3486,6 +3487,103 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
   } catch (error: any) {
     console.error('Error saving report card remarks:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const getMarksEntryProgress = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    const allowedRoles = [UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER];
+    if (!allowedRoles.includes(user.role)) {
+      return res.status(403).json({ message: 'Insufficient permissions' });
+    }
+
+    const { examType, term, classId } = req.query as { examType?: string; term?: string; classId?: string };
+
+    const classRepository = AppDataSource.getRepository(Class);
+    const studentRepository = AppDataSource.getRepository(Student);
+    const examRepository = AppDataSource.getRepository(Exam);
+    const marksRepository = AppDataSource.getRepository(Marks);
+    const settingsRepository = AppDataSource.getRepository(Settings);
+
+    const settings = await settingsRepository.findOne({ where: {}, order: { createdAt: 'DESC' } });
+    const termUsed = (term && String(term).trim()) || settings?.activeTerm || settings?.currentTerm || null;
+    const normalizedType = examType ? normalizeExamType(examType) : null;
+
+    // Load classes (optionally single class)
+    const classes = await classRepository.find({
+      where: classId ? { id: classId as string } : {},
+      relations: ['subjects'],
+      order: { name: 'ASC' }
+    });
+
+    // Build progress data
+    const result = [];
+    for (const cls of classes) {
+      const totalStudents = await studentRepository.count({ where: { classId: cls.id, isActive: true } });
+
+      const subjects = (cls.subjects || []).map((subject: any) => ({ id: subject.id, name: subject.name }));
+      const subjectProgress: any[] = [];
+
+      for (const subject of subjects) {
+        // Find latest exam for this class (filtered by type/term if provided)
+        const whereClause: any = { classId: cls.id };
+        if (normalizedType) whereClause.type = normalizedType as any;
+        if (termUsed) whereClause.term = termUsed as any;
+
+        const exams = await examRepository.find({
+          where: whereClause,
+          order: { examDate: 'DESC' }
+        });
+
+        const latestExam = exams[0] || null;
+        let enteredCount = 0;
+        if (latestExam) {
+          enteredCount = await marksRepository.count({
+            where: { examId: latestExam.id, subjectId: subject.id }
+          });
+        }
+
+        const expectedCount = totalStudents;
+        const progressPercent = expectedCount > 0 ? Math.round(Math.min(100, (enteredCount / expectedCount) * 100)) : 0;
+
+        subjectProgress.push({
+          subjectId: subject.id,
+          subjectName: subject.name,
+          progressPercent,
+          enteredCount,
+          expectedCount,
+          examId: latestExam?.id || null,
+          examType: latestExam?.type || normalizedType || null,
+          term: latestExam?.term || termUsed || null
+        });
+      }
+
+      result.push({
+        classId: cls.id,
+        className: cls.name,
+        form: (cls as any).form || null,
+        totalStudents,
+        subjects: subjectProgress
+      });
+    }
+
+    return res.json({
+      examType: normalizedType,
+      term: termUsed,
+      classes: result,
+      generatedAt: new Date()
+    });
+  } catch (error: any) {
+    console.error('Error computing marks entry progress:', error);
+    return res.status(500).json({ message: 'Failed to compute marks entry progress', error: error.message || 'Unknown error' });
   }
 };
 

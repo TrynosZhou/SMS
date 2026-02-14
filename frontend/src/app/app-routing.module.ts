@@ -49,6 +49,7 @@ import { AuthGuard } from './guards/auth.guard';
 import { ModuleAccessGuard } from './guards/module-access.guard';
 import { SuperAdminGuard } from './guards/super-admin.guard';
 import { SplashComponent } from './components/splash/splash.component';
+import { MarksProgressComponent } from './components/exams/marks-progress/marks-progress.component';
 
 const routes: Routes = [
   { path: '', component: SplashComponent },
@@ -81,6 +82,7 @@ const routes: Routes = [
   { path: 'report-cards', component: ReportCardComponent, canActivate: [AuthGuard] },
   { path: 'mark-sheet', component: MarkSheetComponent, canActivate: [AuthGuard] },
   { path: 'rankings', component: RankingsComponent, canActivate: [AuthGuard] },
+  { path: 'check_mark_progess', component: MarksProgressComponent, canActivate: [AuthGuard] },
   { path: 'publish-results', component: PublishResultsComponent, canActivate: [AuthGuard] },
   { path: 'invoices', component: InvoiceListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'invoices/new', component: InvoiceFormComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },

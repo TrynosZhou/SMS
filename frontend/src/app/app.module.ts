@@ -55,6 +55,7 @@ import { StudentReportCardComponent } from './components/student/student-report-
 import { StudentInvoiceStatementComponent } from './components/student/student-invoice-statement/student-invoice-statement.component';
 import { SafeArrayPipe } from './pipes/safe-array.pipe';
 import { UserManualComponent } from './components/user-manual/user-manual.component';
+import { MarksProgressComponent } from './components/exams/marks-progress/marks-progress.component';
 
 @NgModule({
   declarations: [
@@ -106,7 +107,8 @@ import { UserManualComponent } from './components/user-manual/user-manual.compon
     StudentReportCardComponent,
     StudentInvoiceStatementComponent,
     SafeArrayPipe,
-    UserManualComponent
+    UserManualComponent,
+    MarksProgressComponent
   ],
   imports: [
     BrowserModule,

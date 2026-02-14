@@ -230,6 +230,7 @@
             name="studentType" 
             required
             class="form-input"
+            (change)="onStudentTypeChange()"
             [class.error]="studentForm.submitted && !student.studentType">
             <option value="">Select Type</option>
             <option value="Day Scholar">Day Scholar</option>
@@ -273,24 +274,49 @@
               type="checkbox" 
               [(ngModel)]="student.usesTransport" 
               name="usesTransport"
-              [disabled]="student.isStaffChild"
+              [disabled]="student.isStaffChild || student.isExempted"
+              (change)="onUsesTransportChange()"
               style="width: 18px; height: 18px; cursor: pointer;">
             <span style="font-weight: 500;">🚌 School Transport</span>
-            <small style="color: #666; margin-left: 5px;">(Additional cost applies{{ student.isStaffChild ? ' - Free for staff children' : '' }})</small>
+            <small style="color: #666; margin-left: 5px;">(Additional cost applies{{ (student.isStaffChild || student.isExempted) ? ' - Free for staff/exempted' : '' }})</small>
           </label>
           <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background: #f9f9f9;">
             <input 
               type="checkbox" 
               [(ngModel)]="student.usesDiningHall" 
               name="usesDiningHall"
+              (change)="onUsesDiningHallChange()"
               style="width: 18px; height: 18px; cursor: pointer;">
             <span style="font-weight: 500;">🍽️ Dining Hall (DH) Meals</span>
-            <small style="color: #666; margin-left: 5px;">({{ student.isStaffChild ? '50% cost for staff children' : 'Additional cost applies' }})</small>
+            <small style="color: #666; margin-left: 5px;">({{ (student.isStaffChild || student.isExempted) ? '50% cost for staff/exempted' : 'Additional cost applies' }})</small>
+          </label>
+          <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background: #f9f9f9;">
+            <input 
+              type="checkbox" 
+              [(ngModel)]="student.isExempted" 
+              name="isExempted"
+              (change)="onExemptedChange()"
+              style="width: 18px; height: 18px; cursor: pointer;">
+            <span style="font-weight: 500;">🛡️ Exempted?</span>
+            <small style="color: #666; margin-left: 5px;">(No tuition; transport free; DH at 50%)</small>
           </label>
         </div>
         <small class="form-hint" style="margin-top: 8px; display: block;">
           Select if the day scholar student uses school transport and/or dining hall meals. These services will be included in invoice calculations.
         </small>
+        <div *ngIf="feesSettings" style="margin-top: 10px; padding: 10px; border: 1px dashed #4a90e2; border-radius: 6px; background: #f0f7ff;">
+          <div style="font-weight: 600; margin-bottom: 6px;">Estimated Initial Invoice</div>
+          <div style="font-size: 13px; line-height: 1.4;">
+            <div *ngIf="estimatedFees.registration">Registration: {{ currencySymbol }} {{ estimatedFees.registration | number:'1.2-2' }}</div>
+            <div *ngIf="estimatedFees.desk">Desk: {{ currencySymbol }} {{ estimatedFees.desk | number:'1.2-2' }}</div>
+            <div *ngIf="estimatedFees.tuition">Tuition: {{ currencySymbol }} {{ estimatedFees.tuition | number:'1.2-2' }}</div>
+            <div *ngIf="estimatedFees.transport">Transport: {{ currencySymbol }} {{ estimatedFees.transport | number:'1.2-2' }}</div>
+            <div *ngIf="estimatedFees.diningHall">Dining Hall: {{ currencySymbol }} {{ estimatedFees.diningHall | number:'1.2-2' }}</div>
+            <div style="margin-top: 4px; font-weight: 600;">
+              Total: {{ currencySymbol }} {{ estimatedFees.total | number:'1.2-2' }}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 

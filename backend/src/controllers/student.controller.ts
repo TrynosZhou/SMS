@@ -43,7 +43,7 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
       return Boolean(value);
     };
 
-    const { firstName, lastName, dateOfBirth, gender, address, phoneNumber, contactNumber, studentType, usesTransport, usesDiningHall, isStaffChild, classId, parentId } = req.body;
+    const { firstName, lastName, dateOfBirth, gender, address, phoneNumber, contactNumber, studentType, usesTransport, usesDiningHall, isStaffChild, isExempted, classId, parentId } = req.body;
     
     // Validate required fields
     if (!firstName || !lastName) {
@@ -159,6 +159,7 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
     const usesTransportFlag = parseBoolean(usesTransport);
     const usesDiningHallFlag = parseBoolean(usesDiningHall);
     const isStaffChildFlag = parseBoolean(isStaffChild);
+    const isExemptedFlag = parseBoolean(isExempted);
 
     // Create student with auto-generated ID and auto-enrollment
     const student = studentRepository.create({
@@ -174,6 +175,7 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
       usesTransport: usesTransportFlag,
       usesDiningHall: usesDiningHallFlag,
       isStaffChild: isStaffChildFlag,
+      isExempted: isExemptedFlag,
       photo: photoPath,
       classId, // Auto-enroll into the specified class
       parentId: parentId || null,
@@ -229,7 +231,7 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
         let totalAmount = 0;
         const invoiceItems: string[] = [];
         
-        if (!isStaffChildFlag) {
+        if (!isStaffChildFlag && !isExemptedFlag) {
           // Non-staff children pay registration fee, desk fee, and tuition for current term
           
           // Registration fee: charged once at registration (both boarders and day scholars)
@@ -258,7 +260,7 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
             console.warn(`⚠️ Please set ${validStudentType === 'Boarder' ? 'boarderTuitionFee' : 'dayScholarTuitionFee'} in Settings`);
           }
           
-          // Transport fee: only for day scholars who use public transport
+          // Transport fee: only for day scholars who use transport
           if (validStudentType === 'Day Scholar' && usesTransportFlag && transportCost > 0) {
             totalAmount += transportCost;
             invoiceItems.push(`Transport Fee: ${transportCost}`);
@@ -270,13 +272,13 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
             invoiceItems.push(`Dining Hall Fee: ${diningHallCost}`);
           }
         } else {
-          // Staff children: pay nothing unless they take DH meals (then pay 50% of DH fee)
+          // Staff children or exempted students: pay nothing unless they take DH meals (then pay 50% of DH fee)
           if (usesDiningHallFlag && diningHallCost > 0) {
             const staffChildDHFee = diningHallCost * 0.5;
             totalAmount += staffChildDHFee;
-            invoiceItems.push(`Dining Hall Fee (Staff Child - 50%): ${staffChildDHFee}`);
+            invoiceItems.push(`Dining Hall Fee (50%): ${staffChildDHFee}`);
           } else {
-            console.log('ℹ️ Staff child - no fees applicable (no DH meals)');
+            console.log('ℹ️ Staff child / Exempted - no fees applicable (no DH meals)');
           }
         }
 
@@ -775,6 +777,13 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       student.studentType = validStudentType;
     }
 
+    // Capture original flags before update to detect newly enabled services
+    const originalUsesTransport = student.usesTransport === true;
+    const originalUsesDiningHall = student.usesDiningHall === true;
+    const originalStudentType = student.studentType;
+    const originalIsStaffChild = student.isStaffChild === true;
+    const originalIsExempted = student.isExempted === true;
+
     // Update transport usage (only for day scholars)
     if (usesTransport !== undefined) {
       student.usesTransport = Boolean(usesTransport);
@@ -788,6 +797,14 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     // Update staff child status
     if (isStaffChild !== undefined) {
       student.isStaffChild = Boolean(isStaffChild);
+    }
+    // Update exempted status (applies staff-child fee rules)
+    if ((req.body as any).isExempted !== undefined) {
+      student.isExempted = Boolean((req.body as any).isExempted);
+      // Exempted students should not pay transport; auto-disable transport selection
+      if (student.isExempted) {
+        student.usesTransport = false;
+      }
     }
 
     // Handle photo upload or update
@@ -879,6 +896,218 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     console.log('Updated student classId:', updatedStudent.classId);
     console.log('Updated student classEntity name:', updatedStudent.classEntity?.name || 'N/A');
     console.log('Updated student classEntity id:', updatedStudent.classEntity?.id || 'N/A');
+    
+    try {
+      const invoiceRepository = AppDataSource.getRepository(Invoice);
+      const settingsRepository = AppDataSource.getRepository(Settings);
+
+      const latestInvoice = await invoiceRepository.findOne({
+        where: { studentId: updatedStudent.id },
+        order: { createdAt: 'DESC' }
+      });
+
+      if (latestInvoice) {
+        const previousBalanceValue = parseAmount(latestInvoice.previousBalance);
+        const prepaidAmountValue = parseAmount(latestInvoice.prepaidAmount);
+        const isInitialDescription = String(latestInvoice.description || '').includes('Initial fees upon registration');
+        const isInitialInvoice = previousBalanceValue === 0 && prepaidAmountValue === 0 && isInitialDescription;
+
+        if (isInitialInvoice) {
+          const settings = await settingsRepository.findOne({
+            where: {},
+            order: { createdAt: 'DESC' }
+          });
+
+          if (settings && settings.feesSettings) {
+            const fees = settings.feesSettings;
+            const dayScholarTuition = parseAmount(fees.dayScholarTuitionFee);
+            const boarderTuition = parseAmount(fees.boarderTuitionFee);
+            const registrationFee = parseAmount(fees.registrationFee);
+            const deskFee = parseAmount(fees.deskFee);
+            const transportCost = parseAmount(fees.transportCost);
+            const diningHallCost = parseAmount(fees.diningHallCost);
+
+            const isDayScholar = updatedStudent.studentType === 'Day Scholar';
+            const isStaffChild = updatedStudent.isStaffChild === true;
+            const isExempted = updatedStudent.isExempted === true;
+
+            let totalAmount = 0;
+            const invoiceItems: string[] = [];
+
+            if (!isStaffChild && !isExempted) {
+              if (registrationFee > 0) {
+                totalAmount += registrationFee;
+                invoiceItems.push(`Registration Fee: ${registrationFee}`);
+              }
+              if (deskFee > 0) {
+                totalAmount += deskFee;
+                invoiceItems.push(`Desk Fee: ${deskFee}`);
+              }
+
+              const tuitionFee = isDayScholar ? dayScholarTuition : boarderTuition;
+              if (tuitionFee > 0) {
+                totalAmount += tuitionFee;
+                invoiceItems.push(`Tuition Fee (${updatedStudent.studentType}): ${tuitionFee}`);
+              }
+
+              if (isDayScholar && updatedStudent.usesTransport && transportCost > 0) {
+                totalAmount += transportCost;
+                invoiceItems.push(`Transport Fee: ${transportCost}`);
+              }
+
+              if (isDayScholar && updatedStudent.usesDiningHall && diningHallCost > 0) {
+                totalAmount += diningHallCost;
+                invoiceItems.push(`Dining Hall Fee: ${diningHallCost}`);
+              }
+            } else {
+              if (isDayScholar && updatedStudent.usesDiningHall && diningHallCost > 0) {
+                const half = diningHallCost * 0.5;
+                totalAmount += half;
+                invoiceItems.push(`Dining Hall Fee (50%): ${half}`);
+              }
+            }
+
+            totalAmount = parseFloat(totalAmount.toFixed(2));
+            const paidAmountValue = parseAmount(latestInvoice.paidAmount);
+            const newBalance = parseFloat(Math.max(totalAmount - paidAmountValue, 0).toFixed(2));
+
+            const description = invoiceItems.length > 0
+              ? `Initial fees upon registration: ${invoiceItems.join(', ')}`
+              : isStaffChild && !updatedStudent.usesDiningHall && !isExempted
+                ? 'Staff child - no fees applicable'
+                : 'Initial fees upon registration';
+
+            latestInvoice.amount = totalAmount;
+            latestInvoice.balance = newBalance;
+            latestInvoice.description = description;
+
+            await invoiceRepository.save(latestInvoice);
+            console.log('✅ Recalculated initial invoice after student update:', {
+              studentId: updatedStudent.id,
+              amount: totalAmount,
+              balance: newBalance,
+              items: invoiceItems
+            });
+          }
+        }
+      }
+    } catch (autoInvoiceError) {
+      console.error('⚠️ Auto-invoice recalculation failed:', autoInvoiceError);
+    }
+
+    // If the student has no invoice yet, create initial invoice depending on status
+    try {
+      const invoiceRepository = AppDataSource.getRepository(Invoice);
+      const settingsRepository = AppDataSource.getRepository(Settings);
+      const invoiceCount = await invoiceRepository.count({ where: { studentId: updatedStudent.id } });
+      if (invoiceCount === 0) {
+        const settings = await settingsRepository.findOne({ where: {}, order: { createdAt: 'DESC' } });
+        const fees = settings?.feesSettings || {};
+        const dayScholarTuition = parseAmount(fees.dayScholarTuitionFee);
+        const boarderTuition = parseAmount(fees.boarderTuitionFee);
+        const registrationFee = parseAmount(fees.registrationFee);
+        const deskFee = parseAmount(fees.deskFee);
+        const transportCost = parseAmount(fees.transportCost);
+        const diningHallCost = parseAmount(fees.diningHallCost);
+
+        const isDayScholar = updatedStudent.studentType === 'Day Scholar';
+        const isStaffChild = updatedStudent.isStaffChild === true;
+        const isExempted = updatedStudent.isExempted === true;
+
+        let totalAmount = 0;
+        const invoiceItems: string[] = [];
+
+        // Registration & Desk fee (once)
+        if (!isStaffChild && !isExempted) {
+          if (registrationFee > 0) {
+            totalAmount += registrationFee;
+            invoiceItems.push(`Registration Fee: ${registrationFee}`);
+          }
+          if (deskFee > 0) {
+            totalAmount += deskFee;
+            invoiceItems.push(`Desk Fee: ${deskFee}`);
+          }
+        }
+
+        // Tuition
+        if (!isStaffChild && !isExempted) {
+          const tuitionFee = isDayScholar ? dayScholarTuition : boarderTuition;
+          if (tuitionFee > 0) {
+            totalAmount += tuitionFee;
+            invoiceItems.push(`Tuition Fee (${updatedStudent.studentType}): ${tuitionFee}`);
+          }
+        }
+
+        // Transport (Day Scholars only)
+        if (isDayScholar && updatedStudent.usesTransport && transportCost > 0) {
+          if (!isStaffChild && !isExempted) {
+            totalAmount += transportCost;
+            invoiceItems.push(`Transport Fee: ${transportCost}`);
+          } else {
+            invoiceItems.push(`Transport Fee: 0.00 (Exempted/Staff)`);
+          }
+        }
+
+        // Dining Hall (Day Scholars only; 50% for staff/exempted)
+        if (isDayScholar && updatedStudent.usesDiningHall && diningHallCost > 0) {
+          if (isStaffChild || isExempted) {
+            const half = diningHallCost * 0.5;
+            totalAmount += half;
+            invoiceItems.push(`Dining Hall Fee (50%): ${half}`);
+          } else {
+            totalAmount += diningHallCost;
+            invoiceItems.push(`Dining Hall Fee: ${diningHallCost}`);
+          }
+        }
+
+        totalAmount = parseFloat(totalAmount.toFixed(2));
+
+        if (totalAmount > 0) {
+          const currentYear = new Date().getFullYear();
+          const invoicePrefix = `INV-${currentYear}-`;
+          const lastInvoiceForYear = await invoiceRepository
+            .createQueryBuilder('invoice')
+            .where('invoice.invoiceNumber LIKE :prefix', { prefix: `${invoicePrefix}%` })
+            .orderBy('invoice.invoiceNumber', 'DESC')
+            .getOne();
+          let nextSeq = 1;
+          if (lastInvoiceForYear?.invoiceNumber) {
+            const parts = String(lastInvoiceForYear.invoiceNumber).split('-');
+            const seq = parseInt(parts[2] || '1', 10);
+            if (!isNaN(seq) && seq >= 1) nextSeq = seq + 1;
+          }
+          const invoiceNumber = `${invoicePrefix}${String(nextSeq).padStart(6, '0')}`;
+          const dueDate = new Date();
+          dueDate.setDate(dueDate.getDate() + 30);
+          const termText = settings?.activeTerm || settings?.currentTerm || `Term 1 ${currentYear}`;
+          const description = invoiceItems.length > 0
+            ? `Fees: ${invoiceItems.join(', ')}`
+            : 'Fees';
+
+          const initialInvoice = invoiceRepository.create({
+            invoiceNumber,
+            studentId: updatedStudent.id,
+            amount: totalAmount,
+            previousBalance: 0,
+            paidAmount: 0,
+            balance: totalAmount,
+            prepaidAmount: 0,
+            uniformTotal: 0,
+            dueDate,
+            term: termText,
+            description,
+            status: InvoiceStatus.PENDING,
+            uniformItems: []
+          });
+          await invoiceRepository.save(initialInvoice);
+          console.log('✅ Created initial invoice for existing student without invoice:', invoiceNumber);
+        } else {
+          console.log('ℹ️ No initial invoice created (total amount 0)');
+        }
+      }
+    } catch (initInvoiceError) {
+      console.error('⚠️ Initial invoice creation failed:', initInvoiceError);
+    }
     
     res.json({ message: 'Student updated successfully', student: updatedStudent });
   } catch (error: any) {

@@ -23,6 +23,7 @@ export class StudentFormComponent implements OnInit {
     usesTransport: false,
     usesDiningHall: false,
     isStaffChild: false,
+    isExempted: false,
     classId: '',
     parentId: '',
     photo: null
@@ -38,6 +39,16 @@ export class StudentFormComponent implements OnInit {
   selectedPhoto: File | null = null;
   photoPreview: string | null = null;
   studentIdPrefix = 'JPS';
+  feesSettings: any = null;
+  currencySymbol = '';
+  estimatedFees = {
+    registration: 0,
+    desk: 0,
+    tuition: 0,
+    transport: 0,
+    diningHall: 0,
+    total: 0
+  };
   
   // Phone validation errors
   contactNumberError = '';
@@ -74,6 +85,9 @@ export class StudentFormComponent implements OnInit {
         if (prefix) {
           this.studentIdPrefix = prefix.toUpperCase();
         }
+        this.feesSettings = settings?.feesSettings || null;
+        this.currencySymbol = typeof settings?.currencySymbol === 'string' ? settings.currencySymbol : '';
+        this.recalculateEstimatedFees();
       },
       error: (err: any) => {
         console.error('Error loading student ID prefix:', err);
@@ -115,10 +129,99 @@ export class StudentFormComponent implements OnInit {
   }
 
   onStaffChildChange() {
-    // If staff child is checked, automatically uncheck transport (staff children don't pay for transport)
     if (this.student.isStaffChild) {
       this.student.usesTransport = false;
     }
+    this.recalculateEstimatedFees();
+  }
+  
+  onExemptedChange() {
+    if (this.student.isExempted) {
+      this.student.usesTransport = false;
+    }
+    this.recalculateEstimatedFees();
+  }
+
+  onStudentTypeChange() {
+    this.recalculateEstimatedFees();
+  }
+
+  onUsesTransportChange() {
+    this.recalculateEstimatedFees();
+  }
+
+  onUsesDiningHallChange() {
+    this.recalculateEstimatedFees();
+  }
+
+  private toNumber(value: any): number {
+    const n = parseFloat(value as any);
+    return isNaN(n) ? 0 : n;
+  }
+
+  private recalculateEstimatedFees() {
+    if (!this.feesSettings) {
+      this.estimatedFees = {
+        registration: 0,
+        desk: 0,
+        tuition: 0,
+        transport: 0,
+        diningHall: 0,
+        total: 0
+      };
+      return;
+    }
+
+    const isDayScholar = this.student.studentType === 'Day Scholar';
+    const isStaffChild = !!this.student.isStaffChild;
+    const isExempted = !!this.student.isExempted;
+
+    const registrationFee = this.toNumber(this.feesSettings.registrationFee);
+    const deskFee = this.toNumber(this.feesSettings.deskFee);
+    const dayScholarTuition = this.toNumber(this.feesSettings.dayScholarTuitionFee);
+    const boarderTuition = this.toNumber(this.feesSettings.boarderTuitionFee);
+    const transportCost = this.toNumber(this.feesSettings.transportCost);
+    const diningHallCost = this.toNumber(this.feesSettings.diningHallCost);
+
+    let registration = 0;
+    let desk = 0;
+    let tuition = 0;
+    let transport = 0;
+    let diningHall = 0;
+
+    if (!isStaffChild && !isExempted) {
+      if (registrationFee > 0) {
+        registration = registrationFee;
+      }
+      if (deskFee > 0) {
+        desk = deskFee;
+      }
+      const tuitionFee = isDayScholar ? dayScholarTuition : boarderTuition;
+      if (tuitionFee > 0) {
+        tuition = tuitionFee;
+      }
+      if (isDayScholar && this.student.usesTransport && transportCost > 0) {
+        transport = transportCost;
+      }
+      if (isDayScholar && this.student.usesDiningHall && diningHallCost > 0) {
+        diningHall = diningHallCost;
+      }
+    } else {
+      if (isDayScholar && this.student.usesDiningHall && diningHallCost > 0) {
+        diningHall = diningHallCost * 0.5;
+      }
+    }
+
+    const total = parseFloat((registration + desk + tuition + transport + diningHall).toFixed(2));
+
+    this.estimatedFees = {
+      registration,
+      desk,
+      tuition,
+      transport,
+      diningHall,
+      total
+    };
   }
 
   loadStudent(id: string) {
@@ -147,6 +250,7 @@ export class StudentFormComponent implements OnInit {
           usesTransport: data.usesTransport || false,
           usesDiningHall: data.usesDiningHall || false,
           isStaffChild: data.isStaffChild || false,
+          isExempted: data.isExempted || false,
           photo: data.photo || null
         };
         
@@ -156,6 +260,7 @@ export class StudentFormComponent implements OnInit {
           this.student.photo = data.photo;
         }
         console.log('Formatted student data:', this.student);
+        this.recalculateEstimatedFees();
       },
       error: (err: any) => {
         console.error('Error loading student:', err);

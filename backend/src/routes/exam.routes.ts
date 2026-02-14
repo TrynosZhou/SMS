@@ -22,7 +22,8 @@ import {
   generateReportCardPDF,
   saveReportCardRemarks,
   generateMarkSheet,
-  generateMarkSheetPDF
+  generateMarkSheetPDF,
+  getMarksEntryProgress
 } from '../controllers/exam.controller';
 
 const router = Router();
@@ -45,6 +46,7 @@ router.get('/report-card/pdf', authenticate, generateReportCardPDF);
 router.post('/report-card/remarks', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), saveReportCardRemarks);
 router.get('/mark-sheet', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), generateMarkSheet);
 router.get('/mark-sheet/pdf', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), generateMarkSheetPDF);
+router.get('/marks-progress', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER), getMarksEntryProgress);
 router.delete('/all', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), deleteAllExams);
 // This route must be last to avoid conflicts with specific routes above
 router.get('/:id', authenticate, getExamById);

@@ -1,0 +1,145 @@
+.marks-progress-container {
+  padding: 20px;
+}
+.page-header h1 {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+}
+.page-header .subtitle {
+  margin: 0 0 16px 0;
+  font-size: 12px;
+  color: #555;
+}
+.page-header .header-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn.btn-secondary {
+  background: #f3f4f6;
+  color: #111827;
+}
+.btn.btn-secondary:hover {
+  background: #e5e7eb;
+}
+.filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.filter label {
+  display: block;
+  font-size: 12px;
+  color: #333;
+  margin-bottom: 4px;
+}
+.filter select, .filter input {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.filter.grow {
+  flex: 1;
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.stat {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+.stat-value {
+  font-weight: 600;
+  font-size: 18px;
+  color: #1f2937;
+}
+.stat-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+.loading, .empty {
+  padding: 12px;
+  color: #555;
+}
+.alert.error {
+  background: #FFF5F5;
+  border: 1px solid #FECACA;
+  color: #B91C1C;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 12px;
+}
+.class-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+}
+.class-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+.class-header .btn {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.class-title {
+  font-weight: 600;
+  color: #1f2937;
+}
+.class-meta {
+  font-size: 12px;
+  color: #6b7280;
+}
+.subjects-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.subjects-table th, .subjects-table td {
+  border: 1px solid #e5e7eb;
+  padding: 8px;
+  font-size: 13px;
+}
+.subjects-table th {
+  background: #f9fafb;
+  text-align: left;
+}
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #4A90E2;
+  transition: width 0.3s ease;
+}
+.progress-label {
+  font-size: 12px;
+  color: #374151;
+  margin-top: 6px;
+}

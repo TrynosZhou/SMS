@@ -179,6 +179,10 @@
             <span class="sidebar-icon">🏆</span>
             <span class="sidebar-text">Rankings</span>
           </a>
+          <a routerLink="/check_mark_progess" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('exams') || isAdmin() || isSuperAdmin() || isTeacher()">
+            <span class="sidebar-icon">📈</span>
+            <span class="sidebar-text">Marks Entry Progress</span>
+          </a>
           <a routerLink="/publish-results" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
             <span class="sidebar-icon">📢</span>
             <span class="sidebar-text">Publish Results</span>
