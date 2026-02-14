@@ -16,6 +16,7 @@ export class StudentFormComponent implements OnInit {
     lastName: '',
     dateOfBirth: '',
     gender: '',
+    studentStatus: '',
     address: '',
     phoneNumber: '',
     contactNumber: '',
@@ -175,6 +176,7 @@ export class StudentFormComponent implements OnInit {
     const isDayScholar = this.student.studentType === 'Day Scholar';
     const isStaffChild = !!this.student.isStaffChild;
     const isExempted = !!this.student.isExempted;
+    const status = this.student.studentStatus || 'New';
 
     const registrationFee = this.toNumber(this.feesSettings.registrationFee);
     const deskFee = this.toNumber(this.feesSettings.deskFee);
@@ -190,11 +192,13 @@ export class StudentFormComponent implements OnInit {
     let diningHall = 0;
 
     if (!isStaffChild && !isExempted) {
-      if (registrationFee > 0) {
-        registration = registrationFee;
-      }
-      if (deskFee > 0) {
-        desk = deskFee;
+      if (status === 'New') {
+        if (registrationFee > 0) {
+          registration = registrationFee;
+        }
+        if (deskFee > 0) {
+          desk = deskFee;
+        }
       }
       const tuitionFee = isDayScholar ? dayScholarTuition : boarderTuition;
       if (tuitionFee > 0) {
@@ -251,6 +255,7 @@ export class StudentFormComponent implements OnInit {
           usesDiningHall: data.usesDiningHall || false,
           isStaffChild: data.isStaffChild || false,
           isExempted: data.isExempted || false,
+          studentStatus: data.studentStatus || '',
           photo: data.photo || null
         };
         
@@ -408,6 +413,7 @@ export class StudentFormComponent implements OnInit {
         address: this.student.address || null,
         contactNumber: this.student.contactNumber,
         studentType: this.student.studentType,
+        studentStatus: this.student.studentStatus || 'New',
         usesTransport: this.student.usesTransport || false,
         usesDiningHall: this.student.usesDiningHall || false,
         isStaffChild: this.student.isStaffChild || false

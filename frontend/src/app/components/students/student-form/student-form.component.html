@@ -129,6 +129,22 @@
           </select>
           <small class="form-hint">Student's gender</small>
         </div>
+
+        <div class="form-group">
+          <label for="studentStatus">
+            Student Status
+          </label>
+          <select 
+            id="studentStatus"
+            [(ngModel)]="student.studentStatus" 
+            name="studentStatus"
+            class="form-input">
+            <option value="">Select</option>
+            <option value="New">New</option>
+            <option value="Existing">Existing</option>
+          </select>
+          <small class="form-hint">Select whether this is a new or existing student</small>
+        </div>
       </div>
     </div>
 

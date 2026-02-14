@@ -28,6 +28,9 @@ export class Student {
   @Column()
   gender: string;
 
+  @Column({ type: 'varchar', length: 20, default: 'New' })
+  studentStatus: string;
+
   @Column({ type: 'varchar', nullable: true })
   address: string | null;
 

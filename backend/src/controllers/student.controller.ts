@@ -43,7 +43,7 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
       return Boolean(value);
     };
 
-    const { firstName, lastName, dateOfBirth, gender, address, phoneNumber, contactNumber, studentType, usesTransport, usesDiningHall, isStaffChild, isExempted, classId, parentId } = req.body;
+    const { firstName, lastName, dateOfBirth, gender, address, phoneNumber, contactNumber, studentType, studentStatus, usesTransport, usesDiningHall, isStaffChild, isExempted, classId, parentId } = req.body;
     
     // Validate required fields
     if (!firstName || !lastName) {
@@ -120,6 +120,8 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
     const normalizedFirstName = firstName.trim();
     const normalizedLastName = lastName.trim();
     const normalizedAddress = address && String(address).trim() ? String(address).trim() : null;
+    const normalizedStudentStatus = typeof studentStatus === 'string' ? studentStatus.trim().toLowerCase() : '';
+    const validStudentStatus = normalizedStudentStatus === 'existing' ? 'Existing' : 'New';
 
     let duplicateQuery = studentRepository
       .createQueryBuilder('student')
@@ -168,6 +170,7 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
       studentNumber,
       dateOfBirth: parsedDateOfBirth,
       gender,
+      studentStatus: validStudentStatus,
       address: normalizedAddress,
       phoneNumber: finalContactNumber,
       contactNumber: finalContactNumber,
@@ -227,30 +230,26 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
           usesDiningHall: usesDiningHallFlag
         });
 
-        // Calculate fees based on student type and staff child status
         let totalAmount = 0;
         const invoiceItems: string[] = [];
         
         if (!isStaffChildFlag && !isExemptedFlag) {
-          // Non-staff children pay registration fee, desk fee, and tuition for current term
-          
-          // Registration fee: charged once at registration (both boarders and day scholars)
-          if (registrationFee > 0) {
-            totalAmount += registrationFee;
-            invoiceItems.push(`Registration Fee: ${registrationFee}`);
-          } else {
-            console.log('ℹ️ Registration fee is 0 or not set');
+          if (validStudentStatus === 'New') {
+            if (registrationFee > 0) {
+              totalAmount += registrationFee;
+              invoiceItems.push(`Registration Fee: ${registrationFee}`);
+            } else {
+              console.log('ℹ️ Registration fee is 0 or not set');
+            }
+            
+            if (deskFee > 0) {
+              totalAmount += deskFee;
+              invoiceItems.push(`Desk Fee: ${deskFee}`);
+            } else {
+              console.log('ℹ️ Desk fee is 0 or not set');
+            }
           }
-          
-          // Desk fee: charged once at registration (both boarders and day scholars)
-          if (deskFee > 0) {
-            totalAmount += deskFee;
-            invoiceItems.push(`Desk Fee: ${deskFee}`);
-          } else {
-            console.log('ℹ️ Desk fee is 0 or not set');
-          }
-          
-          // Tuition fee for current term (based on student type)
+
           const tuitionFee = validStudentType === 'Boarder' ? boarderTuition : dayScholarTuition;
           if (tuitionFee > 0) {
             totalAmount += tuitionFee;
@@ -663,6 +662,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       phoneNumber,
       contactNumber,
       studentType,
+      studentStatus,
       usesTransport,
       usesDiningHall,
       isStaffChild,
@@ -770,11 +770,15 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       student.phoneNumber = phoneValidation.normalized || phoneNumber;
     }
 
-    // Handle student type validation
     if (studentType !== undefined && studentType !== null) {
       const normalizedStudentType = typeof studentType === 'string' ? studentType.trim().toLowerCase() : '';
       const validStudentType = normalizedStudentType === 'boarder' ? 'Boarder' : 'Day Scholar';
       student.studentType = validStudentType;
+    }
+
+    if (studentStatus !== undefined && studentStatus !== null) {
+      const normalizedStatus = typeof studentStatus === 'string' ? studentStatus.trim().toLowerCase() : '';
+      student.studentStatus = normalizedStatus === 'existing' ? 'Existing' : 'New';
     }
 
     // Capture original flags before update to detect newly enabled services
@@ -930,18 +934,21 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
             const isDayScholar = updatedStudent.studentType === 'Day Scholar';
             const isStaffChild = updatedStudent.isStaffChild === true;
             const isExempted = updatedStudent.isExempted === true;
+            const studentStatus = (updatedStudent as any).studentStatus || 'New';
 
             let totalAmount = 0;
             const invoiceItems: string[] = [];
 
             if (!isStaffChild && !isExempted) {
-              if (registrationFee > 0) {
-                totalAmount += registrationFee;
-                invoiceItems.push(`Registration Fee: ${registrationFee}`);
-              }
-              if (deskFee > 0) {
-                totalAmount += deskFee;
-                invoiceItems.push(`Desk Fee: ${deskFee}`);
+              if (studentStatus === 'New') {
+                if (registrationFee > 0) {
+                  totalAmount += registrationFee;
+                  invoiceItems.push(`Registration Fee: ${registrationFee}`);
+                }
+                if (deskFee > 0) {
+                  totalAmount += deskFee;
+                  invoiceItems.push(`Desk Fee: ${deskFee}`);
+                }
               }
 
               const tuitionFee = isDayScholar ? dayScholarTuition : boarderTuition;
@@ -1013,24 +1020,23 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
         const isDayScholar = updatedStudent.studentType === 'Day Scholar';
         const isStaffChild = updatedStudent.isStaffChild === true;
         const isExempted = updatedStudent.isExempted === true;
+        const studentStatus = (updatedStudent as any).studentStatus || 'New';
 
         let totalAmount = 0;
         const invoiceItems: string[] = [];
 
-        // Registration & Desk fee (once)
         if (!isStaffChild && !isExempted) {
-          if (registrationFee > 0) {
-            totalAmount += registrationFee;
-            invoiceItems.push(`Registration Fee: ${registrationFee}`);
+          if (studentStatus === 'New') {
+            if (registrationFee > 0) {
+              totalAmount += registrationFee;
+              invoiceItems.push(`Registration Fee: ${registrationFee}`);
+            }
+            if (deskFee > 0) {
+              totalAmount += deskFee;
+              invoiceItems.push(`Desk Fee: ${deskFee}`);
+            }
           }
-          if (deskFee > 0) {
-            totalAmount += deskFee;
-            invoiceItems.push(`Desk Fee: ${deskFee}`);
-          }
-        }
 
-        // Tuition
-        if (!isStaffChild && !isExempted) {
           const tuitionFee = isDayScholar ? dayScholarTuition : boarderTuition;
           if (tuitionFee > 0) {
             totalAmount += tuitionFee;
