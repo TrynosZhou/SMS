@@ -305,9 +305,10 @@ export function createReceiptPDF(
         }
       }
       let registrationDeskTotal = 0;
+      const normalizedStatus = String((student as any).studentStatus || '').toLowerCase();
       if (!student.isStaffChild && !student.isExempted) {
-        const regVal = registrationFromDesc > 0 ? registrationFromDesc : Math.max(0, registrationFeeCfg);
-        const deskVal = deskFromDesc > 0 ? deskFromDesc : Math.max(0, deskFeeCfg);
+        const regVal = registrationFromDesc > 0 ? registrationFromDesc : 0;
+        const deskVal = deskFromDesc > 0 ? deskFromDesc : 0;
         if (regVal > 0 || deskVal > 0) {
           registrationDeskTotal = regVal + deskVal;
           const label = `Desk fee + Registration fee(${formatShort(deskVal)}+${formatShort(regVal)})`;

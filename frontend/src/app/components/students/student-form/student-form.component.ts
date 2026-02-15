@@ -16,7 +16,7 @@ export class StudentFormComponent implements OnInit {
     lastName: '',
     dateOfBirth: '',
     gender: '',
-    studentStatus: '',
+    studentStatus: 'Select Status',
     address: '',
     phoneNumber: '',
     contactNumber: '',
@@ -159,6 +159,13 @@ export class StudentFormComponent implements OnInit {
     this.recalculateEstimatedFees();
   }
 
+  private normalizeStatusForSubmit(value: any): string {
+    const txt = String(value || '').trim().toLowerCase();
+    if (txt.includes('existing')) return 'Existing';
+    if (txt.includes('new')) return 'New';
+    return 'Existing';
+  }
+
   private toNumber(value: any): number {
     const n = parseFloat(value as any);
     return isNaN(n) ? 0 : n;
@@ -181,7 +188,7 @@ export class StudentFormComponent implements OnInit {
     const isStaffChild = !!this.student.isStaffChild;
     const isExempted = !!this.student.isExempted;
     const normalizedStatusText = (this.student.studentStatus || '').toString().trim().toLowerCase();
-    const status = normalizedStatusText.includes('existing') ? 'Existing' : normalizedStatusText.includes('new') ? 'New' : 'New';
+    const status = normalizedStatusText.includes('existing') ? 'Existing' : normalizedStatusText.includes('new') ? 'New' : 'Existing';
 
     const registrationFee = this.toNumber(this.feesSettings.registrationFee);
     const deskFee = this.toNumber(this.feesSettings.deskFee);
@@ -260,7 +267,11 @@ export class StudentFormComponent implements OnInit {
           usesDiningHall: data.usesDiningHall || false,
           isStaffChild: data.isStaffChild || false,
           isExempted: data.isExempted || false,
-          studentStatus: data.studentStatus || '',
+          studentStatus: data.studentStatus === 'Existing'
+            ? 'Existing Student'
+            : data.studentStatus === 'New'
+              ? 'New Student'
+              : 'Select Status',
           photo: data.photo || null
         };
         
@@ -418,7 +429,7 @@ export class StudentFormComponent implements OnInit {
         address: this.student.address || null,
         contactNumber: this.student.contactNumber,
         studentType: this.student.studentType,
-        studentStatus: this.student.studentStatus || 'New',
+        studentStatus: this.normalizeStatusForSubmit(this.student.studentStatus),
         usesTransport: this.student.usesTransport || false,
         usesDiningHall: this.student.usesDiningHall || false,
         isStaffChild: this.student.isStaffChild || false,
@@ -468,6 +479,7 @@ export class StudentFormComponent implements OnInit {
     } else {
       // For new students, don't send studentNumber (it will be auto-generated)
       const studentData = { ...this.student };
+      studentData.studentStatus = this.normalizeStatusForSubmit(studentData.studentStatus);
       delete studentData.studentNumber; // Remove studentNumber, it will be auto-generated
       
       this.studentService.createStudent(studentData, this.selectedPhoto || undefined).subscribe({
