@@ -120,8 +120,8 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
     const normalizedFirstName = firstName.trim();
     const normalizedLastName = lastName.trim();
     const normalizedAddress = address && String(address).trim() ? String(address).trim() : null;
-    const normalizedStudentStatus = typeof studentStatus === 'string' ? studentStatus.trim().toLowerCase() : '';
-    const validStudentStatus = normalizedStudentStatus === 'existing' ? 'Existing' : 'New';
+    const normalizedStudentStatusRaw = typeof studentStatus === 'string' ? studentStatus.trim().toLowerCase() : '';
+    const validStudentStatus = normalizedStudentStatusRaw.includes('existing') ? 'Existing' : 'New';
 
     let duplicateQuery = studentRepository
       .createQueryBuilder('student')
@@ -778,7 +778,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
 
     if (studentStatus !== undefined && studentStatus !== null) {
       const normalizedStatus = typeof studentStatus === 'string' ? studentStatus.trim().toLowerCase() : '';
-      student.studentStatus = normalizedStatus === 'existing' ? 'Existing' : 'New';
+      student.studentStatus = normalizedStatus.includes('existing') ? 'Existing' : 'New';
     }
 
     // Capture original flags before update to detect newly enabled services

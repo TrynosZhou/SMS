@@ -6,13 +6,13 @@
   <!-- Check Student Balance Section -->
   <div class="search-section">
     <div class="search-form">
-      <label for="studentId">Student ID / Student Number / Last Name</label>
+      <label for="studentId">Student ID / Student Number / Last Name / First Name</label>
       <div class="input-group">
         <input
           type="text"
           id="studentId"
           [(ngModel)]="studentId"
-          placeholder="Enter Student ID, Student Number, or Last Name"
+          placeholder="Enter Student ID, Student Number, Last Name, or First Name"
           class="form-control search-input-short"
           (keyup.enter)="getBalance()"
         />

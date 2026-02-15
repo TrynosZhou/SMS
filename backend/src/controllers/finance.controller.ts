@@ -1178,7 +1178,7 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
 
-    // Try to find student by ID (UUID), by studentNumber, or by lastName
+    // Try to find student by ID (UUID), by studentNumber, or by lastName/firstName
     // Check if it's a valid UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     let student;
@@ -1218,7 +1218,7 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
           studentNumber: s.studentNumber,
           firstName: s.firstName,
           lastName: s.lastName,
-          fullName: `${s.lastName} ${s.firstName}`,
+          fullName: `${s.firstName} ${s.lastName}`,
           className: s.classEntity ? s.classEntity.name : null
         }));
         return res.json({
@@ -1226,10 +1226,36 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
           matches
         });
       } else {
-        console.log(`[getStudentBalance] Student not found for: ${trimmedStudentId}`);
-        return res.status(404).json({
-          message: 'Student not found. Please check the Student ID, Student Number, or Last Name.'
-        });
+        console.log(`[getStudentBalance] Not found by lastName, trying firstName search for: ${trimmedStudentId}`);
+        const studentsByFirstName = await studentRepository
+          .createQueryBuilder('student')
+          .leftJoinAndSelect('student.classEntity', 'classEntity')
+          .where('LOWER(student.firstName) = LOWER(:firstName)', { firstName: trimmedStudentId })
+          .getMany();
+
+        if (studentsByFirstName.length === 1) {
+          student = studentsByFirstName[0];
+          console.log(`[getStudentBalance] Student found by firstName: ${student.studentNumber} (ID: ${student.id})`);
+        } else if (studentsByFirstName.length > 1) {
+          console.log(`[getStudentBalance] Multiple students found with firstName "${trimmedStudentId}"`);
+          const matches = studentsByFirstName.map(s => ({
+            studentId: s.id,
+            studentNumber: s.studentNumber,
+            firstName: s.firstName,
+            lastName: s.lastName,
+            fullName: `${s.firstName} ${s.lastName}`,
+            className: s.classEntity ? s.classEntity.name : null
+          }));
+          return res.json({
+            multipleMatches: true,
+            matches
+          });
+        } else {
+          console.log(`[getStudentBalance] Student not found for: ${trimmedStudentId}`);
+          return res.status(404).json({
+            message: 'Student not found. Please check the Student ID, Student Number, Last Name, or First Name.'
+          });
+        }
       }
     }
     

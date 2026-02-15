@@ -120,7 +120,7 @@ export class RecordPaymentComponent implements OnInit {
 
   getBalance(preservePaymentFlag: boolean = false): void {
     if (!this.studentId || this.studentId.trim() === '') {
-      this.error = 'Please enter a Student ID, Student Number, or Last Name';
+      this.error = 'Please enter a Student ID, Student Number, Last Name, or First Name';
       return;
     }
 
@@ -176,7 +176,7 @@ export class RecordPaymentComponent implements OnInit {
       },
       error: (error: any) => {
         this.loading = false;
-        this.error = error.error?.message || 'Failed to get student balance. Please check the Student ID, Student Number, or Last Name.';
+        this.error = error.error?.message || 'Failed to get student balance. Please check the Student ID, Student Number, Last Name, or First Name.';
         this.studentData = null;
         this.paymentRecorded = false;
         this.lastPaymentInvoiceId = null;
@@ -203,7 +203,7 @@ export class RecordPaymentComponent implements OnInit {
       },
       error: (error: any) => {
         this.loading = false;
-        this.error = error.error?.message || 'Failed to get student balance. Please check the Student ID, Student Number, or Last Name.';
+        this.error = error.error?.message || 'Failed to get student balance. Please check the Student ID, Student Number, Last Name, or First Name.';
         this.studentData = null;
         this.matchingStudents = [];
       }

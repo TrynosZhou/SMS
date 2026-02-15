@@ -138,10 +138,11 @@
             id="studentStatus"
             [(ngModel)]="student.studentStatus" 
             name="studentStatus"
-            class="form-input">
+            class="form-input"
+            (change)="onStudentStatusChange()">
             <option value="">Select</option>
-            <option value="New">New</option>
-            <option value="Existing">Existing</option>
+            <option value="Existing Student">Existing Student</option>
+            <option value="New Student">New Student</option>
           </select>
           <small class="form-hint">Select whether this is a new or existing student</small>
         </div>

@@ -154,6 +154,10 @@ export class StudentFormComponent implements OnInit {
   onUsesDiningHallChange() {
     this.recalculateEstimatedFees();
   }
+  
+  onStudentStatusChange() {
+    this.recalculateEstimatedFees();
+  }
 
   private toNumber(value: any): number {
     const n = parseFloat(value as any);
@@ -176,7 +180,8 @@ export class StudentFormComponent implements OnInit {
     const isDayScholar = this.student.studentType === 'Day Scholar';
     const isStaffChild = !!this.student.isStaffChild;
     const isExempted = !!this.student.isExempted;
-    const status = this.student.studentStatus || 'New';
+    const normalizedStatusText = (this.student.studentStatus || '').toString().trim().toLowerCase();
+    const status = normalizedStatusText.includes('existing') ? 'Existing' : normalizedStatusText.includes('new') ? 'New' : 'New';
 
     const registrationFee = this.toNumber(this.feesSettings.registrationFee);
     const deskFee = this.toNumber(this.feesSettings.deskFee);
@@ -416,7 +421,8 @@ export class StudentFormComponent implements OnInit {
         studentStatus: this.student.studentStatus || 'New',
         usesTransport: this.student.usesTransport || false,
         usesDiningHall: this.student.usesDiningHall || false,
-        isStaffChild: this.student.isStaffChild || false
+        isStaffChild: this.student.isStaffChild || false,
+        isExempted: this.student.isExempted || false
       };
 
       // Include phoneNumber if provided

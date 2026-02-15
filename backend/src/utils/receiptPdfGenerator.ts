@@ -261,18 +261,20 @@ export function createReceiptPDF(
       const boarderTuitionFee = parseAmount(feesSettings.boarderTuitionFee);
       const transportCost = parseAmount(feesSettings.transportCost);
       const diningHallCost = parseAmount(feesSettings.diningHallCost);
+      const registrationFeeCfg = parseAmount(feesSettings.registrationFee);
+      const deskFeeCfg = parseAmount(feesSettings.deskFee);
 
       let tuitionFee = 0;
-      if (!student.isStaffChild) {
+      if (!student.isStaffChild && !student.isExempted) {
         tuitionFee = student.studentType === 'Boarder' ? boarderTuitionFee : dayScholarTuitionFee;
       }
       let transportFee = 0;
-      if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild) {
+      if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild && !student.isExempted) {
         transportFee = transportCost;
       }
       let diningHallFee = 0;
       if (student.usesDiningHall) {
-        diningHallFee = student.isStaffChild ? diningHallCost * 0.5 : diningHallCost;
+        diningHallFee = (student.isStaffChild || student.isExempted) ? diningHallCost * 0.5 : diningHallCost;
       }
 
       if (!student.isStaffChild && tuitionFee > 0) {
@@ -282,10 +284,37 @@ export function createReceiptPDF(
         renderRow('Transport Fee', transportFee);
       }
       if (diningHallFee > 0) {
-        renderRow(student.isStaffChild ? 'Dining Hall (DH) Fee (50% - Staff Child)' : 'Dining Hall (DH) Fee', diningHallFee);
+        const dhLabel = (student.isStaffChild || student.isExempted) ? 'Dining Hall (DH) Fee (50%)' : 'Dining Hall (DH) Fee';
+        renderRow(dhLabel, diningHallFee);
       }
 
       const descriptionText = (invoice.description || '').toString();
+      const formatShort = (v: number) => (Math.round(v * 100) % 100 === 0 ? String(Math.round(v)) : v.toFixed(2));
+      let registrationFromDesc = 0;
+      let deskFromDesc = 0;
+      if (descriptionText && descriptionText.trim() !== '') {
+        const regMatch = descriptionText.match(/Registration Fee:\s*([0-9]+(?:\.[0-9]+)?)/i);
+        const deskMatch = descriptionText.match(/Desk Fee:\s*([0-9]+(?:\.[0-9]+)?)/i);
+        if (regMatch) {
+          const val = parseFloat(regMatch[1]);
+          if (Number.isFinite(val)) registrationFromDesc = val;
+        }
+        if (deskMatch) {
+          const val = parseFloat(deskMatch[1]);
+          if (Number.isFinite(val)) deskFromDesc = val;
+        }
+      }
+      let registrationDeskTotal = 0;
+      if (!student.isStaffChild && !student.isExempted) {
+        const regVal = registrationFromDesc > 0 ? registrationFromDesc : Math.max(0, registrationFeeCfg);
+        const deskVal = deskFromDesc > 0 ? deskFromDesc : Math.max(0, deskFeeCfg);
+        if (regVal > 0 || deskVal > 0) {
+          registrationDeskTotal = regVal + deskVal;
+          const label = `Desk fee + Registration fee(${formatShort(deskVal)}+${formatShort(regVal)})`;
+          renderRow(label, registrationDeskTotal);
+        }
+      }
+
       if (descriptionText && descriptionText.trim() !== '') {
         const noteLines = descriptionText
           .split('|')
