@@ -42,6 +42,7 @@ export class StudentFormComponent implements OnInit {
   studentIdPrefix = 'JPS';
   feesSettings: any = null;
   currencySymbol = '';
+  dobError = '';
   estimatedFees = {
     registration: 0,
     desk: 0,
@@ -74,6 +75,65 @@ export class StudentFormComponent implements OnInit {
     if (id) {
       this.isEdit = true;
       this.loadStudent(id);
+    }
+  }
+
+  private isValidDDMMYYYY(input: string): boolean {
+    const m = input.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return false;
+    const d = parseInt(m[1], 10);
+    const mo = parseInt(m[2], 10);
+    const y = parseInt(m[3], 10);
+    if (mo < 1 || mo > 12) return false;
+    const daysInMonth = new Date(y, mo, 0).getDate();
+    return d >= 1 && d <= daysInMonth;
+  }
+
+  private toISOFromDDMMYYYY(input: string): string {
+    const m = input.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return '';
+    const d = m[1];
+    const mo = m[2];
+    const y = m[3];
+    return `${y}-${mo}-${d}`;
+  }
+
+  private toDDMMYYYYFromDate(input: any): string {
+    const dt = new Date(input);
+    if (isNaN(dt.getTime())) return '';
+    const dd = String(dt.getDate()).padStart(2, '0');
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const yyyy = String(dt.getFullYear());
+    return `${dd}/${mm}/${yyyy}`;
+  }
+
+  onDobInput(event: any) {
+    this.dobError = '';
+    const value = String(event.target.value || '').replace(/[^0-9/]/g, '');
+    let cleaned = value.replace(/\/+/g, '/').slice(0, 10);
+    if (/^\d{2}$/.test(cleaned)) {
+      cleaned = cleaned + '/';
+    } else if (/^\d{2}\/\d{2}$/.test(cleaned)) {
+      cleaned = cleaned + '/';
+    }
+    this.student.dateOfBirth = cleaned;
+  }
+
+  onDobBlur() {
+    const v = String(this.student.dateOfBirth || '').trim();
+    if (!v) {
+      this.dobError = '';
+      return;
+    }
+    if (!this.isValidDDMMYYYY(v)) {
+      this.dobError = 'Invalid date. Use dd/mm/yyyy';
+      return;
+    }
+    const age = this.calculateAge(v);
+    if (age < 3 || age > 13) {
+      this.dobError = 'Age must be between 3 and 13 years';
+    } else {
+      this.dobError = '';
     }
   }
 
@@ -245,13 +305,10 @@ export class StudentFormComponent implements OnInit {
       next: (data: any) => {
         console.log('Loaded student data:', data);
         
-        // Format dateOfBirth for HTML date input (YYYY-MM-DD)
+        // Format dateOfBirth for display input (dd/mm/yyyy)
         let formattedDate = '';
         if (data.dateOfBirth) {
-          const date = new Date(data.dateOfBirth);
-          if (!isNaN(date.getTime())) {
-            formattedDate = date.toISOString().split('T')[0];
-          }
+          formattedDate = this.toDDMMYYYYFromDate(data.dateOfBirth);
         }
         
         // Get classId - prefer direct classId, then class.id, then empty string
@@ -326,7 +383,13 @@ export class StudentFormComponent implements OnInit {
   }
 
   private calculateAge(dateString: string): number {
-    const dob = new Date(dateString);
+    let dob: Date;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+      const iso = this.toISOFromDDMMYYYY(dateString);
+      dob = new Date(iso);
+    } else {
+      dob = new Date(dateString);
+    }
     if (isNaN(dob.getTime())) {
       return 0;
     }
@@ -424,7 +487,7 @@ export class StudentFormComponent implements OnInit {
       const updateData: any = {
         firstName: this.student.firstName,
         lastName: this.student.lastName,
-        dateOfBirth: this.student.dateOfBirth,
+        dateOfBirth: this.student.dateOfBirth ? this.toISOFromDDMMYYYY(this.student.dateOfBirth) : '',
         gender: this.student.gender,
         address: this.student.address || null,
         contactNumber: this.student.contactNumber,
@@ -480,6 +543,9 @@ export class StudentFormComponent implements OnInit {
       // For new students, don't send studentNumber (it will be auto-generated)
       const studentData = { ...this.student };
       studentData.studentStatus = this.normalizeStatusForSubmit(studentData.studentStatus);
+      if (studentData.dateOfBirth) {
+        studentData.dateOfBirth = this.toISOFromDDMMYYYY(String(studentData.dateOfBirth));
+      }
       delete studentData.studentNumber; // Remove studentNumber, it will be auto-generated
       
       this.studentService.createStudent(studentData, this.selectedPhoto || undefined).subscribe({

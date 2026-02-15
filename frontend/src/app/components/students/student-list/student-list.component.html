@@ -356,7 +356,7 @@
             </div>
             <div class="detail-item" *ngIf="selectedStudent.dateOfBirth">
               <span class="detail-label">Date of Birth</span>
-              <span class="detail-value">{{ selectedStudent.dateOfBirth | date }}</span>
+              <span class="detail-value">{{ selectedStudent.dateOfBirth | date:'dd/MM/yyyy' }}</span>
             </div>
           </div>
         </div>
