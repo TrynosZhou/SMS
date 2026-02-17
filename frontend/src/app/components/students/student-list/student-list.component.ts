@@ -2,6 +2,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-student-list',
@@ -40,16 +41,20 @@ export class StudentListComponent implements OnInit {
   filterUsesDiningHall = false;
   isLogisticsTransport = false;
   isLogisticsDiningHall = false;
+  isTeacher = false;
 
   constructor(
     private studentService: StudentService,
     private classService: ClassService,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private authService: AuthService
   ) { }
 
   ngOnInit() {
+    const user = this.authService.getCurrentUser();
+    this.isTeacher = !!user && String(user.role).toLowerCase() === 'teacher';
     const logisticsMode = this.route.snapshot.data?.['logisticsMode'];
     if (logisticsMode === 'transport') {
       this.selectedType = 'Day Scholar';

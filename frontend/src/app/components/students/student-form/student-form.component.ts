@@ -4,6 +4,7 @@ import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
 import { SettingsService } from '../../../services/settings.service';
 import { validatePhoneNumber } from '../../../utils/phone-validator';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-student-form',
@@ -55,22 +56,42 @@ export class StudentFormComponent implements OnInit {
   // Phone validation errors
   contactNumberError = '';
   phoneNumberError = '';
+  limitedEditMode = false;
+  returnUrl: string | null = null;
 
   constructor(
     private studentService: StudentService,
     private classService: ClassService,
     private settingsService: SettingsService,
     private route: ActivatedRoute,
-    public router: Router
+    public router: Router,
+    private authService: AuthService
   ) {
     // Set max date to today (for date of birth)
     const today = new Date();
     this.maxDate = today.toISOString().split('T')[0];
   }
 
+  goBack() {
+    const target = this.returnUrl || '/students';
+    this.router.navigate([target]);
+  }
+
   ngOnInit() {
     this.loadClasses();
     this.loadStudentIdPrefix();
+    const qp = this.route.snapshot.queryParamMap;
+    const mode = qp.get('mode') || '';
+    const limited = qp.get('limited') || '';
+    this.limitedEditMode = mode.toLowerCase() === 'limited' || ['1', 'true', 'yes'].includes(limited.toLowerCase());
+    this.returnUrl = qp.get('returnUrl');
+
+    // Teachers cannot add students
+    const user = this.authService.getCurrentUser();
+    if (!this.route.snapshot.params['id'] && user && String(user.role).toLowerCase() === 'teacher') {
+      this.router.navigate([this.returnUrl || '/dashboard']);
+      return;
+    }
     const id = this.route.snapshot.params['id'];
     if (id) {
       this.isEdit = true;
@@ -483,6 +504,36 @@ export class StudentFormComponent implements OnInit {
     }
     
     if (this.isEdit) {
+      // When in limited edit mode, only allow personal and contact fields
+      if (this.limitedEditMode) {
+        const updateData: any = {
+          firstName: this.student.firstName,
+          lastName: this.student.lastName,
+          dateOfBirth: this.student.dateOfBirth ? this.toISOFromDDMMYYYY(this.student.dateOfBirth) : '',
+          gender: this.student.gender,
+          address: this.student.address || null,
+          contactNumber: this.student.contactNumber
+        };
+        if (this.student.phoneNumber) {
+          updateData.phoneNumber = this.student.phoneNumber;
+        }
+        if (!this.selectedPhoto && this.student.photo) {
+          updateData.photo = this.student.photo;
+        }
+        this.studentService.updateStudent(this.student.id, updateData, this.selectedPhoto || undefined).subscribe({
+          next: (response: any) => {
+            this.success = response.message || 'Student updated successfully';
+            this.submitting = false;
+            setTimeout(() => this.router.navigate([this.returnUrl || '/classes/lists']), 1200);
+          },
+          error: (err: any) => {
+            this.error = err.error?.message || err.message || 'Failed to update student';
+            this.submitting = false;
+            setTimeout(() => this.error = '', 5000);
+          }
+        });
+        return;
+      }
       // Prepare update data - exclude fields that shouldn't be updated
       const updateData: any = {
         firstName: this.student.firstName,

@@ -41,6 +41,10 @@ export class ClassListsComponent implements OnInit {
   generatedAt: Date = new Date();
   lastLoadedClassId: string | null = null;
   lastLoadedTerm: string | null = null;
+  movingStudentId: string | null = null;
+  moveTargetClassId: string = '';
+  enrolling = false;
+  showEnrollModal = false;
 
   constructor(
     private studentService: StudentService,
@@ -235,6 +239,47 @@ export class ClassListsComponent implements OnInit {
   getSelectedClassName(): string {
     const selectedClass = this.classes.find(c => c.id === this.selectedClassId);
     return selectedClass ? selectedClass.name : 'Selected Class';
+  }
+
+  canMoveStudent(): boolean {
+    return this.isAdmin || this.isSuperAdmin || this.isTeacher;
+  }
+
+  startMove(student: any) {
+    if (!this.canMoveStudent()) return;
+    this.movingStudentId = student.id;
+    this.moveTargetClassId = student.classId || this.selectedClassId || '';
+    this.showEnrollModal = true;
+  }
+
+  cancelMove() {
+    this.movingStudentId = null;
+    this.moveTargetClassId = '';
+    this.showEnrollModal = false;
+  }
+
+  confirmEnroll() {
+    if (!this.movingStudentId || !this.moveTargetClassId) return;
+    this.enrolling = true;
+    this.error = '';
+    this.success = '';
+    this.studentService.updateStudent(this.movingStudentId, { classId: this.moveTargetClassId }).subscribe({
+      next: (res: any) => {
+        this.success = res?.message || 'Student enrolled to new class successfully.';
+        this.enrolling = false;
+        const movedId = this.movingStudentId;
+        this.cancelMove();
+        this.showEnrollModal = false;
+        // Refresh current class list so moved student disappears
+        this.loadStudents();
+        // If we were not filtering by a specific class, update local list only
+        this.filteredStudents = this.filteredStudents.filter(s => s.id !== movedId);
+      },
+      error: (err: any) => {
+        this.error = err?.error?.message || err?.message || 'Failed to enroll student to new class.';
+        this.enrolling = false;
+      }
+    });
   }
 
   viewStudentIdCard(studentId: string) {

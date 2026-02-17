@@ -15,7 +15,7 @@
       <button class="btn btn-secondary" *ngIf="isLogisticsTransport || isLogisticsDiningHall" (click)="printList()">
         🖨️ Print
       </button>
-      <button class="btn btn-primary" routerLink="/students/new">
+      <button class="btn btn-primary" routerLink="/students/new" *ngIf="!isTeacher">
         <span>➕</span> Add New Student
       </button>
     </div>
@@ -295,7 +295,7 @@
           <button class="btn-icon-small" (click)="viewReportCard(student.id)" title="Report Card">
             📄
           </button>
-          <button class="btn-icon-small btn-delete" (click)="deleteStudent(student.id, student.firstName + ' ' + student.lastName, student.studentNumber)" title="Delete" [disabled]="loading">
+          <button class="btn-icon-small btn-delete" *ngIf="!isTeacher" (click)="deleteStudent(student.id, student.firstName + ' ' + student.lastName, student.studentNumber)" title="Delete" [disabled]="loading">
             🗑️
           </button>
         </div>
@@ -313,7 +313,7 @@
     <p *ngIf="!searchQuery && !selectedClass && !selectedType && !selectedGender">
       Get started by adding your first student to the system.
     </p>
-    <button class="btn btn-primary" routerLink="/students/new" *ngIf="!searchQuery && !selectedClass && !selectedType && !selectedGender">
+    <button class="btn btn-primary" routerLink="/students/new" *ngIf="!isTeacher && !searchQuery && !selectedClass && !selectedType && !selectedGender">
       ➕ Add First Student
     </button>
   </div>

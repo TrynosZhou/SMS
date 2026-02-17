@@ -168,7 +168,13 @@
               </span>
             </td>
             <td>
-              <strong>{{ student.lastName }} {{ student.firstName }}</strong>
+              <a 
+                [routerLink]="['/students', student.id, 'edit']"
+                [queryParams]="{ mode: 'limited', returnUrl: '/classes/lists' }"
+                title="Edit Personal and Contact Information"
+                class="student-name-link">
+                <strong>{{ student.firstName }} {{ student.lastName }}</strong>
+              </a>
             </td>
             <td>{{ student.gender || 'N/A' }}</td>
             <td>
@@ -178,12 +184,53 @@
               </span>
             </td>
             <td>
-              <span *ngIf="student.class">{{ student.class.name }}</span>
-              <span *ngIf="!student.class">N/A</span>
+              <a 
+                *ngIf="canMoveStudent()"
+                title="Click to move student to another class"
+                class="student-class-link"
+                (click)="startMove(student)">
+                <span *ngIf="student.class; else noClass">{{ student.class?.name }}</span>
+                <ng-template #noClass>N/A</ng-template>
+              </a>
+              <span *ngIf="!canMoveStudent()">
+                <span *ngIf="student.class; else noClass2">{{ student.class?.name }}</span>
+                <ng-template #noClass2>N/A</ng-template>
+              </span>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="showEnrollModal"></div>
+  <div class="modal" *ngIf="showEnrollModal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h3>Move Student to Another Class</h3>
+    </div>
+    <div class="modal-body">
+      <label>Select New Class</label>
+      <select
+        class="form-control"
+        [(ngModel)]="moveTargetClassId"
+        [ngModelOptions]="{standalone: true}">
+        <option *ngFor="let cls of classes" [value]="cls.id">{{ cls.name }}</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button 
+        type="button"
+        class="btn btn-secondary"
+        (click)="cancelMove()"
+        [disabled]="enrolling">
+        Cancel
+      </button>
+      <button 
+        class="btn btn-primary"
+        (click)="confirmEnroll()"
+        [disabled]="enrolling || !moveTargetClassId">
+        Enroll
+      </button>
     </div>
   </div>
 
