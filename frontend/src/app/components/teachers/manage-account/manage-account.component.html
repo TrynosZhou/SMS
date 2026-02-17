@@ -1,8 +1,8 @@
 <div class="container">
   <div class="manage-account-card">
     <div class="card-header">
-      <h2>Manage Account</h2>
-      <p class="subtitle">Update your username and password</p>
+      <h2>{{ isAccountant ? 'Change Password' : 'Manage Account' }}</h2>
+      <p class="subtitle">{{ isAccountant ? 'Update your password' : 'Update your username and password' }}</p>
     </div>
 
     <div class="alert alert-success" *ngIf="success">{{ success }}</div>
@@ -14,7 +14,7 @@
 
     <form *ngIf="accountInfo" (ngSubmit)="updateAccount()">
       <div class="form-group">
-        <label>Username (TeacherID)</label>
+        <label>{{ isTeacher ? 'Username (TeacherID)' : 'Username' }}</label>
         <input 
           type="text" 
           [value]="currentUsername || 'N/A'" 
@@ -24,7 +24,7 @@
         <small class="form-text" *ngIf="!isTeacher">This is your current username</small>
       </div>
 
-      <div class="form-group" *ngIf="!isTeacher">
+      <div class="form-group" *ngIf="!isTeacher && !isAccountant">
         <label>Current Email</label>
         <input 
           type="email" 
@@ -34,7 +34,7 @@
         <small class="form-text">This is your current email address</small>
       </div>
 
-      <div class="form-group" *ngIf="!isTeacher">
+      <div class="form-group" *ngIf="!isTeacher && !isAccountant">
         <label>New Email</label>
         <input 
           type="email" 
@@ -81,7 +81,17 @@
             {{ showNewPassword ? '👁️' : '👁️‍🗨️' }}
           </span>
         </div>
-        <small class="form-text">Password must be at least 8 characters long</small>
+        <div class="strength-meter">
+          <div class="strength-bar" [ngClass]="strengthClass"></div>
+          <span class="strength-label">{{ strengthLabel }}</span>
+        </div>
+        <ul class="password-requirements">
+          <li [class.valid]="passwordLengthOk">• At least 8 characters</li>
+          <li [class.valid]="hasUpper">• At least one uppercase letter</li>
+          <li [class.valid]="hasLower">• At least one lowercase letter</li>
+          <li [class.valid]="hasNumber">• At least one number</li>
+          <li [class.valid]="hasSpecial">• At least one special character</li>
+        </ul>
       </div>
 
       <div class="form-group">
@@ -101,7 +111,7 @@
       </div>
 
       <div class="form-actions">
-        <button type="submit" class="btn btn-primary" [disabled]="loading">
+        <button type="submit" class="btn btn-primary" [disabled]="!canSubmit">
           {{ loading ? 'Updating...' : '💾 Update Account' }}
         </button>
         <button type="button" class="btn btn-secondary" (click)="goToDashboard()" [disabled]="loading">

@@ -55,6 +55,12 @@
           <span class="sidebar-text">Dashboard</span>
         </a>
 
+        <!-- Accountant: Manage Account (top-level item) -->
+        <a routerLink="/accountant/change_password" routerLinkActive="active" class="sidebar-item" *ngIf="isAccountant()">
+          <span class="sidebar-icon">👤</span>
+          <span class="sidebar-text">Manage Account</span>
+        </a>
+
         <!-- Student Management -->
       <div class="sidebar-menu" *ngIf="canAccessModule('students') || isAdmin() || isSuperAdmin()">
         <div class="sidebar-menu-header" (click)="toggleMenu('studentManagement')">
@@ -206,6 +212,10 @@
             <span class="sidebar-icon">💳</span>
             <span class="sidebar-text">Record Payment</span>
           </a>
+          <a routerLink="/finance/balance-enquiry" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-icon">🔎</span>
+            <span class="sidebar-text">Balance Enquiry</span>
+          </a>
           <a routerLink="/outstanding-balance" routerLinkActive="active" class="sidebar-subitem">
             <span class="sidebar-icon">⚠️</span>
             <span class="sidebar-text">Unpaid Invoices</span>
@@ -298,6 +308,10 @@
           <a routerLink="/teacher/manage-account" routerLinkActive="active" class="sidebar-subitem" *ngIf="isTeacher()">
             <span class="sidebar-icon">👤</span>
             <span class="sidebar-text">My Account</span>
+          </a>
+          <a routerLink="/accountant/change_password" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAccountant()">
+            <span class="sidebar-icon">👤</span>
+            <span class="sidebar-text">Manage Account</span>
           </a>
         </div>
       </div>

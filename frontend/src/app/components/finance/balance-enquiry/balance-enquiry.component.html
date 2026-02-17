@@ -1,0 +1,54 @@
+<div class="balance-enquiry-container">
+  <div class="page-header">
+    <h1>Balance Enquiry</h1>
+  </div>
+
+  <div class="search-card">
+    <label for="query">Student ID / Student Number / Last Name / First Name</label>
+    <div class="input-row">
+      <input id="query"
+             [(ngModel)]="query"
+             (keyup.enter)="search()"
+             placeholder="Enter Student ID, Student Number, Last Name, or First Name"
+             class="form-control" />
+      <button class="btn btn-primary" (click)="search()" [disabled]="loading">
+        <span>🔍</span> Get Balance
+      </button>
+    </div>
+  </div>
+
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+
+  <div class="search-card" *ngIf="matchingStudents && matchingStudents.length > 0">
+    <label for="studentMatch">Select Student</label>
+    <select id="studentMatch" class="form-control" [(ngModel)]="selectedMatchId" (change)="onSelectMatch()">
+      <option [ngValue]="''">-- Select student --</option>
+      <option *ngFor="let s of matchingStudents" [ngValue]="s.studentId">
+        {{ s.fullName }} ({{ s.studentNumber }})
+      </option>
+    </select>
+  </div>
+
+  <div class="result-card" *ngIf="studentData">
+    <div class="result-header">
+      <div class="name">{{ studentData.fullName }}</div>
+      <div class="number">Student #: {{ studentData.studentNumber }}</div>
+    </div>
+    <div class="balance-row">
+      <div class="label">Current Balance:</div>
+      <div class="value" [ngStyle]="{ color: colorForBalance() }">
+        {{ currencySymbol }} {{ studentData.balance | number:'1.2-2' }}
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" (click)="previewStatement()" [disabled]="loadingPdf">👁️ Preview Statement</button>
+      <button class="btn btn-success" (click)="downloadStatement()" [disabled]="loadingPdf">⬇️ Download Statement</button>
+    </div>
+
+    <div class="pdf-preview" *ngIf="previewUrl">
+      <iframe [src]="previewUrl" width="100%" height="600" type="application/pdf"></iframe>
+    </div>
+  </div>
+</div>

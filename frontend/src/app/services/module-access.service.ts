@@ -43,6 +43,9 @@ export interface ModuleAccess {
     finance?: boolean;
     dashboard?: boolean;
     settings?: boolean;
+    exams?: boolean;
+    reportCards?: boolean;
+    attendance?: boolean;
   };
   admin?: {
     students?: boolean;
@@ -118,7 +121,10 @@ export class ModuleAccessService {
       invoices: true,
       finance: true,
       dashboard: true,
-      settings: false
+      settings: false,
+      exams: false,
+      reportCards: false,
+      attendance: false
     },
     admin: {
       students: true,
@@ -182,13 +188,22 @@ export class ModuleAccessService {
     this.settingsService.getSettings().subscribe({
       next: (settings: any) => {
         if (settings && settings.moduleAccess) {
-          this.moduleAccess = settings.moduleAccess;
+          const loaded = settings.moduleAccess as ModuleAccess;
+          const merged: ModuleAccess = { ...this.defaultAccess };
+
+          Object.keys(loaded).forEach(key => {
+            const k = key as keyof ModuleAccess;
+            const defaultsForRole = (this.defaultAccess as any)[k] || {};
+            const loadedForRole = (loaded as any)[k] || {};
+            (merged as any)[k] = { ...defaultsForRole, ...loadedForRole };
+          });
+
+          this.moduleAccess = merged;
         } else {
           this.moduleAccess = this.defaultAccess;
         }
       },
-      error: (err) => {
-        // Silently fall back to default access on error (401, 403, etc.)
+      error: () => {
         this.moduleAccess = this.defaultAccess;
       }
     });
@@ -199,6 +214,14 @@ export class ModuleAccessService {
     if (!user) return false;
 
     const role = user.role.toLowerCase();
+
+    // Hard restrictions for accountant role regardless of settings
+    if (role === 'accountant') {
+      const blockedForAccountant = new Set(['exams', 'reportCards', 'attendance', 'rankings']);
+      if (blockedForAccountant.has(moduleName)) {
+        return false;
+      }
+    }
 
     // Superadmin has access to everything
     if (role === 'superadmin') return true;

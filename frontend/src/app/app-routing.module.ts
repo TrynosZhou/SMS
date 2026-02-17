@@ -19,6 +19,7 @@ import { InvoiceFormComponent } from './components/finance/invoice-form/invoice-
 import { InvoiceStatementsComponent } from './components/finance/invoice-statements/invoice-statements.component';
 import { RecordPaymentComponent } from './components/finance/record-payment/record-payment.component';
 import { OutstandingBalanceComponent } from './components/finance/outstanding-balance/outstanding-balance.component';
+import { BalanceEnquiryComponent } from './components/finance/balance-enquiry/balance-enquiry.component';
 import { ClassListComponent } from './components/classes/class-list/class-list.component';
 import { ClassFormComponent } from './components/classes/class-form/class-form.component';
 import { ClassListsComponent } from './components/classes/class-lists/class-lists.component';
@@ -62,6 +63,8 @@ const routes: Routes = [
   { path: 'parent/link-students', component: LinkStudentsComponent, canActivate: [AuthGuard] },
   { path: 'parent/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'teacher/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
+  { path: 'accountant/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
+  { path: 'accountant/change_password', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'teacher/record-book', component: RecordBookComponent, canActivate: [AuthGuard] },
   { path: 'teacher/my-classes', component: MyClassesComponent, canActivate: [AuthGuard] },
   { path: 'admin/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
@@ -76,19 +79,20 @@ const routes: Routes = [
   { path: 'teachers', component: TeacherListComponent, canActivate: [AuthGuard] },
   { path: 'teachers/new', component: TeacherFormComponent, canActivate: [AuthGuard] },
   { path: 'teachers/:id/edit', component: TeacherFormComponent, canActivate: [AuthGuard] },
-  { path: 'exams', component: ExamListComponent, canActivate: [AuthGuard] },
+  { path: 'exams', component: ExamListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
   // { path: 'exams/new', component: ExamFormComponent, canActivate: [AuthGuard] }, // Disabled - exam creation removed
-  { path: 'exams/:id/marks', component: MarksEntryComponent, canActivate: [AuthGuard] },
-  { path: 'report-cards', component: ReportCardComponent, canActivate: [AuthGuard] },
-  { path: 'mark-sheet', component: MarkSheetComponent, canActivate: [AuthGuard] },
-  { path: 'rankings', component: RankingsComponent, canActivate: [AuthGuard] },
-  { path: 'check_mark_progess', component: MarksProgressComponent, canActivate: [AuthGuard] },
-  { path: 'publish-results', component: PublishResultsComponent, canActivate: [AuthGuard] },
+  { path: 'exams/:id/marks', component: MarksEntryComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
+  { path: 'report-cards', component: ReportCardComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'reportCards' } },
+  { path: 'mark-sheet', component: MarkSheetComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
+  { path: 'rankings', component: RankingsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
+  { path: 'check_mark_progess', component: MarksProgressComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
+  { path: 'publish-results', component: PublishResultsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
   { path: 'invoices', component: InvoiceListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'invoices/new', component: InvoiceFormComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'invoices/statements', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'payments/record', component: RecordPaymentComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'outstanding-balance', component: OutstandingBalanceComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
+  { path: 'finance/balance-enquiry', component: BalanceEnquiryComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'classes', component: ClassListComponent, canActivate: [AuthGuard] },
   { path: 'classes/lists', component: ClassListsComponent, canActivate: [AuthGuard] },
   { path: 'classes/new', component: ClassFormComponent, canActivate: [AuthGuard] },

@@ -400,15 +400,15 @@
 }
 
 .student-class-link {
-  color: #1f6feb;
+  color: #2d3748;
   cursor: pointer;
-  text-decoration: underline;
+  text-decoration: none;
   transition: color 0.2s ease, transform 0.2s ease;
 }
 
 .student-class-link:hover {
-  color: #0b4ea2;
-  text-decoration: none;
+  color: #2d3748;
+  text-decoration: underline;
   transform: translateY(-1px);
 }
 
