@@ -97,7 +97,7 @@ export class MarkAttendanceComponent implements OnInit {
       remarks: ''
     }));
     this.updateFilteredData();
-    this.hasUnsavedChanges = false;
+    this.hasUnsavedChanges = true;
   }
 
   loadExistingAttendance() {

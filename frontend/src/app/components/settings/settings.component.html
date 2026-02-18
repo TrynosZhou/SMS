@@ -130,6 +130,28 @@
         </div>
       </div>
 
+      <!-- Grades -->
+      <div class="form-section">
+        <h2>Grades</h2>
+        <p class="section-description">Define grades such as Stage 2, Stage 3. These appear on the student registration form.</p>
+        <div class="form-group">
+          <label>Add Grade</label>
+          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <input type="text" [(ngModel)]="newClassLevel" name="newClassLevel" placeholder="e.g., Stage 2" style="flex: 1;">
+            <button type="button" class="btn btn-secondary" (click)="addClassLevel()">Add</button>
+          </div>
+        </div>
+        <div *ngIf="(!settings.classLevels || settings.classLevels.length === 0)" class="alert alert-info" style="margin-bottom: 10px;">
+          No grades defined yet.
+        </div>
+        <div *ngIf="settings.classLevels?.length > 0" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;">
+          <div *ngFor="let lvl of settings.classLevels; let i = index" style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span>{{ lvl }}</span>
+            <button type="button" class="btn btn-danger btn-sm" (click)="removeClassLevel(i)">Remove</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Grade Thresholds and Labels -->
       <div class="form-section" *ngIf="authService.hasRole('admin') || authService.hasRole('superadmin')">
         <h2>📊 Grade Thresholds and Labels for Student Performance</h2>
@@ -904,6 +926,14 @@
             <label class="checkbox-label">
               <input type="checkbox" [(ngModel)]="settings.moduleAccess.accountant.settings" name="accountantSettings">
               <span>Settings</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.accountant.classes" name="accountantClasses">
+              <span>Class Management</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.accountant.logistics" name="accountantLogistics">
+              <span>Logistics Management</span>
             </label>
           </div>
         </div>

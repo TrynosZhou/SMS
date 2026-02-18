@@ -139,56 +139,53 @@
     </div>
 
     <div class="table-wrapper modern-wrapper">
-      <table class="data-table modern-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Student ID</th>
-            <th>First Name</th>
-            <th>Last Name</th>
-            <th>Sex</th>
-            <th>Phone Number</th>
-            <th class="text-right">Invoice Balance</th>
-            <th class="text-center">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let balance of filteredBalances; let i = index" class="table-row">
-            <td class="row-number">{{ i + 1 }}</td>
-            <td class="student-id-cell">
-              <span class="id-badge">{{ balance.studentNumber || balance.studentId }}</span>
-            </td>
-            <td class="student-name-cell">{{ balance.firstName }}</td>
-            <td class="student-name-cell">{{ balance.lastName }}</td>
-            <td class="student-name-cell">{{ balance.gender || '—' }}</td>
-            <td class="phone-cell">{{ balance.phoneNumber || '—' }}</td>
-            <td class="balance-cell text-right">
-              <span class="balance-badge">{{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}</span>
-            </td>
-            <td class="action-cell text-center">
-              <button 
-                *ngIf="canManageFinance()"
-                class="btn-pay-invoice modern-btn" 
-                (click)="payInvoice(balance)"
-                title="Record Payment">
-                <span class="btn-icon">💳</span>
-                <span>Pay Invoice</span>
-              </button>
-            </td>
-          </tr>
-        </tbody>
-        <tfoot *ngIf="filteredBalances.length > 0" class="table-footer">
-          <tr>
-            <td colspan="6" class="footer-label text-right">
-              <strong>Total Outstanding:</strong>
-            </td>
-            <td class="footer-value text-right">
-              <strong>{{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</strong>
-            </td>
-            <td></td>
-          </tr>
-        </tfoot>
-      </table>
+      <div *ngFor="let group of groupedBalances">
+        <h3 style="margin: 10px 0 6px 0;">Class: {{ group.className }}</h3>
+        <table class="data-table modern-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Class</th>
+              <th>Student ID</th>
+              <th>First Name</th>
+              <th>Last Name</th>
+              <th>Sex</th>
+              <th>Phone Number</th>
+              <th class="text-right">Invoice Balance</th>
+              <th class="text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let balance of group.items; let i = index" class="table-row">
+              <td class="row-number">{{ i + 1 }}</td>
+              <td class="student-class-cell">{{ (balance.class?.name || balance.classEntity?.name || balance.className || '—') }}</td>
+              <td class="student-id-cell">
+                <span class="id-badge">{{ balance.studentNumber || balance.studentId }}</span>
+              </td>
+              <td class="student-name-cell">{{ balance.firstName }}</td>
+              <td class="student-name-cell">{{ balance.lastName }}</td>
+              <td class="student-name-cell">{{ balance.gender || '—' }}</td>
+              <td class="phone-cell">{{ balance.phoneNumber || '—' }}</td>
+              <td class="balance-cell text-right">
+                <span class="balance-badge">{{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}</span>
+              </td>
+              <td class="action-cell text-center">
+                <button 
+                  *ngIf="canManageFinance()"
+                  class="btn-pay-invoice modern-btn" 
+                  (click)="payInvoice(balance)"
+                  title="Record Payment">
+                  <span class="btn-icon">💳</span>
+                  <span>Pay Invoice</span>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-footer-summary" *ngIf="filteredBalances.length > 0" style="margin-top: 10px; text-align: right;">
+        <strong>Total Outstanding: {{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</strong>
+      </div>
     </div>
   </div>
 </div>

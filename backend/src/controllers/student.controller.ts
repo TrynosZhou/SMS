@@ -43,7 +43,7 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
       return Boolean(value);
     };
 
-    const { firstName, lastName, dateOfBirth, gender, address, phoneNumber, contactNumber, studentType, studentStatus, usesTransport, usesDiningHall, isStaffChild, isExempted, classId, parentId } = req.body;
+    const { firstName, lastName, dateOfBirth, gender, address, phoneNumber, contactNumber, studentType, studentStatus, usesTransport, usesDiningHall, isStaffChild, isExempted, classId, parentId, classLevel, grade } = req.body;
     
     // Validate required fields
     if (!firstName || !lastName) {
@@ -71,19 +71,20 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    if (!classId) {
-      return res.status(400).json({ message: 'Class ID is required for student enrollment' });
-    }
+    // Registration does not require class assignment. classId is optional and handled later by enrollment.
 
     const studentRepository = AppDataSource.getRepository(Student);
     const classRepository = AppDataSource.getRepository(Class);
     const settingsRepository = AppDataSource.getRepository(Settings);
     const invoiceRepository = AppDataSource.getRepository(Invoice);
 
-    // Verify class exists
-    const classEntity = await classRepository.findOne({ where: { id: classId } });
-    if (!classEntity) {
-      return res.status(404).json({ message: 'Class not found' });
+    // If classId is provided during registration, verify it exists (optional early enrollment)
+    let classEntity = null as Class | null;
+    if (classId) {
+      classEntity = await classRepository.findOne({ where: { id: classId } });
+      if (!classEntity) {
+        return res.status(404).json({ message: 'Class not found' });
+      }
     }
 
     if (parentId) {
@@ -122,6 +123,11 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
     const normalizedAddress = address && String(address).trim() ? String(address).trim() : null;
     const normalizedStudentStatusRaw = typeof studentStatus === 'string' ? studentStatus.trim().toLowerCase() : '';
     const validStudentStatus = normalizedStudentStatusRaw.includes('existing') ? 'Existing' : 'New';
+    const normalizedGrade = (() => {
+      const v = typeof grade === 'string' && grade.trim() ? grade.trim() : null;
+      const alt = typeof classLevel === 'string' && classLevel.trim() ? classLevel.trim() : null;
+      return v || alt;
+    })();
 
     let duplicateQuery = studentRepository
       .createQueryBuilder('student')
@@ -163,7 +169,7 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
     const isStaffChildFlag = parseBoolean(isStaffChild);
     const isExemptedFlag = parseBoolean(isExempted);
 
-    // Create student with auto-generated ID and auto-enrollment
+    // Create student with auto-generated ID; class assignment is optional (enrollment happens later)
     const student = studentRepository.create({
       firstName: normalizedFirstName,
       lastName: normalizedLastName,
@@ -180,7 +186,9 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
       isStaffChild: isStaffChildFlag,
       isExempted: isExemptedFlag,
       photo: photoPath,
-      classId, // Auto-enroll into the specified class
+      classId: classEntity ? classEntity.id : null,
+      classLevel: normalizedGrade || null,
+      grade: normalizedGrade || null,
       parentId: parentId || null,
       enrollmentDate: new Date()
     });
@@ -378,7 +386,7 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
     }
 
     res.status(201).json({ 
-      message: 'Student registered and enrolled successfully', 
+      message: classEntity ? 'Student registered and enrolled successfully' : 'Student registered successfully', 
       student: savedStudent 
     });
   } catch (error: any) {
@@ -668,7 +676,9 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       isStaffChild,
       classId,
       parentId,
-      photo
+      photo,
+      classLevel,
+      grade
     } = req.body;
 
     console.log('Updating student with ID:', id);
@@ -833,11 +843,11 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       student.photo = photo || null;
     }
 
-    // Update classId if provided (always update if classId is in the request, even if it's the same)
+    // Update classId if provided (allow clearing to un-enroll)
     if (classId !== undefined) {
       if (classId === null || classId === '') {
-        // Students must be enrolled in a class - cannot remove class assignment
-        return res.status(400).json({ message: 'Class ID is required. Students must be enrolled in a class.' });
+        student.classId = null;
+        (student as any).classEntity = null as any;
       } else {
         // Verify class exists
         const trimmedClassId = String(classId).trim();
@@ -856,6 +866,16 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
         console.log('Updating student class from', oldClassName, '(ID: ' + oldClassId + ') to:', classEntity.name, '(ID: ' + trimmedClassId + ')');
         console.log('Setting student.classEntity relation to:', classEntity.name);
       }
+    }
+
+    // Update grade/classLevel (Grade) if provided
+    if (classLevel !== undefined || grade !== undefined) {
+      const normalized =
+        (grade && String(grade).trim()) ||
+        (classLevel && String(classLevel).trim()) ||
+        '';
+      (student as any).classLevel = normalized ? normalized : null;
+      (student as any).grade = normalized ? normalized : null;
     }
 
     // Update parentId if provided
@@ -879,10 +899,15 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     console.log('Student classEntity relation after save:', savedStudent.classEntity?.name || 'null');
 
     // Use update query to ensure classId is definitely updated in the database
-    if (classId !== undefined && classId !== null && classId !== '') {
-      const trimmedClassId = String(classId).trim();
-       await studentRepository.update({ id }, { classId: trimmedClassId });
-      console.log('Explicitly updated classId via update query:', trimmedClassId);
+    if (classId !== undefined) {
+      if (classId === null || classId === '') {
+        await studentRepository.update({ id }, { classId: null });
+        console.log('Explicitly cleared classId via update query');
+      } else {
+        const trimmedClassId = String(classId).trim();
+        await studentRepository.update({ id }, { classId: trimmedClassId });
+        console.log('Explicitly updated classId via update query:', trimmedClassId);
+      }
     }
 
     // Reload student with relations to get fresh data from database

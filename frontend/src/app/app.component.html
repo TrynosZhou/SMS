@@ -73,6 +73,10 @@
             <span class="sidebar-icon">📝</span>
             <span class="sidebar-text">Registration</span>
           </a>
+          <a routerLink="/students/enroll_student" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin() || isTeacher() || canAccessModule('students')">
+            <span class="sidebar-icon">🧭</span>
+            <span class="sidebar-text">Enroll Student</span>
+          </a>
           <a routerLink="/students" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('students') || isAdmin() || isSuperAdmin()">
             <span class="sidebar-icon">📋</span>
             <span class="sidebar-text">Student List</span>
@@ -116,14 +120,14 @@
       </div>
 
       <!-- Class Management -->
-      <div class="sidebar-menu" *ngIf="isAdmin() || isSuperAdmin() || isTeacher()">
+      <div class="sidebar-menu" *ngIf="isAdmin() || isSuperAdmin() || isTeacher() || canAccessModule('classes')">
         <div class="sidebar-menu-header" (click)="toggleMenu('classManagement')">
           <span class="sidebar-icon">🏫</span>
           <span class="sidebar-text">Class Management</span>
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('classManagement')">▼</span>
         </div>
         <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('classManagement')">
-          <a routerLink="/classes" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
+          <a routerLink="/classes" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin() || canAccessModule('classes')">
             <span class="sidebar-icon">⚙️</span>
             <span class="sidebar-text">Manage Classes</span>
           </a>
@@ -251,7 +255,7 @@
       </div>
 
       <!-- Logistics Management -->
-      <div class="sidebar-menu" *ngIf="isAdmin() || isSuperAdmin()">
+      <div class="sidebar-menu" *ngIf="isAdmin() || isSuperAdmin() || canAccessModule('logistics')">
         <div class="sidebar-menu-header" (click)="toggleMenu('logisticsManagement')">
           <span class="sidebar-icon">🚌</span>
           <span class="sidebar-text">Logistics Management</span>

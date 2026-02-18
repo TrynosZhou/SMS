@@ -57,6 +57,7 @@ import { ParentSendMessageComponent } from './components/parent/parent-send-mess
 import { ParentOutboxComponent } from './components/parent/parent-outbox/parent-outbox.component';
 import { IncomingFromParentsComponent } from './components/messages/incoming-from-parents/incoming-from-parents.component';
 import { OutgoingMessagesComponent } from './components/messages/outgoing-messages/outgoing-messages.component';
+import { EnrollStudentComponent } from './components/students/enroll-student/enroll-student.component';
 
 const routes: Routes = [
   { path: '', component: SplashComponent },
@@ -86,6 +87,7 @@ const routes: Routes = [
   { path: 'admin/teacher-record-book', component: TeacherRecordBookComponent, canActivate: [AuthGuard] },
   { path: 'students', component: StudentListComponent, canActivate: [AuthGuard] },
   { path: 'students/new', component: StudentFormComponent, canActivate: [AuthGuard] },
+  { path: 'students/enroll_student', component: EnrollStudentComponent, canActivate: [AuthGuard] },
   { path: 'students/:id/edit', component: StudentFormComponent, canActivate: [AuthGuard] },
   { path: 'students/transfer', component: StudentTransferComponent, canActivate: [AuthGuard] },
   { path: 'teachers', component: TeacherListComponent, canActivate: [AuthGuard] },

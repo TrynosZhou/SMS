@@ -46,6 +46,8 @@ export interface ModuleAccess {
     exams?: boolean;
     reportCards?: boolean;
     attendance?: boolean;
+    classes?: boolean;
+    logistics?: boolean;
   };
   admin?: {
     students?: boolean;
@@ -124,7 +126,9 @@ export class ModuleAccessService {
       settings: false,
       exams: false,
       reportCards: false,
-      attendance: false
+      attendance: false,
+      classes: false,
+      logistics: false
     },
     admin: {
       students: true,

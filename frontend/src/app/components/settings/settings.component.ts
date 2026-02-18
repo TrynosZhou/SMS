@@ -14,6 +14,7 @@ import { validatePhoneNumber } from '../../utils/phone-validator';
 export class SettingsComponent implements OnInit {
   settings: any = {
     studentIdPrefix: 'JPS',
+    classLevels: [],
     feesSettings: {
       dayScholarTuitionFee: 0,
       boarderTuitionFee: 0,
@@ -208,6 +209,29 @@ export class SettingsComponent implements OnInit {
     this.loadPromotionRules();
   }
 
+  private persistClassLevelsToLocalStorage() {
+    try {
+      const levels = Array.isArray(this.settings.classLevels) ? this.settings.classLevels : [];
+      localStorage.setItem('settings_classLevels', JSON.stringify(levels));
+    } catch (_) {}
+  }
+
+  private restoreClassLevelsFromLocalStorageIfMissing() {
+    try {
+      if (!Array.isArray(this.settings.classLevels) || this.settings.classLevels.length === 0) {
+        const cached = localStorage.getItem('settings_classLevels');
+        if (cached) {
+          const arr = JSON.parse(cached);
+          if (Array.isArray(arr) && arr.length > 0) {
+            this.settings.classLevels = arr;
+          }
+        }
+      } else {
+        this.persistClassLevelsToLocalStorage();
+      }
+    } catch (_) {}
+  }
+
   loadSettings() {
     // For demo users, always set school name to "Demo School"
     if (this.isDemoUser()) {
@@ -372,6 +396,9 @@ export class SettingsComponent implements OnInit {
             fail: 'UNCLASSIFIED'
           };
         }
+        if (!Array.isArray(this.settings.classLevels)) {
+          this.settings.classLevels = [];
+        }
         if (!this.settings.currencySymbol) {
           this.settings.currencySymbol = 'KES';
         }
@@ -470,7 +497,9 @@ export class SettingsComponent implements OnInit {
               settings: false,
               exams: false,
               reportCards: false,
-              attendance: false
+            attendance: false,
+            classes: false,
+            logistics: false
             };
           } else {
             if (this.settings.moduleAccess.accountant.exams === undefined) {
@@ -482,6 +511,12 @@ export class SettingsComponent implements OnInit {
             if (this.settings.moduleAccess.accountant.attendance === undefined) {
               this.settings.moduleAccess.accountant.attendance = false;
             }
+          if (this.settings.moduleAccess.accountant.classes === undefined) {
+            this.settings.moduleAccess.accountant.classes = false;
+          }
+          if (this.settings.moduleAccess.accountant.logistics === undefined) {
+            this.settings.moduleAccess.accountant.logistics = false;
+          }
           }
           if (!this.settings.moduleAccess.admin) {
             this.settings.moduleAccess.admin = {
@@ -536,6 +571,8 @@ export class SettingsComponent implements OnInit {
             'Grade 7': 'Completed'
           };
         }
+        
+        this.restoreClassLevelsFromLocalStorageIfMissing();
         
         // Force change detection to ensure all restored values are displayed
         this.cdr.detectChanges();
@@ -629,6 +666,28 @@ export class SettingsComponent implements OnInit {
 
   removeOtherFee(index: number) {
     this.settings.feesSettings.otherFees.splice(index, 1);
+  }
+
+  // Class Levels (Grades) management
+  newClassLevel = '';
+  addClassLevel() {
+    const level = (this.newClassLevel || '').trim();
+    if (!level) return;
+    if (!Array.isArray(this.settings.classLevels)) {
+      this.settings.classLevels = [];
+    }
+    if (!this.settings.classLevels.includes(level)) {
+      this.settings.classLevels.push(level);
+      this.settings.classLevels.sort((a: string, b: string) => a.localeCompare(b));
+      this.persistClassLevelsToLocalStorage();
+    }
+    this.newClassLevel = '';
+  }
+  removeClassLevel(index: number) {
+    if (Array.isArray(this.settings.classLevels)) {
+      this.settings.classLevels.splice(index, 1);
+      this.persistClassLevelsToLocalStorage();
+    }
   }
 
   // Load classes for dropdowns
@@ -1213,6 +1272,16 @@ export class SettingsComponent implements OnInit {
     this.uniformItemError = '';
   }
 
+  private setSuccess(msg: string, ms: number = 5000) {
+    this.success = msg;
+    setTimeout(() => {
+      if (this.success === msg) {
+        this.success = '';
+        this.cdr.detectChanges();
+      }
+    }, ms);
+  }
+
   saveUniformItem() {
     if (!this.uniformItemForm.name || this.uniformItemForm.name.trim() === '') {
       this.uniformItemError = 'Uniform item name is required';
@@ -1239,10 +1308,9 @@ export class SettingsComponent implements OnInit {
     request$.subscribe({
       next: (response: any) => {
         this.uniformItemSubmitting = false;
-        this.success = response?.message || 'Uniform item saved successfully!';
+        this.setSuccess(response?.message || 'Uniform item saved successfully!');
         this.loadUniformItems();
         this.closeUniformItemModal();
-        setTimeout(() => this.success = '', 5000);
       },
       error: (err: any) => {
         this.uniformItemSubmitting = false;
@@ -1262,9 +1330,8 @@ export class SettingsComponent implements OnInit {
 
     this.settingsService.deleteUniformItem(item.id).subscribe({
       next: (response: any) => {
-        this.success = response?.message || 'Uniform item deleted successfully';
+        this.setSuccess(response?.message || 'Uniform item deleted successfully');
         this.loadUniformItems();
-        setTimeout(() => this.success = '', 5000);
       },
       error: (err: any) => {
         this.error = err.error?.message || 'Failed to delete uniform item';
@@ -1300,9 +1367,8 @@ export class SettingsComponent implements OnInit {
 
     this.settingsService.processOpeningDay().subscribe({
       next: (response: any) => {
-        this.success = response.message || 'Opening day processed successfully!';
+        this.setSuccess(response.message || 'Opening day processed successfully!');
         this.processingOpeningDay = false;
-        setTimeout(() => this.success = '', 5000);
       },
       error: (err: any) => {
         console.error('Error processing opening day:', err);
@@ -1324,10 +1390,9 @@ export class SettingsComponent implements OnInit {
 
     this.settingsService.processClosingDay().subscribe({
       next: (response: any) => {
-        this.success = response.message || 'Closing day processed successfully!';
+        this.setSuccess(response.message || 'Closing day processed successfully!');
         this.processingClosingDay = false;
         this.loadReminders(); // Refresh reminders after processing
-        setTimeout(() => this.success = '', 5000);
       },
       error: (err: any) => {
         console.error('Error processing closing day:', err);
@@ -1368,10 +1433,9 @@ export class SettingsComponent implements OnInit {
 
     this.settingsService.resetSystemData({ confirm: true }).subscribe({
       next: (response: any) => {
-        this.success = response?.message || 'System data reset successfully.';
+        this.setSuccess(response?.message || 'System data reset successfully.', 7000);
         this.resettingSystem = false;
         this.resetConfirmText = '';
-        setTimeout(() => this.success = '', 7000);
       },
       error: (err: any) => {
         console.error('Error resetting system data:', err);

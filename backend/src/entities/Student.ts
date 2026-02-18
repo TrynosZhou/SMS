@@ -64,12 +64,18 @@ export class Student {
   @Column({ default: true })
   isActive: boolean;
 
-  @ManyToOne(() => Class, classEntity => classEntity.students, { nullable: false })
+  @ManyToOne(() => Class, classEntity => classEntity.students, { nullable: true })
   @JoinColumn({ name: 'classId' })
   classEntity: Class;
 
-  @Column({ nullable: false })
-  classId: string;
+  @Column({ nullable: true })
+  classId: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  classLevel: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  grade: string | null;
 
   @OneToOne(() => User, user => user.student)
   user: User;

@@ -12,6 +12,7 @@ import { AuthService } from '../../../services/auth.service';
 export class OutstandingBalanceComponent implements OnInit {
   outstandingBalances: any[] = [];
   filteredBalances: any[] = [];
+  groupedBalances: Array<{ className: string; items: any[] }> = [];
   loading = false;
   loadingPdf = false;
   downloadingPdf = false;
@@ -64,6 +65,7 @@ export class OutstandingBalanceComponent implements OnInit {
         const sorted = this.sortByBalanceDesc(balancesArray);
         this.outstandingBalances = sorted;
         this.filteredBalances = sorted;
+        this.groupedBalances = this.buildGroups(sorted);
         this.updateCachedTotal();
         this.loading = false;
       },
@@ -72,6 +74,7 @@ export class OutstandingBalanceComponent implements OnInit {
         this.loading = false;
         this.outstandingBalances = [];
         this.filteredBalances = [];
+        this.groupedBalances = [];
         this.updateCachedTotal();
       }
     });
@@ -94,7 +97,29 @@ export class OutstandingBalanceComponent implements OnInit {
       });
     }
     this.filteredBalances = this.sortByBalanceDesc(list);
+    this.groupedBalances = this.buildGroups(this.filteredBalances);
     this.updateCachedTotal();
+  }
+  
+  private getClassName(balance: any): string {
+    const cls = balance?.class || balance?.classEntity || {};
+    const name = (cls?.name || balance?.className || '').toString().trim();
+    return name || 'Unassigned';
+  }
+  
+  private buildGroups(list: any[]): Array<{ className: string; items: any[] }> {
+    const map = new Map<string, any[]>();
+    list.forEach(item => {
+      const name = this.getClassName(item);
+      if (!map.has(name)) map.set(name, []);
+      map.get(name)!.push(item);
+    });
+    const groups = Array.from(map.entries()).map(([className, items]) => ({
+      className,
+      items: this.sortByBalanceDesc(items)
+    }));
+    // Sort groups alphabetically by class name for consistency
+    return groups.sort((a, b) => a.className.localeCompare(b.className));
   }
   
   private updateCachedTotal(): void {

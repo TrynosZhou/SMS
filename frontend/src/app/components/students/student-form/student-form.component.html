@@ -5,7 +5,7 @@
         <span class="icon">👨‍🎓</span>
         {{ isEdit ? 'Edit Student' : 'Register New Student' }}
       </h1>
-      <p class="subtitle">{{ isEdit ? 'Update student information' : 'Fill in the details to register and enroll a new student' }}</p>
+      <p class="subtitle">{{ isEdit ? 'Update student information' : 'Fill in the details to register a new student' }}</p>
     </div>
     <div class="header-actions">
       <button type="button" class="btn btn-secondary" (click)="goBack()">
@@ -132,7 +132,23 @@
           <small class="form-hint">Student's gender</small>
         </div>
 
-        <div class="form-group" *ngIf="!limitedEditMode">
+        <div class="form-group">
+          <label for="gradeLevel">
+            Grade
+          </label>
+          <select
+            id="gradeLevel"
+            [(ngModel)]="selectedGradeLevel"
+            name="gradeLevel"
+            class="form-input">
+            <option value="">Select Grade</option>
+            <option *ngFor="let level of gradeLevels" [value]="level">{{ level }}</option>
+          </select>
+          <small class="form-hint">Populated from Settings → Grades</small>
+        </div>
+
+
+        <div class="form-group" *ngIf="!limitedEditMode && isEdit">
           <label for="studentStatus">
             Student Status
           </label>
@@ -339,58 +355,7 @@
       </div>
     </div>
 
-    <!-- Enrollment Section -->
-    <div class="form-section" *ngIf="!limitedEditMode">
-      <div class="section-header">
-        <h2>
-          <span class="section-icon">📚</span>
-          Class Enrollment
-        </h2>
-        <p class="section-description">Select the class for student enrollment</p>
-      </div>
-
-      <div class="form-group">
-        <label for="classSearch">
-          Class <span class="required">*</span>
-          <span class="badge" *ngIf="student.classId">Selected</span>
-        </label>
-        <div class="search-box">
-          <input 
-            type="text" 
-            id="classSearch"
-            [(ngModel)]="classSearchQuery" 
-            name="classSearch"
-            placeholder="Search classes..."
-            class="search-input"
-            (input)="filterClasses()"
-            [class.error]="studentForm.submitted && !student.classId">
-          <span class="search-icon">🔍</span>
-        </div>
-        <div class="class-selector" *ngIf="filteredClasses.length > 0">
-          <div 
-            *ngFor="let cls of filteredClasses" 
-            class="class-option"
-            [class.selected]="student.classId === cls.id"
-            (click)="selectClass(cls.id)">
-            <div class="class-option-content">
-              <span class="class-icon">📖</span>
-              <div class="class-details">
-                <strong>{{ cls.name }}</strong>
-                <small *ngIf="cls.level">Level: {{ cls.level }}</small>
-              </div>
-              <span class="check-icon" *ngIf="student.classId === cls.id">✓</span>
-            </div>
-          </div>
-        </div>
-        <div class="empty-state" *ngIf="filteredClasses.length === 0 && classes.length > 0">
-          <p>No classes found. Try a different search term.</p>
-        </div>
-        <div class="empty-state" *ngIf="classes.length === 0">
-          <p>No classes available. Please create classes first.</p>
-        </div>
-        <small class="form-hint" *ngIf="!isEdit">Student will be automatically enrolled in the selected class</small>
-      </div>
-    </div>
+    <!-- Enrollment moved to Enroll Student page -->
 
     <!-- Form Actions -->
     <div class="form-actions">

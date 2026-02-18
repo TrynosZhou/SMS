@@ -17,7 +17,7 @@ export class StudentFormComponent implements OnInit {
     lastName: '',
     dateOfBirth: '',
     gender: '',
-    studentStatus: 'Select Status',
+    studentStatus: 'New Student',
     address: '',
     phoneNumber: '',
     contactNumber: '',
@@ -30,6 +30,8 @@ export class StudentFormComponent implements OnInit {
     parentId: '',
     photo: null
   };
+  gradeLevels: string[] = [];
+  selectedGradeLevel: string = '';
   classes: any[] = [];
   filteredClasses: any[] = [];
   classSearchQuery = '';
@@ -167,6 +169,21 @@ export class StudentFormComponent implements OnInit {
         if (prefix) {
           this.studentIdPrefix = prefix.toUpperCase();
         }
+        if (Array.isArray(settings?.classLevels) && settings.classLevels.length > 0) {
+          this.gradeLevels = settings.classLevels;
+        } else {
+          try {
+            const cached = localStorage.getItem('settings_classLevels');
+            if (cached) {
+              const arr = JSON.parse(cached);
+              this.gradeLevels = Array.isArray(arr) ? arr : [];
+            } else {
+              this.gradeLevels = [];
+            }
+          } catch (_) {
+            this.gradeLevels = [];
+          }
+        }
         this.feesSettings = settings?.feesSettings || null;
         this.currencySymbol = typeof settings?.currencySymbol === 'string' ? settings.currencySymbol : '';
         this.recalculateEstimatedFees();
@@ -244,7 +261,7 @@ export class StudentFormComponent implements OnInit {
     const txt = String(value || '').trim().toLowerCase();
     if (txt.includes('existing')) return 'Existing';
     if (txt.includes('new')) return 'New';
-    return 'Existing';
+    return 'New';
   }
 
   private toNumber(value: any): number {
@@ -268,8 +285,8 @@ export class StudentFormComponent implements OnInit {
     const isDayScholar = this.student.studentType === 'Day Scholar';
     const isStaffChild = !!this.student.isStaffChild;
     const isExempted = !!this.student.isExempted;
-    const normalizedStatusText = (this.student.studentStatus || '').toString().trim().toLowerCase();
-    const status = normalizedStatusText.includes('existing') ? 'Existing' : normalizedStatusText.includes('new') ? 'New' : 'Existing';
+    const normalizedStatusText = (this.student.studentStatus || 'New Student').toString().trim().toLowerCase();
+    const status = normalizedStatusText.includes('existing') ? 'Existing' : 'New';
 
     const registrationFee = this.toNumber(this.feesSettings.registrationFee);
     const deskFee = this.toNumber(this.feesSettings.deskFee);
@@ -352,6 +369,7 @@ export class StudentFormComponent implements OnInit {
               : 'Select Status',
           photo: data.photo || null
         };
+        this.selectedGradeLevel = (data as any).grade || (data as any).classLevel || (data as any).gradeLevel || '';
         
         // Set photo preview if photo exists
         if (data.photo) {
@@ -401,6 +419,15 @@ export class StudentFormComponent implements OnInit {
     this.selectedPhoto = null;
     this.photoPreview = null;
     this.student.photo = null;
+  }
+
+  private setSuccess(msg: string, ms: number = 5000) {
+    this.success = msg;
+    setTimeout(() => {
+      if (this.success === msg) {
+        this.success = '';
+      }
+    }, ms);
   }
 
   private calculateAge(dateString: string): number {
@@ -487,12 +514,6 @@ export class StudentFormComponent implements OnInit {
       return;
     }
 
-    if (!this.student.classId) {
-      this.error = 'Please select a class for enrollment';
-      this.submitting = false;
-      return;
-    }
-
     // If DOB is provided, enforce age range 3–13 years
     if (this.student.dateOfBirth) {
       const studentAge = this.calculateAge(this.student.dateOfBirth);
@@ -534,7 +555,7 @@ export class StudentFormComponent implements OnInit {
         });
         return;
       }
-      // Prepare update data - exclude fields that shouldn't be updated
+      // Prepare update data - exclude class enrollment (managed via enroll page)
       const updateData: any = {
         firstName: this.student.firstName,
         lastName: this.student.lastName,
@@ -549,19 +570,18 @@ export class StudentFormComponent implements OnInit {
         isStaffChild: this.student.isStaffChild || false,
         isExempted: this.student.isExempted || false
       };
+      if (this.selectedGradeLevel && this.selectedGradeLevel.trim()) {
+        const g = this.selectedGradeLevel.trim();
+        (updateData as any).grade = g;
+        (updateData as any).classLevel = g;
+      }
 
       // Include phoneNumber if provided
       if (this.student.phoneNumber) {
         updateData.phoneNumber = this.student.phoneNumber;
       }
 
-      // Always include classId - it's required
-      if (!this.student.classId) {
-        this.error = 'Class is required. Students must be enrolled in a class.';
-        this.submitting = false;
-        return;
-      }
-      updateData.classId = this.student.classId;
+      // Class enrollment is handled separately; do not update classId here
 
       // Only include parentId if it exists
       if (this.student.parentId) {
@@ -593,20 +613,54 @@ export class StudentFormComponent implements OnInit {
     } else {
       // For new students, don't send studentNumber (it will be auto-generated)
       const studentData = { ...this.student };
-      studentData.studentStatus = this.normalizeStatusForSubmit(studentData.studentStatus);
+      // For creation, explicitly mark as New (registration) so backend does not require classId
+      (studentData as any).studentStatus = 'New';
       if (studentData.dateOfBirth) {
         studentData.dateOfBirth = this.toISOFromDDMMYYYY(String(studentData.dateOfBirth));
       }
+      if (this.selectedGradeLevel && this.selectedGradeLevel.trim()) {
+        const g = this.selectedGradeLevel.trim();
+        (studentData as any).grade = g;
+        (studentData as any).classLevel = g;
+      }
       delete studentData.studentNumber; // Remove studentNumber, it will be auto-generated
+      // Remove fields that should not be sent or are empty
+      if (!studentData.classId) {
+        delete (studentData as any).classId;
+      }
+      if (!studentData.parentId) {
+        delete (studentData as any).parentId;
+      }
+      if (!studentData.phoneNumber) {
+        delete (studentData as any).phoneNumber;
+      }
+      if (!studentData.contactNumber) {
+        delete (studentData as any).contactNumber;
+      }
+      if (!studentData.address) {
+        delete (studentData as any).address;
+      }
+      if (!this.selectedPhoto && !studentData.photo) {
+        delete (studentData as any).photo;
+      }
+      // Normalize gender to expected backend values (Male/Female)
+      const g = String(studentData.gender || '').trim().toLowerCase();
+      if (g === 'm' || g === 'male') studentData.gender = 'Male';
+      else if (g === 'f' || g === 'female') studentData.gender = 'Female';
       
       this.studentService.createStudent(studentData, this.selectedPhoto || undefined).subscribe({
         next: (response: any) => {
-          this.success = 'Record saved successfully';
+          this.setSuccess('Record saved successfully');
           this.submitting = false;
           setTimeout(() => this.router.navigate(['/students']), 1500);
         },
         error: (err: any) => {
-          this.error = err.error?.message || 'Failed to create student';
+          const msg = err?.error?.message || err?.message || '';
+          if (String(msg).toLowerCase().includes('class id') && String(msg).toLowerCase().includes('enroll')) {
+            this.error = 'Registration does not require class. Please use Enroll Student later.';
+          } else {
+            this.error = msg || 'Failed to create student';
+          }
           this.submitting = false;
           setTimeout(() => this.error = '', 5000);
         }

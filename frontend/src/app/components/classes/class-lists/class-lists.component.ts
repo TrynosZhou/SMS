@@ -416,5 +416,55 @@ export class ClassListsComponent implements OnInit {
       this.downloadingPdf = false;
     }
   }
+
+  deleteStudent(id: string, studentName: string, studentNumber: string) {
+    if (!this.isAdmin) {
+      return;
+    }
+    const displayName = (studentName || '').trim() || 'Student';
+    const displayNumber = studentNumber || 'N/A';
+    const confirmed = confirm(
+      `Are you sure you want to delete "${displayName}" (${displayNumber})?\n` +
+      `This will also delete related marks, invoices and the associated user account.\n` +
+      `This action cannot be undone.`
+    );
+    if (!confirmed) {
+      return;
+    }
+    this.loading = true;
+    this.error = '';
+    this.success = '';
+    this.studentService.deleteStudent(id).subscribe({
+      next: (data: any) => {
+        this.success = data?.message || 'Student deleted successfully';
+        this.loading = false;
+        // Reload the list for the current class/term
+        this.loadStudents();
+        setTimeout(() => {
+          if (this.success) this.success = '';
+        }, 5000);
+      },
+      error: (err: any) => {
+        console.error('Error deleting student:', err);
+        let errorMessage = 'Failed to delete student';
+        if (err?.status === 0 || err?.status === undefined) {
+          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+        } else if (err?.error) {
+          if (typeof err.error === 'string') {
+            errorMessage = err.error;
+          } else if (err.error.message) {
+            errorMessage = err.error.message;
+          }
+        } else if (err?.message) {
+          errorMessage = err.message;
+        }
+        this.error = errorMessage;
+        this.loading = false;
+        setTimeout(() => {
+          if (this.error) this.error = '';
+        }, 5000);
+      }
+    });
+  }
 }
 

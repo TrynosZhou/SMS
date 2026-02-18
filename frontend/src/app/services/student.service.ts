@@ -14,38 +14,22 @@ export class StudentService {
   constructor(private http: HttpClient) { }
 
   getStudents(classId?: string): Observable<any[]> {
-    const params: any = {};
-    if (classId) {
-      params.classId = classId;
-    }
-    return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/students`, { params }).pipe(
-      map(response => {
-        // Ensure response is valid before processing
-        if (!response) return [];
-        if (Array.isArray(response)) {
-          return response;
+    // Use paginated endpoint by default to avoid 400 from backends that require page/limit
+    const page = 1;
+    const limit = 1000;
+    return this.getStudentsPaginated({ classId, page, limit }).pipe(
+      map(resp => {
+        if (Array.isArray((resp as any)?.data)) {
+          return (resp as any).data;
         }
-        if (typeof response === 'object' && response !== null && Array.isArray(response.data)) {
-          return response.data;
-        }
-        // If response is an error object (has message but no data), return empty array
-        if (typeof response === 'object' && response !== null && 'message' in response && !('data' in response)) {
-          return [];
+        if (Array.isArray(resp as any)) {
+          return resp as any;
         }
         return [];
       }),
-      map(data => {
-        if (!Array.isArray(data)) {
-          console.error('ERROR: Expected array but got:', typeof data, data);
-          return [];
-        }
-        return data;
-      }),
       catchError((error: any) => {
-        // Always return empty array on any error (401, 500, network, etc.)
-        // Only log if it's not a connection error (backend not running)
         if (error.status !== 0) {
-          console.error('Error loading students:', error);
+          console.error('Error loading students (default paginated):', error);
         }
         return of([]);
       })

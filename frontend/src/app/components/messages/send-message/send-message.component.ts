@@ -129,7 +129,8 @@ export class SendMessageComponent {
           .subscribe({
             next: (res: any) => {
               this.loading = false;
-              this.success = res?.message || 'Message sent to all parents.';
+              const count = res?.parentCount ?? res?.recipientCount ?? '';
+              this.success = res?.message || (count ? `Message sent to ${count} parent(s).` : 'Message sent to all parents.');
               this.resetForm();
             },
             error: (err: any) => {
@@ -144,7 +145,8 @@ export class SendMessageComponent {
           .subscribe({
             next: (res: any) => {
               this.loading = false;
-              this.success = res?.message || 'Message sent to all parents.';
+              const count = res?.parentCount ?? res?.recipientCount ?? '';
+              this.success = res?.message || (count ? `Message sent to ${count} parent(s).` : 'Message sent to all parents.');
               this.resetForm();
             },
             error: (err: any) => {
@@ -164,7 +166,8 @@ export class SendMessageComponent {
           .subscribe({
             next: (res: any) => {
               this.loading = false;
-              this.success = res?.message || 'Message sent to selected parent(s).';
+              const sent = res?.sent ?? ids.length;
+              this.success = res?.message || `Message sent to ${sent} selected parent(s).`;
               this.resetForm();
             },
             error: (err: any) => {
@@ -179,7 +182,8 @@ export class SendMessageComponent {
           .subscribe({
             next: (res: any) => {
               this.loading = false;
-              this.success = res?.message || 'Message sent to selected parent(s).';
+              const sent = res?.sent ?? ids.length;
+              this.success = res?.message || `Message sent to ${sent} selected parent(s).`;
               this.resetForm();
             },
             error: (err: any) => {
