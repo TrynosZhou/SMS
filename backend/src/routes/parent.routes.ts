@@ -50,7 +50,13 @@ router.get(
 
 router.get(
   '/admin/parents',
-  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT),
+  adminListParents
+);
+
+router.get(
+  '/staff/parents',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT),
   adminListParents
 );
 
@@ -79,4 +85,3 @@ router.delete(
 );
 
 export default router;
-

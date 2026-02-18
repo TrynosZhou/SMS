@@ -1,0 +1,10 @@
+:host { display: block; }
+.outgoing-container { display: flex; flex-direction: column; gap: 12px; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.search { display: flex; align-items: center; gap: 8px; }
+.content { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
+.list ul { list-style: none; padding: 0; margin: 0; }
+.list li { padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; }
+.subject { font-weight: 600; }
+.meta { color: #6c757d; font-size: 12px; }
+.detail .body { white-space: pre-wrap; margin-top: 8px; }

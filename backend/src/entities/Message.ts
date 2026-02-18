@@ -38,5 +38,8 @@ export class Message {
 
   @Column({ default: false })
   isRead: boolean;
+
+  @Column({ type: 'text', nullable: true })
+  attachments: string | null;
 }
 

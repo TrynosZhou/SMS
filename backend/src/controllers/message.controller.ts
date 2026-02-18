@@ -1,9 +1,10 @@
 import { Response } from 'express';
+import { In } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { Student } from '../entities/Student';
 import { Parent } from '../entities/Parent';
 import { Teacher } from '../entities/Teacher';
-import { User } from '../entities/User';
+import { User, UserRole } from '../entities/User';
 import { Settings } from '../entities/Settings';
 import { Message } from '../entities/Message';
 import { AuthRequest } from '../middleware/auth';
@@ -225,6 +226,75 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const sendMessageToSpecificParents = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const user = req.user;
+    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+      return res.status(403).json({ message: 'Access denied. Staff role required.' });
+    }
+    let { subject, message, parentIds } = req.body as { subject?: string; message?: string; parentIds?: string[] | string };
+    if (!subject || !subject.trim()) {
+      return res.status(400).json({ message: 'Subject is required' });
+    }
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'Message content is required' });
+    }
+    // Normalize parentIds from various field names and encodings
+    const rawIds: any = parentIds ?? (req.body as any).parent_ids ?? (req.body as any).parents ?? (req.body as any).parentIds;
+    let ids: string[] = [];
+    if (Array.isArray(rawIds)) {
+      ids = rawIds as string[];
+    } else if (typeof rawIds === 'string') {
+      // Could be comma-separated
+      ids = rawIds.split(',').map(s => s.trim()).filter(Boolean);
+    } else {
+      // Fallback: collect from repeated fields in form-data captured by body parser (e.g., parentIds[0], parentIds[1])
+      ids = Object.keys(req.body)
+        .filter(k => k.toLowerCase().includes('parent') && typeof (req.body as any)[k] === 'string')
+        .map(k => ((req.body as any)[k] as string))
+        .filter(v => /^[a-f0-9-]{8,}$/.test(v));
+    }
+    if (ids.length === 0) {
+      return res.status(400).json({ message: 'At least one parentId is required' });
+    }
+    const parentRepository = AppDataSource.getRepository(Parent);
+    const messageRepository = AppDataSource.getRepository(Message);
+    const parents = await parentRepository.findBy({ id: In(ids) });
+    if (parents.length === 0) {
+      return res.status(404).json({ message: 'No matching parents found for provided IDs' });
+    }
+    // Prepare attachments, if any
+    const files = (req as any).files as Express.Multer.File[] | undefined;
+    let attachmentsJson: string | null = null;
+    if (files && files.length > 0) {
+      const urls = files.map(f => `/uploads/parent-messages/${f.filename}`);
+      attachmentsJson = JSON.stringify(urls);
+    }
+    const records = parents.map(p => messageRepository.create({
+      subject: subject!.trim(),
+      message: message!.trim(),
+      recipients: 'parent',
+      senderId: user.id,
+      senderName: user.email || 'School Staff',
+      parentId: p.id,
+      isRead: false,
+      attachments: attachmentsJson
+    }));
+    await messageRepository.save(records);
+    res.json({
+      success: true,
+      sent: records.length,
+      parentCount: parents.length
+    });
+  } catch (error: any) {
+    console.error('Error sending message to specific parents:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
 export const getParentMessages = async (req: AuthRequest, res: Response) => {
   try {
     if (!AppDataSource.isInitialized) {
@@ -266,6 +336,324 @@ export const getParentMessages = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error fetching parent messages:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const getStaffMessages = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const user = req.user;
+    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+      return res.status(403).json({ message: 'Access denied. Staff role required.' });
+    }
+
+    const messageRepository = AppDataSource.getRepository(Message);
+    const parentRepository = AppDataSource.getRepository(Parent);
+
+    const box = (req.query.box as string | undefined)?.toLowerCase();
+
+    let messages: Message[] = [];
+    if ((user.role === 'admin' || user.role === 'superadmin') && box && ['accountant', 'admin', 'teacher'].includes(box)) {
+      const userRepo = AppDataSource.getRepository(User);
+      const roleMap: Record<string, UserRole> = {
+        accountant: UserRole.ACCOUNTANT,
+        admin: UserRole.ADMIN,
+        teacher: UserRole.TEACHER
+      };
+      const requestedRole = roleMap[box];
+      const senders = await userRepo.find({ where: { role: requestedRole } });
+      const senderIds = senders.map(u => u.id);
+      if (senderIds.length === 0) {
+        return res.json([]);
+      }
+      messages = await messageRepository.find({
+        where: senderIds.map(id => ({ senderId: id })),
+        order: { createdAt: 'DESC' }
+      });
+    } else {
+      messages = await messageRepository.find({
+        where: { senderId: user.id },
+        order: { createdAt: 'DESC' }
+      });
+    }
+
+    const parentIds = Array.from(new Set(messages.map(m => m.parentId).filter(Boolean) as string[]));
+    let parentsById: Record<string, Parent> = {};
+    if (parentIds.length > 0) {
+      const parents = await parentRepository.findBy({ id: In(parentIds) });
+      parentsById = parents.reduce<Record<string, Parent>>((acc, p) => {
+        acc[p.id] = p;
+        return acc;
+      }, {});
+    }
+
+    const result = messages.map(msg => {
+      const parent = msg.parentId ? parentsById[msg.parentId] : undefined;
+      return {
+        id: msg.id,
+        subject: msg.subject,
+        message: msg.message,
+        senderName: msg.senderName,
+        recipientName: parent ? `${parent.firstName} ${parent.lastName}` : undefined,
+        parentId: msg.parentId || undefined,
+        createdAt: msg.createdAt,
+        isRead: msg.isRead
+      };
+    });
+
+    res.json({ messages: result });
+  } catch (error: any) {
+    console.error('Error fetching staff messages:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const sendParentMessage = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const user = req.user;
+    if (!user || user.role !== 'parent') {
+      return res.status(403).json({ message: 'Access denied. Parent role required.' });
+    }
+    const { subject, message, recipient } = req.body as { subject?: string; message?: string; recipient?: string };
+    if (!subject || !subject.trim()) {
+      return res.status(400).json({ message: 'Subject is required' });
+    }
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'Message content is required' });
+    }
+    const allowedRecipients = ['admin', 'accountant'];
+    if (!recipient || !allowedRecipients.includes(recipient.toLowerCase())) {
+      return res.status(400).json({ message: 'Recipient must be admin or accountant' });
+    }
+    const parentRepository = AppDataSource.getRepository(Parent);
+    const messageRepository = AppDataSource.getRepository(Message);
+    const parent = await parentRepository.findOne({ where: { userId: user.id } });
+    if (!parent) {
+      return res.status(404).json({ message: 'Parent profile not found' });
+    }
+    const record = messageRepository.create({
+      subject: subject.trim(),
+      message: message.trim(),
+      recipients: recipient.toLowerCase(),
+      senderId: user.id,
+      senderName: `${parent.firstName || ''} ${parent.lastName || ''}`.trim() || user.email || 'Parent',
+      parentId: parent.id,
+      isRead: false,
+      attachments: Array.isArray((req as any).files) && (req as any).files.length > 0
+        ? JSON.stringify(((req as any).files as any[]).map((f: any) => `/uploads/parent-messages/${f.filename}`))
+        : null
+    });
+    const saved = await messageRepository.save(record);
+    res.json({
+      success: true,
+      message: 'Message sent successfully',
+      id: saved.id,
+      createdAt: saved.createdAt,
+      attachments: saved.attachments ? JSON.parse(saved.attachments) : []
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const getParentOutbox = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const user = req.user;
+    if (!user || user.role !== 'parent') {
+      return res.status(403).json({ message: 'Access denied. Parent role required.' });
+    }
+    const messageRepository = AppDataSource.getRepository(Message);
+    const messages = await messageRepository.find({
+      where: { senderId: user.id },
+      order: { createdAt: 'DESC' }
+    });
+    res.json({
+      messages: messages.map(m => ({
+        id: m.id,
+        subject: m.subject,
+        message: m.message,
+        recipient: m.recipients,
+        createdAt: m.createdAt,
+        attachments: m.attachments ? JSON.parse(m.attachments) : []
+      }))
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const getParentOutboxById = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const user = req.user;
+    if (!user || user.role !== 'parent') {
+      return res.status(403).json({ message: 'Access denied. Parent role required.' });
+    }
+    const { id } = req.params as { id: string };
+    const messageRepository = AppDataSource.getRepository(Message);
+    const msg = await messageRepository.findOne({ where: { id } });
+    if (!msg || msg.senderId !== user.id) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+    res.json({
+      id: msg.id,
+      subject: msg.subject,
+      message: msg.message,
+      recipient: msg.recipients,
+      createdAt: msg.createdAt,
+      attachments: msg.attachments ? JSON.parse(msg.attachments) : []
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const getIncomingFromParents = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const user = req.user;
+    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+      return res.status(403).json({ message: 'Access denied. Staff role required.' });
+    }
+    const boxRaw = (req.query.box as string | undefined)?.toLowerCase();
+    const box = boxRaw && (boxRaw === 'admin' || boxRaw === 'accountant')
+      ? boxRaw
+      : (user.role === 'accountant' ? 'accountant' : 'admin');
+    const messageRepository = AppDataSource.getRepository(Message);
+    const parentRepository = AppDataSource.getRepository(Parent);
+    const messages = await messageRepository.find({
+      where: { recipients: box },
+      order: { createdAt: 'DESC' }
+    });
+    const fromParents = messages.filter(m => !!m.parentId && !!m.senderId);
+    const parentIds = Array.from(new Set(fromParents.map(m => m.parentId!).filter(Boolean)));
+    let parentsById: Record<string, Parent> = {};
+    if (parentIds.length > 0) {
+      const parents = await parentRepository.findBy({ id: In(parentIds) });
+      parentsById = parents.reduce<Record<string, Parent>>((acc, p) => {
+        acc[p.id] = p;
+        return acc;
+      }, {});
+    }
+    const result = fromParents.map(m => {
+      const parent = m.parentId ? parentsById[m.parentId] : undefined;
+      return {
+        id: m.id,
+        subject: m.subject,
+        message: m.message,
+        senderName: m.senderName,
+        parentName: parent ? `${parent.firstName} ${parent.lastName}` : 'Parent',
+        createdAt: m.createdAt,
+        attachments: m.attachments ? JSON.parse(m.attachments) : []
+      };
+    });
+    res.json({ messages: result });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const markIncomingRead = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const user = req.user;
+    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+      return res.status(403).json({ message: 'Access denied. Staff role required.' });
+    }
+    const { id } = req.params as { id: string };
+    const repo = AppDataSource.getRepository(Message);
+    const msg = await repo.findOne({ where: { id } });
+    if (!msg) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+    msg.isRead = true;
+    await repo.save(msg);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const markIncomingUnread = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const user = req.user;
+    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+      return res.status(403).json({ message: 'Access denied. Staff role required.' });
+    }
+    const { id } = req.params as { id: string };
+    const repo = AppDataSource.getRepository(Message);
+    const msg = await repo.findOne({ where: { id } });
+    if (!msg) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+    msg.isRead = false;
+    await repo.save(msg);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const replyToIncomingMessage = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const user = req.user;
+    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+      return res.status(403).json({ message: 'Access denied. Staff role required.' });
+    }
+    const { id } = req.params as { id: string };
+    const { subject, message } = req.body as { subject?: string; message?: string };
+    if (!subject || !subject.trim()) {
+      return res.status(400).json({ message: 'Subject is required' });
+    }
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'Message content is required' });
+    }
+    const repo = AppDataSource.getRepository(Message);
+    const original = await repo.findOne({ where: { id } });
+    if (!original || !original.parentId) {
+      return res.status(404).json({ message: 'Original parent message not found' });
+    }
+    const record = repo.create({
+      subject: subject.trim(),
+      message: message.trim(),
+      recipients: 'parent',
+      senderId: user.id,
+      senderName: user.email || 'School Staff',
+      parentId: original.parentId,
+      isRead: false,
+      attachments: Array.isArray((req as any).files) && (req as any).files.length > 0
+        ? JSON.stringify(((req as any).files as any[]).map((f: any) => `/uploads/parent-messages/${f.filename}`))
+        : null
+    });
+    const saved = await repo.save(record);
+    res.json({
+      success: true,
+      id: saved.id,
+      createdAt: saved.createdAt
+    });
+  } catch (error: any) {
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

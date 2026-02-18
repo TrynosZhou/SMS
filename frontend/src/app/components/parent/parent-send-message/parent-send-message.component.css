@@ -1,0 +1,6 @@
+:host { display: block; }
+.form-grid { max-width: 720px; }
+.form-row { margin-bottom: 12px; display: flex; flex-direction: column; }
+label { font-weight: 600; margin-bottom: 6px; }
+input, select, textarea { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+.form-actions { margin-top: 16px; }

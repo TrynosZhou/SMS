@@ -1,0 +1,64 @@
+<div class="parent-dashboard-container">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>Parent Portal</h2>
+      <p class="user-info">{{ parentName }}</p>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="menu-section">
+        <ul class="menu-list">
+          <li><a routerLink="/parent/dashboard" routerLinkActive="active"><span class="menu-icon">📊</span> Dashboard</a></li>
+          <li><a routerLink="/parent/inbox" routerLinkActive="active"><span class="menu-icon">📧</span> My Inbox</a></li>
+          <li><a routerLink="/parent/send-message" routerLinkActive="active"><span class="menu-icon">✉️</span> Send Message</a></li>
+          <li><a routerLink="/parent/outbox" routerLinkActive="active"><span class="menu-icon">📤</span> Outbox</a></li>
+        </ul>
+      </div>
+      <div class="menu-section logout-section">
+        <ul class="menu-list">
+          <li><a (click)="logout()" style="cursor: pointer; color: #dc3545;"><span class="menu-icon">🚪</span> Logout</a></li>
+        </ul>
+      </div>
+    </nav>
+  </aside>
+  <main class="main-content">
+    <div class="inbox-header">
+      <h1>✉️ Send Message</h1>
+      <p class="welcome-text">Send a message to the school</p>
+    </div>
+    <div class="alert" *ngIf="error" style="color: #dc3545; font-weight: bold;">{{ error }}</div>
+    <div class="alert" *ngIf="success" style="color: #28a745; font-weight: bold;">{{ success }}</div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label for="recipient">Recipient</label>
+        <select id="recipient" [(ngModel)]="recipient">
+          <option value="admin">Administrator</option>
+          <option value="accountant">Accountant</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="subject">Subject</label>
+        <input id="subject" type="text" [(ngModel)]="subject" placeholder="Enter subject" />
+      </div>
+      <div class="form-row">
+        <label for="body">Message</label>
+        <textarea id="body" rows="8" [(ngModel)]="body" placeholder="Type your message"></textarea>
+      </div>
+      <div class="form-row">
+        <label for="files">Attachments (optional)</label>
+        <input id="files" type="file" multiple (change)="onFileChange($event)" />
+        <div class="attachments" *ngIf="attachments.length">
+          <div *ngFor="let f of attachments; let i = index">
+            {{ f.name }} ({{ f.size }} bytes)
+            <button type="button" (click)="removeAttachment(i)">Remove</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" [disabled]="!canSend() || loading" (click)="send()">
+          <span *ngIf="!loading">Send</span>
+          <span *ngIf="loading">Sending...</span>
+        </button>
+      </div>
+    </div>
+  </main>
+</div>

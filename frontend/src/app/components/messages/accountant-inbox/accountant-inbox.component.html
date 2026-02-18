@@ -1,0 +1,41 @@
+<div class="inbox-container">
+  <div class="inbox-header">
+    <h1>My Inbox</h1>
+    <p class="welcome-text">Messages from parents</p>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" [(ngModel)]="query" (ngModelChange)="applyFilter()" placeholder="Search by subject, sender, or content..." />
+  </div>
+
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <div *ngIf="loading" class="loading-message">Loading messages...</div>
+
+  <div *ngIf="!loading && messages.length === 0" class="empty-state">
+    <div class="empty-state-content">
+      <h2>No messages yet</h2>
+      <p>When parents send messages to accounts, they will appear here.</p>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && messages.length > 0" class="messages-section">
+    <div *ngFor="let m of filtered" class="message-card">
+      <div class="message-header">
+        <h3>{{ m.subject }}</h3>
+        <span class="message-date">{{ formatDate(m.createdAt) }}</span>
+      </div>
+      <div class="message-content">
+        <p>{{ m.message }}</p>
+        <div class="attachments" *ngIf="m.attachments && m.attachments.length">
+          <div class="attachment" *ngFor="let a of m.attachments">
+            <a [href]="a.url" target="_blank">📎 {{ a.name || 'Attachment' }}</a>
+          </div>
+        </div>
+      </div>
+      <div class="message-footer">
+        <span class="message-sender">From: {{ m.senderName || 'Parent' }}</span>
+      </div>
+    </div>
+  </div>
+</div>

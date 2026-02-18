@@ -1,0 +1,94 @@
+<div class="incoming-container">
+  <div class="header">
+    <div class="title-wrap">
+      <h1>Incoming from Parents</h1>
+      <span class="badge" title="Unread">{{ unreadCount() }}</span>
+    </div>
+    <div class="controls">
+      <input type="text" placeholder="Search..." [(ngModel)]="query" (input)="applyFilterAndPaginate()" />
+      <select [(ngModel)]="filterMode" (change)="applyFilterAndPaginate()">
+        <option value="all">All</option>
+        <option value="unread">Unread</option>
+        <option value="read">Read</option>
+      </select>
+      <select [(ngModel)]="sortMode" (change)="applyFilterAndPaginate()">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+      </select>
+      <label class="toggle">
+        <input type="checkbox" [(ngModel)]="autoRefresh" (change)="setupAutoRefresh()" />
+        <span>Auto refresh</span>
+      </label>
+      <button class="btn" (click)="load()">Refresh</button>
+    </div>
+  </div>
+  <div class="alert" *ngIf="error" style="color:#dc3545;font-weight:bold">{{ error }}</div>
+  <div class="bulkbar" *ngIf="selectedIds.size > 0">
+    <span>{{ selectedIds.size }} selected</span>
+    <button class="btn" (click)="bulkMarkRead()">Mark Read</button>
+    <button class="btn" (click)="bulkMarkUnread()">Mark Unread</button>
+    <button class="btn" (click)="clearSelection()">Clear</button>
+  </div>
+  <div class="content">
+    <div class="list">
+      <div class="empty" *ngIf="!loading && paged.length === 0">No messages</div>
+      <ul *ngIf="paged.length > 0">
+        <li *ngFor="let m of paged" (click)="open(m)" [class.unread]="!m.isRead">
+          <input type="checkbox" (click)="$event.stopPropagation()" [checked]="isSelected(m.id)" (change)="toggleId(m.id)" />
+          <div class="avatar">{{ (m.parentName || m.senderName || 'P').slice(0,1).toUpperCase() }}</div>
+          <div class="subject">
+            <span class="subj-text">{{ m.subject }}</span>
+            <span class="meta">From: {{ m.parentName || m.senderName }}</span>
+          </div>
+          <div class="time">{{ timeAgo(m.createdAt) }}</div>
+          <span class="unread-dot" *ngIf="!m.isRead">•</span>
+        </li>
+      </ul>
+      <div class="paginator" *ngIf="totalPages() > 1">
+        <button class="btn" (click)="prevPage()" [disabled]="currentPage === 1">Prev</button>
+        <span>Page {{ currentPage }} / {{ totalPages() }}</span>
+        <button class="btn" (click)="nextPage()" [disabled]="currentPage === totalPages()">Next</button>
+      </div>
+    </div>
+    <div class="detail" *ngIf="selected">
+      <h2>{{ selected.subject }}</h2>
+      <div class="meta">From: {{ selected.parentName || selected.senderName }} • {{ formatDate(selected.createdAt) }}</div>
+      <div class="body">{{ selected.message }}</div>
+      <div class="attachments" *ngIf="selected.attachments && selected.attachments.length">
+        <h3>Attachments</h3>
+        <ul>
+          <li *ngFor="let a of selected.attachments">
+            <a [href]="a" target="_blank" rel="noopener">Download</a>
+          </li>
+        </ul>
+      </div>
+      <div class="actions">
+        <button class="btn" (click)="markRead()">Mark as Read</button>
+        <button class="btn" (click)="markUnread()">Mark as Unread</button>
+        <button class="btn btn-primary" (click)="toggleReply()">{{ replying ? 'Cancel' : 'Reply' }}</button>
+      </div>
+      <div class="reply-panel" *ngIf="replying">
+        <div class="form-row">
+          <label>Subject</label>
+          <input type="text" [(ngModel)]="replySubject" />
+        </div>
+        <div class="form-row">
+          <label>Message</label>
+          <textarea rows="6" [(ngModel)]="replyBody"></textarea>
+        </div>
+        <div class="form-row">
+          <label>Attachments</label>
+          <input type="file" multiple (change)="onReplyFilesChange($event)" />
+          <div *ngIf="replyFiles.length">
+            <div *ngFor="let f of replyFiles; let i = index">
+              {{ f.name }} <button type="button" (click)="removeReplyFile(i)">Remove</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" [disabled]="!canSendReply()" (click)="sendReply()">Send Reply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

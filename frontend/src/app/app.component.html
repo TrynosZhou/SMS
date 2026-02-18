@@ -223,6 +223,33 @@
         </div>
       </div>
 
+      <!-- Messages -->
+      <div class="sidebar-menu" *ngIf="isAccountant() || isAdmin() || isSuperAdmin()">
+        <div class="sidebar-menu-header" (click)="toggleMenu('messages')">
+          <span class="sidebar-icon">✉️</span>
+          <span class="sidebar-text">Messages</span>
+          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('messages')">▼</span>
+        </div>
+        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('messages')">
+          <a routerLink="/messages/send" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-icon">📨</span>
+            <span class="sidebar-text">Send Message</span>
+          </a>
+          <a routerLink="/messages/inbox" routerLinkActive="active" class="sidebar-subitem" *ngIf="!isAccountant()">
+            <span class="sidebar-icon">📥</span>
+            <span class="sidebar-text">My Inbox</span>
+          </a>
+          <a routerLink="/messages/incoming" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-icon">📬</span>
+            <span class="sidebar-text">Incoming from Parents</span>
+          </a>
+          <a routerLink="/messages/outgoing" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAccountant()">
+            <span class="sidebar-icon">📤</span>
+            <span class="sidebar-text">Outgoing messages</span>
+          </a>
+        </div>
+      </div>
+
       <!-- Logistics Management -->
       <div class="sidebar-menu" *ngIf="isAdmin() || isSuperAdmin()">
         <div class="sidebar-menu-header" (click)="toggleMenu('logisticsManagement')">

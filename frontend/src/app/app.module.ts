@@ -57,6 +57,12 @@ import { SafeArrayPipe } from './pipes/safe-array.pipe';
 import { UserManualComponent } from './components/user-manual/user-manual.component';
 import { MarksProgressComponent } from './components/exams/marks-progress/marks-progress.component';
 import { BalanceEnquiryComponent } from './components/finance/balance-enquiry/balance-enquiry.component';
+import { SendMessageComponent } from './components/messages/send-message/send-message.component';
+import { AccountantInboxComponent } from './components/messages/accountant-inbox/accountant-inbox.component';
+import { ParentSendMessageComponent } from './components/parent/parent-send-message/parent-send-message.component';
+import { ParentOutboxComponent } from './components/parent/parent-outbox/parent-outbox.component';
+import { IncomingFromParentsComponent } from './components/messages/incoming-from-parents/incoming-from-parents.component';
+import { OutgoingMessagesComponent } from './components/messages/outgoing-messages/outgoing-messages.component';
 
 @NgModule({
   declarations: [
@@ -110,7 +116,13 @@ import { BalanceEnquiryComponent } from './components/finance/balance-enquiry/ba
     SafeArrayPipe,
     UserManualComponent,
     MarksProgressComponent,
-    BalanceEnquiryComponent
+    BalanceEnquiryComponent,
+    SendMessageComponent,
+    AccountantInboxComponent,
+    ParentSendMessageComponent,
+    ParentOutboxComponent,
+    IncomingFromParentsComponent,
+    OutgoingMessagesComponent
   ],
   imports: [
     BrowserModule,

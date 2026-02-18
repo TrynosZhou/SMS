@@ -38,6 +38,10 @@ export class ParentService {
     return this.http.get(`${this.apiUrl}/parent/admin/parents`);
   }
 
+  getAllParentsStaff(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/parent/staff/parents`);
+  }
+
   adminLinkStudentToParent(parentId: string, studentId: string, relationshipType: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/parent/admin/link-student`, {
       parentId,

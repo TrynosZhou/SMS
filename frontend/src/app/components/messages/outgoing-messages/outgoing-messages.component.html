@@ -1,0 +1,29 @@
+<div class="outgoing-container">
+  <div class="header">
+    <h1>Outgoing Messages</h1>
+    <div class="search">
+      <input type="text" placeholder="Search subject, recipient, content..." [(ngModel)]="query" (input)="applyFilter()" />
+      <button class="btn" (click)="load()">Refresh</button>
+    </div>
+  </div>
+
+  <div class="alert" *ngIf="error" style="color:#dc3545;font-weight:bold">{{ error }}</div>
+  <div *ngIf="loading">Loading...</div>
+
+  <div class="content" *ngIf="!loading">
+    <div class="list">
+      <div class="empty" *ngIf="filtered.length === 0">No sent messages</div>
+      <ul *ngIf="filtered.length > 0">
+        <li *ngFor="let m of filtered" (click)="open(m)">
+          <div class="subject">{{ m.subject }}</div>
+          <div class="meta">To: {{ m.recipientName || 'Parent(s)' }} • {{ formatDate(m.createdAt) }}</div>
+        </li>
+      </ul>
+    </div>
+    <div class="detail" *ngIf="selected">
+      <h2>{{ selected.subject }}</h2>
+      <div class="meta">To: {{ selected.recipientName || 'Parent(s)' }} • {{ formatDate(selected.createdAt) }}</div>
+      <div class="body">{{ selected.message }}</div>
+    </div>
+  </div>
+</div>

@@ -51,6 +51,12 @@ import { ModuleAccessGuard } from './guards/module-access.guard';
 import { SuperAdminGuard } from './guards/super-admin.guard';
 import { SplashComponent } from './components/splash/splash.component';
 import { MarksProgressComponent } from './components/exams/marks-progress/marks-progress.component';
+import { SendMessageComponent } from './components/messages/send-message/send-message.component';
+import { AccountantInboxComponent } from './components/messages/accountant-inbox/accountant-inbox.component';
+import { ParentSendMessageComponent } from './components/parent/parent-send-message/parent-send-message.component';
+import { ParentOutboxComponent } from './components/parent/parent-outbox/parent-outbox.component';
+import { IncomingFromParentsComponent } from './components/messages/incoming-from-parents/incoming-from-parents.component';
+import { OutgoingMessagesComponent } from './components/messages/outgoing-messages/outgoing-messages.component';
 
 const routes: Routes = [
   { path: '', component: SplashComponent },
@@ -60,11 +66,17 @@ const routes: Routes = [
   { path: 'parent/dashboard', component: ParentDashboardComponent, canActivate: [AuthGuard] },
   { path: 'teacher/dashboard', component: TeacherDashboardComponent, canActivate: [AuthGuard] },
   { path: 'parent/inbox', component: ParentInboxComponent, canActivate: [AuthGuard] },
+  { path: 'parent/send-message', component: ParentSendMessageComponent, canActivate: [AuthGuard] },
+  { path: 'parent/outbox', component: ParentOutboxComponent, canActivate: [AuthGuard] },
   { path: 'parent/link-students', component: LinkStudentsComponent, canActivate: [AuthGuard] },
   { path: 'parent/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'teacher/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'accountant/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'accountant/change_password', component: ManageAccountComponent, canActivate: [AuthGuard] },
+  { path: 'messages/send', component: SendMessageComponent, canActivate: [AuthGuard] },
+  { path: 'messages/inbox', component: AccountantInboxComponent, canActivate: [AuthGuard] },
+  { path: 'messages/incoming', component: IncomingFromParentsComponent, canActivate: [AuthGuard] },
+  { path: 'messages/outgoing', component: OutgoingMessagesComponent, canActivate: [AuthGuard] },
   { path: 'teacher/record-book', component: RecordBookComponent, canActivate: [AuthGuard] },
   { path: 'teacher/my-classes', component: MyClassesComponent, canActivate: [AuthGuard] },
   { path: 'admin/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
