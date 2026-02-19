@@ -86,7 +86,8 @@ export class SettingsComponent implements OnInit {
         invoices: true,
         finance: true,
         dashboard: true,
-        settings: false
+        settings: false,
+        logistics: true
       },
       admin: {
         students: true,
@@ -499,7 +500,7 @@ export class SettingsComponent implements OnInit {
               reportCards: false,
             attendance: false,
             classes: false,
-            logistics: false
+            logistics: true
             };
           } else {
             if (this.settings.moduleAccess.accountant.exams === undefined) {
@@ -515,7 +516,7 @@ export class SettingsComponent implements OnInit {
             this.settings.moduleAccess.accountant.classes = false;
           }
           if (this.settings.moduleAccess.accountant.logistics === undefined) {
-            this.settings.moduleAccess.accountant.logistics = false;
+            this.settings.moduleAccess.accountant.logistics = true;
           }
           }
           if (!this.settings.moduleAccess.admin) {

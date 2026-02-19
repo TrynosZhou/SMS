@@ -128,7 +128,7 @@ export class ModuleAccessService {
       reportCards: false,
       attendance: false,
       classes: false,
-      logistics: false
+      logistics: true
     },
     admin: {
       students: true,
@@ -218,6 +218,11 @@ export class ModuleAccessService {
     if (!user) return false;
 
     const role = user.role.toLowerCase();
+
+    // Ensure accountant can always access Logistics (Transport & Dining Hall)
+    if (role === 'accountant' && moduleName === 'logistics') {
+      return true;
+    }
 
     // Hard restrictions for accountant role regardless of settings
     if (role === 'accountant') {

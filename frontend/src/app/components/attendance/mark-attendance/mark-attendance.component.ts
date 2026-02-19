@@ -303,13 +303,19 @@ export class MarkAttendanceComponent implements OnInit {
   // Format date for display
   getFormattedDate(): string {
     if (!this.selectedDate) return '';
-    const date = new Date(this.selectedDate);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+    // Expecting selectedDate in YYYY-MM-DD
+    const parts = this.selectedDate.split('-');
+    if (parts.length === 3) {
+      const [yyyy, mm, dd] = parts;
+      const p = (v: string) => v.padStart(2, '0');
+      return `${p(dd)}/${p(mm)}/${yyyy}`;
+    }
+    // Fallback: format via Date if input is not canonical
+    const d = new Date(this.selectedDate);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
   }
 
   // Clear search

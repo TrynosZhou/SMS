@@ -177,7 +177,7 @@
 
     <div *ngIf="report && !loading" class="report-section">
       <div class="report-meta" *ngIf="lastGeneratedAt">
-        <span>Last generated: <strong>{{ lastGeneratedAt | date:'medium' }}</strong></span>
+        <span>Last generated: <strong>{{ lastGeneratedAt | date:'dd/MM/yyyy' }}</strong></span>
         <span>Total records: <strong>{{ filteredReport.length }}</strong> of {{ rawReportRows.length }}</span>
       </div>
 

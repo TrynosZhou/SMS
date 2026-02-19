@@ -26,7 +26,8 @@ export class AuthGuard implements CanActivate {
         '/outstanding-balance',
         '/accountant/change_password',
         '/accountant/manage-account',
-        '/messages'
+        '/messages',
+        '/logistics'
       ];
       const isAllowed = allowedPrefixes.some(prefix => state.url.startsWith(prefix));
       if (!isAllowed) {

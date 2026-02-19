@@ -234,7 +234,12 @@ export class AttendanceReportsComponent implements OnInit {
     const link = document.createElement('a');
     link.href = url;
     const className = this.getClassName(this.selectedClassId) || 'Class';
-    const fileName = `Attendance_Report_${className.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yyyy = now.getFullYear();
+    const fileDate = `${dd}-${mm}-${yyyy}`;
+    const fileName = `Attendance_Report_${className.replace(/\s+/g, '_')}_${fileDate}.csv`;
     link.download = fileName;
     link.click();
     window.URL.revokeObjectURL(url);
@@ -388,7 +393,7 @@ export class AttendanceReportsComponent implements OnInit {
     if (!printWindow) return;
 
     const className = this.getClassName(this.selectedClassId) || 'Class';
-    const reportDate = new Date().toLocaleDateString();
+    const reportDate = this.formatDateObjToDDMMYYYY(new Date());
     
     let htmlContent = `
       <!DOCTYPE html>
@@ -411,7 +416,7 @@ export class AttendanceReportsComponent implements OnInit {
         <div class="meta">
           <p>Generated: ${reportDate}</p>
           <p>Term: ${this.selectedTerm || 'All Terms'}</p>
-          <p>Date Range: ${this.startDate || 'N/A'} to ${this.endDate || 'N/A'}</p>
+          <p>Date Range: ${this.formatISOToDDMMYYYY(this.startDate) || 'N/A'} to ${this.formatISOToDDMMYYYY(this.endDate) || 'N/A'}</p>
         </div>
         <div class="summary">
           <div class="summary-item"><strong>Average Attendance:</strong> ${this.averageAttendanceRate.toFixed(2)}%</div>
@@ -599,6 +604,28 @@ export class AttendanceReportsComponent implements OnInit {
       return isNaN(parsed) ? 0 : parsed;
     }
     return 0;
+  }
+
+  private formatISOToDDMMYYYY(value: string): string {
+    if (!value) return '';
+    const parts = value.split('-');
+    if (parts.length === 3) {
+      const [yyyy, mm, dd] = parts;
+      return `${dd.padStart(2, '0')}/${mm.padStart(2, '0')}/${yyyy}`;
+    }
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  private formatDateObjToDDMMYYYY(d: Date): string {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
   }
 }
 

@@ -69,6 +69,8 @@
               [(ngModel)]="selectedDate" 
               name="date" 
               (change)="onDateChange()" 
+              [attr.lang]="'en-GB'"
+              placeholder="dd/mm/yyyy"
               required
               class="form-input modern-input">
             <div class="date-navigation modern-date-nav">
