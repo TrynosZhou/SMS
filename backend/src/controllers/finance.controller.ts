@@ -77,6 +77,8 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     // Log student information for debugging
     console.log(`[createInvoice] Creating invoice for student: ${student.studentNumber} (ID: ${student.id}, userId: ${student.userId || 'null'})`);
 
+    // Duplicate billing guard moved below after fee components are computed
+
     // Get previous balance and prepaid amount from last invoice
     // Query using multiple criteria to handle any reference mismatches
     const lastInvoiceQuery = invoiceRepository
@@ -228,6 +230,18 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     const registrationVal = registrationIncrement;
     const deskVal = deskIncrement;
     const transportVal = transportIncrement;
+
+    // Prevent duplicate term fees but allow uniform-only invoices in same term
+    const isTermFeeInvoice = (tuitionVal > 0) || (diningVal > 0) || (transportVal > 0);
+    const existingTermInvoice = await invoiceRepository
+      .createQueryBuilder('invoice')
+      .leftJoin('invoice.student', 'student')
+      .where('(invoice.studentId = :studentId OR student.studentNumber = :studentNumber)', { studentId, studentNumber: student.studentNumber })
+      .andWhere('invoice.term = :term', { term })
+      .getOne();
+    if (existingTermInvoice && isTermFeeInvoice) {
+      return res.status(400).json({ message: 'Duplicate term fees are not allowed. An invoice for this term already exists for this student.' });
+    }
     const breakdownParts: string[] = [];
     if (tuitionVal > 0) breakdownParts.push(`Tuition: ${tuitionVal.toFixed(2)}`);
     if (diningVal > 0) breakdownParts.push(`Dining Hall: ${diningVal.toFixed(2)}`);
@@ -827,6 +841,16 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
         // Determine tuition fee for the NEXT term (following term)
         // The term provided is the current term, so we calculate fees for the following term
         const nextTerm = getNextTerm(term);
+        
+        // Prevent duplicate invoice in the following term
+        const existingNextTermInvoice = await invoiceRepository.findOne({
+          where: { studentId: student.id, term: nextTerm }
+        });
+        if (existingNextTermInvoice) {
+          results.failed++;
+          results.errors.push(`${student.firstName} ${student.lastName}: Invoice for ${nextTerm} already exists`);
+          continue;
+        }
         
         // Desk fee and registration fee: only charged once at registration (first invoice only; does not apply to staff children)
         const shouldChargeOneTimeFees = !lastInvoice;

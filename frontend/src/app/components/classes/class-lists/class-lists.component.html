@@ -160,6 +160,7 @@
               First Name
               <span class="sort-indicator" [class.asc]="getSortDirection('firstName') === 'asc'" [class.desc]="getSortDirection('firstName') === 'desc'"></span>
             </th>
+            <th>DOB</th>
             <th>Gender</th>
             <th>Type</th>
             <th>Class</th>
@@ -193,6 +194,9 @@
                 class="student-name-link">
                 <strong>{{ student.firstName || 'N/A' }}</strong>
               </a>
+            </td>
+            <td>
+              {{ student.dateOfBirth ? (student.dateOfBirth | date:'dd/MM/yyyy') : 'N/A' }}
             </td>
             <td>{{ student.gender || 'N/A' }}</td>
             <td>

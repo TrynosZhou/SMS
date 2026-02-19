@@ -37,6 +37,7 @@ function renderStudentIdCard(doc: InstanceType<typeof PDFDocument>, data: Studen
   const schoolName = settings?.schoolName || 'School Management System';
   const schoolAddress = settings?.schoolAddress ? String(settings.schoolAddress).trim() : '';
   const schoolPhone = settings?.schoolPhone ? String(settings.schoolPhone).trim() : '';
+  const schoolMotto = settings?.schoolMotto ? String(settings.schoolMotto).trim() : '';
 
   doc.rect(0, 0, doc.page.width, doc.page.height)
     .fillColor('#F5F7FA')
@@ -58,6 +59,30 @@ function renderStudentIdCard(doc: InstanceType<typeof PDFDocument>, data: Studen
     doc.fontSize(8).font('Helvetica').fillColor('#E7ECF6');
     const contactLine = [schoolAddress, schoolPhone].filter(Boolean).join(' | ');
     doc.text(contactLine, 15, 34, { width: doc.page.width - 30, align: 'center' });
+  }
+  if (schoolMotto) {
+    doc.fontSize(9).font('Helvetica-Oblique').fillColor('#FFFFFF');
+    doc.text(schoolMotto, 15, 44, { width: doc.page.width - 30, align: 'center' });
+  }
+
+  const headerLogoY = 12;
+  if (settings?.schoolLogo && settings.schoolLogo.startsWith('data:image')) {
+    const base64Data = settings.schoolLogo.split(',')[1];
+    if (base64Data) {
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+      try {
+        doc.image(imageBuffer, 16, headerLogoY, { width: 28 });
+      } catch {}
+    }
+  }
+  if (settings?.schoolLogo2 && settings.schoolLogo2.startsWith('data:image')) {
+    const base64Data2 = settings.schoolLogo2.split(',')[1];
+    if (base64Data2) {
+      const imageBuffer2 = Buffer.from(base64Data2, 'base64');
+      try {
+        doc.image(imageBuffer2, doc.page.width - 44, headerLogoY, { width: 28 });
+      } catch {}
+    }
   }
 
   const infoBoxY = 56;

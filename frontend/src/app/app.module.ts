@@ -1,4 +1,7 @@
-import { NgModule } from '@angular/core';
+import { NgModule, LOCALE_ID } from '@angular/core';
+import { registerLocaleData } from '@angular/common';
+import enGb from '@angular/common/locales/en-GB';
+registerLocaleData(enGb);
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { CommonModule } from '@angular/common';
@@ -135,6 +138,7 @@ import { EnrollStudentComponent } from './components/students/enroll-student/enr
     ReactiveFormsModule
   ],
   providers: [
+    { provide: LOCALE_ID, useValue: 'en-GB' },
     {
       provide: HTTP_INTERCEPTORS,
       useClass: AuthInterceptor,

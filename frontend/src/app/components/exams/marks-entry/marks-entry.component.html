@@ -6,7 +6,7 @@
         <div *ngIf="exam" style="margin-top: 5px; color: #666;">
           <strong>Exam:</strong> {{ exam.name }} | 
           <strong>Class:</strong> {{ exam.class?.name || 'N/A' }} | 
-          <strong>Date:</strong> {{ exam.examDate | date:'shortDate' }}
+          <strong>Date:</strong> {{ exam.examDate | date:'dd/MM/yyyy' }}
         </div>
       </div>
       <button type="button" class="btn btn-secondary" (click)="router.navigate(['/exams'])">Back to Exams</button>

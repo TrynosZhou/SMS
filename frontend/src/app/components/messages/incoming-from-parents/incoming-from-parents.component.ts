@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MessageService } from '../../../services/message.service';
 import { AuthService } from '../../../services/auth.service';
 
@@ -27,14 +28,60 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
   selectedIds = new Set<string>();
   autoRefresh = true;
   refreshHandle: any = null;
+  senderFilter = '';
+  senders: string[] = [];
+  dateStart: string = '';
+  dateEnd: string = '';
+  private storageKey = 'incomingFilters';
+  replyTemplates: { name: string; subject: string; body: string }[] = [
+    { name: 'Acknowledgement', subject: 'Re: Your message', body: 'Dear Parent,\n\nThank you for reaching out. We acknowledge receipt of your message and will respond shortly.\n\nRegards.' },
+    { name: 'Follow-up', subject: 'Re: Follow-up on your query', body: 'Dear Parent,\n\nFollowing up on your query. Please provide any additional details if needed.\n\nRegards.' },
+    { name: 'Meeting Request', subject: 'Re: Meeting Request', body: 'Dear Parent,\n\nCan we schedule a meeting to discuss your message? Please suggest a suitable date and time.\n\nRegards.' }
+  ];
+  selectedReplyTemplate = '';
+  pinnedIds = new Set<string>();
+  pinnedOnly = false;
+  showPinnedFirst = true;
+  private pinnedStorageKey = 'incomingPinnedIds';
 
-  constructor(private messageService: MessageService, private authService: AuthService) {
+  constructor(private messageService: MessageService, private authService: AuthService, private route: ActivatedRoute, private router: Router) {
     const user = this.authService.getCurrentUser();
     const role = (user?.role || '').toLowerCase();
     this.roleBox = role === 'accountant' ? 'accountant' as const : 'admin';
   }
 
   ngOnInit(): void {
+    const raw = localStorage.getItem(this.storageKey);
+    if (raw) {
+      try {
+        const s = JSON.parse(raw);
+        this.query = s.query || '';
+        this.filterMode = s.filterMode || this.filterMode;
+        this.sortMode = s.sortMode || this.sortMode;
+        this.pageSize = s.pageSize || this.pageSize;
+        this.senderFilter = s.senderFilter || '';
+        this.dateStart = s.dateStart || '';
+        this.dateEnd = s.dateEnd || '';
+        this.pinnedOnly = !!s.pinnedOnly;
+        this.showPinnedFirst = s.showPinnedFirst !== undefined ? !!s.showPinnedFirst : this.showPinnedFirst;
+      } catch {}
+    }
+    const p = localStorage.getItem(this.pinnedStorageKey);
+    if (p) {
+      try {
+        const arr = JSON.parse(p);
+        if (Array.isArray(arr)) {
+          arr.forEach((id: string) => this.pinnedIds.add(String(id)));
+        }
+      } catch {}
+    }
+    this.route.queryParamMap.subscribe(p => {
+      const id = p.get('id');
+      if (id && this.messages.length > 0) {
+        const m = this.messages.find(x => String(x.id || '') === String(id));
+        if (m) this.selected = m;
+      }
+    });
     this.load();
     this.setupAutoRefresh();
   }
@@ -52,7 +99,8 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
     this.messageService.getIncomingFromParents(this.roleBox).subscribe({
       next: (res: any) => {
         this.loading = false;
-        this.messages = Array.isArray(res?.messages) ? res.messages : [];
+        this.messages = Array.isArray(res?.messages) ? res.messages : Array.isArray(res) ? res : [];
+        this.senders = Array.from(new Set(this.messages.map(m => (m.senderName || m.parentName || '').trim()).filter(Boolean)));
         this.applyFilterAndPaginate();
       },
       error: (err: any) => {
@@ -75,6 +123,9 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
 
   applyFilterAndPaginate() {
     const q = (this.query || '').toLowerCase();
+    const start = this.dateStart ? new Date(this.dateStart).getTime() : 0;
+    const end = this.dateEnd ? new Date(this.dateEnd).getTime() : Number.MAX_SAFE_INTEGER;
+    const sender = (this.senderFilter || '').toLowerCase();
     let arr = this.messages.slice();
     if (this.filterMode === 'unread') arr = arr.filter(m => !m.isRead);
     if (this.filterMode === 'read') arr = arr.filter(m => !!m.isRead);
@@ -86,14 +137,39 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
         (m.parentName || '').toLowerCase().includes(q)
       );
     }
+    if (sender) {
+      arr = arr.filter(m => ((m.senderName || m.parentName || '').toLowerCase()) === sender);
+    }
+    arr = arr.filter(m => {
+      const t = m.createdAt ? new Date(m.createdAt).getTime() : 0;
+      return (!start || t >= start) && (!end || t <= end);
+    });
+    if (this.pinnedOnly) {
+      arr = arr.filter(m => this.isPinned(m));
+    }
     arr.sort((a, b) => {
       const da = new Date(a.createdAt).getTime();
       const db = new Date(b.createdAt).getTime();
+      const pinCmp = this.showPinnedFirst ? ((this.isPinned(b) ? 1 : 0) - (this.isPinned(a) ? 1 : 0)) : 0;
+      if (pinCmp !== 0) return pinCmp;
       return this.sortMode === 'newest' ? db - da : da - db;
     });
     this.filtered = arr;
     this.currentPage = Math.min(this.currentPage, this.totalPages() || 1);
     this.slicePage();
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify({
+        query: this.query,
+        filterMode: this.filterMode,
+        sortMode: this.sortMode,
+        pageSize: this.pageSize,
+        senderFilter: this.senderFilter,
+        dateStart: this.dateStart,
+        dateEnd: this.dateEnd,
+        pinnedOnly: this.pinnedOnly,
+        showPinnedFirst: this.showPinnedFirst
+      }));
+    } catch {}
   }
 
   slicePage() {
@@ -125,11 +201,15 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
     this.replySubject = `Re: ${msg.subject || ''}`.trim();
     this.replyBody = '';
     this.replyFiles = [];
+    const id = msg?.id;
+    if (id) {
+      this.router.navigate([], { queryParams: { id }, queryParamsHandling: 'merge' });
+    }
   }
 
   formatDate(d: string) {
     try {
-      return new Date(d).toLocaleString();
+      return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
     } catch {
       return d;
     }
@@ -273,5 +353,98 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
       });
     };
     run(0);
+  }
+
+  clearFilters() {
+    this.query = '';
+    this.filterMode = 'all';
+    this.sortMode = 'newest';
+    this.senderFilter = '';
+    this.dateStart = '';
+    this.dateEnd = '';
+    this.applyFilterAndPaginate();
+  }
+
+  exportCSV() {
+    const base = this.selectedIds.size > 0 ? this.filtered.filter(m => this.selectedIds.has(m.id)) : this.filtered;
+    const rows = base.map(m => ({
+      Subject: m.subject || '',
+      From: m.senderName || m.parentName || '',
+      Date: this.formatDate(m.createdAt),
+      Message: (m.message || '').replace(/\r?\n/g, ' ')
+    }));
+    const header = Object.keys(rows[0] || { Subject: '', From: '', Date: '', Message: '' });
+    const csv = [
+      header.join(','),
+      ...rows.map(r => header.map(h => `"${String((r as any)[h]).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'incoming.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  copySelected() {
+    if (!this.selected) return;
+    const text = `Subject: ${this.selected.subject || ''}\nFrom: ${this.selected.senderName || this.selected.parentName || ''}\nDate: ${this.formatDate(this.selected.createdAt)}\n\n${this.selected.message || ''}`;
+    navigator.clipboard?.writeText(text);
+  }
+
+  downloadSelected() {
+    if (!this.selected) return;
+    const text = `Subject: ${this.selected.subject || ''}\nFrom: ${this.selected.senderName || this.selected.parentName || ''}\nDate: ${this.formatDate(this.selected.createdAt)}\n\n${this.selected.message || ''}`;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (this.selected.subject || 'message') + '.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  printSelected() {
+    if (!this.selected) return;
+    const w = window.open('', '_blank', 'width=800,height=600');
+    if (!w) return;
+    const html = `
+      <html><head><title>Message</title></head>
+      <body>
+        <h2>${this.selected.subject || ''}</h2>
+        <div>From: ${this.selected.senderName || this.selected.parentName || ''} • ${this.formatDate(this.selected.createdAt)}</div>
+        <pre style="white-space: pre-wrap;">${this.selected.message || ''}</pre>
+      </body></html>`;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  }
+
+  applyReplyTemplate() {
+    const t = this.replyTemplates.find(x => x.name === this.selectedReplyTemplate);
+    if (!t) return;
+    if (!this.replySubject.trim()) {
+      this.replySubject = t.subject;
+    }
+    if (!this.replyBody.trim()) {
+      this.replyBody = t.body;
+    }
+  }
+
+  isPinned(msg: any): boolean {
+    return this.pinnedIds.has(String(msg?.id || ''));
+  }
+
+  togglePin(msg: any) {
+    const id = String(msg?.id || '');
+    if (!id) return;
+    if (this.pinnedIds.has(id)) this.pinnedIds.delete(id);
+    else this.pinnedIds.add(id);
+    try {
+      localStorage.setItem(this.pinnedStorageKey, JSON.stringify(Array.from(this.pinnedIds)));
+    } catch {}
+    this.applyFilterAndPaginate();
   }
 }

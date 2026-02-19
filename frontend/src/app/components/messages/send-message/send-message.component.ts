@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { MessageService } from '../../../services/message.service';
 import { ParentService } from '../../../services/parent.service';
 import { AuthService } from '../../../services/auth.service';
@@ -8,7 +9,7 @@ import { AuthService } from '../../../services/auth.service';
   templateUrl: './send-message.component.html',
   styleUrls: ['./send-message.component.css']
 })
-export class SendMessageComponent {
+export class SendMessageComponent implements OnInit {
   subject = '';
   message = '';
   recipientsType: 'all' | 'selected' = 'all';
@@ -25,14 +26,18 @@ export class SendMessageComponent {
   loading = false;
   error = '';
   success = '';
+  constructor(private route: ActivatedRoute, private messageService: MessageService, private parentService: ParentService, private authService: AuthService) {}
 
-  constructor(
-    private messageService: MessageService,
-    private parentService: ParentService,
-    private authService: AuthService
-  ) {
-    this.loadParentsIfNeeded();
+  ngOnInit(): void {
+    this.route.queryParamMap.subscribe(p => {
+      const subj = p.get('subject') || '';
+      const body = p.get('message') || '';
+      if (subj) this.subject = subj;
+      if (body) this.message = body;
+    });
   }
+
+  
 
   isAllowed(): boolean {
     const user = this.authService.getCurrentUser();

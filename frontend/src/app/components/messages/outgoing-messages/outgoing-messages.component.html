@@ -1,29 +1,109 @@
-<div class="outgoing-container">
-  <div class="header">
-    <h1>Outgoing Messages</h1>
-    <div class="search">
-      <input type="text" placeholder="Search subject, recipient, content..." [(ngModel)]="query" (input)="applyFilter()" />
-      <button class="btn" (click)="load()">Refresh</button>
+<div class="outgoing-container modern-container">
+  <div class="header modern-header-section">
+    <div class="header-content">
+      <div class="header-title-section">
+        <div class="header-icon-wrapper"><span class="header-main-icon">📤</span></div>
+        <div>
+          <h1>Outbox</h1>
+          <p class="header-subtitle">Sent messages to parents</p>
+        </div>
+      </div>
+      <div class="header-actions modern-actions">
+        <button type="button" class="btn btn-modern" (click)="load()" title="Refresh"><span>🔄</span></button>
+        <button type="button" class="btn btn-modern btn-secondary-modern" (click)="exportCSV()" [disabled]="filtered.length === 0" title="Export CSV"><span>⬇️</span><span>Export</span></button>
+        <button type="button" class="btn btn-modern btn-secondary-modern" (click)="printSelected()" [disabled]="!selected" title="Print Selected"><span>🖨️</span><span>Print</span></button>
+        <button type="button" class="btn btn-modern btn-secondary-modern" (click)="copySelected()" [disabled]="!selected" title="Copy Selected"><span>📋</span><span>Copy</span></button>
+        <button type="button" class="btn btn-modern btn-secondary-modern" (click)="downloadSelected()" [disabled]="!selected" title="Download Selected"><span>📄</span><span>Download</span></button>
+        <button type="button" class="btn btn-modern btn-secondary-modern" (click)="clearFilters()" [disabled]="!query && !recipientFilter && !dateStart && !dateEnd" title="Clear Filters"><span>✖️</span><span>Clear</span></button>
+      </div>
     </div>
   </div>
 
-  <div class="alert" *ngIf="error" style="color:#dc3545;font-weight:bold">{{ error }}</div>
+  <div class="alert modern-alert" *ngIf="error">{{ error }}</div>
   <div *ngIf="loading">Loading...</div>
 
-  <div class="content" *ngIf="!loading">
-    <div class="list">
-      <div class="empty" *ngIf="filtered.length === 0">No sent messages</div>
-      <ul *ngIf="filtered.length > 0">
-        <li *ngFor="let m of filtered" (click)="open(m)">
-          <div class="subject">{{ m.subject }}</div>
-          <div class="meta">To: {{ m.recipientName || 'Parent(s)' }} • {{ formatDate(m.createdAt) }}</div>
+  <div class="filters modern-filters" *ngIf="!loading">
+    <div class="filters-grid">
+      <div class="filter-group">
+        <label>Search</label>
+        <div class="search-input modern-search-input">
+          <span class="search-icon">🔍</span>
+          <input type="text" [(ngModel)]="query" (input)="applyFilter()" placeholder="Search subject, recipient, content..." class="modern-input-field">
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>Recipient</label>
+        <select [(ngModel)]="recipientFilter" (change)="applyFilter()" class="modern-select">
+          <option value="">All</option>
+          <option *ngFor="let r of recipients" [value]="r.toLowerCase()">{{ r }}</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Start Date</label>
+        <input type="date" [(ngModel)]="dateStart" (change)="applyFilter()" class="modern-input">
+      </div>
+      <div class="filter-group">
+        <label>End Date</label>
+        <input type="date" [(ngModel)]="dateEnd" (change)="applyFilter()" class="modern-input">
+      </div>
+      <div class="filter-group">
+        <label>Sort</label>
+        <button class="btn btn-modern" (click)="toggleSort()">{{ sortDesc ? 'Newest First' : 'Oldest First' }}</button>
+      </div>
+      <div class="filter-group">
+        <label>Page Size</label>
+        <select [(ngModel)]="pageSize" (change)="setPageSize(pageSize)" class="modern-select">
+          <option [value]="10">10</option>
+          <option [value]="20">20</option>
+          <option [value]="50">50</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="content modern-content" *ngIf="!loading">
+    <div class="list modern-list">
+      <div class="empty-state" *ngIf="filtered.length === 0">
+        <div class="empty-icon">📭</div>
+        <h3>No sent messages</h3>
+        <p>Messages you send will appear here</p>
+      </div>
+      <ul class="message-list" *ngIf="filtered.length > 0">
+        <li *ngFor="let m of displayed" [class.selected]="selected?.id === m.id">
+          <label class="row-select">
+            <input type="checkbox" [checked]="isRowSelected(m)" (change)="toggleRowSelection(m)" />
+          </label>
+          <a href="#" (click)="open(m); $event.preventDefault()" title="Open message">
+            <div class="subject">{{ m.subject }}</div>
+            <div class="meta">To: {{ m.recipientName || 'Parent(s)' }} • {{ formatDate(m.createdAt) }}</div>
+          </a>
         </li>
       </ul>
+      <div class="pagination" *ngIf="filtered.length > 0">
+        <button class="btn btn-modern" (click)="goToPage(page - 1)" [disabled]="page <= 1">Prev</button>
+        <span class="page-info">Page {{ page }} of {{ totalPages }}</span>
+        <button class="btn btn-modern" (click)="goToPage(page + 1)" [disabled]="page >= totalPages">Next</button>
+        <span class="page-info">• Showing {{ displayed.length }} of {{ filtered.length }}</span>
+        <span class="page-info">• Selected {{ selectedCount }}</span>
+        <button class="btn btn-modern" (click)="selectPage()">Select page</button>
+        <button class="btn btn-modern" (click)="clearSelection()" [disabled]="selectedCount === 0">Clear selection</button>
+      </div>
     </div>
-    <div class="detail" *ngIf="selected">
+    <div class="detail modern-detail" *ngIf="selected">
       <h2>{{ selected.subject }}</h2>
       <div class="meta">To: {{ selected.recipientName || 'Parent(s)' }} • {{ formatDate(selected.createdAt) }}</div>
       <div class="body">{{ selected.message }}</div>
+      <div class="attachments" *ngIf="selected.attachments?.length">
+        <h3>Attachments</h3>
+        <ul>
+          <li *ngFor="let a of selected.attachments">
+            <a [href]="a.url || a" target="_blank" rel="noopener">Download</a>
+          </li>
+        </ul>
+      </div>
+      <div class="detail-actions">
+        <button class="btn btn-modern" (click)="resendSelected()">Resend</button>
+      </div>
     </div>
   </div>
 </div>

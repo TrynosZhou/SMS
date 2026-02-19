@@ -239,7 +239,11 @@
             <span class="sidebar-icon">📨</span>
             <span class="sidebar-text">Send Message</span>
           </a>
-          <a routerLink="/messages/inbox" routerLinkActive="active" class="sidebar-subitem" *ngIf="!isAccountant()">
+          <a routerLink="/messages/outgoing" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">📤</span>
+            <span class="sidebar-text">Outbox</span>
+          </a>
+          <a routerLink="/messages/inbox" routerLinkActive="active" class="sidebar-subitem" *ngIf="!isAccountant() && !isAdmin() && !isSuperAdmin()">
             <span class="sidebar-icon">📥</span>
             <span class="sidebar-text">My Inbox</span>
           </a>

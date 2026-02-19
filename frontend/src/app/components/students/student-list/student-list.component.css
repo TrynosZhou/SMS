@@ -518,7 +518,7 @@
 
 .list-header {
   display: grid;
-  grid-template-columns: 1.5fr 2fr 1.5fr 1.5fr 1fr 1fr 1.5fr;
+  grid-template-columns: 1.3fr 1.6fr 1.6fr 1.2fr 1fr 1.2fr 1fr 1.4fr 1.2fr;
   gap: 16px;
   padding: 16px 24px;
   background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
@@ -531,7 +531,7 @@
 
 .list-item {
   display: grid;
-  grid-template-columns: 1.5fr 2fr 1.5fr 1.5fr 1fr 1fr 1.5fr;
+  grid-template-columns: 1.3fr 1.6fr 1.6fr 1.2fr 1fr 1.2fr 1fr 1.4fr 1.2fr;
   gap: 16px;
   padding: 20px 24px;
   border-bottom: 1px solid #f0f0f0;

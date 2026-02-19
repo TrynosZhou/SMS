@@ -1,40 +1,102 @@
-<div class="incoming-container">
-  <div class="header">
-    <div class="title-wrap">
-      <h1>Incoming from Parents</h1>
-      <span class="badge" title="Unread">{{ unreadCount() }}</span>
-    </div>
-    <div class="controls">
-      <input type="text" placeholder="Search..." [(ngModel)]="query" (input)="applyFilterAndPaginate()" />
-      <select [(ngModel)]="filterMode" (change)="applyFilterAndPaginate()">
-        <option value="all">All</option>
-        <option value="unread">Unread</option>
-        <option value="read">Read</option>
-      </select>
-      <select [(ngModel)]="sortMode" (change)="applyFilterAndPaginate()">
-        <option value="newest">Newest first</option>
-        <option value="oldest">Oldest first</option>
-      </select>
-      <label class="toggle">
-        <input type="checkbox" [(ngModel)]="autoRefresh" (change)="setupAutoRefresh()" />
-        <span>Auto refresh</span>
-      </label>
-      <button class="btn" (click)="load()">Refresh</button>
+<div class="incoming-container modern-container">
+  <div class="header modern-header-section">
+    <div class="header-content">
+      <div class="header-title-section">
+        <div class="header-icon-wrapper"><span class="header-main-icon">📬</span></div>
+        <div>
+          <h1>Incoming from Parents</h1>
+          <p class="header-subtitle">Messages received from parents</p>
+        </div>
+        <span class="badge" title="Unread">{{ unreadCount() }}</span>
+      </div>
+      <div class="header-actions modern-actions">
+        <button type="button" class="btn btn-modern" (click)="load()" title="Refresh"><span>🔄</span></button>
+        <button type="button" class="btn btn-modern btn-secondary-modern" (click)="exportCSV()" [disabled]="filtered.length === 0" title="Export CSV"><span>⬇️</span><span>Export</span></button>
+        <button type="button" class="btn btn-modern btn-secondary-modern" (click)="printSelected()" [disabled]="!selected" title="Print Selected"><span>🖨️</span><span>Print</span></button>
+        <button type="button" class="btn btn-modern btn-secondary-modern" (click)="copySelected()" [disabled]="!selected" title="Copy Selected"><span>📋</span><span>Copy</span></button>
+        <button type="button" class="btn btn-modern btn-secondary-modern" (click)="downloadSelected()" [disabled]="!selected" title="Download Selected"><span>📄</span><span>Download</span></button>
+        <label class="toggle modern-toggle">
+          <input type="checkbox" [(ngModel)]="autoRefresh" (change)="setupAutoRefresh()" />
+          <span>Auto refresh</span>
+        </label>
+      </div>
     </div>
   </div>
-  <div class="alert" *ngIf="error" style="color:#dc3545;font-weight:bold">{{ error }}</div>
+  <div class="alert modern-alert" *ngIf="error">{{ error }}</div>
   <div class="bulkbar" *ngIf="selectedIds.size > 0">
     <span>{{ selectedIds.size }} selected</span>
     <button class="btn" (click)="bulkMarkRead()">Mark Read</button>
     <button class="btn" (click)="bulkMarkUnread()">Mark Unread</button>
     <button class="btn" (click)="clearSelection()">Clear</button>
   </div>
-  <div class="content">
-    <div class="list">
+  <div class="filters modern-filters">
+    <div class="filters-grid">
+      <div class="filter-group">
+        <label>Search</label>
+        <div class="search-input modern-search-input">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search subject, sender, content..." [(ngModel)]="query" (input)="applyFilterAndPaginate()" class="modern-input-field" />
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>Sender</label>
+        <select [(ngModel)]="senderFilter" (change)="applyFilterAndPaginate()" class="modern-select">
+          <option value="">All</option>
+          <option *ngFor="let s of senders" [value]="s.toLowerCase()">{{ s }}</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Status</label>
+        <select [(ngModel)]="filterMode" (change)="applyFilterAndPaginate()" class="modern-select">
+          <option value="all">All</option>
+          <option value="unread">Unread</option>
+          <option value="read">Read</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Sort</label>
+        <select [(ngModel)]="sortMode" (change)="applyFilterAndPaginate()" class="modern-select">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Start Date</label>
+        <input type="date" [(ngModel)]="dateStart" (change)="applyFilterAndPaginate()" class="modern-input" />
+      </div>
+      <div class="filter-group">
+        <label>End Date</label>
+        <input type="date" [(ngModel)]="dateEnd" (change)="applyFilterAndPaginate()" class="modern-input" />
+      </div>
+      <div class="filter-group">
+        <label>Pinned</label>
+        <label class="modern-toggle"><input type="checkbox" [(ngModel)]="pinnedOnly" (change)="applyFilterAndPaginate()" /> <span>Pinned only</span></label>
+        <label class="modern-toggle"><input type="checkbox" [(ngModel)]="showPinnedFirst" (change)="applyFilterAndPaginate()" /> <span>Show pinned first</span></label>
+      </div>
+      <div class="filter-group">
+        <label>Page Size</label>
+        <select [(ngModel)]="pageSize" (change)="applyFilterAndPaginate()" class="modern-select">
+          <option [value]="10">10</option>
+          <option [value]="20">20</option>
+          <option [value]="50">50</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>&nbsp;</label>
+        <button type="button" class="btn btn-modern" (click)="clearFilters()"><span>✖️</span><span>Clear</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="content modern-content">
+    <div class="list modern-list">
       <div class="empty" *ngIf="!loading && paged.length === 0">No messages</div>
       <ul *ngIf="paged.length > 0">
-        <li *ngFor="let m of paged" (click)="open(m)" [class.unread]="!m.isRead">
-          <input type="checkbox" (click)="$event.stopPropagation()" [checked]="isSelected(m.id)" (change)="toggleId(m.id)" />
+        <li *ngFor="let m of paged" [class.unread]="!m.isRead">
+          <label class="row-select">
+            <input type="checkbox" [checked]="isSelected(m.id)" (change)="toggleId(m.id)" />
+          </label>
+          <a href="#" (click)="open(m); $event.preventDefault()" title="Open message">
           <div class="avatar">{{ (m.parentName || m.senderName || 'P').slice(0,1).toUpperCase() }}</div>
           <div class="subject">
             <span class="subj-text">{{ m.subject }}</span>
@@ -42,12 +104,18 @@
           </div>
           <div class="time">{{ timeAgo(m.createdAt) }}</div>
           <span class="unread-dot" *ngIf="!m.isRead">•</span>
+          </a>
+          <button class="btn btn-modern pin-btn" (click)="togglePin(m)">{{ isPinned(m) ? '⭐' : '☆' }}</button>
         </li>
       </ul>
       <div class="paginator" *ngIf="totalPages() > 1">
         <button class="btn" (click)="prevPage()" [disabled]="currentPage === 1">Prev</button>
         <span>Page {{ currentPage }} / {{ totalPages() }}</span>
         <button class="btn" (click)="nextPage()" [disabled]="currentPage === totalPages()">Next</button>
+        <span class="page-info">• Showing {{ paged.length }} of {{ filtered.length }}</span>
+        <span class="page-info">• Selected {{ selectedIds.size }}</span>
+        <button class="btn btn-modern" (click)="selectAllCurrentPage()">Select page</button>
+        <button class="btn btn-modern" (click)="clearSelection()" [disabled]="selectedIds.size === 0">Clear selection</button>
       </div>
     </div>
     <div class="detail" *ngIf="selected">
@@ -66,8 +134,22 @@
         <button class="btn" (click)="markRead()">Mark as Read</button>
         <button class="btn" (click)="markUnread()">Mark as Unread</button>
         <button class="btn btn-primary" (click)="toggleReply()">{{ replying ? 'Cancel' : 'Reply' }}</button>
+        <button class="btn btn-modern" (click)="printSelected()">Print</button>
+        <button class="btn btn-modern" (click)="copySelected()">Copy</button>
+        <button class="btn btn-modern" (click)="downloadSelected()">Download</button>
+        <button class="btn btn-modern" (click)="togglePin(selected)">{{ isPinned(selected) ? 'Unpin' : 'Pin' }}</button>
       </div>
       <div class="reply-panel" *ngIf="replying">
+        <div class="form-row">
+          <label>Template</label>
+          <div class="template-row">
+            <select [(ngModel)]="selectedReplyTemplate">
+              <option value="">Select a template…</option>
+              <option *ngFor="let t of replyTemplates" [value]="t.name">{{ t.name }}</option>
+            </select>
+            <button class="btn btn-modern" (click)="applyReplyTemplate()">Apply</button>
+          </div>
+        </div>
         <div class="form-row">
           <label>Subject</label>
           <input type="text" [(ngModel)]="replySubject" />

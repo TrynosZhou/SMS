@@ -17,7 +17,7 @@ export class StudentListComponent implements OnInit {
   selectedType = '';
   selectedGender = '';
   searchQuery = '';
-  viewMode: 'grid' | 'list' = 'grid';
+  viewMode: 'grid' | 'list' = 'list';
   loading = false;
   error = '';
   success = '';
@@ -42,6 +42,7 @@ export class StudentListComponent implements OnInit {
   isLogisticsTransport = false;
   isLogisticsDiningHall = false;
   isTeacher = false;
+  groupedStudents: Array<{ classId: string | null; className: string; students: any[] }> = [];
 
   constructor(
     private studentService: StudentService,
@@ -158,7 +159,36 @@ export class StudentListComponent implements OnInit {
         return student.gender === this.selectedGender;
       });
     }
+    // Sort by Lastname ascending with tie-breakers Firstname then StudentNumber
+    filtered.sort((a: any, b: any) => {
+      const lastA = String(a.lastName || '').toLowerCase();
+      const lastB = String(b.lastName || '').toLowerCase();
+      const lastCompare = lastA.localeCompare(lastB);
+      if (lastCompare !== 0) return lastCompare;
+      const firstA = String(a.firstName || '').toLowerCase();
+      const firstB = String(b.firstName || '').toLowerCase();
+      const firstCompare = firstA.localeCompare(firstB);
+      if (firstCompare !== 0) return firstCompare;
+      const numA = String(a.studentNumber || '').toLowerCase();
+      const numB = String(b.studentNumber || '').toLowerCase();
+      return numA.localeCompare(numB);
+    });
     this.filteredStudents = filtered;
+    // Group by Class name
+    const groupsMap: Map<string, { classId: string | null; className: string; students: any[] }> = new Map();
+    for (const s of filtered) {
+      const className = this.getStudentClassName(s);
+      const classId = s.class?.id || s.classEntity?.id || s.classId || null;
+      const key = `${classId || 'no-class'}::${className}`;
+      if (!groupsMap.has(key)) {
+        groupsMap.set(key, { classId, className, students: [] });
+      }
+      groupsMap.get(key)!.students.push(s);
+    }
+    // Convert to array and sort groups by class name
+    this.groupedStudents = Array.from(groupsMap.values()).sort((a, b) =>
+      String(a.className || '').toLowerCase().localeCompare(String(b.className || '').toLowerCase())
+    );
   }
 
   onSearchChange() {

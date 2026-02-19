@@ -254,50 +254,64 @@
   <div class="students-list-view" *ngIf="!loading && viewMode === 'list' && filteredStudents.length > 0">
     <div class="list-header">
       <div class="list-col number-col">Student #</div>
-      <div class="list-col name-col">Name</div>
-      <div class="list-col class-col">Class</div>
-      <div class="list-col contact-col">Contact</div>
-      <div class="list-col type-col">Type</div>
+      <div class="list-col last-col">Last Name</div>
+      <div class="list-col first-col">First Name</div>
+      <div class="list-col dob-col">DOB</div>
       <div class="list-col gender-col">Gender</div>
+      <div class="list-col class-col">Class</div>
+      <div class="list-col type-col">Type</div>
+      <div class="list-col contact-col">Contact</div>
       <div class="list-col actions-col">Actions</div>
     </div>
-    <div class="list-item" *ngFor="let student of filteredStudents">
-      <div class="list-col number-col">
-        <strong class="student-id-link" (click)="viewStudentIdCard(student.id)" title="View Student ID Card">{{ student.studentNumber }}</strong>
+    <div class="class-group" *ngFor="let grp of groupedStudents">
+      <div class="group-header">
+        <span class="group-title">{{ grp.className }}</span>
+        <span class="group-count">({{ grp.students.length }})</span>
       </div>
-      <div class="list-col name-col">
-        <div class="name-cell">
-          <img *ngIf="student.photo" 
-               [src]="'http://localhost:3001' + student.photo" 
-               [alt]="student.firstName + ' ' + student.lastName"
-               class="avatar-small-photo"
-               onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
-          <span class="avatar-small" [style.display]="student.photo ? 'none' : 'inline'">{{ student.gender === 'Male' ? '👨' : '👩' }}</span>
-          <span class="name-text">{{ student.firstName }} {{ student.lastName }}</span>
+      <div class="list-item" *ngFor="let student of grp.students">
+        <div class="list-col number-col">
+          <strong class="student-id-link" (click)="viewStudentIdCard(student.id)" title="View Student ID Card">{{ student.studentNumber }}</strong>
         </div>
-      </div>
-      <div class="list-col class-col">{{ student.class?.name || 'N/A' }}</div>
-      <div class="list-col contact-col">{{ student.contactNumber || student.phoneNumber || 'N/A' }}</div>
-      <div class="list-col type-col">
-        <span class="type-badge" [class.boarder]="student.studentType === 'Boarder'" [class.day-scholar]="student.studentType === 'Day Scholar'">
-          {{ student.studentType || 'Day Scholar' }}
-        </span>
-      </div>
-      <div class="list-col gender-col">{{ student.gender }}</div>
-      <div class="list-col actions-col">
-        <div class="action-buttons">
-          <button class="btn-icon-small" (click)="viewStudentDetails(student)" title="View Details">
-            👁️
-          </button>
-          <button class="btn-icon-small" (click)="editStudent(student.id)" title="Edit">
-            ✏️
-          </button>
-          <button class="btn-icon-small" (click)="viewReportCard(student.id)" title="Report Card">
-            📄
-          </button>
-          <button class="btn-icon-small btn-delete" *ngIf="!isTeacher" (click)="deleteStudent(student.id, student.firstName + ' ' + student.lastName, student.studentNumber)" title="Delete" [disabled]="loading">
-            🗑️
-          </button>
+        <div class="list-col last-col">
+          <div class="name-cell">
+            <img *ngIf="student.photo" 
+                 [src]="'http://localhost:3001' + student.photo" 
+                 [alt]="student.firstName + ' ' + student.lastName"
+                 class="avatar-small-photo"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+            <span class="avatar-small" [style.display]="student.photo ? 'none' : 'inline'">{{ student.gender === 'Male' ? '👨' : '👩' }}</span>
+            <span class="name-text">{{ student.lastName || 'N/A' }}</span>
+          </div>
+        </div>
+        <div class="list-col first-col">
+          {{ student.firstName || 'N/A' }}
+        </div>
+        <div class="list-col dob-col">
+          {{ student.dateOfBirth ? (student.dateOfBirth | date:'dd/MM/yyyy') : 'N/A' }}
+        </div>
+        <div class="list-col gender-col">{{ student.gender || 'N/A' }}</div>
+        <div class="list-col class-col">{{ grp.className }}</div>
+        <div class="list-col type-col">
+          <span class="type-badge" [class.boarder]="student.studentType === 'Boarder'" [class.day-scholar]="student.studentType === 'Day Scholar'">
+            {{ student.studentType || 'Day Scholar' }}
+          </span>
+        </div>
+        <div class="list-col contact-col">{{ student.contactNumber || student.phoneNumber || 'N/A' }}</div>
+        <div class="list-col actions-col">
+          <div class="action-buttons">
+            <button class="btn-icon-small" (click)="viewStudentDetails(student)" title="View Details">
+              👁️
+            </button>
+            <button class="btn-icon-small" (click)="editStudent(student.id)" title="Edit">
+              ✏️
+            </button>
+            <button class="btn-icon-small" (click)="viewReportCard(student.id)" title="Report Card">
+              📄
+            </button>
+            <button class="btn-icon-small btn-delete" *ngIf="!isTeacher" (click)="deleteStudent(student.id, student.firstName + ' ' + student.lastName, student.studentNumber)" title="Delete" [disabled]="loading">
+              🗑️
+            </button>
+          </div>
         </div>
       </div>
     </div>
