@@ -45,6 +45,8 @@ export class ClassListsComponent implements OnInit {
   moveTargetClassId: string = '';
   enrolling = false;
   showEnrollModal = false;
+  sortField: 'lastName' | 'firstName' | 'studentNumber' = 'lastName';
+  sortDirection: 'asc' | 'desc' = 'asc';
 
   constructor(
     private studentService: StudentService,
@@ -181,23 +183,7 @@ export class ClassListsComponent implements OnInit {
         const studentsData = Array.isArray(response) ? response : (response?.data || response?.students || []);
         this.students = Array.isArray(studentsData) ? studentsData : [];
         this.filteredStudents = [...this.students];
-        this.filteredStudents.sort((a: any, b: any) => {
-          const lastA = (a.lastName || '').toLowerCase();
-          const lastB = (b.lastName || '').toLowerCase();
-          const lastCompare = lastA.localeCompare(lastB);
-          if (lastCompare !== 0) {
-            return lastCompare;
-          }
-          const firstA = (a.firstName || '').toLowerCase();
-          const firstB = (b.firstName || '').toLowerCase();
-          const firstCompare = firstA.localeCompare(firstB);
-          if (firstCompare !== 0) {
-            return firstCompare;
-          }
-          const numA = (a.studentNumber || '').toLowerCase();
-          const numB = (b.studentNumber || '').toLowerCase();
-          return numA.localeCompare(numB);
-        });
+        this.applySort();
         
         this.loadingStudents = false;
         this.lastLoadedClassId = this.selectedClassId;
@@ -279,6 +265,47 @@ export class ClassListsComponent implements OnInit {
         this.error = err?.error?.message || err?.message || 'Failed to enroll student to new class.';
         this.enrolling = false;
       }
+    });
+  }
+
+  changeSort(field: 'lastName' | 'firstName' | 'studentNumber') {
+    if (this.sortField === field) {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortField = field;
+      this.sortDirection = 'asc';
+    }
+    this.applySort();
+  }
+
+  getSortDirection(field: 'lastName' | 'firstName' | 'studentNumber'): 'asc' | 'desc' | '' {
+    return this.sortField === field ? this.sortDirection : '';
+  }
+
+  private applySort() {
+    const dir = this.sortDirection === 'asc' ? 1 : -1;
+    const compareText = (a: string, b: string) => a.localeCompare(b) * dir;
+    const getVal = (s: any, key: 'lastName' | 'firstName' | 'studentNumber') =>
+      String((s?.[key] || '')).toLowerCase();
+    this.filteredStudents.sort((a: any, b: any) => {
+      // Primary field
+      const primary = compareText(getVal(a, this.sortField), getVal(b, this.sortField));
+      if (primary !== 0) return primary;
+      // Tie-breakers
+      if (this.sortField === 'lastName') {
+        const t1 = compareText(getVal(a, 'firstName'), getVal(b, 'firstName'));
+        if (t1 !== 0) return t1;
+        return compareText(getVal(a, 'studentNumber'), getVal(b, 'studentNumber'));
+      }
+      if (this.sortField === 'firstName') {
+        const t1 = compareText(getVal(a, 'lastName'), getVal(b, 'lastName'));
+        if (t1 !== 0) return t1;
+        return compareText(getVal(a, 'studentNumber'), getVal(b, 'studentNumber'));
+      }
+      // studentNumber
+      const t1 = compareText(getVal(a, 'lastName'), getVal(b, 'lastName'));
+      if (t1 !== 0) return t1;
+      return compareText(getVal(a, 'firstName'), getVal(b, 'firstName'));
     });
   }
 

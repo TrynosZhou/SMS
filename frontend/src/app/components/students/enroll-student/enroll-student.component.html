@@ -11,7 +11,7 @@
     <a class="btn btn-secondary" routerLink="/students/new">
       ← Back to Registration
     </a>
-    <button class="btn btn-primary" (click)="previewList()">👁️ Preview</button>
+    <button class="btn btn-primary" (click)="previewPdf()">👁️ Preview</button>
     <button class="btn btn-primary" (click)="printList()">🖨️ Print</button>
     <button class="btn btn-primary" (click)="exportCsv()">⬇ Export CSV</button>
   </div>
@@ -134,6 +134,15 @@
               (click)="enroll(s, s._selectedClassId)">
               <span *ngIf="!enrollingMap[s.id || s.studentId]">Enroll</span>
               <span *ngIf="enrollingMap[s.id || s.studentId]" class="spinner"></span>
+            </button>
+            <button 
+              class="btn btn-primary"
+              style="margin-left:8px"
+              *ngIf="isAdmin()"
+              [disabled]="deletingMap[s.id || s.studentId]"
+              (click)="deleteStudentRecord(s)">
+              <span *ngIf="!deletingMap[s.id || s.studentId]">Delete</span>
+              <span *ngIf="deletingMap[s.id || s.studentId]" class="spinner"></span>
             </button>
           </td>
         </tr>

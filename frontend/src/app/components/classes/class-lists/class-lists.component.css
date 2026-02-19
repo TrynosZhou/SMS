@@ -333,6 +333,26 @@
   letter-spacing: 0.5px;
 }
 
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.sort-indicator {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.sort-indicator.asc::after {
+  content: '↑';
+}
+.sort-indicator.desc::after {
+  content: '↓';
+}
+
 .students-table tbody tr {
   border-bottom: 1px solid #e2e8f0;
   transition: background 0.2s ease;

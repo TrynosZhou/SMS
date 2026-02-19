@@ -148,9 +148,18 @@
       <table class="students-table">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Student Number</th>
-            <th>Name</th>
+            <th (click)="changeSort('studentNumber')" class="sortable">
+              Student ID
+              <span class="sort-indicator" [class.asc]="getSortDirection('studentNumber') === 'asc'" [class.desc]="getSortDirection('studentNumber') === 'desc'"></span>
+            </th>
+            <th (click)="changeSort('lastName')" class="sortable">
+              Last Name
+              <span class="sort-indicator" [class.asc]="getSortDirection('lastName') === 'asc'" [class.desc]="getSortDirection('lastName') === 'desc'"></span>
+            </th>
+            <th (click)="changeSort('firstName')" class="sortable">
+              First Name
+              <span class="sort-indicator" [class.asc]="getSortDirection('firstName') === 'asc'" [class.desc]="getSortDirection('firstName') === 'desc'"></span>
+            </th>
             <th>Gender</th>
             <th>Type</th>
             <th>Class</th>
@@ -158,8 +167,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let student of filteredStudents; let i = index">
-            <td>{{ i + 1 }}</td>
+          <tr *ngFor="let student of filteredStudents">
             <td>
               <span 
                 class="student-number student-id-link" 
@@ -169,12 +177,21 @@
               </span>
             </td>
             <td>
-              <a 
+              <a
                 [routerLink]="['/students', student.id, 'edit']"
                 [queryParams]="{ mode: 'limited', returnUrl: '/classes/lists' }"
                 title="Edit Personal and Contact Information"
                 class="student-name-link">
-                <strong>{{ student.firstName }} {{ student.lastName }}</strong>
+                <strong>{{ student.lastName || 'N/A' }}</strong>
+              </a>
+            </td>
+            <td>
+              <a
+                [routerLink]="['/students', student.id, 'edit']"
+                [queryParams]="{ mode: 'limited', returnUrl: '/classes/lists' }"
+                title="Edit Personal and Contact Information"
+                class="student-name-link">
+                <strong>{{ student.firstName || 'N/A' }}</strong>
               </a>
             </td>
             <td>{{ student.gender || 'N/A' }}</td>

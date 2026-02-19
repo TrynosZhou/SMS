@@ -4,6 +4,8 @@ import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
 import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 @Component({
   selector: 'app-enroll-student',
@@ -25,6 +27,7 @@ export class EnrollStudentComponent implements OnInit {
   classes: any[] = [];
   searchQuery = '';
   enrollingMap: { [studentId: string]: boolean } = {};
+  deletingMap: { [studentId: string]: boolean } = {};
   // Stats and filters
   stats = {
     total: 0,
@@ -52,6 +55,68 @@ export class EnrollStudentComponent implements OnInit {
     this.loadUnenrolledStudents();
   }
 
+  async previewPdf(): Promise<void> {
+    const header = (this.schoolName || this.schoolAddress || this.schoolLogo || this.schoolLogo2 || this.schoolMotto)
+      ? `
+        <div class="school-header">
+          ${this.schoolLogo ? `<div class="school-logo-wrapper"><img src="${this.resolveImage(this.schoolLogo)}" alt="School Logo" class="school-logo" /></div>` : `<div></div>`}
+          <div class="school-text">
+            ${this.schoolName ? `<h3>${this.schoolName}</h3>` : ``}
+            ${this.schoolMotto ? `<p class="school-motto">${this.schoolMotto}</p>` : ``}
+            ${this.schoolAddress ? `<p class="school-address">${this.schoolAddress}</p>` : ``}
+          </div>
+          ${this.schoolLogo2 ? `<div class="school-logo-wrapper"><img src="${this.resolveImage(this.schoolLogo2)}" alt="School Logo 2" class="school-logo" /></div>` : `<div></div>`}
+        </div>
+      ` : '';
+    const table = this.buildPrintTableHtml();
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '-10000px';
+    container.style.top = '0';
+    container.style.width = '800px';
+    container.innerHTML = `
+      <style>
+        body { font-family: Arial, sans-serif; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f4f4f4; }
+        .school-header { display: grid; grid-template-columns: 120px 1fr 120px; gap: 12px; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
+        .school-logo { width: 100%; max-width: 100px; height: auto; object-fit: contain; }
+        .school-text h3 { margin: 0; font-size: 18px; }
+        .school-motto { font-style: italic; color: #555; margin: 4px 0; }
+        .school-address { color: #666; margin: 2px 0; font-size: 12px; }
+      </style>
+      ${header}
+      ${table}
+    `;
+    document.body.appendChild(container);
+    try {
+      const canvas = await html2canvas(container, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      const pdfBlob = pdf.output('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      window.open(pdfUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(pdfUrl), 60000);
+    } catch {
+    } finally {
+      document.body.removeChild(container);
+    }
+  }
+
   loadSettings(): void {
     this.settingsService.getSettings().subscribe({
       next: (settings: any) => {
@@ -68,6 +133,9 @@ export class EnrollStudentComponent implements OnInit {
 
   canEnroll(): boolean {
     return this.authService.hasRole('admin') || this.authService.hasRole('superadmin') || this.authService.hasRole('teacher');
+  }
+  isAdmin(): boolean {
+    return this.authService.hasRole('admin') || this.authService.hasRole('superadmin');
   }
 
   loadClasses(): void {
@@ -90,7 +158,7 @@ export class EnrollStudentComponent implements OnInit {
     this.studentService.getStudents().subscribe({
       next: (data: any[]) => {
         const list = Array.isArray(data) ? data : [];
-        this.students = list.filter(s => this.isUnenrolled(s) && (String(s.studentStatus).toLowerCase().includes('new')));
+        this.students = list.filter(s => this.isUnenrolled(s));
         this.recomputeOptions();
         this.applyFilters();
         this.loading = false;
@@ -207,90 +275,23 @@ export class EnrollStudentComponent implements OnInit {
   }
 
   previewList(): void {
-    const content = document.getElementById('print-area');
-    if (!content) return;
-    const win = window.open('', '_blank', 'noopener,noreferrer');
-    if (!win) return;
-    const header = (this.schoolName || this.schoolAddress || this.schoolLogo || this.schoolLogo2 || this.schoolMotto)
-      ? `
-        <div class="school-header">
-          ${this.schoolLogo ? `<div class="school-logo-wrapper"><img src="${this.schoolLogo}" alt="School Logo" class="school-logo" /></div>` : `<div></div>`}
-          <div class="school-text">
-            ${this.schoolName ? `<h3>${this.schoolName}</h3>` : ``}
-            ${this.schoolMotto ? `<p class="school-motto">${this.schoolMotto}</p>` : ``}
-            ${this.schoolAddress ? `<p class="school-address">${this.schoolAddress}</p>` : ``}
-          </div>
-          ${this.schoolLogo2 ? `<div class="school-logo-wrapper"><img src="${this.schoolLogo2}" alt="School Logo 2" class="school-logo" /></div>` : `<div></div>`}
-        </div>
-      ` : '';
-    win.document.write(`
-      <html>
-        <head>
-          <title>Unenrolled Students</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 16px; }
-            h1 { margin: 0 0 12px 0; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background: #f4f4f4; }
-            .school-header { display: grid; grid-template-columns: 120px 1fr 120px; gap: 12px; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
-            .school-logo { width: 100%; max-width: 100px; height: auto; object-fit: contain; }
-            .school-text h3 { margin: 0; font-size: 18px; }
-            .school-motto { font-style: italic; color: #555; margin: 4px 0; }
-            .school-address { color: #666; margin: 2px 0; font-size: 12px; }
-          </style>
-        </head>
-        <body>
-          ${header}
-          ${content.innerHTML}
-        </body>
-      </html>
-    `);
-    win.document.close();
+    const html = this.buildPrintHtml(false);
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (win) {
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    }
   }
 
   printList(): void {
-    const content = document.getElementById('print-area');
-    if (!content) return;
-    const win = window.open('', '_blank', 'noopener,noreferrer');
-    if (!win) return;
-    const header = (this.schoolName || this.schoolAddress || this.schoolLogo || this.schoolLogo2 || this.schoolMotto)
-      ? `
-        <div class="school-header">
-          ${this.schoolLogo ? `<div class="school-logo-wrapper"><img src="${this.schoolLogo}" alt="School Logo" class="school-logo" /></div>` : `<div></div>`}
-          <div class="school-text">
-            ${this.schoolName ? `<h3>${this.schoolName}</h3>` : ``}
-            ${this.schoolMotto ? `<p class="school-motto">${this.schoolMotto}</p>` : ``}
-            ${this.schoolAddress ? `<p class="school-address">${this.schoolAddress}</p>` : ``}
-          </div>
-          ${this.schoolLogo2 ? `<div class="school-logo-wrapper"><img src="${this.schoolLogo2}" alt="School Logo 2" class="school-logo" /></div>` : `<div></div>`}
-        </div>
-      ` : '';
-    win.document.write(`
-      <html>
-        <head>
-          <title>Unenrolled Students</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 16px; }
-            h1 { margin: 0 0 12px 0; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background: #f4f4f4; }
-            .school-header { display: grid; grid-template-columns: 120px 1fr 120px; gap: 12px; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
-            .school-logo { width: 100%; max-width: 100px; height: auto; object-fit: contain; }
-            .school-text h3 { margin: 0; font-size: 18px; }
-            .school-motto { font-style: italic; color: #555; margin: 4px 0; }
-            .school-address { color: #666; margin: 2px 0; font-size: 12px; }
-          </style>
-        </head>
-        <body>
-          ${header}
-          ${content.innerHTML}
-          <script>window.onload = function(){ window.print(); }</script>
-        </body>
-      </html>
-    `);
-    win.document.close();
+    const html = this.buildPrintHtml(true);
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (win) {
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    }
   }
 
   exportCsv(): void {
@@ -318,5 +319,128 @@ export class EnrollStudentComponent implements OnInit {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  resolveImage(path: string | null): string {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    const origin = window.location.origin;
+    return path.startsWith('/') ? `${origin}${path}` : `${origin}/${path}`;
+  }
+
+  private buildPrintTableHtml(): string {
+    const rows = this.filtered.map(s => `
+      <tr>
+        <td>${s.studentNumber || '—'}</td>
+        <td>${s.firstName || '—'}</td>
+        <td>${s.lastName || '—'}</td>
+        <td>${s.gender || '—'}</td>
+        <td>${s.phoneNumber || '—'}</td>
+        <td>${s.grade || s.classLevel || '—'}</td>
+      </tr>
+    `).join('');
+    const table = this.filtered.length > 0 ? `
+      <table>
+        <thead>
+          <tr>
+            <th>Student Number</th>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Gender</th>
+            <th>Phone</th>
+            <th>Grade</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    ` : `<div>No Unenrolled Students</div>`;
+    return `<h2 style="margin: 16px 0;">Registered Students Without Classes</h2>${table}`;
+  }
+
+  private buildPrintHtml(print: boolean): string {
+    const header = (this.schoolName || this.schoolAddress || this.schoolLogo || this.schoolLogo2 || this.schoolMotto)
+      ? `
+        <div class="school-header">
+          ${this.schoolLogo ? `<div class="school-logo-wrapper"><img src="${this.resolveImage(this.schoolLogo)}" alt="School Logo" class="school-logo" /></div>` : `<div></div>`}
+          <div class="school-text">
+            ${this.schoolName ? `<h3>${this.schoolName}</h3>` : ``}
+            ${this.schoolMotto ? `<p class="school-motto">${this.schoolMotto}</p>` : ``}
+            ${this.schoolAddress ? `<p class="school-address">${this.schoolAddress}</p>` : ``}
+          </div>
+          ${this.schoolLogo2 ? `<div class="school-logo-wrapper"><img src="${this.resolveImage(this.schoolLogo2)}" alt="School Logo 2" class="school-logo" /></div>` : `<div></div>`}
+        </div>
+      ` : '';
+    const table = this.buildPrintTableHtml();
+    const printScript = print ? `<script>window.onload=function(){window.print();}</script>` : '';
+    return `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Unenrolled Students</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 16px; }
+            h1 { margin: 0 0 12px 0; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background: #f4f4f4; }
+            .school-header { display: grid; grid-template-columns: 120px 1fr 120px; gap: 12px; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
+            .school-logo { width: 100%; max-width: 100px; height: auto; object-fit: contain; }
+            .school-text h3 { margin: 0; font-size: 18px; }
+            .school-motto { font-style: italic; color: #555; margin: 4px 0; }
+            .school-address { color: #666; margin: 2px 0; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          ${header}
+          ${table}
+          ${printScript}
+        </body>
+      </html>
+    `;
+  }
+
+  deleteStudentRecord(student: any): void {
+    const sid = student?.id || student?.studentId;
+    const name = `${student?.firstName || ''} ${student?.lastName || ''}`.trim();
+    const number = student?.studentNumber || 'N/A';
+    if (!sid) return;
+    if (!this.isAdmin()) {
+      this.error = 'You do not have permission to delete students';
+      setTimeout(() => this.error = '', 4000);
+      return;
+    }
+    const confirmed = confirm(`Are you sure you want to delete "${name || 'Student'}" (${number})? This will also delete related marks, invoices and the associated user account. This action cannot be undone.`);
+    if (!confirmed) return;
+    this.deletingMap[sid] = true;
+    this.error = '';
+    this.success = '';
+    this.studentService.deleteStudent(String(sid)).subscribe({
+      next: (data: any) => {
+        this.success = data?.message || 'Student deleted successfully';
+        this.students = this.students.filter(s => (s.id || s.studentId) !== sid);
+        this.filtered = this.filtered.filter(s => (s.id || s.studentId) !== sid);
+        this.recomputeOptions();
+        this.recomputeStats();
+        this.deletingMap[sid] = false;
+        setTimeout(() => this.success = '', 5000);
+      },
+      error: (err: any) => {
+        let msg = 'Failed to delete student';
+        if (err?.status === 0 || err?.status === undefined) {
+          msg = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+        } else if (err?.error) {
+          if (typeof err.error === 'string') msg = err.error;
+          else if (err.error.message) msg = err.error.message;
+        } else if (err?.message) {
+          msg = err.message;
+        }
+        this.error = msg;
+        this.deletingMap[sid] = false;
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
   }
 }
