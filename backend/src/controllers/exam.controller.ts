@@ -3533,22 +3533,47 @@ export const getMarksEntryProgress = async (req: AuthRequest, res: Response) => 
       const subjectProgress: any[] = [];
 
       for (const subject of subjects) {
-        // Find latest exam for this class (filtered by type/term if provided)
-        const whereClause: any = { classId: cls.id };
-        if (normalizedType) whereClause.type = normalizedType as any;
-        if (termUsed) whereClause.term = termUsed as any;
+        const baseWhere: any = { classId: cls.id };
+        if (normalizedType) baseWhere.type = normalizedType as any;
+        if (termUsed) baseWhere.term = termUsed as any;
 
-        const exams = await examRepository.find({
-          where: whereClause,
+        const filteredExams = await examRepository.find({
+          where: baseWhere,
           order: { examDate: 'DESC' }
         });
 
-        const latestExam = exams[0] || null;
+        let chosenExam: Exam | null = null;
         let enteredCount = 0;
-        if (latestExam) {
-          enteredCount = await marksRepository.count({
-            where: { examId: latestExam.id, subjectId: subject.id }
+
+        const computeMaxFor = async (examsToCheck: Exam[]) => {
+          let maxCount = 0;
+          let maxExam: Exam | null = null;
+          for (const ex of examsToCheck) {
+            const count = await marksRepository.count({
+              where: { examId: ex.id, subjectId: subject.id }
+            });
+            if (count > maxCount) {
+              maxCount = count;
+              maxExam = ex;
+            }
+          }
+          return { maxCount, maxExam };
+        };
+
+        if (filteredExams.length > 0) {
+          const { maxCount, maxExam } = await computeMaxFor(filteredExams);
+          enteredCount = maxCount;
+          chosenExam = maxExam ?? filteredExams[0];
+        } else {
+          const anyExams = await examRepository.find({
+            where: { classId: cls.id },
+            order: { examDate: 'DESC' }
           });
+          if (anyExams.length > 0) {
+            const { maxCount, maxExam } = await computeMaxFor(anyExams);
+            enteredCount = maxCount;
+            chosenExam = maxExam ?? anyExams[0];
+          }
         }
 
         const expectedCount = totalStudents;
@@ -3560,9 +3585,9 @@ export const getMarksEntryProgress = async (req: AuthRequest, res: Response) => 
           progressPercent,
           enteredCount,
           expectedCount,
-          examId: latestExam?.id || null,
-          examType: latestExam?.type || normalizedType || null,
-          term: latestExam?.term || termUsed || null
+          examId: chosenExam?.id || null,
+          examType: chosenExam?.type || normalizedType || null,
+          term: chosenExam?.term || termUsed || null
         });
       }
 
