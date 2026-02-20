@@ -3213,13 +3213,9 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       markSheetData.push(studentRow);
     }
 
-    // Sort by average (descending)
     markSheetData.sort((a, b) => b.average - a.average);
-
-    // Add positions
-    markSheetData.forEach((row, index) => {
-      row.position = index + 1;
-    });
+    const markSheetWithTies = assignPositionsWithTies(markSheetData);
+    const markSheetDataWithPositions = markSheetWithTies.map(row => ({ ...row, position: row.position }));
 
     res.json({
       class: {
@@ -3237,7 +3233,7 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
         examDate: e.examDate,
         term: e.term
       })),
-      markSheet: markSheetData,
+      markSheet: markSheetDataWithPositions,
       generatedAt: new Date()
     });
   } catch (error: any) {
@@ -3440,13 +3436,9 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       markSheetData.push(studentRow);
     }
 
-    // Sort by average (descending)
     markSheetData.sort((a, b) => b.average - a.average);
-
-    // Add positions
-    markSheetData.forEach((row, index) => {
-      row.position = index + 1;
-    });
+    const markSheetWithTies = assignPositionsWithTies(markSheetData);
+    const markSheetDataWithPositions = markSheetWithTies.map(row => ({ ...row, position: row.position }));
 
     // Get settings for PDF
     const settingsList = await settingsRepository.find({
@@ -3470,7 +3462,7 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
         examDate: e.examDate,
         term: e.term
       })),
-      markSheet: markSheetData,
+      markSheet: markSheetDataWithPositions,
       generatedAt: new Date()
     };
 
