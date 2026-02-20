@@ -3137,7 +3137,17 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       const s = m.subject;
       if (s && !subjectsMap.has(s.id)) subjectsMap.set(s.id, s);
     });
-    const subjects = Array.from(subjectsMap.values());
+    let subjects = Array.from(subjectsMap.values());
+    const SUBJECT_ORDER = ['mathematics', 'science', 'english', 'digital literacy', 'french'];
+    subjects.sort((a, b) => {
+      const an = String(a.name || '').trim().toLowerCase();
+      const bn = String(b.name || '').trim().toLowerCase();
+      const ai = SUBJECT_ORDER.indexOf(an);
+      const bi = SUBJECT_ORDER.indexOf(bn);
+      const av = ai >= 0 ? ai : SUBJECT_ORDER.length + an.localeCompare(bn);
+      const bv = bi >= 0 ? bi : SUBJECT_ORDER.length + bn.localeCompare(an);
+      return av - bv;
+    });
     if (subjects.length === 0) {
       return res.status(404).json({ message: 'No subjects found for this class or captured marks' });
     }
@@ -3204,6 +3214,8 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       // Calculate average based on allowed ranking subjects only (Mathematics, English, Science)
       const coreMax = studentRow.coreTotalMaxScore || 0;
       const coreTotal = studentRow.coreTotalScore || 0;
+      studentRow.totalScore = Math.round(coreTotal);
+      studentRow.totalMaxScore = coreMax;
       if (coreMax > 0) {
         studentRow.average = Math.round((coreTotal / coreMax) * 100);
       } else {
@@ -3365,6 +3377,16 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'No subjects found for this class or captured marks' });
     }
 
+    const SUBJECT_ORDER = ['mathematics', 'science', 'english', 'digital literacy', 'french'];
+    subjects.sort((a, b) => {
+      const an = String(a.name || '').trim().toLowerCase();
+      const bn = String(b.name || '').trim().toLowerCase();
+      const ai = SUBJECT_ORDER.indexOf(an);
+      const bi = SUBJECT_ORDER.indexOf(bn);
+      const av = ai >= 0 ? ai : SUBJECT_ORDER.length + an.localeCompare(bn);
+      const bv = bi >= 0 ? bi : SUBJECT_ORDER.length + bn.localeCompare(an);
+      return av - bv;
+    });
     // Organize marks by student and subject
     const markSheetData: any[] = [];
 
@@ -3427,6 +3449,8 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       // Calculate average based on allowed ranking subjects only (Mathematics, English, Science)
       const coreMax = studentRow.coreTotalMaxScore || 0;
       const coreTotal = studentRow.coreTotalScore || 0;
+      studentRow.totalScore = Math.round(coreTotal);
+      studentRow.totalMaxScore = coreMax;
       if (coreMax > 0) {
         studentRow.average = Math.round((coreTotal / coreMax) * 100);
       } else {
