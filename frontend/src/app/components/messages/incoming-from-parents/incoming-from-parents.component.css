@@ -36,3 +36,10 @@
 .detail .actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .pin-btn { margin-left: 6px; }
 .template-row { display: flex; align-items: center; gap: 8px; }
+.template-manager { border: 1px solid #e9ecef; border-radius: 12px; padding: 12px; background: #fff; }
+.tm-header { display: flex; align-items: center; justify-content: space-between; }
+.tm-actions { display: flex; align-items: center; gap: 8px; }
+.tm-list { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.tm-item { border: 1px solid #e9ecef; border-radius: 8px; padding: 10px; }
+.tm-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.tm-row.actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 8px; }

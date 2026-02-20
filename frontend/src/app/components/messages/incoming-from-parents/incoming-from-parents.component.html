@@ -84,7 +84,40 @@
       <div class="filter-group">
         <label>&nbsp;</label>
         <button type="button" class="btn btn-modern" (click)="clearFilters()"><span>✖️</span><span>Clear</span></button>
+        <button type="button" class="btn btn-modern" (click)="showTemplateManager = !showTemplateManager"><span>📝</span><span>{{ showTemplateManager ? 'Hide Templates' : 'Manage Templates' }}</span></button>
       </div>
+    </div>
+  </div>
+
+  <div class="template-manager" *ngIf="showTemplateManager">
+    <div class="tm-header">
+      <h3>Reply Templates</h3>
+      <div class="tm-actions">
+        <button class="btn btn-modern" (click)="addReplyTemplate()">Add</button>
+        <button class="btn btn-modern" (click)="saveReplyTemplates()">Save</button>
+      </div>
+    </div>
+    <div class="tm-list" *ngIf="replyTemplates.length > 0">
+      <div class="tm-item" *ngFor="let t of replyTemplates; let i = index">
+        <div class="tm-row">
+          <label>Name</label>
+          <input type="text" [(ngModel)]="t.name" />
+        </div>
+        <div class="tm-row">
+          <label>Subject</label>
+          <input type="text" [(ngModel)]="t.subject" />
+        </div>
+        <div class="tm-row">
+          <label>Body</label>
+          <textarea rows="4" [(ngModel)]="t.body"></textarea>
+        </div>
+        <div class="tm-row actions">
+          <button class="btn btn-modern" (click)="removeReplyTemplate(i)">Remove</button>
+        </div>
+      </div>
+    </div>
+    <div class="empty-state" *ngIf="replyTemplates.length === 0">
+      <p>No templates. Click Add to create one.</p>
     </div>
   </div>
 

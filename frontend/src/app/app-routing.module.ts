@@ -58,6 +58,7 @@ import { ParentOutboxComponent } from './components/parent/parent-outbox/parent-
 import { IncomingFromParentsComponent } from './components/messages/incoming-from-parents/incoming-from-parents.component';
 import { OutgoingMessagesComponent } from './components/messages/outgoing-messages/outgoing-messages.component';
 import { EnrollStudentComponent } from './components/students/enroll-student/enroll-student.component';
+import { AllocateClassesComponent } from './components/teachers/allocate-classes/allocate-classes.component';
 
 const routes: Routes = [
   { path: '', component: SplashComponent },
@@ -92,6 +93,7 @@ const routes: Routes = [
   { path: 'students/transfer', component: StudentTransferComponent, canActivate: [AuthGuard] },
   { path: 'teachers', component: TeacherListComponent, canActivate: [AuthGuard] },
   { path: 'teachers/new', component: TeacherFormComponent, canActivate: [AuthGuard] },
+  { path: 'teachers/allocate_class', component: AllocateClassesComponent, canActivate: [AuthGuard] },
   { path: 'teachers/:id/edit', component: TeacherFormComponent, canActivate: [AuthGuard] },
   { path: 'exams', component: ExamListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
   // { path: 'exams/new', component: ExamFormComponent, canActivate: [AuthGuard] }, // Disabled - exam creation removed

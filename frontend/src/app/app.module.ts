@@ -67,6 +67,7 @@ import { ParentOutboxComponent } from './components/parent/parent-outbox/parent-
 import { IncomingFromParentsComponent } from './components/messages/incoming-from-parents/incoming-from-parents.component';
 import { OutgoingMessagesComponent } from './components/messages/outgoing-messages/outgoing-messages.component';
 import { EnrollStudentComponent } from './components/students/enroll-student/enroll-student.component';
+import { AllocateClassesComponent } from './components/teachers/allocate-classes/allocate-classes.component';
 
 @NgModule({
   declarations: [
@@ -127,7 +128,8 @@ import { EnrollStudentComponent } from './components/students/enroll-student/enr
     ParentOutboxComponent,
     IncomingFromParentsComponent,
     OutgoingMessagesComponent,
-    EnrollStudentComponent
+    EnrollStudentComponent,
+    AllocateClassesComponent
   ],
   imports: [
     BrowserModule,

@@ -43,6 +43,8 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
   pinnedOnly = false;
   showPinnedFirst = true;
   private pinnedStorageKey = 'incomingPinnedIds';
+  private templatesStorageKey = 'incomingReplyTemplates';
+  showTemplateManager = false;
 
   constructor(private messageService: MessageService, private authService: AuthService, private route: ActivatedRoute, private router: Router) {
     const user = this.authService.getCurrentUser();
@@ -72,6 +74,15 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
         const arr = JSON.parse(p);
         if (Array.isArray(arr)) {
           arr.forEach((id: string) => this.pinnedIds.add(String(id)));
+        }
+      } catch {}
+    }
+    const t = localStorage.getItem(this.templatesStorageKey);
+    if (t) {
+      try {
+        const arr = JSON.parse(t);
+        if (Array.isArray(arr)) {
+          this.replyTemplates = arr.filter((x: any) => x && typeof x.name === 'string' && typeof x.subject === 'string' && typeof x.body === 'string');
         }
       } catch {}
     }
@@ -446,5 +457,21 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
       localStorage.setItem(this.pinnedStorageKey, JSON.stringify(Array.from(this.pinnedIds)));
     } catch {}
     this.applyFilterAndPaginate();
+  }
+
+  addReplyTemplate() {
+    this.replyTemplates.push({ name: 'New Template', subject: '', body: '' });
+  }
+
+  removeReplyTemplate(index: number) {
+    if (index < 0 || index >= this.replyTemplates.length) return;
+    this.replyTemplates.splice(index, 1);
+    this.saveReplyTemplates();
+  }
+
+  saveReplyTemplates() {
+    try {
+      localStorage.setItem(this.templatesStorageKey, JSON.stringify(this.replyTemplates));
+    } catch {}
   }
 }
