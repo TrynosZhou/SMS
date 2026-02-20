@@ -126,7 +126,11 @@ export class RankingsComponent implements OnInit {
 
   loadSubjects() {
     this.subjectService.getSubjects().subscribe({
-      next: (data: any) => this.subjects = data,
+      next: (data: any) => {
+        const allowed = new Set(['Mathematics', 'Science', 'English']);
+        const arr = Array.isArray(data) ? data : (Array.isArray((data || {}).subjects) ? (data as any).subjects : []);
+        this.subjects = arr.filter((s: any) => allowed.has(String(s?.name || '').trim()));
+      },
       error: (err: any) => console.error(err)
     });
   }

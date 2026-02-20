@@ -23,6 +23,15 @@ export class AllocateClassesComponent implements OnInit {
   filteredTeachers: any[] = [];
   filteredSubjects: any[] = [];
   filteredClasses: any[] = [];
+  unallocatedTeachers: any[] = [];
+  selectedClassFor: { [teacherId: string]: string } = {};
+  selectedSubjectFor: { [teacherId: string]: string } = {};
+  unallocPaged: any[] = [];
+  unallocPage = 1;
+  unallocPageSize = 10;
+  unallocTotalPages = 1;
+  unallocSortKey: 'name' | 'employeeId' = 'name';
+  unallocSortDir: 'asc' | 'desc' = 'asc';
 
   teacherSearch = '';
   subjectSearch = '';
@@ -54,7 +63,9 @@ export class AllocateClassesComponent implements OnInit {
       next: (data: any[]) => {
         this.teachers = Array.isArray(data) ? data : [];
         this.filteredTeachers = this.teachers;
+        this.unallocatedTeachers = this.teachers.filter(t => !t.classes || t.classes.length === 0);
         this.loading = false;
+        this.refreshUnallocatedView();
       },
       error: () => {
         this.error = 'Failed to load teachers';
@@ -125,12 +136,17 @@ export class AllocateClassesComponent implements OnInit {
     const q = (this.teacherSearch || '').toLowerCase().trim();
     if (!q) {
       this.filteredTeachers = this.teachers;
+      this.unallocatedTeachers = this.teachers.filter(t => !t.classes || t.classes.length === 0);
+      this.refreshUnallocatedView();
       return;
     }
-    this.filteredTeachers = this.teachers.filter(t =>
+    const allFiltered = this.teachers.filter(t =>
       (`${t.firstName || ''} ${t.lastName || ''}`.toLowerCase().includes(q)) ||
       (String(t.teacherId || '').toLowerCase().includes(q))
     );
+    this.filteredTeachers = allFiltered;
+    this.unallocatedTeachers = allFiltered.filter(t => !t.classes || t.classes.length === 0);
+    this.refreshUnallocatedView();
   }
 
   filterSubjects() {
@@ -197,6 +213,7 @@ export class AllocateClassesComponent implements OnInit {
           this.success = failed === 0 ? 'Assignments saved for all selected teachers' : `Saved for ${done}, failed for ${failed}`;
           this.saving = false;
           setTimeout(() => this.success = '', 5000);
+          this.loadTeachers();
         },
         error: () => {
           this.error = 'Bulk save failed';
@@ -225,6 +242,9 @@ export class AllocateClassesComponent implements OnInit {
           },
           error: () => {}
         });
+        this.loadTeachers();
+        this.unallocPage = 1;
+        this.refreshUnallocatedView();
       },
       error: (err: any) => {
         this.error = err?.error?.message || 'Failed to save assignments';
@@ -232,5 +252,121 @@ export class AllocateClassesComponent implements OnInit {
         setTimeout(() => this.error = '', 5000);
       }
     });
+  }
+
+  allocateClassForTeacher(teacherId: string) {
+    const subjectId = this.selectedSubjectFor[teacherId];
+    const classId = this.selectedClassFor[teacherId];
+    if (!subjectId) {
+      this.error = 'Please select a subject first';
+      setTimeout(() => this.error = '', 4000);
+      return;
+    }
+    if (!classId) {
+      this.error = 'Please select a class to allocate';
+      setTimeout(() => this.error = '', 4000);
+      return;
+    }
+    this.saving = true;
+    this.error = '';
+    this.success = '';
+    this.teacherService.updateTeacher(teacherId, { subjectIds: [subjectId], classIds: [classId] }).subscribe({
+      next: (resp: any) => {
+        this.success = resp?.message || 'Class allocated to teacher';
+        this.saving = false;
+        setTimeout(() => this.success = '', 4000);
+        this.loadTeachers();
+      },
+      error: (err: any) => {
+        this.error = err?.error?.message || 'Failed to allocate class';
+        this.saving = false;
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  deleteTeacher(teacherId: string, teacherName: string, teacherCode: string) {
+    if (!confirm(`Are you sure you want to delete teacher "${teacherName}" (${teacherCode})? This action cannot be undone.`)) {
+      return;
+    }
+    this.loading = true;
+    this.error = '';
+    this.success = '';
+    this.teacherService.deleteTeacher(teacherId).subscribe({
+      next: (data: any) => {
+        this.success = data?.message || 'Teacher deleted successfully';
+        this.loading = false;
+        this.loadTeachers();
+        setTimeout(() => this.success = '', 5000);
+      },
+      error: (err: any) => {
+        this.loading = false;
+        this.error = err?.error?.message || 'Failed to delete teacher';
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  refreshUnallocatedView() {
+    const arr = [...this.unallocatedTeachers];
+    arr.sort((a: any, b: any) => {
+      const aName = `${(a.firstName || '').toLowerCase()} ${(a.lastName || '').toLowerCase()}`.trim();
+      const bName = `${(b.firstName || '').toLowerCase()} ${(b.lastName || '').toLowerCase()}`.trim();
+      const aEmp = String(a.teacherId || a.id || '').toLowerCase();
+      const bEmp = String(b.teacherId || b.id || '').toLowerCase();
+      let cmp = 0;
+      if (this.unallocSortKey === 'name') cmp = aName.localeCompare(bName);
+      else cmp = aEmp.localeCompare(bEmp);
+      return this.unallocSortDir === 'asc' ? cmp : -cmp;
+    });
+    this.unallocTotalPages = Math.max(1, Math.ceil(arr.length / this.unallocPageSize));
+    this.unallocPage = Math.min(this.unallocPage, this.unallocTotalPages);
+    const start = (this.unallocPage - 1) * this.unallocPageSize;
+    this.unallocPaged = arr.slice(start, start + this.unallocPageSize);
+  }
+
+  toggleUnallocSort(key: 'name' | 'employeeId') {
+    if (this.unallocSortKey === key) {
+      this.unallocSortDir = this.unallocSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.unallocSortKey = key;
+      this.unallocSortDir = 'asc';
+    }
+    this.refreshUnallocatedView();
+  }
+
+  onUnallocPageChange(page: number) {
+    if (page < 1 || page > this.unallocTotalPages || page === this.unallocPage) return;
+    this.unallocPage = page;
+    this.refreshUnallocatedView();
+  }
+
+  onUnallocPageSizeChange(size: number | string) {
+    const v = Number(size);
+    this.unallocPageSize = Number.isFinite(v) && v > 0 ? v : this.unallocPageSize;
+    this.unallocPage = 1;
+    this.refreshUnallocatedView();
+  }
+
+  exportUnallocatedCSV() {
+    const rows = this.unallocatedTeachers.map(t => [
+      t.teacherId || '',
+      `${t.firstName || ''}`.trim(),
+      `${t.lastName || ''}`.trim(),
+      t.phoneNumber || '',
+      t.sex || ''
+    ]);
+    const headers = ['Employee ID', 'First Name', 'Last Name', 'Phone', 'Gender'];
+    const csv = [
+      headers.join(','),
+      ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    ].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Unallocated_Teachers_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   }
 }

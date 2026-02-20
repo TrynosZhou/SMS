@@ -18,6 +18,8 @@ import { AuthRequest } from '../middleware/auth';
 import { createReportCardPDF } from '../utils/pdfGenerator';
 import { createMarkSheetPDF } from '../utils/markSheetPdfGenerator';
 
+const ALLOWED_RANKING_SUBJECTS = new Set<string>(['Mathematics', 'Science', 'English']);
+
 // Helper function to normalize examType to match enum values (e.g., "Mid-Term" -> "mid_term")
 function normalizeExamType(type: string): ExamType {
   if (!type) {
@@ -882,6 +884,12 @@ export const getStudentRankings = async (req: AuthRequest, res: Response) => {
       filteredMarks = marks.filter(m => m.student.classId === classId);
     }
 
+    // Only consider allowed ranking subjects
+    filteredMarks = filteredMarks.filter(m => {
+      const name = m.subject?.name ? String(m.subject.name).trim() : '';
+      return ALLOWED_RANKING_SUBJECTS.has(name);
+    });
+
     // Calculate averages per student
     const studentAverages: { [key: string]: { total: number; count: number; student: Student } } = {};
 
@@ -925,6 +933,17 @@ export const getSubjectRankings = async (req: AuthRequest, res: Response) => {
   try {
     const { examId, subjectId, classId } = req.query;
     const marksRepository = AppDataSource.getRepository(Marks);
+    const subjectRepository = AppDataSource.getRepository(Subject);
+
+    // Verify subject is allowed for ranking
+    const subject = await subjectRepository.findOne({ where: { id: subjectId as string } });
+    if (!subject) {
+      return res.status(404).json({ message: 'Subject not found' });
+    }
+    const subjectName = String(subject.name || '').trim();
+    if (!ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
+      return res.json([]);
+    }
 
     const where: any = { examId: examId as string, subjectId: subjectId as string };
     let marks = await marksRepository.find({
@@ -996,7 +1015,13 @@ export const getClassRankingsByType = async (req: AuthRequest, res: Response) =>
     });
 
     // Filter by class
-    const filteredMarks = marks.filter(m => m.student.classId === classId);
+    let filteredMarks = marks.filter(m => m.student.classId === classId);
+
+    // Only consider allowed ranking subjects
+    filteredMarks = filteredMarks.filter(m => {
+      const name = m.subject?.name ? String(m.subject.name).trim() : '';
+      return ALLOWED_RANKING_SUBJECTS.has(name);
+    });
 
     // Calculate averages per student across all exams
     const studentAverages: { [key: string]: { total: number; count: number; student: Student } } = {};
@@ -1048,6 +1073,17 @@ export const getSubjectRankingsByType = async (req: AuthRequest, res: Response) 
 
     const marksRepository = AppDataSource.getRepository(Marks);
     const examRepository = AppDataSource.getRepository(Exam);
+    const subjectRepository = AppDataSource.getRepository(Subject);
+
+    // Verify subject is allowed for ranking
+    const subject = await subjectRepository.findOne({ where: { id: subjectId as string } });
+    if (!subject) {
+      return res.status(404).json({ message: 'Subject not found' });
+    }
+    const subjectName = String(subject.name || '').trim();
+    if (!ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
+      return res.json([]);
+    }
 
     // Get all exams of the specified type
     const exams = await examRepository.find({
@@ -1140,7 +1176,13 @@ export const getFormRankings = async (req: AuthRequest, res: Response) => {
       relations: ['student', 'subject']
     });
 
-    const filteredMarks = marks.filter(m => studentIds.includes(m.studentId));
+    let filteredMarks = marks.filter(m => studentIds.includes(m.studentId));
+
+    // Only consider allowed ranking subjects
+    filteredMarks = filteredMarks.filter(m => {
+      const name = m.subject?.name ? String(m.subject.name).trim() : '';
+      return ALLOWED_RANKING_SUBJECTS.has(name);
+    });
 
     // Calculate averages
     const studentAverages: { [key: string]: { total: number; count: number; student: Student } } = {};
@@ -1240,7 +1282,13 @@ export const getOverallPerformanceRankings = async (req: AuthRequest, res: Respo
       relations: ['student', 'subject', 'exam']
     });
 
-    const filteredMarks = marks.filter(m => studentIds.includes(m.studentId));
+    let filteredMarks = marks.filter(m => studentIds.includes(m.studentId));
+
+    // Only consider allowed ranking subjects
+    filteredMarks = filteredMarks.filter(m => {
+      const name = m.subject?.name ? String(m.subject.name).trim() : '';
+      return ALLOWED_RANKING_SUBJECTS.has(name);
+    });
 
     // Calculate overall averages across all exams
     const studentAverages: { [key: string]: { total: number; count: number; studentId: string; firstName: string; lastName: string } } = {};
@@ -3066,12 +3114,6 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: `No ${examType} exams found for this class` });
     }
 
-    // Get all subjects for this class
-    const subjects = classEntity.subjects || [];
-    if (subjects.length === 0) {
-      return res.status(404).json({ message: 'No subjects found for this class' });
-    }
-
     // Get all marks for these exams
     const examIds = exams.map(exam => exam.id);
     const allMarks = await marksRepository.find({
@@ -3081,6 +3123,24 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       },
       relations: ['student', 'exam', 'subject']
     });
+
+    // Build subject list from class subjects + exam subjects + subjects present in marks
+    const subjectsMap = new Map<string, Subject>();
+    const classSubjects = classEntity.subjects || [];
+    classSubjects.forEach(s => subjectsMap.set(s.id, s));
+    exams.forEach(exam => {
+      (exam.subjects || []).forEach(s => {
+        if (!subjectsMap.has(s.id)) subjectsMap.set(s.id, s);
+      });
+    });
+    allMarks.forEach(m => {
+      const s = m.subject;
+      if (s && !subjectsMap.has(s.id)) subjectsMap.set(s.id, s);
+    });
+    const subjects = Array.from(subjectsMap.values());
+    if (subjects.length === 0) {
+      return res.status(404).json({ message: 'No subjects found for this class or captured marks' });
+    }
 
     // Organize marks by student and subject
     const markSheetData: any[] = [];
@@ -3118,6 +3178,13 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
 
           studentRow.totalScore += parseFloat(String(latestMark.score)) || 0;
           studentRow.totalMaxScore += parseFloat(String(latestMark.maxScore)) || 100;
+          const subjectName = String(subject.name || '').trim();
+          if (ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
+            if (!studentRow.coreTotalScore) studentRow.coreTotalScore = 0;
+            if (!studentRow.coreTotalMaxScore) studentRow.coreTotalMaxScore = 0;
+            studentRow.coreTotalScore += parseFloat(String(latestMark.score)) || 0;
+            studentRow.coreTotalMaxScore += parseFloat(String(latestMark.maxScore)) || 100;
+          }
         } else {
           studentRow.subjects[subject.id] = {
             subjectName: subject.name,
@@ -3126,12 +3193,21 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
             percentage: 0
           };
           studentRow.totalMaxScore += 100;
+          const subjectName = String(subject.name || '').trim();
+          if (ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
+            if (!studentRow.coreTotalMaxScore) studentRow.coreTotalMaxScore = 0;
+            studentRow.coreTotalMaxScore += 100;
+          }
         }
       }
 
-      // Calculate average
-      if (studentRow.totalMaxScore > 0) {
-        studentRow.average = Math.round((studentRow.totalScore / studentRow.totalMaxScore) * 100);
+      // Calculate average based on allowed ranking subjects only (Mathematics, English, Science)
+      const coreMax = studentRow.coreTotalMaxScore || 0;
+      const coreTotal = studentRow.coreTotalScore || 0;
+      if (coreMax > 0) {
+        studentRow.average = Math.round((coreTotal / coreMax) * 100);
+      } else {
+        studentRow.average = 0;
       }
 
       markSheetData.push(studentRow);
@@ -3253,20 +3329,6 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: `No ${examType} exams found for this class${term ? ` in ${term}` : ''}` });
     }
 
-    // If subjectId is provided, filter to that subject only
-    let subjects = classEntity.subjects || [];
-    if (subjectId) {
-      const selectedSubject = subjects.find(s => s.id === subjectId);
-      if (!selectedSubject) {
-        return res.status(404).json({ message: 'Subject not found in this class' });
-      }
-      subjects = [selectedSubject];
-    }
-
-    if (subjects.length === 0) {
-      return res.status(404).json({ message: 'No subjects found for this class' });
-    }
-
     // Get all marks for these exams, filtered by subject if provided
     const examIds = exams.map(exam => exam.id);
     const marksWhere: any = {
@@ -3281,6 +3343,31 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       where: marksWhere,
       relations: ['student', 'exam', 'subject']
     });
+
+    // Build subject list from class subjects + exam subjects + subjects present in marks
+    const subjectsMap = new Map<string, Subject>();
+    (classEntity.subjects || []).forEach(s => subjectsMap.set(s.id, s));
+    exams.forEach(exam => {
+      (exam.subjects || []).forEach(s => {
+        if (!subjectsMap.has(s.id)) subjectsMap.set(s.id, s);
+      });
+    });
+    allMarks.forEach(m => {
+      const s = m.subject;
+      if (s && !subjectsMap.has(s.id)) subjectsMap.set(s.id, s);
+    });
+    let subjects = Array.from(subjectsMap.values());
+    // If specific subject requested, filter down
+    if (subjectId) {
+      const selected = subjects.find(s => s.id === subjectId);
+      if (!selected) {
+        return res.status(404).json({ message: 'Subject not found for this mark sheet' });
+      }
+      subjects = [selected];
+    }
+    if (subjects.length === 0) {
+      return res.status(404).json({ message: 'No subjects found for this class or captured marks' });
+    }
 
     // Organize marks by student and subject
     const markSheetData: any[] = [];
@@ -3318,6 +3405,13 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
 
           studentRow.totalScore += parseFloat(String(latestMark.score)) || 0;
           studentRow.totalMaxScore += parseFloat(String(latestMark.maxScore)) || 100;
+          const subjectName = String(subject.name || '').trim();
+          if (ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
+            if (!studentRow.coreTotalScore) studentRow.coreTotalScore = 0;
+            if (!studentRow.coreTotalMaxScore) studentRow.coreTotalMaxScore = 0;
+            studentRow.coreTotalScore += parseFloat(String(latestMark.score)) || 0;
+            studentRow.coreTotalMaxScore += parseFloat(String(latestMark.maxScore)) || 100;
+          }
         } else {
           studentRow.subjects[subject.id] = {
             subjectName: subject.name,
@@ -3326,12 +3420,21 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
             percentage: 0
           };
           studentRow.totalMaxScore += 100;
+          const subjectName = String(subject.name || '').trim();
+          if (ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
+            if (!studentRow.coreTotalMaxScore) studentRow.coreTotalMaxScore = 0;
+            studentRow.coreTotalMaxScore += 100;
+          }
         }
       }
 
-      // Calculate average
-      if (studentRow.totalMaxScore > 0) {
-        studentRow.average = Math.round((studentRow.totalScore / studentRow.totalMaxScore) * 100);
+      // Calculate average based on allowed ranking subjects only (Mathematics, English, Science)
+      const coreMax = studentRow.coreTotalMaxScore || 0;
+      const coreTotal = studentRow.coreTotalScore || 0;
+      if (coreMax > 0) {
+        studentRow.average = Math.round((coreTotal / coreMax) * 100);
+      } else {
+        studentRow.average = 0;
       }
 
       markSheetData.push(studentRow);

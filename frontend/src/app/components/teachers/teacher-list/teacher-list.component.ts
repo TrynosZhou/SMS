@@ -21,7 +21,7 @@ export class TeacherListComponent implements OnInit {
   searchQuery = '';
   selectedSubjectFilter = '';
   selectedClassFilter = '';
-  viewMode: 'grid' | 'list' = 'grid';
+  viewMode: 'grid' | 'list' = 'list';
   selectedTeacher: any = null;
   error = '';
   success = '';

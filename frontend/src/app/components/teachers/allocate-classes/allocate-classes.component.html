@@ -21,6 +21,88 @@
     <button class="alert-close" (click)="success = ''" title="Close">&times;</button>
   </div>
 
+  <div class="unallocated-section">
+    <div class="section-header">
+      <h2>Teachers Not Yet Allocated Classes</h2>
+      <p class="subtitle">Assign a class directly per teacher</p>
+    </div>
+    <div class="toolbar" *ngIf="unallocatedTeachers.length > 0">
+      <div class="toolbar-left">
+        <span class="count-chip">{{ unallocatedTeachers.length }} unallocated</span>
+        <button class="btn btn-modern" (click)="exportUnallocatedCSV()">Export CSV</button>
+      </div>
+      <div class="toolbar-right">
+        <label class="page-size-label">Rows per page</label>
+        <select class="page-size-select" [ngModel]="unallocPageSize" (ngModelChange)="onUnallocPageSizeChange($event)" [ngModelOptions]="{standalone:true}">
+          <option [ngValue]="10">10</option>
+          <option [ngValue]="20">20</option>
+          <option [ngValue]="50">50</option>
+        </select>
+      </div>
+    </div>
+    <div *ngIf="unallocatedTeachers.length > 0" class="table-wrapper">
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th (click)="toggleUnallocSort('name')" class="sortable">
+              Teacher
+              <span class="sort-indicator" *ngIf="unallocSortKey==='name'">{{ unallocSortDir==='asc' ? '▲' : '▼' }}</span>
+            </th>
+            <th (click)="toggleUnallocSort('employeeId')" class="sortable">
+              Employee ID
+              <span class="sort-indicator" *ngIf="unallocSortKey==='employeeId'">{{ unallocSortDir==='asc' ? '▲' : '▼' }}</span>
+            </th>
+            <th>Assign Subject</th>
+            <th>Assign Class</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let t of unallocPaged">
+            <td>
+              <div class="teacher-cell">
+                <div class="teacher-name">{{ t.firstName }} {{ t.lastName }}</div>
+                <div class="teacher-meta" *ngIf="t.sex || t.phoneNumber">
+                  <span *ngIf="t.sex">{{ t.sex }}</span>
+                  <span *ngIf="t.phoneNumber">• {{ t.phoneNumber }}</span>
+                </div>
+              </div>
+            </td>
+            <td>{{ t.teacherId || t.id }}</td>
+            <td>
+              <select class="assign-select" [(ngModel)]="selectedSubjectFor[t.id]" [ngModelOptions]="{standalone:true}">
+                <option [ngValue]="null">Select subject…</option>
+                <option *ngFor="let s of subjects" [value]="s.id">{{ s.name }}</option>
+              </select>
+            </td>
+            <td>
+              <select class="assign-select" [(ngModel)]="selectedClassFor[t.id]" [ngModelOptions]="{standalone:true}" [disabled]="!selectedSubjectFor[t.id]">
+                <option [ngValue]="null">Select class…</option>
+                <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
+              </select>
+            </td>
+            <td>
+              <div class="row-actions">
+                <button class="btn btn-modern btn-allocate" (click)="allocateClassForTeacher(t.id)" [disabled]="!selectedSubjectFor[t.id] || !selectedClassFor[t.id] || saving">Allocate</button>
+                <button class="btn btn-modern btn-delete" (click)="deleteTeacher(t.id, t.firstName + ' ' + t.lastName, t.teacherId)" [disabled]="loading">Delete</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="pagination-bar">
+        <div class="pagination-info">Page {{ unallocPage }} of {{ unallocTotalPages }}</div>
+        <div class="pagination-actions">
+          <button class="btn btn-modern" (click)="onUnallocPageChange(unallocPage-1)" [disabled]="unallocPage<=1">Prev</button>
+          <button class="btn btn-modern" (click)="onUnallocPageChange(unallocPage+1)" [disabled]="unallocPage>=unallocTotalPages">Next</button>
+        </div>
+      </div>
+    </div>
+    <div class="empty-state" *ngIf="unallocatedTeachers.length === 0">
+      <p>All teachers have at least one class assigned.</p>
+    </div>
+  </div>
+
   <div class="selector-section">
     <div class="selector">
       <label>Choose Teacher</label>

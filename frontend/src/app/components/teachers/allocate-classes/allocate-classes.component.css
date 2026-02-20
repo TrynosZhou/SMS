@@ -29,3 +29,25 @@
 .alert-error { border: 1px solid #ffccd5; background: #fff0f3; }
 .alert-success { border: 1px solid #c3e6cb; background: #e9f7ef; }
 .alert-close { margin-left: auto; background: transparent; border: none; font-size: 18px; cursor: pointer; }
+.unallocated-section { border: 1px solid #e9ecef; border-radius: 12px; padding: 10px; background: #fff; margin-bottom: 12px; }
+.section-header { display: flex; align-items: baseline; gap: 8px; }
+.table-wrapper { overflow: auto; }
+.modern-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.modern-table th, .modern-table td { padding: 8px; border-bottom: 1px solid #e9ecef; }
+.modern-table thead th { background: #f8f9fa; text-transform: uppercase; font-size: 12px; color: #6c757d; }
+.modern-table thead th.sortable { cursor: pointer; }
+.modern-table tbody tr:hover { background: #f8fbff; }
+.teacher-cell { display: flex; flex-direction: column; }
+.teacher-name { font-weight: 600; }
+.teacher-meta { font-size: 12px; color: #6c757d; }
+.assign-select { width: 100%; padding: 8px; border: 1px solid #e9ecef; border-radius: 8px; }
+.row-actions { display: flex; align-items: center; gap: 8px; }
+.btn-delete { background: #0d6efd; color: #fff; }
+.btn-allocate { background: #0d6efd; color: #fff; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 8px; }
+.count-chip { background: #f1f3f5; border: 1px solid #e9ecef; border-radius: 12px; padding: 4px 8px; font-size: 12px; color: #495057; }
+.page-size-label { font-size: 12px; color: #6c757d; }
+.page-size-select { padding: 6px 8px; border: 1px solid #e9ecef; border-radius: 8px; }
+.pagination-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+.pagination-info { font-size: 12px; color: #6c757d; }
