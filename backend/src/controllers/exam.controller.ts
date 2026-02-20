@@ -3217,7 +3217,7 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       studentRow.totalScore = Math.round(coreTotal);
       studentRow.totalMaxScore = coreMax;
       if (coreMax > 0) {
-        studentRow.average = Math.round((coreTotal / coreMax) * 100);
+        studentRow.average = Number(((coreTotal / coreMax) * 100).toFixed(2));
       } else {
         studentRow.average = 0;
       }
@@ -3452,7 +3452,7 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       studentRow.totalScore = Math.round(coreTotal);
       studentRow.totalMaxScore = coreMax;
       if (coreMax > 0) {
-        studentRow.average = Math.round((coreTotal / coreMax) * 100);
+        studentRow.average = Number(((coreTotal / coreMax) * 100).toFixed(2));
       } else {
         studentRow.average = 0;
       }

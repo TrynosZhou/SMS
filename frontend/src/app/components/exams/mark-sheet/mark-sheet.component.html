@@ -206,7 +206,7 @@
               </td>
               <td class="average-cell">
                 <div class="average-display" [style.color]="getPerformanceColor(row.average)">
-                  <strong>{{ row.average }}%</strong>
+                  <strong>{{ row.average.toFixed(2) }}%</strong>
                   <span class="performance-indicator" [style.background-color]="getPerformanceColor(row.average)"></span>
                 </div>
               </td>
