@@ -64,6 +64,41 @@
         </div>
         <div class="message-footer">
           <span class="message-sender">From: {{ message.senderName || 'School Administration' }}</span>
+          <button class="btn btn-primary" (click)="openReply(message)" *ngIf="replyingForId !== message.id">Reply</button>
+        </div>
+        <div class="reply-section" *ngIf="replyingForId === message.id">
+          <div class="reply-row">
+            <label>Recipient</label>
+            <select [(ngModel)]="replyRecipient">
+              <option value="admin">Administrator</option>
+              <option value="accountant">Accountant</option>
+            </select>
+          </div>
+          <div class="reply-row">
+            <label>Subject</label>
+            <input type="text" [(ngModel)]="replySubject" />
+          </div>
+          <div class="reply-row">
+            <label>Message</label>
+            <textarea rows="6" [(ngModel)]="replyBody" placeholder="Type your reply..."></textarea>
+          </div>
+          <div class="reply-row">
+            <label>Attachments (optional)</label>
+            <input type="file" multiple (change)="onFileChange($event)" />
+            <div class="attachments" *ngIf="attachments.length">
+              <div class="attachment-item" *ngFor="let f of attachments; let i = index">
+                {{ f.name }} ({{ f.size }} bytes)
+                <button class="btn btn-link" type="button" (click)="removeAttachment(i)">Remove</button>
+              </div>
+            </div>
+          </div>
+          <div class="reply-actions">
+            <button class="btn btn-secondary" (click)="cancelReply()" [disabled]="sending">Cancel</button>
+            <button class="btn btn-primary" (click)="sendReply()" [disabled]="sending">
+              <span *ngIf="!sending">Send Reply</span>
+              <span *ngIf="sending">Sending...</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -128,4 +128,12 @@ export class MessageService {
     };
     return tryUrl(0);
   }
+
+  getDraftMessages(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/messages/drafts`);
+  }
+
+  resendDraftMessage(id: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/messages/drafts/${id}/resend`, {});
+  }
 }

@@ -101,7 +101,6 @@ export class SendMessageComponent implements OnInit {
   canSend(): boolean {
     if (!this.isAllowed()) return false;
     if (!this.subject.trim() || !this.message.trim()) return false;
-    if (this.recipientsType === 'selected' && this.selectedParentIds.size === 0) return false;
     return true;
     }
 
@@ -134,7 +133,7 @@ export class SendMessageComponent implements OnInit {
           .subscribe({
             next: (res: any) => {
               this.loading = false;
-              const count = res?.parentCount ?? res?.recipientCount ?? '';
+              const count = res?.savedMessageCount ?? res?.parentCount ?? res?.recipientCount ?? '';
               this.success = res?.message || (count ? `Message sent to ${count} parent(s).` : 'Message sent to all parents.');
               this.resetForm();
             },
@@ -150,7 +149,7 @@ export class SendMessageComponent implements OnInit {
           .subscribe({
             next: (res: any) => {
               this.loading = false;
-              const count = res?.parentCount ?? res?.recipientCount ?? '';
+              const count = res?.savedMessageCount ?? res?.parentCount ?? res?.recipientCount ?? '';
               this.success = res?.message || (count ? `Message sent to ${count} parent(s).` : 'Message sent to all parents.');
               this.resetForm();
             },

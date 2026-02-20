@@ -149,7 +149,8 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
             senderId: user.id,
             senderName,
             parentId: parent.id,
-            isRead: false
+            isRead: false,
+            status: 'sent'
           });
           
           const saved = await messageRepository.save(messageRecord);
@@ -158,6 +159,20 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
         } catch (error: any) {
           console.error(`[sendBulkMessage] ✗ Failed to save message for parent ${parent.firstName} ${parent.lastName}:`, error.message);
           failedMessageCount++;
+          try {
+            const failedRecord = messageRepository.create({
+              subject,
+              message: processedMessage.replace(/\[Name\]/g, `${parent.firstName} ${parent.lastName}`),
+              recipients,
+              senderId: user.id,
+              senderName,
+              parentId: parent.id,
+              isRead: false,
+              status: 'failed',
+              failedReason: error.message || 'Unknown error'
+            });
+            await messageRepository.save(failedRecord);
+          } catch {}
           return null;
         }
       });
@@ -273,24 +288,127 @@ export const sendMessageToSpecificParents = async (req: AuthRequest, res: Respon
       const urls = files.map(f => `/uploads/parent-messages/${f.filename}`);
       attachmentsJson = JSON.stringify(urls);
     }
-    const records = parents.map(p => messageRepository.create({
-      subject: subject!.trim(),
-      message: message!.trim(),
-      recipients: 'parent',
-      senderId: user.id,
-      senderName: user.email || 'School Staff',
-      parentId: p.id,
-      isRead: false,
-      attachments: attachmentsJson
-    }));
-    await messageRepository.save(records);
+    let sent = 0;
+    let failed = 0;
+    for (const p of parents) {
+      try {
+        const rec = messageRepository.create({
+          subject: subject!.trim(),
+          message: message!.trim(),
+          recipients: 'parent',
+          senderId: user.id,
+          senderName: user.email || 'School Staff',
+          parentId: p.id,
+          isRead: false,
+          attachments: attachmentsJson,
+          status: 'sent'
+        } as any);
+        await messageRepository.save(rec);
+        sent++;
+      } catch (err: any) {
+        failed++;
+        try {
+          const failRec = messageRepository.create({
+            subject: subject!.trim(),
+            message: message!.trim(),
+            recipients: 'parent',
+            senderId: user.id,
+            senderName: user.email || 'School Staff',
+            parentId: p.id,
+            isRead: false,
+            attachments: attachmentsJson,
+            status: 'failed',
+            failedReason: err?.message || 'Unknown error'
+          } as any);
+          await messageRepository.save(failRec);
+        } catch {}
+      }
+    }
     res.json({
       success: true,
-      sent: records.length,
+      sent,
+      failed,
       parentCount: parents.length
     });
   } catch (error: any) {
     console.error('Error sending message to specific parents:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const getDraftMessages = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const user = req.user;
+    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+      return res.status(403).json({ message: 'Access denied. Staff role required.' });
+    }
+    const repo = AppDataSource.getRepository(Message);
+    const parentRepo = AppDataSource.getRepository(Parent);
+    const drafts = await repo.find({
+      where: { senderId: user.id, status: 'failed' },
+      order: { createdAt: 'DESC' }
+    });
+    const pids = Array.from(new Set(drafts.map(d => d.parentId).filter(Boolean) as string[]));
+    let parentsById: Record<string, Parent> = {};
+    if (pids.length > 0) {
+      const parents = await parentRepo.findBy({ id: In(pids) });
+      parentsById = parents.reduce<Record<string, Parent>>((acc, p) => {
+        acc[p.id] = p;
+        return acc;
+      }, {});
+    }
+    const result = drafts.map(d => ({
+      id: d.id,
+      subject: d.subject,
+      message: d.message,
+      parentId: d.parentId || undefined,
+      parentName: d.parentId && parentsById[d.parentId] ? `${parentsById[d.parentId].firstName} ${parentsById[d.parentId].lastName}` : undefined,
+      createdAt: d.createdAt,
+      failedReason: d.failedReason || ''
+    }));
+    res.json({ messages: result });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const resendDraftMessage = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const user = req.user;
+    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+      return res.status(403).json({ message: 'Access denied. Staff role required.' });
+    }
+    const { id } = req.params as { id: string };
+    const repo = AppDataSource.getRepository(Message);
+    const draft = await repo.findOne({ where: { id, senderId: user.id } });
+    if (!draft) {
+      return res.status(404).json({ message: 'Draft message not found' });
+    }
+    if (!draft.parentId) {
+      return res.status(400).json({ message: 'Draft has no recipient' });
+    }
+    const record = repo.create({
+      subject: draft.subject,
+      message: draft.message,
+      recipients: 'parents',
+      senderId: user.id,
+      senderName: draft.senderName,
+      parentId: draft.parentId,
+      isRead: false,
+      status: 'sent'
+    });
+    await repo.save(record);
+    draft.status = 'sent';
+    draft.failedReason = null;
+    await repo.save(draft);
+    res.json({ success: true });
+  } catch (error: any) {
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

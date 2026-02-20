@@ -1,0 +1,14 @@
+.container { padding: 16px; }
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.search { display: flex; gap: 8px; align-items: center; }
+.alert-error { color: #dc3545; font-weight: 600; }
+.loading { color: #6c757d; }
+.content { display: grid; grid-template-columns: 1.2fr 1.8fr; gap: 16px; }
+.list ul { list-style: none; margin: 0; padding: 0; }
+.list li { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+.list li.selected { background: #f8f9fa; }
+.subject { font-weight: 600; }
+.meta { font-size: 12px; color: #6c757d; display: flex; gap: 8px; }
+.reason { font-size: 12px; color: #dc3545; }
+.detail .body { white-space: pre-wrap; margin-top: 8px; }
+.actions { margin-top: 12px; }

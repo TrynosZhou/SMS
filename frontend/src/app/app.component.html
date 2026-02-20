@@ -253,7 +253,11 @@
           </a>
           <a routerLink="/messages/incoming" routerLinkActive="active" class="sidebar-subitem">
             <span class="sidebar-icon">📬</span>
-            <span class="sidebar-text">Incoming from Parents</span>
+            <span class="sidebar-text">Inbox</span>
+          </a>
+          <a routerLink="/messages/drafts" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-icon">📝</span>
+            <span class="sidebar-text">Drafts</span>
           </a>
           <a routerLink="/messages/outgoing" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAccountant()">
             <span class="sidebar-icon">📤</span>

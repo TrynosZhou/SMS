@@ -22,7 +22,7 @@ export class RecordPaymentComponent implements OnInit {
     amount: 0,
     term: '',
     paymentDate: new Date().toISOString().split('T')[0],
-    paymentMethod: 'Cash',
+    paymentMethod: 'Cash (USD)',
     notes: ''
   };
   

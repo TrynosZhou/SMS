@@ -57,6 +57,7 @@ import { ParentSendMessageComponent } from './components/parent/parent-send-mess
 import { ParentOutboxComponent } from './components/parent/parent-outbox/parent-outbox.component';
 import { IncomingFromParentsComponent } from './components/messages/incoming-from-parents/incoming-from-parents.component';
 import { OutgoingMessagesComponent } from './components/messages/outgoing-messages/outgoing-messages.component';
+import { DraftMessagesComponent } from './components/messages/draft-messages/draft-messages.component';
 import { EnrollStudentComponent } from './components/students/enroll-student/enroll-student.component';
 import { AllocateClassesComponent } from './components/teachers/allocate-classes/allocate-classes.component';
 
@@ -79,6 +80,7 @@ const routes: Routes = [
   { path: 'messages/inbox', component: AccountantInboxComponent, canActivate: [AuthGuard] },
   { path: 'messages/incoming', component: IncomingFromParentsComponent, canActivate: [AuthGuard] },
   { path: 'messages/outgoing', component: OutgoingMessagesComponent, canActivate: [AuthGuard] },
+  { path: 'messages/drafts', component: DraftMessagesComponent, canActivate: [AuthGuard] },
   { path: 'teacher/record-book', component: RecordBookComponent, canActivate: [AuthGuard] },
   { path: 'teacher/my-classes', component: MyClassesComponent, canActivate: [AuthGuard] },
   { path: 'admin/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },

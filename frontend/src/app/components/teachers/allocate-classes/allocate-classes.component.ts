@@ -270,17 +270,42 @@ export class AllocateClassesComponent implements OnInit {
     this.saving = true;
     this.error = '';
     this.success = '';
-    this.teacherService.updateTeacher(teacherId, { subjectIds: [subjectId], classIds: [classId] }).subscribe({
-      next: (resp: any) => {
-        this.success = resp?.message || 'Class allocated to teacher';
-        this.saving = false;
-        setTimeout(() => this.success = '', 4000);
-        this.loadTeachers();
+    this.teacherService.getTeacherById(teacherId).subscribe({
+      next: (fresh: any) => {
+        const teacher = fresh?.teacher || fresh || {};
+        const currentSubjectIds = Array.isArray(teacher.subjects) ? teacher.subjects.map((s: any) => s.id) : [];
+        const currentClassIds = Array.isArray(teacher.classes) ? teacher.classes.map((c: any) => c.id) : [];
+        const nextSubjectIds = Array.from(new Set([...currentSubjectIds, subjectId]));
+        if (currentClassIds.includes(classId)) {
+          this.error = 'Teacher already allocated to the selected class';
+          this.saving = false;
+          setTimeout(() => this.error = '', 4000);
+          return;
+        }
+        const nextClassIds = Array.from(new Set([...currentClassIds, classId]));
+        this.teacherService.updateTeacher(teacherId, { subjectIds: nextSubjectIds, classIds: nextClassIds }).subscribe({
+          next: (resp: any) => {
+            this.success = resp?.message || 'Class allocated to teacher';
+            this.saving = false;
+            setTimeout(() => this.success = '', 4000);
+            const wantsMore = window.confirm('Allocate another class to this teacher?');
+            if (wantsMore) {
+              this.selectedClassFor[teacherId] = null as any;
+            } else {
+              this.loadTeachers();
+            }
+          },
+          error: (err: any) => {
+            this.error = err?.error?.message || 'Failed to allocate class';
+            this.saving = false;
+            setTimeout(() => this.error = '', 5000);
+          }
+        });
       },
-      error: (err: any) => {
-        this.error = err?.error?.message || 'Failed to allocate class';
+      error: () => {
+        this.error = 'Failed to load teacher details';
         this.saving = false;
-        setTimeout(() => this.error = '', 5000);
+        setTimeout(() => this.error = '', 4000);
       }
     });
   }

@@ -41,5 +41,11 @@ export class Message {
 
   @Column({ type: 'text', nullable: true })
   attachments: string | null;
+
+  @Column({ type: 'varchar', default: 'sent' })
+  status: string;
+
+  @Column({ type: 'text', nullable: true })
+  failedReason: string | null;
 }
 

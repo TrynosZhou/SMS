@@ -2,7 +2,7 @@ import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
-import { sendBulkMessage, getParentMessages, getStaffMessages, sendParentMessage, getParentOutbox, getParentOutboxById, getIncomingFromParents, markIncomingRead, markIncomingUnread, replyToIncomingMessage, sendMessageToSpecificParents } from '../controllers/message.controller';
+import { sendBulkMessage, getParentMessages, getStaffMessages, sendParentMessage, getParentOutbox, getParentOutboxById, getIncomingFromParents, markIncomingRead, markIncomingUnread, replyToIncomingMessage, sendMessageToSpecificParents, getDraftMessages, resendDraftMessage } from '../controllers/message.controller';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
@@ -32,6 +32,8 @@ router.get('/incoming/parents', authenticate, getIncomingFromParents);
 router.post('/incoming/:id/read', authenticate, markIncomingRead);
 router.post('/incoming/:id/unread', authenticate, markIncomingUnread);
 router.post('/incoming/:id/reply', authenticate, upload.array('attachments', 5), replyToIncomingMessage);
+router.get('/drafts', authenticate, getDraftMessages);
+router.post('/drafts/:id/resend', authenticate, resendDraftMessage);
 
 export default router;
 
