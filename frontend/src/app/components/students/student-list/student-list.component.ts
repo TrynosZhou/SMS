@@ -626,4 +626,10 @@ export class StudentListComponent implements OnInit {
     }
     return 'N/A';
   }
+
+  getStudentTypeLabel(student: any): string {
+    const t = String(student?.studentType || '').trim().toLowerCase();
+    if (t === 'boarder') return 'Boarder';
+    return 'Day';
+  }
 }

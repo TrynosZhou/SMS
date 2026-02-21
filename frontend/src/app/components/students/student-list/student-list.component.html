@@ -284,7 +284,7 @@
         <div class="list-col class-col">{{ getStudentClassName(student) }}</div>
         <div class="list-col type-col">
           <span class="type-badge" [class.boarder]="student.studentType === 'Boarder'" [class.day-scholar]="student.studentType === 'Day Scholar'">
-            {{ student.studentType || 'Day Scholar' }}
+            {{ getStudentTypeLabel(student) }}
           </span>
         </div>
         <div class="list-col actions-col">
@@ -295,16 +295,16 @@
             <button class="btn-icon-small" (click)="editStudent(student.id)" title="Edit">
               ✏️
             </button>
-            <button class="btn-icon-small" (click)="viewReportCard(student.id)" title="Report Card">
-              📄
-            </button>
             <button class="btn-icon-small btn-delete" *ngIf="!isTeacher" (click)="deleteStudent(student.id, student.firstName + ' ' + student.lastName, student.studentNumber)" title="Delete" [disabled]="loading">
               🗑️
             </button>
+           <button class="btn-icon-small" (click)="viewReportCard(student.id)" title="Report Card">
+             📄
+           </button>
           </div>
         </div>
     </div>
-  </div>
+    </div>
 
   <!-- Empty State -->
   <div class="empty-state" *ngIf="!loading && filteredStudents.length === 0">
