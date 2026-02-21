@@ -159,12 +159,8 @@ export class StudentListComponent implements OnInit {
         return student.gender === this.selectedGender;
       });
     }
-    // Sort by Class name ascending, then Lastname ascending, then Firstname, then StudentNumber
+    // Sort by Lastname ascending across all records, then Firstname, then StudentNumber
     filtered.sort((a: any, b: any) => {
-      const clsA = String(this.getStudentClassName(a) || '').toLowerCase();
-      const clsB = String(this.getStudentClassName(b) || '').toLowerCase();
-      const clsCompare = clsA.localeCompare(clsB, undefined, { sensitivity: 'base' });
-      if (clsCompare !== 0) return clsCompare;
       const lastA = String(a.lastName || '').toLowerCase();
       const lastB = String(b.lastName || '').toLowerCase();
       const lastCompare = lastA.localeCompare(lastB, undefined, { sensitivity: 'base' });
