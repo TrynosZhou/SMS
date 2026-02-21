@@ -12,6 +12,7 @@
     "typeorm": "typeorm-ts-node-commonjs -d src/data-source.ts",
     "setup-db": "node scripts/create-database.js",
     "create-admin": "npx ts-node scripts/create-admin.ts",
+    "reset-admin-password": "npx ts-node scripts/reset-admin-password.ts",
     "create-demo": "npx ts-node scripts/create-demo.ts",
     "reset-demo-data": "npx ts-node scripts/reset-demo-data.ts",
     "clear-invoices": "npx ts-node scripts/clear-invoices.ts",

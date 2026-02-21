@@ -20,6 +20,7 @@
             [(ngModel)]="selectedClassId" 
             [ngModelOptions]="{standalone: true}"
             (change)="onClassChange()"
+            (ngModelChange)="onSelectionChange()"
             class="form-control">
             <option value="">-- Select Class --</option>
             <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">
@@ -51,6 +52,8 @@
               id="examType"
               [(ngModel)]="selectedExamType" 
               [ngModelOptions]="{standalone: true}"
+              (change)="onExamTypeChange()"
+              (ngModelChange)="onSelectionChange()"
               class="form-control"
               style="flex: 0 0 auto; min-width: 200px;">
               <option value="">-- Select Exam Type --</option>

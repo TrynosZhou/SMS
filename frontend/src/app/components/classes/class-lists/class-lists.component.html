@@ -168,66 +168,71 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let student of filteredStudents">
-            <td>
-              <span 
-                class="student-number student-id-link" 
-                (click)="viewStudentIdCard(student.id)"
-                title="Click to view Student ID Card">
-                {{ student.studentNumber || 'N/A' }}
-              </span>
-            </td>
-            <td>
-              <a
-                [routerLink]="['/students', student.id, 'edit']"
-                [queryParams]="{ mode: 'limited', returnUrl: '/classes/lists' }"
-                title="Edit Personal and Contact Information"
-                class="student-name-link">
-                <strong>{{ student.lastName || 'N/A' }}</strong>
-              </a>
-            </td>
-            <td>
-              <a
-                [routerLink]="['/students', student.id, 'edit']"
-                [queryParams]="{ mode: 'limited', returnUrl: '/classes/lists' }"
-                title="Edit Personal and Contact Information"
-                class="student-name-link">
-                <strong>{{ student.firstName || 'N/A' }}</strong>
-              </a>
-            </td>
-            <td>
-              {{ student.dateOfBirth ? (student.dateOfBirth | date:'dd/MM/yyyy') : 'N/A' }}
-            </td>
-            <td>{{ student.gender || 'N/A' }}</td>
-            <td>
-              <span class="badge" [class.badge-day]="student.studentType === 'Day Scholar'" 
-                    [class.badge-boarder]="student.studentType === 'Boarder'">
-                {{ student.studentType || 'Day Scholar' }}
-              </span>
-            </td>
-            <td>
-              <a 
-                *ngIf="canMoveStudent()"
-                title="Click to move student to another class"
-                class="student-class-link"
-                (click)="startMove(student)">
-                <span *ngIf="student.class; else noClass">{{ student.class?.name }}</span>
-                <ng-template #noClass>N/A</ng-template>
-              </a>
-              <span *ngIf="!canMoveStudent()">
-                <span *ngIf="student.class; else noClass2">{{ student.class?.name }}</span>
-                <ng-template #noClass2>N/A</ng-template>
-              </span>
-            </td>
-            <td *ngIf="isAdmin">
-              <button
-                class="btn btn-primary"
-                title="Delete student"
-                (click)="deleteStudent(student.id, (student.firstName || '') + ' ' + (student.lastName || ''), student.studentNumber || 'N/A')">
-                🗑️ Delete
-              </button>
-            </td>
-          </tr>
+          <ng-container *ngFor="let group of studentsGroupedByGender">
+            <tr class="group-header-row">
+              <td [attr.colspan]="isAdmin ? 8 : 7" class="group-header-cell">{{ group.gender }}</td>
+            </tr>
+            <tr *ngFor="let student of group.students">
+              <td>
+                <span 
+                  class="student-number student-id-link" 
+                  (click)="viewStudentIdCard(student.id)"
+                  title="Click to view Student ID Card">
+                  {{ student.studentNumber || 'N/A' }}
+                </span>
+              </td>
+              <td>
+                <a
+                  [routerLink]="['/students', student.id, 'edit']"
+                  [queryParams]="{ mode: 'limited', returnUrl: '/classes/lists' }"
+                  title="Edit Personal and Contact Information"
+                  class="student-name-link">
+                  <strong>{{ student.lastName || 'N/A' }}</strong>
+                </a>
+              </td>
+              <td>
+                <a
+                  [routerLink]="['/students', student.id, 'edit']"
+                  [queryParams]="{ mode: 'limited', returnUrl: '/classes/lists' }"
+                  title="Edit Personal and Contact Information"
+                  class="student-name-link">
+                  <strong>{{ student.firstName || 'N/A' }}</strong>
+                </a>
+              </td>
+              <td>
+                {{ student.dateOfBirth ? (student.dateOfBirth | date:'dd/MM/yyyy') : 'N/A' }}
+              </td>
+              <td>{{ student.gender || 'N/A' }}</td>
+              <td>
+                <span class="badge" [class.badge-day]="student.studentType === 'Day Scholar'" 
+                      [class.badge-boarder]="student.studentType === 'Boarder'">
+                  {{ student.studentType || 'Day Scholar' }}
+                </span>
+              </td>
+              <td>
+                <a 
+                  *ngIf="canMoveStudent()"
+                  title="Click to move student to another class"
+                  class="student-class-link"
+                  (click)="startMove(student)">
+                  <span *ngIf="student.class; else noClass">{{ student.class?.name }}</span>
+                  <ng-template #noClass>N/A</ng-template>
+                </a>
+                <span *ngIf="!canMoveStudent()">
+                  <span *ngIf="student.class; else noClass2">{{ student.class?.name }}</span>
+                  <ng-template #noClass2>N/A</ng-template>
+                </span>
+              </td>
+              <td *ngIf="isAdmin">
+                <button
+                  class="btn btn-primary"
+                  title="Delete student"
+                  (click)="deleteStudent(student.id, (student.firstName || '') + ' ' + (student.lastName || ''), student.studentNumber || 'N/A')">
+                  🗑️ Delete
+                </button>
+              </td>
+            </tr>
+          </ng-container>
         </tbody>
       </table>
       <table class="students-table actions-overlay" *ngIf="false"></table>

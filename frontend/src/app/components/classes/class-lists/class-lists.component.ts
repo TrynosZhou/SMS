@@ -15,6 +15,8 @@ export class ClassListsComponent implements OnInit {
   classes: any[] = [];
   students: any[] = [];
   filteredStudents: any[] = [];
+  /** Students sorted by lastName asc and grouped by gender (Female first) for display */
+  studentsGroupedByGender: { gender: string; students: any[] }[] = [];
   selectedClassId = '';
   selectedTerm = '';
   availableTerms: string[] = [];
@@ -184,6 +186,7 @@ export class ClassListsComponent implements OnInit {
         this.students = Array.isArray(studentsData) ? studentsData : [];
         this.filteredStudents = [...this.students];
         this.applySort();
+        this.buildGroupedByGender();
         
         this.loadingStudents = false;
         this.lastLoadedClassId = this.selectedClassId;
@@ -276,6 +279,7 @@ export class ClassListsComponent implements OnInit {
       this.sortDirection = 'asc';
     }
     this.applySort();
+    this.buildGroupedByGender();
   }
 
   getSortDirection(field: 'lastName' | 'firstName' | 'studentNumber'): 'asc' | 'desc' | '' {
@@ -307,6 +311,40 @@ export class ClassListsComponent implements OnInit {
       if (t1 !== 0) return t1;
       return compareText(getVal(a, 'firstName'), getVal(b, 'firstName'));
     });
+  }
+
+  /** Build list sorted by lastName ascending and grouped by gender (Female first). */
+  private buildGroupedByGender() {
+    const sorted = [...this.filteredStudents].sort((a: any, b: any) => {
+      const lastA = String((a?.lastName || '')).toLowerCase();
+      const lastB = String((b?.lastName || '')).toLowerCase();
+      const cmp = lastA.localeCompare(lastB, undefined, { sensitivity: 'base' });
+      if (cmp !== 0) return cmp;
+      const firstA = String((a?.firstName || '')).toLowerCase();
+      const firstB = String((b?.firstName || '')).toLowerCase();
+      return firstA.localeCompare(firstB, undefined, { sensitivity: 'base' });
+    });
+    const byGender = new Map<string, any[]>();
+    sorted.forEach(s => {
+      const g = (s.gender || s.sex || 'Other').trim() || 'Other';
+      if (!byGender.has(g)) byGender.set(g, []);
+      byGender.get(g)!.push(s);
+    });
+    const genderOrder = ['Female', 'Male', 'M', 'F'];
+    const ordered: { gender: string; students: any[] }[] = [];
+    const seen = new Set<string>();
+    genderOrder.forEach(g => {
+      const key = g.trim();
+      if (byGender.has(key)) {
+        seen.add(key);
+        ordered.push({ gender: key, students: byGender.get(key)! });
+      }
+    });
+    Array.from(byGender.keys())
+      .filter(k => !seen.has(k))
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+      .forEach(k => ordered.push({ gender: k, students: byGender.get(k)! }));
+    this.studentsGroupedByGender = ordered;
   }
 
   viewStudentIdCard(studentId: string) {

@@ -444,6 +444,14 @@ export class ReportCardComponent implements OnInit {
 
           return card;
         });
+        
+        // Sort report cards by class position in ascending order
+        this.reportCards.sort((a: any, b: any) => {
+          const posA = a.classPosition || 0;
+          const posB = b.classPosition || 0;
+          return posA - posB;
+        });
+        
         const reportCardsArray = Array.isArray(this.reportCards) ? this.reportCards : [];
         this.filteredReportCards = [...reportCardsArray];
         this.classInfo = { name: data.class, examType: data.examType, term: data.term || this.selectedTerm };

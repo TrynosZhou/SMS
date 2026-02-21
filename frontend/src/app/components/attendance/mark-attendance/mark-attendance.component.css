@@ -961,7 +961,18 @@ th {
 }
 
 .col-name {
-  min-width: 200px;
+  min-width: 120px;
+}
+
+/* Tighter spacing between Lastname and Firstname */
+.col-lastname {
+  padding-right: 6px;
+  min-width: 110px;
+}
+
+.col-firstname {
+  padding-left: 6px;
+  min-width: 110px;
 }
 
 .col-status {
@@ -970,6 +981,21 @@ th {
 
 .col-remarks {
   min-width: 250px;
+}
+
+.col-gender {
+  min-width: 100px;
+}
+
+tr.group-header-row {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.group-header-cell {
+  font-weight: 700;
+  padding: 10px 14px;
+  text-align: left;
 }
 
 td {

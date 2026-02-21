@@ -211,71 +211,82 @@
       </button>
     </div>
 
-    <!-- Attendance Table -->
+    <!-- Attendance Table: StudentID, Lastname, Firstname, Gender(Sex), Status, Remarks; sorted by Lastname ascending, grouped by Gender -->
     <div class="attendance-table-wrapper modern-table-wrapper">
       <table class="attendance-table modern-table">
         <thead>
           <tr>
             <th class="col-number">#</th>
-            <th class="col-number">Student No.</th>
-            <th class="col-name">Name</th>
+            <th class="col-number">StudentID</th>
+            <th class="col-name col-lastname">Lastname</th>
+            <th class="col-name col-firstname">Firstname</th>
+            <th class="col-gender">Gender (Sex)</th>
             <th class="col-status">Status</th>
             <th class="col-remarks">Remarks</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let item of filteredAttendanceData; let i = index" [class.row-highlight]="item.status === 'absent'">
-            <td class="col-number">{{ i + 1 }}</td>
-            <td class="col-number">{{ getStudentNumber(item.studentId) }}</td>
-            <td class="col-name">
-              <div class="student-name">{{ getStudentName(item.studentId) }}</div>
-            </td>
-            <td class="col-status">
-              <div class="status-buttons">
-                <button 
-                  type="button"
-                  class="status-btn present" 
-                  [class.active]="item.status === 'present'"
-                  (click)="updateStatus(item.studentId, 'present')"
-                  title="Present">
-                  ✓ Present
-                </button>
-                <button 
-                  type="button"
-                  class="status-btn absent" 
-                  [class.active]="item.status === 'absent'"
-                  (click)="updateStatus(item.studentId, 'absent')"
-                  title="Absent">
-                  ✗ Absent
-                </button>
-                <button 
-                  type="button"
-                  class="status-btn late" 
-                  [class.active]="item.status === 'late'"
-                  (click)="updateStatus(item.studentId, 'late')"
-                  title="Late">
-                  ⏰ Late
-                </button>
-                <button 
-                  type="button"
-                  class="status-btn excused" 
-                  [class.active]="item.status === 'excused'"
-                  (click)="updateStatus(item.studentId, 'excused')"
-                  title="Excused">
-                  📝 Excused
-                </button>
-              </div>
-            </td>
-            <td class="col-remarks">
-              <input 
-                type="text" 
-                [(ngModel)]="item.remarks" 
-                [name]="'remarks_' + i"
-                placeholder="Optional remarks..."
-                class="remarks-input"
-                (input)="hasUnsavedChanges = true">
-            </td>
-          </tr>
+          <ng-container *ngFor="let group of filteredAttendanceDataGroupedByGender; let gIdx = index">
+            <tr class="group-header-row">
+              <td [attr.colspan]="7" class="group-header-cell">{{ group.gender }}</td>
+            </tr>
+            <tr *ngFor="let item of group.items; let i = index" [class.row-highlight]="item.status === 'absent'">
+              <td class="col-number">{{ i + 1 }}</td>
+              <td class="col-number">{{ getStudentNumber(item.studentId) }}</td>
+              <td class="col-name col-lastname">
+                <div class="student-name">{{ getStudentLastName(item.studentId) }}</div>
+              </td>
+              <td class="col-name col-firstname">
+                <div class="student-name">{{ getStudentFirstName(item.studentId) }}</div>
+              </td>
+              <td class="col-gender">{{ getStudentGender(item.studentId) }}</td>
+              <td class="col-status">
+                <div class="status-buttons">
+                  <button 
+                    type="button"
+                    class="status-btn present" 
+                    [class.active]="item.status === 'present'"
+                    (click)="updateStatus(item.studentId, 'present')"
+                    title="Present">
+                    ✓ Present
+                  </button>
+                  <button 
+                    type="button"
+                    class="status-btn absent" 
+                    [class.active]="item.status === 'absent'"
+                    (click)="updateStatus(item.studentId, 'absent')"
+                    title="Absent">
+                    ✗ Absent
+                  </button>
+                  <button 
+                    type="button"
+                    class="status-btn late" 
+                    [class.active]="item.status === 'late'"
+                    (click)="updateStatus(item.studentId, 'late')"
+                    title="Late">
+                    ⏰ Late
+                  </button>
+                  <button 
+                    type="button"
+                    class="status-btn excused" 
+                    [class.active]="item.status === 'excused'"
+                    (click)="updateStatus(item.studentId, 'excused')"
+                    title="Excused">
+                    📝 Excused
+                  </button>
+                </div>
+              </td>
+              <td class="col-remarks">
+                <input 
+                  type="text" 
+                  [(ngModel)]="item.remarks" 
+                  [name]="'remarks_' + gIdx + '_' + i"
+                  placeholder="Optional remarks..."
+                  class="remarks-input"
+                  (input)="hasUnsavedChanges = true">
+              </td>
+            </tr>
+          </ng-container>
         </tbody>
       </table>
       

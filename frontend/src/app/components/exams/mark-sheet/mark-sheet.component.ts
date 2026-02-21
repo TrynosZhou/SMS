@@ -46,6 +46,10 @@ export class MarkSheetComponent implements OnInit {
     topPerformers: []
   };
 
+  // Auto-generation flag to prevent multiple simultaneous generations
+  private autoGenerationInProgress = false;
+  private autoGenerationTimeout: any = null;
+
   constructor(
     private examService: ExamService,
     private classService: ClassService,
@@ -109,6 +113,8 @@ export class MarkSheetComponent implements OnInit {
           this.classes = Array.from(uniqueClassesMap.values()).filter(c => c.isActive);
           this.loading = false;
           console.log(`Loaded ${this.classes.length} active classes for mark sheet`);
+          // Check if we can auto-generate after classes are loaded
+          setTimeout(() => this.checkAndAutoGenerate(), 300);
         }
       },
       error: (err: any) => {
@@ -147,10 +153,14 @@ export class MarkSheetComponent implements OnInit {
           this.selectedTerm = data.currentTerm;
         }
         this.loadingTerm = false;
+        // Check if we can auto-generate after term is loaded
+        this.checkAndAutoGenerate();
       },
       error: (err: any) => {
         console.error('Error loading active term:', err);
         this.loadingTerm = false;
+        // Check if we can auto-generate after term load attempt
+        this.checkAndAutoGenerate();
       }
     });
   }
@@ -158,22 +168,69 @@ export class MarkSheetComponent implements OnInit {
   onClassChange() {
     this.markSheetData = null;
     this.filteredMarkSheet = [];
+    // Check if we can auto-generate after class change
+    this.checkAndAutoGenerate();
+  }
+
+  onExamTypeChange() {
+    // Check if we can auto-generate after exam type change
+    this.checkAndAutoGenerate();
+  }
+
+  onSelectionChange() {
+    // Check if we can auto-generate after any selection change
+    this.checkAndAutoGenerate();
+  }
+
+  isSelectionValid(): boolean {
+    return !!(this.selectedClassId && this.selectedExamType && this.selectedTerm);
+  }
+
+  checkAndAutoGenerate() {
+    // Clear any pending timeout
+    if (this.autoGenerationTimeout) {
+      clearTimeout(this.autoGenerationTimeout);
+      this.autoGenerationTimeout = null;
+    }
+    
+    // Don't auto-generate if:
+    // - Already generating
+    // - Auto-generation is in progress
+    // - Still loading term
+    // - Still loading classes
+    // - Selection is not valid
+    if (this.loading || this.autoGenerationInProgress || this.loadingTerm || !this.isSelectionValid()) {
+      return;
+    }
+    
+    // Small delay to prevent multiple triggers within the same change event cycle
+    this.autoGenerationTimeout = setTimeout(() => {
+      if (this.isSelectionValid() && !this.loading && !this.autoGenerationInProgress && !this.loadingTerm) {
+        console.log('All criteria selected - auto-generating mark sheet...');
+        this.autoGenerationInProgress = true;
+        this.generateMarkSheet();
+        // Reset flag after generation completes (handled in generateMarkSheet)
+      }
+    }, 300);
   }
 
   generateMarkSheet() {
     if (!this.selectedClassId || !this.selectedExamType) {
       this.error = 'Please select class and exam type';
       setTimeout(() => this.error = '', 5000);
+      this.autoGenerationInProgress = false; // Reset flag
       return;
     }
 
     if (!this.selectedTerm) {
       this.error = 'Active term not found. Please configure term in settings.';
       setTimeout(() => this.error = '', 5000);
+      this.autoGenerationInProgress = false; // Reset flag
       return;
     }
 
     this.loading = true;
+    this.autoGenerationInProgress = true; // Set flag to prevent duplicate calls
     this.error = '';
     this.success = '';
     this.markSheetData = null;
@@ -188,6 +245,7 @@ export class MarkSheetComponent implements OnInit {
         this.filteredMarkSheet = [...data.markSheet];
         this.calculateStatistics();
         this.loading = false;
+        this.autoGenerationInProgress = false; // Reset flag after successful generation
         this.success = 'Mark sheet generated successfully';
         setTimeout(() => this.success = '', 5000);
       },
@@ -210,6 +268,7 @@ export class MarkSheetComponent implements OnInit {
         }
         
         this.loading = false;
+        this.autoGenerationInProgress = false; // Reset flag after error
         setTimeout(() => this.error = '', 5000);
       }
     });

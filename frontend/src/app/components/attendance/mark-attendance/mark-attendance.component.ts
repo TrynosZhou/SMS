@@ -22,6 +22,8 @@ export class MarkAttendanceComponent implements OnInit {
   currentTerm: string = '';
   searchQuery: string = '';
   filteredAttendanceData: any[] = [];
+  /** Filtered data sorted by last name ascending and grouped by gender for display */
+  filteredAttendanceDataGroupedByGender: { gender: string; items: any[] }[] = [];
   statusFilter: string = 'all'; // 'all', 'present', 'absent', 'late', 'excused'
   hasUnsavedChanges = false;
   lastSavedDate: Date | null = null;
@@ -149,6 +151,22 @@ export class MarkAttendanceComponent implements OnInit {
     return student ? `${student.firstName} ${student.lastName}` : '';
   }
 
+  getStudentFirstName(studentId: string): string {
+    const student = this.students.find(s => s.id === studentId);
+    return student ? (student.firstName || '').trim() : '';
+  }
+
+  getStudentLastName(studentId: string): string {
+    const student = this.students.find(s => s.id === studentId);
+    return student ? (student.lastName || '').trim() : '';
+  }
+
+  getStudentGender(studentId: string): string {
+    const student = this.students.find(s => s.id === studentId);
+    const g = student?.gender || student?.sex;
+    return g ? String(g).trim() : '';
+  }
+
   getStudentNumber(studentId: string): string {
     const student = this.students.find(s => s.id === studentId);
     return student ? student.studentNumber : '';
@@ -183,7 +201,7 @@ export class MarkAttendanceComponent implements OnInit {
       this.attendanceData
     ).subscribe({
       next: (response: any) => {
-        this.success = response.message || 'Attendance marked successfully!';
+        this.success = 'Attendance saved successfully.';
         this.submitting = false;
         this.hasUnsavedChanges = false;
         this.lastSavedDate = new Date();
@@ -250,7 +268,37 @@ export class MarkAttendanceComponent implements OnInit {
       filtered = filtered.filter(item => item.status === this.statusFilter);
     }
 
+    // Sort by last name ascending
+    filtered = filtered.slice().sort((a, b) => {
+      const lastA = this.getStudentLastName(a.studentId).toLowerCase();
+      const lastB = this.getStudentLastName(b.studentId).toLowerCase();
+      return lastA.localeCompare(lastB, undefined, { sensitivity: 'base' });
+    });
+
     this.filteredAttendanceData = filtered;
+
+    // Group by gender (sex), with consistent group order: Male, Female, then others alphabetically
+    const genderOrder = ['Male', 'Female', 'M', 'F'];
+    const byGender = new Map<string, any[]>();
+    filtered.forEach(item => {
+      const g = this.getStudentGender(item.studentId) || 'Other';
+      const key = g.trim() || 'Other';
+      if (!byGender.has(key)) byGender.set(key, []);
+      byGender.get(key)!.push(item);
+    });
+    const orderedGroups: { gender: string; items: any[] }[] = [];
+    const seen = new Set<string>();
+    genderOrder.forEach(g => {
+      if (byGender.has(g)) {
+        seen.add(g);
+        orderedGroups.push({ gender: g, items: byGender.get(g)! });
+      }
+    });
+    Array.from(byGender.keys())
+      .filter(k => !seen.has(k))
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+      .forEach(k => orderedGroups.push({ gender: k, items: byGender.get(k)! }));
+    this.filteredAttendanceDataGroupedByGender = orderedGroups;
   }
 
   // Quick status update
