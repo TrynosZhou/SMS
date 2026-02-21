@@ -159,8 +159,12 @@ export class StudentListComponent implements OnInit {
         return student.gender === this.selectedGender;
       });
     }
-    // Sort by Lastname ascending, then Firstname, then StudentNumber
+    // Sort by Class name ascending, then Lastname ascending, then Firstname, then StudentNumber
     filtered.sort((a: any, b: any) => {
+      const clsA = String(this.getStudentClassName(a) || '').toLowerCase();
+      const clsB = String(this.getStudentClassName(b) || '').toLowerCase();
+      const clsCompare = clsA.localeCompare(clsB, undefined, { sensitivity: 'base' });
+      if (clsCompare !== 0) return clsCompare;
       const lastA = String(a.lastName || '').toLowerCase();
       const lastB = String(b.lastName || '').toLowerCase();
       const lastCompare = lastA.localeCompare(lastB, undefined, { sensitivity: 'base' });
@@ -174,35 +178,7 @@ export class StudentListComponent implements OnInit {
       return numA.localeCompare(numB);
     });
     this.filteredStudents = filtered;
-    // Group by Class name (ascending)
-    const byClass = new Map<string, any[]>();
-    filtered.forEach(s => {
-      const cls = this.getStudentClassName(s) || 'N/A';
-      if (!byClass.has(cls)) byClass.set(cls, []);
-      byClass.get(cls)!.push(s);
-    });
-    const classNames = Array.from(byClass.keys()).sort((a, b) =>
-      a.localeCompare(b, undefined, { sensitivity: 'base' })
-    );
-    const ordered: Array<{ group: string; students: any[] }> = [];
-    classNames.forEach(name => {
-      const items = byClass.get(name)!;
-      items.sort((a: any, b: any) => {
-        const lastA = String(a.lastName || '').toLowerCase();
-        const lastB = String(b.lastName || '').toLowerCase();
-        const lastCompare = lastA.localeCompare(lastB, undefined, { sensitivity: 'base' });
-        if (lastCompare !== 0) return lastCompare;
-        const firstA = String(a.firstName || '').toLowerCase();
-        const firstB = String(b.firstName || '').toLowerCase();
-        const firstCompare = firstA.localeCompare(firstB, undefined, { sensitivity: 'base' });
-        if (firstCompare !== 0) return firstCompare;
-        const numA = String(a.studentNumber || '').toLowerCase();
-        const numB = String(b.studentNumber || '').toLowerCase();
-        return numA.localeCompare(numB);
-      });
-      ordered.push({ group: name, students: items });
-    });
-    this.groupedStudents = ordered;
+    this.groupedStudents = [];
   }
 
   onSearchChange() {

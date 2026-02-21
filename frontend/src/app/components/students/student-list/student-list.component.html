@@ -265,12 +265,7 @@
       <div class="list-col type-col">Type</div>
       <div class="list-col actions-col">Actions</div>
     </div>
-    <div class="class-group" *ngFor="let grp of groupedStudents">
-      <div class="group-header">
-        <span class="group-title">{{ grp.group }}</span>
-        <span class="group-count">({{ grp.students.length }})</span>
-      </div>
-      <div class="list-item" *ngFor="let student of grp.students">
+    <div class="list-item" *ngFor="let student of filteredStudents">
         <div class="list-col number-col">
           <strong class="student-id-link" (click)="viewStudentIdCard(student.id)" title="View Student ID Card">{{ student.studentNumber }}</strong>
         </div>
@@ -308,7 +303,6 @@
             </button>
           </div>
         </div>
-      </div>
     </div>
   </div>
 
