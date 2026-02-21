@@ -42,8 +42,7 @@ export class StudentListComponent implements OnInit {
   isLogisticsTransport = false;
   isLogisticsDiningHall = false;
   isTeacher = false;
-  /** Students sorted by lastname asc and grouped by gender (Female first) for display */
-  groupedStudents: Array<{ gender: string; students: any[] }> = [];
+  groupedStudents: Array<{ group: string; students: any[] }> = [];
 
   constructor(
     private studentService: StudentService,
@@ -160,7 +159,7 @@ export class StudentListComponent implements OnInit {
         return student.gender === this.selectedGender;
       });
     }
-    // Sort by Lastname ascending with tie-breakers Firstname then StudentNumber
+    // Sort by Lastname ascending, then Firstname, then StudentNumber
     filtered.sort((a: any, b: any) => {
       const lastA = String(a.lastName || '').toLowerCase();
       const lastB = String(b.lastName || '').toLowerCase();
@@ -175,26 +174,34 @@ export class StudentListComponent implements OnInit {
       return numA.localeCompare(numB);
     });
     this.filteredStudents = filtered;
-    // Group by Gender (Female first, then Male, then others)
-    const genderOrder = ['Female', 'Male', 'M', 'F'];
-    const byGender = new Map<string, any[]>();
+    // Group by Class name (ascending)
+    const byClass = new Map<string, any[]>();
     filtered.forEach(s => {
-      const g = (s.gender || s.sex || 'Other').trim() || 'Other';
-      if (!byGender.has(g)) byGender.set(g, []);
-      byGender.get(g)!.push(s);
+      const cls = this.getStudentClassName(s) || 'N/A';
+      if (!byClass.has(cls)) byClass.set(cls, []);
+      byClass.get(cls)!.push(s);
     });
-    const ordered: Array<{ gender: string; students: any[] }> = [];
-    const seen = new Set<string>();
-    genderOrder.forEach(g => {
-      if (byGender.has(g)) {
-        seen.add(g);
-        ordered.push({ gender: g, students: byGender.get(g)! });
-      }
+    const classNames = Array.from(byClass.keys()).sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' })
+    );
+    const ordered: Array<{ group: string; students: any[] }> = [];
+    classNames.forEach(name => {
+      const items = byClass.get(name)!;
+      items.sort((a: any, b: any) => {
+        const lastA = String(a.lastName || '').toLowerCase();
+        const lastB = String(b.lastName || '').toLowerCase();
+        const lastCompare = lastA.localeCompare(lastB, undefined, { sensitivity: 'base' });
+        if (lastCompare !== 0) return lastCompare;
+        const firstA = String(a.firstName || '').toLowerCase();
+        const firstB = String(b.firstName || '').toLowerCase();
+        const firstCompare = firstA.localeCompare(firstB, undefined, { sensitivity: 'base' });
+        if (firstCompare !== 0) return firstCompare;
+        const numA = String(a.studentNumber || '').toLowerCase();
+        const numB = String(b.studentNumber || '').toLowerCase();
+        return numA.localeCompare(numB);
+      });
+      ordered.push({ group: name, students: items });
     });
-    Array.from(byGender.keys())
-      .filter(k => !seen.has(k))
-      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
-      .forEach(k => ordered.push({ gender: k, students: byGender.get(k)! }));
     this.groupedStudents = ordered;
   }
 
@@ -593,6 +600,7 @@ export class StudentListComponent implements OnInit {
       next: (data: any) => {
         this.success = data.message || 'Student deleted successfully';
         this.loading = false;
+        this.selectedStudent = null;
         this.loadStudents();
         setTimeout(() => this.success = '', 5000);
       },

@@ -563,8 +563,8 @@
 
 .list-header {
   display: grid;
-  grid-template-columns: 1.3fr 1.6fr 1.6fr 1.2fr 1fr 1.2fr 1fr 1.4fr 1.2fr;
-  gap: 16px;
+  grid-template-columns: 1.1fr 1.3fr 1.2fr 1fr 0.9fr 1.2fr 1.2fr 1fr;
+  gap: 12px;
   padding: 16px 24px;
   background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
   color: white;
@@ -576,8 +576,8 @@
 
 .list-item {
   display: grid;
-  grid-template-columns: 1.3fr 1.6fr 1.6fr 1.2fr 1fr 1.2fr 1fr 1.4fr 1.2fr;
-  gap: 16px;
+  grid-template-columns: 1.1fr 1.3fr 1.2fr 1fr 0.9fr 1.2fr 1.2fr 1fr;
+  gap: 12px;
   padding: 20px 24px;
   border-bottom: 1px solid #f0f0f0;
   transition: all 0.3s ease;
@@ -595,12 +595,15 @@
   display: flex;
   align-items: center;
   font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .name-cell {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
 }
 
 .avatar-small {

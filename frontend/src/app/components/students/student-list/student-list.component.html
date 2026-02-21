@@ -210,12 +210,7 @@
     <div *ngFor="let student of grp.students" class="student-card">
       <div class="card-header">
         <div class="student-avatar" [class.male]="student.gender === 'Male'" [class.female]="student.gender === 'Female'">
-          <img *ngIf="student.photo" 
-               [src]="'http://localhost:3001' + student.photo" 
-               [alt]="student.firstName + ' ' + student.lastName"
-               class="student-photo"
-               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-          <span class="avatar-icon" [style.display]="student.photo ? 'none' : 'flex'">{{ student.gender === 'Male' ? '👨' : '👩' }}</span>
+          <span class="avatar-icon">{{ student.gender === 'Male' ? '👨' : '👩' }}</span>
         </div>
         <div class="student-badge" [class.boarder]="student.studentType === 'Boarder'" [class.day-scholar]="student.studentType === 'Day Scholar'">
           {{ student.studentType || 'Day Scholar' }}
@@ -268,12 +263,11 @@
       <div class="list-col gender-col">Gender</div>
       <div class="list-col class-col">Class</div>
       <div class="list-col type-col">Type</div>
-      <div class="list-col contact-col">Contact</div>
       <div class="list-col actions-col">Actions</div>
     </div>
-    <div class="class-group gender-group" *ngFor="let grp of groupedStudents">
+    <div class="class-group" *ngFor="let grp of groupedStudents">
       <div class="group-header">
-        <span class="group-title">{{ grp.gender }}</span>
+        <span class="group-title">{{ grp.group }}</span>
         <span class="group-count">({{ grp.students.length }})</span>
       </div>
       <div class="list-item" *ngFor="let student of grp.students">
@@ -282,12 +276,6 @@
         </div>
         <div class="list-col last-col">
           <div class="name-cell">
-            <img *ngIf="student.photo" 
-                 [src]="'http://localhost:3001' + student.photo" 
-                 [alt]="student.firstName + ' ' + student.lastName"
-                 class="avatar-small-photo"
-                 onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
-            <span class="avatar-small" [style.display]="student.photo ? 'none' : 'inline'">{{ student.gender === 'Male' ? '👨' : '👩' }}</span>
             <span class="name-text">{{ student.lastName || 'N/A' }}</span>
           </div>
         </div>
@@ -304,7 +292,6 @@
             {{ student.studentType || 'Day Scholar' }}
           </span>
         </div>
-        <div class="list-col contact-col">{{ student.contactNumber || student.phoneNumber || 'N/A' }}</div>
         <div class="list-col actions-col">
           <div class="action-buttons">
             <button class="btn-icon-small" (click)="viewStudentDetails(student)" title="View Details">
@@ -346,12 +333,7 @@
       <button class="modal-close" (click)="closeStudentDetails()">&times;</button>
       <div class="modal-header">
         <div class="modal-avatar" [class.male]="selectedStudent.gender === 'Male'" [class.female]="selectedStudent.gender === 'Female'">
-          <img *ngIf="selectedStudent.photo" 
-               [src]="'http://localhost:3001' + selectedStudent.photo" 
-               [alt]="selectedStudent.firstName + ' ' + selectedStudent.lastName"
-               class="student-photo-large"
-               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-          <span class="avatar-icon-large" [style.display]="selectedStudent.photo ? 'none' : 'flex'">{{ selectedStudent.gender === 'Male' ? '👨' : '👩' }}</span>
+          <span class="avatar-icon-large">{{ selectedStudent.gender === 'Male' ? '👨' : '👩' }}</span>
         </div>
         <div class="modal-title">
           <h2>{{ selectedStudent.firstName }} {{ selectedStudent.lastName }}</h2>
@@ -402,8 +384,8 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="closeStudentDetails()">Close</button>
-        <button class="btn btn-primary" (click)="viewReportCard(selectedStudent.id)">
-          📄 View Report Card
+        <button class="btn btn-danger" (click)="deleteStudent(selectedStudent.id, selectedStudent.firstName + ' ' + selectedStudent.lastName, selectedStudent.studentNumber)">
+          🗑️ Delete
         </button>
         <button class="btn btn-primary" (click)="editStudent(selectedStudent.id)">
           ✏️ Edit Student
