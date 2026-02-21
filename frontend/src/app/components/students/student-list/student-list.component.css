@@ -563,7 +563,7 @@
 
 .list-header {
   display: grid;
-  grid-template-columns: 1.1fr 1.3fr 1.2fr 1fr 0.9fr 1.2fr 1.2fr 1fr;
+  grid-template-columns: 1.1fr 1.3fr 1.2fr 1fr 0.9fr 1.6fr 0.9fr 1fr;
   gap: 12px;
   padding: 16px 24px;
   background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
@@ -576,7 +576,7 @@
 
 .list-item {
   display: grid;
-  grid-template-columns: 1.1fr 1.3fr 1.2fr 1fr 0.9fr 1.2fr 1.2fr 1fr;
+  grid-template-columns: 1.1fr 1.3fr 1.2fr 1fr 0.9fr 1.6fr 0.9fr 1fr;
   gap: 12px;
   padding: 20px 24px;
   border-bottom: 1px solid #f0f0f0;
@@ -604,6 +604,10 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.type-col {
+  margin-left: 6px;
 }
 
 .avatar-small {
