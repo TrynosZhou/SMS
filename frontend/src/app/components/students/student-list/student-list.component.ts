@@ -24,7 +24,7 @@ export class StudentListComponent implements OnInit {
   selectedStudent: any = null;
   pagination = {
     page: 1,
-    limit: 20,
+    limit: 50,
     total: 0,
     totalPages: 1
   };
@@ -33,7 +33,7 @@ export class StudentListComponent implements OnInit {
     totalBoarders: 0,
     classCount: 0
   };
-  pageSizeOptions = [10, 20, 50];
+  pageSizeOptions = [10, 20, 50, 100];
   pageTitle = 'Students';
   pageSubtitle = 'Manage and view all enrolled students';
   pageIcon = '👨‍🎓';
@@ -42,7 +42,8 @@ export class StudentListComponent implements OnInit {
   isLogisticsTransport = false;
   isLogisticsDiningHall = false;
   isTeacher = false;
-  groupedStudents: Array<{ classId: string | null; className: string; students: any[] }> = [];
+  /** Students sorted by lastname asc and grouped by gender (Female first) for display */
+  groupedStudents: Array<{ gender: string; students: any[] }> = [];
 
   constructor(
     private studentService: StudentService,
@@ -163,32 +164,38 @@ export class StudentListComponent implements OnInit {
     filtered.sort((a: any, b: any) => {
       const lastA = String(a.lastName || '').toLowerCase();
       const lastB = String(b.lastName || '').toLowerCase();
-      const lastCompare = lastA.localeCompare(lastB);
+      const lastCompare = lastA.localeCompare(lastB, undefined, { sensitivity: 'base' });
       if (lastCompare !== 0) return lastCompare;
       const firstA = String(a.firstName || '').toLowerCase();
       const firstB = String(b.firstName || '').toLowerCase();
-      const firstCompare = firstA.localeCompare(firstB);
+      const firstCompare = firstA.localeCompare(firstB, undefined, { sensitivity: 'base' });
       if (firstCompare !== 0) return firstCompare;
       const numA = String(a.studentNumber || '').toLowerCase();
       const numB = String(b.studentNumber || '').toLowerCase();
       return numA.localeCompare(numB);
     });
     this.filteredStudents = filtered;
-    // Group by Class name
-    const groupsMap: Map<string, { classId: string | null; className: string; students: any[] }> = new Map();
-    for (const s of filtered) {
-      const className = this.getStudentClassName(s);
-      const classId = s.class?.id || s.classEntity?.id || s.classId || null;
-      const key = `${classId || 'no-class'}::${className}`;
-      if (!groupsMap.has(key)) {
-        groupsMap.set(key, { classId, className, students: [] });
+    // Group by Gender (Female first, then Male, then others)
+    const genderOrder = ['Female', 'Male', 'M', 'F'];
+    const byGender = new Map<string, any[]>();
+    filtered.forEach(s => {
+      const g = (s.gender || s.sex || 'Other').trim() || 'Other';
+      if (!byGender.has(g)) byGender.set(g, []);
+      byGender.get(g)!.push(s);
+    });
+    const ordered: Array<{ gender: string; students: any[] }> = [];
+    const seen = new Set<string>();
+    genderOrder.forEach(g => {
+      if (byGender.has(g)) {
+        seen.add(g);
+        ordered.push({ gender: g, students: byGender.get(g)! });
       }
-      groupsMap.get(key)!.students.push(s);
-    }
-    // Convert to array and sort groups by class name
-    this.groupedStudents = Array.from(groupsMap.values()).sort((a, b) =>
-      String(a.className || '').toLowerCase().localeCompare(String(b.className || '').toLowerCase())
-    );
+    });
+    Array.from(byGender.keys())
+      .filter(k => !seen.has(k))
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+      .forEach(k => ordered.push({ gender: k, students: byGender.get(k)! }));
+    this.groupedStudents = ordered;
   }
 
   onSearchChange() {

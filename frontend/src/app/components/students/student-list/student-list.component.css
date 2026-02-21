@@ -294,6 +294,51 @@
 }
 
 /* Students Grid View */
+/* Gender group headers (list and grid) */
+.students-grid-wrapper {
+  margin-bottom: 24px;
+}
+
+.gender-group-grid {
+  margin-bottom: 28px;
+}
+
+.group-header,
+.group-header-grid {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.group-header-grid {
+  margin-top: 8px;
+}
+
+.group-header:first-child,
+.gender-group-grid:first-child .group-header-grid {
+  margin-top: 0;
+}
+
+.group-title {
+  font-weight: 700;
+}
+
+.group-count {
+  opacity: 0.95;
+  font-size: 14px;
+}
+
+.class-group.gender-group {
+  margin-bottom: 24px;
+}
+
 .students-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));

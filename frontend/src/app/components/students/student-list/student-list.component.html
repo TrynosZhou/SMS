@@ -199,9 +199,15 @@
     <p>Loading students...</p>
   </div>
 
-  <!-- Students Grid View -->
-  <div class="students-grid" *ngIf="!loading && viewMode === 'grid' && filteredStudents.length > 0">
-    <div *ngFor="let student of (filteredStudents | safeArray)" class="student-card">
+  <!-- Students Grid View (grouped by gender, sorted by lastname) -->
+  <div class="students-grid-wrapper" *ngIf="!loading && viewMode === 'grid' && filteredStudents.length > 0">
+    <div class="gender-group-grid" *ngFor="let grp of groupedStudents">
+      <div class="group-header group-header-grid">
+        <span class="group-title">{{ grp.gender }}</span>
+        <span class="group-count">({{ grp.students.length }})</span>
+      </div>
+      <div class="students-grid">
+    <div *ngFor="let student of grp.students" class="student-card">
       <div class="card-header">
         <div class="student-avatar" [class.male]="student.gender === 'Male'" [class.female]="student.gender === 'Female'">
           <img *ngIf="student.photo" 
@@ -248,6 +254,8 @@
         </button>
       </div>
     </div>
+      </div>
+    </div>
   </div>
 
   <!-- Students List View -->
@@ -263,9 +271,9 @@
       <div class="list-col contact-col">Contact</div>
       <div class="list-col actions-col">Actions</div>
     </div>
-    <div class="class-group" *ngFor="let grp of groupedStudents">
+    <div class="class-group gender-group" *ngFor="let grp of groupedStudents">
       <div class="group-header">
-        <span class="group-title">{{ grp.className }}</span>
+        <span class="group-title">{{ grp.gender }}</span>
         <span class="group-count">({{ grp.students.length }})</span>
       </div>
       <div class="list-item" *ngFor="let student of grp.students">
@@ -290,7 +298,7 @@
           {{ student.dateOfBirth ? (student.dateOfBirth | date:'dd/MM/yyyy') : 'N/A' }}
         </div>
         <div class="list-col gender-col">{{ student.gender || 'N/A' }}</div>
-        <div class="list-col class-col">{{ grp.className }}</div>
+        <div class="list-col class-col">{{ getStudentClassName(student) }}</div>
         <div class="list-col type-col">
           <span class="type-badge" [class.boarder]="student.studentType === 'Boarder'" [class.day-scholar]="student.studentType === 'Day Scholar'">
             {{ student.studentType || 'Day Scholar' }}
