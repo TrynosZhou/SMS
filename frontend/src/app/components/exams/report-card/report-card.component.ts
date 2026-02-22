@@ -7,6 +7,8 @@ import { AuthService } from '../../../services/auth.service';
 import { ParentService } from '../../../services/parent.service';
 import { SettingsService } from '../../../services/settings.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-report-card',
@@ -445,7 +447,11 @@ export class ReportCardComponent implements OnInit {
           return card;
         });
         
+        // First rank based on currently loaded class to avoid delay
         this.applyCoreSubjectRanking(this.reportCards);
+        // Then enhance Grade Position by including peer classes in same stream
+        const selectedClassName = data.class || (cards[0]?.student?.class) || '';
+        this.enhanceGradePositionsAcrossStream(selectedClassName, this.reportCards);
         
         // Sort report cards by class position in ascending order
         this.reportCards.sort((a: any, b: any) => {
@@ -674,6 +680,61 @@ export class ReportCardComponent implements OnInit {
       const group = byGrade[grade];
       this.rankGroupByScore(group, 'coreAverage', 'formPosition');
       group.forEach(g => (g.totalStudentsPerStream = group.length));
+    });
+  }
+
+  private enhanceGradePositionsAcrossStream(selectedClassName: string, baseCards: any[]) {
+    const streamKey = this.getGradeGroupName(selectedClassName || '');
+    if (!streamKey) {
+      return;
+    }
+    this.classService.getClasses().subscribe({
+      next: (classes: any[]) => {
+        const peerClasses = (classes || []).filter(c => {
+          const name = c?.name || c?.className || c?.title || '';
+          return this.getGradeGroupName(name) === streamKey;
+        });
+        // If only the current class exists, nothing to enhance
+        if (!peerClasses || peerClasses.length <= 1) {
+          return;
+        }
+        const otherClassIds = peerClasses
+          .map((c: any) => c.id)
+          .filter((id: string) => !!id);
+        // Fetch report cards for all peer classes in parallel
+        const requests = otherClassIds.map((id: string) =>
+          this.examService.getReportCard(id, this.selectedExamType, this.selectedTerm).pipe(
+            catchError(() => of({ reportCards: [] }))
+          )
+        );
+        forkJoin(requests).subscribe({
+          next: (responses: any[]) => {
+            const extraCards: any[] = [];
+            for (const res of responses) {
+              const rc = Array.isArray(res?.reportCards) ? res.reportCards : [];
+              extraCards.push(...rc);
+            }
+            if (extraCards.length === 0) {
+              return;
+            }
+            // Combine for ranking, but we only display baseCards; ranking uses combined
+            const combined = baseCards.concat(extraCards);
+            this.applyCoreSubjectRanking(combined);
+            // Re-sort displayed cards after updated positions
+            this.reportCards.sort((a: any, b: any) => {
+              const posA = a.classPosition || 0;
+              const posB = b.classPosition || 0;
+              return posA - posB;
+            });
+          },
+          error: () => {
+            // Best-effort: keep existing positions if peers fail to load
+          }
+        });
+      },
+      error: () => {
+        // Silent fail – keep positions based on current class only
+      }
     });
   }
 
