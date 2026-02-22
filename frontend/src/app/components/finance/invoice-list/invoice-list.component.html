@@ -816,68 +816,33 @@
           </h3>
 
           <div class="form-group">
-            <label for="noteStudentId">
-              Student ID / Number <span class="required">*</span>
+            <label for="noteSearchQuery">
+              Student ID or Name <span class="required">*</span>
             </label>
             <div style="display: flex; gap: 8px; align-items: center;">
               <input
-                id="noteStudentId"
+                id="noteSearchQuery"
                 type="text"
-                [(ngModel)]="noteStudentId"
-                name="noteStudentId"
+                [(ngModel)]="noteSearchQuery"
+                name="noteSearchQuery"
                 class="form-control"
-                placeholder="Enter Student ID / Number"
+                placeholder="Enter Student ID, First Name, or Last Name"
+                (keyup.enter)="lookupNoteStudent()"
               />
               <button
                 type="button"
                 class="btn btn-primary"
-                (click)="lookupNoteStudentById()"
+                (click)="lookupNoteStudent()"
               >
                 Find Latest Invoice
               </button>
             </div>
             <small class="form-hint">
-              Enter the student's ID/number. The system will select and display their latest invoice.
+              Type a student number or part of the first/last name. The latest invoice will be selected automatically.
             </small>
             <div *ngIf="noteLookupError" class="alert alert-error" style="margin-top: 8px;">
               {{ noteLookupError }}
             </div>
-          </div>
-
-          <div style="text-align:center; margin: 12px 0; color: #6b7280;">— OR —</div>
-
-          <div class="form-group">
-            <label>
-              Search by Name
-            </label>
-            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-              <input
-                type="text"
-                [(ngModel)]="noteFirstName"
-                name="noteFirstName"
-                class="form-control"
-                placeholder="First Name"
-                style="min-width: 160px;"
-              />
-              <input
-                type="text"
-                [(ngModel)]="noteLastName"
-                name="noteLastName"
-                class="form-control"
-                placeholder="Last Name"
-                style="min-width: 160px;"
-              />
-              <button
-                type="button"
-                class="btn btn-primary"
-                (click)="lookupNoteStudentByName()"
-              >
-                Search Latest Invoice
-              </button>
-            </div>
-            <small class="form-hint">
-              Enter First Name and/or Last Name. The system will find the latest invoice for matching student(s).
-            </small>
           </div>
         </div>
       </div>

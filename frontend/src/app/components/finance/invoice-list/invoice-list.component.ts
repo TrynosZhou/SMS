@@ -62,6 +62,7 @@ export class InvoiceListComponent implements OnInit {
   noteLookupError = '';
   noteFirstName = '';
   noteLastName = '';
+  noteSearchQuery = '';
   
   // Cached computed values to prevent NG0900 errors
   private _cachedStats = {
@@ -1023,6 +1024,72 @@ export class InvoiceListComponent implements OnInit {
         this.noteLookupError = 'Failed to search students by name.';
       }
     });
+  }
+
+  lookupNoteStudent() {
+    this.noteLookupError = '';
+    this.selectedInvoice = null;
+    const queryRaw = (this.noteSearchQuery || '').trim();
+    if (!queryRaw) {
+      this.noteLookupError = 'Enter a Student ID or Name.';
+      return;
+    }
+    const query = queryRaw.toLowerCase();
+    const invoicesArray = Array.isArray(this.invoices) ? this.invoices : [];
+
+    // 1) Try exact student number match
+    let matches = invoicesArray.filter(inv => {
+      const studentNumber = String(inv.student?.studentNumber || '').toLowerCase();
+      return studentNumber === query;
+    });
+
+    // 2) If none, try name contains (token-based)
+    if (matches.length === 0) {
+      const tokens = query.split(/\s+/).filter(Boolean);
+      matches = invoicesArray.filter(inv => {
+        const fn = String(inv.student?.firstName || '').toLowerCase();
+        const ln = String(inv.student?.lastName || '').toLowerCase();
+        return tokens.every(t => fn.includes(t) || ln.includes(t));
+      });
+    }
+
+    // 3) If still none, query students API and then filter invoices by returned student ids
+    if (matches.length === 0) {
+      this.studentService.getStudentsPaginated({ search: queryRaw, page: 1, limit: 50 }).subscribe({
+        next: (resp: any) => {
+          const students = Array.isArray(resp?.data) ? resp.data : (Array.isArray(resp) ? resp : []);
+          if (!students.length) {
+            this.noteLookupError = 'No students found for provided ID/Name.';
+            return;
+          }
+          const studentIds = new Set(students.map((s: any) => s.id));
+          const invs = invoicesArray.filter(inv => studentIds.has(inv.student?.id || inv.studentId));
+          if (invs.length === 0) {
+            this.noteLookupError = 'No invoices found for matching student(s).';
+            return;
+          }
+          // Pick latest by date
+          const latest = invs.slice().sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+          })[0];
+          this.selectedInvoice = latest;
+        },
+        error: () => {
+          this.noteLookupError = 'Failed to search students. Please try again.';
+        }
+      });
+      return;
+    }
+
+    // Choose the latest when we have matches locally
+    const latest = matches.slice().sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    })[0];
+    this.selectedInvoice = latest;
   }
 
   openReceiptForPrint() {
