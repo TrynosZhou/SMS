@@ -1,8 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { AttendanceService } from '../../../services/attendance.service';
 import { ClassService } from '../../../services/class.service';
+import { TeacherService } from '../../../services/teacher.service';
 import { StudentService } from '../../../services/student.service';
 import { SettingsService } from '../../../services/settings.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-mark-attendance',
@@ -31,8 +33,10 @@ export class MarkAttendanceComponent implements OnInit {
   constructor(
     private attendanceService: AttendanceService,
     private classService: ClassService,
+    private teacherService: TeacherService,
     private studentService: StudentService,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
+    private authService: AuthService
   ) {}
 
   ngOnInit() {
@@ -55,15 +59,57 @@ export class MarkAttendanceComponent implements OnInit {
   }
 
   loadClasses() {
-    this.classService.getClasses().subscribe({
-      next: (data: any) => {
-        this.classes = data.filter((c: any) => c.isActive);
-      },
-      error: (err: any) => {
-        this.error = 'Failed to load classes';
-        console.error(err);
-      }
-    });
+    const user = this.authService.getCurrentUser();
+    const isTeacher = user?.role === 'teacher';
+    const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+
+    if (isTeacher && !(user as any).isUniversalTeacher) {
+      // Teachers see only classes assigned to them
+      this.teacherService.getCurrentTeacher().subscribe({
+        next: (teacher: any) => {
+          if (!teacher?.id) {
+            this.classes = [];
+            this.error = 'No teacher profile found. Please contact the administrator.';
+            return;
+          }
+          this.teacherService.getTeacherClasses(teacher.id).subscribe({
+            next: (response: any) => {
+              const classesData = response?.classes || response || [];
+              const arr = Array.isArray(classesData) ? classesData : [];
+              this.classes = arr.filter((c: any) => c.isActive !== false);
+              if (this.classes.length === 0) {
+                this.error = 'No classes assigned to you. Please contact the administrator to assign a class.';
+              } else {
+                this.error = '';
+              }
+            },
+            error: (err: any) => {
+              this.error = 'Failed to load your assigned classes';
+              this.classes = [];
+              console.error(err);
+            }
+          });
+        },
+        error: (err: any) => {
+          this.error = 'Failed to load teacher profile';
+          this.classes = [];
+          console.error(err);
+        }
+      });
+    } else {
+      // Admins and superadmins see all classes
+      this.classService.getClasses().subscribe({
+        next: (data: any) => {
+          this.classes = data.filter((c: any) => c.isActive !== false);
+          this.error = '';
+        },
+        error: (err: any) => {
+          this.error = 'Failed to load classes';
+          this.classes = [];
+          console.error(err);
+        }
+      });
+    }
   }
 
   onClassChange() {

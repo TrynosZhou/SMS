@@ -449,22 +449,24 @@ export function createReportCardPDF(
       doc.fontSize(10).font('Helvetica-Bold').text('Subject Performance:', 50, yPos);
       yPos += 16;
 
-      // Define table dimensions - adjusted to prevent overlap
+      // Define table dimensions - match Remarks section width (500pt) for right-edge alignment
       const tableStartX = 50;
-      const rowHeight = 18; // Reduced to fit more rows on one page
-      const headerRowHeight = 26; // Increased to accommodate multi-line headers and descenders (g, p, y, etc.)
+      const tableWidth = 500; // Same as Remarks section doc.rect(50, ..., 500, ...)
+      const tableEndXAdjusted = tableStartX + tableWidth;
+      const rowHeight = 18;
+      const headerRowHeight = 26;
+      const colPadding = 5;
+      const numCols = 6; // Subject, Subject Code, Mark Obtained, Possible Mark, Class Avg, Grade
+      const fixedColWidth = 55; // markObtained, possibleMark, classAverage
+      const flexibleTotal = tableWidth - (fixedColWidth * 3) - (colPadding * (numCols + 1));
       const colWidths = {
-        subject: 70,        // Reduced from 90
-        subjectCode: 55,    // Reduced from 70
-        markObtained: 50,   // Reduced from 75 to fit "Mark\nObtained" (two lines)
-        possibleMark: 50,   // Reduced from 75 to fit "Possible\nMark" (two lines)
-        classAverage: 45,   // Reduced from 55 to fit "Class\nAvg" (two lines)
-        grade: 70
+        subject: Math.round(flexibleTotal * 0.35),
+        subjectCode: Math.round(flexibleTotal * 0.2),
+        markObtained: fixedColWidth,
+        possibleMark: fixedColWidth,
+        classAverage: fixedColWidth,
+        grade: Math.round(flexibleTotal * 0.45)
       };
-      
-      const totalTableWidth = colWidths.subject + colWidths.subjectCode + colWidths.markObtained + colWidths.possibleMark + 
-                              colWidths.classAverage + colWidths.grade + 30; // 30 for padding
-      const tableEndXAdjusted = tableStartX + totalTableWidth;
       const colPositions = {
         subject: tableStartX + 5,
         subjectCode: tableStartX + colWidths.subject + 5,

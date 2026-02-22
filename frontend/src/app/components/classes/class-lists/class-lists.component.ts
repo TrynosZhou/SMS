@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
+import { TeacherService } from '../../../services/teacher.service';
 import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
 import { jsPDF } from 'jspdf';
@@ -53,6 +54,7 @@ export class ClassListsComponent implements OnInit {
   constructor(
     private studentService: StudentService,
     private classService: ClassService,
+    private teacherService: TeacherService,
     private settingsService: SettingsService,
     public authService: AuthService
   ) {
@@ -70,39 +72,88 @@ export class ClassListsComponent implements OnInit {
   loadClasses() {
     this.loading = true;
     this.error = '';
-    
-    this.classService.getClasses().subscribe({
-      next: (response: any) => {
-        const classesData = Array.isArray(response) ? response : (response?.classes || response?.data || []);
-        this.classes = Array.isArray(classesData) ? classesData : [];
-        
-        // Filter active classes only
-        this.classes = this.classes.filter((cls: any) => cls.isActive !== false);
-        
-        // Remove duplicates by ID
-        const uniqueClassesMap = new Map<string, any>();
-        this.classes.forEach((classItem: any) => {
-          if (classItem.id && !uniqueClassesMap.has(classItem.id)) {
-            uniqueClassesMap.set(classItem.id, classItem);
+    const user = this.authService.getCurrentUser();
+    const isTeacher = user?.role === 'teacher';
+    const isUniversalTeacher = !!(user as any)?.isUniversalTeacher;
+
+    if (isTeacher && !isUniversalTeacher) {
+      // Teachers see only their assigned classes (universal teacher sees all)
+      this.teacherService.getCurrentTeacher().subscribe({
+        next: (teacher: any) => {
+          if (!teacher?.id) {
+            this.classes = [];
+            this.error = 'No teacher profile found. Please contact the administrator.';
+            this.loading = false;
+            return;
           }
-        });
-        this.classes = Array.from(uniqueClassesMap.values());
-        
-        // Sort by name
-        this.classes.sort((a: any, b: any) => {
-          const nameA = (a.name || '').toLowerCase();
-          const nameB = (b.name || '').toLowerCase();
-          return nameA.localeCompare(nameB);
-        });
-        
-        this.loading = false;
-      },
-      error: (err) => {
-        console.error('Error loading classes:', err);
-        this.error = 'Failed to load classes. Please try again.';
-        this.loading = false;
-      }
-    });
+          this.teacherService.getTeacherClasses(teacher.id).subscribe({
+            next: (response: any) => {
+              const classesData = response?.classes || response || [];
+              this.classes = Array.isArray(classesData) ? classesData : [];
+              this.classes = this.classes.filter((cls: any) => cls.isActive !== false);
+              const uniqueClassesMap = new Map<string, any>();
+              this.classes.forEach((classItem: any) => {
+                if (classItem.id && !uniqueClassesMap.has(classItem.id)) {
+                  uniqueClassesMap.set(classItem.id, classItem);
+                }
+              });
+              this.classes = Array.from(uniqueClassesMap.values());
+              this.classes.sort((a: any, b: any) => {
+                const nameA = (a.name || '').toLowerCase();
+                const nameB = (b.name || '').toLowerCase();
+                return nameA.localeCompare(nameB);
+              });
+              if (this.classes.length === 0) {
+                this.error = 'No classes assigned to you. Please contact the administrator to assign a class.';
+              } else {
+                this.error = '';
+              }
+              this.loading = false;
+            },
+            error: (err) => {
+              console.error('Error loading teacher classes:', err);
+              this.error = 'Failed to load your assigned classes. Please try again.';
+              this.classes = [];
+              this.loading = false;
+            }
+          });
+        },
+        error: (err) => {
+          console.error('Error loading teacher:', err);
+          this.error = 'Failed to load teacher profile. Please try again.';
+          this.classes = [];
+          this.loading = false;
+        }
+      });
+    } else {
+      // Admins, superadmins, and universal teachers see all classes
+      this.classService.getClasses().subscribe({
+        next: (response: any) => {
+          const classesData = Array.isArray(response) ? response : (response?.classes || response?.data || []);
+          this.classes = Array.isArray(classesData) ? classesData : [];
+          this.classes = this.classes.filter((cls: any) => cls.isActive !== false);
+          const uniqueClassesMap = new Map<string, any>();
+          this.classes.forEach((classItem: any) => {
+            if (classItem.id && !uniqueClassesMap.has(classItem.id)) {
+              uniqueClassesMap.set(classItem.id, classItem);
+            }
+          });
+          this.classes = Array.from(uniqueClassesMap.values());
+          this.classes.sort((a: any, b: any) => {
+            const nameA = (a.name || '').toLowerCase();
+            const nameB = (b.name || '').toLowerCase();
+            return nameA.localeCompare(nameB);
+          });
+          this.error = '';
+          this.loading = false;
+        },
+        error: (err) => {
+          console.error('Error loading classes:', err);
+          this.error = 'Failed to load classes. Please try again.';
+          this.loading = false;
+        }
+      });
+    }
   }
 
   loadTerms() {
