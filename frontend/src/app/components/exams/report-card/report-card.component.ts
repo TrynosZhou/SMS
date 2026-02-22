@@ -590,12 +590,38 @@ export class ReportCardComponent implements OnInit {
   }
 
   private getGradeGroupName(className: string): string {
-    const n = (className || '').toString().trim();
-    const parts = n.split(/\s+/);
-    if (parts.length >= 2 && /^[A-Za-z]$/.test(parts[parts.length - 1])) {
-      return parts.slice(0, -1).join(' ');
+    const raw = (className || '').toString().trim().replace(/\s+/g, ' ');
+    // Common academic stream patterns e.g., "Stage 1A", "Grade 7 A", "Form 2B", "Class 3C"
+    const patterns = [
+      /(stage\s*\d+\s*[a-z]?)/i,
+      /(grade\s*\d+\s*[a-z]?)/i,
+      /(form\s*\d+\s*[a-z]?)/i,
+      /(class\s*\d+\s*[a-z]?)/i,
+      /(year\s*\d+\s*[a-z]?)/i,
+      /(primary\s*\d+\s*[a-z]?)/i
+    ];
+    for (const re of patterns) {
+      const m = raw.match(re);
+      if (m && m[1]) {
+        return m[1].trim().replace(/\s+/g, ' ');
+      }
     }
-    return n;
+    // Handle hyphen/dash separated suffixes: "Stage 1A - Diamond"
+    const hyphenSplit = raw.split(/\s*[-–—]\s*/);
+    if (hyphenSplit.length > 1) {
+      return hyphenSplit[0].trim();
+    }
+    // Remove common stream descriptors at the end: Diamond, Platinum, Gold, Silver, etc.
+    const descriptors = /(?:diamond|platinum|gold|silver|bronze|blue|green|red|yellow|purple|white|black|orange|pearl|ruby|sapphire|emerald|topaz)$/i;
+    if (descriptors.test(raw)) {
+      return raw.replace(descriptors, '').trim();
+    }
+    // Fallback: if last token is single-letter stream (e.g., "Grade 7 A"), drop it
+    const parts = raw.split(' ');
+    if (parts.length >= 2 && /^[A-Za-z]$/.test(parts[parts.length - 1])) {
+      return parts.slice(0, -1).join(' ').trim();
+    }
+    return raw;
   }
 
   private rankGroupByScore(items: any[], scoreKey: string, posKey: string) {
