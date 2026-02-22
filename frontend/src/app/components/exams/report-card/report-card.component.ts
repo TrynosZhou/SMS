@@ -598,6 +598,11 @@ export class ReportCardComponent implements OnInit {
 
   private getGradeGroupName(className: string): string {
     const raw = (className || '').toString().trim().replace(/\s+/g, ' ');
+    // Special rule: ECD A and ECD B are standalone grades equal to their class
+    // Do NOT combine them into a broader stream. Grade position == class position.
+    if (/\bECD\s*A\b/i.test(raw) || /\bECD\s*B\b/i.test(raw)) {
+      return raw;
+    }
     // Common academic stream patterns e.g., "Stage 1A", "Grade 7 A", "Form 2B", "Class 3C"
     const patterns = [
       /(stage\s*\d+\s*[a-z]?)/i,
@@ -687,6 +692,10 @@ export class ReportCardComponent implements OnInit {
   private enhanceGradePositionsAcrossStream(selectedClassName: string, selectedClassId: string, baseCards: any[]) {
     const streamKey = this.getGradeGroupName(selectedClassName || '');
     if (!streamKey) {
+      return;
+    }
+    // Special rule: ECD A / ECD B -> grade == class; no cross-stream ranking
+    if (/\bECD\s*A\b/i.test(selectedClassName || '') || /\bECD\s*B\b/i.test(selectedClassName || '')) {
       return;
     }
     this.classService.getClasses().subscribe({
