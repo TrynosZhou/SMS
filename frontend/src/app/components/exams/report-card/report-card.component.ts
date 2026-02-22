@@ -451,7 +451,8 @@ export class ReportCardComponent implements OnInit {
         this.applyCoreSubjectRanking(this.reportCards);
         // Then enhance Grade Position by including peer classes in same stream
         const selectedClassName = data.class || (cards[0]?.student?.class) || '';
-        this.enhanceGradePositionsAcrossStream(selectedClassName, this.reportCards);
+        const selectedClassId = classIdParam;
+        this.enhanceGradePositionsAcrossStream(selectedClassName, selectedClassId, this.reportCards);
         
         // Sort report cards by class position in ascending order
         this.reportCards.sort((a: any, b: any) => {
@@ -683,7 +684,7 @@ export class ReportCardComponent implements OnInit {
     });
   }
 
-  private enhanceGradePositionsAcrossStream(selectedClassName: string, baseCards: any[]) {
+  private enhanceGradePositionsAcrossStream(selectedClassName: string, selectedClassId: string, baseCards: any[]) {
     const streamKey = this.getGradeGroupName(selectedClassName || '');
     if (!streamKey) {
       return;
@@ -700,7 +701,7 @@ export class ReportCardComponent implements OnInit {
         }
         const otherClassIds = peerClasses
           .map((c: any) => c.id)
-          .filter((id: string) => !!id);
+          .filter((id: string) => !!id && String(id) !== String(selectedClassId));
         // Fetch report cards for all peer classes in parallel
         const requests = otherClassIds.map((id: string) =>
           this.examService.getReportCard(id, this.selectedExamType, this.selectedTerm).pipe(
@@ -717,8 +718,15 @@ export class ReportCardComponent implements OnInit {
             if (extraCards.length === 0) {
               return;
             }
-            // Combine for ranking, but we only display baseCards; ranking uses combined
-            const combined = baseCards.concat(extraCards);
+            // Deduplicate by student id within the stream to avoid double counting
+            const seen = new Set<string>();
+            const combined = ([] as any[]).concat(baseCards, extraCards).filter(card => {
+              const sid = String(card?.student?.id || card?.studentId || '');
+              if (!sid) return true; // keep if id missing (rare)
+              if (seen.has(sid)) return false;
+              seen.add(sid);
+              return true;
+            });
             this.applyCoreSubjectRanking(combined);
             // Re-sort displayed cards after updated positions
             this.reportCards.sort((a: any, b: any) => {
