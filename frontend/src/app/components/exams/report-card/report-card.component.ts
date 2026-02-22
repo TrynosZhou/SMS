@@ -573,12 +573,8 @@ export class ReportCardComponent implements OnInit {
           return card;
         });
         
-        // First rank based on currently loaded class to avoid delay
-        this.applyCoreSubjectRanking(this.reportCards);
-        // Then enhance Grade Position by including peer classes in same stream
-        const selectedClassName = data.class || (cards[0]?.student?.class) || '';
-        const selectedClassId = classIdParam;
-        this.enhanceGradePositionsAcrossStream(selectedClassName, selectedClassId, this.reportCards);
+        // Use backend class/grade positions (same core-subject ranking logic as mark-sheet)
+        // No frontend override - backend now computes correctly using Mathematics, Science, English only
         
         // Sort report cards by class position in ascending order
         this.reportCards.sort((a: any, b: any) => {

@@ -55,6 +55,30 @@ function normalizeExamType(type: string): ExamType {
   throw new Error(`Invalid exam type: "${type}". Valid types are: ${validValues.join(', ')}`);
 }
 
+// Compute core-subject average (Mathematics, Science, English) - same logic as mark-sheet for ranking
+function computeCoreAverageFromMarks(
+  marks: Array<{ subject?: { name: string } | null; score: number | string; maxScore: number | string }>
+): number {
+  let coreTotalScore = 0;
+  let coreTotalMaxScore = 0;
+  for (const subjectName of ALLOWED_RANKING_SUBJECTS) {
+    const subjectMarks = marks.filter(m => {
+      const name = m.subject?.name ? String(m.subject.name).trim() : '';
+      return name === subjectName;
+    });
+    if (subjectMarks.length > 0) {
+      const totalScore = subjectMarks.reduce((s, m) => s + (parseFloat(String(m.score)) || 0), 0);
+      const totalMax = subjectMarks.reduce((s, m) => s + (parseFloat(String(m.maxScore)) || 100), 0);
+      coreTotalScore += totalScore;
+      coreTotalMaxScore += totalMax;
+    } else {
+      coreTotalMaxScore += 100; // No marks = 0/100 for this core subject
+    }
+  }
+  if (coreTotalMaxScore <= 0) return 0;
+  return (coreTotalScore / coreTotalMaxScore) * 100;
+}
+
 // Helper function to assign positions with proper tie handling
 // Students with the same score (average or percentage) get the same position, and positions are skipped after ties
 function assignPositionsWithTies<T extends { studentId: string } & ({ average?: number; percentage?: number })>(
@@ -1920,27 +1944,17 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     // Filter marks to only include students from the current class for class ranking
     const classMarks = allMarks.filter(mark => classStudentIds.has(mark.studentId));
     
-    // Calculate class rankings (only for students in the current class)
-    const classStudentAverages: { [key: string]: { total: number; count: number } } = {};
-    classMarks.forEach(mark => {
-      // Skip marks with missing data
-      if (!mark.studentId || !mark.score || !mark.maxScore || mark.maxScore === 0) {
-        return;
-      }
-      
-      const sid = mark.studentId;
-      if (!classStudentAverages[sid]) {
-        classStudentAverages[sid] = { total: 0, count: 0 };
-      }
-      const percentage = (mark.score / mark.maxScore) * 100;
-      classStudentAverages[sid].total += percentage;
-      classStudentAverages[sid].count += 1;
-    });
+    // Calculate class rankings using CORE SUBJECTS ONLY (Mathematics, Science, English) - same logic as mark-sheet
+    const classStudentAverages: { [key: string]: number } = {};
+    for (const studentId of classStudentIds) {
+      const studentMarks = classMarks.filter(m => m.studentId === studentId);
+      classStudentAverages[studentId] = computeCoreAverageFromMarks(studentMarks);
+    }
 
     const classRankingsUnsorted = Object.entries(classStudentAverages)
       .map(([sid, avg]) => ({
         studentId: sid,
-        average: avg.count > 0 ? avg.total / avg.count : 0
+        average: avg
       }))
       .sort((a, b) => b.average - a.average);
     
@@ -1995,30 +2009,22 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         relations: ['subject', 'exam', 'student']
       }) : [];
       
-      // Calculate form rankings (across all classes with same form)
+      // Calculate form rankings (across all classes with same form) using CORE SUBJECTS ONLY - same logic as mark-sheet
       forms.forEach(form => {
         const formStudents = allFormStudentsList.filter(s => s.classEntity?.form === form);
         const formStudentIdsSet = new Set(formStudents.map(s => s.id));
         const formStudentMarks = formMarks.filter(m => formStudentIdsSet.has(m.studentId));
         
-        const formStudentAverages: { [key: string]: { total: number; count: number } } = {};
-        formStudentMarks.forEach(mark => {
-          if (!mark.studentId || !mark.score || !mark.maxScore || mark.maxScore === 0) {
-            return;
-          }
-          const sid = mark.studentId;
-          if (!formStudentAverages[sid]) {
-            formStudentAverages[sid] = { total: 0, count: 0 };
-          }
-          const percentage = (mark.score / mark.maxScore) * 100;
-          formStudentAverages[sid].total += percentage;
-          formStudentAverages[sid].count += 1;
-        });
+        const formStudentAverages: { [key: string]: number } = {};
+        for (const studentId of formStudentIdsSet) {
+          const studentMarks = formStudentMarks.filter(m => m.studentId === studentId);
+          formStudentAverages[studentId] = computeCoreAverageFromMarks(studentMarks);
+        }
         
         const formRanksUnsorted = Object.entries(formStudentAverages)
           .map(([sid, avg]) => ({
             studentId: sid,
-            average: avg.count > 0 ? avg.total / avg.count : 0
+            average: avg
           }))
           .sort((a, b) => b.average - a.average);
         
@@ -2629,28 +2635,24 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       const totalPercentage = subjectsWithMarks.reduce((sum, sub) => sum + parseFloat(sub.percentage), 0);
       const overallAverage = subjectsWithMarks.length > 0 ? totalPercentage / subjectsWithMarks.length : 0;
 
-      // Calculate class position
+      // Calculate class position using CORE SUBJECTS ONLY (Mathematics, Science, English) - same logic as mark-sheet
       const allClassMarks = await marksRepository.find({
         where: { examId: In(examIds) },
         relations: ['student', 'subject']
       });
 
       const classMarks = allClassMarks.filter(m => m.student.classId === student.classId);
-      const studentAverages: { [key: string]: { total: number; count: number } } = {};
-
-      classMarks.forEach(mark => {
-        const sid = mark.studentId;
-        if (!studentAverages[sid]) {
-          studentAverages[sid] = { total: 0, count: 0 };
-        }
-        studentAverages[sid].total += (mark.score / mark.maxScore) * 100;
-        studentAverages[sid].count += 1;
-      });
+      const classStudentIds = [...new Set(classMarks.map(m => m.studentId))];
+      const studentAverages: { [key: string]: number } = {};
+      for (const sid of classStudentIds) {
+        const studentMarks = classMarks.filter(m => m.studentId === sid);
+        studentAverages[sid] = computeCoreAverageFromMarks(studentMarks);
+      }
 
       const rankingsUnsorted = Object.entries(studentAverages)
         .map(([sid, avg]) => ({
           studentId: sid,
-          average: avg.count > 0 ? avg.total / avg.count : 0
+          average: avg
         }))
         .sort((a, b) => b.average - a.average);
       
@@ -2659,7 +2661,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       const classRankEntry = rankings.find(r => r.studentId === studentId);
       const classPosition = classRankEntry?.position || 0;
 
-      // Calculate grade position (across all classes with the same grade/form) - get all students in the same form
+      // Calculate grade position (across all classes with the same grade/form) using CORE SUBJECTS ONLY
       let formPosition = 0;
       let totalStudentsPerStream = 0;
       if (student.classEntity?.form) {
@@ -2672,11 +2674,10 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         });
         
         // Get all exams of the specified type and term from ALL classes with the same form
-        // This is critical - we need exams from all classes, not just the current class
         const allFormExams = await examRepository.find({
           where: { 
             classId: In(formClassIds),
-            type: normalizedExamType, // Use normalized exam type, not the original
+            type: normalizedExamType,
             term: termValue,
           },
           relations: ['subjects']
@@ -2684,27 +2685,23 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         const allFormExamIds = allFormExams.map(e => e.id);
         console.log('PDF: Found exams for form ranking:', allFormExamIds.length, 'across', formClassIds.length, 'classes');
         
-        // Get all marks for form students (using all form exams, not just current class exams)
         const formMarks = allFormExamIds.length > 0 ? await marksRepository.find({
           where: { examId: In(allFormExamIds), studentId: In(formStudents.map(s => s.id)) },
           relations: ['student', 'subject']
         }) : [];
         
-        // Calculate form rankings
-        const formStudentAverages: { [key: string]: { total: number; count: number } } = {};
-        formMarks.forEach(mark => {
-          const sid = mark.studentId;
-          if (!formStudentAverages[sid]) {
-            formStudentAverages[sid] = { total: 0, count: 0 };
-          }
-          formStudentAverages[sid].total += (mark.score / mark.maxScore) * 100;
-          formStudentAverages[sid].count += 1;
-        });
+        // Calculate form rankings using CORE SUBJECTS ONLY - same logic as mark-sheet
+        const formStudentIds = [...new Set(formMarks.map(m => m.studentId))];
+        const formStudentAverages: { [key: string]: number } = {};
+        for (const sid of formStudentIds) {
+          const studentMarks = formMarks.filter(m => m.studentId === sid);
+          formStudentAverages[sid] = computeCoreAverageFromMarks(studentMarks);
+        }
         
         const formRankingsUnsorted = Object.entries(formStudentAverages)
           .map(([sid, avg]) => ({
             studentId: sid,
-            average: avg.count > 0 ? avg.total / avg.count : 0
+            average: avg
           }))
           .sort((a, b) => b.average - a.average);
         
@@ -2838,28 +2835,24 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
 
       const overallAverage = marks.length > 0 ? totalPercentage / marks.length : 0;
 
-      // Calculate class position
+      // Calculate class position using CORE SUBJECTS ONLY (Mathematics, Science, English) - same logic as mark-sheet
       const allClassMarks = await marksRepository.find({
         where: { examId: examId as string },
         relations: ['student', 'subject']
       });
 
       const classMarks = allClassMarks.filter(m => m.student.classId === student.classId);
-      const studentAverages: { [key: string]: { total: number; count: number } } = {};
-
-      classMarks.forEach(mark => {
-        const sid = mark.studentId;
-        if (!studentAverages[sid]) {
-          studentAverages[sid] = { total: 0, count: 0 };
-        }
-        studentAverages[sid].total += (mark.score / mark.maxScore) * 100;
-        studentAverages[sid].count += 1;
-      });
+      const classStudentIds = [...new Set(classMarks.map(m => m.studentId))];
+      const studentAverages: { [key: string]: number } = {};
+      for (const sid of classStudentIds) {
+        const studentMarks = classMarks.filter(m => m.studentId === sid);
+        studentAverages[sid] = computeCoreAverageFromMarks(studentMarks);
+      }
 
       const rankingsUnsorted = Object.entries(studentAverages)
         .map(([sid, avg]) => ({
           studentId: sid,
-          average: avg.count > 0 ? avg.total / avg.count : 0
+          average: avg
         }))
         .sort((a, b) => b.average - a.average);
       
@@ -2868,7 +2861,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       const classRankEntry = rankings.find(r => r.studentId === studentId);
       const classPosition = classRankEntry?.position || 0;
 
-      // Calculate grade position (across all classes with the same grade/form) - get all students in the same form
+      // Calculate grade position (across all classes with the same grade/form) using CORE SUBJECTS ONLY
       let formPosition = 0;
       let totalStudentsPerStream = 0;
       if (student.classEntity?.form) {
@@ -2880,8 +2873,6 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
           relations: ['classEntity']
         });
         
-        // For old format (single examId), we need to get the exam type and term from the exam
-        // Then get all exams of that type and term from all classes with the same form
         const singleExam = await examRepository.findOne({
           where: { id: examId as string },
           relations: ['subjects']
@@ -2889,12 +2880,10 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         
         let allFormExamIds: string[] = [];
         if (singleExam) {
-          // Get all exams of the same type and term from all classes with the same form
           const whereClause: any = { 
             classId: In(formClassIds),
             type: singleExam.type
           };
-          // Only include term if it's not null
           if (singleExam.term) {
             whereClause.term = singleExam.term;
           }
@@ -2906,27 +2895,23 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
           console.log('PDF (old format): Found exams for form ranking:', allFormExamIds.length, 'across', formClassIds.length, 'classes');
         }
         
-        // Get all marks for form students (using all form exams, not just the single exam)
         const formMarks = allFormExamIds.length > 0 ? await marksRepository.find({
           where: { examId: In(allFormExamIds), studentId: In(formStudents.map(s => s.id)) },
           relations: ['student', 'subject']
         }) : [];
         
-        // Calculate form rankings
-        const formStudentAverages: { [key: string]: { total: number; count: number } } = {};
-        formMarks.forEach(mark => {
-          const sid = mark.studentId;
-          if (!formStudentAverages[sid]) {
-            formStudentAverages[sid] = { total: 0, count: 0 };
-          }
-          formStudentAverages[sid].total += (mark.score / mark.maxScore) * 100;
-          formStudentAverages[sid].count += 1;
-        });
+        // Calculate form rankings using CORE SUBJECTS ONLY - same logic as mark-sheet
+        const formStudentIds = [...new Set(formMarks.map(m => m.studentId))];
+        const formStudentAverages: { [key: string]: number } = {};
+        for (const sid of formStudentIds) {
+          const studentMarks = formMarks.filter(m => m.studentId === sid);
+          formStudentAverages[sid] = computeCoreAverageFromMarks(studentMarks);
+        }
         
         const formRankingsUnsorted = Object.entries(formStudentAverages)
           .map(([sid, avg]) => ({
             studentId: sid,
-            average: avg.count > 0 ? avg.total / avg.count : 0
+            average: avg
           }))
           .sort((a, b) => b.average - a.average);
         

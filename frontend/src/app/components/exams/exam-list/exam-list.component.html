@@ -187,7 +187,6 @@
                 <th style="min-width: 150px;">Last Name</th>
                 <th style="min-width: 150px;">First Name</th>
                 <th style="min-width: 140px;">Marks</th>
-                <th style="min-width: 200px;">Remarks</th>
                 <th style="width: 100px;">Status</th>
               </tr>
             </thead>
@@ -219,20 +218,6 @@
                       (focus)="onStudentFocus(student.id)">
                     <span class="max-score">/ 100</span>
                   </div>
-                </td>
-                <td>
-                  <textarea 
-                    [(ngModel)]="marks[getMarkKey(student.id, selectedSubjectId)].comments"
-                    [name]="'comments_' + student.id"
-                    placeholder="Enter remarks (optional)"
-                    class="remarks-input"
-                    rows="2"
-                    maxlength="200"
-                    [disabled]="isPublished"
-                    [readonly]="isPublished"
-                    (input)="onCommentsChange(student.id)"
-                    (blur)="onStudentBlur(student.id)"
-                    (focus)="onStudentFocus(student.id)"></textarea>
                 </td>
                 <td class="status-cell">
                   <span class="status-badge" 
