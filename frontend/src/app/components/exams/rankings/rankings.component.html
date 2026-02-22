@@ -45,6 +45,7 @@
             [(ngModel)]="selectedExamType" 
             name="examType" 
             required
+            (ngModelChange)="onSelectionChange()"
             class="form-select">
             <option value="">Select Exam Type</option>
             <option *ngFor="let examType of examTypes" [value]="examType.value">
@@ -63,6 +64,7 @@
             [(ngModel)]="selectedClass" 
             name="class"
             required
+            (ngModelChange)="onSelectionChange()"
             class="form-select">
             <option value="">Select Class</option>
             <option *ngFor="let cls of classes" [value]="cls.id">{{ cls.name }}</option>
@@ -79,6 +81,7 @@
             [(ngModel)]="selectedSubject" 
             name="subject" 
             required
+            (ngModelChange)="onSelectionChange()"
             class="form-select">
             <option value="">Select Subject</option>
             <option *ngFor="let subject of subjects" [value]="subject.id">{{ subject.name }}</option>
@@ -95,6 +98,7 @@
             [(ngModel)]="selectedForm" 
             name="grade" 
             required
+            (ngModelChange)="onSelectionChange()"
             class="form-select">
             <option value="">Select Grade</option>
             <option *ngFor="let grade of availableGrades" [value]="grade">

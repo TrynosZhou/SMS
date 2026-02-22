@@ -84,6 +84,9 @@ export class ReportCardComponent implements OnInit {
   savedRemarks: Set<string> = new Set(); // Track saved remarks by key: "studentId_classTeacher" or "studentId_headmaster"
   autoSaveRemarksTimeout: any = null;
   autoSavingRemarks = false;
+  customClassTeacherPhrases: string[] = [];
+  newCustomPhrase = '';
+  schoolWidePhrases: string[] = [];
 
   constructor(
     private examService: ExamService,
@@ -102,7 +105,37 @@ export class ReportCardComponent implements OnInit {
     this.isAdmin = user ? (user.role === 'admin' || user.role === 'superadmin') : false;
   }
 
+  buildBehaviorSuggestions(card: any): string[] {
+    const suggestions: string[] = [
+      'Demonstrates exemplary conduct and respect for peers and staff.',
+      'Consistently punctual and well-prepared for lessons; shows responsibility.',
+      'Shows leadership and collaborates effectively in group tasks.',
+      'Polite and courteous; follows school rules diligently.',
+      'Focused and attentive in class; maintains a positive attitude.',
+      'Works independently with minimal supervision; takes initiative.',
+      'Shows resilience and perseveres through challenging tasks.',
+      'Improving organization and time management; keep practicing routines.',
+      'Needs to participate more actively and ask for help when unsure.',
+      'Friendly and cooperative; contributes to a positive class environment.',
+      'Occasional lapses in attention; would benefit from minimizing distractions.',
+      'Needs consistent homework completion; parental support recommended.',
+      'Behaviour improving; continue to practice self-discipline.',
+      'Respectful but can be talkative; should manage classroom chatter.',
+      'Displays honesty and integrity; a good role model.'
+    ];
+    return suggestions.slice(0, 12);
+  }
+
+  applyClassTeacherSuggestion(reportCard: any, suggestion: string) {
+    if (!this.canEditRemarks || !reportCard) return;
+    if (!reportCard.remarks) reportCard.remarks = {};
+    reportCard.remarks.classTeacherRemarks = suggestion;
+    this.onRemarksChange(reportCard, 'classTeacher');
+    this.autoSaveRemarks(reportCard);
+  }
+
   ngOnInit() {
+    this.loadCustomPhrases();
     this.loadSettings();
     this.loadTermOptions();
     
@@ -124,6 +157,89 @@ export class ReportCardComponent implements OnInit {
         }
       }
     });
+  }
+
+  private loadCustomPhrases() {
+    try {
+      const raw = localStorage.getItem('reportCard_customClassTeacherPhrases');
+      const arr = raw ? JSON.parse(raw) : [];
+      this.customClassTeacherPhrases = Array.isArray(arr) ? arr.filter(x => typeof x === 'string' && x.trim()).slice(0, 100) : [];
+    } catch {
+      this.customClassTeacherPhrases = [];
+    }
+  }
+
+  private saveCustomPhrases() {
+    try {
+      const unique = Array.from(new Set(this.customClassTeacherPhrases.map(s => s.trim()).filter(Boolean)));
+      localStorage.setItem('reportCard_customClassTeacherPhrases', JSON.stringify(unique));
+      this.customClassTeacherPhrases = unique;
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  addCustomSuggestion() {
+    const text = (this.newCustomPhrase || '').trim();
+    if (!text) return;
+    if (!this.customClassTeacherPhrases.includes(text)) {
+      this.customClassTeacherPhrases.unshift(text);
+      this.saveCustomPhrases();
+      this.refreshAllSuggestionLists();
+    }
+    this.newCustomPhrase = '';
+  }
+
+  removeCustomSuggestion(index: number) {
+    if (index >= 0 && index < this.customClassTeacherPhrases.length) {
+      this.customClassTeacherPhrases.splice(index, 1);
+      this.saveCustomPhrases();
+      this.refreshAllSuggestionLists();
+    }
+  }
+
+  addSchoolPhrase(text?: string) {
+    if (!this.canEditRemarks) return;
+    const phrase = (text ?? this.newCustomPhrase ?? '').trim();
+    if (!phrase) return;
+    if (!this.schoolWidePhrases.includes(phrase)) {
+      const updated = [phrase, ...this.schoolWidePhrases].filter(Boolean);
+      // Optimistically update UI
+      this.schoolWidePhrases = Array.from(new Set(updated));
+      this.refreshAllSuggestionLists();
+      // Persist via settings service (partial update)
+      this.settingsService.updateSettings({ classTeacherPhrases: this.schoolWidePhrases }).subscribe({
+        next: () => {},
+        error: () => {
+          // Revert on error
+        }
+      });
+    }
+    this.newCustomPhrase = '';
+  }
+
+  private getCombinedSuggestions(card: any): string[] {
+    const base = this.buildBehaviorSuggestions(card);
+    const merged = [...this.customClassTeacherPhrases, ...this.schoolWidePhrases, ...base];
+    const seen = new Set<string>();
+    const dedup: string[] = [];
+    for (const s of merged) {
+      const t = s.trim();
+      if (t && !seen.has(t.toLowerCase())) {
+        seen.add(t.toLowerCase());
+        dedup.push(t);
+      }
+    }
+    return dedup.slice(0, 50);
+  }
+
+  private refreshAllSuggestionLists() {
+    if (!Array.isArray(this.reportCards)) return;
+    for (const card of this.reportCards) {
+      if (this.canEditRemarks) {
+        card.classTeacherSuggestions = this.getCombinedSuggestions(card);
+      }
+    }
   }
 
   loadTeacherInfo() {
@@ -214,6 +330,10 @@ export class ReportCardComponent implements OnInit {
         this.schoolLogo = data.schoolLogo || null;
         this.schoolLogo2 = data.schoolLogo2 || null;
         this.headmasterName = data.headmasterName || '';
+        const phrases = Array.isArray(data.classTeacherPhrases) ? data.classTeacherPhrases : [];
+        this.schoolWidePhrases = phrases
+          .map((s: any) => typeof s === 'string' ? s.trim() : '')
+          .filter((s: string) => s.length > 0);
         this.gradeThresholds = data.gradeThresholds || {
           excellent: 90,
           veryGood: 80,
@@ -231,11 +351,13 @@ export class ReportCardComponent implements OnInit {
           basic: 'BASIC',
           fail: 'UNCLASSIFIED'
         };
+        this.refreshAllSuggestionLists();
       },
       error: (err: any) => {
         // Use default values if settings fail to load
         this.currencySymbol = 'KES';
         this.headmasterName = '';
+        this.schoolWidePhrases = [];
         this.gradeThresholds = {
           excellent: 90,
           veryGood: 80,
@@ -442,6 +564,10 @@ export class ReportCardComponent implements OnInit {
           if (!hasExistingHeadRemark && this.isAdmin && autoHeadRemark) {
             card.remarks.headmasterRemarks = autoHeadRemark;
             this.onRemarksChange(card, 'headmaster');
+          }
+
+          if (this.canEditRemarks) {
+            card.classTeacherSuggestions = this.getCombinedSuggestions(card);
           }
 
           return card;

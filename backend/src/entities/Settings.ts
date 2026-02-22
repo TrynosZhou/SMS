@@ -70,6 +70,10 @@ export class Settings {
 
   @Column({ type: 'text', nullable: true })
   schoolMotto: string | null; // School motto or tagline
+  
+  // School-wide class teacher remark phrases
+  @Column({ type: 'json', nullable: true })
+  classTeacherPhrases: string[] | null;
 
   // Academic Year
   @Column({ type: 'varchar', nullable: true })

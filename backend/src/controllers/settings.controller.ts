@@ -261,7 +261,8 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       universalTeacherEnabled,
       schoolStartTime,
       schoolEndTime,
-      breakTimes
+      breakTimes,
+      classTeacherPhrases
     } = req.body;
 
     if (!settings) {
@@ -313,6 +314,22 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
     }
     if (gradeLabels !== undefined) {
       settings.gradeLabels = gradeLabels;
+    }
+    if (classTeacherPhrases !== undefined) {
+      try {
+        const arr = Array.isArray(classTeacherPhrases) ? classTeacherPhrases : [];
+        // Normalize, dedupe, trim, remove empties
+        const normalized = Array.from(
+          new Set(
+            arr
+              .map((s: any) => typeof s === 'string' ? s.trim() : '')
+              .filter((s: string) => s.length > 0)
+          )
+        );
+        settings.classTeacherPhrases = normalized;
+      } catch {
+        // Ignore malformed input; keep existing phrases
+      }
     }
     if (schoolLogo !== undefined) {
       settings.schoolLogo = schoolLogo;

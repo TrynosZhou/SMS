@@ -22,6 +22,7 @@ export class RankingsComponent implements OnInit {
   loading = false;
   hasSearched = false;
   availableGrades: string[] = [];
+  private selectionDebounce: any;
   
   examTypes = [
     { value: 'mid_term', label: 'Mid Term' },
@@ -138,12 +139,43 @@ export class RankingsComponent implements OnInit {
   onRankingTypeChange() {
     this.rankings = [];
     this.hasSearched = false;
-    // Reset form fields when ranking type changes
-    this.selectedExam = '';
-    this.selectedClass = '';
-    this.selectedSubject = '';
-    this.selectedForm = '';
-    this.selectedExamType = '';
+    // Preserve exam type; clear only fields not relevant to selected ranking type
+    const rt = this.rankingType;
+    if (rt === 'class') {
+      this.selectedSubject = '';
+      this.selectedForm = '';
+    } else if (rt === 'subject') {
+      this.selectedClass = '';
+      this.selectedForm = '';
+    } else if (rt === 'overall-performance') {
+      this.selectedClass = '';
+      this.selectedSubject = '';
+    }
+    // Attempt auto-load if requirements are already satisfied
+    this.onSelectionChange();
+  }
+
+  onSelectionChange() {
+    if (this.selectionDebounce) {
+      clearTimeout(this.selectionDebounce);
+    }
+    this.selectionDebounce = setTimeout(() => {
+      const rt = this.rankingType;
+      const hasExamType = !!(this.selectedExamType && String(this.selectedExamType).trim());
+      if (rt === 'class') {
+        if (hasExamType && this.selectedClass && String(this.selectedClass).trim()) {
+          this.loadRankings();
+        }
+      } else if (rt === 'subject') {
+        if (hasExamType && this.selectedSubject && String(this.selectedSubject).trim()) {
+          this.loadRankings();
+        }
+      } else if (rt === 'overall-performance') {
+        if (hasExamType && this.selectedForm && String(this.selectedForm).trim()) {
+          this.loadRankings();
+        }
+      }
+    }, 300);
   }
 
   clearFilters() {
