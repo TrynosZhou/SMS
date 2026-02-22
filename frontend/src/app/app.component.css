@@ -277,8 +277,14 @@
 }
 
 .sidebar-subitem:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #000000 !important;
+  font-weight: 700;
+}
+
+.sidebar-subitem:hover .sidebar-icon,
+.sidebar-subitem:hover .sidebar-text {
+  color: #000000 !important;
 }
 
 .sidebar-subitem.active {

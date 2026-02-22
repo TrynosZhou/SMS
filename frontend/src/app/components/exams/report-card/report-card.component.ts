@@ -445,6 +445,8 @@ export class ReportCardComponent implements OnInit {
           return card;
         });
         
+        this.applyCoreSubjectRanking(this.reportCards);
+        
         // Sort report cards by class position in ascending order
         this.reportCards.sort((a: any, b: any) => {
           const posA = a.classPosition || 0;
@@ -546,6 +548,106 @@ export class ReportCardComponent implements OnInit {
         this.error = err.error?.message || err.message || 'Failed to download PDF';
         this.loading = false;
       }
+    });
+  }
+
+  private parseNumber(v: any): number {
+    const n = typeof v === 'number' ? v : parseFloat(String(v));
+    return isNaN(n) ? 0 : n;
+  }
+
+  private isCoreSubjectName(name: string): boolean {
+    const n = (name || '').toString().toLowerCase();
+    return n.includes('math') || n.includes('english') || n.includes('science');
+  }
+
+  private getCoreAverage(card: any): number {
+    const subjects = Array.isArray(card?.subjects) ? card.subjects : [];
+    const percentages: number[] = [];
+    for (const s of subjects) {
+      const subjName = s?.subject || s?.name || s?.subjectName || '';
+      if (!this.isCoreSubjectName(subjName)) continue;
+      let p = s?.percentage;
+      if (p === undefined || p === null) {
+        const sc = this.parseNumber(s?.score);
+        const max = this.parseNumber(s?.maxScore || 100);
+        p = max > 0 ? (sc / max) * 100 : 0;
+      }
+      const num = this.parseNumber(p);
+      if (num > 0 || p === 0) {
+        percentages.push(num);
+      }
+    }
+    if (percentages.length === 0) {
+      return this.parseNumber(card?.overallAverage || 0);
+    }
+    const avg = percentages.reduce((a, b) => a + b, 0) / percentages.length;
+    return Math.round(avg * 100) / 100;
+  }
+
+  private getClassNameFromCard(card: any): string {
+    return (card?.student?.class || card?.class || '').toString().trim();
+  }
+
+  private getGradeGroupName(className: string): string {
+    const n = (className || '').toString().trim();
+    const parts = n.split(/\s+/);
+    if (parts.length >= 2 && /^[A-Za-z]$/.test(parts[parts.length - 1])) {
+      return parts.slice(0, -1).join(' ');
+    }
+    return n;
+  }
+
+  private rankGroupByScore(items: any[], scoreKey: string, posKey: string) {
+    const sorted = items.slice().sort((a, b) => {
+      const av = this.parseNumber(a[scoreKey]);
+      const bv = this.parseNumber(b[scoreKey]);
+      if (bv !== av) return bv - av;
+      const an = (a?.student?.name || '').toString().toLowerCase();
+      const bn = (b?.student?.name || '').toString().toLowerCase();
+      return an.localeCompare(bn);
+    });
+    let position = 0;
+    let lastScore: number | null = null;
+    let rank = 0;
+    for (const item of sorted) {
+      position += 1;
+      const currentScore = this.parseNumber(item[scoreKey]);
+      if (lastScore === null || Math.abs(currentScore - lastScore) > 0.009) {
+        rank = position;
+        lastScore = currentScore;
+      }
+      item[posKey] = rank;
+    }
+  }
+
+  private applyCoreSubjectRanking(cards: any[]) {
+    const arr = Array.isArray(cards) ? cards : [];
+    for (const c of arr) {
+      c.coreAverage = this.getCoreAverage(c);
+    }
+    const byClass: Record<string, any[]> = {};
+    for (const c of arr) {
+      const cls = this.getClassNameFromCard(c);
+      if (!byClass[cls]) byClass[cls] = [];
+      byClass[cls].push(c);
+    }
+    Object.keys(byClass).forEach(cls => {
+      const group = byClass[cls];
+      this.rankGroupByScore(group, 'coreAverage', 'classPosition');
+      group.forEach(g => (g.totalStudents = group.length));
+    });
+    const byGrade: Record<string, any[]> = {};
+    for (const c of arr) {
+      const cls = this.getClassNameFromCard(c);
+      const grade = this.getGradeGroupName(cls);
+      if (!byGrade[grade]) byGrade[grade] = [];
+      byGrade[grade].push(c);
+    }
+    Object.keys(byGrade).forEach(grade => {
+      const group = byGrade[grade];
+      this.rankGroupByScore(group, 'coreAverage', 'formPosition');
+      group.forEach(g => (g.totalStudentsPerStream = group.length));
     });
   }
 

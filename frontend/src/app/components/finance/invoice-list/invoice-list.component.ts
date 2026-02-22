@@ -60,6 +60,8 @@ export class InvoiceListComponent implements OnInit {
   };
   noteStudentId = '';
   noteLookupError = '';
+  noteFirstName = '';
+  noteLastName = '';
   
   // Cached computed values to prevent NG0900 errors
   private _cachedStats = {
@@ -965,6 +967,62 @@ export class InvoiceListComponent implements OnInit {
       return dateB - dateA;
     })[0];
     this.selectedInvoice = latestInvoice;
+  }
+
+  lookupNoteStudentByName() {
+    this.noteLookupError = '';
+    this.selectedInvoice = null;
+    const first = (this.noteFirstName || '').trim();
+    const last = (this.noteLastName || '').trim();
+    if (!first && !last) {
+      this.noteLookupError = 'Enter First Name and/or Last Name.';
+      return;
+    }
+    const searchQuery = [first, last].filter(Boolean).join(' ');
+    // Use loaded invoices to avoid extra network calls
+    const invoicesArray = Array.isArray(this.invoices) ? this.invoices : [];
+    const matchingInvoices = invoicesArray.filter(inv => {
+      const fn = String(inv.student?.firstName || '').toLowerCase();
+      const ln = String(inv.student?.lastName || '').toLowerCase();
+      const q = searchQuery.toLowerCase();
+      // Match when query tokens appear in either first or last name
+      const tokens = q.split(/\s+/).filter(Boolean);
+      return tokens.every(t => fn.includes(t) || ln.includes(t));
+    });
+    if (matchingInvoices.length > 0) {
+      const latest = matchingInvoices.slice().sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      })[0];
+      this.selectedInvoice = latest;
+      return;
+    }
+    // Fallback: fetch students by name, then pick latest invoice among them if present locally
+    this.studentService.getStudentsPaginated({ search: searchQuery, page: 1, limit: 50 }).subscribe({
+      next: (resp: any) => {
+        const students = Array.isArray(resp?.data) ? resp.data : (Array.isArray(resp) ? resp : []);
+        if (!students.length) {
+          this.noteLookupError = 'No students found matching the provided name(s).';
+          return;
+        }
+        const studentIds = new Set(students.map((s: any) => s.id));
+        const invoicesForStudents = invoicesArray.filter(inv => studentIds.has(inv.student?.id || inv.studentId));
+        if (invoicesForStudents.length === 0) {
+          this.noteLookupError = 'No invoices found for matching student(s).';
+          return;
+        }
+        const latest = invoicesForStudents.slice().sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        })[0];
+        this.selectedInvoice = latest;
+      },
+      error: () => {
+        this.noteLookupError = 'Failed to search students by name.';
+      }
+    });
   }
 
   openReceiptForPrint() {

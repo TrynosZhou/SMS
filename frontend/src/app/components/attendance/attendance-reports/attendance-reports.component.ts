@@ -52,6 +52,7 @@ export class AttendanceReportsComponent implements OnInit {
   previousPeriodAverage = 0;
   trendDirection: 'up' | 'down' | 'stable' = 'stable';
   viewMode: 'table' | 'cards' = 'table';
+  private autoGenerateTimer: any = null;
 
   constructor(
     private attendanceService: AttendanceService,
@@ -619,6 +620,17 @@ export class AttendanceReportsComponent implements OnInit {
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const year = d.getFullYear();
     return `${day}/${month}/${year}`;
+  }
+
+  onSelectionChange() {
+    if (this.autoGenerateTimer) {
+      clearTimeout(this.autoGenerateTimer);
+    }
+    this.autoGenerateTimer = setTimeout(() => {
+      if (this.selectedClassId && this.selectedTerm) {
+        this.generateReport();
+      }
+    }, 300);
   }
 
   private formatDateObjToDDMMYYYY(d: Date): string {

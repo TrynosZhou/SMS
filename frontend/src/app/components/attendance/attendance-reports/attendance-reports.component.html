@@ -58,7 +58,7 @@
             <span class="label-icon">🏫</span>
             Class <span class="required">*</span>
           </label>
-          <select [(ngModel)]="selectedClassId" name="classId" required class="modern-select">
+          <select [(ngModel)]="selectedClassId" (ngModelChange)="onSelectionChange()" name="classId" required class="modern-select">
             <option value="">Select Class</option>
             <option *ngFor="let cls of classes" [value]="cls.id">{{ cls.name }}</option>
           </select>
@@ -69,7 +69,7 @@
             <span class="label-icon">📅</span>
             Term
           </label>
-          <select [(ngModel)]="selectedTerm" name="term" class="modern-select">
+          <select [(ngModel)]="selectedTerm" (ngModelChange)="onSelectionChange()" name="term" class="modern-select">
             <option value="">All Terms</option>
             <option *ngFor="let term of availableTerms" [value]="term">{{ term }}</option>
           </select>
@@ -181,110 +181,9 @@
         <span>Total records: <strong>{{ filteredReport.length }}</strong> of {{ rawReportRows.length }}</span>
       </div>
 
-      <div class="insights-grid" *ngIf="hasReportData">
-        <div class="insight-card primary">
-          <span class="insight-label">Average Attendance</span>
-          <h3>{{ averageAttendanceRate | number:'1.1-2' }}%</h3>
-          <p>{{ getAttendanceStatus(averageAttendanceRate) }}</p>
-          <div class="trend-indicator" [class.trend-up]="trendDirection === 'up'" [class.trend-down]="trendDirection === 'down'">
-            <span>{{ getTrendIcon() }}</span>
-            <span>{{ getTrendText() }}</span>
-          </div>
-        </div>
-        <div class="insight-card success">
-          <span class="insight-label">Top Performer</span>
-          <h3 *ngIf="topPerformer; else noTop">
-            {{ topPerformer.firstName }} {{ topPerformer.lastName }}
-          </h3>
-          <p *ngIf="topPerformer">Attendance: {{ topPerformer.attendanceRateNumber | number:'1.1-2' }}%</p>
-          <ng-template #noTop><p>No data available</p></ng-template>
-        </div>
-        <div class="insight-card warning">
-          <span class="insight-label">Needs Attention</span>
-          <h3>{{ concernCount }}</h3>
-          <p>Students below {{ concernThreshold }}% attendance</p>
-        </div>
-        <div class="insight-card neutral" *ngIf="lowestPerformer">
-          <span class="insight-label">Lowest Attendance</span>
-          <h3>
-            {{ lowestPerformer.firstName }} {{ lowestPerformer.lastName }}
-          </h3>
-          <p>Attendance: {{ lowestPerformer.attendanceRateNumber | number:'1.1-2' }}%</p>
-        </div>
-        <div class="insight-card info">
-          <span class="insight-label">Total Records</span>
-          <h3>{{ getTotalRecords() }}</h3>
-          <p>Attendance entries</p>
-        </div>
-      </div>
+      <!-- insights cards removed per request -->
 
-      <!-- Charts Section -->
-      <div class="charts-section" *ngIf="hasReportData && showCharts">
-        <div class="chart-container">
-          <h3>Attendance by Status</h3>
-          <div class="status-chart">
-            <div class="status-item">
-              <div class="status-bar present" [style.width.%]="getStatusPercentage('present')"></div>
-              <div class="status-info">
-                <span class="status-label">Present</span>
-                <span class="status-value">{{ attendanceByStatus.present }} ({{ getStatusPercentage('present') | number:'1.1-1' }}%)</span>
-              </div>
-            </div>
-            <div class="status-item">
-              <div class="status-bar absent" [style.width.%]="getStatusPercentage('absent')"></div>
-              <div class="status-info">
-                <span class="status-label">Absent</span>
-                <span class="status-value">{{ attendanceByStatus.absent }} ({{ getStatusPercentage('absent') | number:'1.1-1' }}%)</span>
-              </div>
-            </div>
-            <div class="status-item">
-              <div class="status-bar late" [style.width.%]="getStatusPercentage('late')"></div>
-              <div class="status-info">
-                <span class="status-label">Late</span>
-                <span class="status-value">{{ attendanceByStatus.late }} ({{ getStatusPercentage('late') | number:'1.1-1' }}%)</span>
-              </div>
-            </div>
-            <div class="status-item">
-              <div class="status-bar excused" [style.width.%]="getStatusPercentage('excused')"></div>
-              <div class="status-info">
-                <span class="status-label">Excused</span>
-                <span class="status-value">{{ attendanceByStatus.excused }} ({{ getStatusPercentage('excused') | number:'1.1-1' }}%)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="chart-container">
-          <h3>Attendance Distribution</h3>
-          <div class="distribution-visual">
-            <div class="distribution-bar">
-              <div class="bar-segment excellent" [style.width.%]="attendanceDistribution.excellent" title="Excellent (≥95%)">
-                <span *ngIf="attendanceDistribution.excellent > 5">{{ attendanceDistribution.excellent }}%</span>
-              </div>
-              <div class="bar-segment good" [style.width.%]="attendanceDistribution.good" title="Good (≥{{ concernThreshold }}%)">
-                <span *ngIf="attendanceDistribution.good > 5">{{ attendanceDistribution.good }}%</span>
-              </div>
-              <div class="bar-segment attention" [style.width.%]="attendanceDistribution.attention" title="Needs Attention (<{{ concernThreshold }}%)">
-                <span *ngIf="attendanceDistribution.attention > 5">{{ attendanceDistribution.attention }}%</span>
-              </div>
-            </div>
-            <div class="distribution-legend">
-              <div class="legend-item">
-                <span class="legend-color excellent"></span>
-                <span>Excellent (≥95%)</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-color good"></span>
-                <span>Good (≥{{ concernThreshold }}%)</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-color attention"></span>
-                <span>Needs Attention (<{{ concernThreshold }}%)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- charts section removed as requested -->
 
       <div class="no-data" *ngIf="!hasReportData">
         <div class="no-data-icon">📊</div>

@@ -53,14 +53,14 @@
 .page-header.modern-header-section h1 {
   margin: 0 0 4px 0;
   color: white;
-  font-size: calc(15px * 1.02);
+  font-size: calc(15px * 1.05);
   font-weight: bold;
 }
 
 .header-subtitle {
   margin: 0;
   color: rgba(255, 255, 255, 0.9);
-  font-size: calc(12px * 1.02);
+  font-size: calc(12px * 1.05);
   font-weight: bold;
 }
 
@@ -77,7 +77,7 @@
   padding: 10px 18px;
   border: none;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: calc(14px * 1.03);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
