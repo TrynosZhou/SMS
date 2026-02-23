@@ -275,11 +275,12 @@ export class ExamListComponent implements OnInit, OnDestroy {
   }
 
   loadSubjects() {
-    // For admin/superadmin - load all subjects
+    // For admin/superadmin - load all subjects (class filter applied separately)
     this.subjectService.getSubjects().subscribe({
       next: (data: any) => {
         this.allSubjects = data || [];
-        this.subjects = data || [];
+        // Apply class-based filtering so only subjects allocated to the class appear
+        this.updateSubjectsForSelectedClass();
       },
       error: (err: any) => {
         console.error('Error loading subjects:', err);
@@ -290,48 +291,79 @@ export class ExamListComponent implements OnInit, OnDestroy {
   }
 
   updateSubjectsForSelectedClass() {
-    if (!this.selectedClassId || this.isAdmin) {
-      // If no class selected or admin, show all subjects (or teacher's subjects if teacher)
-      if (!this.isAdmin && this.teacherSubjects.length > 0) {
-        this.subjects = this.teacherSubjects;
-      } else {
-        this.subjects = this.allSubjects;
-      }
+    if (!this.selectedClassId) {
+      this.subjects = [];
       return;
     }
 
-    // For teachers: filter subjects that:
-    // 1. Teacher is assigned to teach
-    // 2. Are taught in the selected class
-    if (this.teacher && this.teacherSubjects.length > 0) {
-      // Get class details to check which subjects are taught in this class
-      this.classService.getClassById(this.selectedClassId).subscribe({
-        next: (classData: any) => {
-          const classSubjectIds = (classData.subjects || []).map((s: any) => s.id);
-          
-          // Find intersection: subjects teacher teaches AND that are in the class
-          this.subjects = this.teacherSubjects.filter((teacherSubject: any) => 
+    // Always base the list on subjects allocated to the selected class.
+    // For teachers, we further restrict to subjects they teach.
+    this.classService.getClassById(this.selectedClassId).subscribe({
+      next: (rawClassData: any) => {
+        const classData = rawClassData?.class || rawClassData || {};
+        const classSubjects: any[] = Array.isArray(classData.subjects) ? classData.subjects : [];
+
+        if (!classSubjects.length) {
+          this.subjects = [];
+          // Clear selected subject if it no longer belongs to this class
+          if (this.selectedSubjectId) {
+            this.selectedSubjectId = '';
+          }
+          return;
+        }
+
+        const classSubjectIds = classSubjects.map((s: any) => s.id);
+
+        if (this.teacher && this.teacherSubjects.length > 0 && !this.isAdmin) {
+          // Teacher: intersection of teacher's subjects and class subjects
+          this.subjects = this.teacherSubjects.filter((teacherSubject: any) =>
             classSubjectIds.includes(teacherSubject.id)
           );
-          
-          console.log('Filtered subjects for class:', this.subjects.length);
-          
-          // Reset subject selection if current selection is not in filtered list
-          if (this.selectedSubjectId && !this.subjects.find(s => s.id === this.selectedSubjectId)) {
-            this.selectedSubjectId = '';
-            this.onSelectionChange();
-          }
-        },
-        error: (err: any) => {
-          console.error('Error loading class details:', err);
-          // Fallback: show only teacher's subjects
-          this.subjects = this.teacherSubjects;
+        } else {
+          // Admin / superadmin / universal teacher: all subjects allocated to the class
+          const allSubjectsMap = new Map<string, any>(
+            (this.allSubjects || []).map((s: any) => [s.id, s])
+          );
+          const merged: any[] = [];
+          classSubjects.forEach((clsSubj: any) => {
+            const fromAll = allSubjectsMap.get(clsSubj.id);
+            merged.push(fromAll || clsSubj);
+          });
+
+          // Remove duplicates by ID
+          const unique = new Map<string, any>();
+          merged.forEach((s: any) => {
+            if (s?.id && !unique.has(s.id)) {
+              unique.set(s.id, s);
+            }
+          });
+          this.subjects = Array.from(unique.values());
         }
-      });
-    } else {
-      // Fallback: show all subjects if teacher info not loaded
-      this.subjects = this.allSubjects;
-    }
+
+        // Sort by name for consistent display
+        this.subjects.sort((a: any, b: any) => {
+          const an = String(a.name || '').toLowerCase();
+          const bn = String(b.name || '').toLowerCase();
+          return an.localeCompare(bn);
+        });
+
+        // If the currently selected subject is not in the filtered list, clear it
+        if (this.selectedSubjectId && !this.subjects.find(s => s.id === this.selectedSubjectId)) {
+          this.selectedSubjectId = '';
+        }
+
+        // After updating subjects based on class, re-check if we can auto-load students
+        this.checkAndAutoLoadStudents();
+      },
+      error: (err: any) => {
+        console.error('Error loading class details for subject filtering:', err);
+        // On error, fall back to empty list to avoid exposing subjects not linked to the class
+        this.subjects = [];
+        if (this.selectedSubjectId) {
+          this.selectedSubjectId = '';
+        }
+      }
+    });
   }
 
   onSelectionChange() {
@@ -352,18 +384,13 @@ export class ExamListComponent implements OnInit, OnDestroy {
       this.subjects = [];
     }
     
-    // If class changed and user is a teacher, update subjects list
-    if (!this.isAdmin && this.selectedClassId) {
+    // Whenever class/term/exam type/subject selection changes, we re-derive
+    // the subjects from the class allocation. After that, checkAndAutoLoadStudents()
+    // will be called from updateSubjectsForSelectedClass().
+    if (this.selectedClassId) {
       this.updateSubjectsForSelectedClass();
-      // Wait a bit for subjects to load before checking if we can auto-load students
-      setTimeout(() => {
-        this.checkAndAutoLoadStudents();
-      }, 300);
-    } else if (this.isAdmin && this.selectedClassId) {
-      // For admin, subjects should already be loaded, check immediately
-      this.checkAndAutoLoadStudents();
     } else {
-      // If no class selected, check anyway (will fail validation)
+      this.subjects = [];
       this.checkAndAutoLoadStudents();
     }
   }

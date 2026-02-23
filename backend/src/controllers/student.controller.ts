@@ -661,6 +661,9 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     }
 
     const { id } = req.params;
+    const user = req.user as User | undefined;
+    const userRole = user?.role;
+    const isTeacherEditor = userRole === UserRole.TEACHER;
     const {
       firstName,
       lastName,
@@ -683,6 +686,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
 
     console.log('Updating student with ID:', id);
     console.log('Received update data:', req.body);
+    console.log('Editor role:', userRole || 'unknown');
 
     const studentRepository = AppDataSource.getRepository(Student);
     const classRepository = AppDataSource.getRepository(Class);
@@ -700,17 +704,16 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
 
     console.log('Found student:', student.firstName, student.lastName);
 
-    // Update firstName
+    // Basic information - always editable by allowed roles (including teachers)
     if (firstName !== undefined && firstName !== null) {
       student.firstName = String(firstName).trim();
     }
 
-    // Update lastName
     if (lastName !== undefined && lastName !== null) {
       student.lastName = String(lastName).trim();
     }
 
-    // Update dateOfBirth (optional)
+    // Date of birth - treated as basic profile information
     if (dateOfBirth !== undefined && dateOfBirth !== null) {
       const dobString = typeof dateOfBirth === 'string' ? dateOfBirth.trim() : dateOfBirth;
 
@@ -742,17 +745,17 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Update gender
+    // Gender - treated as basic profile information
     if (gender !== undefined && gender !== null) {
       student.gender = String(gender).trim();
     }
 
-    // Update address
+    // Address - treated as basic profile information
     if (address !== undefined) {
       student.address = address ? String(address).trim() : null;
     }
 
-    // Handle contact number - use contactNumber if provided, otherwise phoneNumber
+    // Contact and phone numbers - treated as contact information (teachers can edit)
     if (contactNumber !== undefined || phoneNumber !== undefined) {
       const finalContactNumber = contactNumber?.trim() || phoneNumber?.trim() || null;
       
@@ -780,13 +783,14 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       student.phoneNumber = phoneValidation.normalized || phoneNumber;
     }
 
-    if (studentType !== undefined && studentType !== null) {
+    // Financial / logistics fields below are restricted for teachers
+    if (!isTeacherEditor && studentType !== undefined && studentType !== null) {
       const normalizedStudentType = typeof studentType === 'string' ? studentType.trim().toLowerCase() : '';
       const validStudentType = normalizedStudentType === 'boarder' ? 'Boarder' : 'Day Scholar';
       student.studentType = validStudentType;
     }
 
-    if (studentStatus !== undefined && studentStatus !== null) {
+    if (!isTeacherEditor && studentStatus !== undefined && studentStatus !== null) {
       const normalizedStatus = typeof studentStatus === 'string' ? studentStatus.trim().toLowerCase() : '';
       student.studentStatus = normalizedStatus.includes('existing') ? 'Existing' : 'New';
     }
@@ -798,30 +802,29 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     const originalIsStaffChild = student.isStaffChild === true;
     const originalIsExempted = student.isExempted === true;
 
-    // Update transport usage (only for day scholars)
-    if (usesTransport !== undefined) {
-      student.usesTransport = Boolean(usesTransport);
-    }
+    // Transport / dining / staff-child / exemption affect billing – block edits from teachers
+    if (!isTeacherEditor) {
+      if (usesTransport !== undefined) {
+        student.usesTransport = Boolean(usesTransport);
+      }
 
-    // Update dining hall usage (only for day scholars)
-    if (usesDiningHall !== undefined) {
-      student.usesDiningHall = Boolean(usesDiningHall);
-    }
+      if (usesDiningHall !== undefined) {
+        student.usesDiningHall = Boolean(usesDiningHall);
+      }
 
-    // Update staff child status
-    if (isStaffChild !== undefined) {
-      student.isStaffChild = Boolean(isStaffChild);
-    }
-    // Update exempted status (applies staff-child fee rules)
-    if ((req.body as any).isExempted !== undefined) {
-      student.isExempted = Boolean((req.body as any).isExempted);
-      // Exempted students should not pay transport; auto-disable transport selection
-      if (student.isExempted) {
-        student.usesTransport = false;
+      if (isStaffChild !== undefined) {
+        student.isStaffChild = Boolean(isStaffChild);
+      }
+
+      if ((req.body as any).isExempted !== undefined) {
+        student.isExempted = Boolean((req.body as any).isExempted);
+        if (student.isExempted) {
+          student.usesTransport = false;
+        }
       }
     }
 
-    // Handle photo upload or update
+    // Handle photo upload or update - allow teachers to update profile photo
     if (req.file) {
       // New photo uploaded - delete old photo if exists
       if (student.photo) {
@@ -843,50 +846,51 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       student.photo = photo || null;
     }
 
-    // Update classId if provided (allow clearing to un-enroll)
-    if (classId !== undefined) {
-      if (classId === null || classId === '') {
-        student.classId = null;
-        (student as any).classEntity = null as any;
-      } else {
-        // Verify class exists
-        const trimmedClassId = String(classId).trim();
-        const classEntity = await classRepository.findOne({ where: { id: trimmedClassId } });
-        if (!classEntity) {
-          console.error('Class not found with ID:', trimmedClassId);
-          return res.status(404).json({ message: 'Class not found' });
-        }
-        const oldClassId = student.classId;
-        const oldClassName = student.classEntity?.name || 'N/A';
-        
-        // Update both classId and the classEntity relation to ensure consistency
-        student.classId = trimmedClassId;
-        student.classEntity = classEntity; // Explicitly set the relation
-        
-        console.log('Updating student class from', oldClassName, '(ID: ' + oldClassId + ') to:', classEntity.name, '(ID: ' + trimmedClassId + ')');
-        console.log('Setting student.classEntity relation to:', classEntity.name);
-      }
-    }
-
-    // Update grade/classLevel (Grade) if provided
-    if (classLevel !== undefined || grade !== undefined) {
-      const normalized =
-        (grade && String(grade).trim()) ||
-        (classLevel && String(classLevel).trim()) ||
-        '';
-      (student as any).classLevel = normalized ? normalized : null;
-      (student as any).grade = normalized ? normalized : null;
-    }
-
-    // Update parentId if provided
-    if (parentId !== undefined) {
-      if (parentId) {
-        const parent = await parentRepository.findOne({ where: { id: parentId } });
-        if (!parent) {
-          return res.status(404).json({ message: 'Parent not found' });
+    // Class, grade and parent associations are sensitive – prevent teachers from editing them
+    if (!isTeacherEditor) {
+      // Update classId if provided (allow clearing to un-enroll)
+      if (classId !== undefined) {
+        if (classId === null || classId === '') {
+          student.classId = null;
+          (student as any).classEntity = null as any;
+        } else {
+          const trimmedClassId = String(classId).trim();
+          const classEntity = await classRepository.findOne({ where: { id: trimmedClassId } });
+          if (!classEntity) {
+            console.error('Class not found with ID:', trimmedClassId);
+            return res.status(404).json({ message: 'Class not found' });
+          }
+          const oldClassId = student.classId;
+          const oldClassName = student.classEntity?.name || 'N/A';
+          
+          student.classId = trimmedClassId;
+          student.classEntity = classEntity;
+          
+          console.log('Updating student class from', oldClassName, '(ID: ' + oldClassId + ') to:', classEntity.name, '(ID: ' + trimmedClassId + ')');
+          console.log('Setting student.classEntity relation to:', classEntity.name);
         }
       }
-      student.parentId = parentId || null;
+
+      // Update grade/classLevel (Grade) if provided
+      if (classLevel !== undefined || grade !== undefined) {
+        const normalized =
+          (grade && String(grade).trim()) ||
+          (classLevel && String(classLevel).trim()) ||
+          '';
+        (student as any).classLevel = normalized ? normalized : null;
+        (student as any).grade = normalized ? normalized : null;
+      }
+
+      // Update parentId if provided
+      if (parentId !== undefined) {
+        if (parentId) {
+          const parent = await parentRepository.findOne({ where: { id: parentId } });
+          if (!parent) {
+            return res.status(404).json({ message: 'Parent not found' });
+          }
+        }
+        student.parentId = parentId || null;
+      }
     }
 
     console.log('Saving updated student...');

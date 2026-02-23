@@ -128,22 +128,23 @@
             </select>
           </td>
           <td *ngIf="canEnroll()">
-            <button 
-              class="btn btn-primary"
-              [disabled]="!s._selectedClassId || enrollingMap[s.id || s.studentId]"
-              (click)="enroll(s, s._selectedClassId)">
-              <span *ngIf="!enrollingMap[s.id || s.studentId]">Enroll</span>
-              <span *ngIf="enrollingMap[s.id || s.studentId]" class="spinner"></span>
-            </button>
-            <button 
-              class="btn btn-primary"
-              style="margin-left:8px"
-              *ngIf="isAdmin()"
-              [disabled]="deletingMap[s.id || s.studentId]"
-              (click)="deleteStudentRecord(s)">
-              <span *ngIf="!deletingMap[s.id || s.studentId]">Delete</span>
-              <span *ngIf="deletingMap[s.id || s.studentId]" class="spinner"></span>
-            </button>
+            <div class="action-buttons-row">
+              <button 
+                class="btn btn-primary"
+                [disabled]="!s._selectedClassId || enrollingMap[s.id || s.studentId]"
+                (click)="enroll(s, s._selectedClassId)">
+                <span *ngIf="!enrollingMap[s.id || s.studentId]">Enroll</span>
+                <span *ngIf="enrollingMap[s.id || s.studentId]" class="spinner"></span>
+              </button>
+              <button 
+                class="btn btn-primary"
+                *ngIf="isAdmin()"
+                [disabled]="deletingMap[s.id || s.studentId]"
+                (click)="deleteStudentRecord(s)">
+                <span *ngIf="!deletingMap[s.id || s.studentId]">Delete</span>
+                <span *ngIf="deletingMap[s.id || s.studentId]" class="spinner"></span>
+              </button>
+            </div>
           </td>
         </tr>
       </tbody>
