@@ -3109,20 +3109,24 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       relations: ['student', 'exam', 'subject']
     });
 
-    // Build subject list from class subjects + exam subjects + subjects present in marks
-    const subjectsMap = new Map<string, Subject>();
+    // Build subject list strictly from subjects assigned to the class.
+    // Even if marks exist for other subjects, they are ignored for the mark sheet.
     const classSubjects = classEntity.subjects || [];
-    classSubjects.forEach(s => subjectsMap.set(s.id, s));
-    exams.forEach(exam => {
-      (exam.subjects || []).forEach(s => {
-        if (!subjectsMap.has(s.id)) subjectsMap.set(s.id, s);
+    if (classSubjects.length === 0) {
+      return res.status(404).json({
+        message: 'No subjects are assigned to this class. Please assign subjects to the class before generating a mark sheet.'
       });
-    });
-    allMarks.forEach(m => {
-      const s = m.subject;
-      if (s && !subjectsMap.has(s.id)) subjectsMap.set(s.id, s);
-    });
-    let subjects = Array.from(subjectsMap.values());
+    }
+
+    let subjects = [...classSubjects];
+    // If a specific subject is requested, ensure it is actually assigned to this class
+    if (subjectId) {
+      const selected = subjects.find(s => s.id === subjectId);
+      if (!selected) {
+        return res.status(404).json({ message: 'Requested subject is not assigned to this class' });
+      }
+      subjects = [selected];
+    }
     const SUBJECT_ORDER = ['mathematics', 'science', 'english', 'digital literacy', 'french'];
     subjects.sort((a, b) => {
       const an = String(a.name || '').trim().toLowerCase();
@@ -3134,7 +3138,7 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       return av - bv;
     });
     if (subjects.length === 0) {
-      return res.status(404).json({ message: 'No subjects found for this class or captured marks' });
+      return res.status(404).json({ message: 'No subjects found for this class' });
     }
 
     // Organize marks by student and subject
@@ -3337,29 +3341,26 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       relations: ['student', 'exam', 'subject']
     });
 
-    // Build subject list from class subjects + exam subjects + subjects present in marks
-    const subjectsMap = new Map<string, Subject>();
-    (classEntity.subjects || []).forEach(s => subjectsMap.set(s.id, s));
-    exams.forEach(exam => {
-      (exam.subjects || []).forEach(s => {
-        if (!subjectsMap.has(s.id)) subjectsMap.set(s.id, s);
+    // Build subject list strictly from subjects assigned to the class.
+    // Even if marks exist for other subjects, they are ignored for the mark sheet PDF.
+    const classSubjects = classEntity.subjects || [];
+    if (classSubjects.length === 0) {
+      return res.status(404).json({
+        message: 'No subjects are assigned to this class. Please assign subjects to the class before generating a mark sheet.'
       });
-    });
-    allMarks.forEach(m => {
-      const s = m.subject;
-      if (s && !subjectsMap.has(s.id)) subjectsMap.set(s.id, s);
-    });
-    let subjects = Array.from(subjectsMap.values());
-    // If specific subject requested, filter down
+    }
+
+    let subjects = [...classSubjects];
+    // If specific subject requested, ensure it is actually assigned to this class
     if (subjectId) {
       const selected = subjects.find(s => s.id === subjectId);
       if (!selected) {
-        return res.status(404).json({ message: 'Subject not found for this mark sheet' });
+        return res.status(404).json({ message: 'Subject not found for this class mark sheet' });
       }
       subjects = [selected];
     }
     if (subjects.length === 0) {
-      return res.status(404).json({ message: 'No subjects found for this class or captured marks' });
+      return res.status(404).json({ message: 'No subjects found for this class' });
     }
 
     const SUBJECT_ORDER = ['mathematics', 'science', 'english', 'digital literacy', 'french'];
