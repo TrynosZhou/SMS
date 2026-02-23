@@ -123,14 +123,28 @@
           <div class="stat-icon">✅</div>
           <div class="stat-content">
             <div class="stat-value">{{ statistics.passRate }}%</div>
-            <div class="stat-label">
-              Pass Rate
-              <span class="stat-subdetail">
-                70%+ {{ statistics.highAchieversPercent }}% &nbsp;|&nbsp;
-                50–69% {{ statistics.midRangePercent }}% &nbsp;|&nbsp;
-                &lt;50% {{ statistics.lowPerformersPercent }}%
-              </span>
-            </div>
+            <div class="stat-label">Pass Rate (≥ 50%)</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🎯</div>
+          <div class="stat-content">
+            <div class="stat-value">{{ statistics.highAchieversPercent }}%</div>
+            <div class="stat-label">Students with ≥ 70%</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📘</div>
+          <div class="stat-content">
+            <div class="stat-value">{{ statistics.midRangePercent }}%</div>
+            <div class="stat-label">Students with 50–69%</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⚠️</div>
+          <div class="stat-content">
+            <div class="stat-value">{{ statistics.lowPerformersPercent }}%</div>
+            <div class="stat-label">Students with &lt; 50%</div>
           </div>
         </div>
       </div>
