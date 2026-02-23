@@ -30,6 +30,9 @@
       <button class="btn btn-primary" (click)="openBulkInvoiceForm()" *ngIf="canManageFinance()">
         <span>📋</span> Bulk Create
       </button>
+      <button class="btn btn-danger" (click)="reverseLastBulkCreation()" *ngIf="canManageFinance()" [disabled]="reversingBulk" title="Reverse last bulk invoice creation" style="margin-left: 8px;">
+        <span>↩️</span> Reverse Bulk Creation
+      </button>
     </div>
   </div>
   

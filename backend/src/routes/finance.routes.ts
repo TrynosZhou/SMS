@@ -7,6 +7,7 @@ import {
   updateInvoicePayment,
   calculateNextTermBalance,
   createBulkInvoices,
+  reverseBulkInvoices,
   generateInvoicePDF,
   generateReceiptPDF,
   getStudentBalance,
@@ -21,6 +22,7 @@ const router = Router();
 // Allow SuperAdmin, Admin, Accountant, and Demo users to create single invoices
 router.post('/', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), createInvoice);
 router.post('/bulk', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), createBulkInvoices);
+router.post('/bulk/reverse', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), reverseBulkInvoices);
 router.get('/', authenticate, getInvoices);
 router.get('/balance', authenticate, getStudentBalance);
 router.get('/outstanding-balances', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), getOutstandingBalances);

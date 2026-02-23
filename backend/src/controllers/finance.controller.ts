@@ -976,6 +976,59 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const reverseBulkInvoices = async (req: AuthRequest, res: Response) => {
+  try {
+    const { currentTerm } = req.body || {};
+    const invoiceRepository = AppDataSource.getRepository(Invoice);
+    const settingsRepository = AppDataSource.getRepository(Settings);
+
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
+    });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+
+    const sourceTerm = currentTerm || settings?.currentTerm || settings?.activeTerm || `Term 1 ${new Date().getFullYear()}`;
+    const targetTerm = getNextTerm(sourceTerm);
+
+    const allForTargetTerm = await invoiceRepository.find({
+      where: { term: targetTerm },
+      order: { createdAt: 'DESC' }
+    });
+
+    if (!allForTargetTerm.length) {
+      return res.status(404).json({ message: `No invoices found for ${targetTerm}` });
+    }
+
+    const latestCreatedAt = allForTargetTerm[0].createdAt ? new Date(allForTargetTerm[0].createdAt).getTime() : Date.now();
+    const windowStart = new Date(latestCreatedAt - 5 * 60 * 1000);
+    const windowEnd = new Date(latestCreatedAt + 5 * 60 * 1000);
+
+    const candidates = allForTargetTerm.filter(inv => {
+      const created = inv.createdAt ? new Date(inv.createdAt) : new Date();
+      const updated = inv.updatedAt ? new Date(inv.updatedAt) : created;
+      const withinWindow = created >= windowStart && created <= windowEnd;
+      const notManuallyModified = Math.abs(updated.getTime() - created.getTime()) < 2 * 60 * 1000;
+      return withinWindow && notManuallyModified;
+    });
+
+    if (candidates.length < 5) {
+      return res.status(400).json({ message: 'No recent bulk-created invoices detected to reverse' });
+    }
+
+    await invoiceRepository.remove(candidates);
+
+    return res.json({
+      message: `Reversed bulk creation for ${targetTerm}`,
+      reversedCount: candidates.length,
+      term: targetTerm
+    });
+  } catch (error: any) {
+    console.error('Error reversing bulk invoices:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
 export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -1086,6 +1139,7 @@ export const getOutstandingBalances = async (req: AuthRequest, res: Response) =>
             firstName: student.firstName,
             lastName: student.lastName,
             gender: student.gender,
+            studentType: student.studentType,
             className: student.classEntity?.name || null,
             phoneNumber: student.phoneNumber || '',
             invoiceBalance: balance
@@ -1125,6 +1179,7 @@ export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response)
       firstName?: string;
       lastName?: string;
       gender?: string;
+      studentType?: string;
       className?: string | null;
       phoneNumber?: string | null;
       invoiceBalance: number;
@@ -1145,6 +1200,7 @@ export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response)
             firstName: student.firstName,
             lastName: student.lastName,
             gender: student.gender,
+            studentType: student.studentType,
             className: student.classEntity?.name || null,
             phoneNumber: student.phoneNumber || null,
             invoiceBalance: balance

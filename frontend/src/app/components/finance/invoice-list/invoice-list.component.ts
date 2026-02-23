@@ -23,6 +23,7 @@ export class InvoiceListComponent implements OnInit {
   viewMode: 'grid' | 'list' = 'grid';
   loading = false;
   creatingBulk = false;
+  reversingBulk = false;
   success = '';
   error = '';
   showBulkInvoiceForm = false;
@@ -1293,6 +1294,42 @@ export class InvoiceListComponent implements OnInit {
           this.error = err.error?.message || 'Failed to create bulk invoices';
         }
         setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  reverseLastBulkCreation() {
+    if (!this.canManageFinance()) {
+      this.error = 'You do not have permission to reverse bulk invoices';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+
+    const followingTerm = this.getFollowingTerm(this.currentTermFromSettings);
+    const confirmMsg = `This will reverse the last Bulk Create operation for ${followingTerm}. Continue?`;
+    if (!confirm(confirmMsg)) {
+      return;
+    }
+
+    this.reversingBulk = true;
+    this.error = '';
+    this.success = '';
+
+    this.financeService.reverseBulkInvoices(this.currentTermFromSettings).subscribe({
+      next: (response: any) => {
+        this.reversingBulk = false;
+        this.success = response.message || 'Bulk creation reversed successfully';
+        this.loadInvoices();
+        setTimeout(() => (this.success = ''), 5000);
+      },
+      error: (err: any) => {
+        this.reversingBulk = false;
+        if (err.status === 401) {
+          this.error = 'Authentication required. Please log in again.';
+        } else {
+          this.error = err.error?.message || 'Failed to reverse bulk invoices';
+        }
+        setTimeout(() => (this.error = ''), 5000);
       }
     });
   }

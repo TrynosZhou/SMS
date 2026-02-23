@@ -84,6 +84,10 @@ export class FinanceService {
     return this.http.post(`${this.apiUrl}/finance/bulk`, { term, dueDate, description });
   }
 
+  reverseBulkInvoices(currentTerm?: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/finance/bulk/reverse`, { currentTerm });
+  }
+
   getStudentBalance(studentId: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/finance/balance`, { params: { studentId } });
   }

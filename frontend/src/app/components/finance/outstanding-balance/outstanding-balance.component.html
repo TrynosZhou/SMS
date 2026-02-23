@@ -144,21 +144,17 @@
         <table class="data-table modern-table">
           <thead>
             <tr>
-              <th>#</th>
-              <th>Class</th>
               <th>Student ID</th>
               <th>Last Name</th>
               <th>First Name</th>
               <th>Sex</th>
               <th>Phone Number</th>
+              <th>Student Type</th>
               <th class="text-right">Invoice Balance</th>
-              <th class="text-center">Action</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let balance of group.items; let i = index" class="table-row">
-              <td class="row-number">{{ i + 1 }}</td>
-              <td class="student-class-cell">{{ (balance.class?.name || balance.classEntity?.name || balance.className || '—') }}</td>
               <td class="student-id-cell">
                 <span class="id-badge">{{ balance.studentNumber || balance.studentId }}</span>
               </td>
@@ -166,18 +162,9 @@
               <td class="student-name-cell">{{ balance.firstName }}</td>
               <td class="student-name-cell">{{ balance.gender || '—' }}</td>
               <td class="phone-cell">{{ balance.phoneNumber || '—' }}</td>
+              <td class="student-type-cell">{{ balance.studentType || 'Day Scholar' }}</td>
               <td class="balance-cell text-right">
                 <span class="balance-badge">{{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}</span>
-              </td>
-              <td class="action-cell text-center">
-                <button 
-                  *ngIf="canManageFinance()"
-                  class="btn-pay-invoice modern-btn" 
-                  (click)="payInvoice(balance)"
-                  title="Record Payment">
-                  <span class="btn-icon">💳</span>
-                  <span>Pay Invoice</span>
-                </button>
               </td>
             </tr>
           </tbody>
