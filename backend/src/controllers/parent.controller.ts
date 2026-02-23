@@ -66,25 +66,25 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
           const transportCost = parseAmount(feesSettings.transportCost);
           const diningHallCost = parseAmount(feesSettings.diningHallCost);
           
-          // Calculate fees based on staff child status
+          // Calculate fees based on staff child or exemption status
           let nextTermFees = 0;
           
-          // Staff children don't pay tuition fees
-          if (!student.isStaffChild) {
+          // Staff children and exempted students don't pay tuition fees
+          if (!student.isStaffChild && !student.isExempted) {
             nextTermFees = student.studentType === 'Boarder'
               ? boarderTuitionFee
               : dayScholarTuitionFee;
           }
           
-          // Transport cost: only for day scholars who use transport AND are not staff children
-          if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild) {
+          // Transport cost: only for day scholars who use transport AND are not staff children or exempted
+          if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild && !student.isExempted) {
             nextTermFees += transportCost;
           }
           
-          // Dining hall cost: full price for regular students, 50% for staff children
+          // Dining hall cost: full price for regular students, 50% for staff children or exempted
           if (student.usesDiningHall) {
-            if (student.isStaffChild) {
-              nextTermFees += diningHallCost * 0.5; // 50% for staff children
+            if (student.isStaffChild || student.isExempted) {
+              nextTermFees += diningHallCost * 0.5; // 50% for staff children or exempted
             } else {
               nextTermFees += diningHallCost; // Full price for regular students
             }

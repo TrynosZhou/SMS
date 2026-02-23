@@ -93,6 +93,11 @@
             <div class="info-value balance-amount">{{ currencySymbol }} {{ formatCurrency(studentData.balance) }}</div>
           </div>
         </div>
+        <div *ngIf="studentData.isStaffChild || studentData.isExempted" class="alert alert-info" style="margin-top: 8px;">
+          <strong>Fee Policy:</strong>
+          <span *ngIf="studentData.isStaffChild">Staff child</span><span *ngIf="studentData.isStaffChild && studentData.isExempted">; </span><span *ngIf="studentData.isExempted">Exempted</span>
+          — No tuition or transport. Dining Hall charged at 50% if applicable.
+        </div>
       </div>
 
       <!-- Record Payment -->

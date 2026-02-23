@@ -536,11 +536,7 @@ export const adjustInvoiceLogistics = async (req: AuthRequest, res: Response) =>
       return res.status(404).json({ message: 'Student not found for this invoice' });
     }
 
-    if (student.isStaffChild) {
-      return res.status(400).json({
-        message: 'Adjustments are not allowed for staff children'
-      });
-    }
+    const isStaffOrExempted = !!student.isStaffChild || !!student.isExempted;
 
     const settingsList = await settingsRepository.find({
       order: { createdAt: 'DESC' },
@@ -559,6 +555,9 @@ export const adjustInvoiceLogistics = async (req: AuthRequest, res: Response) =>
       if (student.studentType !== 'Day Scholar') {
         return res.status(400).json({ message: 'Transport cost can only be added for Day Scholar students' });
       }
+      if (isStaffOrExempted) {
+        return res.status(400).json({ message: 'Transport cost cannot be added for staff children or exempted students' });
+      }
       const transportCost = parseAmount(fees.transportCost);
       if (!Number.isFinite(transportCost) || transportCost <= 0) {
         return res.status(400).json({ message: 'Transport cost is not configured in Settings' });
@@ -568,15 +567,26 @@ export const adjustInvoiceLogistics = async (req: AuthRequest, res: Response) =>
 
     let diningHallAmountToAdd = 0;
     if (addDiningHall) {
-      const dhAmount = parseAmount(diningHallAmount);
-      if (!Number.isFinite(dhAmount) || dhAmount <= 0) {
-        return res.status(400).json({ message: 'Dining Hall amount must be greater than 0' });
+      const diningHallCost = parseAmount(fees.diningHallCost);
+      if (!Number.isFinite(diningHallCost) || diningHallCost <= 0) {
+        return res.status(400).json({ message: 'Dining Hall cost is not configured in Settings' });
       }
-      diningHallAmountToAdd = dhAmount;
+      if (isStaffOrExempted) {
+        diningHallAmountToAdd = diningHallCost * 0.5;
+      } else {
+        const dhAmount = parseAmount(diningHallAmount);
+        if (!Number.isFinite(dhAmount) || dhAmount <= 0) {
+          return res.status(400).json({ message: 'Dining Hall amount must be greater than 0' });
+        }
+        diningHallAmountToAdd = dhAmount;
+      }
     }
 
     let tuitionAmountToAdd = 0;
     if (addTuition) {
+      if (isStaffOrExempted) {
+        return res.status(400).json({ message: 'Tuition cannot be added for staff children or exempted students' });
+      }
       const dayScholarTuitionFee = parseAmount(fees.dayScholarTuitionFee);
       const boarderTuitionFee = parseAmount(fees.boarderTuitionFee);
       
@@ -855,11 +865,11 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
         // Desk fee and registration fee: only charged once at registration (first invoice only; does not apply to staff children)
         const shouldChargeOneTimeFees = !lastInvoice;
         
-        // Calculate fees based on staff child status
+        // Calculate fees based on staff child/exempted status
         let termFees = 0;
         
-        // Staff children don't pay tuition fees
-        if (!student.isStaffChild) {
+        // Staff children and exempted students don't pay tuition fees
+        if (!student.isStaffChild && !student.isExempted) {
           const tuitionFeeNum = student.studentType === 'Boarder' 
             ? boarderTuitionFee
             : dayScholarTuitionFee;
@@ -874,32 +884,32 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
         }
 
         // Registration fee: only charged once at registration (first invoice only)
-        if (!student.isStaffChild && shouldChargeOneTimeFees) {
+        if (!student.isStaffChild && !student.isExempted && shouldChargeOneTimeFees) {
           termFees += registrationFee;
         }
 
         // Desk fee: only charged once at registration (first invoice only)
-        if (!student.isStaffChild && shouldChargeOneTimeFees) {
+        if (!student.isStaffChild && !student.isExempted && shouldChargeOneTimeFees) {
           termFees += deskFee;
         }
         
-        // Library fee, sports fee, and other fees: charged every term for non-staff children
-        if (!student.isStaffChild) {
+        // Library fee, sports fee, and other fees: charged every term for non-staff/exempted
+        if (!student.isStaffChild && !student.isExempted) {
           termFees += libraryFee;
           termFees += sportsFee;
           termFees += otherFeesTotal;
         }
 
-        // Transport cost: only for day scholars who use transport AND are not staff children
-        if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild) {
+        // Transport cost: only for day scholars who use transport AND are not staff children or exempted
+        if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild && !student.isExempted) {
           termFees += transportCost;
         }
 
-        // Dining hall cost: full price for regular students, 50% for staff children
+        // Dining hall cost: full price for regular students, 50% for staff children or exempted
         if (student.usesDiningHall) {
           const diningCost = diningHallCost;
-          if (student.isStaffChild) {
-            termFees += diningCost * 0.5; // 50% for staff children
+          if (student.isStaffChild || student.isExempted) {
+            termFees += diningCost * 0.5; // 50% for staff children/exempted
           } else {
             termFees += diningCost; // Full price for regular students
           }
@@ -931,7 +941,7 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
           paidAmount: appliedPrepaid,
           dueDate: new Date(dueDate),
           term: nextTerm,
-          description: description || `Fees for ${nextTerm} - ${student.studentType}${student.isStaffChild ? ' (Staff Child)' : ''}`,
+          description: description || `Fees for ${nextTerm} - ${student.studentType}${(student.isStaffChild || student.isExempted) ? ' (Staff/Exempted)' : ''}`,
           status: finalBalance <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PENDING
         });
 
@@ -1348,6 +1358,9 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
       firstName: student.firstName,
       lastName: student.lastName,
       fullName: `${student.lastName} ${student.firstName}`,
+      isStaffChild: !!student.isStaffChild,
+      isExempted: !!student.isExempted,
+      usesDiningHall: !!student.usesDiningHall,
       balance: currentBalance, // Use latest invoice's balance (should be cumulative)
       prepaidAmount: totalPrepaidAmount,
       lastInvoiceId: lastInvoice?.id || null,

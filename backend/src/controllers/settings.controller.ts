@@ -607,32 +607,32 @@ export const processClosingDay = async (req: AuthRequest, res: Response) => {
       const currentBalance = parseFloat(String(latestInvoice?.balance || 0));
       const prepaidAmount = parseFloat(String(latestInvoice?.prepaidAmount || 0));
 
-      // Calculate fees for next term based on student type and staff child status
+      // Calculate fees for next term based on student type and staff child/exempted status
       let nextTermFees = 0;
       
-      // Staff children don't pay tuition fees
-      if (!student.isStaffChild) {
+      // Staff children and exempted students don't pay tuition fees
+      if (!student.isStaffChild && !student.isExempted) {
         const tuitionFee = student.studentType === 'Boarder' ? boarderTuitionFee : dayScholarTuitionFee;
         nextTermFees += tuitionFee;
       }
       
-      // Desk fee, library fee, sports fee, and other fees: only for non-staff children
-      if (!student.isStaffChild) {
+      // Desk fee, library fee, sports fee, and other fees: only for non-staff/non-exempted
+      if (!student.isStaffChild && !student.isExempted) {
         nextTermFees += deskFee;
         nextTermFees += libraryFee;
         nextTermFees += sportsFee;
         nextTermFees += otherFeesTotal;
       }
       
-      // Transport cost: only for day scholars who use transport AND are not staff children
-      if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild) {
+      // Transport cost: only for day scholars who use transport AND are not staff children or exempted
+      if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild && !student.isExempted) {
         nextTermFees += transportCost;
       }
       
-      // Dining hall cost: full price for regular students, 50% for staff children
+      // Dining hall cost: full price for regular students, 50% for staff children or exempted
       if (student.usesDiningHall) {
-        if (student.isStaffChild) {
-          nextTermFees += diningHallCost * 0.5; // 50% for staff children
+        if (student.isStaffChild || student.isExempted) {
+          nextTermFees += diningHallCost * 0.5; // 50% for staff children/exempted
         } else {
           nextTermFees += diningHallCost; // Full price for regular students
         }
