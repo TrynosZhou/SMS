@@ -123,7 +123,14 @@
           <div class="stat-icon">✅</div>
           <div class="stat-content">
             <div class="stat-value">{{ statistics.passRate }}%</div>
-            <div class="stat-label">Pass Rate</div>
+            <div class="stat-label">
+              Pass Rate
+              <span class="stat-subdetail">
+                70%+ {{ statistics.highAchieversPercent }}% &nbsp;|&nbsp;
+                50–69% {{ statistics.midRangePercent }}% &nbsp;|&nbsp;
+                &lt;50% {{ statistics.lowPerformersPercent }}%
+              </span>
+            </div>
           </div>
         </div>
       </div>

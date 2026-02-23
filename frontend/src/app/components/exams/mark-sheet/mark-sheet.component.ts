@@ -43,6 +43,9 @@ export class MarkSheetComponent implements OnInit {
     highestScore: 0,
     lowestScore: 0,
     passRate: 0,
+    highAchieversPercent: 0,   // ≥ 70%
+    midRangePercent: 0,        // 50–69%
+    lowPerformersPercent: 0,   // < 50%
     topPerformers: []
   };
 
@@ -439,6 +442,7 @@ export class MarkSheetComponent implements OnInit {
 
     const marks = this.markSheetData.markSheet;
     const averages = marks.map((m: any) => m.average);
+    const total = averages.length || 0;
     
     this.statistics.totalStudents = marks.length;
     this.statistics.averageScore = Math.round(
@@ -446,9 +450,24 @@ export class MarkSheetComponent implements OnInit {
     );
     this.statistics.highestScore = Math.max(...averages);
     this.statistics.lowestScore = Math.min(...averages);
-    this.statistics.passRate = Math.round(
-      (averages.filter((avg: number) => avg >= 50).length / averages.length) * 100
-    );
+    this.statistics.passRate = total
+      ? Math.round((averages.filter((avg: number) => avg >= 50).length / total) * 100)
+      : 0;
+
+    // Distribution bands
+    const highCount = averages.filter((avg: number) => avg >= 70).length;
+    const lowCount = averages.filter((avg: number) => avg < 50).length;
+    const midCount = averages.filter((avg: number) => avg >= 50 && avg < 70).length;
+
+    this.statistics.highAchieversPercent = total
+      ? Math.round((highCount / total) * 100)
+      : 0;
+    this.statistics.midRangePercent = total
+      ? Math.round((midCount / total) * 100)
+      : 0;
+    this.statistics.lowPerformersPercent = total
+      ? Math.round((lowCount / total) * 100)
+      : 0;
     this.statistics.topPerformers = marks
       .sort((a: any, b: any) => b.average - a.average)
       .slice(0, 3)
