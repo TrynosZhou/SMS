@@ -12,6 +12,7 @@ import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
 import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
+import { UserRole } from '../entities/User';
 
 // Helper function to determine next term
 function getNextTerm(currentTerm: string): string {
@@ -1025,6 +1026,82 @@ export const reverseBulkInvoices = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error reversing bulk invoices:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const voidTuitionExemptInvoices = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPERADMIN && user.role !== UserRole.ACCOUNTANT)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const invoiceRepository = AppDataSource.getRepository(Invoice);
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
+    });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+    const fees = settings?.feesSettings || {};
+    const dayScholarTuition = parseAmount(fees.dayScholarTuitionFee);
+    const boarderTuition = parseAmount(fees.boarderTuitionFee);
+
+    const correctionReason = 'Tuition exemption correction – system error';
+    const adminId = user.id;
+    const now = new Date();
+
+    const result = await AppDataSource.manager.transaction(async (trx) => {
+      const qb = trx
+        .getRepository(Invoice)
+        .createQueryBuilder('invoice')
+        .leftJoinAndSelect('invoice.student', 'student')
+        .where('invoice.status IN (:...statuses)', { statuses: [InvoiceStatus.PENDING, InvoiceStatus.OVERDUE] })
+        .andWhere('invoice.paidAmount = 0')
+        .andWhere('COALESCE(invoice.uniformTotal, 0) = 0')
+        .andWhere('(student.isExempted = true OR student.isStaffChild = true)')
+        .andWhere('(invoice.amount = :dayScholarTuition OR invoice.amount = :boarderTuition)', {
+          dayScholarTuition,
+          boarderTuition
+        })
+        .orderBy('invoice.createdAt', 'DESC');
+
+      const candidates = await qb.getMany();
+      if (candidates.length === 0) {
+        return { affected: 0, ids: [] as string[] };
+      }
+
+      const ids: string[] = [];
+      for (const inv of candidates) {
+        if (inv.status === InvoiceStatus.VOID || inv.isVoided) {
+          continue;
+        }
+        inv.status = InvoiceStatus.VOID;
+        inv.isVoided = true;
+        inv.voidReason = correctionReason;
+        inv.voidedAt = now;
+        inv.voidByAdminId = adminId;
+        inv.balance = parseAmount(inv.previousBalance);
+        await trx.getRepository(Invoice).save(inv);
+        ids.push(inv.id);
+      }
+      return { affected: ids.length, ids };
+    });
+
+    res.json({
+      message: `Voided ${result.affected} tuition invoices for exempt students`,
+      affectedIds: result.ids,
+      reason: correctionReason,
+      actedBy: adminId,
+      actedAt: now
+    });
+  } catch (error: any) {
+    console.error('Error voiding tuition-exempt invoices:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

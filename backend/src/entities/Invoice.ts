@@ -6,7 +6,8 @@ export enum InvoiceStatus {
   PENDING = 'pending',
   PAID = 'paid',
   PARTIAL = 'partial',
-  OVERDUE = 'overdue'
+  OVERDUE = 'overdue',
+  VOID = 'void'
 }
 
 @Entity('invoices')
@@ -67,5 +68,17 @@ export class Invoice {
 
   @OneToMany(() => InvoiceUniformItem, uniformItem => uniformItem.invoice, { cascade: ['insert'], eager: true })
   uniformItems: InvoiceUniformItem[];
+
+  @Column({ type: 'boolean', default: false })
+  isVoided: boolean;
+
+  @Column({ type: 'text', nullable: true })
+  voidReason: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  voidedAt: Date | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  voidByAdminId: string | null;
 }
 

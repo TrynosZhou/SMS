@@ -344,22 +344,13 @@ export function createReportCardPDF(
         examInfoY += 15;
       }
       
-      // Add Class Position and Grade Position
+      // Add Class Position
       const totalStudents = reportCard.totalStudents || 0;
       const classPosText = totalStudents > 0 
         ? `Class Position: ${reportCard.classPosition} out of ${totalStudents}`
         : `Class Position: ${reportCard.classPosition}`;
       doc.text(classPosText, 310, examInfoY);
       examInfoY += 15;
-      
-      if (reportCard.formPosition && reportCard.formPosition > 0) {
-        const totalStudentsPerStream = reportCard.totalStudentsPerStream || 0;
-        const gradePosText = totalStudentsPerStream > 0
-          ? `Grade Position: ${reportCard.formPosition} out of ${totalStudentsPerStream}`
-          : `Grade Position: ${reportCard.formPosition}`;
-        doc.text(gradePosText, 310, examInfoY);
-        examInfoY += 15;
-      }
       
       // Add Total Attendance
       if (reportCard.totalAttendance !== undefined && reportCard.totalAttendance !== null) {

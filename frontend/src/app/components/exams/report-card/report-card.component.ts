@@ -797,18 +797,6 @@ export class ReportCardComponent implements OnInit {
       this.rankGroupByScore(group, 'coreAverage', 'classPosition');
       group.forEach(g => (g.totalStudents = group.length));
     });
-    const byGrade: Record<string, any[]> = {};
-    for (const c of arr) {
-      const cls = this.getClassNameFromCard(c);
-      const grade = this.getGradeGroupName(cls);
-      if (!byGrade[grade]) byGrade[grade] = [];
-      byGrade[grade].push(c);
-    }
-    Object.keys(byGrade).forEach(grade => {
-      const group = byGrade[grade];
-      this.rankGroupByScore(group, 'coreAverage', 'formPosition');
-      group.forEach(g => (g.totalStudentsPerStream = group.length));
-    });
   }
 
   private enhanceGradePositionsAcrossStream(selectedClassName: string, selectedClassId: string, baseCards: any[]) {

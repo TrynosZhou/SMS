@@ -88,6 +88,10 @@ export class FinanceService {
     return this.http.post(`${this.apiUrl}/finance/bulk/reverse`, { currentTerm });
   }
 
+  voidTuitionExemptInvoices(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/finance/void/tuition-exempt`, {});
+  }
+
   getStudentBalance(studentId: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/finance/balance`, { params: { studentId } });
   }

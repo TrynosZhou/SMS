@@ -8,6 +8,7 @@ import {
   calculateNextTermBalance,
   createBulkInvoices,
   reverseBulkInvoices,
+  voidTuitionExemptInvoices,
   generateInvoicePDF,
   generateReceiptPDF,
   getStudentBalance,
@@ -23,6 +24,7 @@ const router = Router();
 router.post('/', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), createInvoice);
 router.post('/bulk', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), createBulkInvoices);
 router.post('/bulk/reverse', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), reverseBulkInvoices);
+router.post('/void/tuition-exempt', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), voidTuitionExemptInvoices);
 router.get('/', authenticate, getInvoices);
 router.get('/balance', authenticate, getStudentBalance);
 router.get('/outstanding-balances', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), getOutstandingBalances);

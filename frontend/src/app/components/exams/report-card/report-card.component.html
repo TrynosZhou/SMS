@@ -376,12 +376,6 @@
                 {{ reportCard.classPosition ? reportCard.classPosition : 0 }} out of {{ reportCard.totalStudents ? reportCard.totalStudents : 0 }}
               </span>
             </div>
-            <div class="info-item">
-              <span class="info-label">Grade Position:</span>
-              <span class="info-value">
-                {{ reportCard.formPosition ? reportCard.formPosition : 0 }} out of {{ reportCard.totalStudentsPerStream ? reportCard.totalStudentsPerStream : 0 }}
-              </span>
-            </div>
             <div class="info-item" *ngIf="reportCard.totalAttendance !== undefined && reportCard.totalAttendance !== null">
               <span class="info-label">Total Attendance:</span>
               <span class="info-value">

@@ -24,6 +24,7 @@ export class InvoiceListComponent implements OnInit {
   loading = false;
   creatingBulk = false;
   reversingBulk = false;
+  correctingExemptTuition = false;
   success = '';
   error = '';
   showBulkInvoiceForm = false;
@@ -312,28 +313,29 @@ export class InvoiceListComponent implements OnInit {
   
   private updateCachedStats() {
     const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
+    const activeInvoices = invoicesArray.filter(inv => (String(inv.status || '').toLowerCase() !== 'void'));
     const today = new Date();
     
-    this._cachedStats.totalAmount = invoicesArray.reduce((sum, inv) => sum + parseFloat(String(inv.amount || 0)), 0);
-    this._cachedStats.paidAmount = invoicesArray.reduce((sum, inv) => sum + parseFloat(String(inv.paidAmount || 0)), 0);
-    this._cachedStats.outstandingAmount = invoicesArray.reduce((sum, inv) => sum + parseFloat(String(inv.balance || 0)), 0);
+    this._cachedStats.totalAmount = activeInvoices.reduce((sum, inv) => sum + parseFloat(String(inv.amount || 0)), 0);
+    this._cachedStats.paidAmount = activeInvoices.reduce((sum, inv) => sum + parseFloat(String(inv.paidAmount || 0)), 0);
+    this._cachedStats.outstandingAmount = activeInvoices.reduce((sum, inv) => sum + parseFloat(String(inv.balance || 0)), 0);
     this._cachedStats.totalInvoiceAmount = this._cachedStats.paidAmount + this._cachedStats.outstandingAmount;
-    this._cachedStats.uniformTotal = invoicesArray.reduce((sum, inv) => {
+    this._cachedStats.uniformTotal = activeInvoices.reduce((sum, inv) => {
       const uniformTotal = parseFloat(String(inv.uniformTotal || 0));
       return sum + uniformTotal;
     }, 0);
-    this._cachedStats.overdueCount = invoicesArray.filter(inv => {
+    this._cachedStats.overdueCount = activeInvoices.filter(inv => {
       const status = (inv.status || '').toLowerCase();
       if (status === 'paid') return false;
       if (!inv.dueDate) return false;
       const dueDate = new Date(inv.dueDate);
       return dueDate < today;
     }).length;
-    this._cachedStats.prepaidCreditCount = invoicesArray.filter(inv => {
+    this._cachedStats.prepaidCreditCount = activeInvoices.filter(inv => {
       const prepaidAmount = parseFloat(String(inv.prepaidAmount || 0));
       return prepaidAmount > 0;
     }).length;
-    this._cachedStats.totalPrepaidCredit = invoicesArray.reduce((sum, inv) => {
+    this._cachedStats.totalPrepaidCredit = activeInvoices.reduce((sum, inv) => {
       const prepaidAmount = parseFloat(String(inv.prepaidAmount || 0));
       return sum + prepaidAmount;
     }, 0);
@@ -772,7 +774,8 @@ export class InvoiceListComponent implements OnInit {
       'paid': 'alert-success',
       'pending': 'alert-info',
       'partial': 'alert-info',
-      'overdue': 'alert-error'
+      'overdue': 'alert-error',
+      'void': 'alert-warning'
     };
     return statusMap[status] || '';
   }
@@ -1330,6 +1333,41 @@ export class InvoiceListComponent implements OnInit {
           this.error = err.error?.message || 'Failed to reverse bulk invoices';
         }
         setTimeout(() => (this.error = ''), 5000);
+      }
+    });
+  }
+
+  runTuitionExemptionCorrection() {
+    if (!this.canManageFinance()) {
+      this.error = 'You do not have permission to run this correction';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+
+    const msg = `This will void unpaid tuition invoices for students with tuition exemption.\n\nProceed?`;
+    if (!confirm(msg)) {
+      return;
+    }
+
+    this.correctingExemptTuition = true;
+    this.error = '';
+    this.success = '';
+
+    this.financeService.voidTuitionExemptInvoices().subscribe({
+      next: (response: any) => {
+        this.correctingExemptTuition = false;
+        this.success = response.message || 'Tuition exemption correction completed';
+        this.loadInvoices();
+        setTimeout(() => (this.success = ''), 6000);
+      },
+      error: (err: any) => {
+        this.correctingExemptTuition = false;
+        if (err.status === 401) {
+          this.error = 'Authentication required. Please log in again.';
+        } else {
+          this.error = err.error?.message || 'Failed to run tuition exemption correction';
+        }
+        setTimeout(() => (this.error = ''), 6000);
       }
     });
   }

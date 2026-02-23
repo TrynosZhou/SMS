@@ -2975,9 +2975,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         subjects: subjectData,
         overallAverage: overallAverage.toString(),
         classPosition: classPosition || 0,
-        formPosition: formPosition || 0,
         totalStudents: totalStudents, // Add total number of students
-        totalStudentsPerStream: totalStudentsPerStream || 0, // Add total number of students per stream
         remarks: {
           classTeacherRemarks: remarks?.classTeacherRemarks || null,
           headmasterRemarks: remarks?.headmasterRemarks || null

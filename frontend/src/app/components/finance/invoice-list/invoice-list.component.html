@@ -33,6 +33,9 @@
       <button class="btn btn-danger" (click)="reverseLastBulkCreation()" *ngIf="canManageFinance()" [disabled]="reversingBulk" title="Reverse last bulk invoice creation" style="margin-left: 8px;">
         <span>↩️</span> Reverse Bulk Creation
       </button>
+      <button class="btn btn-warning" (click)="runTuitionExemptionCorrection()" *ngIf="canManageFinance()" [disabled]="correctingExemptTuition" title="Void unpaid tuition invoices for exempt students" style="margin-left: 8px;">
+        <span>🛡️</span> Tuition Exemption Correction
+      </button>
     </div>
   </div>
   
@@ -199,6 +202,7 @@
               <option value="paid">Paid</option>
               <option value="partial">Partial</option>
               <option value="overdue">Overdue</option>
+              <option value="void">Void</option>
             </select>
           </div>
           <div class="filter-group">
@@ -255,7 +259,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let invoice of filteredInvoices" (click)="selectInvoice(invoice)" [class.selected-row]="selectedInvoice?.id === invoice.id">
+            <tr *ngFor="let invoice of filteredInvoices" (click)="selectInvoice(invoice)" [class.selected-row]="selectedInvoice?.id === invoice.id" [class.void-row]="(invoice.status || '').toLowerCase() === 'void'">
               <td>{{ invoice.invoiceNumber }}</td>
               <td>{{ invoice.student?.firstName }} {{ invoice.student?.lastName }}</td>
               <td style="text-align: right;">{{ currencySymbol }} {{ (invoice.amount - (invoice.uniformTotal || 0)) | number:'1.2-2' }}</td>

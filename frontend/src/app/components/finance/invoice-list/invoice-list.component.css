@@ -349,6 +349,16 @@
   background: #f9fafb;
 }
 
+.invoice-table tbody tr.void-row td {
+  color: #6b7280;
+}
+
+.invoice-table tbody tr.void-row td:nth-child(3),
+.invoice-table tbody tr.void-row td:nth-child(6),
+.invoice-table tbody tr.void-row td:nth-child(7) {
+  text-decoration: line-through;
+}
+
 /* Summary Cards */
 .summary-cards {
   display: grid;
