@@ -120,9 +120,11 @@
                     {{ item.isActive ? 'Active' : 'Inactive' }}
                   </span>
                 </td>
-                <td style="text-align: center;">
-                  <button type="button" class="btn btn-secondary btn-sm" (click)="openUniformItemModal(item)">✏️ Edit</button>
-                  <button type="button" class="btn btn-danger btn-sm" (click)="deleteUniformItem(item)">🗑️ Delete</button>
+                <td class="actions-cell">
+                  <div class="actions-inline">
+                    <button type="button" class="btn btn-secondary btn-sm" (click)="openUniformItemModal(item)">✏️ Edit</button>
+                    <button type="button" class="btn btn-danger btn-sm" (click)="deleteUniformItem(item)">🗑️ Delete</button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -347,7 +349,7 @@
                   (blur)="validateGradeThresholds()"
                   style="width: 100%;">
                 <small style="color: #6c757d; display: block; margin-top: 5px;">
-                  Range: {{ settings.gradeThresholds.needsImprovement }}% - {{ (settings.gradeThresholds.basic || 1) - 1 }}%
+                  Range: {{ settings.gradeThresholds.needsImprovement }}% - {{ settings.gradeThresholds.satisfactory - 1 }}%
                 </small>
               </div>
               <div class="form-group">
@@ -361,7 +363,7 @@
                   name="gradeLabelNeedsImprovement" 
                   maxlength="50"
                   required
-                  placeholder="e.g., Needs Improvement"
+                  placeholder="e.g., ASPIRING"
                   style="width: 100%; padding: 10px; border: 2px solid #fd7e14; border-radius: 4px; font-size: 14px;"
                   class="editable-grade-label">
                 <small style="color: #6c757d; display: block; margin-top: 5px;">

@@ -339,6 +339,20 @@
   border-bottom: none;
 }
 
+.uniform-table .actions-cell {
+  text-align: center;
+}
+
+.uniform-table .actions-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.uniform-table .actions-inline .btn {
+  display: inline-flex;
+}
+
 .status-active {
   display: inline-block;
   padding: 4px 10px;
