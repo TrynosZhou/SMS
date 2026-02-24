@@ -70,6 +70,7 @@ import { IncomingFromParentsComponent } from './components/messages/incoming-fro
 import { OutgoingMessagesComponent } from './components/messages/outgoing-messages/outgoing-messages.component';
 import { EnrollStudentComponent } from './components/students/enroll-student/enroll-student.component';
 import { AllocateClassesComponent } from './components/teachers/allocate-classes/allocate-classes.component';
+import { UserLogComponent } from './components/admin/user-log/user-log.component';
 import { DraftMessagesComponent } from './components/messages/draft-messages/draft-messages.component';
 
 @NgModule({
@@ -135,7 +136,8 @@ import { DraftMessagesComponent } from './components/messages/draft-messages/dra
     OutgoingMessagesComponent,
     DraftMessagesComponent,
     EnrollStudentComponent,
-    AllocateClassesComponent
+    AllocateClassesComponent,
+    UserLogComponent
   ],
   imports: [
     BrowserModule,

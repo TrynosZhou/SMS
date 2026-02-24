@@ -52,10 +52,10 @@ export class ClassListsComponent implements OnInit {
   sortField: 'lastName' | 'firstName' | 'studentNumber' = 'lastName';
   sortDirection: 'asc' | 'desc' = 'asc';
   editingStudentId: string | null = null;
-  editingField: 'dob' | 'gender' | 'studentType' | null = null;
+  editingField: 'dob' | 'gender' | 'studentType' | 'firstName' | 'lastName' | null = null;
   tempValue: any = null;
   showEditModal = false;
-  editModalField: 'dob' | 'gender' | 'studentType' | null = null;
+  editModalField: 'dob' | 'gender' | 'studentType' | 'firstName' | 'lastName' | null = null;
   editModalStudent: any | null = null;
   editModalValue: any = null;
   savingEdit = false;
@@ -408,8 +408,8 @@ export class ClassListsComponent implements OnInit {
     this.studentsGroupedByGender = ordered;
   }
 
-  canEditField(field: 'dob' | 'gender' | 'studentType'): boolean {
-    if (field === 'studentType') {
+  canEditField(field: 'dob' | 'gender' | 'studentType' | 'firstName' | 'lastName'): boolean {
+    if (field === 'studentType' || field === 'firstName' || field === 'lastName') {
       return this.isAdmin || this.isSuperAdmin || this.isAccountant || this.isTeacher;
     }
     return this.isAdmin || this.isSuperAdmin || this.isAccountant || this.isTeacher;
@@ -429,7 +429,7 @@ export class ClassListsComponent implements OnInit {
     return this.editingStudentId === studentId && this.editingField === field;
   }
 
-  startEdit(student: any, field: 'dob' | 'gender' | 'studentType') {
+  startEdit(student: any, field: 'dob' | 'gender' | 'studentType' | 'firstName' | 'lastName') {
     if (!this.canEditField(field)) return;
     this.editingStudentId = student.id;
     this.editingField = field;
@@ -439,6 +439,10 @@ export class ClassListsComponent implements OnInit {
       this.tempValue = student.gender || '';
     } else if (field === 'studentType') {
       this.tempValue = student.studentType || 'Day Scholar';
+    } else if (field === 'firstName') {
+      this.tempValue = student.firstName || '';
+    } else if (field === 'lastName') {
+      this.tempValue = student.lastName || '';
     }
   }
 
@@ -448,7 +452,7 @@ export class ClassListsComponent implements OnInit {
     this.tempValue = null;
   }
 
-  saveEdit(student: any, field?: 'dob' | 'gender' | 'studentType') {
+  saveEdit(student: any, field?: 'dob' | 'gender' | 'studentType' | 'firstName' | 'lastName') {
     const activeField = field || this.editingField;
     if (!activeField || this.editingStudentId !== student.id) {
       this.cancelEdit();
@@ -466,6 +470,10 @@ export class ClassListsComponent implements OnInit {
       payload.gender = this.tempValue || '';
     } else if (activeField === 'studentType') {
       payload.studentType = this.tempValue || 'Day Scholar';
+    } else if (activeField === 'firstName') {
+      payload.firstName = String(this.tempValue || '').trim();
+    } else if (activeField === 'lastName') {
+      payload.lastName = String(this.tempValue || '').trim();
     }
     this.error = '';
     this.success = '';
@@ -477,8 +485,12 @@ export class ClassListsComponent implements OnInit {
           student.gender = payload.gender;
         } else if (activeField === 'studentType') {
           student.studentType = payload.studentType;
+        } else if (activeField === 'firstName') {
+          student.firstName = payload.firstName;
+        } else if (activeField === 'lastName') {
+          student.lastName = payload.lastName;
         }
-        if (activeField === 'gender') {
+        if (activeField === 'gender' || activeField === 'firstName' || activeField === 'lastName') {
           this.applySort();
           this.buildGroupedByGender();
         }
@@ -501,7 +513,7 @@ export class ClassListsComponent implements OnInit {
     });
   }
 
-  openEditModal(student: any, field: 'dob' | 'gender' | 'studentType') {
+  openEditModal(student: any, field: 'dob' | 'gender' | 'studentType' | 'firstName' | 'lastName') {
     if (!this.canEditField(field)) return;
     this.editModalStudent = student;
     this.editModalField = field;
@@ -511,6 +523,10 @@ export class ClassListsComponent implements OnInit {
       this.editModalValue = student.gender || '';
     } else if (field === 'studentType') {
       this.editModalValue = student.studentType || 'Day Scholar';
+    } else if (field === 'firstName') {
+      this.editModalValue = student.firstName || '';
+    } else if (field === 'lastName') {
+      this.editModalValue = student.lastName || '';
     }
     this.showEditModal = true;
   }
@@ -540,6 +556,10 @@ export class ClassListsComponent implements OnInit {
       payload.gender = this.editModalValue || '';
     } else if (this.editModalField === 'studentType') {
       payload.studentType = this.editModalValue || 'Day Scholar';
+    } else if (this.editModalField === 'firstName') {
+      payload.firstName = String(this.editModalValue || '').trim();
+    } else if (this.editModalField === 'lastName') {
+      payload.lastName = String(this.editModalValue || '').trim();
     }
     this.savingEdit = true;
     this.error = '';
@@ -552,8 +572,12 @@ export class ClassListsComponent implements OnInit {
           this.editModalStudent.gender = payload.gender;
         } else if (this.editModalField === 'studentType') {
           this.editModalStudent.studentType = payload.studentType;
+        } else if (this.editModalField === 'firstName') {
+          this.editModalStudent.firstName = payload.firstName;
+        } else if (this.editModalField === 'lastName') {
+          this.editModalStudent.lastName = payload.lastName;
         }
-        if (this.editModalField === 'gender') {
+        if (this.editModalField === 'gender' || this.editModalField === 'firstName' || this.editModalField === 'lastName') {
           this.applySort();
           this.buildGroupedByGender();
         }

@@ -68,6 +68,11 @@ export class AuthService {
           // Store token and user synchronously
           localStorage.setItem('token', response.token);
           localStorage.setItem('user', JSON.stringify(response.user));
+          if (response.sessionId) {
+            localStorage.setItem('sessionId', response.sessionId);
+          } else {
+            localStorage.removeItem('sessionId');
+          }
           // Update BehaviorSubject immediately
           this.currentUserSubject.next(response.user);
         } else {
@@ -90,6 +95,7 @@ export class AuthService {
     }
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('sessionId');
     this.currentUserSubject.next(null);
     this.clearInactivityTimer();
     this.router.navigate(['/sign-in']);

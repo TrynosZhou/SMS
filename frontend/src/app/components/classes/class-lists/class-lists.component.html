@@ -182,22 +182,28 @@
                 </span>
               </td>
               <td>
-                <a
-                  [routerLink]="['/students', student.id, 'edit']"
-                  [queryParams]="{ mode: 'limited', returnUrl: '/classes/lists' }"
-                  title="Edit Personal and Contact Information"
-                  class="student-name-link">
+                <span
+                  class="editable"
+                  title="Click to edit Last Name"
+                  role="button"
+                  tabindex="0"
+                  (click)="openEditModal(student, 'lastName')"
+                  (keyup.enter)="openEditModal(student, 'lastName')"
+                  (keyup.space)="openEditModal(student, 'lastName')">
                   <strong>{{ student.lastName || 'N/A' }}</strong>
-                </a>
+                </span>
               </td>
               <td>
-                <a
-                  [routerLink]="['/students', student.id, 'edit']"
-                  [queryParams]="{ mode: 'limited', returnUrl: '/classes/lists' }"
-                  title="Edit Personal and Contact Information"
-                  class="student-name-link">
+                <span
+                  class="editable"
+                  title="Click to edit First Name"
+                  role="button"
+                  tabindex="0"
+                  (click)="openEditModal(student, 'firstName')"
+                  (keyup.enter)="openEditModal(student, 'firstName')"
+                  (keyup.space)="openEditModal(student, 'firstName')">
                   <strong>{{ student.firstName || 'N/A' }}</strong>
-                </a>
+                </span>
               </td>
               <td>
                 <span
@@ -274,6 +280,8 @@
       <h3 *ngIf="editModalField === 'dob'">Edit Date of Birth</h3>
       <h3 *ngIf="editModalField === 'gender'">Edit Gender</h3>
       <h3 *ngIf="editModalField === 'studentType'">Edit Type</h3>
+      <h3 *ngIf="editModalField === 'firstName'">Edit First Name</h3>
+      <h3 *ngIf="editModalField === 'lastName'">Edit Last Name</h3>
     </div>
     <div class="modal-body">
       <div *ngIf="editModalField === 'dob'">
@@ -294,6 +302,14 @@
           <option value="Day Scholar">Day Scholar</option>
           <option value="Boarder">Boarder</option>
         </select>
+      </div>
+      <div *ngIf="editModalField === 'firstName'">
+        <label>First Name</label>
+        <input type="text" class="form-control" [(ngModel)]="editModalValue" [ngModelOptions]="{standalone: true}">
+      </div>
+      <div *ngIf="editModalField === 'lastName'">
+        <label>Last Name</label>
+        <input type="text" class="form-control" [(ngModel)]="editModalValue" [ngModelOptions]="{standalone: true}">
       </div>
     </div>
     <div class="modal-actions">

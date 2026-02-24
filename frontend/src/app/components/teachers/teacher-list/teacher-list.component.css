@@ -548,7 +548,7 @@
 
 .list-header {
   display: grid;
-  grid-template-columns: 2fr 1.5fr 1.5fr 2fr 2fr 1fr;
+  grid-template-columns: 1.4fr 1.5fr 1.5fr 1fr 0.9fr;
   gap: 16px;
   padding: 16px 24px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -561,7 +561,7 @@
 
 .list-item {
   display: grid;
-  grid-template-columns: 2fr 1.5fr 1.5fr 2fr 2fr 1fr;
+  grid-template-columns: 1.4fr 1.5fr 1.5fr 1fr 0.9fr;
   gap: 16px;
   padding: 20px 24px;
   border-bottom: 1px solid #f0f0f0;
@@ -580,7 +580,31 @@
   display: flex;
   align-items: center;
   font-size: 14px;
+  justify-content: flex-start;
 }
+
+.sortable {
+  cursor: pointer;
+}
+
+/* Slight left shift of specific header labels to align with row values */
+.list-header .last-col { margin-left: -26px; }
+.list-header .first-col { margin-left: -29px; }
+.list-header .gender-col { margin-left: -32px; }
+
+/* Ensure multi-line chip groups align from the top for consistency */
+.list-item .subjects-col,
+.list-item .classes-col {
+  align-items: flex-start;
+}
+
+.list-item .subjects-col .tags-inline,
+.list-item .classes-col .tags-inline {
+  margin-top: 0;
+}
+
+/* Keep actions centered vertically but reduce footprint */
+.action-buttons { gap: 8px; }
 
 .name-cell {
   display: flex;

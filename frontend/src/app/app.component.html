@@ -18,7 +18,10 @@
         <line x1="3" y1="18" x2="21" y2="18"></line>
       </svg>
     </button>
-    <h1 class="top-navbar-title">{{ schoolName }}</h1>
+    <div class="top-navbar-title-wrap">
+      <h1 class="top-navbar-title">{{ schoolName }}</h1>
+      <img *ngIf="schoolLogo" [src]="schoolLogo" alt="School Logo" class="top-navbar-logo" />
+    </div>
     <div class="top-navbar-actions">
       <button type="button" class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="themeService.darkMode ? 'Switch to light mode' : 'Switch to dark mode'" [title]="themeService.darkMode ? 'Light mode' : 'Dark mode'">
         <span class="theme-icon" *ngIf="!themeService.darkMode">🌙</span>
@@ -338,6 +341,10 @@
           <a routerLink="/admin/manage-accounts" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
             <span class="sidebar-icon">👥</span>
             <span class="sidebar-text">User Management</span>
+          </a>
+          <a routerLink="/user-log" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">📜</span>
+            <span class="sidebar-text">User Log</span>
           </a>
           <a routerLink="/timetable/generate" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('settings') || isAdmin() || isSuperAdmin() || isTeacher()">
             <span class="sidebar-icon">📅</span>

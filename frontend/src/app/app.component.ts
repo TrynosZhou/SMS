@@ -1,9 +1,12 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router, NavigationEnd } from '@angular/router';
 import { AuthService } from './services/auth.service';
 import { SettingsService } from './services/settings.service';
 import { ModuleAccessService } from './services/module-access.service';
 import { ThemeService } from './services/theme.service';
 import { Subscription } from 'rxjs';
+import { filter } from 'rxjs/operators';
+import { AuditService } from './services/audit.service';
 
 @Component({
   selector: 'app-root',
@@ -12,6 +15,7 @@ import { Subscription } from 'rxjs';
 })
 export class AppComponent implements OnInit, OnDestroy {
   schoolName = 'School Management System';
+  schoolLogo: string | null = null;
   mobileMenuOpen = false;
   sidebarCollapsed = false;
   expandedMenus: { [key: string]: boolean } = {};
@@ -21,7 +25,9 @@ export class AppComponent implements OnInit, OnDestroy {
     public authService: AuthService, 
     private settingsService: SettingsService,
     public moduleAccessService: ModuleAccessService,
-    public themeService: ThemeService
+    public themeService: ThemeService,
+    private router: Router,
+    private auditService: AuditService
   ) { }
 
   ngOnInit(): void {
@@ -30,6 +36,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.settingsService.getSettings().subscribe({
         next: (settings: any) => {
           this.schoolName = settings?.schoolName || 'School Management System';
+          this.schoolLogo = settings?.schoolLogo || null;
         },
         error: () => {
           // ignore settings fetch errors to avoid blocking UI
@@ -39,6 +46,20 @@ export class AppComponent implements OnInit, OnDestroy {
       // Load module access settings
       this.moduleAccessService.loadModuleAccess();
     }
+
+    // Log module access on navigation
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe((e: any) => {
+      if (!this.authService.isAuthenticated()) return;
+      const user = this.authService.getCurrentUser();
+      const role = (user?.role || '').toLowerCase();
+      if (!['admin', 'superadmin', 'teacher', 'accountant'].includes(role)) return;
+      const url = (e.urlAfterRedirects || e.url || '').toString();
+      const moduleName = this.resolveModuleName(url);
+      if (moduleName) {
+        const sessionId = localStorage.getItem('sessionId') || undefined;
+        this.auditService.logActivity(moduleName, sessionId).subscribe({ next: () => {}, error: () => {} });
+      }
+    });
 
     this.authSubscription = this.authService.currentUser$.subscribe(user => {
       // User state changes handled by auth service
@@ -108,7 +129,12 @@ export class AppComponent implements OnInit, OnDestroy {
 
   logout(): void {
     this.closeMobileMenu();
-    this.authService.logout();
+    // Try to inform backend to finalize session log; ignore errors
+    fetch(`${(window as any).environment?.apiUrl || ''}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Authorization': `Bearer ${this.authService.getToken() || ''}` }
+    }).finally(() => this.authService.logout());
   }
 
   toggleSidebar(): void {
@@ -152,6 +178,22 @@ export class AppComponent implements OnInit, OnDestroy {
     if (role === 'demo_user' || role === 'demo-user') return 'Demo User';
 
     return role.charAt(0).toUpperCase() + role.slice(1);
+  }
+
+  private resolveModuleName(url: string): string | null {
+    if (!url) return null;
+    if (url.startsWith('/students')) return 'Students';
+    if (url.startsWith('/teachers')) return 'Teachers';
+    if (url.startsWith('/classes')) return 'Classes';
+    if (url.startsWith('/subjects')) return 'Subjects';
+    if (url.startsWith('/exams') || url.startsWith('/mark-sheet') || url.startsWith('/report-cards') || url.startsWith('/publish-results') || url.startsWith('/check_mark_progess') || url.startsWith('/rankings')) return 'Exams';
+    if (url.startsWith('/settings')) return 'Settings';
+    if (url.startsWith('/attendance')) return 'Attendance';
+    if (url.startsWith('/invoices') || url.startsWith('/payments') || url.startsWith('/finance')) return 'Finance';
+    if (url.startsWith('/messages')) return 'Messages';
+    if (url.startsWith('/dashboard')) return 'Dashboard';
+    if (url.startsWith('/user-log')) return 'Activity Log';
+    return 'Other';
   }
 }
 

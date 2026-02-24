@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { AppDataSource } from './config/database';
 import routes from './routes';
+import { actionLogger } from './middleware/actionLogger';
 
 dotenv.config(); // Load environment variables
 
@@ -51,7 +52,7 @@ app.use('/uploads/students', express.static('uploads/students'));
 app.use('/uploads/parent-messages', express.static('uploads/parent-messages'));
 
 // =================== ROUTES ===================
-app.use('/api', routes);
+app.use('/api', actionLogger, routes);
 app.get('/health', (req, res) => res.json({ status: 'OK', message: 'School Management System API' }));
 app.get('/', (req, res) => res.send('<h1>School Management System API</h1><p>Use /api/... endpoints</p>'));
 app.use((req, res) => res.status(404).json({ message: 'Route not found', path: req.path, method: req.method }));

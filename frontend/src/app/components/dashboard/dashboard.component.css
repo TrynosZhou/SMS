@@ -163,6 +163,15 @@
   transition: transform 0.3s ease;
 }
 
+.school-logo {
+  height: 44px;
+  width: auto;
+  object-fit: contain;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.9);
+  padding: 2px;
+}
+
 .school-name-container:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);

@@ -19,6 +19,9 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const { email, username, password, teacherId } = req.body;
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || (req.socket && (req.socket.remoteAddress || (req.connection as any)?.remoteAddress)) || req.ip || null;
+    const userAgent = (req.headers['user-agent'] as string) || null;
+    const deviceInfo = (req.headers['sec-ch-ua'] as string) || null;
     
     console.log('[Login] Request received:', { 
       email: email || null,
@@ -39,6 +42,23 @@ export const login = async (req: Request, res: Response) => {
     
     if (!loginIdentifier || !trimmedPassword) {
       console.log('[Login] Missing credentials:', { loginIdentifier: !!loginIdentifier, password: !!trimmedPassword });
+      // Log failed attempt
+      try {
+        const { LoginAttemptLog } = require('../entities/LoginAttemptLog');
+        const attemptRepo = AppDataSource.getRepository(LoginAttemptLog);
+        const attempt = attemptRepo.create({
+          userId: null,
+          username: loginIdentifier || null,
+          role: null,
+          success: false,
+          ipAddress,
+          userAgent,
+          deviceInfo
+        });
+        await attemptRepo.save(attempt);
+      } catch (e: any) {
+        console.warn('[Login] Failed to record login attempt:', e?.message);
+      }
       return res.status(400).json({ message: 'Username and password are required' });
     }
     
@@ -108,12 +128,46 @@ export const login = async (req: Request, res: Response) => {
       if (!compareDates(parsedDOB, studentDOB)) {
         console.log('[Login] DOB mismatch for student:', student.id);
         console.log('[Login] Expected:', formatDOB(studentDOB), 'Got:', formatDOB(parsedDOB));
+        // Record failed student login attempt
+        try {
+          const { LoginAttemptLog } = require('../entities/LoginAttemptLog');
+          const attemptRepo = AppDataSource.getRepository(LoginAttemptLog);
+          const attempt = attemptRepo.create({
+            userId: student.userId || null,
+            username: loginIdentifier || null,
+            role: 'student',
+            success: false,
+            ipAddress,
+            userAgent,
+            deviceInfo
+          });
+          await attemptRepo.save(attempt);
+        } catch (e: any) {
+          console.warn('[Login] Failed to record login attempt:', e?.message);
+        }
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
       // Check if student is active
       if (!student.isActive) {
         console.log('[Login] Student account is inactive:', student.id);
+        // Record failed student login attempt (inactive)
+        try {
+          const { LoginAttemptLog } = require('../entities/LoginAttemptLog');
+          const attemptRepo = AppDataSource.getRepository(LoginAttemptLog);
+          const attempt = attemptRepo.create({
+            userId: student.userId || null,
+            username: loginIdentifier || null,
+            role: 'student',
+            success: false,
+            ipAddress,
+            userAgent,
+            deviceInfo
+          });
+          await attemptRepo.save(attempt);
+        } catch (e: any) {
+          console.warn('[Login] Failed to record login attempt:', e?.message);
+        }
         return res.status(401).json({ message: 'Account is inactive. Please contact the administrator.' });
       }
 
@@ -651,6 +705,48 @@ export const login = async (req: Request, res: Response) => {
       response.user.fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
     }
 
+    // Start a user session log
+    try {
+      const { UserSessionLog } = require('../entities/UserSessionLog');
+      const { LoginAttemptLog } = require('../entities/LoginAttemptLog');
+      const repo = AppDataSource.getRepository(UserSessionLog);
+      const crypto = require('crypto');
+      const sessionId: string = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : crypto.createHash('sha256').update(`${user.id}-${Date.now()}`).digest('hex');
+      const session = repo.create({
+        userId: user.id,
+        username: user.username || user.email || null,
+        role: user.role,
+        sessionId,
+        ipAddress,
+        userAgent,
+        deviceInfo,
+        loginAt: new Date(),
+        lastActivityAt: new Date(),
+        modules: 'login',
+        timeSpentSeconds: 0
+      });
+      await repo.save(session);
+      // Record successful login attempt
+      try {
+        const attemptRepo = AppDataSource.getRepository(LoginAttemptLog);
+        const attempt = attemptRepo.create({
+          userId: user.id,
+          username: user.username || user.email || null,
+          role: user.role,
+          success: true,
+          ipAddress,
+          userAgent,
+          deviceInfo
+        });
+        await attemptRepo.save(attempt);
+      } catch (e: any) {
+        console.warn('[Login] Failed to record login attempt:', e?.message);
+      }
+      // Attach sessionId to response
+      (response as any).sessionId = sessionId;
+    } catch (e) {
+      console.warn('[Login] Failed to create session log:', (e as any)?.message);
+    }
     res.json(response);
   } catch (error: any) {
     console.error('[Login] Error:', error);
@@ -872,8 +968,28 @@ export const confirmPasswordReset = async (req: Request, res: Response) => {
   }
 };
 
-export const logout = async (_req: Request, res: Response) => {
-  // For JWT-based auth, logout is handled client-side by discarding the token.
-  // This endpoint exists to keep the contract consistent for session-based deployments.
-  return res.json({ message: 'Logged out successfully' });
+export const logout = async (req: Request, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+    const authReq = req as any as { user?: any };
+    const user = authReq.user;
+    if (!user) return res.json({ message: 'Logged out successfully' });
+    const { UserSessionLog } = require('../entities/UserSessionLog');
+    const repo = AppDataSource.getRepository(UserSessionLog);
+    const session = await repo.findOne({
+      where: { userId: user.id, logoutAt: null },
+      order: { loginAt: 'DESC' }
+    });
+    if (session) {
+      const now = new Date();
+      session.logoutAt = now;
+      session.lastActivityAt = now;
+      session.timeSpentSeconds = Math.max(0, Math.floor((now.getTime() - session.loginAt.getTime()) / 1000));
+      await repo.save(session);
+    }
+    return res.json({ message: 'Logged out successfully' });
+  } catch (e: any) {
+    console.warn('[Logout] Failed to close session log:', e?.message);
+    return res.json({ message: 'Logged out successfully' });
+  }
 };

@@ -20,6 +20,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   moduleAccess: any = null;
   schoolName: string = '';
   schoolMotto: string = '';
+  schoolLogo: string | null = null;
   showBulkMessage = false;
   displayedText: string = '';
   private textToggleInterval: any;
@@ -208,6 +209,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.schoolName = data.schoolName || '';
         }
         this.schoolMotto = data.schoolMotto || '';
+        this.schoolLogo = data.schoolLogo || null;
         this.moduleAccess = data.moduleAccess || {};
         this.currencySymbol = data.currencySymbol || 'KES';
         

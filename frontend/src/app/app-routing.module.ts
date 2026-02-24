@@ -62,6 +62,8 @@ import { OutgoingMessagesComponent } from './components/messages/outgoing-messag
 import { DraftMessagesComponent } from './components/messages/draft-messages/draft-messages.component';
 import { EnrollStudentComponent } from './components/students/enroll-student/enroll-student.component';
 import { AllocateClassesComponent } from './components/teachers/allocate-classes/allocate-classes.component';
+import { UserLogComponent } from './components/admin/user-log/user-log.component';
+import { AdminGuard } from './guards/admin.guard';
 
 const routes: Routes = [
   { path: '', component: SplashComponent },
@@ -135,6 +137,7 @@ const routes: Routes = [
   { path: 'student/report-card', component: StudentReportCardComponent, canActivate: [AuthGuard] },
   { path: 'student/invoice-statement', component: StudentInvoiceStatementComponent, canActivate: [AuthGuard] },
   { path: 'user-manual', component: UserManualComponent, canActivate: [AuthGuard] },
+  { path: 'user-log', component: UserLogComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'help', redirectTo: '/user-manual', pathMatch: 'full' }
 ];
 

@@ -40,6 +40,8 @@ export class TeacherListComponent implements OnInit {
     totalPages: 1
   };
   pageSizeOptions = [10, 20, 50];
+  sortKey: 'teacherId' | 'lastName' | 'firstName' | 'sex' = 'lastName';
+  sortDir: 'asc' | 'desc' = 'asc';
 
   constructor(
     private teacherService: TeacherService,
@@ -153,6 +155,7 @@ export class TeacherListComponent implements OnInit {
     }
 
     this.filteredTeachers = filtered;
+    this.applySort();
   }
 
   clearFilters() {
@@ -164,6 +167,52 @@ export class TeacherListComponent implements OnInit {
 
   hasActiveFilters(): boolean {
     return !!(this.searchQuery || this.selectedSubjectFilter || this.selectedClassFilter);
+  }
+
+  getLastName(teacher: any): string {
+    const v = (teacher?.lastName || '').toString().trim();
+    return v || 'N/A';
+  }
+
+  getFirstName(teacher: any): string {
+    const v = (teacher?.firstName || '').toString().trim();
+    return v || 'N/A';
+  }
+
+  getGender(teacher: any): string {
+    const v = (teacher?.sex || teacher?.gender || '').toString().trim();
+    return v || 'N/A';
+  }
+
+  setSort(key: 'teacherId' | 'lastName' | 'firstName' | 'sex') {
+    if (this.sortKey === key) {
+      this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortKey = key;
+      this.sortDir = 'asc';
+    }
+    this.applySort();
+  }
+
+  private applySort() {
+    const dir = this.sortDir === 'asc' ? 1 : -1;
+    const toVal = (t: any) => {
+      if (this.sortKey === 'teacherId') return (t?.teacherId || '').toString().trim().toLowerCase();
+      if (this.sortKey === 'lastName') return this.getLastName(t).toString().trim().toLowerCase();
+      if (this.sortKey === 'firstName') return this.getFirstName(t).toString().trim().toLowerCase();
+      return this.getGender(t).toString().trim().toLowerCase();
+    };
+    this.filteredTeachers = [...this.filteredTeachers].sort((a, b) => {
+      const av = toVal(a) || '';
+      const bv = toVal(b) || '';
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      const at = (a?.teacherId || '').toString().trim().toLowerCase();
+      const bt = (b?.teacherId || '').toString().trim().toLowerCase();
+      if (at < bt) return -1;
+      if (at > bt) return 1;
+      return 0;
+    });
   }
 
   async openTeachersPreview() {
