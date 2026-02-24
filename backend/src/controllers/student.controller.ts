@@ -783,8 +783,8 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       student.phoneNumber = phoneValidation.normalized || phoneNumber;
     }
 
-    // Financial / logistics fields below are restricted for teachers
-    if (!isTeacherEditor && studentType !== undefined && studentType !== null) {
+    // Student type is basic student profile information and can be edited by teachers and staff
+    if (studentType !== undefined && studentType !== null) {
       const normalizedStudentType = typeof studentType === 'string' ? studentType.trim().toLowerCase() : '';
       const validStudentType = normalizedStudentType === 'boarder' ? 'Boarder' : 'Day Scholar';
       student.studentType = validStudentType;

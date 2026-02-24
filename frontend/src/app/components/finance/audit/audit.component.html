@@ -1,0 +1,154 @@
+<div class="audit-container">
+  <div class="page-header">
+    <div class="header-content">
+      <span class="header-icon">🛡️</span>
+      <h1>System Auditor</h1>
+      <p class="subtitle">Real-time monitoring and validation of fee transactions</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary" (click)="load()">Refresh</button>
+      <button class="btn btn-primary" (click)="exportCSV()">Export CSV</button>
+      <label class="toggle">
+        <input type="checkbox" [(ngModel)]="autoRefreshEnabled" (change)="toggleAutoRefresh()">
+        Auto-refresh ({{ (refreshPeriodMs/1000) | number:'1.0-0' }}s)
+      </label>
+      <span class="last-refresh" *ngIf="lastRefresh">Last refresh: {{ lastRefresh | date:'short' }}</span>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab" [class.active]="mode==='payments'" (click)="setMode('payments')">Payment Events</button>
+    <button class="tab" [class.active]="mode==='invoices'" (click)="setMode('invoices')">Invoices</button>
+  </div>
+
+  <div class="filters-card">
+    <div class="filters-grid">
+      <div class="filter-group" *ngIf="mode==='invoices'">
+        <label>Search</label>
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔎</span>
+          <input class="form-control search-input" [(ngModel)]="search" (input)="applyFilters()" placeholder="Student name, StudentID, Invoice number" />
+        </div>
+      </div>
+      <div class="filter-group" *ngIf="mode==='payments'">
+        <label>Search</label>
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔎</span>
+          <input class="form-control search-input" [(ngModel)]="paymentSearch" (input)="applyPaymentFilters()" placeholder="Receipt number, payer name, method" />
+        </div>
+      </div>
+      <div class="filter-group" *ngIf="mode==='invoices'">
+        <label>Status</label>
+        <select class="form-control" [(ngModel)]="statusFilter" (change)="applyFilters()">
+          <option value="">All</option>
+          <option value="paid">Paid</option>
+          <option value="partial">Partial</option>
+          <option value="pending">Pending</option>
+          <option value="overdue">Overdue</option>
+          <option value="void">Void</option>
+        </select>
+      </div>
+      <div class="filter-group" *ngIf="mode==='payments'">
+        <label>Method</label>
+        <select class="form-control" [(ngModel)]="paymentMethod" (change)="applyPaymentFilters()">
+          <option value="">All Methods</option>
+          <option value="CASH(USD)">CASH(USD)</option>
+          <option value="ECOCASH(USD)">ECOCASH(USD)</option>
+          <option value="BANK TRANSFER(USD)">BANK TRANSFER(USD)</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Rows per page</label>
+        <select class="form-control" [ngModel]="limit" (ngModelChange)="onChangeLimit($event)">
+          <option [ngValue]="10">10</option>
+          <option [ngValue]="20">20</option>
+          <option [ngValue]="50">50</option>
+          <option [ngValue]="100">100</option>
+        </select>
+      </div>
+      <div class="filter-group" *ngIf="mode==='payments'">
+        <label>Date Range</label>
+        <div style="display:flex; gap:8px;">
+          <input type="date" class="form-control" [(ngModel)]="paymentStartDate" (change)="applyPaymentFilters()"/>
+          <input type="date" class="form-control" [(ngModel)]="paymentEndDate" (change)="applyPaymentFilters()"/>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading transactions...</p>
+  </div>
+
+  <div class="table-wrapper" *ngIf="!loading">
+    <div class="table-container">
+    <table class="audit-table">
+      <thead>
+        <tr>
+          <th *ngIf="mode==='invoices'">Invoice No</th>
+          <th *ngIf="mode==='invoices'">Recipient</th>
+          <th>Student ID</th>
+          <th *ngIf="mode==='invoices'">Status</th>
+          <th *ngIf="mode==='invoices'">Amount</th>
+          <th>Paid</th>
+          <th *ngIf="mode==='invoices'">Balance</th>
+          <th *ngIf="mode==='invoices'">Prev Balance</th>
+          <th *ngIf="mode==='invoices'">Prepaid</th>
+          <th *ngIf="mode==='invoices'">Term</th>
+          <th>Payment Date</th>
+          <th>Payment Method</th>
+          <th>Reference</th>
+          <th>Updated</th>
+          <th>Anomaly</th>
+          <th>PDF</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let tx of (mode==='payments' ? paged : paged)" [class.row-anomaly]="hasAnomaly(tx)">
+          <td *ngIf="mode==='invoices'">{{ tx.invoiceNumber }}</td>
+          <td *ngIf="mode==='invoices'">{{ tx.recipientName }}</td>
+          <td>{{ tx.studentNumber }}</td>
+          <td *ngIf="mode==='invoices'">
+            <span class="status-chip" [class.status-paid]="tx.status==='paid'" [class.status-pending]="tx.status==='pending'" [class.status-partial]="tx.status==='partial'" [class.status-overdue]="tx.status==='overdue'" [class.status-void]="tx.status==='void'">{{ tx.status }}</span>
+          </td>
+          <td style="text-align:right;" *ngIf="mode==='invoices'">{{ tx.amount | number:'1.2-2' }}</td>
+          <td style="text-align:right;">{{ tx.paidAmount | number:'1.2-2' }}</td>
+          <td style="text-align:right;" *ngIf="mode==='invoices'">{{ tx.balance | number:'1.2-2' }}</td>
+          <td style="text-align:right;" *ngIf="mode==='invoices'">{{ tx.previousBalance | number:'1.2-2' }}</td>
+          <td style="text-align:right;" *ngIf="mode==='invoices'">{{ tx.prepaidAmount | number:'1.2-2' }}</td>
+          <td *ngIf="mode==='invoices'">{{ tx.term }}</td>
+          <td>{{ tx.updatedAt ? (tx.updatedAt | date:'shortDate') : '—' }}</td>
+          <td>{{ tx.paymentMethod }}</td>
+          <td>{{ tx.referenceNumber }}</td>
+          <td>{{ tx.updatedAt ? (tx.updatedAt | date:'short') : '—' }}</td>
+          <td>
+            <span class="badge" [class.badge-danger]="hasAnomaly(tx)" [class.badge-ok]="!hasAnomaly(tx)">
+              {{ hasAnomaly(tx) ? 'Check' : 'OK' }}
+            </span>
+          </td>
+          <td>
+            <button class="btn btn-secondary" *ngIf="mode==='invoices' && tx.id" (click)="viewInvoicePDF(tx.id)">Invoice</button>
+            <button class="btn btn-secondary" *ngIf="tx.id" (click)="viewReceiptPDF(tx.id)">Receipt</button>
+          </td>
+        </tr>
+        <tr *ngIf="paged.length === 0">
+          <td colspan="15" style="text-align:center; color:#6b7280; padding:16px;">No transactions match the filters</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="pagination-bar">
+      <div class="page-info">
+        Page {{ page }} of {{ getTotalPages() }} • {{ mode==='payments' ? serverTotal : total }} records
+        • Page Totals: Paid {{ pageTotals.paid | number:'1.2-2' }} {{ mode==='invoices' ? ', Balance ' + (pageTotals.balance | number:'1.2-2') : '' }}
+        • Full Totals: Paid {{ fullTotals.paid | number:'1.2-2' }} {{ mode==='invoices' ? ', Balance ' + (fullTotals.balance | number:'1.2-2') : '' }}
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-secondary" (click)="prevPage()" [disabled]="page<=1">◀ Prev</button>
+        <button class="btn btn-secondary" (click)="nextPage()" [disabled]="page>=getTotalPages()">Next ▶</button>
+        <button class="btn btn-secondary" *ngIf="mode==='payments'" (click)="exportPaymentsFullCSV()">Export Full CSV</button>
+        <button class="btn btn-secondary" *ngIf="mode==='invoices'" (click)="exportInvoicesFullCSV()">Export Full CSV</button>
+      </div>
+    </div>
+  </div>
+</div>

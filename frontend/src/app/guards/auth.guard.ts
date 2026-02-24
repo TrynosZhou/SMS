@@ -19,6 +19,7 @@ export class AuthGuard implements CanActivate {
       const allowedPrefixes = [
         '/dashboard',
         '/students',
+        '/classes/lists',
         '/invoices',
         '/invoices/statements',
         '/payments/record',

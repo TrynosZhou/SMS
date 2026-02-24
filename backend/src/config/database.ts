@@ -26,6 +26,7 @@ import { TimetableConfig } from '../entities/TimetableConfig';
 import { TimetableVersion } from '../entities/TimetableVersion';
 import { TimetableChangeLog } from '../entities/TimetableChangeLog';
 import { TeacherClass } from '../entities/TeacherClass';
+import { PaymentLog } from '../entities/PaymentLog';
 
 // Load environment variables from .env file (backend folder so it works regardless of cwd)
 const backendRoot = path.resolve(__dirname, '../..');
@@ -50,7 +51,7 @@ console.log('[DB Config] Module type check - typeof module:', typeof module);
 
 console.log('[DB Config] Preparing entity list...');
 // Try using entity classes first, fallback to paths if needed
-const entities = [User, Student, Teacher, Class, Subject, Exam, Marks, Invoice, Parent, ParentStudent, Settings, ReportCardRemarks, Message, UniformItem, InvoiceUniformItem, Attendance, PromotionRule, RecordBook, StudentTransfer, Timetable, TimetableEntry, TimetableConfig, TimetableVersion, TimetableChangeLog, TeacherClass];
+const entities = [User, Student, Teacher, Class, Subject, Exam, Marks, Invoice, Parent, ParentStudent, Settings, ReportCardRemarks, Message, UniformItem, InvoiceUniformItem, Attendance, PromotionRule, RecordBook, StudentTransfer, Timetable, TimetableEntry, TimetableConfig, TimetableVersion, TimetableChangeLog, TeacherClass, PaymentLog];
 console.log('[DB Config] Entity count:', entities.length);
 console.log('[DB Config] Entity names:', entities.map(e => e?.name || 'unknown').join(', '));
 console.log('[DB Config] Checking each entity...');

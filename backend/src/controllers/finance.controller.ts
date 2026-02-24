@@ -13,7 +13,19 @@ import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
 import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
 import { UserRole } from '../entities/User';
+import { PaymentLog } from '../entities/PaymentLog';
 
+const normalizePaymentMethod = (raw?: string): string | null => {
+  const val = String(raw || '').trim().toLowerCase();
+  if (!val) return 'CASH(USD)';
+  if (val.includes('ecocash')) return 'ECOCASH(USD)';
+  if (val.includes('bank') || val.includes('transfer')) return 'BANK TRANSFER(USD)';
+  if (val.includes('cash')) return 'CASH(USD)';
+  if (val === 'cash(usd)') return 'CASH(USD)';
+  if (val === 'ecocash(usd)') return 'ECOCASH(USD)';
+  if (val === 'bank transfer(usd)') return 'BANK TRANSFER(USD)';
+  return null;
+};
 // Helper function to determine next term
 function getNextTerm(currentTerm: string): string {
   // Extract term number and year if present
@@ -485,13 +497,18 @@ export const updateInvoicePayment = async (req: AuthRequest, res: Response) => {
     // Use provided payment date or current date
     const actualPaymentDate = paymentDate ? new Date(paymentDate) : new Date();
 
+    const normalizedMethod = normalizePaymentMethod(paymentMethod);
+    if (normalizedMethod === null) {
+      return res.status(400).json({ message: 'Invalid payment method. Allowed: CASH(USD), ECOCASH(USD), BANK TRANSFER(USD)' });
+    }
+
     const receiptPDF = await createReceiptPDF({
       invoice,
       student,
       settings,
       paymentAmount: paidAmount,
       paymentDate: actualPaymentDate,
-      paymentMethod: paymentMethod || 'Cash',
+      paymentMethod: normalizedMethod,
       notes: notes || '',
       receiptNumber,
       isPrepayment: isPrepayment || false
@@ -503,6 +520,26 @@ export const updateInvoicePayment = async (req: AuthRequest, res: Response) => {
       receiptPdf: receiptPDF.toString('base64'),
       receiptNumber
     });
+
+    try {
+      const payer = req.user;
+      const payerName = payer ? `${payer.firstName || ''} ${payer.lastName || ''}`.trim() : null;
+      const logRepo = AppDataSource.getRepository(PaymentLog);
+      const log = logRepo.create({
+        invoiceId: invoice.id,
+        studentId: invoice.studentId,
+        amountPaid: parseAmount(paidAmount),
+        paymentDate: actualPaymentDate,
+        paymentMethod: normalizedMethod,
+        receiptNumber,
+        payerUserId: payer?.id || null,
+        payerName: payerName || null,
+        notes: notes || null
+      });
+      await logRepo.save(log);
+    } catch (e) {
+      console.error('Failed to record payment log:', e);
+    }
   } catch (error: any) {
     console.error('Error updating payment:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
@@ -979,7 +1016,7 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
 
 export const reverseBulkInvoices = async (req: AuthRequest, res: Response) => {
   try {
-    const { currentTerm } = req.body || {};
+    const { currentTerm, term, startDate, endDate } = req.body || {};
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const settingsRepository = AppDataSource.getRepository(Settings);
 
@@ -990,7 +1027,8 @@ export const reverseBulkInvoices = async (req: AuthRequest, res: Response) => {
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
     const sourceTerm = currentTerm || settings?.currentTerm || settings?.activeTerm || `Term 1 ${new Date().getFullYear()}`;
-    const targetTerm = getNextTerm(sourceTerm);
+    const defaultTarget = getNextTerm(sourceTerm);
+    const targetTerm = term || defaultTarget;
 
     const allForTargetTerm = await invoiceRepository.find({
       where: { term: targetTerm },
@@ -1001,9 +1039,16 @@ export const reverseBulkInvoices = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: `No invoices found for ${targetTerm}` });
     }
 
-    const latestCreatedAt = allForTargetTerm[0].createdAt ? new Date(allForTargetTerm[0].createdAt).getTime() : Date.now();
-    const windowStart = new Date(latestCreatedAt - 5 * 60 * 1000);
-    const windowEnd = new Date(latestCreatedAt + 5 * 60 * 1000);
+    let windowStart: Date;
+    let windowEnd: Date;
+    if (startDate || endDate) {
+      windowStart = startDate ? new Date(startDate) : new Date(0);
+      windowEnd = endDate ? new Date(endDate) : new Date();
+    } else {
+      const latestCreatedAt = allForTargetTerm[0].createdAt ? new Date(allForTargetTerm[0].createdAt).getTime() : Date.now();
+      windowStart = new Date(latestCreatedAt - 5 * 60 * 1000);
+      windowEnd = new Date(latestCreatedAt + 5 * 60 * 1000);
+    }
 
     const candidates = allForTargetTerm.filter(inv => {
       const created = inv.createdAt ? new Date(inv.createdAt) : new Date();
@@ -1566,6 +1611,225 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     res.send(pdfBuffer);
   } catch (error: any) {
     console.error('Error generating receipt PDF:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const getPaymentLogs = async (req: AuthRequest, res: Response) => {
+  try {
+    const { studentId, invoiceId, search, startDate, endDate, paymentMethod, page: pageParam, limit: limitParam } = req.query as { studentId?: string; invoiceId?: string; search?: string; startDate?: string; endDate?: string; paymentMethod?: string; page?: string; limit?: string };
+    const { page, limit, skip } = resolvePaginationParams(pageParam, limitParam);
+    const repo = AppDataSource.getRepository(PaymentLog);
+    const qb = repo.createQueryBuilder('log')
+      .leftJoinAndSelect('log.student', 'student')
+      .leftJoinAndSelect('log.invoice', 'invoice')
+      .orderBy('log.createdAt', 'DESC');
+    if (studentId) {
+      qb.andWhere('log.studentId = :studentId', { studentId });
+    }
+    if (invoiceId) {
+      qb.andWhere('log.invoiceId = :invoiceId', { invoiceId });
+    }
+    if (paymentMethod) {
+      qb.andWhere('LOWER(log.paymentMethod) = LOWER(:pm)', { pm: paymentMethod });
+    }
+    if (search) {
+      const s = `%${String(search).toLowerCase()}%`;
+      qb.andWhere('(LOWER(log.receiptNumber) LIKE :s OR LOWER(log.payerName) LIKE :s OR LOWER(log.paymentMethod) LIKE :s OR LOWER(student.firstName) LIKE :s OR LOWER(student.lastName) LIKE :s OR LOWER(invoice.invoiceNumber) LIKE :s)', { s });
+    }
+    if (startDate) {
+      qb.andWhere('log.paymentDate >= :startDate', { startDate: new Date(startDate) });
+    }
+    if (endDate) {
+      qb.andWhere('log.paymentDate <= :endDate', { endDate: new Date(endDate) });
+    }
+    qb.skip(skip).take(limit);
+    const [data, total] = await qb.getManyAndCount();
+    // Compute duplicate receipts set across filtered scope
+    const dupQb = repo.createQueryBuilder('log')
+      .select('log.receiptNumber', 'receiptNumber')
+      .addSelect('COUNT(*)', 'cnt');
+    if (studentId) dupQb.andWhere('log.studentId = :studentId', { studentId });
+    if (invoiceId) dupQb.andWhere('log.invoiceId = :invoiceId', { invoiceId });
+    if (paymentMethod) dupQb.andWhere('LOWER(log.paymentMethod) = LOWER(:pm)', { pm: paymentMethod });
+    if (search) {
+      const s = `%${String(search).toLowerCase()}%`;
+      dupQb.andWhere('(LOWER(log.receiptNumber) LIKE :s OR LOWER(log.payerName) LIKE :s OR LOWER(log.paymentMethod) LIKE :s)', { s });
+    }
+    if (startDate) dupQb.andWhere('log.paymentDate >= :startDate', { startDate: new Date(startDate) });
+    if (endDate) dupQb.andWhere('log.paymentDate <= :endDate', { endDate: new Date(endDate) });
+    dupQb.groupBy('log.receiptNumber').having('COUNT(*) > 1');
+    const dupRows = await dupQb.getRawMany();
+    const duplicates = dupRows.map((r: any) => r.receiptNumber).filter((v: any) => !!v);
+
+    const response = buildPaginationResponse(data, total, page, limit);
+    (response as any).duplicates = duplicates;
+    res.json(response);
+  } catch (error: any) {
+    console.error('Error fetching payment logs:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const exportPaymentLogsCSV = async (req: AuthRequest, res: Response) => {
+  try {
+    const { studentId, invoiceId, search, startDate, endDate, paymentMethod } = req.query as any;
+    const repo = AppDataSource.getRepository(PaymentLog);
+    const qb = repo.createQueryBuilder('log')
+      .leftJoinAndSelect('log.student', 'student')
+      .leftJoinAndSelect('log.invoice', 'invoice')
+      .orderBy('log.createdAt', 'DESC');
+    if (studentId) qb.andWhere('log.studentId = :studentId', { studentId });
+    if (invoiceId) qb.andWhere('log.invoiceId = :invoiceId', { invoiceId });
+    if (paymentMethod) qb.andWhere('LOWER(log.paymentMethod) = LOWER(:pm)', { pm: paymentMethod });
+    if (search) {
+      const s = `%${String(search).toLowerCase()}%`;
+      qb.andWhere('(LOWER(log.receiptNumber) LIKE :s OR LOWER(log.payerName) LIKE :s OR LOWER(log.paymentMethod) LIKE :s OR LOWER(student.firstName) LIKE :s OR LOWER(student.lastName) LIKE :s OR LOWER(invoice.invoiceNumber) LIKE :s)', { s });
+    }
+    if (startDate) qb.andWhere('log.paymentDate >= :startDate', { startDate: new Date(startDate) });
+    if (endDate) qb.andWhere('log.paymentDate <= :endDate', { endDate: new Date(endDate) });
+    const rows = await qb.getMany();
+    const headers = ['Invoice/Receipt','Recipient','Student ID','Paid','Payment Date','Payment Method','Reference','Updated'];
+    const csvLines = [headers.join(',')];
+    for (const log of rows) {
+      const student = (log as any).student || {};
+      const invoice = (log as any).invoice || {};
+      csvLines.push([
+        invoice.invoiceNumber || log.receiptNumber || log.invoiceId,
+        `${student.firstName || ''} ${student.lastName || ''}`.trim().replace(/,/g,' '),
+        student.studentNumber || '',
+        String(log.amountPaid ?? 0),
+        log.paymentDate ? new Date(log.paymentDate).toISOString().slice(0,10) : '',
+        log.paymentMethod || '',
+        log.receiptNumber || '',
+        log.createdAt ? new Date(log.createdAt).toISOString() : ''
+      ].join(','));
+    }
+    const csv = csvLines.join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="audit-payments.csv"');
+    res.send(csv);
+  } catch (error: any) {
+    console.error('Error exporting payment logs CSV:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const getPaymentLogsSummary = async (req: AuthRequest, res: Response) => {
+  try {
+    const { studentId, invoiceId, search, startDate, endDate, paymentMethod } = req.query as any;
+    const repo = AppDataSource.getRepository(PaymentLog);
+    const qb = repo.createQueryBuilder('log').select('SUM(log.amountPaid)', 'sumPaid').addSelect('COUNT(*)', 'count');
+    if (studentId) qb.andWhere('log.studentId = :studentId', { studentId });
+    if (invoiceId) qb.andWhere('log.invoiceId = :invoiceId', { invoiceId });
+    if (paymentMethod) qb.andWhere('LOWER(log.paymentMethod) = LOWER(:pm)', { pm: paymentMethod });
+    if (search) {
+      const s = `%${String(search).toLowerCase()}%`;
+      qb.andWhere('(LOWER(log.receiptNumber) LIKE :s OR LOWER(log.payerName) LIKE :s OR LOWER(log.paymentMethod) LIKE :s)', { s });
+    }
+    if (startDate) qb.andWhere('log.paymentDate >= :startDate', { startDate: new Date(startDate) });
+    if (endDate) qb.andWhere('log.paymentDate <= :endDate', { endDate: new Date(endDate) });
+    const result = await qb.getRawOne();
+    res.json({ sumPaid: parseFloat(result?.sumPaid || '0'), count: parseInt(result?.count || '0', 10) });
+  } catch (error: any) {
+    console.error('Error fetching payment logs summary:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const exportInvoicesCSV = async (req: AuthRequest, res: Response) => {
+  try {
+    const { status, search } = req.query as any;
+    const invoiceRepository = AppDataSource.getRepository(Invoice);
+    const qb = invoiceRepository.createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.student', 'student')
+      .orderBy('invoice.createdAt', 'DESC');
+    if (status) qb.andWhere('invoice.status = :status', { status });
+    if (search) {
+      const s = `%${String(search).toLowerCase()}%`;
+      qb.andWhere('(LOWER(invoice.invoiceNumber) LIKE :s OR LOWER(student.firstName) LIKE :s OR LOWER(student.lastName) LIKE :s OR LOWER(student.studentNumber) LIKE :s)', { s });
+    }
+    const rows = await qb.getMany();
+    const headers = ['Invoice No','Recipient','Student ID','Status','Amount','Paid','Balance','Prev Balance','Prepaid','Term','Due Date','Created','Updated'];
+    const csvLines = [headers.join(',')];
+    for (const inv of rows) {
+      const student = (inv as any).student || {};
+      csvLines.push([
+        inv.invoiceNumber,
+        `${student.firstName || ''} ${student.lastName || ''}`.trim().replace(/,/g,' '),
+        student.studentNumber || '',
+        inv.status,
+        String(inv.amount ?? 0),
+        String(inv.paidAmount ?? 0),
+        String(inv.balance ?? 0),
+        String(inv.previousBalance ?? 0),
+        String(inv.prepaidAmount ?? 0),
+        inv.term || '',
+        inv.dueDate ? new Date(inv.dueDate).toISOString().slice(0,10) : '',
+        inv.createdAt ? new Date(inv.createdAt).toISOString() : '',
+        inv.updatedAt ? new Date(inv.updatedAt).toISOString() : ''
+      ].join(','));
+    }
+    const csv = csvLines.join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="audit-invoices.csv"');
+    res.send(csv);
+  } catch (error: any) {
+    console.error('Error exporting invoices CSV:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const getInvoicesSummary = async (req: AuthRequest, res: Response) => {
+  try {
+    const { status, search } = req.query as any;
+    const invoiceRepository = AppDataSource.getRepository(Invoice);
+    const qb = invoiceRepository.createQueryBuilder('invoice')
+      .leftJoin('invoice.student', 'student')
+      .select('SUM(invoice.paidAmount)', 'sumPaid')
+      .addSelect('SUM(invoice.balance)', 'sumBalance')
+      .addSelect('COUNT(*)', 'count');
+    if (status) qb.andWhere('invoice.status = :status', { status });
+    if (search) {
+      const s = `%${String(search).toLowerCase()}%`;
+      qb.andWhere('(LOWER(invoice.invoiceNumber) LIKE :s OR LOWER(student.firstName) LIKE :s OR LOWER(student.lastName) LIKE :s OR LOWER(student.studentNumber) LIKE :s)', { s });
+    }
+    const result = await qb.getRawOne();
+    res.json({
+      sumPaid: parseFloat(result?.sumPaid || '0'),
+      sumBalance: parseFloat(result?.sumBalance || '0'),
+      count: parseInt(result?.count || '0', 10)
+    });
+  } catch (error: any) {
+    console.error('Error fetching invoices summary:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const normalizeHistoricalPaymentMethods = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const repo = AppDataSource.getRepository(PaymentLog);
+    const logs = await repo.find();
+    let updated = 0;
+    let skipped = 0;
+    const allowed = new Set(['CASH(USD)', 'ECOCASH(USD)', 'BANK TRANSFER(USD)']);
+    for (const log of logs) {
+      const nm = normalizePaymentMethod(log.paymentMethod || '');
+      const finalMethod = nm || 'CASH(USD)';
+      if (!allowed.has(finalMethod) || log.paymentMethod !== finalMethod) {
+        log.paymentMethod = finalMethod;
+        await repo.save(log);
+        updated++;
+      } else {
+        skipped++;
+      }
+    }
+    res.json({ message: 'Normalization complete', updated, skipped, total: logs.length });
+  } catch (error: any) {
+    console.error('Error normalizing payment methods:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

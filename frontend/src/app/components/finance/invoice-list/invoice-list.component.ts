@@ -25,6 +25,11 @@ export class InvoiceListComponent implements OnInit {
   creatingBulk = false;
   reversingBulk = false;
   correctingExemptTuition = false;
+  reverseFilter: any = {
+    term: '',
+    startDate: '',
+    endDate: ''
+  };
   success = '';
   error = '';
   showBulkInvoiceForm = false;
@@ -65,6 +70,7 @@ export class InvoiceListComponent implements OnInit {
   noteFirstName = '';
   noteLastName = '';
   noteSearchQuery = '';
+  noteCandidates: any[] = [];
   
   // Cached computed values to prevent NG0900 errors
   private _cachedStats = {
@@ -107,6 +113,8 @@ export class InvoiceListComponent implements OnInit {
   };
   transportCostFromSettings: number | null = null;
   tuitionFeeFromSettings: any = { dayScholar: 0, boarder: 0 };
+  diningHallCostFromSettings: number | null = null;
+  isNoteAmountAuto = false;
   
   getFollowingTerm(currentTerm: string): string {
     if (!currentTerm) return '';
@@ -186,6 +194,11 @@ export class InvoiceListComponent implements OnInit {
         if (data.feesSettings) {
           this.tuitionFeeFromSettings.dayScholar = parseFloat(String(data.feesSettings.dayScholarTuitionFee || 0));
           this.tuitionFeeFromSettings.boarder = parseFloat(String(data.feesSettings.boarderTuitionFee || 0));
+          const rawDh = data.feesSettings.diningHallCost;
+          const parsedDh = parseFloat(String(rawDh));
+          if (!isNaN(parsedDh) && parsedDh > 0) {
+            this.diningHallCostFromSettings = parsedDh;
+          }
         }
       },
       error: (err: any) => {
@@ -196,6 +209,29 @@ export class InvoiceListComponent implements OnInit {
         this.quickPaymentTerm = this.currentTermFromSettings;
       }
     });
+  }
+
+  onNoteItemChange(item: string) {
+    this.isNoteAmountAuto = false;
+    if (item === 'transport') {
+      if (this.transportCostFromSettings != null) {
+        this.noteForm.amount = this.transportCostFromSettings;
+        this.isNoteAmountAuto = true;
+      }
+    } else if (item === 'diningHall') {
+      if (this.diningHallCostFromSettings != null) {
+        let dh = this.diningHallCostFromSettings;
+        const stu = this.selectedInvoice?.student;
+        const isStaffOrExempted = !!(stu?.isStaffChild) || !!(stu?.isExempted);
+        if (isStaffOrExempted) {
+          dh = dh * 0.5;
+        }
+        this.noteForm.amount = dh;
+        this.isNoteAmountAuto = true;
+      }
+    } else {
+      this.isNoteAmountAuto = false;
+    }
   }
 
   loadStudents() {
@@ -661,6 +697,7 @@ export class InvoiceListComponent implements OnInit {
     this.selectedInvoice = null;
     this.noteStudentId = '';
     this.noteLookupError = '';
+    this.noteCandidates = [];
     this.noteForm = {
       type: 'credit',
       item: '',
@@ -675,6 +712,7 @@ export class InvoiceListComponent implements OnInit {
     this.selectedInvoice = null;
     this.noteStudentId = '';
     this.noteLookupError = '';
+    this.noteCandidates = [];
     this.noteForm = {
       type: 'debit',
       item: '',
@@ -690,6 +728,7 @@ export class InvoiceListComponent implements OnInit {
     this.selectedInvoice = null;
     this.noteStudentId = '';
     this.noteLookupError = '';
+    this.noteCandidates = [];
     this.noteForm = {
       type: 'credit',
       item: '',
@@ -1033,6 +1072,7 @@ export class InvoiceListComponent implements OnInit {
   lookupNoteStudent() {
     this.noteLookupError = '';
     this.selectedInvoice = null;
+    this.noteCandidates = [];
     const queryRaw = (this.noteSearchQuery || '').trim();
     if (!queryRaw) {
       this.noteLookupError = 'Enter a Student ID or Name.';
@@ -1055,6 +1095,35 @@ export class InvoiceListComponent implements OnInit {
         const ln = String(inv.student?.lastName || '').toLowerCase();
         return tokens.every(t => fn.includes(t) || ln.includes(t));
       });
+      if (tokens.length === 1) {
+        const byToken = invoicesArray
+          .map(inv => inv.student)
+          .filter(stu => !!stu)
+          .filter(stu => {
+            const fn = String(stu.firstName || '').toLowerCase();
+            const ln = String(stu.lastName || '').toLowerCase();
+            const t = tokens[0];
+            return fn.includes(t) || ln.includes(t);
+          });
+        const uniqueMap: Record<string, any> = {};
+        byToken.forEach(stu => {
+          const id = stu.id || stu.studentId || stu.userId || '';
+          if (id && !uniqueMap[id]) {
+            uniqueMap[id] = stu;
+          }
+        });
+        const candidates = Object.values(uniqueMap) as any[];
+        if (candidates.length > 1) {
+          this.noteCandidates = candidates.map(stu => ({
+            id: stu.id,
+            studentNumber: stu.studentNumber,
+            firstName: stu.firstName,
+            lastName: stu.lastName,
+            className: (stu.classEntity && stu.classEntity.name) ? stu.classEntity.name : ''
+          }));
+          return;
+        }
+      }
     }
 
     // 3) If still none, query students API and then filter invoices by returned student ids
@@ -1070,6 +1139,16 @@ export class InvoiceListComponent implements OnInit {
           const invs = invoicesArray.filter(inv => studentIds.has(inv.student?.id || inv.studentId));
           if (invs.length === 0) {
             this.noteLookupError = 'No invoices found for matching student(s).';
+            return;
+          }
+          if (students.length > 1) {
+            this.noteCandidates = students.map((s: any) => ({
+              id: s.id,
+              studentNumber: s.studentNumber,
+              firstName: s.firstName,
+              lastName: s.lastName,
+              className: (s.classEntity && s.classEntity.name) ? s.classEntity.name : ''
+            }));
             return;
           }
           // Pick latest by date
@@ -1094,6 +1173,41 @@ export class InvoiceListComponent implements OnInit {
       return dateB - dateA;
     })[0];
     this.selectedInvoice = latest;
+  }
+  
+  chooseNoteCandidate(candidateId: string) {
+    this.noteLookupError = '';
+    this.selectedInvoice = null;
+    const invoicesArray = Array.isArray(this.invoices) ? this.invoices : [];
+    const invs = invoicesArray.filter(inv => (inv.student?.id || inv.studentId) === candidateId);
+    if (invs.length > 0) {
+      const latest = invs.slice().sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      })[0];
+      this.selectedInvoice = latest;
+      this.noteCandidates = [];
+      return;
+    }
+    this.financeService.getInvoices(candidateId, undefined).subscribe({
+      next: (list: any[]) => {
+        if (!list || list.length === 0) {
+          this.noteLookupError = 'No invoices found for selected student.';
+          return;
+        }
+        const latest = list.slice().sort((a: any, b: any) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        })[0];
+        this.selectedInvoice = latest;
+        this.noteCandidates = [];
+      },
+      error: () => {
+        this.noteLookupError = 'Failed to fetch invoices for selected student.';
+      }
+    });
   }
 
   openReceiptForPrint() {
@@ -1206,6 +1320,14 @@ export class InvoiceListComponent implements OnInit {
   }
 
   openBulkInvoiceForm() {
+    if (!(this.authService.hasRole('admin') || this.authService.hasRole('superadmin'))) {
+      this.error = 'Only Administrators or Super Admins can perform bulk creation';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+    if (!confirm('Confirm: You are about to create invoices for all students. Proceed?')) {
+      return;
+    }
     // Set default due date to 30 days from now
     const defaultDueDate = new Date();
     defaultDueDate.setDate(defaultDueDate.getDate() + 30);
@@ -1246,6 +1368,11 @@ export class InvoiceListComponent implements OnInit {
     }
 
     if (!confirm(`This will create invoices for all active students for the following term (based on current term: ${this.bulkInvoiceForm.currentTerm}). Continue?`)) {
+      return;
+    }
+    const verify = prompt('Type BULK to confirm bulk creation:');
+    if (!verify || verify.trim().toUpperCase() !== 'BULK') {
+      alert('Bulk creation cancelled. You must type BULK to proceed.');
       return;
     }
 
@@ -1302,15 +1429,24 @@ export class InvoiceListComponent implements OnInit {
   }
 
   reverseLastBulkCreation() {
-    if (!this.canManageFinance()) {
-      this.error = 'You do not have permission to reverse bulk invoices';
+    // Restrict to admin/superadmin only
+    if (!(this.authService.hasRole('admin') || this.authService.hasRole('superadmin'))) {
+      this.error = 'Only Administrators or Super Admins can reverse bulk invoices';
       setTimeout(() => (this.error = ''), 5000);
       return;
     }
 
-    const followingTerm = this.getFollowingTerm(this.currentTermFromSettings);
-    const confirmMsg = `This will reverse the last Bulk Create operation for ${followingTerm}. Continue?`;
+    const infoTerm = this.reverseFilter.term || this.getFollowingTerm(this.currentTermFromSettings);
+    const windowText = (this.reverseFilter.startDate || this.reverseFilter.endDate)
+      ? `\nDate window: ${this.reverseFilter.startDate || '—'} to ${this.reverseFilter.endDate || '—'}`
+      : '';
+    const confirmMsg = `This will reverse bulk-created invoices for ${infoTerm}.${windowText}\n\nContinue?`;
     if (!confirm(confirmMsg)) {
+      return;
+    }
+    const verify = prompt('Type REVERSE to confirm reversal:');
+    if (!verify || verify.trim().toUpperCase() !== 'REVERSE') {
+      alert('Reversal cancelled. You must type REVERSE to proceed.');
       return;
     }
 
@@ -1318,7 +1454,12 @@ export class InvoiceListComponent implements OnInit {
     this.error = '';
     this.success = '';
 
-    this.financeService.reverseBulkInvoices(this.currentTermFromSettings).subscribe({
+    const payload: any = { currentTerm: this.currentTermFromSettings };
+    if (this.reverseFilter.term) payload.term = this.reverseFilter.term;
+    if (this.reverseFilter.startDate) payload.startDate = this.reverseFilter.startDate;
+    if (this.reverseFilter.endDate) payload.endDate = this.reverseFilter.endDate;
+
+    this.financeService.reverseBulkInvoices(payload).subscribe({
       next: (response: any) => {
         this.reversingBulk = false;
         this.success = response.message || 'Bulk creation reversed successfully';

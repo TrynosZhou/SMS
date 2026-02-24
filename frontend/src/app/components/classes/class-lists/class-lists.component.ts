@@ -41,6 +41,7 @@ export class ClassListsComponent implements OnInit {
   isAdmin = false;
   isTeacher = false;
   isSuperAdmin = false;
+  isAccountant = false;
   generatedAt: Date = new Date();
   lastLoadedClassId: string | null = null;
   lastLoadedTerm: string | null = null;
@@ -50,6 +51,9 @@ export class ClassListsComponent implements OnInit {
   showEnrollModal = false;
   sortField: 'lastName' | 'firstName' | 'studentNumber' = 'lastName';
   sortDirection: 'asc' | 'desc' = 'asc';
+  editingStudentId: string | null = null;
+  editingField: 'dob' | 'gender' | 'studentType' | null = null;
+  tempValue: any = null;
 
   constructor(
     private studentService: StudentService,
@@ -62,6 +66,7 @@ export class ClassListsComponent implements OnInit {
     this.isAdmin = user ? (user.role === 'admin') : false;
     this.isSuperAdmin = user ? (user.role === 'superadmin') : false;
     this.isTeacher = user ? (user.role === 'teacher') : false;
+    this.isAccountant = user ? (user.role === 'accountant') : false;
   }
 
   ngOnInit() {
@@ -396,6 +401,99 @@ export class ClassListsComponent implements OnInit {
       .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
       .forEach(k => ordered.push({ gender: k, students: byGender.get(k)! }));
     this.studentsGroupedByGender = ordered;
+  }
+
+  canEditField(field: 'dob' | 'gender' | 'studentType'): boolean {
+    if (field === 'studentType') {
+      return this.isAdmin || this.isSuperAdmin || this.isAccountant || this.isTeacher;
+    }
+    return this.isAdmin || this.isSuperAdmin || this.isAccountant || this.isTeacher;
+  }
+
+  private formatDateForInput(value: any): string {
+    if (!value) return '';
+    const d = typeof value === 'string' ? new Date(value) : value instanceof Date ? value : new Date(value);
+    if (isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  isEditing(studentId: string, field: 'dob' | 'gender' | 'studentType'): boolean {
+    return this.editingStudentId === studentId && this.editingField === field;
+  }
+
+  startEdit(student: any, field: 'dob' | 'gender' | 'studentType') {
+    if (!this.canEditField(field)) return;
+    this.editingStudentId = student.id;
+    this.editingField = field;
+    if (field === 'dob') {
+      this.tempValue = this.formatDateForInput(student.dateOfBirth || null);
+    } else if (field === 'gender') {
+      this.tempValue = student.gender || '';
+    } else if (field === 'studentType') {
+      this.tempValue = student.studentType || 'Day Scholar';
+    }
+  }
+
+  cancelEdit() {
+    this.editingStudentId = null;
+    this.editingField = null;
+    this.tempValue = null;
+  }
+
+  saveEdit(student: any, field?: 'dob' | 'gender' | 'studentType') {
+    const activeField = field || this.editingField;
+    if (!activeField || this.editingStudentId !== student.id) {
+      this.cancelEdit();
+      return;
+    }
+    if (!this.canEditField(activeField)) {
+      this.error = 'You do not have permission to edit this field.';
+      this.cancelEdit();
+      return;
+    }
+    const payload: any = {};
+    if (activeField === 'dob') {
+      payload.dateOfBirth = this.tempValue || '';
+    } else if (activeField === 'gender') {
+      payload.gender = this.tempValue || '';
+    } else if (activeField === 'studentType') {
+      payload.studentType = this.tempValue || 'Day Scholar';
+    }
+    this.error = '';
+    this.success = '';
+    this.studentService.updateStudent(student.id, payload).subscribe({
+      next: (updated: any) => {
+        if (activeField === 'dob') {
+          student.dateOfBirth = payload.dateOfBirth ? new Date(payload.dateOfBirth) : null;
+        } else if (activeField === 'gender') {
+          student.gender = payload.gender;
+        } else if (activeField === 'studentType') {
+          student.studentType = payload.studentType;
+        }
+        if (activeField === 'gender') {
+          this.applySort();
+          this.buildGroupedByGender();
+        }
+        this.success = 'Saved successfully.';
+        this.cancelEdit();
+        setTimeout(() => {
+          if (this.success) this.success = '';
+        }, 4000);
+      },
+      error: (err: any) => {
+        let msg = 'Failed to save.';
+        if (err?.error?.message) msg = err.error.message;
+        else if (typeof err?.error === 'string') msg = err.error;
+        this.error = msg;
+        this.cancelEdit();
+        setTimeout(() => {
+          if (this.error) this.error = '';
+        }, 6000);
+      }
+    });
   }
 
   viewStudentIdCard(studentId: string) {

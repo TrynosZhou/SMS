@@ -84,8 +84,8 @@ export class FinanceService {
     return this.http.post(`${this.apiUrl}/finance/bulk`, { term, dueDate, description });
   }
 
-  reverseBulkInvoices(currentTerm?: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/finance/bulk/reverse`, { currentTerm });
+  reverseBulkInvoices(payload: { term?: string; currentTerm?: string; startDate?: string; endDate?: string }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/finance/bulk/reverse`, payload || {});
   }
 
   voidTuitionExemptInvoices(): Observable<any> {
@@ -164,6 +164,56 @@ export class FinanceService {
         return of([]);
       })
     );
+  }
+
+  getPaymentLogs(options: { studentId?: string; invoiceId?: string; search?: string; startDate?: string; endDate?: string; paymentMethod?: string; page?: number; limit?: number } = {}): Observable<PaginatedResponse<any>> {
+    const params: any = {
+      page: options.page ?? 1,
+      limit: options.limit ?? 20
+    };
+    if (options.studentId) params.studentId = options.studentId;
+    if (options.invoiceId) params.invoiceId = options.invoiceId;
+    if (options.search) params.search = options.search;
+    if (options.startDate) params.startDate = options.startDate;
+    if (options.endDate) params.endDate = options.endDate;
+    if (options.paymentMethod) params.paymentMethod = options.paymentMethod;
+    return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/finance/audit/payment-logs`, { params });
+  }
+
+  exportPaymentLogsCSV(options: { studentId?: string; invoiceId?: string; search?: string; startDate?: string; endDate?: string; paymentMethod?: string } = {}): Observable<Blob> {
+    const params: any = {};
+    if (options.studentId) params.studentId = options.studentId;
+    if (options.invoiceId) params.invoiceId = options.invoiceId;
+    if (options.search) params.search = options.search;
+    if (options.startDate) params.startDate = options.startDate;
+    if (options.endDate) params.endDate = options.endDate;
+    if (options.paymentMethod) params.paymentMethod = options.paymentMethod;
+    return this.http.get(`${this.apiUrl}/finance/audit/payment-logs/export`, { params, responseType: 'blob' });
+  }
+
+  exportInvoicesCSV(options: { status?: string; search?: string } = {}): Observable<Blob> {
+    const params: any = {};
+    if (options.status) params.status = options.status;
+    if (options.search) params.search = options.search;
+    return this.http.get(`${this.apiUrl}/finance/audit/invoices/export`, { params, responseType: 'blob' });
+  }
+
+  getPaymentLogsSummary(options: { studentId?: string; invoiceId?: string; search?: string; startDate?: string; endDate?: string; paymentMethod?: string } = {}): Observable<{ sumPaid: number; count: number }> {
+    const params: any = {};
+    if (options.studentId) params.studentId = options.studentId;
+    if (options.invoiceId) params.invoiceId = options.invoiceId;
+    if (options.search) params.search = options.search;
+    if (options.startDate) params.startDate = options.startDate;
+    if (options.endDate) params.endDate = options.endDate;
+    if (options.paymentMethod) params.paymentMethod = options.paymentMethod;
+    return this.http.get<{ sumPaid: number; count: number }>(`${this.apiUrl}/finance/audit/payment-logs/summary`, { params });
+  }
+
+  getInvoicesSummary(options: { status?: string; search?: string } = {}): Observable<{ sumPaid: number; sumBalance: number; count: number }> {
+    const params: any = {};
+    if (options.status) params.status = options.status;
+    if (options.search) params.search = options.search;
+    return this.http.get<{ sumPaid: number; sumBalance: number; count: number }>(`${this.apiUrl}/finance/audit/invoices/summary`, { params });
   }
 }
 

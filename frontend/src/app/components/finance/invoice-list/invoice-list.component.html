@@ -30,9 +30,17 @@
       <button class="btn btn-primary" (click)="openBulkInvoiceForm()" *ngIf="canManageFinance()">
         <span>📋</span> Bulk Create
       </button>
-      <button class="btn btn-danger" (click)="reverseLastBulkCreation()" *ngIf="canManageFinance()" [disabled]="reversingBulk" title="Reverse last bulk invoice creation" style="margin-left: 8px;">
+      <button class="btn btn-danger" (click)="reverseLastBulkCreation()" *ngIf="authService.hasRole('admin') || authService.hasRole('superadmin')" [disabled]="reversingBulk" title="Reverse last bulk invoice creation" style="margin-left: 8px;">
         <span>↩️</span> Reverse Bulk Creation
       </button>
+      <div *ngIf="canManageFinance()" class="reverse-filters" style="display:flex; gap:8px; align-items:center;">
+        <select [(ngModel)]="reverseFilter.term" [ngModelOptions]="{standalone:true}" class="form-control" title="Term to reverse" style="min-width:160px;">
+          <option value="">Auto (following term)</option>
+          <option *ngFor="let term of getUniqueTerms()" [value]="term">{{ term }}</option>
+        </select>
+        <input type="date" [(ngModel)]="reverseFilter.startDate" [ngModelOptions]="{standalone:true}" class="form-control" title="Start date" />
+        <input type="date" [(ngModel)]="reverseFilter.endDate" [ngModelOptions]="{standalone:true}" class="form-control" title="End date" />
+      </div>
       <button class="btn btn-warning" (click)="runTuitionExemptionCorrection()" *ngIf="canManageFinance()" [disabled]="correctingExemptTuition" title="Void unpaid tuition invoices for exempt students" style="margin-left: 8px;">
         <span>🛡️</span> Tuition Exemption Correction
       </button>
@@ -850,6 +858,16 @@
             <div *ngIf="noteLookupError" class="alert alert-error" style="margin-top: 8px;">
               {{ noteLookupError }}
             </div>
+              <div *ngIf="noteCandidates.length > 0" class="candidate-list" style="margin-top: 8px;">
+                <div class="alert alert-info">Multiple students found. Select the correct student to proceed.</div>
+                <ul class="candidate-items" style="list-style: none; padding: 0; margin: 0;">
+                  <li *ngFor="let c of noteCandidates" style="margin: 4px 0;">
+                    <button type="button" class="btn btn-secondary" (click)="chooseNoteCandidate(c.id)">
+                      {{ c.lastName }} {{ c.firstName }} — ID: {{ c.studentNumber }} <span *ngIf="c.className">— Class: {{ c.className }}</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
           </div>
         </div>
       </div>
@@ -890,7 +908,7 @@
 
           <div class="form-group">
             <label>Cost Item *</label>
-            <select [(ngModel)]="noteForm.item" name="noteItem" class="form-control" required>
+            <select [(ngModel)]="noteForm.item" (ngModelChange)="onNoteItemChange($event)" name="noteItem" class="form-control" required>
               <option [ngValue]="''">-- Select item --</option>
               <option value="tuition">Tuition</option>
               <option value="transport">Transport Fee</option>
@@ -907,9 +925,13 @@
               [(ngModel)]="noteForm.amount"
               name="noteAmount"
               class="form-control"
+              [readonly]="isNoteAmountAuto"
               required
               placeholder="Enter amount"
             />
+            <small class="form-hint" *ngIf="isNoteAmountAuto">
+              Auto-filled from Settings{{ selectedInvoice?.student?.isStaffChild || selectedInvoice?.student?.isExempted ? ' (50% for staff/exempted)' : '' }}.
+            </small>
             <small class="form-hint">
               {{ noteForm.type === 'credit' ? 'This amount will be subtracted from the selected cost item.' : 'This amount will be added to the selected cost item.' }}
             </small>
