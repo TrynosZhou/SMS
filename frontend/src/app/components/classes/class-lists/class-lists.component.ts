@@ -54,6 +54,11 @@ export class ClassListsComponent implements OnInit {
   editingStudentId: string | null = null;
   editingField: 'dob' | 'gender' | 'studentType' | null = null;
   tempValue: any = null;
+  showEditModal = false;
+  editModalField: 'dob' | 'gender' | 'studentType' | null = null;
+  editModalStudent: any | null = null;
+  editModalValue: any = null;
+  savingEdit = false;
 
   constructor(
     private studentService: StudentService,
@@ -496,11 +501,87 @@ export class ClassListsComponent implements OnInit {
     });
   }
 
+  openEditModal(student: any, field: 'dob' | 'gender' | 'studentType') {
+    if (!this.canEditField(field)) return;
+    this.editModalStudent = student;
+    this.editModalField = field;
+    if (field === 'dob') {
+      this.editModalValue = this.formatDateForInput(student.dateOfBirth || null);
+    } else if (field === 'gender') {
+      this.editModalValue = student.gender || '';
+    } else if (field === 'studentType') {
+      this.editModalValue = student.studentType || 'Day Scholar';
+    }
+    this.showEditModal = true;
+  }
+
+  cancelEditModal() {
+    this.showEditModal = false;
+    this.editModalField = null;
+    this.editModalStudent = null;
+    this.editModalValue = null;
+    this.savingEdit = false;
+  }
+
+  saveEditModal() {
+    if (!this.editModalStudent || !this.editModalField) {
+      this.cancelEditModal();
+      return;
+    }
+    if (!this.canEditField(this.editModalField)) {
+      this.error = 'You do not have permission to edit this field.';
+      this.cancelEditModal();
+      return;
+    }
+    const payload: any = {};
+    if (this.editModalField === 'dob') {
+      payload.dateOfBirth = this.editModalValue || '';
+    } else if (this.editModalField === 'gender') {
+      payload.gender = this.editModalValue || '';
+    } else if (this.editModalField === 'studentType') {
+      payload.studentType = this.editModalValue || 'Day Scholar';
+    }
+    this.savingEdit = true;
+    this.error = '';
+    this.success = '';
+    this.studentService.updateStudent(this.editModalStudent.id, payload).subscribe({
+      next: () => {
+        if (this.editModalField === 'dob') {
+          this.editModalStudent.dateOfBirth = payload.dateOfBirth ? new Date(payload.dateOfBirth) : null;
+        } else if (this.editModalField === 'gender') {
+          this.editModalStudent.gender = payload.gender;
+        } else if (this.editModalField === 'studentType') {
+          this.editModalStudent.studentType = payload.studentType;
+        }
+        if (this.editModalField === 'gender') {
+          this.applySort();
+          this.buildGroupedByGender();
+        }
+        this.success = 'Saved successfully.';
+        this.savingEdit = false;
+        this.cancelEditModal();
+        setTimeout(() => {
+          if (this.success) this.success = '';
+        }, 4000);
+      },
+      error: (err: any) => {
+        let msg = 'Failed to save.';
+        if (err?.error?.message) msg = err.error.message;
+        else if (typeof err?.error === 'string') msg = err.error;
+        this.error = msg;
+        this.savingEdit = false;
+        this.cancelEditModal();
+        setTimeout(() => {
+          if (this.error) this.error = '';
+        }, 6000);
+      }
+    });
+  }
+
   viewStudentIdCard(studentId: string) {
     if (!studentId) {
       return;
     }
-
     this.loading = true;
     this.error = '';
     this.studentService.getStudentIdCard(studentId).subscribe({

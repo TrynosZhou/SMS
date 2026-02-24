@@ -200,75 +200,43 @@
                 </a>
               </td>
               <td>
-                <ng-container *ngIf="isEditing(student.id, 'dob'); else dobView">
-                  <input
-                    type="date"
-                    class="form-control"
-                    [(ngModel)]="tempValue"
-                    [ngModelOptions]="{standalone: true}"
-                    (blur)="saveEdit(student, 'dob')"
-                    (keydown.enter)="saveEdit(student, 'dob')"
-                    (keydown.escape)="cancelEdit()"
-                    autofocus>
-                </ng-container>
-                <ng-template #dobView>
-                  <span
-                    [class.editable]="canEditField('dob')"
-                    [title]="canEditField('dob') ? 'Click to edit DOB' : 'Not permitted'"
-                    (click)="startEdit(student, 'dob')">
-                    {{ student.dateOfBirth ? (student.dateOfBirth | date:'dd/MM/yyyy') : 'N/A' }}
-                  </span>
-                </ng-template>
+                <span
+                  [class.editable]="canEditField('dob')"
+                  [title]="canEditField('dob') ? 'Click to edit DOB' : 'Not permitted'"
+                  role="button"
+                  tabindex="0"
+                  (click)="openEditModal(student, 'dob')"
+                  (keyup.enter)="openEditModal(student, 'dob')"
+                  (keyup.space)="openEditModal(student, 'dob')">
+                  {{ student.dateOfBirth ? (student.dateOfBirth | date:'dd/MM/yyyy') : 'N/A' }}
+                </span>
               </td>
               <td>
-                <ng-container *ngIf="isEditing(student.id, 'gender'); else genderView">
-                  <select
-                    class="form-control"
-                    [(ngModel)]="tempValue"
-                    [ngModelOptions]="{standalone: true}"
-                    (change)="saveEdit(student, 'gender')"
-                    (keydown.enter)="saveEdit(student, 'gender')"
-                    (keydown.escape)="cancelEdit()"
-                    autofocus>
-                    <option value="">-- Select --</option>
-                    <option value="Female">Female</option>
-                    <option value="Male">Male</option>
-                  </select>
-                </ng-container>
-                <ng-template #genderView>
-                  <span
-                    [class.editable]="canEditField('gender')"
-                    [title]="canEditField('gender') ? 'Click to edit Gender' : 'Not permitted'"
-                    (click)="startEdit(student, 'gender')">
-                    {{ student.gender || 'N/A' }}
-                  </span>
-                </ng-template>
+                <span
+                  [class.editable]="canEditField('gender')"
+                  [title]="canEditField('gender') ? 'Click to edit Gender' : 'Not permitted'"
+                  role="button"
+                  tabindex="0"
+                  (click)="openEditModal(student, 'gender')"
+                  (keyup.enter)="openEditModal(student, 'gender')"
+                  (keyup.space)="openEditModal(student, 'gender')">
+                  {{ student.gender || 'N/A' }}
+                </span>
               </td>
               <td>
-                <ng-container *ngIf="isEditing(student.id, 'studentType') && canEditField('studentType'); else typeView">
-                  <select
-                    class="form-control"
-                    [(ngModel)]="tempValue"
-                    [ngModelOptions]="{standalone: true}"
-                    (change)="saveEdit(student, 'studentType')"
-                    (keydown.enter)="saveEdit(student, 'studentType')"
-                    (keydown.escape)="cancelEdit()"
-                    autofocus>
-                    <option value="Day Scholar">Day Scholar</option>
-                    <option value="Boarder">Boarder</option>
-                  </select>
-                </ng-container>
-                <ng-template #typeView>
-                  <span
-                    class="badge"
-                    [class.badge-day]="student.studentType === 'Day Scholar'" 
-                    [class.badge-boarder]="student.studentType === 'Boarder'"
-                    [class.editable]="canEditField('studentType')"
-                    [title]="canEditField('studentType') ? 'Click to edit Type' : 'Not permitted'"
-                    (click)="startEdit(student, 'studentType')">
-                    {{ student.studentType || 'Day Scholar' }}
-                  </span>
-                </ng-template>
+                <span
+                  class="badge"
+                  [class.badge-day]="student.studentType === 'Day Scholar'" 
+                  [class.badge-boarder]="student.studentType === 'Boarder'"
+                  [class.editable]="canEditField('studentType')"
+                  [title]="canEditField('studentType') ? 'Click to edit Type' : 'Not permitted'"
+                  role="button"
+                  tabindex="0"
+                  (click)="openEditModal(student, 'studentType')"
+                  (keyup.enter)="openEditModal(student, 'studentType')"
+                  (keyup.space)="openEditModal(student, 'studentType')">
+                  {{ student.studentType || 'Day Scholar' }}
+                </span>
               </td>
               <td>
                 <a 
@@ -297,6 +265,51 @@
         </tbody>
       </table>
       <table class="students-table actions-overlay" *ngIf="false"></table>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="showEditModal"></div>
+  <div class="modal" *ngIf="showEditModal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h3 *ngIf="editModalField === 'dob'">Edit Date of Birth</h3>
+      <h3 *ngIf="editModalField === 'gender'">Edit Gender</h3>
+      <h3 *ngIf="editModalField === 'studentType'">Edit Type</h3>
+    </div>
+    <div class="modal-body">
+      <div *ngIf="editModalField === 'dob'">
+        <label>Date of Birth</label>
+        <input type="date" class="form-control" [(ngModel)]="editModalValue" [ngModelOptions]="{standalone: true}">
+      </div>
+      <div *ngIf="editModalField === 'gender'">
+        <label>Gender</label>
+        <select class="form-control" [(ngModel)]="editModalValue" [ngModelOptions]="{standalone: true}">
+          <option value="">-- Select --</option>
+          <option value="Female">Female</option>
+          <option value="Male">Male</option>
+        </select>
+      </div>
+      <div *ngIf="editModalField === 'studentType'">
+        <label>Type</label>
+        <select class="form-control" [(ngModel)]="editModalValue" [ngModelOptions]="{standalone: true}">
+          <option value="Day Scholar">Day Scholar</option>
+          <option value="Boarder">Boarder</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button 
+        class="btn btn-secondary"
+        type="button"
+        (click)="cancelEditModal()"
+        [disabled]="savingEdit">
+        Cancel
+      </button>
+      <button 
+        class="btn btn-primary"
+        (click)="saveEditModal()"
+        [disabled]="savingEdit">
+        {{ savingEdit ? 'Saving...' : 'Save' }}
+      </button>
     </div>
   </div>
 

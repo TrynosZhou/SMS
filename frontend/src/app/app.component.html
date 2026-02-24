@@ -209,6 +209,10 @@
             <span class="sidebar-icon">📢</span>
             <span class="sidebar-text">Publish Results</span>
           </a>
+          <a routerLink="/recompute_grade" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">♻️</span>
+            <span class="sidebar-text">Recompute Grades</span>
+          </a>
         </div>
       </div>
 

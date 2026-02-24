@@ -14,6 +14,7 @@ import { ReportCardComponent } from './components/exams/report-card/report-card.
 import { RankingsComponent } from './components/exams/rankings/rankings.component';
 import { MarkSheetComponent } from './components/exams/mark-sheet/mark-sheet.component';
 import { PublishResultsComponent } from './components/exams/publish-results/publish-results.component';
+import { RecomputeGradesComponent } from './components/exams/recompute-grades/recompute-grades.component';
 import { InvoiceListComponent } from './components/finance/invoice-list/invoice-list.component';
 import { InvoiceFormComponent } from './components/finance/invoice-form/invoice-form.component';
 import { InvoiceStatementsComponent } from './components/finance/invoice-statements/invoice-statements.component';
@@ -106,6 +107,7 @@ const routes: Routes = [
   { path: 'rankings', component: RankingsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
   { path: 'check_mark_progess', component: MarksProgressComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
   { path: 'publish-results', component: PublishResultsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
+  { path: 'recompute_grade', component: RecomputeGradesComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
   { path: 'invoices', component: InvoiceListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'invoices/new', component: InvoiceFormComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'invoices/statements', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },

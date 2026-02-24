@@ -444,6 +444,19 @@
   transform: translateY(-1px);
 }
 
+.editable {
+  color: #1f6feb;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.editable:hover {
+  color: #0b4ea2;
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
 .inline-enroll {
   display: flex;
   gap: 8px;

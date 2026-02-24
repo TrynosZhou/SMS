@@ -47,6 +47,9 @@ router.post('/report-card/remarks', authenticate, authorize(UserRole.SUPERADMIN,
 router.get('/mark-sheet', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), generateMarkSheet);
 router.get('/mark-sheet/pdf', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), generateMarkSheetPDF);
 router.get('/marks-progress', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER), getMarksEntryProgress);
+// Recompute grades across all classes using current settings (admin/superadmin only)
+import { recomputeGrades } from '../controllers/exam.controller';
+router.post('/recompute-grades', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN), recomputeGrades);
 router.delete('/all', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), deleteAllExams);
 // This route must be last to avoid conflicts with specific routes above
 router.get('/:id', authenticate, getExamById);

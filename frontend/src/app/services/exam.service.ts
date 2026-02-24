@@ -155,6 +155,11 @@ export class ExamService {
     return this.http.get(`${this.apiUrl}/exams/report-card/pdf`, { params, responseType: 'blob' });
   }
 
+  recomputeGrades(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/exams/recompute-grades`, {});
+  }
+
+
   saveReportCardRemarks(
     studentId: string,
     classId: string,

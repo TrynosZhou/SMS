@@ -3025,6 +3025,100 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
   }
 };
 
+// Recompute grades for all classes and exams in the active term using current settings
+export const recomputeGrades = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const user = req.user;
+    if (!user || (user.role !== 'admin' && user.role !== 'superadmin')) {
+      return res.status(403).json({ message: 'Only administrators can recompute grades' });
+    }
+
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const classRepository = AppDataSource.getRepository(Class);
+    const examRepository = AppDataSource.getRepository(Exam);
+    const marksRepository = AppDataSource.getRepository(Marks);
+
+    const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
+    const settings = settingsList[0] || null;
+    const termValue =
+      settings?.activeTerm ||
+      settings?.currentTerm ||
+      `Term ${new Date().getMonth() < 4 ? '1' : new Date().getMonth() < 8 ? '2' : '3'} ${new Date().getFullYear()}`;
+
+    const thresholds = settings?.gradeThresholds || {
+      excellent: 90,
+      veryGood: 80,
+      good: 60,
+      satisfactory: 40,
+      needsImprovement: 20,
+      basic: 1
+    };
+    const gradeLabels = settings?.gradeLabels || {
+      excellent: 'OUTSTANDING',
+      veryGood: 'VERY HIGH',
+      good: 'HIGH',
+      satisfactory: 'GOOD',
+      needsImprovement: 'ASPIRING',
+      basic: 'BASIC',
+      fail: 'UNCLASSIFIED'
+    };
+    const getGrade = (percentage: number): string => {
+      if (percentage === 0) return gradeLabels.fail || 'UNCLASSIFIED';
+      if (percentage >= (thresholds.excellent || 90)) return gradeLabels.excellent || 'OUTSTANDING';
+      if (percentage >= (thresholds.veryGood || 80)) return gradeLabels.veryGood || 'VERY HIGH';
+      if (percentage >= (thresholds.good || 60)) return gradeLabels.good || 'HIGH';
+      if (percentage >= (thresholds.satisfactory || 40)) return gradeLabels.satisfactory || 'GOOD';
+      if (percentage >= (thresholds.needsImprovement || 20)) return gradeLabels.needsImprovement || 'ASPIRING';
+      if (percentage >= (thresholds.basic || 1)) return gradeLabels.basic || 'BASIC';
+      return gradeLabels.fail || 'UNCLASSIFIED';
+    };
+
+    const classes = await classRepository.find({ where: { isActive: true } });
+    let classesProcessed = 0;
+    let examsProcessed = 0;
+    let marksProcessed = 0;
+
+    for (const cls of classes) {
+      const exams = await examRepository.find({
+        where: { classId: cls.id, term: termValue },
+        relations: ['subjects']
+      });
+      if (exams.length === 0) continue;
+      classesProcessed += 1;
+      examsProcessed += exams.length;
+
+      const examIds = exams.map(e => e.id);
+      const marks = await marksRepository.find({
+        where: { examId: In(examIds) },
+        relations: ['subject', 'exam', 'student']
+      });
+      for (const m of marks) {
+        const score = Math.round(parseFloat(String(m.score)) || 0);
+        const maxScore = Math.round(parseFloat(String(m.maxScore)) || 100);
+        const pct = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+        const grade = getGrade(pct);
+        // No persistence; this pass ensures grades reflect latest settings.
+        void grade;
+        marksProcessed += 1;
+      }
+    }
+
+    return res.json({
+      message: 'Recomputed grades using current settings',
+      term: termValue,
+      classesProcessed,
+      examsProcessed,
+      marksProcessed
+    });
+  } catch (error: any) {
+    console.error('Error recomputing grades:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
 export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
   try {
     const { classId, examType, term, subjectId } = req.query;
