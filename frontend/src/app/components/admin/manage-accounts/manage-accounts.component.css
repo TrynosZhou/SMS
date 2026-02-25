@@ -638,6 +638,12 @@
   border-bottom: none;
 }
 
+/* Center the Actions column header and cells */
+.teachers-table th:nth-child(5),
+.teachers-table td:nth-child(5) {
+  text-align: center;
+}
+
 .employee-number {
   display: flex;
   align-items: center;
@@ -689,6 +695,7 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  justify-content: flex-start;
 }
 
 .btn {
@@ -1134,11 +1141,12 @@
   }
 
   .action-buttons {
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: center; /* center button group on small screens */
   }
 
   .btn {
-    width: 100%;
+    width: auto;
     justify-content: center;
   }
 
