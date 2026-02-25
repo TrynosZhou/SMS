@@ -19,6 +19,7 @@ import { calculateAge } from '../utils/ageUtils';
 import { StudentTransfer, StudentTransferStatus, TransferType } from '../entities/StudentTransfer';
 import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
 import { validatePhoneNumber } from '../utils/phoneValidator';
+import { PaymentLog } from '../entities/PaymentLog';
 
 export const registerStudent = async (req: AuthRequest, res: Response) => {
   try {
@@ -1235,6 +1236,7 @@ export const deleteStudent = async (req: AuthRequest, res: Response) => {
     const remarksRepository = AppDataSource.getRepository(ReportCardRemarks);
     const userRepository = AppDataSource.getRepository(User);
     const transferRepository = AppDataSource.getRepository(StudentTransfer);
+    const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
 
     const student = await studentRepository.findOne({
       where: { id },
@@ -1274,6 +1276,26 @@ export const deleteStudent = async (req: AuthRequest, res: Response) => {
     });
     
     if (invoices.length > 0) {
+      // Delete payment logs first to satisfy FK constraints (prod DB has strict FKs)
+      const invoiceIds = invoices.map(inv => inv.id);
+      if (invoiceIds.length > 0) {
+        console.log(`Deleting payment logs for ${invoiceIds.length} invoice(s) and student ${id}`);
+        await paymentLogRepository
+          .createQueryBuilder()
+          .delete()
+          .from(PaymentLog)
+          .where('studentId = :studentId', { studentId: id })
+          .orWhere('invoiceId IN (:...invoiceIds)', { invoiceIds })
+          .execute();
+      } else {
+        // Fallback: delete by studentId only
+        await paymentLogRepository
+          .createQueryBuilder()
+          .delete()
+          .from(PaymentLog)
+          .where('studentId = :studentId', { studentId: id })
+          .execute();
+      }
       console.log(`Deleting ${invoices.length} invoices associated with student`);
       await invoiceRepository.remove(invoices);
     }
