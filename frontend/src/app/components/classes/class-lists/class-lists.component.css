@@ -108,6 +108,25 @@
   gap: 12px;
 }
 
+.header-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: nowrap;
+}
+.header-title-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.header-title-right {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2d3748;
+  white-space: nowrap;
+}
+
 .section-icon {
   font-size: 28px;
 }
@@ -203,9 +222,48 @@
 
 /* Students Table */
 .students-table-container {
-  overflow: auto;
+  overflow: visible;
   margin-top: 20px;
-  max-height: 70vh;
+}
+
+/* PDF-only visibility control */
+.pdf-only {
+  display: none;
+}
+.pdf-mode .pdf-only {
+  display: block;
+}
+
+/* Hide items in PDF capture only */
+.hide-in-pdf {
+  /* visible by default on screen */
+}
+.pdf-mode .hide-in-pdf {
+  display: none !important;
+}
+
+/* Reduce PDF header width and typography by ~20% during capture */
+.pdf-mode .school-header {
+  width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 12px;
+}
+.pdf-mode .school-logo {
+  max-height: 56px; /* 70px -> 56px (20% reduction) */
+  max-width: 112px; /* 140px -> 112px */
+}
+.pdf-mode .school-header h3 {
+  font-size: 18px; /* ~20% smaller than 22px */
+}
+.pdf-mode .school-motto {
+  font-size: 12px; /* 14px -> ~11.2px, rounded to 12px */
+}
+.pdf-mode .school-address {
+  font-size: 12px; /* 14px -> ~11.2px, rounded */
+}
+.pdf-mode .school-contact {
+  font-size: 11px; /* 13px -> ~10.4px, rounded */
 }
 
 .school-header {
@@ -332,12 +390,15 @@
   font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .sortable {
   cursor: pointer;
   user-select: none;
   position: relative;
+  white-space: nowrap;
 }
 
 .sort-indicator {
@@ -607,11 +668,11 @@
   }
 
   .students-table-container {
-    overflow-x: scroll;
+    overflow-x: visible;
   }
 
   .students-table {
-    min-width: 600px;
+    min-width: 0;
   }
 }
 

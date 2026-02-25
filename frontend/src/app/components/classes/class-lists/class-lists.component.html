@@ -80,9 +80,14 @@
 
   <div class="card students-card" *ngIf="filteredStudents.length > 0">
     <div class="card-header">
-      <h2>
-        <span class="section-icon">👥</span>
-        Students in {{ getSelectedClassName() }} - {{ selectedTerm }}
+      <h2 class="header-title">
+        <span class="header-title-left">
+          <span class="section-icon">👥</span>
+          Students in {{ getSelectedClassName() }} - {{ selectedTerm }}
+        </span>
+        <span class="header-title-right" *ngIf="classTeacherFullName">
+          Class Teacher: {{ classTeacherFullName }}
+        </span>
       </h2>
       <p class="section-description">Total: {{ filteredStudents.length }} student(s)</p>
       <div class="header-actions">
@@ -104,7 +109,7 @@
     </div>
 
     <div class="students-table-container" id="class-list-pdf">
-      <div *ngIf="schoolName || schoolAddress || schoolLogo || schoolLogo2 || schoolMotto || schoolPhone || schoolEmail" class="school-header">
+      <div *ngIf="schoolName || schoolAddress || schoolLogo || schoolLogo2 || schoolMotto || schoolPhone || schoolEmail" class="school-header pdf-only">
         <div class="school-logo-wrapper school-logo-left" *ngIf="schoolLogo">
           <img [src]="schoolLogo" alt="School Logo" class="school-logo">
         </div>
@@ -149,29 +154,26 @@
         <thead>
           <tr>
             <th (click)="changeSort('studentNumber')" class="sortable">
-              Student ID
+              STUD ID
               <span class="sort-indicator" [class.asc]="getSortDirection('studentNumber') === 'asc'" [class.desc]="getSortDirection('studentNumber') === 'desc'"></span>
             </th>
             <th (click)="changeSort('lastName')" class="sortable">
-              Last Name
+              L.NAME
               <span class="sort-indicator" [class.asc]="getSortDirection('lastName') === 'asc'" [class.desc]="getSortDirection('lastName') === 'desc'"></span>
             </th>
             <th (click)="changeSort('firstName')" class="sortable">
-              First Name
+              F.NAME
               <span class="sort-indicator" [class.asc]="getSortDirection('firstName') === 'asc'" [class.desc]="getSortDirection('firstName') === 'desc'"></span>
             </th>
             <th>DOB</th>
-            <th>Gender</th>
-            <th>Type</th>
-            <th>Class</th>
-            <th *ngIf="isAdmin">Action</th>
+            <th>GENDER</th>
+            <th>TYPE</th>
+            <th>CLASS</th>
+            <th *ngIf="isAdmin" class="hide-in-pdf">Action</th>
           </tr>
         </thead>
         <tbody>
           <ng-container *ngFor="let group of studentsGroupedByGender">
-            <tr class="group-header-row">
-              <td [attr.colspan]="isAdmin ? 8 : 7" class="group-header-cell">{{ group.gender }}</td>
-            </tr>
             <tr *ngFor="let student of group.students">
               <td>
                 <span 
@@ -258,7 +260,7 @@
                   <ng-template #noClass2>N/A</ng-template>
                 </span>
               </td>
-              <td *ngIf="isAdmin">
+              <td *ngIf="isAdmin" class="hide-in-pdf">
                 <button
                   class="btn btn-primary"
                   title="Delete student"

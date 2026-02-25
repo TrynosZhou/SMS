@@ -59,6 +59,7 @@ export class ClassListsComponent implements OnInit {
   editModalStudent: any | null = null;
   editModalValue: any = null;
   savingEdit = false;
+  classTeacherFullName: string = '';
 
   constructor(
     private studentService: StudentService,
@@ -276,6 +277,7 @@ export class ClassListsComponent implements OnInit {
     if (this.loadingStudents) {
       return;
     }
+    this.loadClassTeacherName();
     if (
       this.lastLoadedClassId === this.selectedClassId &&
       this.lastLoadedTerm === this.selectedTerm &&
@@ -664,6 +666,48 @@ export class ClassListsComponent implements OnInit {
     });
   }
 
+  private resolveClassTeacherNameFromClass(cls: any): string {
+    if (!cls) return '';
+    if (cls.classTeacher && (cls.classTeacher.firstName || cls.classTeacher.lastName)) {
+      const fn = (cls.classTeacher.firstName || '').toString().trim();
+      const ln = (cls.classTeacher.lastName || '').toString().trim();
+      return [fn, ln].filter(Boolean).join(' ').trim();
+    }
+    if (cls.teacher && (cls.teacher.firstName || cls.teacher.lastName)) {
+      const fn = (cls.teacher.firstName || '').toString().trim();
+      const ln = (cls.teacher.lastName || '').toString().trim();
+      return [fn, ln].filter(Boolean).join(' ').trim();
+    }
+    const teachers = Array.isArray(cls.teachers) ? cls.teachers : [];
+    if (teachers.length > 0) {
+      const t = teachers[0] || {};
+      const fn = (t.firstName || '').toString().trim();
+      const ln = (t.lastName || '').toString().trim();
+      return [fn, ln].filter(Boolean).join(' ').trim();
+    }
+    return '';
+    }
+
+  loadClassTeacherName() {
+    this.classTeacherFullName = '';
+    const selected = this.classes.find(c => c.id === this.selectedClassId);
+    const fromList = this.resolveClassTeacherNameFromClass(selected);
+    if (fromList) {
+      this.classTeacherFullName = fromList;
+      return;
+    }
+    if (this.selectedClassId) {
+      this.classService.getClassById(this.selectedClassId).subscribe({
+        next: (cls: any) => {
+          this.classTeacherFullName = this.resolveClassTeacherNameFromClass(cls);
+        },
+        error: () => {
+          this.classTeacherFullName = '';
+        }
+      });
+    }
+  }
+
   async previewPdf() {
     const element = document.getElementById('class-list-pdf');
     if (!element) {
@@ -673,6 +717,8 @@ export class ClassListsComponent implements OnInit {
     this.loadingPdf = true;
     this.error = '';
     try {
+      element.classList.add('pdf-mode');
+      await new Promise(resolve => setTimeout(resolve, 50));
       const canvas = await html2canvas(element, { scale: 2 });
       const imgData = canvas.toDataURL('image/png');
       const imgWidth = 210;
@@ -696,6 +742,7 @@ export class ClassListsComponent implements OnInit {
     } catch (error: any) {
       this.error = error?.message || 'Failed to generate PDF preview.';
     } finally {
+      element.classList.remove('pdf-mode');
       this.loadingPdf = false;
     }
   }
@@ -709,6 +756,8 @@ export class ClassListsComponent implements OnInit {
     this.downloadingPdf = true;
     this.error = '';
     try {
+      element.classList.add('pdf-mode');
+      await new Promise(resolve => setTimeout(resolve, 50));
       const canvas = await html2canvas(element, { scale: 2 });
       const imgData = canvas.toDataURL('image/png');
       const imgWidth = 210;
@@ -732,6 +781,7 @@ export class ClassListsComponent implements OnInit {
     } catch (error: any) {
       this.error = error?.message || 'Failed to download PDF.';
     } finally {
+      element.classList.remove('pdf-mode');
       this.downloadingPdf = false;
     }
   }
