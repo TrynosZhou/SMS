@@ -692,10 +692,13 @@
 
 /* Action Buttons */
 .action-buttons {
-  display: flex;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-start;
+  flex-wrap: nowrap;
+  width: 100%;
 }
 
 .btn {
@@ -1142,7 +1145,8 @@
 
   .action-buttons {
     flex-direction: row;
-    justify-content: center; /* center button group on small screens */
+    justify-content: center;
+    width: 100%;
   }
 
   .btn {
