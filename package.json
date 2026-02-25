@@ -5,7 +5,9 @@
   "scripts": {
     "install-backend": "npm install --prefix backend",
     "build": "npm run build --prefix backend",
-    "start": "npm start --prefix backend"
+    "start": "npm start --prefix backend",
+    "generate:parent-manual": "node tools/generate-parent-manual.js",
+    "screenshots:parent": "node tools/capture-parent-screenshots.js"
   },
   "dependencies": {
     "@angular/common": "^7.2.16",
@@ -15,5 +17,10 @@
     "rxjs": "^6.6.7",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "docx": "^8.5.0",
+    "pdf-lib": "^1.17.1",
+    "puppeteer": "^22.13.1"
   }
 }

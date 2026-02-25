@@ -232,6 +232,21 @@ export function createInvoicePDF(
         renderTableRow('School Uniform Subtotal', uniformTotal, { fill: '#FFE8CC', textColor: '#C05621' });
       }
 
+      // --- Narration Breakdown (explicit b/d, tuition, c/d) ---
+      const prevTermLabel = (() => {
+        const t = String(invoice.term || '').toLowerCase();
+        if (t.includes('term 2')) return 'Term 1';
+        if (t.includes('term 3')) return 'Term 2';
+        if (t.includes('term 1')) return 'Previous Term';
+        return 'Previous Term';
+      })();
+      // Balance b/d - always show (can be zero)
+      renderTableRow(`Balance b/d (Unpaid Invoice for ${prevTermLabel})`, previousBalance, { fill: '#FFFFFF' });
+      // Tuition for current term - base amount is invoice - uniform
+      renderTableRow(`Tuition ${invoice.term || ''}`.trim(), baseAmount, { fill: '#FFFFFF' });
+      // Balance c/d - total for current term (previous + grand total)
+      renderTableRow(`Balance c/d (Total invoice for ${invoice.term || ''})`.trim(), previousBalance + invoiceAmount, { fill: '#F8FAFC' });
+
       const discountLine = descriptionText.split('\n').find(l => l.toLowerCase().startsWith('discount applied'));
       const noteLines = descriptionText
         .split('|')

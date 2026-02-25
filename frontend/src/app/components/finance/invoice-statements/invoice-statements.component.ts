@@ -454,5 +454,29 @@ export class InvoiceStatementsComponent implements OnInit {
     const byteArray = new Uint8Array(byteNumbers);
     return new Blob([byteArray], { type: mimeType });
   }
+
+  // ===== Narration Breakdown Helpers =====
+  getTuitionAmount(inv: any): number {
+    if (!inv) return 0;
+    const amount = Number(inv.amount || 0);
+    const uniform = Number(inv.uniformTotal || 0);
+    const tuition = amount - uniform;
+    return tuition < 0 ? 0 : tuition;
+  }
+
+  getClosingTotal(inv: any): number {
+    if (!inv) return 0;
+    const prev = Number(inv.previousBalance || 0);
+    const grand = Number(inv.amount || 0); // include uniforms in grand total
+    return prev + grand;
+  }
+
+  getPreviousTermLabel(term: string | null | undefined): string {
+    const t = (term || '').toString().toLowerCase();
+    if (t.includes('term 2')) return 'Term 1';
+    if (t.includes('term 3')) return 'Term 2';
+    if (t.includes('term 1')) return 'Previous Term';
+    return 'Previous Term';
+  }
 }
 

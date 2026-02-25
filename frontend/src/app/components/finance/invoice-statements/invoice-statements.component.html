@@ -208,6 +208,39 @@
               <span class="summary-value prepaid">{{ currencySymbol }} {{ selectedInvoice.prepaidAmount | number:'1.2-2' }}</span>
             </div>
           </div>
+
+          <!-- Narration Breakdown -->
+          <div class="narration-card">
+            <div class="narration-title">Breakdown of Narrations</div>
+            <table class="narration-table">
+              <tbody>
+                <tr>
+                  <td>
+                    <span class="narration-label">
+                      Balance b/d (Unpaid Invoice for {{ getPreviousTermLabel(selectedInvoice.term) }})
+                    </span>
+                  </td>
+                  <td class="amount">{{ currencySymbol }} {{ (selectedInvoice.previousBalance || 0) | number:'1.2-2' }}</td>
+                </tr>
+                <tr>
+                  <td>
+                    <span class="narration-label">
+                      Tuition {{ selectedInvoice.term || '' }}
+                    </span>
+                  </td>
+                  <td class="amount">{{ currencySymbol }} {{ getTuitionAmount(selectedInvoice) | number:'1.2-2' }}</td>
+                </tr>
+                <tr class="narration-total">
+                  <td>
+                    <span class="narration-label">
+                      Balance c/d (Total invoice for {{ selectedInvoice.term || '' }})
+                    </span>
+                  </td>
+                  <td class="amount">{{ currencySymbol }} {{ getClosingTotal(selectedInvoice) | number:'1.2-2' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <!-- Payment Form -->
