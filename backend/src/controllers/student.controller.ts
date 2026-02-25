@@ -1234,6 +1234,7 @@ export const deleteStudent = async (req: AuthRequest, res: Response) => {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const remarksRepository = AppDataSource.getRepository(ReportCardRemarks);
     const userRepository = AppDataSource.getRepository(User);
+    const transferRepository = AppDataSource.getRepository(StudentTransfer);
 
     const student = await studentRepository.findOne({
       where: { id },
@@ -1275,6 +1276,15 @@ export const deleteStudent = async (req: AuthRequest, res: Response) => {
     if (invoices.length > 0) {
       console.log(`Deleting ${invoices.length} invoices associated with student`);
       await invoiceRepository.remove(invoices);
+    }
+
+    // Delete all transfer records associated with this student
+    const transfers = await transferRepository.find({
+      where: { studentId: id }
+    });
+    if (transfers.length > 0) {
+      console.log(`Deleting ${transfers.length} transfer records associated with student`);
+      await transferRepository.remove(transfers);
     }
 
     // Delete associated user account if it exists

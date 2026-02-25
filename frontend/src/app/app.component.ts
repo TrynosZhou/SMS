@@ -7,6 +7,7 @@ import { ThemeService } from './services/theme.service';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { AuditService } from './services/audit.service';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -130,7 +131,7 @@ export class AppComponent implements OnInit, OnDestroy {
   logout(): void {
     this.closeMobileMenu();
     // Try to inform backend to finalize session log; ignore errors
-    fetch(`${(window as any).environment?.apiUrl || ''}/auth/logout`, {
+    fetch(`${environment.apiUrl}/auth/logout`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Authorization': `Bearer ${this.authService.getToken() || ''}` }
