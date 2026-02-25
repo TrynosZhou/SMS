@@ -450,9 +450,29 @@ export class MarkSheetComponent implements OnInit {
     );
     this.statistics.highestScore = Math.max(...averages);
     this.statistics.lowestScore = Math.min(...averages);
-    this.statistics.passRate = total
-      ? Math.round((averages.filter((avg: number) => avg >= 50).length / total) * 100)
-      : 0;
+    // Core-subject pass rate: percentage of students with core average ≥ 70
+    const coreSubjectIds: string[] = (() => {
+      if (!this.markSheetData?.subjects) return [];
+      const ids: string[] = [];
+      this.markSheetData.subjects.forEach((s: any) => {
+        const name = String(s.name || '').toLowerCase();
+        if (name.includes('math') || name === 'mathematics' || name === 'science' || name === 'english') {
+          ids.push(s.id);
+        }
+      });
+      return ids;
+    })();
+    const studentsWithCore = marks.map((row: any) => {
+      const corePercentages: number[] = coreSubjectIds
+        .map(id => row.subjects?.[id]?.percentage)
+        .filter((p: any) => Number.isFinite(p));
+      if (corePercentages.length === 0) return { hasCore: false, coreAvg: 0 };
+      const coreAvg = corePercentages.reduce((a, b) => a + b, 0) / corePercentages.length;
+      return { hasCore: true, coreAvg };
+    });
+    const denominator = studentsWithCore.filter((s: { hasCore: boolean; coreAvg: number }) => s.hasCore).length;
+    const passedCore = studentsWithCore.filter((s: { hasCore: boolean; coreAvg: number }) => s.hasCore && s.coreAvg >= 70).length;
+    this.statistics.passRate = denominator ? Math.round((passedCore / denominator) * 100) : 0;
 
     // Distribution bands
     const highCount = averages.filter((avg: number) => avg >= 70).length;

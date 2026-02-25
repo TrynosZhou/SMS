@@ -1866,15 +1866,21 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         errorMessage += errorDetails.join('. ');
         errorMessage += '. Please ensure all subjects have exams created and all students have marks entered before generating report cards.';
         
-        console.log('[Validation] Validation failed:', errorMessage);
-        return res.status(400).json({
-          message: errorMessage,
-          subjectsWithoutExams,
-          subjectsWithMissingMarks,
-          totalSubjects: allClassSubjects.length,
-          subjectsWithExams: allClassSubjects.length - subjectsWithoutExams.length,
-          subjectsComplete: allClassSubjects.length - subjectsWithoutExams.length - subjectsWithMissingMarks.length
-        });
+        console.log('[Validation] Validation issue detected:', errorMessage);
+        // Allow teachers and administrators to proceed despite missing marks/exams,
+        // but block parents and students with a clear message.
+        if (isParent || isStudent) {
+          return res.status(400).json({
+            message: errorMessage,
+            subjectsWithoutExams,
+            subjectsWithMissingMarks,
+            totalSubjects: allClassSubjects.length,
+            subjectsWithExams: allClassSubjects.length - subjectsWithoutExams.length,
+            subjectsComplete: allClassSubjects.length - subjectsWithoutExams.length - subjectsWithMissingMarks.length
+          });
+        }
+        // For teachers/admins, proceed but include warnings in logs
+        console.warn('[Validation] Proceeding with report card generation for staff despite missing data.');
       }
       
       console.log('[Validation] All subjects have exams and all students have marks. Proceeding with report card generation.');
