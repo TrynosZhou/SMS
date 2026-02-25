@@ -312,7 +312,7 @@
         type="submit" 
         class="btn btn-primary submit-btn modern-btn-primary" 
         (click)="submitAttendance()"
-        [disabled]="submitting || !hasUnsavedChanges">
+        [disabled]="submitting || !hasUnsavedChanges || isWeekendSelected()">
         <span *ngIf="!submitting">💾 Save Attendance</span>
         <span *ngIf="submitting" class="loading-spinner">⏳ Saving...</span>
       </button>

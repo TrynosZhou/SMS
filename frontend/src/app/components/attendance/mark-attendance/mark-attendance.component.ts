@@ -188,6 +188,12 @@ export class MarkAttendanceComponent implements OnInit {
 
   onDateChange() {
     if (this.selectedClassId && this.selectedDate) {
+      // Show warning and avoid loading when weekend? We still load for viewing, but block submission.
+      if (this.isWeekendSelected()) {
+        this.error = 'You cannot mark attendance on weekends (Saturday or Sunday).';
+      } else {
+        this.error = '';
+      }
       this.loadExistingAttendance();
     }
   }
@@ -232,6 +238,11 @@ export class MarkAttendanceComponent implements OnInit {
       return;
     }
 
+    if (this.isWeekendSelected()) {
+      this.error = 'You cannot mark attendance on weekends (Saturday or Sunday).';
+      return;
+    }
+
     if (this.attendanceData.length === 0) {
       this.error = 'No students to mark attendance for';
       return;
@@ -247,7 +258,10 @@ export class MarkAttendanceComponent implements OnInit {
       this.attendanceData
     ).subscribe({
       next: (response: any) => {
-        this.success = 'Attendance saved successfully.';
+        const count = typeof response?.count === 'number' ? response.count : this.attendanceData.length;
+        const msg = response?.message;
+        const dateText = this.getFormattedDate();
+        this.success = msg || `Attendance saved for ${dateText}. Records saved: ${count}.`;
         this.submitting = false;
         this.hasUnsavedChanges = false;
         this.lastSavedDate = new Date();
@@ -259,6 +273,13 @@ export class MarkAttendanceComponent implements OnInit {
         setTimeout(() => this.error = '', 5000);
       }
     });
+  }
+
+  isWeekendSelected(): boolean {
+    if (!this.selectedDate) return false;
+    const d = new Date(this.selectedDate + 'T00:00:00');
+    const day = d.getUTCDay();
+    return day === 0 || day === 6;
   }
 
   // Statistics

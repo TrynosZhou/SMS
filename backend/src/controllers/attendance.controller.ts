@@ -42,6 +42,11 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
     const currentTerm = settings?.activeTerm || settings?.currentTerm || null;
 
     const attendanceDate = new Date(date);
+    // Prevent weekend attendance marking (Saturday=6, Sunday=0)
+    const dayOfWeek = attendanceDate.getUTCDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      return res.status(400).json({ message: 'Attendance cannot be marked on weekends (Saturday and Sunday).' });
+    }
     const results = [];
 
     // Delete existing attendance records for this class and date
