@@ -474,20 +474,14 @@ export class MarkSheetComponent implements OnInit {
     const passedCore = studentsWithCore.filter((s: { hasCore: boolean; coreAvg: number }) => s.hasCore && s.coreAvg >= 70).length;
     this.statistics.passRate = denominator ? Math.round((passedCore / denominator) * 100) : 0;
 
-    // Distribution bands
+    // Distribution
     const highCount = averages.filter((avg: number) => avg >= 70).length;
-    const lowCount = averages.filter((avg: number) => avg < 50).length;
-    const midCount = averages.filter((avg: number) => avg >= 50 && avg < 70).length;
+    // Core-below-70 percentage replaces previous "< 50%" card
+    const below70Core = studentsWithCore.filter((s: { hasCore: boolean; coreAvg: number }) => s.hasCore && s.coreAvg < 70).length;
 
-    this.statistics.highAchieversPercent = total
-      ? Math.round((highCount / total) * 100)
-      : 0;
-    this.statistics.midRangePercent = total
-      ? Math.round((midCount / total) * 100)
-      : 0;
-    this.statistics.lowPerformersPercent = total
-      ? Math.round((lowCount / total) * 100)
-      : 0;
+    this.statistics.highAchieversPercent = total ? Math.round((highCount / total) * 100) : 0;
+    this.statistics.midRangePercent = 0; // deprecated in UI
+    this.statistics.lowPerformersPercent = denominator ? Math.round((below70Core / denominator) * 100) : 0;
     this.statistics.topPerformers = marks
       .sort((a: any, b: any) => b.average - a.average)
       .slice(0, 3)
