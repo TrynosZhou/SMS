@@ -127,8 +127,8 @@
             </span>
           </td>
           <td>
-            <button class="btn btn-secondary" *ngIf="mode==='invoices' && tx.id" (click)="viewInvoicePDF(tx.id)">Invoice</button>
-            <button class="btn btn-secondary" *ngIf="tx.id" (click)="viewReceiptPDF(tx.id)">Receipt</button>
+            <button class="btn btn-receipt" *ngIf="mode==='invoices' && tx.id" (click)="viewInvoicePDF(tx.id)" style="margin-bottom: 5px;">Invoice</button>
+            <button class="btn btn-receipt" *ngIf="tx.id" (click)="viewReceiptPDF(tx.id)">Receipt</button>
           </td>
         </tr>
         <tr *ngIf="paged.length === 0">

@@ -1,0 +1,212 @@
+<div class="news-list-container">
+  <!-- Alert Messages -->
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>
+      <span class="header-icon">📰</span>
+      News Management
+    </h1>
+    <div class="header-actions">
+      <button class="btn btn-primary" routerLink="/news/create">
+        <span>➕</span>
+        Create News
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">📊</div>
+      <div class="stat-content">
+        <div class="stat-number">{{ totalItems }}</div>
+        <div class="stat-label">Total Articles</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📌</div>
+      <div class="stat-content">
+        <div class="stat-number">{{ pinnedCount }}</div>
+        <div class="stat-label">Pinned</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div class="stat-content">
+        <div class="stat-number">{{ publishedCount }}</div>
+        <div class="stat-label">Published</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">👁️</div>
+      <div class="stat-content">
+        <div class="stat-number">{{ totalViews }}</div>
+        <div class="stat-label">Total Views</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section">
+    <div class="filters-row">
+      <div class="filter-group">
+        <input 
+          type="text" 
+          class="form-control" 
+          placeholder="Search news..."
+          [(ngModel)]="searchQuery"
+          (input)="onSearchChange()">
+      </div>
+      <div class="filter-group">
+        <select class="form-control" [(ngModel)]="selectedCategory" (change)="onFilterChange()">
+          <option value="">All Categories</option>
+          <option *ngFor="let category of categories" [value]="category">
+            {{ getCategoryLabel(category) }}
+          </option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <select class="form-control" [(ngModel)]="selectedStatus" (change)="onFilterChange()">
+          <option value="">All Status</option>
+          <option *ngFor="let status of statuses" [value]="status">
+            {{ getStatusLabel(status) }}
+          </option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <select class="form-control" [(ngModel)]="selectedSortBy" (change)="onSortChange()">
+          <option *ngFor="let option of sortOptions" [value]="option.value">
+            {{ option.label }}
+          </option>
+        </select>
+      </div>
+    </div>
+    <div class="filters-actions">
+      <label class="checkbox-item">
+        <input type="checkbox" [(ngModel)]="showPinnedOnly" (change)="onFilterChange()">
+        <span class="checkmark"></span>
+        Show Pinned Only
+      </label>
+      <button class="btn btn-secondary" (click)="resetFilters()" *ngIf="hasActiveFilters()">
+        Reset Filters
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading news articles...</p>
+  </div>
+
+  <!-- News List -->
+  <div class="news-list" *ngIf="!loading">
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="news.length === 0">
+      <div class="empty-icon">📰</div>
+      <h3>No news articles found</h3>
+      <p>Get started by creating your first news article.</p>
+      <button class="btn btn-primary" routerLink="/news/create">
+        Create News Article
+      </button>
+    </div>
+
+    <!-- News Items -->
+    <div class="news-items" *ngIf="news.length > 0">
+      <div 
+        *ngFor="let article of news; trackBy: trackByNewsId" 
+        class="news-item"
+        [class.pinned]="article.isPinned">
+        <div class="news-content">
+          <div class="news-header">
+            <div class="news-meta">
+              <span class="category-badge" [style.background-color]="getCategoryColor(article.category)">
+                {{ getCategoryLabel(article.category) }}
+              </span>
+              <span class="status-badge" [style.background-color]="getStatusColor(article.status)">
+                {{ getStatusLabel(article.status) }}
+              </span>
+              <span class="pin-indicator" *ngIf="article.isPinned">📌</span>
+            </div>
+            <h3 class="news-title">{{ article.title }}</h3>
+          </div>
+          <div class="news-summary">
+            <p>{{ article.summary || (article.content | slice:0:150) + '...' }}</p>
+          </div>
+          <div class="news-footer">
+            <div class="news-info">
+              <span class="author">👤 {{ article.author.firstName }} {{ article.author.lastName }}</span>
+              <span class="date">📅 {{ formatDate(article.publishedAt || article.createdAt) }}</span>
+              <span class="views">👁️ {{ formatViewCount(article.viewCount) }}</span>
+            </div>
+            <div class="news-actions" *ngIf="canManageNews()">
+              <button class="btn btn-sm btn-secondary" routerLink="/news/{{ article.id }}">
+                View
+              </button>
+              <button class="btn btn-sm btn-primary" routerLink="/news/edit/{{ article.id }}">
+                Edit
+              </button>
+              <button class="btn btn-sm btn-danger" (click)="confirmDelete(article)">
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination" *ngIf="!loading && totalPages > 1">
+    <div class="pagination-info">
+      Showing page {{ currentPage }} of {{ totalPages }} ({{ totalItems }} articles)
+    </div>
+    <div class="pagination-controls">
+      <button 
+        class="btn btn-secondary" 
+        (click)="onPageChange(getPrevPage())"
+        [disabled]="isFirstPage()">
+        ◀ Previous
+      </button>
+      <span class="page-numbers">
+        <span 
+          *ngFor="let page of getPageNumbers()" 
+          class="page-number"
+          [class.active]="page === currentPage"
+          (click)="onPageChange(page)">
+          {{ page }}
+        </span>
+      </span>
+      <button 
+        class="btn btn-secondary" 
+        (click)="onPageChange(getNextPage())"
+        [disabled]="isLastPage()">
+        Next ▶
+      </button>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-overlay" *ngIf="showDeleteModal" (click)="cancelDelete()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Confirm Delete</h3>
+        <button class="modal-close" (click)="cancelDelete()">×</button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete this news article?</p>
+        <div class="delete-preview">
+          <strong>{{ getNewsTitle() }}</strong>
+          <p>{{ getNewsSummary() }}...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="cancelDelete()">Cancel</button>
+        <button class="btn btn-danger" (click)="deleteNews()">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>

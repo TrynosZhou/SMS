@@ -64,6 +64,10 @@ import { EnrollStudentComponent } from './components/students/enroll-student/enr
 import { AllocateClassesComponent } from './components/teachers/allocate-classes/allocate-classes.component';
 import { UserLogComponent } from './components/admin/user-log/user-log.component';
 import { AdminGuard } from './guards/admin.guard';
+import { NewsListComponent } from './components/news/news-list/news-list.component';
+import { NewsFeedComponent } from './components/news/news-feed/news-feed.component';
+import { NewsFormComponent } from './components/news/news-form/news-form.component';
+import { NewsDetailComponent } from './components/news/news-detail/news-detail.component';
 
 const routes: Routes = [
   { path: '', component: SplashComponent },
@@ -138,7 +142,13 @@ const routes: Routes = [
   { path: 'student/invoice-statement', component: StudentInvoiceStatementComponent, canActivate: [AuthGuard] },
   { path: 'user-manual', component: UserManualComponent, canActivate: [AuthGuard] },
   { path: 'user-log', component: UserLogComponent, canActivate: [AuthGuard, AdminGuard] },
-  { path: 'help', redirectTo: '/user-manual', pathMatch: 'full' }
+  { path: 'help', redirectTo: '/user-manual', pathMatch: 'full' },
+  // News & Announcements Routes
+  { path: 'news', component: NewsListComponent, canActivate: [AuthGuard, AdminGuard] },
+  { path: 'news/create', component: NewsFormComponent, canActivate: [AuthGuard, AdminGuard] },
+  { path: 'news/edit/:id', component: NewsFormComponent, canActivate: [AuthGuard, AdminGuard] },
+  { path: 'news/:id', component: NewsDetailComponent, canActivate: [AuthGuard] },
+  { path: 'news-feed', component: NewsFeedComponent, canActivate: [AuthGuard] }
 ];
 
 @NgModule({

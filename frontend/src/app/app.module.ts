@@ -72,6 +72,10 @@ import { EnrollStudentComponent } from './components/students/enroll-student/enr
 import { AllocateClassesComponent } from './components/teachers/allocate-classes/allocate-classes.component';
 import { UserLogComponent } from './components/admin/user-log/user-log.component';
 import { DraftMessagesComponent } from './components/messages/draft-messages/draft-messages.component';
+import { NewsListComponent } from './components/news/news-list/news-list.component';
+import { NewsFeedComponent } from './components/news/news-feed/news-feed.component';
+import { NewsFormComponent } from './components/news/news-form/news-form.component';
+import { NewsDetailComponent } from './components/news/news-detail/news-detail.component';
 
 @NgModule({
   declarations: [
@@ -137,7 +141,11 @@ import { DraftMessagesComponent } from './components/messages/draft-messages/dra
     DraftMessagesComponent,
     EnrollStudentComponent,
     AllocateClassesComponent,
-    UserLogComponent
+    UserLogComponent,
+    NewsListComponent,
+    NewsFeedComponent,
+    NewsFormComponent,
+    NewsDetailComponent
   ],
   imports: [
     BrowserModule,

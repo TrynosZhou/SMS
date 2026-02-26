@@ -285,6 +285,29 @@
         </div>
       </div>
 
+      <!-- News & Announcements -->
+      <div class="sidebar-menu">
+        <div class="sidebar-menu-header" (click)="toggleMenu('newsManagement')">
+          <span class="sidebar-icon">📰</span>
+          <span class="sidebar-text">News & Announcements</span>
+          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('newsManagement')">▼</span>
+        </div>
+        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('newsManagement')">
+          <a routerLink="/news" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">📝</span>
+            <span class="sidebar-text">Manage News</span>
+          </a>
+          <a routerLink="/news/create" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">➕</span>
+            <span class="sidebar-text">Create News</span>
+          </a>
+          <a routerLink="/news-feed" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-icon">📖</span>
+            <span class="sidebar-text">News Feed</span>
+          </a>
+        </div>
+      </div>
+
       <!-- Logistics Mgt -->
       <div class="sidebar-menu" *ngIf="isAdmin() || isSuperAdmin() || canAccessModule('logistics')">
         <div class="sidebar-menu-header" (click)="toggleMenu('logisticsManagement')">

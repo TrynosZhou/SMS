@@ -1038,3 +1038,160 @@
     text-align: center;
   }
 }
+
+/* Clickable Field Styles */
+.clickable-field {
+  cursor: pointer;
+  color: #2563eb;
+  text-decoration: none;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.clickable-field:hover {
+  background-color: #e0e7ff;
+  color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.clickable-field::after {
+  content: ' ✏️';
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  margin-left: 4px;
+}
+
+.clickable-field:hover::after {
+  opacity: 0.7;
+}
+
+/* Special styling for Employee ID (ID card) */
+.clickable-id {
+  color: #2563eb;
+  font-weight: bold;
+}
+
+.clickable-id:hover {
+  background-color: #e0e7ff;
+  color: #1d4ed8;
+}
+
+.clickable-id::after {
+  content: ' 🪪';
+}
+
+.clickable-id:hover::after {
+  opacity: 0.7;
+}
+
+/* Edit Modal Styles */
+.edit-modal {
+  max-width: 500px;
+  width: 90%;
+}
+
+.edit-modal .form-group {
+  margin-bottom: 20px;
+}
+
+.edit-modal .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.edit-modal .form-control {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.edit-modal .form-control:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.edit-modal .focus-field {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(102, 126, 234, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+}
+
+.edit-modal .form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.edit-modal .btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.edit-modal .btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.edit-modal .btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.edit-modal .btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.edit-modal .btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+
+.edit-modal .btn-secondary:hover {
+  background: #e5e7eb;
+}
+
+.spinner-small {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #ffffff;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 6px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

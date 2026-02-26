@@ -4,6 +4,7 @@ import { TeacherService } from '../../../services/teacher.service';
 import { SubjectService } from '../../../services/subject.service';
 import { ClassService } from '../../../services/class.service';
 import { SettingsService } from '../../../services/settings.service';
+import { AuthService } from '../../../services/auth.service';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -43,13 +44,24 @@ export class TeacherListComponent implements OnInit {
   sortKey: 'teacherId' | 'lastName' | 'firstName' | 'sex' = 'lastName';
   sortDir: 'asc' | 'desc' = 'asc';
 
+  // Edit popup properties
+  showEditPopup = false;
+  editingTeacher: any = null;
+  editForm = {
+    firstName: '',
+    lastName: '',
+    sex: ''
+  };
+  editSubmitting = false;
+
   constructor(
     private teacherService: TeacherService,
     private subjectService: SubjectService,
     private classService: ClassService,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
+    private authService: AuthService
   ) { }
 
   ngOnInit() {
@@ -509,6 +521,101 @@ export class TeacherListComponent implements OnInit {
         }
         this.error = errorMessage;
         this.loading = false;
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  // Check if user is administrator
+  canEditTeachers(): boolean {
+    return this.authService.hasRole('admin') || this.authService.hasRole('superadmin');
+  }
+
+  // View teacher ID card (when Employee ID is clicked)
+  viewTeacherIdCard(teacher: any) {
+    if (!this.canEditTeachers() || !teacher?.id) {
+      return;
+    }
+    this.previewIdCard(teacher);
+  }
+
+  // Open edit popup for specific field
+  openEditPopup(teacher: any, field: 'firstName' | 'lastName' | 'sex') {
+    if (!this.canEditTeachers()) {
+      return;
+    }
+    
+    this.editingTeacher = { ...teacher, editField: field };
+    this.editForm = {
+      firstName: teacher.firstName || '',
+      lastName: teacher.lastName || '',
+      sex: teacher.sex || ''
+    };
+    this.showEditPopup = true;
+    this.error = '';
+    this.success = '';
+  }
+
+  // Close edit popup
+  closeEditPopup() {
+    this.showEditPopup = false;
+    this.editingTeacher = null;
+    this.editForm = {
+      firstName: '',
+      lastName: '',
+      sex: ''
+    };
+    this.error = '';
+    this.success = '';
+  }
+
+  // Save teacher changes
+  saveTeacherChanges() {
+    if (!this.editingTeacher || !this.editingTeacher.id) {
+      this.error = 'No teacher selected for editing';
+      return;
+    }
+
+    this.editSubmitting = true;
+    this.error = '';
+    this.success = '';
+
+    // Only update the specific field that was clicked
+    let updateData: any = {};
+    
+    switch (this.editingTeacher.editField) {
+      case 'firstName':
+        updateData.firstName = this.editForm.firstName.trim();
+        break;
+      case 'lastName':
+        updateData.lastName = this.editForm.lastName.trim();
+        break;
+      case 'sex':
+        updateData.sex = this.editForm.sex;
+        break;
+    }
+
+    this.teacherService.updateTeacher(this.editingTeacher.id, updateData).subscribe({
+      next: (response: any) => {
+        this.success = 'Teacher information updated successfully';
+        this.editSubmitting = false;
+        
+        // Update the teacher in the local array
+        const index = this.teachers.findIndex(t => t.id === this.editingTeacher.id);
+        if (index !== -1) {
+          this.teachers[index] = { ...this.teachers[index], ...updateData };
+          this.filterTeachers(); // Refresh filtered list
+        }
+        
+        // Close popup after a short delay
+        setTimeout(() => {
+          this.closeEditPopup();
+          this.success = '';
+        }, 1500);
+      },
+      error: (err: any) => {
+        this.error = err.error?.message || 'Failed to update teacher information';
+        this.editSubmitting = false;
         setTimeout(() => this.error = '', 5000);
       }
     });

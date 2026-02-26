@@ -167,10 +167,46 @@
       <div class="list-col actions-col">Actions</div>
     </div>
     <div class="list-item" *ngFor="let teacher of filteredTeachers">
-      <div class="list-col emp-col">{{ teacher.teacherId || 'N/A' }}</div>
-      <div class="list-col last-col">{{ getLastName(teacher) }}</div>
-      <div class="list-col first-col">{{ getFirstName(teacher) }}</div>
-      <div class="list-col gender-col">{{ getGender(teacher) }}</div>
+      <div class="list-col emp-col">
+        <span 
+          *ngIf="canEditTeachers()"
+          class="clickable-field clickable-id" 
+          (click)="viewTeacherIdCard(teacher)"
+          title="Click to view ID card">
+          {{ teacher.teacherId || 'N/A' }}
+        </span>
+        <span *ngIf="!canEditTeachers()">{{ teacher.teacherId || 'N/A' }}</span>
+      </div>
+      <div class="list-col last-col">
+        <span 
+          *ngIf="canEditTeachers()"
+          class="clickable-field" 
+          (click)="openEditPopup(teacher, 'lastName')"
+          title="Click to edit">
+          {{ getLastName(teacher) }}
+        </span>
+        <span *ngIf="!canEditTeachers()">{{ getLastName(teacher) }}</span>
+      </div>
+      <div class="list-col first-col">
+        <span 
+          *ngIf="canEditTeachers()"
+          class="clickable-field" 
+          (click)="openEditPopup(teacher, 'firstName')"
+          title="Click to edit">
+          {{ getFirstName(teacher) }}
+        </span>
+        <span *ngIf="!canEditTeachers()">{{ getFirstName(teacher) }}</span>
+      </div>
+      <div class="list-col gender-col">
+        <span 
+          *ngIf="canEditTeachers()"
+          class="clickable-field" 
+          (click)="openEditPopup(teacher, 'sex')"
+          title="Click to edit">
+          {{ getGender(teacher) }}
+        </span>
+        <span *ngIf="!canEditTeachers()">{{ getGender(teacher) }}</span>
+      </div>
       <div class="list-col actions-col">
         <div class="action-buttons">
           <button class="btn-icon-small" (click)="viewTeacherDetails(teacher)" title="View Details">👁️</button>
@@ -255,6 +291,72 @@
       </div>
     </div>
   </div>
+
+  <!-- Edit Teacher Popup -->
+  <div class="modal-overlay" *ngIf="showEditPopup" (click)="closeEditPopup()">
+    <div class="modal-content edit-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Edit Teacher Information</h2>
+        <button class="modal-close" (click)="closeEditPopup()">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+        <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+        
+        <form (ngSubmit)="saveTeacherChanges()">
+          <!-- First Name Field Only -->
+          <div class="form-group" *ngIf="editingTeacher?.editField === 'firstName'">
+            <label for="firstName">First Name</label>
+            <input 
+              type="text" 
+              id="firstName" 
+              [(ngModel)]="editForm.firstName" 
+              name="firstName" 
+              class="form-control focus-field"
+              required>
+          </div>
+          
+          <!-- Last Name Field Only -->
+          <div class="form-group" *ngIf="editingTeacher?.editField === 'lastName'">
+            <label for="lastName">Last Name</label>
+            <input 
+              type="text" 
+              id="lastName" 
+              [(ngModel)]="editForm.lastName" 
+              name="lastName" 
+              class="form-control focus-field"
+              required>
+          </div>
+          
+          <!-- Gender Field Only -->
+          <div class="form-group" *ngIf="editingTeacher?.editField === 'sex'">
+            <label for="sex">Gender</label>
+            <select 
+              id="sex" 
+              [(ngModel)]="editForm.sex" 
+              name="sex" 
+              class="form-control focus-field"
+              required>
+              <option value="">Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" (click)="closeEditPopup()">Cancel</button>
+            <button type="submit" class="btn btn-primary" [disabled]="editSubmitting">
+              <span *ngIf="editSubmitting" class="spinner-small"></span>
+              {{ editSubmitting ? 'Saving...' : 'Save Changes' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <div id="teachers-list-pdf" class="teachers-pdf-container">
     <div class="teachers-pdf-header">
       <div class="teachers-pdf-header-left">
