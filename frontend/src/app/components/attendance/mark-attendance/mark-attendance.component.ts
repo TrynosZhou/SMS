@@ -288,7 +288,6 @@ export class MarkAttendanceComponent implements OnInit {
       present: 0,
       absent: 0,
       late: 0,
-      excused: 0,
       total: this.attendanceData.length
     };
     
@@ -296,7 +295,6 @@ export class MarkAttendanceComponent implements OnInit {
       if (item.status === 'present') stats.present++;
       else if (item.status === 'absent') stats.absent++;
       else if (item.status === 'late') stats.late++;
-      else if (item.status === 'excused') stats.excused++;
     });
     
     return stats;
@@ -305,7 +303,7 @@ export class MarkAttendanceComponent implements OnInit {
   getAttendanceRate(): number {
     const stats = this.getStatistics();
     if (stats.total === 0) return 0;
-    return Math.round(((stats.present + stats.excused) / stats.total) * 100);
+    return Math.round((stats.present / stats.total) * 100);
   }
 
   // Search and Filter
@@ -335,8 +333,12 @@ export class MarkAttendanceComponent implements OnInit {
       filtered = filtered.filter(item => item.status === this.statusFilter);
     }
 
-    // Sort by last name ascending
+    // Sort by Gender ascending, then Lastname ascending
     filtered = filtered.slice().sort((a, b) => {
+      const genderA = (this.getStudentGender(a.studentId) || '').toLowerCase();
+      const genderB = (this.getStudentGender(b.studentId) || '').toLowerCase();
+      const gComp = genderA.localeCompare(genderB, undefined, { sensitivity: 'base' });
+      if (gComp !== 0) return gComp;
       const lastA = this.getStudentLastName(a.studentId).toLowerCase();
       const lastB = this.getStudentLastName(b.studentId).toLowerCase();
       return lastA.localeCompare(lastB, undefined, { sensitivity: 'base' });
@@ -344,28 +346,8 @@ export class MarkAttendanceComponent implements OnInit {
 
     this.filteredAttendanceData = filtered;
 
-    // Group by gender (sex), with consistent group order: Male, Female, then others alphabetically
-    const genderOrder = ['Male', 'Female', 'M', 'F'];
-    const byGender = new Map<string, any[]>();
-    filtered.forEach(item => {
-      const g = this.getStudentGender(item.studentId) || 'Other';
-      const key = g.trim() || 'Other';
-      if (!byGender.has(key)) byGender.set(key, []);
-      byGender.get(key)!.push(item);
-    });
-    const orderedGroups: { gender: string; items: any[] }[] = [];
-    const seen = new Set<string>();
-    genderOrder.forEach(g => {
-      if (byGender.has(g)) {
-        seen.add(g);
-        orderedGroups.push({ gender: g, items: byGender.get(g)! });
-      }
-    });
-    Array.from(byGender.keys())
-      .filter(k => !seen.has(k))
-      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
-      .forEach(k => orderedGroups.push({ gender: k, items: byGender.get(k)! }));
-    this.filteredAttendanceDataGroupedByGender = orderedGroups;
+    // Do not display gender group headers; keep a flat list
+    this.filteredAttendanceDataGroupedByGender = [{ gender: '', items: filtered }];
   }
 
   // Quick status update

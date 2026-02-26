@@ -882,8 +882,9 @@ label {
 
 .modern-table {
   width: 100%;
-  border-collapse: separate;
+  border-collapse: collapse; /* prevent header gaps */
   border-spacing: 0;
+  table-layout: auto;
   background: white;
 }
 
@@ -893,6 +894,14 @@ label {
   position: sticky;
   top: 0;
   z-index: 10;
+}
+
+/* Single continuous gradient across header row (no seams) */
+.modern-table thead tr {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+.modern-table thead th {
+  background: transparent !important;
 }
 
 .modern-table th {
@@ -972,19 +981,55 @@ th {
 
 .col-firstname {
   padding-left: 6px;
-  min-width: 110px;
+  min-width: 150px; /* ensure FIRSTNAME header is clearly visible */
+  white-space: nowrap;
 }
 
 .col-status {
-  min-width: 400px;
+  min-width: 320px; /* bring remarks closer to status buttons */
 }
 
 .col-remarks {
-  min-width: 250px;
+  min-width: 240px;
 }
 
 .col-gender {
-  min-width: 100px;
+  min-width: 160px; /* ensure GENDER label is clearly visible */
+  white-space: nowrap;
+}
+
+/* Header alignment tweaks requested */
+.modern-table th.col-status {
+  text-align: center;
+}
+
+.modern-table th.col-remarks {
+  text-align: left;
+}
+
+@media (min-width: 992px) {
+  .modern-table th.col-status {
+    position: static; /* keep cell in place to avoid gradient gaps */
+    text-align: center;
+    transform: translateX(-14px); /* nudge label left over Absent buttons without moving cell */
+  }
+  .modern-table th.col-remarks {
+    position: static;
+    text-align: left;
+    transform: translateX(-8px); /* slight left nudge of label */
+    text-indent: 0;
+  }
+}
+
+@media (min-width: 992px) {
+  .modern-table td.col-remarks {
+    padding-left: 0;
+    position: static;
+  }
+  .modern-table td.col-remarks .remarks-input {
+    margin-left: -8px;
+    width: calc(100% + 8px);
+  }
 }
 
 tr.group-header-row {
@@ -1095,6 +1140,14 @@ tbody tr.row-highlight {
   outline: none;
   border-color: #4f46e5;
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* Tighten spacing between Status and Remarks cells so remarks sit just after Late */
+.modern-table td.col-status {
+  padding-right: 8px;
+}
+.modern-table td.col-remarks {
+  padding-left: 8px;
 }
 
 /* Empty States */
