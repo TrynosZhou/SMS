@@ -156,7 +156,18 @@
           <tbody>
             <tr *ngFor="let balance of group.items; let i = index" class="table-row">
               <td class="student-id-cell">
-                <span class="id-badge">{{ balance.studentNumber || balance.studentId }}</span>
+                <span 
+                  class="id-badge clickable-id" 
+                  *ngIf="canManageFinance()"
+                  (click)="payInvoice(balance)"
+                  title="Click to record payment">
+                  {{ balance.studentNumber || balance.studentId }}
+                </span>
+                <span 
+                  class="id-badge" 
+                  *ngIf="!canManageFinance()">
+                  {{ balance.studentNumber || balance.studentId }}
+                </span>
               </td>
               <td class="student-name-cell">{{ balance.lastName }}</td>
               <td class="student-name-cell">{{ balance.firstName }}</td>
@@ -164,7 +175,18 @@
               <td class="phone-cell">{{ balance.phoneNumber || '—' }}</td>
               <td class="student-type-cell">{{ balance.studentType || 'Day Scholar' }}</td>
               <td class="balance-cell text-right">
-                <span class="balance-badge">{{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}</span>
+                <span 
+                  class="balance-badge clickable-balance" 
+                  *ngIf="canManageFinance()"
+                  (click)="payInvoice(balance)"
+                  title="Click to record payment">
+                  {{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}
+                </span>
+                <span 
+                  class="balance-badge" 
+                  *ngIf="!canManageFinance()">
+                  {{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}
+                </span>
               </td>
             </tr>
           </tbody>

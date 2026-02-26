@@ -720,6 +720,22 @@
   font-family: 'Courier New', monospace;
 }
 
+.student-id-cell .clickable-id {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #1971c2;
+  color: white;
+  text-decoration: none;
+  border: 2px solid #1971c2;
+}
+
+.student-id-cell .clickable-id:hover {
+  background: #1864ab;
+  border-color: #1864ab;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(25, 113, 194, 0.3);
+}
+
 .student-name-cell {
   font-weight: 500;
   color: #212529;
@@ -738,6 +754,22 @@
   font-weight: 700;
   font-size: 15px;
   border: 2px solid #ffc9c9;
+}
+
+.balance-cell .clickable-balance {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #dc3545;
+  color: white;
+  text-decoration: none;
+  border: 2px solid #dc3545;
+}
+
+.balance-cell .clickable-balance:hover {
+  background: #c82333;
+  border-color: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
 }
 
 .action-cell {
