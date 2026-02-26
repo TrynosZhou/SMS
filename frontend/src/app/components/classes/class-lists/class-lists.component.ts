@@ -60,6 +60,11 @@ export class ClassListsComponent implements OnInit {
   editModalValue: any = null;
   savingEdit = false;
   classTeacherFullName: string = '';
+  // Class teacher editor
+  showClassTeacherModal = false;
+  allTeachers: any[] = [];
+  selectedClassTeacherId: string = '';
+  updatingClassTeacher = false;
 
   constructor(
     private studentService: StudentService,
@@ -73,6 +78,54 @@ export class ClassListsComponent implements OnInit {
     this.isSuperAdmin = user ? (user.role === 'superadmin') : false;
     this.isTeacher = user ? (user.role === 'teacher') : false;
     this.isAccountant = user ? (user.role === 'accountant') : false;
+  }
+
+  openClassTeacherModal() {
+    if (!this.isAdmin || !this.selectedClassId) return;
+    this.selectedClassTeacherId = '';
+    this.showClassTeacherModal = true;
+    // Load teachers list if empty
+    if (!this.allTeachers || this.allTeachers.length === 0) {
+      this.teacherService.getTeachers().subscribe({
+        next: (rows: any[]) => {
+          this.allTeachers = Array.isArray(rows) ? rows : [];
+        },
+        error: () => {
+          this.allTeachers = [];
+        }
+      });
+    }
+  }
+
+  closeClassTeacherModal() {
+    this.showClassTeacherModal = false;
+    this.selectedClassTeacherId = '';
+  }
+
+  saveClassTeacher() {
+    if (!this.isAdmin || !this.selectedClassId || !this.selectedClassTeacherId) return;
+    this.updatingClassTeacher = true;
+    this.classService.updateClass(this.selectedClassId, { teacherIds: [this.selectedClassTeacherId] }).subscribe({
+      next: (resp: any) => {
+        // Update UI label
+        const t = this.allTeachers.find(x => x.id === this.selectedClassTeacherId);
+        if (t) {
+          const ln = String(t.lastName || '').trim();
+          const fn = String(t.firstName || '').trim();
+          this.classTeacherFullName = [ln, fn].filter(Boolean).join(' ').trim() || 'Teacher';
+        } else {
+          this.loadClassTeacherName();
+        }
+        this.updatingClassTeacher = false;
+        this.showClassTeacherModal = false;
+      },
+      error: (err: any) => {
+        console.error('Failed to update class teacher:', err);
+        this.error = err?.error?.message || err?.message || 'Failed to update class teacher';
+        setTimeout(() => this.error = '', 5000);
+        this.updatingClassTeacher = false;
+      }
+    });
   }
 
   ngOnInit() {

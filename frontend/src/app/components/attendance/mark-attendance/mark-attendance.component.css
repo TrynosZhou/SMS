@@ -904,6 +904,7 @@ label {
   background: transparent !important;
 }
 
+
 .modern-table th {
   padding: 16px;
   text-align: left;
@@ -986,7 +987,7 @@ th {
 }
 
 .col-status {
-  min-width: 320px; /* bring remarks closer to status buttons */
+  min-width: 320px;
 }
 
 .col-remarks {
@@ -994,7 +995,7 @@ th {
 }
 
 .col-gender {
-  min-width: 160px; /* ensure GENDER label is clearly visible */
+  min-width: 160px;
   white-space: nowrap;
 }
 

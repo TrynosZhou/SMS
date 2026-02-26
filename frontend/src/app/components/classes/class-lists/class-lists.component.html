@@ -86,7 +86,19 @@
           Students in {{ getSelectedClassName() }} - {{ selectedTerm }}
         </span>
         <span class="header-title-right" *ngIf="classTeacherFullName">
-          Class Teacher: {{ classTeacherFullName }}
+          Class Teacher:
+          <a 
+            *ngIf="isAdmin" 
+            class="editable"
+            role="button"
+            tabindex="0"
+            title="Click to change class teacher"
+            (click)="openClassTeacherModal()"
+            (keyup.enter)="openClassTeacherModal()"
+            (keyup.space)="openClassTeacherModal()">
+            {{ classTeacherFullName }}
+          </a>
+          <span *ngIf="!isAdmin">{{ classTeacherFullName }}</span>
         </span>
       </h2>
       <p class="section-description">Total: {{ filteredStudents.length }} student(s)</p>
@@ -327,6 +339,43 @@
         (click)="saveEditModal()"
         [disabled]="savingEdit">
         {{ savingEdit ? 'Saving...' : 'Save' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Change Class Teacher Modal -->
+  <div class="modal-backdrop" *ngIf="showClassTeacherModal"></div>
+  <div class="modal" *ngIf="showClassTeacherModal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h3>Change Class Teacher</h3>
+    </div>
+    <div class="modal-body">
+      <label for="teacherSelect">Select Teacher</label>
+      <select 
+        id="teacherSelect"
+        class="form-control"
+        [(ngModel)]="selectedClassTeacherId"
+        [ngModelOptions]="{standalone: true}">
+        <option *ngFor="let t of allTeachers" [value]="t.id">
+          {{ (t.lastName || '') + ' ' + (t.firstName || '') }} ({{ t.teacherId || 'ID' }})
+        </option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button 
+        type="button" 
+        class="btn btn-secondary" 
+        (click)="closeClassTeacherModal()" 
+        [disabled]="updatingClassTeacher">
+        Cancel
+      </button>
+      <button 
+        type="button" 
+        class="btn btn-primary" 
+        (click)="saveClassTeacher()" 
+        [disabled]="updatingClassTeacher || !selectedClassTeacherId">
+        <span *ngIf="!updatingClassTeacher">Save</span>
+        <span *ngIf="updatingClassTeacher">Saving...</span>
       </button>
     </div>
   </div>
