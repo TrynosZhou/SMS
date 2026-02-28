@@ -148,7 +148,8 @@ const routes: Routes = [
   { path: 'news/create', component: NewsFormComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'news/edit/:id', component: NewsFormComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'news/:id', component: NewsDetailComponent, canActivate: [AuthGuard] },
-  { path: 'news-feed', component: NewsFeedComponent, canActivate: [AuthGuard] }
+  { path: 'news-feed', component: NewsFeedComponent, canActivate: [AuthGuard] },
+  { path: '**', redirectTo: '', pathMatch: 'full' }
 ];
 
 @NgModule({

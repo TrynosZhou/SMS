@@ -2,16 +2,17 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   background: linear-gradient(160deg, #e0e7ff 0%, #f5f3ff 40%, #fce7f3 100%);
 }
 
 .splash-wrapper {
   position: relative;
-  width: 50vw;
-  height: 50vh;
-  max-width: 50vw;
+  width: min(520px, 92vw);
+  max-width: 92vw;
+  height: auto;
+  min-height: 320px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -260,10 +261,10 @@
 
 @media (max-width: 600px) {
   .splash-wrapper {
-    width: 90vw;
-    max-width: 90vw;
+    width: 94vw;
+    max-width: 94vw;
     height: auto;
-    min-height: 50vh;
+    min-height: auto;
     padding: 24px;
   }
 
