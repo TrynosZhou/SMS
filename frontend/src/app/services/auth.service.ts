@@ -98,7 +98,7 @@ export class AuthService {
     localStorage.removeItem('sessionId');
     this.currentUserSubject.next(null);
     this.clearInactivityTimer();
-    this.router.navigate(['/sign-in']);
+    this.router.navigate(['/login']);
   }
 
   getToken(): string | null {

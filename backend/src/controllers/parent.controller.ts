@@ -322,14 +322,15 @@ export const searchStudents = async (req: AuthRequest, res: Response) => {
     }
 
     const studentRepository = AppDataSource.getRepository(Student);
-    
-    // Search by student number or name
+
+    const q = String(query).trim();
+
     const students = await studentRepository
       .createQueryBuilder('student')
-          .leftJoinAndSelect('student.classEntity', 'classEntity')
+      .leftJoinAndSelect('student.classEntity', 'classEntity')
       .where(
-        '(student.studentNumber LIKE :query OR student.firstName LIKE :query OR student.lastName LIKE :query OR CONCAT(student.firstName, \' \', student.lastName) LIKE :query)',
-        { query: `%${query}%` }
+        '(LOWER(student.studentNumber) LIKE LOWER(:query) OR LOWER(student.firstName) LIKE LOWER(:query) OR LOWER(student.lastName) LIKE LOWER(:query) OR LOWER(CONCAT(student.firstName, \' \', student.lastName)) LIKE LOWER(:query))',
+        { query: `%${q}%` }
       )
       .limit(20)
       .getMany();

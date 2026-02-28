@@ -21,7 +21,8 @@ export class ParentManagementComponent implements OnInit {
   searchingStudents = false;
   error = '';
   success = '';
-  searchQuery = '';
+  parentSearchQuery = '';
+  studentSearchQuery = '';
   studentsSearchResults: any[] = [];
   selectedStudentId: string | null = null;
   relationshipType = 'guardian';
@@ -96,7 +97,7 @@ export class ParentManagementComponent implements OnInit {
   }
 
   filterParents() {
-    const query = this.searchQuery.toLowerCase();
+    const query = this.parentSearchQuery.toLowerCase();
     if (!query) {
       this.filteredParents = this.parents;
       return;
@@ -110,7 +111,7 @@ export class ParentManagementComponent implements OnInit {
   }
 
   clearSearch() {
-    this.searchQuery = '';
+    this.parentSearchQuery = '';
     this.filterParents();
   }
 
@@ -232,7 +233,7 @@ export class ParentManagementComponent implements OnInit {
       setTimeout(() => this.error = '', 5000);
       return;
     }
-    if (!this.searchQuery || !this.searchQuery.trim()) {
+    if (!this.studentSearchQuery || !this.studentSearchQuery.trim()) {
       this.error = 'Enter a Student ID or name to search';
       setTimeout(() => this.error = '', 5000);
       return;
@@ -240,7 +241,7 @@ export class ParentManagementComponent implements OnInit {
     this.searchingStudents = true;
     this.studentsSearchResults = [];
     this.selectedStudentId = null;
-    this.parentService.searchStudents(this.searchQuery.trim()).subscribe({
+    this.parentService.searchStudents(this.studentSearchQuery.trim()).subscribe({
       next: (response: any) => {
         this.studentsSearchResults = response.students || [];
         this.searchingStudents = false;

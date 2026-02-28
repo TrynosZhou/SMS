@@ -32,10 +32,10 @@
       <div class="search-bar">
         <input
           type="text"
-          [(ngModel)]="searchQuery"
+          [(ngModel)]="parentSearchQuery"
           (ngModelChange)="filterParents()"
           placeholder="Search by name, email, or phone..." />
-        <button class="btn btn-secondary" (click)="clearSearch()" *ngIf="searchQuery">
+        <button class="btn btn-secondary" (click)="clearSearch()" *ngIf="parentSearchQuery">
           ✕
         </button>
       </div>
@@ -235,7 +235,7 @@
           <div class="form-row">
             <input
               type="text"
-              [(ngModel)]="searchQuery"
+              [(ngModel)]="studentSearchQuery"
               placeholder="Enter Student ID or name to search..." />
             <button
               class="btn btn-secondary"

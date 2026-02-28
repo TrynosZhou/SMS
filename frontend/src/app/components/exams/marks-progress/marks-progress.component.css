@@ -143,3 +143,25 @@
   color: #374151;
   margin-top: 6px;
 }
+
+@media (max-width: 768px) {
+  .marks-progress-container {
+    padding: 12px;
+  }
+
+  .page-header .header-actions {
+    flex-wrap: wrap;
+  }
+
+  .filters {
+    flex-wrap: wrap;
+  }
+
+  .filter {
+    flex: 1 1 160px;
+  }
+
+  .class-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -579,8 +579,20 @@
 }
 
 @media (max-width: 768px) {
+  .parent-dashboard-container {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: relative;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
   .main-content {
-    margin-left: 250px;
+    margin-left: 0;
+    padding: 12px;
   }
 
   .students-grid {

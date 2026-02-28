@@ -34,8 +34,14 @@
   </div>
 </nav>
 
+<!-- Mobile overlay for staff sidebar drawer (Teachers/Admin/SuperAdmin) -->
+<div class="mobile-sidebar-overlay"
+     *ngIf="isAuthenticated() && !isParent()"
+     (click)="closeMobileMenu()"
+     [class.show]="mobileMenuOpen"></div>
+
 <!-- Collapsible Sidebar -->
-<aside class="sidebar" [class.collapsed]="sidebarCollapsed" *ngIf="isAuthenticated() && !isParent()">
+<aside class="sidebar" [class.collapsed]="sidebarCollapsed" [class.mobile-open]="mobileMenuOpen" *ngIf="isAuthenticated() && !isParent()">
   <div class="sidebar-content">
     <nav class="sidebar-nav">
       <!-- Student-specific sidebar (only for students) -->

@@ -568,6 +568,11 @@
   transition: all 0.3s ease;
 }
 
+.teachers-list-view .list-header,
+.teachers-list-view .list-item {
+  min-width: 720px;
+}
+
 .list-item:hover {
   background: #f8f9fa;
 }

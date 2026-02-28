@@ -255,17 +255,18 @@
 
   <!-- Students List View -->
   <div class="students-list-view" *ngIf="!loading && viewMode === 'list' && filteredStudents.length > 0">
-    <div class="list-header">
-      <div class="list-col number-col">Student #</div>
-      <div class="list-col last-col">Last Name</div>
-      <div class="list-col first-col">First Name</div>
-      <div class="list-col dob-col">DOB</div>
-      <div class="list-col gender-col">Gender</div>
-      <div class="list-col class-col">Class</div>
-      <div class="list-col type-col">Type</div>
-      <div class="list-col actions-col">Actions</div>
-    </div>
-    <div class="list-item" *ngFor="let student of filteredStudents">
+    <div class="table-responsive">
+      <div class="list-header">
+        <div class="list-col number-col">Student #</div>
+        <div class="list-col last-col">Last Name</div>
+        <div class="list-col first-col">First Name</div>
+        <div class="list-col dob-col">DOB</div>
+        <div class="list-col gender-col">Gender</div>
+        <div class="list-col class-col">Class</div>
+        <div class="list-col type-col">Type</div>
+        <div class="list-col actions-col">Actions</div>
+      </div>
+      <div class="list-item" *ngFor="let student of filteredStudents">
         <div class="list-col number-col">
           <strong class="student-id-link" (click)="viewStudentIdCard(student.id)" title="View Student ID Card">{{ student.studentNumber }}</strong>
         </div>
@@ -303,8 +304,9 @@
            </button>
           </div>
         </div>
+      </div>
     </div>
-    </div>
+  </div>
 
   <!-- Empty State -->
   <div class="empty-state" *ngIf="!loading && filteredStudents.length === 0">

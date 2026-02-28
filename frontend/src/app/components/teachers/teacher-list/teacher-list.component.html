@@ -159,61 +159,63 @@
 
   <!-- Teachers List View -->
   <div class="teachers-list-view" *ngIf="!loading && viewMode === 'list' && filteredTeachers.length > 0">
-    <div class="list-header">
-      <div class="list-col emp-col sortable" (click)="setSort('teacherId')">Employee ID</div>
-      <div class="list-col last-col sortable" (click)="setSort('lastName')">Last Name</div>
-      <div class="list-col first-col sortable" (click)="setSort('firstName')">First Name</div>
-      <div class="list-col gender-col sortable" (click)="setSort('sex')">Gender</div>
-      <div class="list-col actions-col">Actions</div>
-    </div>
-    <div class="list-item" *ngFor="let teacher of filteredTeachers">
-      <div class="list-col emp-col">
-        <span 
-          *ngIf="canEditTeachers()"
-          class="clickable-field clickable-id" 
-          (click)="viewTeacherIdCard(teacher)"
-          title="Click to view ID card">
-          {{ teacher.teacherId || 'N/A' }}
-        </span>
-        <span *ngIf="!canEditTeachers()">{{ teacher.teacherId || 'N/A' }}</span>
+    <div class="table-responsive">
+      <div class="list-header">
+        <div class="list-col emp-col sortable" (click)="setSort('teacherId')">Employee ID</div>
+        <div class="list-col last-col sortable" (click)="setSort('lastName')">Last Name</div>
+        <div class="list-col first-col sortable" (click)="setSort('firstName')">First Name</div>
+        <div class="list-col gender-col sortable" (click)="setSort('sex')">Gender</div>
+        <div class="list-col actions-col">Actions</div>
       </div>
-      <div class="list-col last-col">
-        <span 
-          *ngIf="canEditTeachers()"
-          class="clickable-field" 
-          (click)="openEditPopup(teacher, 'lastName')"
-          title="Click to edit">
-          {{ getLastName(teacher) }}
-        </span>
-        <span *ngIf="!canEditTeachers()">{{ getLastName(teacher) }}</span>
-      </div>
-      <div class="list-col first-col">
-        <span 
-          *ngIf="canEditTeachers()"
-          class="clickable-field" 
-          (click)="openEditPopup(teacher, 'firstName')"
-          title="Click to edit">
-          {{ getFirstName(teacher) }}
-        </span>
-        <span *ngIf="!canEditTeachers()">{{ getFirstName(teacher) }}</span>
-      </div>
-      <div class="list-col gender-col">
-        <span 
-          *ngIf="canEditTeachers()"
-          class="clickable-field" 
-          (click)="openEditPopup(teacher, 'sex')"
-          title="Click to edit">
-          {{ getGender(teacher) }}
-        </span>
-        <span *ngIf="!canEditTeachers()">{{ getGender(teacher) }}</span>
-      </div>
-      <div class="list-col actions-col">
-        <div class="action-buttons">
-          <button class="btn-icon-small" (click)="viewTeacherDetails(teacher)" title="View Details">👁️</button>
-          <button class="btn-icon-small" (click)="editTeacher(teacher.id)" title="Edit Teacher">✏️</button>
-          <button class="btn-icon-small" (click)="previewIdCard(teacher)" title="Preview ID Card">🪪</button>
-          <button class="btn-icon-small" (click)="createTeacherAccount(teacher)" *ngIf="!teacher.userId" title="Create Account" [disabled]="loading">👤</button>
-          <button class="btn-icon-small btn-delete" (click)="deleteTeacher(teacher.id, teacher.firstName + ' ' + teacher.lastName, teacher.teacherId)" title="Delete" [disabled]="loading">🗑️</button>
+      <div class="list-item" *ngFor="let teacher of filteredTeachers">
+        <div class="list-col emp-col">
+          <span 
+            *ngIf="canEditTeachers()"
+            class="clickable-field clickable-id" 
+            (click)="viewTeacherIdCard(teacher)"
+            title="Click to view ID card">
+            {{ teacher.teacherId || 'N/A' }}
+          </span>
+          <span *ngIf="!canEditTeachers()">{{ teacher.teacherId || 'N/A' }}</span>
+        </div>
+        <div class="list-col last-col">
+          <span 
+            *ngIf="canEditTeachers()"
+            class="clickable-field" 
+            (click)="openEditPopup(teacher, 'lastName')"
+            title="Click to edit">
+            {{ getLastName(teacher) }}
+          </span>
+          <span *ngIf="!canEditTeachers()">{{ getLastName(teacher) }}</span>
+        </div>
+        <div class="list-col first-col">
+          <span 
+            *ngIf="canEditTeachers()"
+            class="clickable-field" 
+            (click)="openEditPopup(teacher, 'firstName')"
+            title="Click to edit">
+            {{ getFirstName(teacher) }}
+          </span>
+          <span *ngIf="!canEditTeachers()">{{ getFirstName(teacher) }}</span>
+        </div>
+        <div class="list-col gender-col">
+          <span 
+            *ngIf="canEditTeachers()"
+            class="clickable-field" 
+            (click)="openEditPopup(teacher, 'sex')"
+            title="Click to edit">
+            {{ getGender(teacher) }}
+          </span>
+          <span *ngIf="!canEditTeachers()">{{ getGender(teacher) }}</span>
+        </div>
+        <div class="list-col actions-col">
+          <div class="action-buttons">
+            <button class="btn-icon-small" (click)="viewTeacherDetails(teacher)" title="View Details">👁️</button>
+            <button class="btn-icon-small" (click)="editTeacher(teacher.id)" title="Edit Teacher">✏️</button>
+            <button class="btn-icon-small" (click)="previewIdCard(teacher)" title="Preview ID Card">🪪</button>
+            <button class="btn-icon-small" (click)="createTeacherAccount(teacher)" *ngIf="!teacher.userId" title="Create Account" [disabled]="loading">👤</button>
+            <button class="btn-icon-small btn-delete" (click)="deleteTeacher(teacher.id, teacher.firstName + ' ' + teacher.lastName, teacher.teacherId)" title="Delete" [disabled]="loading">🗑️</button>
+          </div>
         </div>
       </div>
     </div>

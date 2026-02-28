@@ -536,6 +536,7 @@
 
 /* Mobile */
 @media (max-width: 768px) {
+
   .top-navbar-content {
     padding: 0 1rem;
     min-height: 56px;
@@ -546,7 +547,16 @@
   }
 
   .sidebar {
-    display: none;
+    display: block;
+    top: 56px;
+    transform: translateX(-100%);
+    width: 280px;
+    max-width: 85vw;
+    z-index: 1000;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
   }
 
   .main-content {

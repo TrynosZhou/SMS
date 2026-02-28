@@ -1,5 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { Router, NavigationEnd } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
+import { Meta, Title } from '@angular/platform-browser';
 import { AuthService } from './services/auth.service';
 import { SettingsService } from './services/settings.service';
 import { ModuleAccessService } from './services/module-access.service';
@@ -28,7 +29,10 @@ export class AppComponent implements OnInit, OnDestroy {
     public moduleAccessService: ModuleAccessService,
     public themeService: ThemeService,
     private router: Router,
-    private auditService: AuditService
+    private auditService: AuditService,
+    private activatedRoute: ActivatedRoute,
+    private title: Title,
+    private meta: Meta
   ) { }
 
   ngOnInit(): void {
@@ -48,8 +52,13 @@ export class AppComponent implements OnInit, OnDestroy {
       this.moduleAccessService.loadModuleAccess();
     }
 
-    // Log module access on navigation
+    // Log module access and update meta tags on navigation
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe((e: any) => {
+      this.updateMetaFromRoute();
+      // Close mobile menu/drawer after navigation
+      if (this.mobileMenuOpen) {
+        this.closeMobileMenu();
+      }
       if (!this.authService.isAuthenticated()) return;
       const user = this.authService.getCurrentUser();
       const role = (user?.role || '').toLowerCase();
@@ -65,6 +74,9 @@ export class AppComponent implements OnInit, OnDestroy {
     this.authSubscription = this.authService.currentUser$.subscribe(user => {
       // User state changes handled by auth service
     });
+
+    // Set initial meta tags
+    this.updateMetaFromRoute();
   }
 
   ngOnDestroy(): void {
@@ -139,6 +151,12 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   toggleSidebar(): void {
+    // On mobile, use the sidebar toggle button as a drawer open/close control
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+      this.toggleMobileMenu();
+      return;
+    }
+
     this.sidebarCollapsed = !this.sidebarCollapsed;
     // Collapse all menus when sidebar is collapsed
     if (this.sidebarCollapsed) {
@@ -195,6 +213,33 @@ export class AppComponent implements OnInit, OnDestroy {
     if (url.startsWith('/dashboard')) return 'Dashboard';
     if (url.startsWith('/user-log')) return 'Activity Log';
     return 'Other';
+  }
+
+  private updateMetaFromRoute(): void {
+    const deepest = this.getDeepestRoute(this.activatedRoute);
+    const data = deepest.snapshot.data || {};
+
+    const pageTitle = data['title'] || 'School Management System';
+    const description = data['description'] || '';
+    const robots = data['robots'] || 'noindex,nofollow';
+
+    this.title.setTitle(pageTitle);
+
+    if (description) {
+      this.meta.updateTag({ name: 'description', content: description });
+    } else {
+      this.meta.removeTag("name='description'");
+    }
+
+    this.meta.updateTag({ name: 'robots', content: robots });
+  }
+
+  private getDeepestRoute(route: ActivatedRoute): ActivatedRoute {
+    let current: ActivatedRoute = route;
+    while (current.firstChild) {
+      current = current.firstChild;
+    }
+    return current;
   }
 }
 

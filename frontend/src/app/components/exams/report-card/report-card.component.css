@@ -1237,6 +1237,10 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .report-card-wrapper {
+    padding: 12px;
+  }
+
   .form-header {
     flex-direction: column;
     gap: 15px;

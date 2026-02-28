@@ -70,9 +70,9 @@ import { NewsFormComponent } from './components/news/news-form/news-form.compone
 import { NewsDetailComponent } from './components/news/news-detail/news-detail.component';
 
 const routes: Routes = [
-  { path: '', component: SplashComponent },
-  { path: 'login', redirectTo: '', pathMatch: 'full' },
-  { path: 'sign-in', component: LoginComponent },
+  { path: '', component: SplashComponent, data: { title: 'Junior Primary School Management System-https://sms-apua.vercel.app/', description: 'Junior Primary School Management System - School Management System for students, parents, teachers and administrators.', robots: 'index,follow' } },
+  { path: 'login', component: LoginComponent, data: { title: 'Login - Junior Primary School Management System', description: 'Sign in to Junior Primary School Management System to access your school dashboard.', robots: 'noindex,nofollow' } },
+  { path: 'sign-in', redirectTo: '/login', pathMatch: 'full' },
   { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
   { path: 'parent/dashboard', component: ParentDashboardComponent, canActivate: [AuthGuard] },
   { path: 'teacher/dashboard', component: TeacherDashboardComponent, canActivate: [AuthGuard] },

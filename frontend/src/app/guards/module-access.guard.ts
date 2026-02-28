@@ -42,7 +42,7 @@ export class ModuleAccessGuard implements CanActivate {
             this.router.navigate(['/dashboard']);
         }
       } else {
-        this.router.navigate(['/sign-in']);
+        this.router.navigate(['/login']);
       }
       return false;
     }
