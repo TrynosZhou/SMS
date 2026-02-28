@@ -44,19 +44,6 @@ export class StudentReportCardComponent implements OnInit {
     const maxRetries = 5; // Increased retries
     this.user = this.authService.getCurrentUser();
     
-    // If user not found, try to reload from localStorage
-    if (!this.user) {
-      try {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          this.user = JSON.parse(storedUser);
-          console.log('[StudentReportCard] Reloaded user from localStorage:', this.user);
-        }
-      } catch (e) {
-        console.error('[StudentReportCard] Error parsing user from localStorage:', e);
-      }
-    }
-    
     if (!this.user) {
       if (retryCount < maxRetries) {
         setTimeout(() => this.loadStudentData(retryCount + 1), 500);

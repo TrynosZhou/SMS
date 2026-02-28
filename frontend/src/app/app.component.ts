@@ -66,7 +66,7 @@ export class AppComponent implements OnInit, OnDestroy {
       const url = (e.urlAfterRedirects || e.url || '').toString();
       const moduleName = this.resolveModuleName(url);
       if (moduleName) {
-        const sessionId = localStorage.getItem('sessionId') || undefined;
+        const sessionId = sessionStorage.getItem('sessionId') || undefined;
         this.auditService.logActivity(moduleName, sessionId).subscribe({ next: () => {}, error: () => {} });
       }
     });

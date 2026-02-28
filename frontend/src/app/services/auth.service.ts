@@ -37,8 +37,8 @@ export class AuthService {
   private lastActivityKey = 'lastActivityTimestamp';
 
   constructor(private http: HttpClient, private router: Router) {
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
+    const token = sessionStorage.getItem('token');
+    const user = sessionStorage.getItem('user');
     if (token && user) {
       this.currentUserSubject.next(JSON.parse(user));
     }
@@ -66,12 +66,12 @@ export class AuthService {
       tap((response: any) => {
         if (response && response.token && response.user) {
           // Store token and user synchronously
-          localStorage.setItem('token', response.token);
-          localStorage.setItem('user', JSON.stringify(response.user));
+          sessionStorage.setItem('token', response.token);
+          sessionStorage.setItem('user', JSON.stringify(response.user));
           if (response.sessionId) {
-            localStorage.setItem('sessionId', response.sessionId);
+            sessionStorage.setItem('sessionId', response.sessionId);
           } else {
-            localStorage.removeItem('sessionId');
+            sessionStorage.removeItem('sessionId');
           }
           // Update BehaviorSubject immediately
           this.currentUserSubject.next(response.user);
@@ -93,16 +93,16 @@ export class AuthService {
     } else {
       sessionStorage.removeItem(this.logoutReasonKey);
     }
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('sessionId');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('sessionId');
     this.currentUserSubject.next(null);
     this.clearInactivityTimer();
     this.router.navigate(['/login']);
   }
 
   getToken(): string | null {
-    return localStorage.getItem('token');
+    return sessionStorage.getItem('token');
   }
 
   /**
@@ -138,7 +138,7 @@ export class AuthService {
   }
 
   setCurrentUser(user: User): void {
-    localStorage.setItem('user', JSON.stringify(user));
+    sessionStorage.setItem('user', JSON.stringify(user));
     this.currentUserSubject.next(user);
   }
 
@@ -156,6 +156,12 @@ export class AuthService {
     const user = this.getCurrentUser();
   
     if (!token || !user) {
+      return false;
+    }
+
+    const payload = this.decodeToken(token);
+    if (!payload || !payload.exp) {
+      this.logout('unauthorized');
       return false;
     }
   

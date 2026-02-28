@@ -387,7 +387,7 @@ export class InvoiceFormComponent implements OnInit {
     }
 
     // Check authentication
-    const token = localStorage.getItem('token');
+    const token = this.authService.getToken();
     if (!token) {
       this.error = 'You must be logged in to create invoices. Please log in and try again.';
       this.submitting = false;
