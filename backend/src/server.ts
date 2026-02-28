@@ -58,7 +58,7 @@ app.get('/', (req, res) => res.send('<h1>School Management System API</h1><p>Use
 app.use((req, res) => res.status(404).json({ message: 'Route not found', path: req.path, method: req.method }));
 
 // =================== DATABASE & SERVER ===================
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 
 process.on('uncaughtException', (err) => {
   console.error('[Server] ✗ UNCAUGHT EXCEPTION:', err);

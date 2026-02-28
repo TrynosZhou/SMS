@@ -1801,6 +1801,15 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     });
     console.log('Found marks:', allMarks.length, subjectId ? `(filtered by subject ${subjectId})` : '(all subjects)');
 
+    let reportCardWarnings: {
+      message: string;
+      subjectsWithoutExams: string[];
+      subjectsWithMissingMarks: { subject: string; missingStudents: string[] }[];
+      totalSubjects: number;
+      subjectsWithExams: number;
+      subjectsComplete: number;
+    } | null = null;
+
     // VALIDATION: Check if all subjects have exams and all students have marks
     // Only validate if not filtering by a single subject (for teachers)
     if (!subjectId && allClassSubjects.length > 0) {
@@ -1867,20 +1876,18 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         errorMessage += '. Please ensure all subjects have exams created and all students have marks entered before generating report cards.';
         
         console.log('[Validation] Validation issue detected:', errorMessage);
-        // Allow teachers and administrators to proceed despite missing marks/exams,
-        // but block parents and students with a clear message.
-        if (isParent || isStudent) {
-          return res.status(400).json({
-            message: errorMessage,
-            subjectsWithoutExams,
-            subjectsWithMissingMarks,
-            totalSubjects: allClassSubjects.length,
-            subjectsWithExams: allClassSubjects.length - subjectsWithoutExams.length,
-            subjectsComplete: allClassSubjects.length - subjectsWithoutExams.length - subjectsWithMissingMarks.length
-          });
-        }
-        // For teachers/admins, proceed but include warnings in logs
-        console.warn('[Validation] Proceeding with report card generation for staff despite missing data.');
+        reportCardWarnings = {
+          message: errorMessage,
+          subjectsWithoutExams,
+          subjectsWithMissingMarks,
+          totalSubjects: allClassSubjects.length,
+          subjectsWithExams: allClassSubjects.length - subjectsWithoutExams.length,
+          subjectsComplete: allClassSubjects.length - subjectsWithoutExams.length - subjectsWithMissingMarks.length
+        };
+
+        // Relaxed behavior: allow ALL roles (including parents/students) to proceed.
+        // Missing marks/exams will render as N/A / Not taken in the generated report card.
+        console.warn('[Validation] Proceeding with report card generation despite missing data.');
       }
       
       console.log('[Validation] All subjects have exams and all students have marks. Proceeding with report card generation.');
@@ -2263,7 +2270,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    res.json({ reportCards: filteredReportCards, class: classEntity.name, examType, term: termValue });
+    res.json({ reportCards: filteredReportCards, class: classEntity.name, examType, term: termValue, warnings: reportCardWarnings });
   } catch (error: any) {
     console.error('Error generating report cards:', error);
     console.error('Error stack:', error.stack);

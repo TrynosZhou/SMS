@@ -180,12 +180,17 @@ export const getNewsList = async (req: AuthRequest, res: Response) => {
       includeExpired = 'false'
     } = req.query;
 
+    const isPinnedFilter =
+      typeof isPinned === 'string'
+        ? (isPinned === 'true' ? true : isPinned === 'false' ? false : undefined)
+        : undefined;
+
     const options = {
       page: parseInt(page as string),
       limit: parseInt(limit as string),
       category: category as NewsCategory,
       status: status as NewsStatus,
-      isPinned: isPinned === 'true',
+      isPinned: isPinnedFilter,
       authorId: authorId as string,
       search: search as string,
       sortBy: sortBy as any,

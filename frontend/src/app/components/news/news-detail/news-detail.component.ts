@@ -41,7 +41,7 @@ export class NewsDetailComponent implements OnInit {
     this.error = '';
 
     // Load news with view count increment
-    this.newsService.getNewsById(id, true).subscribe({
+    this.newsService.getNewsById(id, true, this.canManageNews()).subscribe({
       next: (news: News) => {
         this.news = news;
         this.loading = false;

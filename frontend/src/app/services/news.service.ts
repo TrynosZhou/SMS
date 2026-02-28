@@ -52,12 +52,15 @@ export class NewsService {
     );
   }
 
-  getNewsById(id: string, incrementView = false): Observable<News> {
+  getNewsById(id: string, incrementView = false, useAdminEndpoint = false): Observable<News> {
     let params = new HttpParams();
     if (incrementView) {
       params = params.set('incrementView', 'true');
     }
-    return this.http.get<{message: string, data: News}>(`${this.apiUrl}/news/${id}`, { params }).pipe(
+
+    const endpoint = useAdminEndpoint ? `${this.apiUrl}/news/admin/${id}` : `${this.apiUrl}/news/public/${id}`;
+
+    return this.http.get<{message: string, data: News}>(endpoint, { params }).pipe(
       map(response => response.data),
       catchError(error => {
         console.error('Error getting news by ID:', error);

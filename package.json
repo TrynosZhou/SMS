@@ -14,13 +14,14 @@
     "@angular/core": "^7.2.16",
     "@angular/http": "^7.2.16",
     "@types/node": "^24.10.1",
+    "nodemon": "^3.1.14",
     "rxjs": "^6.6.7",
-    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
   "devDependencies": {
     "docx": "^8.5.0",
     "pdf-lib": "^1.17.1",
-    "puppeteer": "^22.13.1"
+    "puppeteer": "^22.13.1",
+    "ts-node": "^10.9.2"
   }
 }

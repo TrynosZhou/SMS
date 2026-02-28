@@ -71,7 +71,7 @@ export class NewsFormComponent implements OnInit {
     this.loading = true;
     this.error = '';
 
-    this.newsService.getNewsById(this.newsId).subscribe({
+    this.newsService.getNewsById(this.newsId, false, true).subscribe({
       next: (news: News) => {
         this.populateForm(news);
         this.loading = false;
@@ -107,6 +107,36 @@ export class NewsFormComponent implements OnInit {
     return date.toISOString().slice(0, 16);
   }
 
+  private safeDateToISOString(dateInput: string): string | undefined {
+    if (!dateInput || !dateInput.trim()) {
+      return undefined;
+    }
+    
+    const date = new Date(dateInput);
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      return undefined;
+    }
+    
+    return date.toISOString();
+  }
+
+  private normalizeStringArray(value: any): string[] {
+    if (Array.isArray(value)) {
+      return value
+        .map(v => String(v))
+        .map(v => v.trim())
+        .filter(v => v.length > 0);
+    }
+
+    if (typeof value === 'string') {
+      const v = value.trim();
+      return v ? [v] : [];
+    }
+
+    return [];
+  }
+
   onSubmit(): void {
     if (this.newsForm.invalid) {
       this.markFormGroupTouched(this.newsForm);
@@ -119,6 +149,9 @@ export class NewsFormComponent implements OnInit {
     this.success = '';
 
     const formValue = this.newsForm.value;
+
+    const targetRoles = this.normalizeStringArray(formValue.targetRoles);
+    const attachments = this.normalizeStringArray(formValue.attachments);
     
     // Prepare data
     const newsData: CreateNewsData | UpdateNewsData = {
@@ -128,11 +161,11 @@ export class NewsFormComponent implements OnInit {
       category: formValue.category,
       status: formValue.status,
       isPinned: formValue.isPinned,
-      publishedAt: formValue.publishedAt ? new Date(formValue.publishedAt).toISOString() : undefined,
-      expiresAt: formValue.expiresAt ? new Date(formValue.expiresAt).toISOString() : undefined,
+      publishedAt: this.safeDateToISOString(formValue.publishedAt),
+      expiresAt: this.safeDateToISOString(formValue.expiresAt),
       imageUrl: formValue.imageUrl.trim() || undefined,
-      targetRoles: formValue.targetRoles.length > 0 ? formValue.targetRoles : undefined,
-      attachments: formValue.attachments.length > 0 ? formValue.attachments : undefined,
+      targetRoles: targetRoles.length > 0 ? targetRoles : undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
       allowComments: formValue.allowComments,
       tags: formValue.tags.trim() || undefined
     };
@@ -149,7 +182,8 @@ export class NewsFormComponent implements OnInit {
           }, 1500);
         },
         error: (err) => {
-          this.error = 'Failed to update news article';
+          this.applyServerValidationErrors(err);
+          if (!this.error) this.error = 'Failed to update news article';
           this.saving = false;
           console.error('Error updating news:', err);
         }
@@ -165,7 +199,8 @@ export class NewsFormComponent implements OnInit {
           }, 1500);
         },
         error: (err) => {
-          this.error = 'Failed to create news article';
+          this.applyServerValidationErrors(err);
+          if (!this.error) this.error = 'Failed to create news article';
           this.saving = false;
           console.error('Error creating news:', err);
         }
@@ -188,8 +223,17 @@ export class NewsFormComponent implements OnInit {
   }
 
   onTargetRolesChange(event: any): void {
-    const selectedRoles = event.target.value;
-    this.newsForm.get('targetRoles')?.setValue(selectedRoles);
+    const role = String(event?.target?.value ?? '').trim();
+    if (!role) return;
+
+    const checked = !!event?.target?.checked;
+    const current = this.normalizeStringArray(this.newsForm.get('targetRoles')?.value);
+
+    const next = checked
+      ? Array.from(new Set([...current, role]))
+      : current.filter(r => r !== role);
+
+    this.newsForm.get('targetRoles')?.setValue(next);
   }
 
   addAttachment(): void {
@@ -223,6 +267,7 @@ export class NewsFormComponent implements OnInit {
   getFieldError(fieldName: string): string {
     const field = this.newsForm.get(fieldName);
     if (field && field.errors) {
+      if (field.errors['server']) return field.errors['server'];
       if (field.errors['required']) return 'This field is required';
       if (field.errors['minlength']) return `Minimum length is ${field.errors['minlength'].requiredLength} characters`;
       if (field.errors['maxlength']) return `Maximum length is ${field.errors['maxlength'].requiredLength} characters`;
@@ -248,6 +293,54 @@ export class NewsFormComponent implements OnInit {
       case 'summary': return 500;
       case 'imageUrl': return 500;
       default: return Infinity;
+    }
+  }
+
+  private applyServerValidationErrors(err: any): void {
+    const status = err?.status;
+    const body = err?.error;
+    if (status === 400 && body) {
+      const serverMessage = body.message || 'Validation failed';
+      const errors = body.errors;
+      if (Array.isArray(errors)) {
+        // Backend returns string[] like "title is required"
+        const knownFields = ['title','content','summary','category','status','isPinned','publishedAt','expiresAt','imageUrl','targetRoles','attachments','allowComments','tags'];
+        let firstMsg = '';
+        errors.forEach((e: string) => {
+          const msg = String(e || '').trim();
+          if (!msg) return;
+          if (!firstMsg) firstMsg = msg;
+          // try to extract field name before first space or word followed by space
+          const match = msg.match(/^([a-zA-Z]+)\b/);
+          const field = match ? match[1] : '';
+          const normalized = field ? field.charAt(0).toLowerCase() + field.slice(1) : '';
+          const target = knownFields.includes(normalized) ? normalized : '';
+          if (target) {
+            const ctrl = this.newsForm.get(target);
+            if (ctrl) {
+              ctrl.setErrors({ ...(ctrl.errors || {}), server: msg });
+              ctrl.markAsTouched();
+            }
+          }
+        });
+        this.error = firstMsg || serverMessage;
+      } else if (errors && typeof errors === 'object') {
+        Object.keys(errors).forEach((key) => {
+          const ctrl = this.newsForm.get(key);
+          const val = errors[key];
+          const msg = Array.isArray(val) ? (val[0] || serverMessage) : (val || serverMessage);
+          if (ctrl) {
+            ctrl.setErrors({ ...(ctrl.errors || {}), server: msg });
+            ctrl.markAsTouched();
+          }
+        });
+        const firstKey = Object.keys(errors)[0];
+        const firstVal = errors[firstKey];
+        const firstMsg = Array.isArray(firstVal) ? (firstVal[0] || serverMessage) : (firstVal || serverMessage);
+        this.error = firstMsg || serverMessage;
+      } else {
+        this.error = serverMessage;
+      }
     }
   }
 }

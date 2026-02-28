@@ -78,6 +78,10 @@ export function validate(data: any, schema: { [key: string]: ValidationRule }): 
         break;
 
       case 'date':
+        // Skip validation for empty strings if field is optional
+        if (rules.optional && (value === '' || value === null || value === undefined)) {
+          break;
+        }
         const dateValue = new Date(value);
         if (isNaN(dateValue.getTime())) {
           errors.push(`${field} must be a valid date`);

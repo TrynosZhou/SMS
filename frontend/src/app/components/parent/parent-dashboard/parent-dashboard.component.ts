@@ -18,6 +18,7 @@ export class ParentDashboardComponent implements OnInit {
   currencySymbol = 'KES';
   parentName = '';
   invoiceLoading = false;
+  schoolLogo: string | null = null;
 
   constructor(
     private parentService: ParentService,
@@ -44,6 +45,7 @@ export class ParentDashboardComponent implements OnInit {
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
         this.currencySymbol = data.currencySymbol || 'KES';
+        this.schoolLogo = data.schoolLogo || null;
       },
       error: (err: any) => {
         console.error('Error loading settings:', err);

@@ -12,6 +12,10 @@
   padding: 0;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
   position: fixed;
+  left: 0 !important;
+  top: 0 !important;
+  margin-left: 0 !important;
+  transform: translateX(0) !important;
   height: 100vh;
   overflow-y: auto;
 }
@@ -88,13 +92,51 @@
 .main-content {
   flex: 1;
   margin-left: 250px;
-  padding: 30px;
+  padding: 0 24px 24px 0;
   background: #f5f5f5;
 }
 
+/* Removed top-grid layout to restore original single-column arrangement */
+
+.sidebar-picture {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px -16px;
+}
+.sidebar-picture-img {
+  max-height: 80px;
+  width: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.top-picture {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px 0;
+}
 .container {
   max-width: 1200px;
-  margin: 0 auto;
+  margin: 0;
+}
+/* Left gap adjustments next to sidebar */
+.parent-dashboard-container .main-content > .link-students-card,
+.parent-dashboard-container .main-content > .quick-actions-section,
+.parent-dashboard-container .main-content > .container {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+.parent-dashboard-container .main-content .container {
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 .dashboard-header {
@@ -537,6 +579,10 @@
 }
 
 @media (max-width: 768px) {
+  .main-content {
+    margin-left: 250px;
+  }
+
   .students-grid {
     grid-template-columns: 1fr;
   }

@@ -1,7 +1,7 @@
 import { AppDataSource } from '../config/database';
 import { News, NewsCategory, NewsStatus } from '../entities/News';
 import { User, UserRole } from '../entities/User';
-import { Like, Not, IsNull, LessThan, MoreThan, And } from 'typeorm';
+import { And, Brackets, IsNull, LessThan, Like, MoreThan, Not } from 'typeorm';
 
 export interface CreateNewsData {
   title: string;
@@ -155,7 +155,7 @@ export class NewsService {
     // Exclude expired news unless explicitly requested
     if (!includeExpired) {
       const now = new Date();
-      whereConditions.expiresAt = IsNull();
+      // handled via query builder so we can include both NULL and future expiry
     }
 
     // Build query
@@ -163,6 +163,16 @@ export class NewsService {
       .createQueryBuilder('news')
       .leftJoinAndSelect('news.author', 'author')
       .where(whereConditions);
+
+    // Exclude expired news unless explicitly requested
+    if (!includeExpired) {
+      const now = new Date();
+      query.andWhere(
+        new Brackets(qb => {
+          qb.where('news.expiresAt IS NULL').orWhere('news.expiresAt > :now', { now });
+        })
+      );
+    }
 
     // Add role-based filtering for user-specific feeds
     if (userRole) {

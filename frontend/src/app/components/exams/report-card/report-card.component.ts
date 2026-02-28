@@ -390,7 +390,7 @@ export class ReportCardComponent implements OnInit {
     this.error = '';
     
     // Get parent's students to find balance
-    this.parentService.getLinkedStudents().subscribe({
+    this.parentService.getLinkedStudents(this.selectedTerm).subscribe({
       next: (response: any) => {
         const student = (response.students || []).find((s: any) => s.id === this.parentStudentId);
         

@@ -11,8 +11,12 @@ export class ParentService {
 
   constructor(private http: HttpClient) { }
 
-  getLinkedStudents(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/parent/students`);
+  getLinkedStudents(term?: string): Observable<any> {
+    const params: any = {};
+    if (term && String(term).trim()) {
+      params.term = String(term).trim();
+    }
+    return this.http.get(`${this.apiUrl}/parent/students`, { params });
   }
 
   searchStudents(query: string): Observable<any> {

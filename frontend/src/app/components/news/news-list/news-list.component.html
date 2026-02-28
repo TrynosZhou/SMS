@@ -105,7 +105,7 @@
   <!-- News List -->
   <div class="news-list" *ngIf="!loading">
     <!-- Empty State -->
-    <div class="empty-state" *ngIf="news.length === 0">
+    <div class="empty-state" *ngIf="newsList.length === 0">
       <div class="empty-icon">📰</div>
       <h3>No news articles found</h3>
       <p>Get started by creating your first news article.</p>
@@ -115,9 +115,9 @@
     </div>
 
     <!-- News Items -->
-    <div class="news-items" *ngIf="news.length > 0">
+    <div class="news-items" *ngIf="newsList.length > 0">
       <div 
-        *ngFor="let article of news; trackBy: trackByNewsId" 
+        *ngFor="let article of newsList; trackBy: trackByNewsId" 
         class="news-item"
         [class.pinned]="article.isPinned">
         <div class="news-content">

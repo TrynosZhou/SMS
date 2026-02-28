@@ -16,6 +16,9 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
     if (!userId) {
       return res.status(401).json({ message: 'Authentication required' });
     }
+    const requestedTermRaw = (req.query as any)?.term;
+    const requestedTerm = typeof requestedTermRaw === 'string' ? requestedTermRaw.trim() : '';
+
     const parentRepository = AppDataSource.getRepository(Parent);
     const parentStudentRepository = AppDataSource.getRepository(ParentStudent);
     let parent = req.user?.parent || null;
@@ -34,16 +37,31 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
       relations: ['student', 'student.classEntity']
     });
 
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const settings = await settingsRepository.findOne({
+      where: {},
+      order: { createdAt: 'DESC' }
+    });
+
+    const activeTerm = (settings?.activeTerm || settings?.currentTerm || '').toString().trim();
+    const termToUse = requestedTerm || activeTerm;
+
     // Get invoice balances for each student
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentsWithBalances = await Promise.all(
       (links || []).map(async (link) => {
         const student = link.student;
-        // Get the latest invoice for the student
-        const latestInvoice = await invoiceRepository.findOne({
-          where: { studentId: student.id },
-          order: { createdAt: 'DESC' }
-        });
+        // Use the latest invoice for the requested/current term.
+        // This prevents showing next-term tuition in balances when only the current term is relevant (e.g., Mid Term).
+        const latestInvoice = termToUse
+          ? await invoiceRepository.findOne({
+              where: { studentId: student.id, term: termToUse },
+              order: { createdAt: 'DESC' }
+            })
+          : await invoiceRepository.findOne({
+              where: { studentId: student.id },
+              order: { createdAt: 'DESC' }
+            });
 
         // Calculate term balance and current invoice balance
         let termBalance = 0;
@@ -51,53 +69,7 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
         
         if (latestInvoice) {
           termBalance = parseFloat(String(latestInvoice.balance || 0));
-          
-          // Get settings to determine next term fees
-          const settingsRepository = AppDataSource.getRepository(Settings);
-          const settings = await settingsRepository.findOne({
-            where: {},
-            order: { createdAt: 'DESC' }
-          });
-
-          // Get next term fees based on student type
-          const feesSettings = settings?.feesSettings || {};
-          const dayScholarTuitionFee = parseAmount(feesSettings.dayScholarTuitionFee);
-          const boarderTuitionFee = parseAmount(feesSettings.boarderTuitionFee);
-          const transportCost = parseAmount(feesSettings.transportCost);
-          const diningHallCost = parseAmount(feesSettings.diningHallCost);
-          
-          // Calculate fees based on staff child or exemption status
-          let nextTermFees = 0;
-          
-          // Staff children and exempted students don't pay tuition fees
-          if (!student.isStaffChild && !student.isExempted) {
-            nextTermFees = student.studentType === 'Boarder'
-              ? boarderTuitionFee
-              : dayScholarTuitionFee;
-          }
-          
-          // Transport cost: only for day scholars who use transport AND are not staff children or exempted
-          if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild && !student.isExempted) {
-            nextTermFees += transportCost;
-          }
-          
-          // Dining hall cost: full price for regular students, 50% for staff children or exempted
-          if (student.usesDiningHall) {
-            if (student.isStaffChild || student.isExempted) {
-              nextTermFees += diningHallCost * 0.5; // 50% for staff children or exempted
-            } else {
-              nextTermFees += diningHallCost; // Full price for regular students
-            }
-          }
-
-          // Current invoice balance calculation:
-          // - If term balance is zero: only fees for next term
-          // - If term balance > 0: term balance + fees for next term
-          if (termBalance === 0) {
-            currentBalance = nextTermFees;
-          } else {
-            currentBalance = termBalance + nextTermFees;
-          }
+          currentBalance = termBalance;
         }
 
         return {
