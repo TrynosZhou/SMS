@@ -95,6 +95,19 @@ body {
   overflow-x: hidden;
 }
 
+app-root {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+@supports not (overflow: clip) {
+  app-root {
+    overflow-x: hidden;
+  }
+}
+
 img,
 svg,
 video,
@@ -120,28 +133,28 @@ button {
   padding: 0 var(--spacing-md);
 }
 
-@media (min-width: 640px) {
+@media (min-width: 576px) {
   .container {
-    max-width: 640px;
+    max-width: 540px;
     padding: 0 var(--spacing-lg);
   }
 }
 
 @media (min-width: 768px) {
   .container {
-    max-width: 768px;
+    max-width: 720px;
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 992px) {
   .container {
-    max-width: 1024px;
+    max-width: 960px;
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1200px) {
   .container {
-    max-width: 1280px;
+    max-width: 1140px;
   }
 }
 
@@ -161,6 +174,18 @@ button {
   margin-bottom: var(--spacing-lg);
   box-shadow: var(--shadow-md);
   transition: box-shadow var(--transition-base);
+}
+
+@media (max-width: 992px) {
+  .card {
+    padding: var(--spacing-md);
+  }
+}
+
+@media (max-width: 576px) {
+  .card {
+    padding: var(--spacing-md);
+  }
 }
 
 .card:hover {
@@ -317,13 +342,18 @@ button {
   width: 100%;
   padding: 0.625rem 0.875rem;
   font-size: 0.9375rem;
-  line-height: 1.5;
-  color: var(--text-primary);
-  background-color: var(--bg-primary);
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-md);
-  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  background-color: var(--bg-primary);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   min-height: 44px; /* Touch-friendly */
+}
+
+@media (max-width: 576px) {
+  .form-control,
+  .form-select {
+    font-size: 1rem;
+  }
 }
 
 .form-control:focus, .form-select:focus {
@@ -403,7 +433,7 @@ textarea.form-control {
 }
 
 /* Tablet: 2 columns */
-@media (min-width: 769px) and (max-width: 1024px) {
+@media (min-width: 769px) and (max-width: 992px) {
   .col-md-6 { flex: 0 0 50%; max-width: 50%; }
   .col-md-4 { flex: 0 0 33.333333%; max-width: 33.333333%; }
   .col-md-3 { flex: 0 0 25%; max-width: 25%; }
@@ -426,6 +456,13 @@ textarea.form-control {
 
   .table-responsive > table {
     min-width: 720px;
+  }
+
+  table:not(.table-mobile-cards) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 

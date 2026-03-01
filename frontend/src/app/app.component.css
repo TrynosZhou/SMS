@@ -516,17 +516,18 @@
    ======================================== */
 
 /* Tablet */
-@media (max-width: 1024px) {
+@media (max-width: 992px) {
   .sidebar {
     transform: translateX(-100%);
   }
 
-  .sidebar:not(.collapsed) {
+  .sidebar.mobile-open {
     transform: translateX(0);
   }
 
   .main-content {
     margin-left: 0;
+    padding: 1.25rem;
   }
 
   .sidebar.collapsed ~ .main-content {

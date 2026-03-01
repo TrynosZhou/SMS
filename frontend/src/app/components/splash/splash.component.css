@@ -110,7 +110,7 @@
 
 .main-title {
   margin: 0 0 10px 0;
-  font-size: 2rem;
+  font-size: clamp(1.45rem, 3.6vw, 2rem);
   font-weight: 800;
   color: #fff;
   text-align: center;
@@ -121,7 +121,7 @@
 
 .subtitle {
   margin: 0 0 22px 0;
-  font-size: 0.95rem;
+  font-size: clamp(0.85rem, 2.4vw, 0.95rem);
   font-weight: 500;
   color: rgba(255, 255, 255, 0.95);
   text-align: center;
@@ -259,21 +259,13 @@
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .splash-wrapper {
     width: 94vw;
     max-width: 94vw;
     height: auto;
     min-height: auto;
-    padding: 24px;
-  }
-
-  .main-title {
-    font-size: 1.6rem;
-  }
-
-  .subtitle {
-    font-size: 0.85rem;
+    padding: 22px;
   }
 
   .splash-icon {
@@ -284,5 +276,33 @@
   .splash-icon svg {
     width: 22px;
     height: 22px;
+  }
+}
+
+@media (max-width: 576px) {
+  :host {
+    padding: 16px 12px;
+  }
+
+  .splash-wrapper {
+    width: 96vw;
+    max-width: 96vw;
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .spinner {
+    width: 46px;
+    height: 46px;
+    margin-bottom: 20px;
+  }
+
+  .icons-row {
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .progress-wrap {
+    max-width: 180px;
   }
 }

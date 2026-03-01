@@ -22,7 +22,7 @@
   margin-right: auto;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 992px) {
   :host {
     justify-content: flex-start;
   }
@@ -53,6 +53,32 @@
 
   .login-card {
     max-width: 100%;
+  }
+}
+
+@media (max-width: 576px) {
+  :host {
+    padding: 16px 12px;
+  }
+
+  .login-card {
+    padding: 18px 16px;
+    border-width: 3px;
+  }
+
+  .login-header h2 {
+    font-size: 20px;
+  }
+
+  .tab-navigation {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .tab-btn {
+    flex: 1 1 calc(50% - 6px);
+    font-size: 12px;
+    padding: 10px 10px;
   }
 }
 

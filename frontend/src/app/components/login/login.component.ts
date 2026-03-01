@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { AuthService, LogoutReason } from '../../services/auth.service';
 import { validatePhoneNumber } from '../../utils/phone-validator';
 import { ActivatedRoute } from '@angular/router';
+import { finalize, timeout } from 'rxjs/operators';
 
 @Component({
   selector: 'app-login',
@@ -381,9 +382,15 @@ export class LoginComponent implements OnInit {
 
       this.loading = true;
       this.error = '';
-      this.authService.resetPassword(this.resetToken.trim(), newPassword).subscribe({
+      this.authService.resetPassword(this.resetToken.trim(), newPassword)
+        .pipe(
+          timeout(20000),
+          finalize(() => {
+            this.loading = false;
+          })
+        )
+        .subscribe({
         next: () => {
-          this.loading = false;
           this.success = 'Password reset successfully. Please sign in with your new password.';
           this.resetToken = '';
           this.resetNewPassword = '';
@@ -391,8 +398,11 @@ export class LoginComponent implements OnInit {
           setTimeout(() => this.setTab('signin'), 1500);
         },
         error: (err: any) => {
-          this.error = err.error?.message || 'Failed to reset password';
-          this.loading = false;
+          if (err?.name === 'TimeoutError') {
+            this.error = 'Request timed out. Please try again.';
+          } else {
+            this.error = err.error?.message || 'Failed to reset password';
+          }
         }
       });
       return;
@@ -407,9 +417,15 @@ export class LoginComponent implements OnInit {
     this.loading = true;
     this.error = '';
 
-    this.authService.requestPasswordReset(email).subscribe({
+    this.authService.requestPasswordReset(email)
+      .pipe(
+        timeout(20000),
+        finalize(() => {
+          this.loading = false;
+        })
+      )
+      .subscribe({
       next: (res: any) => {
-        this.loading = false;
         this.success = 'If the email exists, a password reset link has been sent.';
 
         // Development convenience: backend may return token
@@ -421,8 +437,11 @@ export class LoginComponent implements OnInit {
         }
       },
       error: (err: any) => {
-        this.error = err.error?.message || 'Failed to send reset email';
-        this.loading = false;
+        if (err?.name === 'TimeoutError') {
+          this.error = 'Request timed out. Please try again.';
+        } else {
+          this.error = err.error?.message || 'Failed to send reset email';
+        }
       }
     });
   }

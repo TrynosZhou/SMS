@@ -37,7 +37,10 @@ export async function sendPasswordResetEmail(to: string, resetLink: string): Pro
       host,
       port,
       secure,
-      auth: { user, pass }
+      auth: { user, pass },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000
     });
 
     const subject = 'Password Reset - School Management System';
