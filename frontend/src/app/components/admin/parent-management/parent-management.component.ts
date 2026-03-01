@@ -49,17 +49,34 @@ export class ParentManagementComponent implements OnInit {
   loadParents() {
     this.loading = true;
     this.error = '';
+    const previousParents = this.parents || [];
     this.parentService.getAllParentsAdmin().subscribe({
       next: (response: any) => {
-        this.parents = response.parents || [];
+        const incomingParents = response.parents || [];
+
+        // Some endpoints/environments may not consistently include parentStudents.
+        // Preserve any existing parentStudents we already have in memory.
+        const previousById = new Map<string, any>(previousParents.map(p => [p.id, p]));
+        this.parents = incomingParents.map((p: any) => {
+          const prev = previousById.get(p.id);
+          if (p && (p.parentStudents === undefined || p.parentStudents === null) && prev?.parentStudents) {
+            return { ...p, parentStudents: prev.parentStudents };
+          }
+          return p;
+        });
         this.filteredParents = this.parents;
         this.loading = false;
         if (this.selectedParent) {
           const updated = this.parents.find(p => p.id === this.selectedParent.id);
           if (updated) {
-            this.selectedParent = updated;
+            // Ensure we never wipe linked students on refresh
+            const mergedSelected = {
+              ...updated,
+              parentStudents: (updated.parentStudents ?? this.selectedParent.parentStudents ?? [])
+            };
+            this.selectedParent = mergedSelected;
             if (this.editMode) {
-              this.editParent = { ...updated };
+              this.editParent = { ...mergedSelected };
             }
           } else {
             this.clearSelectedParent();
@@ -280,6 +297,31 @@ export class ParentManagementComponent implements OnInit {
       next: () => {
         this.linking = false;
         this.success = 'Student linked successfully';
+
+        // Update UI immediately (count + linked list) without waiting for a full reload.
+        const linkedStudent = this.studentsSearchResults.find(s => s.id === this.selectedStudentId);
+        if (linkedStudent) {
+          const existingLinks = Array.isArray(this.selectedParent?.parentStudents)
+            ? this.selectedParent.parentStudents
+            : [];
+
+          const alreadyLinked = existingLinks.some((l: any) => l?.student?.id === linkedStudent.id);
+          if (!alreadyLinked && this.selectedParent) {
+            this.selectedParent = {
+              ...this.selectedParent,
+              parentStudents: [
+                ...existingLinks,
+                { student: linkedStudent, relationshipType: this.relationshipType || 'guardian' }
+              ]
+            };
+          }
+        }
+
+        // Clear selection/search so admin doesn't accidentally link the same student twice
+        this.selectedStudentId = null;
+        this.studentSearchQuery = '';
+        this.studentsSearchResults = [];
+
         this.loadParents();
         setTimeout(() => this.success = '', 5000);
       },
