@@ -1,6 +1,6 @@
 :host {
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
   min-height: 100dvh;
   width: 100%;
@@ -16,10 +16,22 @@
   width: 100%;
   max-width: 460px;
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
-  margin-left: 8%;
+  margin-left: auto;
   margin-right: auto;
+}
+
+@media (min-width: 1024px) {
+  :host {
+    justify-content: flex-start;
+  }
+
+  .login-container {
+    justify-content: flex-start;
+    margin-left: 8%;
+    margin-right: auto;
+  }
 }
 
 @media (min-width: 1200px) {
@@ -28,18 +40,11 @@
   }
 }
 
-@media (max-width: 768px) {
-  .login-container {
-    margin-left: auto;
-    margin-right: auto;
-  }
-}
-
 @media (max-width: 480px) {
   :host {
     justify-content: center;
-    align-items: flex-start;
-    padding: 16px 12px;
+    align-items: center;
+    padding: 20px 12px;
   }
 
   .login-container {
