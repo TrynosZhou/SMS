@@ -15,9 +15,23 @@ export async function sendPasswordResetEmail(to: string, resetLink: string): Pro
     const port = Number(portRaw);
     const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
-    // Use require to avoid needing TypeScript types for nodemailer.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const nodemailer = require('nodemailer');
+    let nodemailer: any;
+    try {
+      // Prefer CommonJS require when available.
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      nodemailer = require('nodemailer');
+    } catch (e: any) {
+      try {
+        // Fallback for ESM-only nodemailer versions.
+        const imported = await import('nodemailer');
+        nodemailer = (imported as any).default || imported;
+      } catch (e2: any) {
+        return {
+          ok: false,
+          error: `Failed to load nodemailer: ${e2?.message || e?.message || 'Unknown error'}`
+        };
+      }
+    }
 
     const transporter = nodemailer.createTransport({
       host,
