@@ -20,7 +20,120 @@
     <span>{{ error }}</span>
   </div>
 
-  <div class="layout">
+  <div class="tab-navigation" style="margin-bottom: 16px;">
+    <button class="tab-btn" [class.active]="activeAdminTab === 'manage'" (click)="setAdminTab('manage')">
+      Manage
+    </button>
+    <button class="tab-btn" [class.active]="activeAdminTab === 'create'" (click)="setAdminTab('create')">
+      Create Parent Account
+    </button>
+    <button class="tab-btn" [class.active]="activeAdminTab === 'reset'" (click)="setAdminTab('reset')">
+      Reset Parent Password
+    </button>
+  </div>
+
+  <div class="card" *ngIf="activeAdminTab === 'create'">
+    <h3 style="margin-top:0;">Create Parent (Admin)</h3>
+    <div class="details-grid">
+      <div>
+        <label>First Name</label>
+        <input type="text" class="form-input" [(ngModel)]="createParentForm.firstName" />
+      </div>
+      <div>
+        <label>Last Name</label>
+        <input type="text" class="form-input" [(ngModel)]="createParentForm.lastName" />
+      </div>
+      <div>
+        <label>Email</label>
+        <input type="email" class="form-input" [(ngModel)]="createParentForm.email" />
+      </div>
+      <div>
+        <label>Phone</label>
+        <input type="text" class="form-input" [(ngModel)]="createParentForm.phoneNumber" />
+      </div>
+      <div class="full-width">
+        <label>Address</label>
+        <textarea rows="2" class="form-input" [(ngModel)]="createParentForm.address"></textarea>
+      </div>
+    </div>
+
+    <div class="form-row" style="margin-top: 12px;">
+      <label>
+        <input type="checkbox" [(ngModel)]="createParentForm.createAccount" />
+        Create login account for this parent
+      </label>
+    </div>
+
+    <div class="form-row" *ngIf="createParentForm.createAccount" style="margin-top: 8px;">
+      <label>
+        <input type="checkbox" [(ngModel)]="createParentForm.generatePassword" />
+        Generate temporary password automatically
+      </label>
+    </div>
+
+    <div class="details-grid" *ngIf="createParentForm.createAccount && !createParentForm.generatePassword" style="margin-top: 12px;">
+      <div class="full-width">
+        <label>Temporary Password</label>
+        <input type="text" class="form-input" [(ngModel)]="createParentForm.password" placeholder="Minimum 8 characters" />
+      </div>
+    </div>
+
+    <div class="details-grid" *ngIf="createdParentTempPassword" style="margin-top: 12px;">
+      <div class="full-width">
+        <label>Generated Temporary Password</label>
+        <input type="text" class="form-input" [value]="createdParentTempPassword" readonly />
+        <small class="form-text">Share this password securely with the parent. They will be required to change it on first login.</small>
+      </div>
+    </div>
+
+    <div class="form-actions" style="margin-top: 12px;">
+      <button class="btn btn-primary" (click)="createParentAccount()" [disabled]="creatingParent">
+        <span *ngIf="!creatingParent">Create Parent</span>
+        <span *ngIf="creatingParent">Creating...</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="card" *ngIf="activeAdminTab === 'reset'">
+    <h3 style="margin-top:0;">Reset Parent Password (Admin)</h3>
+    <div class="details-grid">
+      <div class="full-width">
+        <label>Parent Email</label>
+        <input type="email" class="form-input" [(ngModel)]="resetParentEmail" placeholder="Email used to create the parent account" />
+      </div>
+    </div>
+
+    <div class="form-row" style="margin-top: 8px;">
+      <label>
+        <input type="checkbox" [(ngModel)]="resetParentGeneratePassword" />
+        Generate temporary password automatically
+      </label>
+    </div>
+
+    <div class="details-grid" *ngIf="!resetParentGeneratePassword" style="margin-top: 12px;">
+      <div class="full-width">
+        <label>New Temporary Password</label>
+        <input type="text" class="form-input" [(ngModel)]="resetParentNewPassword" placeholder="Minimum 8 characters" />
+      </div>
+    </div>
+
+    <div class="details-grid" *ngIf="resetParentTempPassword" style="margin-top: 12px;">
+      <div class="full-width">
+        <label>Temporary Password</label>
+        <input type="text" class="form-input" [value]="resetParentTempPassword" readonly />
+        <small class="form-text">This password is shown once. The parent will be required to change it on first login.</small>
+      </div>
+    </div>
+
+    <div class="form-actions" style="margin-top: 12px;">
+      <button class="btn btn-primary" (click)="resetParentAccountPassword()" [disabled]="resettingParentPassword">
+        <span *ngIf="!resettingParentPassword">Reset Password</span>
+        <span *ngIf="resettingParentPassword">Resetting...</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="layout" *ngIf="activeAdminTab === 'manage'">
     <div class="panel panel-left">
       <div class="panel-header">
         <h2>Registered Parents</h2>

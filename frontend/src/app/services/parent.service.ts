@@ -65,5 +65,26 @@ export class ParentService {
   deleteParentAdmin(parentId: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/parent/admin/parents/${parentId}`);
   }
+
+  adminCreateParent(payload: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber?: string | null;
+    address?: string | null;
+    createAccount?: boolean;
+    password?: string;
+    generatePassword?: boolean;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/parent/admin/parents`, payload);
+  }
+
+  adminResetParentPassword(payload: {
+    email: string;
+    newPassword?: string;
+    generatePassword?: boolean;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/parent/admin/reset-parent-password`, payload);
+  }
 }
 

@@ -8,10 +8,12 @@ import {
   unlinkStudent,
   searchStudents,
   adminListParents,
+  adminCreateParent,
   adminLinkStudentToParent,
   adminUnlinkStudentFromParent,
   adminUpdateParent,
-  adminDeleteParent
+  adminDeleteParent,
+  adminResetParentPassword
 } from '../controllers/parent.controller';
 
 const router = Router();
@@ -54,6 +56,12 @@ router.get(
   adminListParents
 );
 
+router.post(
+  '/admin/parents',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  adminCreateParent
+);
+
 router.get(
   '/staff/parents',
   authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT),
@@ -70,6 +78,12 @@ router.delete(
   '/admin/parents/:parentId',
   authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
   adminDeleteParent
+);
+
+router.post(
+  '/admin/reset-parent-password',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  adminResetParentPassword
 );
 
 router.post(

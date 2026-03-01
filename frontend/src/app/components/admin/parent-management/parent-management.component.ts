@@ -32,6 +32,27 @@ export class ParentManagementComponent implements OnInit {
   phoneNumberError = '';
   emailError = '';
 
+  activeAdminTab: 'manage' | 'create' | 'reset' = 'manage';
+
+  createParentForm = {
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: '',
+    address: '',
+    createAccount: true,
+    generatePassword: true,
+    password: ''
+  };
+  creatingParent = false;
+  createdParentTempPassword = '';
+
+  resetParentEmail = '';
+  resetParentGeneratePassword = true;
+  resetParentNewPassword = '';
+  resettingParentPassword = false;
+  resetParentTempPassword = '';
+
   constructor(
     private parentService: ParentService,
     private authService: AuthService,
@@ -114,6 +135,113 @@ export class ParentManagementComponent implements OnInit {
     this.relationshipType = 'guardian';
     this.phoneNumberError = '';
     this.emailError = '';
+  }
+
+  setAdminTab(tab: 'manage' | 'create' | 'reset') {
+    this.activeAdminTab = tab;
+    this.error = '';
+    this.success = '';
+    this.createdParentTempPassword = '';
+    this.resetParentTempPassword = '';
+  }
+
+  createParentAccount() {
+    this.error = '';
+    this.success = '';
+    this.createdParentTempPassword = '';
+
+    const firstName = (this.createParentForm.firstName || '').trim();
+    const lastName = (this.createParentForm.lastName || '').trim();
+    const email = (this.createParentForm.email || '').trim();
+    if (!firstName || !lastName || !email) {
+      this.error = 'First name, last name, and email are required';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    if (this.createParentForm.createAccount && !this.createParentForm.generatePassword) {
+      const pw = (this.createParentForm.password || '').trim();
+      if (!pw || pw.length < 8) {
+        this.error = 'Password is required and must be at least 8 characters long';
+        setTimeout(() => this.error = '', 5000);
+        return;
+      }
+    }
+
+    this.creatingParent = true;
+    this.parentService.adminCreateParent({
+      firstName,
+      lastName,
+      email,
+      phoneNumber: (this.createParentForm.phoneNumber || '').trim() || null,
+      address: (this.createParentForm.address || '').trim() || null,
+      createAccount: !!this.createParentForm.createAccount,
+      generatePassword: !!this.createParentForm.generatePassword,
+      password: (this.createParentForm.password || '').trim() || undefined
+    }).subscribe({
+      next: (res: any) => {
+        this.creatingParent = false;
+        this.success = res?.message || 'Parent created successfully';
+        const temp = res?.temporaryCredentials?.password;
+        this.createdParentTempPassword = (typeof temp === 'string' ? temp : '') || '';
+
+        const createdParent = res?.parent;
+        this.loadParents();
+        if (createdParent?.id) {
+          this.selectParent(createdParent);
+          this.activeAdminTab = 'manage';
+        }
+
+        setTimeout(() => this.success = '', 7000);
+      },
+      error: (err: any) => {
+        this.creatingParent = false;
+        this.error = err.error?.message || 'Failed to create parent';
+        setTimeout(() => this.error = '', 7000);
+      }
+    });
+  }
+
+  resetParentAccountPassword() {
+    this.error = '';
+    this.success = '';
+    this.resetParentTempPassword = '';
+
+    const email = (this.resetParentEmail || '').trim();
+    if (!email) {
+      this.error = 'Email is required';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    const generatePassword = !!this.resetParentGeneratePassword;
+    const newPassword = (this.resetParentNewPassword || '').trim();
+    if (!generatePassword && (!newPassword || newPassword.length < 8)) {
+      this.error = 'New password is required and must be at least 8 characters long';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    this.resettingParentPassword = true;
+    this.parentService.adminResetParentPassword({
+      email,
+      generatePassword,
+      newPassword: generatePassword ? undefined : newPassword
+    }).subscribe({
+      next: (res: any) => {
+        this.resettingParentPassword = false;
+        this.success = res?.message || 'Password reset successfully';
+        const temp = res?.temporaryCredentials?.password;
+        this.resetParentTempPassword = (typeof temp === 'string' ? temp : '') || '';
+        this.loadParents();
+        setTimeout(() => this.success = '', 7000);
+      },
+      error: (err: any) => {
+        this.resettingParentPassword = false;
+        this.error = err.error?.message || 'Failed to reset password';
+        setTimeout(() => this.error = '', 7000);
+      }
+    });
   }
 
   filterParents() {

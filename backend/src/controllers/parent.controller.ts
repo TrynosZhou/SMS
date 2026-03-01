@@ -8,6 +8,13 @@ import { Settings } from '../entities/Settings';
 import { parseAmount } from '../utils/numberUtils';
 import { ParentStudent } from '../entities/ParentStudent';
 import { validatePhoneNumber } from '../utils/phoneValidator';
+import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
+import { User, UserRole } from '../entities/User';
+
+const generateTemporaryPassword = () => {
+  return `Temp-${randomBytes(4).toString('hex')}-${Date.now().toString().slice(-4)}`;
+};
 
 // Get parent's linked students
 export const getParentStudents = async (req: AuthRequest, res: Response) => {
@@ -85,6 +92,195 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
     res.json({ students: studentsWithBalances });
   } catch (error: any) {
     console.error('Error getting parent students:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const adminCreateParent = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const actingRole = req.user.role;
+    if (actingRole !== UserRole.ADMIN && actingRole !== UserRole.SUPERADMIN) {
+      return res.status(403).json({ message: 'Only Administrators can create parent records' });
+    }
+
+    const {
+      firstName,
+      lastName,
+      email,
+      phoneNumber,
+      address,
+      createAccount = true,
+      password,
+      generatePassword = true
+    } = req.body || {};
+
+    const trimmedEmail = String(email || '').trim().toLowerCase();
+    if (!firstName || !lastName || !trimmedEmail) {
+      return res.status(400).json({ message: 'First name, last name, and email are required' });
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(trimmedEmail)) {
+      return res.status(400).json({ message: 'Please provide a valid email address' });
+    }
+
+    const parentRepository = AppDataSource.getRepository(Parent);
+    const userRepository = AppDataSource.getRepository(User);
+
+    const existingParent = await parentRepository.findOne({ where: { email: trimmedEmail } });
+    if (existingParent) {
+      return res.status(400).json({ message: 'A parent record already exists for this email' });
+    }
+
+    let createdUser: User | null = null;
+    let plainPassword = '';
+
+    if (createAccount) {
+      const existingUser = await userRepository.findOne({ where: { email: trimmedEmail } });
+      if (existingUser) {
+        return res.status(400).json({ message: 'A user account already exists for this email' });
+      }
+
+      const passwordFromRequest = String(password || '').trim();
+      if (passwordFromRequest) {
+        plainPassword = passwordFromRequest;
+      } else if (generatePassword) {
+        plainPassword = generateTemporaryPassword();
+      } else {
+        return res.status(400).json({ message: 'Password is required when generatePassword is false' });
+      }
+
+      if (plainPassword.length < 8) {
+        return res.status(400).json({ message: 'Password must be at least 8 characters long' });
+      }
+
+      const hashedPassword = await bcrypt.hash(plainPassword, 10);
+      const baseUsername = trimmedEmail.split('@')[0].replace(/\s+/g, '').toLowerCase() || `parent_${Date.now()}`;
+      let finalUsername = baseUsername;
+      let suffix = 1;
+      // Ensure username is unique
+      // eslint-disable-next-line no-await-in-loop
+      while (await userRepository.findOne({ where: { username: finalUsername } })) {
+        finalUsername = `${baseUsername}${suffix++}`;
+      }
+
+      createdUser = userRepository.create({
+        email: trimmedEmail,
+        username: finalUsername,
+        password: hashedPassword,
+        role: UserRole.PARENT,
+        isDemo: false,
+        mustChangePassword: true,
+        isTemporaryAccount: true,
+        isActive: true,
+        firstName: String(firstName).trim() || null,
+        lastName: String(lastName).trim() || null
+      });
+      await userRepository.save(createdUser);
+    }
+
+    const normalizedPhone = phoneNumber && String(phoneNumber).trim()
+      ? validatePhoneNumber(String(phoneNumber).trim(), false).normalized || String(phoneNumber).trim()
+      : null;
+
+    const parent = parentRepository.create({
+      firstName: String(firstName).trim(),
+      lastName: String(lastName).trim(),
+      email: trimmedEmail,
+      phoneNumber: normalizedPhone,
+      address: address ? String(address).trim() || null : null,
+      userId: createdUser ? createdUser.id : null
+    });
+    await parentRepository.save(parent);
+
+    res.status(201).json({
+      message: 'Parent created successfully',
+      parent,
+      user: createdUser
+        ? {
+            id: createdUser.id,
+            email: createdUser.email,
+            username: createdUser.username,
+            role: createdUser.role
+          }
+        : undefined,
+      temporaryCredentials: createdUser ? { password: plainPassword } : undefined
+    });
+  } catch (error: any) {
+    console.error('Error creating parent (admin):', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const adminResetParentPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const actingRole = req.user.role;
+    if (actingRole !== UserRole.ADMIN && actingRole !== UserRole.SUPERADMIN) {
+      return res.status(403).json({ message: 'Only Administrators can reset passwords' });
+    }
+
+    const { email, newPassword, generatePassword = true } = req.body || {};
+    const trimmedEmail = String(email || '').trim().toLowerCase();
+    if (!trimmedEmail) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const userRepository = AppDataSource.getRepository(User);
+    const parentRepository = AppDataSource.getRepository(Parent);
+
+    let user = await userRepository.findOne({ where: { email: trimmedEmail } });
+    if (!user) {
+      const parent = await parentRepository.findOne({ where: { email: trimmedEmail } });
+      if (parent?.userId) {
+        user = await userRepository.findOne({ where: { id: parent.userId } });
+      }
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: 'No user account found for that email' });
+    }
+
+    if (user.role !== UserRole.PARENT) {
+      return res.status(400).json({ message: 'This email does not belong to a parent account' });
+    }
+
+    if (user.isDemo) {
+      return res.status(403).json({ message: 'Cannot reset password for demo accounts' });
+    }
+
+    let plainPassword = String(newPassword || '').trim();
+    if (!plainPassword) {
+      if (generatePassword) {
+        plainPassword = generateTemporaryPassword();
+      } else {
+        return res.status(400).json({ message: 'New password is required when generatePassword is false' });
+      }
+    }
+
+    if (plainPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters long' });
+    }
+
+    user.password = await bcrypt.hash(plainPassword, 10);
+    user.mustChangePassword = true;
+    user.isTemporaryAccount = true;
+    await userRepository.save(user);
+
+    res.json({
+      message: 'Password reset successfully',
+      user: { id: user.id, email: user.email, username: user.username, role: user.role },
+      temporaryCredentials: { password: plainPassword }
+    });
+  } catch (error: any) {
+    console.error('Error resetting parent password (admin):', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

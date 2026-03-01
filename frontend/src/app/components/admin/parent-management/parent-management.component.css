@@ -54,6 +54,29 @@
   font-size: 18px;
 }
 
+.tab-navigation {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  border: 1px solid #d7deef;
+  background: #ffffff;
+  color: #2b4b9b;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.tab-btn.active {
+  background: #2b4b9b;
+  color: #ffffff;
+  border-color: #2b4b9b;
+}
+
 .layout {
   display: grid;
   grid-template-columns: 1.2fr 2fr;
@@ -215,6 +238,20 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px 18px;
   margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+  }
+
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .details-grid label {
