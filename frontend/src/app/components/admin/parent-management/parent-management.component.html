@@ -24,9 +24,14 @@
     <div class="panel panel-left">
       <div class="panel-header">
         <h2>Registered Parents</h2>
-        <span class="badge" *ngIf="filteredParents?.length >= 0">
-          {{ filteredParents.length }} found
-        </span>
+        <div class="parent-header-badges">
+          <span class="badge" *ngIf="filteredParents?.length >= 0">
+            {{ filteredParents.length }} found
+          </span>
+          <span class="badge" *ngIf="parents?.length >= 0">
+            {{ unlinkedParentsCount }} not linked
+          </span>
+        </div>
       </div>
 
       <div class="search-bar">

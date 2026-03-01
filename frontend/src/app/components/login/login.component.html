@@ -217,7 +217,7 @@
     <!-- Password Reset Form -->
     <div *ngIf="activeTab === 'reset'" class="tab-content">
       <form (ngSubmit)="onResetPassword()">
-        <div class="form-group">
+        <div class="form-group" *ngIf="!resetToken">
           <label>Email Address</label>
           <input 
             type="email" 
@@ -228,8 +228,42 @@
             autocomplete="email">
           <small class="form-text">Enter the email address linked to your account</small>
         </div>
+
+        <div *ngIf="resetToken">
+          <div class="form-group">
+            <label>New Password</label>
+            <div class="password-input-wrapper">
+              <input 
+                [type]="showResetPassword ? 'text' : 'password'" 
+                [(ngModel)]="resetNewPassword" 
+                name="resetNewPassword" 
+                placeholder="Enter a new password" 
+                required
+                minlength="8"
+                autocomplete="new-password">
+              <span class="password-toggle" (click)="toggleResetPasswordVisibility()">
+                {{ showResetPassword ? '👁️' : '👁️‍🗨️' }}
+              </span>
+            </div>
+            <small class="form-text">Password must be at least 8 characters long</small>
+          </div>
+
+          <div class="form-group">
+            <label>Confirm New Password</label>
+            <input 
+              [type]="showResetPassword ? 'text' : 'password'" 
+              [(ngModel)]="resetConfirmPassword" 
+              name="resetConfirmPassword" 
+              placeholder="Confirm your new password" 
+              required
+              minlength="8"
+              autocomplete="new-password">
+          </div>
+        </div>
+
         <button type="submit" class="btn btn-primary btn-block" [disabled]="loading">
-          {{ loading ? 'Sending...' : '🔑 Send Reset Link' }}
+          <ng-container *ngIf="!resetToken">{{ loading ? 'Sending...' : '🔑 Send Reset Link' }}</ng-container>
+          <ng-container *ngIf="resetToken">{{ loading ? 'Resetting...' : '🔑 Reset Password' }}</ng-container>
         </button>
         <div class="form-footer">
           <a href="#" (click)="setTab('signin'); $event.preventDefault()" class="link">Back to Sign In</a>

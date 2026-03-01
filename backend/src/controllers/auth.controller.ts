@@ -6,6 +6,7 @@ import { User, UserRole } from '../entities/User';
 import { Student } from '../entities/Student';
 import { Teacher } from '../entities/Teacher';
 import { Parent } from '../entities/Parent';
+import { sendPasswordResetEmail } from '../utils/mailer';
 import { resetDemoDataForLogin } from '../utils/resetDemoData';
 import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
 import { validatePhoneNumber } from '../utils/phoneValidator';
@@ -905,10 +906,19 @@ export const requestPasswordReset = async (req: Request, res: Response) => {
       { expiresIn: '1h' }
     );
 
-    // In production, send email with reset link
-    console.log(`Password reset token for ${email}: ${resetToken}`);
-    
-    // TODO: Send email with reset link: ${process.env.FRONTEND_URL}/reset-password?token=${resetToken}
+    // Send email with reset link (when SMTP is configured)
+    const configuredFrontendUrl = (process.env.FRONTEND_URL || '').trim();
+    const originFromRequest = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = configuredFrontendUrl || originFromRequest;
+    const resetLink = `${baseUrl.replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+    const mailResult = await sendPasswordResetEmail(email, resetLink);
+    if (!mailResult.ok) {
+      console.warn('[PasswordReset] Email not sent:', mailResult.error || 'Unknown error');
+      // Keep response generic for security.
+      // In development environments without SMTP configured, the frontend can still use the returned token.
+      console.log(`Password reset token for ${email}: ${resetToken}`);
+    }
 
     res.json({ 
       message: 'If the email exists, a password reset link has been sent',

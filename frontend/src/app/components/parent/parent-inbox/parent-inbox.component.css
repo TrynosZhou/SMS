@@ -172,6 +172,66 @@
   border-bottom: 1px solid #e0e0e0;
 }
 
+@media (max-width: 768px) {
+  .parent-dashboard-container {
+    flex-direction: column;
+    min-height: 100dvh;
+  }
+
+  .sidebar {
+    position: relative;
+    width: 100%;
+    height: auto;
+    max-height: none;
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding: 16px;
+  }
+
+  .inbox-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+
+  .inbox-header h1 {
+    font-size: 22px;
+  }
+
+  .message-card {
+    padding: 16px;
+  }
+
+  .message-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .message-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .message-footer .btn {
+    width: 100%;
+  }
+
+  .reply-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .reply-actions {
+    flex-direction: column;
+  }
+
+  .reply-actions .btn {
+    width: 100%;
+  }
+}
+
 .message-header h3 {
   margin: 0;
   color: #2c3e50;

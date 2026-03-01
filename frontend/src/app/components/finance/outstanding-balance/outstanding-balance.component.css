@@ -880,6 +880,85 @@
   -webkit-overflow-scrolling: touch;
 }
 
+@media (max-width: 768px) {
+  .modern-container {
+    margin: 12px auto;
+    padding: 0 12px;
+    min-height: auto;
+  }
+
+  .modern-header-section {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .filters-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .modern-filters {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .modern-table-header {
+    padding: 16px;
+  }
+
+  .modern-summary {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .modern-summary .btn-modern {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .summary-value {
+    width: 100%;
+    text-align: center;
+  }
+
+  .table-wrapper {
+    overflow-x: visible;
+  }
+
+  .table-responsive {
+    overflow-x: visible;
+  }
+
+  .table-mobile-cards tbody .table-row {
+    transform: none;
+  }
+
+  .table-mobile-cards td {
+    font-size: 14px;
+  }
+
+  .student-id-cell .id-badge,
+  .balance-cell .balance-badge {
+    max-width: 60vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .data-table tfoot {
   background: #f9fafb;
   border-top: 2px solid #e5e7eb;

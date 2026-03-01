@@ -28,3 +28,27 @@
 .modern-detail .body { white-space: pre-wrap; margin-top: 8px; }
 .attachments ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .detail-actions { margin-top: 12px; display: flex; gap: 8px; }
+
+@media (max-width: 768px) {
+  .header-content { flex-direction: column; align-items: stretch; }
+
+  .modern-actions { width: 100%; flex-wrap: wrap; justify-content: flex-start; }
+
+  .modern-actions .btn-modern { flex: 1 1 auto; }
+
+  .filters-grid { grid-template-columns: 1fr; }
+
+  .modern-content { grid-template-columns: 1fr; }
+
+  .row-select { margin-right: 6px; }
+
+  .pagination { flex-wrap: wrap; align-items: flex-start; }
+
+  .page-info { width: 100%; }
+
+  .attachments ul { grid-template-columns: 1fr; }
+
+  .detail-actions { flex-direction: column; }
+
+  .detail-actions .btn-modern { width: 100%; justify-content: center; }
+}

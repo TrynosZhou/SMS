@@ -142,7 +142,7 @@
       <div *ngFor="let group of groupedBalances">
         <h3 style="margin: 10px 0 6px 0;">Class: {{ group.className }}</h3>
         <div class="table-responsive">
-          <table class="data-table modern-table">
+          <table class="data-table modern-table table-mobile-cards">
             <thead>
               <tr>
                 <th>Student ID</th>
@@ -156,7 +156,7 @@
             </thead>
             <tbody>
               <tr *ngFor="let balance of group.items; let i = index" class="table-row">
-                <td class="student-id-cell">
+                <td class="student-id-cell" data-label="Student ID">
                   <span 
                     class="id-badge clickable-id" 
                     *ngIf="canManageFinance()"
@@ -170,12 +170,12 @@
                     {{ balance.studentNumber || balance.studentId }}
                   </span>
                 </td>
-                <td class="student-name-cell">{{ balance.lastName }}</td>
-                <td class="student-name-cell">{{ balance.firstName }}</td>
-                <td class="student-name-cell">{{ balance.gender || '—' }}</td>
-                <td class="phone-cell">{{ balance.phoneNumber || '—' }}</td>
-                <td class="student-type-cell">{{ balance.studentType || 'Day Scholar' }}</td>
-                <td class="balance-cell text-right">
+                <td class="student-name-cell" data-label="Last Name">{{ balance.lastName }}</td>
+                <td class="student-name-cell" data-label="First Name">{{ balance.firstName }}</td>
+                <td class="student-name-cell" data-label="Sex">{{ balance.gender || '—' }}</td>
+                <td class="phone-cell" data-label="Phone Number">{{ balance.phoneNumber || '—' }}</td>
+                <td class="student-type-cell" data-label="Student Type">{{ balance.studentType || 'Day Scholar' }}</td>
+                <td class="balance-cell text-right" data-label="Invoice Balance">
                   <span 
                     class="balance-badge clickable-balance" 
                     *ngIf="canManageFinance()"

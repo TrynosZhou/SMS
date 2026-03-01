@@ -7,3 +7,10 @@
 .pill { background: #f1f3f5; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
 .outbox-detail .meta { color: #6c757d; margin-bottom: 8px; }
 .outbox-detail .body { white-space: pre-wrap; }
+
+@media (max-width: 768px) {
+  .outbox-layout { grid-template-columns: 1fr; }
+  .outbox-list { border-right: none; padding-right: 0; border-bottom: 1px solid #e0e0e0; padding-bottom: 12px; }
+  .message-links li { flex-direction: column; align-items: flex-start; }
+  .pill { max-width: 100%; }
+}

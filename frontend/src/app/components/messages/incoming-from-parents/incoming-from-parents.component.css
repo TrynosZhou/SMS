@@ -43,3 +43,37 @@
 .tm-item { border: 1px solid #e9ecef; border-radius: 8px; padding: 10px; }
 .tm-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
 .tm-row.actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+
+@media (max-width: 768px) {
+  .modern-header-section { padding: 12px; }
+
+  .header-content { flex-direction: column; align-items: stretch; }
+
+  .header-title-section { width: 100%; }
+
+  .modern-actions { width: 100%; flex-wrap: wrap; justify-content: flex-start; }
+
+  .modern-actions .btn-modern { flex: 1 1 auto; }
+
+  .filters-grid { grid-template-columns: 1fr; }
+
+  .modern-content { grid-template-columns: 1fr; }
+
+  .list li.unread, .modern-list .message-list li.unread { background: #f8f9fa; }
+
+  .modern-list .message-list li, .list li { grid-template-columns: auto 1fr auto; }
+
+  .time { justify-self: end; }
+
+  .paginator { flex-wrap: wrap; align-items: flex-start; }
+
+  .page-info { width: 100%; }
+
+  .detail .actions { flex-wrap: wrap; }
+
+  .detail .actions .btn { width: 100%; justify-content: center; }
+
+  .template-row { flex-direction: column; align-items: stretch; }
+
+  .template-row select, .template-row .btn-modern { width: 100%; }
+}

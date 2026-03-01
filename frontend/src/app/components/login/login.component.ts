@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService, LogoutReason } from '../../services/auth.service';
 import { validatePhoneNumber } from '../../utils/phone-validator';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-login',
@@ -9,6 +10,7 @@ import { validatePhoneNumber } from '../../utils/phone-validator';
   styleUrls: ['./login.component.css']
 })
 export class LoginComponent implements OnInit {
+
   // Tab management
   activeTab: 'signin' | 'signup' | 'reset' = 'signin';
   
@@ -29,6 +31,9 @@ export class LoginComponent implements OnInit {
   
   // Password Reset fields
   resetEmail = '';
+  resetToken = '';
+  resetNewPassword = '';
+  resetConfirmPassword = '';
   
   error = '';
   success = '';
@@ -39,6 +44,7 @@ export class LoginComponent implements OnInit {
   showPassword = false;
   showSignupPassword = false;
   showSignupConfirmPassword = false;
+  showResetPassword = false;
   
   // Phone validation error
   signupContactNumberError = '';
@@ -47,13 +53,42 @@ export class LoginComponent implements OnInit {
     'Teachers: Use your EmployeeID as username and your password. ' +
     'Students: Use your StudentID as username and your Date of Birth (dd/mm/yyyy) as password.';
 
-  constructor(private authService: AuthService, private router: Router) { }
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    private route: ActivatedRoute
+  ) { }
 
   ngOnInit(): void {
     const logoutReason = this.authService.consumeLogoutReason();
     if (logoutReason) {
       this.infoMessage = this.getLogoutMessage(logoutReason);
     }
+
+    // If user landed on the dedicated reset password URL, open reset tab.
+    // The token (if present) will be captured via query params below.
+    try {
+      const currentUrl = (this.router.url || '').toString();
+      if (currentUrl.startsWith('/reset-password')) {
+        this.activeTab = 'reset';
+        this.error = '';
+        this.success = '';
+        this.infoMessage = '';
+      }
+    } catch {
+      // ignore
+    }
+
+    this.route.queryParamMap.subscribe(params => {
+      const token = params.get('token');
+      if (token && token.trim()) {
+        this.resetToken = token.trim();
+        this.activeTab = 'reset';
+        this.error = '';
+        this.success = '';
+        this.infoMessage = '';
+      }
+    });
   }
 
   private getLogoutMessage(reason: LogoutReason): string {
@@ -79,6 +114,10 @@ export class LoginComponent implements OnInit {
     this.showSignupConfirmPassword = !this.showSignupConfirmPassword;
   }
 
+  toggleResetPasswordVisibility() {
+    this.showResetPassword = !this.showResetPassword;
+  }
+
   setTab(tab: 'signin' | 'signup' | 'reset') {
     this.activeTab = tab;
     this.error = '';
@@ -86,6 +125,7 @@ export class LoginComponent implements OnInit {
     if (tab !== 'signin') {
       this.infoMessage = '';
     }
+    
     // Clear all fields when switching tabs
     this.email = '';
     this.password = '';
@@ -99,6 +139,9 @@ export class LoginComponent implements OnInit {
     this.signupEmail = '';
     this.signupAddress = '';
     this.resetEmail = '';
+    this.resetToken = '';
+    this.resetNewPassword = '';
+    this.resetConfirmPassword = '';
   }
 
   onSignIn() {
@@ -320,18 +363,62 @@ export class LoginComponent implements OnInit {
   }
 
   onResetPassword() {
-    if (!this.resetEmail) {
+    if (this.resetToken && this.resetToken.trim()) {
+      const newPassword = (this.resetNewPassword || '').trim();
+      const confirmPassword = (this.resetConfirmPassword || '').trim();
+      if (!newPassword || !confirmPassword) {
+        this.error = 'Please enter and confirm your new password';
+        return;
+      }
+      if (newPassword.length < 8) {
+        this.error = 'Password must be at least 8 characters long';
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        this.error = 'Passwords do not match';
+        return;
+      }
+
+      this.loading = true;
+      this.error = '';
+      this.authService.resetPassword(this.resetToken.trim(), newPassword).subscribe({
+        next: () => {
+          this.loading = false;
+          this.success = 'Password reset successfully. Please sign in with your new password.';
+          this.resetToken = '';
+          this.resetNewPassword = '';
+          this.resetConfirmPassword = '';
+          setTimeout(() => this.setTab('signin'), 1500);
+        },
+        error: (err: any) => {
+          this.error = err.error?.message || 'Failed to reset password';
+          this.loading = false;
+        }
+      });
+      return;
+    }
+
+    const email = (this.resetEmail || '').trim();
+    if (!email) {
       this.error = 'Please enter your email';
       return;
     }
 
     this.loading = true;
     this.error = '';
-    
-    this.authService.requestPasswordReset(this.resetEmail).subscribe({
-      next: () => {
+
+    this.authService.requestPasswordReset(email).subscribe({
+      next: (res: any) => {
         this.loading = false;
-        this.success = 'Password reset instructions have been sent to your email.';
+        this.success = 'If the email exists, a password reset link has been sent.';
+
+        // Development convenience: backend may return token
+        const token = res?.token;
+        if (token && typeof token === 'string' && token.trim()) {
+          this.resetToken = token.trim();
+          this.resetNewPassword = '';
+          this.resetConfirmPassword = '';
+        }
       },
       error: (err: any) => {
         this.error = err.error?.message || 'Failed to send reset email';
@@ -340,4 +427,3 @@ export class LoginComponent implements OnInit {
     });
   }
 }
-

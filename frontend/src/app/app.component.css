@@ -355,7 +355,7 @@
 
 .main-content {
   margin-left: 260px;
-  min-height: calc(100vh - 64px);
+  min-height: calc(100dvh - 64px);
   transition: margin-left 0.3s ease;
   padding: 2rem;
 }

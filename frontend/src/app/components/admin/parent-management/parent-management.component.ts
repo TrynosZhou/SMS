@@ -13,6 +13,7 @@ export class ParentManagementComponent implements OnInit {
   parents: any[] = [];
   filteredParents: any[] = [];
   selectedParent: any = null;
+  unlinkedParentsCount = 0;
   loading = false;
   savingParent = false;
   deletingParent = false;
@@ -64,6 +65,8 @@ export class ParentManagementComponent implements OnInit {
           }
           return p;
         });
+
+        this.unlinkedParentsCount = this.parents.filter(p => (p?.parentStudents || []).length === 0).length;
         this.filteredParents = this.parents;
         this.loading = false;
         if (this.selectedParent) {
@@ -314,6 +317,11 @@ export class ParentManagementComponent implements OnInit {
                 { student: linkedStudent, relationshipType: this.relationshipType || 'guardian' }
               ]
             };
+
+            // Parent just became linked; update header metric immediately
+            if (existingLinks.length === 0 && this.unlinkedParentsCount > 0) {
+              this.unlinkedParentsCount = this.unlinkedParentsCount - 1;
+            }
           }
         }
 
