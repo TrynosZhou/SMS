@@ -69,14 +69,14 @@
               [type]="showPassword ? 'text' : 'password'" 
               [(ngModel)]="password" 
               name="password" 
-              placeholder="Enter password or DOB (dd/mm/yyyy)" 
+              placeholder="Enter password" 
               required
               autocomplete="current-password">
             <span class="password-toggle" (click)="togglePasswordVisibility()">
               {{ showPassword ? '👁️' : '👁️‍🗨️' }}
             </span>
           </div>
-          <small class="form-text">For students: Enter your Date of Birth in dd/mm/yyyy format</small>
+          <small class="form-text">Students: use the password you created during sign up</small>
         </div>
         <button type="submit" class="btn btn-primary btn-block" [disabled]="loading">
           {{ loading ? 'Signing in...' : '🔐 Sign In' }}
@@ -120,16 +120,17 @@
           <small class="form-text">Parents can use this email to sign in.</small>
         </div>
         <div class="form-group">
-          <label>Username *</label>
+          <label>{{ signupRole === 'STUDENT' ? 'Student ID *' : 'Username *' }}</label>
           <input 
             type="text" 
             [(ngModel)]="signupUsername" 
             name="signupUsername" 
-            placeholder="Choose a username" 
+            [placeholder]="signupRole === 'STUDENT' ? 'Enter your Student ID (provided by school)' : 'Choose a username'" 
             required
             autocomplete="username">
+          <small class="form-text" *ngIf="signupRole === 'STUDENT'">Your Student ID must already exist in the system.</small>
         </div>
-        <div class="form-row">
+        <div class="form-row" *ngIf="signupRole === 'PARENT'">
           <div class="form-group">
             <label>First Name *</label>
             <input 
@@ -149,7 +150,7 @@
               required>
           </div>
         </div>
-        <div class="form-group">
+        <div class="form-group" *ngIf="signupRole === 'PARENT'">
           <label>Contact Number *</label>
           <input 
             type="tel" 

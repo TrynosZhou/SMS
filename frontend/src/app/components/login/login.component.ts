@@ -52,7 +52,7 @@ export class LoginComponent implements OnInit {
 
   signinHelpTooltip =
     'Teachers: Use your EmployeeID as username and your password. ' +
-    'Students: Use your StudentID as username and your Date of Birth (dd/mm/yyyy) as password.';
+    'Students: Use your StudentID as username and the password you created during sign up.';
 
   constructor(
     private authService: AuthService,
@@ -264,21 +264,29 @@ export class LoginComponent implements OnInit {
     this.signupContactNumberError = '';
     
     // Validation
-    if (!this.signupRole || !this.signupUsername || !this.signupPassword || !this.signupConfirmPassword || 
-        !this.signupFirstName || !this.signupLastName || !this.signupContactNumber) {
-      this.error = 'Please fill in all fields';
+    if (!this.signupRole || !this.signupUsername || !this.signupPassword || !this.signupConfirmPassword) {
+      this.error = 'Please fill in all required fields';
       return;
     }
 
-    // Validate phone number
-    const phoneResult = validatePhoneNumber(this.signupContactNumber, true);
-    if (!phoneResult.isValid) {
-      this.signupContactNumberError = phoneResult.error || 'Invalid phone number';
-      this.error = phoneResult.error || 'Please enter a valid phone number';
-      return;
+    if (this.signupRole === 'PARENT') {
+      if (!this.signupFirstName || !this.signupLastName || !this.signupContactNumber) {
+        this.error = 'Please fill in all required fields';
+        return;
+      }
     }
-    if (phoneResult.normalized) {
-      this.signupContactNumber = phoneResult.normalized;
+
+    // Validate phone number (parents only)
+    if (this.signupRole === 'PARENT') {
+      const phoneResult = validatePhoneNumber(this.signupContactNumber, true);
+      if (!phoneResult.isValid) {
+        this.signupContactNumberError = phoneResult.error || 'Invalid phone number';
+        this.error = phoneResult.error || 'Please enter a valid phone number';
+        return;
+      }
+      if (phoneResult.normalized) {
+        this.signupContactNumber = phoneResult.normalized;
+      }
     }
 
     if (this.signupRole === 'PARENT') {
@@ -321,29 +329,18 @@ export class LoginComponent implements OnInit {
     const roleLower = this.signupRole.toLowerCase();
     
     // Determine email per role
-    let generatedEmail = '';
-    switch (this.signupRole) {
-      case 'PARENT':
-        generatedEmail = this.signupEmail.trim();
-        break;
-      case 'STUDENT':
-      default:
-        generatedEmail = `${this.signupUsername}@student.local`;
-        break;
-    }
-
     const registerData: any = {
       username: this.signupUsername,
       password: this.signupPassword,
-      email: generatedEmail,
       role: roleLower,
-      firstName: this.signupFirstName,
-      lastName: this.signupLastName,
-      phoneNumber: this.signupContactNumber
     };
 
     // Only add parent-specific fields for parents
     if (this.signupRole === 'PARENT') {
+      registerData.email = this.signupEmail.trim();
+      registerData.firstName = this.signupFirstName;
+      registerData.lastName = this.signupLastName;
+      registerData.phoneNumber = this.signupContactNumber;
       registerData.contactNumber = this.signupContactNumber;
       registerData.address = this.signupAddress.trim();
     }

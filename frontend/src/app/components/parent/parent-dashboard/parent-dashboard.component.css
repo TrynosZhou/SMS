@@ -130,6 +130,15 @@
   padding-left: 0 !important;
 }
 
+@media (min-width: 769px) {
+  .parent-dashboard-container .main-content > .link-students-card,
+  .parent-dashboard-container .main-content > .quick-actions-section,
+  .parent-dashboard-container .main-content > .container {
+    position: relative;
+    left: -20px;
+  }
+}
+
 .parent-dashboard-container .main-content .container {
   width: 100% !important;
   max-width: none !important;

@@ -65,7 +65,7 @@ export const login = async (req: Request, res: Response) => {
     
     console.log('[Login] Attempting login with identifier:', loginIdentifier, 'password length:', trimmedPassword.length);
 
-    // Check if this is a student login attempt (StudentID as username, DOB as password)
+    // Check if this is a student login attempt
     // First, try to find a student by studentNumber (case-insensitive)
     let user: User | null = null;
     let student = null;
@@ -94,60 +94,7 @@ export const login = async (req: Request, res: Response) => {
       console.log('[Login] Student ID:', student.id, 'Student Number:', student.studentNumber);
       
       try {
-      console.log('[Login] Student DOB from DB:', student.dateOfBirth);
-      console.log('[Login] Password received (DOB):', password);
-      
-      // Validate DOB format (dd/mm/yyyy) - use trimmed password
-      const parsedDOB = parseDOB(trimmedPassword);
-      if (!parsedDOB) {
-        console.log('[Login] Invalid DOB format. Expected dd/mm/yyyy, received:', password);
-        return res.status(401).json({ message: 'Invalid date of birth format. Please use dd/mm/yyyy format.' });
-      }
-
-      console.log('[Login] Parsed DOB:', parsedDOB);
-
-      // Compare the parsed DOB with student's dateOfBirth
-      // Handle different date formats from database
-      let studentDOB: Date;
-      if (student.dateOfBirth instanceof Date) {
-        studentDOB = student.dateOfBirth;
-      } else if (typeof student.dateOfBirth === 'string') {
-        // If it's a string, parse it (could be ISO format or other)
-        studentDOB = new Date(student.dateOfBirth);
-        if (isNaN(studentDOB.getTime())) {
-          console.error('[Login] Invalid dateOfBirth in database:', student.dateOfBirth);
-          return res.status(500).json({ message: 'Server error: Invalid date of birth in database' });
-        }
-      } else {
-        studentDOB = new Date(student.dateOfBirth);
-      }
-      
-      console.log('[Login] Student DOB (normalized):', studentDOB);
-      console.log('[Login] Parsed DOB (from input):', parsedDOB);
-      console.log('[Login] Date comparison result:', compareDates(parsedDOB, studentDOB));
-      
-      if (!compareDates(parsedDOB, studentDOB)) {
-        console.log('[Login] DOB mismatch for student:', student.id);
-        console.log('[Login] Expected:', formatDOB(studentDOB), 'Got:', formatDOB(parsedDOB));
-        // Record failed student login attempt
-        try {
-          const { LoginAttemptLog } = require('../entities/LoginAttemptLog');
-          const attemptRepo = AppDataSource.getRepository(LoginAttemptLog);
-          const attempt = attemptRepo.create({
-            userId: student.userId || null,
-            username: loginIdentifier || null,
-            role: 'student',
-            success: false,
-            ipAddress,
-            userAgent,
-            deviceInfo
-          });
-          await attemptRepo.save(attempt);
-        } catch (e: any) {
-          console.warn('[Login] Failed to record login attempt:', e?.message);
-        }
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
+      console.log('[Login] Password received (student):', password);
 
       // Check if student is active
       if (!student.isActive) {
@@ -172,44 +119,42 @@ export const login = async (req: Request, res: Response) => {
         return res.status(401).json({ message: 'Account is inactive. Please contact the administrator.' });
       }
 
-      // Find or create user account for this student
-      if (!student.user) {
-        console.log('[Login] Student has no linked user, checking for existing user...');
-        
-        // First, check if a user with this studentNumber as username already exists
-        const existingUser = await userRepository.findOne({
-          where: { username: student.studentNumber }
-        });
-        
-        if (existingUser) {
-          console.log('[Login] Found existing user with studentNumber as username, linking to student');
-          // Link the existing user to the student
-          student.userId = existingUser.id;
-          await studentRepository.save(student);
-          user = existingUser;
-        } else {
-          console.log('[Login] Creating new user account for student:', student.id);
-          // Create a user account for the student if it doesn't exist
-          // Use studentNumber as username, and hash the DOB as password for future use
-          const hashedPassword = await bcrypt.hash(password, 10);
-          user = userRepository.create({
-            username: student.studentNumber,
-            password: hashedPassword,
-            role: UserRole.STUDENT,
-            isActive: true
-          });
-          await userRepository.save(user);
-          
-          // Link student to user
+      if (student.user) {
+        user = student.user;
+        console.log('[Login] Using existing user linked to student');
+      } else if (student.userId) {
+        user = await userRepository.findOne({ where: { id: student.userId } });
+      } else {
+        user = await userRepository.findOne({ where: { username: student.studentNumber } });
+        if (user) {
           student.userId = user.id;
           await studentRepository.save(student);
         }
-        
-        // After linking, verify the link was saved
-        console.log('[Login] Student userId after save:', student.userId);
-      } else {
-        user = student.user;
-        console.log('[Login] Using existing user linked to student');
+      }
+
+      if (!user) {
+        return res.status(401).json({ message: 'Account not found. Please sign up or contact the administrator.' });
+      }
+
+      const passwordOk = await bcrypt.compare(trimmedPassword, user.password);
+      if (!passwordOk) {
+        try {
+          const { LoginAttemptLog } = require('../entities/LoginAttemptLog');
+          const attemptRepo = AppDataSource.getRepository(LoginAttemptLog);
+          const attempt = attemptRepo.create({
+            userId: user.id,
+            username: loginIdentifier || null,
+            role: 'student',
+            success: false,
+            ipAddress,
+            userAgent,
+            deviceInfo
+          });
+          await attemptRepo.save(attempt);
+        } catch (e: any) {
+          console.warn('[Login] Failed to record login attempt:', e?.message);
+        }
+        return res.status(401).json({ message: 'Invalid credentials' });
       }
 
       // Ensure user is set before loading relations
@@ -778,23 +723,35 @@ export const register = async (req: Request, res: Response) => {
     const { email, username, password, role, ...profileData } = req.body;
     const userRepository = AppDataSource.getRepository(User);
 
+    const trimmedUsername = (username || '').toString().trim();
+    const trimmedPassword = (password || '').toString();
+    const trimmedEmail = (email || '').toString().trim();
+
+    if (!trimmedUsername) {
+      return res.status(400).json({ message: 'Username is required' });
+    }
+
+    if (!trimmedPassword) {
+      return res.status(400).json({ message: 'Password is required' });
+    }
+
     // Validate password length (minimum 8 characters)
-    if (password && password.length < 8) {
+    if (trimmedPassword.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters long' });
     }
 
-    // Check if email already exists
-    const existingUserByEmail = await userRepository.findOne({ where: { email } });
-    if (existingUserByEmail) {
-      return res.status(400).json({ message: 'Email already exists' });
+    // Check if email already exists (only if provided)
+    if (trimmedEmail) {
+      const existingUserByEmail = await userRepository.findOne({ where: { email: trimmedEmail } });
+      if (existingUserByEmail) {
+        return res.status(400).json({ message: 'Email already exists' });
+      }
     }
 
-    // Check if username already exists (if provided)
-    if (username) {
-      const existingUserByUsername = await userRepository.findOne({ where: { username } });
-      if (existingUserByUsername) {
-        return res.status(400).json({ message: 'Username already exists' });
-      }
+    // Check if username already exists
+    const existingUserByUsername = await userRepository.findOne({ where: { username: trimmedUsername } });
+    if (existingUserByUsername) {
+      return res.status(400).json({ message: 'Username already exists' });
     }
 
     // Validate role - only allow PARENT and STUDENT for self-registration
@@ -805,10 +762,38 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid role for self-registration. Only Parent and Student can sign up here. Other roles are created by the Administrator under User Management.' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // STUDENT self-signup: username is StudentID (studentNumber). Must already exist in students table.
+    if (requestedRole === UserRole.STUDENT) {
+      const studentId = trimmedUsername;
+      const studentRepository = AppDataSource.getRepository(Student);
+      const existingStudent = await studentRepository.findOne({ where: { studentNumber: studentId } });
+      if (!existingStudent) {
+        return res.status(400).json({ message: 'Invalid Student ID. Please contact the administrator.' });
+      }
+      if (existingStudent.userId) {
+        return res.status(400).json({ message: 'This Student ID is already linked to an account. Please sign in or reset your password.' });
+      }
+
+      const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
+      const studentEmail = trimmedEmail || `${studentId}@student.local`;
+      const user = userRepository.create({
+        email: studentEmail,
+        username: studentId,
+        password: hashedPassword,
+        role: requestedRole
+      });
+      await userRepository.save(user);
+
+      existingStudent.userId = user.id;
+      await studentRepository.save(existingStudent);
+
+      return res.status(201).json({ message: 'User registered successfully' });
+    }
+
+    const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
     const user = userRepository.create({
-      email: email || null, // Email is optional (not required for teachers)
-      username: username,
+      email: trimmedEmail || null, // Email is optional
+      username: trimmedUsername,
       password: hashedPassword,
       role: requestedRole
     });
@@ -816,14 +801,7 @@ export const register = async (req: Request, res: Response) => {
     await userRepository.save(user);
 
     // Create profile based on role
-    if (requestedRole === UserRole.STUDENT) {
-      const studentRepository = AppDataSource.getRepository(Student);
-      const student = studentRepository.create({
-        ...profileData,
-        userId: user.id
-      });
-      await studentRepository.save(student);
-    } else if (requestedRole === UserRole.TEACHER) {
+    if (requestedRole === UserRole.TEACHER) {
       const teacherRepository = AppDataSource.getRepository(Teacher);
       const teacher = teacherRepository.create({
         ...profileData,
