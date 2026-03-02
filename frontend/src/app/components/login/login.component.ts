@@ -49,6 +49,8 @@ export class LoginComponent implements OnInit {
   forgotNewPassword = '';
   forgotConfirmPassword = '';
   forgotSubmitting = false;
+  showForgotNewPassword = false;
+  showForgotConfirmPassword = false;
   
   error = '';
   success = '';
@@ -182,6 +184,14 @@ export class LoginComponent implements OnInit {
   closeForgotPasswordModal() {
     this.showForgotPasswordModal = false;
     this.forgotSubmitting = false;
+  }
+
+  toggleForgotNewPasswordVisibility() {
+    this.showForgotNewPassword = !this.showForgotNewPassword;
+  }
+
+  toggleForgotConfirmPasswordVisibility() {
+    this.showForgotConfirmPassword = !this.showForgotConfirmPassword;
   }
 
   submitForgotVerify() {

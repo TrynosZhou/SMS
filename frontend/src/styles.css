@@ -93,6 +93,7 @@ body {
   line-height: 1.6;
   min-height: 100vh;
   overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
 
 app-root {
@@ -454,10 +455,6 @@ textarea.form-control {
     margin: 0;
   }
 
-  .table-responsive > table {
-    min-width: 720px;
-  }
-
   table:not(.table-mobile-cards) {
     display: block;
     max-width: 100%;
@@ -472,6 +469,14 @@ table {
   background-color: var(--bg-primary);
   border-radius: var(--radius-lg);
   overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .search-box {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
 }
 
 thead {

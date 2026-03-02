@@ -958,6 +958,11 @@
     padding: 10px;
   }
 
+  .teachers-list-view .list-header,
+  .teachers-list-view .list-item {
+    min-width: 0;
+  }
+
   .page-header {
     flex-direction: column;
     align-items: flex-start;

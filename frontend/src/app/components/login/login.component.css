@@ -82,6 +82,19 @@
   }
 }
 
+@media (max-width: 768px) {
+  .login-container {
+    justify-content: center;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .modal {
+    width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+}
+
 .login-card {
   background: white;
   border-radius: 10px;
@@ -276,13 +289,15 @@
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.password-input-wrapper {
+.password-input-wrapper,
+.password-input {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-.password-input-wrapper input {
+.password-input-wrapper input,
+.password-input input {
   padding-right: 40px;
 }
 
@@ -455,5 +470,20 @@
   .tab-btn {
     font-size: 12px;
     padding: 10px 12px;
+  }
+
+  .modal {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    border-radius: 10px;
+  }
+
+  .modal-header,
+  .modal-footer {
+    padding: 12px 12px;
+  }
+
+  .modal-body {
+    padding: 12px 12px;
   }
 }

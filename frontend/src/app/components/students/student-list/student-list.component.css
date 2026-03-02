@@ -950,6 +950,11 @@
     padding: 10px;
   }
 
+  .students-list-view .list-header,
+  .students-list-view .list-item {
+    min-width: 0;
+  }
+
   .page-header {
     flex-direction: column;
     align-items: flex-start;
