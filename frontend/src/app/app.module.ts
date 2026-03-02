@@ -76,6 +76,7 @@ import { NewsListComponent } from './components/news/news-list/news-list.compone
 import { NewsFeedComponent } from './components/news/news-feed/news-feed.component';
 import { NewsFormComponent } from './components/news/news-form/news-form.component';
 import { NewsDetailComponent } from './components/news/news-detail/news-detail.component';
+import { PaymentReceiptManagerComponent } from './components/settings/payment-receipt-manager/payment-receipt-manager.component';
 
 @NgModule({
   declarations: [
@@ -145,7 +146,8 @@ import { NewsDetailComponent } from './components/news/news-detail/news-detail.c
     NewsListComponent,
     NewsFeedComponent,
     NewsFormComponent,
-    NewsDetailComponent
+    NewsDetailComponent,
+    PaymentReceiptManagerComponent,
   ],
   imports: [
     BrowserModule,

@@ -3,6 +3,8 @@ import { authenticate, authorize } from '../middleware/auth';
 import { UserRole } from '../entities/User';
 import {
   registerStudent,
+  correctStudentStatus,
+  bulkCorrectStudentStatus,
   getStudents,
   getStudentById,
   enrollStudent,
@@ -23,6 +25,8 @@ const router = Router();
 
 router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), upload.single('photo'), registerStudent);
 router.get('/', authenticate, getStudents);
+router.put('/:id/status', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), correctStudentStatus);
+router.post('/status-corrections/bulk', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), bulkCorrectStudentStatus);
 router.post('/enroll', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), enrollStudent);
 router.post('/promote', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), promoteStudents);
 router.post('/transfer', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), transferStudent);

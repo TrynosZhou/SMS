@@ -143,7 +143,9 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       }
 
       const hasPreviousInvoice = !!lastInvoice;
-      if (!student.isStaffChild && !hasPreviousInvoice) {
+      const normalizedStatus = String((student as any).studentStatus || '').trim().toLowerCase();
+      const isNewStudent = normalizedStatus === 'new';
+      if (!student.isStaffChild && !hasPreviousInvoice && isNewStudent) {
         if (Number.isFinite(registrationFee) && registrationFee > 0) {
           registrationIncrement = registrationFee;
         }
@@ -342,6 +344,38 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Invalid data format for invoice (check amount and dates)' });
     }
 
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const deletePaymentLog = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const { id } = req.params;
+    const repo = AppDataSource.getRepository(PaymentLog);
+    const log = await repo.findOne({ where: { id } });
+    if (!log) {
+      return res.status(404).json({ message: 'Payment log not found' });
+    }
+
+    const methodTxt = String(log.paymentMethod || '').trim().toLowerCase();
+    const notesTxt = String(log.notes || '').trim().toLowerCase();
+
+    if (methodTxt === 'adjustment') {
+      return res.status(400).json({ message: 'This payment entry cannot be deleted. Use adjustment workflows only.' });
+    }
+
+    if (notesTxt.includes('desk fee') || notesTxt.includes('status correction') || notesTxt.includes('reversal')) {
+      return res.status(400).json({ message: 'This payment entry cannot be deleted (protected fee item).' });
+    }
+
+    await repo.remove(log);
+    res.json({ message: 'Payment log deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting payment log:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

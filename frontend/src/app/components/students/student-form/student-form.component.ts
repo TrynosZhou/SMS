@@ -30,6 +30,8 @@ export class StudentFormComponent implements OnInit {
     parentId: '',
     photo: null
   };
+  private loadedStudentStatus: string | null = null;
+
   gradeLevels: string[] = [];
   selectedGradeLevel: string = '';
   classes: any[] = [];
@@ -257,6 +259,21 @@ export class StudentFormComponent implements OnInit {
     this.recalculateEstimatedFees();
   }
 
+  private statusLabelToApiStatus(value: any): string {
+    const txt = String(value || '').trim().toLowerCase();
+    if (txt.includes('return')) return 'Existing';
+    if (txt.includes('existing')) return 'Existing';
+    if (txt.includes('new')) return 'New';
+    return 'New';
+  }
+
+  private apiStatusToLabel(value: any): string {
+    const txt = String(value || '').trim().toLowerCase();
+    if (txt === 'existing') return 'Returning Student';
+    if (txt === 'new') return 'New Student';
+    return 'Select Status';
+  }
+
   private normalizeStatusForSubmit(value: any): string {
     const txt = String(value || '').trim().toLowerCase();
     if (txt.includes('existing')) return 'Existing';
@@ -286,7 +303,7 @@ export class StudentFormComponent implements OnInit {
     const isStaffChild = !!this.student.isStaffChild;
     const isExempted = !!this.student.isExempted;
     const normalizedStatusText = (this.student.studentStatus || 'New Student').toString().trim().toLowerCase();
-    const status = normalizedStatusText.includes('existing') ? 'Existing' : 'New';
+    const status = (normalizedStatusText.includes('return') || normalizedStatusText.includes('existing')) ? 'Existing' : 'New';
 
     const registrationFee = this.toNumber(this.feesSettings.registrationFee);
     const deskFee = this.toNumber(this.feesSettings.deskFee);
@@ -353,6 +370,7 @@ export class StudentFormComponent implements OnInit {
         const studentClassId = data.classId || data.class?.id || '';
         console.log('Setting classId to:', studentClassId);
         
+        this.loadedStudentStatus = data.studentStatus || null;
         this.student = {
           ...data,
           dateOfBirth: formattedDate,
@@ -362,11 +380,7 @@ export class StudentFormComponent implements OnInit {
           usesDiningHall: data.usesDiningHall || false,
           isStaffChild: data.isStaffChild || false,
           isExempted: data.isExempted || false,
-          studentStatus: data.studentStatus === 'Existing'
-            ? 'Existing Student'
-            : data.studentStatus === 'New'
-              ? 'New Student'
-              : 'Select Status',
+          studentStatus: this.apiStatusToLabel(data.studentStatus),
           photo: data.photo || null
         };
         this.selectedGradeLevel = (data as any).grade || (data as any).classLevel || (data as any).gradeLevel || '';
@@ -564,7 +578,6 @@ export class StudentFormComponent implements OnInit {
         address: this.student.address || null,
         contactNumber: this.student.contactNumber,
         studentType: this.student.studentType,
-        studentStatus: this.normalizeStatusForSubmit(this.student.studentStatus),
         usesTransport: this.student.usesTransport || false,
         usesDiningHall: this.student.usesDiningHall || false,
         isStaffChild: this.student.isStaffChild || false,
@@ -599,9 +612,27 @@ export class StudentFormComponent implements OnInit {
       this.studentService.updateStudent(this.student.id, updateData, this.selectedPhoto || undefined).subscribe({
         next: (response: any) => {
           console.log('Student update response:', response);
-          this.success = response.message || 'Student updated successfully';
-          this.submitting = false;
-          setTimeout(() => this.router.navigate(['/students']), 1500);
+          const oldApiStatus = this.statusLabelToApiStatus(this.apiStatusToLabel(this.loadedStudentStatus));
+          const newApiStatus = this.statusLabelToApiStatus(this.student.studentStatus);
+          if (oldApiStatus !== newApiStatus) {
+            this.studentService.correctStudentStatus(this.student.id, newApiStatus).subscribe({
+              next: (corr: any) => {
+                this.loadedStudentStatus = newApiStatus;
+                this.success = corr?.message || response.message || 'Student updated successfully';
+                this.submitting = false;
+                setTimeout(() => this.router.navigate(['/students']), 1500);
+              },
+              error: (err2: any) => {
+                this.error = err2?.error?.message || err2?.message || 'Failed to correct student status';
+                this.submitting = false;
+                setTimeout(() => this.error = '', 5000);
+              }
+            });
+          } else {
+            this.success = response.message || 'Student updated successfully';
+            this.submitting = false;
+            setTimeout(() => this.router.navigate(['/students']), 1500);
+          }
         },
         error: (err: any) => {
           console.error('Error updating student:', err);

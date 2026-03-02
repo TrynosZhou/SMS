@@ -20,6 +20,7 @@ import { StudentTransfer, StudentTransferStatus, TransferType } from '../entitie
 import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
 import { validatePhoneNumber } from '../utils/phoneValidator';
 import { PaymentLog } from '../entities/PaymentLog';
+import { UserActionLog } from '../entities/UserActionLog';
 
 export const registerStudent = async (req: AuthRequest, res: Response) => {
   try {
@@ -407,6 +408,256 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
       error: error.message || 'Unknown error',
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
+  }
+};
+
+export const correctStudentStatus = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const { id } = req.params;
+    const { studentStatus } = req.body as { studentStatus?: string };
+
+    const normalizedIncoming = String(studentStatus || '').trim().toLowerCase();
+    if (!normalizedIncoming) {
+      return res.status(400).json({ message: 'studentStatus is required' });
+    }
+
+    const newStatus = normalizedIncoming.includes('new') ? 'New' : 'Existing';
+
+    const studentRepository = AppDataSource.getRepository(Student);
+    const invoiceRepository = AppDataSource.getRepository(Invoice);
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
+    const actionLogRepository = AppDataSource.getRepository(UserActionLog);
+
+    const student = await studentRepository.findOne({ where: { id } });
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    const previousStatus = String(student.studentStatus || 'New');
+    if (previousStatus === newStatus) {
+      return res.json({ message: 'Student status unchanged', student });
+    }
+
+    student.studentStatus = newStatus;
+    await studentRepository.save(student);
+
+    const initialInvoice = await invoiceRepository.findOne({
+      where: { studentId: student.id },
+      order: { createdAt: 'ASC' }
+    });
+
+    const settings = await settingsRepository.findOne({ where: {}, order: { createdAt: 'DESC' } });
+    const fees = settings?.feesSettings || {};
+    const deskFee = parseAmount((fees as any).deskFee);
+    const registrationFee = parseAmount((fees as any).registrationFee);
+    const dayScholarTuition = parseAmount((fees as any).dayScholarTuitionFee);
+    const boarderTuition = parseAmount((fees as any).boarderTuitionFee);
+    const transportCost = parseAmount((fees as any).transportCost);
+    const diningHallCost = parseAmount((fees as any).diningHallCost);
+
+    let financialImpact = {
+      oldInvoiceAmount: 0,
+      newInvoiceAmount: 0,
+      deskFeeDelta: 0,
+      oldBalance: 0,
+      newBalance: 0,
+      overpaymentMovedToPrepaid: 0
+    };
+
+    if (initialInvoice && settings?.feesSettings) {
+      const isDayScholar = student.studentType === 'Day Scholar';
+      const isStaffChild = student.isStaffChild === true;
+      const isExempted = student.isExempted === true;
+
+      let totalAmount = 0;
+      const invoiceItems: string[] = [];
+
+      if (!isStaffChild && !isExempted) {
+        if (newStatus === 'New') {
+          if (registrationFee > 0) {
+            totalAmount += registrationFee;
+            invoiceItems.push(`Registration Fee: ${registrationFee}`);
+          }
+          if (deskFee > 0) {
+            totalAmount += deskFee;
+            invoiceItems.push(`Desk Fee: ${deskFee}`);
+          }
+        }
+
+        const tuitionFee = isDayScholar ? dayScholarTuition : boarderTuition;
+        if (tuitionFee > 0) {
+          totalAmount += tuitionFee;
+          invoiceItems.push(`Tuition Fee (${student.studentType}): ${tuitionFee}`);
+        }
+
+        if (isDayScholar && student.usesTransport && transportCost > 0) {
+          totalAmount += transportCost;
+          invoiceItems.push(`Transport Fee: ${transportCost}`);
+        }
+
+        if (isDayScholar && student.usesDiningHall && diningHallCost > 0) {
+          totalAmount += diningHallCost;
+          invoiceItems.push(`Dining Hall Fee: ${diningHallCost}`);
+        }
+      } else {
+        if (isDayScholar && student.usesDiningHall && diningHallCost > 0) {
+          const half = diningHallCost * 0.5;
+          totalAmount += half;
+          invoiceItems.push(`Dining Hall Fee (50%): ${half}`);
+        }
+      }
+
+      totalAmount = parseFloat(totalAmount.toFixed(2));
+
+      const oldAmount = parseAmount(initialInvoice.amount);
+      const oldBalance = parseAmount(initialInvoice.balance);
+      const paidAmountValue = parseAmount(initialInvoice.paidAmount);
+      const oldPrepaid = parseAmount(initialInvoice.prepaidAmount);
+
+      const newBalance = parseFloat(Math.max(totalAmount - paidAmountValue, 0).toFixed(2));
+      const overpay = parseFloat(Math.max(paidAmountValue - totalAmount, 0).toFixed(2));
+
+      const description = invoiceItems.length > 0
+        ? `Initial fees upon registration: ${invoiceItems.join(', ')}`
+        : (isStaffChild && !student.usesDiningHall && !isExempted)
+          ? 'Staff child - no fees applicable'
+          : 'Initial fees upon registration';
+
+      initialInvoice.amount = totalAmount;
+      initialInvoice.balance = newBalance;
+      initialInvoice.description = description;
+      if (overpay > 0) {
+        initialInvoice.prepaidAmount = parseFloat((oldPrepaid + overpay).toFixed(2));
+      }
+      if (newBalance <= 0) {
+        initialInvoice.status = InvoiceStatus.PAID;
+      } else if (paidAmountValue > 0) {
+        initialInvoice.status = InvoiceStatus.PARTIAL;
+      } else {
+        initialInvoice.status = InvoiceStatus.PENDING;
+      }
+
+      await invoiceRepository.save(initialInvoice);
+
+      const deskFeeDelta = parseFloat((oldAmount - totalAmount).toFixed(2));
+      financialImpact = {
+        oldInvoiceAmount: oldAmount,
+        newInvoiceAmount: totalAmount,
+        deskFeeDelta: deskFeeDelta,
+        oldBalance,
+        newBalance,
+        overpaymentMovedToPrepaid: overpay
+      };
+
+      if (previousStatus === 'New' && newStatus === 'Existing' && deskFeeDelta > 0) {
+        const receiptNumber = `ADJ-${new Date().getFullYear()}-${String(Date.now()).slice(-8)}`;
+        const payer = req.user;
+        const payerName = payer ? `${payer.firstName || ''} ${payer.lastName || ''}`.trim() : null;
+
+        const log = paymentLogRepository.create({
+          invoiceId: initialInvoice.id,
+          studentId: student.id,
+          amountPaid: -Math.abs(deskFeeDelta),
+          paymentDate: new Date(),
+          paymentMethod: 'ADJUSTMENT',
+          receiptNumber,
+          payerUserId: payer?.id || null,
+          payerName: payerName || null,
+          notes: `Desk Fee Reversal – Status Correction (New → Returning). Previous Status: ${previousStatus}. New Status: ${newStatus}. Removed Desk Fee: ${deskFeeDelta}`
+        });
+
+        await paymentLogRepository.save(log);
+      }
+    }
+
+    try {
+      const actor = req.user;
+      const metadata = JSON.stringify({
+        studentId: student.id,
+        studentNumber: student.studentNumber,
+        previousStatus,
+        newStatus,
+        financialImpact
+      });
+      await actionLogRepository.save(
+        actionLogRepository.create({
+          userId: actor?.id || 'unknown',
+          sessionId: (req.headers['x-session-id'] as string) || null,
+          username: actor?.username || null,
+          role: actor?.role || null,
+          module: 'Finance',
+          action: 'UPDATE',
+          resourceType: 'StudentStatusCorrection',
+          resourceId: student.id,
+          metadata,
+          ipAddress: (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || (req.socket && (req.socket.remoteAddress || (req.connection as any)?.remoteAddress)) || (req as any).ip || null,
+          userAgent: (req.headers['user-agent'] as string) || null
+        })
+      );
+    } catch {
+    }
+
+    const refreshedStudent = await studentRepository.findOne({
+      where: { id: student.id },
+      relations: ['classEntity', 'parent']
+    });
+
+    res.json({
+      message: 'Student status corrected successfully',
+      student: refreshedStudent || student,
+      financialImpact
+    });
+  } catch (error: any) {
+    console.error('Correct student status error:', error);
+    res.status(500).json({ message: 'Failed to correct student status', error: error.message });
+  }
+};
+
+export const bulkCorrectStudentStatus = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const { studentIds, studentStatus } = req.body as { studentIds?: string[]; studentStatus?: string };
+    if (!Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.status(400).json({ message: 'studentIds[] is required' });
+    }
+    const normalizedIncoming = String(studentStatus || '').trim().toLowerCase();
+    if (!normalizedIncoming) {
+      return res.status(400).json({ message: 'studentStatus is required' });
+    }
+    const newStatus = normalizedIncoming.includes('new') ? 'New' : 'Existing';
+
+    const results: any[] = [];
+    for (const id of studentIds) {
+      try {
+        const fakeReq: any = { ...req, params: { id }, body: { studentStatus: newStatus } };
+        let jsonBody: any = null;
+        const fakeRes: any = {
+          status: (_c: number) => fakeRes,
+          json: (b: any) => { jsonBody = b; return fakeRes; }
+        };
+        await correctStudentStatus(fakeReq, fakeRes);
+        results.push({ studentId: id, ok: true, result: jsonBody });
+      } catch (e: any) {
+        results.push({ studentId: id, ok: false, error: e?.message || String(e) });
+      }
+    }
+
+    res.json({
+      message: 'Bulk status correction completed',
+      count: results.length,
+      results
+    });
+  } catch (error: any) {
+    console.error('Bulk correct student status error:', error);
+    res.status(500).json({ message: 'Failed bulk status correction', error: error.message });
   }
 };
 

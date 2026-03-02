@@ -101,6 +101,7 @@
           <th>Updated</th>
           <th>Anomaly</th>
           <th>PDF</th>
+          <th *ngIf="mode==='payments'">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -129,6 +130,9 @@
           <td>
             <button class="btn btn-receipt" *ngIf="mode==='invoices' && tx.id" (click)="viewInvoicePDF(tx.id)" style="margin-bottom: 5px;">Invoice</button>
             <button class="btn btn-receipt" *ngIf="tx.id" (click)="viewReceiptPDF(tx.id)">Receipt</button>
+          </td>
+          <td *ngIf="mode==='payments'">
+            <button class="btn btn-secondary" (click)="deletePayment(tx)" [disabled]="!canDeletePayment(tx) || deletingId===tx.id">Delete</button>
           </td>
         </tr>
         <tr *ngIf="paged.length === 0">

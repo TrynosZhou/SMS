@@ -563,8 +563,8 @@
 
 .list-header {
   display: grid;
-  grid-template-columns: 1.1fr 1.3fr 1.2fr 1fr 0.9fr 1.6fr 0.9fr 1fr;
-  gap: 12px;
+  grid-template-columns: 120px 1.2fr 1.2fr 120px 90px 1.1fr 130px 150px;
+  gap: 8px;
   padding: 16px 24px;
   background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
   color: white;
@@ -574,13 +574,21 @@
   letter-spacing: 0.5px;
 }
 
+.list-header.has-select {
+  grid-template-columns: 44px 120px 1.2fr 1.2fr 120px 90px 1.1fr 130px 150px;
+}
+
 .list-item {
   display: grid;
-  grid-template-columns: 1.1fr 1.3fr 1.2fr 1fr 0.9fr 1.6fr 0.9fr 1fr;
-  gap: 12px;
+  grid-template-columns: 120px 1.2fr 1.2fr 120px 90px 1.1fr 130px 150px;
+  gap: 8px;
   padding: 20px 24px;
   border-bottom: 1px solid #f0f0f0;
   transition: all 0.3s ease;
+}
+
+.list-item.has-select {
+  grid-template-columns: 44px 120px 1.2fr 1.2fr 120px 90px 1.1fr 130px 150px;
 }
 
 .students-list-view .list-header,

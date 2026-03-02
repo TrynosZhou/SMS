@@ -44,6 +44,9 @@ export class StudentListComponent implements OnInit {
   isTeacher = false;
   groupedStudents: Array<{ group: string; students: any[] }> = [];
 
+  selectedStudentIds = new Set<string>();
+  bulkSubmitting = false;
+
   constructor(
     private studentService: StudentService,
     private classService: ClassService,
@@ -76,6 +79,10 @@ export class StudentListComponent implements OnInit {
     this.loadStudents();
   }
 
+  canBulkCorrectStatus(): boolean {
+    return !this.isTeacher;
+  }
+
   loadClasses() {
     this.classService.getClassesPaginated(1, 100).subscribe({
       next: (response: any) => {
@@ -87,8 +94,71 @@ export class StudentListComponent implements OnInit {
     });
   }
 
+  isSelected(studentId: string): boolean {
+    return this.selectedStudentIds.has(studentId);
+  }
+
+  toggleStudentSelection(studentId: string, checked: boolean) {
+    if (!studentId) return;
+    if (checked) this.selectedStudentIds.add(studentId);
+    else this.selectedStudentIds.delete(studentId);
+  }
+
+  toggleSelectAllVisible(checked: boolean) {
+    if (checked) {
+      for (const s of this.filteredStudents || []) {
+        if (s?.id) this.selectedStudentIds.add(s.id);
+      }
+    } else {
+      this.selectedStudentIds.clear();
+    }
+  }
+
+  areAllVisibleSelected(): boolean {
+    const visible = (this.filteredStudents || []).filter(s => !!s?.id);
+    if (visible.length === 0) return false;
+    return visible.every(s => this.selectedStudentIds.has(s.id));
+  }
+
+  bulkMarkSelectedReturning() {
+    if (!this.canBulkCorrectStatus()) {
+      this.error = 'You do not have permission to perform bulk corrections.';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+    const ids = Array.from(this.selectedStudentIds);
+    if (ids.length === 0) {
+      this.error = 'Select at least one student.';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+    if (!confirm(`Mark ${ids.length} selected student(s) as Returning? This will recalculate initial invoices and reverse any desk fees where applicable.`)) {
+      return;
+    }
+
+    this.bulkSubmitting = true;
+    this.error = '';
+    this.success = '';
+    this.studentService.bulkCorrectStudentStatus(ids, 'Existing').subscribe({
+      next: (resp: any) => {
+        this.success = resp?.message || 'Bulk status correction completed';
+        this.bulkSubmitting = false;
+        this.loadStudents(this.pagination.page);
+        setTimeout(() => {
+          if (this.success) this.success = '';
+        }, 5000);
+      },
+      error: (err: any) => {
+        this.error = err?.error?.message || err?.message || 'Bulk status correction failed';
+        this.bulkSubmitting = false;
+        setTimeout(() => this.error = '', 6000);
+      }
+    });
+  }
+
   loadStudents(page = this.pagination.page) {
     this.loading = true;
+    this.selectedStudentIds.clear();
     const logisticsMode = this.route.snapshot.data?.['logisticsMode'];
     const usesTransport = this.filterUsesTransport || this.isLogisticsTransport;
     const usesDiningHall = this.filterUsesDiningHall || this.isLogisticsDiningHall;

@@ -32,11 +32,45 @@ export class AuditComponent implements OnInit, OnDestroy {
   serverTotal = 0;
   pageTotals = { paid: 0, balance: 0 };
   fullTotals = { paid: 0, balance: 0, count: 0 };
+  deletingId: string | null = null;
 
   constructor(
     private financeService: FinanceService,
     public authService: AuthService
   ) {}
+
+  canDeletePayment(tx: any): boolean {
+    if (!tx) return false;
+    const methodTxt = String(tx.paymentMethod || '').trim().toLowerCase();
+    const refTxt = String(tx.referenceNumber || '').trim().toLowerCase();
+    if (methodTxt === 'adjustment') return false;
+    if (refTxt.startsWith('adj-')) return false;
+    return this.authService.hasRole('admin') || this.authService.hasRole('superadmin');
+  }
+
+  deletePayment(tx: any) {
+    if (!tx?.id) return;
+    if (!this.canDeletePayment(tx)) {
+      this.error = 'This payment entry cannot be deleted.';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+    if (!confirm('Delete this payment entry? This cannot be undone.')) {
+      return;
+    }
+    this.deletingId = tx.id;
+    this.financeService.deletePaymentLog(tx.id).subscribe({
+      next: (resp: any) => {
+        this.deletingId = null;
+        this.load();
+      },
+      error: (err: any) => {
+        this.deletingId = null;
+        this.error = err?.error?.message || 'Failed to delete payment log';
+        setTimeout(() => (this.error = ''), 6000);
+      }
+    });
+  }
 
   ngOnInit() {
     this.load();

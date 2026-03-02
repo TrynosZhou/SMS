@@ -16,7 +16,8 @@ import {
   getOutstandingBalancesPDF,
   adjustInvoiceLogistics,
   applyInvoiceNote,
-  getPaymentLogs
+  getPaymentLogs,
+  deletePaymentLog
 } from '../controllers/finance.controller';
 
 const router = Router();
@@ -31,6 +32,7 @@ router.get('/balance', authenticate, getStudentBalance);
 router.get('/outstanding-balances', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), getOutstandingBalances);
 router.get('/outstanding-balances/pdf', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), getOutstandingBalancesPDF);
 router.get('/audit/payment-logs', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), getPaymentLogs);
+router.delete('/audit/payment-logs/:id', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), deletePaymentLog);
 // Audit exports and summaries
 router.get('/audit/payment-logs/export', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), (req, res) => (require('../controllers/finance.controller').exportPaymentLogsCSV)(req, res));
 router.get('/audit/invoices/export', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), (req, res) => (require('../controllers/finance.controller').exportInvoicesCSV)(req, res));

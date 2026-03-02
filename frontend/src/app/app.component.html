@@ -371,6 +371,10 @@
             <span class="sidebar-icon">👥</span>
             <span class="sidebar-text">User Management</span>
           </a>
+          <a routerLink="/settings/payment-receipt-manager" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">🧾</span>
+            <span class="sidebar-text">Payment / Receipt Manager</span>
+          </a>
           <a routerLink="/user-log" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
             <span class="sidebar-icon">📜</span>
             <span class="sidebar-text">User Log</span>

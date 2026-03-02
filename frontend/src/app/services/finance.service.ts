@@ -180,6 +180,10 @@ export class FinanceService {
     return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/finance/audit/payment-logs`, { params });
   }
 
+  deletePaymentLog(id: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/finance/audit/payment-logs/${id}`);
+  }
+
   exportPaymentLogsCSV(options: { studentId?: string; invoiceId?: string; search?: string; startDate?: string; endDate?: string; paymentMethod?: string } = {}): Observable<Blob> {
     const params: any = {};
     if (options.studentId) params.studentId = options.studentId;

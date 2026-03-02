@@ -138,6 +138,14 @@ export class StudentService {
     return this.http.put(`${this.apiUrl}/students/${id}`, student);
   }
 
+  correctStudentStatus(id: string, studentStatus: string): Observable<any> {
+    return this.http.put(`${this.apiUrl}/students/${id}/status`, { studentStatus });
+  }
+
+  bulkCorrectStudentStatus(studentIds: string[], studentStatus: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/students/status-corrections/bulk`, { studentIds, studentStatus });
+  }
+
   enrollStudent(studentId: string, classId: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/students/enroll`, { studentId, classId });
   }
