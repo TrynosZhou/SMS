@@ -1211,10 +1211,24 @@
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .header-right {
+    width: 100%;
+    align-items: stretch;
+  }
   
   .school-name-container {
     width: 100%;
     text-align: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+  }
+
+  .school-name {
+    white-space: normal;
+    text-align: center;
+    overflow-wrap: anywhere;
   }
   
   .stats-grid {

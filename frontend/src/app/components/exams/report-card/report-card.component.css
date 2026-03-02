@@ -1285,6 +1285,28 @@
     width: 100%;
     justify-content: center;
   }
+
+  .btn-generate {
+    min-width: 0;
+  }
+
+  .report-card-preview {
+    padding: 16px;
+  }
+
+  .report-card-header {
+    margin: -16px -16px 20px -16px;
+  }
+
+  .school-text {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .table-wrapper {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Grade Scale Footer */
