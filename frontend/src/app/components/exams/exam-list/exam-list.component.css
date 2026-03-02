@@ -213,6 +213,55 @@
   align-items: center;
 }
 
+@media (max-width: 768px) {
+  .exam-list-wrapper {
+    padding: 12px;
+  }
+
+  .form-header {
+    align-items: flex-start;
+  }
+
+  .header-content {
+    width: 100%;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions-inline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn,
+  .btn-load {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .marks-entry-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 480px) {
+  .exam-list-wrapper {
+    padding: 10px;
+  }
+
+  .selection-card {
+    padding: 18px;
+  }
+
+  .summary-card {
+    padding: 18px;
+  }
+}
+
 .btn {
   padding: 12px 24px;
   border: none;

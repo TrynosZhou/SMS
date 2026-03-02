@@ -1233,6 +1233,51 @@
   .stat-value {
     font-size: 28px;
   }
+
+  .activity-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .activity-meta {
+    flex-wrap: wrap;
+  }
+
+  .activity-action {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .quick-actions,
+  .modern-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .action-btn {
+    width: 100%;
+  }
+
+  .action-text {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 12px;
+  }
+
+  .dashboard-title {
+    font-size: 1.5rem;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
 }
 
 /* Scrollbar Styling for Sidebar */

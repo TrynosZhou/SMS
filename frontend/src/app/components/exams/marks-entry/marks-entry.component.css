@@ -27,6 +27,35 @@
   vertical-align: top;
 }
 
+@media (max-width: 768px) {
+  .marks-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  .marks-table th,
+  .marks-table td {
+    padding: 10px 8px;
+  }
+
+  input[type="number"] {
+    width: 80px;
+  }
+}
+
+@media (max-width: 480px) {
+  .marks-table th,
+  .marks-table td {
+    padding: 8px 6px;
+  }
+
+  input[type="number"] {
+    width: 72px;
+  }
+}
+
 .marks-table tbody tr:hover {
   background: #f8f9fa;
 }

@@ -212,8 +212,20 @@ h1 {
     justify-content: flex-start;
   }
 
+  .container {
+    padding: 12px;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  .selection-form {
+    padding: 16px;
+  }
+
   .form-row {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .form-group {
@@ -593,6 +605,10 @@ h1 {
   .mark-sheet-table th,
   .mark-sheet-table td {
     padding: 8px 4px;
+  }
+
+  .mark-sheet-table-wrapper {
+    -webkit-overflow-scrolling: touch;
   }
 }
 

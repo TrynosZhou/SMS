@@ -159,6 +159,58 @@
   justify-content: center;
 }
 
+@media (max-width: 768px) {
+  .student-invoice-statement-container {
+    padding: 12px;
+  }
+
+  .balance-card {
+    padding: 18px;
+  }
+
+  .balance-amount {
+    font-size: 34px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .action-buttons .btn {
+    width: 100%;
+  }
+
+  .pdf-modal-content {
+    width: calc(100vw - 24px);
+    height: calc(100dvh - 24px);
+  }
+
+  .pdf-modal-header {
+    padding: 12px 12px;
+  }
+
+  .pdf-modal-footer {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 12px;
+  }
+
+  .pdf-modal-footer .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .student-invoice-statement-container {
+    padding: 10px;
+  }
+
+  .balance-amount {
+    font-size: 30px;
+  }
+}
+
 .btn {
   padding: 8px 16px;
   border: none;
