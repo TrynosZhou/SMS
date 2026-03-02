@@ -365,6 +365,10 @@
 }
 
 .main-content.sidebar-open {
+  margin-left: 0;
+}
+
+.sidebar ~ .main-content.sidebar-open {
   margin-left: 260px;
 }
 

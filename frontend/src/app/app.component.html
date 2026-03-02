@@ -457,6 +457,6 @@
 </button>
 
 <!-- Main Content -->
-<main class="main-content" [class.sidebar-open]="!sidebarCollapsed" [class.menu-open]="mobileMenuOpen">
+<main class="main-content" [class.sidebar-open]="isAuthenticated() && !isParent() && !sidebarCollapsed" [class.menu-open]="isAuthenticated() && mobileMenuOpen">
   <router-outlet></router-outlet>
 </main>
