@@ -354,10 +354,14 @@
    ======================================== */
 
 .main-content {
-  margin-left: 260px;
+  margin-left: 0;
   min-height: calc(100dvh - 64px);
   transition: margin-left 0.3s ease;
   padding: 2rem;
+}
+
+.sidebar ~ .main-content {
+  margin-left: 260px;
 }
 
 .main-content.sidebar-open {
