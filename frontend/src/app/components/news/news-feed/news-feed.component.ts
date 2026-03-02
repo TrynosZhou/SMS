@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { NewsService } from '../../../services/news.service';
+import { AuthService } from '../../../services/auth.service';
 import { News, NewsCategory } from '../../../types/news';
 
 @Component({
@@ -13,10 +14,17 @@ export class NewsFeedComponent implements OnInit {
   loading = true;
   error = '';
 
-  constructor(private newsService: NewsService) {}
+  constructor(
+    private newsService: NewsService,
+    private authService: AuthService
+  ) {}
 
   ngOnInit(): void {
     this.loadNews();
+  }
+
+  canManageNews(): boolean {
+    return this.authService.hasRole('admin') || this.authService.hasRole('superadmin');
   }
 
   loadNews(): void {

@@ -8,6 +8,40 @@ export interface AuthRequest extends Request {
   file?: Express.Multer.File;
 }
 
+export const optionalAuthenticate = async (req: AuthRequest, _res: Response, next: NextFunction) => {
+  try {
+    // Ensure database is initialized
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return next();
+    }
+
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      return next();
+    }
+
+    const decoded = jwt.verify(token, jwtSecret) as { userId: string; role?: string };
+    const userRepository = AppDataSource.getRepository(User);
+    const user = await userRepository.findOne({
+      where: { id: decoded.userId },
+      relations: ['student', 'teacher', 'parent']
+    });
+
+    if (user && user.isActive) {
+      req.user = user;
+    }
+
+    return next();
+  } catch (_error: any) {
+    return next();
+  }
+};
+
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     // Ensure database is initialized

@@ -5,10 +5,20 @@
       <span class="header-icon">📰</span>
       News & Announcements
     </h1>
-    <button class="refresh-btn" (click)="refreshNews()" [disabled]="loading">
-      <span class="refresh-icon" [class.spinning]="loading">🔄</span>
-      Refresh
-    </button>
+    <div class="feed-header-actions">
+      <button
+        *ngIf="canManageNews()"
+        class="btn btn-primary"
+        routerLink="/news/create">
+        <span>➕</span>
+        Create Article
+      </button>
+
+      <button class="refresh-btn" (click)="refreshNews()" [disabled]="loading">
+        <span class="refresh-icon" [class.spinning]="loading">🔄</span>
+        Refresh
+      </button>
+    </div>
   </div>
 
   <!-- Loading State -->
@@ -99,6 +109,13 @@
       <div class="empty-icon">📰</div>
       <h3>No News Articles</h3>
       <p>There are currently no news articles or announcements available.</p>
+
+      <button
+        *ngIf="canManageNews()"
+        class="btn btn-primary"
+        routerLink="/news/create">
+        Create Article
+      </button>
     </div>
   </div>
 </div>

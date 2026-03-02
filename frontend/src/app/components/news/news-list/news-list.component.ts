@@ -53,6 +53,7 @@ export class NewsListComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadNews();
+    this.loadStatistics();
   }
 
   canManageNews(): boolean {
@@ -92,11 +93,38 @@ export class NewsListComponent implements OnInit {
         this.totalItems = response.pagination.total;
         this.totalPages = response.pagination.totalPages;
         this.loading = false;
+
+        // Keep statistic cards in sync
+        this.loadStatistics();
       },
       error: (err) => {
         this.error = 'Failed to load news articles';
         this.loading = false;
         console.error('Error loading news:', err);
+      }
+    });
+  }
+
+  loadStatistics(): void {
+    if (!this.canManageNews()) return;
+
+    this.newsService.getNewsStatistics().subscribe({
+      next: (stats) => {
+        // Total Articles card uses totalItems (pagination total) in template;
+        // if list isn't loaded yet, stats.total is still useful.
+        if (!this.totalItems) {
+          this.totalItems = stats.total;
+          this.totalPages = Math.ceil((stats.total || 0) / this.pageSize);
+        }
+
+        this.pinnedCount = stats.pinned || 0;
+        this.publishedCount = stats.published || 0;
+
+        // totalViews isn't provided by the stats endpoint; compute from current list page as a fallback.
+        this.totalViews = this.newsList.reduce((sum, n) => sum + (n.viewCount || 0), 0);
+      },
+      error: (err) => {
+        console.error('Error loading news statistics:', err);
       }
     });
   }
@@ -151,6 +179,7 @@ export class NewsListComponent implements OnInit {
         this.showDeleteModal = false;
         this.newsToDelete = null;
         this.loadNews();
+        this.loadStatistics();
         setTimeout(() => this.success = '', 3000);
       },
       error: (err) => {

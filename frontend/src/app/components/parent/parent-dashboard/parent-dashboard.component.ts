@@ -5,6 +5,8 @@ import { AuthService } from '../../../services/auth.service';
 import { ExamService } from '../../../services/exam.service';
 import { SettingsService } from '../../../services/settings.service';
 import { FinanceService } from '../../../services/finance.service';
+import { NewsService } from '../../../services/news.service';
+import { News } from '../../../types/news';
 
 @Component({
   selector: 'app-parent-dashboard',
@@ -20,12 +22,18 @@ export class ParentDashboardComponent implements OnInit {
   invoiceLoading = false;
   schoolLogo: string | null = null;
 
+  newsLoading = false;
+  newsError = '';
+  featuredNews: News | null = null;
+  latestNews: News[] = [];
+
   constructor(
     private parentService: ParentService,
     private authService: AuthService,
     private examService: ExamService,
     private settingsService: SettingsService,
     private financeService: FinanceService,
+    private newsService: NewsService,
     private router: Router
   ) {
     const user = this.authService.getCurrentUser();
@@ -39,6 +47,40 @@ export class ParentDashboardComponent implements OnInit {
   ngOnInit() {
     this.loadSettings();
     this.loadStudents();
+    this.loadNews();
+  }
+
+  loadNews() {
+    this.newsLoading = true;
+    this.newsError = '';
+
+    this.newsService.getPublishedNews({ limit: 6 }).subscribe({
+      next: (response) => {
+        const items = response?.data || [];
+        this.featuredNews = items.length > 0 ? items[0] : null;
+        this.latestNews = items.length > 1 ? items.slice(1, 6) : [];
+        this.newsLoading = false;
+      },
+      error: (err: any) => {
+        console.error('Error loading news:', err);
+        this.newsError = 'Failed to load news & updates.';
+        this.newsLoading = false;
+      }
+    });
+  }
+
+  openNews(news: News) {
+    this.router.navigate(['/news', news.id]);
+  }
+
+  formatNewsDate(dateString?: string): string {
+    return this.newsService.formatDate(dateString);
+  }
+
+  getNewsExcerpt(news: News, maxLen: number): string {
+    const text = (news.summary || news.content || '').replace(/\s+/g, ' ').trim();
+    if (!text) return '';
+    return text.length > maxLen ? `${text.slice(0, maxLen)}...` : text;
   }
 
   loadSettings() {

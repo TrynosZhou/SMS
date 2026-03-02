@@ -301,6 +301,34 @@ export const login = async (req: Request, res: Response) => {
         }
       }
 
+      // If still not found, try resolving Parent by email -> linked User account
+      if (!user && loginIdentifier.includes('@')) {
+        try {
+          const parentRepository = AppDataSource.getRepository(Parent);
+          const parentByEmail = await parentRepository
+            .createQueryBuilder('parent')
+            .where('LOWER(parent.email) = LOWER(:email)', { email: loginIdentifier })
+            .getOne();
+
+          if (parentByEmail) {
+            if (!parentByEmail.userId) {
+              console.log('[Login] Parent found but no linked user account:', parentByEmail.id, parentByEmail.email);
+              return res.status(401).json({
+                message: 'Parent account is not linked. Please contact the administrator to create/login credentials.'
+              });
+            }
+
+            console.log('[Login] Found parent by email, loading linked user:', parentByEmail.userId);
+            user = await userRepository.findOne({
+              where: { id: parentByEmail.userId },
+              relations: ['student', 'teacher', 'parent']
+            });
+          }
+        } catch (parentLookupError: any) {
+          console.log('[Login] Error looking up parent by email:', parentLookupError.message);
+        }
+      }
+
       if (!user) {
         console.log('[Login] User not found for identifier:', loginIdentifier);
         return res.status(401).json({ 

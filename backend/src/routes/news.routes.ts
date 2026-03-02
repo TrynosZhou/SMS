@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth';
+import { authenticate, optionalAuthenticate } from '../middleware/auth';
 import { requireAdmin } from '../middleware/roleCheck';
 import {
   createNews,
@@ -28,8 +28,8 @@ router.get('/admin', authenticate, requireAdmin, getNewsList);
 router.get('/admin/:id', authenticate, requireAdmin, getNewsById);
 
 // Public routes (no authentication required)
-router.get('/public', getPublishedNews);
-router.get('/public/pinned', getPinnedNews);
+router.get('/public', optionalAuthenticate, getPublishedNews);
+router.get('/public/pinned', optionalAuthenticate, getPinnedNews);
 router.get('/public/categories', getNewsCategories);
 router.get('/public/:id', getNewsById);
 

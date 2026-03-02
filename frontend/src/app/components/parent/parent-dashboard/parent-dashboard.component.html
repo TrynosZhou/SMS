@@ -89,6 +89,67 @@
           </div>
         </div>
       </div>
+
+      <div class="news-updates-section">
+        <div class="news-updates-header">
+          <h3>News  & Updates</h3>
+          <a class="news-view-all" routerLink="/news-feed">View all</a>
+        </div>
+
+        <div class="news-loading" *ngIf="newsLoading">
+          Loading news & updates...
+        </div>
+
+        <div class="news-error" *ngIf="newsError && !newsLoading">
+          {{ newsError }}
+        </div>
+
+        <div class="news-empty" *ngIf="!newsLoading && !newsError && !featuredNews && latestNews.length === 0">
+          No news available.
+        </div>
+
+        <div class="news-updates-grid" *ngIf="!newsLoading && !newsError && (featuredNews || latestNews.length > 0)">
+          <div
+            class="news-featured"
+            *ngIf="featuredNews"
+            (click)="openNews(featuredNews)"
+            role="button"
+            tabindex="0">
+            <div class="news-featured-image">
+              <img
+                *ngIf="featuredNews.imageUrl"
+                [src]="featuredNews.imageUrl"
+                [alt]="featuredNews.title" />
+              <div class="news-featured-image-placeholder" *ngIf="!featuredNews.imageUrl"></div>
+            </div>
+            <div class="news-featured-body">
+              <div class="news-featured-title">{{ featuredNews.title }}</div>
+              <div class="news-featured-date">{{ formatNewsDate(featuredNews.publishedAt || featuredNews.createdAt) }}</div>
+              <div class="news-featured-excerpt">{{ getNewsExcerpt(featuredNews, 180) }}</div>
+              <div class="news-featured-link">Read more →</div>
+            </div>
+          </div>
+
+          <div class="news-latest">
+            <div
+              class="news-latest-item"
+              *ngFor="let item of latestNews"
+              (click)="openNews(item)"
+              role="button"
+              tabindex="0">
+              <div class="news-latest-thumb">
+                <img *ngIf="item.imageUrl" [src]="item.imageUrl" [alt]="item.title" />
+                <div class="news-latest-thumb-placeholder" *ngIf="!item.imageUrl"></div>
+              </div>
+              <div class="news-latest-body">
+                <div class="news-latest-title">{{ item.title }}</div>
+                <div class="news-latest-date">{{ formatNewsDate(item.publishedAt || item.createdAt) }}</div>
+              </div>
+              <div class="news-latest-action">→</div>
+            </div>
+          </div>
+        </div>
+      </div>
  
     
  

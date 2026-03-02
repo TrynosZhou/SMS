@@ -147,10 +147,7 @@ export class NewsService {
       whereConditions.title = Like(`%${search}%`);
     }
 
-    // Filter by user role if specified
-    if (userRole) {
-      whereConditions.targetRoles = IsNull(); // News visible to all
-    }
+    // Role visibility for public feeds is handled via query builder below.
 
     // Exclude expired news unless explicitly requested
     if (!includeExpired) {
@@ -174,10 +171,24 @@ export class NewsService {
       );
     }
 
-    // Add role-based filtering for user-specific feeds
+    // Role-based visibility for targetRoles (stored as JSON array)
+    // - If no role: only show news visible to everyone (NULL or empty array)
+    // - If role: show visible-to-all + role-targeted items
     if (userRole) {
-      query.orWhere('news.targetRoles = :emptyArray', { emptyArray: [] })
-           .orWhere(':userRole = ANY(news.targetRoles)', { userRole });
+      query.andWhere(
+        new Brackets(qb => {
+          qb.where('"news"."targetRoles" IS NULL')
+            .orWhere('"news"."targetRoles"::jsonb = \'[]\'::jsonb')
+            .orWhere('"news"."targetRoles"::jsonb @> (:roleArr)::jsonb', { roleArr: JSON.stringify([userRole]) });
+        })
+      );
+    } else {
+      query.andWhere(
+        new Brackets(qb => {
+          qb.where('"news"."targetRoles" IS NULL')
+            .orWhere('"news"."targetRoles"::jsonb = \'[]\'::jsonb');
+        })
+      );
     }
 
     // Add sorting

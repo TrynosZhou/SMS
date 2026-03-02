@@ -40,6 +40,9 @@ export class NewsFormComponent implements OnInit {
     
     if (this.isEditMode && this.newsId) {
       this.loadNews();
+    } else {
+      // Ensure defaults for new articles are immediately consistent
+      this.onStatusChange();
     }
   }
 
@@ -53,7 +56,7 @@ export class NewsFormComponent implements OnInit {
       content: ['', [Validators.required, Validators.minLength(10)]],
       summary: ['', [Validators.maxLength(255)]],
       category: [NewsCategory.GENERAL, Validators.required],
-      status: [NewsStatus.DRAFT, Validators.required],
+      status: [NewsStatus.PUBLISHED, Validators.required],
       isPinned: [false],
       publishedAt: [''],
       expiresAt: [''],
@@ -149,6 +152,11 @@ export class NewsFormComponent implements OnInit {
     this.success = '';
 
     const formValue = this.newsForm.value;
+
+    // Safety: if publishing but publishedAt is empty/invalid, set it to now.
+    if (formValue.status === NewsStatus.PUBLISHED && (!formValue.publishedAt || !String(formValue.publishedAt).trim())) {
+      this.newsForm.get('publishedAt')?.setValue(new Date().toISOString().slice(0, 16));
+    }
 
     const targetRoles = this.normalizeStringArray(formValue.targetRoles);
     const attachments = this.normalizeStringArray(formValue.attachments);

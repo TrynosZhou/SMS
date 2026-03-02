@@ -279,11 +279,16 @@ export const getPublishedNews = async (req: any, res: Response) => {
 
     const userRole = req.user?.role; // Optional: from auth middleware if present
 
+    const isPinnedFilter =
+      typeof isPinned === 'string'
+        ? (isPinned === 'true' ? true : isPinned === 'false' ? false : undefined)
+        : undefined;
+
     const options = {
       page: parseInt(page as string),
       limit: parseInt(limit as string),
       category: category as NewsCategory,
-      isPinned: isPinned === 'true',
+      isPinned: isPinnedFilter,
       search: search as string,
       sortBy: sortBy as any,
       sortOrder: sortOrder as any
