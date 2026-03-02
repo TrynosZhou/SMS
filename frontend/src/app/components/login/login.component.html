@@ -82,9 +82,90 @@
           {{ loading ? 'Signing in...' : '🔐 Sign In' }}
         </button>
         <div class="form-footer">
-          <a href="#" (click)="setTab('reset'); $event.preventDefault()" class="link">Forgot password?</a>
+          <a href="#" (click)="openForgotPasswordModal(); $event.preventDefault()" class="link">Forgot password?</a>
         </div>
       </form>
+    </div>
+
+    <div class="modal-backdrop" *ngIf="showForgotPasswordModal" (click)="closeForgotPasswordModal()"></div>
+    <div class="modal" *ngIf="showForgotPasswordModal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3>Forgot Password</h3>
+        <button type="button" class="modal-close" (click)="closeForgotPasswordModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group" *ngIf="forgotStep === 'verify'">
+          <label>Role *</label>
+          <select [(ngModel)]="forgotRole" name="forgotRole" class="form-control" required>
+            <option value="">Select a role...</option>
+            <option value="STUDENT">Student</option>
+            <option value="PARENT">Parent</option>
+            <option value="TEACHER">Teacher</option>
+          </select>
+        </div>
+
+        <div *ngIf="forgotStep === 'verify'">
+          <div class="form-group" *ngIf="forgotRole === 'PARENT'">
+            <label>Email *</label>
+            <input type="email" [(ngModel)]="forgotEmail" name="forgotParentEmail" placeholder="Enter your email" />
+          </div>
+          <div class="form-group" *ngIf="forgotRole === 'PARENT'">
+            <label>Phone Number *</label>
+            <input type="text" [(ngModel)]="forgotPhoneNumber" name="forgotParentPhone" placeholder="Enter your phone number" />
+          </div>
+
+          <div class="form-group" *ngIf="forgotRole === 'TEACHER'">
+            <label>EmployeeID (Username) *</label>
+            <input type="text" [(ngModel)]="forgotUsername" name="forgotTeacherUsername" placeholder="Enter your EmployeeID" />
+          </div>
+          <div class="form-group" *ngIf="forgotRole === 'TEACHER'">
+            <label>Phone Number *</label>
+            <input type="text" [(ngModel)]="forgotPhoneNumber" name="forgotTeacherPhone" placeholder="Enter your phone number" />
+          </div>
+
+          <div class="form-group" *ngIf="forgotRole === 'STUDENT'">
+            <label>StudentID *</label>
+            <input type="text" [(ngModel)]="forgotStudentId" name="forgotStudentId" placeholder="Enter your StudentID" />
+          </div>
+          <div class="form-group" *ngIf="forgotRole === 'STUDENT'">
+            <label>Date of Birth *</label>
+            <input type="text" [(ngModel)]="forgotDob" name="forgotStudentDob" placeholder="dd/mm/yyyy" />
+          </div>
+
+        </div>
+
+        <div *ngIf="forgotStep === 'set'">
+          <div class="form-group">
+            <label>New Password *</label>
+            <input type="password" [(ngModel)]="forgotNewPassword" name="forgotNewPassword" placeholder="At least 8 characters" />
+          </div>
+          <div class="form-group">
+            <label>Confirm Password *</label>
+            <input type="password" [(ngModel)]="forgotConfirmPassword" name="forgotConfirmPassword" placeholder="Confirm password" />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeForgotPasswordModal()" [disabled]="forgotSubmitting">Cancel</button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          *ngIf="forgotStep === 'verify'"
+          (click)="submitForgotVerify()"
+          [disabled]="forgotSubmitting">
+          {{ forgotSubmitting ? 'Verifying...' : 'Verify' }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          *ngIf="forgotStep === 'set'"
+          (click)="submitForgotSetPassword()"
+          [disabled]="forgotSubmitting">
+          {{ forgotSubmitting ? 'Saving...' : 'Set Password' }}
+        </button>
+      </div>
     </div>
 
     <!-- Sign Up Form -->

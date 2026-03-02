@@ -87,6 +87,25 @@ export class AuthService {
     return this.http.post(`${this.apiUrl}/auth/register`, data);
   }
 
+  verifyForgotPasswordDetails(payload: {
+    role: string;
+    email?: string;
+    phoneNumber?: string;
+    username?: string;
+    studentId?: string;
+    dateOfBirth?: string;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/forgot-password/verify`, payload);
+  }
+
+  setForgotPasswordNewPassword(payload: {
+    token: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/forgot-password/set`, payload);
+  }
+
   logout(reason: LogoutReason = 'manual'): void {
     if (reason && reason !== 'manual') {
       sessionStorage.setItem(this.logoutReasonKey, reason);

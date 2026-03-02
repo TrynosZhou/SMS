@@ -956,6 +956,224 @@ export const confirmPasswordReset = async (req: Request, res: Response) => {
   }
 };
 
+export const verifyForgotPasswordDetails = async (req: Request, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const {
+      role,
+      email,
+      phoneNumber,
+      username,
+      studentId,
+      dateOfBirth
+    } = req.body || {};
+
+    if (!role) {
+      return res.status(400).json({ message: 'Role is required' });
+    }
+
+    const requestedRole = String(role).toLowerCase() as UserRole;
+    const userRepository = AppDataSource.getRepository(User);
+
+    if (
+      requestedRole !== UserRole.PARENT &&
+      requestedRole !== UserRole.TEACHER &&
+      requestedRole !== UserRole.STUDENT
+    ) {
+      return res.status(403).json({ message: 'Only Parents, Teachers, and Students can reset password here.' });
+    }
+
+    let user: User | null = null;
+
+    // Option D verification rules
+    if (requestedRole === UserRole.PARENT) {
+      const trimmedEmail = (email || '').toString().trim().toLowerCase();
+      if (!trimmedEmail) {
+        return res.status(400).json({ message: 'Email is required' });
+      }
+      const phoneResult = validatePhoneNumber((phoneNumber || '').toString(), true);
+      if (!phoneResult.isValid) {
+        return res.status(400).json({ message: phoneResult.error || 'Invalid phone number' });
+      }
+      const normalizedPhone = phoneResult.normalized || (phoneNumber || '').toString().trim();
+
+      const parentRepository = AppDataSource.getRepository(Parent);
+      const parent = await parentRepository
+        .createQueryBuilder('parent')
+        .where('LOWER(parent.email) = LOWER(:email)', { email: trimmedEmail })
+        .getOne();
+
+      if (!parent) {
+        return res.status(400).json({ message: 'Invalid details' });
+      }
+
+      if (!parent.phoneNumber || String(parent.phoneNumber).trim() !== normalizedPhone) {
+        return res.status(400).json({ message: 'Invalid details' });
+      }
+
+      if (!parent.userId) {
+        return res.status(400).json({ message: 'Account not found. Please contact the administrator.' });
+      }
+
+      user = await userRepository.findOne({ where: { id: parent.userId } });
+    } else if (requestedRole === UserRole.TEACHER) {
+      const trimmedUsername = (username || '').toString().trim();
+      if (!trimmedUsername) {
+        return res.status(400).json({ message: 'Username is required' });
+      }
+      const phoneResult = validatePhoneNumber((phoneNumber || '').toString(), true);
+      if (!phoneResult.isValid) {
+        return res.status(400).json({ message: phoneResult.error || 'Invalid phone number' });
+      }
+      const normalizedPhone = phoneResult.normalized || (phoneNumber || '').toString().trim();
+
+      const teacherRepository = AppDataSource.getRepository(Teacher);
+      const teacher = await teacherRepository
+        .createQueryBuilder('teacher')
+        .where('LOWER(teacher.teacherId) = LOWER(:teacherId)', { teacherId: trimmedUsername })
+        .getOne();
+
+      if (!teacher) {
+        return res.status(400).json({ message: 'Invalid details' });
+      }
+
+      if (!teacher.phoneNumber || String(teacher.phoneNumber).trim() !== normalizedPhone) {
+        return res.status(400).json({ message: 'Invalid details' });
+      }
+
+      if (!teacher.userId) {
+        return res.status(400).json({ message: 'Account not found. Please contact the administrator.' });
+      }
+
+      user = await userRepository.findOne({ where: { id: teacher.userId } });
+    } else if (requestedRole === UserRole.STUDENT) {
+      const trimmedStudentId = (studentId || '').toString().trim();
+      if (!trimmedStudentId) {
+        return res.status(400).json({ message: 'Student ID is required' });
+      }
+      const parsedDOB = parseDOB((dateOfBirth || '').toString().trim());
+      if (!parsedDOB) {
+        return res.status(400).json({ message: 'Invalid date of birth format. Please use dd/mm/yyyy format.' });
+      }
+
+      const studentRepository = AppDataSource.getRepository(Student);
+      const student = await studentRepository.findOne({ where: { studentNumber: trimmedStudentId } });
+      if (!student) {
+        return res.status(400).json({ message: 'Invalid details' });
+      }
+      if (!student.dateOfBirth) {
+        return res.status(400).json({ message: 'Account not configured. Please contact the administrator.' });
+      }
+
+      const studentDob = student.dateOfBirth instanceof Date ? student.dateOfBirth : new Date(student.dateOfBirth as any);
+      if (!compareDates(parsedDOB, studentDob)) {
+        return res.status(400).json({ message: 'Invalid details' });
+      }
+      if (!student.userId) {
+        return res.status(400).json({ message: 'Account not found. Please sign up first.' });
+      }
+      user = await userRepository.findOne({ where: { id: student.userId } });
+    } else {
+      return res.status(400).json({ message: 'Invalid role' });
+    }
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid details' });
+    }
+    if (!user.isActive) {
+      return res.status(403).json({ message: 'Account is inactive. Please contact the administrator.' });
+    }
+    if (user.isDemo) {
+      return res.status(403).json({ message: 'Cannot reset password for demo accounts' });
+    }
+
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error('JWT_SECRET is not configured');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
+    const resetToken = jwt.sign(
+      { userId: user.id, type: 'forgot-password-verified' },
+      jwtSecret,
+      { expiresIn: '10m' } as SignOptions
+    );
+
+    return res.json({ message: 'Verified', token: resetToken });
+  } catch (error: any) {
+    console.error('[ForgotPasswordVerify] Error:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const setForgotPasswordNewPassword = async (req: Request, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const { token, newPassword, confirmPassword } = req.body || {};
+    const trimmedToken = (token || '').toString().trim();
+    const trimmedPassword = (newPassword || '').toString().trim();
+    const trimmedConfirm = (confirmPassword || '').toString().trim();
+
+    if (!trimmedToken) {
+      return res.status(400).json({ message: 'Token is required' });
+    }
+    if (!trimmedPassword || !trimmedConfirm) {
+      return res.status(400).json({ message: 'New password and confirmation are required' });
+    }
+    if (trimmedPassword.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters long' });
+    }
+    if (trimmedPassword !== trimmedConfirm) {
+      return res.status(400).json({ message: 'Passwords do not match' });
+    }
+
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error('JWT_SECRET is not configured');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
+    let decoded: any;
+    try {
+      decoded = jwt.verify(trimmedToken, jwtSecret) as any;
+      if (decoded.type !== 'forgot-password-verified' || !decoded.userId) {
+        return res.status(400).json({ message: 'Invalid token' });
+      }
+    } catch {
+      return res.status(400).json({ message: 'Invalid or expired token' });
+    }
+
+    const userRepository = AppDataSource.getRepository(User);
+    const user = await userRepository.findOne({ where: { id: decoded.userId } });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (!user.isActive) {
+      return res.status(403).json({ message: 'Account is inactive. Please contact the administrator.' });
+    }
+    if (user.isDemo) {
+      return res.status(403).json({ message: 'Cannot reset password for demo accounts' });
+    }
+
+    const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
+    user.password = hashedPassword;
+    user.mustChangePassword = false;
+    user.isTemporaryAccount = false;
+    await userRepository.save(user);
+
+    return res.json({ message: 'Password updated successfully' });
+  } catch (error: any) {
+    console.error('[ForgotPasswordSet] Error:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
 export const logout = async (req: Request, res: Response) => {
   try {
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();

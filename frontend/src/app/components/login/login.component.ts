@@ -35,6 +35,20 @@ export class LoginComponent implements OnInit {
   resetToken = '';
   resetNewPassword = '';
   resetConfirmPassword = '';
+
+  // Role-aware forgot password modal
+  showForgotPasswordModal = false;
+  forgotStep: 'verify' | 'set' = 'verify';
+  forgotRole: 'PARENT' | 'TEACHER' | 'STUDENT' | '' = '';
+  forgotUsername = '';
+  forgotEmail = '';
+  forgotPhoneNumber = '';
+  forgotStudentId = '';
+  forgotDob = '';
+  forgotVerifyToken = '';
+  forgotNewPassword = '';
+  forgotConfirmPassword = '';
+  forgotSubmitting = false;
   
   error = '';
   success = '';
@@ -143,6 +157,131 @@ export class LoginComponent implements OnInit {
     this.resetToken = '';
     this.resetNewPassword = '';
     this.resetConfirmPassword = '';
+
+    this.closeForgotPasswordModal();
+  }
+
+  openForgotPasswordModal() {
+    this.error = '';
+    this.success = '';
+    this.infoMessage = '';
+    this.showForgotPasswordModal = true;
+    this.forgotStep = 'verify';
+    this.forgotRole = '';
+    this.forgotUsername = '';
+    this.forgotEmail = '';
+    this.forgotPhoneNumber = '';
+    this.forgotStudentId = '';
+    this.forgotDob = '';
+    this.forgotVerifyToken = '';
+    this.forgotNewPassword = '';
+    this.forgotConfirmPassword = '';
+    this.forgotSubmitting = false;
+  }
+
+  closeForgotPasswordModal() {
+    this.showForgotPasswordModal = false;
+    this.forgotSubmitting = false;
+  }
+
+  submitForgotVerify() {
+    this.error = '';
+    this.success = '';
+
+    if (!this.forgotRole) {
+      this.error = 'Please select your role';
+      return;
+    }
+
+    if (this.forgotRole !== 'PARENT' && this.forgotRole !== 'TEACHER' && this.forgotRole !== 'STUDENT') {
+      this.error = 'Only Parents, Teachers, and Students can reset password here.';
+      return;
+    }
+
+    const roleLower = this.forgotRole.toLowerCase();
+    const payload: any = { role: roleLower };
+
+    if (this.forgotRole === 'PARENT') {
+      if (!this.forgotEmail || !this.forgotPhoneNumber) {
+        this.error = 'Email and phone number are required';
+        return;
+      }
+      payload.email = this.forgotEmail.trim();
+      payload.phoneNumber = this.forgotPhoneNumber.trim();
+    } else if (this.forgotRole === 'TEACHER') {
+      if (!this.forgotUsername || !this.forgotPhoneNumber) {
+        this.error = 'EmployeeID and phone number are required';
+        return;
+      }
+      payload.username = this.forgotUsername.trim();
+      payload.phoneNumber = this.forgotPhoneNumber.trim();
+    } else if (this.forgotRole === 'STUDENT') {
+      if (!this.forgotStudentId || !this.forgotDob) {
+        this.error = 'StudentID and Date of Birth are required';
+        return;
+      }
+      payload.studentId = this.forgotStudentId.trim();
+      payload.dateOfBirth = this.forgotDob.trim();
+    }
+
+    this.forgotSubmitting = true;
+    this.authService.verifyForgotPasswordDetails(payload).subscribe({
+      next: (res: any) => {
+        this.forgotSubmitting = false;
+        this.forgotVerifyToken = res?.token || '';
+        this.forgotStep = 'set';
+        this.success = 'Verified. Please set your new password.';
+      },
+      error: (err: any) => {
+        this.forgotSubmitting = false;
+        this.error = err.error?.message || 'Verification failed';
+      }
+    });
+  }
+
+  submitForgotSetPassword() {
+    this.error = '';
+    this.success = '';
+
+    const token = (this.forgotVerifyToken || '').trim();
+    const pw = (this.forgotNewPassword || '').trim();
+    const confirm = (this.forgotConfirmPassword || '').trim();
+
+    if (!token) {
+      this.error = 'Verification token missing. Please verify again.';
+      this.forgotStep = 'verify';
+      return;
+    }
+    if (!pw || !confirm) {
+      this.error = 'New password and confirmation are required';
+      return;
+    }
+    if (pw.length < 8) {
+      this.error = 'Password must be at least 8 characters long';
+      return;
+    }
+    if (pw !== confirm) {
+      this.error = 'Passwords do not match';
+      return;
+    }
+
+    this.forgotSubmitting = true;
+    this.authService.setForgotPasswordNewPassword({
+      token,
+      newPassword: pw,
+      confirmPassword: confirm
+    }).subscribe({
+      next: () => {
+        this.forgotSubmitting = false;
+        this.success = 'Password updated successfully. Please sign in.';
+        this.closeForgotPasswordModal();
+        this.setTab('signin');
+      },
+      error: (err: any) => {
+        this.forgotSubmitting = false;
+        this.error = err.error?.message || 'Failed to update password';
+      }
+    });
   }
 
   onSignIn() {

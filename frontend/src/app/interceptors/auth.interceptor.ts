@@ -10,7 +10,9 @@ export class AuthInterceptor implements HttpInterceptor {
   private readonly publicEndpoints = [
     '/auth/login',
     '/auth/register',
-    '/auth/reset-password'
+    '/auth/reset-password',
+    '/auth/forgot-password/verify',
+    '/auth/forgot-password/set'
   ];
 
   constructor(
