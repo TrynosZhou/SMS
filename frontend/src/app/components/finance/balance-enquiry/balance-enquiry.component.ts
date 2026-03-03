@@ -181,7 +181,15 @@ export class BalanceEnquiryComponent {
     pdf.text(`Student #: ${student.studentNumber || student.studentId || ''}`, 14, startY + 8);
     pdf.text(`Generated: ${new Date().toLocaleString()}`, 14, startY + 16);
 
-    const bal = parseFloat(String(student.balance || 0));
+    const tryNum = (v: any) => isFinite(Number(v)) ? Number(v) : 0;
+    const totalAmountForBal = invoice ? tryNum(invoice.amount) : 0;
+    const previousBalanceForBal = invoice ? tryNum((invoice as any).previousBalance) : 0;
+    const paidAmountForBal = invoice ? tryNum((invoice as any).paidAmount) : 0;
+    const prepaidAmountForBal = invoice ? tryNum((invoice as any).prepaidAmount) : 0;
+    const computedBalanceForStatement = invoice
+      ? Math.max(0, (totalAmountForBal + previousBalanceForBal) - paidAmountForBal - prepaidAmountForBal)
+      : Math.max(0, tryNum(student.balance));
+    const bal = computedBalanceForStatement;
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(bal > 1000 ? 220 : 29, bal > 1000 ? 38 : 78, bal > 1000 ? 38 : 216);
     pdf.text(`Current Balance: ${this.currencySymbol} ${bal.toFixed(2)}`, 14, startY + 28);
@@ -199,7 +207,6 @@ export class BalanceEnquiryComponent {
 
       // Build cost items dynamically
       const items: Array<{ label: string; amount: number }> = [];
-      const tryNum = (v: any) => isFinite(Number(v)) ? Number(v) : 0;
       if (Array.isArray(invoice.items) && invoice.items.length > 0) {
         invoice.items.forEach((it: any) => {
           const label = (it.item || it.description || 'Item').toString();
@@ -270,12 +277,10 @@ export class BalanceEnquiryComponent {
       };
 
       const totalAmount = tryNum(invoice.amount);
-      const paidAmount = tryNum(invoice.paidAmount);
-      const currentBalance = tryNum(student.balance);
+      const paidAmount = tryNum((invoice as any).paidAmount);
       const previousBalance = tryNum((invoice as any).previousBalance);
       const prepaidAmount = tryNum((invoice as any).prepaidAmount);
-      const computedBalance = Math.max(0, (totalAmount + previousBalance) - paidAmount - prepaidAmount);
-      const invBalance = currentBalance > 0 || currentBalance === 0 ? currentBalance : computedBalance;
+      const invBalance = Math.max(0, (totalAmount + previousBalance) - paidAmount - prepaidAmount);
       drawTotalRow('Subtotal', totalAmount);
       drawTotalRow('Paid', paidAmount);
       drawTotalRow('Invoice Balance', invBalance, true, invBalance > 1000 ? [220, 38, 38] : [29, 78, 216]);
