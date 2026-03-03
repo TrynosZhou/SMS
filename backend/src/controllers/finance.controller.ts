@@ -1574,33 +1574,12 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
       currentBalance = 0;
       console.log(`[getStudentBalance] No invoices found, balance = 0`);
     } else {
-      // Recompute balance from payment logs to avoid stale invoice.balance after corrections (e.g. desk-fee reversal).
-      const paymentLogs = await paymentLogRepository
-        .createQueryBuilder('log')
-        .where('log.invoiceId = :invoiceId', { invoiceId: lastInvoice.id })
-        .orderBy('log.createdAt', 'DESC')
-        .getMany();
-
-      const positiveNonAdjustmentLogs = paymentLogs.filter(l => {
-        const amt = parseAmount((l as any).amountPaid);
-        const pm = String((l as any).paymentMethod || '').trim().toUpperCase();
-        return amt > 0 && pm !== 'ADJUSTMENT';
-      });
-      const totalPaidToDate = positiveNonAdjustmentLogs.reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
-      const adjustmentDelta = paymentLogs
-        .filter(l => String((l as any).paymentMethod || '').trim().toUpperCase() === 'ADJUSTMENT')
-        .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
-      const netPaidToDate = Math.max(0, parseFloat((totalPaidToDate + adjustmentDelta).toFixed(2)));
-
-      const invoiceAmountValue = parseAmount(lastInvoice.amount);
-      const previousBalanceValue = parseAmount(lastInvoice.previousBalance);
-      totalPrepaidAmount = parseAmount(lastInvoice.prepaidAmount);
-
-      currentBalance = Math.max(0, parseFloat((invoiceAmountValue + previousBalanceValue - netPaidToDate - totalPrepaidAmount).toFixed(2)));
-
-      // Keep fields consistent for the response payload
-      (lastInvoice as any).paidAmount = netPaidToDate;
-      (lastInvoice as any).balance = currentBalance;
+      // Use persisted invoice fields.
+      // Recomputing from PaymentLog here is error-prone because logs are linked to specific invoiceIds,
+      // while this system carries balances forward on new invoices. If we only look at the latest invoice's
+      // logs, we can incorrectly ignore real payments and inflate the balance.
+      currentBalance = Math.max(0, parseFloat(parseAmount(lastInvoice.balance).toFixed(2)));
+      totalPrepaidAmount = Math.max(0, parseFloat(parseAmount(lastInvoice.prepaidAmount).toFixed(2)));
       
       console.log(`[getStudentBalance] Latest invoice ${lastInvoice.invoiceNumber}: balance=${currentBalance}, previousBalance=${parseAmount(lastInvoice.previousBalance)}, amount=${parseAmount(lastInvoice.amount)}`);
       
