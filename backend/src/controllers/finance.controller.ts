@@ -1683,7 +1683,20 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     const adjustmentDelta = paymentLogs
       .filter(l => String((l as any).paymentMethod || '').trim().toUpperCase() === 'ADJUSTMENT')
       .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
-    const netPaidToDate = Math.max(0, parseFloat((totalPaidToDate + adjustmentDelta).toFixed(2)));
+    let netPaidToDate = Math.max(0, parseFloat((totalPaidToDate + adjustmentDelta).toFixed(2)));
+    // If payment logs are missing (e.g., historical data or logging failure), fall back to persisted invoice.paidAmount.
+    // This avoids generating receipts that incorrectly show 0 paid and a non-zero remaining balance for fully-paid invoices.
+    if (!latestPaymentLog && netPaidToDate <= 0) {
+      netPaidToDate = Math.max(0, parseFloat(parseAmount(invoice.paidAmount).toFixed(2)));
+    }
+
+    // Hard guard: do not generate a "PAYMENT RECEIPT" when there is no evidence of an actual payment.
+    // This prevents misleading receipts showing Amount Paid = 0.00 with an outstanding balance.
+    const persistedPaid = Math.max(0, parseFloat(parseAmount(invoice.paidAmount).toFixed(2)));
+    const persistedPrepaid = Math.max(0, parseFloat(parseAmount(invoice.prepaidAmount).toFixed(2)));
+    if (!latestPaymentLog && netPaidToDate <= 0 && persistedPaid <= 0 && persistedPrepaid <= 0) {
+      return res.status(404).json({ message: 'Receipt not found for this invoice (no payment recorded).' });
+    }
 
     const receiptNumber = latestPaymentLog?.receiptNumber
       ? String(latestPaymentLog.receiptNumber)
@@ -1691,7 +1704,7 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
 
     const resolvedPaymentAmount = paymentAmount
       ? parseAmount(paymentAmount)
-      : (latestPaymentLog ? parseAmount((latestPaymentLog as any).amountPaid) : parseAmount(invoice.paidAmount));
+      : (latestPaymentLog ? parseAmount((latestPaymentLog as any).amountPaid) : netPaidToDate);
 
     // Guardrail: after desk-fee reversals/status corrections, invoice totals may be reduced.
     // Never display an "Amount Paid" on a receipt that exceeds the actual cash paid-to-date.

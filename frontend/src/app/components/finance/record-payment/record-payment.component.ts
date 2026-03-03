@@ -230,7 +230,7 @@ export class RecordPaymentComponent implements OnInit {
   }
 
   hasReceiptAvailable(): boolean {
-    if (this.paymentRecorded || !!this.success) {
+    if (this.paymentRecorded || !!this.lastPaymentInvoiceId) {
       return true;
     }
     if (this.studentData && this.studentData.lastInvoicePaidAmount !== undefined && this.studentData.lastInvoicePaidAmount !== null) {
@@ -325,15 +325,24 @@ export class RecordPaymentComponent implements OnInit {
   }
 
   showReceiptPreview(): void {
-    // Use the invoice ID from the last payment if available, otherwise use current student's last invoice
-    const invoiceId = this.lastPaymentInvoiceId || (this.studentData?.lastInvoiceId);
-    
-    if (!invoiceId) {
-      this.error = 'Please get student balance and record payment first';
+    // Show a receipt only when it represents an actual payment.
+    // Prefer the invoice id used for the last recorded payment.
+    if (this.lastPaymentInvoiceId) {
+      this.loadReceiptForInvoice(this.lastPaymentInvoiceId);
       return;
     }
 
-    this.loadReceiptForInvoice(invoiceId);
+    // Fallback: allow viewing receipt only if the last invoice has a positive paid amount.
+    const paidAmount = this.studentData?.lastInvoicePaidAmount !== undefined
+      ? parseFloat(String(this.studentData.lastInvoicePaidAmount || 0))
+      : 0;
+
+    if (this.studentData?.lastInvoiceId && paidAmount > 0) {
+      this.loadReceiptForInvoice(this.studentData.lastInvoiceId);
+      return;
+    }
+
+    this.error = 'Receipt not available (no payment recorded for the latest invoice).';
   }
 
   private loadReceiptForInvoice(invoiceId: string): void {
