@@ -466,7 +466,9 @@ export const correctStudentStatus = async (req: AuthRequest, res: Response) => {
       deskFeeDelta: 0,
       oldBalance: 0,
       newBalance: 0,
-      overpaymentMovedToPrepaid: 0
+      overpaymentMovedToPrepaid: 0,
+      oldPaidAmount: 0,
+      newPaidAmount: 0
     };
 
     if (initialInvoice && settings?.feesSettings) {
@@ -519,8 +521,32 @@ export const correctStudentStatus = async (req: AuthRequest, res: Response) => {
       const paidAmountValue = parseAmount(initialInvoice.paidAmount);
       const oldPrepaid = parseAmount(initialInvoice.prepaidAmount);
 
-      const newBalance = parseFloat(Math.max(totalAmount - paidAmountValue, 0).toFixed(2));
-      const overpay = parseFloat(Math.max(paidAmountValue - totalAmount, 0).toFixed(2));
+      // When correcting status (e.g. New -> Existing), we must NOT clear balances.
+      // Instead, reduce the invoice amount by removing fees (desk/registration) and reduce the balance by the same delta.
+      // If the reduction is larger than the outstanding balance, carry the excess into prepaidAmount.
+      const deskFeeDelta = parseFloat((oldAmount - totalAmount).toFixed(2));
+      let newBalance = oldBalance;
+      let overpay = 0;
+      if (deskFeeDelta > 0) {
+        const reduced = oldBalance - deskFeeDelta;
+        if (reduced >= 0) {
+          newBalance = parseFloat(reduced.toFixed(2));
+        } else {
+          newBalance = 0;
+          overpay = parseFloat(Math.abs(reduced).toFixed(2));
+        }
+      } else {
+        // If invoice amount increases (unlikely for this action), keep the old balance + delta
+        newBalance = parseFloat((oldBalance + Math.abs(deskFeeDelta)).toFixed(2));
+      }
+
+      // If we are removing desk/registration fees due to a status correction,
+      // the system must not show those removed charges as "paid" or as a "prepaid" credit.
+      // Reduce paidAmount by the same delta (capped at 0) and do NOT add to prepaidAmount.
+      let newPaidAmount = paidAmountValue;
+      if (deskFeeDelta > 0 && paidAmountValue > 0) {
+        newPaidAmount = Math.max(0, parseFloat((paidAmountValue - deskFeeDelta).toFixed(2)));
+      }
 
       const description = invoiceItems.length > 0
         ? `Initial fees upon registration: ${invoiceItems.join(', ')}`
@@ -531,12 +557,12 @@ export const correctStudentStatus = async (req: AuthRequest, res: Response) => {
       initialInvoice.amount = totalAmount;
       initialInvoice.balance = newBalance;
       initialInvoice.description = description;
-      if (overpay > 0) {
-        initialInvoice.prepaidAmount = parseFloat((oldPrepaid + overpay).toFixed(2));
-      }
+      initialInvoice.paidAmount = newPaidAmount;
+      // Keep any existing prepaidAmount (from real overpayments), but never add prepaid from desk-fee removal.
+      initialInvoice.prepaidAmount = oldPrepaid;
       if (newBalance <= 0) {
         initialInvoice.status = InvoiceStatus.PAID;
-      } else if (paidAmountValue > 0) {
+      } else if (newPaidAmount > 0) {
         initialInvoice.status = InvoiceStatus.PARTIAL;
       } else {
         initialInvoice.status = InvoiceStatus.PENDING;
@@ -544,14 +570,15 @@ export const correctStudentStatus = async (req: AuthRequest, res: Response) => {
 
       await invoiceRepository.save(initialInvoice);
 
-      const deskFeeDelta = parseFloat((oldAmount - totalAmount).toFixed(2));
       financialImpact = {
         oldInvoiceAmount: oldAmount,
         newInvoiceAmount: totalAmount,
         deskFeeDelta: deskFeeDelta,
         oldBalance,
         newBalance,
-        overpaymentMovedToPrepaid: overpay
+        overpaymentMovedToPrepaid: 0,
+        oldPaidAmount: paidAmountValue,
+        newPaidAmount
       };
 
       if (previousStatus === 'New' && newStatus === 'Existing' && deskFeeDelta > 0) {

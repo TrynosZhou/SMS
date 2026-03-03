@@ -19,7 +19,7 @@ export class BalanceEnquiryComponent {
   schoolName = '';
   schoolAddress = '';
   schoolMotto = '';
-  schoolLogo: string | null = null;
+  schoolLogo2: string | null = null;
   // Result
   studentData: any = null;
   matchingStudents: any[] = [];
@@ -40,7 +40,7 @@ export class BalanceEnquiryComponent {
         this.schoolName = s?.schoolName || '';
         this.schoolAddress = s?.schoolAddress || '';
         this.schoolMotto = s?.schoolMotto || '';
-        this.schoolLogo = s?.schoolLogo || null;
+        this.schoolLogo2 = s?.schoolLogo2 || null;
       },
       error: () => {
         this.currencySymbol = 'KES';
@@ -159,8 +159,8 @@ export class BalanceEnquiryComponent {
   private buildStatementPDFBlob(student: any, invoice: any | null): Blob {
     const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
     try {
-      if (this.schoolLogo) {
-        pdf.addImage(this.schoolLogo, 'PNG', 10, 10, 20, 20);
+      if (this.schoolLogo2) {
+        pdf.addImage(this.schoolLogo2, 'PNG', 10, 10, 20, 20);
       }
     } catch {}
     pdf.setFont('helvetica', 'bold');

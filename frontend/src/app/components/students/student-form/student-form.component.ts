@@ -305,12 +305,15 @@ export class StudentFormComponent implements OnInit {
     const normalizedStatusText = (this.student.studentStatus || 'New Student').toString().trim().toLowerCase();
     const status = (normalizedStatusText.includes('return') || normalizedStatusText.includes('existing')) ? 'Existing' : 'New';
 
-    const registrationFee = this.toNumber(this.feesSettings.registrationFee);
-    const deskFee = this.toNumber(this.feesSettings.deskFee);
-    const dayScholarTuition = this.toNumber(this.feesSettings.dayScholarTuitionFee);
-    const boarderTuition = this.toNumber(this.feesSettings.boarderTuitionFee);
-    const transportCost = this.toNumber(this.feesSettings.transportCost);
-    const diningHallCost = this.toNumber(this.feesSettings.diningHallCost);
+    const registrationFee = this.toNumber((this.feesSettings as any).registrationFee);
+    const deskFee = this.toNumber((this.feesSettings as any).deskFee);
+    // Backward compatibility: older settings used a single tuitionFee field
+    const legacyTuition = this.toNumber((this.feesSettings as any).tuitionFee ?? (this.feesSettings as any).tuition);
+    const dayScholarTuition = this.toNumber((this.feesSettings as any).dayScholarTuitionFee) || legacyTuition;
+    const boarderTuition = this.toNumber((this.feesSettings as any).boarderTuitionFee) || legacyTuition;
+    // Backward compatibility: older settings may use transportFee / diningHallFee
+    const transportCost = this.toNumber((this.feesSettings as any).transportCost ?? (this.feesSettings as any).transportFee);
+    const diningHallCost = this.toNumber((this.feesSettings as any).diningHallCost ?? (this.feesSettings as any).diningHallFee);
 
     let registration = 0;
     let desk = 0;

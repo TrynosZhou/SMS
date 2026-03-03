@@ -381,10 +381,10 @@ export class ReportCardComponent implements OnInit {
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
         this.currencySymbol = data.currencySymbol || 'KES';
-        this.schoolLogo = this.normalizeImageSrc(data.schoolLogo || data.schoolLogo2 || null);
+        this.schoolLogo = this.normalizeImageSrc(data.schoolLogo || null);
         this.safeSchoolLogoUrl = this.schoolLogo ? this.sanitizer.bypassSecurityTrustUrl(this.schoolLogo) : null;
         try {
-          const raw = data?.schoolLogo || data?.schoolLogo2;
+          const raw = data?.schoolLogo;
           const rawPreview = typeof raw === 'string' ? raw.trim().slice(0, 40) : String(raw);
           const normalizedPreview = this.schoolLogo ? this.schoolLogo.slice(0, 40) : 'null';
           console.log('[ReportCard] settings.schoolLogo preview:', rawPreview);

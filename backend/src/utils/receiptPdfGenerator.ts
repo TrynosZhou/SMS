@@ -44,10 +44,11 @@ export function createReceiptPDF(
       const schoolNameFontSize = 18;
 
       // School Logo (if available)
-      if (settings?.schoolLogo) {
+      if ((settings as any)?.schoolLogo2) {
         try {
-          if (settings.schoolLogo.startsWith('data:image')) {
-            const base64Data = settings.schoolLogo.split(',')[1];
+          const rawLogo2 = String((settings as any).schoolLogo2 || '').trim();
+          if (rawLogo2.startsWith('data:image')) {
+            const base64Data = rawLogo2.split(',')[1];
             if (base64Data) {
               const imageBuffer = Buffer.from(base64Data, 'base64');
               const logoY = yPos - schoolNameFontSize * 0.7;
@@ -60,7 +61,7 @@ export function createReceiptPDF(
       }
 
       // School Information
-      const textStartX = settings?.schoolLogo ? 150 : 50;
+      const textStartX = (settings as any)?.schoolLogo2 ? 150 : 50;
       doc.fontSize(schoolNameFontSize).font('Helvetica-Bold').text(schoolName, textStartX, yPos);
       yPos += 25;
 
@@ -316,31 +317,7 @@ export function createReceiptPDF(
         }
       }
 
-      if (descriptionText && descriptionText.trim() !== '') {
-        const noteLines = descriptionText
-          .split('|')
-          .map(line => line.trim())
-          .filter(line => line.toLowerCase().startsWith('credit note') || line.toLowerCase().startsWith('debit note'));
-
-        noteLines.forEach(line => {
-          const match = line.match(/([+-])\s*([0-9]+(\.[0-9]+)?)/);
-          if (match) {
-            const sign = match[1];
-            const amountValue = parseFloat(match[2]);
-            if (Number.isFinite(amountValue) && amountValue > 0) {
-              const displayAmount = Math.abs(amountValue);
-              doc.rect(tableStartX2, yPos, tableWidth2, rowHeight2).fillColor('#FFF5F5').fill().strokeColor('#E0E0E0').lineWidth(0.5).stroke();
-              doc.strokeColor('#E0E0E0').lineWidth(0.5);
-              doc.moveTo(amountColumnStartX2, yPos + 2).lineTo(amountColumnStartX2, yPos + rowHeight2 - 2).stroke();
-              doc.fontSize(10).font('Helvetica').fillColor(sign === '-' ? '#C53030' : '#2F855A');
-              const maxDescriptionWidth = amountColumnStartX2 - tableStartX2 - 20;
-              doc.text(line, tableStartX2 + 10, yPos + 7, { width: maxDescriptionWidth, ellipsis: true });
-              doc.text(`${currencySymbol} ${displayAmount.toFixed(2)}`, amountColumnStartX2, yPos + 7, { align: 'right', width: amountColumnWidth2 - 10 });
-              yPos += rowHeight2;
-            }
-          }
-        });
-      }
+      // Notes like "Debit Note" / "Credit Note" are not treated as charges paid on a receipt.
 
       yPos += 10;
       doc.strokeColor('#CCCCCC').lineWidth(1);
@@ -348,14 +325,17 @@ export function createReceiptPDF(
       yPos += 15;
 
       // Ensure all numeric values are properly converted to numbers
-      const invoiceAmount = parseFloat(String(invoice.amount || 0));
       const previousBalance = parseFloat(String(invoice.previousBalance || 0));
       const paidAmount = parseFloat(String(invoice.paidAmount || 0));
       const balance = parseFloat(String(invoice.balance || 0));
       const prepaidAmount = parseFloat(String(invoice.prepaidAmount || 0));
 
-      // Calculate total invoice amount (invoice amount + previous balance)
-      const totalInvoiceAmount = invoiceAmount + previousBalance;
+      // Calculate total invoice amount from the actual fee components shown above
+      const baseInvoiceAmount = parseFloat((tuitionFee + transportFee + diningHallFee + registrationDeskTotal).toFixed(2));
+      const totalInvoiceAmount = baseInvoiceAmount + previousBalance;
+
+      // Total cash received to date (prepaidAmount is not treated as "paid" on receipts)
+      const totalPaid = paidAmount;
 
       // Table dimensions (reuse variables from payment details section)
       const labelColumnWidth = 350;
@@ -396,7 +376,7 @@ export function createReceiptPDF(
 
       // Row 3: Payment:Total Paid (including this payment)
       doc.text('Payment:Total Paid (including this payment)', tableStartX + 5, yPos + 5);
-      doc.text(`${currencySymbol} ${paidAmount.toFixed(2)}`, valueColumnStartX + 5, yPos + 5, { align: 'right', width: valueColumnWidth - 10 });
+      doc.text(`${currencySymbol} ${totalPaid.toFixed(2)}`, valueColumnStartX + 5, yPos + 5, { align: 'right', width: valueColumnWidth - 10 });
       yPos += transactionRowHeight;
 
       // Row 4: Invoice balance c/f (Remaining Balance) - Value in red and bold

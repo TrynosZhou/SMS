@@ -39,10 +39,11 @@ export function createInvoicePDF(
       let yPos = 50;
 
       // School Logo (if available)
-      if (settings?.schoolLogo) {
+      if ((settings as any)?.schoolLogo2) {
         try {
-          if (settings.schoolLogo.startsWith('data:image')) {
-            const base64Data = settings.schoolLogo.split(',')[1];
+          const rawLogo2 = String((settings as any).schoolLogo2 || '').trim();
+          if (rawLogo2.startsWith('data:image')) {
+            const base64Data = rawLogo2.split(',')[1];
             if (base64Data) {
               const imageBuffer = Buffer.from(base64Data, 'base64');
               doc.image(imageBuffer, 50, yPos, { width: 80, height: 80 });
@@ -54,7 +55,7 @@ export function createInvoicePDF(
       }
 
       // School Information
-      const textStartX = settings?.schoolLogo ? 150 : 50;
+      const textStartX = (settings as any)?.schoolLogo2 ? 150 : 50;
       doc.fontSize(18).font('Helvetica-Bold').text(schoolName, textStartX, yPos);
       yPos += 25;
 

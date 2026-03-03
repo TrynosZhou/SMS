@@ -228,7 +228,6 @@ export function createReportCardPDF(
       };
 
       let logo1Info: { width: number; height: number; x: number } | null = null;
-      let logo2Info: { width: number; height: number; x: number } | null = null;
       let bannerDrawn = false;
 
       // Draw logos with no stroke/border (save state, disable stroke, then restore after)
@@ -323,53 +322,9 @@ export function createReportCardPDF(
         console.log('No school logo found in settings');
       }
 
-      // Add Logo 2 on the right only if no banner (two-logo fallback)
-      if (!bannerDrawn && (settings as any)?.schoolLogo2) {
-        try {
-          let rawLogo2 = String((settings as any).schoolLogo2 || '').trim();
-          if ((rawLogo2.startsWith('"') && rawLogo2.endsWith('"')) || (rawLogo2.startsWith("'") && rawLogo2.endsWith("'"))) {
-            rawLogo2 = rawLogo2.slice(1, -1).trim();
-          }
-          rawLogo2 = rawLogo2
-            .replace(/\\n/g, '')
-            .replace(/\\r/g, '')
-            .replace(/\\t/g, '')
-            .replace(/\\"/g, '"');
-
-          const placeRight = async (buf: Buffer) => {
-            const maxW = 120;
-            const maxH = 100;
-            const startX = pageWidth - 50 - maxW;
-            const info2 = addLogoWithAspectRatio(buf, startX, headerTopY, maxW, maxH);
-            textEndX = info2.x - 20;
-            logo2Info = info2;
-            logoHeight = Math.max(logoHeight, info2.height);
-            console.log('School logo 2 (right) added to PDF successfully');
-          };
-
-          if (rawLogo2.startsWith('data:image')) {
-            const base64Data2 = rawLogo2.split(',')[1];
-            if (base64Data2) {
-              await placeRight(Buffer.from(base64Data2.replace(/\s/g, ''), 'base64'));
-            }
-          } else if (/^[A-Za-z0-9+/=\r\n]+$/.test(rawLogo2) && rawLogo2.length > 64) {
-            await placeRight(Buffer.from(rawLogo2.replace(/\s/g, ''), 'base64'));
-          } else if (rawLogo2.startsWith('http://') || rawLogo2.startsWith('https://')) {
-            try {
-              const resp2 = await axios.get<ArrayBuffer>(rawLogo2, { responseType: 'arraybuffer' });
-              await placeRight(Buffer.from(resp2.data as any));
-            } catch (e2) {
-              console.error('Failed to fetch schoolLogo2 for PDF:', e2);
-            }
-          }
-        } catch (e) {
-          console.error('Error handling schoolLogo2:', e);
-        }
-      }
-
       // If banner was drawn, push header content down and add right-side logo for visibility
       if (bannerDrawn) {
-        headerTopY = borderWidth + bannerHeight + 10;
+        headerTopY = borderWidth + bannerHeight + 20;
       }
 
       doc.restore();

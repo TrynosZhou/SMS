@@ -1194,6 +1194,7 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
     const settingsRepository = AppDataSource.getRepository(Settings);
+    const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
 
     const invoice = await invoiceRepository.findOne({ 
       where: { id },
@@ -1219,6 +1220,29 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
     });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
+    // Net paid should reflect corrections like desk-fee reversals created as ADJUSTMENT logs.
+    // This ensures invoice statements do not treat reversed desk fee as still paid.
+    const statementLogs = await paymentLogRepository
+      .createQueryBuilder('log')
+      .where('log.invoiceId = :invoiceId', { invoiceId: invoice.id })
+      .orderBy('log.createdAt', 'DESC')
+      .getMany();
+
+    const statementPositiveNonAdjustmentLogs = statementLogs.filter(l => {
+      const amt = parseAmount((l as any).amountPaid);
+      const pm = String((l as any).paymentMethod || '').trim().toUpperCase();
+      return amt > 0 && pm !== 'ADJUSTMENT';
+    });
+    const statementTotalPaidToDate = statementPositiveNonAdjustmentLogs.reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
+    const statementAdjustmentDelta = statementLogs
+      .filter(l => String((l as any).paymentMethod || '').trim().toUpperCase() === 'ADJUSTMENT')
+      .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
+    const netPaidToDate = Math.max(0, parseFloat((statementTotalPaidToDate + statementAdjustmentDelta).toFixed(2)));
+
+    const invoiceForStatement = Object.assign({}, invoice, {
+      paidAmount: netPaidToDate
+    });
+
     const firstInvoiceForStudent = await invoiceRepository.findOne({
       where: { studentId: student.id },
       order: { createdAt: 'ASC' }
@@ -1226,7 +1250,7 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
     const isFirstInvoice = firstInvoiceForStudent?.id === invoice.id;
 
     const pdfBuffer = await createInvoicePDF({
-      invoice,
+      invoice: invoiceForStatement as any,
       student,
       settings,
       isFirstInvoice
@@ -1644,6 +1668,13 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     const latestPaymentLog = positiveNonAdjustmentLogs.length > 0 ? positiveNonAdjustmentLogs[0] : null;
     const totalPaidToDate = positiveNonAdjustmentLogs.reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
 
+    // Net paid should reflect corrections like desk-fee reversals created as ADJUSTMENT logs.
+    // This ensures receipts/statements do not treat reversed desk fee as still paid.
+    const adjustmentDelta = paymentLogs
+      .filter(l => String((l as any).paymentMethod || '').trim().toUpperCase() === 'ADJUSTMENT')
+      .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
+    const netPaidToDate = Math.max(0, parseFloat((totalPaidToDate + adjustmentDelta).toFixed(2)));
+
     const receiptNumber = latestPaymentLog?.receiptNumber
       ? String(latestPaymentLog.receiptNumber)
       : `RCP-${new Date().getFullYear()}-${String(Date.now()).slice(-8)}`;
@@ -1651,6 +1682,10 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     const resolvedPaymentAmount = paymentAmount
       ? parseAmount(paymentAmount)
       : (latestPaymentLog ? parseAmount((latestPaymentLog as any).amountPaid) : parseAmount(invoice.paidAmount));
+
+    // Guardrail: after desk-fee reversals/status corrections, invoice totals may be reduced.
+    // Never display an "Amount Paid" on a receipt that exceeds the actual cash paid-to-date.
+    const safePaymentAmount = Math.min(resolvedPaymentAmount, netPaidToDate);
 
     const resolvedPaymentDate = paymentDate
       ? new Date(paymentDate as string)
@@ -1661,14 +1696,14 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
 
     // Override invoice.paidAmount in the receipt to reflect actual payments (exclude adjustments)
     const invoiceForReceipt = Object.assign({}, invoice, {
-      paidAmount: totalPaidToDate
+      paidAmount: netPaidToDate
     });
 
     const pdfBuffer = await createReceiptPDF({
       invoice: invoiceForReceipt as any,
       student,
       settings,
-      paymentAmount: resolvedPaymentAmount,
+      paymentAmount: safePaymentAmount,
       paymentDate: resolvedPaymentDate,
       paymentMethod: resolvedPaymentMethod || undefined,
       notes: resolvedNotes,
