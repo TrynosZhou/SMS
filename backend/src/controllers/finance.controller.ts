@@ -1578,8 +1578,14 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
       // Recomputing from PaymentLog here is error-prone because logs are linked to specific invoiceIds,
       // while this system carries balances forward on new invoices. If we only look at the latest invoice's
       // logs, we can incorrectly ignore real payments and inflate the balance.
-      currentBalance = Math.max(0, parseFloat(parseAmount(lastInvoice.balance).toFixed(2)));
+      const lastAmount = Math.max(0, parseFloat(parseAmount(lastInvoice.amount).toFixed(2)));
+      const lastPreviousBalance = Math.max(0, parseFloat(parseAmount(lastInvoice.previousBalance).toFixed(2)));
+      const lastPaid = Math.max(0, parseFloat(parseAmount(lastInvoice.paidAmount).toFixed(2)));
       totalPrepaidAmount = Math.max(0, parseFloat(parseAmount(lastInvoice.prepaidAmount).toFixed(2)));
+      // Authoritative balance for UI: derive from invoice fields to avoid stale invoice.balance in production.
+      currentBalance = Math.max(0, parseFloat((lastAmount + lastPreviousBalance - lastPaid - totalPrepaidAmount).toFixed(2)));
+      // Keep the response fields consistent with the computed balance.
+      (lastInvoice as any).balance = currentBalance;
       
       console.log(`[getStudentBalance] Latest invoice ${lastInvoice.invoiceNumber}: balance=${currentBalance}, previousBalance=${parseAmount(lastInvoice.previousBalance)}, amount=${parseAmount(lastInvoice.amount)}`);
       
