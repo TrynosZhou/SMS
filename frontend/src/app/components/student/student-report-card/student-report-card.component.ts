@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { AuthService } from '../../../services/auth.service';
 import { ExamService } from '../../../services/exam.service';
 import { SettingsService } from '../../../services/settings.service';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { DomSanitizer, SafeResourceUrl, SafeUrl } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-student-report-card',
@@ -21,6 +21,8 @@ export class StudentReportCardComponent implements OnInit {
   examTypes: string[] = ['Mid-Term', 'End-Term'];
   classId: string = '';
   headmasterName: string = '';
+  schoolLogo: string | null = null;
+  safeSchoolLogoUrl: SafeUrl | null = null;
   
   // PDF Preview
   showPdfPreview = false;
@@ -38,6 +40,44 @@ export class StudentReportCardComponent implements OnInit {
   ngOnInit() {
     this.loadStudentData();
     this.loadSettings();
+  }
+
+  private normalizeImageSrc(value: string | null): string | null {
+    if (!value) return null;
+
+    let v = String(value).trim();
+    if (!v) return null;
+
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+      v = v.slice(1, -1).trim();
+    }
+
+    v = v.replace(/\\n/g, '').replace(/\\r/g, '').replace(/\\t/g, '').replace(/\\"/g, '"');
+
+    if (v.startsWith('data:image')) {
+      const commaIndex = v.indexOf(',');
+      if (commaIndex > -1) {
+        const header = v.slice(0, commaIndex + 1);
+        const payload = v.slice(commaIndex + 1).replace(/\s/g, '');
+        return `${header}${payload}`;
+      }
+      return v;
+    }
+
+    const looksLikeBase64 = /^[A-Za-z0-9+/=\r\n]+$/.test(v) && v.length > 64;
+    if (looksLikeBase64) {
+      const cleaned = v.replace(/\s/g, '');
+      const head = cleaned.substring(0, 12);
+      let mime = 'image/png';
+      if (head.startsWith('/9j/')) mime = 'image/jpeg';
+      else if (head.startsWith('iVBORw0')) mime = 'image/png';
+      else if (head.startsWith('R0lGOD')) mime = 'image/gif';
+      else if (head.startsWith('UklGR')) mime = 'image/webp';
+
+      return `data:${mime};base64,${cleaned}`;
+    }
+
+    return v;
   }
 
   loadStudentData(retryCount = 0) {
@@ -124,9 +164,13 @@ export class StudentReportCardComponent implements OnInit {
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
         this.headmasterName = data.headmasterName || '';
+        this.schoolLogo = this.normalizeImageSrc(data.schoolLogo || null);
+        this.safeSchoolLogoUrl = this.schoolLogo ? this.sanitizer.bypassSecurityTrustUrl(this.schoolLogo) : null;
       },
       error: (_: any) => {
         this.headmasterName = '';
+        this.schoolLogo = null;
+        this.safeSchoolLogoUrl = null;
       }
     });
   }

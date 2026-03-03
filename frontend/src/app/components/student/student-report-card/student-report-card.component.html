@@ -1,6 +1,9 @@
 <div class="student-report-card-container">
   <div class="container-header">
-    <h1>📄 My Report Card</h1>
+    <div class="container-header-left">
+      <img *ngIf="safeSchoolLogoUrl" [src]="safeSchoolLogoUrl" alt="School Logo" class="student-rc-logo" />
+      <h1>📄 My Report Card</h1>
+    </div>
     <div class="header-actions">
       <button class="btn btn-primary" (click)="previewPDF()" [disabled]="!reportCard || loadingPdf">
         <span *ngIf="!loadingPdf">👁️ Preview PDF</span>

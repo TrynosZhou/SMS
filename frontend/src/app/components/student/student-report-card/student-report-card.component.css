@@ -13,6 +13,21 @@
   gap: 15px;
 }
 
+.container-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.student-rc-logo {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 2px;
+}
+
 .container-header h1 {
   margin: 0;
   color: #333;
@@ -126,6 +141,10 @@
   .container-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .container-header-left {
+    width: 100%;
   }
 
   .header-actions {

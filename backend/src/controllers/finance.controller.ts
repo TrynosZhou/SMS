@@ -1597,6 +1597,7 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
     const settingsRepository = AppDataSource.getRepository(Settings);
+    const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
 
     const invoice = await invoiceRepository.findOne({ 
       where: { id },
@@ -1622,15 +1623,55 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
-    // Generate receipt number
-    const receiptNumber = `RCP-${new Date().getFullYear()}-${String(Date.now()).slice(-8)}`;
+    // Prefer real payment logs over invoice.paidAmount to avoid showing desk-fee reversals/adjustments as "paid"
+    const normalizePm = (pm: any): string | null => {
+      const v = String(pm || '').trim();
+      return v ? v : null;
+    };
+
+    const paymentLogs = await paymentLogRepository
+      .createQueryBuilder('log')
+      .where('log.invoiceId = :invoiceId', { invoiceId: invoice.id })
+      .orderBy('log.createdAt', 'DESC')
+      .getMany();
+
+    const positiveNonAdjustmentLogs = paymentLogs.filter(l => {
+      const amt = parseAmount((l as any).amountPaid);
+      const pm = String((l as any).paymentMethod || '').trim().toUpperCase();
+      return amt > 0 && pm !== 'ADJUSTMENT';
+    });
+
+    const latestPaymentLog = positiveNonAdjustmentLogs.length > 0 ? positiveNonAdjustmentLogs[0] : null;
+    const totalPaidToDate = positiveNonAdjustmentLogs.reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
+
+    const receiptNumber = latestPaymentLog?.receiptNumber
+      ? String(latestPaymentLog.receiptNumber)
+      : `RCP-${new Date().getFullYear()}-${String(Date.now()).slice(-8)}`;
+
+    const resolvedPaymentAmount = paymentAmount
+      ? parseAmount(paymentAmount)
+      : (latestPaymentLog ? parseAmount((latestPaymentLog as any).amountPaid) : parseAmount(invoice.paidAmount));
+
+    const resolvedPaymentDate = paymentDate
+      ? new Date(paymentDate as string)
+      : (latestPaymentLog?.paymentDate ? new Date(latestPaymentLog.paymentDate) : new Date());
+
+    const resolvedPaymentMethod = latestPaymentLog ? normalizePm(latestPaymentLog.paymentMethod) : null;
+    const resolvedNotes = latestPaymentLog?.notes ? String(latestPaymentLog.notes) : undefined;
+
+    // Override invoice.paidAmount in the receipt to reflect actual payments (exclude adjustments)
+    const invoiceForReceipt = Object.assign({}, invoice, {
+      paidAmount: totalPaidToDate
+    });
 
     const pdfBuffer = await createReceiptPDF({
-      invoice,
+      invoice: invoiceForReceipt as any,
       student,
       settings,
-      paymentAmount: paymentAmount ? parseAmount(paymentAmount) : parseAmount(invoice.paidAmount),
-      paymentDate: paymentDate ? new Date(paymentDate as string) : new Date(),
+      paymentAmount: resolvedPaymentAmount,
+      paymentDate: resolvedPaymentDate,
+      paymentMethod: resolvedPaymentMethod || undefined,
+      notes: resolvedNotes,
       receiptNumber
     });
 
