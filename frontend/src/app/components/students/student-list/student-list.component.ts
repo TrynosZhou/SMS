@@ -14,6 +14,8 @@ export class StudentListComponent implements OnInit {
   filteredStudents: any[] = [];
   classes: any[] = [];
   selectedClass = '';
+  selectedGrade = '';
+  gradeOptions: string[] = [];
   selectedType = '';
   selectedGender = '';
   searchQuery = '';
@@ -42,7 +44,7 @@ export class StudentListComponent implements OnInit {
   isLogisticsTransport = false;
   isLogisticsDiningHall = false;
   isTeacher = false;
-  groupedStudents: Array<{ group: string; students: any[] }> = [];
+  groupedStudents: Array<{ gender: string; students: any[] }> = [];
 
   selectedStudentIds = new Set<string>();
   bulkSubmitting = false;
@@ -164,8 +166,9 @@ export class StudentListComponent implements OnInit {
     const usesDiningHall = this.filterUsesDiningHall || this.isLogisticsDiningHall;
     this.studentService.getStudentsPaginated({
       classId: this.selectedClass || undefined,
+      grade: this.selectedGrade || undefined,
       page,
-      limit: this.pagination.limit,
+      limit: this.selectedGrade ? 1000 : this.pagination.limit,
       search: this.searchQuery.trim() || undefined,
       studentType: this.selectedType || (logisticsMode ? 'Day Scholar' : undefined),
       usesTransport: usesTransport ? true : undefined,
@@ -186,6 +189,18 @@ export class StudentListComponent implements OnInit {
           }
           return normalizedStudent;
         });
+
+        // Populate grade options from loaded students
+        try {
+          const set = new Set<string>();
+          for (const s of this.students) {
+            const g = (s?.grade || s?.classLevel || '').toString().trim();
+            if (g) set.add(g);
+          }
+          this.gradeOptions = Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+        } catch {
+          this.gradeOptions = this.gradeOptions || [];
+        }
         
         this.pagination = {
           page: response?.page || page,
@@ -219,6 +234,13 @@ export class StudentListComponent implements OnInit {
 
   applyFilters() {
     let filtered = [...this.students];
+    if (this.selectedGrade) {
+      const target = this.selectedGrade.trim().toLowerCase();
+      filtered = filtered.filter(student => {
+        const g = String(student?.grade || student?.classLevel || '').trim().toLowerCase();
+        return g === target;
+      });
+    }
     if (this.selectedType) {
       filtered = filtered.filter(student => {
         return (student.studentType || 'Day Scholar') === this.selectedType;
@@ -244,7 +266,18 @@ export class StudentListComponent implements OnInit {
       return numA.localeCompare(numB);
     });
     this.filteredStudents = filtered;
-    this.groupedStudents = [];
+
+    const females = filtered.filter(s => String(s?.gender || '').toLowerCase() === 'female');
+    const males = filtered.filter(s => String(s?.gender || '').toLowerCase() === 'male');
+    const others = filtered.filter(s => {
+      const g = String(s?.gender || '').toLowerCase();
+      return g !== 'female' && g !== 'male';
+    });
+    const groups: Array<{ gender: string; students: any[] }> = [];
+    if (females.length) groups.push({ gender: 'Female', students: females });
+    if (males.length) groups.push({ gender: 'Male', students: males });
+    if (others.length) groups.push({ gender: 'Other', students: others });
+    this.groupedStudents = groups;
   }
 
   onSearchChange() {
@@ -254,15 +287,17 @@ export class StudentListComponent implements OnInit {
 
   clearFilters() {
     const hadClassFilter = !!this.selectedClass;
+    const hadGradeFilter = !!this.selectedGrade;
     this.searchQuery = '';
     this.selectedClass = '';
+    this.selectedGrade = '';
     this.selectedType = '';
     this.selectedGender = '';
     if (!this.isLogisticsTransport && !this.isLogisticsDiningHall) {
       this.filterUsesTransport = false;
       this.filterUsesDiningHall = false;
     }
-    if (hadClassFilter) {
+    if (hadClassFilter || hadGradeFilter) {
       this.loadStudents(1);
     } else {
       this.applyFilters();
@@ -273,11 +308,17 @@ export class StudentListComponent implements OnInit {
     return !!(
       this.searchQuery ||
       this.selectedClass ||
+      this.selectedGrade ||
       this.selectedType ||
       this.selectedGender ||
       this.filterUsesTransport ||
       this.filterUsesDiningHall
     );
+  }
+
+  onGradeFilterChange() {
+    this.pagination.page = 1;
+    this.loadStudents(1);
   }
 
   onLogisticsFilterChange() {

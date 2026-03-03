@@ -94,6 +94,10 @@
   align-items: flex-end;
 }
 
+.school-logo-2 {
+  margin-left: 10px;
+}
+
 .theme-toggle {
   width: 44px;
   height: 44px;

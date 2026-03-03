@@ -44,6 +44,7 @@ export class StudentService {
     usesTransport?: boolean;
     usesDiningHall?: boolean;
     studentType?: string;
+    grade?: string;
   } = {}): Observable<PaginatedResponse<any>> {
     const queryParams: any = {
       page: params.page ?? 1,
@@ -57,6 +58,9 @@ export class StudentService {
     }
     if (params.studentType) {
       queryParams.studentType = params.studentType;
+    }
+    if (params.grade && params.grade.trim()) {
+      queryParams.grade = params.grade.trim();
     }
     if (params.usesTransport === true) {
       queryParams.usesTransport = 'true';

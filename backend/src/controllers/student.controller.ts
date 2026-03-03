@@ -669,13 +669,14 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     }
 
     const studentRepository = AppDataSource.getRepository(Student);
-    const { classId, page: pageParam, limit: limitParam, search, usesTransport, usesDiningHall, studentType } = req.query;
+    const { classId, grade, page: pageParam, limit: limitParam, search, usesTransport, usesDiningHall, studentType } = req.query;
     const { page, limit, skip } = resolvePaginationParams(
       pageParam as string,
       limitParam as string,
       1000
     );
     const trimmedClassId = classId ? String(classId).trim() : null;
+    const trimmedGrade = grade ? String(grade).trim() : null;
     const trimmedSearch = search ? String(search).trim() : null;
     const normalizedStudentType = studentType ? String(studentType).trim() : null;
     const normalizedSearch = trimmedSearch ? trimmedSearch.toLowerCase() : null;
@@ -693,6 +694,13 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       queryBuilder = queryBuilder.andWhere(
         '(student.classId = :classId OR classEntity.id = :classId)',
         { classId: trimmedClassId }
+      );
+    }
+
+    if (trimmedGrade) {
+      queryBuilder = queryBuilder.andWhere(
+        '(student.grade = :grade OR student.classLevel = :grade)',
+        { grade: trimmedGrade }
       );
     }
 
@@ -822,6 +830,13 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       statsQuery.andWhere(
         '(student.classId = :classId OR statsClass.id = :classId)',
         { classId: trimmedClassId }
+      );
+    }
+
+    if (trimmedGrade) {
+      statsQuery.andWhere(
+        '(student.grade = :grade OR student.classLevel = :grade)',
+        { grade: trimmedGrade }
       );
     }
 
@@ -2083,15 +2098,6 @@ async function generateLogisticsReportPdf(
       doc.image(logoBuffer, 40, headerTopY, { width: 70, height: 50 });
     } catch (error) {
       console.error('Failed to render school logo in logistics report:', error);
-    }
-  }
-  if (settings?.schoolLogo2 && settings.schoolLogo2.startsWith('data:image')) {
-    try {
-      const base64Data2 = settings.schoolLogo2.split(',')[1] || '';
-      const logoBuffer2 = Buffer.from(base64Data2, 'base64');
-      doc.image(logoBuffer2, 555 - 70, headerTopY, { width: 70, height: 50 });
-    } catch (error) {
-      console.error('Failed to render second school logo in logistics report:', error);
     }
   }
 

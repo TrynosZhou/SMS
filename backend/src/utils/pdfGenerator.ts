@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import axios from 'axios';
 import sizeOf from 'image-size';
 import { Settings } from '../entities/Settings';
 
@@ -49,7 +50,7 @@ export function createReportCardPDF(
   reportCard: ReportCardData,
   settings: Settings | null
 ): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     try {
       const doc = new PDFDocument({ margin: 50, size: 'A4' });
       const buffers: Buffer[] = [];
@@ -83,6 +84,19 @@ export function createReportCardPDF(
         .fillColor(borderColor)
         .fill();
 
+      // Additional dark-blue solid border inside the existing black border (keep black border intact)
+      const innerBorderInset = borderWidth + 1;
+      doc.save();
+      doc.lineWidth(2);
+      doc.strokeColor('#0b2f6b');
+      doc.rect(
+        innerBorderInset,
+        innerBorderInset,
+        pageWidth - innerBorderInset * 2,
+        initialPageHeight - innerBorderInset * 2
+      ).stroke();
+      doc.restore();
+
       // School Header
       const schoolName = settings?.schoolName || 'School Management System';
       const schoolAddress = settings?.schoolAddress ? String(settings.schoolAddress).trim() : '';
@@ -98,8 +112,9 @@ export function createReportCardPDF(
       });
 
       let logoX = 50;
-      // Single header top Y: both logos and school name start at the same height
-      const headerTopY = 55;
+      const bannerHeight = 130;
+      const bannerInset = 6;
+      let headerTopY = (settings?.schoolLogo ? (borderWidth + bannerHeight + 20) : 55);
       const schoolNameFontSize = 14;
       // In PDFKit, text Y is baseline; ascender is the height from baseline to top of letters
       const textAscender = schoolNameFontSize * 0.7;
@@ -161,32 +176,145 @@ export function createReportCardPDF(
         }
       };
 
+      const addBannerCover = (
+        imageBuffer: Buffer,
+        startX: number,
+        startY: number,
+        width: number,
+        height: number
+      ) => {
+        try {
+          const dimensions = sizeOf(imageBuffer);
+          const imgWidth = dimensions.width || width;
+          const imgHeight = dimensions.height || height;
+
+          const scaleX = width / imgWidth;
+          const scaleY = height / imgHeight;
+          // Contain (no cropping) to match banner example
+          const scale = Math.min(scaleX, scaleY);
+
+          const finalWidth = imgWidth * scale;
+          const finalHeight = imgHeight * scale;
+
+          const offsetX = startX + (width - finalWidth) / 2;
+          const offsetY = startY + (height - finalHeight) / 2;
+
+          const radius = 14;
+
+          doc.save();
+          // Blue background + rounded corners
+          doc.roundedRect(startX, startY, width, height, radius)
+            .fillColor('#1f4aa8')
+            .fill();
+          doc.roundedRect(startX, startY, width, height, radius).clip();
+          doc.image(imageBuffer, offsetX, offsetY, {
+            width: finalWidth,
+            height: finalHeight
+          });
+          doc.restore();
+        } catch (error) {
+          console.error('Error adding banner cover image:', error);
+          try {
+            doc.save();
+            doc.image(imageBuffer, startX, startY, {
+              width,
+              height
+            });
+            doc.restore();
+          } catch (fallbackError) {
+            console.error('Fallback banner addition also failed:', fallbackError);
+          }
+        }
+      };
+
       let logo1Info: { width: number; height: number; x: number } | null = null;
       let logo2Info: { width: number; height: number; x: number } | null = null;
+      let bannerDrawn = false;
 
       // Draw logos with no stroke/border (save state, disable stroke, then restore after)
       doc.save();
       doc.lineWidth(0);
 
-      // Add school logo if available (left side)
       if (settings?.schoolLogo) {
         try {
-          // If it's a base64 image
-          if (settings.schoolLogo.startsWith('data:image')) {
-            const base64Data = settings.schoolLogo.split(',')[1];
+          let rawLogo = String(settings.schoolLogo || '').trim();
+
+          // Handle values accidentally stored as quoted strings
+          if ((rawLogo.startsWith('"') && rawLogo.endsWith('"')) || (rawLogo.startsWith("'") && rawLogo.endsWith("'"))) {
+            rawLogo = rawLogo.slice(1, -1).trim();
+          }
+
+          // Unescape common sequences
+          rawLogo = rawLogo
+            .replace(/\\n/g, '')
+            .replace(/\\r/g, '')
+            .replace(/\\t/g, '')
+            .replace(/\\"/g, '"');
+
+          // 1) data URL banner
+          if (rawLogo.startsWith('data:image')) {
+            const base64Data = rawLogo.split(',')[1];
             if (base64Data) {
-              const imageBuffer = Buffer.from(base64Data, 'base64');
-              logo1Info = addLogoWithAspectRatio(imageBuffer, logoX, logoY, logoWidth, logoHeight);
-              textStartX = logoX + logoWidth + 20; // Start text after logo
-              console.log('School logo added to PDF successfully');
+              const imageBuffer = Buffer.from(base64Data.replace(/\s/g, ''), 'base64');
+              doc.save();
+              addBannerCover(
+                imageBuffer,
+                borderWidth + bannerInset,
+                borderWidth + bannerInset,
+                pageWidth - (borderWidth + bannerInset) * 2,
+                bannerHeight
+              );
+              doc.restore();
+              bannerDrawn = true;
+              textStartX = 50;
+              logo1Info = null;
+              console.log('School banner added to PDF successfully');
             } else {
-              console.warn('School logo base64 data is empty');
+              console.warn('School banner base64 data is empty');
             }
-          } else if (settings.schoolLogo.startsWith('http://') || settings.schoolLogo.startsWith('https://')) {
-            // If it's a URL, we could fetch it, but for now skip
-            console.warn('URL-based logos not yet supported in PDF');
-          } else {
-            console.warn('School logo format not recognized:', settings.schoolLogo.substring(0, 50));
+          }
+          // 2) raw base64 banner (legacy)
+          else if (/^[A-Za-z0-9+/=\r\n]+$/.test(rawLogo) && rawLogo.length > 64) {
+            const imageBuffer = Buffer.from(rawLogo.replace(/\s/g, ''), 'base64');
+            doc.save();
+            addBannerCover(
+              imageBuffer,
+              borderWidth + bannerInset,
+              borderWidth + bannerInset,
+              pageWidth - (borderWidth + bannerInset) * 2,
+              bannerHeight
+            );
+            doc.restore();
+            bannerDrawn = true;
+            textStartX = 50;
+            logo1Info = null;
+            console.log('School banner added to PDF successfully (raw base64)');
+          }
+          // 3) URL banner - fetch and embed
+          else if (rawLogo.startsWith('http://') || rawLogo.startsWith('https://')) {
+            try {
+              const resp = await axios.get<ArrayBuffer>(rawLogo, { responseType: 'arraybuffer' });
+              const imageBuffer = Buffer.from(resp.data as any);
+              doc.save();
+              addBannerCover(
+                imageBuffer,
+                borderWidth + bannerInset,
+                borderWidth + bannerInset,
+                pageWidth - (borderWidth + bannerInset) * 2,
+                bannerHeight
+              );
+              doc.restore();
+              bannerDrawn = true;
+              textStartX = 50;
+              logo1Info = null;
+              console.log('School banner (URL) added to PDF successfully');
+            } catch (fetchErr) {
+              console.error('Failed to fetch school banner from URL for PDF:', fetchErr);
+            }
+          }
+          // 4) anything else
+          else {
+            console.warn('School logo format not recognized:', rawLogo.substring(0, 50));
           }
         } catch (error) {
           console.error('Could not add school logo to PDF:', error);
@@ -195,108 +323,106 @@ export function createReportCardPDF(
         console.log('No school logo found in settings');
       }
 
-      // Add school logo 2 if available (right side) - positioned on extreme right
-      if (settings?.schoolLogo2) {
+      // Add Logo 2 on the right only if no banner (two-logo fallback)
+      if (!bannerDrawn && (settings as any)?.schoolLogo2) {
         try {
-          if (settings.schoolLogo2.startsWith('data:image')) {
-            const base64Data = settings.schoolLogo2.split(',')[1];
-            if (base64Data) {
-              const imageBuffer = Buffer.from(base64Data, 'base64');
-              
-              // Calculate position for right-side logo
-              // Position it on the extreme right with appropriate margin
-              const rightMargin = 50; // 50px margin from right edge
-              const logo2MaxX = pageWidth - rightMargin; // Maximum X position (right edge minus margin)
-              
-              // Calculate the starting X position (accounting for max width)
-              // We'll position it so the logo's right edge aligns with the page margin
-              const logo2StartX = logo2MaxX - logoWidth;
-              
-              // Add the logo and get its actual dimensions
-              logo2Info = addLogoWithAspectRatio(imageBuffer, logo2StartX, logoY, logoWidth, logoHeight);
-              
-              // Adjust text end position to leave space for logo (use actual logo width)
-              textEndX = logo2Info.x - 20; // Leave 20px gap between text and logo
-              
-              console.log('School logo 2 added to PDF successfully on the right side');
-            } else {
-              console.warn('School logo 2 base64 data is empty');
-            }
-          } else if (settings.schoolLogo2.startsWith('http://') || settings.schoolLogo2.startsWith('https://')) {
-            console.warn('URL-based logos not yet supported in PDF');
-          } else {
-            console.warn('School logo 2 format not recognized:', settings.schoolLogo2.substring(0, 50));
+          let rawLogo2 = String((settings as any).schoolLogo2 || '').trim();
+          if ((rawLogo2.startsWith('"') && rawLogo2.endsWith('"')) || (rawLogo2.startsWith("'") && rawLogo2.endsWith("'"))) {
+            rawLogo2 = rawLogo2.slice(1, -1).trim();
           }
-        } catch (error) {
-          console.error('Could not add school logo 2 to PDF:', error);
+          rawLogo2 = rawLogo2
+            .replace(/\\n/g, '')
+            .replace(/\\r/g, '')
+            .replace(/\\t/g, '')
+            .replace(/\\"/g, '"');
+
+          const placeRight = async (buf: Buffer) => {
+            const maxW = 120;
+            const maxH = 100;
+            const startX = pageWidth - 50 - maxW;
+            const info2 = addLogoWithAspectRatio(buf, startX, headerTopY, maxW, maxH);
+            textEndX = info2.x - 20;
+            logo2Info = info2;
+            logoHeight = Math.max(logoHeight, info2.height);
+            console.log('School logo 2 (right) added to PDF successfully');
+          };
+
+          if (rawLogo2.startsWith('data:image')) {
+            const base64Data2 = rawLogo2.split(',')[1];
+            if (base64Data2) {
+              await placeRight(Buffer.from(base64Data2.replace(/\s/g, ''), 'base64'));
+            }
+          } else if (/^[A-Za-z0-9+/=\r\n]+$/.test(rawLogo2) && rawLogo2.length > 64) {
+            await placeRight(Buffer.from(rawLogo2.replace(/\s/g, ''), 'base64'));
+          } else if (rawLogo2.startsWith('http://') || rawLogo2.startsWith('https://')) {
+            try {
+              const resp2 = await axios.get<ArrayBuffer>(rawLogo2, { responseType: 'arraybuffer' });
+              await placeRight(Buffer.from(resp2.data as any));
+            } catch (e2) {
+              console.error('Failed to fetch schoolLogo2 for PDF:', e2);
+            }
+          }
+        } catch (e) {
+          console.error('Error handling schoolLogo2:', e);
         }
+      }
+
+      // If banner was drawn, push header content down and add right-side logo for visibility
+      if (bannerDrawn) {
+        headerTopY = borderWidth + bannerHeight + 10;
       }
 
       doc.restore();
 
-      // School Name and Address — school name top aligned with headerTopY (baseline = top + ascender)
-      doc.fontSize(schoolNameFontSize).font('Helvetica-Bold').text(schoolName, textStartX, headerTopY + textAscender);
-      
-      // Calculate positions for address and academic year (below school name line)
-      let currentY = headerTopY + textAscender + 18;
-      
-      // Calculate available width for text (accounting for both logos if present)
-      const maxTextWidth = textEndX - textStartX; // Space between logo1 and logo2 (or end of page)
-      const textWidth = Math.min(400, maxTextWidth); // Use smaller of 400 or available space
-      
-      // Always display school address if it exists
-      if (schoolAddress && schoolAddress.trim()) {
-        doc.fontSize(10).font('Helvetica').text(schoolAddress.trim(), textStartX, currentY, { 
-          width: textWidth,
-          align: 'left'
-        });
-        // Move down for phone (account for multi-line address)
-        const addressHeight = doc.heightOfString(schoolAddress.trim(), { width: textWidth });
-        currentY += addressHeight + 10;
-      } else {
-        // If no address, just move down a bit
-        currentY = logoY + 25;
+      // Textual header (school name/address/phone/year) enabled: address on left
+      const showTextHeader = false;
+      let currentY = headerTopY;
+      if (showTextHeader) {
+        // Move text start to left margin to avoid overlap with left logo area
+        textStartX = 50;
+        doc.fontSize(schoolNameFontSize).font('Helvetica-Bold').text(schoolName, textStartX, headerTopY + textAscender);
+        currentY = headerTopY + textAscender + 18;
+        const maxTextWidth = textEndX - textStartX;
+        const textWidth = Math.min(400, maxTextWidth);
+        if (schoolAddress && schoolAddress.trim()) {
+          doc.fontSize(10).font('Helvetica').text(schoolAddress.trim(), textStartX, currentY, { width: textWidth, align: 'left' });
+          const addressHeight = doc.heightOfString(schoolAddress.trim(), { width: textWidth });
+          currentY += addressHeight + 10;
+        } else {
+          currentY = logoY + 25;
+        }
+        if (schoolPhone && schoolPhone.trim()) {
+          doc.fontSize(10).font('Helvetica').text(`Phone: ${schoolPhone.trim()}`, textStartX, currentY, { width: textWidth, align: 'left' });
+          const phoneHeight = doc.heightOfString(`Phone: ${schoolPhone.trim()}`, { width: textWidth });
+          currentY += phoneHeight + 10;
+        } else {
+          currentY += 5;
+        }
+        doc.fontSize(10).text(`Academic Year: ${academicYear}`, textStartX, currentY);
+        currentY += 15;
       }
-      
-      // Display school phone if it exists
-      if (schoolPhone && schoolPhone.trim()) {
-        doc.fontSize(10).font('Helvetica').text(`Phone: ${schoolPhone.trim()}`, textStartX, currentY, {
-          width: textWidth,
-          align: 'left'
-        });
-        // Move down for academic year (account for multi-line phone)
-        const phoneHeight = doc.heightOfString(`Phone: ${schoolPhone.trim()}`, { width: textWidth });
-        currentY += phoneHeight + 10;
-      } else {
-        // If no phone, add spacing before academic year
-        currentY += 5;
-      }
-      
-      // Display academic year
-      doc.fontSize(10).text(`Academic Year: ${academicYear}`, textStartX, currentY);
-      currentY += 15; // Add spacing after academic year
 
       // Title - adjust position based on logo size and header content with styled background
       // Ensure title is below all header content (logo, name, address, phone, academic year)
       const titleY = Math.max(currentY + 20, logoY + logoHeight + 20);
-      const titleBoxHeight = 35; // Increased to accommodate multiple lines
+      const titleBoxHeight = 40;
       
       // Title background box - Blue color (fill only, no stroke to avoid lines near logos)
       doc.rect(50, titleY - 10, 500, titleBoxHeight)
-        .fillColor('#4A90E2') // Standard blue
+        .fillColor('#1f4aa8')
         .fill();
       
       // Get exam type and academic year for the title bar
       const examTypeText = reportCard.examType || reportCard.exam?.type || '';
       const titleText = `REPORT CARD${examTypeText ? ` - ${examTypeText.toUpperCase()}` : ''}`;
       
-      doc.fontSize(14).font('Helvetica-Bold').fillColor('#FFFFFF'); // Reduced from 16 to 14
+      doc.fontSize(16).font('Helvetica-Bold').fillColor('#FFFFFF');
       doc.text(titleText, 50, titleY, { align: 'center', width: 500 });
       
       // Add academic year below REPORT CARD
       if (academicYear) {
-        doc.fontSize(9).font('Helvetica').fillColor('#FFFFFF'); // Reduced from 11 to 9
-        doc.text(`Academic Year: ${academicYear}`, 50, titleY + 16, { align: 'center', width: 500 }); // Adjusted position
+        doc.fontSize(10).font('Helvetica').fillColor('#FFFFFF');
+        doc.text(`Academic Year: ${academicYear}`, 50, titleY + 18, { align: 'center', width: 500 });
       }
 
       // Student Information - adjust position based on title with styled boxes (reduced spacing)
@@ -470,7 +596,7 @@ export function createReportCardPDF(
       // Table Header with background color
       const headerY = yPos;
       doc.rect(tableStartX, headerY, tableEndXAdjusted - tableStartX, headerRowHeight)
-        .fillColor('#4A90E2')
+        .fillColor('#1f4aa8')
         .fill()
         .fillColor('#FFFFFF')
         .strokeColor('#000000')
@@ -681,7 +807,7 @@ export function createReportCardPDF(
       const remarksBoxY = yPos;
       
       doc.rect(50, remarksBoxY, 500, remarksBoxHeight)
-        .fillColor('#4A90E2') // Medium blue background
+        .fillColor('#1f4aa8')
         .fill()
         .strokeColor('#003366') // Dark blue border
         .lineWidth(2)

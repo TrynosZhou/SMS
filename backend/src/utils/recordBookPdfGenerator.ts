@@ -128,32 +128,6 @@ export function createRecordBookPDF(
           .fill();
       }
 
-      // Draw white square for Logo 2 (right side)
-      if (settings?.schoolLogo2) {
-        doc.rect(logo2SquareX, 0, logoSquareSize, headerHeight)
-          .fillColor('#FFFFFF')
-          .fill();
-        
-        try {
-          if (settings.schoolLogo2.startsWith('data:image')) {
-            const base64Data = settings.schoolLogo2.split(',')[1];
-            if (base64Data) {
-              const imageBuffer = Buffer.from(base64Data, 'base64');
-              // Center logo within white square
-              const logo2X = logo2SquareX + logoPadding;
-              const logo2Y = logoPadding;
-              addLogoWithAspectRatio(imageBuffer, logo2X, logo2Y, maxLogoWidth, maxLogoHeight);
-            }
-          }
-        } catch (error) {
-          console.error('Could not add school logo 2 to record book PDF:', error);
-        }
-      } else {
-        // Draw white square even if no logo (for consistent layout)
-        doc.rect(logo2SquareX, 0, logoSquareSize, headerHeight)
-          .fillColor('#FFFFFF')
-          .fill();
-      }
 
       // Blue background section (middle) for school name and contact info
       doc.rect(blueSectionX, 0, blueSectionWidth, headerHeight)

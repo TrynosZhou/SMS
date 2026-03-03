@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ExamService } from '../../../services/exam.service';
 import { ClassService } from '../../../services/class.service';
@@ -67,7 +68,7 @@ export class ReportCardComponent implements OnInit {
   loadingTerms = false;
   parentStudentClassName = '';
   schoolLogo: string | null = null;
-  schoolLogo2: string | null = null;
+  safeSchoolLogoUrl: SafeUrl | null = null;
   gradeThresholds: any = null;
   gradeLabels: any = null;
   headmasterName: string = '';
@@ -96,10 +97,14 @@ export class ReportCardComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private parentService: ParentService,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
+    private sanitizer: DomSanitizer
   ) {
     // Check if user can edit remarks (teacher or admin)
-    this.canEditRemarks = this.authService.hasRole('teacher') || this.authService.hasRole('admin');
+    this.canEditRemarks =
+      this.authService.hasRole('teacher') ||
+      this.authService.hasRole('admin') ||
+      this.authService.hasRole('superadmin');
     this.isParent = this.authService.hasRole('parent');
     const user = this.authService.getCurrentUser();
     this.isAdmin = user ? (user.role === 'admin' || user.role === 'superadmin') : false;
@@ -157,6 +162,55 @@ export class ReportCardComponent implements OnInit {
         }
       }
     });
+  }
+
+  getSchoolLogoSrc(logoOverride?: string | null): SafeUrl | null {
+    const normalized = this.normalizeImageSrc(logoOverride || this.schoolLogo || null);
+    if (!normalized) return null;
+    return this.sanitizer.bypassSecurityTrustUrl(normalized);
+  }
+
+  private normalizeImageSrc(value: string | null): string | null {
+    if (!value) return null;
+
+    let v = String(value).trim();
+    if (!v) return null;
+
+    // Handle values accidentally stored as quoted strings (e.g. "data:image..." or 'data:image...')
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+      v = v.slice(1, -1).trim();
+    }
+
+    // Unescape common sequences (in case value was serialized/escaped)
+    v = v.replace(/\\n/g, '').replace(/\\r/g, '').replace(/\\t/g, '').replace(/\\"/g, '"');
+
+    // Already a proper data URL
+    if (v.startsWith('data:image')) {
+      const commaIndex = v.indexOf(',');
+      if (commaIndex > -1) {
+        const header = v.slice(0, commaIndex + 1);
+        const payload = v.slice(commaIndex + 1).replace(/\s/g, '');
+        return `${header}${payload}`;
+      }
+      return v;
+    }
+
+    // Common base64 signatures to infer mime
+    const looksLikeBase64 = /^[A-Za-z0-9+/=\r\n]+$/.test(v) && v.length > 64;
+    if (looksLikeBase64) {
+      const cleaned = v.replace(/\s/g, '');
+      const head = cleaned.substring(0, 12);
+      let mime = 'image/png';
+      if (head.startsWith('/9j/')) mime = 'image/jpeg';
+      else if (head.startsWith('iVBORw0')) mime = 'image/png';
+      else if (head.startsWith('R0lGOD')) mime = 'image/gif';
+      else if (head.startsWith('UklGR')) mime = 'image/webp';
+
+      return `data:${mime};base64,${cleaned}`;
+    }
+
+    // Otherwise treat as URL/path and let the browser try to load it.
+    return v;
   }
 
   private loadCustomPhrases() {
@@ -327,8 +381,15 @@ export class ReportCardComponent implements OnInit {
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
         this.currencySymbol = data.currencySymbol || 'KES';
-        this.schoolLogo = data.schoolLogo || null;
-        this.schoolLogo2 = data.schoolLogo2 || null;
+        this.schoolLogo = this.normalizeImageSrc(data.schoolLogo || data.schoolLogo2 || null);
+        this.safeSchoolLogoUrl = this.schoolLogo ? this.sanitizer.bypassSecurityTrustUrl(this.schoolLogo) : null;
+        try {
+          const raw = data?.schoolLogo || data?.schoolLogo2;
+          const rawPreview = typeof raw === 'string' ? raw.trim().slice(0, 40) : String(raw);
+          const normalizedPreview = this.schoolLogo ? this.schoolLogo.slice(0, 40) : 'null';
+          console.log('[ReportCard] settings.schoolLogo preview:', rawPreview);
+          console.log('[ReportCard] normalized schoolLogo preview:', normalizedPreview);
+        } catch {}
         this.headmasterName = data.headmasterName || '';
         const phrases = Array.isArray(data.classTeacherPhrases) ? data.classTeacherPhrases : [];
         this.schoolWidePhrases = phrases
@@ -902,7 +963,11 @@ export class ReportCardComponent implements OnInit {
   
   // Auto-save remarks
   autoSaveRemarks(reportCard: any) {
-    if (!reportCard || !reportCard.student || !this.selectedClass || !this.selectedExamType) {
+    if (!this.canEditRemarks) {
+      return;
+    }
+
+    if (!reportCard || !reportCard.student || !this.selectedClass || !this.selectedExamType || !this.selectedTerm) {
       return;
     }
     
@@ -942,6 +1007,14 @@ export class ReportCardComponent implements OnInit {
       },
       error: (err: any) => {
         this.autoSavingRemarks = false;
+
+        if (err?.status === 403) {
+          const msg = err?.error?.message || 'Forbidden: you are not allowed to save remarks for this report card.';
+          this.error = msg;
+          console.warn('Auto-save remarks forbidden:', msg);
+          return;
+        }
+
         // Remove from saved records if save failed
         this.savedRemarks.delete(this.getRemarksKey(reportCard.student.id, 'classTeacher'));
         this.savedRemarks.delete(this.getRemarksKey(reportCard.student.id, 'headmaster'));

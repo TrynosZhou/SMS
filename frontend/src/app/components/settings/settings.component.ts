@@ -304,8 +304,10 @@ export class SettingsComponent implements OnInit {
         if (data.schoolLogo !== undefined) {
           this.settings.schoolLogo = data.schoolLogo;
         }
-        if (data.schoolLogo2 !== undefined) {
-          this.settings.schoolLogo2 = data.schoolLogo2;
+
+        // Restore school logo 2 if present
+        if ((data as any).schoolLogo2 !== undefined) {
+          this.settings.schoolLogo2 = (data as any).schoolLogo2;
         }
         
         // Restore school motto
@@ -602,12 +604,21 @@ export class SettingsComponent implements OnInit {
 
       const reader = new FileReader();
       reader.onload = (e: any) => {
+        const originalDataUrl = e?.target?.result;
+        if (typeof originalDataUrl === 'string' && originalDataUrl.startsWith('data:image')) {
+          if (logoNumber === 2) {
+            this.settings.schoolLogo2 = originalDataUrl;
+          } else {
+            this.settings.schoolLogo = originalDataUrl;
+          }
+          return;
+        }
         const img = new Image();
         img.onload = () => {
           // Create canvas to resize/compress image
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 300;
-          const MAX_HEIGHT = 300;
+          const MAX_WIDTH = 2000;
+          const MAX_HEIGHT = 800;
           
           let width = img.width;
           let height = img.height;
@@ -630,11 +641,15 @@ export class SettingsComponent implements OnInit {
           
           // Draw and compress
           const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.imageSmoothingEnabled = true;
+            // @ts-ignore
+            ctx.imageSmoothingQuality = 'high';
+          }
           ctx?.drawImage(img, 0, 0, width, height);
           
-          // Convert to base64 with compression (quality 0.8)
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-          
+          const compressedDataUrl = canvas.toDataURL('image/png');
+
           if (logoNumber === 2) {
             this.settings.schoolLogo2 = compressedDataUrl;
           } else {

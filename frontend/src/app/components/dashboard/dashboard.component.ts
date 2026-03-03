@@ -21,6 +21,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   schoolName: string = '';
   schoolMotto: string = '';
   schoolLogo: string | null = null;
+  schoolLogo2: string | null = null;
   showBulkMessage = false;
   displayedText: string = '';
   private textToggleInterval: any;
@@ -202,14 +203,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loadSettings() {
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
-        // For demo users, always use "Demo School"
-        if (this.isDemoUser()) {
-          this.schoolName = 'Demo School';
-        } else {
+        if (data) {
           this.schoolName = data.schoolName || '';
         }
         this.schoolMotto = data.schoolMotto || '';
         this.schoolLogo = data.schoolLogo || null;
+        this.schoolLogo2 = data.schoolLogo2 || null;
         this.moduleAccess = data.moduleAccess || {};
         this.currencySymbol = data.currencySymbol || 'KES';
         

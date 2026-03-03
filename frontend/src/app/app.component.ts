@@ -18,6 +18,7 @@ import { environment } from '../environments/environment';
 export class AppComponent implements OnInit, OnDestroy {
   schoolName = 'School Management System';
   schoolLogo: string | null = null;
+  schoolLogo2: string | null = null;
   mobileMenuOpen = false;
   sidebarCollapsed = false;
   expandedMenus: { [key: string]: boolean } = {};
@@ -42,6 +43,7 @@ export class AppComponent implements OnInit, OnDestroy {
         next: (settings: any) => {
           this.schoolName = settings?.schoolName || 'School Management System';
           this.schoolLogo = settings?.schoolLogo || null;
+          this.schoolLogo2 = settings?.schoolLogo2 || null;
         },
         error: () => {
           // ignore settings fetch errors to avoid blocking UI

@@ -28,7 +28,6 @@ export class ClassListsComponent implements OnInit {
   schoolMotto = '';
   academicYear = '';
   schoolLogo: string | null = null;
-  schoolLogo2: string | null = null;
   
   loading = false;
   loadingStudents = false;
@@ -230,7 +229,6 @@ export class ClassListsComponent implements OnInit {
         this.schoolMotto = settings.schoolMotto || '';
         this.academicYear = settings.academicYear || '';
         this.schoolLogo = settings.schoolLogo || null;
-        this.schoolLogo2 = settings.schoolLogo2 || null;
 
         const terms: string[] = [];
         

@@ -6,5 +6,13 @@
     "logLevel": "debug",
     "timeout": 120000,
     "proxyTimeout": 120000
+  },
+  "/uploads": {
+    "target": "http://localhost:3002",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug",
+    "timeout": 120000,
+    "proxyTimeout": 120000
   }
 }

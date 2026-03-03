@@ -21,7 +21,6 @@ export class EnrollStudentComponent implements OnInit {
   schoolAddress = '';
   schoolMotto = '';
   schoolLogo: string | null = null;
-  schoolLogo2: string | null = null;
   students: any[] = [];
   filtered: any[] = [];
   classes: any[] = [];
@@ -56,7 +55,7 @@ export class EnrollStudentComponent implements OnInit {
   }
 
   async previewPdf(): Promise<void> {
-    const header = (this.schoolName || this.schoolAddress || this.schoolLogo || this.schoolLogo2 || this.schoolMotto)
+    const header = (this.schoolName || this.schoolAddress || this.schoolLogo || this.schoolMotto)
       ? `
         <div class="school-header">
           ${this.schoolLogo ? `<div class="school-logo-wrapper"><img src="${this.resolveImage(this.schoolLogo)}" alt="School Logo" class="school-logo" /></div>` : `<div></div>`}
@@ -65,7 +64,7 @@ export class EnrollStudentComponent implements OnInit {
             ${this.schoolMotto ? `<p class="school-motto">${this.schoolMotto}</p>` : ``}
             ${this.schoolAddress ? `<p class="school-address">${this.schoolAddress}</p>` : ``}
           </div>
-          ${this.schoolLogo2 ? `<div class="school-logo-wrapper"><img src="${this.resolveImage(this.schoolLogo2)}" alt="School Logo 2" class="school-logo" /></div>` : `<div></div>`}
+          <div></div>
         </div>
       ` : '';
     const table = this.buildPrintTableHtml();
@@ -125,7 +124,6 @@ export class EnrollStudentComponent implements OnInit {
         this.schoolAddress = settings?.schoolAddress || '';
         this.schoolMotto = settings?.schoolMotto || '';
         this.schoolLogo = settings?.schoolLogo || null;
-        this.schoolLogo2 = settings?.schoolLogo2 || null;
       },
       error: () => {}
     });
@@ -360,7 +358,7 @@ export class EnrollStudentComponent implements OnInit {
   }
 
   private buildPrintHtml(print: boolean): string {
-    const header = (this.schoolName || this.schoolAddress || this.schoolLogo || this.schoolLogo2 || this.schoolMotto)
+    const header = (this.schoolName || this.schoolAddress || this.schoolLogo || this.schoolMotto)
       ? `
         <div class="school-header">
           ${this.schoolLogo ? `<div class="school-logo-wrapper"><img src="${this.resolveImage(this.schoolLogo)}" alt="School Logo" class="school-logo" /></div>` : `<div></div>`}
@@ -369,7 +367,7 @@ export class EnrollStudentComponent implements OnInit {
             ${this.schoolMotto ? `<p class="school-motto">${this.schoolMotto}</p>` : ``}
             ${this.schoolAddress ? `<p class="school-address">${this.schoolAddress}</p>` : ``}
           </div>
-          ${this.schoolLogo2 ? `<div class="school-logo-wrapper"><img src="${this.resolveImage(this.schoolLogo2)}" alt="School Logo 2" class="school-logo" /></div>` : `<div></div>`}
+          <div></div>
         </div>
       ` : '';
     const table = this.buildPrintTableHtml();

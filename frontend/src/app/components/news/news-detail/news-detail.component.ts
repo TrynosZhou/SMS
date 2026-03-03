@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { NewsService } from '../../../services/news.service';
 import { News, NewsCategory } from '../../../types/news';
 import { AuthService } from '../../../services/auth.service';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-news-detail',
@@ -14,6 +15,12 @@ export class NewsDetailComponent implements OnInit {
   loading = true;
   error = '';
 
+  private readonly backendBaseUrl = (() => {
+    const apiUrl = String(environment.apiUrl || '').trim();
+    if (!apiUrl || apiUrl.startsWith('/')) return '';
+    return apiUrl.replace(/\/+$/, '').replace(/\/api\/?$/, '');
+  })();
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -23,6 +30,22 @@ export class NewsDetailComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadNews();
+  }
+
+  normalizeImageUrl(url?: string | null): string {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+    if (/^(https?:)?\/\//i.test(raw)) return raw;
+    if (/^data:/i.test(raw)) return raw;
+
+    const normalizedPath = raw
+      .replace(/^\/api\/uploads\//i, '/uploads/')
+      .replace(/^api\/uploads\//i, '/uploads/');
+
+    const base = this.backendBaseUrl;
+    if (!base) return normalizedPath;
+    if (normalizedPath.startsWith('/')) return `${base}${normalizedPath}`;
+    return `${base}/${normalizedPath}`;
   }
 
   canManageNews(): boolean {

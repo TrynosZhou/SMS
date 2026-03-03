@@ -75,15 +75,6 @@ function renderStudentIdCard(doc: InstanceType<typeof PDFDocument>, data: Studen
       } catch {}
     }
   }
-  if (settings?.schoolLogo2 && settings.schoolLogo2.startsWith('data:image')) {
-    const base64Data2 = settings.schoolLogo2.split(',')[1];
-    if (base64Data2) {
-      const imageBuffer2 = Buffer.from(base64Data2, 'base64');
-      try {
-        doc.image(imageBuffer2, doc.page.width - 44, headerLogoY, { width: 28 });
-      } catch {}
-    }
-  }
 
   const infoBoxY = 56;
   doc.roundedRect(18, infoBoxY, 200, 120, 10)

@@ -197,6 +197,15 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
     const responsePayload: any = { ...settings };
     responsePayload.moduleAccess = ensureModuleAccessDefaults(settings?.moduleAccess);
 
+    try {
+      const rawLogo = (responsePayload as any)?.schoolLogo;
+      const logoLen = typeof rawLogo === 'string' ? rawLogo.length : 0;
+      console.log('[getSettings] schoolLogo:', rawLogo ? `present (len=${logoLen})` : 'missing');
+      if (typeof rawLogo === 'string' && rawLogo) {
+        console.log('[getSettings] schoolLogo prefix:', rawLogo.trim().slice(0, 30));
+      }
+    } catch {}
+
     // For demo users, always return "Demo School" as school name/code
     const isDemo = req.user?.isDemo === true || req.user?.email === 'demo@school.com' || req.user?.username === 'demo@school.com';
     
@@ -332,11 +341,34 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       }
     }
     if (schoolLogo !== undefined) {
-      settings.schoolLogo = schoolLogo;
+      const incoming = typeof schoolLogo === 'string' ? schoolLogo.trim() : schoolLogo;
+      // Avoid clearing a previously saved logo with an empty string
+      if (incoming === '') {
+        console.log('[updateSettings] schoolLogo provided as empty string - ignoring to avoid clearing existing logo');
+      } else {
+        settings.schoolLogo = schoolLogo;
+        const len = typeof schoolLogo === 'string' ? schoolLogo.length : 0;
+        console.log('[updateSettings] schoolLogo updated:', schoolLogo ? `present (len=${len})` : 'missing');
+        if (typeof schoolLogo === 'string' && schoolLogo) {
+          console.log('[updateSettings] schoolLogo prefix:', String(schoolLogo).trim().slice(0, 30));
+        }
+      }
     }
+
     if (schoolLogo2 !== undefined) {
-      settings.schoolLogo2 = schoolLogo2;
+      const incoming2 = typeof schoolLogo2 === 'string' ? schoolLogo2.trim() : schoolLogo2;
+      if (incoming2 === '') {
+        console.log('[updateSettings] schoolLogo2 provided as empty string - ignoring to avoid clearing existing logo2');
+      } else {
+        settings.schoolLogo2 = schoolLogo2;
+        const len2 = typeof schoolLogo2 === 'string' ? schoolLogo2.length : 0;
+        console.log('[updateSettings] schoolLogo2 updated:', schoolLogo2 ? `present (len=${len2})` : 'missing');
+        if (typeof schoolLogo2 === 'string' && schoolLogo2) {
+          console.log('[updateSettings] schoolLogo2 prefix:', String(schoolLogo2).trim().slice(0, 30));
+        }
+      }
     }
+
     // Update school name if provided
     if (schoolName !== undefined && schoolName !== null) {
       const trimmedName = String(schoolName).trim();

@@ -333,27 +333,10 @@
               </button>
             </div>
           </div>
-          
-          <!-- School Header -->
-          <div *ngIf="reportCard.settings || schoolLogo || schoolLogo2" class="school-header">
-            <div class="school-logo-wrapper school-logo-left" *ngIf="schoolLogo">
-              <img [src]="schoolLogo" alt="School Logo" class="school-logo">
-            </div>
-            <div class="school-text">
-              <h3 *ngIf="reportCard.settings?.schoolName">{{ reportCard.settings.schoolName }}</h3>
-              <p *ngIf="reportCard.settings?.schoolAddress" class="school-address">
-                {{ reportCard.settings.schoolAddress }}
-              </p>
-              <p *ngIf="reportCard.settings?.schoolPhone" class="school-phone">
-                Phone: {{ reportCard.settings.schoolPhone }}
-              </p>
-              <p *ngIf="reportCard.settings?.academicYear" class="academic-year">
-                Academic Year: {{ reportCard.settings.academicYear }}
-              </p>
-            </div>
-            <div class="school-logo-wrapper school-logo-right" *ngIf="schoolLogo2">
-              <img [src]="schoolLogo2" alt="School Logo 2" class="school-logo">
-            </div>
+
+          <!-- Banner from Settings (if provided) -->
+          <div *ngIf="getSchoolLogoSrc(reportCard.settings?.schoolLogo || schoolLogo)" class="school-logo-banner">
+            <img [src]="getSchoolLogoSrc(reportCard.settings?.schoolLogo || schoolLogo)" alt="School Banner" class="school-logo-banner-img" />
           </div>
 
           <!-- Student Information -->

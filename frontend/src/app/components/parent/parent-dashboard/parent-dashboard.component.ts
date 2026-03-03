@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ParentService } from '../../../services/parent.service';
 import { AuthService } from '../../../services/auth.service';
@@ -7,13 +7,14 @@ import { SettingsService } from '../../../services/settings.service';
 import { FinanceService } from '../../../services/finance.service';
 import { NewsService } from '../../../services/news.service';
 import { News } from '../../../types/news';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-parent-dashboard',
   templateUrl: './parent-dashboard.component.html',
   styleUrls: ['./parent-dashboard.component.css']
 })
-export class ParentDashboardComponent implements OnInit {
+export class ParentDashboardComponent implements OnInit, OnDestroy {
   students: any[] = [];
   loading = false;
   error = '';
@@ -21,11 +22,26 @@ export class ParentDashboardComponent implements OnInit {
   parentName = '';
   invoiceLoading = false;
   schoolLogo: string | null = null;
+  schoolLogo2: string | null = null;
 
   newsLoading = false;
   newsError = '';
   featuredNews: News | null = null;
   latestNews: News[] = [];
+
+  carouselImages: string[] = [];
+  carouselIndex = 0;
+  carouselAnimating = true;
+  private carouselTimerId: number | null = null;
+  private carouselIntervalMs = 5000;
+
+  private readonly backendBaseUrl = (() => {
+    const apiUrl = String(environment.apiUrl || '').trim();
+    // In development apiUrl is "/api" and Angular dev-server proxies it.
+    // For images we want to keep "/uploads/..." as-is (also proxied), so no absolute base.
+    if (!apiUrl || apiUrl.startsWith('/')) return '';
+    return apiUrl.replace(/\/+$/, '').replace(/\/api\/?$/, '');
+  })();
 
   constructor(
     private parentService: ParentService,
@@ -50,6 +66,45 @@ export class ParentDashboardComponent implements OnInit {
     this.loadNews();
   }
 
+  ngOnDestroy() {
+    this.stopCarousel();
+  }
+
+  private stopCarousel() {
+    if (this.carouselTimerId !== null) {
+      window.clearInterval(this.carouselTimerId);
+      this.carouselTimerId = null;
+    }
+  }
+
+  private startCarousel() {
+    this.stopCarousel();
+    if (!this.carouselImages || this.carouselImages.length <= 1) {
+      return;
+    }
+    this.carouselTimerId = window.setInterval(() => {
+      this.nextCarouselImage();
+    }, this.carouselIntervalMs);
+  }
+
+  nextCarouselImage() {
+    if (!this.carouselImages || this.carouselImages.length <= 1) return;
+    this.carouselAnimating = false;
+    window.setTimeout(() => {
+      this.carouselIndex = (this.carouselIndex + 1) % this.carouselImages.length;
+      this.carouselAnimating = true;
+    }, 20);
+  }
+
+  prevCarouselImage() {
+    if (!this.carouselImages || this.carouselImages.length <= 1) return;
+    this.carouselAnimating = false;
+    window.setTimeout(() => {
+      this.carouselIndex = (this.carouselIndex - 1 + this.carouselImages.length) % this.carouselImages.length;
+      this.carouselAnimating = true;
+    }, 20);
+  }
+
   loadNews() {
     this.newsLoading = true;
     this.newsError = '';
@@ -59,14 +114,48 @@ export class ParentDashboardComponent implements OnInit {
         const items = response?.data || [];
         this.featuredNews = items.length > 0 ? items[0] : null;
         this.latestNews = items.length > 1 ? items.slice(1, 6) : [];
+
+        const urls = items
+          .map((n: any) => String(n?.imageUrl || '').trim())
+          .filter((u: string) => !!u);
+        const normalized = urls
+          .map((u: string) => this.normalizeImageUrl(u))
+          .filter((u: string) => !!u);
+        this.carouselImages = Array.from(new Set(normalized));
+        this.carouselIndex = 0;
+        this.carouselAnimating = true;
+        this.startCarousel();
+
         this.newsLoading = false;
       },
       error: (err: any) => {
         console.error('Error loading news:', err);
         this.newsError = 'Failed to load news & updates.';
+        this.carouselImages = [];
+        this.carouselIndex = 0;
+        this.stopCarousel();
         this.newsLoading = false;
       }
     });
+  }
+
+  normalizeImageUrl(url?: string | null): string {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+    if (/^(https?:)?\/\//i.test(raw)) return raw;
+    if (/^data:/i.test(raw)) return raw;
+
+    // Some records may store uploads behind the API prefix; static files are served at /uploads.
+    // Normalize to the correct public static path.
+    const normalizedPath = raw
+      .replace(/^\/api\/uploads\//i, '/uploads/')
+      .replace(/^api\/uploads\//i, '/uploads/');
+
+    const base = this.backendBaseUrl;
+    if (!base) return normalizedPath;
+
+    if (normalizedPath.startsWith('/')) return `${base}${normalizedPath}`;
+    return `${base}/${normalizedPath}`;
   }
 
   openNews(news: News) {
@@ -88,6 +177,7 @@ export class ParentDashboardComponent implements OnInit {
       next: (data: any) => {
         this.currencySymbol = data.currencySymbol || 'KES';
         this.schoolLogo = data.schoolLogo || null;
+        this.schoolLogo2 = data.schoolLogo2 || null;
       },
       error: (err: any) => {
         console.error('Error loading settings:', err);

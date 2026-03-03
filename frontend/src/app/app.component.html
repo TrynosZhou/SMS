@@ -20,7 +20,7 @@
     </button>
     <div class="top-navbar-title-wrap">
       <h1 class="top-navbar-title">{{ schoolName }}</h1>
-      <img *ngIf="schoolLogo" [src]="schoolLogo" alt="School Logo" class="top-navbar-logo" />
+      <img *ngIf="schoolLogo2" [src]="schoolLogo2" alt="School Logo" class="top-navbar-logo" />
     </div>
     <div class="top-navbar-actions">
       <button type="button" class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="themeService.darkMode ? 'Switch to light mode' : 'Switch to dark mode'" [title]="themeService.darkMode ? 'Light mode' : 'Dark mode'">

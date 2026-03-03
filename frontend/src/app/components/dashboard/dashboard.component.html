@@ -20,7 +20,7 @@
             <div class="school-name-container" *ngIf="displayedText">
               <span class="school-icon">🏫</span>
               <span class="school-name" [class.school-motto-text]="displayedText === schoolMotto">{{ displayedText }}</span>
-              <img *ngIf="schoolLogo" [src]="schoolLogo" alt="School Logo" class="school-logo" />
+              <img *ngIf="schoolLogo2" [src]="schoolLogo2" alt="School Logo" class="school-logo" />
             </div>
             <div class="quick-stats-badge" *ngIf="(isAdmin() || isAccountant() || isTeacher()) && !loadingStats">
               <span class="badge-icon">⚡</span>

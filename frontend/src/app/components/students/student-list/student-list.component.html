@@ -103,6 +103,17 @@
           </select>
         </div>
         <div class="filter-group">
+          <label>Filter by Grade</label>
+          <select
+            [(ngModel)]="selectedGrade"
+            [ngModelOptions]="{standalone: true}"
+            (change)="onGradeFilterChange()"
+            class="filter-select">
+            <option value="">All Grades</option>
+            <option *ngFor="let g of gradeOptions" [value]="g">{{ g }}</option>
+          </select>
+        </div>
+        <div class="filter-group">
           <label>Filter by Type</label>
           <select 
             [(ngModel)]="selectedType" 

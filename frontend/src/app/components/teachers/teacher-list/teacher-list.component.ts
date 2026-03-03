@@ -31,7 +31,6 @@ export class TeacherListComponent implements OnInit {
   schoolAddress = '';
   schoolMotto = '';
   schoolLogo: string | null = null;
-  schoolLogo2: string | null = null;
   loadingPdf = false;
   downloadingPdf = false;
   pagination = {
@@ -380,7 +379,6 @@ export class TeacherListComponent implements OnInit {
         this.schoolAddress = settings.schoolAddress || '';
         this.schoolMotto = settings.schoolMotto || '';
         this.schoolLogo = settings.schoolLogo || null;
-        this.schoolLogo2 = settings.schoolLogo2 || null;
       },
       error: (err: any) => {
         console.error('Error loading school settings for teacher list:', err);

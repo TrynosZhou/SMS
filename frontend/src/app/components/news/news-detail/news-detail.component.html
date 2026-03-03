@@ -61,7 +61,7 @@
 
       <!-- Featured Image -->
       <div class="featured-image" *ngIf="news.imageUrl">
-        <img [src]="news.imageUrl" [alt]="news.title" (error)="this.style.display='none'">
+        <img [src]="normalizeImageUrl(news.imageUrl)" [alt]="news.title" (error)="$event.target.style.display='none'">
       </div>
 
       <!-- Summary -->

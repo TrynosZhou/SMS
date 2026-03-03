@@ -43,6 +43,9 @@
           <h1>Parent Dashboard</h1>
           <p class="welcome-text">Welcome, {{ parentName }}</p>
         </div>
+        <div class="dashboard-logos" *ngIf="schoolLogo2">
+          <img *ngIf="schoolLogo2" [src]="schoolLogo2" alt="School Logo" class="dashboard-logo" />
+        </div>
         <div class="header-actions">
           <button class="btn btn-primary" (click)="linkMoreStudents()">➕ Link Students</button>
           <button class="btn btn-info" (click)="manageAccount()">👤 Manage Account</button>
@@ -116,11 +119,38 @@
             role="button"
             tabindex="0">
             <div class="news-featured-image">
-              <img
-                *ngIf="featuredNews.imageUrl"
-                [src]="featuredNews.imageUrl"
-                [alt]="featuredNews.title" />
-              <div class="news-featured-image-placeholder" *ngIf="!featuredNews.imageUrl"></div>
+              <ng-container *ngIf="carouselImages.length > 0; else featuredPlaceholder">
+                <img
+                  class="news-carousel-image"
+                  [class.animate]="carouselAnimating"
+                  [src]="carouselImages[carouselIndex]"
+                  [alt]="featuredNews.title" />
+                <button
+                  type="button"
+                  class="news-carousel-nav prev"
+                  *ngIf="carouselImages.length > 1"
+                  (click)="$event.stopPropagation(); prevCarouselImage()"
+                  aria-label="Previous image">
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  class="news-carousel-nav next"
+                  *ngIf="carouselImages.length > 1"
+                  (click)="$event.stopPropagation(); nextCarouselImage()"
+                  aria-label="Next image">
+                  ›
+                </button>
+                <div class="news-carousel-dots" *ngIf="carouselImages.length > 1">
+                  <span
+                    class="dot"
+                    *ngFor="let u of carouselImages; let i = index"
+                    [class.active]="i===carouselIndex"></span>
+                </div>
+              </ng-container>
+              <ng-template #featuredPlaceholder>
+                <div class="news-featured-image-placeholder"></div>
+              </ng-template>
             </div>
             <div class="news-featured-body">
               <div class="news-featured-title">{{ featuredNews.title }}</div>
@@ -138,7 +168,7 @@
               role="button"
               tabindex="0">
               <div class="news-latest-thumb">
-                <img *ngIf="item.imageUrl" [src]="item.imageUrl" [alt]="item.title" />
+                <img *ngIf="item.imageUrl" [src]="normalizeImageUrl(item.imageUrl)" [alt]="item.title" />
                 <div class="news-latest-thumb-placeholder" *ngIf="!item.imageUrl"></div>
               </div>
               <div class="news-latest-body">
