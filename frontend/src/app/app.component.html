@@ -19,7 +19,7 @@
       </svg>
     </button>
     <div class="top-navbar-title-wrap">
-      <h1 class="top-navbar-title">{{ schoolName }}</h1>
+      <h1 class="top-navbar-title">{{ getTopNavbarTitle() }}</h1>
       <img *ngIf="schoolLogo2" [src]="schoolLogo2" alt="School Logo" class="top-navbar-logo" />
     </div>
     <div class="top-navbar-actions">

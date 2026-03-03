@@ -271,7 +271,11 @@ export class BalanceEnquiryComponent {
 
       const totalAmount = tryNum(invoice.amount);
       const paidAmount = tryNum(invoice.paidAmount);
-      const invBalance = tryNum(invoice.balance);
+      const currentBalance = tryNum(student.balance);
+      const previousBalance = tryNum((invoice as any).previousBalance);
+      const prepaidAmount = tryNum((invoice as any).prepaidAmount);
+      const computedBalance = Math.max(0, (totalAmount + previousBalance) - paidAmount - prepaidAmount);
+      const invBalance = currentBalance > 0 || currentBalance === 0 ? currentBalance : computedBalance;
       drawTotalRow('Subtotal', totalAmount);
       drawTotalRow('Paid', paidAmount);
       drawTotalRow('Invoice Balance', invBalance, true, invBalance > 1000 ? [220, 38, 38] : [29, 78, 216]);

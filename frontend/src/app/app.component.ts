@@ -23,6 +23,15 @@ export class AppComponent implements OnInit, OnDestroy {
   sidebarCollapsed = false;
   expandedMenus: { [key: string]: boolean } = {};
   private authSubscription?: Subscription;
+  private titleRotationTimerId: number | null = null;
+  private readonly titleRotationIntervalMs = 4000;
+  private readonly dashboardTitleOptions = [
+    'After instruction we soar',
+    'Kaizen',
+    'Junior Primary School'
+  ];
+  private dashboardTitleIndex = 0;
+  private currentUrl = '';
 
   constructor(
     public authService: AuthService, 
@@ -56,6 +65,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Log module access and update meta tags on navigation
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe((e: any) => {
+      this.currentUrl = (e.urlAfterRedirects || e.url || '').toString();
+      this.syncDashboardTitleRotation();
       this.updateMetaFromRoute();
       // Close mobile menu/drawer after navigation
       if (this.mobileMenuOpen) {
@@ -79,10 +90,52 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Set initial meta tags
     this.updateMetaFromRoute();
+
+    // Initialize dashboard title rotation state
+    this.currentUrl = this.router.url || '';
+    this.syncDashboardTitleRotation();
   }
 
   ngOnDestroy(): void {
     this.authSubscription?.unsubscribe();
+    this.stopDashboardTitleRotation();
+  }
+
+  getTopNavbarTitle(): string {
+    const isDashboard = this.currentUrl.startsWith('/dashboard');
+    if (!isDashboard) {
+      return this.schoolName;
+    }
+    return this.dashboardTitleOptions[this.dashboardTitleIndex] || this.schoolName;
+  }
+
+  private syncDashboardTitleRotation(): void {
+    const isDashboard = this.currentUrl.startsWith('/dashboard');
+    if (!this.isAuthenticated() || !isDashboard) {
+      this.stopDashboardTitleRotation();
+      return;
+    }
+    this.startDashboardTitleRotation();
+  }
+
+  private startDashboardTitleRotation(): void {
+    if (this.titleRotationTimerId !== null) {
+      return;
+    }
+    if (!this.dashboardTitleOptions || this.dashboardTitleOptions.length <= 1) {
+      return;
+    }
+    this.titleRotationTimerId = window.setInterval(() => {
+      this.dashboardTitleIndex = (this.dashboardTitleIndex + 1) % this.dashboardTitleOptions.length;
+    }, this.titleRotationIntervalMs);
+  }
+
+  private stopDashboardTitleRotation(): void {
+    if (this.titleRotationTimerId !== null) {
+      window.clearInterval(this.titleRotationTimerId);
+      this.titleRotationTimerId = null;
+    }
+    this.dashboardTitleIndex = 0;
   }
 
   isAuthenticated(): boolean {

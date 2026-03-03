@@ -65,6 +65,7 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     const { studentId, amount, dueDate, term, description, uniformItems, tuitionAmount, diningHallAmount, otherAmount } = req.body;
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
+    const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
     const uniformItemRepository = AppDataSource.getRepository(UniformItem);
     const invoiceUniformItemRepository = AppDataSource.getRepository(InvoiceUniformItem);
 
@@ -1239,8 +1240,14 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
       .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
     const netPaidToDate = Math.max(0, parseFloat((statementTotalPaidToDate + statementAdjustmentDelta).toFixed(2)));
 
+    const statementInvoiceAmount = parseAmount(invoice.amount);
+    const statementPreviousBalance = parseAmount(invoice.previousBalance);
+    const statementPrepaidAmount = parseAmount(invoice.prepaidAmount);
+    const computedBalance = Math.max(0, parseFloat((statementInvoiceAmount + statementPreviousBalance - netPaidToDate - statementPrepaidAmount).toFixed(2)));
+
     const invoiceForStatement = Object.assign({}, invoice, {
-      paidAmount: netPaidToDate
+      paidAmount: netPaidToDate,
+      balance: computedBalance
     });
 
     const firstInvoiceForStudent = await invoiceRepository.findOne({
@@ -1447,6 +1454,7 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
 
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
+    const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
 
     // Try to find student by ID (UUID), by studentNumber, or by lastName/firstName
     // Check if it's a valid UUID format
@@ -1566,10 +1574,33 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
       currentBalance = 0;
       console.log(`[getStudentBalance] No invoices found, balance = 0`);
     } else {
-      // Use the latest invoice's balance as the source of truth
-      // The latest invoice should have the cumulative balance including all previous balances
-      currentBalance = parseAmount(lastInvoice.balance);
+      // Recompute balance from payment logs to avoid stale invoice.balance after corrections (e.g. desk-fee reversal).
+      const paymentLogs = await paymentLogRepository
+        .createQueryBuilder('log')
+        .where('log.invoiceId = :invoiceId', { invoiceId: lastInvoice.id })
+        .orderBy('log.createdAt', 'DESC')
+        .getMany();
+
+      const positiveNonAdjustmentLogs = paymentLogs.filter(l => {
+        const amt = parseAmount((l as any).amountPaid);
+        const pm = String((l as any).paymentMethod || '').trim().toUpperCase();
+        return amt > 0 && pm !== 'ADJUSTMENT';
+      });
+      const totalPaidToDate = positiveNonAdjustmentLogs.reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
+      const adjustmentDelta = paymentLogs
+        .filter(l => String((l as any).paymentMethod || '').trim().toUpperCase() === 'ADJUSTMENT')
+        .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
+      const netPaidToDate = Math.max(0, parseFloat((totalPaidToDate + adjustmentDelta).toFixed(2)));
+
+      const invoiceAmountValue = parseAmount(lastInvoice.amount);
+      const previousBalanceValue = parseAmount(lastInvoice.previousBalance);
       totalPrepaidAmount = parseAmount(lastInvoice.prepaidAmount);
+
+      currentBalance = Math.max(0, parseFloat((invoiceAmountValue + previousBalanceValue - netPaidToDate - totalPrepaidAmount).toFixed(2)));
+
+      // Keep fields consistent for the response payload
+      (lastInvoice as any).paidAmount = netPaidToDate;
+      (lastInvoice as any).balance = currentBalance;
       
       console.log(`[getStudentBalance] Latest invoice ${lastInvoice.invoiceNumber}: balance=${currentBalance}, previousBalance=${parseAmount(lastInvoice.previousBalance)}, amount=${parseAmount(lastInvoice.amount)}`);
       
@@ -1685,7 +1716,10 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
 
     // Guardrail: after desk-fee reversals/status corrections, invoice totals may be reduced.
     // Never display an "Amount Paid" on a receipt that exceeds the actual cash paid-to-date.
-    const safePaymentAmount = Math.min(resolvedPaymentAmount, netPaidToDate);
+    const effectiveResolvedPaymentAmount = (resolvedPaymentAmount > 0)
+      ? resolvedPaymentAmount
+      : (latestPaymentLog ? parseAmount((latestPaymentLog as any).amountPaid) : netPaidToDate);
+    const safePaymentAmount = Math.min(effectiveResolvedPaymentAmount, netPaidToDate);
 
     const resolvedPaymentDate = paymentDate
       ? new Date(paymentDate as string)

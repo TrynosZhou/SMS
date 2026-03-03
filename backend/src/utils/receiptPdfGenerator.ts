@@ -327,7 +327,6 @@ export function createReceiptPDF(
       // Ensure all numeric values are properly converted to numbers
       const previousBalance = parseFloat(String(invoice.previousBalance || 0));
       const paidAmount = parseFloat(String(invoice.paidAmount || 0));
-      const balance = parseFloat(String(invoice.balance || 0));
       const prepaidAmount = parseFloat(String(invoice.prepaidAmount || 0));
 
       // Calculate total invoice amount from the actual fee components shown above
@@ -336,6 +335,10 @@ export function createReceiptPDF(
 
       // Total cash received to date (prepaidAmount is not treated as "paid" on receipts)
       const totalPaid = paidAmount;
+
+      // Remaining balance should be derived from the figures shown on the receipt.
+      // Using invoice.balance directly can be incorrect after adjustments/status corrections.
+      const remainingBalance = Math.max(0, parseFloat((totalInvoiceAmount - totalPaid - prepaidAmount).toFixed(2)));
 
       // Table dimensions (reuse variables from payment details section)
       const labelColumnWidth = 350;
@@ -382,7 +385,7 @@ export function createReceiptPDF(
       // Row 4: Invoice balance c/f (Remaining Balance) - Value in red and bold
       doc.text('Invoice balance c/f (Remaining Balance):', tableStartX + 5, yPos + 5);
       doc.fontSize(10).font('Helvetica-Bold').fillColor('#DC3545'); // Red color
-      doc.text(`${currencySymbol} ${balance.toFixed(2)}`, valueColumnStartX + 5, yPos + 5, { align: 'right', width: valueColumnWidth - 10 });
+      doc.text(`${currencySymbol} ${remainingBalance.toFixed(2)}`, valueColumnStartX + 5, yPos + 5, { align: 'right', width: valueColumnWidth - 10 });
       // Reset font and color for next row
       doc.fontSize(10).font('Helvetica').fillColor('#000000');
       yPos += transactionRowHeight;
