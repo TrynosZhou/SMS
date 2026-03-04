@@ -1842,6 +1842,16 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
       ? Math.max(0, parseFloat(rawNetPaid.toFixed(2)))
       : persistedPaidFallback;
 
+    // Identify the student's first invoice (initial invoice) to mirror
+    // the same "returning initial invoice" semantics used by the
+    // invoice statement generation.
+    const firstInvoiceForStudent = await invoiceRepository.findOne({
+      where: { studentId: student.id },
+      order: { createdAt: 'ASC' }
+    });
+    const isFirstInvoice = firstInvoiceForStudent?.id === invoice.id;
+    const isReturningInitialInvoice = isFirstInvoice && !isNewStudent;
+
     // If the student is Returning/Existing and the paid total exceeds the corrected invoice total
     // by exactly the configured desk fee, the receipt must display paid amounts with desk fee removed.
     const correctedInvoiceTotal = Math.max(0, parseFloat(parseAmount(invoice.amount).toFixed(2)));
@@ -1931,6 +1941,14 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
       const removalForThisReceipt = Math.max(0, Math.min(amtRounded, deskFeeToRemoveCapped));
       // Remove the desk-fee portion from the single payment shown on the receipt.
       safePaymentAmount = Math.max(0, parseFloat((amtRounded - removalForThisReceipt).toFixed(2)));
+    }
+
+    // For the corrected initial invoice of a Returning/Existing student,
+    // the receipt must present the same "Amount Paid" and remaining balance
+    // as the invoice statement, which trusts the persisted paidAmount after
+    // status correction. Override the per-log Amount Paid with paidToDisplay.
+    if (isReturningInitialInvoice) {
+      safePaymentAmount = paidToDisplay;
     }
 
     console.log(
