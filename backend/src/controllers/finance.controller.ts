@@ -1571,23 +1571,19 @@ export const getStudentBalance = async (req: Request, res: Response) => {
       const normalizedStatus = String((student as any).studentStatus || '').trim().toLowerCase();
       const isNewStudent = normalizedStatus === 'new';
 
-      const lastAmount = Math.max(0, parseFloat(parseAmount(lastInvoice.amount).toFixed(2)));
-      let lastPreviousBalance = Math.max(0, parseFloat(parseAmount(lastInvoice.previousBalance).toFixed(2)));
-      let lastPaid = Math.max(0, parseFloat(parseAmount(lastInvoice.paidAmount).toFixed(2)));
-      totalPrepaidAmount = Math.max(0, parseFloat(parseAmount(lastInvoice.prepaidAmount).toFixed(2)));
-
       const paymentLogs = await paymentLogRepository
         .createQueryBuilder('log')
         .where('log.invoiceId = :invoiceId', { invoiceId: lastInvoice.id })
         .orderBy('log.createdAt', 'DESC')
         .getMany();
-      // Use payment logs as the source of truth when available.
-      // This prevents double-counting desk-fee reversals where the invoice.paidAmount was already adjusted
-      // and an ADJUSTMENT log also exists.
-      if (paymentLogs.length > 0) {
-        const netPaidFromLogs = paymentLogs.reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
-        lastPaid = Math.max(0, parseFloat(netPaidFromLogs.toFixed(2)));
-      }
+      const adjustmentDelta = paymentLogs
+        .filter(l => String((l as any).paymentMethod || '').trim().toUpperCase() === 'ADJUSTMENT')
+        .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
+
+      const lastAmount = Math.max(0, parseFloat(parseAmount(lastInvoice.amount).toFixed(2)));
+      let lastPreviousBalance = Math.max(0, parseFloat(parseAmount(lastInvoice.previousBalance).toFixed(2)));
+      let lastPaid = Math.max(0, parseFloat(parseAmount(lastInvoice.paidAmount).toFixed(2)));
+      totalPrepaidAmount = Math.max(0, parseFloat(parseAmount(lastInvoice.prepaidAmount).toFixed(2)));
 
       if (!isNewStudent && deskFeeCfg > 0) {
         const prev = parseFloat(lastPreviousBalance.toFixed(2));
@@ -1595,6 +1591,10 @@ export const getStudentBalance = async (req: Request, res: Response) => {
         if (prev === desk) {
           lastPreviousBalance = 0;
         }
+      }
+
+      if (adjustmentDelta !== 0) {
+        lastPaid = Math.max(0, parseFloat((lastPaid + adjustmentDelta).toFixed(2)));
       }
 
       currentBalance = Math.max(0, parseFloat((lastAmount + lastPreviousBalance - lastPaid - totalPrepaidAmount).toFixed(2)));
@@ -1633,9 +1633,11 @@ export const getStudentBalance = async (req: Request, res: Response) => {
         .where('log.invoiceId = :invoiceId', { invoiceId: lastInvoice?.id })
         .orderBy('log.createdAt', 'DESC')
         .getMany();
-      if (paymentLogs.length > 0) {
-        const netPaidFromLogs = paymentLogs.reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
-        paidAmount = Math.max(0, parseFloat(netPaidFromLogs.toFixed(2)));
+      const adjustmentDelta = paymentLogs
+        .filter(l => String((l as any).paymentMethod || '').trim().toUpperCase() === 'ADJUSTMENT')
+        .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
+      if (adjustmentDelta !== 0) {
+        paidAmount = Math.max(0, parseFloat((paidAmount + adjustmentDelta).toFixed(2)));
       }
     } catch {
     }
