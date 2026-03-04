@@ -1571,19 +1571,23 @@ export const getStudentBalance = async (req: Request, res: Response) => {
       const normalizedStatus = String((student as any).studentStatus || '').trim().toLowerCase();
       const isNewStudent = normalizedStatus === 'new';
 
+      const lastAmount = Math.max(0, parseFloat(parseAmount(lastInvoice.amount).toFixed(2)));
+      let lastPreviousBalance = Math.max(0, parseFloat(parseAmount(lastInvoice.previousBalance).toFixed(2)));
+      let lastPaid = Math.max(0, parseFloat(parseAmount(lastInvoice.paidAmount).toFixed(2)));
+      totalPrepaidAmount = Math.max(0, parseFloat(parseAmount(lastInvoice.prepaidAmount).toFixed(2)));
+
       const paymentLogs = await paymentLogRepository
         .createQueryBuilder('log')
         .where('log.invoiceId = :invoiceId', { invoiceId: lastInvoice.id })
         .orderBy('log.createdAt', 'DESC')
         .getMany();
-      const adjustmentDelta = paymentLogs
-        .filter(l => String((l as any).paymentMethod || '').trim().toUpperCase() === 'ADJUSTMENT')
-        .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
-
-      const lastAmount = Math.max(0, parseFloat(parseAmount(lastInvoice.amount).toFixed(2)));
-      let lastPreviousBalance = Math.max(0, parseFloat(parseAmount(lastInvoice.previousBalance).toFixed(2)));
-      let lastPaid = Math.max(0, parseFloat(parseAmount(lastInvoice.paidAmount).toFixed(2)));
-      totalPrepaidAmount = Math.max(0, parseFloat(parseAmount(lastInvoice.prepaidAmount).toFixed(2)));
+      // Use payment logs as the source of truth when available.
+      // This prevents double-counting desk-fee reversals where the invoice.paidAmount was already adjusted
+      // and an ADJUSTMENT log also exists.
+      if (paymentLogs.length > 0) {
+        const netPaidFromLogs = paymentLogs.reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
+        lastPaid = Math.max(0, parseFloat(netPaidFromLogs.toFixed(2)));
+      }
 
       if (!isNewStudent && deskFeeCfg > 0) {
         const prev = parseFloat(lastPreviousBalance.toFixed(2));
@@ -1591,10 +1595,6 @@ export const getStudentBalance = async (req: Request, res: Response) => {
         if (prev === desk) {
           lastPreviousBalance = 0;
         }
-      }
-
-      if (adjustmentDelta !== 0) {
-        lastPaid = Math.max(0, parseFloat((lastPaid + adjustmentDelta).toFixed(2)));
       }
 
       currentBalance = Math.max(0, parseFloat((lastAmount + lastPreviousBalance - lastPaid - totalPrepaidAmount).toFixed(2)));
@@ -1633,11 +1633,9 @@ export const getStudentBalance = async (req: Request, res: Response) => {
         .where('log.invoiceId = :invoiceId', { invoiceId: lastInvoice?.id })
         .orderBy('log.createdAt', 'DESC')
         .getMany();
-      const adjustmentDelta = paymentLogs
-        .filter(l => String((l as any).paymentMethod || '').trim().toUpperCase() === 'ADJUSTMENT')
-        .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
-      if (adjustmentDelta !== 0) {
-        paidAmount = Math.max(0, parseFloat((paidAmount + adjustmentDelta).toFixed(2)));
+      if (paymentLogs.length > 0) {
+        const netPaidFromLogs = paymentLogs.reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
+        paidAmount = Math.max(0, parseFloat(netPaidFromLogs.toFixed(2)));
       }
     } catch {
     }
@@ -2015,6 +2013,148 @@ export const normalizeHistoricalPaymentMethods = async (req: AuthRequest, res: R
     res.json({ message: 'Normalization complete', updated, skipped, total: logs.length });
   } catch (error: any) {
     console.error('Error normalizing payment methods:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const repairReturningDeskFeeInvoices = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const { dryRun, limit } = (req.body || {}) as { dryRun?: boolean; limit?: number };
+    const effectiveDryRun = dryRun !== undefined ? !!dryRun : true;
+    const effectiveLimit = Number.isFinite(Number(limit)) && Number(limit) > 0 ? Math.min(5000, Number(limit)) : 500;
+
+    const invoiceRepository = AppDataSource.getRepository(Invoice);
+    const studentRepository = AppDataSource.getRepository(Student);
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
+
+    const settings = await settingsRepository.findOne({ where: {}, order: { createdAt: 'DESC' } });
+    const deskFeeCfg = settings?.feesSettings ? parseAmount((settings.feesSettings as any).deskFee) : 0;
+    if (!Number.isFinite(deskFeeCfg) || deskFeeCfg <= 0) {
+      return res.status(400).json({ message: 'Desk fee is not configured in Settings (feesSettings.deskFee)' });
+    }
+
+    const deskFeeRounded = parseFloat(deskFeeCfg.toFixed(2));
+
+    const candidates = await invoiceRepository
+      .createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.student', 'student')
+      .where('student.studentStatus IS NOT NULL')
+      .andWhere('LOWER(student.studentStatus) <> :newStatus', { newStatus: 'new' })
+      .andWhere('ROUND(CAST(invoice.previousBalance AS numeric), 2) = :deskFee', { deskFee: deskFeeRounded })
+      .andWhere('invoice.isVoided = false')
+      .orderBy('invoice.createdAt', 'DESC')
+      .limit(effectiveLimit)
+      .getMany();
+
+    let updatedInvoices = 0;
+    let createdAdjustmentLogs = 0;
+    let skippedAlreadyRepaired = 0;
+
+    const preview = candidates.map(inv => {
+      const st = (inv as any).student || {};
+      return {
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        studentId: inv.studentId,
+        studentNumber: st.studentNumber || null,
+        studentStatus: st.studentStatus || null,
+        term: inv.term,
+        previousBalance: parseAmount(inv.previousBalance),
+        amount: parseAmount(inv.amount),
+        paidAmount: parseAmount(inv.paidAmount),
+        prepaidAmount: parseAmount(inv.prepaidAmount),
+        balance: parseAmount(inv.balance)
+      };
+    });
+
+    if (effectiveDryRun) {
+      return res.json({
+        message: 'Dry run: no changes applied',
+        deskFee: deskFeeRounded,
+        limit: effectiveLimit,
+        found: candidates.length,
+        preview
+      });
+    }
+
+    for (const invoice of candidates) {
+      const student = (invoice as any).student || (await studentRepository.findOne({ where: { id: invoice.studentId } }));
+      const normalizedStatus = String(student?.studentStatus || '').trim().toLowerCase();
+      if (!normalizedStatus || normalizedStatus === 'new') {
+        continue;
+      }
+
+      const prevBal = parseFloat(parseAmount(invoice.previousBalance).toFixed(2));
+      if (prevBal !== deskFeeRounded) {
+        skippedAlreadyRepaired++;
+        continue;
+      }
+
+      const existingAdj = await paymentLogRepository
+        .createQueryBuilder('log')
+        .where('log.invoiceId = :invoiceId', { invoiceId: invoice.id })
+        .andWhere('UPPER(COALESCE(log.paymentMethod, \'\')) = :pm', { pm: 'ADJUSTMENT' })
+        .andWhere('ROUND(CAST(log.amountPaid AS numeric), 2) = :amt', { amt: -Math.abs(deskFeeRounded) })
+        .getOne();
+
+      const oldPaid = parseFloat(parseAmount(invoice.paidAmount).toFixed(2));
+      const oldAmount = parseFloat(parseAmount(invoice.amount).toFixed(2));
+      const oldPrepaid = parseFloat(parseAmount(invoice.prepaidAmount).toFixed(2));
+
+      invoice.previousBalance = 0;
+      invoice.paidAmount = Math.max(0, parseFloat((oldPaid - deskFeeRounded).toFixed(2)));
+      invoice.balance = Math.max(0, parseFloat((oldAmount + 0 - invoice.paidAmount - oldPrepaid).toFixed(2)));
+
+      if (invoice.balance <= 0) {
+        invoice.status = InvoiceStatus.PAID;
+      } else if (invoice.paidAmount && parseAmount(invoice.paidAmount) > 0) {
+        invoice.status = InvoiceStatus.PARTIAL;
+      } else {
+        invoice.status = InvoiceStatus.PENDING;
+      }
+      if (new Date() > invoice.dueDate && invoice.balance > 0) {
+        invoice.status = InvoiceStatus.OVERDUE;
+      }
+
+      await invoiceRepository.save(invoice);
+      updatedInvoices++;
+
+      if (!existingAdj) {
+        const receiptNumber = `ADJ-${new Date().getFullYear()}-${String(Date.now()).slice(-8)}`;
+        const payer = req.user;
+        const payerName = payer ? `${payer.firstName || ''} ${payer.lastName || ''}`.trim() : null;
+        const log = paymentLogRepository.create({
+          invoiceId: invoice.id,
+          studentId: invoice.studentId,
+          amountPaid: -Math.abs(deskFeeRounded),
+          paymentDate: new Date(),
+          paymentMethod: 'ADJUSTMENT',
+          receiptNumber,
+          payerUserId: payer?.id || null,
+          payerName: payerName || null,
+          notes: `Desk Fee Reversal – Automated Repair (Returning/Existing). Removed Desk Fee: ${deskFeeRounded}`
+        });
+        await paymentLogRepository.save(log);
+        createdAdjustmentLogs++;
+      }
+    }
+
+    res.json({
+      message: 'Repair complete',
+      deskFee: deskFeeRounded,
+      limit: effectiveLimit,
+      found: candidates.length,
+      updatedInvoices,
+      createdAdjustmentLogs,
+      skippedAlreadyRepaired
+    });
+  } catch (error: any) {
+    console.error('Error repairing returning desk fee invoices:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

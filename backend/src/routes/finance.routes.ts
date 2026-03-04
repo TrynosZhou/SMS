@@ -17,7 +17,8 @@ import {
   adjustInvoiceLogistics,
   applyInvoiceNote,
   getPaymentLogs,
-  deletePaymentLog
+  deletePaymentLog,
+  repairReturningDeskFeeInvoices
 } from '../controllers/finance.controller';
 
 const router = Router();
@@ -39,6 +40,9 @@ router.get('/audit/invoices/export', authenticate, authorize(UserRole.ADMIN, Use
 router.get('/audit/payment-logs/summary', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), (req, res) => (require('../controllers/finance.controller').getPaymentLogsSummary)(req, res));
 router.get('/audit/invoices/summary', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), (req, res) => (require('../controllers/finance.controller').getInvoicesSummary)(req, res));
 router.post('/audit/payment-logs/normalize', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), (req, res) => (require('../controllers/finance.controller').normalizeHistoricalPaymentMethods)(req, res));
+
+router.post('/repair/returning-desk-fee', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), repairReturningDeskFeeInvoices);
+
 router.get('/:id/pdf', authenticate, generateInvoicePDF);
 router.get('/:id/receipt', authenticate, generateReceiptPDF);
 router.put('/:id/payment', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), updateInvoicePayment);
