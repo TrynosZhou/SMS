@@ -1604,13 +1604,20 @@ export const getStudentBalance = async (req: Request, res: Response) => {
         .where('log.invoiceId = :invoiceId', { invoiceId: lastInvoice.id })
         .orderBy('log.createdAt', 'DESC')
         .getMany();
+      const positiveNonAdjustmentLogs = paymentLogs.filter(l => {
+        const amt = parseAmount((l as any).amountPaid);
+        const pm = String((l as any).paymentMethod || '').trim().toUpperCase();
+        return amt > 0 && pm !== 'ADJUSTMENT';
+      });
+      const totalPaidFromLogs = positiveNonAdjustmentLogs.reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
       const adjustmentDelta = paymentLogs
         .filter(l => String((l as any).paymentMethod || '').trim().toUpperCase() === 'ADJUSTMENT')
         .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
 
       const lastAmount = Math.max(0, parseFloat(parseAmount(lastInvoice.amount).toFixed(2)));
       let lastPreviousBalance = Math.max(0, parseFloat(parseAmount(lastInvoice.previousBalance).toFixed(2)));
-      let lastPaid = Math.max(0, parseFloat(parseAmount(lastInvoice.paidAmount).toFixed(2)));
+      const persistedPaid = Math.max(0, parseFloat(parseAmount(lastInvoice.paidAmount).toFixed(2)));
+      let lastPaid = Math.max(0, parseFloat((parseAmount(totalPaidFromLogs) + parseAmount(adjustmentDelta)).toFixed(2)));
       totalPrepaidAmount = Math.max(0, parseFloat(parseAmount(lastInvoice.prepaidAmount).toFixed(2)));
 
       if (!isNewStudent && deskFeeCfg > 0) {
@@ -1621,8 +1628,37 @@ export const getStudentBalance = async (req: Request, res: Response) => {
         }
       }
 
-      if (adjustmentDelta !== 0) {
-        lastPaid = Math.max(0, parseFloat((lastPaid + adjustmentDelta).toFixed(2)));
+      // Returning students: subtract the desk-fee portion from what is treated as "paid".
+      if (!isNewStudent) {
+        const paidRounded = Math.max(0, parseFloat(lastPaid.toFixed(2)));
+        const deltaPaidVsPersisted = Math.max(0, parseFloat((paidRounded - persistedPaid).toFixed(2)));
+        const lastInvoiceBalRounded = Math.max(0, parseFloat(parseAmount((lastInvoice as any).balance).toFixed(2)));
+        const expectedPaidFromInvoice = Math.max(
+          0,
+          parseFloat((lastAmount + lastPreviousBalance - lastInvoiceBalRounded - totalPrepaidAmount).toFixed(2))
+        );
+        const deltaPaidVsInvoice = Math.max(0, parseFloat((paidRounded - expectedPaidFromInvoice).toFixed(2)));
+
+        const desc = String((lastInvoice as any).description || '');
+        const deskFromDescMatch = desc.match(/desk\s*fee[^0-9]*\$?\s*(\d+(?:\.\d+)?)/i);
+        const deskFromDesc = deskFromDescMatch ? Math.max(0, parseFloat(deskFromDescMatch[1])) : 0;
+        const deskFromDescRounded = Math.max(0, parseFloat(parseAmount(deskFromDesc).toFixed(2)));
+        const deskRounded = Math.max(0, parseFloat(parseAmount(deskFeeCfg).toFixed(2)));
+        const configuredDeskCandidate = (deskFromDescRounded > 0 ? deskFromDescRounded : deskRounded);
+
+        let toRemove = 0;
+        if (deltaPaidVsPersisted > 0) {
+          toRemove = deltaPaidVsPersisted;
+        } else if (deltaPaidVsInvoice > 0) {
+          toRemove = deltaPaidVsInvoice;
+        } else if (configuredDeskCandidate > 0) {
+          toRemove = configuredDeskCandidate;
+        }
+
+        const removalCapped = Math.max(0, Math.min(paidRounded, parseFloat(toRemove.toFixed(2))));
+        if (removalCapped > 0) {
+          lastPaid = Math.max(0, parseFloat((paidRounded - removalCapped).toFixed(2)));
+        }
       }
 
       currentBalance = Math.max(0, parseFloat((lastAmount + lastPreviousBalance - lastPaid - totalPrepaidAmount).toFixed(2)));
@@ -1637,37 +1673,16 @@ export const getStudentBalance = async (req: Request, res: Response) => {
     }
 
     const lastInvoiceAmount = parseAmount(lastInvoice?.amount);
+    const lastInvoiceBalance = parseAmount(lastInvoice?.balance);
     let previousBalance = parseAmount(lastInvoice?.previousBalance);
     let paidAmount = parseAmount(lastInvoice?.paidAmount);
-    const lastInvoiceBalance = parseAmount(lastInvoice?.balance);
-
-    try {
-      const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
-      const settings = settingsList.length > 0 ? settingsList[0] : null;
-      const deskFeeCfg = settings?.feesSettings ? parseAmount((settings.feesSettings as any).deskFee) : 0;
-      const normalizedStatus = String((student as any).studentStatus || '').trim().toLowerCase();
-      const isNewStudent = normalizedStatus === 'new';
-
-      if (!isNewStudent && deskFeeCfg > 0) {
-        const prev = parseFloat(previousBalance.toFixed(2));
-        const desk = parseFloat(deskFeeCfg.toFixed(2));
-        if (prev === desk) {
-          previousBalance = 0;
-        }
-      }
-
-      const paymentLogs = await paymentLogRepository
-        .createQueryBuilder('log')
-        .where('log.invoiceId = :invoiceId', { invoiceId: lastInvoice?.id })
-        .orderBy('log.createdAt', 'DESC')
-        .getMany();
-      const adjustmentDelta = paymentLogs
-        .filter(l => String((l as any).paymentMethod || '').trim().toUpperCase() === 'ADJUSTMENT')
-        .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
-      if (adjustmentDelta !== 0) {
-        paidAmount = Math.max(0, parseFloat((paidAmount + adjustmentDelta).toFixed(2)));
-      }
-    } catch {
+    if (lastInvoice) {
+      // Ensure response fields reflect the same corrected values used to compute currentBalance.
+      previousBalance = Math.max(0, parseFloat(parseAmount((lastInvoice as any).previousBalance ?? 0).toFixed(2)));
+      paidAmount = Math.max(
+        0,
+        parseFloat((Number(lastInvoiceAmount) + Number(previousBalance) - Number(currentBalance) - Number(totalPrepaidAmount)).toFixed(2))
+      );
     }
 
     console.log(`[getStudentBalance] Final balance for student ${student.studentNumber}: ${currentBalance}`);
