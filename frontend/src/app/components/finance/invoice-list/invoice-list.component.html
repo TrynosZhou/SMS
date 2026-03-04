@@ -44,6 +44,9 @@
       <button class="btn btn-warning" (click)="runTuitionExemptionCorrection()" *ngIf="canManageFinance()" [disabled]="correctingExemptTuition" title="Void unpaid tuition invoices for exempt students" style="margin-left: 8px;">
         <span>🛡️</span> Tuition Exemption Correction
       </button>
+      <button class="btn btn-warning" type="button" (click)="openCorrectPrepaidLookupModal()" *ngIf="canCorrectTransaction()" title="Correct prepaid transaction by student" style="margin-left: 8px;">
+        <span>🧾</span> Correct Prepaid
+      </button>
     </div>
   </div>
   
@@ -309,7 +312,11 @@
                   </button>
                   <button class="btn btn-warning"
                           type="button"
-                          *ngIf="false">
+                          (click)="openCorrectTransaction(invoice, $event)"
+                          *ngIf="canCorrectTransaction() && invoice.prepaidAmount && invoice.prepaidAmount > 0"
+                          title="Correct transaction (reverse prepaid credit)"
+                          style="font-size: 12px; padding: 5px 10px; white-space: nowrap;">
+                    🧾 Correct
                   </button>
                 </div>
               </td>
@@ -369,6 +376,232 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Correct Transaction Modal (Prepayment Reversal) -->
+    <div class="modal-overlay" *ngIf="showCorrectTransactionModal" (click)="closeCorrectTransactionModal()">
+      <div class="payment-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-header-content">
+            <h2>
+              <span class="modal-icon">🧾</span>
+              Correct Transaction
+            </h2>
+            <p class="modal-subtitle">Reverse prepaid credit for this invoice (admin only)</p>
+          </div>
+          <button class="modal-close-btn" (click)="closeCorrectTransactionModal()" title="Close">
+            <span>&times;</span>
+          </button>
+        </div>
+
+        <div *ngIf="correctingInvoice" class="invoice-summary-card">
+          <div class="summary-header">
+            <span class="summary-icon">📋</span>
+            <h3>Invoice</h3>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-label">Invoice Number</span>
+              <span class="summary-value">{{ correctingInvoice.invoiceNumber }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Student</span>
+              <span class="summary-value">{{ correctingInvoice.student?.firstName }} {{ correctingInvoice.student?.lastName }}</span>
+            </div>
+            <div class="summary-item" style="background: #d1ecf1; border-left: 3px solid #17a2b8;">
+              <span class="summary-label">Available Credit</span>
+              <span class="summary-value" style="color: #0c5460; font-weight: bold;">
+                {{ currencySymbol }} {{ correctingInvoice.prepaidAmount | number:'1.2-2' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <form (ngSubmit)="submitCorrectTransaction()" class="payment-form">
+          <div class="form-section">
+            <h3 class="section-title">
+              <span class="section-icon">↩️</span>
+              Prepayment Reversal
+            </h3>
+
+            <div class="form-group">
+              <label for="correctAmount">
+                Amount to Reverse <span class="required">*</span>
+              </label>
+              <div class="amount-input-wrapper">
+                <input
+                  type="number"
+                  id="correctAmount"
+                  [(ngModel)]="correctTransactionForm.amount"
+                  name="correctAmount"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  class="form-control amount-input"
+                  placeholder="0.00" />
+              </div>
+              <div class="field-hint">
+                <span class="hint-icon">💡</span>
+                Recommended: reverse only the incorrect credit.
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="correctNotes">Reason / Notes</label>
+              <textarea
+                id="correctNotes"
+                [(ngModel)]="correctTransactionForm.notes"
+                name="correctNotes"
+                class="form-control"
+                rows="3"
+                placeholder="Optional reason for audit trail"></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" (click)="closeCorrectTransactionModal()" [disabled]="correctingTransaction">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-warning" [disabled]="correctingTransaction">
+              {{ correctingTransaction ? 'Correcting...' : 'Reverse Prepayment' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Correct Prepaid (Lookup by Student) Modal -->
+    <div class="modal-overlay" *ngIf="showCorrectPrepaidLookupModal" (click)="closeCorrectPrepaidLookupModal()">
+      <div class="payment-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-header-content">
+            <h2>
+              <span class="modal-icon">🧾</span>
+              Correct Prepaid Transaction
+            </h2>
+            <p class="modal-subtitle">Search student by Student ID / First Name / Last Name</p>
+          </div>
+          <button class="modal-close-btn" (click)="closeCorrectPrepaidLookupModal()" title="Close">
+            <span>&times;</span>
+          </button>
+        </div>
+
+        <form (ngSubmit)="lookupCorrectPrepaidStudent()" class="payment-form">
+          <div class="form-section">
+            <h3 class="section-title">
+              <span class="section-icon">🔎</span>
+              Student Lookup
+            </h3>
+
+            <div class="form-group">
+              <label for="correctPrepaidLookup">Student ID / Name <span class="required">*</span></label>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input
+                  id="correctPrepaidLookup"
+                  type="text"
+                  [(ngModel)]="correctPrepaidLookupQuery"
+                  name="correctPrepaidLookup"
+                  class="form-control"
+                  placeholder="e.g. STU-00123 or John or Moyo"
+                  required />
+                <button type="submit" class="btn btn-primary" [disabled]="correctPrepaidLookupLoading">
+                  {{ correctPrepaidLookupLoading ? 'Searching...' : 'Search' }}
+                </button>
+              </div>
+            </div>
+
+            <div *ngIf="correctPrepaidLookupError" class="alert alert-danger" style="margin-top: 10px;">
+              {{ correctPrepaidLookupError }}
+            </div>
+
+            <div *ngIf="correctPrepaidCandidates.length > 0" class="candidate-list" style="margin-top: 10px;">
+              <div class="alert alert-info">Multiple students found. Select the correct student to proceed.</div>
+              <ul class="candidate-items" style="list-style: none; padding: 0; margin: 0;">
+                <li *ngFor="let c of correctPrepaidCandidates" style="margin: 4px 0;">
+                  <button type="button" class="btn btn-secondary" (click)="chooseCorrectPrepaidCandidate(c.studentId)">
+                    {{ c.fullName }} <span *ngIf="c.studentNumber">({{ c.studentNumber }})</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div *ngIf="correctPrepaidStudentInfo" style="margin-top: 12px;">
+              <div class="alert alert-success" style="display:flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                <div>
+                  <strong>Student:</strong>
+                  {{ correctPrepaidStudentInfo.firstName }} {{ correctPrepaidStudentInfo.lastName }}
+                </div>
+                <div *ngIf="correctPrepaidStudentInfo.studentNumber">
+                  <strong>ID:</strong> {{ correctPrepaidStudentInfo.studentNumber }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+
+        <div *ngIf="correctPrepaidInvoice" class="invoice-summary-card">
+          <div class="summary-header">
+            <span class="summary-icon">💳</span>
+            <h3>Prepaid Credit</h3>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-label">Invoice</span>
+              <span class="summary-value">{{ correctPrepaidInvoice.invoiceNumber }}</span>
+            </div>
+            <div class="summary-item" style="background: #d1ecf1; border-left: 3px solid #17a2b8;">
+              <span class="summary-label">Available Credit</span>
+              <span class="summary-value" style="color: #0c5460; font-weight: bold;">
+                {{ currencySymbol }} {{ correctPrepaidInvoice.prepaidAmount | number:'1.2-2' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <form *ngIf="correctPrepaidInvoice" (ngSubmit)="submitCorrectPrepaidLookup()" class="payment-form">
+          <div class="form-section">
+            <h3 class="section-title">
+              <span class="section-icon">↩️</span>
+              Correction Details
+            </h3>
+            <div class="form-group">
+              <label for="correctPrepaidAmount">Amount to Correct as Prepaid <span class="required">*</span></label>
+              <div class="amount-input-wrapper">
+                <input
+                  type="number"
+                  id="correctPrepaidAmount"
+                  [(ngModel)]="correctPrepaidForm.amount"
+                  name="correctPrepaidAmount"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  class="form-control amount-input"
+                  placeholder="0.00" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="correctPrepaidNotes">Reason / Notes</label>
+              <textarea
+                id="correctPrepaidNotes"
+                [(ngModel)]="correctPrepaidForm.notes"
+                name="correctPrepaidNotes"
+                class="form-control"
+                rows="3"
+                placeholder="Optional reason for audit trail"></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" (click)="closeCorrectPrepaidLookupModal()" [disabled]="correctPrepaidSubmitting">
+              Close
+            </button>
+            <button type="submit" class="btn btn-warning" [disabled]="correctPrepaidSubmitting">
+              {{ correctPrepaidSubmitting ? 'Correcting...' : 'Correct Prepaid' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 

@@ -18,7 +18,8 @@ import {
   applyInvoiceNote,
   getPaymentLogs,
   deletePaymentLog,
-  repairReturningDeskFeeInvoices
+  repairReturningDeskFeeInvoices,
+  reverseInvoicePrepayment
 } from '../controllers/finance.controller';
 
 const router = Router();
@@ -46,6 +47,7 @@ router.post('/repair/returning-desk-fee', authenticate, authorize(UserRole.ADMIN
 router.get('/:id/pdf', authenticate, generateInvoicePDF);
 router.get('/:id/receipt', authenticate, generateReceiptPDF);
 router.put('/:id/payment', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), updateInvoicePayment);
+router.post('/:id/prepayment/reverse', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), reverseInvoicePrepayment);
 router.post('/calculate-balance', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), calculateNextTermBalance);
 router.put(
   '/:id/logistics',

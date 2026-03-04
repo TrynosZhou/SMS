@@ -71,6 +71,27 @@ export class InvoiceListComponent implements OnInit {
   noteLastName = '';
   noteSearchQuery = '';
   noteCandidates: any[] = [];
+
+  showCorrectTransactionModal = false;
+  correctingInvoice: any = null;
+  correctingTransaction = false;
+  correctTransactionForm: any = {
+    amount: 0,
+    notes: ''
+  };
+
+  showCorrectPrepaidLookupModal = false;
+  correctPrepaidLookupQuery = '';
+  correctPrepaidLookupLoading = false;
+  correctPrepaidLookupError = '';
+  correctPrepaidCandidates: any[] = [];
+  correctPrepaidStudentInfo: any = null;
+  correctPrepaidInvoice: any = null;
+  correctPrepaidSubmitting = false;
+  correctPrepaidForm: any = {
+    amount: 0,
+    notes: ''
+  };
   
   // Cached computed values to prevent NG0900 errors
   private _cachedStats = {
@@ -498,6 +519,250 @@ export class InvoiceListComponent implements OnInit {
     this.showPaymentForm = true;
     this.error = '';
     this.success = '';
+  }
+
+  canCorrectTransaction(): boolean {
+    return this.authService.hasRole('admin') || this.authService.hasRole('superadmin');
+  }
+
+  openCorrectPrepaidLookupModal() {
+    if (!this.canCorrectTransaction()) {
+      this.error = 'You do not have permission to correct transactions';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+    this.showCorrectPrepaidLookupModal = true;
+    this.correctPrepaidLookupQuery = '';
+    this.correctPrepaidLookupLoading = false;
+    this.correctPrepaidLookupError = '';
+    this.correctPrepaidCandidates = [];
+    this.correctPrepaidStudentInfo = null;
+    this.correctPrepaidInvoice = null;
+    this.correctPrepaidSubmitting = false;
+    this.correctPrepaidForm = { amount: 0, notes: '' };
+  }
+
+  closeCorrectPrepaidLookupModal() {
+    this.showCorrectPrepaidLookupModal = false;
+    this.correctPrepaidLookupQuery = '';
+    this.correctPrepaidLookupLoading = false;
+    this.correctPrepaidLookupError = '';
+    this.correctPrepaidCandidates = [];
+    this.correctPrepaidStudentInfo = null;
+    this.correctPrepaidInvoice = null;
+    this.correctPrepaidSubmitting = false;
+    this.correctPrepaidForm = { amount: 0, notes: '' };
+  }
+
+  lookupCorrectPrepaidStudent() {
+    this.correctPrepaidLookupError = '';
+    this.correctPrepaidCandidates = [];
+    this.correctPrepaidStudentInfo = null;
+    this.correctPrepaidInvoice = null;
+
+    const q = String(this.correctPrepaidLookupQuery || '').trim();
+    if (!q) {
+      this.correctPrepaidLookupError = 'Enter a Student ID or Name.';
+      return;
+    }
+
+    this.correctPrepaidLookupLoading = true;
+    this.financeService.getStudentBalance(q).subscribe({
+      next: (resp: any) => {
+        this.correctPrepaidLookupLoading = false;
+        if (resp && resp.multipleMatches && Array.isArray(resp.matches)) {
+          this.correctPrepaidCandidates = resp.matches;
+          return;
+        }
+        if (!resp || !resp.studentId) {
+          this.correctPrepaidLookupError = 'Student not found. Please check the Student ID/Number/Name.';
+          return;
+        }
+        this.correctPrepaidStudentInfo = resp;
+        this.loadCorrectPrepaidInvoiceForStudent(resp.studentId);
+      },
+      error: (err: any) => {
+        this.correctPrepaidLookupLoading = false;
+        this.correctPrepaidLookupError = err?.error?.message || 'Failed to lookup student.';
+      }
+    });
+  }
+
+  chooseCorrectPrepaidCandidate(studentId: string) {
+    if (!studentId) {
+      return;
+    }
+    this.correctPrepaidCandidates = [];
+    this.correctPrepaidLookupLoading = true;
+    this.financeService.getStudentBalance(studentId).subscribe({
+      next: (resp: any) => {
+        this.correctPrepaidLookupLoading = false;
+        if (!resp || !resp.studentId) {
+          this.correctPrepaidLookupError = 'Student not found for selected record.';
+          return;
+        }
+        this.correctPrepaidStudentInfo = resp;
+        this.loadCorrectPrepaidInvoiceForStudent(resp.studentId);
+      },
+      error: (err: any) => {
+        this.correctPrepaidLookupLoading = false;
+        this.correctPrepaidLookupError = err?.error?.message || 'Failed to load selected student.';
+      }
+    });
+  }
+
+  private loadCorrectPrepaidInvoiceForStudent(studentId: string) {
+    this.correctPrepaidLookupError = '';
+    this.correctPrepaidInvoice = null;
+    this.financeService.getInvoices(studentId, undefined).subscribe({
+      next: (list: any[]) => {
+        const invoices = Array.isArray(list) ? list : [];
+        if (invoices.length === 0) {
+          this.correctPrepaidLookupError = 'No invoices found for this student.';
+          return;
+        }
+        const invoicesWithCredit = invoices
+          .filter(inv => parseFloat(String(inv.prepaidAmount || 0)) > 0)
+          .sort((a: any, b: any) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+          });
+        if (invoicesWithCredit.length === 0) {
+          this.correctPrepaidLookupError = 'No prepaid credit found for this student.';
+          return;
+        }
+        this.correctPrepaidInvoice = invoicesWithCredit[0];
+        const prepaid = parseFloat(String(this.correctPrepaidInvoice.prepaidAmount || 0));
+        this.correctPrepaidForm.amount = isFinite(prepaid) && prepaid > 0 ? prepaid : 0;
+      },
+      error: (err: any) => {
+        this.correctPrepaidLookupError = err?.error?.message || 'Failed to fetch invoices for student.';
+      }
+    });
+  }
+
+  submitCorrectPrepaidLookup() {
+    if (!this.correctPrepaidInvoice?.id) {
+      this.correctPrepaidLookupError = 'No invoice selected for correction.';
+      return;
+    }
+    const amount = parseFloat(String(this.correctPrepaidForm.amount || 0));
+    if (!isFinite(amount) || amount <= 0) {
+      this.correctPrepaidLookupError = 'Reversal amount must be greater than 0.';
+      return;
+    }
+    const prepaid = parseFloat(String(this.correctPrepaidInvoice.prepaidAmount || 0));
+    if (isFinite(prepaid) && amount > prepaid) {
+      if (!confirm(`Amount exceeds available credit (${this.currencySymbol} ${prepaid.toFixed(2)}). Continue?`)) {
+        return;
+      }
+    }
+
+    this.correctPrepaidSubmitting = true;
+    this.correctPrepaidLookupError = '';
+    const memo = String(this.correctPrepaidForm.notes || '').trim();
+    this.financeService.reverseInvoicePrepayment(this.correctPrepaidInvoice.id, { amount, notes: memo || undefined }).subscribe({
+      next: (resp: any) => {
+        this.correctPrepaidSubmitting = false;
+        const reversedAmount = parseFloat(String(resp?.reversedAmount ?? amount));
+        this.success = `Corrected prepaid successfully. Reversed: ${this.currencySymbol} ${reversedAmount.toFixed(2)}`;
+        this.closeCorrectPrepaidLookupModal();
+        this.loadInvoices();
+        setTimeout(() => (this.success = ''), 6000);
+      },
+      error: (err: any) => {
+        this.correctPrepaidSubmitting = false;
+        this.correctPrepaidLookupError = err?.error?.message || 'Failed to correct prepaid transaction.';
+      }
+    });
+  }
+
+  openCorrectTransaction(invoice: any, event?: Event) {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+    if (!this.canCorrectTransaction()) {
+      this.error = 'You do not have permission to correct transactions';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+    if (!invoice) {
+      return;
+    }
+    const prepaid = parseFloat(String(invoice.prepaidAmount || 0));
+    if (!isFinite(prepaid) || prepaid <= 0) {
+      this.error = 'No prepaid credit available to correct for this invoice';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+    this.correctingInvoice = invoice;
+    this.correctTransactionForm = {
+      amount: prepaid,
+      notes: ''
+    };
+    this.showCorrectTransactionModal = true;
+    this.error = '';
+    this.success = '';
+  }
+
+  closeCorrectTransactionModal() {
+    this.showCorrectTransactionModal = false;
+    this.correctingInvoice = null;
+    this.correctingTransaction = false;
+    this.correctTransactionForm = {
+      amount: 0,
+      notes: ''
+    };
+  }
+
+  submitCorrectTransaction() {
+    if (!this.correctingInvoice?.id) {
+      this.error = 'Invoice not selected';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+    const amount = parseFloat(String(this.correctTransactionForm.amount || 0));
+    if (!isFinite(amount) || amount <= 0) {
+      this.error = 'Reversal amount must be greater than 0';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+
+    const prepaid = parseFloat(String(this.correctingInvoice.prepaidAmount || 0));
+    if (isFinite(prepaid) && amount > prepaid) {
+      if (!confirm(`Amount exceeds available credit (${this.currencySymbol} ${prepaid.toFixed(2)}). Continue?`)) {
+        return;
+      }
+    }
+
+    const memo = String(this.correctTransactionForm.notes || '').trim();
+    this.correctingTransaction = true;
+    this.error = '';
+    this.success = '';
+
+    this.financeService.reverseInvoicePrepayment(this.correctingInvoice.id, { amount, notes: memo || undefined }).subscribe({
+      next: (resp: any) => {
+        this.correctingTransaction = false;
+        const reversedAmount = parseFloat(String(resp?.reversedAmount ?? amount));
+        this.success = `Corrected prepayment successfully. Reversed: ${this.currencySymbol} ${reversedAmount.toFixed(2)}`;
+        this.closeCorrectTransactionModal();
+        this.loadInvoices();
+        setTimeout(() => (this.success = ''), 6000);
+      },
+      error: (err: any) => {
+        this.correctingTransaction = false;
+        if (err.status === 401) {
+          this.error = 'Authentication required. Please log in again.';
+        } else if (err.status === 403) {
+          this.error = 'Insufficient permissions.';
+        } else {
+          this.error = err.error?.message || 'Failed to correct transaction';
+        }
+        setTimeout(() => (this.error = ''), 6000);
+      }
+    });
   }
 
   openLogisticsForm(invoice: any) {

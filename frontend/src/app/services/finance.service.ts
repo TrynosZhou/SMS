@@ -184,6 +184,10 @@ export class FinanceService {
     return this.http.delete(`${this.apiUrl}/finance/audit/payment-logs/${id}`);
   }
 
+  reverseInvoicePrepayment(invoiceId: string, payload: { amount: number; notes?: string }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/finance/${invoiceId}/prepayment/reverse`, payload);
+  }
+
   exportPaymentLogsCSV(options: { studentId?: string; invoiceId?: string; search?: string; startDate?: string; endDate?: string; paymentMethod?: string } = {}): Observable<Blob> {
     const params: any = {};
     if (options.studentId) params.studentId = options.studentId;
