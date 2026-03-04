@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AppDataSource } from '../config/database';
 import { Invoice, InvoiceStatus } from '../entities/Invoice';
 import { Student } from '../entities/Student';
@@ -64,8 +64,9 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
   try {
     const { studentId, amount, dueDate, term, description, uniformItems, tuitionAmount, diningHallAmount, otherAmount } = req.body;
     const invoiceRepository = AppDataSource.getRepository(Invoice);
-    const studentRepository = AppDataSource.getRepository(Student);
     const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const studentRepository = AppDataSource.getRepository(Student);
     const uniformItemRepository = AppDataSource.getRepository(UniformItem);
     const invoiceUniformItemRepository = AppDataSource.getRepository(InvoiceUniformItem);
 
@@ -120,7 +121,6 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     let registrationIncrement = 0;
     let deskIncrement = 0;
 
-    const settingsRepository = AppDataSource.getRepository(Settings);
     const settingsList = await settingsRepository.find({
       order: { createdAt: 'DESC' },
       take: 1
@@ -1425,14 +1425,11 @@ export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response)
     res.send(pdfBuffer);
   } catch (error: any) {
     console.error('Error generating outstanding balances PDF:', error);
-    res.status(500).json({
-      message: 'Server error',
-      error: error.message || 'Unknown error'
-    });
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };
 
-export const getStudentBalance = async (req: AuthRequest, res: Response) => {
+export const getStudentBalance = async (req: Request, res: Response) => {
   try {
     const { studentId } = req.query;
     
@@ -1455,6 +1452,7 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
     const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
+    const settingsRepository = AppDataSource.getRepository(Settings);
 
     // Try to find student by ID (UUID), by studentNumber, or by lastName/firstName
     // Check if it's a valid UUID format
@@ -1540,8 +1538,6 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
     console.log(`[getStudentBalance] Student found: ${student.studentNumber} (ID: ${student.id}, userId: ${student.userId || 'null'})`);
 
     // Query invoices using multiple criteria to handle reference mismatches
-    // First, try direct match by studentId (most common case)
-    // Then, also check for invoices that might be linked via studentNumber through the join
     const invoiceQueryBuilder = invoiceRepository
       .createQueryBuilder('invoice')
       .leftJoinAndSelect('invoice.student', 'student')
@@ -1549,15 +1545,10 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
       .orWhere('student.studentNumber = :studentNumber', { studentNumber: student.studentNumber })
       .orderBy('invoice.createdAt', 'DESC');
 
-    // Get the latest invoice - it should contain the cumulative balance
-    // In this system, each new invoice carries forward the previous balance,
-    // so the latest invoice's balance represents the total outstanding amount
     const lastInvoice = await invoiceQueryBuilder
       .limit(1)
       .getOne();
 
-    // Get all invoices to check for any discrepancies
-    // Filter to ensure we only get invoices for this specific student
     const allInvoicesRaw = await invoiceQueryBuilder.getMany();
     const allInvoices = allInvoicesRaw.filter(inv => 
       inv.studentId === student.id || 
@@ -1570,26 +1561,46 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
     console.log(`[getStudentBalance] Found ${allInvoices.length} invoice(s) for student ${student.studentNumber} (${student.id})`);
     
     if (!lastInvoice) {
-      // No invoices, balance is 0
       currentBalance = 0;
       console.log(`[getStudentBalance] No invoices found, balance = 0`);
     } else {
-      // Use persisted invoice fields.
-      // Recomputing from PaymentLog here is error-prone because logs are linked to specific invoiceIds,
-      // while this system carries balances forward on new invoices. If we only look at the latest invoice's
-      // logs, we can incorrectly ignore real payments and inflate the balance.
+      const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
+      const settings = settingsList.length > 0 ? settingsList[0] : null;
+      const deskFeeCfg = settings?.feesSettings ? parseAmount((settings.feesSettings as any).deskFee) : 0;
+
+      const normalizedStatus = String((student as any).studentStatus || '').trim().toLowerCase();
+      const isNewStudent = normalizedStatus === 'new';
+
+      const paymentLogs = await paymentLogRepository
+        .createQueryBuilder('log')
+        .where('log.invoiceId = :invoiceId', { invoiceId: lastInvoice.id })
+        .orderBy('log.createdAt', 'DESC')
+        .getMany();
+      const adjustmentDelta = paymentLogs
+        .filter(l => String((l as any).paymentMethod || '').trim().toUpperCase() === 'ADJUSTMENT')
+        .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
+
       const lastAmount = Math.max(0, parseFloat(parseAmount(lastInvoice.amount).toFixed(2)));
-      const lastPreviousBalance = Math.max(0, parseFloat(parseAmount(lastInvoice.previousBalance).toFixed(2)));
-      const lastPaid = Math.max(0, parseFloat(parseAmount(lastInvoice.paidAmount).toFixed(2)));
+      let lastPreviousBalance = Math.max(0, parseFloat(parseAmount(lastInvoice.previousBalance).toFixed(2)));
+      let lastPaid = Math.max(0, parseFloat(parseAmount(lastInvoice.paidAmount).toFixed(2)));
       totalPrepaidAmount = Math.max(0, parseFloat(parseAmount(lastInvoice.prepaidAmount).toFixed(2)));
-      // Authoritative balance for UI: derive from invoice fields to avoid stale invoice.balance in production.
+
+      if (!isNewStudent && deskFeeCfg > 0) {
+        const prev = parseFloat(lastPreviousBalance.toFixed(2));
+        const desk = parseFloat(deskFeeCfg.toFixed(2));
+        if (prev === desk) {
+          lastPreviousBalance = 0;
+        }
+      }
+
+      if (adjustmentDelta !== 0) {
+        lastPaid = Math.max(0, parseFloat((lastPaid + adjustmentDelta).toFixed(2)));
+      }
+
       currentBalance = Math.max(0, parseFloat((lastAmount + lastPreviousBalance - lastPaid - totalPrepaidAmount).toFixed(2)));
-      // Keep the response fields consistent with the computed balance.
       (lastInvoice as any).balance = currentBalance;
       
       console.log(`[getStudentBalance] Latest invoice ${lastInvoice.invoiceNumber}: balance=${currentBalance}, previousBalance=${parseAmount(lastInvoice.previousBalance)}, amount=${parseAmount(lastInvoice.amount)}`);
-      
-      // Log all invoices for debugging
       for (const invoice of allInvoices) {
         const invBalance = parseAmount(invoice.balance);
         const invPrevBalance = parseAmount(invoice.previousBalance);
@@ -1598,9 +1609,38 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
     }
 
     const lastInvoiceAmount = parseAmount(lastInvoice?.amount);
-    const previousBalance = parseAmount(lastInvoice?.previousBalance);
-    const paidAmount = parseAmount(lastInvoice?.paidAmount);
+    let previousBalance = parseAmount(lastInvoice?.previousBalance);
+    let paidAmount = parseAmount(lastInvoice?.paidAmount);
     const lastInvoiceBalance = parseAmount(lastInvoice?.balance);
+
+    try {
+      const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
+      const settings = settingsList.length > 0 ? settingsList[0] : null;
+      const deskFeeCfg = settings?.feesSettings ? parseAmount((settings.feesSettings as any).deskFee) : 0;
+      const normalizedStatus = String((student as any).studentStatus || '').trim().toLowerCase();
+      const isNewStudent = normalizedStatus === 'new';
+
+      if (!isNewStudent && deskFeeCfg > 0) {
+        const prev = parseFloat(previousBalance.toFixed(2));
+        const desk = parseFloat(deskFeeCfg.toFixed(2));
+        if (prev === desk) {
+          previousBalance = 0;
+        }
+      }
+
+      const paymentLogs = await paymentLogRepository
+        .createQueryBuilder('log')
+        .where('log.invoiceId = :invoiceId', { invoiceId: lastInvoice?.id })
+        .orderBy('log.createdAt', 'DESC')
+        .getMany();
+      const adjustmentDelta = paymentLogs
+        .filter(l => String((l as any).paymentMethod || '').trim().toUpperCase() === 'ADJUSTMENT')
+        .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
+      if (adjustmentDelta !== 0) {
+        paidAmount = Math.max(0, parseFloat((paidAmount + adjustmentDelta).toFixed(2)));
+      }
+    } catch {
+    }
 
     console.log(`[getStudentBalance] Final balance for student ${student.studentNumber}: ${currentBalance}`);
 
@@ -1610,10 +1650,13 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
       firstName: student.firstName,
       lastName: student.lastName,
       fullName: `${student.lastName} ${student.firstName}`,
+      studentStatus: (student as any).studentStatus || null,
+      studentType: (student as any).studentType || null,
+      usesTransport: !!(student as any).usesTransport,
       isStaffChild: !!student.isStaffChild,
       isExempted: !!student.isExempted,
       usesDiningHall: !!student.usesDiningHall,
-      balance: currentBalance, // Use latest invoice's balance (should be cumulative)
+      balance: currentBalance,
       prepaidAmount: totalPrepaidAmount,
       lastInvoiceId: lastInvoice?.id || null,
       lastInvoiceNumber: lastInvoice?.invoiceNumber || null,

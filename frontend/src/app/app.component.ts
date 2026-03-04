@@ -102,20 +102,11 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   getTopNavbarTitle(): string {
-    const isDashboard = this.currentUrl.startsWith('/dashboard');
-    if (!isDashboard) {
-      return this.schoolName;
-    }
-    return this.dashboardTitleOptions[this.dashboardTitleIndex] || this.schoolName;
+    return this.schoolName;
   }
 
   private syncDashboardTitleRotation(): void {
-    const isDashboard = this.currentUrl.startsWith('/dashboard');
-    if (!this.isAuthenticated() || !isDashboard) {
-      this.stopDashboardTitleRotation();
-      return;
-    }
-    this.startDashboardTitleRotation();
+    this.stopDashboardTitleRotation();
   }
 
   private startDashboardTitleRotation(): void {

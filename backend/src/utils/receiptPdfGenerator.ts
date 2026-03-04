@@ -306,8 +306,9 @@ export function createReceiptPDF(
         }
       }
       let registrationDeskTotal = 0;
-      const normalizedStatus = String((student as any).studentStatus || '').toLowerCase();
-      if (!student.isStaffChild && !student.isExempted) {
+      const normalizedStatus = String((student as any).studentStatus || '').trim().toLowerCase();
+      const isNewStudent = normalizedStatus === 'new';
+      if (!student.isStaffChild && !student.isExempted && isNewStudent) {
         const regVal = registrationFromDesc > 0 ? registrationFromDesc : 0;
         const deskVal = deskFromDesc > 0 ? deskFromDesc : 0;
         if (regVal > 0 || deskVal > 0) {
@@ -325,9 +326,19 @@ export function createReceiptPDF(
       yPos += 15;
 
       // Ensure all numeric values are properly converted to numbers
-      const previousBalance = parseFloat(String(invoice.previousBalance || 0));
+      let previousBalance = parseFloat(String(invoice.previousBalance || 0));
       const paidAmount = parseFloat(String(invoice.paidAmount || 0));
       const prepaidAmount = parseFloat(String(invoice.prepaidAmount || 0));
+
+      // Returning/Existing students must not carry Desk Fee into their totals.
+      // In production, this often appears as previousBalance being exactly equal to the configured deskFee.
+      if (!isNewStudent && deskFeeCfg > 0) {
+        const prev = parseFloat(previousBalance.toFixed(2));
+        const desk = parseFloat(deskFeeCfg.toFixed(2));
+        if (prev === desk) {
+          previousBalance = 0;
+        }
+      }
 
       // Calculate total invoice amount from the actual fee components shown above
       const baseInvoiceAmount = parseFloat((tuitionFee + transportFee + diningHallFee + registrationDeskTotal).toFixed(2));

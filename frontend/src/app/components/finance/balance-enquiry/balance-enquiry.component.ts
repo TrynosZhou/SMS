@@ -20,6 +20,7 @@ export class BalanceEnquiryComponent {
   schoolAddress = '';
   schoolMotto = '';
   schoolLogo2: string | null = null;
+  deskFee = 0;
   // Result
   studentData: any = null;
   matchingStudents: any[] = [];
@@ -41,6 +42,7 @@ export class BalanceEnquiryComponent {
         this.schoolAddress = s?.schoolAddress || '';
         this.schoolMotto = s?.schoolMotto || '';
         this.schoolLogo2 = s?.schoolLogo2 || null;
+        this.deskFee = isFinite(Number(s?.feesSettings?.deskFee)) ? Number(s.feesSettings.deskFee) : 0;
       },
       error: () => {
         this.currencySymbol = 'KES';
@@ -276,12 +278,31 @@ export class BalanceEnquiryComponent {
         currentY += rowHeight;
       };
 
+      // Totals must respect returning-student desk-fee rule: if student is Existing/Returning,
+      // desk fee should not be carried as previousBalance.
+      const normalizedStatus = String((student as any).studentStatus || '').trim().toLowerCase();
+      const isNewStudent = normalizedStatus === 'new';
+      const configuredDeskFee = tryNum(this.deskFee);
+
       const totalAmount = tryNum(invoice.amount);
       const paidAmount = tryNum((invoice as any).paidAmount);
-      const previousBalance = tryNum((invoice as any).previousBalance);
+      let previousBalance = tryNum((invoice as any).previousBalance);
       const prepaidAmount = tryNum((invoice as any).prepaidAmount);
+
+      if (!isNewStudent && configuredDeskFee > 0) {
+        const prev = Number(previousBalance.toFixed(2));
+        const desk = Number(configuredDeskFee.toFixed(2));
+        if (prev === desk) {
+          previousBalance = 0;
+        }
+      }
+
       const invBalance = Math.max(0, (totalAmount + previousBalance) - paidAmount - prepaidAmount);
-      drawTotalRow('Subtotal', totalAmount);
+
+      // Prefer subtotal computed from the items shown in the statement (tuition + DH + transport...)
+      const computedSubtotal = items.reduce((sum, row) => sum + tryNum(row.amount), 0);
+      const subtotalToShow = computedSubtotal > 0 ? computedSubtotal : totalAmount;
+      drawTotalRow('Subtotal', subtotalToShow);
       drawTotalRow('Paid', paidAmount);
       drawTotalRow('Invoice Balance', invBalance, true, invBalance > 1000 ? [220, 38, 38] : [29, 78, 216]);
     }

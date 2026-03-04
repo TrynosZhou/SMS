@@ -217,8 +217,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
           (this.moduleAccessService as any).moduleAccess = data.moduleAccess;
         }
         
-        // Initialize displayed text and start toggle timer
-        this.initializeTextToggle();
+        // Always display the school name (do not rotate/toggle text)
+        this.displayedText = this.schoolName;
+        if (this.textToggleInterval) {
+          clearInterval(this.textToggleInterval);
+          this.textToggleInterval = null;
+        }
       },
       error: (err: any) => {
         console.error('Error loading settings:', err);
@@ -459,31 +463,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   initializeTextToggle() {
-    // Clear any existing interval
+    // Always display the school name (do not rotate/toggle text)
     if (this.textToggleInterval) {
       clearInterval(this.textToggleInterval);
+      this.textToggleInterval = null;
     }
-
-    // Set initial displayed text
-    if (this.schoolName && this.schoolMotto) {
-      // If both exist, start with school name and toggle
-      this.displayedText = this.schoolName;
-      this.showMotto = false;
-      
-      // Toggle every 3 seconds (3000ms)
-      this.textToggleInterval = setInterval(() => {
-        this.showMotto = !this.showMotto;
-        this.displayedText = this.showMotto ? this.schoolMotto : this.schoolName;
-      }, 3000);
-    } else if (this.schoolName) {
-      // Only school name available
-      this.displayedText = this.schoolName;
-    } else if (this.schoolMotto) {
-      // Only motto available
-      this.displayedText = this.schoolMotto;
-    } else {
-      this.displayedText = '';
-    }
+    this.displayedText = this.schoolName;
   }
 
   loadStudentData() {
