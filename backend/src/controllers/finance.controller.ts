@@ -1828,12 +1828,18 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     const latestPaymentLog = positiveNonAdjustmentLogs.length > 0 ? positiveNonAdjustmentLogs[0] : null;
     const totalPaidToDate = positiveNonAdjustmentLogs.reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
 
-    // Business rule: desk fee must not be treated as paid for returning students, and no desk-fee reversal entries
-    // should be incorporated into what a receipt shows as "Total Paid".
-    // Use only real (non-adjustment) payments when available, otherwise fall back to persisted invoice.paidAmount.
+    // Align with invoice statement logic: include ADJUSTMENT logs when computing net paid,
+    // so receipts and invoice PDFs agree on total paid-to-date for the invoice.
+    const statementAdjustmentDelta = paymentLogs
+      .filter(l => String((l as any).paymentMethod || '').trim().toUpperCase() === 'ADJUSTMENT')
+      .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
+
+    // Business rule: net paid includes adjustments, then desk-fee specific rules may
+    // later remove the desk portion for returning students when presenting totals.
     const persistedPaidFallback = Math.max(0, parseFloat(parseAmount(invoice.paidAmount).toFixed(2)));
-    const netPaidToDate = (latestPaymentLog || totalPaidToDate > 0)
-      ? Math.max(0, parseFloat(totalPaidToDate.toFixed(2)))
+    const rawNetPaid = totalPaidToDate + statementAdjustmentDelta;
+    const netPaidToDate = (latestPaymentLog || rawNetPaid !== 0)
+      ? Math.max(0, parseFloat(rawNetPaid.toFixed(2)))
       : persistedPaidFallback;
 
     // If the student is Returning/Existing and the paid total exceeds the corrected invoice total
