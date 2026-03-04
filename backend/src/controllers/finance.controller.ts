@@ -89,6 +89,10 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     // Log student information for debugging
     console.log(`[createInvoice] Creating invoice for student: ${student.studentNumber} (ID: ${student.id}, userId: ${student.userId || 'null'})`);
 
@@ -1243,10 +1247,34 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
     const statementInvoiceAmount = parseAmount(invoice.amount);
     const statementPreviousBalance = parseAmount(invoice.previousBalance);
     const statementPrepaidAmount = parseAmount(invoice.prepaidAmount);
-    const computedBalance = Math.max(0, parseFloat((statementInvoiceAmount + statementPreviousBalance - netPaidToDate - statementPrepaidAmount).toFixed(2)));
+    const normalizedStatus = String((student as any).studentStatus || '').trim().toLowerCase();
+    const isNewStudent = normalizedStatus === 'new';
+    const deskFeeCfg = settings?.feesSettings ? parseAmount((settings.feesSettings as any).deskFee) : 0;
+    const deskRounded = Math.max(0, parseFloat(parseAmount(deskFeeCfg).toFixed(2)));
+
+    const desc = String((invoice as any).description || '');
+    const deskFromDescMatch = desc.match(/desk\s*fee[^0-9]*\$?\s*(\d+(?:\.\d+)?)/i);
+    const deskFromDesc = deskFromDescMatch ? Math.max(0, parseFloat(deskFromDescMatch[1])) : 0;
+    const deskFromDescRounded = Math.max(0, parseFloat(parseAmount(deskFromDesc).toFixed(2)));
+
+    console.log(
+      `[generateReceiptPDF] invoice=${invoice.invoiceNumber} descDeskMatch=${deskFromDescMatch ? deskFromDescMatch[1] : 'null'} ` +
+      `parsedDeskFromDesc=${deskFromDescRounded} desc=${JSON.stringify(desc)}`
+    );
+    const configuredDeskCandidate = (deskFromDescRounded > 0 ? deskFromDescRounded : deskRounded);
+
+    const paidRounded = Math.max(0, parseFloat(netPaidToDate.toFixed(2)));
+    const deskFeeToRemoveCapped = (!isNewStudent && configuredDeskCandidate > 0)
+      ? Math.max(0, Math.min(paidRounded, configuredDeskCandidate))
+      : 0;
+    const paidToDisplay = (deskFeeToRemoveCapped > 0)
+      ? Math.max(0, parseFloat((paidRounded - deskFeeToRemoveCapped).toFixed(2)))
+      : paidRounded;
+
+    const computedBalance = Math.max(0, parseFloat((statementInvoiceAmount + statementPreviousBalance - paidToDisplay - statementPrepaidAmount).toFixed(2)));
 
     const invoiceForStatement = Object.assign({}, invoice, {
-      paidAmount: netPaidToDate,
+      paidAmount: paidToDisplay,
       balance: computedBalance
     });
 
@@ -1706,6 +1734,10 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
+    const normalizedStatus = String((student as any).studentStatus || '').trim().toLowerCase();
+    const isNewStudent = normalizedStatus === 'new';
+    const deskFeeCfg = settings?.feesSettings ? parseAmount((settings.feesSettings as any).deskFee) : 0;
+
     // Prefer real payment logs over invoice.paidAmount to avoid showing desk-fee reversals/adjustments as "paid"
     const normalizePm = (pm: any): string | null => {
       const v = String(pm || '').trim();
@@ -1727,17 +1759,75 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     const latestPaymentLog = positiveNonAdjustmentLogs.length > 0 ? positiveNonAdjustmentLogs[0] : null;
     const totalPaidToDate = positiveNonAdjustmentLogs.reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
 
-    // Net paid should reflect corrections like desk-fee reversals created as ADJUSTMENT logs.
-    // This ensures receipts/statements do not treat reversed desk fee as still paid.
-    const adjustmentDelta = paymentLogs
-      .filter(l => String((l as any).paymentMethod || '').trim().toUpperCase() === 'ADJUSTMENT')
-      .reduce((sum, l) => sum + parseAmount((l as any).amountPaid), 0);
-    let netPaidToDate = Math.max(0, parseFloat((totalPaidToDate + adjustmentDelta).toFixed(2)));
-    // If payment logs are missing (e.g., historical data or logging failure), fall back to persisted invoice.paidAmount.
-    // This avoids generating receipts that incorrectly show 0 paid and a non-zero remaining balance for fully-paid invoices.
-    if (!latestPaymentLog && netPaidToDate <= 0) {
-      netPaidToDate = Math.max(0, parseFloat(parseAmount(invoice.paidAmount).toFixed(2)));
+    // Business rule: desk fee must not be treated as paid for returning students, and no desk-fee reversal entries
+    // should be incorporated into what a receipt shows as "Total Paid".
+    // Use only real (non-adjustment) payments when available, otherwise fall back to persisted invoice.paidAmount.
+    const persistedPaidFallback = Math.max(0, parseFloat(parseAmount(invoice.paidAmount).toFixed(2)));
+    const netPaidToDate = (latestPaymentLog || totalPaidToDate > 0)
+      ? Math.max(0, parseFloat(totalPaidToDate.toFixed(2)))
+      : persistedPaidFallback;
+
+    // If the student is Returning/Existing and the paid total exceeds the corrected invoice total
+    // by exactly the configured desk fee, the receipt must display paid amounts with desk fee removed.
+    const correctedInvoiceTotal = Math.max(0, parseFloat(parseAmount(invoice.amount).toFixed(2)));
+    const deskRounded = Math.max(0, parseFloat(parseAmount(deskFeeCfg).toFixed(2)));
+    const paidRounded = Math.max(0, parseFloat(netPaidToDate.toFixed(2)));
+    const overpay = Math.max(0, parseFloat((paidRounded - correctedInvoiceTotal).toFixed(2)));
+
+    const desc = String((invoice as any).description || '');
+    const deskFromDescMatch = desc.match(/desk\s*fee[^0-9]*\$?\s*(\d+(?:\.\d+)?)/i);
+    const deskFromDesc = deskFromDescMatch ? Math.max(0, parseFloat(deskFromDescMatch[1])) : 0;
+    const deskFromDescRounded = Math.max(0, parseFloat(parseAmount(deskFromDesc).toFixed(2)));
+
+    const configuredDeskCandidate = (deskFromDescRounded > 0 ? deskFromDescRounded : deskRounded);
+
+    let deskFeeToRemove = 0;
+    if (!isNewStudent) {
+      const deltaPaidVsPersisted = Math.max(0, parseFloat((paidRounded - persistedPaidFallback).toFixed(2)));
+      const invoiceBalRounded = Math.max(0, parseFloat(parseAmount((invoice as any).balance).toFixed(2)));
+      const invoicePrevRounded = Math.max(0, parseFloat(parseAmount((invoice as any).previousBalance).toFixed(2)));
+      const invoicePrepaidRounded = Math.max(0, parseFloat(parseAmount((invoice as any).prepaidAmount).toFixed(2)));
+      const expectedPaidFromInvoice = Math.max(
+        0,
+        parseFloat((correctedInvoiceTotal + invoicePrevRounded - invoiceBalRounded - invoicePrepaidRounded).toFixed(2))
+      );
+      const deltaPaidVsInvoice = Math.max(0, parseFloat((paidRounded - expectedPaidFromInvoice).toFixed(2)));
+
+      // When a returning student was incorrectly treated as having paid desk fee,
+      // receipts/statements must not include that portion in Total Paid or Amount Paid.
+      // If we detect an explicit overpay scenario, remove the overpay (typically desk fee).
+      // Otherwise (partial payments), remove the configured desk fee value (prefer description).
+      if (deltaPaidVsPersisted > 0) {
+        deskFeeToRemove = deltaPaidVsPersisted;
+      } else if (deltaPaidVsInvoice > 0) {
+        // Primary signal: payment logs indicate more paid than what the invoice balance math expects.
+        // This mismatch is the historical desk fee portion that must be removed from paid display.
+        deskFeeToRemove = deltaPaidVsInvoice;
+      } else if (overpay > 0) {
+        if (deskFromDescRounded > 0 && Math.abs(overpay - deskFromDescRounded) < 0.01) {
+          deskFeeToRemove = deskFromDescRounded;
+        } else if (deskRounded > 0 && Math.abs(overpay - deskRounded) < 0.01) {
+          deskFeeToRemove = deskRounded;
+        } else {
+          deskFeeToRemove = overpay;
+        }
+      } else if (configuredDeskCandidate > 0) {
+        deskFeeToRemove = configuredDeskCandidate;
+      }
     }
+
+    // Cap removal to what was actually paid-to-date.
+    const deskFeeToRemoveCapped = Math.max(0, Math.min(paidRounded, parseFloat(deskFeeToRemove.toFixed(2))));
+    const shouldRemoveDeskFromPaid = deskFeeToRemoveCapped > 0;
+    const paidToDisplay = shouldRemoveDeskFromPaid
+      ? Math.max(0, parseFloat((paidRounded - deskFeeToRemoveCapped).toFixed(2)))
+      : paidRounded;
+
+    console.log(
+      `[generateReceiptPDF] student=${student.studentNumber} status=${String((student as any).studentStatus || '')} ` +
+      `isNew=${isNewStudent} deskFee=${deskRounded} invoiceAmount=${correctedInvoiceTotal} ` +
+      `paidFromLogs=${paidRounded} overpay=${overpay} removeDesk=${shouldRemoveDeskFromPaid} paidToDisplay=${paidToDisplay}`
+    );
 
     // Hard guard: do not generate a "PAYMENT RECEIPT" when there is no evidence of an actual payment.
     // This prevents misleading receipts showing Amount Paid = 0.00 with an outstanding balance.
@@ -1760,7 +1850,17 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     const effectiveResolvedPaymentAmount = (resolvedPaymentAmount > 0)
       ? resolvedPaymentAmount
       : (latestPaymentLog ? parseAmount((latestPaymentLog as any).amountPaid) : netPaidToDate);
-    const safePaymentAmount = Math.min(effectiveResolvedPaymentAmount, netPaidToDate);
+    let safePaymentAmount = Math.min(effectiveResolvedPaymentAmount, paidRounded);
+    if (shouldRemoveDeskFromPaid) {
+      const amtRounded = Math.max(0, parseFloat(safePaymentAmount.toFixed(2)));
+      const removalForThisReceipt = Math.max(0, Math.min(amtRounded, deskFeeToRemoveCapped));
+      // Remove the desk-fee portion from the single payment shown on the receipt.
+      safePaymentAmount = Math.max(0, parseFloat((amtRounded - removalForThisReceipt).toFixed(2)));
+    }
+
+    console.log(
+      `[generateReceiptPDF] receipt=${receiptNumber} resolvedPaymentAmount=${resolvedPaymentAmount} safePaymentAmount=${safePaymentAmount}`
+    );
 
     const resolvedPaymentDate = paymentDate
       ? new Date(paymentDate as string)
@@ -1771,7 +1871,7 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
 
     // Override invoice.paidAmount in the receipt to reflect actual payments (exclude adjustments)
     const invoiceForReceipt = Object.assign({}, invoice, {
-      paidAmount: netPaidToDate
+      paidAmount: paidToDisplay
     });
 
     const pdfBuffer = await createReceiptPDF({
@@ -2054,7 +2154,7 @@ export const repairReturningDeskFeeInvoices = async (req: AuthRequest, res: Resp
       .getMany();
 
     let updatedInvoices = 0;
-    let createdAdjustmentLogs = 0;
+    let deletedAdjustmentLogs = 0;
     let skippedAlreadyRepaired = 0;
 
     const preview = candidates.map(inv => {
@@ -2104,13 +2204,12 @@ export const repairReturningDeskFeeInvoices = async (req: AuthRequest, res: Resp
         .andWhere('ROUND(CAST(log.amountPaid AS numeric), 2) = :amt', { amt: -Math.abs(deskFeeRounded) })
         .getOne();
 
-      const oldPaid = parseFloat(parseAmount(invoice.paidAmount).toFixed(2));
       const oldAmount = parseFloat(parseAmount(invoice.amount).toFixed(2));
       const oldPrepaid = parseFloat(parseAmount(invoice.prepaidAmount).toFixed(2));
 
       invoice.previousBalance = 0;
-      invoice.paidAmount = Math.max(0, parseFloat((oldPaid - deskFeeRounded).toFixed(2)));
-      invoice.balance = Math.max(0, parseFloat((oldAmount + 0 - invoice.paidAmount - oldPrepaid).toFixed(2)));
+      const paid = parseFloat(parseAmount(invoice.paidAmount).toFixed(2));
+      invoice.balance = Math.max(0, parseFloat((oldAmount + 0 - paid - oldPrepaid).toFixed(2)));
 
       if (invoice.balance <= 0) {
         invoice.status = InvoiceStatus.PAID;
@@ -2126,23 +2225,9 @@ export const repairReturningDeskFeeInvoices = async (req: AuthRequest, res: Resp
       await invoiceRepository.save(invoice);
       updatedInvoices++;
 
-      if (!existingAdj) {
-        const receiptNumber = `ADJ-${new Date().getFullYear()}-${String(Date.now()).slice(-8)}`;
-        const payer = req.user;
-        const payerName = payer ? `${payer.firstName || ''} ${payer.lastName || ''}`.trim() : null;
-        const log = paymentLogRepository.create({
-          invoiceId: invoice.id,
-          studentId: invoice.studentId,
-          amountPaid: -Math.abs(deskFeeRounded),
-          paymentDate: new Date(),
-          paymentMethod: 'ADJUSTMENT',
-          receiptNumber,
-          payerUserId: payer?.id || null,
-          payerName: payerName || null,
-          notes: `Desk Fee Reversal – Automated Repair (Returning/Existing). Removed Desk Fee: ${deskFeeRounded}`
-        });
-        await paymentLogRepository.save(log);
-        createdAdjustmentLogs++;
+      if (existingAdj) {
+        await paymentLogRepository.remove(existingAdj);
+        deletedAdjustmentLogs++;
       }
     }
 
@@ -2152,7 +2237,7 @@ export const repairReturningDeskFeeInvoices = async (req: AuthRequest, res: Resp
       limit: effectiveLimit,
       found: candidates.length,
       updatedInvoices,
-      createdAdjustmentLogs,
+      deletedAdjustmentLogs,
       skippedAlreadyRepaired
     });
   } catch (error: any) {

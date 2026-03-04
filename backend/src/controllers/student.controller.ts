@@ -430,7 +430,6 @@ export const correctStudentStatus = async (req: AuthRequest, res: Response) => {
     const studentRepository = AppDataSource.getRepository(Student);
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const settingsRepository = AppDataSource.getRepository(Settings);
-    const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
     const actionLogRepository = AppDataSource.getRepository(UserActionLog);
 
     const student = await studentRepository.findOne({ where: { id } });
@@ -580,26 +579,6 @@ export const correctStudentStatus = async (req: AuthRequest, res: Response) => {
         oldPaidAmount: paidAmountValue,
         newPaidAmount
       };
-
-      if (previousStatus === 'New' && newStatus === 'Existing' && deskFeeDelta > 0) {
-        const receiptNumber = `ADJ-${new Date().getFullYear()}-${String(Date.now()).slice(-8)}`;
-        const payer = req.user;
-        const payerName = payer ? `${payer.firstName || ''} ${payer.lastName || ''}`.trim() : null;
-
-        const log = paymentLogRepository.create({
-          invoiceId: initialInvoice.id,
-          studentId: student.id,
-          amountPaid: -Math.abs(deskFeeDelta),
-          paymentDate: new Date(),
-          paymentMethod: 'ADJUSTMENT',
-          receiptNumber,
-          payerUserId: payer?.id || null,
-          payerName: payerName || null,
-          notes: `Desk Fee Reversal – Status Correction (New → Returning). Previous Status: ${previousStatus}. New Status: ${newStatus}. Removed Desk Fee: ${deskFeeDelta}`
-        });
-
-        await paymentLogRepository.save(log);
-      }
     }
 
     try {
