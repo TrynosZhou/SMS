@@ -1344,22 +1344,47 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
     const deskFeeToRemoveCapped = (!isNewStudent && configuredDeskCandidate > 0)
       ? Math.max(0, Math.min(paidRounded, configuredDeskCandidate))
       : 0;
-    const paidToDisplay = (deskFeeToRemoveCapped > 0)
+    const paidToDisplayRaw = (deskFeeToRemoveCapped > 0)
       ? Math.max(0, parseFloat((paidRounded - deskFeeToRemoveCapped).toFixed(2)))
       : paidRounded;
-
-    const computedBalance = Math.max(0, parseFloat((statementInvoiceAmount + statementPreviousBalance - paidToDisplay - statementPrepaidAmount).toFixed(2)));
-
-    const invoiceForStatement = Object.assign({}, invoice, {
-      paidAmount: paidToDisplay,
-      balance: computedBalance
-    });
 
     const firstInvoiceForStudent = await invoiceRepository.findOne({
       where: { studentId: student.id },
       order: { createdAt: 'ASC' }
     });
     const isFirstInvoice = firstInvoiceForStudent?.id === invoice.id;
+
+    // When a student has been marked as Returning (Existing) via
+    // "Mark selected Returning", the initial invoice is recalculated
+    // in-place (one-sided journal) by correctStudentStatus().
+    // For that corrected initial invoice we must *trust* the stored
+    // invoice.paidAmount and invoice.balance and avoid injecting any
+    // extra desk-fee math from payment logs, otherwise the desk fee
+    // would sneak back into Total Paid or the outstanding balance.
+    const isReturningInitialInvoice = isFirstInvoice && !isNewStudent;
+
+    const persistedPaid = Math.max(0, parseFloat(parseAmount(invoice.paidAmount).toFixed(2)));
+    const persistedBalance = Math.max(0, parseFloat(parseAmount(invoice.balance).toFixed(2)));
+
+    const paidToDisplay = isReturningInitialInvoice ? persistedPaid : paidToDisplayRaw;
+    const computedBalance = isReturningInitialInvoice
+      ? persistedBalance
+      : Math.max(
+          0,
+          parseFloat(
+            (
+              statementInvoiceAmount +
+              statementPreviousBalance -
+              paidToDisplay -
+              statementPrepaidAmount
+            ).toFixed(2)
+          )
+        );
+
+    const invoiceForStatement = Object.assign({}, invoice, {
+      paidAmount: paidToDisplay,
+      balance: computedBalance
+    });
 
     const pdfBuffer = await createInvoicePDF({
       invoice: invoiceForStatement as any,
@@ -1667,29 +1692,50 @@ export const getStudentBalance = async (req: Request, res: Response) => {
       currentBalance = 0;
       console.log(`[getStudentBalance] No invoices found, balance = 0`);
     } else {
-      // Source of truth for UI pages: use persisted invoice fields.
-      // This ensures /finance/balance always matches the invoice statement for the same invoice.
-      currentBalance = Math.max(0, parseFloat(parseAmount((lastInvoice as any).balance).toFixed(2)));
-      totalPrepaidAmount = Math.max(0, parseFloat(parseAmount((lastInvoice as any).prepaidAmount).toFixed(2)));
-      
-      console.log(`[getStudentBalance] Latest invoice ${lastInvoice.invoiceNumber}: balance=${currentBalance}, previousBalance=${parseAmount(lastInvoice.previousBalance)}, amount=${parseAmount(lastInvoice.amount)}`);
+      // Derive balance from the same invoice components used by statements/receipts,
+      // instead of trusting the persisted balance field, which may include legacy
+      // desk-fee or adjustment artefacts.
+      const invAmount = parseAmount(lastInvoice.amount);
+      const invPrevBalance = parseAmount(lastInvoice.previousBalance);
+      const invPaid = parseAmount(lastInvoice.paidAmount);
+      const invPrepaid = parseAmount(lastInvoice.prepaidAmount);
+
+      currentBalance = Math.max(
+        0,
+        parseFloat((invAmount + invPrevBalance - invPaid - invPrepaid).toFixed(2))
+      );
+      totalPrepaidAmount = Math.max(0, parseFloat(invPrepaid.toFixed(2)));
+
+      console.log(
+        `[getStudentBalance] Latest invoice ${lastInvoice.invoiceNumber}: ` +
+        `amount=${invAmount}, previousBalance=${invPrevBalance}, paid=${invPaid}, ` +
+        `prepaid=${invPrepaid}, derivedBalance=${currentBalance}`
+      );
       for (const invoice of allInvoices) {
-        const invBalance = parseAmount(invoice.balance);
-        const invPrevBalance = parseAmount(invoice.previousBalance);
-        console.log(`[getStudentBalance] Invoice ${invoice.invoiceNumber} (${invoice.term}): balance=${invBalance}, previousBalance=${invPrevBalance}, amount=${parseAmount(invoice.amount)}`);
+        const invBalStored = parseAmount(invoice.balance);
+        const invPrev = parseAmount(invoice.previousBalance);
+        console.log(
+          `[getStudentBalance] Invoice ${invoice.invoiceNumber} (${invoice.term}): ` +
+          `storedBalance=${invBalStored}, previousBalance=${invPrev}, amount=${parseAmount(invoice.amount)}`
+        );
       }
     }
 
-    const lastInvoiceAmount = parseAmount(lastInvoice?.amount);
+    const lastInvoiceAmount = lastInvoice ? parseAmount(lastInvoice.amount) : 0;
     const lastInvoiceBalance = currentBalance;
-    let previousBalance = parseAmount(lastInvoice?.previousBalance);
-    let paidAmount = parseAmount(lastInvoice?.paidAmount);
+    let previousBalance = lastInvoice ? parseAmount(lastInvoice.previousBalance) : 0;
+    let paidAmount = lastInvoice ? parseAmount(lastInvoice.paidAmount) : 0;
     if (lastInvoice) {
       // Ensure response fields reflect the same corrected values used to compute currentBalance.
-      previousBalance = Math.max(0, parseFloat(parseAmount((lastInvoice as any).previousBalance ?? 0).toFixed(2)));
+      previousBalance = Math.max(
+        0,
+        parseFloat(parseAmount((lastInvoice as any).previousBalance ?? 0).toFixed(2))
+      );
       paidAmount = Math.max(
         0,
-        parseFloat((Number(lastInvoiceAmount) + Number(previousBalance) - Number(currentBalance) - Number(totalPrepaidAmount)).toFixed(2))
+        parseFloat(
+          (Number(lastInvoiceAmount) + Number(previousBalance) - Number(currentBalance) - Number(totalPrepaidAmount)).toFixed(2)
+        )
       );
     }
 
@@ -1892,9 +1938,25 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     const resolvedPaymentMethod = latestPaymentLog ? normalizePm(latestPaymentLog.paymentMethod) : null;
     const resolvedNotes = latestPaymentLog?.notes ? String(latestPaymentLog.notes) : undefined;
 
-    // Override invoice.paidAmount in the receipt to reflect actual payments (exclude adjustments)
+    // Compute a canonical balance for this invoice, matching the invoice statement PDF:
+    // balance = amount + previousBalance - paidAmount - prepaidAmount
+    const computedBalanceForReceipt = Math.max(
+      0,
+      parseFloat(
+        (
+          parseAmount(invoice.amount) +
+          parseAmount(invoice.previousBalance) -
+          paidToDisplay -
+          parseAmount(invoice.prepaidAmount)
+        ).toFixed(2)
+      )
+    );
+
+    // Override invoice fields for the receipt so both receipt and invoice
+    // statements use the exact same paid & balance figures.
     const invoiceForReceipt = Object.assign({}, invoice, {
-      paidAmount: paidToDisplay
+      paidAmount: paidToDisplay,
+      balance: computedBalanceForReceipt
     });
 
     const pdfBuffer = await createReceiptPDF({

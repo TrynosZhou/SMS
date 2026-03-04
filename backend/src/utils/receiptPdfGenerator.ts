@@ -238,7 +238,12 @@ export function createReceiptPDF(
       const amountColumnStartX2 = tableEndX2 - amountColumnWidth2;
       const rowHeight2 = 25;
 
-      doc.rect(tableStartX2, yPos, tableWidth2, rowHeight2).fillColor('#EFEFEF').fill().strokeColor('#CCCCCC').lineWidth(1).stroke();
+      doc.rect(tableStartX2, yPos, tableWidth2, rowHeight2)
+        .fillColor('#EFEFEF')
+        .fill()
+        .strokeColor('#CCCCCC')
+        .lineWidth(1)
+        .stroke();
       doc.strokeColor('#CCCCCC').lineWidth(0.5);
       doc.moveTo(amountColumnStartX2, yPos + 2).lineTo(amountColumnStartX2, yPos + rowHeight2 - 2).stroke();
       doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000');
@@ -247,7 +252,12 @@ export function createReceiptPDF(
       yPos += rowHeight2;
 
       const renderRow = (label: string, amountValue: number) => {
-        doc.rect(tableStartX2, yPos, tableWidth2, rowHeight2).fillColor('#FFFFFF').fill().strokeColor('#E0E0E0').lineWidth(0.5).stroke();
+        doc.rect(tableStartX2, yPos, tableWidth2, rowHeight2)
+          .fillColor('#FFFFFF')
+          .fill()
+          .strokeColor('#E0E0E0')
+          .lineWidth(0.5)
+          .stroke();
         doc.strokeColor('#E0E0E0').lineWidth(0.5);
         doc.moveTo(amountColumnStartX2, yPos + 2).lineTo(amountColumnStartX2, yPos + rowHeight2 - 2).stroke();
         doc.fontSize(10).font('Helvetica').fillColor('#000000');
@@ -326,30 +336,23 @@ export function createReceiptPDF(
       yPos += 15;
 
       // Ensure all numeric values are properly converted to numbers
-      let previousBalance = parseFloat(String(invoice.previousBalance || 0));
+      const invoiceAmount = parseFloat(String(invoice.amount || 0));
+      const previousBalance = parseFloat(String(invoice.previousBalance || 0));
       const paidAmount = parseFloat(String(invoice.paidAmount || 0));
       const prepaidAmount = parseFloat(String(invoice.prepaidAmount || 0));
 
-      // Returning/Existing students must not carry Desk Fee into their totals.
-      // In production, this often appears as previousBalance being exactly equal to the configured deskFee.
-      if (!isNewStudent && deskFeeCfg > 0) {
-        const prev = parseFloat(previousBalance.toFixed(2));
-        const desk = parseFloat(deskFeeCfg.toFixed(2));
-        if (prev === desk) {
-          previousBalance = 0;
-        }
-      }
+      // Canonical total for the invoice (current term + brought-forward balance)
+      const totalInvoiceAmount = invoiceAmount + previousBalance;
 
-      // Calculate total invoice amount from the actual fee components shown above
-      const baseInvoiceAmount = parseFloat((tuitionFee + transportFee + diningHallFee + registrationDeskTotal).toFixed(2));
-      const totalInvoiceAmount = baseInvoiceAmount + previousBalance;
-
-      // Total cash received to date (prepaidAmount is not treated as "paid" on receipts)
+      // Total cash received to date (already corrected in controller logic)
       const totalPaid = paidAmount;
 
-      // Remaining balance should be derived from the figures shown on the receipt.
-      // Using invoice.balance directly can be incorrect after adjustments/status corrections.
-      const remainingBalance = Math.max(0, parseFloat((totalInvoiceAmount - totalPaid - prepaidAmount).toFixed(2)));
+      // Remaining balance must always come from the same source of truth
+      // used by the invoice statement PDF (controller pre-computes this).
+      const remainingBalance = Math.max(
+        0,
+        parseFloat(String((invoice as any).balance ?? 0))
+      );
 
       // Table dimensions (reuse variables from payment details section)
       const labelColumnWidth = 350;
