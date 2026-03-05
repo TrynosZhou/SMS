@@ -1962,32 +1962,33 @@ export const generateReceiptPDF = async (req: AuthRequest, res: Response) => {
     const resolvedPaymentMethod = latestPaymentLog ? normalizePm(latestPaymentLog.paymentMethod) : null;
     const resolvedNotes = latestPaymentLog?.notes ? String(latestPaymentLog.notes) : undefined;
 
-    // Compute a canonical balance for this invoice, matching the invoice statement PDF:
-    // balance = amount + previousBalance - paidAmount - prepaidAmount
-    const computedBalanceForReceipt = Math.max(
+    // Derive canonical paid & balance from the invoice record itself so that
+    // receipts and invoice statements ALWAYS agree for the same invoice.
+    // paid = amount + previousBalance - balance - prepaidAmount
+    const invAmount = parseAmount(invoice.amount);
+    const invPrev = parseAmount(invoice.previousBalance);
+    const invBal = parseAmount(invoice.balance);
+    const invPrepaid = parseAmount(invoice.prepaidAmount);
+    const canonicalPaidFromInvoice = Math.max(
       0,
-      parseFloat(
-        (
-          parseAmount(invoice.amount) +
-          parseAmount(invoice.previousBalance) -
-          paidToDisplay -
-          parseAmount(invoice.prepaidAmount)
-        ).toFixed(2)
-      )
+      parseFloat((invAmount + invPrev - invBal - invPrepaid).toFixed(2))
     );
+    const canonicalBalanceFromInvoice = Math.max(0, parseFloat(invBal.toFixed(2)));
 
     // Override invoice fields for the receipt so both receipt and invoice
     // statements use the exact same paid & balance figures.
     const invoiceForReceipt = Object.assign({}, invoice, {
-      paidAmount: paidToDisplay,
-      balance: computedBalanceForReceipt
+      paidAmount: canonicalPaidFromInvoice,
+      balance: canonicalBalanceFromInvoice
     });
 
     const pdfBuffer = await createReceiptPDF({
       invoice: invoiceForReceipt as any,
       student,
       settings,
-      paymentAmount: safePaymentAmount,
+      // For presentation, the receipt's "Amount Paid" must match the invoice's
+      // total paid figure, not the last raw log amount.
+      paymentAmount: canonicalPaidFromInvoice,
       paymentDate: resolvedPaymentDate,
       paymentMethod: resolvedPaymentMethod || undefined,
       notes: resolvedNotes,
