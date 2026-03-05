@@ -98,6 +98,31 @@
   color: #495057;
 }
 
+/* Clickable Role / Username / Email in staff table */
+.staff-cell-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  outline: none;
+}
+.staff-cell-btn:hover {
+  text-decoration: underline;
+}
+.staff-cell-pencil,
+.staff-profile-pencil .pencil-icon {
+  font-style: normal;
+  filter: sepia(1) saturate(3) hue-rotate(5deg);
+  opacity: 0.95;
+}
+
 .staff-accounts-card .staff-table td code {
   background: #f1f3f5;
   padding: 2px 8px;
@@ -338,6 +363,23 @@
   align-items: center;
   padding: 12px 0;
   border-bottom: 1px solid #f1f3f5;
+}
+
+/* Clickable row as button: full width, no default button styling */
+.admin-info-item.admin-info-clickable {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+}
+.admin-info-item.admin-info-clickable:focus-visible {
+  outline: 2px solid #0d6efd;
+  outline-offset: 2px;
 }
 
 .admin-info-item:last-child {
@@ -967,6 +1009,78 @@
 
 .modal-body {
   padding: 25px;
+}
+
+/* Staff profile popup (edit role/username/email from list) */
+.staff-profile-modal .staff-profile-body {
+  padding-top: 0;
+}
+.staff-profile-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  border: 1px solid #e9ecef;
+}
+.staff-profile-row {
+  padding: 12px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+.staff-profile-row:last-child {
+  border-bottom: none;
+}
+.staff-profile-row-view {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.staff-profile-label {
+  font-weight: 600;
+  color: #6c757d;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.staff-profile-value {
+  color: #2c3e50;
+  font-weight: 500;
+  font-size: 14px;
+  flex: 1;
+  text-align: right;
+  word-break: break-word;
+}
+.staff-profile-pencil {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.staff-profile-pencil:hover {
+  background: rgba(230, 126, 34, 0.15);
+}
+.staff-profile-pencil .pencil-icon {
+  font-size: 1.1em;
+}
+.staff-profile-row-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.staff-profile-row-edit .form-label {
+  margin-bottom: 0;
+  font-weight: 600;
+  color: #495057;
+}
+.staff-profile-edit-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
 }
 
 .teacher-info-card {

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
-import { updateAccount, getAccountInfo, createUserAccount, resetUserPassword, updateUserRole, getUniversalTeacherStatus, createUniversalTeacherAccount, getStaffUsers, unlockUser, deleteUserAccount } from '../controllers/account.controller';
+import { updateAccount, getAccountInfo, createUserAccount, resetUserPassword, updateUserRole, updateStaffProfile, getUniversalTeacherStatus, createUniversalTeacherAccount, getStaffUsers, unlockUser, deleteUserAccount } from '../controllers/account.controller';
 import { UserRole } from '../entities/User';
 
 const router = Router();
@@ -54,6 +54,13 @@ router.patch(
   '/users/:id/role',
   authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
   updateUserRole
+);
+
+// Admin/SuperAdmin: update staff username/email
+router.patch(
+  '/users/:id/profile',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  updateStaffProfile
 );
 
 // Universal teacher account (admin/superadmin only)

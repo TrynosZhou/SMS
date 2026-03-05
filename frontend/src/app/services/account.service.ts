@@ -56,6 +56,10 @@ export class AccountService {
     return this.http.patch(`${this.apiUrl}/account/users/${userId}/role`, { role });
   }
 
+  updateStaffProfile(userId: string, data: { username?: string; email?: string }): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/account/users/${userId}/profile`, data);
+  }
+
   getUniversalTeacherStatus(): Observable<{ exists: boolean; username?: string; userId?: string; universalTeacherEnabled?: boolean }> {
     return this.http.get<{ exists: boolean; username?: string; userId?: string; universalTeacherEnabled?: boolean }>(`${this.apiUrl}/account/universal-teacher`);
   }

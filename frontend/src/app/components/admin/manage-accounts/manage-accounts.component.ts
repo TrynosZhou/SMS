@@ -96,6 +96,8 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   editEmailValue = '';
   editUsernamePassword = '';
   editEmailPassword = '';
+  showEditUsernamePassword = false;
+  showEditEmailPassword = false;
   updatingOwnRole = false;
   updatingOwnUsername = false;
   updatingOwnEmail = false;
@@ -125,6 +127,15 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   resettingStaffPassword = false;
   unlockingStaffId: string | null = null;
   deletingStaffId: string | null = null;
+
+  // Staff profile popup (edit role/username/email from list)
+  showStaffProfileModal = false;
+  staffProfileTarget: any = null;
+  editStaffField: 'role' | 'username' | 'email' | null = null;
+  editStaffRoleValue = '';
+  editStaffUsernameValue = '';
+  editStaffEmailValue = '';
+  updatingStaffField = false;
 
   constructor(
     private teacherService: TeacherService,
@@ -703,6 +714,119 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** Whether the current user can edit this staff's role/username/email (Super Admin required for Super Admin target). */
+  canEditStaffField(staff: any): boolean {
+    if (!staff?.id || this.isCurrentUser(staff.id)) return false;
+    const role = (staff.role || '').toLowerCase();
+    if (role === 'superadmin') return this.isSuperAdmin();
+    return true;
+  }
+
+  openStaffProfileModal(staff: any, field?: 'role' | 'username' | 'email'): void {
+    if (!staff || !this.canEditStaffField(staff)) return;
+    this.staffProfileTarget = staff;
+    this.editStaffRoleValue = (staff.role || 'admin').toLowerCase();
+    this.editStaffUsernameValue = staff.username || '';
+    this.editStaffEmailValue = staff.email || '';
+    this.editStaffField = field || null;
+    this.error = '';
+    this.showStaffProfileModal = true;
+  }
+
+  closeStaffProfileModal(): void {
+    this.showStaffProfileModal = false;
+    this.staffProfileTarget = null;
+    this.editStaffField = null;
+    this.editStaffRoleValue = '';
+    this.editStaffUsernameValue = '';
+    this.editStaffEmailValue = '';
+    this.error = '';
+  }
+
+  startEditStaffField(field: 'role' | 'username' | 'email'): void {
+    if (!this.staffProfileTarget || !this.canEditStaffField(this.staffProfileTarget)) return;
+    this.editStaffField = field;
+    if (field === 'role') this.editStaffRoleValue = (this.staffProfileTarget.role || 'admin').toLowerCase();
+    if (field === 'username') this.editStaffUsernameValue = this.staffProfileTarget.username || '';
+    if (field === 'email') this.editStaffEmailValue = this.staffProfileTarget.email || '';
+    this.error = '';
+  }
+
+  cancelEditStaffField(): void {
+    this.editStaffField = null;
+    this.error = '';
+  }
+
+  saveStaffRole(): void {
+    if (!this.staffProfileTarget?.id || !this.editStaffRoleValue) return;
+    this.updatingStaffField = true;
+    this.error = '';
+    this.accountService.updateUserRole(this.staffProfileTarget.id, this.editStaffRoleValue).subscribe({
+      next: (res: any) => {
+        this.updatingStaffField = false;
+        if (res?.user) {
+          this.staffProfileTarget.role = res.user.role;
+          const idx = this.staffUsers.findIndex((u: any) => u.id === this.staffProfileTarget.id);
+          if (idx >= 0) this.staffUsers[idx] = { ...this.staffUsers[idx], ...res.user };
+        }
+        this.success = 'Role updated successfully.';
+        this.cancelEditStaffField();
+        setTimeout(() => this.success = '', 5000);
+      },
+      error: (err: any) => {
+        this.updatingStaffField = false;
+        this.error = err.error?.message || 'Failed to update role';
+      }
+    });
+  }
+
+  saveStaffUsername(): void {
+    if (!this.staffProfileTarget?.id || !this.editStaffUsernameValue?.trim()) return;
+    this.updatingStaffField = true;
+    this.error = '';
+    this.accountService.updateStaffProfile(this.staffProfileTarget.id, { username: this.editStaffUsernameValue.trim() }).subscribe({
+      next: (res: any) => {
+        this.updatingStaffField = false;
+        if (res?.user) {
+          this.staffProfileTarget.username = res.user.username;
+          const idx = this.staffUsers.findIndex((u: any) => u.id === this.staffProfileTarget.id);
+          if (idx >= 0) this.staffUsers[idx] = { ...this.staffUsers[idx], username: res.user.username };
+        }
+        this.success = 'Username updated successfully.';
+        this.cancelEditStaffField();
+        setTimeout(() => this.success = '', 5000);
+      },
+      error: (err: any) => {
+        this.updatingStaffField = false;
+        this.error = err.error?.message || 'Failed to update username';
+      }
+    });
+  }
+
+  saveStaffEmail(): void {
+    if (!this.staffProfileTarget?.id) return;
+    this.updatingStaffField = true;
+    this.error = '';
+    const email = (this.editStaffEmailValue ?? '').trim();
+    this.accountService.updateStaffProfile(this.staffProfileTarget.id, { email }).subscribe({
+      next: (res: any) => {
+        this.updatingStaffField = false;
+        if (res?.user) {
+          this.staffProfileTarget.email = res.user.email;
+          const idx = this.staffUsers.findIndex((u: any) => u.id === this.staffProfileTarget.id);
+          if (idx >= 0) this.staffUsers[idx] = { ...this.staffUsers[idx], email: res.user.email };
+        }
+        this.success = 'Email updated successfully.';
+        this.cancelEditStaffField();
+        setTimeout(() => this.success = '', 5000);
+      },
+      error: (err: any) => {
+        this.updatingStaffField = false;
+        this.error = err.error?.message || 'Failed to update email';
+      }
+    });
+  }
+
   // Password change methods
   togglePasswordChangeSection() {
     this.showPasswordChangeSection = !this.showPasswordChangeSection;
@@ -856,7 +980,12 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     this.showEditUsernameModal = false;
     this.editUsernameValue = '';
     this.editUsernamePassword = '';
+    this.showEditUsernamePassword = false;
     this.error = '';
+  }
+
+  toggleEditUsernamePasswordVisibility(): void {
+    this.showEditUsernamePassword = !this.showEditUsernamePassword;
   }
 
   saveOwnUsername(): void {
@@ -895,7 +1024,12 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     this.showEditEmailModal = false;
     this.editEmailValue = '';
     this.editEmailPassword = '';
+    this.showEditEmailPassword = false;
     this.error = '';
+  }
+
+  toggleEditEmailPasswordVisibility(): void {
+    this.showEditEmailPassword = !this.showEditEmailPassword;
   }
 
   saveOwnEmail(): void {

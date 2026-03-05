@@ -633,6 +633,81 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Admin/SuperAdmin: Update another staff user's username and/or email
+export const updateStaffProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
+      return res.status(403).json({ message: 'Only Administrators can update staff profile' });
+    }
+    const targetUserId = req.params.id;
+    const { username: newUsername, email: newEmail } = req.body;
+
+    if (!targetUserId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    const userRepository = AppDataSource.getRepository(User);
+    const user = await userRepository.findOne({ where: { id: targetUserId } });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const staffRoles = [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT];
+    if (!staffRoles.includes(user.role as UserRole)) {
+      return res.status(400).json({ message: 'Only staff accounts can be updated here' });
+    }
+    if (user.role === UserRole.SUPERADMIN && req.user.role !== UserRole.SUPERADMIN) {
+      return res.status(403).json({ message: 'Only a Super Admin can update a Super Admin profile' });
+    }
+
+    const updatingUsername = newUsername !== undefined && newUsername !== null;
+    const updatingEmail = newEmail !== undefined && newEmail !== null;
+    if (!updatingUsername && !updatingEmail) {
+      return res.status(400).json({ message: 'Provide username and/or email to update' });
+    }
+
+    if (updatingUsername) {
+      const trimmed = String(newUsername).trim();
+      if (!trimmed) {
+        return res.status(400).json({ message: 'Username cannot be empty' });
+      }
+      if (trimmed !== user.username) {
+        const existing = await userRepository.findOne({ where: { username: trimmed } });
+        if (existing) {
+          return res.status(400).json({ message: 'Username already exists' });
+        }
+        (user as any).username = trimmed;
+      }
+    }
+    if (updatingEmail) {
+      const trimmed = String(newEmail).trim().toLowerCase() || null;
+      if (trimmed !== (user.email || null)) {
+        if (trimmed) {
+          const existing = await userRepository.findOne({ where: { email: trimmed } });
+          if (existing) {
+            return res.status(400).json({ message: 'Email already exists' });
+          }
+        }
+        (user as any).email = trimmed;
+      }
+    }
+
+    await userRepository.save(user);
+    res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error: any) {
+    console.error('Error updating staff profile:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
 // List staff users (admin, superadmin, accountant) for manage-accounts page
 export const getStaffUsers = async (req: AuthRequest, res: Response) => {
   try {
