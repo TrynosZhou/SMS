@@ -58,6 +58,14 @@ export class User {
   @Column({ default: false })
   isUniversalTeacher: boolean;
 
+  /** Failed login attempts (for admin/superadmin/accountant lock after 3 failures) */
+  @Column({ type: 'int', default: 0 })
+  failedLoginAttempts: number;
+
+  /** Account locked until this time (null = not locked) */
+  @Column({ type: 'timestamp', nullable: true })
+  lockedUntil: Date | null;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 

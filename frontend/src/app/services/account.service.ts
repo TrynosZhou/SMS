@@ -30,11 +30,26 @@ export class AccountService {
     return this.http.post(`${this.apiUrl}/account/users`, data);
   }
 
-  resetUserPassword(userId: string, newPassword: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/account/reset-password`, {
-      userId,
-      newPassword
-    });
+  resetUserPassword(userId: string, newPassword: string, generatePassword?: boolean): Observable<any> {
+    const body: any = { userId };
+    if (generatePassword) {
+      body.generatePassword = true;
+    } else {
+      body.newPassword = newPassword;
+    }
+    return this.http.post(`${this.apiUrl}/account/reset-password`, body);
+  }
+
+  getStaffUsers(): Observable<{ users: any[] }> {
+    return this.http.get<{ users: any[] }>(`${this.apiUrl}/account/staff-users`);
+  }
+
+  unlockUser(userId: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/account/users/${userId}/unlock`, {});
+  }
+
+  deleteUserAccount(userId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/account/users/${userId}`);
   }
 
   updateUserRole(userId: string, role: string): Observable<any> {

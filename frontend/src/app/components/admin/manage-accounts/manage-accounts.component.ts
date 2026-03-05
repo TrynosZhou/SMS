@@ -64,6 +64,7 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   showDetailsModal = false;
   showResetPasswordModal = false;
   sendCredentials = false;
+  deletingAccountUserId: string | null = null;
   
   // Reset password form (for teacher accounts)
   resetPasswordNewPassword = '';
@@ -98,6 +99,18 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   universalTeacherGeneratePassword = true;
   showUniversalTeacherPassword = false;
 
+  // Staff accounts (admin, superadmin, accountant)
+  staffUsers: any[] = [];
+  loadingStaff = false;
+  selectedStaff: any = null;
+  showStaffResetModal = false;
+  staffResetGeneratePassword = true;
+  resetStaffPasswordNewPassword = '';
+  resetStaffPasswordConfirm = '';
+  resettingStaffPassword = false;
+  unlockingStaffId: string | null = null;
+  deletingStaffId: string | null = null;
+
   constructor(
     private teacherService: TeacherService,
     private accountService: AccountService,
@@ -108,6 +121,13 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.loadTeachers();
     this.loadUniversalTeacherStatus();
+    if (this.canCreateManualAccounts()) {
+      this.loadStaffUsers();
+    }
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('changePassword') === '1') {
+      this.showPasswordChangeSection = true;
+    }
 
     // Get current user immediately
     this.currentUser = this.authService.getCurrentUser();
@@ -363,6 +383,29 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     this.error = '';
   }
 
+  deleteAccount(teacher: any) {
+    if (!teacher?.userId) return;
+    const name = [teacher.firstName, teacher.lastName].filter(Boolean).join(' ') || teacher.teacherId || 'this teacher';
+    if (!confirm(`Delete the login account for ${name}? They will no longer be able to sign in. The teacher record will remain and you can create a new account later.`)) {
+      return;
+    }
+    this.deletingAccountUserId = teacher.userId;
+    this.error = '';
+    this.accountService.deleteUserAccount(teacher.userId).subscribe({
+      next: () => {
+        this.deletingAccountUserId = null;
+        this.success = `Account deleted for ${name}. They can be given a new account from this page.`;
+        this.loadTeachers();
+        setTimeout(() => this.success = '', 8000);
+      },
+      error: (err: any) => {
+        this.deletingAccountUserId = null;
+        this.error = err.error?.message || 'Failed to delete account';
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
   resetPassword() {
     if (!this.selectedTeacher || !this.selectedTeacher.userId) {
       this.error = 'Teacher account not found';
@@ -471,6 +514,138 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
       teacherId: this.universalTeacherStatus.username || 'teacher'
     };
     this.openResetPasswordModal(this.selectedTeacher);
+  }
+
+  loadStaffUsers() {
+    if (!this.canCreateManualAccounts()) return;
+    this.loadingStaff = true;
+    this.accountService.getStaffUsers().subscribe({
+      next: (data: any) => {
+        this.staffUsers = data.users || [];
+        this.loadingStaff = false;
+      },
+      error: () => {
+        this.loadingStaff = false;
+      }
+    });
+  }
+
+  openResetStaffModal(staff: any) {
+    this.selectedStaff = staff;
+    this.staffResetGeneratePassword = true;
+    this.resetStaffPasswordNewPassword = '';
+    this.resetStaffPasswordConfirm = '';
+    this.error = '';
+    this.showStaffResetModal = true;
+  }
+
+  closeResetStaffModal() {
+    this.showStaffResetModal = false;
+    this.selectedStaff = null;
+    this.resetStaffPasswordNewPassword = '';
+    this.resetStaffPasswordConfirm = '';
+    this.error = '';
+  }
+
+  resetStaffPassword() {
+    if (!this.selectedStaff?.id) return;
+    if (this.staffResetGeneratePassword) {
+      this.resettingStaffPassword = true;
+      this.error = '';
+      this.accountService.resetUserPassword(this.selectedStaff.id, '', true).subscribe({
+        next: (response: any) => {
+          this.resettingStaffPassword = false;
+          const tempPass = response.temporaryPassword;
+          this.success = `Password reset successfully for ${this.selectedStaff.role} (${this.selectedStaff.username}). ` +
+            (tempPass ? `Temporary password: ${tempPass} — must be changed on first login.` : 'They must change it on first login.');
+          this.closeResetStaffModal();
+          this.loadStaffUsers();
+          setTimeout(() => this.success = '', 15000);
+        },
+        error: (err: any) => {
+          this.resettingStaffPassword = false;
+          this.error = err.error?.message || 'Failed to reset password';
+        }
+      });
+      return;
+    }
+    if (!this.resetStaffPasswordNewPassword || this.resetStaffPasswordNewPassword.trim().length < 8) {
+      this.error = 'Password must be at least 8 characters long';
+      return;
+    }
+    if (this.resetStaffPasswordNewPassword !== this.resetStaffPasswordConfirm) {
+      this.error = 'Passwords do not match';
+      return;
+    }
+    this.resettingStaffPassword = true;
+    this.error = '';
+    this.accountService.resetUserPassword(this.selectedStaff.id, this.resetStaffPasswordNewPassword.trim()).subscribe({
+      next: () => {
+        this.resettingStaffPassword = false;
+        this.success = `Password reset successfully for ${this.selectedStaff.role} (${this.selectedStaff.username}). They must change it on first login.`;
+        this.closeResetStaffModal();
+        this.loadStaffUsers();
+        setTimeout(() => this.success = '', 10000);
+      },
+      error: (err: any) => {
+        this.resettingStaffPassword = false;
+        this.error = err.error?.message || 'Failed to reset password';
+      }
+    });
+  }
+
+  unlockStaff(staff: any) {
+    if (!staff?.id) return;
+    this.unlockingStaffId = staff.id;
+    this.accountService.unlockUser(staff.id).subscribe({
+      next: () => {
+        this.unlockingStaffId = null;
+        this.success = `Account unlocked for ${staff.role} (${staff.username}).`;
+        this.loadStaffUsers();
+        setTimeout(() => this.success = '', 6000);
+      },
+      error: (err: any) => {
+        this.unlockingStaffId = null;
+        this.error = err.error?.message || 'Failed to unlock account';
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  getStaffRoleLabel(role: string): string {
+    const r = (role || '').toLowerCase();
+    if (r === 'superadmin') return 'Super Admin';
+    if (r === 'admin') return 'Administrator';
+    if (r === 'accountant') return 'Accountant';
+    return role || '—';
+  }
+
+  isCurrentUser(userId: string): boolean {
+    const user = this.currentUser || this.authService.getCurrentUser();
+    return !!user && user.id === userId;
+  }
+
+  deleteStaffAccount(staff: any) {
+    if (!staff?.id) return;
+    const label = this.getStaffRoleLabel(staff.role) + ' (' + (staff.username || staff.email) + ')';
+    if (!confirm(`Delete the account for ${label}? They will no longer be able to sign in.`)) {
+      return;
+    }
+    this.deletingStaffId = staff.id;
+    this.error = '';
+    this.accountService.deleteUserAccount(staff.id).subscribe({
+      next: () => {
+        this.deletingStaffId = null;
+        this.success = `Account deleted for ${label}.`;
+        this.loadStaffUsers();
+        setTimeout(() => this.success = '', 8000);
+      },
+      error: (err: any) => {
+        this.deletingStaffId = null;
+        this.error = err.error?.message || 'Failed to delete account';
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
   }
 
   // Password change methods

@@ -48,6 +48,69 @@
   border-radius: 999px;
 }
 
+.staff-accounts-card .staff-table-wrap {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+.staff-accounts-card .staff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.staff-accounts-card .staff-table th,
+.staff-accounts-card .staff-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.staff-accounts-card .staff-table th:nth-child(4),
+.staff-accounts-card .staff-table td:nth-child(4) {
+  width: 1%;
+  white-space: nowrap;
+  max-width: 100px;
+}
+
+.staff-accounts-card .staff-table th:nth-child(5),
+.staff-accounts-card .staff-table td.staff-actions-cell {
+  width: 1%;
+  white-space: nowrap;
+  padding-left: 12px;
+}
+
+.staff-action-buttons {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.staff-action-buttons .btn {
+  flex-shrink: 0;
+}
+
+.staff-accounts-card .staff-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+}
+
+.staff-accounts-card .staff-table td code {
+  background: #f1f3f5;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.staff-accounts-card .empty-staff {
+  color: #6c757d;
+  font-size: 14px;
+  padding: 16px 0;
+}
+
 .manual-account-form .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -747,6 +810,16 @@
 
 .btn-info:hover:not(:disabled) {
   background: #138496;
+  transform: translateY(-2px);
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c82333;
   transform: translateY(-2px);
 }
 

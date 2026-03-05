@@ -4,12 +4,12 @@
   </div>
 
   <div class="search-card">
-    <label for="query">Student ID / Student Number / Last Name / First Name</label>
+    <label for="query">Student ID / Last Name / First Name</label>
     <div class="input-row">
       <input id="query"
              [(ngModel)]="query"
              (keyup.enter)="search()"
-             placeholder="Enter Student ID, Student Number, Last Name, or First Name"
+             placeholder="Enter Student ID, Last Name, or First Name"
              class="form-control" />
       <button class="btn btn-primary" (click)="search()" [disabled]="loading">
         <span>🔍</span> Get Balance

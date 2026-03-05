@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
-import { updateAccount, getAccountInfo, createUserAccount, resetUserPassword, updateUserRole, getUniversalTeacherStatus, createUniversalTeacherAccount } from '../controllers/account.controller';
+import { updateAccount, getAccountInfo, createUserAccount, resetUserPassword, updateUserRole, getUniversalTeacherStatus, createUniversalTeacherAccount, getStaffUsers, unlockUser, deleteUserAccount } from '../controllers/account.controller';
 import { UserRole } from '../entities/User';
 
 const router = Router();
@@ -26,6 +26,27 @@ router.post(
   '/reset-password',
   authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
   resetUserPassword
+);
+
+// Admin/SuperAdmin: list staff users (admin, superadmin, accountant)
+router.get(
+  '/staff-users',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  getStaffUsers
+);
+
+// Admin/SuperAdmin: unlock a locked staff account
+router.post(
+  '/users/:id/unlock',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  unlockUser
+);
+
+// Admin/SuperAdmin: delete a user account (e.g. teacher login - teacher record remains)
+router.delete(
+  '/users/:id',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  deleteUserAccount
 );
 
 // Admin/SuperAdmin can change a user's role (Admin cannot set role to superadmin)

@@ -7,46 +7,60 @@
       </h1>
       <p class="subtitle">Manage student invoices, payments, and financial records</p>
     </div>
-    <div class="header-actions">
+  </div>
+
+  <div class="invoice-actions-card">
+    <div class="actions-row actions-row-primary">
       <button 
-        class="btn btn-warning" 
+        class="btn btn-action btn-credit" 
         type="button"
         (click)="openCreditNoteForm()"
         *ngIf="canManageFinance()"
         title="Credit Note - correct overcharge">
-        Credit Note
+        <span class="btn-icon">📝</span>
+        <span>Credit Note</span>
       </button>
       <button 
-        class="btn btn-success" 
+        class="btn btn-action btn-debit" 
         type="button"
         (click)="openDebitNoteForm()"
         *ngIf="canManageFinance()"
         title="Debit Note - correct undercharge">
-        Debit Note
+        <span class="btn-icon">📗</span>
+        <span>Debit Note</span>
       </button>
-      <button class="btn btn-secondary" routerLink="/invoices/new" *ngIf="canCreateInvoice()">
-        <span>➕</span> Create Invoice
+      <button class="btn btn-action btn-create" routerLink="/invoices/new" *ngIf="canCreateInvoice()">
+        <span class="btn-icon">➕</span>
+        <span>Create Invoice</span>
       </button>
-      <button class="btn btn-primary" (click)="openBulkInvoiceForm()" *ngIf="canManageFinance()">
-        <span>📋</span> Bulk Create
+      <button class="btn btn-action btn-bulk" (click)="openBulkInvoiceForm()" *ngIf="canManageFinance()">
+        <span class="btn-icon">📋</span>
+        <span>Bulk Create</span>
       </button>
-      <button class="btn btn-danger" (click)="reverseLastBulkCreation()" *ngIf="authService.hasRole('admin') || authService.hasRole('superadmin')" [disabled]="reversingBulk" title="Reverse last bulk invoice creation" style="margin-left: 8px;">
-        <span>↩️</span> Reverse Bulk Creation
+      <button class="btn btn-action btn-reverse" (click)="reverseLastBulkCreation()" *ngIf="authService.hasRole('admin') || authService.hasRole('superadmin')" [disabled]="reversingBulk" title="Reverse last bulk invoice creation">
+        <span class="btn-icon">↩️</span>
+        <span>Reverse Bulk</span>
       </button>
-      <div *ngIf="canManageFinance()" class="reverse-filters" style="display:flex; gap:8px; align-items:center;">
-        <select [(ngModel)]="reverseFilter.term" [ngModelOptions]="{standalone:true}" class="form-control" title="Term to reverse" style="min-width:160px;">
+    </div>
+    <div class="actions-row actions-row-secondary" *ngIf="canManageFinance() || canCorrectTransaction()">
+      <div class="reverse-filters" *ngIf="authService.hasRole('admin') || authService.hasRole('superadmin')">
+        <select [(ngModel)]="reverseFilter.term" [ngModelOptions]="{standalone:true}" class="form-control form-control-inline" title="Term to reverse">
           <option value="">Auto (following term)</option>
           <option *ngFor="let term of getUniqueTerms()" [value]="term">{{ term }}</option>
         </select>
-        <input type="date" [(ngModel)]="reverseFilter.startDate" [ngModelOptions]="{standalone:true}" class="form-control" title="Start date" />
-        <input type="date" [(ngModel)]="reverseFilter.endDate" [ngModelOptions]="{standalone:true}" class="form-control" title="End date" />
+        <input type="date" [(ngModel)]="reverseFilter.startDate" [ngModelOptions]="{standalone:true}" class="form-control form-control-inline" title="Start date" />
+        <input type="date" [(ngModel)]="reverseFilter.endDate" [ngModelOptions]="{standalone:true}" class="form-control form-control-inline" title="End date" />
       </div>
-      <button class="btn btn-warning" (click)="runTuitionExemptionCorrection()" *ngIf="canManageFinance()" [disabled]="correctingExemptTuition" title="Void unpaid tuition invoices for exempt students" style="margin-left: 8px;">
-        <span>🛡️</span> Tuition Exemption Correction
-      </button>
-      <button class="btn btn-warning" type="button" (click)="openCorrectPrepaidLookupModal()" *ngIf="canCorrectTransaction()" title="Correct prepaid transaction by student" style="margin-left: 8px;">
-        <span>🧾</span> Correct Prepaid
-      </button>
+      <div class="actions-secondary-buttons">
+        <button class="btn btn-action btn-exemption" (click)="runTuitionExemptionCorrection()" *ngIf="canManageFinance()" [disabled]="correctingExemptTuition" title="Void unpaid tuition invoices for exempt students">
+          <span class="btn-icon">🛡️</span>
+          <span>Tuition Exemption</span>
+        </button>
+        <button class="btn btn-action btn-prepaid" type="button" (click)="openCorrectPrepaidLookupModal()" *ngIf="canCorrectTransaction()" title="Correct prepaid transaction by student">
+          <span class="btn-icon">🧾</span>
+          <span>Correct Prepaid</span>
+        </button>
+      </div>
     </div>
   </div>
   
@@ -309,14 +323,6 @@
                           title="Record Payment"
                           style="font-size: 12px; padding: 5px 10px; white-space: nowrap;">
                     💳 Payment
-                  </button>
-                  <button class="btn btn-warning"
-                          type="button"
-                          (click)="openCorrectTransaction(invoice, $event)"
-                          *ngIf="canCorrectTransaction() && invoice.prepaidAmount && invoice.prepaidAmount > 0"
-                          title="Correct transaction (reverse prepaid credit)"
-                          style="font-size: 12px; padding: 5px 10px; white-space: nowrap;">
-                    🧾 Correct
                   </button>
                 </div>
               </td>

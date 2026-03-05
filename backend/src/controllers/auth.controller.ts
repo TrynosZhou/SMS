@@ -342,6 +342,22 @@ export const login = async (req: Request, res: Response) => {
         return res.status(401).json({ message: 'Account is inactive. Please contact the administrator.' });
       }
 
+      const staffRoles = [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT];
+      const isStaffRole = staffRoles.includes(user.role);
+      const MAX_LOGIN_ATTEMPTS = 3;
+      const LOCK_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+      if (isStaffRole) {
+        const lockedUntil = (user as any).lockedUntil ? new Date((user as any).lockedUntil) : null;
+        if (lockedUntil && new Date() < lockedUntil) {
+          const isAdmin = user.role === UserRole.ADMIN;
+          const message = isAdmin
+            ? 'Your account has been locked due to too many failed login attempts. Please contact the superadmin to unlock your account.'
+            : 'Your account has been locked due to too many failed login attempts. Please contact the administrator to unlock your account.';
+          return res.status(423).json({ message, locked: true });
+        }
+      }
+
       try {
         // Password already trimmed above, use it directly
         console.log('[Login] Comparing password for user:', user.id, 'username:', user.username);
@@ -376,13 +392,39 @@ export const login = async (req: Request, res: Response) => {
           console.log('[Login] User role:', user.role, 'mustChangePassword:', user.mustChangePassword);
           console.log('[Login] Password length received:', password.length, 'trimmed:', trimmedPassword.length);
           console.log('[Login] User password hash exists:', !!user.password, 'hash starts with:', user.password?.substring(0, 20));
-          
+
+          if (isStaffRole) {
+            const attempts = ((user as any).failedLoginAttempts ?? 0) + 1;
+            (user as any).failedLoginAttempts = attempts;
+            if (attempts >= MAX_LOGIN_ATTEMPTS) {
+              (user as any).lockedUntil = new Date(Date.now() + LOCK_DURATION_MS);
+              await userRepository.save(user);
+              const isAdmin = user.role === UserRole.ADMIN;
+              const message = isAdmin
+                ? 'Too many failed login attempts. Your account has been locked. Please contact the superadmin to unlock your account.'
+                : 'Too many failed login attempts. Your account has been locked. Please contact the administrator to unlock your account.';
+              return res.status(423).json({ message, locked: true });
+            }
+            await userRepository.save(user);
+            const remaining = MAX_LOGIN_ATTEMPTS - attempts;
+            return res.status(401).json({
+              message: 'Invalid credentials',
+              hint: `${remaining} login attempt(s) remaining before your account is locked.`
+            });
+          }
+
           return res.status(401).json({ 
             message: 'Invalid credentials',
             hint: user.mustChangePassword 
               ? 'Password may have been reset. Please use the new password provided by your administrator. Make sure there are no extra spaces and use the exact password.'
               : 'Username/email or password is incorrect. Please check your credentials and try again.'
           });
+        }
+
+        if (isStaffRole) {
+          (user as any).failedLoginAttempts = 0;
+          (user as any).lockedUntil = null;
+          await userRepository.save(user);
         }
         
         console.log('[Login] ✓ Password verified for user:', user.id, 'username:', user.username, 'role:', user.role);

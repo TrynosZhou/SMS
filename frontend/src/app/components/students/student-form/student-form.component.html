@@ -2,14 +2,14 @@
   <div class="form-header">
     <div class="header-content">
       <h1>
-        <span class="icon">👨‍🎓</span>
+        <span class="header-icon">👨‍🎓</span>
         {{ isEdit ? 'Edit Student' : 'Register New Student' }}
       </h1>
       <p class="subtitle">{{ isEdit ? 'Update student information' : 'Fill in the details to register a new student' }}</p>
     </div>
     <div class="header-actions">
-      <button type="button" class="btn btn-secondary" (click)="goBack()">
-        <span>←</span> Back to Students
+      <button type="button" class="btn btn-back" (click)="goBack()">
+        <span class="btn-icon">←</span> Back to Students
       </button>
     </div>
   </div>
@@ -24,43 +24,39 @@
     {{ error }}
   </div>
 
-  <form (ngSubmit)="onSubmit()" #studentForm="ngForm" class="student-form">
+  <form (ngSubmit)="onSubmit()" #studentForm="ngForm" class="student-form form-card">
     <!-- Personal Information Section -->
-    <div class="form-section">
+    <div class="form-section section-card">
       <div class="section-header">
-        <h2>
-          <span class="section-icon">👤</span>
-          Personal Information
-        </h2>
-        <p class="section-description">Basic details about the student</p>
+        <span class="section-accent"></span>
+        <div>
+          <h2>
+            <span class="section-icon">👤</span>
+            Personal Information
+          </h2>
+          <p class="section-description">Basic details about the student</p>
+        </div>
       </div>
       
       <!-- Photo Upload Section -->
-      <div class="form-group full-width" style="margin-bottom: 20px;">
-        <label for="photo">
+      <div class="form-group full-width photo-upload-wrap">
+        <label for="photo" class="photo-label">
           <span class="section-icon">📷</span>
           Passport Size Photo <span class="optional">(Optional)</span>
         </label>
-        <div style="display: flex; gap: 20px; align-items: flex-start;">
-          <div style="flex: 1;">
+        <div class="photo-row">
+          <div class="photo-input-area">
             <input 
               type="file" 
               id="photo"
               accept="image/*"
               (change)="onPhotoSelected($event)"
-              class="form-input"
-              style="padding: 10px;">
+              class="form-input photo-input">
             <small class="form-hint">Upload a passport-size photo (max 2MB, JPG/PNG)</small>
           </div>
-          <div *ngIf="photoPreview" style="position: relative;">
-            <img [src]="photoPreview" 
-                 alt="Photo preview" 
-                 style="width: 120px; height: 150px; object-fit: cover; border-radius: 8px; border: 2px solid #ddd;">
-            <button type="button" 
-                    (click)="removePhoto()" 
-                    style="position: absolute; top: -8px; right: -8px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;">
-              ×
-            </button>
+          <div class="photo-preview-wrap" *ngIf="photoPreview">
+            <img [src]="photoPreview" alt="Photo preview" class="photo-preview">
+            <button type="button" class="photo-remove-btn" (click)="removePhoto()" title="Remove photo">×</button>
           </div>
         </div>
       </div>
@@ -168,13 +164,16 @@
     </div>
 
     <!-- Contact Information Section -->
-    <div class="form-section">
+    <div class="form-section section-card">
       <div class="section-header">
-        <h2>
-          <span class="section-icon">📞</span>
-          Contact Information
-        </h2>
-        <p class="section-description">Contact details and address</p>
+        <span class="section-accent"></span>
+        <div>
+          <h2>
+            <span class="section-icon">📞</span>
+            Contact Information
+          </h2>
+          <p class="section-description">Contact details and address</p>
+        </div>
       </div>
 
       <div class="form-grid">
@@ -227,13 +226,16 @@
     </div>
 
     <!-- Student Information Section -->
-    <div class="form-section" *ngIf="!limitedEditMode">
+    <div class="form-section section-card" *ngIf="!limitedEditMode">
       <div class="section-header">
-        <h2>
-          <span class="section-icon">🆔</span>
-          Student Information
-        </h2>
-        <p class="section-description">Student identification and type</p>
+        <span class="section-accent"></span>
+        <div>
+          <h2>
+            <span class="section-icon">🆔</span>
+            Student Information
+          </h2>
+          <p class="section-description">Student identification and type</p>
+        </div>
       </div>
 
       <div class="form-group">
@@ -287,67 +289,79 @@
       </div>
 
       <!-- Staff Child Checkbox -->
-      <div class="form-group full-width" style="margin-top: 20px;">
-        <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px; border: 2px solid #4a90e2; border-radius: 6px; background: #f0f7ff;">
+      <div class="form-group full-width staff-child-wrap">
+        <label class="checkbox-card staff-child-card">
           <input 
             type="checkbox" 
             [(ngModel)]="student.isStaffChild" 
             name="isStaffChild"
             (change)="onStaffChildChange()"
-            style="width: 18px; height: 18px; cursor: pointer;">
-          <span style="font-weight: 600; color: #2c5aa0;">👨‍🏫 Staff Child</span>
-          <small style="color: #666; margin-left: 5px;">(Staff children don't pay tuition fees, pay 50% of DH meal fees, and don't pay transport costs)</small>
+            class="checkbox-input">
+          <span class="checkbox-icon">👨‍🏫</span>
+          <div class="checkbox-content">
+            <span class="checkbox-title">Staff Child</span>
+            <small class="checkbox-desc">Staff children don't pay tuition fees, pay 50% of DH meal fees, and don't pay transport costs.</small>
+          </div>
         </label>
       </div>
 
       <!-- Day Scholar Services (only show for Day Scholars) -->
-      <div *ngIf="student.studentType === 'Day Scholar'" class="form-group full-width" style="margin-top: 20px;">
-        <label style="font-weight: 600; margin-bottom: 10px; display: block;">Additional Services (Day Scholars)</label>
-        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-          <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background: #f9f9f9;">
+      <div *ngIf="student.studentType === 'Day Scholar'" class="form-group full-width day-services-wrap">
+        <label class="services-label">Additional Services (Day Scholars)</label>
+        <div class="services-cards">
+          <label class="checkbox-card service-card">
             <input 
               type="checkbox" 
               [(ngModel)]="student.usesTransport" 
               name="usesTransport"
               [disabled]="student.isStaffChild || student.isExempted"
               (change)="onUsesTransportChange()"
-              style="width: 18px; height: 18px; cursor: pointer;">
-            <span style="font-weight: 500;">🚌 School Transport</span>
-            <small style="color: #666; margin-left: 5px;">(Additional cost applies{{ (student.isStaffChild || student.isExempted) ? ' - Free for staff/exempted' : '' }})</small>
+              class="checkbox-input">
+            <span class="checkbox-icon">🚌</span>
+            <div class="checkbox-content">
+              <span class="checkbox-title">School Transport</span>
+              <small class="checkbox-desc">Additional cost applies{{ (student.isStaffChild || student.isExempted) ? ' — Free for staff/exempted' : '' }}</small>
+            </div>
           </label>
-          <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background: #f9f9f9;">
+          <label class="checkbox-card service-card">
             <input 
               type="checkbox" 
               [(ngModel)]="student.usesDiningHall" 
               name="usesDiningHall"
               (change)="onUsesDiningHallChange()"
-              style="width: 18px; height: 18px; cursor: pointer;">
-            <span style="font-weight: 500;">🍽️ Dining Hall (DH) Meals</span>
-            <small style="color: #666; margin-left: 5px;">({{ (student.isStaffChild || student.isExempted) ? '50% cost for staff/exempted' : 'Additional cost applies' }})</small>
+              class="checkbox-input">
+            <span class="checkbox-icon">🍽️</span>
+            <div class="checkbox-content">
+              <span class="checkbox-title">Dining Hall (DH) Meals</span>
+              <small class="checkbox-desc">{{ (student.isStaffChild || student.isExempted) ? '50% cost for staff/exempted' : 'Additional cost applies' }}</small>
+            </div>
           </label>
-          <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background: #f9f9f9;">
+          <label class="checkbox-card service-card">
             <input 
               type="checkbox" 
               [(ngModel)]="student.isExempted" 
               name="isExempted"
               (change)="onExemptedChange()"
-              style="width: 18px; height: 18px; cursor: pointer;">
-            <span style="font-weight: 500;">🛡️ Exempted?</span>
-            <small style="color: #666; margin-left: 5px;">(No tuition; transport free; DH at 50%)</small>
+              class="checkbox-input">
+            <span class="checkbox-icon">🛡️</span>
+            <div class="checkbox-content">
+              <span class="checkbox-title">Exempted?</span>
+              <small class="checkbox-desc">No tuition; transport free; DH at 50%</small>
+            </div>
           </label>
         </div>
-        <small class="form-hint" style="margin-top: 8px; display: block;">
+        <small class="form-hint services-hint">
           Select if the day scholar student uses school transport and/or dining hall meals. These services will be included in invoice calculations.
         </small>
-        <div *ngIf="feesSettings" style="margin-top: 10px; padding: 10px; border: 1px dashed #4a90e2; border-radius: 6px; background: #f0f7ff;">
-          <div style="font-weight: 600; margin-bottom: 6px;">Estimated Initial Invoice</div>
-          <div style="font-size: 13px; line-height: 1.4;">
+        <div class="estimated-invoice-card" *ngIf="feesSettings">
+          <div class="estimated-invoice-title">📋 Estimated Initial Invoice</div>
+          <div class="estimated-invoice-list">
             <div *ngIf="estimatedFees.registration">Registration: {{ currencySymbol }} {{ estimatedFees.registration | number:'1.2-2' }}</div>
             <div *ngIf="estimatedFees.desk">Desk: {{ currencySymbol }} {{ estimatedFees.desk | number:'1.2-2' }}</div>
             <div *ngIf="estimatedFees.tuition">Tuition: {{ currencySymbol }} {{ estimatedFees.tuition | number:'1.2-2' }}</div>
             <div *ngIf="estimatedFees.transport">Transport: {{ currencySymbol }} {{ estimatedFees.transport | number:'1.2-2' }}</div>
             <div *ngIf="estimatedFees.diningHall">Dining Hall: {{ currencySymbol }} {{ estimatedFees.diningHall | number:'1.2-2' }}</div>
-            <div style="margin-top: 4px; font-weight: 600;">
+            <div class="estimated-invoice-total">
               Total: {{ currencySymbol }} {{ estimatedFees.total | number:'1.2-2' }}
             </div>
           </div>
@@ -359,17 +373,14 @@
 
     <!-- Form Actions -->
     <div class="form-actions">
-      <button 
-        type="button" 
-        class="btn btn-secondary" 
-        (click)="goBack()">
-        <span>❌</span> Cancel
+      <button type="button" class="btn btn-cancel" (click)="goBack()">
+        <span class="btn-icon">✕</span> Cancel
       </button>
       <button 
         type="submit" 
-        class="btn btn-primary"
+        class="btn btn-submit"
         [disabled]="submitting">
-        <span *ngIf="!submitting">{{ isEdit ? '💾' : '➕' }}</span>
+        <span class="btn-icon" *ngIf="!submitting">{{ isEdit ? '💾' : '➕' }}</span>
         <span *ngIf="submitting" class="spinner"></span>
         {{ submitting ? 'Processing...' : (isEdit ? 'Update Student' : 'Register Student') }}
       </button>

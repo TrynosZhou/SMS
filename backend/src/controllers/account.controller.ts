@@ -209,14 +209,22 @@ export const createUserAccount = async (req: AuthRequest, res: Response) => {
 
     const userRepository = AppDataSource.getRepository(User);
 
-    // Enforce a single SuperAdmin account in the system
+    const MAX_SUPERADMIN = 2;
+    const MAX_ADMIN = 2;
+
     if (requestedRole === UserRole.SUPERADMIN) {
       const superadminCount = await userRepository.count({ where: { role: UserRole.SUPERADMIN } });
-      if (superadminCount >= 1) {
-        return res.status(400).json({ message: 'A Super Admin account already exists. Only one Super Admin is allowed.' });
+      if (superadminCount >= MAX_SUPERADMIN) {
+        return res.status(400).json({ message: `Maximum of ${MAX_SUPERADMIN} Super Admin accounts allowed.` });
       }
     }
-    
+    if (requestedRole === UserRole.ADMIN) {
+      const adminCount = await userRepository.count({ where: { role: UserRole.ADMIN } });
+      if (adminCount >= MAX_ADMIN) {
+        return res.status(400).json({ message: `Maximum of ${MAX_ADMIN} Administrator accounts allowed.` });
+      }
+    }
+
     // Only check email if provided (not required for teachers)
     if (email) {
       const trimmedEmail = String(email).trim().toLowerCase();
@@ -353,14 +361,10 @@ export const resetUserPassword = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
-    const { userId, newPassword } = req.body;
+    const { userId, newPassword, generatePassword } = req.body;
 
     if (!userId) {
       return res.status(400).json({ message: 'User ID is required' });
-    }
-
-    if (!newPassword || newPassword.trim().length < 8) {
-      return res.status(400).json({ message: 'New password is required and must be at least 8 characters long' });
     }
 
     const userRepository = AppDataSource.getRepository(User);
@@ -375,8 +379,17 @@ export const resetUserPassword = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: 'Cannot reset password for demo accounts' });
     }
 
-    // Hash and update password (trim to avoid whitespace issues)
-    const trimmedPassword = newPassword.trim();
+    const staffRoles = [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT];
+    const isStaffTarget = staffRoles.includes(user.role);
+    let trimmedPassword: string;
+    if (isStaffTarget && generatePassword) {
+      trimmedPassword = generateTemporaryPassword();
+    } else {
+      if (!newPassword || newPassword.trim().length < 8) {
+        return res.status(400).json({ message: 'New password is required and must be at least 8 characters long' });
+      }
+      trimmedPassword = newPassword.trim();
+    }
     console.log(`[ResetUserPassword] Resetting password for user ${user.id} (username: ${user.username}, role: ${user.role})`);
     console.log(`[ResetUserPassword] New password length: ${trimmedPassword.length}`);
     
@@ -395,6 +408,8 @@ export const resetUserPassword = async (req: AuthRequest, res: Response) => {
     user.password = hashedPassword;
     user.mustChangePassword = true; // Require password change on next login
     user.isTemporaryAccount = true; // Mark as temporary so user must change it
+    (user as any).failedLoginAttempts = 0;
+    (user as any).lockedUntil = null;
     await userRepository.save(user);
     console.log(`[ResetUserPassword] User saved to database`);
 
@@ -436,7 +451,7 @@ export const resetUserPassword = async (req: AuthRequest, res: Response) => {
     console.log(`[ResetUserPassword] ✓ Admin ${req.user.id} reset password for user ${reloadedUser.id} (username: ${reloadedUser.username}, role: ${reloadedUser.role})`);
     console.log(`[ResetUserPassword] Password reset complete and verified. User can now login with the new password.`);
 
-    res.json({
+    const payload: any = {
       message: 'Password reset successfully',
       user: {
         id: user.id,
@@ -444,13 +459,75 @@ export const resetUserPassword = async (req: AuthRequest, res: Response) => {
         email: user.email,
         role: user.role
       }
-    });
+    };
+    if (isStaffTarget && generatePassword) {
+      payload.temporaryPassword = trimmedPassword;
+      payload.mustChangeOnFirstLogin = true;
+    }
+    res.json(payload);
   } catch (error: any) {
     console.error('Error resetting user password:', error);
     res.status(500).json({
       message: 'Server error',
       error: error.message || 'Unknown error'
     });
+  }
+};
+
+// Admin/SuperAdmin: Delete a user account (unlink from teacher/parent/student, then remove user)
+export const deleteUserAccount = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    const actingRole = req.user.role;
+    if (actingRole !== UserRole.ADMIN && actingRole !== UserRole.SUPERADMIN) {
+      return res.status(403).json({ message: 'Only Administrators can delete user accounts' });
+    }
+
+    const userId = req.params.id;
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+
+    const userRepository = AppDataSource.getRepository(User);
+    const user = await userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (req.user.id === userId) {
+      return res.status(400).json({ message: 'You cannot delete your own account.' });
+    }
+    if (user.role === UserRole.SUPERADMIN) {
+      const superadminCount = await userRepository.count({ where: { role: UserRole.SUPERADMIN } });
+      if (superadminCount <= 1) {
+        return res.status(400).json({ message: 'Cannot delete the last Super Admin account' });
+      }
+    }
+    if (actingRole !== UserRole.SUPERADMIN && user.role === UserRole.SUPERADMIN) {
+      return res.status(403).json({ message: 'Only a Super Admin can delete a Super Admin account' });
+    }
+
+    const { Teacher } = await import('../entities/Teacher');
+    const { Parent } = await import('../entities/Parent');
+    const { Student } = await import('../entities/Student');
+    const teacherRepo = AppDataSource.getRepository(Teacher);
+    const parentRepo = AppDataSource.getRepository(Parent);
+    const studentRepo = AppDataSource.getRepository(Student);
+
+    await teacherRepo.update({ userId }, { userId: null as any });
+    await parentRepo.update({ userId }, { userId: null as any });
+    await studentRepo.update({ userId }, { userId: null as any });
+
+    await userRepository.remove(user);
+
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting user account:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };
 
@@ -506,13 +583,17 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: 'Only a Super Admin can modify a Super Admin account' });
     }
 
-    // Enforce a single SuperAdmin account:
-    // - Prevent assigning SuperAdmin to another user if one already exists
-    // - Prevent removing the last existing SuperAdmin
-    const superadminCount = await userRepository.count({ where: { role: UserRole.SUPERADMIN } });
+    const MAX_SUPERADMIN = 2;
+    const MAX_ADMIN = 2;
 
-    if (role === UserRole.SUPERADMIN && currentRole !== UserRole.SUPERADMIN && superadminCount >= 1) {
-      return res.status(400).json({ message: 'A Super Admin account already exists. Only one Super Admin is allowed.' });
+    const superadminCount = await userRepository.count({ where: { role: UserRole.SUPERADMIN } });
+    const adminCount = await userRepository.count({ where: { role: UserRole.ADMIN } });
+
+    if (role === UserRole.SUPERADMIN && currentRole !== UserRole.SUPERADMIN && superadminCount >= MAX_SUPERADMIN) {
+      return res.status(400).json({ message: `Maximum of ${MAX_SUPERADMIN} Super Admin accounts allowed.` });
+    }
+    if (role === UserRole.ADMIN && currentRole !== UserRole.ADMIN && adminCount >= MAX_ADMIN) {
+      return res.status(400).json({ message: `Maximum of ${MAX_ADMIN} Administrator accounts allowed.` });
     }
 
     if (currentRole === UserRole.SUPERADMIN && role !== UserRole.SUPERADMIN && superadminCount <= 1) {
@@ -543,6 +624,72 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
       message: 'Server error',
       error: error.message || 'Unknown error'
     });
+  }
+};
+
+// List staff users (admin, superadmin, accountant) for manage-accounts page
+export const getStaffUsers = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
+      return res.status(403).json({ message: 'Only Administrators can list staff accounts' });
+    }
+    if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+
+    const userRepository = AppDataSource.getRepository(User);
+    const staffRoles = [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT];
+    const users = await userRepository
+      .createQueryBuilder('u')
+      .where('u.role IN (:...roles)', { roles: staffRoles })
+      .orderBy("CASE WHEN u.role = 'superadmin' THEN 1 WHEN u.role = 'admin' THEN 2 ELSE 3 END")
+      .addOrderBy('u.username')
+      .getMany();
+
+    const list = users.map((u: any) => ({
+      id: u.id,
+      username: u.username,
+      email: u.email,
+      role: u.role,
+      failedLoginAttempts: u.failedLoginAttempts ?? 0,
+      lockedUntil: u.lockedUntil,
+      isLocked: u.lockedUntil ? new Date(u.lockedUntil) > new Date() : false
+    }));
+
+    res.json({ users: list });
+  } catch (error: any) {
+    console.error('Error listing staff users:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+// Unlock a staff account (clear failed attempts and lock)
+export const unlockUser = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
+      return res.status(403).json({ message: 'Only Administrators can unlock accounts' });
+    }
+    const userId = req.params.id;
+    if (!userId) return res.status(400).json({ message: 'User ID is required' });
+
+    const userRepository = AppDataSource.getRepository(User);
+    const user = await userRepository.findOne({ where: { id: userId } });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const staffRoles = [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT];
+    if (!staffRoles.includes(user.role)) {
+      return res.status(400).json({ message: 'Only staff accounts (administrator, superadmin, accountant) can be unlocked' });
+    }
+    if (user.role === UserRole.SUPERADMIN && req.user.role !== UserRole.SUPERADMIN) {
+      return res.status(403).json({ message: 'Only a Super Admin can unlock a Super Admin account' });
+    }
+
+    (user as any).failedLoginAttempts = 0;
+    (user as any).lockedUntil = null;
+    await userRepository.save(user);
+
+    res.json({ message: 'Account unlocked successfully', user: { id: user.id, username: user.username, role: user.role } });
+  } catch (error: any) {
+    console.error('Error unlocking user:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };
 

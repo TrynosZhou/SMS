@@ -178,6 +178,58 @@
     </div>
   </div>
 
+  <!-- Staff accounts (admin, superadmin, accountant) -->
+  <div class="manual-account-card staff-accounts-card" *ngIf="canCreateManualAccounts()" [@fadeInUp]>
+    <div class="manual-account-header">
+      <div>
+        <h2>👔 Administrator & Staff Accounts</h2>
+        <p>Reset password or unlock administrator, superadmin, and accountant accounts. Maximum 3 failed login attempts before lock. When reset, a temporary password can be generated and must be changed on first login.</p>
+      </div>
+    </div>
+    <div *ngIf="loadingStaff" class="loading-inline">Loading staff accounts...</div>
+    <div *ngIf="!loadingStaff && staffUsers.length > 0" class="staff-table-wrap">
+      <table class="staff-table">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of staffUsers">
+            <td>{{ getStaffRoleLabel(s.role) }}</td>
+            <td><code>{{ s.username }}</code></td>
+            <td>{{ s.email || '—' }}</td>
+            <td>
+              <span class="status-badge" [class.has-account]="!s.isLocked" [class.no-account]="s.isLocked">
+                {{ s.isLocked ? '🔒 Locked' : '✓ Active' }}
+              </span>
+            </td>
+            <td class="staff-actions-cell">
+              <div class="staff-action-buttons">
+                <button type="button" class="btn btn-info btn-sm" (click)="openResetStaffModal(s)" [disabled]="resettingStaffPassword">
+                  🔑 Reset Password
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" *ngIf="s.isLocked" (click)="unlockStaff(s)" [disabled]="unlockingStaffId === s.id">
+                  <span *ngIf="unlockingStaffId !== s.id">🔓 Unlock</span>
+                  <span *ngIf="unlockingStaffId === s.id" class="submit-loading"><span class="spinner-small"></span> Unlocking...</span>
+                </button>
+                <button type="button" class="btn btn-danger btn-sm" *ngIf="!isCurrentUser(s.id)" (click)="deleteStaffAccount(s)" [disabled]="deletingStaffId === s.id" title="Delete this account">
+                  <span *ngIf="deletingStaffId !== s.id">🗑️ Delete</span>
+                  <span *ngIf="deletingStaffId === s.id" class="submit-loading"><span class="spinner-small"></span> Deleting...</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div *ngIf="!loadingStaff && staffUsers.length === 0" class="empty-staff">No staff accounts found.</div>
+  </div>
+
   <!-- Demo Account Notice -->
   <div class="demo-notice-card" *ngIf="isAdmin() && isDemoUser()" [@fadeInUp]>
     <div class="demo-notice-content">
@@ -455,6 +507,15 @@
                   class="btn btn-secondary btn-sm" 
                   (click)="openResetPasswordModal(teacher)">
                   🔑 Reset Password
+                </button>
+                <button 
+                  *ngIf="teacher.hasAccount" 
+                  class="btn btn-danger btn-sm" 
+                  (click)="deleteAccount(teacher)"
+                  [disabled]="deletingAccountUserId === teacher.userId"
+                  title="Delete login account (teacher record remains)">
+                  <span *ngIf="deletingAccountUserId !== teacher.userId">🗑️ Delete</span>
+                  <span *ngIf="deletingAccountUserId === teacher.userId" class="btn-loading"><span class="spinner-small"></span> Deleting...</span>
                 </button>
               </div>
             </td>
@@ -759,6 +820,62 @@
             <span class="spinner-small"></span>
             Resetting...
           </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Staff Password Modal (admin/superadmin/accountant) -->
+  <div *ngIf="showStaffResetModal && selectedStaff" class="modal-overlay" (click)="closeResetStaffModal()" [@fadeInOut]>
+    <div class="modal-content" (click)="$event.stopPropagation()" [@slideInUp]>
+      <div class="modal-header">
+        <div class="modal-header-content">
+          <h2>
+            <span class="modal-icon">🔑</span>
+            Reset Password — {{ getStaffRoleLabel(selectedStaff.role) }}
+          </h2>
+          <p class="modal-subtitle">Set a new password. They must change it on first login.</p>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeResetStaffModal()" title="Close" [disabled]="resettingStaffPassword">
+          <span>&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-error" *ngIf="error" [@fadeInOut]>
+          <span class="alert-icon">✕</span>
+          <span>{{ error }}</span>
+        </div>
+        <div class="form-group checkbox-inline" style="margin-bottom: 14px;">
+          <label class="checkbox-label">
+            <input type="checkbox" [(ngModel)]="staffResetGeneratePassword" name="staffResetGeneratePassword" [disabled]="resettingStaffPassword">
+            <span>Generate temporary password (recommended for superadmin)</span>
+          </label>
+        </div>
+        <div *ngIf="!staffResetGeneratePassword">
+          <div class="form-group">
+            <label class="form-label">New Password *</label>
+            <div class="password-input-wrapper">
+              <input type="password" [(ngModel)]="resetStaffPasswordNewPassword" name="resetStaffNew" placeholder="Min. 8 characters" minlength="8" [disabled]="resettingStaffPassword" class="form-input">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirm New Password *</label>
+            <div class="password-input-wrapper">
+              <input type="password" [(ngModel)]="resetStaffPasswordConfirm" name="resetStaffConfirm" placeholder="Confirm" [disabled]="resettingStaffPassword" class="form-input">
+            </div>
+          </div>
+        </div>
+        <div class="info-box" *ngIf="staffResetGeneratePassword">
+          <span class="info-box-icon">💡</span>
+          <p>A temporary password will be generated and shown after reset. Share it securely. The user must change it on first login.</p>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeResetStaffModal()" [disabled]="resettingStaffPassword">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="resetStaffPassword()"
+          [disabled]="resettingStaffPassword || (!staffResetGeneratePassword && (!resetStaffPasswordNewPassword || resetStaffPasswordNewPassword.length < 8 || resetStaffPasswordNewPassword !== resetStaffPasswordConfirm))">
+          <span *ngIf="!resettingStaffPassword">🔑 Reset Password</span>
+          <span *ngIf="resettingStaffPassword" class="submit-loading"><span class="spinner-small"></span> Resetting...</span>
         </button>
       </div>
     </div>

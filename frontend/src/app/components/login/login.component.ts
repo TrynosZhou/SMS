@@ -366,6 +366,12 @@ export class LoginComponent implements OnInit {
               });
             }
           });
+        } else if ((user.role === 'admin' || user.role === 'superadmin' || user.role === 'accountant') && user.mustChangePassword) {
+          // Staff must change temporary password on first login
+          this.router.navigate(['/admin/manage-accounts'], { queryParams: { changePassword: '1' } }).catch(err => {
+            console.error('Navigation error:', err);
+            this.error = 'Failed to navigate. Please try again.';
+          });
         } else {
           // Navigate to regular dashboard for other roles
           this.router.navigate(['/dashboard']).catch(err => {
@@ -382,6 +388,9 @@ export class LoginComponent implements OnInit {
         if (err.status === 0) {
           // Connection error - server not reachable
           this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+        } else if (err.status === 423) {
+          // Account locked (too many failed attempts)
+          this.error = err.error?.message || 'Your account has been locked. Please contact the administrator or superadmin to unlock it.';
         } else if (err.status === 401) {
           // Unauthorized - invalid credentials
           const errorMessage = err.error?.message || 'Invalid username or password. Please try again.';
