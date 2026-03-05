@@ -80,8 +80,13 @@ export class ClassListsComponent implements OnInit {
     this.isAccountant = user ? (user.role === 'accountant') : false;
   }
 
+  /** True if the current user can change the class teacher (admin or superadmin). */
+  canEditClassTeacher(): boolean {
+    return (this.isAdmin || this.isSuperAdmin) && !!this.selectedClassId;
+  }
+
   openClassTeacherModal() {
-    if (!this.isAdmin || !this.selectedClassId) return;
+    if (!this.canEditClassTeacher()) return;
     this.selectedClassTeacherId = '';
     this.showClassTeacherModal = true;
     // Load teachers list if empty
@@ -103,7 +108,7 @@ export class ClassListsComponent implements OnInit {
   }
 
   saveClassTeacher() {
-    if (!this.isAdmin || !this.selectedClassId || !this.selectedClassTeacherId) return;
+    if (!this.canEditClassTeacher() || !this.selectedClassTeacherId) return;
     this.updatingClassTeacher = true;
     this.classService.updateClass(this.selectedClassId, { teacherIds: [this.selectedClassTeacherId] }).subscribe({
       next: (resp: any) => {
@@ -447,7 +452,7 @@ export class ClassListsComponent implements OnInit {
       if (!byGender.has(g)) byGender.set(g, []);
       byGender.get(g)!.push(s);
     });
-    const genderOrder = ['Female', 'Male', 'M', 'F'];
+    const genderOrder = ['Female', 'F', 'Male', 'M'];
     const ordered: { gender: string; students: any[] }[] = [];
     const seen = new Set<string>();
     genderOrder.forEach(g => {
@@ -669,7 +674,7 @@ export class ClassListsComponent implements OnInit {
         this.loading = false;
         const fileURL = window.URL.createObjectURL(blob);
         window.open(fileURL, '_blank');
-        setTimeout(() => window.URL.revokeObjectURL(fileURL), 100);
+        setTimeout(() => window.URL.revokeObjectURL(fileURL), 60000);
       },
       error: (err: any) => {
         this.loading = false;

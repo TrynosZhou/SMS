@@ -51,10 +51,10 @@
   box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
 }
 
-/* Make the search input shorter to fit three buttons on one line */
+/* Make the search input shorter so action buttons are clearly visible */
 .input-group .search-input-short {
-  flex: 0 0 596px;
-  max-width: 596px;
+  flex: 0 0 360px;
+  max-width: 360px;
 }
 
 .btn {
