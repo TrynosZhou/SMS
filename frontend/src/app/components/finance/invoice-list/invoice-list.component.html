@@ -1154,12 +1154,14 @@
               [(ngModel)]="noteForm.amount"
               name="noteAmount"
               class="form-control"
-              [readonly]="isNoteAmountAuto"
               required
               placeholder="Enter amount"
             />
             <small class="form-hint" *ngIf="isNoteAmountAuto">
-              Auto-filled from Settings{{ selectedInvoice?.student?.isStaffChild || selectedInvoice?.student?.isExempted ? ' (50% for staff/exempted)' : '' }}.
+              Pre-filled from Settings{{ selectedInvoice?.student?.isStaffChild || selectedInvoice?.student?.isExempted ? ' (50% for staff/exempted)' : '' }}. You can edit the amount.
+            </small>
+            <small class="form-hint" *ngIf="!isNoteAmountAuto && (noteForm.item === 'transport' || noteForm.item === 'diningHall')">
+              Enter the amount manually, or re-select DH Fee / Transport Fee to pre-fill from Settings.
             </small>
             <small class="form-hint">
               {{ noteForm.type === 'credit' ? 'This amount will be subtracted from the selected cost item.' : 'This amount will be added to the selected cost item.' }}
