@@ -962,10 +962,9 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
     const transportCost = parseAmount(feesConfig.transportCost);
     const diningHallCost = parseAmount(feesConfig.diningHallCost);
     const deskFee = parseAmount(feesConfig.deskFee);
-    const libraryFee = parseAmount(feesConfig.libraryFee);
-    const sportsFee = parseAmount(feesConfig.sportsFee);
-    const otherFeesArray = Array.isArray(feesConfig.otherFees) ? feesConfig.otherFees : [];
-    const otherFeesTotal = otherFeesArray.reduce((sum: number, fee: any) => sum + parseAmount(fee?.amount), 0);
+    // Library, sports, and other fees are no longer part of the term fee
+    // structure. Bulk invoices must only include tuition, one‑time desk fee,
+    // one‑time registration fee, transport, and dining hall as configured.
 
     // Get all active students
     const students = await studentRepository.find({
@@ -1047,13 +1046,6 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
           termFees += deskFee;
         }
         
-        // Library fee, sports fee, and other fees: charged every term for non-staff/exempted
-        if (!student.isStaffChild && !student.isExempted) {
-          termFees += libraryFee;
-          termFees += sportsFee;
-          termFees += otherFeesTotal;
-        }
-
         // Transport cost: only for day scholars who use transport AND are not staff children or exempted
         if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild && !student.isExempted) {
           termFees += transportCost;
