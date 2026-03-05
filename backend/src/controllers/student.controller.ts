@@ -520,24 +520,26 @@ export const correctStudentStatus = async (req: AuthRequest, res: Response) => {
       const paidAmountValue = parseAmount(initialInvoice.paidAmount);
       const oldPrepaid = parseAmount(initialInvoice.prepaidAmount);
 
-      // When correcting status (e.g. New -> Existing), we must NOT clear balances.
-      // Instead, reduce the invoice amount by removing fees (desk/registration) and reduce the balance by the same delta.
-      // If the reduction is larger than the outstanding balance, carry the excess into prepaidAmount.
+      // When correcting status (e.g. New -> Existing), the desk fee (and any
+      // other one‑time fees being removed) were NEVER actually paid. The
+      // outstanding amount the student owes must therefore remain based on the
+      // original invoice amount and the original cash paid.
+      //
+      // deskFeeDelta is the total reduction in invoice.amount (e.g. removing
+      // desk fee, registration, etc.).
       const deskFeeDelta = parseFloat((oldAmount - totalAmount).toFixed(2));
-      let newBalance = oldBalance;
+
+      // Recompute balance from the original figures so that removing desk fee
+      // does NOT reduce what the student still owes.
+      //
+      // newBalance = oldAmount - paidAmountValue
+      // (i.e. "what they owe" stays the same; we are only cleaning out fees
+      // that were never actually paid).
+      let newBalance = Math.max(
+        0,
+        parseFloat((oldAmount - paidAmountValue).toFixed(2))
+      );
       let overpay = 0;
-      if (deskFeeDelta > 0) {
-        const reduced = oldBalance - deskFeeDelta;
-        if (reduced >= 0) {
-          newBalance = parseFloat(reduced.toFixed(2));
-        } else {
-          newBalance = 0;
-          overpay = parseFloat(Math.abs(reduced).toFixed(2));
-        }
-      } else {
-        // If invoice amount increases (unlikely for this action), keep the old balance + delta
-        newBalance = parseFloat((oldBalance + Math.abs(deskFeeDelta)).toFixed(2));
-      }
 
       // If we are removing desk/registration fees due to a status correction,
       // the system must not show those removed charges as "paid" or as a "prepaid" credit.
