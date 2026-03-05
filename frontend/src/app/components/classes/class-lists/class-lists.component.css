@@ -242,28 +242,31 @@
   display: none !important;
 }
 
-/* Reduce PDF header width and typography by ~20% during capture */
+/* PDF capture: make banner span full width at top, like official header */
 .pdf-mode .school-header {
-  width: 80%;
-  margin-left: auto;
-  margin-right: auto;
-  padding: 12px;
+  width: 100%;
+  margin: 0 0 20px 0;
+  padding: 16px 24px;
+  border-radius: 0;
 }
 .pdf-mode .school-logo {
-  max-height: 56px; /* 70px -> 56px (20% reduction) */
-  max-width: 112px; /* 140px -> 112px */
+  max-height: 64px;
+  max-width: 128px;
 }
 .pdf-mode .school-header h3 {
-  font-size: 18px; /* ~20% smaller than 22px */
+  font-size: 20px;
 }
 .pdf-mode .school-motto {
-  font-size: 12px; /* 14px -> ~11.2px, rounded to 12px */
+  font-size: 13px;
 }
 .pdf-mode .school-address {
-  font-size: 12px; /* 14px -> ~11.2px, rounded */
+  font-size: 12px;
 }
 .pdf-mode .school-contact {
-  font-size: 11px; /* 13px -> ~10.4px, rounded */
+  font-size: 11px;
+}
+.pdf-mode .school-text {
+  max-width: 100%;
 }
 
 .school-header {

@@ -1367,23 +1367,12 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
     const persistedBalance = Math.max(0, parseFloat(parseAmount(invoice.balance).toFixed(2)));
 
     const paidToDisplay = isReturningInitialInvoice ? persistedPaid : paidToDisplayRaw;
-    const computedBalance = isReturningInitialInvoice
-      ? persistedBalance
-      : Math.max(
-          0,
-          parseFloat(
-            (
-              statementInvoiceAmount +
-              statementPreviousBalance -
-              paidToDisplay -
-              statementPrepaidAmount
-            ).toFixed(2)
-          )
-        );
-
+    // For invoice statements we must mirror the persisted invoice record so
+    // that all parts of the system (UI, receipts, statements) show the same
+    // amounts. Trust the stored paidAmount and balance instead of overriding.
     const invoiceForStatement = Object.assign({}, invoice, {
-      paidAmount: paidToDisplay,
-      balance: computedBalance
+      paidAmount: invoice.paidAmount,
+      balance: invoice.balance
     });
 
     const pdfBuffer = await createInvoicePDF({
