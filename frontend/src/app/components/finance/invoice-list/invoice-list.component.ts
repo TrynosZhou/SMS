@@ -1001,6 +1001,23 @@ export class InvoiceListComponent implements OnInit {
     };
   }
 
+  refreshNoteData() {
+    if (!this.selectedInvoice?.id) return;
+    this.loading = true;
+    this.error = '';
+    this.financeService.getInvoice(this.selectedInvoice.id).subscribe({
+      next: (invoice: any) => {
+        this.selectedInvoice = invoice;
+        this.loading = false;
+      },
+      error: (err) => {
+        this.loading = false;
+        this.error = err?.error?.message || 'Failed to refresh invoice data.';
+        setTimeout(() => (this.error = ''), 5000);
+      }
+    });
+  }
+
   submitNote() {
     if (!this.selectedInvoice) {
       this.error = 'Please select an invoice first.';

@@ -48,7 +48,7 @@
       </p>
     </div>
 
-    <div class="report-card-content" *ngIf="reportCard.subjects && reportCard.subjects.length > 0">
+    <div class="report-card-content table-wrapper table-responsive" *ngIf="reportCard.subjects && reportCard.subjects.length > 0">
       <table class="report-table">
         <thead>
           <tr>
@@ -60,15 +60,15 @@
         </thead>
         <tbody>
           <tr *ngFor="let subject of reportCard.subjects">
-            <td>{{ subject.subject || subject.name || subject.subjectName || 'N/A' }}</td>
-            <td>{{ subject.subjectCode || subject.code || 'N/A' }}</td>
-            <td>
+            <td data-label="Subject Name">{{ subject.subject || subject.name || subject.subjectName || 'N/A' }}</td>
+            <td data-label="Subject Code">{{ subject.subjectCode || subject.code || 'N/A' }}</td>
+            <td data-label="Marks">
               <span *ngIf="subject.score !== undefined && subject.score !== null && subject.maxScore !== undefined && subject.maxScore !== null && subject.maxScore > 0">
                 {{ subject.score }} / {{ subject.maxScore }}
               </span>
               <span *ngIf="subject.score === undefined || subject.score === null || subject.maxScore === undefined || subject.maxScore === null || subject.maxScore === 0">N/A</span>
             </td>
-            <td>{{ subject.grade || 'N/A' }}</td>
+            <td data-label="Grade">{{ subject.grade || 'N/A' }}</td>
           </tr>
         </tbody>
       </table>

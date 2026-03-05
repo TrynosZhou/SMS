@@ -396,11 +396,11 @@
               </thead>
               <tbody>
                 <tr *ngFor="let subject of (reportCard.subjects | safeArray)" [class.high-score]="subject.percentage >= 80" [class.low-score]="subject.percentage < 50">
-                  <td class="subject-name">{{ subject.subject || subject.name || '-' }}</td>
-                  <td class="subject-code">{{ subject.subjectCode || subject.code || '-' }}</td>
-                  <td class="score">{{ subject.score | number:'1.0-0' }}</td>
-                  <td class="class-average">{{ subject.classAverage || 0 }}</td>
-                  <td>
+                  <td class="subject-name" data-label="Subject Name">{{ subject.subject || subject.name || '-' }}</td>
+                  <td class="subject-code" data-label="Subject Code">{{ subject.subjectCode || subject.code || '-' }}</td>
+                  <td class="score" data-label="Mark Obtained">{{ subject.score | number:'1.0-0' }}</td>
+                  <td class="class-average" data-label="Class Average">{{ subject.classAverage || 0 }}</td>
+                  <td data-label="Grade">
                     <span class="grade-badge grade-{{ subject.grade?.toLowerCase().replace(' ', '-') }}">
                       {{ subject.grade }}
                     </span>

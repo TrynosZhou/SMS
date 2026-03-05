@@ -11,6 +11,7 @@ import { validatePhoneNumber } from '../utils/phoneValidator';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { User, UserRole } from '../entities/User';
+import { UserSessionLog } from '../entities/UserSessionLog';
 
 const generateTemporaryPassword = () => {
   return `Temp-${randomBytes(4).toString('hex')}-${Date.now().toString().slice(-4)}`;
@@ -637,7 +638,21 @@ export const adminListParents = async (req: AuthRequest, res: Response) => {
       relations: ['parentStudents', 'parentStudents.student', 'parentStudents.student.classEntity']
     });
 
-    res.json({ parents });
+    // Count students who have a user account and have logged in (at least one session log as student)
+    let studentsWithAccountLoggedInCount = 0;
+    try {
+      const sessionRepo = AppDataSource.getRepository(UserSessionLog);
+      const result = await sessionRepo
+        .createQueryBuilder('s')
+        .select('COUNT(DISTINCT s.userId)', 'count')
+        .where('LOWER(s.role) = :role', { role: 'student' })
+        .getRawOne<{ count: string }>();
+      studentsWithAccountLoggedInCount = result?.count != null ? parseInt(String(result.count), 10) : 0;
+    } catch (e) {
+      console.warn('Could not compute studentsWithAccountLoggedInCount:', e);
+    }
+
+    res.json({ parents, studentsWithAccountLoggedInCount });
   } catch (error: any) {
     console.error('Error listing parents:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });

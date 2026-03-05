@@ -15,6 +15,8 @@ export class ParentManagementComponent implements OnInit {
   selectedParent: any = null;
   unlinkedParentsCount = 0;
   linkedStudentsTotalCount = 0;
+  /** Count of students who have created a student account and have logged in at least once */
+  studentsWithAccountLoggedInCount = 0;
   loading = false;
   savingParent = false;
   deletingParent = false;
@@ -90,6 +92,7 @@ export class ParentManagementComponent implements OnInit {
 
         this.unlinkedParentsCount = this.parents.filter(p => (p?.parentStudents || []).length === 0).length;
         this.linkedStudentsTotalCount = this.parents.reduce((sum, p) => sum + ((p?.parentStudents || []).length), 0);
+        this.studentsWithAccountLoggedInCount = response.studentsWithAccountLoggedInCount ?? 0;
         this.filteredParents = this.parents;
         this.loading = false;
         if (this.selectedParent) {

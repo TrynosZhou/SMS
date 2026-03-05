@@ -649,6 +649,41 @@
   font-weight: 600;
 }
 
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-icon-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-icon-refresh .btn-icon {
+  font-size: 16px;
+}
+
+.btn-icon-refresh:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.btn-icon-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .modal-close-btn {
   background: rgba(255, 255, 255, 0.2);
   border: none;

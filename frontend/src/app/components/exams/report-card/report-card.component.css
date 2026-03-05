@@ -1349,6 +1349,97 @@
 
   .table-wrapper {
     -webkit-overflow-scrolling: touch;
+    margin-left: -16px;
+    margin-right: -16px;
+    padding: 0 16px;
+    overflow-x: auto;
+  }
+
+  .report-table {
+    min-width: 420px;
+    font-size: 12px;
+  }
+
+  .report-table th,
+  .report-table td {
+    padding: 10px 8px;
+  }
+}
+
+/* Mobile: card-style table for very small screens */
+@media (max-width: 600px) {
+  .report-card-preview {
+    padding: 12px;
+  }
+
+  .report-card-preview > .report-card-header {
+    margin: -12px -12px 16px -12px !important;
+  }
+
+  .table-wrapper {
+    margin-left: -12px;
+    margin-right: -12px;
+    padding: 0 12px;
+  }
+
+  .report-table thead {
+    display: none;
+  }
+
+  .report-table,
+  .report-table tbody,
+  .report-table tr,
+  .report-table td {
+    display: block;
+  }
+
+  .report-table tbody tr {
+    margin-bottom: 12px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+  }
+
+  .report-table tbody tr.high-score {
+    background: #f0f9ff;
+    border-color: #b6e0fe;
+  }
+
+  .report-table tbody tr.low-score {
+    background: #fff5f5;
+    border-color: #fecaca;
+  }
+
+  .report-table td {
+    padding: 8px 0;
+    border: none;
+    border-bottom: 1px solid #e9ecef;
+    font-weight: 600;
+  }
+
+  .report-table td:last-child {
+    border-bottom: none;
+  }
+
+  .report-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+
+  .report-table .subject-name {
+    font-size: 14px;
+    color: #1a1a1a;
+  }
+
+  .report-table .grade-badge {
+    display: inline-block;
   }
 }
 
@@ -1412,7 +1503,7 @@
   text-align: center;
 }
 
-/* Print Styles */
+/* Print Styles – keep table layout for PDF/print */
 @media print {
   .report-card-preview {
     page-break-after: always;
@@ -1433,5 +1524,40 @@
   .grade-scale-footer {
     page-break-inside: avoid;
     margin-top: 30px;
+  }
+
+  .report-table {
+    display: table;
+    min-width: 100%;
+  }
+
+  .report-table thead {
+    display: table-header-group;
+  }
+
+  .report-table tbody {
+    display: table-row-group;
+  }
+
+  .report-table tr {
+    display: table-row;
+  }
+
+  .report-table tbody tr {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+  }
+
+  .report-table th,
+  .report-table td {
+    padding: 8px 10px;
+    border: 1px solid #dee2e6;
+    display: table-cell;
+  }
+
+  .report-table td::before {
+    display: none;
   }
 }

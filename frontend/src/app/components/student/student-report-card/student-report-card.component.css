@@ -127,10 +127,18 @@
   border-radius: 4px;
 }
 
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 20px 0;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
 .report-table {
   width: 100%;
   border-collapse: collapse;
-  margin: 20px 0;
+  margin: 0;
 }
 
 @media (max-width: 768px) {
@@ -164,12 +172,71 @@
 
   .report-card-display {
     padding: 16px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrapper {
+    margin-left: -16px;
+    margin-right: -16px;
+    padding: 0 16px;
   }
 
   .report-table {
-    min-width: 640px;
+    min-width: 380px;
+    font-size: 13px;
+  }
+
+  .report-table th,
+  .report-table td {
+    padding: 10px 8px;
+  }
+}
+
+@media (max-width: 600px) {
+  .report-card-content.table-wrapper {
+    margin-left: -16px;
+    margin-right: -16px;
+    padding: 0;
+    border: none;
+  }
+
+  .report-table thead {
+    display: none;
+  }
+
+  .report-table,
+  .report-table tbody,
+  .report-table tr,
+  .report-table td {
+    display: block;
+  }
+
+  .report-table tbody tr {
+    margin-bottom: 12px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+  }
+
+  .report-table td {
+    padding: 8px 0;
+    border: none;
+    border-bottom: 1px solid #e9ecef;
+  }
+
+  .report-table td:last-child {
+    border-bottom: none;
+  }
+
+  .report-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
   }
 }
 
@@ -179,7 +246,7 @@
   }
 
   .report-card-display {
-    padding: 14px;
+    padding: 12px;
   }
 }
 
@@ -343,5 +410,41 @@
 
 .btn-success:hover:not(:disabled) {
   background: #45a049;
+}
+
+@media print {
+  .report-table {
+    display: table;
+  }
+
+  .report-table thead {
+    display: table-header-group;
+  }
+
+  .report-table tbody {
+    display: table-row-group;
+  }
+
+  .report-table tr {
+    display: table-row;
+  }
+
+  .report-table th,
+  .report-table td {
+    display: table-cell;
+    padding: 8px 10px;
+    border: 1px solid #e0e0e0;
+  }
+
+  .report-table tbody tr {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+  }
+
+  .report-table td::before {
+    display: none;
+  }
 }
 
