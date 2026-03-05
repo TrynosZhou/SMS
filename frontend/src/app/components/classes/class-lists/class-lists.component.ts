@@ -27,6 +27,7 @@ export class ClassListsComponent implements OnInit {
   schoolEmail = '';
   schoolMotto = '';
   academicYear = '';
+  // Logo used in the PDF header. Must prefer logo2 from Settings.
   schoolLogo: string | null = null;
   
   loading = false;
@@ -228,7 +229,9 @@ export class ClassListsComponent implements OnInit {
         this.schoolEmail = settings.schoolEmail || '';
         this.schoolMotto = settings.schoolMotto || '';
         this.academicYear = settings.academicYear || '';
-        this.schoolLogo = settings.schoolLogo || null;
+        // Prefer secondary logo (schoolLogo2) for printable reports such as class lists.
+        // Fallback to primary logo if logo2 is not configured.
+        this.schoolLogo = settings.schoolLogo2 || settings.schoolLogo || null;
 
         const terms: string[] = [];
         
