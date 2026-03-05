@@ -25,14 +25,16 @@ export const updateAccount = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: 'Demo accounts cannot change password. This is a demo environment.' });
     }
 
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: 'Current password and new password are required' });
+    const updatingPassword = !!newPassword;
+    const updatingUsername = newUsername !== undefined && newUsername !== null;
+    const updatingEmail = newEmail !== undefined && newEmail !== null;
+    if (!currentPassword && (updatingPassword || updatingUsername || updatingEmail)) {
+      return res.status(400).json({ message: 'Current password is required to update your account' });
     }
-
-    // Allow updating password only, or username/email with password
-    // If neither username nor email is provided, that's okay - user just wants to change password
-
-    if (newPassword.length < 8) {
+    if (!updatingPassword && !updatingUsername && !updatingEmail) {
+      return res.status(400).json({ message: 'Provide new password, new username, or new email to update' });
+    }
+    if (updatingPassword && newPassword.length < 8) {
       return res.status(400).json({ message: 'New password must be at least 8 characters long' });
     }
 
@@ -43,10 +45,11 @@ export const updateAccount = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Verify current password
-    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
-    if (!isValidPassword) {
-      return res.status(401).json({ message: 'Current password is incorrect' });
+    if (currentPassword) {
+      const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: 'Current password is incorrect' });
+      }
     }
 
     // For teachers, username (TeacherID) cannot be changed, especially on first login
@@ -77,22 +80,25 @@ export const updateAccount = async (req: AuthRequest, res: Response) => {
     }
 
     // Update username if provided (but not for teachers)
-    if (newUsername && user.role !== UserRole.TEACHER) {
-      user.username = newUsername;
+    if (newUsername !== undefined && newUsername !== null && user.role !== UserRole.TEACHER) {
+      const trimmed = String(newUsername).trim();
+      if (trimmed) user.username = trimmed;
     }
 
     // Update email if provided
-    if (newEmail) {
-      user.email = newEmail;
+    if (newEmail !== undefined && newEmail !== null) {
+      const trimmed = String(newEmail).trim();
+      user.email = trimmed || null;
     }
 
     if (firstName !== undefined) user.firstName = firstName ? String(firstName).trim() || null : null;
     if (lastName !== undefined) user.lastName = lastName ? String(lastName).trim() || null : null;
 
-    // Update password
-    user.password = await bcrypt.hash(newPassword, 10);
-    user.mustChangePassword = false;
-    user.isTemporaryAccount = false;
+    if (updatingPassword) {
+      user.password = await bcrypt.hash(newPassword, 10);
+      user.mustChangePassword = false;
+      user.isTemporaryAccount = false;
+    }
 
     await userRepository.save(user);
 

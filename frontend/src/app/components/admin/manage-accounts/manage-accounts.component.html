@@ -14,7 +14,7 @@
   </div>
 
   <!-- Alert Messages -->
-  <div class="alert alert-success" *ngIf="success" [@fadeInOut]>
+  <div id="success-message" class="alert alert-success" *ngIf="success" [@fadeInOut] role="alert">
     <span class="alert-icon">✓</span>
     <span [innerHTML]="success"></span>
   </div>
@@ -259,13 +259,24 @@
 
     <div class="password-section-content" *ngIf="showPasswordChangeSection" [@slideInUp]>
       <div class="admin-info-box">
-        <div class="admin-info-item">
-          <span class="admin-info-label">Email:</span>
-          <span class="admin-info-value">{{ getCurrentAdminInfo()?.email }}</span>
+        <div class="admin-info-item admin-info-clickable" (click)="openEditRoleModal()" *ngIf="canEditOwnRole()" title="Click to change role">
+          <span class="admin-info-label">Role:</span>
+          <span class="admin-info-value">{{ getRoleLabel(getCurrentAdminInfo()?.role) }}</span>
+          <span class="admin-info-edit-hint">✏️</span>
         </div>
-        <div class="admin-info-item">
+        <div class="admin-info-item" *ngIf="!canEditOwnRole()">
+          <span class="admin-info-label">Role:</span>
+          <span class="admin-info-value">{{ getRoleLabel(getCurrentAdminInfo()?.role) }}</span>
+        </div>
+        <div class="admin-info-item admin-info-clickable" (click)="openEditUsernameModal()" title="Click to change username">
           <span class="admin-info-label">Username:</span>
           <span class="admin-info-value">{{ getCurrentAdminInfo()?.username }}</span>
+          <span class="admin-info-edit-hint">✏️</span>
+        </div>
+        <div class="admin-info-item admin-info-clickable" (click)="openEditEmailModal()" title="Click to change email">
+          <span class="admin-info-label">Email:</span>
+          <span class="admin-info-value">{{ getCurrentAdminInfo()?.email || '—' }}</span>
+          <span class="admin-info-edit-hint">✏️</span>
         </div>
       </div>
 
@@ -896,6 +907,92 @@
           <span *ngIf="!resettingStaffPassword">🔑 Reset Password</span>
           <span *ngIf="resettingStaffPassword" class="submit-loading"><span class="spinner-small"></span> Resetting...</span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Role Modal (own account - superadmin only) -->
+  <div *ngIf="showEditRoleModal" class="modal-overlay" (click)="closeEditRoleModal()" [@fadeInOut]>
+    <div class="modal-content" (click)="$event.stopPropagation()" [@slideInUp]>
+      <div class="modal-header">
+        <div class="modal-header-content">
+          <h2>✏️ Change Role</h2>
+          <p class="modal-subtitle">Change your account role</p>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeEditRoleModal()" title="Close" [disabled]="updatingOwnRole">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-error" *ngIf="error" [@fadeInOut]>{{ error }}</div>
+        <div class="form-group">
+          <label class="form-label">Role</label>
+          <select [(ngModel)]="editRoleValue" name="editRole" class="form-input" [disabled]="updatingOwnRole">
+            <option value="superadmin">Super Admin</option>
+            <option value="admin">Administrator</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeEditRoleModal()" [disabled]="updatingOwnRole">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="saveOwnRole()" [disabled]="updatingOwnRole || !editRoleValue">
+          <span *ngIf="!updatingOwnRole">Save</span>
+          <span *ngIf="updatingOwnRole" class="submit-loading"><span class="spinner-small"></span> Saving...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Username Modal -->
+  <div *ngIf="showEditUsernameModal" class="modal-overlay" (click)="closeEditUsernameModal()" [@fadeInOut]>
+    <div class="modal-content" (click)="$event.stopPropagation()" [@slideInUp]>
+      <div class="modal-header">
+        <div class="modal-header-content">
+          <h2>✏️ Change Username</h2>
+          <p class="modal-subtitle">Enter your new username and current password</p>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeEditUsernameModal()" title="Close" [disabled]="updatingOwnUsername">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-error" *ngIf="error" [@fadeInOut]>{{ error }}</div>
+        <div class="form-group">
+          <label class="form-label">New Username *</label>
+          <input type="text" [(ngModel)]="editUsernameValue" name="editUsername" class="form-input" placeholder="New username" [disabled]="updatingOwnUsername">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Current Password *</label>
+          <input type="password" [(ngModel)]="editUsernamePassword" name="editUsernamePassword" class="form-input" placeholder="Confirm with current password" [disabled]="updatingOwnUsername">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeEditUsernameModal()" [disabled]="updatingOwnUsername">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="saveOwnUsername()" [disabled]="updatingOwnUsername || !editUsernameValue?.trim() || !editUsernamePassword">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Email Modal -->
+  <div *ngIf="showEditEmailModal" class="modal-overlay" (click)="closeEditEmailModal()" [@fadeInOut]>
+    <div class="modal-content" (click)="$event.stopPropagation()" [@slideInUp]>
+      <div class="modal-header">
+        <div class="modal-header-content">
+          <h2>✏️ Change Email</h2>
+          <p class="modal-subtitle">Enter your new email and current password</p>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeEditEmailModal()" title="Close" [disabled]="updatingOwnEmail">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-error" *ngIf="error" [@fadeInOut]>{{ error }}</div>
+        <div class="form-group">
+          <label class="form-label">New Email *</label>
+          <input type="email" [(ngModel)]="editEmailValue" name="editEmail" class="form-input" placeholder="New email address" [disabled]="updatingOwnEmail">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Current Password *</label>
+          <input type="password" [(ngModel)]="editEmailPassword" name="editEmailPassword" class="form-input" placeholder="Confirm with current password" [disabled]="updatingOwnEmail">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeEditEmailModal()" [disabled]="updatingOwnEmail">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="saveOwnEmail()" [disabled]="updatingOwnEmail || !editEmailValue?.trim() || !editEmailPassword">Save</button>
       </div>
     </div>
   </div>

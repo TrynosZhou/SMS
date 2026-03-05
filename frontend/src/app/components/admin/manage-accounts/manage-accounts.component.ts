@@ -87,6 +87,19 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   showNewPassword = false;
   showConfirmPassword = false;
 
+  // Edit own profile (role, username, email) modals
+  showEditRoleModal = false;
+  showEditUsernameModal = false;
+  showEditEmailModal = false;
+  editRoleValue = '';
+  editUsernameValue = '';
+  editEmailValue = '';
+  editUsernamePassword = '';
+  editEmailPassword = '';
+  updatingOwnRole = false;
+  updatingOwnUsername = false;
+  updatingOwnEmail = false;
+
   // User subscription
   private userSubscription?: Subscription;
   currentUser: any = null;
@@ -438,9 +451,12 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     this.accountService.resetUserPassword(this.selectedTeacher.userId, trimmedPassword).subscribe({
       next: (response: any) => {
         this.resettingPassword = false;
-        this.success = `Password reset successfully for ${this.selectedTeacher.firstName} ${this.selectedTeacher.lastName}. ` +
-                      `The teacher will be required to change it on next login.`;
+        this.error = '';
+        this.success = `<strong>Password has been reset successfully.</strong><br>` +
+          `Teacher: ${this.selectedTeacher.firstName} ${this.selectedTeacher.lastName}. ` +
+          `They will be required to change it on next login.`;
         this.closeResetPasswordModal();
+        this.scrollToSuccessMessage();
         setTimeout(() => this.success = '', 10000);
       },
       error: (err: any) => {
@@ -449,6 +465,13 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
         setTimeout(() => this.error = '', 5000);
       }
     });
+  }
+
+  private scrollToSuccessMessage(): void {
+    setTimeout(() => {
+      const el = document.getElementById('success-message');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 150);
   }
 
   toggleResetPasswordNewVisibility() {
@@ -565,20 +588,27 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
       this.resettingStaffPassword = true;
       this.error = '';
       this.accountService.resetUserPassword(this.selectedStaff.id, '', true).subscribe({
-        next: (response: any) => {
-          this.resettingStaffPassword = false;
-          const tempPass = response.temporaryPassword;
-          this.success = `Password reset successfully for ${this.selectedStaff.role} (${this.selectedStaff.username}). ` +
-            (tempPass ? `Temporary password: ${tempPass} — must be changed on first login.` : 'They must change it on first login.');
-          this.closeResetStaffModal();
-          this.loadStaffUsers();
-          setTimeout(() => this.success = '', 15000);
-        },
-        error: (err: any) => {
-          this.resettingStaffPassword = false;
-          this.error = err.error?.message || 'Failed to reset password';
-        }
-      });
+      next: (response: any) => {
+        this.resettingStaffPassword = false;
+        this.error = '';
+        const tempPass = response.temporaryPassword;
+        const roleLabel = this.getStaffRoleLabel(this.selectedStaff.role);
+        this.success = `<strong>Password has been reset successfully.</strong><br>` +
+          `Account: ${roleLabel} (${this.selectedStaff.username}). ` +
+          (tempPass
+            ? `Temporary password: <strong>${tempPass}</strong> — share it securely; they must change it on first login.`
+            : 'They must change it on first login.');
+        this.closeResetStaffModal();
+        this.loadStaffUsers();
+        this.scrollToSuccessMessage();
+        setTimeout(() => this.success = '', 15000);
+      },
+      error: (err: any) => {
+        this.resettingStaffPassword = false;
+        this.error = err.error?.message || 'Failed to reset password';
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
       return;
     }
     if (!this.resetStaffPasswordNewPassword || this.resetStaffPasswordNewPassword.trim().length < 8) {
@@ -594,14 +624,19 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     this.accountService.resetUserPassword(this.selectedStaff.id, this.resetStaffPasswordNewPassword.trim()).subscribe({
       next: () => {
         this.resettingStaffPassword = false;
-        this.success = `Password reset successfully for ${this.selectedStaff.role} (${this.selectedStaff.username}). They must change it on first login.`;
+        this.error = '';
+        const roleLabel = this.getStaffRoleLabel(this.selectedStaff.role);
+        this.success = `<strong>Password has been reset successfully.</strong><br>` +
+          `Account: ${roleLabel} (${this.selectedStaff.username}). They must change it on first login.`;
         this.closeResetStaffModal();
         this.loadStaffUsers();
+        this.scrollToSuccessMessage();
         setTimeout(() => this.success = '', 10000);
       },
       error: (err: any) => {
         this.resettingStaffPassword = false;
         this.error = err.error?.message || 'Failed to reset password';
+        setTimeout(() => this.error = '', 5000);
       }
     });
   }
@@ -759,6 +794,131 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
       };
     }
     return null;
+  }
+
+  getRoleLabel(role: string | undefined): string {
+    if (!role) return '—';
+    const r = role.toLowerCase();
+    if (r === 'superadmin') return 'Super Admin';
+    if (r === 'admin') return 'Administrator';
+    return role;
+  }
+
+  canEditOwnRole(): boolean {
+    return this.isSuperAdmin();
+  }
+
+  openEditRoleModal(): void {
+    const info = this.getCurrentAdminInfo();
+    if (!info) return;
+    this.editRoleValue = (info.role || 'admin').toLowerCase();
+    this.error = '';
+    this.showEditRoleModal = true;
+  }
+
+  closeEditRoleModal(): void {
+    this.showEditRoleModal = false;
+    this.editRoleValue = '';
+    this.error = '';
+  }
+
+  saveOwnRole(): void {
+    const user = this.currentUser || this.authService.getCurrentUser();
+    if (!user?.id || !this.editRoleValue) return;
+    this.updatingOwnRole = true;
+    this.error = '';
+    this.accountService.updateUserRole(user.id, this.editRoleValue).subscribe({
+      next: (res: any) => {
+        this.updatingOwnRole = false;
+        if (res?.user) this.authService.setCurrentUser({ ...user, ...res.user });
+        this.currentUser = this.authService.getCurrentUser();
+        this.success = 'Role updated successfully.';
+        this.closeEditRoleModal();
+        setTimeout(() => this.success = '', 5000);
+      },
+      error: (err: any) => {
+        this.updatingOwnRole = false;
+        this.error = err.error?.message || 'Failed to update role';
+      }
+    });
+  }
+
+  openEditUsernameModal(): void {
+    const info = this.getCurrentAdminInfo();
+    if (!info) return;
+    this.editUsernameValue = info.username || '';
+    this.editUsernamePassword = '';
+    this.error = '';
+    this.showEditUsernameModal = true;
+  }
+
+  closeEditUsernameModal(): void {
+    this.showEditUsernameModal = false;
+    this.editUsernameValue = '';
+    this.editUsernamePassword = '';
+    this.error = '';
+  }
+
+  saveOwnUsername(): void {
+    if (!this.editUsernameValue?.trim() || !this.editUsernamePassword) return;
+    this.updatingOwnUsername = true;
+    this.error = '';
+    this.accountService.updateAccount({
+      currentPassword: this.editUsernamePassword,
+      newUsername: this.editUsernameValue.trim()
+    }).subscribe({
+      next: (res: any) => {
+        this.updatingOwnUsername = false;
+        if (res?.user) this.authService.setCurrentUser(res.user);
+        this.currentUser = this.authService.getCurrentUser();
+        this.success = 'Username updated successfully.';
+        this.closeEditUsernameModal();
+        setTimeout(() => this.success = '', 5000);
+      },
+      error: (err: any) => {
+        this.updatingOwnUsername = false;
+        this.error = err.error?.message || 'Failed to update username';
+      }
+    });
+  }
+
+  openEditEmailModal(): void {
+    const info = this.getCurrentAdminInfo();
+    if (!info) return;
+    this.editEmailValue = info.email || '';
+    this.editEmailPassword = '';
+    this.error = '';
+    this.showEditEmailModal = true;
+  }
+
+  closeEditEmailModal(): void {
+    this.showEditEmailModal = false;
+    this.editEmailValue = '';
+    this.editEmailPassword = '';
+    this.error = '';
+  }
+
+  saveOwnEmail(): void {
+    if (!this.editEmailValue?.trim() || !this.editEmailPassword) return;
+    this.updatingOwnEmail = true;
+    this.error = '';
+    this.accountService.updateAccount({
+      currentPassword: this.editEmailPassword,
+      newEmail: this.editEmailValue.trim()
+    }).subscribe({
+      next: (res: any) => {
+        this.updatingOwnEmail = false;
+        if (res?.user) this.authService.setCurrentUser(res.user);
+        this.currentUser = this.authService.getCurrentUser();
+        this.success = 'Email updated successfully.';
+        this.closeEditEmailModal();
+        setTimeout(() => this.success = '', 5000);
+      },
+      error: (err: any) => {
+        this.updatingOwnEmail = false;
+        this.error = err.error?.message || 'Failed to update email';
+      }
+    });
   }
 
   isDemoUser(): boolean {
