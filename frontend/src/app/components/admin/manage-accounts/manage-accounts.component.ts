@@ -107,6 +107,8 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   staffResetGeneratePassword = true;
   resetStaffPasswordNewPassword = '';
   resetStaffPasswordConfirm = '';
+  showStaffResetNew = false;
+  showStaffResetConfirm = false;
   resettingStaffPassword = false;
   unlockingStaffId: string | null = null;
   deletingStaffId: string | null = null;
@@ -544,7 +546,17 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     this.selectedStaff = null;
     this.resetStaffPasswordNewPassword = '';
     this.resetStaffPasswordConfirm = '';
+    this.showStaffResetNew = false;
+    this.showStaffResetConfirm = false;
     this.error = '';
+  }
+
+  toggleStaffResetNewVisibility() {
+    this.showStaffResetNew = !this.showStaffResetNew;
+  }
+
+  toggleStaffResetConfirmVisibility() {
+    this.showStaffResetConfirm = !this.showStaffResetConfirm;
   }
 
   resetStaffPassword() {
@@ -623,6 +635,14 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   isCurrentUser(userId: string): boolean {
     const user = this.currentUser || this.authService.getCurrentUser();
     return !!user && user.id === userId;
+  }
+
+  /** True if the current user can delete this staff account (not self; only Super Admin can delete Super Admin). */
+  canDeleteStaffAccount(staff: any): boolean {
+    if (!staff?.id || this.isCurrentUser(staff.id)) return false;
+    const role = (staff.role || '').toLowerCase();
+    if (role === 'superadmin') return this.isSuperAdmin();
+    return true; // admin or accountant: both admin and superadmin can delete
   }
 
   deleteStaffAccount(staff: any) {

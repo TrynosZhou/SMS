@@ -217,7 +217,7 @@
                   <span *ngIf="unlockingStaffId !== s.id">🔓 Unlock</span>
                   <span *ngIf="unlockingStaffId === s.id" class="submit-loading"><span class="spinner-small"></span> Unlocking...</span>
                 </button>
-                <button type="button" class="btn btn-danger btn-sm" *ngIf="!isCurrentUser(s.id)" (click)="deleteStaffAccount(s)" [disabled]="deletingStaffId === s.id" title="Delete this account">
+                <button type="button" class="btn btn-danger btn-sm" *ngIf="canDeleteStaffAccount(s)" (click)="deleteStaffAccount(s)" [disabled]="deletingStaffId === s.id" title="Delete this account">
                   <span *ngIf="deletingStaffId !== s.id">🗑️ Delete</span>
                   <span *ngIf="deletingStaffId === s.id" class="submit-loading"><span class="spinner-small"></span> Deleting...</span>
                 </button>
@@ -855,13 +855,32 @@
           <div class="form-group">
             <label class="form-label">New Password *</label>
             <div class="password-input-wrapper">
-              <input type="password" [(ngModel)]="resetStaffPasswordNewPassword" name="resetStaffNew" placeholder="Min. 8 characters" minlength="8" [disabled]="resettingStaffPassword" class="form-input">
+              <input
+                [type]="showStaffResetNew ? 'text' : 'password'"
+                [(ngModel)]="resetStaffPasswordNewPassword"
+                name="resetStaffNew"
+                placeholder="Min. 8 characters"
+                minlength="8"
+                [disabled]="resettingStaffPassword"
+                class="form-input">
+              <button type="button" class="password-toggle-btn" (click)="toggleStaffResetNewVisibility()" tabindex="-1">
+                <span>{{ showStaffResetNew ? '👁️' : '👁️‍🗨️' }}</span>
+              </button>
             </div>
           </div>
           <div class="form-group">
             <label class="form-label">Confirm New Password *</label>
             <div class="password-input-wrapper">
-              <input type="password" [(ngModel)]="resetStaffPasswordConfirm" name="resetStaffConfirm" placeholder="Confirm" [disabled]="resettingStaffPassword" class="form-input">
+              <input
+                [type]="showStaffResetConfirm ? 'text' : 'password'"
+                [(ngModel)]="resetStaffPasswordConfirm"
+                name="resetStaffConfirm"
+                placeholder="Confirm"
+                [disabled]="resettingStaffPassword"
+                class="form-input">
+              <button type="button" class="password-toggle-btn" (click)="toggleStaffResetConfirmVisibility()" tabindex="-1">
+                <span>{{ showStaffResetConfirm ? '👁️' : '👁️‍🗨️' }}</span>
+              </button>
             </div>
           </div>
         </div>
