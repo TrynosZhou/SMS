@@ -65,25 +65,37 @@
         </select>
       </div>
 
-      <div class="form-group">
+      <div class="form-group form-group-action">
         <label>&nbsp;</label>
         <button 
           class="btn btn-primary load-btn" 
           (click)="loadStudents()" 
           [disabled]="loading || loadingStudents || !selectedClassId || !selectedTerm">
-          <span *ngIf="!loadingStudents">🔄 Reload</span>
-          <span *ngIf="loadingStudents">⏳ Loading...</span>
+          <span class="btn-icon" *ngIf="!loadingStudents">↻</span>
+          <span class="btn-spinner" *ngIf="loadingStudents"></span>
+          <span>{{ loadingStudents ? 'Loading...' : 'Load students' }}</span>
         </button>
       </div>
     </div>
+
+    <!-- Quick stats when class/term selected -->
+    <div class="selection-stats" *ngIf="selectedClassId && selectedTerm && classes.length">
+      <span class="stat-pill">
+        <strong>{{ getSelectedClassName() }}</strong>
+      </span>
+      <span class="stat-pill">{{ selectedTerm }}</span>
+      <span class="stat-pill stat-pill-hint" *ngIf="!loadingStudents && filteredStudents.length > 0">
+        {{ filteredStudents.length }} student(s)
+      </span>
+    </div>
   </div>
 
-  <div class="card students-card" *ngIf="filteredStudents.length > 0">
+  <div class="card students-card card-enter" *ngIf="filteredStudents.length > 0">
     <div class="card-header">
       <h2 class="header-title">
         <span class="header-title-left">
           <span class="section-icon">👥</span>
-          Students in {{ getSelectedClassName() }} - {{ selectedTerm }}
+          Students in {{ getSelectedClassName() }} — {{ selectedTerm }}
         </span>
         <span class="header-title-right">
           Class Teacher:
@@ -102,25 +114,63 @@
           <span *ngIf="!canEditClassTeacher()">{{ classTeacherFullName || 'Not assigned' }}</span>
         </span>
       </h2>
-      <p class="section-description">Total: {{ filteredStudents.length }} student(s)</p>
-      <div class="header-actions">
-        <button
-          class="btn btn-primary"
-          (click)="previewPdf()"
-          [disabled]="loadingPdf || filteredStudents.length === 0">
-          <span *ngIf="!loadingPdf">📄 Preview PDF</span>
-          <span *ngIf="loadingPdf">⏳ Loading...</span>
-        </button>
-        <button
-          class="btn btn-primary"
-          (click)="downloadPdf()"
-          [disabled]="downloadingPdf || filteredStudents.length === 0">
-          <span *ngIf="!downloadingPdf">⬇️ Download PDF</span>
-          <span *ngIf="downloadingPdf">⏳ Downloading...</span>
-        </button>
+      <div class="header-meta">
+        <div class="header-stats">
+          <span class="stat-badge">{{ filteredStudents.length }} total</span>
+          <span class="stat-badge stat-badge-f" *ngIf="getFilteredGenderCounts().female > 0">{{ getFilteredGenderCounts().female }} F</span>
+          <span class="stat-badge stat-badge-m" *ngIf="getFilteredGenderCounts().male > 0">{{ getFilteredGenderCounts().male }} M</span>
+        </div>
+        <div class="header-actions">
+          <button
+            class="btn btn-outline"
+            (click)="previewPdf()"
+            [disabled]="loadingPdf || filteredStudents.length === 0">
+            <span class="btn-icon">📄</span>
+            <span *ngIf="!loadingPdf">Preview PDF</span>
+            <span *ngIf="loadingPdf">Loading...</span>
+          </button>
+          <button
+            class="btn btn-primary"
+            (click)="downloadPdf()"
+            [disabled]="downloadingPdf || filteredStudents.length === 0">
+            <span class="btn-icon">⬇</span>
+            <span *ngIf="!downloadingPdf">Download PDF</span>
+            <span *ngIf="downloadingPdf">Downloading...</span>
+          </button>
+        </div>
       </div>
     </div>
 
+    <!-- Search filter bar -->
+    <div class="table-toolbar">
+      <div class="search-wrap">
+        <span class="search-icon" aria-hidden="true">🔍</span>
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search by name or student ID..."
+          [(ngModel)]="studentSearchQuery"
+          (ngModelChange)="applySearchFilter()"
+          [ngModelOptions]="{standalone: true}">
+        <button
+          type="button"
+          class="search-clear"
+          *ngIf="studentSearchQuery"
+          (click)="studentSearchQuery = ''; applySearchFilter()"
+          title="Clear search">
+          ×
+        </button>
+      </div>
+      <span class="toolbar-hint" *ngIf="studentSearchQuery && filteredStudents.length > 0">
+        {{ filteredStudents.length }} of {{ students.length }} shown
+      </span>
+      <span class="toolbar-hint toolbar-hint-warn" *ngIf="studentSearchQuery && filteredStudents.length === 0">
+        No students match "{{ studentSearchQuery }}"
+      </span>
+    </div>
+
+    <div class="students-table-wrapper">
+      <div class="students-table-scroll">
     <div class="students-table-container" id="class-list-pdf">
       <div *ngIf="schoolName || schoolAddress || schoolLogo || schoolMotto || schoolPhone || schoolEmail" class="school-header">
         <div class="school-logo-wrapper school-logo-left" *ngIf="schoolLogo">
@@ -290,6 +340,8 @@
       </table>
       <table class="students-table actions-overlay" *ngIf="false"></table>
     </div>
+      </div>
+    </div>
   </div>
 
   <div class="modal-backdrop" *ngIf="showEditModal"></div>
@@ -416,16 +468,22 @@
   </div>
 
   <!-- Empty State -->
-  <div class="empty-state" *ngIf="!loadingStudents && !loading && selectedClassId && selectedTerm && filteredStudents.length === 0 && !error">
-    <div class="empty-icon">👥</div>
-    <h3>No Students Found</h3>
-    <p>No students are enrolled in the selected class for this term.</p>
+  <div class="empty-state card" *ngIf="!loadingStudents && !loading && selectedClassId && selectedTerm && filteredStudents.length === 0 && !error">
+    <div class="empty-state-inner">
+      <div class="empty-icon" aria-hidden="true">👥</div>
+      <h3>No students in this class</h3>
+      <p>No students are enrolled in <strong>{{ getSelectedClassName() }}</strong> for {{ selectedTerm }}.</p>
+      <p class="empty-hint">Select another class or term, or add students to this class.</p>
+    </div>
   </div>
 
   <!-- Loading State -->
-  <div class="loading-state" *ngIf="loadingStudents">
-    <div class="spinner"></div>
-    <p>Loading students...</p>
+  <div class="loading-state card" *ngIf="loadingStudents">
+    <div class="loading-state-inner">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Loading students...</p>
+      <p class="loading-hint">Fetching class list for {{ getSelectedClassName() }}</p>
+    </div>
   </div>
 </div>
 

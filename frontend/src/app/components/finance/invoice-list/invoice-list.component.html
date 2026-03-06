@@ -1401,11 +1401,7 @@
               {{ selectedInvoice.student?.firstName }} {{ selectedInvoice.student?.lastName }}
             </span>
           </div>
-          <div class="summary-item">
-            <span class="summary-label">Current Amount</span>
-            <span class="summary-value">{{ currencySymbol }} {{ selectedInvoice.amount | number:'1.2-2' }}</span>
-          </div>
-          <div class="summary-item highlight">
+          <div class="summary-item summary-item-balance-center highlight">
             <span class="summary-label">Current Balance</span>
             <span class="summary-value balance">{{ currencySymbol }} {{ selectedInvoice.balance | number:'1.2-2' }}</span>
           </div>

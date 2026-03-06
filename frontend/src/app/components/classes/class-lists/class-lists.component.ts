@@ -51,6 +51,8 @@ export class ClassListsComponent implements OnInit {
   showEnrollModal = false;
   sortField: 'lastName' | 'firstName' | 'studentNumber' = 'lastName';
   sortDirection: 'asc' | 'desc' = 'asc';
+  /** Search filter for student name or ID */
+  studentSearchQuery = '';
   editingStudentId: string | null = null;
   editingField: 'dob' | 'gender' | 'studentType' | 'firstName' | 'lastName' | null = null;
   tempValue: any = null;
@@ -305,6 +307,7 @@ export class ClassListsComponent implements OnInit {
       next: (response: any) => {
         const studentsData = Array.isArray(response) ? response : (response?.data || response?.students || []);
         this.students = Array.isArray(studentsData) ? studentsData : [];
+        this.studentSearchQuery = '';
         this.filteredStudents = [...this.students];
         this.applySort();
         this.buildGroupedByGender();
@@ -352,6 +355,17 @@ export class ClassListsComponent implements OnInit {
     return selectedClass ? selectedClass.name : 'Selected Class';
   }
 
+  /** Gender counts for the current filtered list (for stats strip). */
+  getFilteredGenderCounts(): { male: number; female: number } {
+    let male = 0, female = 0;
+    this.filteredStudents.forEach((s: any) => {
+      const g = String(s?.gender || s?.sex || '').toLowerCase();
+      if (g === 'male' || g === 'm') male++;
+      else if (g === 'female' || g === 'f') female++;
+    });
+    return { male, female };
+  }
+
   canMoveStudent(): boolean {
     return this.isAdmin || this.isSuperAdmin || this.isTeacher;
   }
@@ -391,6 +405,24 @@ export class ClassListsComponent implements OnInit {
         this.enrolling = false;
       }
     });
+  }
+
+  /** Apply search filter and rebuild grouped list. */
+  applySearchFilter() {
+    const q = (this.studentSearchQuery || '').trim().toLowerCase();
+    if (!q) {
+      this.filteredStudents = [...this.students];
+    } else {
+      this.filteredStudents = this.students.filter((s: any) => {
+        const num = String(s.studentNumber || '').toLowerCase();
+        const first = String(s.firstName || '').toLowerCase();
+        const last = String(s.lastName || '').toLowerCase();
+        const full = `${last} ${first}`.trim();
+        return num.includes(q) || first.includes(q) || last.includes(q) || full.includes(q);
+      });
+    }
+    this.applySort();
+    this.buildGroupedByGender();
   }
 
   changeSort(field: 'lastName' | 'firstName' | 'studentNumber') {
