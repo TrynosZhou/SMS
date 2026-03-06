@@ -81,6 +81,9 @@ export class ReportCardComponent implements OnInit {
   // Teacher data
   teacher: any = null;
   isAdmin = false;
+
+  /** True if current user can download report card PDFs (teachers cannot download; button is hidden for them) */
+  canDownloadReportCard = true;
   
   // Auto-generation flag to prevent multiple simultaneous generations
   private autoGenerationInProgress = false;
@@ -113,6 +116,8 @@ export class ReportCardComponent implements OnInit {
     this.isParent = this.authService.hasRole('parent');
     const user = this.authService.getCurrentUser();
     this.isAdmin = user ? (user.role === 'admin' || user.role === 'superadmin') : false;
+    // Teachers can view report cards but cannot download PDFs; hide download button for teachers
+    this.canDownloadReportCard = !this.authService.hasRole('teacher');
   }
 
   buildBehaviorSuggestions(card: any): string[] {
@@ -148,7 +153,7 @@ export class ReportCardComponent implements OnInit {
     this.loadCustomPhrases();
     this.loadSettings();
     this.loadTermOptions();
-    
+
     // Check if parent is accessing via studentId query param
     this.route.queryParams.subscribe(params => {
       if (params['studentId'] && this.isParent) {

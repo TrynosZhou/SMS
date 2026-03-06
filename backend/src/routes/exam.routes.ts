@@ -41,8 +41,9 @@ router.get('/rankings/subject', authenticate, getSubjectRankings);
 router.get('/rankings/subject-by-type', authenticate, getSubjectRankingsByType);
 router.get('/rankings/form', authenticate, getFormRankings);
 router.get('/rankings/overall-performance', authenticate, getOverallPerformanceRankings);
-router.get('/report-card', authenticate, getReportCard);
-router.get('/report-card/pdf', authenticate, generateReportCardPDF);
+// Report cards: teachers can view; only parents, students, admins and superadmins can download PDF
+router.get('/report-card', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.PARENT, UserRole.STUDENT, UserRole.TEACHER), getReportCard);
+router.get('/report-card/pdf', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.PARENT, UserRole.STUDENT), generateReportCardPDF);
 router.post('/report-card/remarks', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), saveReportCardRemarks);
 router.get('/mark-sheet', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), generateMarkSheet);
 router.get('/mark-sheet/pdf', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), generateMarkSheetPDF);

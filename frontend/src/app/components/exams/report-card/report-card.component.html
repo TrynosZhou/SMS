@@ -22,7 +22,7 @@
       <span class="alert-icon">💾</span>
       <span>Auto-saving remarks...</span>
     </div>
-    
+
     <!-- Validation Error Card - Missing Marks -->
     <div *ngIf="validationError" class="validation-error-card" [@fadeInOut]>
       <div class="validation-error-header">
@@ -297,7 +297,7 @@
             class="search-input"
             (input)="filterReportCards()">
         </div>
-        <div class="view-options">
+        <div class="view-options" *ngIf="canDownloadReportCard">
           <button 
             class="btn btn-sm btn-secondary" 
             (click)="downloadAllPDFs()"
@@ -323,7 +323,7 @@
               <h4>{{ reportCard.student.name }}</h4>
               <p>{{ reportCard.student.studentNumber }}</p>
             </div>
-            <div class="report-card-actions">
+            <div class="report-card-actions" *ngIf="canDownloadReportCard">
               <button 
                 type="button" 
                 class="btn btn-primary btn-sm" 
@@ -601,3 +601,4 @@
     </div>
   </div>
 </div>
+
