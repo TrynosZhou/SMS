@@ -873,7 +873,6 @@ export class InvoiceListComponent implements OnInit {
         this.uniformRows = [];
         setTimeout(() => {
           this.uniformSuccess = '';
-          this.closeUniformItemsModal();
         }, 3000);
       },
       error: (err: any) => {
@@ -1028,7 +1027,6 @@ export class InvoiceListComponent implements OnInit {
             this.uniformCashPaymentMethod = 'Cash(USD)';
             this.uniformCashNotes = '';
             this.loadNextUniformCashReceiptNumber();
-            this.closeUniformItemsModal();
             if (res?.payment?.id) {
               setTimeout(() => this.viewUniformReceiptPDFPreview(res.payment.id, res?.receiptNumber || this.uniformCashReceiptNumber), 400);
             }
@@ -1151,7 +1149,6 @@ export class InvoiceListComponent implements OnInit {
         this.uniformPaymentNotes = '';
         this.loadNextUniformReceiptNumber();
         setTimeout(() => (this.uniformSuccess = ''), 5000);
-        this.closeUniformItemsModal();
         if (res?.payment?.id) {
           setTimeout(() => this.viewUniformReceiptPDFPreview(res.payment.id, receiptNum || undefined), 400);
         }
@@ -1550,7 +1547,6 @@ export class InvoiceListComponent implements OnInit {
         this.success = this.noteForm.type === 'credit'
           ? 'Credit Note applied successfully.'
           : 'Debit Note applied successfully.';
-        this.closeNoteForm();
         setTimeout(() => this.success = '', 5000);
       },
       error: (err: any) => {
@@ -2115,8 +2111,8 @@ export class InvoiceListComponent implements OnInit {
   }
 
   openBulkInvoiceForm() {
-    if (!(this.authService.hasRole('admin') || this.authService.hasRole('superadmin'))) {
-      this.error = 'Only Administrators or Super Admins can perform bulk creation';
+    if (!this.canManageFinance()) {
+      this.error = 'You do not have permission to perform bulk creation.';
       setTimeout(() => (this.error = ''), 5000);
       return;
     }
