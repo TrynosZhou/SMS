@@ -430,6 +430,59 @@
   color: #555;
 }
 
+/* Reset parent email autocomplete */
+.reset-email-loading {
+  position: absolute;
+  right: 12px;
+  top: 38px;
+  font-size: 12px;
+  color: #666;
+}
+
+.reset-email-suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.reset-email-suggestions li {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reset-email-suggestions li:last-child {
+  border-bottom: none;
+}
+
+.reset-email-suggestions li:hover {
+  background: #f0f4ff;
+}
+
+.reset-email-suggestion-email {
+  font-weight: 600;
+  color: #333;
+}
+
+.reset-email-suggestion-name {
+  font-size: 12px;
+  color: #666;
+}
+
 @media (max-width: 900px) {
   .layout {
     grid-template-columns: 1fr;

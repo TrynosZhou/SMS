@@ -97,9 +97,24 @@
   <div class="card" *ngIf="activeAdminTab === 'reset'">
     <h3 style="margin-top:0;">Reset Parent Password (Admin)</h3>
     <div class="details-grid">
-      <div class="full-width">
+      <div class="full-width" style="position: relative;">
         <label>Parent Email</label>
-        <input type="email" class="form-input" [(ngModel)]="resetParentEmail" placeholder="Email used to create the parent account" />
+        <input
+          type="text"
+          class="form-input"
+          [(ngModel)]="resetParentEmail"
+          (ngModelChange)="onResetParentEmailInput()"
+          (blur)="resetParentEmailSuggestions = [];"
+          placeholder="Type to search parent email (min 2 characters)"
+          autocomplete="off"
+        />
+        <span *ngIf="resetParentEmailSearching" class="reset-email-loading">Searching...</span>
+        <ul *ngIf="resetParentEmailSuggestions.length > 0 && !resetParentEmailSearching" class="reset-email-suggestions">
+          <li *ngFor="let p of resetParentEmailSuggestions" (mousedown)="selectResetParentEmail(p)">
+            <span class="reset-email-suggestion-email">{{ p.email }}</span>
+            <span class="reset-email-suggestion-name" *ngIf="p.firstName || p.lastName">{{ p.firstName }} {{ p.lastName }}</span>
+          </li>
+        </ul>
       </div>
     </div>
 

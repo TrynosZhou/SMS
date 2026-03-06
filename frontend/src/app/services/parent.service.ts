@@ -41,6 +41,15 @@ export class ParentService {
     return this.http.get(`${this.apiUrl}/parent/admin/parents`);
   }
 
+  /** Search parent emails by fragment (for admin reset password). Min 2 characters. */
+  searchParentEmails(search: string): Observable<{ parents: { id: string; email: string; firstName: string; lastName: string }[] }> {
+    const params = { search: (search || '').trim() };
+    return this.http.get<{ parents: { id: string; email: string; firstName: string; lastName: string }[] }>(
+      `${this.apiUrl}/parent/admin/parents/search-emails`,
+      { params }
+    );
+  }
+
   getAllParentsStaff(): Observable<any> {
     return this.http.get(`${this.apiUrl}/parent/staff/parents`);
   }

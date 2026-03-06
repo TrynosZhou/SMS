@@ -55,6 +55,10 @@ export class ParentManagementComponent implements OnInit {
   resetParentNewPassword = '';
   resettingParentPassword = false;
   resetParentTempPassword = '';
+  /** Email autocomplete: suggestions from database as admin types */
+  resetParentEmailSuggestions: { id: string; email: string; firstName: string; lastName: string }[] = [];
+  resetParentEmailSearching = false;
+  private resetParentEmailSearchTimeout: any = null;
 
   constructor(
     private parentService: ParentService,
@@ -205,6 +209,34 @@ export class ParentManagementComponent implements OnInit {
         setTimeout(() => this.error = '', 7000);
       }
     });
+  }
+
+  onResetParentEmailInput() {
+    const q = (this.resetParentEmail || '').trim();
+    if (this.resetParentEmailSearchTimeout) clearTimeout(this.resetParentEmailSearchTimeout);
+    if (q.length < 2) {
+      this.resetParentEmailSuggestions = [];
+      return;
+    }
+    this.resetParentEmailSearchTimeout = setTimeout(() => {
+      this.resetParentEmailSearchTimeout = null;
+      this.resetParentEmailSearching = true;
+      this.parentService.searchParentEmails(q).subscribe({
+        next: (res) => {
+          this.resetParentEmailSearching = false;
+          this.resetParentEmailSuggestions = Array.isArray(res?.parents) ? res.parents : [];
+        },
+        error: () => {
+          this.resetParentEmailSearching = false;
+          this.resetParentEmailSuggestions = [];
+        }
+      });
+    }, 300);
+  }
+
+  selectResetParentEmail(item: { email: string }) {
+    this.resetParentEmail = item.email || '';
+    this.resetParentEmailSuggestions = [];
   }
 
   resetParentAccountPassword() {

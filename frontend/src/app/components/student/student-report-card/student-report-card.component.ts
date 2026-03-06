@@ -230,9 +230,13 @@ export class StudentReportCardComponent implements OnInit {
       error: (err: any) => {
         this.loading = false;
         console.error('Error loading report card:', err);
-        if (err.status === 404) {
+        const backendMessage = err.error?.message || '';
+        if (err.status === 403) {
+          // Access restricted (e.g. positive invoice balance)
+          this.error = backendMessage || 'Report card access is restricted.';
+        } else if (err.status === 404) {
           // Show the backend's detailed error message if available
-          const backendMessage = err.error?.message || 'Report card not found for the current term';
+          const msg = backendMessage || 'Report card not found for the current term';
           const availableTypes = err.error?.availableTypes;
           
           if (availableTypes && availableTypes.length > 0) {
@@ -246,12 +250,12 @@ export class StudentReportCardComponent implements OnInit {
               }, 500);
               return; // Don't show error, we're retrying
             }
-            this.error = `${backendMessage}. Available exam types: ${availableTypes.join(', ')}`;
+            this.error = `${msg}. Available exam types: ${availableTypes.join(', ')}`;
           } else {
-            this.error = backendMessage;
+            this.error = msg;
           }
         } else {
-          this.error = err.error?.message || 'Failed to load report card';
+          this.error = backendMessage || 'Failed to load report card';
         }
       }
     });

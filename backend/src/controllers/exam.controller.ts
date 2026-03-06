@@ -1432,6 +1432,27 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
           return res.status(403).json({ message: 'You can only access your own report card' });
         }
       }
+
+      // Student: block access if the student has a positive invoice (tuition) balance
+      const invoiceRepositoryStudent = AppDataSource.getRepository(Invoice);
+      const settingsRepositoryStudent = AppDataSource.getRepository(Settings);
+      const latestInvoiceStudent = await invoiceRepositoryStudent.findOne({
+        where: { studentId: loggedInStudent.id },
+        order: { createdAt: 'DESC' }
+      });
+      let studentTermBalance = 0;
+      if (latestInvoiceStudent) {
+        studentTermBalance = parseFloat(String(latestInvoiceStudent.balance || 0));
+      }
+      if (studentTermBalance > 0) {
+        const settingsListStudent = await settingsRepositoryStudent.find({ order: { createdAt: 'DESC' }, take: 1 });
+        const settingsStudent = settingsListStudent.length > 0 ? settingsListStudent[0] : null;
+        const currencySymbolStudent = settingsStudent?.currencySymbol || 'KES';
+        return res.status(403).json({
+          message: `Report card access is restricted. Please clear the outstanding fees (tuition) balance of ${currencySymbolStudent} ${studentTermBalance.toFixed(2)} to view the report card.`,
+          balance: studentTermBalance
+        });
+      }
     }
 
     // For parents, check balance before allowing access
@@ -2350,6 +2371,27 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         if (studentId !== loggedInStudent.id) {
           return res.status(403).json({ message: 'You can only access your own report card' });
         }
+      }
+
+      // Student: block PDF access if the student has a positive invoice (tuition) balance
+      const invoiceRepositoryStudentPdf = AppDataSource.getRepository(Invoice);
+      const settingsRepositoryStudentPdf = AppDataSource.getRepository(Settings);
+      const latestInvoiceStudentPdf = await invoiceRepositoryStudentPdf.findOne({
+        where: { studentId: loggedInStudent.id },
+        order: { createdAt: 'DESC' }
+      });
+      let studentTermBalancePdf = 0;
+      if (latestInvoiceStudentPdf) {
+        studentTermBalancePdf = parseFloat(String(latestInvoiceStudentPdf.balance || 0));
+      }
+      if (studentTermBalancePdf > 0) {
+        const settingsListStudentPdf = await settingsRepositoryStudentPdf.find({ order: { createdAt: 'DESC' }, take: 1 });
+        const settingsStudentPdf = settingsListStudentPdf.length > 0 ? settingsListStudentPdf[0] : null;
+        const currencySymbolStudentPdf = settingsStudentPdf?.currencySymbol || 'KES';
+        return res.status(403).json({
+          message: `Report card access is restricted. Please clear the outstanding fees (tuition) balance of ${currencySymbolStudentPdf} ${studentTermBalancePdf.toFixed(2)} to view the report card.`,
+          balance: studentTermBalancePdf
+        });
       }
     }
 

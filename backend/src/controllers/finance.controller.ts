@@ -1485,11 +1485,13 @@ export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response)
       ? String(settings.currencySymbol).trim()
       : 'KES';
 
+    const schoolLogo2 = (settings as any)?.schoolLogo2 ?? null;
     const pdfBuffer = await createOutstandingBalancePDF({
       schoolName,
       currencySymbol,
       reportDate: new Date(),
-      balances: outstandingBalances
+      balances: outstandingBalances,
+      schoolLogo2: schoolLogo2 != null ? String(schoolLogo2).trim() : null
     });
 
     res.setHeader('Content-Type', 'application/pdf');

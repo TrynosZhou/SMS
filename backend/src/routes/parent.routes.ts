@@ -7,6 +7,7 @@ import {
   linkStudentByIdAndDob,
   unlinkStudent,
   searchStudents,
+  adminSearchParentEmails,
   adminListParents,
   adminCreateParent,
   adminLinkStudentToParent,
@@ -48,6 +49,12 @@ router.get(
   '/search-students',
   authorize(UserRole.PARENT, UserRole.DEMO_USER, UserRole.ADMIN, UserRole.SUPERADMIN),
   searchStudents
+);
+
+router.get(
+  '/admin/parents/search-emails',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  adminSearchParentEmails
 );
 
 router.get(

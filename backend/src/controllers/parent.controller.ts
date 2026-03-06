@@ -632,6 +632,35 @@ export const adminDeleteParent = async (req: AuthRequest, res: Response) => {
   }
 };
 
+/** Search parent emails by fragment (for admin reset password autocomplete). Returns parents with email matching search. */
+export const adminSearchParentEmails = async (req: AuthRequest, res: Response) => {
+  try {
+    const search = typeof (req.query as any).search === 'string' ? (req.query as any).search.trim() : '';
+    if (!search || search.length < 2) {
+      return res.json({ parents: [] });
+    }
+    const parentRepository = AppDataSource.getRepository(Parent);
+    const parents = await parentRepository
+      .createQueryBuilder('p')
+      .select(['p.id', 'p.email', 'p.firstName', 'p.lastName'])
+      .where('p.email IS NOT NULL AND p.email != :empty', { empty: '' })
+      .andWhere('LOWER(p.email) LIKE LOWER(:q)', { q: `%${search.replace(/%/g, '\\%').replace(/_/g, '\\_')}%` })
+      .orderBy('p.email', 'ASC')
+      .limit(20)
+      .getMany();
+    const list = parents.map((p: any) => ({
+      id: p.id,
+      email: p.email || '',
+      firstName: p.firstName || '',
+      lastName: p.lastName || ''
+    }));
+    return res.json({ parents: list });
+  } catch (error: any) {
+    console.error('Error searching parent emails:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
 export const adminListParents = async (req: AuthRequest, res: Response) => {
   try {
     const parentRepository = AppDataSource.getRepository(Parent);

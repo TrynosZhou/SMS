@@ -15,6 +15,8 @@ export interface OutstandingBalancePDFData {
   currencySymbol: string;
   reportDate: Date;
   balances: OutstandingBalanceRow[];
+  /** Logo 2 from settings (base64 data URL, e.g. data:image/...) */
+  schoolLogo2?: string | null;
 }
 
 export function createOutstandingBalancePDF(
@@ -31,8 +33,22 @@ export function createOutstandingBalancePDF(
       });
       doc.on('error', reject);
 
-      const { schoolName, currencySymbol, reportDate, balances } = data;
+      const { schoolName, currencySymbol, reportDate, balances, schoolLogo2 } = data;
       let yPos = 50;
+      const logoSize = 70;
+
+      // School logo (Logo 2 from settings)
+      const rawLogo = String(schoolLogo2 ?? '').trim();
+      if (rawLogo.startsWith('data:image')) {
+        try {
+          const base64Data = rawLogo.split(',')[1];
+          if (base64Data) {
+            const imageBuffer = Buffer.from(base64Data, 'base64');
+            doc.image(imageBuffer, 50, yPos, { width: logoSize, height: logoSize });
+          }
+        } catch (_) {}
+      }
+      yPos += logoSize + 10;
 
       doc.fontSize(18).font('Helvetica-Bold').fillColor('#333');
       doc.text('Outstanding Balances Report', 50, yPos);
