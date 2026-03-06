@@ -185,6 +185,11 @@
   font-size: 0.9375rem;
 }
 
+.uniform-balance-value {
+  color: #dc3545 !important;
+  font-weight: 700;
+}
+
 .balance-amount {
   color: #dc2626;
   font-weight: 600;

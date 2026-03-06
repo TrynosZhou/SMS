@@ -14,6 +14,9 @@ import { parseAmount } from '../utils/numberUtils';
 import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
 import { UserRole } from '../entities/User';
 import { PaymentLog } from '../entities/PaymentLog';
+import { UniformCharge } from '../entities/UniformCharge';
+import { UniformChargeItem } from '../entities/UniformChargeItem';
+import { UniformPaymentLog } from '../entities/UniformPaymentLog';
 
 const normalizePaymentMethod = (raw?: string): string | null => {
   const val = String(raw || '').trim().toLowerCase();
@@ -67,8 +70,6 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
     const settingsRepository = AppDataSource.getRepository(Settings);
     const studentRepository = AppDataSource.getRepository(Student);
-    const uniformItemRepository = AppDataSource.getRepository(UniformItem);
-    const invoiceUniformItemRepository = AppDataSource.getRepository(InvoiceUniformItem);
 
     if (!studentId) {
       return res.status(400).json({ message: 'Student ID is required' });
@@ -164,51 +165,11 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       baseAmount = 0;
     }
 
-    // Process uniform items (check if this is a uniform-only invoice)
-    let uniformTotal = 0;
-    let uniformItemsEntities: InvoiceUniformItem[] = [];
+    // Uniform items are kept separate from tuition; do not add to this invoice. Use POST /finance/uniform-charge for uniform.
+    const uniformTotal = 0;
+    const uniformItemsEntities: InvoiceUniformItem[] = [];
 
-    if (Array.isArray(uniformItems) && uniformItems.length > 0) {
-      for (let index = 0; index < uniformItems.length; index++) {
-        const payloadItem = uniformItems[index];
-        const itemId = payloadItem?.itemId || payloadItem?.uniformItemId;
-        const quantityRaw = payloadItem?.quantity;
-
-        if (!itemId) {
-          return res.status(400).json({ message: `Uniform item ID missing for entry at index ${index}` });
-        }
-
-        const quantity = parseInt(String(quantityRaw), 10);
-        if (isNaN(quantity) || quantity <= 0) {
-          return res.status(400).json({ message: `Invalid quantity for uniform item at index ${index}` });
-        }
-
-        const uniformItem = await uniformItemRepository.findOne({
-          where: { id: itemId }
-        });
-
-        if (!uniformItem || !uniformItem.isActive) {
-          return res.status(400).json({ message: `Uniform item not found or inactive (${itemId})` });
-        }
-
-        const unitPrice = parseAmount(uniformItem.unitPrice);
-        const lineTotal = unitPrice * quantity;
-        uniformTotal += lineTotal;
-
-        uniformItemsEntities.push(
-          invoiceUniformItemRepository.create({
-            uniformItem,
-            uniformItemId: uniformItem.id,
-            itemName: uniformItem.name,
-            unitPrice,
-            quantity,
-            lineTotal
-          })
-        );
-      }
-    }
-
-    const amountNumRaw = baseAmount + transportIncrement + registrationIncrement + deskIncrement + uniformTotal;
+    const amountNumRaw = baseAmount + transportIncrement + registrationIncrement + deskIncrement;
     const amountNum = Number.isFinite(amountNumRaw) ? amountNumRaw : 0;
     
     // Calculate total invoice amount (previous balance + new amount)
@@ -1720,7 +1681,8 @@ export const getStudentBalance = async (req: Request, res: Response) => {
       );
     }
 
-    console.log(`[getStudentBalance] Final balance for student ${student.studentNumber}: ${currentBalance}`);
+    const uniformBalance = Math.max(0, parseFloat(parseAmount((student as any).uniformBalance ?? 0).toFixed(2)));
+    console.log(`[getStudentBalance] Final balance for student ${student.studentNumber}: ${currentBalance}, uniformBalance: ${uniformBalance}`);
 
     res.json({
       studentId: student.id,
@@ -1735,6 +1697,7 @@ export const getStudentBalance = async (req: Request, res: Response) => {
       isExempted: !!student.isExempted,
       usesDiningHall: !!student.usesDiningHall,
       balance: currentBalance,
+      uniformBalance,
       prepaidAmount: totalPrepaidAmount,
       lastInvoiceId: lastInvoice?.id || null,
       lastInvoiceNumber: lastInvoice?.invoiceNumber || null,
@@ -1747,6 +1710,189 @@ export const getStudentBalance = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error getting student balance:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+/** Create a uniform charge for a student (separate from tuition). Updates Student.uniformBalance. */
+export const createUniformCharge = async (req: AuthRequest, res: Response) => {
+  try {
+    const { studentId, items, description } = req.body;
+    const studentRepository = AppDataSource.getRepository(Student);
+    const uniformChargeRepository = AppDataSource.getRepository(UniformCharge);
+    const uniformChargeItemRepository = AppDataSource.getRepository(UniformChargeItem);
+    const uniformItemRepository = AppDataSource.getRepository(UniformItem);
+
+    if (!studentId) {
+      return res.status(400).json({ message: 'Student ID is required' });
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'At least one uniform item is required' });
+    }
+
+    const student = await studentRepository.findOne({ where: { id: studentId } });
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    let totalAmount = 0;
+    const chargeItems: { itemName: string; unitPrice: number; quantity: number; lineTotal: number }[] = [];
+
+    for (const row of items) {
+      const itemId = row.itemId || row.uniformItemId;
+      const qty = parseInt(String(row.quantity || 0), 10);
+      if (!itemId || qty < 1) continue;
+      const uniformItem = await uniformItemRepository.findOne({ where: { id: itemId } });
+      if (!uniformItem || !uniformItem.isActive) {
+        return res.status(400).json({ message: `Invalid or inactive uniform item: ${itemId}` });
+      }
+      const unitPrice = parseAmount(uniformItem.unitPrice);
+      const lineTotal = parseFloat((unitPrice * qty).toFixed(2));
+      totalAmount += lineTotal;
+      chargeItems.push({
+        itemName: uniformItem.name,
+        unitPrice,
+        quantity: qty,
+        lineTotal
+      });
+    }
+
+    if (totalAmount <= 0) {
+      return res.status(400).json({ message: 'Total uniform amount must be greater than zero' });
+    }
+
+    const charge = uniformChargeRepository.create({
+      studentId: student.id,
+      amount: parseFloat(totalAmount.toFixed(2)),
+      description: description || `Uniform items: ${chargeItems.map(i => i.itemName).join(', ')}`
+    });
+    const savedCharge = await uniformChargeRepository.save(charge);
+
+    for (const it of chargeItems) {
+      const item = uniformChargeItemRepository.create({
+        uniformChargeId: savedCharge.id,
+        itemName: it.itemName,
+        unitPrice: it.unitPrice,
+        quantity: it.quantity,
+        lineTotal: it.lineTotal
+      });
+      await uniformChargeItemRepository.save(item);
+    }
+
+    const currentUniformBalance = parseAmount((student as any).uniformBalance ?? 0);
+    (student as any).uniformBalance = parseFloat((currentUniformBalance + totalAmount).toFixed(2));
+    await studentRepository.save(student);
+
+    res.status(201).json({
+      message: 'Uniform charge created successfully',
+      charge: {
+        id: savedCharge.id,
+        studentId: student.id,
+        amount: savedCharge.amount,
+        description: savedCharge.description,
+        items: chargeItems,
+        uniformBalance: (student as any).uniformBalance
+      }
+    });
+  } catch (error: any) {
+    console.error('Error creating uniform charge:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+const UNIFORM_PAYMENT_METHODS = ['Cash(USD)', 'Ecocash(USD)', 'Bank Transfer(USD)'] as const;
+
+/** Generate next REC + 7-digit receipt number for uniform payments. */
+async function getNextUniformReceiptNumber(repository: any): Promise<string> {
+  const recPrefix = 'REC';
+  const qb = repository
+    .createQueryBuilder('log')
+    .select('log.receiptNumber', 'receiptNumber')
+    .where('log.receiptNumber LIKE :prefix', { prefix: `${recPrefix}%` })
+    .orderBy('log.receiptNumber', 'DESC')
+    .limit(1);
+  const row = await qb.getRawOne();
+  const rn = row?.receiptNumber;
+  let nextNum = 1;
+  if (rn && typeof rn === 'string' && rn.startsWith(recPrefix)) {
+    const numPart = parseInt(rn.slice(recPrefix.length), 10);
+    if (!isNaN(numPart)) nextNum = numPart + 1;
+  }
+  return recPrefix + String(nextNum).padStart(7, '0');
+}
+
+/** GET next uniform receipt number (for display on form before submit). */
+export const getNextUniformReceiptNumberController = async (_req: Request, res: Response) => {
+  try {
+    const uniformPaymentLogRepository = AppDataSource.getRepository(UniformPaymentLog);
+    const receiptNumber = await getNextUniformReceiptNumber(uniformPaymentLogRepository);
+    res.json({ receiptNumber });
+  } catch (error: any) {
+    console.error('Error getting next uniform receipt number:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+/** Record a uniform payment (separate from tuition). Decreases Student.uniformBalance. */
+export const recordUniformPayment = async (req: AuthRequest, res: Response) => {
+  try {
+    const { studentId, amount, paymentDate, paymentMethod, receiptNumber: bodyReceiptNumber, notes } = req.body;
+    const studentRepository = AppDataSource.getRepository(Student);
+    const uniformPaymentLogRepository = AppDataSource.getRepository(UniformPaymentLog);
+
+    if (!studentId) {
+      return res.status(400).json({ message: 'Student ID is required' });
+    }
+    const amountNum = parseFloat(String(amount || 0));
+    if (isNaN(amountNum) || amountNum <= 0) {
+      return res.status(400).json({ message: 'A positive payment amount is required' });
+    }
+
+    const methodStr = paymentMethod ? String(paymentMethod).trim() : '';
+    if (!UNIFORM_PAYMENT_METHODS.includes(methodStr as any)) {
+      return res.status(400).json({
+        message: `Payment method must be one of: ${UNIFORM_PAYMENT_METHODS.join(', ')}`
+      });
+    }
+
+    const student = await studentRepository.findOne({ where: { id: studentId } });
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    let receiptNumber: string;
+    const requested = bodyReceiptNumber ? String(bodyReceiptNumber).trim() : '';
+    if (requested && /^REC\d{7}$/.test(requested)) {
+      const existing = await uniformPaymentLogRepository.findOne({ where: { receiptNumber: requested } });
+      receiptNumber = existing ? await getNextUniformReceiptNumber(uniformPaymentLogRepository) : requested;
+    } else {
+      receiptNumber = await getNextUniformReceiptNumber(uniformPaymentLogRepository);
+    }
+
+    const currentUniformBalance = parseAmount((student as any).uniformBalance ?? 0);
+    const newBalance = Math.max(0, parseFloat((currentUniformBalance - amountNum).toFixed(2)));
+
+    (student as any).uniformBalance = newBalance;
+    await studentRepository.save(student);
+
+    const log = uniformPaymentLogRepository.create({
+      studentId: student.id,
+      amountPaid: amountNum,
+      paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
+      paymentMethod: methodStr,
+      receiptNumber,
+      notes: notes || null
+    });
+    await uniformPaymentLogRepository.save(log);
+
+    res.json({
+      message: 'Uniform payment recorded successfully',
+      uniformBalance: newBalance,
+      receiptNumber,
+      payment: { id: log.id, amountPaid: amountNum, paymentDate: log.paymentDate, receiptNumber }
+    });
+  } catch (error: any) {
+    console.error('Error recording uniform payment:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

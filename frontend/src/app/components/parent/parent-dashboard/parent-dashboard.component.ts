@@ -210,11 +210,11 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
   }
 
   viewReportCard(student: any) {
-    // Check if term balance allows access (term balance must be zero)
+    // Only fees (tuition) balance affects report card access; uniform balance does not.
     const termBalance = parseFloat(String(student.termBalance || 0));
     
     if (termBalance > 0) {
-      this.error = `Report card access is restricted. Please clear the outstanding term balance of ${this.currencySymbol} ${termBalance.toFixed(2)} to view the report card.`;
+      this.error = `Report card access is restricted. Please clear the outstanding fees (tuition) balance of ${this.currencySymbol} ${termBalance.toFixed(2)} to view the report card.`;
       setTimeout(() => this.error = '', 8000);
       return;
     }

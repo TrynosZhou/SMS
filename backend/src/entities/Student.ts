@@ -93,6 +93,9 @@ export class Student {
   @OneToMany(() => Marks, marks => marks.student)
   marks: Marks[];
 
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  uniformBalance: number;
+
   @OneToMany(() => Invoice, invoice => invoice.student)
   invoices: Invoice[];
 

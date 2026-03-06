@@ -1475,17 +1475,16 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         order: { createdAt: 'DESC' }
       });
 
-      // Calculate term balance for access check
+      // Report card access is based on fees (tuition) balance only. Uniform item balance does not affect access.
       let termBalance = 0;
       if (latestInvoice) {
         termBalance = parseFloat(String(latestInvoice.balance || 0));
       }
 
-      // Check if term balance allows access (term balance must be zero)
       if (termBalance > 0) {
         const currencySymbol = settings?.currencySymbol || 'KES';
-        return res.status(403).json({ 
-          message: `Report card access is restricted. Please clear the outstanding term balance of ${currencySymbol} ${termBalance.toFixed(2)} to view the report card.`,
+        return res.status(403).json({
+          message: `Report card access is restricted. Please clear the outstanding fees (tuition) balance of ${currencySymbol} ${termBalance.toFixed(2)} to view the report card.`,
           balance: termBalance
         });
       }
@@ -2395,22 +2394,21 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         order: { createdAt: 'DESC' }
       });
 
-      // Calculate term balance for access check
+      // Report card access is based on fees (tuition) balance only. Uniform item balance does not affect access.
       let termBalance = 0;
       if (latestInvoice) {
         termBalance = parseFloat(String(latestInvoice.balance || 0));
       }
 
-      // Check if term balance allows access (term balance must be zero)
       if (termBalance > 0) {
         const currencySymbol = settings?.currencySymbol || 'KES';
-        return res.status(403).json({ 
-          message: `Report card access is restricted. Please clear the outstanding term balance of ${currencySymbol} ${termBalance.toFixed(2)} to view the report card.`,
+        return res.status(403).json({
+          message: `Report card access is restricted. Please clear the outstanding fees (tuition) balance of ${currencySymbol} ${termBalance.toFixed(2)} to view the report card.`,
           balance: termBalance
         });
       }
     }
-    
+
     const marksRepository = AppDataSource.getRepository(Marks);
     const studentRepository = AppDataSource.getRepository(Student);
     const settingsRepository = AppDataSource.getRepository(Settings);

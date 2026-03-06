@@ -27,11 +27,10 @@ export class ParentService {
     return this.http.post(`${this.apiUrl}/parent/link-student`, { studentId });
   }
 
-  linkStudentByIdAndDob(studentId: string, dateOfBirth: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/parent/link-student-by-id-dob`, { 
-      studentId, 
-      dateOfBirth 
-    });
+  linkStudentByIdAndDob(studentId: string, dateOfBirth?: string): Observable<any> {
+    const body: { studentId: string; dateOfBirth?: string } = { studentId };
+    if (dateOfBirth) body.dateOfBirth = dateOfBirth;
+    return this.http.post(`${this.apiUrl}/parent/link-student-by-id-dob`, body);
   }
 
   unlinkStudent(studentId: string): Observable<any> {

@@ -60,6 +60,12 @@
   font-weight: 600;
   margin-bottom: 12px;
 }
+
+.uniform-balance-value {
+  color: #dc3545 !important;
+  font-weight: 700;
+}
+
 .actions {
   display: flex;
   gap: 8px;

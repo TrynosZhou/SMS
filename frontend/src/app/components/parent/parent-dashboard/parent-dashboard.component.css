@@ -696,6 +696,11 @@
   color: #28a745;
 }
 
+.uniform-balance-value {
+  color: #dc3545 !important;
+  font-weight: 700;
+}
+
 .balance-note {
   font-size: 12px;
   margin-top: 5px;

@@ -80,10 +80,12 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
           currentBalance = termBalance;
         }
 
+        const uniformBalance = Math.max(0, parseFloat(parseAmount((student as any).uniformBalance ?? 0).toFixed(2)));
         return {
           ...student,
           termBalance: termBalance,
           currentInvoiceBalance: currentBalance,
+          uniformBalance,
           relationshipType: link.relationshipType,
           parentStudentLinkId: link.id
         };
@@ -412,7 +414,7 @@ export const unlinkStudent = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Link a student to parent by Student ID (studentNumber) and DOB
+// Link a student to parent by Student ID (studentNumber); DOB is optional (if provided, it is verified)
 export const linkStudentByIdAndDob = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -422,8 +424,8 @@ export const linkStudentByIdAndDob = async (req: AuthRequest, res: Response) => 
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    if (!studentId || !dateOfBirth) {
-      return res.status(400).json({ message: 'Student ID and Date of Birth are required' });
+    if (!studentId) {
+      return res.status(400).json({ message: 'Student ID is required' });
     }
 
     const parentRepository = AppDataSource.getRepository(Parent);
@@ -460,16 +462,15 @@ export const linkStudentByIdAndDob = async (req: AuthRequest, res: Response) => 
       return res.status(404).json({ message: 'Student not found. Please check the Student ID.' });
     }
 
-    // Verify Date of Birth
-    const studentDob = new Date(student.dateOfBirth);
-    const providedDob = new Date(dateOfBirth);
-    
-    // Compare dates (ignoring time)
-    const studentDobDate = new Date(studentDob.getFullYear(), studentDob.getMonth(), studentDob.getDate());
-    const providedDobDate = new Date(providedDob.getFullYear(), providedDob.getMonth(), providedDob.getDate());
-
-    if (studentDobDate.getTime() !== providedDobDate.getTime()) {
-      return res.status(400).json({ message: 'Date of Birth does not match. Please verify the information.' });
+    // If Date of Birth was provided, verify it matches
+    if (dateOfBirth) {
+      const studentDob = new Date(student.dateOfBirth);
+      const providedDob = new Date(dateOfBirth);
+      const studentDobDate = new Date(studentDob.getFullYear(), studentDob.getMonth(), studentDob.getDate());
+      const providedDobDate = new Date(providedDob.getFullYear(), providedDob.getMonth(), providedDob.getDate());
+      if (studentDobDate.getTime() !== providedDobDate.getTime()) {
+        return res.status(400).json({ message: 'Date of Birth does not match. Please verify the information.' });
+      }
     }
 
     const existingLink = await parentStudentRepository.findOne({

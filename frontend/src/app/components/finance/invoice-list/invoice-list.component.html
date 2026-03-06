@@ -29,9 +29,9 @@
         <span class="btn-icon">📗</span>
         <span>Debit Note</span>
       </button>
-      <button class="btn btn-action btn-create" routerLink="/invoices/new" *ngIf="canCreateInvoice()">
-        <span class="btn-icon">➕</span>
-        <span>Create Invoice</span>
+      <button class="btn btn-action btn-create" type="button" (click)="openUniformItemsModal()" *ngIf="canCreateInvoice()" title="Process uniform items for a student and charge against uniform account">
+        <span class="btn-icon">👕</span>
+        <span>Uniform Items</span>
       </button>
       <button class="btn btn-action btn-bulk" (click)="openBulkInvoiceForm()" *ngIf="canManageFinance()">
         <span class="btn-icon">📋</span>
@@ -608,6 +608,168 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Uniform Items Modal -->
+    <div *ngIf="showUniformItemsModal" class="modal-overlay" (click)="closeUniformItemsModal()">
+      <div class="payment-modal uniform-items-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header uniform-modal-header">
+          <div class="modal-header-content">
+            <h2><span class="modal-icon">👕</span> Uniform Items</h2>
+            <p class="modal-subtitle" *ngIf="activeUniformTab === 'charge'">Select a student, add items from the catalog, and enter quantities. Cost is calculated automatically.</p>
+            <p class="modal-subtitle" *ngIf="activeUniformTab === 'payment'">Select a student by Student ID, Last name, or First name. If multiple students match, choose from the list. Then enter the payment amount.</p>
+          </div>
+          <button class="modal-close-btn" (click)="closeUniformItemsModal()" title="Close"><span>&times;</span></button>
+        </div>
+
+        <div class="uniform-tabs">
+          <button type="button" class="uniform-tab" [class.active]="activeUniformTab === 'charge'" (click)="setUniformTab('charge')">
+            Charge / Bill items
+          </button>
+          <button type="button" class="uniform-tab" [class.active]="activeUniformTab === 'payment'" (click)="setUniformTab('payment')">
+            Record payment
+          </button>
+        </div>
+
+        <div class="modal-body uniform-modal-body">
+          <div class="alert alert-error" *ngIf="uniformError">{{ uniformError }}</div>
+          <div class="alert alert-success" *ngIf="uniformSuccess">{{ uniformSuccess }}</div>
+
+          <!-- Tab: Charge / Bill -->
+          <div *ngIf="activeUniformTab === 'charge'">
+            <div class="uniform-section uniform-student-section">
+              <label class="uniform-section-label">Student</label>
+              <input type="text" [(ngModel)]="uniformStudentSearch" (ngModelChange)="searchUniformStudent()" [ngModelOptions]="{standalone: true}" class="uniform-input" placeholder="Search by Student ID, Last name, or First name (min 2 chars)" />
+              <div *ngIf="uniformStudentSearchLoading" class="uniform-hint">Searching...</div>
+              <div *ngIf="uniformStudentCandidates.length > 0 && !uniformSelectedStudent" class="uniform-candidates">
+                <p class="uniform-hint" *ngIf="uniformStudentCandidates.length > 1">Multiple students found. Select the correct one:</p>
+                <button type="button" class="uniform-candidate-btn" *ngFor="let c of uniformStudentCandidates" (click)="selectUniformStudent(c)">
+                  {{ c.lastName }} {{ c.firstName }} ({{ c.studentNumber }})
+                </button>
+              </div>
+              <div *ngIf="uniformSelectedStudent" class="uniform-selected-banner">
+                <span class="uniform-selected-text">Selected: {{ uniformSelectedStudent.lastName }} {{ uniformSelectedStudent.firstName }} ({{ uniformSelectedStudent.studentNumber }})</span>
+                <button type="button" class="uniform-change-btn" (click)="uniformSelectedStudent = null; uniformStudentSearch = ''">Change</button>
+              </div>
+            </div>
+
+            <div class="uniform-section uniform-items-section">
+              <label class="uniform-section-label">Uniform items</label>
+              <div *ngIf="uniformCatalog.length === 0" class="uniform-empty-catalog">No uniform items in catalog. Add them in Settings → Uniform Items.</div>
+              <div *ngIf="uniformCatalog.length > 0">
+                <div class="uniform-add-row">
+                  <button type="button" class="uniform-add-item-btn" (click)="openUniformCatalogSelect()" [disabled]="uniformCatalog.length === 0">
+                    <span class="uniform-add-item-icon" aria-hidden="true">+</span>
+                    Add item from catalog
+                  </button>
+                  <select #uniformCatalogSelect class="uniform-catalog-select" [ngModel]="uniformCatalogSelection" (ngModelChange)="onUniformCatalogItemSelected($event)" [ngModelOptions]="{standalone: true}" aria-label="Select uniform item to add">
+                    <option value="">Choose an item…</option>
+                    <option *ngFor="let item of uniformCatalog" [value]="item.id">{{ item.name }} — {{ currencySymbol }} {{ item.unitPrice | number:'1.2-2' }} each</option>
+                  </select>
+                </div>
+                <div class="uniform-table-wrap" *ngIf="uniformRows.length > 0">
+                  <table class="uniform-items-table">
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Unit price</th>
+                        <th>Qty</th>
+                        <th>Total</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let row of uniformRows; let i = index">
+                        <td class="uniform-cell-item">{{ row.itemName }}</td>
+                        <td class="uniform-cell-price">{{ currencySymbol }} {{ row.unitPrice | number:'1.2-2' }}</td>
+                        <td>
+                          <input type="number" [(ngModel)]="row.quantity" (ngModelChange)="onUniformRowQuantityChange(row)" min="0" class="uniform-qty-input" />
+                        </td>
+                        <td class="uniform-cell-total">{{ currencySymbol }} {{ row.lineTotal | number:'1.2-2' }}</td>
+                        <td><button type="button" class="uniform-remove-btn" (click)="removeUniformRow(i)">Remove</button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="uniform-total-bar" *ngIf="uniformRows.length > 0">
+                  <strong>Total: {{ currencySymbol }} {{ getUniformModalTotal() | number:'1.2-2' }}</strong>
+                </div>
+                <p class="uniform-hint" *ngIf="uniformCatalog.length > 0 && uniformRows.length === 0">Click <strong>Add item from catalog</strong> or choose from the dropdown to add items. Enter quantity; total updates automatically.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: Record payment -->
+          <div *ngIf="activeUniformTab === 'payment'">
+            <div class="uniform-section uniform-receipt-display">
+              <label class="uniform-section-label">Receipt number</label>
+              <div class="uniform-receipt-number-value" *ngIf="uniformPaymentReceiptLoading">Loading…</div>
+              <div class="uniform-receipt-number-value uniform-receipt-number-bold" *ngIf="!uniformPaymentReceiptLoading && uniformPaymentReceiptNumber">{{ uniformPaymentReceiptNumber }}</div>
+              <p class="uniform-hint" *ngIf="!uniformPaymentReceiptLoading && uniformPaymentReceiptNumber">This number is generated in sequence and will be saved when you complete the transaction.</p>
+            </div>
+            <div class="uniform-section uniform-student-section">
+              <label class="uniform-section-label">Student</label>
+              <input type="text" [(ngModel)]="uniformPaymentSearch" (ngModelChange)="searchUniformPaymentStudent()" [ngModelOptions]="{standalone: true}" class="uniform-input" placeholder="Search by Student ID, Last name, or First name (min 2 chars)" />
+              <div *ngIf="uniformPaymentSearchLoading" class="uniform-hint">Searching...</div>
+              <div *ngIf="uniformPaymentCandidates.length > 0 && !uniformPaymentSelectedStudent" class="uniform-candidates">
+                <p class="uniform-hint" *ngIf="uniformPaymentCandidates.length > 1">Multiple students found. Select the correct one:</p>
+                <button type="button" class="uniform-candidate-btn" *ngFor="let c of uniformPaymentCandidates" (click)="selectUniformPaymentStudent(c)">
+                  {{ c.lastName }} {{ c.firstName }} ({{ c.studentNumber }})
+                </button>
+              </div>
+              <div *ngIf="uniformPaymentSelectedStudent" class="uniform-selected-banner">
+                <span class="uniform-selected-text">Selected: {{ uniformPaymentSelectedStudent.lastName }} {{ uniformPaymentSelectedStudent.firstName }} ({{ uniformPaymentSelectedStudent.studentNumber }})</span>
+                <button type="button" class="uniform-change-btn" (click)="clearUniformPaymentStudent()">Change</button>
+              </div>
+            </div>
+
+            <div *ngIf="uniformPaymentSelectedStudent" class="uniform-section uniform-payment-section">
+              <label class="uniform-section-label">Uniform balance & payment</label>
+              <div class="uniform-payment-balance-row" *ngIf="uniformPaymentBalanceLoading">Loading balance…</div>
+              <div class="uniform-payment-balance-row uniform-balance-value" *ngIf="!uniformPaymentBalanceLoading && uniformPaymentBalance != null">
+                Outstanding balance: {{ currencySymbol }} {{ uniformPaymentBalance | number:'1.2-2' }}
+              </div>
+              <div class="uniform-payment-form">
+                <div class="uniform-form-row">
+                  <label>Amount</label>
+                  <input type="number" [(ngModel)]="uniformPaymentAmount" min="0" step="0.01" class="uniform-input" placeholder="0.00" />
+                </div>
+                <div class="uniform-form-row">
+                  <label>Payment date</label>
+                  <input type="date" [(ngModel)]="uniformPaymentDate" class="uniform-input" />
+                </div>
+                <div class="uniform-form-row">
+                  <label>Payment method</label>
+                  <select [(ngModel)]="uniformPaymentMethod" class="uniform-input uniform-select" required>
+                    <option value="">Select payment method</option>
+                    <option value="Cash(USD)">Cash(USD)</option>
+                    <option value="Ecocash(USD)">Ecocash(USD)</option>
+                    <option value="Bank Transfer(USD)">Bank Transfer(USD)</option>
+                  </select>
+                </div>
+                <div class="uniform-form-row">
+                  <label>Notes</label>
+                  <input type="text" [(ngModel)]="uniformPaymentNotes" class="uniform-input" placeholder="Optional" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer uniform-modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeUniformItemsModal()" [disabled]="uniformSubmitting || uniformPaymentSubmitting">Cancel</button>
+          <ng-container *ngIf="activeUniformTab === 'charge'">
+            <button type="button" class="btn btn-primary uniform-submit-btn" (click)="submitUniformCharge()" [disabled]="uniformSubmitting || !uniformSelectedStudent || uniformRows.length === 0 || getUniformModalTotal() <= 0">
+              {{ uniformSubmitting ? 'Charging...' : 'Charge uniform items' }}
+            </button>
+          </ng-container>
+          <ng-container *ngIf="activeUniformTab === 'payment'">
+            <button type="button" class="btn btn-primary uniform-submit-btn" (click)="submitUniformPayment()" [disabled]="uniformPaymentSubmitting || !uniformPaymentSelectedStudent || !uniformPaymentAmount || uniformPaymentAmount <= 0 || !uniformPaymentMethod">
+              {{ uniformPaymentSubmitting ? 'Recording...' : 'Record payment' }}
+            </button>
+          </ng-container>
+        </div>
       </div>
     </div>
 

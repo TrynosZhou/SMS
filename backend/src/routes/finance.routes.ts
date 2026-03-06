@@ -19,7 +19,10 @@ import {
   getPaymentLogs,
   deletePaymentLog,
   repairReturningDeskFeeInvoices,
-  reverseInvoicePrepayment
+  reverseInvoicePrepayment,
+  createUniformCharge,
+  recordUniformPayment,
+  getNextUniformReceiptNumberController
 } from '../controllers/finance.controller';
 
 const router = Router();
@@ -31,6 +34,9 @@ router.post('/bulk/reverse', authenticate, authorize(UserRole.ADMIN, UserRole.SU
 router.post('/void/tuition-exempt', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), voidTuitionExemptInvoices);
 router.get('/', authenticate, getInvoices);
 router.get('/balance', authenticate, getStudentBalance);
+router.get('/next-uniform-receipt', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), getNextUniformReceiptNumberController);
+router.post('/uniform-charge', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), createUniformCharge);
+router.post('/uniform-payment', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), recordUniformPayment);
 router.get('/outstanding-balances', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), getOutstandingBalances);
 router.get('/outstanding-balances/pdf', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), getOutstandingBalancesPDF);
 router.get('/audit/payment-logs', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), getPaymentLogs);

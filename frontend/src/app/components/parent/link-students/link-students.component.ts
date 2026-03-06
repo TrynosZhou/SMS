@@ -10,7 +10,6 @@ import { AuthService } from '../../../services/auth.service';
 })
 export class LinkStudentsComponent implements OnInit {
   studentId = '';
-  dateOfBirth = '';
   linkedStudents: any[] = [];
   linking = false;
   loading = false;
@@ -54,28 +53,21 @@ export class LinkStudentsComponent implements OnInit {
       return;
     }
 
-    if (!this.dateOfBirth) {
-      this.error = 'Please enter the Date of Birth';
-      setTimeout(() => this.error = '', 5000);
-      return;
-    }
-
     this.linking = true;
 
-    this.parentService.linkStudentByIdAndDob(this.studentId.trim(), this.dateOfBirth).subscribe({
+    this.parentService.linkStudentByIdAndDob(this.studentId.trim()).subscribe({
       next: (response: any) => {
         this.linking = false;
         this.success = `Successfully linked ${response.student?.firstName || ''} ${response.student?.lastName || ''}`;
         // Clear form
         this.studentId = '';
-        this.dateOfBirth = '';
         // Reload linked students
         this.loadLinkedStudents();
         setTimeout(() => this.success = '', 5000);
       },
       error: (err: any) => {
         this.linking = false;
-        this.error = err.error?.message || 'Failed to link student. Please verify the Student ID and Date of Birth.';
+        this.error = err.error?.message || 'Failed to link student. Please verify the Student ID.';
         setTimeout(() => this.error = '', 5000);
       }
     });

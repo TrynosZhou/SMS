@@ -69,6 +69,11 @@ export class ReportCardComponent implements OnInit {
   parentStudentClassName = '';
   schoolLogo: string | null = null;
   safeSchoolLogoUrl: SafeUrl | null = null;
+  schoolName = '';
+  schoolAddress = '';
+  schoolMotto = '';
+  schoolPhone = '';
+  schoolEmail = '';
   gradeThresholds: any = null;
   gradeLabels: any = null;
   headmasterName: string = '';
@@ -381,8 +386,13 @@ export class ReportCardComponent implements OnInit {
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
         this.currencySymbol = data.currencySymbol || 'KES';
-        this.schoolLogo = this.normalizeImageSrc(data.schoolLogo || null);
+        this.schoolLogo = this.normalizeImageSrc(data.schoolLogo2 || data.schoolLogo || null);
         this.safeSchoolLogoUrl = this.schoolLogo ? this.sanitizer.bypassSecurityTrustUrl(this.schoolLogo) : null;
+        this.schoolName = data.schoolName || '';
+        this.schoolAddress = data.schoolAddress || '';
+        this.schoolMotto = data.schoolMotto || '';
+        this.schoolPhone = data.schoolPhone || '';
+        this.schoolEmail = data.schoolEmail || '';
         try {
           const raw = data?.schoolLogo;
           const rawPreview = typeof raw === 'string' ? raw.trim().slice(0, 40) : String(raw);
@@ -462,14 +472,14 @@ export class ReportCardComponent implements OnInit {
           return;
         }
 
+        // Report card access is based on fees (tuition) balance only. Uniform item balance does not affect access.
         const termBalance = parseFloat(String(student.termBalance || 0));
         this.studentBalance = termBalance;
 
-        // Check if term balance allows access (term balance must be zero)
         if (termBalance > 0) {
           this.loading = false;
           this.accessDenied = true;
-          this.error = `Report card access is restricted. Please clear the outstanding term balance of ${this.currencySymbol} ${termBalance.toFixed(2)} to view the report card.`;
+          this.error = `Report card access is restricted. Please clear the outstanding fees (tuition) balance of ${this.currencySymbol} ${termBalance.toFixed(2)} to view the report card.`;
           return;
         }
 
@@ -553,7 +563,7 @@ export class ReportCardComponent implements OnInit {
     // For parents, check balance again before generating
     if (this.isParent && this.parentStudentId) {
       if (this.studentBalance !== null && this.studentBalance > 0) {
-        this.error = `Report card access is restricted. Please clear the outstanding term balance of ${this.currencySymbol} ${this.studentBalance.toFixed(2)} to view the report card.`;
+        this.error = `Report card access is restricted. Please clear the outstanding fees (tuition) balance of ${this.currencySymbol} ${this.studentBalance.toFixed(2)} to view the report card.`;
         this.accessDenied = true;
         return;
       }

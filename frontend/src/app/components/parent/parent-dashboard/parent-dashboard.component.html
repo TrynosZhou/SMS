@@ -223,17 +223,22 @@
             </div>
 
             <div class="balance-section">
-              <div class="balance-label">Current Invoice Balance</div>
+              <div class="balance-label">Fees (Tuition) Balance</div>
               <div class="balance-amount" [class.positive]="student.currentInvoiceBalance > 0"
                    [class.negative]="student.currentInvoiceBalance < 0"
                    [class.zero]="student.currentInvoiceBalance === 0">
                 {{ currencySymbol }} {{ student.currentInvoiceBalance | number:'1.2-2' }}
               </div>
+              <div class="balance-row uniform-balance-row" *ngIf="student.uniformBalance != null" style="margin-top: 8px;">
+                <div class="balance-label">Uniform Items Balance</div>
+                <div class="balance-amount uniform-balance-value">{{ currencySymbol }} {{ (student.uniformBalance || 0) | number:'1.2-2' }}</div>
+              </div>
+              <p class="small text-muted" *ngIf="student.uniformBalance != null" style="margin-top: 4px; font-size: 11px;">Uniform items are billed separately from tuition.</p>
               <div class="balance-note" *ngIf="(student.termBalance || 0) > 0" style="color: #dc3545; font-size: 12px; margin-top: 5px;">
-                ⚠️ Outstanding term balance - Report card access restricted
+                ⚠️ Outstanding fees (tuition) balance - Report card access restricted
               </div>
               <div class="balance-note" *ngIf="(student.termBalance || 0) === 0" style="color: #28a745; font-size: 12px; margin-top: 5px;">
-                ✓ Term balance cleared - Report card accessible
+                ✓ Fees (tuition) balance cleared - Report card accessible (uniform balance does not affect access)
               </div>
             </div>
 

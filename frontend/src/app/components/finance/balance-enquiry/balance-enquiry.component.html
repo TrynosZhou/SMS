@@ -41,11 +41,16 @@
       — No tuition or transport. Dining Hall charged at 50% if applicable.
     </div>
     <div class="balance-row">
-      <div class="label">Current Balance:</div>
+      <div class="label">Fees (Tuition) Balance:</div>
       <div class="value" [ngStyle]="{ color: colorForBalance() }">
         {{ currencySymbol }} {{ studentData.balance | number:'1.2-2' }}
       </div>
     </div>
+    <div class="balance-row" *ngIf="studentData.uniformBalance != null">
+      <div class="label">Uniform Items Balance:</div>
+      <div class="value uniform-balance-value">{{ currencySymbol }} {{ (studentData.uniformBalance || 0) | number:'1.2-2' }}</div>
+    </div>
+    <p class="small text-muted" *ngIf="studentData.uniformBalance != null" style="margin-top: 4px;">Uniform items are billed separately from tuition. Payments for uniform do not reduce the fees balance above.</p>
 
     <div class="actions">
       <button class="btn btn-primary" (click)="previewStatement()" [disabled]="loadingPdf">👁️ Preview Statement</button>

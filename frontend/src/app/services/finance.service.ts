@@ -96,6 +96,25 @@ export class FinanceService {
     return this.http.get(`${this.apiUrl}/finance/balance`, { params: { studentId } });
   }
 
+  createUniformCharge(studentId: string, items: { itemId: string; quantity: number }[], description?: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/finance/uniform-charge`, { studentId, items, description });
+  }
+
+  getNextUniformReceiptNumber(): Observable<{ receiptNumber: string }> {
+    return this.http.get<{ receiptNumber: string }>(`${this.apiUrl}/finance/next-uniform-receipt`);
+  }
+
+  recordUniformPayment(studentId: string, amount: number, paymentDate?: string, paymentMethod?: string, receiptNumber?: string, notes?: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/finance/uniform-payment`, {
+      studentId,
+      amount,
+      paymentDate: paymentDate || new Date().toISOString().slice(0, 10),
+      paymentMethod,
+      receiptNumber,
+      notes
+    });
+  }
+
   applyInvoiceNote(invoiceId: string, payload: { type: 'credit' | 'debit'; item: string; amount: number }): Observable<any> {
     return this.http.put(`${this.apiUrl}/finance/${invoiceId}/note`, payload);
   }

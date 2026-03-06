@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FinanceService } from '../../../services/finance.service';
@@ -92,7 +92,40 @@ export class InvoiceListComponent implements OnInit {
     amount: 0,
     notes: ''
   };
-  
+
+  showUniformItemsModal = false;
+  uniformCatalog: any[] = [];
+  uniformStudentSearch = '';
+  uniformStudentSearchLoading = false;
+  uniformStudentCandidates: any[] = [];
+  uniformSelectedStudent: any = null;
+  uniformRows: { itemId: string; itemName: string; unitPrice: number; quantity: number; lineTotal: number }[] = [];
+  uniformSubmitting = false;
+  uniformError = '';
+  uniformSuccess = '';
+  uniformCatalogSelection = '';
+
+  /** Tab: 'charge' | 'payment' */
+  activeUniformTab: 'charge' | 'payment' = 'charge';
+
+  /** Payment tab: student search and selection */
+  uniformPaymentSearch = '';
+  uniformPaymentSearchLoading = false;
+  uniformPaymentCandidates: any[] = [];
+  uniformPaymentSelectedStudent: any = null;
+  uniformPaymentBalance: number | null = null;
+  uniformPaymentBalanceLoading = false;
+  /** Payment form */
+  uniformPaymentAmount: number | null = null;
+  uniformPaymentDate = '';
+  uniformPaymentMethod = 'Cash(USD)';
+  uniformPaymentNotes = '';
+  uniformPaymentReceiptNumber = '';
+  uniformPaymentReceiptLoading = false;
+  uniformPaymentSubmitting = false;
+
+  @ViewChild('uniformCatalogSelect') uniformCatalogSelectRef: ElementRef<HTMLSelectElement> | null = null;
+
   // Cached computed values to prevent NG0900 errors
   private _cachedStats = {
     totalAmount: 0,
@@ -674,6 +707,265 @@ export class InvoiceListComponent implements OnInit {
       error: (err: any) => {
         this.correctPrepaidSubmitting = false;
         this.correctPrepaidLookupError = err?.error?.message || 'Failed to correct prepaid transaction.';
+      }
+    });
+  }
+
+  openUniformItemsModal() {
+    this.showUniformItemsModal = true;
+    this.activeUniformTab = 'charge';
+    this.uniformSelectedStudent = null;
+    this.uniformStudentSearch = '';
+    this.uniformStudentCandidates = [];
+    this.uniformRows = [];
+    this.uniformError = '';
+    this.uniformSuccess = '';
+    this.uniformPaymentSearch = '';
+    this.uniformPaymentCandidates = [];
+    this.uniformPaymentSelectedStudent = null;
+    this.uniformPaymentBalance = null;
+    this.uniformPaymentAmount = null;
+    this.uniformPaymentDate = new Date().toISOString().slice(0, 10);
+    this.uniformPaymentMethod = 'Cash(USD)';
+    this.uniformPaymentNotes = '';
+    this.uniformPaymentReceiptNumber = '';
+    this.settingsService.getUniformItems().subscribe({
+      next: (items: any) => {
+        this.uniformCatalog = Array.isArray(items) ? items.filter((i: any) => i && i.isActive !== false) : [];
+      },
+      error: () => { this.uniformCatalog = []; }
+    });
+  }
+
+  closeUniformItemsModal() {
+    this.showUniformItemsModal = false;
+    this.uniformSelectedStudent = null;
+    this.uniformRows = [];
+    this.uniformPaymentSelectedStudent = null;
+  }
+
+  searchUniformStudent() {
+    const q = (this.uniformStudentSearch || '').trim();
+    if (!q || q.length < 2) {
+      this.uniformStudentCandidates = [];
+      return;
+    }
+    this.uniformStudentSearchLoading = true;
+    this.studentService.getStudentsPaginated({ search: q, limit: 20, page: 1 }).subscribe({
+      next: (res: any) => {
+        this.uniformStudentCandidates = Array.isArray(res?.data) ? res.data : [];
+        this.uniformStudentSearchLoading = false;
+      },
+      error: () => {
+        this.uniformStudentCandidates = [];
+        this.uniformStudentSearchLoading = false;
+      }
+    });
+  }
+
+  selectUniformStudent(s: any) {
+    this.uniformSelectedStudent = s;
+    this.uniformStudentCandidates = [];
+    this.uniformStudentSearch = s ? `${s.lastName || ''} ${s.firstName || ''} (${s.studentNumber || s.id})` : '';
+  }
+
+  /** Add a uniform item from the catalog. Call with a catalog item, or with no arg to use the first. */
+  addUniformRow(item?: any) {
+    const catalogItem = item || (this.uniformCatalog.length > 0 ? this.uniformCatalog[0] : null);
+    if (!catalogItem) return;
+    const unitPrice = parseFloat(String(catalogItem.unitPrice || 0)) || 0;
+    this.uniformRows.push({
+      itemId: catalogItem.id,
+      itemName: catalogItem.name || catalogItem.id,
+      unitPrice,
+      quantity: 1,
+      lineTotal: unitPrice
+    });
+  }
+
+  /** Get catalog item by id (for dropdown selection). */
+  getUniformCatalogItemById(id: string): any {
+    return (this.uniformCatalog || []).find((c: any) => c.id === id);
+  }
+
+  /** Open the catalog dropdown (used by the "Add item" button). */
+  openUniformCatalogSelect() {
+    setTimeout(() => this.uniformCatalogSelectRef?.nativeElement?.click(), 0);
+  }
+
+  /** When user selects an item from the "Add item" dropdown, add it and reset selection. */
+  onUniformCatalogItemSelected(itemId: string) {
+    if (!itemId) return;
+    const item = this.getUniformCatalogItemById(itemId);
+    if (item) {
+      this.addUniformRow(item);
+      this.uniformCatalogSelection = '';
+    }
+  }
+
+  removeUniformRow(index: number) {
+    this.uniformRows.splice(index, 1);
+  }
+
+  onUniformRowQuantityChange(row: any) {
+    const q = Math.max(0, parseInt(String(row.quantity), 10) || 0);
+    row.quantity = q;
+    row.lineTotal = parseFloat((row.unitPrice * q).toFixed(2));
+  }
+
+  /** Total of uniform items in the modal (for charging). */
+  getUniformModalTotal(): number {
+    return this.uniformRows.reduce((sum, r) => sum + (r.lineTotal || 0), 0);
+  }
+
+  submitUniformCharge() {
+    if (!this.uniformSelectedStudent?.id) {
+      this.uniformError = 'Please select a student.';
+      setTimeout(() => (this.uniformError = ''), 4000);
+      return;
+    }
+    const rows = this.uniformRows.filter(r => r.quantity > 0);
+    if (rows.length === 0) {
+      this.uniformError = 'Add at least one uniform item with quantity > 0.';
+      setTimeout(() => (this.uniformError = ''), 4000);
+      return;
+    }
+    this.uniformSubmitting = true;
+    this.uniformError = '';
+    this.uniformSuccess = '';
+    const items = rows.map(r => ({ itemId: r.itemId, quantity: r.quantity }));
+    this.financeService.createUniformCharge(this.uniformSelectedStudent.id, items).subscribe({
+      next: (res: any) => {
+        this.uniformSubmitting = false;
+        this.uniformSuccess = `Uniform charge of ${this.currencySymbol} ${(res.charge?.amount || this.getUniformModalTotal()).toFixed(2)} recorded for ${this.uniformSelectedStudent?.firstName || ''} ${this.uniformSelectedStudent?.lastName || ''}. Uniform balance: ${this.currencySymbol} ${(res.charge?.uniformBalance ?? 0).toFixed(2)}.`;
+        this.uniformRows = [];
+        setTimeout(() => {
+          this.uniformSuccess = '';
+          this.closeUniformItemsModal();
+        }, 3000);
+      },
+      error: (err: any) => {
+        this.uniformSubmitting = false;
+        this.uniformError = err?.error?.message || 'Failed to create uniform charge.';
+      }
+    });
+  }
+
+  setUniformTab(tab: 'charge' | 'payment') {
+    this.activeUniformTab = tab;
+    this.uniformError = '';
+    this.uniformSuccess = '';
+    if (tab === 'payment') this.loadNextUniformReceiptNumber();
+  }
+
+  loadNextUniformReceiptNumber() {
+    this.uniformPaymentReceiptLoading = true;
+    this.financeService.getNextUniformReceiptNumber().subscribe({
+      next: (res) => {
+        this.uniformPaymentReceiptNumber = res?.receiptNumber || '';
+        this.uniformPaymentReceiptLoading = false;
+      },
+      error: () => {
+        this.uniformPaymentReceiptNumber = '';
+        this.uniformPaymentReceiptLoading = false;
+      }
+    });
+  }
+
+  searchUniformPaymentStudent() {
+    const q = (this.uniformPaymentSearch || '').trim();
+    if (!q || q.length < 2) {
+      this.uniformPaymentCandidates = [];
+      return;
+    }
+    this.uniformPaymentSearchLoading = true;
+    this.uniformPaymentCandidates = [];
+    this.uniformPaymentSelectedStudent = null;
+    this.uniformPaymentBalance = null;
+    this.studentService.getStudentsPaginated({ search: q, limit: 30, page: 1 }).subscribe({
+      next: (res: any) => {
+        this.uniformPaymentCandidates = Array.isArray(res?.data) ? res.data : [];
+        this.uniformPaymentSearchLoading = false;
+      },
+      error: () => {
+        this.uniformPaymentCandidates = [];
+        this.uniformPaymentSearchLoading = false;
+      }
+    });
+  }
+
+  selectUniformPaymentStudent(s: any) {
+    this.uniformPaymentSelectedStudent = s;
+    this.uniformPaymentCandidates = [];
+    this.uniformPaymentSearch = s ? `${s.lastName || ''} ${s.firstName || ''} (${s.studentNumber || s.id})` : '';
+    this.uniformPaymentBalance = null;
+    if (s?.id) {
+      this.uniformPaymentBalanceLoading = true;
+      this.financeService.getStudentBalance(s.id).subscribe({
+        next: (bal: any) => {
+          this.uniformPaymentBalance = bal?.uniformBalance != null ? parseFloat(String(bal.uniformBalance)) : 0;
+          this.uniformPaymentBalanceLoading = false;
+        },
+        error: () => {
+          this.uniformPaymentBalance = null;
+          this.uniformPaymentBalanceLoading = false;
+        }
+      });
+    }
+  }
+
+  clearUniformPaymentStudent() {
+    this.uniformPaymentSelectedStudent = null;
+    this.uniformPaymentSearch = '';
+    this.uniformPaymentBalance = null;
+    this.uniformPaymentAmount = null;
+  }
+
+  submitUniformPayment() {
+    if (!this.uniformPaymentSelectedStudent?.id) {
+      this.uniformError = 'Please select a student.';
+      setTimeout(() => (this.uniformError = ''), 4000);
+      return;
+    }
+    const amount = this.uniformPaymentAmount != null ? Number(this.uniformPaymentAmount) : 0;
+    if (!Number.isFinite(amount) || amount <= 0) {
+      this.uniformError = 'Please enter a valid payment amount greater than 0.';
+      setTimeout(() => (this.uniformError = ''), 4000);
+      return;
+    }
+    const method = (this.uniformPaymentMethod || '').trim();
+    if (!method || !['Cash(USD)', 'Ecocash(USD)', 'Bank Transfer(USD)'].includes(method)) {
+      this.uniformError = 'Please select a payment method: Cash(USD), Ecocash(USD), or Bank Transfer(USD).';
+      setTimeout(() => (this.uniformError = ''), 4000);
+      return;
+    }
+    this.uniformPaymentSubmitting = true;
+    this.uniformError = '';
+    this.uniformSuccess = '';
+    this.financeService.recordUniformPayment(
+      this.uniformPaymentSelectedStudent.id,
+      amount,
+      this.uniformPaymentDate || undefined,
+      method,
+      this.uniformPaymentReceiptNumber || undefined,
+      this.uniformPaymentNotes || undefined
+    ).subscribe({
+      next: (res: any) => {
+        this.uniformPaymentSubmitting = false;
+        const receiptNum = res?.receiptNumber || res?.payment?.receiptNumber || this.uniformPaymentReceiptNumber || '';
+        this.uniformSuccess = receiptNum
+          ? `Payment of ${this.currencySymbol} ${amount.toFixed(2)} recorded. Receipt: ${receiptNum}. New uniform balance: ${this.currencySymbol} ${(res?.uniformBalance ?? 0).toFixed(2)}.`
+          : `Payment of ${this.currencySymbol} ${amount.toFixed(2)} recorded. New uniform balance: ${this.currencySymbol} ${(res?.uniformBalance ?? 0).toFixed(2)}.`;
+        this.clearUniformPaymentStudent();
+        this.uniformPaymentDate = new Date().toISOString().slice(0, 10);
+        this.uniformPaymentMethod = 'Cash(USD)';
+        this.uniformPaymentNotes = '';
+        this.loadNextUniformReceiptNumber();
+        setTimeout(() => (this.uniformSuccess = ''), 5000);
+      },
+      error: (err: any) => {
+        this.uniformPaymentSubmitting = false;
+        this.uniformError = err?.error?.message || 'Failed to record uniform payment.';
       }
     });
   }
