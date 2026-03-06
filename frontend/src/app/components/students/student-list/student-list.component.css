@@ -613,14 +613,23 @@
   text-overflow: ellipsis;
 }
 
+/* Class column: ensure enough width so class names (e.g. "Stage 4 Di") don't overlap Type */
+.class-col {
+  min-width: 100px;
+  padding-right: 4px;
+}
+
 .name-cell {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
+/* Type column: shift badge to the right so Class values remain clearly visible */
 .type-col {
-  margin-left: 6px;
+  min-width: 90px;
+  padding-left: 16px;
+  margin-left: 0;
 }
 
 .avatar-small {
