@@ -105,8 +105,25 @@ export class InvoiceListComponent implements OnInit {
   uniformSuccess = '';
   uniformCatalogSelection = '';
 
-  /** Tab: 'charge' | 'payment' */
-  activeUniformTab: 'charge' | 'payment' = 'charge';
+  /** Tab: 'charge' | 'payment' | 'cash' */
+  activeUniformTab: 'charge' | 'payment' | 'cash' = 'charge';
+
+  /** Cash sales tab: student + items + immediate payment */
+  uniformCashStudentSearch = '';
+  uniformCashSearchLoading = false;
+  uniformCashCandidates: any[] = [];
+  uniformCashSelectedStudent: any = null;
+  uniformCashRows: { itemId: string; itemName: string; unitPrice: number; quantity: number; lineTotal: number }[] = [];
+  uniformCashCatalogSelection = '';
+  uniformCashSubmitting = false;
+  uniformCashPaymentAmount: number | null = null;
+  uniformCashPaymentDate = '';
+  uniformCashPaymentMethod = 'Cash(USD)';
+  uniformCashNotes = '';
+  uniformCashReceiptNumber = '';
+  uniformCashReceiptLoading = false;
+
+  @ViewChild('uniformCashCatalogSelect') uniformCashCatalogSelectRef: ElementRef<HTMLSelectElement> | null = null;
 
   /** Payment tab: student search and selection */
   uniformPaymentSearch = '';
@@ -729,6 +746,16 @@ export class InvoiceListComponent implements OnInit {
     this.uniformPaymentMethod = 'Cash(USD)';
     this.uniformPaymentNotes = '';
     this.uniformPaymentReceiptNumber = '';
+    this.uniformCashStudentSearch = '';
+    this.uniformCashCandidates = [];
+    this.uniformCashSelectedStudent = null;
+    this.uniformCashRows = [];
+    this.uniformCashCatalogSelection = '';
+    this.uniformCashPaymentAmount = null;
+    this.uniformCashPaymentDate = new Date().toISOString().slice(0, 10);
+    this.uniformCashPaymentMethod = 'Cash(USD)';
+    this.uniformCashNotes = '';
+    this.uniformCashReceiptNumber = '';
     this.settingsService.getUniformItems().subscribe({
       next: (items: any) => {
         this.uniformCatalog = Array.isArray(items) ? items.filter((i: any) => i && i.isActive !== false) : [];
@@ -742,6 +769,11 @@ export class InvoiceListComponent implements OnInit {
     this.uniformSelectedStudent = null;
     this.uniformRows = [];
     this.uniformPaymentSelectedStudent = null;
+    this.uniformCashSelectedStudent = null;
+    this.uniformCashRows = [];
+    this.uniformCashStudentSearch = '';
+    this.uniformCashCandidates = [];
+    this.uniformCashPaymentAmount = null;
   }
 
   searchUniformStudent() {
@@ -851,11 +883,168 @@ export class InvoiceListComponent implements OnInit {
     });
   }
 
-  setUniformTab(tab: 'charge' | 'payment') {
+  setUniformTab(tab: 'charge' | 'payment' | 'cash') {
     this.activeUniformTab = tab;
     this.uniformError = '';
     this.uniformSuccess = '';
     if (tab === 'payment') this.loadNextUniformReceiptNumber();
+    if (tab === 'cash') this.loadNextUniformCashReceiptNumber();
+  }
+
+  loadNextUniformCashReceiptNumber() {
+    this.uniformCashReceiptLoading = true;
+    this.financeService.getNextUniformReceiptNumber().subscribe({
+      next: (res) => {
+        this.uniformCashReceiptNumber = res?.receiptNumber || '';
+        this.uniformCashReceiptLoading = false;
+      },
+      error: () => {
+        this.uniformCashReceiptNumber = '';
+        this.uniformCashReceiptLoading = false;
+      }
+    });
+  }
+
+  searchUniformCashStudent() {
+    const q = (this.uniformCashStudentSearch || '').trim();
+    if (!q || q.length < 2) {
+      this.uniformCashCandidates = [];
+      return;
+    }
+    this.uniformCashSearchLoading = true;
+    this.uniformCashCandidates = [];
+    this.studentService.getStudentsPaginated({ search: q, limit: 30, page: 1 }).subscribe({
+      next: (res: any) => {
+        this.uniformCashCandidates = Array.isArray(res?.data) ? res.data : [];
+        this.uniformCashSearchLoading = false;
+      },
+      error: () => {
+        this.uniformCashCandidates = [];
+        this.uniformCashSearchLoading = false;
+      }
+    });
+  }
+
+  selectUniformCashStudent(s: any) {
+    this.uniformCashSelectedStudent = s;
+    this.uniformCashCandidates = [];
+  }
+
+  addUniformCashRow(item?: any) {
+    const catalogItem = item || (this.uniformCatalog.length > 0 ? this.uniformCatalog[0] : null);
+    if (!catalogItem) return;
+    const unitPrice = parseFloat(String(catalogItem.unitPrice || 0)) || 0;
+    this.uniformCashRows.push({
+      itemId: catalogItem.id,
+      itemName: catalogItem.name || catalogItem.id,
+      unitPrice,
+      quantity: 1,
+      lineTotal: unitPrice
+    });
+  }
+
+  getUniformCatalogItemByIdForCash(id: string): any {
+    return (this.uniformCatalog || []).find((c: any) => c.id === id);
+  }
+
+  onUniformCashCatalogItemSelected(itemId: string) {
+    if (!itemId) return;
+    const item = this.getUniformCatalogItemByIdForCash(itemId);
+    if (item) {
+      this.addUniformCashRow(item);
+      this.uniformCashCatalogSelection = '';
+    }
+  }
+
+  openUniformCashCatalogSelect() {
+    setTimeout(() => this.uniformCashCatalogSelectRef?.nativeElement?.click(), 0);
+  }
+
+  removeUniformCashRow(index: number) {
+    this.uniformCashRows.splice(index, 1);
+  }
+
+  onUniformCashRowQuantityChange(row: any) {
+    const q = Math.max(0, parseInt(String(row.quantity), 10) || 0);
+    row.quantity = q;
+    row.lineTotal = parseFloat((row.unitPrice * q).toFixed(2));
+  }
+
+  getUniformCashTotal(): number {
+    return this.uniformCashRows.reduce((sum, r) => sum + (r.lineTotal || 0), 0);
+  }
+
+  submitUniformCashSale() {
+    if (!this.uniformCashSelectedStudent?.id) {
+      this.uniformError = 'Please select a student.';
+      setTimeout(() => (this.uniformError = ''), 4000);
+      return;
+    }
+    const rows = this.uniformCashRows.filter(r => r.quantity > 0);
+    if (rows.length === 0) {
+      this.uniformError = 'Add at least one uniform item with quantity > 0.';
+      setTimeout(() => (this.uniformError = ''), 4000);
+      return;
+    }
+    const total = this.getUniformCashTotal();
+    if (total <= 0) {
+      this.uniformError = 'Total must be greater than 0.';
+      setTimeout(() => (this.uniformError = ''), 4000);
+      return;
+    }
+    const amount = this.uniformCashPaymentAmount != null ? Number(this.uniformCashPaymentAmount) : 0;
+    if (!Number.isFinite(amount) || amount <= 0) {
+      this.uniformError = 'Please enter a valid cash payment amount greater than 0.';
+      setTimeout(() => (this.uniformError = ''), 4000);
+      return;
+    }
+    const method = (this.uniformCashPaymentMethod || '').trim();
+    if (!method || !['Cash(USD)', 'Ecocash(USD)', 'Bank Transfer(USD)'].includes(method)) {
+      this.uniformError = 'Please select a payment method.';
+      setTimeout(() => (this.uniformError = ''), 4000);
+      return;
+    }
+    this.uniformCashSubmitting = true;
+    this.uniformError = '';
+    this.uniformSuccess = '';
+    const studentId = this.uniformCashSelectedStudent.id;
+    const items = rows.map(r => ({ itemId: r.itemId, quantity: r.quantity }));
+    this.financeService.createUniformCharge(studentId, items).subscribe({
+      next: () => {
+        this.financeService.recordUniformPayment(
+          studentId,
+          amount,
+          this.uniformCashPaymentDate || undefined,
+          method,
+          this.uniformCashReceiptNumber || undefined,
+          this.uniformCashNotes || undefined
+        ).subscribe({
+          next: (res: any) => {
+            this.uniformCashSubmitting = false;
+            this.uniformSuccess = `Cash sale completed. Charge of ${this.currencySymbol} ${total.toFixed(2)} applied; payment of ${this.currencySymbol} ${amount.toFixed(2)} recorded. Receipt: ${res?.receiptNumber || this.uniformCashReceiptNumber}. Balance on account: ${this.currencySymbol} ${(res?.uniformBalance ?? 0).toFixed(2)}.`;
+            this.uniformCashRows = [];
+            this.uniformCashPaymentAmount = null;
+            this.uniformCashPaymentDate = new Date().toISOString().slice(0, 10);
+            this.uniformCashPaymentMethod = 'Cash(USD)';
+            this.uniformCashNotes = '';
+            this.loadNextUniformCashReceiptNumber();
+            this.closeUniformItemsModal();
+            if (res?.payment?.id) {
+              setTimeout(() => this.viewUniformReceiptPDFPreview(res.payment.id, res?.receiptNumber || this.uniformCashReceiptNumber), 400);
+            }
+            setTimeout(() => (this.uniformSuccess = ''), 6000);
+          },
+          error: (err: any) => {
+            this.uniformCashSubmitting = false;
+            this.uniformError = err?.error?.message || 'Charge was created but recording payment failed. Please record the payment from Record payment tab.';
+          }
+        });
+      },
+      error: (err: any) => {
+        this.uniformCashSubmitting = false;
+        this.uniformError = err?.error?.message || 'Failed to create uniform charge.';
+      }
+    });
   }
 
   loadNextUniformReceiptNumber() {
@@ -962,6 +1151,10 @@ export class InvoiceListComponent implements OnInit {
         this.uniformPaymentNotes = '';
         this.loadNextUniformReceiptNumber();
         setTimeout(() => (this.uniformSuccess = ''), 5000);
+        this.closeUniformItemsModal();
+        if (res?.payment?.id) {
+          setTimeout(() => this.viewUniformReceiptPDFPreview(res.payment.id, receiptNum || undefined), 400);
+        }
       },
       error: (err: any) => {
         this.uniformPaymentSubmitting = false;
@@ -1514,6 +1707,34 @@ export class InvoiceListComponent implements OnInit {
           this.error = err.error?.message || 'Failed to load receipt PDF';
         }
         setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  viewUniformReceiptPDFPreview(uniformPaymentLogId: string, receiptNumber?: string) {
+    this.currentReceiptNumber = receiptNumber || 'Uniform';
+    this.showReceiptViewer = true;
+    this.loadingReceiptPdf = true;
+    this.error = '';
+    this.financeService.getUniformReceiptPDF(uniformPaymentLogId).subscribe({
+      next: (blob: Blob) => {
+        if (this.receiptUrl) {
+          window.URL.revokeObjectURL(this.receiptUrl);
+        }
+        this.receiptUrl = window.URL.createObjectURL(blob);
+        this.safeReceiptUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.receiptUrl);
+        this.currentReceiptFilename = `Uniform-Receipt-${this.currentReceiptNumber}.pdf`;
+        this.loadingReceiptPdf = false;
+      },
+      error: (err: any) => {
+        this.loadingReceiptPdf = false;
+        this.showReceiptViewer = false;
+        if (err.status === 401) {
+          this.error = 'Authentication required. Please log in again.';
+        } else {
+          this.error = err.error?.message || 'Failed to load uniform receipt PDF';
+        }
+        setTimeout(() => (this.error = ''), 5000);
       }
     });
   }

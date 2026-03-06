@@ -386,7 +386,8 @@ export class ReportCardComponent implements OnInit {
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
         this.currencySymbol = data.currencySymbol || 'KES';
-        this.schoolLogo = this.normalizeImageSrc(data.schoolLogo2 || data.schoolLogo || null);
+        // Use Logo 1 (schoolLogo) for report card banner; fallback to Logo 2 if Logo 1 not set
+        this.schoolLogo = this.normalizeImageSrc(data.schoolLogo || data.schoolLogo2 || null);
         this.safeSchoolLogoUrl = this.schoolLogo ? this.sanitizer.bypassSecurityTrustUrl(this.schoolLogo) : null;
         this.schoolName = data.schoolName || '';
         this.schoolAddress = data.schoolAddress || '';

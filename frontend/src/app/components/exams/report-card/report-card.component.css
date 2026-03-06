@@ -739,23 +739,62 @@
   gap: 10px;
 }
 
-/* School Header - banner aligned with table below (same content width) */
+/* School Header - banner from Settings (Logo 1), fits well and shows full image */
 .school-logo-banner {
   width: 100%;
-  height: 200px;
+  min-height: 120px;
+  max-height: 220px;
   border-radius: 12px;
   overflow: hidden;
   margin: 0 0 16px 0;
-  background: #1f4aa8;
+  background: #f0f4f8;
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 6px solid #C9A227;
+  box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.4);
 }
 
 .school-logo-banner-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: top center;
+  min-height: 120px;
+  max-height: 220px;
+  object-fit: contain;
+  object-position: center center;
   display: block;
+}
+
+/* School information below banner - visible on report header */
+.report-card-school-info {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.report-card-school-info .report-card-school-name {
+  margin: 0 0 6px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.report-card-school-info .report-card-school-motto {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #475569;
+  font-style: italic;
+}
+
+.report-card-school-info .report-card-school-address,
+.report-card-school-info .report-card-school-contact {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.4;
 }
 
 /* Full school info banner when viewed by parents */

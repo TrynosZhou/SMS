@@ -5,7 +5,7 @@ import { Student } from '../entities/Student';
 import { Settings } from '../entities/Settings';
 import { AuthRequest } from '../middleware/auth';
 import { createInvoicePDF } from '../utils/invoicePdfGenerator';
-import { createReceiptPDF } from '../utils/receiptPdfGenerator';
+import { createReceiptPDF, createUniformReceiptPDF } from '../utils/receiptPdfGenerator';
 import { createOutstandingBalancePDF } from '../utils/outstandingBalancePdfGenerator';
 import { UniformItem } from '../entities/UniformItem';
 import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
@@ -1893,6 +1893,77 @@ export const recordUniformPayment = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error recording uniform payment:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+/** Generate PDF receipt for a uniform payment (by payment log id). */
+export const generateUniformReceiptPDF = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const uniformPaymentLogRepository = AppDataSource.getRepository(UniformPaymentLog);
+    const uniformChargeRepository = AppDataSource.getRepository(UniformCharge);
+    const studentRepository = AppDataSource.getRepository(Student);
+    const settingsRepository = AppDataSource.getRepository(Settings);
+
+    const log = await uniformPaymentLogRepository.findOne({
+      where: { id },
+      relations: []
+    });
+    if (!log) {
+      return res.status(404).json({ message: 'Uniform payment record not found' });
+    }
+
+    const student = await studentRepository.findOne({
+      where: { id: log.studentId },
+      relations: ['classEntity']
+    });
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+
+    const uniformBalanceAfter = Math.max(0, parseFloat(parseAmount((student as any).uniformBalance ?? 0).toFixed(2)));
+
+    const charges = await uniformChargeRepository.find({
+      where: { studentId: student.id },
+      relations: ['items'],
+      order: { createdAt: 'DESC' },
+      take: 20
+    });
+    const chargeItems: { itemName: string; quantity: number; unitPrice: number; lineTotal: number }[] = [];
+    for (const charge of charges) {
+      const items = (charge as any).items || [];
+      for (const it of items) {
+        chargeItems.push({
+          itemName: it.itemName || '',
+          quantity: Number(it.quantity ?? 0),
+          unitPrice: parseFloat(String(it.unitPrice ?? 0)),
+          lineTotal: parseFloat(String(it.lineTotal ?? 0))
+        });
+      }
+    }
+
+    const pdfBuffer = await createUniformReceiptPDF({
+      student,
+      settings,
+      receiptNumber: log.receiptNumber || '',
+      paymentAmount: parseFloat(String(log.amountPaid)),
+      paymentDate: log.paymentDate,
+      paymentMethod: log.paymentMethod || '',
+      notes: log.notes,
+      uniformBalanceAfter,
+      chargeItems
+    });
+
+    const sanitizedName = (student.firstName + '-' + student.lastName).replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '-');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=uniform-receipt-${log.receiptNumber || log.id}-${sanitizedName}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error('Error generating uniform receipt PDF:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

@@ -618,7 +618,8 @@
           <div class="modal-header-content">
             <h2><span class="modal-icon">👕</span> Uniform Items</h2>
             <p class="modal-subtitle" *ngIf="activeUniformTab === 'charge'">Select a student, add items from the catalog, and enter quantities. Cost is calculated automatically.</p>
-            <p class="modal-subtitle" *ngIf="activeUniformTab === 'payment'">Select a student by Student ID, Last name, or First name. If multiple students match, choose from the list. Then enter the payment amount.</p>
+            <p class="modal-subtitle" *ngIf="activeUniformTab === 'payment'">Credit sale: record payment when invoice is paid. Select student, then enter payment amount.</p>
+            <p class="modal-subtitle" *ngIf="activeUniformTab === 'cash'">Cash sale: student selects items, total is computed, then pay cash. The charge is applied to the student account and payment is recorded immediately.</p>
           </div>
           <button class="modal-close-btn" (click)="closeUniformItemsModal()" title="Close"><span>&times;</span></button>
         </div>
@@ -626,6 +627,9 @@
         <div class="uniform-tabs">
           <button type="button" class="uniform-tab" [class.active]="activeUniformTab === 'charge'" (click)="setUniformTab('charge')">
             Charge / Bill items
+          </button>
+          <button type="button" class="uniform-tab" [class.active]="activeUniformTab === 'cash'" (click)="setUniformTab('cash')">
+            Cash sales
           </button>
           <button type="button" class="uniform-tab" [class.active]="activeUniformTab === 'payment'" (click)="setUniformTab('payment')">
             Record payment
@@ -700,6 +704,100 @@
             </div>
           </div>
 
+          <!-- Tab: Cash sales -->
+          <div *ngIf="activeUniformTab === 'cash'">
+            <div class="uniform-section uniform-receipt-display">
+              <label class="uniform-section-label">Receipt number</label>
+              <div class="uniform-receipt-number-value" *ngIf="uniformCashReceiptLoading">Loading…</div>
+              <div class="uniform-receipt-number-value uniform-receipt-number-bold" *ngIf="!uniformCashReceiptLoading && uniformCashReceiptNumber">{{ uniformCashReceiptNumber }}</div>
+            </div>
+            <div class="uniform-section uniform-student-section">
+              <label class="uniform-section-label">Student</label>
+              <input type="text" [(ngModel)]="uniformCashStudentSearch" (ngModelChange)="searchUniformCashStudent()" [ngModelOptions]="{standalone: true}" class="uniform-input" placeholder="Search by Student ID, Last name, or First name (min 2 chars)" />
+              <div *ngIf="uniformCashSearchLoading" class="uniform-hint">Searching...</div>
+              <div *ngIf="uniformCashCandidates.length > 0 && !uniformCashSelectedStudent" class="uniform-candidates">
+                <p class="uniform-hint" *ngIf="uniformCashCandidates.length > 1">Multiple students found. Select the correct one:</p>
+                <button type="button" class="uniform-candidate-btn" *ngFor="let c of uniformCashCandidates" (click)="selectUniformCashStudent(c)">
+                  {{ c.lastName }} {{ c.firstName }} ({{ c.studentNumber }})
+                </button>
+              </div>
+              <div *ngIf="uniformCashSelectedStudent" class="uniform-selected-banner">
+                <span class="uniform-selected-text">Selected: {{ uniformCashSelectedStudent.lastName }} {{ uniformCashSelectedStudent.firstName }} ({{ uniformCashSelectedStudent.studentNumber }})</span>
+                <button type="button" class="uniform-change-btn" (click)="uniformCashSelectedStudent = null; uniformCashStudentSearch = ''">Change</button>
+              </div>
+            </div>
+            <div class="uniform-section uniform-items-section">
+              <label class="uniform-section-label">Uniform items</label>
+              <div *ngIf="uniformCatalog.length === 0" class="uniform-empty-catalog">No uniform items in catalog. Add them in Settings → Uniform Items.</div>
+              <div *ngIf="uniformCatalog.length > 0">
+                <div class="uniform-add-row">
+                  <button type="button" class="uniform-add-item-btn" (click)="openUniformCashCatalogSelect()" [disabled]="uniformCatalog.length === 0">
+                    <span class="uniform-add-item-icon" aria-hidden="true">+</span>
+                    Add item from catalog
+                  </button>
+                  <select #uniformCashCatalogSelect class="uniform-catalog-select" [ngModel]="uniformCashCatalogSelection" (ngModelChange)="onUniformCashCatalogItemSelected($event)" [ngModelOptions]="{standalone: true}">
+                    <option value="">Choose an item…</option>
+                    <option *ngFor="let item of uniformCatalog" [value]="item.id">{{ item.name }} — {{ currencySymbol }} {{ item.unitPrice | number:'1.2-2' }} each</option>
+                  </select>
+                </div>
+                <div class="uniform-table-wrap" *ngIf="uniformCashRows.length > 0">
+                  <table class="uniform-items-table">
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Unit price</th>
+                        <th>Qty</th>
+                        <th>Total</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let row of uniformCashRows; let i = index">
+                        <td class="uniform-cell-item">{{ row.itemName }}</td>
+                        <td class="uniform-cell-price">{{ currencySymbol }} {{ row.unitPrice | number:'1.2-2' }}</td>
+                        <td>
+                          <input type="number" [(ngModel)]="row.quantity" (ngModelChange)="onUniformCashRowQuantityChange(row)" min="0" class="uniform-qty-input" />
+                        </td>
+                        <td class="uniform-cell-total">{{ currencySymbol }} {{ row.lineTotal | number:'1.2-2' }}</td>
+                        <td><button type="button" class="uniform-remove-btn" (click)="removeUniformCashRow(i)">Remove</button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="uniform-total-bar" *ngIf="uniformCashRows.length > 0">
+                  <strong>Total: {{ currencySymbol }} {{ getUniformCashTotal() | number:'1.2-2' }}</strong>
+                </div>
+                <p class="uniform-hint" *ngIf="uniformCatalog.length > 0 && uniformCashRows.length === 0">Add items from the catalog. Then enter cash payment below.</p>
+              </div>
+            </div>
+            <div *ngIf="uniformCashRows.length > 0" class="uniform-section uniform-payment-section">
+              <label class="uniform-section-label">Cash payment</label>
+              <div class="uniform-payment-form">
+                <div class="uniform-form-row">
+                  <label>Amount paid</label>
+                  <input type="number" [(ngModel)]="uniformCashPaymentAmount" min="0" step="0.01" class="uniform-input" placeholder="0.00" />
+                </div>
+                <div class="uniform-form-row">
+                  <label>Payment date</label>
+                  <input type="date" [(ngModel)]="uniformCashPaymentDate" class="uniform-input" />
+                </div>
+                <div class="uniform-form-row">
+                  <label>Payment method</label>
+                  <select [(ngModel)]="uniformCashPaymentMethod" class="uniform-input uniform-select" required>
+                    <option value="Cash(USD)">Cash(USD)</option>
+                    <option value="Ecocash(USD)">Ecocash(USD)</option>
+                    <option value="Bank Transfer(USD)">Bank Transfer(USD)</option>
+                  </select>
+                </div>
+                <div class="uniform-form-row">
+                  <label>Notes</label>
+                  <input type="text" [(ngModel)]="uniformCashNotes" class="uniform-input" placeholder="Optional" />
+                </div>
+              </div>
+              <p class="uniform-hint">Charge will be applied to the student's uniform account; payment is recorded immediately. Any balance (if amount paid &lt; total) remains on account.</p>
+            </div>
+          </div>
+
           <!-- Tab: Record payment -->
           <div *ngIf="activeUniformTab === 'payment'">
             <div class="uniform-section uniform-receipt-display">
@@ -758,10 +856,15 @@
         </div>
 
         <div class="modal-footer uniform-modal-footer">
-          <button type="button" class="btn btn-secondary" (click)="closeUniformItemsModal()" [disabled]="uniformSubmitting || uniformPaymentSubmitting">Cancel</button>
+          <button type="button" class="btn btn-secondary" (click)="closeUniformItemsModal()" [disabled]="uniformSubmitting || uniformPaymentSubmitting || uniformCashSubmitting">Cancel</button>
           <ng-container *ngIf="activeUniformTab === 'charge'">
             <button type="button" class="btn btn-primary uniform-submit-btn" (click)="submitUniformCharge()" [disabled]="uniformSubmitting || !uniformSelectedStudent || uniformRows.length === 0 || getUniformModalTotal() <= 0">
               {{ uniformSubmitting ? 'Charging...' : 'Charge uniform items' }}
+            </button>
+          </ng-container>
+          <ng-container *ngIf="activeUniformTab === 'cash'">
+            <button type="button" class="btn btn-primary uniform-submit-btn" (click)="submitUniformCashSale()" [disabled]="uniformCashSubmitting || !uniformCashSelectedStudent || uniformCashRows.length === 0 || getUniformCashTotal() <= 0 || !uniformCashPaymentAmount || uniformCashPaymentAmount <= 0 || !uniformCashPaymentMethod">
+              {{ uniformCashSubmitting ? 'Processing...' : 'Complete cash sale' }}
             </button>
           </ng-container>
           <ng-container *ngIf="activeUniformTab === 'payment'">

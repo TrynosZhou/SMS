@@ -115,6 +115,12 @@ export class FinanceService {
     });
   }
 
+  getUniformReceiptPDF(uniformPaymentLogId: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/finance/uniform-receipt/${uniformPaymentLogId}`, {
+      responseType: 'blob'
+    });
+  }
+
   applyInvoiceNote(invoiceId: string, payload: { type: 'credit' | 'debit'; item: string; amount: number }): Observable<any> {
     return this.http.put(`${this.apiUrl}/finance/${invoiceId}/note`, payload);
   }
