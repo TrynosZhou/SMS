@@ -14,6 +14,12 @@ export class CashReceiptsComponent implements OnInit {
   feeType = 'all';
   totalPayments = 0;
   totalOutstanding = 0;
+  totalInvoiced = 0;
+  invoicesCount = 0;
+  studentsWithInvoices = 0;
+  studentsFullyPaid = 0;
+  studentsPartiallyPaid = 0;
+  studentsUnpaid = 0;
   count = 0;
   items: any[] = [];
   availableTerms: string[] = [];
@@ -68,6 +74,12 @@ export class CashReceiptsComponent implements OnInit {
         this.feeType = data.feeType ?? 'all';
         this.totalPayments = data.totalPayments ?? 0;
         this.totalOutstanding = data.totalOutstanding ?? 0;
+        this.totalInvoiced = data.totalInvoiced ?? 0;
+        this.invoicesCount = data.invoicesCount ?? 0;
+        this.studentsWithInvoices = data.studentsWithInvoices ?? 0;
+        this.studentsFullyPaid = data.studentsFullyPaid ?? 0;
+        this.studentsPartiallyPaid = data.studentsPartiallyPaid ?? 0;
+        this.studentsUnpaid = data.studentsUnpaid ?? 0;
         this.count = data.count ?? 0;
         this.items = Array.isArray(data.items) ? data.items : [];
         this.availableTerms = Array.isArray(data.availableTerms) ? data.availableTerms : [];
@@ -79,6 +91,12 @@ export class CashReceiptsComponent implements OnInit {
         this.items = [];
         this.totalPayments = 0;
         this.totalOutstanding = 0;
+        this.totalInvoiced = 0;
+        this.invoicesCount = 0;
+        this.studentsWithInvoices = 0;
+        this.studentsFullyPaid = 0;
+        this.studentsPartiallyPaid = 0;
+        this.studentsUnpaid = 0;
         this.count = 0;
       }
     });

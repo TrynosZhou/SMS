@@ -67,6 +67,16 @@
   <ng-container *ngIf="!loading">
     <!-- Summary cards -->
     <div class="stats-grid" *ngIf="term">
+      <div class="stat-card stat-info">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon">🧾</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalInvoiced) }}</div>
+          <div class="stat-label">Total invoices ({{ term }})</div>
+          <div class="stat-breakdown">{{ invoicesCount }} invoices — {{ studentsWithInvoices }} students</div>
+        </div>
+      </div>
       <div class="stat-card stat-primary">
         <div class="stat-icon-wrapper">
           <div class="stat-icon">💵</div>
@@ -75,6 +85,16 @@
           <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalPayments) }}</div>
           <div class="stat-label">Total fees paid ({{ term }})</div>
           <div class="stat-breakdown">All payments via /payments/record — Tuition, DH, Transport{{ getFeeTypeStatSuffix() }}</div>
+        </div>
+      </div>
+      <div class="stat-card stat-info">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon">✅</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ studentsFullyPaid }}</div>
+          <div class="stat-label">Students fully paid</div>
+          <div class="stat-breakdown">{{ studentsPartiallyPaid }} partial · {{ studentsUnpaid }} unpaid</div>
         </div>
       </div>
       <div class="stat-card stat-info">

@@ -2356,21 +2356,27 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const rangeStart = targetSettings?.termStartDate || null;
     const rangeEnd = targetSettings?.termEndDate || null;
 
+    const invoiceScopeQb = invoiceRepository
+      .createQueryBuilder('iv')
+      .select('iv.id', 'id')
+      .where('COALESCE(iv.isVoided, false) = false');
+    if (rangeStart && rangeEnd) {
+      invoiceScopeQb.andWhere('iv.createdAt BETWEEN :startDate AND :endDate', { startDate: rangeStart, endDate: rangeEnd })
+                   .orWhere('LOWER(TRIM(COALESCE(iv.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+    } else {
+      invoiceScopeQb.andWhere('LOWER(TRIM(COALESCE(iv.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+    }
+
     const qb = paymentLogRepository
       .createQueryBuilder('log')
       .innerJoinAndSelect('log.invoice', 'invoice')
       .leftJoinAndSelect('log.student', 'student')
       .andWhere('ROUND(CAST(log.amountPaid AS numeric), 2) > 0')
       .andWhere("UPPER(COALESCE(log.paymentMethod, '')) NOT IN ('ADJUSTMENT', '')")
+      .andWhere(`log.invoiceId IN (${invoiceScopeQb.getQuery()})`)
+      .setParameters(invoiceScopeQb.getParameters())
       .orderBy('log.paymentDate', 'DESC')
       .addOrderBy('log.createdAt', 'DESC');
-
-    if (rangeStart && rangeEnd) {
-      qb.andWhere('log.paymentDate >= :startDate', { startDate: rangeStart })
-        .andWhere('log.paymentDate <= :endDate', { endDate: rangeEnd });
-    } else {
-      qb.andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
-    }
 
     const logsEntities = await qb.getMany();
     const allLogs = logsEntities.map((log: any) => {
@@ -2423,9 +2429,44 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     };
 
     const items = filterFeeType === 'all' ? allLogs : allLogs.filter((l) => matchesFeeType(l.invoiceDescription || '', filterFeeType));
-    // For "all", total is across all logs. For specific type, total is across filtered logs.
-    const baseForTotal = filterFeeType === 'all' ? allLogs : items;
-    const totalPayments = Math.round(baseForTotal.reduce((s, l) => s + l.amountPaid, 0) * 100) / 100;
+    // Determine base invoice scope for totals (invoices created for the term)
+    const invoicesScopeForTotalsQb = invoiceRepository
+      .createQueryBuilder('invoice')
+      .where('COALESCE(invoice.isVoided, false) = false');
+    if (rangeStart && rangeEnd) {
+      invoicesScopeForTotalsQb.andWhere('invoice.createdAt BETWEEN :startDate AND :endDate', { startDate: rangeStart, endDate: rangeEnd })
+                              .orWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+    } else {
+      invoicesScopeForTotalsQb.andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+    }
+    const invoicesForTotals = await invoicesScopeForTotalsQb.getMany();
+    const invoicesById = new Map((invoicesForTotals || []).map(iv => [iv.id, iv]));
+
+    // Total payments for those invoices (respecting feeType filter)
+    const baseLogs = filterFeeType === 'all' ? allLogs : items;
+    const totalPayments = Math.round(baseLogs.reduce((s, l) => s + l.amountPaid, 0) * 100) / 100;
+
+    // Total invoiced and student status breakdowns
+    const totalInvoiced = Math.round((invoicesForTotals || []).reduce((s, iv: any) => s + (parseFloat(String(iv.amount || 0)) || 0), 0) * 100) / 100;
+    const invoicesCount = invoicesForTotals.length;
+    const uniqueStudentsWithInvoices = new Set((invoicesForTotals || []).map(iv => iv.studentId));
+    const studentsWithInvoices = uniqueStudentsWithInvoices.size;
+    let studentsFullyPaid = 0;
+    let studentsPartiallyPaid = 0;
+    let studentsUnpaid = 0;
+    const latestByStudent: Record<string, { paid: number; balance: number }> = {};
+    for (const iv of invoicesForTotals) {
+      const paid = parseFloat(String((iv as any).paidAmount || 0)) || 0;
+      const bal = parseFloat(String((iv as any).balance || 0)) || 0;
+      const key = iv.studentId;
+      const prev = latestByStudent[key] || { paid: 0, balance: 0 };
+      latestByStudent[key] = { paid: prev.paid + paid, balance: prev.balance + bal };
+    }
+    Object.values(latestByStudent).forEach(v => {
+      if (v.paid > 0 && v.balance <= 0) studentsFullyPaid++;
+      else if (v.paid > 0 && v.balance > 0) studentsPartiallyPaid++;
+      else studentsUnpaid++;
+    });
 
     const distinctTermsQb = invoiceRepository
       .createQueryBuilder('invoice')
@@ -2438,12 +2479,19 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       availableTerms = [activeTerm, ...availableTerms];
     }
 
-    const outstandingRaw = await invoiceRepository
+    const outstandingQb = invoiceRepository
       .createQueryBuilder('invoice')
       .select('COALESCE(SUM(CAST(COALESCE(invoice.balance, 0) AS numeric)), 0)', 'total')
-      .where('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse })
-      .andWhere('COALESCE(invoice.isVoided, false) = false')
-      .getRawOne<Record<string, string>>();
+      .andWhere('COALESCE(invoice.isVoided, false) = false');
+    if (rangeStart && rangeEnd) {
+      outstandingQb.andWhere(
+        '(LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term)) OR (invoice.createdAt BETWEEN :startDate AND :endDate))',
+        { term: termToUse, startDate: rangeStart, endDate: rangeEnd }
+      );
+    } else {
+      outstandingQb.andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+    }
+    const outstandingRaw = await outstandingQb.getRawOne<Record<string, string>>();
     const totalOutstanding = Math.round((parseFloat(String(outstandingRaw?.total ?? 0)) || 0) * 100) / 100;
 
     res.json({
@@ -2451,6 +2499,12 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       activeTerm: activeTerm || null,
       feeType: filterFeeType,
       totalPayments,
+      totalInvoiced,
+      invoicesCount,
+      studentsWithInvoices,
+      studentsFullyPaid,
+      studentsPartiallyPaid,
+      studentsUnpaid,
       totalOutstanding,
       count: items.length,
       items,
