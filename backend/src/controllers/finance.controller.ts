@@ -1382,9 +1382,9 @@ export const getOutstandingBalances = async (req: AuthRequest, res: Response) =>
     const outstandingBalances = [];
 
     for (const student of allStudents) {
-      // Get the latest invoice for this student
+      // Get the latest non-voided invoice for this student
       const latestInvoice = await invoiceRepository.findOne({
-        where: { studentId: student.id },
+        where: { studentId: student.id, isVoided: false },
         order: { createdAt: 'DESC' }
       });
 
@@ -1447,7 +1447,7 @@ export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response)
 
     for (const student of allStudents) {
       const latestInvoice = await invoiceRepository.findOne({
-        where: { studentId: student.id },
+        where: { studentId: student.id, isVoided: false },
         order: { createdAt: 'DESC' }
       });
 
@@ -2333,10 +2333,10 @@ export const getPaymentLogsSummary = async (req: AuthRequest, res: Response) => 
   }
 };
 
-/** Cash receipts: total fee receipts for a given term. Includes Cash, Ecocash, and Bank Transfer (all payment methods except ADJUSTMENT). Matches invoices by term (TRIM, case-insensitive). */
+/** Cash receipts: total of all payments via /payments/record for the selected term (Tuition + DH + Transport). Optional filter by fee type. */
 export const getCashReceipts = async (req: AuthRequest, res: Response) => {
   try {
-    const { term: termParam } = req.query as { term?: string };
+    const { term: termParam, feeType: feeTypeParam } = req.query as { term?: string; feeType?: string };
     const settingsRepository = AppDataSource.getRepository(Settings);
     const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
     const invoiceRepository = AppDataSource.getRepository(Invoice);
@@ -2345,6 +2345,9 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const settings = settingsList.length > 0 ? settingsList[0] : null;
     const activeTerm = (settings as any)?.activeTerm || (settings as any)?.currentTerm || null;
     const termToUse = (termParam && String(termParam).trim()) || activeTerm || `Term 1 ${new Date().getFullYear()}`;
+    const feeType = (feeTypeParam && String(feeTypeParam).toLowerCase()) || 'all';
+    const validFeeTypes = ['all', 'tuition', 'dh', 'transport'];
+    const filterFeeType = validFeeTypes.includes(feeType) ? feeType : 'all';
 
     const qb = paymentLogRepository
       .createQueryBuilder('log')
@@ -2357,9 +2360,10 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       .addOrderBy('log.createdAt', 'DESC');
 
     const logsEntities = await qb.getMany();
-    const logs = logsEntities.map((log: any) => {
+    const allLogs = logsEntities.map((log: any) => {
       const inv = log.invoice || {};
       const stu = log.student || {};
+      const desc = String(inv.description || '');
       return {
         id: log.id,
         amountPaid: parseFloat(String(log.amountPaid ?? 0)),
@@ -2369,34 +2373,23 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
         createdAt: log.createdAt,
         invoiceNumber: inv.invoiceNumber || '',
         invoiceTerm: inv.term || '',
-        previousBalance: parseFloat(String(inv.previousBalance ?? 0)),
-        prepaidAmount: parseFloat(String(inv.prepaidAmount ?? 0)),
+        invoiceDescription: desc,
         studentName: [stu.firstName, stu.lastName].filter(Boolean).join(' ').trim() || 'N/A',
         studentNumber: stu.studentNumber || ''
       };
     });
 
-    // Total cash received = direct sum of all payment log entries (actual cash/ecocash/bank recorded via /payments/record).
-    // This is NOT derived from invoices; it is the real money received.
-    const totalCashReceived = Math.round(logs.reduce((s, l) => s + l.amountPaid, 0) * 100) / 100;
+    const matchesFeeType = (desc: string, type: string): boolean => {
+      const d = desc.toLowerCase();
+      if (type === 'all') return true;
+      if (type === 'tuition') return d.includes('tuition');
+      if (type === 'dh') return d.includes('dining hall') || d.includes('dining');
+      if (type === 'transport') return d.includes('transport');
+      return true;
+    };
 
-    // Supplementary invoice totals (informational).
-    // totalPrepaid = sum of invoice.prepaidAmount for this term (money paid in advance for next term, not yet applied).
-    const invoiceTotalsRaw = await invoiceRepository
-      .createQueryBuilder('invoice')
-      .select([
-        'COALESCE(SUM(CAST(invoice.amount AS numeric) + CAST(COALESCE(invoice.previousBalance, 0) AS numeric)), 0) AS "totalCharged"',
-        'COALESCE(SUM(CAST(COALESCE(invoice.balance, 0) AS numeric)), 0) AS "totalUnpaid"',
-        'ROUND(CAST(COALESCE(SUM(CAST(COALESCE(invoice.prepaidAmount, 0) AS numeric)), 0) AS numeric), 2) AS "totalPrepaid"'
-      ])
-      .where('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse })
-      .andWhere('COALESCE(invoice.isVoided, false) = false')
-      .getRawOne<Record<string, string | number>>();
-
-    const raw = invoiceTotalsRaw || {};
-    const totalCharged = Math.round((parseFloat(String(raw.totalCharged ?? raw.totalcharged ?? 0)) || 0) * 100) / 100;
-    const totalUnpaid = Math.round((parseFloat(String(raw.totalUnpaid ?? raw.totalunpaid ?? 0)) || 0) * 100) / 100;
-    const totalPrepaid = Math.round((parseFloat(String(raw.totalPrepaid ?? raw.totalprepaid ?? 0)) || 0) * 100) / 100;
+    const items = filterFeeType === 'all' ? allLogs : allLogs.filter((l) => matchesFeeType(l.invoiceDescription || '', filterFeeType));
+    const totalPayments = Math.round(items.reduce((s, l) => s + l.amountPaid, 0) * 100) / 100;
 
     const distinctTermsQb = invoiceRepository
       .createQueryBuilder('invoice')
@@ -2409,22 +2402,22 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       availableTerms = [activeTerm, ...availableTerms];
     }
 
-    // Collected toward this term's invoices (Invoiced − Outstanding); may be less than totalCashReceived
-    // e.g. if payments exist on voided invoices or prepayments are counted in receipts but reduce "outstanding" differently.
-    const collectedTowardInvoices = Math.round((totalCharged - totalUnpaid) * 100) / 100;
-    const receiptVsCollectedDiff = Math.round((totalCashReceived - collectedTowardInvoices) * 100) / 100;
+    const outstandingRaw = await invoiceRepository
+      .createQueryBuilder('invoice')
+      .select('COALESCE(SUM(CAST(COALESCE(invoice.balance, 0) AS numeric)), 0)', 'total')
+      .where('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse })
+      .andWhere('COALESCE(invoice.isVoided, false) = false')
+      .getRawOne<Record<string, string>>();
+    const totalOutstanding = Math.round((parseFloat(String(outstandingRaw?.total ?? 0)) || 0) * 100) / 100;
 
     res.json({
       term: termToUse,
       activeTerm: activeTerm || null,
-      totalCashReceived: Math.round(totalCashReceived * 100) / 100,
-      totalCharged: Math.round(totalCharged * 100) / 100,
-      totalUnpaid: Math.round(totalUnpaid * 100) / 100,
-      totalPrepaid: Math.round(totalPrepaid * 100) / 100,
-      collectedTowardInvoices,
-      receiptVsCollectedDiff,
-      count: logs.length,
-      items: logs,
+      feeType: filterFeeType,
+      totalPayments,
+      totalOutstanding,
+      count: items.length,
+      items,
       availableTerms
     });
   } catch (error: any) {

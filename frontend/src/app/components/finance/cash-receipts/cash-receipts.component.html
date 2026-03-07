@@ -7,7 +7,7 @@
         </div>
         <div>
           <h1>Cash Receipts</h1>
-          <p class="header-subtitle">Total cash received from students for the selected term — sum of all payments recorded via /payments/record</p>
+          <p class="header-subtitle">Total of all payments via /payments/record for the selected term (Tuition + DH + Transport)</p>
         </div>
       </div>
       <div class="header-actions" *ngIf="term">
@@ -26,22 +26,35 @@
   <div class="alert alert-error modern-alert" *ngIf="error">
     <span class="alert-icon">⚠</span>
     <span>{{ error }}</span>
-    <button type="button" class="alert-close" (click)="error = ''" title="Close">&times;</button>
+    <button type="button" class="alert-close" (click)="clearError()" title="Close">&times;</button>
   </div>
 
-  <!-- Term selector (admin / superadmin only) -->
-  <div class="card term-selector-card" *ngIf="canSelectTerm && availableTerms.length > 0">
-    <div class="card-body">
-      <label for="termSelect" class="term-label">Select term (audit)</label>
-      <select
-        id="termSelect"
-        class="term-select"
-        [ngModel]="term"
-        (ngModelChange)="term = $event; onTermChange()"
-        [ngModelOptions]="{standalone: true}">
-        <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
-      </select>
-      <span class="term-hint" *ngIf="activeTerm && term === activeTerm">Current active term</span>
+  <!-- Term and fee type filters -->
+  <div class="card term-selector-card" *ngIf="term">
+    <div class="card-body filters-row">
+      <div class="filter-group" *ngIf="canSelectTerm && availableTerms.length > 0">
+        <label for="termSelect" class="term-label">Term</label>
+        <select
+          id="termSelect"
+          class="term-select"
+          [ngModel]="term"
+          (ngModelChange)="term = $event; onTermChange()"
+          [ngModelOptions]="{standalone: true}">
+          <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
+        </select>
+        <span class="term-hint" *ngIf="activeTerm && term === activeTerm">Current term</span>
+      </div>
+      <div class="filter-group">
+        <label for="feeTypeSelect" class="term-label">Fee type</label>
+        <select
+          id="feeTypeSelect"
+          class="term-select"
+          [ngModel]="feeType"
+          (ngModelChange)="onFeeTypeSelect($event)"
+          [ngModelOptions]="{standalone: true}">
+          <option *ngFor="let opt of feeTypeOptions" [value]="opt.value">{{ opt.label }}</option>
+        </select>
+      </div>
     </div>
   </div>
 
@@ -59,11 +72,9 @@
           <div class="stat-icon">💵</div>
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalCashReceived) }}</div>
-          <div class="stat-label">Total fee receipts ({{ term }})</div>
-          <div class="stat-breakdown" *ngIf="totalCharged > 0 || totalUnpaid > 0">
-            Invoiced {{ currencySymbol }} {{ formatCurrency(totalCharged) }} | Outstanding {{ currencySymbol }} {{ formatCurrency(totalUnpaid) }}
-          </div>
+          <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalPayments) }}</div>
+          <div class="stat-label">Total fees paid ({{ term }})</div>
+          <div class="stat-breakdown">All payments via /payments/record — Tuition, DH, Transport{{ getFeeTypeStatSuffix() }}</div>
         </div>
       </div>
       <div class="stat-card stat-info">
@@ -72,35 +83,24 @@
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ count }}</div>
-          <div class="stat-label">Fee transactions</div>
+          <div class="stat-label">Transactions</div>
         </div>
       </div>
-      <div class="stat-card stat-prepaid" *ngIf="totalPrepaid > 0">
+      <div class="stat-card stat-outstanding" *ngIf="canViewOutstanding">
         <div class="stat-icon-wrapper">
-          <div class="stat-icon">📦</div>
+          <div class="stat-icon">⚠</div>
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalPrepaid) }}</div>
-          <div class="stat-label">Prepaid balances ({{ term }})</div>
-          <div class="stat-breakdown">Sum of invoice.prepaidAmount — cash for next term not yet applied</div>
-        </div>
-      </div>
-      <div class="stat-card stat-diff" *ngIf="receiptVsCollectedDiff !== 0">
-        <div class="stat-icon-wrapper">
-          <div class="stat-icon">🔍</div>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(receiptVsCollectedDiff) }}</div>
-          <div class="stat-label">Receipts minus (Invoiced − Outstanding)</div>
-          <div class="stat-breakdown">Total receipts {{ currencySymbol }} {{ formatCurrency(totalCashReceived) }} − Collected toward invoices {{ currencySymbol }} {{ formatCurrency(collectedTowardInvoices) }}</div>
+          <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalOutstanding) }}</div>
+          <div class="stat-label">Total invoice balances not yet settled ({{ term }})</div>
         </div>
       </div>
     </div>
 
     <!-- Table -->
-    <div class="table-card card" *ngIf="items.length > 0">
+      <div class="table-card card" *ngIf="items.length > 0">
       <div class="card-header">
-        <h2>Fee receipt details — {{ term }}</h2>
+        <h2>Payments — {{ term }}{{ getFeeTypeFilterLabel() }}</h2>
       </div>
       <div class="table-scroll">
         <table class="data-table">

@@ -11,12 +11,9 @@ import { AuthService } from '../../../services/auth.service';
 export class CashReceiptsComponent implements OnInit {
   term = '';
   activeTerm: string | null = null;
-  totalCashReceived = 0;
-  totalCharged = 0;
-  totalUnpaid = 0;
-  totalPrepaid = 0;
-  collectedTowardInvoices = 0;
-  receiptVsCollectedDiff = 0;
+  feeType = 'all';
+  totalPayments = 0;
+  totalOutstanding = 0;
   count = 0;
   items: any[] = [];
   availableTerms: string[] = [];
@@ -26,6 +23,13 @@ export class CashReceiptsComponent implements OnInit {
   downloadingPdf = false;
   error = '';
   canSelectTerm = false;
+  canViewOutstanding = false;
+  readonly feeTypeOptions: { value: string; label: string }[] = [
+    { value: 'all', label: 'All (Tuition + DH + Transport)' },
+    { value: 'tuition', label: 'Tuition' },
+    { value: 'dh', label: 'DH fee' },
+    { value: 'transport', label: 'Transport fee' }
+  ];
 
   constructor(
     private financeService: FinanceService,
@@ -35,6 +39,7 @@ export class CashReceiptsComponent implements OnInit {
 
   ngOnInit(): void {
     this.canSelectTerm = this.authService.hasRole('admin') || this.authService.hasRole('superadmin');
+    this.canViewOutstanding = this.authService.hasRole('admin') || this.authService.hasRole('superadmin');
     this.loadSettings();
     this.loadCashReceipts();
   }
@@ -56,16 +61,13 @@ export class CashReceiptsComponent implements OnInit {
   loadCashReceipts(): void {
     this.loading = true;
     this.error = '';
-    this.financeService.getCashReceipts(this.term || undefined).subscribe({
+    this.financeService.getCashReceipts(this.term || undefined, this.feeType).subscribe({
       next: (data: any) => {
         this.term = data.term || this.term;
         this.activeTerm = data.activeTerm ?? null;
-        this.totalCashReceived = data.totalCashReceived ?? 0;
-        this.totalCharged = data.totalCharged ?? 0;
-        this.totalUnpaid = data.totalUnpaid ?? 0;
-        this.totalPrepaid = data.totalPrepaid ?? 0;
-        this.collectedTowardInvoices = data.collectedTowardInvoices ?? 0;
-        this.receiptVsCollectedDiff = data.receiptVsCollectedDiff ?? 0;
+        this.feeType = data.feeType ?? 'all';
+        this.totalPayments = data.totalPayments ?? 0;
+        this.totalOutstanding = data.totalOutstanding ?? 0;
         this.count = data.count ?? 0;
         this.items = Array.isArray(data.items) ? data.items : [];
         this.availableTerms = Array.isArray(data.availableTerms) ? data.availableTerms : [];
@@ -75,19 +77,37 @@ export class CashReceiptsComponent implements OnInit {
         this.error = err?.error?.message || 'Failed to load cash receipts';
         this.loading = false;
         this.items = [];
-        this.totalCashReceived = 0;
-        this.totalCharged = 0;
-        this.totalUnpaid = 0;
-        this.totalPrepaid = 0;
-        this.collectedTowardInvoices = 0;
-        this.receiptVsCollectedDiff = 0;
+        this.totalPayments = 0;
+        this.totalOutstanding = 0;
         this.count = 0;
       }
     });
   }
 
-  onTermChange(): void {
+  onTermSelect(val: string): void {
+    this.term = val;
     this.loadCashReceipts();
+  }
+
+  onFeeTypeSelect(val: string): void {
+    this.feeType = val;
+    this.loadCashReceipts();
+  }
+
+  clearError(): void {
+    this.error = '';
+  }
+
+  getFeeTypeFilterLabel(): string {
+    if (this.feeType === 'all') return '';
+    const opt = this.feeTypeOptions.find(o => o.value === this.feeType);
+    return opt ? ' (' + opt.label + ')' : '';
+  }
+
+  getFeeTypeStatSuffix(): string {
+    if (this.feeType === 'all') return '';
+    const opt = this.feeTypeOptions.find(o => o.value === this.feeType);
+    return opt ? ' — ' + opt.label : '';
   }
 
   formatDate(value: any): string {

@@ -136,6 +136,19 @@
   flex-wrap: wrap;
 }
 
+.term-selector-card .filters-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.term-selector-card .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .term-label {
   font-weight: 600;
   color: #334155;
@@ -226,11 +239,7 @@
   background: #dbeafe;
 }
 
-.stat-prepaid .stat-icon-wrapper {
-  background: #d1fae5;
-}
-
-.stat-diff .stat-icon-wrapper {
+.stat-outstanding .stat-icon-wrapper {
   background: #fef3c7;
 }
 

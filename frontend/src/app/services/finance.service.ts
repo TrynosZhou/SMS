@@ -260,11 +260,13 @@ export class FinanceService {
     });
   }
 
-  /** Cash receipts for a term: total cash received from students as fees (invoice payments by Cash). */
-  getCashReceipts(term?: string): Observable<{
+  /** Cash receipts: total payments via /payments/record for the term (Tuition + DH + Transport). Optional feeType: all | tuition | dh | transport. */
+  getCashReceipts(term?: string, feeType?: string): Observable<{
     term: string;
     activeTerm: string | null;
-    totalCashReceived: number;
+    feeType: string;
+    totalPayments: number;
+    totalOutstanding: number;
     count: number;
     items: Array<{
       id: string;
@@ -275,8 +277,7 @@ export class FinanceService {
       createdAt: string;
       invoiceNumber: string;
       invoiceTerm: string;
-      previousBalance: number;
-      prepaidAmount: number;
+      invoiceDescription?: string;
       studentName: string;
       studentNumber: string;
     }>;
@@ -284,6 +285,7 @@ export class FinanceService {
   }> {
     const params: any = {};
     if (term && term.trim()) params.term = term.trim();
+    if (feeType && feeType !== 'all') params.feeType = feeType;
     return this.http.get<any>(`${this.apiUrl}/finance/cash-receipts`, { params });
   }
 }
