@@ -226,6 +226,14 @@
   background: #dbeafe;
 }
 
+.stat-prepaid .stat-icon-wrapper {
+  background: #d1fae5;
+}
+
+.stat-diff .stat-icon-wrapper {
+  background: #fef3c7;
+}
+
 .stat-icon {
   font-size: 24px;
 }
@@ -240,6 +248,12 @@
 .stat-label {
   font-size: 13px;
   color: #64748b;
+}
+
+.stat-breakdown {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 6px;
 }
 
 .table-card {

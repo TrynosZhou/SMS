@@ -7,7 +7,7 @@
         </div>
         <div>
           <h1>Cash Receipts</h1>
-          <p class="header-subtitle">Total fee receipts for the selected term (Cash, Ecocash, Bank Transfer — includes payments for previous balance and prepaid invoices)</p>
+          <p class="header-subtitle">Total cash received from students for the selected term — sum of all payments recorded via /payments/record</p>
         </div>
       </div>
       <div class="header-actions" *ngIf="term">
@@ -61,6 +61,9 @@
         <div class="stat-content">
           <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalCashReceived) }}</div>
           <div class="stat-label">Total fee receipts ({{ term }})</div>
+          <div class="stat-breakdown" *ngIf="totalCharged > 0 || totalUnpaid > 0">
+            Invoiced {{ currencySymbol }} {{ formatCurrency(totalCharged) }} | Outstanding {{ currencySymbol }} {{ formatCurrency(totalUnpaid) }}
+          </div>
         </div>
       </div>
       <div class="stat-card stat-info">
@@ -70,6 +73,26 @@
         <div class="stat-content">
           <div class="stat-value">{{ count }}</div>
           <div class="stat-label">Fee transactions</div>
+        </div>
+      </div>
+      <div class="stat-card stat-prepaid" *ngIf="totalPrepaid > 0">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon">📦</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalPrepaid) }}</div>
+          <div class="stat-label">Prepaid balances ({{ term }})</div>
+          <div class="stat-breakdown">Sum of invoice.prepaidAmount — cash for next term not yet applied</div>
+        </div>
+      </div>
+      <div class="stat-card stat-diff" *ngIf="receiptVsCollectedDiff !== 0">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon">🔍</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(receiptVsCollectedDiff) }}</div>
+          <div class="stat-label">Receipts minus (Invoiced − Outstanding)</div>
+          <div class="stat-breakdown">Total receipts {{ currencySymbol }} {{ formatCurrency(totalCashReceived) }} − Collected toward invoices {{ currencySymbol }} {{ formatCurrency(collectedTowardInvoices) }}</div>
         </div>
       </div>
     </div>

@@ -12,6 +12,11 @@ export class CashReceiptsComponent implements OnInit {
   term = '';
   activeTerm: string | null = null;
   totalCashReceived = 0;
+  totalCharged = 0;
+  totalUnpaid = 0;
+  totalPrepaid = 0;
+  collectedTowardInvoices = 0;
+  receiptVsCollectedDiff = 0;
   count = 0;
   items: any[] = [];
   availableTerms: string[] = [];
@@ -56,6 +61,11 @@ export class CashReceiptsComponent implements OnInit {
         this.term = data.term || this.term;
         this.activeTerm = data.activeTerm ?? null;
         this.totalCashReceived = data.totalCashReceived ?? 0;
+        this.totalCharged = data.totalCharged ?? 0;
+        this.totalUnpaid = data.totalUnpaid ?? 0;
+        this.totalPrepaid = data.totalPrepaid ?? 0;
+        this.collectedTowardInvoices = data.collectedTowardInvoices ?? 0;
+        this.receiptVsCollectedDiff = data.receiptVsCollectedDiff ?? 0;
         this.count = data.count ?? 0;
         this.items = Array.isArray(data.items) ? data.items : [];
         this.availableTerms = Array.isArray(data.availableTerms) ? data.availableTerms : [];
@@ -66,6 +76,11 @@ export class CashReceiptsComponent implements OnInit {
         this.loading = false;
         this.items = [];
         this.totalCashReceived = 0;
+        this.totalCharged = 0;
+        this.totalUnpaid = 0;
+        this.totalPrepaid = 0;
+        this.collectedTowardInvoices = 0;
+        this.receiptVsCollectedDiff = 0;
         this.count = 0;
       }
     });

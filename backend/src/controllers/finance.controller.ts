@@ -2376,7 +2376,27 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       };
     });
 
-    const totalCashReceived = logs.reduce((sum, l) => sum + l.amountPaid, 0);
+    // Total cash received = direct sum of all payment log entries (actual cash/ecocash/bank recorded via /payments/record).
+    // This is NOT derived from invoices; it is the real money received.
+    const totalCashReceived = Math.round(logs.reduce((s, l) => s + l.amountPaid, 0) * 100) / 100;
+
+    // Supplementary invoice totals (informational).
+    // totalPrepaid = sum of invoice.prepaidAmount for this term (money paid in advance for next term, not yet applied).
+    const invoiceTotalsRaw = await invoiceRepository
+      .createQueryBuilder('invoice')
+      .select([
+        'COALESCE(SUM(CAST(invoice.amount AS numeric) + CAST(COALESCE(invoice.previousBalance, 0) AS numeric)), 0) AS "totalCharged"',
+        'COALESCE(SUM(CAST(COALESCE(invoice.balance, 0) AS numeric)), 0) AS "totalUnpaid"',
+        'ROUND(CAST(COALESCE(SUM(CAST(COALESCE(invoice.prepaidAmount, 0) AS numeric)), 0) AS numeric), 2) AS "totalPrepaid"'
+      ])
+      .where('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse })
+      .andWhere('COALESCE(invoice.isVoided, false) = false')
+      .getRawOne<Record<string, string | number>>();
+
+    const raw = invoiceTotalsRaw || {};
+    const totalCharged = Math.round((parseFloat(String(raw.totalCharged ?? raw.totalcharged ?? 0)) || 0) * 100) / 100;
+    const totalUnpaid = Math.round((parseFloat(String(raw.totalUnpaid ?? raw.totalunpaid ?? 0)) || 0) * 100) / 100;
+    const totalPrepaid = Math.round((parseFloat(String(raw.totalPrepaid ?? raw.totalprepaid ?? 0)) || 0) * 100) / 100;
 
     const distinctTermsQb = invoiceRepository
       .createQueryBuilder('invoice')
@@ -2389,10 +2409,20 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       availableTerms = [activeTerm, ...availableTerms];
     }
 
+    // Collected toward this term's invoices (Invoiced − Outstanding); may be less than totalCashReceived
+    // e.g. if payments exist on voided invoices or prepayments are counted in receipts but reduce "outstanding" differently.
+    const collectedTowardInvoices = Math.round((totalCharged - totalUnpaid) * 100) / 100;
+    const receiptVsCollectedDiff = Math.round((totalCashReceived - collectedTowardInvoices) * 100) / 100;
+
     res.json({
       term: termToUse,
       activeTerm: activeTerm || null,
       totalCashReceived: Math.round(totalCashReceived * 100) / 100,
+      totalCharged: Math.round(totalCharged * 100) / 100,
+      totalUnpaid: Math.round(totalUnpaid * 100) / 100,
+      totalPrepaid: Math.round(totalPrepaid * 100) / 100,
+      collectedTowardInvoices,
+      receiptVsCollectedDiff,
       count: logs.length,
       items: logs,
       availableTerms
@@ -2439,7 +2469,8 @@ export const getCashReceiptsPDF = async (req: AuthRequest, res: Response) => {
       };
     });
 
-    const totalCashReceived = rows.reduce((sum, r) => sum + r.amountPaid, 0);
+    // Total cash received = direct sum of payment log entries (actual payments recorded).
+    const totalCashReceived = rows.reduce((s, r) => s + r.amountPaid, 0);
     const schoolName = (settings?.schoolName != null && String(settings.schoolName).trim() !== '') ? String(settings.schoolName).trim() : 'School';
     const currencySymbol = (settings?.currencySymbol != null && String(settings.currencySymbol).trim() !== '') ? String(settings.currencySymbol).trim() : 'KES';
     const schoolLogo2 = (settings as any)?.schoolLogo2 ?? null;
