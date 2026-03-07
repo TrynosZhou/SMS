@@ -38,7 +38,7 @@
           id="termSelect"
           class="term-select"
           [ngModel]="term"
-          (ngModelChange)="term = $event; onTermChange()"
+          (ngModelChange)="onTermSelect($event)"
           [ngModelOptions]="{standalone: true}">
           <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
         </select>
@@ -78,24 +78,24 @@
           <div class="stat-breakdown">{{ invoicesCount }} invoices — {{ studentsWithInvoices }} students</div>
         </div>
       </div>
-      <!-- Total Collected (Term) -->
-      <div class="stat-card stat-primary" title="Sum of payments recorded via Payments → Record for invoices in the selected term (excludes adjustments).">
+      <!-- Total Collected (sum of invoice.paidAmount) -->
+      <div class="stat-card stat-primary" title="Sum of paidAmount on term invoices — includes all payments and applied prepaid; reconciles with outstanding.">
         <div class="stat-icon-wrapper">
           <div class="stat-icon">💵</div>
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalPayments) }}</div>
+          <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalCollected) }}</div>
           <div class="stat-label">Total Collected ({{ term }})</div>
-          <div class="stat-breakdown">Payments via /payments/record — Tuition, DH, Transport{{ getFeeTypeStatSuffix() }}</div>
+          <div class="stat-breakdown">{{ getCollectedBreakdownText() }}</div>
         </div>
       </div>
-      <!-- Term Outstanding (Invoiced – Collected) -->
-      <div class="stat-card stat-warning" title="Term Outstanding = Total Invoiced for the term minus Total Collected for the term.">
+      <!-- Term Outstanding (sum of invoice.balance from DB) -->
+      <div class="stat-card stat-warning" title="Sum of invoice.balance for term invoices — amount still owed.">
         <div class="stat-icon-wrapper">
           <div class="stat-icon">⚠</div>
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ currencySymbol }} {{ formatCurrency((totalInvoiced || 0) - (totalPayments || 0)) }}</div>
+          <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalOutstanding) }}</div>
           <div class="stat-label">Term Outstanding ({{ term }})</div>
           <div class="stat-breakdown">{{ studentsFullyPaid }} fully paid · {{ studentsPartiallyPaid }} partial · {{ studentsUnpaid }} unpaid</div>
         </div>
@@ -119,17 +119,6 @@
         <div class="stat-content">
           <div class="stat-value">{{ count }}</div>
           <div class="stat-label">Transactions</div>
-        </div>
-      </div>
-      <!-- Term-scoped outstanding from invoices -->
-      <div class="stat-card stat-outstanding" *ngIf="canViewOutstanding" title="Sum of balances for invoices in the selected term (by term label and/or created date within term range).">
-        <div class="stat-icon-wrapper">
-          <div class="stat-icon">⚠</div>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalOutstanding) }}</div>
-          <div class="stat-label">Outstanding (term-scoped)</div>
-          <div class="stat-breakdown">Invoices in {{ term }} only</div>
         </div>
       </div>
       <!-- Collection rate -->

@@ -18,6 +18,7 @@ import { PaymentLog } from '../entities/PaymentLog';
 import { UniformCharge } from '../entities/UniformCharge';
 import { UniformChargeItem } from '../entities/UniformChargeItem';
 import { UniformPaymentLog } from '../entities/UniformPaymentLog';
+import { Brackets } from 'typeorm';
 
 const normalizePaymentMethod = (raw?: string): string | null => {
   const val = String(raw || '').trim().toLowerCase();
@@ -2361,8 +2362,12 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       .select('iv.id', 'id')
       .where('COALESCE(iv.isVoided, false) = false');
     if (rangeStart && rangeEnd) {
-      invoiceScopeQb.andWhere('iv.createdAt BETWEEN :startDate AND :endDate', { startDate: rangeStart, endDate: rangeEnd })
-                   .orWhere('LOWER(TRIM(COALESCE(iv.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+      invoiceScopeQb.andWhere(
+        new Brackets((q) => {
+          q.where('iv.createdAt BETWEEN :startDate AND :endDate', { startDate: rangeStart, endDate: rangeEnd })
+            .orWhere('LOWER(TRIM(COALESCE(iv.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+        })
+      );
     } else {
       invoiceScopeQb.andWhere('LOWER(TRIM(COALESCE(iv.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
     }
@@ -2392,62 +2397,134 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
         createdAt: log.createdAt,
         invoiceNumber: inv.invoiceNumber || '',
         invoiceTerm: inv.term || '',
+        invoiceAmount: parseFloat(String(inv.amount ?? 0)),
         invoiceDescription: desc,
         studentName: [stu.firstName, stu.lastName].filter(Boolean).join(' ').trim() || 'N/A',
         studentNumber: stu.studentNumber || ''
       };
     });
 
-    // Infer fee types from description for robust filtering
-    const inferFeeFlags = (desc: string): { tuition: boolean; dh: boolean; transport: boolean } => {
-      const d = String(desc || '').toLowerCase();
-      const hasTuitionKw = /tuition/.test(d);
-      const hasDhKw = /(dh\s*fee)|(d\/?h)|(dining\s*hall)|(dining)/.test(d);
-      const hasTransportKw = /transport/.test(d);
+    // Parse fee breakdown amounts from invoice description and allocate each payment proportionally.
+    const parseBreakdown = (
+      desc: string,
+      invoiceAmount: number
+    ): { total: number; tuition: number; dh: number; transport: number } => {
+      const text = String(desc || '');
+      const lower = text.toLowerCase();
+      let total = 0;
+      let tuition = 0;
+      let dh = 0;
+      let transport = 0;
 
-      // Parse "Breakdown → ..." lines if present to be more precise
-      const line = d.split('\n').find(l => l.includes('breakdown'));
-      if (line) {
-        const parts = line.split('→')[1]?.split('|').map(s => s.trim()) || [];
-        const labels = parts.map(p => p.split(':')[0].trim().toLowerCase());
-        return {
-          tuition: labels.some(l => l.includes('tuition')) || hasTuitionKw,
-          dh: labels.some(l => l.includes('dining')) || labels.some(l => l === 'dh fee') || hasDhKw,
-          transport: labels.some(l => l.includes('transport')) || hasTransportKw
-        };
+      const breakdownPart = text.includes('Breakdown') ? text.split('Breakdown')[1] : text;
+      const parts = breakdownPart.split('|').map((p) => p.trim()).filter(Boolean);
+      for (const part of parts) {
+        const m = part.match(/([^:]+):\s*([0-9]+(?:\.[0-9]+)?)/i);
+        if (!m) continue;
+        const label = String(m[1] || '').toLowerCase().trim();
+        const amt = parseFloat(String(m[2] || 0)) || 0;
+        total += amt;
+        if (label.includes('tuition')) tuition += amt;
+        if (label.includes('dining') || label.includes('dh')) dh += amt;
+        if (label.includes('transport')) transport += amt;
       }
-      return { tuition: hasTuitionKw, dh: hasDhKw, transport: hasTransportKw };
+
+      // Fallback for legacy descriptions without explicit numeric breakdown
+      if (total <= 0) {
+        const hasTuition = /tuition/.test(lower);
+        const hasDh = /(dh\s*fee)|(d\/?h)|(dining\s*hall)|(dining)/.test(lower);
+        const hasTransport = /transport/.test(lower);
+        const found = [hasTuition, hasDh, hasTransport].filter(Boolean).length;
+        if (found === 1 && invoiceAmount > 0) {
+          total = invoiceAmount;
+          if (hasTuition) tuition = invoiceAmount;
+          if (hasDh) dh = invoiceAmount;
+          if (hasTransport) transport = invoiceAmount;
+        } else if (invoiceAmount > 0) {
+          // If unknown composition, treat all as fee pool for "all"
+          total = invoiceAmount;
+        }
+      }
+
+      return { total, tuition, dh, transport };
     };
 
-    const matchesFeeType = (desc: string, type: string): boolean => {
-      if (type === 'all') return true;
-      const flags = inferFeeFlags(desc);
-      if (type === 'tuition') return flags.tuition;
-      if (type === 'dh') return flags.dh;
-      if (type === 'transport') return flags.transport;
-      return true;
-    };
+    const allocatedItems = allLogs.map((l: any) => {
+      const invAmount = parseFloat(String(l.invoiceAmount ?? 0)) || 0;
+      const b = parseBreakdown(l.invoiceDescription || '', invAmount);
+      const denom = b.total > 0 ? b.total : invAmount;
+      const safeDenom = denom > 0 ? denom : 0;
 
-    const items = filterFeeType === 'all' ? allLogs : allLogs.filter((l) => matchesFeeType(l.invoiceDescription || '', filterFeeType));
+      let allocated = l.amountPaid;
+      if (filterFeeType !== 'all') {
+        const numer =
+          filterFeeType === 'tuition' ? b.tuition :
+          filterFeeType === 'dh' ? b.dh :
+          filterFeeType === 'transport' ? b.transport : (b.tuition + b.dh + b.transport);
+        allocated = safeDenom > 0 ? (l.amountPaid * (numer / safeDenom)) : 0;
+      } else {
+        // "All" means tuition + DH + transport only (exclude unrelated charges)
+        const feePool = b.tuition + b.dh + b.transport;
+        allocated = feePool > 0 && safeDenom > 0 ? (l.amountPaid * (feePool / safeDenom)) : l.amountPaid;
+      }
+
+      return {
+        ...l,
+        amountPaid: Math.round((allocated || 0) * 100) / 100
+      };
+    });
+
+    const items = allocatedItems.filter((l) => (l.amountPaid || 0) > 0);
     // Determine base invoice scope for totals (invoices created for the term)
     const invoicesScopeForTotalsQb = invoiceRepository
       .createQueryBuilder('invoice')
       .where('COALESCE(invoice.isVoided, false) = false');
     if (rangeStart && rangeEnd) {
-      invoicesScopeForTotalsQb.andWhere('invoice.createdAt BETWEEN :startDate AND :endDate', { startDate: rangeStart, endDate: rangeEnd })
-                              .orWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+      invoicesScopeForTotalsQb.andWhere(
+        new Brackets((q) => {
+          q.where('invoice.createdAt BETWEEN :startDate AND :endDate', { startDate: rangeStart, endDate: rangeEnd })
+            .orWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+        })
+      );
     } else {
       invoicesScopeForTotalsQb.andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
     }
     const invoicesForTotals = await invoicesScopeForTotalsQb.getMany();
     const invoicesById = new Map((invoicesForTotals || []).map(iv => [iv.id, iv]));
 
-    // Total payments for those invoices (respecting feeType filter)
-    const baseLogs = filterFeeType === 'all' ? allLogs : items;
-    const totalPayments = Math.round(baseLogs.reduce((s, l) => s + l.amountPaid, 0) * 100) / 100;
+    // Total payments (PaymentLog sum) — used for transaction list total and fee-type filter
+    const totalPayments = Math.round(items.reduce((s, l) => s + l.amountPaid, 0) * 100) / 100;
 
-    // Total invoiced and student status breakdowns
-    const totalInvoiced = Math.round((invoicesForTotals || []).reduce((s, iv: any) => s + (parseFloat(String(iv.amount || 0)) || 0), 0) * 100) / 100;
+    // Net invoiced for reconciliation = sum(amount + previousBalance - prepaidAmount).
+    // This matches the canonical invoice identity used elsewhere:
+    // paid + balance = amount + previousBalance - prepaidAmount
+    const totalInvoiced = Math.round(
+      (invoicesForTotals || []).reduce(
+        (s, iv: any) =>
+          s +
+          (parseFloat(String(iv.amount || 0)) || 0) +
+          (parseFloat(String(iv.previousBalance || 0)) || 0) -
+          (parseFloat(String(iv.prepaidAmount || 0)) || 0),
+        0
+      ) * 100
+    ) / 100;
+
+    // Total collected (raw from invoice.paidAmount) kept for diagnostics only.
+    const collectedQb = invoiceRepository
+      .createQueryBuilder('invoice')
+      .select('COALESCE(SUM(CAST(COALESCE(invoice.paidAmount, 0) AS numeric)), 0)', 'total')
+      .andWhere('COALESCE(invoice.isVoided, false) = false');
+    if (rangeStart && rangeEnd) {
+      collectedQb.andWhere(
+        '(LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term)) OR (invoice.createdAt BETWEEN :startDate AND :endDate))',
+        { term: termToUse, startDate: rangeStart, endDate: rangeEnd }
+      );
+    } else {
+      collectedQb.andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+    }
+    const collectedRaw = await collectedQb.getRawOne<Record<string, string>>();
+    const rawTotal = collectedRaw?.total ?? (collectedRaw as any)?.Total ?? 0;
+    const totalCollectedFromPaidAmount = Math.round((parseFloat(String(rawTotal)) || 0) * 100) / 100;
     const invoicesCount = invoicesForTotals.length;
     const uniqueStudentsWithInvoices = new Set((invoicesForTotals || []).map(iv => iv.studentId));
     const studentsWithInvoices = uniqueStudentsWithInvoices.size;
@@ -2494,11 +2571,17 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const outstandingRaw = await outstandingQb.getRawOne<Record<string, string>>();
     const totalOutstanding = Math.round((parseFloat(String(outstandingRaw?.total ?? 0)) || 0) * 100) / 100;
 
+    // Canonical collected for cards: reconcile from the same scoped totals.
+    // This guarantees: totalInvoiced = totalCollected + totalOutstanding
+    const reconciledCollected = Math.round((totalInvoiced - totalOutstanding) * 100) / 100;
+    const totalCollected = filterFeeType === 'all' ? reconciledCollected : totalPayments;
+
     res.json({
       term: termToUse,
       activeTerm: activeTerm || null,
       feeType: filterFeeType,
       totalPayments,
+      totalCollected,
       totalInvoiced,
       invoicesCount,
       studentsWithInvoices,

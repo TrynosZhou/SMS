@@ -266,6 +266,7 @@ export class FinanceService {
     activeTerm: string | null;
     feeType: string;
     totalPayments: number;
+    totalCollected: number;
     totalInvoiced: number;
     invoicesCount: number;
     studentsWithInvoices: number;

@@ -12,7 +12,8 @@ export class CashReceiptsComponent implements OnInit {
   term = '';
   activeTerm: string | null = null;
   feeType = 'all';
-  totalPayments = 0;
+  totalPayments = 0;  // sum of PaymentLog (transaction list)
+  totalCollected = 0; // sum of invoice.paidAmount — ledger figure
   totalOutstanding = 0;
   totalInvoiced = 0;
   invoicesCount = 0;
@@ -80,6 +81,7 @@ export class CashReceiptsComponent implements OnInit {
         this.activeTerm = data.activeTerm ?? null;
         this.feeType = data.feeType ?? 'all';
         this.totalPayments = data.totalPayments ?? 0;
+        this.totalCollected = data.totalCollected ?? 0;
         this.totalOutstanding = data.totalOutstanding ?? 0;
         this.totalInvoiced = data.totalInvoiced ?? 0;
         this.invoicesCount = data.invoicesCount ?? 0;
@@ -91,7 +93,7 @@ export class CashReceiptsComponent implements OnInit {
         this.items = Array.isArray(data.items) ? data.items : [];
         this.availableTerms = Array.isArray(data.availableTerms) ? data.availableTerms : [];
         // Derived
-        this.collectionRate = this.totalInvoiced > 0 ? Math.round((this.totalPayments / this.totalInvoiced) * 1000) / 10 : 0;
+        this.collectionRate = this.totalInvoiced > 0 ? Math.round((this.totalCollected / this.totalInvoiced) * 1000) / 10 : 0;
         this.trendPoints = this.buildTrend(this.items);
         this.trendSvg = this.buildTrendSvg(this.trendPoints);
         // Reconcile summary: latest-invoice outstanding for comparison
@@ -103,6 +105,7 @@ export class CashReceiptsComponent implements OnInit {
         this.loading = false;
         this.items = [];
         this.totalPayments = 0;
+        this.totalCollected = 0;
         this.totalOutstanding = 0;
         this.totalInvoiced = 0;
         this.invoicesCount = 0;
@@ -190,6 +193,13 @@ export class CashReceiptsComponent implements OnInit {
     if (this.feeType === 'all') return '';
     const opt = this.feeTypeOptions.find(o => o.value === this.feeType);
     return opt ? ' — ' + opt.label : '';
+  }
+
+  getCollectedBreakdownText(): string {
+    if (this.feeType === 'all') {
+      return 'Invoiced − Outstanding · Tuition, DH, Transport';
+    }
+    return 'Payments via /payments/record' + this.getFeeTypeStatSuffix();
   }
 
   formatDate(value: any): string {

@@ -79,7 +79,8 @@ export class OutstandingBalanceComponent implements OnInit {
     this.loadingTermStats = true;
     this.financeService.getCashReceipts(this.term || undefined, 'all').subscribe({
       next: (data: any) => {
-        this.totalPaymentsForTerm = data?.totalPayments ?? 0;
+        // Align with Cash Receipts "Total Collected" card.
+        this.totalPaymentsForTerm = data?.totalCollected ?? data?.totalPayments ?? 0;
         this.transactionsForTerm = data?.count ?? 0;
         this.availableTerms = Array.isArray(data?.availableTerms) ? data.availableTerms : [];
         if (!this.term && data?.term) {
