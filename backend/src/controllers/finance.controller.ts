@@ -2349,15 +2349,28 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const validFeeTypes = ['all', 'tuition', 'dh', 'transport'];
     const filterFeeType = validFeeTypes.includes(feeType) ? feeType : 'all';
 
+    const targetSettings = await settingsRepository.findOne({
+      where: [{ activeTerm: termToUse }, { currentTerm: termToUse }],
+      order: { createdAt: 'DESC' }
+    });
+    const rangeStart = targetSettings?.termStartDate || null;
+    const rangeEnd = targetSettings?.termEndDate || null;
+
     const qb = paymentLogRepository
       .createQueryBuilder('log')
       .innerJoinAndSelect('log.invoice', 'invoice')
       .leftJoinAndSelect('log.student', 'student')
-      .where('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse })
       .andWhere('ROUND(CAST(log.amountPaid AS numeric), 2) > 0')
       .andWhere("UPPER(COALESCE(log.paymentMethod, '')) NOT IN ('ADJUSTMENT', '')")
       .orderBy('log.paymentDate', 'DESC')
       .addOrderBy('log.createdAt', 'DESC');
+
+    if (rangeStart && rangeEnd) {
+      qb.andWhere('log.paymentDate >= :startDate', { startDate: rangeStart })
+        .andWhere('log.paymentDate <= :endDate', { endDate: rangeEnd });
+    } else {
+      qb.andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+    }
 
     const logsEntities = await qb.getMany();
     const allLogs = logsEntities.map((log: any) => {
@@ -2379,17 +2392,40 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       };
     });
 
+    // Infer fee types from description for robust filtering
+    const inferFeeFlags = (desc: string): { tuition: boolean; dh: boolean; transport: boolean } => {
+      const d = String(desc || '').toLowerCase();
+      const hasTuitionKw = /tuition/.test(d);
+      const hasDhKw = /(dh\s*fee)|(d\/?h)|(dining\s*hall)|(dining)/.test(d);
+      const hasTransportKw = /transport/.test(d);
+
+      // Parse "Breakdown → ..." lines if present to be more precise
+      const line = d.split('\n').find(l => l.includes('breakdown'));
+      if (line) {
+        const parts = line.split('→')[1]?.split('|').map(s => s.trim()) || [];
+        const labels = parts.map(p => p.split(':')[0].trim().toLowerCase());
+        return {
+          tuition: labels.some(l => l.includes('tuition')) || hasTuitionKw,
+          dh: labels.some(l => l.includes('dining')) || labels.some(l => l === 'dh fee') || hasDhKw,
+          transport: labels.some(l => l.includes('transport')) || hasTransportKw
+        };
+      }
+      return { tuition: hasTuitionKw, dh: hasDhKw, transport: hasTransportKw };
+    };
+
     const matchesFeeType = (desc: string, type: string): boolean => {
-      const d = desc.toLowerCase();
       if (type === 'all') return true;
-      if (type === 'tuition') return d.includes('tuition');
-      if (type === 'dh') return d.includes('dining hall') || d.includes('dining');
-      if (type === 'transport') return d.includes('transport');
+      const flags = inferFeeFlags(desc);
+      if (type === 'tuition') return flags.tuition;
+      if (type === 'dh') return flags.dh;
+      if (type === 'transport') return flags.transport;
       return true;
     };
 
     const items = filterFeeType === 'all' ? allLogs : allLogs.filter((l) => matchesFeeType(l.invoiceDescription || '', filterFeeType));
-    const totalPayments = Math.round(items.reduce((s, l) => s + l.amountPaid, 0) * 100) / 100;
+    // For "all", total is across all logs. For specific type, total is across filtered logs.
+    const baseForTotal = filterFeeType === 'all' ? allLogs : items;
+    const totalPayments = Math.round(baseForTotal.reduce((s, l) => s + l.amountPaid, 0) * 100) / 100;
 
     const distinctTermsQb = invoiceRepository
       .createQueryBuilder('invoice')
@@ -2438,15 +2474,28 @@ export const getCashReceiptsPDF = async (req: AuthRequest, res: Response) => {
     const activeTerm = (settings as any)?.activeTerm || (settings as any)?.currentTerm || null;
     const termToUse = (termParam && String(termParam).trim()) || activeTerm || `Term 1 ${new Date().getFullYear()}`;
 
+    const targetSettings = await settingsRepository.findOne({
+      where: [{ activeTerm: termToUse }, { currentTerm: termToUse }],
+      order: { createdAt: 'DESC' }
+    });
+    const rangeStart = targetSettings?.termStartDate || null;
+    const rangeEnd = targetSettings?.termEndDate || null;
+
     const qb = paymentLogRepository
       .createQueryBuilder('log')
       .innerJoinAndSelect('log.invoice', 'invoice')
       .leftJoinAndSelect('log.student', 'student')
-      .where('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse })
       .andWhere('ROUND(CAST(log.amountPaid AS numeric), 2) > 0')
       .andWhere("UPPER(COALESCE(log.paymentMethod, '')) NOT IN ('ADJUSTMENT', '')")
       .orderBy('log.paymentDate', 'DESC')
       .addOrderBy('log.createdAt', 'DESC');
+
+    if (rangeStart && rangeEnd) {
+      qb.andWhere('log.paymentDate >= :startDate', { startDate: rangeStart })
+        .andWhere('log.paymentDate <= :endDate', { endDate: rangeEnd });
+    } else {
+      qb.andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+    }
 
     const logsEntities = await qb.getMany();
     const rows = logsEntities.map((log: any) => {
