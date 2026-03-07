@@ -20,6 +20,7 @@ import { InvoiceFormComponent } from './components/finance/invoice-form/invoice-
 import { InvoiceStatementsComponent } from './components/finance/invoice-statements/invoice-statements.component';
 import { RecordPaymentComponent } from './components/finance/record-payment/record-payment.component';
 import { OutstandingBalanceComponent } from './components/finance/outstanding-balance/outstanding-balance.component';
+import { CashReceiptsComponent } from './components/finance/cash-receipts/cash-receipts.component';
 import { BalanceEnquiryComponent } from './components/finance/balance-enquiry/balance-enquiry.component';
 import { AuditComponent } from './components/finance/audit/audit.component';
 import { ClassListComponent } from './components/classes/class-list/class-list.component';
@@ -121,6 +122,7 @@ const routes: Routes = [
   { path: 'invoices/statements', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'payments/record', component: RecordPaymentComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'outstanding-balance', component: OutstandingBalanceComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
+  { path: 'finance/cash_receipts', component: CashReceiptsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'finance/balance-enquiry', component: BalanceEnquiryComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'finance/audit', component: AuditComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'settings/payment-receipt-manager', component: PaymentReceiptManagerComponent, canActivate: [AuthGuard, AdminGuard] },

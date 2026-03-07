@@ -52,6 +52,7 @@ import { TeacherRecordBookComponent } from './components/admin/teacher-record-bo
 import { TeacherDashboardComponent } from './components/teacher/teacher-dashboard/teacher-dashboard.component';
 import { RecordPaymentComponent } from './components/finance/record-payment/record-payment.component';
 import { OutstandingBalanceComponent } from './components/finance/outstanding-balance/outstanding-balance.component';
+import { CashReceiptsComponent } from './components/finance/cash-receipts/cash-receipts.component';
 import { SplashComponent } from './components/splash/splash.component';
 import { TimetableGenerateComponent } from './components/timetable/timetable-generate.component';
 import { TimetableConfigComponent } from './components/timetable/timetable-config.component';
@@ -123,6 +124,7 @@ import { PaymentReceiptManagerComponent } from './components/settings/payment-re
     TeacherDashboardComponent,
     RecordPaymentComponent,
     OutstandingBalanceComponent,
+    CashReceiptsComponent,
     SplashComponent,
     TimetableGenerateComponent,
     TimetableConfigComponent,

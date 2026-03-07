@@ -1,0 +1,114 @@
+<div class="container modern-container">
+  <div class="page-header modern-header-section">
+    <div class="header-content">
+      <div class="header-title-section">
+        <div class="header-icon-wrapper">
+          <span class="header-main-icon">💵</span>
+        </div>
+        <div>
+          <h1>Cash Receipts</h1>
+          <p class="header-subtitle">Total cash received from students as fees for the selected term (includes payments for previous balance and prepaid invoices)</p>
+        </div>
+      </div>
+      <div class="header-actions" *ngIf="term">
+        <button type="button" class="btn btn-pdf btn-preview" (click)="previewPdf()" [disabled]="loadingPdf || loading">
+          <span *ngIf="!loadingPdf">📄 Preview PDF</span>
+          <span *ngIf="loadingPdf">Loading…</span>
+        </button>
+        <button type="button" class="btn btn-pdf btn-download" (click)="downloadPdf()" [disabled]="downloadingPdf || loading">
+          <span *ngIf="!downloadingPdf">⬇ Download PDF</span>
+          <span *ngIf="downloadingPdf">Downloading…</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-error modern-alert" *ngIf="error">
+    <span class="alert-icon">⚠</span>
+    <span>{{ error }}</span>
+    <button type="button" class="alert-close" (click)="error = ''" title="Close">&times;</button>
+  </div>
+
+  <!-- Term selector (admin / superadmin only) -->
+  <div class="card term-selector-card" *ngIf="canSelectTerm && availableTerms.length > 0">
+    <div class="card-body">
+      <label for="termSelect" class="term-label">Select term (audit)</label>
+      <select
+        id="termSelect"
+        class="term-select"
+        [ngModel]="term"
+        (ngModelChange)="term = $event; onTermChange()"
+        [ngModelOptions]="{standalone: true}">
+        <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
+      </select>
+      <span class="term-hint" *ngIf="activeTerm && term === activeTerm">Current active term</span>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading cash receipts…</p>
+  </div>
+
+  <ng-container *ngIf="!loading">
+    <!-- Summary cards -->
+    <div class="stats-grid" *ngIf="term">
+      <div class="stat-card stat-primary">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon">💵</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalCashReceived) }}</div>
+          <div class="stat-label">Total cash received ({{ term }})</div>
+        </div>
+      </div>
+      <div class="stat-card stat-info">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon">📋</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ count }}</div>
+          <div class="stat-label">Cash transactions</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card card" *ngIf="items.length > 0">
+      <div class="card-header">
+        <h2>Cash receipt details — {{ term }}</h2>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Receipt #</th>
+              <th>Invoice</th>
+              <th>Student</th>
+              <th>Student #</th>
+              <th class="amount-col">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of items">
+              <td>{{ formatDate(item.paymentDate) }}</td>
+              <td>{{ item.receiptNumber || '—' }}</td>
+              <td>{{ item.invoiceNumber || '—' }}</td>
+              <td>{{ item.studentName || '—' }}</td>
+              <td>{{ item.studentNumber || '—' }}</td>
+              <td class="amount-col">{{ currencySymbol }} {{ formatCurrency(item.amountPaid) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="empty-state" *ngIf="!loading && term && items.length === 0">
+      <div class="empty-icon">💵</div>
+      <h3>No cash receipts for this term</h3>
+      <p>There are no cash payments recorded for <strong>{{ term }}</strong>.</p>
+    </div>
+  </ng-container>
+</div>

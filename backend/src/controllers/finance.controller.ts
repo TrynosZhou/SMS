@@ -7,6 +7,7 @@ import { AuthRequest } from '../middleware/auth';
 import { createInvoicePDF } from '../utils/invoicePdfGenerator';
 import { createReceiptPDF, createUniformReceiptPDF } from '../utils/receiptPdfGenerator';
 import { createOutstandingBalancePDF } from '../utils/outstandingBalancePdfGenerator';
+import { createCashReceiptsPDF } from '../utils/cashReceiptsPdfGenerator';
 import { UniformItem } from '../entities/UniformItem';
 import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
 import { isDemoUser } from '../utils/demoDataFilter';
@@ -2328,6 +2329,140 @@ export const getPaymentLogsSummary = async (req: AuthRequest, res: Response) => 
     res.json({ sumPaid: parseFloat(result?.sumPaid || '0'), count: parseInt(result?.count || '0', 10) });
   } catch (error: any) {
     console.error('Error fetching payment logs summary:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+/** Cash receipts: total cash received for fees in a given term (invoice tuition payments by Cash). For audit, admin/superadmin can select term. */
+export const getCashReceipts = async (req: AuthRequest, res: Response) => {
+  try {
+    const { term: termParam } = req.query as { term?: string };
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
+    const invoiceRepository = AppDataSource.getRepository(Invoice);
+
+    const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+    const activeTerm = (settings as any)?.activeTerm || (settings as any)?.currentTerm || null;
+    const termToUse = (termParam && String(termParam).trim()) || activeTerm || `Term 1 ${new Date().getFullYear()}`;
+
+    const qb = paymentLogRepository
+      .createQueryBuilder('log')
+      .innerJoinAndSelect('log.invoice', 'invoice')
+      .leftJoinAndSelect('log.student', 'student')
+      .where('invoice.term = :term', { term: termToUse })
+      .andWhere('ROUND(CAST(log.amountPaid AS numeric), 2) > 0')
+      .andWhere("UPPER(COALESCE(log.paymentMethod, '')) != 'ADJUSTMENT'")
+      .andWhere("(LOWER(COALESCE(log.paymentMethod, '')) LIKE '%cash%')")
+      .orderBy('log.paymentDate', 'DESC')
+      .addOrderBy('log.createdAt', 'DESC');
+
+    const logsEntities = await qb.getMany();
+    const logs = logsEntities.map((log: any) => {
+      const inv = log.invoice || {};
+      const stu = log.student || {};
+      return {
+        id: log.id,
+        amountPaid: parseFloat(String(log.amountPaid ?? 0)),
+        paymentDate: log.paymentDate,
+        paymentMethod: log.paymentMethod,
+        receiptNumber: log.receiptNumber,
+        createdAt: log.createdAt,
+        invoiceNumber: inv.invoiceNumber || '',
+        invoiceTerm: inv.term || '',
+        previousBalance: parseFloat(String(inv.previousBalance ?? 0)),
+        prepaidAmount: parseFloat(String(inv.prepaidAmount ?? 0)),
+        studentName: [stu.firstName, stu.lastName].filter(Boolean).join(' ').trim() || 'N/A',
+        studentNumber: stu.studentNumber || ''
+      };
+    });
+
+    const totalCashReceived = logs.reduce((sum, l) => sum + l.amountPaid, 0);
+
+    const distinctTermsQb = invoiceRepository
+      .createQueryBuilder('invoice')
+      .select('DISTINCT invoice.term', 'term')
+      .where('invoice.term IS NOT NULL AND invoice.term != :empty', { empty: '' })
+      .orderBy('invoice.term', 'DESC');
+    const termsResult = await distinctTermsQb.getRawMany();
+    let availableTerms = (termsResult || []).map((r: any) => r.term).filter(Boolean);
+    if (activeTerm && !availableTerms.includes(activeTerm)) {
+      availableTerms = [activeTerm, ...availableTerms];
+    }
+
+    res.json({
+      term: termToUse,
+      activeTerm: activeTerm || null,
+      totalCashReceived: Math.round(totalCashReceived * 100) / 100,
+      count: logs.length,
+      items: logs,
+      availableTerms
+    });
+  } catch (error: any) {
+    console.error('Error fetching cash receipts:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const getCashReceiptsPDF = async (req: AuthRequest, res: Response) => {
+  try {
+    const { term: termParam } = req.query as { term?: string };
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
+    const invoiceRepository = AppDataSource.getRepository(Invoice);
+
+    const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+    const activeTerm = (settings as any)?.activeTerm || (settings as any)?.currentTerm || null;
+    const termToUse = (termParam && String(termParam).trim()) || activeTerm || `Term 1 ${new Date().getFullYear()}`;
+
+    const qb = paymentLogRepository
+      .createQueryBuilder('log')
+      .innerJoinAndSelect('log.invoice', 'invoice')
+      .leftJoinAndSelect('log.student', 'student')
+      .where('invoice.term = :term', { term: termToUse })
+      .andWhere('ROUND(CAST(log.amountPaid AS numeric), 2) > 0')
+      .andWhere("UPPER(COALESCE(log.paymentMethod, '')) != 'ADJUSTMENT'")
+      .andWhere("(LOWER(COALESCE(log.paymentMethod, '')) LIKE '%cash%')")
+      .orderBy('log.paymentDate', 'DESC')
+      .addOrderBy('log.createdAt', 'DESC');
+
+    const logsEntities = await qb.getMany();
+    const rows = logsEntities.map((log: any) => {
+      const inv = log.invoice || {};
+      const stu = log.student || {};
+      return {
+        paymentDate: log.paymentDate,
+        receiptNumber: log.receiptNumber,
+        invoiceNumber: inv.invoiceNumber || '',
+        studentName: [stu.firstName, stu.lastName].filter(Boolean).join(' ').trim() || 'N/A',
+        studentNumber: stu.studentNumber || '',
+        amountPaid: parseFloat(String(log.amountPaid ?? 0))
+      };
+    });
+
+    const totalCashReceived = rows.reduce((sum, r) => sum + r.amountPaid, 0);
+    const schoolName = (settings?.schoolName != null && String(settings.schoolName).trim() !== '') ? String(settings.schoolName).trim() : 'School';
+    const currencySymbol = (settings?.currencySymbol != null && String(settings.currencySymbol).trim() !== '') ? String(settings.currencySymbol).trim() : 'KES';
+    const schoolLogo2 = (settings as any)?.schoolLogo2 ?? null;
+
+    const pdfBuffer = await createCashReceiptsPDF({
+      schoolName,
+      currencySymbol,
+      term: termToUse,
+      reportDate: new Date(),
+      totalCashReceived: Math.round(totalCashReceived * 100) / 100,
+      rows,
+      schoolLogo2: schoolLogo2 != null ? String(schoolLogo2).trim() : null
+    });
+
+    const filename = `Cash_Receipts_${termToUse.replace(/\s+/g, '_')}.pdf`;
+    const disposition = (req.query as any).download === '1' ? 'attachment' : 'inline';
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error('Error generating cash receipts PDF:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

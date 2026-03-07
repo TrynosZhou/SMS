@@ -18,6 +18,8 @@ import {
   applyInvoiceNote,
   getPaymentLogs,
   deletePaymentLog,
+  getCashReceipts,
+  getCashReceiptsPDF,
   repairReturningDeskFeeInvoices,
   reverseInvoicePrepayment,
   createUniformCharge,
@@ -41,6 +43,8 @@ router.post('/uniform-payment', authenticate, authorize(UserRole.ADMIN, UserRole
 router.get('/uniform-receipt/:id', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), generateUniformReceiptPDF);
 router.get('/outstanding-balances', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), getOutstandingBalances);
 router.get('/outstanding-balances/pdf', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), getOutstandingBalancesPDF);
+router.get('/cash-receipts', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), getCashReceipts);
+router.get('/cash-receipts/pdf', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), getCashReceiptsPDF);
 router.get('/audit/payment-logs', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), getPaymentLogs);
 router.delete('/audit/payment-logs/:id', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), deletePaymentLog);
 // Audit exports and summaries

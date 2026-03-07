@@ -248,5 +248,43 @@ export class FinanceService {
     if (options.search) params.search = options.search;
     return this.http.get<{ sumPaid: number; sumBalance: number; count: number }>(`${this.apiUrl}/finance/audit/invoices/summary`, { params });
   }
+
+  /** Cash receipts PDF: preview (inline) or download (attachment). */
+  getCashReceiptsPDF(term?: string, download = false): Observable<Blob> {
+    let params: any = {};
+    if (term && term.trim()) params.term = term.trim();
+    if (download) params.download = '1';
+    return this.http.get(`${this.apiUrl}/finance/cash-receipts/pdf`, {
+      params,
+      responseType: 'blob'
+    });
+  }
+
+  /** Cash receipts for a term: total cash received from students as fees (invoice payments by Cash). */
+  getCashReceipts(term?: string): Observable<{
+    term: string;
+    activeTerm: string | null;
+    totalCashReceived: number;
+    count: number;
+    items: Array<{
+      id: string;
+      amountPaid: number;
+      paymentDate: string;
+      paymentMethod: string;
+      receiptNumber: string;
+      createdAt: string;
+      invoiceNumber: string;
+      invoiceTerm: string;
+      previousBalance: number;
+      prepaidAmount: number;
+      studentName: string;
+      studentNumber: string;
+    }>;
+    availableTerms: string[];
+  }> {
+    const params: any = {};
+    if (term && term.trim()) params.term = term.trim();
+    return this.http.get<any>(`${this.apiUrl}/finance/cash-receipts`, { params });
+  }
 }
 
