@@ -2333,7 +2333,7 @@ export const getPaymentLogsSummary = async (req: AuthRequest, res: Response) => 
   }
 };
 
-/** Cash receipts: total cash received for fees in a given term (invoice tuition payments by Cash). For audit, admin/superadmin can select term. */
+/** Cash receipts: total fee receipts for a given term. Includes Cash, Ecocash, and Bank Transfer (all payment methods except ADJUSTMENT). Matches invoices by term (TRIM, case-insensitive). */
 export const getCashReceipts = async (req: AuthRequest, res: Response) => {
   try {
     const { term: termParam } = req.query as { term?: string };
@@ -2350,10 +2350,9 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       .createQueryBuilder('log')
       .innerJoinAndSelect('log.invoice', 'invoice')
       .leftJoinAndSelect('log.student', 'student')
-      .where('invoice.term = :term', { term: termToUse })
+      .where('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse })
       .andWhere('ROUND(CAST(log.amountPaid AS numeric), 2) > 0')
-      .andWhere("UPPER(COALESCE(log.paymentMethod, '')) != 'ADJUSTMENT'")
-      .andWhere("(LOWER(COALESCE(log.paymentMethod, '')) LIKE '%cash%')")
+      .andWhere("UPPER(COALESCE(log.paymentMethod, '')) NOT IN ('ADJUSTMENT', '')")
       .orderBy('log.paymentDate', 'DESC')
       .addOrderBy('log.createdAt', 'DESC');
 
@@ -2420,10 +2419,9 @@ export const getCashReceiptsPDF = async (req: AuthRequest, res: Response) => {
       .createQueryBuilder('log')
       .innerJoinAndSelect('log.invoice', 'invoice')
       .leftJoinAndSelect('log.student', 'student')
-      .where('invoice.term = :term', { term: termToUse })
+      .where('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse })
       .andWhere('ROUND(CAST(log.amountPaid AS numeric), 2) > 0')
-      .andWhere("UPPER(COALESCE(log.paymentMethod, '')) != 'ADJUSTMENT'")
-      .andWhere("(LOWER(COALESCE(log.paymentMethod, '')) LIKE '%cash%')")
+      .andWhere("UPPER(COALESCE(log.paymentMethod, '')) NOT IN ('ADJUSTMENT', '')")
       .orderBy('log.paymentDate', 'DESC')
       .addOrderBy('log.createdAt', 'DESC');
 

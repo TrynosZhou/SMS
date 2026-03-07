@@ -7,7 +7,7 @@
         </div>
         <div>
           <h1>Cash Receipts</h1>
-          <p class="header-subtitle">Total cash received from students as fees for the selected term (includes payments for previous balance and prepaid invoices)</p>
+          <p class="header-subtitle">Total fee receipts for the selected term (Cash, Ecocash, Bank Transfer — includes payments for previous balance and prepaid invoices)</p>
         </div>
       </div>
       <div class="header-actions" *ngIf="term">
@@ -60,7 +60,7 @@
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalCashReceived) }}</div>
-          <div class="stat-label">Total cash received ({{ term }})</div>
+          <div class="stat-label">Total fee receipts ({{ term }})</div>
         </div>
       </div>
       <div class="stat-card stat-info">
@@ -69,7 +69,7 @@
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ count }}</div>
-          <div class="stat-label">Cash transactions</div>
+          <div class="stat-label">Fee transactions</div>
         </div>
       </div>
     </div>
@@ -77,7 +77,7 @@
     <!-- Table -->
     <div class="table-card card" *ngIf="items.length > 0">
       <div class="card-header">
-        <h2>Cash receipt details — {{ term }}</h2>
+        <h2>Fee receipt details — {{ term }}</h2>
       </div>
       <div class="table-scroll">
         <table class="data-table">
@@ -107,8 +107,8 @@
 
     <div class="empty-state" *ngIf="!loading && term && items.length === 0">
       <div class="empty-icon">💵</div>
-      <h3>No cash receipts for this term</h3>
-      <p>There are no cash payments recorded for <strong>{{ term }}</strong>.</p>
+      <h3>No fee receipts for this term</h3>
+      <p>There are no fee payments recorded for <strong>{{ term }}</strong>.</p>
     </div>
   </ng-container>
 </div>
