@@ -20,6 +20,13 @@ export class CashReceiptsComponent implements OnInit {
   studentsFullyPaid = 0;
   studentsPartiallyPaid = 0;
   studentsUnpaid = 0;
+  // Reconcile summary
+  currentOutstandingLatest = 0;
+  // Derived indicators
+  collectionRate = 0; // %
+  // Trend data (payments over time)
+  trendPoints: Array<{ date: string; total: number }> = [];
+  trendSvg: { points: string; dots: Array<{ cx: number; cy: number; title: string }> } = { points: '', dots: [] };
   count = 0;
   items: any[] = [];
   availableTerms: string[] = [];
@@ -83,6 +90,12 @@ export class CashReceiptsComponent implements OnInit {
         this.count = data.count ?? 0;
         this.items = Array.isArray(data.items) ? data.items : [];
         this.availableTerms = Array.isArray(data.availableTerms) ? data.availableTerms : [];
+        // Derived
+        this.collectionRate = this.totalInvoiced > 0 ? Math.round((this.totalPayments / this.totalInvoiced) * 1000) / 10 : 0;
+        this.trendPoints = this.buildTrend(this.items);
+        this.trendSvg = this.buildTrendSvg(this.trendPoints);
+        // Reconcile summary: latest-invoice outstanding for comparison
+        this.loadReconcileSummary();
         this.loading = false;
       },
       error: (err: any) => {
@@ -97,6 +110,10 @@ export class CashReceiptsComponent implements OnInit {
         this.studentsFullyPaid = 0;
         this.studentsPartiallyPaid = 0;
         this.studentsUnpaid = 0;
+        this.collectionRate = 0;
+        this.trendPoints = [];
+        this.trendSvg = { points: '', dots: [] };
+        this.currentOutstandingLatest = 0;
         this.count = 0;
       }
     });
@@ -110,6 +127,53 @@ export class CashReceiptsComponent implements OnInit {
   onFeeTypeSelect(val: string): void {
     this.feeType = val;
     this.loadCashReceipts();
+  }
+
+  private loadReconcileSummary(): void {
+    this.financeService.getReconcileSummary(this.term || undefined).subscribe({
+      next: (data: any) => {
+        this.currentOutstandingLatest = data?.totalOutstandingLatest ?? 0;
+      },
+      error: () => {
+        this.currentOutstandingLatest = 0;
+      }
+    });
+  }
+
+  private buildTrend(items: any[]): Array<{ date: string; total: number }> {
+    const byDay = new Map<string, number>();
+    for (const it of items || []) {
+      const d = new Date(it.paymentDate);
+      if (isNaN(d.getTime())) continue;
+      const key = d.toISOString().slice(0, 10);
+      const amt = parseFloat(String(it.amountPaid || 0)) || 0;
+      byDay.set(key, (byDay.get(key) || 0) + amt);
+    }
+    const entries = Array.from(byDay.entries())
+      .map(([date, total]) => ({ date, total }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    return entries;
+  }
+
+  private buildTrendSvg(points: Array<{ date: string; total: number }>): { points: string; dots: Array<{ cx: number; cy: number; title: string }> } {
+    if (!points || points.length === 0) return { points: '', dots: [] };
+    const width = 300;
+    const height = 100;
+    const pad = 5;
+    const n = points.length;
+    const max = points.reduce((m, p) => Math.max(m, p.total), 0) || 1;
+    const stepX = n > 1 ? width / (n - 1) : 0;
+    const toY = (val: number) => height - (val / max) * (height - pad * 2) - pad;
+    const toX = (i: number) => n > 1 ? i * stepX : width / 2;
+    const pts: string[] = [];
+    const dots: Array<{ cx: number; cy: number; title: string }> = [];
+    points.forEach((p, i) => {
+      const x = toX(i);
+      const y = toY(p.total);
+      pts.push(`${x},${y}`);
+      dots.push({ cx: x, cy: y, title: `${p.date} — ${this.currencySymbol} ${this.formatCurrency(p.total)}` });
+    });
+    return { points: pts.join(' '), dots };
   }
 
   clearError(): void {

@@ -2689,6 +2689,112 @@ export const normalizeHistoricalPaymentMethods = async (req: AuthRequest, res: R
   }
 };
 
+/** Reconcile a term's invoice outstanding vs latest-invoice outstanding and list discrepancies. */
+export const reconcileTermOutstanding = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const { term: termParam } = req.query as { term?: string };
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const invoiceRepository = AppDataSource.getRepository(Invoice);
+    const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
+    const studentRepository = AppDataSource.getRepository(Student);
+
+    const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+    const activeTerm = (settings as any)?.activeTerm || (settings as any)?.currentTerm || null;
+    const termToUse = (termParam && String(termParam).trim()) || activeTerm || `Term 1 ${new Date().getFullYear()}`;
+
+    const rangeStart = (await settingsRepository.findOne({ where: [{ activeTerm: termToUse }, { currentTerm: termToUse }], order: { createdAt: 'DESC' } }))?.termStartDate || null;
+    const rangeEnd = (await settingsRepository.findOne({ where: [{ activeTerm: termToUse }, { currentTerm: termToUse }], order: { createdAt: 'DESC' } }))?.termEndDate || null;
+
+    // In-scope invoices for the term
+    const inScopeQb = invoiceRepository.createQueryBuilder('iv')
+      .where('COALESCE(iv.isVoided, false) = false');
+    if (rangeStart && rangeEnd) {
+      inScopeQb.andWhere('iv.createdAt BETWEEN :startDate AND :endDate', { startDate: rangeStart, endDate: rangeEnd })
+               .orWhere('LOWER(TRIM(COALESCE(iv.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+    } else {
+      inScopeQb.andWhere('LOWER(TRIM(COALESCE(iv.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+    }
+    const inScopeInvoices = await inScopeQb.getMany();
+    const inScopeByStudent = new Map<string, any[]>();
+    for (const iv of inScopeInvoices) {
+      const list = inScopeByStudent.get(iv.studentId) || [];
+      list.push(iv);
+      inScopeByStudent.set(iv.studentId, list);
+    }
+
+    // Latest invoice per student (global)
+    const students = await studentRepository.find({ select: ['id'] });
+    const latestByStudent = new Map<string, any>();
+    for (const s of students) {
+      const latest = await invoiceRepository.findOne({
+        where: { studentId: s.id, isVoided: false },
+        order: { createdAt: 'DESC' }
+      });
+      if (latest) latestByStudent.set(s.id, latest);
+    }
+
+    // Totals
+    const totalOutstandingTerm = Math.round(inScopeInvoices.reduce((sum, iv: any) => sum + (parseFloat(String(iv.balance || 0)) || 0), 0) * 100) / 100;
+    const totalOutstandingLatest = Math.round(Array.from(latestByStudent.values()).reduce((sum, iv: any) => sum + (parseFloat(String(iv.balance || 0)) || 0), 0) * 100) / 100;
+
+    // Discrepancies: in-scope invoices that are not the latest for that student
+    const discrepancies = [];
+    for (const [studentId, invoices] of inScopeByStudent.entries()) {
+      const latest = latestByStudent.get(studentId);
+      for (const iv of invoices) {
+        if (!latest || latest.id !== iv.id) {
+          discrepancies.push({
+            studentId,
+            invoiceId: iv.id,
+            invoiceNumber: iv.invoiceNumber,
+            invoiceTerm: iv.term,
+            invoiceCreatedAt: iv.createdAt,
+            balance: parseFloat(String(iv.balance || 0)) || 0,
+            isLatest: latest ? latest.id === iv.id : false,
+            latestInvoiceId: latest?.id || null,
+            latestInvoiceTerm: latest?.term || null,
+            latestBalance: latest ? (parseFloat(String(latest.balance || 0)) || 0) : null
+          });
+        }
+      }
+    }
+
+    // Payments sum for the term-scoped invoices (to cross-verify cash received)
+    const logQb = paymentLogRepository.createQueryBuilder('log')
+      .andWhere('ROUND(CAST(log.amountPaid AS numeric), 2) > 0')
+      .andWhere("UPPER(COALESCE(log.paymentMethod, '')) NOT IN ('ADJUSTMENT', '')");
+    if (inScopeInvoices.length > 0) {
+      const ids = inScopeInvoices.map(iv => iv.id);
+      logQb.andWhere('log.invoiceId IN (:...ids)', { ids });
+    } else {
+      logQb.andWhere('1=0');
+    }
+    const logs = await logQb.getMany();
+    const totalPaymentsForInScope = Math.round(logs.reduce((s, l) => s + (parseFloat(String((l as any).amountPaid || 0)) || 0), 0) * 100) / 100;
+
+    res.json({
+      term: termToUse,
+      totalOutstandingTerm,
+      totalOutstandingLatest,
+      totalPaymentsForInScope,
+      counts: {
+        inScopeInvoices: inScopeInvoices.length,
+        studentsWithInScopeInvoices: inScopeByStudent.size,
+        studentsTotal: students.length,
+        discrepancies: discrepancies.length
+      },
+      discrepancies: discrepancies.slice(0, 200) // cap to avoid overly large payloads
+    });
+  } catch (error: any) {
+    console.error('Error reconciling term outstanding:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
 export const repairReturningDeskFeeInvoices = async (req: AuthRequest, res: Response) => {
   try {
     if (!AppDataSource.isInitialized) {

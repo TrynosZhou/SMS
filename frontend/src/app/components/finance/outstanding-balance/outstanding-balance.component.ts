@@ -20,6 +20,13 @@ export class OutstandingBalanceComponent implements OnInit {
   searchQuery = '';
   currencySymbol = 'KES';
   private _cachedTotalOutstanding = 0;
+  // Payments stats by term
+  term: string = '';
+  activeTerm: string | null = null;
+  availableTerms: string[] = [];
+  totalPaymentsForTerm = 0;
+  transactionsForTerm = 0;
+  loadingTermStats = false;
 
   constructor(
     private financeService: FinanceService,
@@ -31,6 +38,7 @@ export class OutstandingBalanceComponent implements OnInit {
   ngOnInit(): void {
     this.loadSettings();
     this.loadOutstandingBalances();
+    this.loadActiveTermAndStats();
   }
 
   loadSettings(): void {
@@ -42,6 +50,48 @@ export class OutstandingBalanceComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading settings:', error);
+      }
+    });
+  }
+
+  private loadActiveTermAndStats(): void {
+    this.settingsService.getActiveTerm().subscribe({
+      next: (resp: any) => {
+        this.activeTerm = resp?.activeTerm || null;
+        if (!this.term && this.activeTerm) {
+          this.term = this.activeTerm;
+        }
+        this.loadTermPaymentStats();
+      },
+      error: () => {
+        // Fallback: still try to load using empty term (API will decide)
+        this.loadTermPaymentStats();
+      }
+    });
+  }
+
+  onTermSelect(val: string): void {
+    this.term = val;
+    this.loadTermPaymentStats();
+  }
+
+  private loadTermPaymentStats(): void {
+    this.loadingTermStats = true;
+    this.financeService.getCashReceipts(this.term || undefined, 'all').subscribe({
+      next: (data: any) => {
+        this.totalPaymentsForTerm = data?.totalPayments ?? 0;
+        this.transactionsForTerm = data?.count ?? 0;
+        this.availableTerms = Array.isArray(data?.availableTerms) ? data.availableTerms : [];
+        if (!this.term && data?.term) {
+          this.term = data.term;
+        }
+        this.loadingTermStats = false;
+      },
+      error: () => {
+        this.totalPaymentsForTerm = 0;
+        this.transactionsForTerm = 0;
+        this.availableTerms = [];
+        this.loadingTermStats = false;
       }
     });
   }

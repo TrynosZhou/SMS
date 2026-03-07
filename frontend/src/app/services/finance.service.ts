@@ -266,6 +266,12 @@ export class FinanceService {
     activeTerm: string | null;
     feeType: string;
     totalPayments: number;
+    totalInvoiced: number;
+    invoicesCount: number;
+    studentsWithInvoices: number;
+    studentsFullyPaid: number;
+    studentsPartiallyPaid: number;
+    studentsUnpaid: number;
     totalOutstanding: number;
     count: number;
     items: Array<{
@@ -287,6 +293,19 @@ export class FinanceService {
     if (term && term.trim()) params.term = term.trim();
     if (feeType && feeType !== 'all') params.feeType = feeType;
     return this.http.get<any>(`${this.apiUrl}/finance/cash-receipts`, { params });
+  }
+
+  /** Reconciliation summary for a term: compares term-scoped outstanding with latest-invoice outstanding. */
+  getReconcileSummary(term?: string): Observable<{
+    term: string;
+    totalOutstandingTerm: number;
+    totalOutstandingLatest: number;
+    totalPaymentsForInScope: number;
+    counts: { inScopeInvoices: number; studentsWithInScopeInvoices: number; studentsTotal: number; discrepancies: number };
+  }> {
+    const params: any = {};
+    if (term && term.trim()) params.term = term.trim();
+    return this.http.get<any>(`${this.apiUrl}/finance/audit/reconcile-term-outstanding`, { params });
   }
 }
 

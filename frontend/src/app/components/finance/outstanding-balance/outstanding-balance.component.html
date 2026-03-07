@@ -23,6 +23,23 @@
 
   <!-- Statistics Cards -->
   <div class="stats-grid" *ngIf="!loading && outstandingBalances.length > 0">
+    <div class="stat-card stat-info">
+      <div class="stat-icon-wrapper">
+        <div class="stat-icon">💵</div>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalPaymentsForTerm) }}</div>
+        <div class="stat-label">Cash received — {{ term || 'Term' }}</div>
+        <div class="stat-breakdown">{{ transactionsForTerm }} transaction(s)</div>
+        <div *ngIf="availableTerms.length > 0" style="margin-top:8px;">
+          <label for="ob-term" style="font-size:12px;color:#64748b;margin-right:6px;">Term</label>
+          <select id="ob-term" [ngModel]="term" (ngModelChange)="onTermSelect($event)" [ngModelOptions]="{standalone:true}" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;">
+            <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
+          </select>
+          <span *ngIf="activeTerm && term === activeTerm" style="font-size:12px;color:#94a3b8;margin-left:6px;">Current</span>
+        </div>
+      </div>
+    </div>
     <div class="stat-card stat-primary">
       <div class="stat-icon-wrapper">
         <div class="stat-icon">👥</div>

@@ -53,6 +53,7 @@ router.get('/audit/invoices/export', authenticate, authorize(UserRole.ADMIN, Use
 router.get('/audit/payment-logs/summary', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), (req, res) => (require('../controllers/finance.controller').getPaymentLogsSummary)(req, res));
 router.get('/audit/invoices/summary', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), (req, res) => (require('../controllers/finance.controller').getInvoicesSummary)(req, res));
 router.post('/audit/payment-logs/normalize', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), (req, res) => (require('../controllers/finance.controller').normalizeHistoricalPaymentMethods)(req, res));
+router.get('/audit/reconcile-term-outstanding', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), (req, res) => (require('../controllers/finance.controller').reconcileTermOutstanding)(req, res));
 
 router.post('/repair/returning-desk-fee', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), repairReturningDeskFeeInvoices);
 
