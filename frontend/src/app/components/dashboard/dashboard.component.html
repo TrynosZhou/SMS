@@ -147,44 +147,44 @@
         <div *ngIf="isAdmin()">
           <h3>Admin Features</h3>
           <ul>
-            <li>✅ Manage Students - Register and enroll students</li>
-            <li>✅ Manage Teachers - Add and assign teachers</li>
-            <li>✅ Manage Exams - Create and organize exams</li>
-            <li>✅ Mark Attendance - Record daily student attendance</li>
-            <li>✅ Attendance Reports - View class attendance statistics</li>
-            <li>✅ Manage Finance - Handle invoices and payments</li>
-            <li>✅ View Report Cards - Access all student reports</li>
-            <li>✅ View Rankings - See class and form rankings</li>
+            <li><a routerLink="/students/new" class="feature-link">✅ Manage Students - Register and enroll students</a></li>
+            <li><a routerLink="/teachers/new" class="feature-link">✅ Manage Teachers - Add and assign teachers</a></li>
+            <li><a routerLink="/exams" class="feature-link">✅ Manage Exams - Create and organize exams</a></li>
+            <li><a routerLink="/attendance/mark" class="feature-link">✅ Mark Attendance - Record daily student attendance</a></li>
+            <li><a routerLink="/attendance/reports" class="feature-link">✅ Attendance Reports - View class attendance statistics</a></li>
+            <li><a routerLink="/invoices" class="feature-link">✅ Manage Finance - Handle invoices and payments</a></li>
+            <li><a routerLink="/report-cards" class="feature-link">✅ View Report Cards - Access all student reports</a></li>
+            <li><a routerLink="/rankings" class="feature-link">✅ View Rankings - See class and form rankings</a></li>
           </ul>
         </div>
         <div *ngIf="isTeacher()">
           <h3>Teacher Features</h3>
           <ul>
-            <li *ngIf="canAccessModule('exams')">✅ Capture Marks - Enter student exam marks</li>
-            <li *ngIf="canAccessModule('recordBook')">✅ Record Book - Enter and view student marks</li>
-            <li *ngIf="canAccessModule('attendance')">✅ Mark Attendance - Record daily student attendance</li>
-            <li *ngIf="canAccessModule('attendance')">✅ Attendance Reports - View class attendance statistics</li>
-            <li *ngIf="canAccessModule('rankings')">✅ View Rankings - Check class and subject rankings</li>
-            <li *ngIf="canAccessModule('reportCards')">✅ View Report Cards - Generate student reports</li>
-            <li *ngIf="canAccessModule('students')">✅ View Students - Access student information</li>
-            <li *ngIf="canAccessModule('classes')">✅ View Classes - Access class information</li>
-            <li *ngIf="canAccessModule('subjects')">✅ View Subjects - Access subject details</li>
+            <li *ngIf="canAccessModule('exams')"><a routerLink="/exams" class="feature-link">✅ Capture Marks - Enter student exam marks</a></li>
+            <li *ngIf="canAccessModule('recordBook')"><a routerLink="/teacher/record-book" class="feature-link">✅ Record Book - Enter and view student marks</a></li>
+            <li *ngIf="canAccessModule('attendance')"><a routerLink="/attendance/mark" class="feature-link">✅ Mark Attendance - Record daily student attendance</a></li>
+            <li *ngIf="canAccessModule('attendance')"><a routerLink="/attendance/reports" class="feature-link">✅ Attendance Reports - View class attendance statistics</a></li>
+            <li *ngIf="canAccessModule('rankings')"><a routerLink="/rankings" class="feature-link">✅ View Rankings - Check class and subject rankings</a></li>
+            <li *ngIf="canAccessModule('reportCards')"><a routerLink="/report-cards" class="feature-link">✅ View Report Cards - Generate student reports</a></li>
+            <li *ngIf="canAccessModule('students')"><a routerLink="/students" class="feature-link">✅ View Students - Access student information</a></li>
+            <li *ngIf="canAccessModule('classes')"><a routerLink="/classes" class="feature-link">✅ View Classes - Access class information</a></li>
+            <li *ngIf="canAccessModule('subjects')"><a routerLink="/subjects" class="feature-link">✅ View Subjects - Access subject details</a></li>
           </ul>
         </div>
         <div *ngIf="isAccountant()">
           <h3>Accountant Features</h3>
           <ul>
-            <li>✅ Manage Finance - Create and track invoices and payments</li>
-            <li>✅ View Students - Access student directory for billing updates</li>
-            <li>✅ Monitor Balances - Review outstanding balances and payment history</li>
+            <li><a routerLink="/invoices" class="feature-link">✅ Manage Finance - Create and track invoices and payments</a></li>
+            <li><a routerLink="/students" class="feature-link">✅ View Students - Access student directory for billing updates</a></li>
+            <li><a routerLink="/outstanding-balance" class="feature-link">✅ Monitor Balances - Review outstanding balances and payment history</a></li>
           </ul>
         </div>
         <div *ngIf="isParent()">
           <h3>Parent Features</h3>
           <ul>
-            <li>✅ Link Students - Connect your account to your child's profile</li>
-            <li>✅ View Invoice Balance - Check your child's current invoice balance</li>
-            <li>✅ View Report Cards - Access your child's report cards (when balance is cleared)</li>
+            <li><a routerLink="/parent/link-students" class="feature-link">✅ Link Students - Connect your account to your child's profile</a></li>
+            <li><a routerLink="/parent/dashboard" class="feature-link">✅ View Invoice Balance - Check your child's current invoice balance</a></li>
+            <li><a routerLink="/student/report-card" class="feature-link">✅ View Report Cards - Access your child's report cards (when balance is cleared)</a></li>
           </ul>
           <p style="margin-top: 15px;">
             <a routerLink="/parent/dashboard" class="action-btn" style="text-decoration: none; display: inline-block;">
@@ -206,8 +206,8 @@
             </div>
           </div>
           <ul>
-            <li>✅ View Report Card - Access your report card for {{ activeTerm || 'current term' }}</li>
-            <li>✅ View Invoice Statement - Check your invoice details and payment history</li>
+            <li><a routerLink="/student/report-card" class="feature-link">✅ View Report Card - Access your report card for {{ activeTerm || 'current term' }}</a></li>
+            <li><a routerLink="/student/invoice-statement" class="feature-link">✅ View Invoice Statement - Check your invoice details and payment history</a></li>
           </ul>
         </div>
       </div>

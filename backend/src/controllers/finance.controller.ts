@@ -2334,10 +2334,10 @@ export const getPaymentLogsSummary = async (req: AuthRequest, res: Response) => 
   }
 };
 
-/** Cash receipts: total of all payments via /payments/record for the selected term (Tuition + DH + Transport). Optional filter by fee type. */
+/** Cash receipts: total of all payments via /payments/record for the selected term (Tuition + DH + Transport). Optional filter by fee type. Pagination: default 50 per page, max 100. */
 export const getCashReceipts = async (req: AuthRequest, res: Response) => {
   try {
-    const { term: termParam, feeType: feeTypeParam } = req.query as { term?: string; feeType?: string };
+    const { term: termParam, feeType: feeTypeParam, page: pageParam, limit: limitParam, startDate: startDateParam, endDate: endDateParam } = req.query as { term?: string; feeType?: string; page?: string; limit?: string; startDate?: string; endDate?: string };
     const settingsRepository = AppDataSource.getRepository(Settings);
     const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
     const invoiceRepository = AppDataSource.getRepository(Invoice);
@@ -2379,11 +2379,27 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       .andWhere('ROUND(CAST(log.amountPaid AS numeric), 2) > 0')
       .andWhere("UPPER(COALESCE(log.paymentMethod, '')) NOT IN ('ADJUSTMENT', '')")
       .andWhere(`log.invoiceId IN (${invoiceScopeQb.getQuery()})`)
-      .setParameters(invoiceScopeQb.getParameters())
-      .orderBy('log.paymentDate', 'DESC')
-      .addOrderBy('log.createdAt', 'DESC');
+      .setParameters(invoiceScopeQb.getParameters());
+
+    const dateFrom = startDateParam && String(startDateParam).trim() ? new Date(String(startDateParam).trim()) : null;
+    let dateTo: Date | null = endDateParam && String(endDateParam).trim() ? new Date(String(endDateParam).trim()) : null;
+    if (dateTo && !isNaN(dateTo.getTime())) {
+      dateTo.setHours(23, 59, 59, 999); // include full end date
+    }
+    if (dateFrom && !isNaN(dateFrom.getTime())) {
+      qb.andWhere('log.paymentDate >= :dateFrom', { dateFrom });
+    }
+    if (dateTo && !isNaN(dateTo.getTime())) {
+      qb.andWhere('log.paymentDate <= :dateTo', { dateTo });
+    }
+    qb.orderBy('log.paymentDate', 'DESC').addOrderBy('log.createdAt', 'DESC');
 
     const logsEntities = await qb.getMany();
+    const feesCfg: any = (settings as any)?.feesSettings || {};
+    const dayScholarTuitionFee = parseFloat(String(feesCfg.dayScholarTuitionFee ?? 0)) || 0;
+    const boarderTuitionFee = parseFloat(String(feesCfg.boarderTuitionFee ?? 0)) || 0;
+    const diningHallCost = parseFloat(String(feesCfg.diningHallCost ?? 0)) || 0;
+    const transportCost = parseFloat(String(feesCfg.transportCost ?? 0)) || 0;
     const allLogs = logsEntities.map((log: any) => {
       const inv = log.invoice || {};
       const stu = log.student || {};
@@ -2399,82 +2415,75 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
         invoiceTerm: inv.term || '',
         invoiceAmount: parseFloat(String(inv.amount ?? 0)),
         invoiceDescription: desc,
+        studentType: String(stu.studentType || ''),
+        usesTransport: !!stu.usesTransport,
+        usesDiningHall: !!stu.usesDiningHall,
+        isStaffChild: !!stu.isStaffChild,
+        isExempted: !!stu.isExempted,
         studentName: [stu.firstName, stu.lastName].filter(Boolean).join(' ').trim() || 'N/A',
         studentNumber: stu.studentNumber || ''
       };
     });
 
-    // Parse fee breakdown amounts from invoice description and allocate each payment proportionally.
-    const parseBreakdown = (
-      desc: string,
-      invoiceAmount: number
-    ): { total: number; tuition: number; dh: number; transport: number } => {
-      const text = String(desc || '');
-      const lower = text.toLowerCase();
-      let total = 0;
-      let tuition = 0;
-      let dh = 0;
-      let transport = 0;
-
-      const breakdownPart = text.includes('Breakdown') ? text.split('Breakdown')[1] : text;
-      const parts = breakdownPart.split('|').map((p) => p.trim()).filter(Boolean);
-      for (const part of parts) {
-        const m = part.match(/([^:]+):\s*([0-9]+(?:\.[0-9]+)?)/i);
-        if (!m) continue;
-        const label = String(m[1] || '').toLowerCase().trim();
-        const amt = parseFloat(String(m[2] || 0)) || 0;
-        total += amt;
-        if (label.includes('tuition')) tuition += amt;
-        if (label.includes('dining') || label.includes('dh')) dh += amt;
-        if (label.includes('transport')) transport += amt;
+    // Transport and DH: fixed amounts from settings based on student profile.
+    // Transport = transportCost when Day Scholar + usesTransport + not staff/exempt.
+    // DH = diningHallCost (or 50%) when usesDiningHall. Sum these amounts per payment.
+    const getTransportAmount = (s: { studentType?: string; usesTransport?: boolean; isStaffChild?: boolean; isExempted?: boolean }): number => {
+      if (s?.studentType === 'Day Scholar' && s?.usesTransport && !s?.isStaffChild && !s?.isExempted && transportCost > 0) {
+        return Math.round(transportCost);
       }
-
-      // Fallback for legacy descriptions without explicit numeric breakdown
-      if (total <= 0) {
-        const hasTuition = /tuition/.test(lower);
-        const hasDh = /(dh\s*fee)|(d\/?h)|(dining\s*hall)|(dining)/.test(lower);
-        const hasTransport = /transport/.test(lower);
-        const found = [hasTuition, hasDh, hasTransport].filter(Boolean).length;
-        if (found === 1 && invoiceAmount > 0) {
-          total = invoiceAmount;
-          if (hasTuition) tuition = invoiceAmount;
-          if (hasDh) dh = invoiceAmount;
-          if (hasTransport) transport = invoiceAmount;
-        } else if (invoiceAmount > 0) {
-          // If unknown composition, treat all as fee pool for "all"
-          total = invoiceAmount;
-        }
-      }
-
-      return { total, tuition, dh, transport };
+      return 0;
+    };
+    const getDHAmount = (s: { usesDiningHall?: boolean; isStaffChild?: boolean; isExempted?: boolean }): number => {
+      if (!s?.usesDiningHall || diningHallCost <= 0) return 0;
+      const amt = (s?.isStaffChild || s?.isExempted) ? diningHallCost * 0.5 : diningHallCost;
+      return Math.round(amt);
     };
 
     const allocatedItems = allLogs.map((l: any) => {
       const invAmount = parseFloat(String(l.invoiceAmount ?? 0)) || 0;
-      const b = parseBreakdown(l.invoiceDescription || '', invAmount);
-      const denom = b.total > 0 ? b.total : invAmount;
-      const safeDenom = denom > 0 ? denom : 0;
+      const transportAmt = getTransportAmount(l);
+      const dhAmt = getDHAmount(l);
 
-      let allocated = l.amountPaid;
-      if (filterFeeType !== 'all') {
-        const numer =
-          filterFeeType === 'tuition' ? b.tuition :
-          filterFeeType === 'dh' ? b.dh :
-          filterFeeType === 'transport' ? b.transport : (b.tuition + b.dh + b.transport);
-        allocated = safeDenom > 0 ? (l.amountPaid * (numer / safeDenom)) : 0;
+      // Tuition = invoice amount minus transport and DH only. Explicitly remove transport and DH.
+      const tuitionAmt = Math.max(0, invAmount - transportAmt - dhAmt);
+      const safeDenom = invAmount > 0 ? invAmount : 1;
+      const payment = parseFloat(String(l.amountPaid ?? 0)) || 0;
+      const effectivePayment = invAmount > 0 ? Math.min(payment, invAmount) : payment;
+
+      let allocated = payment;
+      if (filterFeeType === 'transport') {
+        allocated = safeDenom > 0 ? (effectivePayment * transportAmt) / safeDenom : 0;
+      } else if (filterFeeType === 'dh') {
+        allocated = safeDenom > 0 ? (effectivePayment * dhAmt) / safeDenom : 0;
+      } else if (filterFeeType === 'tuition') {
+        allocated = safeDenom > 0 && tuitionAmt > 0 ? (effectivePayment * tuitionAmt) / safeDenom : 0;
       } else {
-        // "All" means tuition + DH + transport only (exclude unrelated charges)
-        const feePool = b.tuition + b.dh + b.transport;
-        allocated = feePool > 0 && safeDenom > 0 ? (l.amountPaid * (feePool / safeDenom)) : l.amountPaid;
+        allocated = payment;
       }
 
-      return {
-        ...l,
-        amountPaid: Math.round((allocated || 0) * 100) / 100
-      };
+      // Transport and DH: whole numbers only.
+      const rounded =
+        filterFeeType === 'transport' || filterFeeType === 'dh'
+          ? Math.round(allocated)
+          : Math.round(allocated * 100) / 100;
+
+      return { ...l, amountPaid: rounded };
     });
 
-    const items = allocatedItems.filter((l) => (l.amountPaid || 0) > 0);
+    const allItems = allocatedItems.filter((l) => (l.amountPaid || 0) > 0);
+    const totalItemCount = allItems.length;
+
+    // Pagination: default 50 per page, max 100
+    const CASH_RECEIPTS_DEFAULT_LIMIT = 50;
+    const CASH_RECEIPTS_MAX_LIMIT = 100;
+    const page = Math.max(1, parseInt(String(pageParam || ''), 10) || 1);
+    const limitRaw = parseInt(String(limitParam || ''), 10);
+    const limit = Math.min(Math.max(Number.isFinite(limitRaw) ? limitRaw : CASH_RECEIPTS_DEFAULT_LIMIT, 1), CASH_RECEIPTS_MAX_LIMIT);
+    const skip = (page - 1) * limit;
+    const items = allItems.slice(skip, skip + limit);
+    const totalPages = Math.max(1, Math.ceil(totalItemCount / limit));
+
     // Determine base invoice scope for totals (invoices created for the term)
     const invoicesScopeForTotalsQb = invoiceRepository
       .createQueryBuilder('invoice')
@@ -2492,8 +2501,13 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const invoicesForTotals = await invoicesScopeForTotalsQb.getMany();
     const invoicesById = new Map((invoicesForTotals || []).map(iv => [iv.id, iv]));
 
-    // Total payments (PaymentLog sum) — used for transaction list total and fee-type filter
-    const totalPayments = Math.round(items.reduce((s, l) => s + l.amountPaid, 0) * 100) / 100;
+    // Total payments (PaymentLog sum) — sum of all allocated items, not just current page.
+    // Transport and DH use whole numbers (no decimal fraction).
+    const paymentsSum = allItems.reduce((s, l) => s + l.amountPaid, 0);
+    const totalPayments =
+      filterFeeType === 'transport' || filterFeeType === 'dh'
+        ? Math.round(paymentsSum)
+        : Math.round(paymentsSum * 100) / 100;
 
     // Net invoiced for reconciliation = sum(amount + previousBalance - prepaidAmount).
     // This matches the canonical invoice identity used elsewhere:
@@ -2589,9 +2603,13 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       studentsPartiallyPaid,
       studentsUnpaid,
       totalOutstanding,
-      count: items.length,
+      count: totalItemCount,
       items,
-      availableTerms
+      availableTerms,
+      page,
+      limit,
+      total: totalItemCount,
+      totalPages
     });
   } catch (error: any) {
     console.error('Error fetching cash receipts:', error);
@@ -2796,8 +2814,12 @@ export const reconcileTermOutstanding = async (req: AuthRequest, res: Response) 
     const inScopeQb = invoiceRepository.createQueryBuilder('iv')
       .where('COALESCE(iv.isVoided, false) = false');
     if (rangeStart && rangeEnd) {
-      inScopeQb.andWhere('iv.createdAt BETWEEN :startDate AND :endDate', { startDate: rangeStart, endDate: rangeEnd })
-               .orWhere('LOWER(TRIM(COALESCE(iv.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+      inScopeQb.andWhere(
+        new Brackets((q) => {
+          q.where('iv.createdAt BETWEEN :startDate AND :endDate', { startDate: rangeStart, endDate: rangeEnd })
+            .orWhere('LOWER(TRIM(COALESCE(iv.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
+        })
+      );
     } else {
       inScopeQb.andWhere('LOWER(TRIM(COALESCE(iv.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
     }
@@ -2810,7 +2832,16 @@ export const reconcileTermOutstanding = async (req: AuthRequest, res: Response) 
     }
 
     // Latest invoice per student (global)
-    const students = await studentRepository.find({ select: ['id'] });
+    const students = await studentRepository.find({ select: ['id', 'firstName', 'lastName', 'studentNumber'] });
+    const studentById = new Map(
+      (students as any[]).map((s: any) => [
+        s.id,
+        {
+          studentNumber: s.studentNumber || '',
+          studentName: [s.firstName, s.lastName].filter(Boolean).join(' ').trim() || 'N/A'
+        }
+      ])
+    );
     const latestByStudent = new Map<string, any>();
     for (const s of students) {
       const latest = await invoiceRepository.findOne({
@@ -2824,27 +2855,63 @@ export const reconcileTermOutstanding = async (req: AuthRequest, res: Response) 
     const totalOutstandingTerm = Math.round(inScopeInvoices.reduce((sum, iv: any) => sum + (parseFloat(String(iv.balance || 0)) || 0), 0) * 100) / 100;
     const totalOutstandingLatest = Math.round(Array.from(latestByStudent.values()).reduce((sum, iv: any) => sum + (parseFloat(String(iv.balance || 0)) || 0), 0) * 100) / 100;
 
-    // Discrepancies: in-scope invoices that are not the latest for that student
+    // Discrepancies: earlier invoices with outstanding balance while a newer invoice already exists.
     const discrepancies = [];
     for (const [studentId, invoices] of inScopeByStudent.entries()) {
       const latest = latestByStudent.get(studentId);
       for (const iv of invoices) {
-        if (!latest || latest.id !== iv.id) {
+        const ivBalance = parseFloat(String(iv.balance || 0)) || 0;
+        // A discrepancy exists whenever an in-scope invoice still has balance but is not the student's latest invoice.
+        // Do not require strictly later createdAt; bulk-created invoices can share identical timestamps.
+        if (latest && latest.id !== iv.id && ivBalance > 0) {
+          const stu = studentById.get(studentId) || { studentNumber: '', studentName: 'N/A' };
           discrepancies.push({
             studentId,
+            studentNumber: stu.studentNumber,
+            studentName: stu.studentName,
             invoiceId: iv.id,
             invoiceNumber: iv.invoiceNumber,
             invoiceTerm: iv.term,
             invoiceCreatedAt: iv.createdAt,
-            balance: parseFloat(String(iv.balance || 0)) || 0,
-            isLatest: latest ? latest.id === iv.id : false,
+            balance: ivBalance,
+            isLatest: false,
             latestInvoiceId: latest?.id || null,
+            latestInvoiceNumber: latest?.invoiceNumber || null,
             latestInvoiceTerm: latest?.term || null,
             latestBalance: latest ? (parseFloat(String(latest.balance || 0)) || 0) : null
           });
         }
       }
     }
+
+    const discrepancyStudentsMap = new Map<string, any>();
+    for (const d of discrepancies) {
+      const prev = discrepancyStudentsMap.get(d.studentId) || {
+        studentId: d.studentId,
+        studentNumber: d.studentNumber,
+        studentName: d.studentName,
+        earlierOutstandingTotal: 0,
+        earlierInvoicesCount: 0,
+        latestInvoiceId: d.latestInvoiceId,
+        latestInvoiceNumber: d.latestInvoiceNumber,
+        latestInvoiceTerm: d.latestInvoiceTerm,
+        latestBalance: d.latestBalance,
+        earlierInvoices: [] as any[]
+      };
+      prev.earlierOutstandingTotal = Math.round((prev.earlierOutstandingTotal + (d.balance || 0)) * 100) / 100;
+      prev.earlierInvoicesCount += 1;
+      prev.earlierInvoices.push({
+        invoiceId: d.invoiceId,
+        invoiceNumber: d.invoiceNumber,
+        invoiceTerm: d.invoiceTerm,
+        invoiceCreatedAt: d.invoiceCreatedAt,
+        balance: d.balance
+      });
+      discrepancyStudentsMap.set(d.studentId, prev);
+    }
+    const discrepancyStudents = Array.from(discrepancyStudentsMap.values())
+      .sort((a, b) => (b.earlierOutstandingTotal || 0) - (a.earlierOutstandingTotal || 0));
+    const difference = Math.round((totalOutstandingTerm - totalOutstandingLatest) * 100) / 100;
 
     // Payments sum for the term-scoped invoices (to cross-verify cash received)
     const logQb = paymentLogRepository.createQueryBuilder('log')
@@ -2863,14 +2930,16 @@ export const reconcileTermOutstanding = async (req: AuthRequest, res: Response) 
       term: termToUse,
       totalOutstandingTerm,
       totalOutstandingLatest,
+      difference,
       totalPaymentsForInScope,
       counts: {
         inScopeInvoices: inScopeInvoices.length,
         studentsWithInScopeInvoices: inScopeByStudent.size,
         studentsTotal: students.length,
-        discrepancies: discrepancies.length
+        discrepancies: discrepancyStudents.length
       },
-      discrepancies: discrepancies.slice(0, 200) // cap to avoid overly large payloads
+      discrepancies: discrepancies.slice(0, 200), // invoice-level (capped)
+      discrepancyStudents: discrepancyStudents.slice(0, 300) // student-level list
     });
   } catch (error: any) {
     console.error('Error reconciling term outstanding:', error);

@@ -32,11 +32,11 @@
   <!-- Term and fee type filters -->
   <div class="card term-selector-card" *ngIf="term">
     <div class="card-body filters-row">
-      <div class="filter-group" *ngIf="canSelectTerm && availableTerms.length > 0">
+      <div class="filter-group filter-group-term" *ngIf="canSelectTerm && availableTerms.length > 0">
         <label for="termSelect" class="term-label">Term</label>
         <select
           id="termSelect"
-          class="term-select"
+          class="term-select term-select-dropdown"
           [ngModel]="term"
           (ngModelChange)="onTermSelect($event)"
           [ngModelOptions]="{standalone: true}">
@@ -44,16 +44,41 @@
         </select>
         <span class="term-hint" *ngIf="activeTerm && term === activeTerm">Current term</span>
       </div>
-      <div class="filter-group">
+      <div class="filter-group filter-group-fee-type">
         <label for="feeTypeSelect" class="term-label">Fee type</label>
         <select
           id="feeTypeSelect"
-          class="term-select"
+          class="term-select fee-type-select"
           [ngModel]="feeType"
           (ngModelChange)="onFeeTypeSelect($event)"
           [ngModelOptions]="{standalone: true}">
           <option *ngFor="let opt of feeTypeOptions" [value]="opt.value">{{ opt.label }}</option>
         </select>
+      </div>
+      <div class="dates-row">
+        <div class="filter-group">
+          <label for="dateFrom" class="term-label">From date</label>
+          <input
+            id="dateFrom"
+            type="date"
+            class="term-select date-input"
+            [ngModel]="dateFrom"
+            (ngModelChange)="onDateFromChange($event)"
+            [ngModelOptions]="{standalone: true}">
+        </div>
+        <div class="filter-group">
+          <label for="dateTo" class="term-label">To date</label>
+          <input
+            id="dateTo"
+            type="date"
+            class="term-select date-input"
+            [ngModel]="dateTo"
+            (ngModelChange)="onDateToChange($event)"
+            [ngModelOptions]="{standalone: true}">
+        </div>
+        <div class="filter-group" *ngIf="dateFrom || dateTo">
+          <button type="button" class="btn-clear-dates" (click)="clearDateFilter()" title="Clear date filter">Clear dates</button>
+        </div>
       </div>
     </div>
   </div>
@@ -132,6 +157,59 @@
           <div class="stat-breakdown">Based on term invoiced vs collected</div>
         </div>
       </div>
+      <!-- Finance Reconciliation -->
+      <div class="stat-card stat-warning" title="Difference represents balances on earlier invoices that are not each student's latest invoice.">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon">🧮</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(reconcileDifference) }}</div>
+          <div class="stat-label">Reconciliation Difference</div>
+          <div class="stat-breakdown">
+            Term Outstanding {{ currencySymbol }} {{ formatCurrency(reconcileOutstandingTerm) }} vs Current Student Balances {{ currencySymbol }} {{ formatCurrency(currentOutstandingLatest) }}
+          </div>
+          <div class="stat-breakdown">Difference represents older invoices still unpaid while newer invoices already exist.</div>
+          <button type="button" class="btn btn-modern btn-export" style="margin-top:8px;" (click)="toggleReconcileStudents()">
+            {{ showReconcileStudents ? 'Hide Students' : 'View Students' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-card card" *ngIf="showReconcileStudents">
+      <div class="card-header">
+        <h2>Students with earlier unpaid invoices (newer invoice exists)</h2>
+        <button type="button" class="btn btn-modern btn-export" (click)="exportReconcileStudentsCsv()" [disabled]="reconcileStudents.length === 0">
+          Export CSV
+        </button>
+      </div>
+      <div class="table-scroll" *ngIf="reconcileStudents.length > 0; else noReconStudents">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Student #</th>
+              <th>Student</th>
+              <th>Earlier Outstanding</th>
+              <th>Earlier Invoices</th>
+              <th>Latest Invoice</th>
+              <th>Latest Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of reconcileStudents">
+              <td>{{ s.studentNumber || '—' }}</td>
+              <td>{{ s.studentName || '—' }}</td>
+              <td>{{ currencySymbol }} {{ formatCurrency(s.earlierOutstandingTotal || 0) }}</td>
+              <td>{{ s.earlierInvoicesCount || 0 }}</td>
+              <td>{{ s.latestInvoiceNumber || '—' }} ({{ s.latestInvoiceTerm || '—' }})</td>
+              <td>{{ currencySymbol }} {{ formatCurrency(s.latestBalance || 0) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ng-template #noReconStudents>
+        <div style="padding:16px;color:#64748b;">No students found for this reconciliation condition.</div>
+      </ng-template>
     </div>
 
     <!-- Payment Trend -->
@@ -153,9 +231,27 @@
     </div>
 
     <!-- Table -->
-      <div class="table-card card" *ngIf="items.length > 0">
+      <div class="table-card card" *ngIf="items.length > 0 || (count > 0 && loading === false)">
       <div class="card-header">
         <h2>Payments — {{ term }}{{ getFeeTypeFilterLabel() }}</h2>
+      </div>
+      <div class="pagination-controls" *ngIf="total > 0">
+        <span class="pagination-info">{{ paginationRangeText }}</span>
+        <div class="pagination-actions">
+          <label class="pagination-label">Per page</label>
+          <select
+            [ngModel]="limit"
+            (ngModelChange)="onLimitChange($event)"
+            [ngModelOptions]="{standalone: true}"
+            class="pagination-limit">
+            <option *ngFor="let opt of limitOptions" [value]="opt">{{ opt }}</option>
+          </select>
+          <div class="pagination-nav">
+            <button type="button" (click)="onPageChange(page - 1)" [disabled]="page <= 1" class="btn-pag">‹ Prev</button>
+            <span class="page-indicator">Page {{ page }} of {{ totalPages }}</span>
+            <button type="button" (click)="onPageChange(page + 1)" [disabled]="page >= totalPages" class="btn-pag">Next ›</button>
+          </div>
+        </div>
       </div>
       <div class="table-scroll">
         <table class="data-table">
@@ -180,6 +276,14 @@
             </tr>
           </tbody>
         </table>
+      </div>
+      <div class="pagination-controls pagination-bottom" *ngIf="total > 0">
+        <span class="pagination-info">{{ paginationRangeText }}</span>
+        <div class="pagination-nav">
+          <button type="button" (click)="onPageChange(page - 1)" [disabled]="page <= 1" class="btn-pag">‹ Prev</button>
+          <span class="page-indicator">Page {{ page }} of {{ totalPages }}</span>
+          <button type="button" (click)="onPageChange(page + 1)" [disabled]="page >= totalPages" class="btn-pag">Next ›</button>
+        </div>
       </div>
     </div>
 

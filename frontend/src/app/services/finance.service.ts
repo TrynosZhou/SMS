@@ -260,8 +260,8 @@ export class FinanceService {
     });
   }
 
-  /** Cash receipts: total payments via /payments/record for the term (Tuition + DH + Transport). Optional feeType: all | tuition | dh | transport. */
-  getCashReceipts(term?: string, feeType?: string): Observable<{
+  /** Cash receipts: total payments via /payments/record for the term (Tuition + DH + Transport). Optional feeType, page, limit, startDate, endDate. */
+  getCashReceipts(term?: string, feeType?: string, page?: number, limit?: number, startDate?: string, endDate?: string): Observable<{
     term: string;
     activeTerm: string | null;
     feeType: string;
@@ -289,10 +289,18 @@ export class FinanceService {
       studentNumber: string;
     }>;
     availableTerms: string[];
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
   }> {
     const params: any = {};
     if (term && term.trim()) params.term = term.trim();
     if (feeType && feeType !== 'all') params.feeType = feeType;
+    if (page != null && page >= 1) params.page = String(page);
+    if (limit != null && limit >= 1) params.limit = String(Math.min(100, Math.max(1, limit)));
+    if (startDate && startDate.trim()) params.startDate = startDate.trim();
+    if (endDate && endDate.trim()) params.endDate = endDate.trim();
     return this.http.get<any>(`${this.apiUrl}/finance/cash-receipts`, { params });
   }
 
@@ -301,8 +309,26 @@ export class FinanceService {
     term: string;
     totalOutstandingTerm: number;
     totalOutstandingLatest: number;
+    difference: number;
     totalPaymentsForInScope: number;
     counts: { inScopeInvoices: number; studentsWithInScopeInvoices: number; studentsTotal: number; discrepancies: number };
+    discrepancyStudents: Array<{
+      studentId: string;
+      studentNumber: string;
+      studentName: string;
+      earlierOutstandingTotal: number;
+      earlierInvoicesCount: number;
+      latestInvoiceNumber: string | null;
+      latestInvoiceTerm: string | null;
+      latestBalance: number | null;
+      earlierInvoices: Array<{
+        invoiceId: string;
+        invoiceNumber: string;
+        invoiceTerm: string;
+        invoiceCreatedAt: string;
+        balance: number;
+      }>;
+    }>;
   }> {
     const params: any = {};
     if (term && term.trim()) params.term = term.trim();

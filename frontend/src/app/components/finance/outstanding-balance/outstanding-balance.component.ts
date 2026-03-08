@@ -27,6 +27,20 @@ export class OutstandingBalanceComponent implements OnInit {
   totalPaymentsForTerm = 0;
   transactionsForTerm = 0;
   loadingTermStats = false;
+  reconcileOutstandingTerm = 0;
+  reconcileOutstandingLatest = 0;
+  reconcileDifference = 0;
+  reconcileStudents: Array<{
+    studentId: string;
+    studentNumber: string;
+    studentName: string;
+    earlierOutstandingTotal: number;
+    earlierInvoicesCount: number;
+    latestInvoiceNumber: string | null;
+    latestInvoiceTerm: string | null;
+    latestBalance: number | null;
+  }> = [];
+  showReconcileStudents = false;
 
   constructor(
     private financeService: FinanceService,
@@ -72,6 +86,7 @@ export class OutstandingBalanceComponent implements OnInit {
 
   onTermSelect(val: string): void {
     this.term = val;
+    this.showReconcileStudents = false;
     this.loadTermPaymentStats();
   }
 
@@ -79,22 +94,90 @@ export class OutstandingBalanceComponent implements OnInit {
     this.loadingTermStats = true;
     this.financeService.getCashReceipts(this.term || undefined, 'all').subscribe({
       next: (data: any) => {
-        // Align with Cash Receipts "Total Collected" card.
-        this.totalPaymentsForTerm = data?.totalCollected ?? data?.totalPayments ?? 0;
+        // Use same "Total Collected" as Cash Receipts: backend sends totalCollected (reconciled).
+        // Fallback: derive as totalInvoiced - totalOutstanding so it always matches cash_receipts.
+        const invoiced = Number(data?.totalInvoiced) || 0;
+        const outstanding = Number(data?.totalOutstanding) ?? 0;
+        const fromApi = data?.totalCollected;
+        this.totalPaymentsForTerm =
+          (typeof fromApi === 'number' && !Number.isNaN(fromApi))
+            ? fromApi
+            : (invoiced > 0 ? Math.round((invoiced - outstanding) * 100) / 100 : (Number(data?.totalPayments) || 0));
         this.transactionsForTerm = data?.count ?? 0;
         this.availableTerms = Array.isArray(data?.availableTerms) ? data.availableTerms : [];
         if (!this.term && data?.term) {
           this.term = data.term;
         }
         this.loadingTermStats = false;
+        this.loadReconcileSummary();
       },
       error: () => {
         this.totalPaymentsForTerm = 0;
         this.transactionsForTerm = 0;
         this.availableTerms = [];
         this.loadingTermStats = false;
+        this.loadReconcileSummary();
       }
     });
+  }
+
+  private loadReconcileSummary(): void {
+    this.financeService.getReconcileSummary(this.term || undefined).subscribe({
+      next: (data: any) => {
+        this.reconcileOutstandingTerm = data?.totalOutstandingTerm ?? 0;
+        this.reconcileOutstandingLatest = data?.totalOutstandingLatest ?? 0;
+        this.reconcileDifference = data?.difference ?? ((this.reconcileOutstandingTerm || 0) - (this.reconcileOutstandingLatest || 0));
+        this.reconcileStudents = Array.isArray(data?.discrepancyStudents) ? data.discrepancyStudents : [];
+      },
+      error: () => {
+        this.reconcileOutstandingTerm = 0;
+        this.reconcileOutstandingLatest = 0;
+        this.reconcileDifference = 0;
+        this.reconcileStudents = [];
+        this.showReconcileStudents = false;
+      }
+    });
+  }
+
+  toggleReconcileStudents(): void {
+    this.showReconcileStudents = !this.showReconcileStudents;
+  }
+
+  exportReconcileStudentsCsv(): void {
+    const rows = Array.isArray(this.reconcileStudents) ? this.reconcileStudents : [];
+    if (rows.length === 0) return;
+    const esc = (v: any) => {
+      const s = String(v ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = [
+      'Student Number',
+      'Student Name',
+      'Earlier Outstanding Total',
+      'Earlier Invoices Count',
+      'Latest Invoice Number',
+      'Latest Invoice Term',
+      'Latest Balance'
+    ];
+    const lines = [header.join(',')];
+    for (const r of rows) {
+      lines.push([
+        esc(r.studentNumber),
+        esc(r.studentName),
+        esc((r.earlierOutstandingTotal ?? 0).toFixed(2)),
+        esc(r.earlierInvoicesCount ?? 0),
+        esc(r.latestInvoiceNumber ?? ''),
+        esc(r.latestInvoiceTerm ?? ''),
+        esc(((r.latestBalance ?? 0) as number).toFixed(2))
+      ].join(','));
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Reconciliation_Students_${(this.term || 'Term').replace(/\s+/g, '_')}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
 
   /** Sort by invoice balance descending (largest amounts first). */

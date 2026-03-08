@@ -275,16 +275,48 @@ export function createReceiptPDF(
       const registrationFeeCfg = parseAmount(feesSettings.registrationFee);
       const deskFeeCfg = parseAmount(feesSettings.deskFee);
 
-      let tuitionFee = 0;
-      if (!student.isStaffChild && !student.isExempted) {
+      const descriptionText = (invoice.description || '').toString();
+      // Prefer transport and DH from the receipt/invoice breakdown when present
+      let tuitionFromDesc = 0;
+      let transportFromDesc = 0;
+      let diningHallFromDesc = 0;
+      if (descriptionText && descriptionText.trim() !== '') {
+        const parseBreakdownFromDesc = (t: string) => {
+          const lower = t.toLowerCase();
+          const add = (label: string, amt: number) => {
+            if (label.includes('tuition')) tuitionFromDesc += amt;
+            if (label.includes('dining') || label.includes('dh') || label.includes('d/h')) diningHallFromDesc += amt;
+            if (label.includes('transport')) transportFromDesc += amt;
+          };
+          const part = t.includes('Breakdown') ? t.split('Breakdown')[1] : t;
+          const segments = part.split(/[|\n]/).map((s) => s.trim()).filter(Boolean);
+          for (const seg of segments) {
+            const m = seg.match(/([^:]+):\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)/i);
+            if (m) {
+              const amt = parseFloat(String(m[2]).replace(/,/g, '')) || 0;
+              add(String(m[1]).toLowerCase(), amt);
+            }
+          }
+          const pairRegex = /(tuition|dining\s*hall|dh\s*fee|transport(?:\s*fee)?)[^0-9-]*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)/gi;
+          let match;
+          while ((match = pairRegex.exec(t)) !== null) {
+            const amt = parseFloat(String(match[2]).replace(/,/g, '')) || 0;
+            add(String(match[1]).toLowerCase(), amt);
+          }
+        };
+        parseBreakdownFromDesc(descriptionText);
+      }
+
+      let tuitionFee = tuitionFromDesc > 0 ? tuitionFromDesc : 0;
+      if (tuitionFee === 0 && !student.isStaffChild && !student.isExempted) {
         tuitionFee = student.studentType === 'Boarder' ? boarderTuitionFee : dayScholarTuitionFee;
       }
-      let transportFee = 0;
-      if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild && !student.isExempted) {
+      let transportFee = transportFromDesc > 0 ? transportFromDesc : 0;
+      if (transportFee === 0 && student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild && !student.isExempted) {
         transportFee = transportCost;
       }
-      let diningHallFee = 0;
-      if (student.usesDiningHall) {
+      let diningHallFee = diningHallFromDesc > 0 ? diningHallFromDesc : 0;
+      if (diningHallFee === 0 && student.usesDiningHall) {
         diningHallFee = (student.isStaffChild || student.isExempted) ? diningHallCost * 0.5 : diningHallCost;
       }
 
@@ -299,7 +331,6 @@ export function createReceiptPDF(
         renderRow(dhLabel, diningHallFee);
       }
 
-      const descriptionText = (invoice.description || '').toString();
       const formatShort = (v: number) => (Math.round(v * 100) % 100 === 0 ? String(Math.round(v)) : v.toFixed(2));
       let registrationFromDesc = 0;
       let deskFromDesc = 0;

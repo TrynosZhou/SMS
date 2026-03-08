@@ -2099,13 +2099,14 @@ async function generateLogisticsReportPdf(
   const nameFontSize = 16;
   const textAscender = nameFontSize * 0.7;
 
-  if (settings?.schoolLogo && settings.schoolLogo.startsWith('data:image')) {
+  const logo2 = (settings as any)?.schoolLogo2;
+  if (logo2 && String(logo2).trim().startsWith('data:image')) {
     try {
-      const base64Data = settings.schoolLogo.split(',')[1] || '';
+      const base64Data = String(logo2).split(',')[1] || '';
       const logoBuffer = Buffer.from(base64Data, 'base64');
       doc.image(logoBuffer, 40, headerTopY, { width: 70, height: 50 });
     } catch (error) {
-      console.error('Failed to render school logo in logistics report:', error);
+      console.error('Failed to render school logo 2 in logistics report:', error);
     }
   }
 
@@ -2164,16 +2165,18 @@ async function generateLogisticsReportPdf(
   const headerY = cursorY;
   const colX = {
     index: 40,
-    studentNumber: 70,
-    name: 170,
-    className: 340,
-    contact: 420
+    studentNumber: 65,
+    lastName: 125,
+    firstName: 195,
+    className: 285,
+    contact: 370
   };
 
   doc.fontSize(10).font('Helvetica-Bold').fillColor('#1F4B99');
   doc.text('#', colX.index, headerY);
   doc.text('Student No', colX.studentNumber, headerY);
-  doc.text('Name', colX.name, headerY);
+  doc.text('Last Name', colX.lastName, headerY);
+  doc.text('First Name', colX.firstName, headerY);
   doc.text('Class', colX.className, headerY);
   doc.text('Contact', colX.contact, headerY);
 
@@ -2214,14 +2217,16 @@ async function generateLogisticsReportPdf(
       cursorY = 40;
     }
 
-    const fullName = `${student.firstName} ${student.lastName}`.trim();
+    const lastName = (student.lastName || '').trim() || '-';
+    const firstName = (student.firstName || '').trim() || '-';
     const contact = student.contactNumber || student.phoneNumber || '';
     const displayClass = extractGrade(student.classEntity?.name);
 
     doc.text(String(index + 1), colX.index, cursorY);
-    doc.text(student.studentNumber || '-', colX.studentNumber, cursorY, { width: 90 });
-    doc.text(fullName, colX.name, cursorY, { width: 160 });
-    doc.text(displayClass || '-', colX.className, cursorY, { width: 70 });
+    doc.text(student.studentNumber || '-', colX.studentNumber, cursorY, { width: 55 });
+    doc.text(lastName, colX.lastName, cursorY, { width: 65 });
+    doc.text(firstName, colX.firstName, cursorY, { width: 85 });
+    doc.text(displayClass || '-', colX.className, cursorY, { width: 80 });
     doc.text(contact, colX.contact, cursorY, { width: 120 });
 
     cursorY += rowHeight;

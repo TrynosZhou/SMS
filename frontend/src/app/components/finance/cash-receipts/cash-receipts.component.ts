@@ -12,6 +12,8 @@ export class CashReceiptsComponent implements OnInit {
   term = '';
   activeTerm: string | null = null;
   feeType = 'all';
+  dateFrom = '';
+  dateTo = '';
   totalPayments = 0;  // sum of PaymentLog (transaction list)
   totalCollected = 0; // sum of invoice.paidAmount — ledger figure
   totalOutstanding = 0;
@@ -23,6 +25,19 @@ export class CashReceiptsComponent implements OnInit {
   studentsUnpaid = 0;
   // Reconcile summary
   currentOutstandingLatest = 0;
+  reconcileOutstandingTerm = 0;
+  reconcileDifference = 0;
+  reconcileStudents: Array<{
+    studentId: string;
+    studentNumber: string;
+    studentName: string;
+    earlierOutstandingTotal: number;
+    earlierInvoicesCount: number;
+    latestInvoiceNumber: string | null;
+    latestInvoiceTerm: string | null;
+    latestBalance: number | null;
+  }> = [];
+  showReconcileStudents = false;
   // Derived indicators
   collectionRate = 0; // %
   // Trend data (payments over time)
@@ -31,6 +46,11 @@ export class CashReceiptsComponent implements OnInit {
   count = 0;
   items: any[] = [];
   availableTerms: string[] = [];
+  page = 1;
+  limit = 50;
+  total = 0;
+  totalPages = 1;
+  readonly limitOptions = [25, 50, 75, 100];
   currencySymbol = 'KES';
   loading = false;
   loadingPdf = false;
@@ -75,15 +95,22 @@ export class CashReceiptsComponent implements OnInit {
   loadCashReceipts(): void {
     this.loading = true;
     this.error = '';
-    this.financeService.getCashReceipts(this.term || undefined, this.feeType).subscribe({
+    this.financeService.getCashReceipts(this.term || undefined, this.feeType, this.page, this.limit, this.dateFrom || undefined, this.dateTo || undefined).subscribe({
       next: (data: any) => {
         this.term = data.term || this.term;
         this.activeTerm = data.activeTerm ?? null;
         this.feeType = data.feeType ?? 'all';
         this.totalPayments = data.totalPayments ?? 0;
-        this.totalCollected = data.totalCollected ?? 0;
         this.totalOutstanding = data.totalOutstanding ?? 0;
         this.totalInvoiced = data.totalInvoiced ?? 0;
+        // Total Collected must match outstanding-balance: use API value or derive (totalInvoiced - totalOutstanding)
+        const fromApi = data.totalCollected;
+        const invoiced = this.totalInvoiced;
+        const outstanding = this.totalOutstanding;
+        this.totalCollected =
+          (typeof fromApi === 'number' && !Number.isNaN(fromApi))
+            ? fromApi
+            : (this.feeType === 'all' && invoiced > 0 ? Math.round((invoiced - outstanding) * 100) / 100 : (data.totalPayments ?? 0));
         this.invoicesCount = data.invoicesCount ?? 0;
         this.studentsWithInvoices = data.studentsWithInvoices ?? 0;
         this.studentsFullyPaid = data.studentsFullyPaid ?? 0;
@@ -92,6 +119,10 @@ export class CashReceiptsComponent implements OnInit {
         this.count = data.count ?? 0;
         this.items = Array.isArray(data.items) ? data.items : [];
         this.availableTerms = Array.isArray(data.availableTerms) ? data.availableTerms : [];
+        this.page = data.page ?? 1;
+        this.limit = data.limit ?? 50;
+        this.total = data.total ?? this.count;
+        this.totalPages = data.totalPages ?? 1;
         // Derived
         this.collectionRate = this.totalInvoiced > 0 ? Math.round((this.totalCollected / this.totalInvoiced) * 1000) / 10 : 0;
         this.trendPoints = this.buildTrend(this.items);
@@ -117,30 +148,128 @@ export class CashReceiptsComponent implements OnInit {
         this.trendPoints = [];
         this.trendSvg = { points: '', dots: [] };
         this.currentOutstandingLatest = 0;
+        this.reconcileOutstandingTerm = 0;
+        this.reconcileDifference = 0;
+        this.reconcileStudents = [];
+        this.showReconcileStudents = false;
         this.count = 0;
+        this.page = 1;
+        this.total = 0;
+        this.totalPages = 1;
       }
     });
   }
 
   onTermSelect(val: string): void {
     this.term = val;
+    this.page = 1;
+    this.showReconcileStudents = false;
     this.loadCashReceipts();
   }
 
   onFeeTypeSelect(val: string): void {
     this.feeType = val;
+    this.page = 1;
     this.loadCashReceipts();
+  }
+
+  onDateFromChange(val: string): void {
+    this.dateFrom = val;
+    this.page = 1;
+    this.loadCashReceipts();
+  }
+
+  onDateToChange(val: string): void {
+    this.dateTo = val;
+    this.page = 1;
+    this.loadCashReceipts();
+  }
+
+  clearDateFilter(): void {
+    this.dateFrom = '';
+    this.dateTo = '';
+    this.page = 1;
+    this.loadCashReceipts();
+  }
+
+  onPageChange(p: number): void {
+    if (p >= 1 && p <= this.totalPages) {
+      this.page = p;
+      this.loadCashReceipts();
+    }
+  }
+
+  onLimitChange(l: number | string): void {
+    const val = typeof l === 'string' ? parseInt(l, 10) : l;
+    this.limit = Math.min(100, Math.max(1, Number.isFinite(val) ? val : 50));
+    this.page = 1;
+    this.loadCashReceipts();
+  }
+
+  get paginationRangeText(): string {
+    if (this.total <= 0) return '0 records';
+    const from = (this.page - 1) * this.limit + 1;
+    const to = Math.min(this.page * this.limit, this.total);
+    return `Showing ${from}–${to} of ${this.total}`;
   }
 
   private loadReconcileSummary(): void {
     this.financeService.getReconcileSummary(this.term || undefined).subscribe({
       next: (data: any) => {
         this.currentOutstandingLatest = data?.totalOutstandingLatest ?? 0;
+        this.reconcileOutstandingTerm = data?.totalOutstandingTerm ?? this.totalOutstanding ?? 0;
+        this.reconcileDifference = data?.difference ?? ((this.reconcileOutstandingTerm || 0) - (this.currentOutstandingLatest || 0));
+        this.reconcileStudents = Array.isArray(data?.discrepancyStudents) ? data.discrepancyStudents : [];
       },
       error: () => {
         this.currentOutstandingLatest = 0;
+        this.reconcileOutstandingTerm = 0;
+        this.reconcileDifference = 0;
+        this.reconcileStudents = [];
+        this.showReconcileStudents = false;
       }
     });
+  }
+
+  toggleReconcileStudents(): void {
+    this.showReconcileStudents = !this.showReconcileStudents;
+  }
+
+  exportReconcileStudentsCsv(): void {
+    const rows = Array.isArray(this.reconcileStudents) ? this.reconcileStudents : [];
+    if (rows.length === 0) return;
+    const esc = (v: any) => {
+      const s = String(v ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = [
+      'Student Number',
+      'Student Name',
+      'Earlier Outstanding Total',
+      'Earlier Invoices Count',
+      'Latest Invoice Number',
+      'Latest Invoice Term',
+      'Latest Balance'
+    ];
+    const lines = [header.join(',')];
+    for (const r of rows) {
+      lines.push([
+        esc(r.studentNumber),
+        esc(r.studentName),
+        esc((r.earlierOutstandingTotal ?? 0).toFixed(2)),
+        esc(r.earlierInvoicesCount ?? 0),
+        esc(r.latestInvoiceNumber ?? ''),
+        esc(r.latestInvoiceTerm ?? ''),
+        esc(((r.latestBalance ?? 0) as number).toFixed(2))
+      ].join(','));
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Reconciliation_Students_${(this.term || 'Term').replace(/\s+/g, '_')}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
 
   private buildTrend(items: any[]): Array<{ date: string; total: number }> {

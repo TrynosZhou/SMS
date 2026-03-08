@@ -695,6 +695,18 @@
   color: #555;
 }
 
+.feature-link {
+  color: inherit;
+  text-decoration: none;
+  display: block;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.feature-link:hover {
+  color: #2563eb;
+}
+
 .card ul li:last-child {
   border-bottom: none;
 }
