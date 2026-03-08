@@ -2425,9 +2425,31 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       };
     });
 
-    // Transport and DH: fixed amounts from settings based on student profile.
-    // Transport = transportCost when Day Scholar + usesTransport + not staff/exempt.
-    // DH = diningHallCost (or 50%) when usesDiningHall. Sum these amounts per payment.
+    // Transport and DH: prefer amounts from invoice description (matches receipt PDF breakdown), else use settings + student profile.
+    const parseTransportDHFromDesc = (desc: string): { transport: number; dh: number } => {
+      let transport = 0;
+      let dh = 0;
+      if (!desc || !desc.trim()) return { transport, dh };
+      const add = (label: string, amt: number) => {
+        if (label.includes('transport')) transport += amt;
+        if (label.includes('dining') || label.includes('dh') || label.includes('d/h')) dh += amt;
+      };
+      const segments = desc.split(/[|\n]/).map((s) => s.trim()).filter(Boolean);
+      for (const seg of segments) {
+        const m = seg.match(/([^:]+):\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)/i);
+        if (m) {
+          const amt = parseFloat(String(m[2]).replace(/,/g, '')) || 0;
+          add(String(m[1]).toLowerCase(), amt);
+        }
+      }
+      const pairRegex = /(tuition|dining\s*hall|dh\s*fee|transport(?:\s*fee)?)[^0-9-]*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)/gi;
+      let match;
+      while ((match = pairRegex.exec(desc)) !== null) {
+        const amt = parseFloat(String(match[2]).replace(/,/g, '')) || 0;
+        add(String(match[1]).toLowerCase(), amt);
+      }
+      return { transport: Math.round(transport), dh: Math.round(dh) };
+    };
     const getTransportAmount = (s: { studentType?: string; usesTransport?: boolean; isStaffChild?: boolean; isExempted?: boolean }): number => {
       if (s?.studentType === 'Day Scholar' && s?.usesTransport && !s?.isStaffChild && !s?.isExempted && transportCost > 0) {
         return Math.round(transportCost);
@@ -2442,10 +2464,13 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
 
     const allocatedItems = allLogs.map((l: any) => {
       const invAmount = parseFloat(String(l.invoiceAmount ?? 0)) || 0;
-      const transportAmt = getTransportAmount(l);
-      const dhAmt = getDHAmount(l);
+      const fromDesc = parseTransportDHFromDesc(String(l.invoiceDescription || ''));
+      const transportFromProfile = getTransportAmount(l);
+      const dhFromProfile = getDHAmount(l);
+      const transportAmt = fromDesc.transport > 0 ? fromDesc.transport : transportFromProfile;
+      const dhAmt = fromDesc.dh > 0 ? fromDesc.dh : dhFromProfile;
 
-      // Tuition = invoice amount minus transport and DH only. Explicitly remove transport and DH.
+      // Tuition = invoice amount minus transport and DH only (matches receipt breakdown).
       const tuitionAmt = Math.max(0, invAmount - transportAmt - dhAmt);
       const safeDenom = invAmount > 0 ? invAmount : 1;
       const payment = parseFloat(String(l.amountPaid ?? 0)) || 0;
