@@ -441,6 +441,7 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
     const queryBuilder = invoiceRepository
       .createQueryBuilder('invoice')
       .leftJoinAndSelect('invoice.student', 'student')
+      .andWhere('COALESCE(invoice.isVoided, false) = false')
       .orderBy('invoice.createdAt', 'DESC');
 
     if (studentId) {
@@ -470,7 +471,8 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
     // Compute total outstanding balance across all matching invoices (ignoring pagination)
     const sumQuery = invoiceRepository
       .createQueryBuilder('invoice')
-      .select('COALESCE(SUM(invoice.balance), 0)', 'totalBalance');
+      .select('COALESCE(SUM(invoice.balance), 0)', 'totalBalance')
+      .andWhere('COALESCE(invoice.isVoided, false) = false');
 
     if (studentId) {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -2357,20 +2359,12 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const rangeStart = targetSettings?.termStartDate || null;
     const rangeEnd = targetSettings?.termEndDate || null;
 
+    // Use term match only (same as invoice list) so Total Invoiced syncs with Total Invoice Amount
     const invoiceScopeQb = invoiceRepository
       .createQueryBuilder('iv')
       .select('iv.id', 'id')
-      .where('COALESCE(iv.isVoided, false) = false');
-    if (rangeStart && rangeEnd) {
-      invoiceScopeQb.andWhere(
-        new Brackets((q) => {
-          q.where('iv.createdAt BETWEEN :startDate AND :endDate', { startDate: rangeStart, endDate: rangeEnd })
-            .orWhere('LOWER(TRIM(COALESCE(iv.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
-        })
-      );
-    } else {
-      invoiceScopeQb.andWhere('LOWER(TRIM(COALESCE(iv.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
-    }
+      .where('COALESCE(iv.isVoided, false) = false')
+      .andWhere('LOWER(TRIM(COALESCE(iv.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
 
     const qb = paymentLogRepository
       .createQueryBuilder('log')
@@ -2462,29 +2456,47 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       return Math.round(amt);
     };
 
-    // Precompute transport and DH sums for tuition = total - transport - dh.
+    // Allocate each payment so Tuition + Transport + DH = payment exactly.
+    // Use floor for Transport and DH (whole numbers) so we never overstate them; tuition gets the remainder.
     let totalRawPayments = 0;
     let totalTransportSum = 0;
     let totalDHSum = 0;
+    let totalTuitionSum = 0;
 
     const allocatedItems = allLogs.map((l: any) => {
       const invAmount = parseFloat(String(l.invoiceAmount ?? 0)) || 0;
       const fromDesc = parseTransportDHFromDesc(String(l.invoiceDescription || ''));
       const transportFromProfile = getTransportAmount(l);
       const dhFromProfile = getDHAmount(l);
-      const transportAmt = fromDesc.transport > 0 ? fromDesc.transport : transportFromProfile;
-      const dhAmt = fromDesc.dh > 0 ? fromDesc.dh : dhFromProfile;
+      let transportAmt = fromDesc.transport > 0 ? fromDesc.transport : transportFromProfile;
+      let dhAmt = fromDesc.dh > 0 ? fromDesc.dh : dhFromProfile;
+
+      // Cap transport+DH so they never exceed invoice amount (avoids overstating when invoice has less)
+      if (invAmount > 0 && transportAmt + dhAmt > invAmount) {
+        const scale = invAmount / (transportAmt + dhAmt);
+        transportAmt = Math.round(transportAmt * scale);
+        dhAmt = Math.round(dhAmt * scale);
+      }
 
       const tuitionAmt = Math.max(0, invAmount - transportAmt - dhAmt);
       const safeDenom = invAmount > 0 ? invAmount : 1;
       const payment = parseFloat(String(l.amountPaid ?? 0)) || 0;
       const effectivePayment = invAmount > 0 ? Math.min(payment, invAmount) : payment;
 
+      // Floor for transport and DH (whole numbers) to avoid overstatement; tuition = remainder.
+      // Use effectivePayment so overpayments aren't over-allocated to this invoice's components.
+      const transportPortion = safeDenom > 0 ? Math.floor((effectivePayment * transportAmt) / safeDenom) : 0;
+      const dhPortion = safeDenom > 0 ? Math.floor((effectivePayment * dhAmt) / safeDenom) : 0;
+      const tuitionPortion = Math.max(0, Math.round((effectivePayment - transportPortion - dhPortion) * 100) / 100);
+
+      // If payment > invAmount, remainder goes to tuition (covers previous balance / overpayment)
+      const overpaymentRemainder = Math.max(0, payment - effectivePayment);
+      const tuitionWithOverpayment = tuitionPortion + overpaymentRemainder;
+
       totalRawPayments += payment;
-      const transportPortion = safeDenom > 0 ? (effectivePayment * transportAmt) / safeDenom : 0;
-      const dhPortion = safeDenom > 0 ? (effectivePayment * dhAmt) / safeDenom : 0;
       totalTransportSum += transportPortion;
       totalDHSum += dhPortion;
+      totalTuitionSum += tuitionWithOverpayment;
 
       let allocated = payment;
       if (filterFeeType === 'transport') {
@@ -2492,25 +2504,18 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       } else if (filterFeeType === 'dh') {
         allocated = dhPortion;
       } else if (filterFeeType === 'tuition') {
-        allocated = safeDenom > 0 && tuitionAmt > 0 ? (effectivePayment * tuitionAmt) / safeDenom : 0;
+        allocated = tuitionWithOverpayment;
       } else {
         allocated = payment;
       }
 
-      const rounded =
-        filterFeeType === 'transport' || filterFeeType === 'dh'
-          ? Math.round(allocated)
-          : Math.round(allocated * 100) / 100;
-
-      return { ...l, amountPaid: rounded };
+      return { ...l, amountPaid: allocated };
     });
 
     const allItems = allocatedItems.filter((l) => (l.amountPaid || 0) > 0);
 
-    // Tuition = Total receipts - Transport receipts - DH receipts (avoids understatement from rounding)
-    const transportRounded = Math.round(totalTransportSum);
-    const dhRounded = Math.round(totalDHSum);
-    const tuitionFromResidual = Math.max(0, Math.round((totalRawPayments - transportRounded - dhRounded) * 100) / 100);
+    // Totals: Tuition + Transport + DH = Total (exact, no rounding drift)
+    const tuitionTotal = Math.round(totalTuitionSum * 100) / 100;
     const totalItemCount = allItems.length;
 
     // Pagination: default 50 per page, max 100
@@ -2523,31 +2528,24 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const items = allItems.slice(skip, skip + limit);
     const totalPages = Math.max(1, Math.ceil(totalItemCount / limit));
 
-    // Determine base invoice scope for totals (invoices created for the term)
+    // Use term match only (same as invoice list) so Total Invoiced syncs with Total Invoice Amount
     const invoicesScopeForTotalsQb = invoiceRepository
       .createQueryBuilder('invoice')
-      .where('COALESCE(invoice.isVoided, false) = false');
-    if (rangeStart && rangeEnd) {
-      invoicesScopeForTotalsQb.andWhere(
-        new Brackets((q) => {
-          q.where('invoice.createdAt BETWEEN :startDate AND :endDate', { startDate: rangeStart, endDate: rangeEnd })
-            .orWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
-        })
-      );
-    } else {
-      invoicesScopeForTotalsQb.andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
-    }
+      .where('COALESCE(invoice.isVoided, false) = false')
+      .andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
     const invoicesForTotals = await invoicesScopeForTotalsQb.getMany();
     const invoicesById = new Map((invoicesForTotals || []).map(iv => [iv.id, iv]));
 
-    // Total payments: for tuition use (Total - Transport - DH) to avoid understatement from rounding.
+    // Total payments: Tuition + Transport + DH = Total (exact)
     const paymentsSum = allItems.reduce((s, l) => s + l.amountPaid, 0);
     const totalPayments =
       filterFeeType === 'tuition'
-        ? tuitionFromResidual
-        : filterFeeType === 'transport' || filterFeeType === 'dh'
-          ? Math.round(paymentsSum)
-          : Math.round(paymentsSum * 100) / 100;
+        ? tuitionTotal
+        : filterFeeType === 'transport'
+          ? totalTransportSum
+          : filterFeeType === 'dh'
+            ? totalDHSum
+            : Math.round(paymentsSum * 100) / 100;
 
     // Net invoiced for reconciliation = sum(amount + previousBalance - prepaidAmount).
     // This matches the canonical invoice identity used elsewhere:
@@ -2567,15 +2565,8 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const collectedQb = invoiceRepository
       .createQueryBuilder('invoice')
       .select('COALESCE(SUM(CAST(COALESCE(invoice.paidAmount, 0) AS numeric)), 0)', 'total')
-      .andWhere('COALESCE(invoice.isVoided, false) = false');
-    if (rangeStart && rangeEnd) {
-      collectedQb.andWhere(
-        '(LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term)) OR (invoice.createdAt BETWEEN :startDate AND :endDate))',
-        { term: termToUse, startDate: rangeStart, endDate: rangeEnd }
-      );
-    } else {
-      collectedQb.andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
-    }
+      .andWhere('COALESCE(invoice.isVoided, false) = false')
+      .andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
     const collectedRaw = await collectedQb.getRawOne<Record<string, string>>();
     const rawTotal = collectedRaw?.total ?? (collectedRaw as any)?.Total ?? 0;
     const totalCollectedFromPaidAmount = Math.round((parseFloat(String(rawTotal)) || 0) * 100) / 100;
@@ -2613,22 +2604,14 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const outstandingQb = invoiceRepository
       .createQueryBuilder('invoice')
       .select('COALESCE(SUM(CAST(COALESCE(invoice.balance, 0) AS numeric)), 0)', 'total')
-      .andWhere('COALESCE(invoice.isVoided, false) = false');
-    if (rangeStart && rangeEnd) {
-      outstandingQb.andWhere(
-        '(LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term)) OR (invoice.createdAt BETWEEN :startDate AND :endDate))',
-        { term: termToUse, startDate: rangeStart, endDate: rangeEnd }
-      );
-    } else {
-      outstandingQb.andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
-    }
+      .andWhere('COALESCE(invoice.isVoided, false) = false')
+      .andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
     const outstandingRaw = await outstandingQb.getRawOne<Record<string, string>>();
     const totalOutstanding = Math.round((parseFloat(String(outstandingRaw?.total ?? 0)) || 0) * 100) / 100;
 
-    // Canonical collected for cards: reconcile from the same scoped totals.
-    // This guarantees: totalInvoiced = totalCollected + totalOutstanding
-    const reconciledCollected = Math.round((totalInvoiced - totalOutstanding) * 100) / 100;
-    const totalCollected = filterFeeType === 'all' ? reconciledCollected : totalPayments;
+    // Use sum(invoice.paidAmount) as canonical Total Collected — matches invoice page Total Paid.
+    // Same scope as collectedQb (term match, non-voided).
+    const totalCollected = filterFeeType === 'all' ? totalCollectedFromPaidAmount : totalPayments;
 
     res.json({
       term: termToUse,
@@ -2638,6 +2621,12 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       totalCollected,
       totalInvoiced,
       invoicesCount,
+      /** Fee breakdown: Tuition + Transport + DH = total cash from receipts (when filter is 'all'). */
+      totalTuition: tuitionTotal,
+      totalTransport: totalTransportSum,
+      totalDH: totalDHSum,
+      /** Sum of all payment log amounts for term invoices; equals totalTuition + totalTransport + totalDH. */
+      totalReceiptsSum: Math.round(totalRawPayments * 100) / 100,
       studentsWithInvoices,
       studentsFullyPaid,
       studentsPartiallyPaid,

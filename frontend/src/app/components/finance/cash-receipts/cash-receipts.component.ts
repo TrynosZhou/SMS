@@ -16,6 +16,10 @@ export class CashReceiptsComponent implements OnInit {
   dateTo = '';
   totalPayments = 0;  // sum of PaymentLog (transaction list)
   totalCollected = 0; // sum of invoice.paidAmount — ledger figure
+  totalTuition = 0;
+  totalTransport = 0;
+  totalDH = 0;
+  totalReceiptsSum = 0;
   totalOutstanding = 0;
   totalInvoiced = 0;
   invoicesCount = 0;
@@ -101,6 +105,10 @@ export class CashReceiptsComponent implements OnInit {
         this.activeTerm = data.activeTerm ?? null;
         this.feeType = data.feeType ?? 'all';
         this.totalPayments = data.totalPayments ?? 0;
+        this.totalTuition = data.totalTuition ?? 0;
+        this.totalTransport = data.totalTransport ?? 0;
+        this.totalDH = data.totalDH ?? 0;
+        this.totalReceiptsSum = data.totalReceiptsSum ?? data.totalPayments ?? 0;
         this.totalOutstanding = data.totalOutstanding ?? 0;
         this.totalInvoiced = data.totalInvoiced ?? 0;
         // Total Collected must match outstanding-balance: use API value or derive (totalInvoiced - totalOutstanding)
@@ -136,6 +144,10 @@ export class CashReceiptsComponent implements OnInit {
         this.loading = false;
         this.items = [];
         this.totalPayments = 0;
+        this.totalTuition = 0;
+        this.totalTransport = 0;
+        this.totalDH = 0;
+        this.totalReceiptsSum = 0;
         this.totalCollected = 0;
         this.totalOutstanding = 0;
         this.totalInvoiced = 0;
@@ -326,7 +338,10 @@ export class CashReceiptsComponent implements OnInit {
 
   getCollectedBreakdownText(): string {
     if (this.feeType === 'all') {
-      return 'Invoiced − Outstanding · Tuition, DH, Transport';
+      const t = this.formatCurrency(this.totalTuition);
+      const tr = this.formatCurrency(this.totalTransport);
+      const d = this.formatCurrency(this.totalDH);
+      return `${this.invoicesCount} invoices · Tuition ${this.currencySymbol} ${t} · Transport ${this.currencySymbol} ${tr} · DH ${this.currencySymbol} ${d} · ${this.count} receipts totalled`;
     }
     return 'Payments via /payments/record' + this.getFeeTypeStatSuffix();
   }
