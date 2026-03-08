@@ -2462,6 +2462,11 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       return Math.round(amt);
     };
 
+    // Precompute transport and DH sums for tuition = total - transport - dh.
+    let totalRawPayments = 0;
+    let totalTransportSum = 0;
+    let totalDHSum = 0;
+
     const allocatedItems = allLogs.map((l: any) => {
       const invAmount = parseFloat(String(l.invoiceAmount ?? 0)) || 0;
       const fromDesc = parseTransportDHFromDesc(String(l.invoiceDescription || ''));
@@ -2470,24 +2475,28 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       const transportAmt = fromDesc.transport > 0 ? fromDesc.transport : transportFromProfile;
       const dhAmt = fromDesc.dh > 0 ? fromDesc.dh : dhFromProfile;
 
-      // Tuition = invoice amount minus transport and DH only (matches receipt breakdown).
       const tuitionAmt = Math.max(0, invAmount - transportAmt - dhAmt);
       const safeDenom = invAmount > 0 ? invAmount : 1;
       const payment = parseFloat(String(l.amountPaid ?? 0)) || 0;
       const effectivePayment = invAmount > 0 ? Math.min(payment, invAmount) : payment;
 
+      totalRawPayments += payment;
+      const transportPortion = safeDenom > 0 ? (effectivePayment * transportAmt) / safeDenom : 0;
+      const dhPortion = safeDenom > 0 ? (effectivePayment * dhAmt) / safeDenom : 0;
+      totalTransportSum += transportPortion;
+      totalDHSum += dhPortion;
+
       let allocated = payment;
       if (filterFeeType === 'transport') {
-        allocated = safeDenom > 0 ? (effectivePayment * transportAmt) / safeDenom : 0;
+        allocated = transportPortion;
       } else if (filterFeeType === 'dh') {
-        allocated = safeDenom > 0 ? (effectivePayment * dhAmt) / safeDenom : 0;
+        allocated = dhPortion;
       } else if (filterFeeType === 'tuition') {
         allocated = safeDenom > 0 && tuitionAmt > 0 ? (effectivePayment * tuitionAmt) / safeDenom : 0;
       } else {
         allocated = payment;
       }
 
-      // Transport and DH: whole numbers only.
       const rounded =
         filterFeeType === 'transport' || filterFeeType === 'dh'
           ? Math.round(allocated)
@@ -2497,6 +2506,11 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     });
 
     const allItems = allocatedItems.filter((l) => (l.amountPaid || 0) > 0);
+
+    // Tuition = Total receipts - Transport receipts - DH receipts (avoids understatement from rounding)
+    const transportRounded = Math.round(totalTransportSum);
+    const dhRounded = Math.round(totalDHSum);
+    const tuitionFromResidual = Math.max(0, Math.round((totalRawPayments - transportRounded - dhRounded) * 100) / 100);
     const totalItemCount = allItems.length;
 
     // Pagination: default 50 per page, max 100
@@ -2526,13 +2540,14 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const invoicesForTotals = await invoicesScopeForTotalsQb.getMany();
     const invoicesById = new Map((invoicesForTotals || []).map(iv => [iv.id, iv]));
 
-    // Total payments (PaymentLog sum) — sum of all allocated items, not just current page.
-    // Transport and DH use whole numbers (no decimal fraction).
+    // Total payments: for tuition use (Total - Transport - DH) to avoid understatement from rounding.
     const paymentsSum = allItems.reduce((s, l) => s + l.amountPaid, 0);
     const totalPayments =
-      filterFeeType === 'transport' || filterFeeType === 'dh'
-        ? Math.round(paymentsSum)
-        : Math.round(paymentsSum * 100) / 100;
+      filterFeeType === 'tuition'
+        ? tuitionFromResidual
+        : filterFeeType === 'transport' || filterFeeType === 'dh'
+          ? Math.round(paymentsSum)
+          : Math.round(paymentsSum * 100) / 100;
 
     // Net invoiced for reconciliation = sum(amount + previousBalance - prepaidAmount).
     // This matches the canonical invoice identity used elsewhere:
