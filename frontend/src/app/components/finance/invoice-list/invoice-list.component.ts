@@ -143,9 +143,6 @@ export class InvoiceListComponent implements OnInit {
 
   @ViewChild('uniformCatalogSelect') uniformCatalogSelectRef: ElementRef<HTMLSelectElement> | null = null;
 
-  /** When term filter is applied: Total Collected from cash receipts API — syncs with cash receipts page. */
-  termScopedTotalPaid: number | null = null;
-
   // Cached computed values to prevent NG0900 errors
   private _cachedStats = {
     totalAmount: 0,
@@ -256,7 +253,7 @@ export class InvoiceListComponent implements OnInit {
         this.academicYear = data.academicYear || new Date().getFullYear().toString();
         this.currentTermFromSettings = data.currentTerm || `Term 1 ${new Date().getFullYear()}`;
         this.quickPaymentTerm = this.currentTermFromSettings;
-        // Default term filter to active term so Total Paid syncs with cash receipts page
+        // Default term filter to active term
         if (!this.selectedTermFilter?.trim() && this.currentTermFromSettings) {
           this.selectedTermFilter = this.currentTermFromSettings;
           if (this.invoices.length > 0) {
@@ -426,29 +423,13 @@ export class InvoiceListComponent implements OnInit {
 
     this.filteredInvoices = filtered;
     this.updateCachedStats();
-    this.loadTermScopedTotalPaid();
   }
 
-  private loadTermScopedTotalPaid(): void {
-    const term = this.selectedTermFilter?.trim();
-    if (!term) {
-      this.termScopedTotalPaid = null;
-      return;
-    }
-    this.financeService.getCashReceipts(term, 'all', 1, 1).subscribe({
-      next: (data: any) => {
-        const v = data?.totalCollected;
-        this.termScopedTotalPaid = (typeof v === 'number' && !Number.isNaN(v)) ? v : null;
-      },
-      error: () => { this.termScopedTotalPaid = null; }
-    });
-  }
-  
   private updateCachedStats() {
     const invoicesArray = Array.isArray(this.filteredInvoices) ? this.filteredInvoices : [];
     const activeInvoices = invoicesArray.filter(inv => (String(inv.status || '').toLowerCase() !== 'void'));
     const today = new Date();
-    // Canonical Total Invoiced = sum(amount + previousBalance - prepaidAmount) — matches cash receipts page
+    // Total Invoiced = sum(amount + previousBalance - prepaidAmount)
     const canonicalTotal = activeInvoices.reduce((sum, inv) => {
       const amount = parseFloat(String(inv.amount || 0));
       const prev = parseFloat(String(inv.previousBalance || 0));
@@ -485,7 +466,6 @@ export class InvoiceListComponent implements OnInit {
     this.selectedStatusFilter = '';
     this.selectedTermFilter = '';
     this.selectedStudent = '';
-    this.termScopedTotalPaid = null;
     // After clearing filters, show all invoices
     const invoicesArray = Array.isArray(this.invoices) ? this.invoices : [];
     this.filteredInvoices = [...invoicesArray];
@@ -521,10 +501,6 @@ export class InvoiceListComponent implements OnInit {
   }
 
   getPaidAmount(): number {
-    // When term filter is applied, use Total Collected from cash receipts API for consistency
-    if (this.selectedTermFilter?.trim() && this.termScopedTotalPaid != null) {
-      return this.termScopedTotalPaid;
-    }
     // Total Paid = Sum of all paid amounts from filtered invoices
     return this._cachedStats.paidAmount;
   }

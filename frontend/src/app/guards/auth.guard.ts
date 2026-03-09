@@ -24,7 +24,6 @@ export class AuthGuard implements CanActivate {
         '/invoices/statements',
         '/payments/record',
         '/finance/balance-enquiry',
-        '/finance/cash_receipts',
         '/outstanding-balance',
         '/accountant/change_password',
         '/accountant/manage-account',
