@@ -2392,8 +2392,8 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const feesCfg: any = (settings as any)?.feesSettings || {};
     const dayScholarTuitionFee = parseFloat(String(feesCfg.dayScholarTuitionFee ?? 0)) || 0;
     const boarderTuitionFee = parseFloat(String(feesCfg.boarderTuitionFee ?? 0)) || 0;
-    const diningHallCost = parseFloat(String(feesCfg.diningHallCost ?? 0)) || 0;
-    const transportCost = parseFloat(String(feesCfg.transportCost ?? 0)) || 0;
+    const diningHallCost = Math.round(parseFloat(String(feesCfg.diningHallCost ?? 0)) || 0);
+    const transportCost = Math.round(parseFloat(String(feesCfg.transportCost ?? 0)) || 0);
     const allLogs = logsEntities.map((log: any) => {
       const inv = log.invoice || {};
       const stu = log.student || {};
@@ -2419,45 +2419,23 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       };
     });
 
-    // Transport and DH: prefer amounts from invoice description (matches receipt PDF breakdown), else use settings + student profile.
-    const parseTransportDHFromDesc = (desc: string): { transport: number; dh: number } => {
-      let transport = 0;
-      let dh = 0;
-      if (!desc || !desc.trim()) return { transport, dh };
-      const add = (label: string, amt: number) => {
-        if (label.includes('transport')) transport += amt;
-        if (label.includes('dining') || label.includes('dh') || label.includes('d/h')) dh += amt;
-      };
-      const segments = desc.split(/[|\n]/).map((s) => s.trim()).filter(Boolean);
-      for (const seg of segments) {
-        const m = seg.match(/([^:]+):\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)/i);
-        if (m) {
-          const amt = parseFloat(String(m[2]).replace(/,/g, '')) || 0;
-          add(String(m[1]).toLowerCase(), amt);
-        }
-      }
-      const pairRegex = /(tuition|dining\s*hall|dh\s*fee|transport(?:\s*fee)?)[^0-9-]*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)/gi;
-      let match;
-      while ((match = pairRegex.exec(desc)) !== null) {
-        const amt = parseFloat(String(match[2]).replace(/,/g, '')) || 0;
-        add(String(match[1]).toLowerCase(), amt);
-      }
-      return { transport: Math.round(transport), dh: Math.round(dh) };
-    };
+    // Transport and DH: always use amounts from settings (whole numbers only). Boarders = 0.
     const getTransportAmount = (s: { studentType?: string; usesTransport?: boolean; isStaffChild?: boolean; isExempted?: boolean }): number => {
       if (s?.studentType === 'Day Scholar' && s?.usesTransport && !s?.isStaffChild && !s?.isExempted && transportCost > 0) {
-        return Math.round(transportCost);
+        return transportCost;
       }
       return 0;
     };
-    const getDHAmount = (s: { usesDiningHall?: boolean; isStaffChild?: boolean; isExempted?: boolean }): number => {
+    const getDHAmount = (s: { studentType?: string; usesDiningHall?: boolean; isStaffChild?: boolean; isExempted?: boolean }): number => {
+      if (String(s?.studentType || '').trim() === 'Boarder') return 0;
       if (!s?.usesDiningHall || diningHallCost <= 0) return 0;
-      const amt = (s?.isStaffChild || s?.isExempted) ? diningHallCost * 0.5 : diningHallCost;
-      return Math.round(amt);
+      const amt = (s?.isStaffChild || s?.isExempted) ? Math.round(diningHallCost * 0.5) : diningHallCost;
+      return amt;
     };
 
+    // Fee-type reporting: totals by Tuition, DH Fee (Day Scholar Meals), Transport Fee.
+    // Boarders: tuition only. Day scholars: tuition + optional Transport and/or DH.
     // Allocate each payment so Tuition + Transport + DH = payment exactly.
-    // Use floor for Transport and DH (whole numbers) so we never overstate them; tuition gets the remainder.
     let totalRawPayments = 0;
     let totalTransportSum = 0;
     let totalDHSum = 0;
@@ -2465,11 +2443,8 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
 
     const allocatedItems = allLogs.map((l: any) => {
       const invAmount = parseFloat(String(l.invoiceAmount ?? 0)) || 0;
-      const fromDesc = parseTransportDHFromDesc(String(l.invoiceDescription || ''));
-      const transportFromProfile = getTransportAmount(l);
-      const dhFromProfile = getDHAmount(l);
-      let transportAmt = fromDesc.transport > 0 ? fromDesc.transport : transportFromProfile;
-      let dhAmt = fromDesc.dh > 0 ? fromDesc.dh : dhFromProfile;
+      let transportAmt = getTransportAmount(l);
+      let dhAmt = getDHAmount(l);
 
       // Cap transport+DH so they never exceed invoice amount (avoids overstating when invoice has less)
       if (invAmount > 0 && transportAmt + dhAmt > invAmount) {
@@ -2479,19 +2454,20 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       }
 
       const tuitionAmt = Math.max(0, invAmount - transportAmt - dhAmt);
-      const safeDenom = invAmount > 0 ? invAmount : 1;
+      const denom = invAmount > 0 ? invAmount : (transportAmt + dhAmt + tuitionAmt);
+      const safeDenom = denom > 0 ? denom : 1;
       const payment = parseFloat(String(l.amountPaid ?? 0)) || 0;
-      const effectivePayment = invAmount > 0 ? Math.min(payment, invAmount) : payment;
+      const effectivePayment = payment;
 
-      // Floor for transport and DH (whole numbers) to avoid overstatement; tuition = remainder.
-      // Use effectivePayment so overpayments aren't over-allocated to this invoice's components.
-      const transportPortion = safeDenom > 0 ? Math.floor((effectivePayment * transportAmt) / safeDenom) : 0;
-      const dhPortion = safeDenom > 0 ? Math.floor((effectivePayment * dhAmt) / safeDenom) : 0;
-      const tuitionPortion = Math.max(0, Math.round((effectivePayment - transportPortion - dhPortion) * 100) / 100);
-
-      // If payment > invAmount, remainder goes to tuition (covers previous balance / overpayment)
-      const overpaymentRemainder = Math.max(0, payment - effectivePayment);
-      const tuitionWithOverpayment = tuitionPortion + overpaymentRemainder;
+      // Allocate proportionally with 2-decimal rounding; tuition is remainder to keep exact equality.
+      const transportPortion = transportAmt > 0
+        ? Math.round(((effectivePayment * transportAmt) / safeDenom) * 100) / 100
+        : 0;
+      const dhPortion = dhAmt > 0
+        ? Math.round(((effectivePayment * dhAmt) / safeDenom) * 100) / 100
+        : 0;
+      const tuitionPortion = Math.round((effectivePayment - transportPortion - dhPortion) * 100) / 100;
+      const tuitionWithOverpayment = Math.max(0, tuitionPortion);
 
       totalRawPayments += payment;
       totalTransportSum += transportPortion;
@@ -2509,14 +2485,19 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
         allocated = payment;
       }
 
-      return { ...l, amountPaid: allocated };
+      return {
+        ...l,
+        amountPaid: allocated,
+        tuitionAmount: Math.round(tuitionWithOverpayment * 100) / 100,
+        transportAmount: Math.round(transportPortion * 100) / 100,
+        dhAmount: Math.round(dhPortion * 100) / 100
+      };
     });
 
-    const allItems = allocatedItems.filter((l) => (l.amountPaid || 0) > 0);
-
-    // Totals: Tuition + Transport + DH = Total (exact, no rounding drift)
-    const tuitionTotal = Math.round(totalTuitionSum * 100) / 100;
-    const totalItemCount = allItems.length;
+    const rawTuitionTotal = Math.round(totalTuitionSum * 100) / 100;
+    const rawDHTotal = Math.round(totalDHSum * 100) / 100;
+    const rawTransportTotal = Math.round(totalTransportSum * 100) / 100;
+    const rawReceiptsSum = Math.round((rawTuitionTotal + rawDHTotal + rawTransportTotal) * 100) / 100;
 
     // Pagination: default 50 per page, max 100
     const CASH_RECEIPTS_DEFAULT_LIMIT = 50;
@@ -2525,7 +2506,7 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const limitRaw = parseInt(String(limitParam || ''), 10);
     const limit = Math.min(Math.max(Number.isFinite(limitRaw) ? limitRaw : CASH_RECEIPTS_DEFAULT_LIMIT, 1), CASH_RECEIPTS_MAX_LIMIT);
     const skip = (page - 1) * limit;
-    const items = allItems.slice(skip, skip + limit);
+    const totalItemCount = allocatedItems.filter((l) => (l.amountPaid || 0) > 0).length;
     const totalPages = Math.max(1, Math.ceil(totalItemCount / limit));
 
     // Use term match only (same as invoice list) so Total Invoiced syncs with Total Invoice Amount
@@ -2536,20 +2517,9 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const invoicesForTotals = await invoicesScopeForTotalsQb.getMany();
     const invoicesById = new Map((invoicesForTotals || []).map(iv => [iv.id, iv]));
 
-    // Total payments: Tuition + Transport + DH = Total (exact)
-    const paymentsSum = allItems.reduce((s, l) => s + l.amountPaid, 0);
-    const totalPayments =
-      filterFeeType === 'tuition'
-        ? tuitionTotal
-        : filterFeeType === 'transport'
-          ? totalTransportSum
-          : filterFeeType === 'dh'
-            ? totalDHSum
-            : Math.round(paymentsSum * 100) / 100;
-
-    // Net invoiced for reconciliation = sum(amount + previousBalance - prepaidAmount).
-    // This matches the canonical invoice identity used elsewhere:
-    // paid + balance = amount + previousBalance - prepaidAmount
+    // Total invoiced (net) for reconciliation = sum(amount + previousBalance - prepaidAmount).
+    // This matches the canonical invoice identity:
+    // paidAmount + balance = amount + previousBalance - prepaidAmount
     const totalInvoiced = Math.round(
       (invoicesForTotals || []).reduce(
         (s, iv: any) =>
@@ -2561,15 +2531,23 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       ) * 100
     ) / 100;
 
-    // Total collected (raw from invoice.paidAmount) kept for diagnostics only.
-    const collectedQb = invoiceRepository
-      .createQueryBuilder('invoice')
-      .select('COALESCE(SUM(CAST(COALESCE(invoice.paidAmount, 0) AS numeric)), 0)', 'total')
-      .andWhere('COALESCE(invoice.isVoided, false) = false')
-      .andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
-    const collectedRaw = await collectedQb.getRawOne<Record<string, string>>();
-    const rawTotal = collectedRaw?.total ?? (collectedRaw as any)?.Total ?? 0;
-    const totalCollectedFromPaidAmount = Math.round((parseFloat(String(rawTotal)) || 0) * 100) / 100;
+    const totalInvoicedGross = Math.round(
+      (invoicesForTotals || []).reduce(
+        (s, iv: any) =>
+          s +
+          (parseFloat(String(iv.amount || 0)) || 0) +
+          (parseFloat(String(iv.previousBalance || 0)) || 0),
+        0
+      ) * 100
+    ) / 100;
+
+    const totalPrepaidInTerm = Math.round(
+      (invoicesForTotals || []).reduce((s, iv: any) => s + (parseFloat(String(iv.prepaidAmount || 0)) || 0), 0) * 100
+    ) / 100;
+
+    const allItems = allocatedItems.filter((l) => (l.amountPaid || 0) > 0);
+    const items = allItems.slice(skip, skip + limit);
+
     const invoicesCount = invoicesForTotals.length;
     const uniqueStudentsWithInvoices = new Set((invoicesForTotals || []).map(iv => iv.studentId));
     const studentsWithInvoices = uniqueStudentsWithInvoices.size;
@@ -2609,24 +2587,46 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const outstandingRaw = await outstandingQb.getRawOne<Record<string, string>>();
     const totalOutstanding = Math.round((parseFloat(String(outstandingRaw?.total ?? 0)) || 0) * 100) / 100;
 
-    // Use sum(invoice.paidAmount) as canonical Total Collected — matches invoice page Total Paid.
-    // Same scope as collectedQb (term match, non-voided).
-    const totalCollected = filterFeeType === 'all' ? totalCollectedFromPaidAmount : totalPayments;
+    const totalCashReceived = Math.round(totalRawPayments * 100) / 100;
+
+    // Totals by fee type are computed from actual payment logs (cash receipts), not from invoice.paidAmount.
+    const totalTuitionCollected = rawTuitionTotal;
+    const totalDHFeeCollected = rawDHTotal;
+    const totalTransportFeeCollected = rawTransportTotal;
+    const totalCollected =
+      filterFeeType === 'all'
+        ? totalCashReceived
+        : filterFeeType === 'tuition'
+          ? totalTuitionCollected
+          : filterFeeType === 'transport'
+            ? totalTransportFeeCollected
+            : totalDHFeeCollected;
 
     res.json({
       term: termToUse,
       activeTerm: activeTerm || null,
       feeType: filterFeeType,
-      totalPayments,
+      totalPayments:
+        filterFeeType === 'tuition'
+          ? totalTuitionCollected
+          : filterFeeType === 'transport'
+            ? totalTransportFeeCollected
+            : filterFeeType === 'dh'
+              ? totalDHFeeCollected
+              : totalCashReceived,
       totalCollected,
+      totalCashReceived,
       totalInvoiced,
       invoicesCount,
-      /** Fee breakdown: Tuition + Transport + DH = total cash from receipts (when filter is 'all'). */
-      totalTuition: tuitionTotal,
-      totalTransport: totalTransportSum,
-      totalDH: totalDHSum,
-      /** Sum of all payment log amounts for term invoices; equals totalTuition + totalTransport + totalDH. */
-      totalReceiptsSum: Math.round(totalRawPayments * 100) / 100,
+      /** Financial summary by fee type: scaled so Tuition+DH+Transport = Total Collected, table column sums match. */
+      totalTuitionCollected,
+      totalDHFeeCollected,
+      totalTransportFeeCollected,
+      totalTuition: totalTuitionCollected,
+      totalTransport: totalTransportFeeCollected,
+      totalDH: totalDHFeeCollected,
+      /** Sum of scaled fee-type totals = Total Collected. */
+      totalReceiptsSum: totalCashReceived,
       studentsWithInvoices,
       studentsFullyPaid,
       studentsPartiallyPaid,
@@ -2972,6 +2972,98 @@ export const reconcileTermOutstanding = async (req: AuthRequest, res: Response) 
     });
   } catch (error: any) {
     console.error('Error reconciling term outstanding:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+/** Audit invoices: find where paidAmount + balance != amount + previousBalance - prepaidAmount (identity violation). */
+export const auditInvoiceReconciliation = async (req: AuthRequest, res: Response) => {
+  try {
+    const { term: termParam } = req.query as { term?: string };
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const invoiceRepository = AppDataSource.getRepository(Invoice);
+
+    const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+    const activeTerm = (settings as any)?.activeTerm || (settings as any)?.currentTerm || null;
+    const termToUse = (termParam && String(termParam).trim()) || activeTerm || `Term 1 ${new Date().getFullYear()}`;
+
+    const invoices = await invoiceRepository
+      .createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.student', 'student')
+      .where('COALESCE(invoice.isVoided, false) = false')
+      .andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse })
+      .orderBy('invoice.createdAt', 'DESC')
+      .getMany();
+
+    const ROUNDING_TOLERANCE = 0.01;
+    const violations: Array<{
+      invoiceId: string;
+      invoiceNumber: string;
+      studentNumber: string | null;
+      studentName: string | null;
+      term: string | null;
+      amount: number;
+      previousBalance: number;
+      prepaidAmount: number;
+      paidAmount: number;
+      balance: number;
+      leftSide: number;   // paidAmount + balance
+      rightSide: number;  // amount + previousBalance - prepaidAmount
+      discrepancy: number;
+    }> = [];
+
+    let totalLeft = 0;
+    let totalRight = 0;
+
+    for (const inv of invoices) {
+      const amount = parseFloat(String(inv.amount ?? 0)) || 0;
+      const prev = parseFloat(String(inv.previousBalance ?? 0)) || 0;
+      const prepaid = parseFloat(String(inv.prepaidAmount ?? 0)) || 0;
+      const paid = parseFloat(String((inv as any).paidAmount ?? 0)) || 0;
+      const bal = parseFloat(String((inv as any).balance ?? 0)) || 0;
+
+      const leftSide = Math.round((paid + bal) * 100) / 100;
+      const rightSide = Math.round((amount + prev - prepaid) * 100) / 100;
+      const diff = Math.round((leftSide - rightSide) * 100) / 100;
+
+      totalLeft += leftSide;
+      totalRight += rightSide;
+
+      if (Math.abs(diff) > ROUNDING_TOLERANCE) {
+        const stu = (inv as any).student;
+        violations.push({
+          invoiceId: inv.id,
+          invoiceNumber: inv.invoiceNumber || '',
+          studentNumber: stu?.studentNumber ?? null,
+          studentName: stu ? [stu.firstName, stu.lastName].filter(Boolean).join(' ').trim() || null : null,
+          term: inv.term ?? null,
+          amount,
+          previousBalance: prev,
+          prepaidAmount: prepaid,
+          paidAmount: paid,
+          balance: bal,
+          leftSide,
+          rightSide,
+          discrepancy: diff
+        });
+      }
+    }
+
+    const totalDiscrepancy = Math.round((totalLeft - totalRight) * 100) / 100;
+
+    res.json({
+      term: termToUse,
+      invoicesChecked: invoices.length,
+      violationsCount: violations.length,
+      totalLeft: Math.round(totalLeft * 100) / 100,
+      totalRight: Math.round(totalRight * 100) / 100,
+      totalDiscrepancy,
+      identity: 'paidAmount + balance = amount + previousBalance - prepaidAmount',
+      violations: violations.slice(0, 500)
+    });
+  } catch (error: any) {
+    console.error('Error auditing invoice reconciliation:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

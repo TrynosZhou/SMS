@@ -212,14 +212,26 @@ export function createReportCardPDF(
             height: finalHeight
           });
           doc.restore();
+          // Draw solid gold line around banner (matches report-cards page)
+          doc.save();
+          doc.lineWidth(6);
+          doc.strokeColor('#C9A227');
+          doc.roundedRect(startX, startY, width, height, radius).stroke();
+          doc.restore();
         } catch (error) {
           console.error('Error adding banner cover image:', error);
           try {
+            const radius = 14;
             doc.save();
             doc.image(imageBuffer, startX, startY, {
               width,
               height
             });
+            doc.restore();
+            doc.save();
+            doc.lineWidth(6);
+            doc.strokeColor('#C9A227');
+            doc.roundedRect(startX, startY, width, height, radius).stroke();
             doc.restore();
           } catch (fallbackError) {
             console.error('Fallback banner addition also failed:', fallbackError);

@@ -40,6 +40,9 @@
   font-size: 2.5rem;
   font-weight: 700;
   text-align: left;
+  line-height: 1.1;
+  overflow: visible;
+  min-height: 56px;
 }
 
 .title-icon {
@@ -58,6 +61,13 @@
 @keyframes pulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.1); }
+}
+
+@media (max-width: 480px) {
+  .dashboard-title {
+    font-size: 2rem;
+    min-height: 48px;
+  }
 }
 
 .welcome-text {
@@ -174,6 +184,21 @@
   border-radius: 4px;
   background: rgba(255,255,255,0.9);
   padding: 2px;
+}
+
+.school-logo.school-badge {
+  height: 120px;
+  width: 120px;
+  border-radius: 50%;
+  object-fit: contain;
+  padding: 0;
+  background: transparent;
+  animation: badge-bounce 1.6s ease-in-out infinite;
+}
+
+@keyframes badge-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
 }
 
 .school-name-container:hover {

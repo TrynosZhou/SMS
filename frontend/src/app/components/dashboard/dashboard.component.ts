@@ -25,7 +25,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   showBulkMessage = false;
   displayedText: string = '';
   private textToggleInterval: any;
-  private showMotto: boolean = false;
+  private rotateTexts: string[] = [];
+  private rotateIndex = 0;
   teacherName: string = '';
 
   // Sidebar collapse state
@@ -217,11 +218,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
           (this.moduleAccessService as any).moduleAccess = data.moduleAccess;
         }
         
-        // Always display the school name (do not rotate/toggle text)
-        this.displayedText = this.schoolName;
+        // Rotate between school name and motto ("After Instruction We Soar")
+        const motto = (this.schoolMotto || 'After Instruction We Soar').trim();
+        const names = [this.schoolName, motto].filter(Boolean);
+        this.rotateTexts = [...new Set(names)];
+        this.displayedText = this.rotateTexts[0] || this.schoolName;
         if (this.textToggleInterval) {
           clearInterval(this.textToggleInterval);
-          this.textToggleInterval = null;
+        }
+        if (this.rotateTexts.length > 1) {
+          this.rotateIndex = 0;
+          this.textToggleInterval = setInterval(() => {
+            this.rotateIndex = (this.rotateIndex + 1) % this.rotateTexts.length;
+            this.displayedText = this.rotateTexts[this.rotateIndex];
+          }, 4000);
         }
       },
       error: (err: any) => {
@@ -463,12 +473,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   initializeTextToggle() {
-    // Always display the school name (do not rotate/toggle text)
     if (this.textToggleInterval) {
       clearInterval(this.textToggleInterval);
-      this.textToggleInterval = null;
     }
-    this.displayedText = this.schoolName;
+    if (this.rotateTexts.length > 0) {
+      this.displayedText = this.rotateTexts[0];
+      this.rotateIndex = 0;
+    } else {
+      this.displayedText = this.schoolName;
+    }
   }
 
   loadStudentData() {

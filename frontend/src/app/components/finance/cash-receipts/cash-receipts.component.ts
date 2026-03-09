@@ -15,7 +15,7 @@ export class CashReceiptsComponent implements OnInit {
   dateFrom = '';
   dateTo = '';
   totalPayments = 0;  // sum of PaymentLog (transaction list)
-  totalCollected = 0; // sum of invoice.paidAmount — ledger figure
+  totalCollected = 0; // sum of PaymentLog amounts (cash received)
   totalTuition = 0;
   totalTransport = 0;
   totalDH = 0;
@@ -59,14 +59,40 @@ export class CashReceiptsComponent implements OnInit {
   loading = false;
   loadingPdf = false;
   downloadingPdf = false;
+  loadingAudit = false;
+  showInvoiceAudit = false;
+  invoiceAuditResult: {
+    term: string;
+    invoicesChecked: number;
+    violationsCount: number;
+    totalLeft: number;
+    totalRight: number;
+    totalDiscrepancy: number;
+    identity: string;
+    violations: Array<{
+      invoiceId: string;
+      invoiceNumber: string;
+      studentNumber: string | null;
+      studentName: string | null;
+      term: string | null;
+      amount: number;
+      previousBalance: number;
+      prepaidAmount: number;
+      paidAmount: number;
+      balance: number;
+      leftSide: number;
+      rightSide: number;
+      discrepancy: number;
+    }>;
+  } | null = null;
   error = '';
   canSelectTerm = false;
   canViewOutstanding = false;
   readonly feeTypeOptions: { value: string; label: string }[] = [
     { value: 'all', label: 'All (Tuition + DH + Transport)' },
     { value: 'tuition', label: 'Tuition' },
-    { value: 'dh', label: 'DH fee' },
-    { value: 'transport', label: 'Transport fee' }
+    { value: 'dh', label: 'DH Fee (Day Scholar Meals)' },
+    { value: 'transport', label: 'Transport Fee' }
   ];
 
   constructor(
@@ -105,13 +131,13 @@ export class CashReceiptsComponent implements OnInit {
         this.activeTerm = data.activeTerm ?? null;
         this.feeType = data.feeType ?? 'all';
         this.totalPayments = data.totalPayments ?? 0;
-        this.totalTuition = data.totalTuition ?? 0;
-        this.totalTransport = data.totalTransport ?? 0;
-        this.totalDH = data.totalDH ?? 0;
+        this.totalTuition = data.totalTuitionCollected ?? data.totalTuition ?? 0;
+        this.totalTransport = data.totalTransportFeeCollected ?? data.totalTransport ?? 0;
+        this.totalDH = data.totalDHFeeCollected ?? data.totalDH ?? 0;
         this.totalReceiptsSum = data.totalReceiptsSum ?? data.totalPayments ?? 0;
         this.totalOutstanding = data.totalOutstanding ?? 0;
         this.totalInvoiced = data.totalInvoiced ?? 0;
-        // Total Collected must match outstanding-balance: use API value or derive (totalInvoiced - totalOutstanding)
+
         const fromApi = data.totalCollected;
         const invoiced = this.totalInvoiced;
         const outstanding = this.totalOutstanding;
@@ -176,6 +202,8 @@ export class CashReceiptsComponent implements OnInit {
     this.term = val;
     this.page = 1;
     this.showReconcileStudents = false;
+    this.showInvoiceAudit = false;
+    this.invoiceAuditResult = null;
     this.loadCashReceipts();
   }
 
@@ -245,6 +273,38 @@ export class CashReceiptsComponent implements OnInit {
 
   toggleReconcileStudents(): void {
     this.showReconcileStudents = !this.showReconcileStudents;
+  }
+
+  toggleInvoiceAudit(): void {
+    this.showInvoiceAudit = !this.showInvoiceAudit;
+    if (this.showInvoiceAudit && !this.invoiceAuditResult) {
+      this.loadInvoiceAudit();
+    }
+  }
+
+  loadInvoiceAudit(): void {
+    if (!this.term || this.loadingAudit) return;
+    this.loadingAudit = true;
+    this.error = '';
+    this.financeService.getInvoiceReconciliationAudit(this.term || undefined).subscribe({
+      next: (data: any) => {
+        this.loadingAudit = false;
+        this.invoiceAuditResult = {
+          term: data.term || this.term,
+          invoicesChecked: data.invoicesChecked ?? 0,
+          violationsCount: data.violationsCount ?? 0,
+          totalLeft: data.totalLeft ?? 0,
+          totalRight: data.totalRight ?? 0,
+          totalDiscrepancy: data.totalDiscrepancy ?? 0,
+          identity: data.identity ?? 'paidAmount + balance = amount + previousBalance - prepaidAmount',
+          violations: Array.isArray(data.violations) ? data.violations : []
+        };
+      },
+      error: (err: any) => {
+        this.loadingAudit = false;
+        this.error = err?.error?.message || 'Failed to load invoice reconciliation audit';
+      }
+    });
   }
 
   exportReconcileStudentsCsv(): void {
@@ -328,6 +388,24 @@ export class CashReceiptsComponent implements OnInit {
     if (this.feeType === 'all') return '';
     const opt = this.feeTypeOptions.find(o => o.value === this.feeType);
     return opt ? ' (' + opt.label + ')' : '';
+  }
+
+  viewDHBreakdown(): void {
+    this.feeType = 'dh';
+    this.page = 1;
+    this.loadCashReceipts();
+  }
+
+  viewTransportBreakdown(): void {
+    this.feeType = 'transport';
+    this.page = 1;
+    this.loadCashReceipts();
+  }
+
+  showAllPayments(): void {
+    this.feeType = 'all';
+    this.page = 1;
+    this.loadCashReceipts();
   }
 
   getFeeTypeStatSuffix(): string {

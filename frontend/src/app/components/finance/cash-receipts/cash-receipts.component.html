@@ -11,6 +11,10 @@
         </div>
       </div>
       <div class="header-actions" *ngIf="term">
+        <button type="button" class="btn btn-pdf btn-audit" (click)="toggleInvoiceAudit()" [disabled]="loadingAudit || loading" title="Find invoices where paidAmount + balance ≠ amount + previousBalance - prepaidAmount">
+          <span *ngIf="!loadingAudit">🔍 Audit Invoice Identity</span>
+          <span *ngIf="loadingAudit">Loading…</span>
+        </button>
         <button type="button" class="btn btn-pdf btn-preview" (click)="previewPdf()" [disabled]="loadingPdf || loading">
           <span *ngIf="!loadingPdf">📄 Preview PDF</span>
           <span *ngIf="loadingPdf">Loading…</span>
@@ -176,6 +180,94 @@
       </div>
     </div>
 
+    <!-- Financial Summary by Fee Type -->
+    <div class="card fee-type-summary-card" *ngIf="term">
+      <div class="card-header">
+        <h2>Financial Summary by Fee Type</h2>
+        <span class="card-subtitle">Totals calculated by fee type for {{ term }}</span>
+      </div>
+      <div class="card-body fee-type-summary-body">
+        <div class="fee-type-grid">
+          <div class="fee-type-item" title="All tuition payments (boarder and day scholar students).">
+            <div class="fee-type-label">Total Tuition Collected</div>
+            <div class="fee-type-value">{{ currencySymbol }} {{ formatCurrency(totalTuition) }}</div>
+            <div class="fee-type-hint">Tuition only</div>
+          </div>
+          <div class="fee-type-item" title="DH Fee (Day Scholar Meals) payments only.">
+            <div class="fee-type-label">Total DH Fee Collected</div>
+            <div class="fee-type-value">{{ currencySymbol }} {{ formatCurrency(totalDH) }}</div>
+            <div class="fee-type-hint">Day Scholar Meals</div>
+            <button type="button" class="btn-breakdown" (click)="viewDHBreakdown()" title="Show amounts contributing to DH fee total">
+              View DH breakdown
+            </button>
+          </div>
+          <div class="fee-type-item" title="Transport Fee payments only.">
+            <div class="fee-type-label">Total Transport Fee Collected</div>
+            <div class="fee-type-value">{{ currencySymbol }} {{ formatCurrency(totalTransport) }}</div>
+            <div class="fee-type-hint">Transport only</div>
+            <button type="button" class="btn-breakdown" (click)="viewTransportBreakdown()" title="Show amounts contributing to Transport fee total">
+              View Transport breakdown
+            </button>
+          </div>
+        </div>
+        <div class="fee-type-total-line" *ngIf="totalReceiptsSum > 0">
+          <span class="fee-type-total-label">Total cash received (Tuition + DH + Transport):</span>
+          <span class="fee-type-total-value">{{ currencySymbol }} {{ formatCurrency(totalReceiptsSum) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invoice Reconciliation Audit -->
+    <div class="table-card card" *ngIf="showInvoiceAudit">
+      <div class="card-header">
+        <h2>Invoice Identity Audit — {{ term }}</h2>
+        <button type="button" class="btn btn-modern btn-export" (click)="toggleInvoiceAudit()">Close</button>
+      </div>
+      <div class="card-body" style="padding: 18px 24px;">
+        <p class="audit-identity-hint" *ngIf="invoiceAuditResult">{{ invoiceAuditResult.identity }}</p>
+        <div class="audit-summary" *ngIf="invoiceAuditResult">
+          <span>Invoices checked: {{ invoiceAuditResult.invoicesChecked }}</span>
+          <span>Violations: {{ invoiceAuditResult.violationsCount }}</span>
+          <span>Total discrepancy: {{ currencySymbol }} {{ formatCurrency(invoiceAuditResult.totalDiscrepancy) }}</span>
+        </div>
+        <div class="table-scroll" *ngIf="invoiceAuditResult && invoiceAuditResult.violations.length > 0">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Invoice</th>
+                <th>Student</th>
+                <th class="amount-col">Amount</th>
+                <th class="amount-col">Prev Bal</th>
+                <th class="amount-col">Prepaid</th>
+                <th class="amount-col">Paid</th>
+                <th class="amount-col">Balance</th>
+                <th class="amount-col">Left (Paid+Bal)</th>
+                <th class="amount-col">Right (Amt+Prev-Prep)</th>
+                <th class="amount-col">Discrepancy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let v of invoiceAuditResult.violations">
+                <td>{{ v.invoiceNumber || '—' }}</td>
+                <td>{{ v.studentName || v.studentNumber || '—' }}</td>
+                <td class="amount-col">{{ currencySymbol }} {{ formatCurrency(v.amount) }}</td>
+                <td class="amount-col">{{ currencySymbol }} {{ formatCurrency(v.previousBalance) }}</td>
+                <td class="amount-col">{{ currencySymbol }} {{ formatCurrency(v.prepaidAmount) }}</td>
+                <td class="amount-col">{{ currencySymbol }} {{ formatCurrency(v.paidAmount) }}</td>
+                <td class="amount-col">{{ currencySymbol }} {{ formatCurrency(v.balance) }}</td>
+                <td class="amount-col">{{ currencySymbol }} {{ formatCurrency(v.leftSide) }}</td>
+                <td class="amount-col">{{ currencySymbol }} {{ formatCurrency(v.rightSide) }}</td>
+                <td class="amount-col" [class.audit-violation]="v.discrepancy !== 0">{{ currencySymbol }} {{ formatCurrency(v.discrepancy) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div *ngIf="invoiceAuditResult && invoiceAuditResult.violations.length === 0" class="audit-ok">
+          All invoices satisfy the identity. No violations found.
+        </div>
+      </div>
+    </div>
+
     <div class="table-card card" *ngIf="showReconcileStudents">
       <div class="card-header">
         <h2>Students with earlier unpaid invoices (newer invoice exists)</h2>
@@ -234,6 +326,9 @@
       <div class="table-card card" *ngIf="items.length > 0 || (count > 0 && loading === false)">
       <div class="card-header">
         <h2>Payments — {{ term }}{{ getFeeTypeFilterLabel() }}</h2>
+        <button type="button" class="btn-breakdown-back" *ngIf="feeType !== 'all'" (click)="showAllPayments()" title="Show all fee types">
+          ← Back to all
+        </button>
       </div>
       <div class="pagination-controls" *ngIf="total > 0">
         <span class="pagination-info">{{ paginationRangeText }}</span>
@@ -263,6 +358,11 @@
               <th>Student</th>
               <th>Student #</th>
               <th class="amount-col">Amount</th>
+              <ng-container *ngIf="feeType === 'all'">
+                <th class="amount-col">Tuition</th>
+                <th class="amount-col">Transport</th>
+                <th class="amount-col">DH</th>
+              </ng-container>
             </tr>
           </thead>
           <tbody>
@@ -273,6 +373,11 @@
               <td>{{ item.studentName || '—' }}</td>
               <td>{{ item.studentNumber || '—' }}</td>
               <td class="amount-col">{{ currencySymbol }} {{ formatCurrency(item.amountPaid) }}</td>
+              <ng-container *ngIf="feeType === 'all'">
+                <td class="amount-col">{{ currencySymbol }} {{ formatCurrency(item.tuitionAmount ?? 0) }}</td>
+                <td class="amount-col">{{ currencySymbol }} {{ formatCurrency(item.transportAmount ?? 0) }}</td>
+                <td class="amount-col">{{ currencySymbol }} {{ formatCurrency(item.dhAmount ?? 0) }}</td>
+              </ng-container>
             </tr>
           </tbody>
         </table>

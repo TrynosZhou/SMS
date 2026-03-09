@@ -334,5 +334,35 @@ export class FinanceService {
     if (term && term.trim()) params.term = term.trim();
     return this.http.get<any>(`${this.apiUrl}/finance/audit/reconcile-term-outstanding`, { params });
   }
+
+  /** Invoice reconciliation audit: find invoices where paidAmount + balance != amount + previousBalance - prepaidAmount. */
+  getInvoiceReconciliationAudit(term?: string): Observable<{
+    term: string;
+    invoicesChecked: number;
+    violationsCount: number;
+    totalLeft: number;
+    totalRight: number;
+    totalDiscrepancy: number;
+    identity: string;
+    violations: Array<{
+      invoiceId: string;
+      invoiceNumber: string;
+      studentNumber: string | null;
+      studentName: string | null;
+      term: string | null;
+      amount: number;
+      previousBalance: number;
+      prepaidAmount: number;
+      paidAmount: number;
+      balance: number;
+      leftSide: number;
+      rightSide: number;
+      discrepancy: number;
+    }>;
+  }> {
+    const params: any = {};
+    if (term && term.trim()) params.term = term.trim();
+    return this.http.get<any>(`${this.apiUrl}/finance/audit/invoice-reconciliation`, { params });
+  }
 }
 
