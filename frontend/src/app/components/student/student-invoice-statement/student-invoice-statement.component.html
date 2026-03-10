@@ -1,109 +1,245 @@
-<div class="student-invoice-statement-container">
-  <div class="container-header">
-    <h1>💰 My Invoice Statement</h1>
-  </div>
+<div class="sis-page">
 
-  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
-  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
-
-  <!-- Current Balance Display -->
-  <div class="balance-card">
-    <div class="balance-header">
-      <h2>Current Invoice Balance</h2>
-    </div>
-    <div class="balance-amount" [class.has-balance]="currentBalance > 0">
-      {{ currencySymbol }} {{ currentBalance | number:'1.2-2' }}
-    </div>
-    <p class="balance-note" *ngIf="currentBalance > 0">
-      ⚠️ You have an outstanding balance. Please make payment to clear your account.
-    </p>
-    <p class="balance-note success" *ngIf="currentBalance === 0">
-      ✅ Your account is fully paid up.
-    </p>
-  </div>
-
-  <div *ngIf="loading" class="loading-message">
-    <div class="spinner"></div>
-    <p>Loading invoices...</p>
-  </div>
-
-  <div *ngIf="!loading && invoices.length > 0" class="invoices-section">
-    <h2>Invoice History</h2>
-    <div class="invoices-table-container">
-      <table class="invoices-table">
-        <thead>
-          <tr>
-            <th>Invoice #</th>
-            <th>Term</th>
-            <th>Due Date</th>
-            <th class="text-right">Amount</th>
-            <th class="text-right">Paid</th>
-            <th class="text-right">Balance</th>
-            <th>Status</th>
-            <th class="text-center">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let invoice of invoices">
-            <td>{{ invoice.invoiceNumber }}</td>
-            <td>{{ invoice.term || 'N/A' }}</td>
-            <td>{{ invoice.dueDate | date:'dd/MM/yyyy' }}</td>
-            <td class="text-right">{{ currencySymbol }} {{ invoice.amount | number:'1.2-2' }}</td>
-            <td class="text-right">{{ currencySymbol }} {{ invoice.paidAmount | number:'1.2-2' }}</td>
-            <td class="text-right" [class.balance-warning]="invoice.balance > 0">
-              {{ currencySymbol }} {{ invoice.balance | number:'1.2-2' }}
-            </td>
-            <td>
-              <span [class]="getStatusClass(invoice.status)">
-                {{ invoice.status || 'Pending' }}
-              </span>
-            </td>
-            <td class="text-center">
-              <div class="action-buttons">
-                <button class="btn btn-sm btn-primary" (click)="previewPDF(invoice.id)" title="Preview PDF">
-                  👁️ Preview
-                </button>
-                <button class="btn btn-sm btn-success" (click)="downloadPDF(invoice.id)" title="Download PDF">
-                  ⬇️ Download
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div *ngIf="!loading && invoices.length === 0" class="empty-state">
-    <p>No invoices found.</p>
-  </div>
-
-  <!-- PDF Preview Modal -->
-  <div class="pdf-modal" *ngIf="showPdfPreview" (click)="closePdfPreview()">
-    <div class="pdf-modal-content" (click)="$event.stopPropagation()">
-      <div class="pdf-modal-header">
-        <h3>Invoice PDF Preview</h3>
-        <button class="btn-close" (click)="closePdfPreview()">×</button>
+  <!-- ── Page Header ──────────────────────────────────────────── -->
+  <div class="sis-header" [@fadeIn]>
+    <div class="sis-header-left">
+      <div class="sis-avatar">💰</div>
+      <div>
+        <h1 class="sis-title">My Invoice Statement</h1>
+        <p class="sis-subtitle" *ngIf="studentFullName">
+          {{ studentFullName }}
+          <span *ngIf="student?.studentNumber"> · {{ student.studentNumber }}</span>
+        </p>
       </div>
-      <div class="pdf-modal-body">
-        <div *ngIf="loadingPdf" class="loading-message">
-          <div class="spinner"></div>
-          <p>Loading PDF...</p>
+    </div>
+    <div class="sis-header-right" *ngIf="selectedInvoice">
+      <button class="sis-btn sis-btn-primary" (click)="downloadPDF(selectedInvoice.id)" [disabled]="loadingPdf">
+        ⬇️ Download PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Alerts ───────────────────────────────────────────────── -->
+  <div class="sis-alert sis-alert-error"   *ngIf="error"   [@fadeIn]>⚠️ {{ error }}</div>
+  <div class="sis-alert sis-alert-success" *ngIf="success" [@fadeIn]>✓ {{ success }}</div>
+
+  <!-- ── Summary Stats Row ────────────────────────────────────── -->
+  <div class="sis-stats-row" *ngIf="!loading" [@fadeIn]>
+    <div class="sis-stat-card"
+         [class.stat-danger]="currentBalance > 0"
+         [class.stat-success]="currentBalance <= 0">
+      <div class="stat-icon-wrap">
+        <span class="stat-icon">{{ currentBalance > 0 ? '⚠️' : '✅' }}</span>
+      </div>
+      <div class="stat-body">
+        <div class="stat-value">{{ currencySymbol }} {{ currentBalance | number:'1.2-2' }}</div>
+        <div class="stat-label">Current Balance</div>
+        <div class="stat-note" *ngIf="currentBalance > 0">Outstanding — please make payment</div>
+        <div class="stat-note success" *ngIf="currentBalance <= 0">Account fully paid up</div>
+      </div>
+    </div>
+
+    <div class="sis-stat-card">
+      <div class="stat-icon-wrap"><span class="stat-icon">🧾</span></div>
+      <div class="stat-body">
+        <div class="stat-value">{{ allInvoices.length }}</div>
+        <div class="stat-label">Total Invoices</div>
+      </div>
+    </div>
+
+    <div class="sis-stat-card stat-success">
+      <div class="stat-icon-wrap"><span class="stat-icon">✅</span></div>
+      <div class="stat-body">
+        <div class="stat-value">{{ paidCount }}</div>
+        <div class="stat-label">Invoices Paid</div>
+      </div>
+    </div>
+
+    <div class="sis-stat-card" [class.stat-warn]="pendingCount > 0">
+      <div class="stat-icon-wrap"><span class="stat-icon">🕐</span></div>
+      <div class="stat-body">
+        <div class="stat-value">{{ pendingCount }}</div>
+        <div class="stat-label">Pending</div>
+      </div>
+    </div>
+
+    <div class="sis-stat-card stat-blue">
+      <div class="stat-icon-wrap"><span class="stat-icon">💵</span></div>
+      <div class="stat-body">
+        <div class="stat-value">{{ currencySymbol }} {{ totalPaid | number:'1.2-2' }}</div>
+        <div class="stat-label">Total Paid</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Loading ──────────────────────────────────────────────── -->
+  <div class="sis-loader" *ngIf="loading">
+    <div class="sis-spinner"></div>
+    <p>Loading your invoices…</p>
+  </div>
+
+  <!-- ── Main content (two-column) ────────────────────────────── -->
+  <div class="sis-content-grid" *ngIf="!loading && allInvoices.length > 0" [@fadeIn]>
+
+    <!-- Left: Invoice List -->
+    <div class="sis-left">
+
+      <!-- Search & filter bar -->
+      <div class="sis-filter-bar">
+        <div class="sis-search-wrap">
+          <span class="search-icon">🔍</span>
+          <input
+            class="sis-search"
+            type="text"
+            placeholder="Search invoice # or term…"
+            [(ngModel)]="searchQuery"
+            (ngModelChange)="applyFilter()" />
+          <button class="search-clear" *ngIf="searchQuery" (click)="searchQuery=''; applyFilter()">✕</button>
         </div>
-        <iframe 
-          *ngIf="safePdfUrl && !loadingPdf" 
-          [src]="safePdfUrl" 
-          class="pdf-iframe"
-          frameborder="0">
-        </iframe>
+        <div class="sis-status-filters">
+          <button class="sf-btn" [class.active]="statusFilter==='all'"     (click)="statusFilter='all';     applyFilter()">All</button>
+          <button class="sf-btn" [class.active]="statusFilter==='paid'"    (click)="statusFilter='paid';    applyFilter()">Paid</button>
+          <button class="sf-btn" [class.active]="statusFilter==='partial'" (click)="statusFilter='partial'; applyFilter()">Partial</button>
+          <button class="sf-btn" [class.active]="statusFilter==='overdue'" (click)="statusFilter='overdue'; applyFilter()">Overdue</button>
+          <button class="sf-btn" [class.active]="statusFilter==='pending'" (click)="statusFilter='pending'; applyFilter()">Pending</button>
+        </div>
       </div>
-      <div class="pdf-modal-footer">
-        <button class="btn btn-primary" (click)="downloadPDF(currentInvoiceId!)" *ngIf="currentInvoiceId">
-          ⬇️ Download PDF
+
+      <!-- Results count -->
+      <div class="sis-results-count" *ngIf="filteredInvoices.length !== allInvoices.length">
+        Showing {{ filteredInvoices.length }} of {{ allInvoices.length }} invoices
+        <button class="clear-filter-btn" (click)="clearSearch()">Clear filter</button>
+      </div>
+
+      <!-- Invoice cards -->
+      <div class="sis-invoice-list">
+        <div
+          *ngFor="let inv of filteredInvoices"
+          class="sis-invoice-card"
+          [class.selected]="selectedInvoice?.id === inv.id"
+          (click)="selectInvoice(inv)"
+          role="button" tabindex="0"
+          (keyup.enter)="selectInvoice(inv)"
+          [@fadeIn]>
+
+          <div class="ic-top-row">
+            <div class="ic-num">{{ inv.invoiceNumber || ('INV-' + inv.id) }}</div>
+            <span class="ic-badge" [ngClass]="getStatusClass(inv.status)">
+              {{ inv.status || 'Pending' }}
+            </span>
+          </div>
+
+          <div class="ic-details-row">
+            <div class="ic-detail">
+              <span class="ic-lbl">Term</span>
+              <span class="ic-val">{{ inv.term || '—' }}</span>
+            </div>
+            <div class="ic-detail">
+              <span class="ic-lbl">Due Date</span>
+              <span class="ic-val">{{ formatDate(inv.dueDate) }}</span>
+            </div>
+            <div class="ic-detail">
+              <span class="ic-lbl">Amount</span>
+              <span class="ic-val">{{ currencySymbol }} {{ (inv.amount || inv.totalAmount || 0) | number:'1.2-2' }}</span>
+            </div>
+          </div>
+
+          <div class="ic-amounts-row">
+            <div class="ic-amount-chip">
+              <span class="chip-lbl">Paid</span>
+              <span class="chip-val paid">{{ currencySymbol }} {{ (inv.paidAmount || 0) | number:'1.2-2' }}</span>
+            </div>
+            <div class="ic-amount-chip" *ngIf="(inv.balance || 0) > 0">
+              <span class="chip-lbl">Balance Due</span>
+              <span class="chip-val due">{{ currencySymbol }} {{ (inv.balance || 0) | number:'1.2-2' }}</span>
+            </div>
+            <div class="ic-amount-chip" *ngIf="(inv.balance || 0) <= 0">
+              <span class="chip-val cleared">Fully Cleared</span>
+            </div>
+          </div>
+
+          <div class="ic-actions-row">
+            <button class="ic-btn" (click)="$event.stopPropagation(); selectInvoice(inv)">
+              👁 View PDF
+            </button>
+            <button class="ic-btn download" (click)="$event.stopPropagation(); downloadPDF(inv.id)">
+              ⬇️ Download
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- No results from filter -->
+      <div class="sis-empty-filter" *ngIf="filteredInvoices.length === 0 && (searchQuery || statusFilter !== 'all')">
+        <span>🔍</span>
+        <p>No invoices match your search.</p>
+        <button class="sis-btn sis-btn-outline" (click)="clearSearch()">Clear Search</button>
+      </div>
+    </div>
+
+    <!-- Right: Inline PDF Viewer -->
+    <div class="sis-right">
+      <!-- PDF header -->
+      <div class="sis-pdf-topbar" *ngIf="selectedInvoice">
+        <div class="pdf-topbar-info">
+          <span class="pdf-topbar-icon">📄</span>
+          <div>
+            <div class="pdf-inv-num">{{ selectedInvoice.invoiceNumber || ('INV-' + selectedInvoice.id) }}</div>
+            <div class="pdf-inv-meta">
+              {{ selectedInvoice.term || '' }}
+              <span *ngIf="selectedInvoice.term && selectedInvoice.dueDate"> · </span>
+              {{ formatDate(selectedInvoice.dueDate) }}
+            </div>
+          </div>
+        </div>
+        <button class="sis-btn sis-btn-sm sis-btn-outline" (click)="downloadPDF(selectedInvoice.id)">
+          ⬇️ Download
         </button>
-        <button class="btn btn-secondary" (click)="closePdfPreview()">Close</button>
+      </div>
+
+      <!-- Placeholder — no invoice selected -->
+      <div class="sis-pdf-placeholder" *ngIf="!selectedInvoice && !loadingPdf">
+        <span class="ph-icon">🧾</span>
+        <h3>Select an Invoice</h3>
+        <p>Click an invoice on the left to view the PDF preview here.</p>
+      </div>
+
+      <!-- PDF loading -->
+      <div class="sis-pdf-loading" *ngIf="loadingPdf">
+        <div class="sis-spinner dark"></div>
+        <p>Generating PDF preview…</p>
+      </div>
+
+      <!-- PDF iframe -->
+      <iframe
+        *ngIf="inlinePdf && !loadingPdf && !pdfError"
+        [src]="inlinePdf"
+        class="sis-pdf-frame"
+        frameborder="0"
+        title="Invoice PDF"
+        [@fadeIn]>
+      </iframe>
+
+      <!-- PDF error -->
+      <div class="sis-pdf-error" *ngIf="pdfError && !loadingPdf">
+        <span>⚠️</span>
+        <p>PDF preview could not be loaded.</p>
+        <div class="pdf-error-actions">
+          <button class="sis-btn sis-btn-outline" (click)="retryPdf()">🔄 Retry Preview</button>
+          <button class="sis-btn sis-btn-primary" (click)="downloadPDF(selectedInvoice.id)" *ngIf="selectedInvoice">
+            ⬇️ Download Instead
+          </button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
+  <!-- ── Empty state (no invoices at all) ─────────────────────── -->
+  <div class="sis-empty" *ngIf="!loading && allInvoices.length === 0 && !error" [@fadeIn]>
+    <span class="empty-icon">🧾</span>
+    <h3>No Invoices Found</h3>
+    <p>No fee invoices have been generated for your account yet.<br>
+       Please contact the school administration for assistance.</p>
+  </div>
+
+</div>

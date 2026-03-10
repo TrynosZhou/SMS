@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-router.post('/bulk', authenticate, sendBulkMessage);
+router.post('/bulk', authenticate, upload.fields([{ name: 'attachments', maxCount: 5 }, { name: 'files', maxCount: 5 }]), sendBulkMessage);
 router.post('/send', authenticate, upload.array('attachments', 5), sendMessageToSpecificParents);
 router.get('/parent', authenticate, getParentMessages);
 router.get('/staff', authenticate, getStaffMessages);

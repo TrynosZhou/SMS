@@ -117,6 +117,15 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
     // Get sender name
     const senderName = user.email || 'School Administration';
 
+    // Extract uploaded attachment URLs from multer (upload.fields handles both 'attachments' and 'files')
+    const uploadedFiles = (req as any).files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    const fileList: Express.Multer.File[] = [
+      ...((uploadedFiles?.['attachments'] || []) as Express.Multer.File[]),
+      ...((uploadedFiles?.['files'] || []) as Express.Multer.File[])
+    ];
+    const attachmentUrls = fileList.map(f => `/uploads/parent-messages/${f.filename}`);
+    const attachmentsJson = attachmentUrls.length > 0 ? JSON.stringify(attachmentUrls) : null;
+
     // Save messages to database for parents if they are recipients
     const messageRepository = AppDataSource.getRepository(Message);
     let savedMessageCount = 0;
@@ -150,7 +159,8 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
             senderName,
             parentId: parent.id,
             isRead: false,
-            status: 'sent'
+            status: 'sent',
+            attachments: attachmentsJson
           });
           
           const saved = await messageRepository.save(messageRecord);
@@ -202,22 +212,29 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
     }
 
     // Build success message with details
+    // For parent/all recipients, use savedMessageCount as the actual delivery count
+    // since messages are saved to all parents (not just those with email accounts)
+    const deliveredParentCount = (recipients === 'all' || recipients === 'parents') ? savedMessageCount : parentCount;
+    const attachmentNote = attachmentUrls.length > 0
+      ? ` with ${attachmentUrls.length} attachment${attachmentUrls.length === 1 ? '' : 's'}`
+      : '';
+
     let successMessage: string;
     if (recipients === 'students') {
-      successMessage = `Bulk message sent successfully to ${studentCount} student${studentCount === 1 ? '' : 's'}`;
+      successMessage = `Message sent${attachmentNote} to ${studentCount} student${studentCount === 1 ? '' : 's'}`;
     } else if (recipients === 'parents') {
-      successMessage = `Bulk message sent successfully to ${parentCount} parent${parentCount === 1 ? '' : 's'}`;
+      successMessage = `Message sent${attachmentNote} to ${deliveredParentCount} parent${deliveredParentCount === 1 ? '' : 's'}`;
     } else if (recipients === 'teachers') {
-      successMessage = `Bulk message sent successfully to ${teacherCount} teacher${teacherCount === 1 ? '' : 's'}`;
+      successMessage = `Message sent${attachmentNote} to ${teacherCount} teacher${teacherCount === 1 ? '' : 's'}`;
     } else {
-      successMessage = `Bulk message sent successfully to ${recipientCount} recipient${recipientCount === 1 ? '' : 's'} (${studentCount} student${studentCount === 1 ? '' : 's'}, ${parentCount} parent${parentCount === 1 ? '' : 's'}, ${teacherCount} teacher${teacherCount === 1 ? '' : 's'})`;
+      successMessage = `Message sent${attachmentNote} to ${recipientCount} recipient${recipientCount === 1 ? '' : 's'} (${studentCount} student${studentCount === 1 ? '' : 's'}, ${deliveredParentCount} parent${deliveredParentCount === 1 ? '' : 's'}, ${teacherCount} teacher${teacherCount === 1 ? '' : 's'})`;
     }
     if (recipients === 'all' || recipients === 'parents') {
       if (savedMessageCount > 0) {
-        successMessage += `. ${savedMessageCount} message(s) saved to parent inboxes.`;
+        successMessage += `. ${savedMessageCount} message${savedMessageCount === 1 ? '' : 's'} saved to parent inboxes.`;
       }
       if (failedMessageCount > 0) {
-        successMessage += ` (${failedMessageCount} message(s) failed to save)`;
+        successMessage += ` (${failedMessageCount} failed to save)`;
       }
     }
 
@@ -449,7 +466,8 @@ export const getParentMessages = async (req: AuthRequest, res: Response) => {
         message: msg.message,
         senderName: msg.senderName,
         createdAt: msg.createdAt,
-        isRead: msg.isRead
+        isRead: msg.isRead,
+        attachments: msg.attachments || null
       }))
     });
   } catch (error: any) {

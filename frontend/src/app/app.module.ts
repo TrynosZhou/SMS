@@ -66,6 +66,7 @@ import { SendMessageComponent } from './components/messages/send-message/send-me
 import { AccountantInboxComponent } from './components/messages/accountant-inbox/accountant-inbox.component';
 import { ParentSendMessageComponent } from './components/parent/parent-send-message/parent-send-message.component';
 import { ParentOutboxComponent } from './components/parent/parent-outbox/parent-outbox.component';
+import { ParentInvoiceStatementComponent } from './components/parent/parent-invoice-statement/parent-invoice-statement.component';
 import { IncomingFromParentsComponent } from './components/messages/incoming-from-parents/incoming-from-parents.component';
 import { OutgoingMessagesComponent } from './components/messages/outgoing-messages/outgoing-messages.component';
 import { EnrollStudentComponent } from './components/students/enroll-student/enroll-student.component';
@@ -137,6 +138,7 @@ import { PaymentReceiptManagerComponent } from './components/settings/payment-re
     AccountantInboxComponent,
     ParentSendMessageComponent,
     ParentOutboxComponent,
+    ParentInvoiceStatementComponent,
     IncomingFromParentsComponent,
     OutgoingMessagesComponent,
     DraftMessagesComponent,

@@ -54,9 +54,11 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
   ) {
     const user = this.authService.getCurrentUser();
     if (user?.parent) {
-      this.parentName = `${user.parent.firstName || ''} ${user.parent.lastName || ''}`.trim() || 'Parent';
+      this.parentName = `${user.parent.firstName || ''} ${user.parent.lastName || ''}`.trim()
+        || user.fullName?.trim()
+        || 'Parent';
     } else {
-      this.parentName = 'Parent';
+      this.parentName = user?.fullName?.trim() || 'Parent';
     }
   }
 
@@ -251,6 +253,40 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
 
   manageAccount() {
     this.router.navigate(['/parent/manage-account']);
+  }
+
+  get greeting(): string {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+
+  get greetingWithName(): string {
+    const name = this.parentName && this.parentName !== 'Parent' ? this.parentName : '';
+    return name ? `${this.greeting}, ${name}` : this.greeting;
+  }
+
+  get todayDate(): string {
+    return new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
+  get totalOutstanding(): number {
+    return this.students.reduce((sum, s) => sum + Math.max(0, parseFloat(String(s.currentInvoiceBalance || 0))), 0);
+  }
+
+  get studentsWithBalance(): number {
+    return this.students.filter(s => parseFloat(String(s.termBalance || 0)) > 0).length;
+  }
+
+  get studentsCleared(): number {
+    return this.students.filter(s => parseFloat(String(s.termBalance || 0)) <= 0).length;
+  }
+
+  studentInitials(student: any): string {
+    const f = (student.firstName || '').charAt(0).toUpperCase();
+    const l = (student.lastName || '').charAt(0).toUpperCase();
+    return f + l || '?';
   }
 
   getFirstStudent(): any {

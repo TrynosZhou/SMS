@@ -4,8 +4,14 @@
     <div class="form-header">
       <div class="header-content">
         <span class="icon">📊</span>
-        <h1>Report Cards</h1>
-        <span class="subtitle">Generate and view student report cards</span>
+        <div>
+          <h1>Report Cards</h1>
+          <span class="subtitle">Generate, view and download student academic report cards</span>
+        </div>
+      </div>
+      <div class="header-meta" *ngIf="reportCards.length > 0">
+        <span class="header-chip">{{ reportCards.length }} card{{ reportCards.length !== 1 ? 's' : '' }}</span>
+        <span class="header-chip accent">Avg {{ getOverallAverage() | number:'1.0-0' }}%</span>
       </div>
     </div>
 
@@ -265,23 +271,27 @@
         <div class="summary-content">
           <div class="summary-item">
             <span class="summary-label">Class</span>
-            <span class="summary-value">{{ classInfo?.name ? classInfo.name : 'N/A' }}</span>
+            <span class="summary-value">{{ classInfo?.name || 'N/A' }}</span>
           </div>
           <div class="summary-item">
             <span class="summary-label">Term</span>
-            <span class="summary-value">{{ classInfo?.term ? classInfo.term : (selectedTerm || 'N/A') }}</span>
+            <span class="summary-value">{{ classInfo?.term || selectedTerm || 'N/A' }}</span>
           </div>
           <div class="summary-item">
             <span class="summary-label">Exam Type</span>
             <span class="summary-value">{{ classInfo?.examType ? (classInfo.examType | titlecase) : 'N/A' }}</span>
           </div>
+          <div class="summary-item">
+            <span class="summary-label">Showing</span>
+            <span class="summary-value">{{ filteredReportCards.length }} / {{ reportCards.length }}</span>
+          </div>
           <div class="summary-item highlight">
-            <span class="summary-label">Total Report Cards</span>
+            <span class="summary-label">Total Students</span>
             <span class="summary-value">{{ reportCards.length }}</span>
           </div>
           <div class="summary-item highlight">
-            <span class="summary-label">Average Score</span>
-            <span class="summary-value">{{ getOverallAverage() | number:'1.2-2' }}%</span>
+            <span class="summary-label">Class Average</span>
+            <span class="summary-value">{{ getOverallAverage() | number:'1.1-1' }}%</span>
           </div>
         </div>
       </div>

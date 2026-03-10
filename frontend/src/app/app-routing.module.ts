@@ -69,6 +69,7 @@ import { NewsFeedComponent } from './components/news/news-feed/news-feed.compone
 import { NewsFormComponent } from './components/news/news-form/news-form.component';
 import { NewsDetailComponent } from './components/news/news-detail/news-detail.component';
 import { PaymentReceiptManagerComponent } from './components/settings/payment-receipt-manager/payment-receipt-manager.component';
+import { ParentInvoiceStatementComponent } from './components/parent/parent-invoice-statement/parent-invoice-statement.component';
 
 const routes: Routes = [
   { path: '', component: SplashComponent, data: { title: 'Junior Primary School Management System-https://sms-apua.vercel.app/', description: 'Junior Primary School Management System - School Management System for students, parents, teachers and administrators.', robots: 'index,follow' } },
@@ -83,6 +84,7 @@ const routes: Routes = [
   { path: 'parent/outbox', component: ParentOutboxComponent, canActivate: [AuthGuard] },
   { path: 'parent/link-students', component: LinkStudentsComponent, canActivate: [AuthGuard] },
   { path: 'parent/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
+  { path: 'parent/invoice-statement', component: ParentInvoiceStatementComponent, canActivate: [AuthGuard] },
   { path: 'teacher/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'accountant/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'accountant/change_password', component: ManageAccountComponent, canActivate: [AuthGuard] },

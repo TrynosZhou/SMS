@@ -163,7 +163,7 @@
             {{ linkedStudentsTotalCount }} linked students
           </span>
           <span class="badge" *ngIf="parents?.length >= 0">
-            {{ studentsWithAccountLoggedInCount }} students logged in (student account)
+            {{ studentsWithAccountLoggedInCount }} Student Accounts
           </span>
         </div>
       </div>
@@ -369,12 +369,13 @@
       </div>
 
       <div class="section">
-        <h3>Link New Student</h3>
+        <h3>Link Students</h3>
         <div class="link-form">
           <div class="form-row">
             <input
               type="text"
               [(ngModel)]="studentSearchQuery"
+              (keyup.enter)="searchStudents()"
               placeholder="Enter Student ID or name to search..." />
             <button
               class="btn btn-secondary"
@@ -395,11 +396,32 @@
           </div>
 
           <div class="search-results" *ngIf="studentsSearchResults.length > 0">
+            <div class="search-results-header">
+              <label class="select-all-label">
+                <input
+                  type="checkbox"
+                  [checked]="allLinkableSelected"
+                  [disabled]="allLinkableDisabled"
+                  (change)="toggleAllStudents()" />
+                Select all
+              </label>
+              <span class="selected-count" *ngIf="selectedStudentIds.size > 0">
+                {{ selectedStudentIds.size }} selected
+              </span>
+            </div>
             <div
               class="search-result-item"
               *ngFor="let student of studentsSearchResults"
-              [class.selected]="selectedStudentId === student.id"
-              (click)="selectStudent(student)">
+              [class.selected]="selectedStudentIds.has(student.id)"
+              [class.already-linked]="isAlreadyLinked(student.id)"
+              (click)="onStudentRowClick(student)">
+              <label class="student-checkbox" (click)="$event.stopPropagation()">
+                <input
+                  type="checkbox"
+                  [checked]="selectedStudentIds.has(student.id)"
+                  [disabled]="isAlreadyLinked(student.id)"
+                  (change)="toggleStudentSelection(student)" />
+              </label>
               <div class="student-main">
                 <div class="avatar student-avatar">
                   {{ (student.firstName || 'S').charAt(0) | uppercase }}
@@ -407,6 +429,7 @@
                 <div class="student-info">
                   <div class="student-name">
                     {{ student.firstName }} {{ student.lastName }}
+                    <span class="already-linked-badge" *ngIf="isAlreadyLinked(student.id)">Already linked</span>
                   </div>
                   <div class="student-meta">
                     <span *ngIf="student.studentNumber">🆔 {{ student.studentNumber }}</span>
@@ -420,10 +443,11 @@
           <div class="form-actions">
             <button
               class="btn btn-primary"
-              (click)="linkSelectedStudent()
-"
-              [disabled]="linking">
-              <span *ngIf="!linking">Link Selected Student</span>
+              (click)="linkSelectedStudents()"
+              [disabled]="linking || selectedStudentIds.size === 0">
+              <span *ngIf="!linking">
+                Link {{ selectedStudentIds.size > 1 ? selectedStudentIds.size + ' Students' : 'Selected Student' }}
+              </span>
               <span *ngIf="linking">Linking...</span>
             </button>
           </div>

@@ -28,7 +28,7 @@ export class ParentManagementComponent implements OnInit {
   parentSearchQuery = '';
   studentSearchQuery = '';
   studentsSearchResults: any[] = [];
-  selectedStudentId: string | null = null;
+  selectedStudentIds: Set<string> = new Set<string>();
   relationshipType = 'guardian';
   editMode = false;
   editParent: any = null;
@@ -129,7 +129,7 @@ export class ParentManagementComponent implements OnInit {
     this.editMode = false;
     this.editParent = { ...parent };
     this.studentsSearchResults = [];
-    this.selectedStudentId = null;
+    this.selectedStudentIds = new Set<string>();
     this.relationshipType = 'guardian';
     this.phoneNumberError = '';
     this.emailError = '';
@@ -140,7 +140,7 @@ export class ParentManagementComponent implements OnInit {
     this.editMode = false;
     this.editParent = null;
     this.studentsSearchResults = [];
-    this.selectedStudentId = null;
+    this.selectedStudentIds = new Set<string>();
     this.relationshipType = 'guardian';
     this.phoneNumberError = '';
     this.emailError = '';
@@ -425,10 +425,11 @@ export class ParentManagementComponent implements OnInit {
     }
     this.searchingStudents = true;
     this.studentsSearchResults = [];
-    this.selectedStudentId = null;
+    this.selectedStudentIds = new Set<string>();
     this.parentService.searchStudents(this.studentSearchQuery.trim()).subscribe({
       next: (response: any) => {
         this.studentsSearchResults = response.students || [];
+        this.selectedStudentIds = new Set<string>();
         this.searchingStudents = false;
       },
       error: (err: any) => {
@@ -439,71 +440,129 @@ export class ParentManagementComponent implements OnInit {
     });
   }
 
-  selectStudent(student: any) {
-    this.selectedStudentId = student.id;
+  toggleStudentSelection(student: any) {
+    if (this.selectedStudentIds.has(student.id)) {
+      this.selectedStudentIds.delete(student.id);
+    } else {
+      this.selectedStudentIds.add(student.id);
+    }
+    // Trigger change detection
+    this.selectedStudentIds = new Set(this.selectedStudentIds);
   }
 
-  linkSelectedStudent() {
+  toggleAllStudents() {
+    const alreadyLinkedIds = new Set(
+      (this.selectedParent?.parentStudents || []).map((l: any) => l?.student?.id)
+    );
+    const linkable = this.studentsSearchResults.filter(s => !alreadyLinkedIds.has(s.id));
+    if (linkable.every(s => this.selectedStudentIds.has(s.id))) {
+      linkable.forEach(s => this.selectedStudentIds.delete(s.id));
+    } else {
+      linkable.forEach(s => this.selectedStudentIds.add(s.id));
+    }
+    this.selectedStudentIds = new Set(this.selectedStudentIds);
+  }
+
+  isAlreadyLinked(studentId: string): boolean {
+    return (this.selectedParent?.parentStudents || []).some((l: any) => l?.student?.id === studentId);
+  }
+
+  get allLinkableSelected(): boolean {
+    if (!this.studentsSearchResults.length) return false;
+    const linkable = this.studentsSearchResults.filter(s => !this.isAlreadyLinked(s.id));
+    return linkable.length > 0 && linkable.every(s => this.selectedStudentIds.has(s.id));
+  }
+
+  get allLinkableDisabled(): boolean {
+    return this.studentsSearchResults.length > 0 &&
+      this.studentsSearchResults.every(s => this.isAlreadyLinked(s.id));
+  }
+
+  onStudentRowClick(student: any) {
+    if (!this.isAlreadyLinked(student.id)) {
+      this.toggleStudentSelection(student);
+    }
+  }
+
+  linkSelectedStudents() {
     if (!this.selectedParent) {
       this.error = 'Please select a parent first';
       setTimeout(() => this.error = '', 5000);
       return;
     }
-    if (!this.selectedStudentId) {
-      this.error = 'Please select a student to link';
+    if (this.selectedStudentIds.size === 0) {
+      this.error = 'Please select at least one student to link';
       setTimeout(() => this.error = '', 5000);
       return;
     }
+
     this.linking = true;
     this.success = '';
     this.error = '';
-    this.parentService.adminLinkStudentToParent(
-      this.selectedParent.id,
-      this.selectedStudentId,
-      this.relationshipType || 'guardian'
-    ).subscribe({
-      next: () => {
+
+    const ids = Array.from(this.selectedStudentIds);
+    const relationship = this.relationshipType || 'guardian';
+    let completed = 0;
+    let failed = 0;
+    const linked: any[] = [];
+
+    const linkNext = (index: number) => {
+      if (index >= ids.length) {
         this.linking = false;
-        this.success = 'Student linked successfully';
-
-        // Update UI immediately (count + linked list) without waiting for a full reload.
-        const linkedStudent = this.studentsSearchResults.find(s => s.id === this.selectedStudentId);
-        if (linkedStudent) {
-          const existingLinks = Array.isArray(this.selectedParent?.parentStudents)
-            ? this.selectedParent.parentStudents
-            : [];
-
-          const alreadyLinked = existingLinks.some((l: any) => l?.student?.id === linkedStudent.id);
-          if (!alreadyLinked && this.selectedParent) {
-            this.selectedParent = {
-              ...this.selectedParent,
-              parentStudents: [
-                ...existingLinks,
-                { student: linkedStudent, relationshipType: this.relationshipType || 'guardian' }
-              ]
-            };
-
-            // Parent just became linked; update header metric immediately
-            if (existingLinks.length === 0 && this.unlinkedParentsCount > 0) {
-              this.unlinkedParentsCount = this.unlinkedParentsCount - 1;
-            }
-          }
+        if (failed === 0) {
+          this.success = ids.length === 1
+            ? 'Student linked successfully'
+            : `${ids.length} students linked successfully`;
+        } else {
+          this.success = `${completed} linked, ${failed} failed.`;
+          this.error = `${failed} student(s) could not be linked. They may already be linked or an error occurred.`;
         }
 
-        // Clear selection/search so admin doesn't accidentally link the same student twice
-        this.selectedStudentId = null;
+        // Update UI immediately
+        const existingLinks = Array.isArray(this.selectedParent?.parentStudents)
+          ? this.selectedParent.parentStudents
+          : [];
+        const wasUnlinked = existingLinks.length === 0;
+        this.selectedParent = {
+          ...this.selectedParent,
+          parentStudents: [
+            ...existingLinks,
+            ...linked.map(s => ({ student: s, relationshipType: relationship }))
+          ]
+        };
+        if (wasUnlinked && linked.length > 0 && this.unlinkedParentsCount > 0) {
+          this.unlinkedParentsCount--;
+        }
+
+        this.selectedStudentIds = new Set<string>();
         this.studentSearchQuery = '';
         this.studentsSearchResults = [];
 
         this.loadParents();
-        setTimeout(() => this.success = '', 5000);
-      },
-      error: (err: any) => {
-        this.linking = false;
-        this.error = err.error?.message || 'Failed to link student';
-        setTimeout(() => this.error = '', 5000);
+        setTimeout(() => { this.success = ''; this.error = ''; }, 6000);
+        return;
       }
-    });
+
+      const studentId = ids[index];
+      this.parentService.adminLinkStudentToParent(
+        this.selectedParent.id,
+        studentId,
+        relationship
+      ).subscribe({
+        next: () => {
+          completed++;
+          const student = this.studentsSearchResults.find(s => s.id === studentId);
+          if (student) linked.push(student);
+          linkNext(index + 1);
+        },
+        error: () => {
+          failed++;
+          linkNext(index + 1);
+        }
+      });
+    };
+
+    linkNext(0);
   }
 
   unlinkStudent(link: any) {

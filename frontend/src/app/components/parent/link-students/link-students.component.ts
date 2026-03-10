@@ -15,12 +15,24 @@ export class LinkStudentsComponent implements OnInit {
   loading = false;
   error = '';
   success = '';
+  parentName = '';
+
+  /** ID of the student currently awaiting unlink confirmation */
+  confirmUnlinkId: string | null = null;
 
   constructor(
     private parentService: ParentService,
     private authService: AuthService,
     private router: Router
-  ) { }
+  ) {
+    const user = this.authService.getCurrentUser();
+    if (user?.parent) {
+      this.parentName = `${user.parent.firstName || ''} ${user.parent.lastName || ''}`.trim()
+        || user.fullName?.trim() || 'Parent';
+    } else {
+      this.parentName = user?.fullName?.trim() || 'Parent';
+    }
+  }
 
   ngOnInit() {
     this.loadLinkedStudents();
@@ -42,11 +54,9 @@ export class LinkStudentsComponent implements OnInit {
   }
 
   linkStudent() {
-    // Reset messages
     this.error = '';
     this.success = '';
 
-    // Validate inputs
     if (!this.studentId || !this.studentId.trim()) {
       this.error = 'Please enter a Student ID';
       setTimeout(() => this.error = '', 5000);
@@ -58,29 +68,36 @@ export class LinkStudentsComponent implements OnInit {
     this.parentService.linkStudentByIdAndDob(this.studentId.trim()).subscribe({
       next: (response: any) => {
         this.linking = false;
-        this.success = `Successfully linked ${response.student?.firstName || ''} ${response.student?.lastName || ''}`;
-        // Clear form
+        const name = [response.student?.firstName, response.student?.lastName].filter(Boolean).join(' ');
+        this.success = `✅ Successfully linked${name ? ': ' + name : ' student'}`;
         this.studentId = '';
-        // Reload linked students
         this.loadLinkedStudents();
-        setTimeout(() => this.success = '', 5000);
+        setTimeout(() => this.success = '', 6000);
       },
       error: (err: any) => {
         this.linking = false;
         this.error = err.error?.message || 'Failed to link student. Please verify the Student ID.';
-        setTimeout(() => this.error = '', 5000);
+        setTimeout(() => this.error = '', 6000);
       }
     });
   }
 
-  unlinkStudent(studentId: string) {
-    if (!confirm('Are you sure you want to unlink this student?')) {
-      return;
-    }
+  requestUnlink(studentId: string) {
+    this.confirmUnlinkId = studentId;
+  }
 
-    this.parentService.unlinkStudent(studentId).subscribe({
+  cancelUnlink() {
+    this.confirmUnlinkId = null;
+  }
+
+  confirmUnlink() {
+    if (!this.confirmUnlinkId) return;
+    const id = this.confirmUnlinkId;
+    this.confirmUnlinkId = null;
+
+    this.parentService.unlinkStudent(id).subscribe({
       next: () => {
-        this.success = 'Student unlinked successfully';
+        this.success = 'Student unlinked successfully.';
         this.loadLinkedStudents();
         setTimeout(() => this.success = '', 5000);
       },
@@ -91,7 +108,17 @@ export class LinkStudentsComponent implements OnInit {
     });
   }
 
+  studentInitials(student: any): string {
+    const f = (student.firstName || '').charAt(0).toUpperCase();
+    const l = (student.lastName || '').charAt(0).toUpperCase();
+    return (f + l) || '?';
+  }
+
   goToDashboard() {
     this.router.navigate(['/parent/dashboard']);
+  }
+
+  logout() {
+    this.authService.logout();
   }
 }

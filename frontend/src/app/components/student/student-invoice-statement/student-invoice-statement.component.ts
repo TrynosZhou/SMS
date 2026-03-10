@@ -1,225 +1,266 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { AuthService } from '../../../services/auth.service';
 import { FinanceService } from '../../../services/finance.service';
 import { SettingsService } from '../../../services/settings.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { trigger, state, style, transition, animate } from '@angular/animations';
 
 @Component({
   selector: 'app-student-invoice-statement',
   templateUrl: './student-invoice-statement.component.html',
-  styleUrls: ['./student-invoice-statement.component.css']
+  styleUrls: ['./student-invoice-statement.component.css'],
+  animations: [
+    trigger('fadeIn', [
+      state('void', style({ opacity: 0, transform: 'translateY(10px)' })),
+      transition(':enter', [animate('320ms ease-out', style({ opacity: 1, transform: 'translateY(0)' }))])
+    ])
+  ]
 })
-export class StudentInvoiceStatementComponent implements OnInit {
+export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
   user: any;
   student: any;
-  studentId: string = '';
-  invoices: any[] = [];
-  currentBalance: number = 0;
+  studentId = '';
+
+  // Invoices
+  allInvoices: any[] = [];
+  filteredInvoices: any[] = [];
+  selectedInvoice: any = null;
+
+  // Balance
+  currentBalance = 0;
+
+  // Filters
+  searchQuery = '';
+  statusFilter = 'all';
+
+  // Loading states
   loading = false;
+  loadingPdf = false;
+
+  // Alerts
   error = '';
   success = '';
-  currencySymbol: string = 'KES';
-  
-  // PDF Preview
-  showPdfPreview = false;
-  pdfUrl: string | null = null;
-  safePdfUrl: SafeResourceUrl | null = null;
-  loadingPdf = false;
-  currentInvoiceId: string | null = null;
+
+  // Settings
+  currencySymbol = 'KES';
+  schoolLogo: string | null = null;
+
+  // Inline PDF
+  inlinePdf: SafeResourceUrl | null = null;
+  private pdfBlobUrl: string | null = null;
+  pdfError = false;
 
   constructor(
     private authService: AuthService,
     private financeService: FinanceService,
     private settingsService: SettingsService,
     private sanitizer: DomSanitizer
-  ) { }
+  ) {}
 
   ngOnInit() {
     this.loadStudentData();
+    this.loadSettings();
   }
 
+  ngOnDestroy() {
+    this.revokePdfUrl();
+  }
+
+  private revokePdfUrl() {
+    if (this.pdfBlobUrl) {
+      window.URL.revokeObjectURL(this.pdfBlobUrl);
+      this.pdfBlobUrl = null;
+    }
+  }
+
+  // ── Student data ──────────────────────────────────────────────
   loadStudentData(retryCount = 0) {
-    const maxRetries = 5; // Increased retries
+    const maxRetries = 5;
     this.user = this.authService.getCurrentUser();
-    
+
     if (!this.user) {
-      if (retryCount < maxRetries) {
-        setTimeout(() => this.loadStudentData(retryCount + 1), 500);
-        return;
-      }
-      this.error = 'User information not found. Please log in again.';
-      return;
+      if (retryCount < maxRetries) { setTimeout(() => this.loadStudentData(retryCount + 1), 500); return; }
+      this.error = 'User information not found. Please log in again.'; return;
     }
 
-    // Debug: Log user object structure
-    console.log('[StudentInvoiceStatement] User object:', {
-      id: this.user.id,
-      role: this.user.role,
-      hasStudent: !!this.user.student,
-      studentKeys: this.user.student ? Object.keys(this.user.student) : [],
-      fullUser: this.user
-    });
-
-    // Check if user is a student but student data is missing
     if (this.user.role === 'student' && !this.user.student) {
-      if (retryCount < maxRetries) {
-        console.log(`[StudentInvoiceStatement] Student data not available, retry ${retryCount + 1}/${maxRetries}`);
-        // Wait a bit longer for student data to be loaded
-        setTimeout(() => this.loadStudentData(retryCount + 1), 1000);
-        return;
-      }
-      console.error('[StudentInvoiceStatement] Student data not available after retries. User object:', this.user);
-      console.error('[StudentInvoiceStatement] This usually means the user session was created before the student data fix. Please log out and log back in.');
-      this.error = 'Student information not found. Your session may be outdated. Please log out and log in again to refresh your session.';
-      return;
+      if (retryCount < maxRetries) { setTimeout(() => this.loadStudentData(retryCount + 1), 1000); return; }
+      this.error = 'Student information not found. Please log out and log in again.'; return;
     }
 
-    if (!this.user.student) {
-      this.error = 'Student information not found. Please log out and log in again.';
-      return;
-    }
+    if (!this.user.student) { this.error = 'Student information not found. Please log out and log in again.'; return; }
 
-    this.student = this.user.student;
-    
-    // Verify student ID is available
-    if (!this.student.id) {
-      console.error('Student ID not available:', this.student);
-      this.error = 'Student ID not found. Please log in again.';
-      return;
-    }
-    
-    this.studentId = this.student.id;
-    this.loadSettings();
+    this.student   = this.user.student;
+    this.studentId = this.student.id || '';
+
+    if (!this.studentId) { this.error = 'Student ID not found. Please log in again.'; return; }
+
     this.loadInvoices();
     this.loadCurrentBalance();
   }
 
+  // ── Settings ─────────────────────────────────────────────────
   loadSettings() {
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
         this.currencySymbol = data.currencySymbol || 'KES';
       },
-      error: (err: any) => {
-        console.error('Error loading settings:', err);
-      }
+      error: () => {}
     });
   }
 
+  // ── Invoices ──────────────────────────────────────────────────
   loadInvoices() {
-    if (!this.student || !this.student.id) {
-      return;
-    }
-
+    if (!this.studentId) return;
     this.loading = true;
-    this.error = '';
+    this.error   = '';
 
-    this.financeService.getInvoices(this.student.id).subscribe({
+    this.financeService.getInvoices(this.studentId).subscribe({
       next: (data: any) => {
         this.loading = false;
-        this.invoices = Array.isArray(data) ? data : [];
-        // Sort by date, newest first
-        this.invoices.sort((a, b) => {
-          const dateA = new Date(a.createdAt || a.dueDate || 0).getTime();
-          const dateB = new Date(b.createdAt || b.dueDate || 0).getTime();
-          return dateB - dateA;
+        this.allInvoices = (Array.isArray(data) ? data : []).sort((a: any, b: any) => {
+          const dA = new Date(a.createdAt || a.dueDate || 0).getTime();
+          const dB = new Date(b.createdAt || b.dueDate || 0).getTime();
+          return dB - dA;
         });
+        this.applyFilter();
+        // Auto-select & preview the most recent invoice
+        if (this.allInvoices.length > 0) {
+          this.selectInvoice(this.allInvoices[0]);
+        }
       },
       error: (err: any) => {
         this.loading = false;
-        console.error('Error loading invoices:', err);
-        this.error = err.error?.message || 'Failed to load invoices';
+        this.error = err.error?.message || 'Failed to load invoices.';
       }
     });
   }
 
   loadCurrentBalance() {
-    if (!this.student || !this.student.id) {
-      return;
-    }
-
-    this.financeService.getStudentBalance(this.student.id).subscribe({
-      next: (data: any) => {
-        this.currentBalance = parseFloat(String(data.balance || 0));
-      },
-      error: (err: any) => {
-        console.error('Error loading balance:', err);
-      }
+    if (!this.studentId) return;
+    this.financeService.getStudentBalance(this.studentId).subscribe({
+      next: (data: any) => { this.currentBalance = parseFloat(String(data.balance || 0)); },
+      error: () => {}
     });
   }
 
-  previewPDF(invoiceId: string) {
-    this.currentInvoiceId = invoiceId;
+  // ── Filter / search ───────────────────────────────────────────
+  applyFilter() {
+    let list = [...this.allInvoices];
+
+    if (this.statusFilter !== 'all') {
+      list = list.filter(inv => (inv.status || '').toLowerCase() === this.statusFilter);
+    }
+
+    if (this.searchQuery.trim()) {
+      const q = this.searchQuery.toLowerCase();
+      list = list.filter(inv =>
+        (inv.invoiceNumber || '').toLowerCase().includes(q) ||
+        (inv.term || '').toLowerCase().includes(q)
+      );
+    }
+
+    this.filteredInvoices = list;
+  }
+
+  clearSearch() {
+    this.searchQuery  = '';
+    this.statusFilter = 'all';
+    this.applyFilter();
+  }
+
+  // ── Invoice selection & PDF ───────────────────────────────────
+  selectInvoice(invoice: any) {
+    if (this.selectedInvoice?.id === invoice?.id) return;
+    this.selectedInvoice = invoice;
+    this.inlinePdf = null;
+    this.revokePdfUrl();
+    this.pdfError = false;
+    this.loadInlinePdf(invoice.id);
+  }
+
+  loadInlinePdf(invoiceId: string) {
     this.loadingPdf = true;
-    this.showPdfPreview = true;
-    this.error = '';
+    this.pdfError   = false;
 
     this.financeService.getInvoicePDF(invoiceId).subscribe({
       next: (response: any) => {
         this.loadingPdf = false;
-        const blob = response.blob;
-        const url = window.URL.createObjectURL(blob);
-        this.pdfUrl = url;
-        this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+        const blob: Blob = response.blob || response;
+        if (!blob || blob.size === 0) { this.pdfError = true; return; }
+        this.revokePdfUrl();
+        this.pdfBlobUrl = window.URL.createObjectURL(blob);
+        this.inlinePdf  = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfBlobUrl);
       },
-      error: (err: any) => {
+      error: () => {
         this.loadingPdf = false;
-        console.error('Error loading PDF:', err);
-        this.error = err.error?.message || 'Failed to load PDF preview';
-        this.showPdfPreview = false;
+        this.pdfError   = true;
       }
     });
   }
 
-  closePdfPreview() {
-    this.showPdfPreview = false;
-    if (this.pdfUrl) {
-      window.URL.revokeObjectURL(this.pdfUrl);
-      this.pdfUrl = null;
-      this.safePdfUrl = null;
-    }
-    this.currentInvoiceId = null;
+  retryPdf() {
+    if (this.selectedInvoice?.id) this.loadInlinePdf(this.selectedInvoice.id);
   }
 
   downloadPDF(invoiceId: string) {
-    this.loading = true;
     this.error = '';
-
     this.financeService.getInvoicePDF(invoiceId).subscribe({
       next: (response: any) => {
-        this.loading = false;
-        const blob = response.blob;
-        const filename = response.filename || `Invoice-${invoiceId}.pdf`;
-        
-        if (blob.size === 0) {
-          this.error = 'Received empty PDF file';
-          return;
-        }
-
-        const url = window.URL.createObjectURL(blob);
+        const blob: Blob = response.blob || response;
+        const filename   = response.filename || `Invoice-${invoiceId}.pdf`;
+        if (!blob || blob.size === 0) { this.error = 'Received empty PDF file.'; return; }
+        const url  = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = url;
+        link.href  = url;
         link.download = filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-        this.success = 'PDF downloaded successfully';
+        this.success = 'PDF downloaded successfully.';
         setTimeout(() => this.success = '', 3000);
       },
       error: (err: any) => {
-        this.loading = false;
-        console.error('PDF download error:', err);
-        this.error = err.error?.message || 'Failed to download PDF';
+        this.error = err.error?.message || 'Failed to download PDF.';
+        setTimeout(() => this.error = '', 5000);
       }
     });
   }
 
+  // ── Computed helpers ──────────────────────────────────────────
+  get studentFullName(): string {
+    if (!this.student) return '';
+    return `${this.student.firstName || ''} ${this.student.lastName || ''}`.trim()
+      || this.user?.fullName || '';
+  }
+
+  get totalInvoiced(): number {
+    return this.allInvoices.reduce((s, inv) => s + parseFloat(String(inv.amount || inv.totalAmount || 0)), 0);
+  }
+
+  get totalPaid(): number {
+    return this.allInvoices.reduce((s, inv) => s + parseFloat(String(inv.paidAmount || 0)), 0);
+  }
+
+  get paidCount(): number {
+    return this.allInvoices.filter(i => (i.status || '').toLowerCase() === 'paid').length;
+  }
+
+  get pendingCount(): number {
+    return this.allInvoices.length - this.paidCount;
+  }
+
   getStatusClass(status: string): string {
-    const statusLower = (status || '').toLowerCase();
-    if (statusLower === 'paid') return 'status-badge status-paid';
-    if (statusLower === 'partial') return 'status-badge status-partial';
-    if (statusLower === 'overdue') return 'status-badge status-overdue';
-    return 'status-badge status-pending';
+    const s = (status || '').toLowerCase();
+    if (s === 'paid')    return 'badge-paid';
+    if (s === 'partial') return 'badge-partial';
+    if (s === 'overdue') return 'badge-overdue';
+    return 'badge-pending';
+  }
+
+  formatDate(dateStr: string): string {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 }
-

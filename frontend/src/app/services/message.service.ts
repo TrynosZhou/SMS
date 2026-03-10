@@ -20,10 +20,8 @@ export class MessageService {
     form.append('subject', subject);
     form.append('message', message);
     form.append('recipients', recipients);
-    form.append('audience', recipients);
     files.forEach(f => {
       form.append('attachments', f);
-      form.append('files', f);
     });
     return this.http.post(`${this.apiUrl}/messages/bulk`, form);
   }
