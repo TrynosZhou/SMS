@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
 import { UserRole } from '../entities/User';
 import {
+  getCurrentParentProfile,
   getParentStudents,
   linkStudent,
   linkStudentByIdAndDob,
@@ -20,6 +21,13 @@ import {
 const router = Router();
 
 router.use(authenticate);
+
+// Get current parent's profile
+router.get(
+  '/profile',
+  authorize(UserRole.PARENT, UserRole.DEMO_USER),
+  getCurrentParentProfile
+);
 
 router.get(
   '/students',

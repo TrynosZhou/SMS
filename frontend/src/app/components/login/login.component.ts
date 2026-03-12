@@ -26,6 +26,7 @@ export class LoginComponent implements OnInit {
   signupConfirmPassword = '';
   signupFirstName = '';
   signupLastName = '';
+  signupGender = '';
   signupContactNumber = '';
   signupEmail = '';
   signupAddress = '';
@@ -152,6 +153,7 @@ export class LoginComponent implements OnInit {
     this.signupConfirmPassword = '';
     this.signupFirstName = '';
     this.signupLastName = '';
+    this.signupGender = '';
     this.signupContactNumber = '';
     this.signupEmail = '';
     this.signupAddress = '';
@@ -428,8 +430,8 @@ export class LoginComponent implements OnInit {
     }
 
     if (this.signupRole === 'PARENT') {
-      if (!this.signupFirstName || !this.signupLastName || !this.signupContactNumber) {
-        this.error = 'Please fill in all required fields';
+      if (!this.signupFirstName || !this.signupLastName || !this.signupContactNumber || !this.signupGender) {
+        this.error = 'Please fill in all required fields including gender';
         return;
       }
     }
@@ -498,6 +500,7 @@ export class LoginComponent implements OnInit {
       registerData.email = this.signupEmail.trim();
       registerData.firstName = this.signupFirstName;
       registerData.lastName = this.signupLastName;
+      registerData.gender = this.signupGender;
       registerData.phoneNumber = this.signupContactNumber;
       registerData.contactNumber = this.signupContactNumber;
       registerData.address = this.signupAddress.trim();

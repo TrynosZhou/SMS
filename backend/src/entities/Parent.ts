@@ -23,6 +23,9 @@ export class Parent {
   @Column({ nullable: true })
   email: string;
 
+  @Column({ nullable: true })
+  gender: string;
+
   @OneToOne(() => User, user => user.parent)
   user: User;
 

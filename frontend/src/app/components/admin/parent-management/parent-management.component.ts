@@ -43,6 +43,7 @@ export class ParentManagementComponent implements OnInit {
     email: '',
     phoneNumber: '',
     address: '',
+    gender: '',
     createAccount: true,
     generatePassword: true,
     password: ''
@@ -184,6 +185,7 @@ export class ParentManagementComponent implements OnInit {
       email,
       phoneNumber: (this.createParentForm.phoneNumber || '').trim() || null,
       address: (this.createParentForm.address || '').trim() || null,
+      gender: (this.createParentForm.gender || '').trim() || null,
       createAccount: !!this.createParentForm.createAccount,
       generatePassword: !!this.createParentForm.generatePassword,
       password: (this.createParentForm.password || '').trim() || undefined
@@ -366,7 +368,8 @@ export class ParentManagementComponent implements OnInit {
       lastName: this.editParent.lastName,
       phoneNumber: this.editParent.phoneNumber || null,
       address: this.editParent.address || null,
-      email: this.editParent.email || null
+      email: this.editParent.email || null,
+      gender: this.editParent.gender || null
     };
 
     this.savingParent = true;

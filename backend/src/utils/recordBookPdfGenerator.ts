@@ -38,23 +38,14 @@ export function createRecordBookPDF(
       const schoolName = settings?.schoolName || 'School Management System';
       const schoolAddress = settings?.schoolAddress ? String(settings.schoolAddress).trim() : '';
       const schoolPhone = settings?.schoolPhone ? String(settings.schoolPhone).trim() : '';
+      const schoolEmail = settings?.schoolEmail ? String(settings.schoolEmail).trim() : '';
 
-      // Header Section - Layout: [White Square with Logo 1] [Blue Background with Text] [White Square with Logo 2]
-      const headerHeight = 110;
-      const logoSquareSize = 120; // Size of white square for logos
-      const logoPadding = 10; // Padding around logo in square
-      const maxLogoWidth = logoSquareSize - (logoPadding * 2); // Maximum width for logo
-      const maxLogoHeight = headerHeight - (logoPadding * 2); // Maximum height for logo
-      
-      // Calculate positions
-      const logo1SquareX = 0;
-      const logo2SquareX = doc.page.width - logoSquareSize;
-      
-      const blueSectionX = logoSquareSize;
-      const blueSectionWidth = doc.page.width - (logoSquareSize * 2);
-      const textStartX = blueSectionX + 20; // Padding from blue section edge
-      const textEndX = logo2SquareX - 20; // Padding before second logo
-      const textWidth = textEndX - textStartX;
+      // Header Section - Full width blue background with logo on right
+      const headerHeight = 120;
+      const pageWidth = doc.page.width;
+      const margin = 40;
+      const logoSize = 80; // Logo size
+      const logoPadding = 10;
 
       // Helper function to add logo with preserved aspect ratio
       const addLogoWithAspectRatio = (
@@ -65,116 +56,114 @@ export function createRecordBookPDF(
         maxHeight: number
       ) => {
         try {
-          // Get image dimensions
           const dimensions = sizeOf(imageBuffer);
           const imgWidth = dimensions.width || maxWidth;
           const imgHeight = dimensions.height || maxHeight;
           
-          // Calculate scale factor to fit within max dimensions while preserving aspect ratio
           const scaleX = maxWidth / imgWidth;
           const scaleY = maxHeight / imgHeight;
-          const scale = Math.min(scaleX, scaleY); // Use smaller scale to ensure it fits
+          const scale = Math.min(scaleX, scaleY);
           
-          // Calculate final dimensions
           const finalWidth = imgWidth * scale;
           const finalHeight = imgHeight * scale;
           
-          // Center the image within the available space
           const centeredX = startX + (maxWidth - finalWidth) / 2;
           const centeredY = startY + (maxHeight - finalHeight) / 2;
           
-          // Draw the image with calculated dimensions (preserving aspect ratio)
           doc.image(imageBuffer, centeredX, centeredY, {
             width: finalWidth,
             height: finalHeight
           });
         } catch (error) {
-          console.error('Error adding logo with aspect ratio:', error);
-          // Fallback: try to add image with max width (pdfkit will maintain aspect ratio)
-          try {
-            doc.image(imageBuffer, startX, startY, {
-              width: maxWidth
-            });
-          } catch (fallbackError) {
-            console.error('Fallback logo addition also failed:', fallbackError);
-          }
+          console.error('Error adding logo:', error);
         }
       };
 
-      // Draw white square for Logo 1 (left side)
-      if (settings?.schoolLogo) {
-        doc.rect(logo1SquareX, 0, logoSquareSize, headerHeight)
-          .fillColor('#FFFFFF')
-          .fill();
-        
-        try {
-          if (settings.schoolLogo.startsWith('data:image')) {
-            const base64Data = settings.schoolLogo.split(',')[1];
-            if (base64Data) {
-              const imageBuffer = Buffer.from(base64Data, 'base64');
-              // Center logo within white square
-              const logo1X = logo1SquareX + logoPadding;
-              const logo1Y = logoPadding;
-              addLogoWithAspectRatio(imageBuffer, logo1X, logo1Y, maxLogoWidth, maxLogoHeight);
-            }
-          }
-        } catch (error) {
-          console.error('Could not add school logo 1 to record book PDF:', error);
-        }
-      } else {
-        // Draw white square even if no logo (for consistent layout)
-        doc.rect(logo1SquareX, 0, logoSquareSize, headerHeight)
-          .fillColor('#FFFFFF')
-          .fill();
-      }
-
-
-      // Blue background section (middle) for school name and contact info
-      doc.rect(blueSectionX, 0, blueSectionWidth, headerHeight)
+      // Draw full-width blue background
+      doc.rect(0, 0, pageWidth, headerHeight)
         .fillColor('#4a90e2')
         .fill();
 
-      // School name and info (centered in blue section)
-      // Center text vertically in header
-      const textVerticalCenter = headerHeight / 2;
-      const schoolNameY = textVerticalCenter - 20;
-      const addressY = textVerticalCenter + 5;
-      const phoneY = textVerticalCenter + 25;
+      // Add Logo 2 on the right side with circular clipping (transparent effect)
+      const logoAreaX = pageWidth - margin - logoSize - 10;
+      const logoAreaY = (headerHeight - logoSize) / 2;
+      const logoCenterX = logoAreaX + logoSize / 2;
+      const logoCenterY = logoAreaY + logoSize / 2;
+      const logoRadius = logoSize / 2;
+      
+      if (settings?.schoolLogo2) {
+        try {
+          if (settings.schoolLogo2.startsWith('data:image')) {
+            const base64Data = settings.schoolLogo2.split(',')[1];
+            if (base64Data) {
+              const imageBuffer = Buffer.from(base64Data, 'base64');
+              
+              // Save graphics state, clip to circle, draw image, restore state
+              doc.save();
+              doc.circle(logoCenterX, logoCenterY, logoRadius).clip();
+              addLogoWithAspectRatio(imageBuffer, logoAreaX, logoAreaY, logoSize, logoSize);
+              doc.restore();
+            }
+          }
+        } catch (error) {
+          console.error('Could not add school logo 2 to record book PDF:', error);
+        }
+      }
 
-      // School name - centered in blue section
-      doc.fontSize(22).font('Helvetica-Bold').fillColor('#FFFFFF');
-      doc.text(schoolName, textStartX, schoolNameY, { 
+      // Calculate text area (left of logo)
+      const textStartX = margin;
+      const textWidth = logoAreaX - margin - 20;
+
+      // School name - large and bold
+      doc.fontSize(24).font('Helvetica-Bold').fillColor('#FFFFFF');
+      doc.text(schoolName, textStartX, 15, { 
         width: textWidth, 
         align: 'center' 
       });
 
-      // School address and phone - centered in blue section
-      if (schoolAddress || schoolPhone) {
+      // School address - full address
+      let headerTextY = 45;
+      if (schoolAddress) {
         doc.fontSize(11).font('Helvetica').fillColor('#FFFFFF');
+        doc.text(schoolAddress, textStartX, headerTextY, { 
+          width: textWidth, 
+          align: 'center' 
+        });
+        headerTextY += 18;
+      }
+
+      // School contact info (phone and email)
+      if (schoolPhone || schoolEmail) {
+        doc.fontSize(10).font('Helvetica').fillColor('#FFFFFF');
         
-        if (schoolAddress) {
-          doc.text(schoolAddress, textStartX, addressY, { 
-            width: textWidth, 
-            align: 'center' 
-          });
+        let contactLine = '';
+        if (schoolPhone) {
+          contactLine += `Tel: ${schoolPhone}`;
+        }
+        if (schoolEmail) {
+          if (contactLine) contactLine += '  |  ';
+          contactLine += `Email: ${schoolEmail}`;
         }
         
-        if (schoolPhone) {
-          const phoneText = `Telephones: ${schoolPhone}`;
-          doc.text(phoneText, textStartX, phoneY, { 
+        if (contactLine) {
+          doc.text(contactLine, textStartX, headerTextY, { 
             width: textWidth, 
             align: 'center' 
           });
+          headerTextY += 16;
         }
       }
 
-      // Title Section
-      let yPos = headerHeight + 20;
-      doc.fontSize(16).font('Helvetica-Bold').fillColor('#000000');
-      doc.text('RECORD BOOK', 40, yPos, { align: 'center', width: doc.page.width - 80 });
-      
-      yPos += 25;
-      doc.fontSize(12).font('Helvetica');
+      // Add "RECORD BOOK" subtitle in header
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#FFFFFF');
+      doc.text('RECORD BOOK', textStartX, headerTextY + 5, { 
+        width: textWidth, 
+        align: 'center' 
+      });
+
+      // Details Section (below header)
+      let yPos = headerHeight + 15;
+      doc.fontSize(12).font('Helvetica').fillColor('#000000');
       
       // Format teacher name as LastName FirstName (consistent with system)
       // Handle placeholder names - if it's "Teacher Account", show just EmployeeID

@@ -11,6 +11,10 @@ export class ParentService {
 
   constructor(private http: HttpClient) { }
 
+  getCurrentProfile(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/parent/profile`);
+  }
+
   getLinkedStudents(term?: string): Observable<any> {
     const params: any = {};
     if (term && String(term).trim()) {
@@ -80,6 +84,7 @@ export class ParentService {
     email: string;
     phoneNumber?: string | null;
     address?: string | null;
+    gender?: string | null;
     createAccount?: boolean;
     password?: string;
     generatePassword?: boolean;

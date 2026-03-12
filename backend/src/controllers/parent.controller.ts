@@ -17,6 +17,43 @@ const generateTemporaryPassword = () => {
   return `Temp-${randomBytes(4).toString('hex')}-${Date.now().toString().slice(-4)}`;
 };
 
+// Get current parent's profile
+export const getCurrentParentProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const parentRepository = AppDataSource.getRepository(Parent);
+    let parent = req.user?.parent || null;
+    
+    if (!parent) {
+      parent = await parentRepository.findOne({
+        where: { userId }
+      });
+    }
+
+    if (!parent) {
+      return res.status(404).json({ message: 'Parent profile not found' });
+    }
+
+    res.json({
+      id: parent.id,
+      firstName: parent.firstName,
+      lastName: parent.lastName,
+      email: parent.email,
+      phoneNumber: parent.phoneNumber,
+      address: parent.address,
+      gender: parent.gender || null,
+      fullName: `${parent.lastName || ''} ${parent.firstName || ''}`.trim()
+    });
+  } catch (error: any) {
+    console.error('Error getting parent profile:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
 // Get parent's linked students
 export const getParentStudents = async (req: AuthRequest, res: Response) => {
   try {
@@ -116,6 +153,7 @@ export const adminCreateParent = async (req: AuthRequest, res: Response) => {
       email,
       phoneNumber,
       address,
+      gender,
       createAccount = true,
       password,
       generatePassword = true
@@ -196,6 +234,7 @@ export const adminCreateParent = async (req: AuthRequest, res: Response) => {
       email: trimmedEmail,
       phoneNumber: normalizedPhone,
       address: address ? String(address).trim() || null : null,
+      gender: gender ? String(gender).trim() || null : null,
       userId: createdUser ? createdUser.id : null
     });
     await parentRepository.save(parent);
@@ -232,6 +271,8 @@ export const adminResetParentPassword = async (req: AuthRequest, res: Response) 
 
     const { email, newPassword, generatePassword = true } = req.body || {};
     const trimmedEmail = String(email || '').trim().toLowerCase();
+    console.log('[ResetParentPassword] Attempting to reset password for email:', trimmedEmail);
+    
     if (!trimmedEmail) {
       return res.status(400).json({ message: 'Email is required' });
     }
@@ -239,17 +280,32 @@ export const adminResetParentPassword = async (req: AuthRequest, res: Response) 
     const userRepository = AppDataSource.getRepository(User);
     const parentRepository = AppDataSource.getRepository(Parent);
 
+    // First try to find user by email directly
     let user = await userRepository.findOne({ where: { email: trimmedEmail } });
+    console.log('[ResetParentPassword] User found by email in users table:', user ? user.id : 'NOT FOUND');
+    
     if (!user) {
+      // Try to find by username (email might be used as username)
+      user = await userRepository.findOne({ where: { username: trimmedEmail } });
+      console.log('[ResetParentPassword] User found by username:', user ? user.id : 'NOT FOUND');
+    }
+    
+    if (!user) {
+      // Try to find parent by email and get linked user
       const parent = await parentRepository.findOne({ where: { email: trimmedEmail } });
+      console.log('[ResetParentPassword] Parent found:', parent ? parent.id : 'NOT FOUND', 'userId:', parent?.userId);
       if (parent?.userId) {
         user = await userRepository.findOne({ where: { id: parent.userId } });
+        console.log('[ResetParentPassword] User found via parent.userId:', user ? user.id : 'NOT FOUND');
       }
     }
 
     if (!user) {
+      console.log('[ResetParentPassword] No user found for email:', trimmedEmail);
       return res.status(404).json({ message: 'No user account found for that email' });
     }
+
+    console.log('[ResetParentPassword] Found user:', user.id, 'username:', user.username, 'role:', user.role);
 
     if (user.role !== UserRole.PARENT) {
       return res.status(400).json({ message: 'This email does not belong to a parent account' });
@@ -272,10 +328,23 @@ export const adminResetParentPassword = async (req: AuthRequest, res: Response) 
       return res.status(400).json({ message: 'New password must be at least 8 characters long' });
     }
 
-    user.password = await bcrypt.hash(plainPassword, 10);
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+    console.log('[ResetParentPassword] New password hash starts with:', hashedPassword.substring(0, 20));
+    
+    user.password = hashedPassword;
     user.mustChangePassword = true;
     user.isTemporaryAccount = true;
-    await userRepository.save(user);
+    
+    const savedUser = await userRepository.save(user);
+    console.log('[ResetParentPassword] User saved, password hash starts with:', savedUser.password?.substring(0, 20));
+
+    // Verify the save worked by reloading the user
+    const verifyUser = await userRepository.findOne({ where: { id: user.id } });
+    console.log('[ResetParentPassword] Verify reload - password hash starts with:', verifyUser?.password?.substring(0, 20));
+    
+    // Test that the password actually works
+    const passwordMatches = await bcrypt.compare(plainPassword, verifyUser?.password || '');
+    console.log('[ResetParentPassword] Password verification test:', passwordMatches ? 'PASS' : 'FAIL');
 
     res.json({
       message: 'Password reset successfully',
@@ -543,7 +612,7 @@ export const searchStudents = async (req: AuthRequest, res: Response) => {
 export const adminUpdateParent = async (req: AuthRequest, res: Response) => {
   try {
     const { parentId } = req.params;
-    const { firstName, lastName, phoneNumber, address, email } = req.body;
+    const { firstName, lastName, phoneNumber, address, email, gender } = req.body;
 
     if (!parentId) {
       return res.status(400).json({ message: 'Parent ID is required' });
@@ -578,6 +647,7 @@ export const adminUpdateParent = async (req: AuthRequest, res: Response) => {
     parent.phoneNumber = normalizedPhone;
     parent.address = address && String(address).trim() ? String(address).trim() : null;
     parent.email = email && String(email).trim() ? String(email).trim() : null;
+    parent.gender = gender && String(gender).trim() ? String(gender).trim() : null;
 
     const savedParent = await parentRepository.save(parent);
 

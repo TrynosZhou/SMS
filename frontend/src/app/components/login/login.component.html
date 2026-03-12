@@ -250,6 +250,18 @@
           </div>
         </div>
         <div class="form-group" *ngIf="signupRole === 'PARENT'">
+          <label>Gender *</label>
+          <select 
+            [(ngModel)]="signupGender" 
+            name="signupGender" 
+            class="form-control"
+            required>
+            <option value="">Select Gender...</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+        <div class="form-group" *ngIf="signupRole === 'PARENT'">
           <label>Contact Number *</label>
           <input 
             type="tel" 

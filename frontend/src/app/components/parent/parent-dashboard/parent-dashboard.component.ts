@@ -20,6 +20,7 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
   error = '';
   currencySymbol = 'KES';
   parentName = '';
+  parentGender = '';
   invoiceLoading = false;
   schoolLogo: string | null = null;
   schoolLogo2: string | null = null;
@@ -52,20 +53,47 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
     private newsService: NewsService,
     private router: Router
   ) {
+    this.loadParentName();
+  }
+
+  private loadParentName() {
+    // First, set from local user data as fallback
     const user = this.authService.getCurrentUser();
     if (user?.parent) {
-      this.parentName = `${user.parent.firstName || ''} ${user.parent.lastName || ''}`.trim()
-        || user.fullName?.trim()
-        || 'Parent';
+      const lastName = (user.parent.lastName || '').trim();
+      const firstName = (user.parent.firstName || '').trim();
+      this.parentName = `${lastName} ${firstName}`.trim() || user.fullName?.trim() || 'Parent';
+      this.parentGender = (user.parent.gender || '').trim();
     } else {
       this.parentName = user?.fullName?.trim() || 'Parent';
+      this.parentGender = '';
     }
+  }
+
+  private fetchParentProfile() {
+    // Fetch fresh parent profile from backend to ensure accurate name display
+    this.parentService.getCurrentProfile().subscribe({
+      next: (profile: any) => {
+        if (profile) {
+          // Format: LastName FirstName (as per user requirement)
+          const lastName = (profile.lastName || '').trim();
+          const firstName = (profile.firstName || '').trim();
+          this.parentName = `${lastName} ${firstName}`.trim() || profile.fullName || 'Parent';
+          this.parentGender = (profile.gender || '').trim();
+        }
+      },
+      error: (err: any) => {
+        console.error('Error fetching parent profile:', err);
+        // Keep the fallback name from loadParentName()
+      }
+    });
   }
 
   ngOnInit() {
     this.loadSettings();
     this.loadStudents();
     this.loadNews();
+    this.fetchParentProfile();
   }
 
   ngOnDestroy() {
@@ -262,9 +290,20 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
     return 'Good Evening';
   }
 
+  get honorific(): string {
+    if (this.parentGender?.toLowerCase() === 'male') return 'Mr';
+    if (this.parentGender?.toLowerCase() === 'female') return 'Mrs';
+    return '';
+  }
+
   get greetingWithName(): string {
     const name = this.parentName && this.parentName !== 'Parent' ? this.parentName : '';
-    return name ? `${this.greeting}, ${name}` : this.greeting;
+    if (!name) return this.greeting;
+    
+    // Include honorific (Mr/Mrs) based on gender
+    const title = this.honorific;
+    const fullGreeting = title ? `${this.greeting}, ${title} ${name}` : `${this.greeting}, ${name}`;
+    return fullGreeting;
   }
 
   get todayDate(): string {

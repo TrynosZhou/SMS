@@ -51,6 +51,14 @@
         <label>Phone</label>
         <input type="text" class="form-input" [(ngModel)]="createParentForm.phoneNumber" />
       </div>
+      <div>
+        <label>Gender</label>
+        <select class="form-input" [(ngModel)]="createParentForm.gender">
+          <option value="">Select Gender...</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+        </select>
+      </div>
       <div class="full-width">
         <label>Address</label>
         <textarea rows="2" class="form-input" [(ngModel)]="createParentForm.address"></textarea>
@@ -302,6 +310,20 @@
           <div class="field-error" *ngIf="phoneNumberError">
             {{ phoneNumberError }}
           </div>
+        </div>
+        <div>
+          <label>Gender</label>
+          <div class="value" *ngIf="!editMode">
+            {{ selectedParent.gender || '—' }}
+          </div>
+          <select
+            *ngIf="editMode"
+            [(ngModel)]="editParent.gender"
+            class="form-input">
+            <option value="">Select Gender...</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
         </div>
         <div class="full-width">
           <label>Address</label>
