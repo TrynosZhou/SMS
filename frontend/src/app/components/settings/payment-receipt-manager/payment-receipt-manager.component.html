@@ -1,0 +1,421 @@
+<div class="prm-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-icon">🧾</div>
+      <div class="header-text">
+        <h1>Payment / Receipt Manager</h1>
+        <p class="subtitle">View and manage payment logs. Protected entries cannot be deleted.</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline" (click)="exportToCSV()" [disabled]="loading || paymentLogs.length === 0">
+        📥 Export CSV
+      </button>
+      <button class="btn btn-primary" (click)="load()" [disabled]="loading">
+        <span class="btn-spinner" *ngIf="loading"></span>
+        <span *ngIf="!loading">🔄</span>
+        {{ loading ? 'Loading...' : 'Refresh' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  <div class="alert alert-success" *ngIf="success">
+    <span class="alert-icon">✓</span>
+    <span class="alert-text">{{ success }}</span>
+    <button class="alert-close" (click)="success = ''">✕</button>
+  </div>
+  <div class="alert alert-error" *ngIf="error">
+    <span class="alert-icon">!</span>
+    <span class="alert-text">{{ error }}</span>
+    <button class="alert-close" (click)="error = ''">✕</button>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="stats-grid" *ngIf="!loading">
+    <div class="stat-card">
+      <div class="stat-icon blue">📋</div>
+      <div class="stat-content">
+        <span class="stat-value">{{ total }}</span>
+        <span class="stat-label">Total Records</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green">💵</div>
+      <div class="stat-content">
+        <span class="stat-value">{{ getTotalAmount() | number:'1.2-2' }}</span>
+        <span class="stat-label">Page Total (USD)</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon purple">💳</div>
+      <div class="stat-content">
+        <span class="stat-value">{{ getCashCount() }}</span>
+        <span class="stat-label">Cash Payments</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon orange">📱</div>
+      <div class="stat-content">
+        <span class="stat-value">{{ getEcocashCount() }}</span>
+        <span class="stat-label">EcoCash Payments</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Card -->
+  <div class="filters-card">
+    <div class="filters-header">
+      <h3>
+        <span class="section-icon">🔍</span>
+        Filters
+      </h3>
+      <button class="btn btn-text" (click)="clearFilters()" *ngIf="hasActiveFilters()">
+        ✕ Clear All
+      </button>
+    </div>
+    <div class="filters-grid">
+      <div class="filter-group">
+        <label>
+          <span class="label-icon">🔎</span>
+          Search
+        </label>
+        <div class="search-input-wrapper">
+          <input 
+            class="form-control" 
+            [(ngModel)]="search" 
+            (input)="onApplyFilters()" 
+            placeholder="Receipt #, student name, method..." />
+          <button class="clear-btn" *ngIf="search" (click)="search = ''; onApplyFilters()">✕</button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label>
+          <span class="label-icon">💳</span>
+          Payment Method
+        </label>
+        <select class="form-control" [(ngModel)]="paymentMethod" (change)="onApplyFilters()">
+          <option value="">All Methods</option>
+          <option value="CASH(USD)">💵 CASH (USD)</option>
+          <option value="ECOCASH(USD)">📱 ECOCASH (USD)</option>
+          <option value="BANK TRANSFER(USD)">🏦 BANK TRANSFER (USD)</option>
+          <option value="ADJUSTMENT">⚙️ ADJUSTMENT</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>
+          <span class="label-icon">📅</span>
+          Start Date
+        </label>
+        <input type="date" class="form-control" [(ngModel)]="startDate" (change)="onApplyFilters()" />
+      </div>
+
+      <div class="filter-group">
+        <label>
+          <span class="label-icon">📅</span>
+          End Date
+        </label>
+        <input type="date" class="form-control" [(ngModel)]="endDate" (change)="onApplyFilters()" />
+      </div>
+
+      <div class="filter-group">
+        <label>
+          <span class="label-icon">📄</span>
+          Rows per page
+        </label>
+        <select class="form-control" [ngModel]="limit" (ngModelChange)="onChangeLimit($event)">
+          <option [ngValue]="10">10 rows</option>
+          <option [ngValue]="20">20 rows</option>
+          <option [ngValue]="50">50 rows</option>
+          <option [ngValue]="100">100 rows</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Active Filters Pills -->
+    <div class="active-filters" *ngIf="hasActiveFilters()">
+      <span class="filter-pill" *ngIf="search">
+        Search: "{{ search }}"
+        <button (click)="search = ''; onApplyFilters()">✕</button>
+      </span>
+      <span class="filter-pill" *ngIf="paymentMethod">
+        Method: {{ paymentMethod }}
+        <button (click)="paymentMethod = ''; onApplyFilters()">✕</button>
+      </span>
+      <span class="filter-pill" *ngIf="startDate">
+        From: {{ startDate }}
+        <button (click)="startDate = ''; onApplyFilters()">✕</button>
+      </span>
+      <span class="filter-pill" *ngIf="endDate">
+        To: {{ endDate }}
+        <button (click)="endDate = ''; onApplyFilters()">✕</button>
+      </span>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="loading-content">
+      <div class="spinner-large"></div>
+      <p>Loading payment logs...</p>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!loading && paymentLogs.length === 0">
+    <div class="empty-icon">🧾</div>
+    <h3>No Payment Logs Found</h3>
+    <p>No payment records match your current filters.</p>
+    <button class="btn btn-primary" (click)="clearFilters()" *ngIf="hasActiveFilters()">
+      Clear Filters
+    </button>
+  </div>
+
+  <!-- Table Section -->
+  <div class="table-card" *ngIf="!loading && paymentLogs.length > 0">
+    <div class="table-header">
+      <h3>
+        <span class="section-icon">📋</span>
+        Payment Records
+      </h3>
+      <span class="record-count">
+        Showing {{ getStartRecord() }}-{{ getEndRecord() }} of {{ total }}
+      </span>
+    </div>
+
+    <div class="table-container">
+      <table class="prm-table">
+        <thead>
+          <tr>
+            <th class="col-student">Student</th>
+            <th class="col-amount">Amount</th>
+            <th class="col-date">Date</th>
+            <th class="col-method">Method</th>
+            <th class="col-receipt">Receipt #</th>
+            <th class="col-notes">Notes</th>
+            <th class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let log of paymentLogs; let i = index" [class.alt]="i % 2 !== 0">
+            <td class="col-student">
+              <div class="student-cell">
+                <div class="student-avatar">
+                  {{ getStudentInitial(log) }}
+                </div>
+                <div class="student-info">
+                  <span class="student-name">
+                    {{ (log.student?.firstName || '') + ' ' + (log.student?.lastName || '') | slice:0:25 }}
+                  </span>
+                  <span class="student-id">{{ log.student?.studentNumber || 'N/A' }}</span>
+                </div>
+              </div>
+            </td>
+            <td class="col-amount">
+              <span class="amount-badge" [class.positive]="(log.amountPaid || 0) > 0" [class.negative]="(log.amountPaid || 0) < 0">
+                {{ (log.amountPaid || 0) >= 0 ? '+' : '' }}{{ (log.amountPaid || 0) | number:'1.2-2' }}
+              </span>
+            </td>
+            <td class="col-date">
+              <div class="date-cell">
+                <span class="date-value">{{ log.paymentDate ? (log.paymentDate | date:'dd MMM yyyy') : '—' }}</span>
+                <span class="time-value">{{ log.paymentDate ? (log.paymentDate | date:'HH:mm') : '' }}</span>
+              </div>
+            </td>
+            <td class="col-method">
+              <span 
+                class="method-badge"
+                [class.cash]="isMethodCash(log)"
+                [class.ecocash]="isMethodEcocash(log)"
+                [class.bank]="isMethodBank(log)"
+                [class.adjustment]="isMethodAdjustment(log)">
+                {{ getMethodIcon(log) }} {{ log.paymentMethod || '—' }}
+              </span>
+            </td>
+            <td class="col-receipt">
+              <span class="receipt-number" *ngIf="log.receiptNumber">{{ log.receiptNumber }}</span>
+              <span class="no-value" *ngIf="!log.receiptNumber">—</span>
+            </td>
+            <td class="col-notes">
+              <span 
+                class="notes-text" 
+                [title]="log.notes || ''"
+                (click)="log.notes && viewNotes(log)">
+                {{ log.notes ? (log.notes | slice:0:30) + (log.notes.length > 30 ? '...' : '') : '—' }}
+              </span>
+            </td>
+            <td class="col-actions">
+              <div class="action-buttons">
+                <button 
+                  class="btn-icon view" 
+                  (click)="viewDetails(log)" 
+                  title="View Details">
+                  👁️
+                </button>
+                <button 
+                  class="btn-icon delete" 
+                  (click)="confirmDelete(log)" 
+                  [disabled]="!canDeleteLog(log) || deletingId === log.id"
+                  [title]="canDeleteLog(log) ? 'Delete' : 'Protected entry'"
+                  [class.protected]="!canDeleteLog(log)">
+                  <span class="btn-spinner-small" *ngIf="deletingId === log.id"></span>
+                  <span *ngIf="deletingId !== log.id">{{ canDeleteLog(log) ? '🗑️' : '🔒' }}</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-bar">
+      <div class="page-info">
+        <span class="page-text">Page {{ page }} of {{ getTotalPages() }}</span>
+        <span class="record-text">• {{ total }} total records</span>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-page" (click)="goToFirstPage()" [disabled]="page <= 1" title="First Page">
+          ⏮️
+        </button>
+        <button class="btn btn-page" (click)="prevPage()" [disabled]="page <= 1">
+          ◀ Prev
+        </button>
+        <div class="page-numbers">
+          <button 
+            *ngFor="let p of getPageNumbers()" 
+            class="btn btn-page-num"
+            [class.active]="p === page"
+            (click)="goToPage(p)">
+            {{ p }}
+          </button>
+        </div>
+        <button class="btn btn-page" (click)="nextPage()" [disabled]="page >= getTotalPages()">
+          Next ▶
+        </button>
+        <button class="btn btn-page" (click)="goToLastPage()" [disabled]="page >= getTotalPages()" title="Last Page">
+          ⏭️
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Details Modal -->
+  <div class="modal-overlay" *ngIf="showDetailsModal" (click)="closeDetailsModal()">
+    <div class="modal modal-details" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-content">
+          <div class="modal-icon">🧾</div>
+          <div class="modal-title-group">
+            <h3>Payment Details</h3>
+            <p class="modal-subtitle">Receipt #{{ selectedLog?.receiptNumber || 'N/A' }}</p>
+          </div>
+        </div>
+        <button class="modal-close" (click)="closeDetailsModal()">✕</button>
+      </div>
+      <div class="modal-body" *ngIf="selectedLog">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Student</span>
+            <span class="detail-value">
+              {{ (selectedLog.student?.firstName || '') + ' ' + (selectedLog.student?.lastName || '') }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Student ID</span>
+            <span class="detail-value">{{ selectedLog.student?.studentNumber || 'N/A' }}</span>
+          </div>
+          <div class="detail-item highlight">
+            <span class="detail-label">Amount Paid</span>
+            <span class="detail-value amount">
+              ${{ (selectedLog.amountPaid || 0) | number:'1.2-2' }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Payment Method</span>
+            <span class="detail-value">{{ selectedLog.paymentMethod || 'N/A' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Payment Date</span>
+            <span class="detail-value">
+              {{ selectedLog.paymentDate ? (selectedLog.paymentDate | date:'dd MMM yyyy, HH:mm') : 'N/A' }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Receipt Number</span>
+            <span class="detail-value">{{ selectedLog.receiptNumber || 'N/A' }}</span>
+          </div>
+          <div class="detail-item full-width" *ngIf="selectedLog.notes">
+            <span class="detail-label">Notes</span>
+            <span class="detail-value notes">{{ selectedLog.notes }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Status</span>
+            <span class="detail-value">
+              <span class="status-badge" [class.protected]="!canDeleteLog(selectedLog)">
+                {{ canDeleteLog(selectedLog) ? '✓ Can be deleted' : '🔒 Protected' }}
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-cancel" (click)="closeDetailsModal()">Close</button>
+        <button 
+          class="btn btn-danger" 
+          *ngIf="canDeleteLog(selectedLog)"
+          (click)="confirmDelete(selectedLog); closeDetailsModal()">
+          🗑️ Delete Entry
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-overlay" *ngIf="showDeleteModal" (click)="cancelDelete()">
+    <div class="modal modal-delete" (click)="$event.stopPropagation()">
+      <div class="modal-header delete-header">
+        <div class="modal-header-content">
+          <div class="modal-icon warning">⚠️</div>
+          <div class="modal-title-group">
+            <h3>Confirm Delete</h3>
+            <p class="modal-subtitle">This action cannot be undone</p>
+          </div>
+        </div>
+        <button class="modal-close" (click)="cancelDelete()">✕</button>
+      </div>
+      <div class="modal-body" *ngIf="logToDelete">
+        <div class="delete-warning">
+          <p>Are you sure you want to delete this payment entry?</p>
+          <div class="delete-details">
+            <div class="delete-detail">
+              <span class="label">Student:</span>
+              <span class="value">
+                {{ (logToDelete.student?.firstName || '') + ' ' + (logToDelete.student?.lastName || '') }}
+              </span>
+            </div>
+            <div class="delete-detail">
+              <span class="label">Amount:</span>
+              <span class="value">${{ (logToDelete.amountPaid || 0) | number:'1.2-2' }}</span>
+            </div>
+            <div class="delete-detail">
+              <span class="label">Receipt:</span>
+              <span class="value">{{ logToDelete.receiptNumber || 'N/A' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-cancel" (click)="cancelDelete()" [disabled]="deletingId">Cancel</button>
+        <button class="btn btn-danger" (click)="deleteLog()" [disabled]="deletingId">
+          <span class="btn-spinner" *ngIf="deletingId"></span>
+          <span *ngIf="!deletingId">🗑️</span>
+          {{ deletingId ? 'Deleting...' : 'Delete Entry' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

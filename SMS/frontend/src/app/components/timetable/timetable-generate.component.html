@@ -1,0 +1,446 @@
+<div class="timetable-generate-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="header-icon">📅</span>
+        Timetable Generation
+      </h1>
+      <p class="subtitle">Generate, preview, and download timetables for teachers, classes, and summary</p>
+    </div>
+  </div>
+
+  <!-- Alert Messages -->
+  <div class="alert alert-error" *ngIf="error">
+    <span class="alert-icon">⚠️</span>
+    <span>{{ error }}</span>
+    <button class="alert-close" (click)="error = ''" title="Close">&times;</button>
+  </div>
+
+  <div class="alert alert-success" *ngIf="success">
+    <span class="alert-icon">✅</span>
+    <span>{{ success }}</span>
+    <button class="alert-close" (click)="success = ''" title="Close">&times;</button>
+  </div>
+
+  <!-- Conflict Warnings -->
+  <div class="conflict-warnings" *ngIf="showConflicts && conflicts.length > 0">
+    <div class="conflict-alert">
+      <div class="conflict-header">
+        <span class="conflict-icon">⚠️</span>
+        <strong>Conflicts Detected ({{ conflicts.length }})</strong>
+        <button class="toggle-conflicts" (click)="showConflicts = !showConflicts">
+          {{ showConflicts ? 'Hide' : 'Show' }}
+        </button>
+      </div>
+      <div class="conflict-list" *ngIf="showConflicts">
+        <div class="conflict-item" *ngFor="let conflict of conflicts">
+          <span class="conflict-type" [class.teacher-conflict]="conflict.type === 'teacher'" [class.class-conflict]="conflict.type === 'class'">
+            {{ conflict.type === 'teacher' ? '👨‍🏫' : '🏫' }} {{ conflict.type | titlecase }} Conflict
+          </span>
+          <span class="conflict-entity">{{ conflict.entityName }}</span>
+          <span class="conflict-details">{{ conflict.day }} - Period {{ conflict.period }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls Section -->
+  <div class="controls-section">
+    <div class="control-card">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="timetableSelect">Select Timetable *</label>
+          <select id="timetableSelect" [(ngModel)]="selectedTimetable" (change)="onTimetableChange()" class="form-select">
+            <option [ngValue]="null">-- Select Timetable --</option>
+            <option *ngFor="let timetable of timetables" [ngValue]="timetable">
+              {{ timetable.name }} ({{ timetable.term }} - {{ timetable.academicYear }})
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group" *ngIf="selectedTimetable && versions.length > 0">
+          <label for="versionSelect">Version</label>
+          <select id="versionSelect" [(ngModel)]="currentVersion" class="form-select">
+            <option *ngFor="let version of versions" [ngValue]="version">
+              v{{ version.versionNumber }} - {{ version.description || 'No description' }}
+              <span *ngIf="version.isActive"> (Active)</span>
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="viewTypeSelect">View Type *</label>
+          <select id="viewTypeSelect" [(ngModel)]="viewType" (change)="onViewTypeChange()" class="form-select">
+            <option value="teacher">Teachers</option>
+            <option value="class">Classes</option>
+            <option value="summary">Teacher Summary</option>
+          </select>
+        </div>
+
+        <div class="form-group" *ngIf="viewType === 'teacher'">
+          <label for="teacherSelect">Select Teacher</label>
+          <select id="teacherSelect" [(ngModel)]="selectedTeacherId" class="form-select">
+            <option value="">-- All Teachers --</option>
+            <option *ngFor="let teacher of teachers" [value]="teacher.id">
+              {{ teacher.firstName }} {{ teacher.lastName }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group" *ngIf="viewType === 'class'">
+          <label for="classSelect">Select Class</label>
+          <select id="classSelect" [(ngModel)]="selectedClassId" class="form-select">
+            <option value="">-- All Classes --</option>
+            <option *ngFor="let classItem of classes" [value]="classItem.id">
+              {{ classItem.name }}
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div class="action-buttons">
+        <button class="btn btn-generate" (click)="generateTimetable()" [disabled]="!selectedTimetable || generating || (!isAdmin && !isSuperAdmin)">
+          <span class="btn-icon">⚡</span>
+          {{ generating ? 'Generating...' : 'Generate Timetable' }}
+        </button>
+        <button class="btn btn-primary" (click)="previewPDF()" [disabled]="!selectedTimetable || loading || timetableEntries.length === 0">
+          <span class="btn-icon">👁️</span>
+          Preview PDF
+        </button>
+        <button class="btn btn-success" (click)="downloadPDF()" [disabled]="!selectedTimetable || loading || timetableEntries.length === 0">
+          <span class="btn-icon">📥</span>
+          Download PDF
+        </button>
+        <button class="btn btn-secondary" (click)="goBack()">
+          <span class="btn-icon">←</span>
+          Back
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading timetable data...</p>
+  </div>
+
+  <!-- Timetable Preview -->
+  <div *ngIf="!loading && selectedTimetable" id="timetable-preview" class="timetable-preview">
+    <!-- Teacher View -->
+    <div *ngIf="viewType === 'teacher'" class="timetable-view">
+      <div class="timetable-header">
+        <h2>{{ selectedTimetable.name }}</h2>
+        <p>{{ selectedTimetable.term }} - {{ selectedTimetable.academicYear }}</p>
+        <h3>Teacher Timetable</h3>
+      </div>
+
+      <div *ngIf="selectedTeacherId; else allTeachersView">
+        <!-- Single Teacher Timetable -->
+        <div class="teacher-timetable">
+          <h4>{{ getTeacherName(selectedTeacherId) }}</h4>
+          <table class="timetable-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th *ngFor="let day of daysOfWeek">{{ day }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let period of periods" [class.break-row]="period.isBreak">
+                <td class="period-time" [class.break-time]="period.isBreak">
+                  <span *ngIf="!period.isBreak">{{ period.startTime }}<br>{{ period.endTime }}</span>
+                  <span *ngIf="period.isBreak" class="break-label">
+                    <div class="break-time-display">{{ period.startTime }}</div>
+                    <div class="break-time-display">{{ period.endTime }}</div>
+                    <div class="break-name">{{ period.breakLabel || period.name }}</div>
+                  </span>
+                </td>
+                <td *ngFor="let day of daysOfWeek" class="timetable-cell" [class.break-cell]="period.isBreak" [class.has-entry]="!period.isBreak && getEntryForCell(day, period.id, selectedTeacherId)" [class.has-conflict]="!period.isBreak && hasConflict(day, period.id, selectedTeacherId)">
+                  <div *ngIf="period.isBreak" class="break-content">
+                    <div class="break-time-info">{{ period.startTime }} - {{ period.endTime }}</div>
+                    <div class="break-name-display">{{ period.breakLabel || period.name }}</div>
+                  </div>
+                  <div *ngIf="getEntryForCell(day, period.id, selectedTeacherId) as entry" class="entry-content" [class.editable]="isAdmin || isSuperAdmin">
+                    <div class="subject-name">{{ getSubjectName(entry.subjectId) }}</div>
+                    <div class="class-name">{{ getClassName(entry.classId) }}</div>
+                    <div class="room" *ngIf="entry.room">{{ entry.room }}</div>
+                    <div class="entry-actions" *ngIf="isAdmin || isSuperAdmin">
+                      <button class="btn-lock" (click)="toggleLock(entry)" [title]="entry.isLocked ? 'Unlock' : 'Lock'">
+                        {{ entry.isLocked ? '🔒' : '🔓' }}
+                      </button>
+                      <button class="btn-edit" (click)="editEntry(entry)" title="Edit">✏️</button>
+                      <button class="btn-delete" (click)="deleteEntry(entry)" [disabled]="entry.isLocked" title="Delete">🗑️</button>
+                    </div>
+                    <div class="locked-indicator" *ngIf="entry.isLocked">🔒 Locked</div>
+                  </div>
+                  <div class="empty-cell" *ngIf="!period.isBreak && !getEntryForCell(day, period.id, selectedTeacherId) && (isAdmin || isSuperAdmin)">
+                    <button class="btn-add" (click)="addEntry(day, period.id, selectedTeacherId)" title="Add Entry">+</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <ng-template #allTeachersView>
+        <!-- All Teachers Timetable -->
+        <div *ngFor="let teacher of teachers" class="teacher-timetable">
+          <h4>{{ teacher.firstName }} {{ teacher.lastName }}</h4>
+          <table class="timetable-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th *ngFor="let day of daysOfWeek">{{ day }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let period of periods" [class.break-row]="period.isBreak">
+                <td class="period-time" [class.break-time]="period.isBreak">
+                  <span *ngIf="!period.isBreak">{{ period.startTime }}<br>{{ period.endTime }}</span>
+                  <span *ngIf="period.isBreak" class="break-label">
+                    <div class="break-time-display">{{ period.startTime }}</div>
+                    <div class="break-time-display">{{ period.endTime }}</div>
+                    <div class="break-name">{{ period.breakLabel || period.name }}</div>
+                  </span>
+                </td>
+                <td *ngFor="let day of daysOfWeek" class="timetable-cell" [class.break-cell]="period.isBreak" [class.has-entry]="!period.isBreak && getEntryForCell(day, period.id, teacher.id)" [class.has-conflict]="!period.isBreak && hasConflict(day, period.id, teacher.id)">
+                  <div *ngIf="period.isBreak" class="break-content">
+                    <div class="break-time-info">{{ period.startTime }} - {{ period.endTime }}</div>
+                    <div class="break-name-display">{{ period.breakLabel || period.name }}</div>
+                  </div>
+                  <div *ngIf="getEntryForCell(day, period.id, teacher.id) as entry" class="entry-content" [class.editable]="isAdmin || isSuperAdmin">
+                    <div class="subject-name">{{ getSubjectName(entry.subjectId) }}</div>
+                    <div class="class-name">{{ getClassName(entry.classId) }}</div>
+                    <div class="room" *ngIf="entry.room">{{ entry.room }}</div>
+                    <div class="entry-actions" *ngIf="isAdmin || isSuperAdmin">
+                      <button class="btn-lock" (click)="toggleLock(entry)" [title]="entry.isLocked ? 'Unlock' : 'Lock'">
+                        {{ entry.isLocked ? '🔒' : '🔓' }}
+                      </button>
+                      <button class="btn-edit" (click)="editEntry(entry)" title="Edit">✏️</button>
+                      <button class="btn-delete" (click)="deleteEntry(entry)" [disabled]="entry.isLocked" title="Delete">🗑️</button>
+                    </div>
+                    <div class="locked-indicator" *ngIf="entry.isLocked">🔒 Locked</div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-template>
+    </div>
+
+    <!-- Class View -->
+    <div *ngIf="viewType === 'class'" class="timetable-view">
+      <div class="timetable-header">
+        <h2>{{ selectedTimetable.name }}</h2>
+        <p>{{ selectedTimetable.term }} - {{ selectedTimetable.academicYear }}</p>
+        <h3>Class Timetable</h3>
+      </div>
+
+      <div *ngIf="selectedClassId; else allClassesView">
+        <!-- Single Class Timetable -->
+        <div class="class-timetable">
+          <h4>{{ getClassName(selectedClassId) }}</h4>
+          <table class="timetable-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th *ngFor="let day of daysOfWeek">{{ day }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let period of periods" [class.break-row]="period.isBreak">
+                <td class="period-time" [class.break-time]="period.isBreak">
+                  <span *ngIf="!period.isBreak">{{ period.startTime }}<br>{{ period.endTime }}</span>
+                  <span *ngIf="period.isBreak" class="break-label">
+                    <div class="break-time-display">{{ period.startTime }}</div>
+                    <div class="break-time-display">{{ period.endTime }}</div>
+                    <div class="break-name">{{ period.breakLabel || period.name }}</div>
+                  </span>
+                </td>
+                <td *ngFor="let day of daysOfWeek" class="timetable-cell" [class.break-cell]="period.isBreak" [class.has-entry]="!period.isBreak && getEntryForCell(day, period.id, null, selectedClassId)" [class.has-conflict]="!period.isBreak && hasConflict(day, period.id, null, selectedClassId)">
+                  <div *ngIf="period.isBreak" class="break-content">
+                    <div class="break-time-info">{{ period.startTime }} - {{ period.endTime }}</div>
+                    <div class="break-name-display">{{ period.breakLabel || period.name }}</div>
+                  </div>
+                  <div *ngIf="!period.isBreak && getEntryForCell(day, period.id, null, selectedClassId) as entry" class="entry-content" [class.editable]="isAdmin || isSuperAdmin">
+                    <div class="subject-name">{{ getSubjectName(entry.subjectId) }}</div>
+                    <div class="teacher-name">{{ getTeacherName(entry.teacherId) }}</div>
+                    <div class="room" *ngIf="entry.room">{{ entry.room }}</div>
+                    <div class="entry-actions" *ngIf="isAdmin || isSuperAdmin">
+                      <button class="btn-lock" (click)="toggleLock(entry)" [title]="entry.isLocked ? 'Unlock' : 'Lock'">
+                        {{ entry.isLocked ? '🔒' : '🔓' }}
+                      </button>
+                      <button class="btn-edit" (click)="editEntry(entry)" title="Edit">✏️</button>
+                      <button class="btn-delete" (click)="deleteEntry(entry)" [disabled]="entry.isLocked" title="Delete">🗑️</button>
+                    </div>
+                    <div class="locked-indicator" *ngIf="entry.isLocked">🔒 Locked</div>
+                  </div>
+                  <div class="empty-cell" *ngIf="!getEntryForCell(day, period.id, null, selectedClassId) && (isAdmin || isSuperAdmin)">
+                    <button class="btn-add" (click)="addEntry(day, period.id, null, selectedClassId)" title="Add Entry">+</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <ng-template #allClassesView>
+        <!-- All Classes Timetable -->
+        <div *ngFor="let classItem of classes" class="class-timetable">
+          <h4>{{ classItem.name }}</h4>
+          <table class="timetable-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th *ngFor="let day of daysOfWeek">{{ day }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let period of periods" [class.break-row]="period.isBreak">
+                <td class="period-time" [class.break-time]="period.isBreak">
+                  <span *ngIf="!period.isBreak">{{ period.startTime }}<br>{{ period.endTime }}</span>
+                  <span *ngIf="period.isBreak" class="break-label">
+                    <div class="break-time-display">{{ period.startTime }}</div>
+                    <div class="break-time-display">{{ period.endTime }}</div>
+                    <div class="break-name">{{ period.breakLabel || period.name }}</div>
+                  </span>
+                </td>
+                <td *ngFor="let day of daysOfWeek" class="timetable-cell" [class.break-cell]="period.isBreak" [class.has-entry]="!period.isBreak && getEntryForCell(day, period.id, null, classItem.id)" [class.has-conflict]="!period.isBreak && hasConflict(day, period.id, null, classItem.id)">
+                  <div *ngIf="period.isBreak" class="break-content">
+                    <div class="break-time-info">{{ period.startTime }} - {{ period.endTime }}</div>
+                    <div class="break-name-display">{{ period.breakLabel || period.name }}</div>
+                  </div>
+                  <div *ngIf="!period.isBreak && getEntryForCell(day, period.id, null, classItem.id) as entry" class="entry-content" [class.editable]="isAdmin || isSuperAdmin">
+                    <div class="subject-name">{{ getSubjectName(entry.subjectId) }}</div>
+                    <div class="teacher-name">{{ getTeacherName(entry.teacherId) }}</div>
+                    <div class="room" *ngIf="entry.room">{{ entry.room }}</div>
+                    <div class="entry-actions" *ngIf="isAdmin || isSuperAdmin">
+                      <button class="btn-lock" (click)="toggleLock(entry)" [title]="entry.isLocked ? 'Unlock' : 'Lock'">
+                        {{ entry.isLocked ? '🔒' : '🔓' }}
+                      </button>
+                      <button class="btn-edit" (click)="editEntry(entry)" title="Edit">✏️</button>
+                      <button class="btn-delete" (click)="deleteEntry(entry)" [disabled]="entry.isLocked" title="Delete">🗑️</button>
+                    </div>
+                    <div class="locked-indicator" *ngIf="entry.isLocked">🔒 Locked</div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-template>
+    </div>
+
+    <!-- Teacher Summary View -->
+    <div *ngIf="viewType === 'summary'" class="timetable-view">
+      <div class="timetable-header">
+        <h2>{{ selectedTimetable.name }}</h2>
+        <p>{{ selectedTimetable.term }} - {{ selectedTimetable.academicYear }}</p>
+        <h3>Teacher Summary</h3>
+      </div>
+
+      <table class="summary-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Teacher Name</th>
+            <th>Total Periods</th>
+            <th>Subjects</th>
+            <th>Classes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let summary of getTeacherSummary(); let i = index">
+            <td>{{ i + 1 }}</td>
+            <td><strong>{{ summary.teacherName }}</strong></td>
+            <td>{{ summary.totalPeriods }}</td>
+            <td>
+              <span class="badge" *ngFor="let subject of summary.subjects">{{ subject }}</span>
+            </td>
+            <td>
+              <span class="badge" *ngFor="let className of summary.classes">{{ className }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Edit Entry Modal -->
+  <div class="modal-overlay" *ngIf="editMode" (click)="cancelEdit()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Edit Timetable Entry</h3>
+        <button class="modal-close" (click)="cancelEdit()">&times;</button>
+      </div>
+      <div class="modal-body" *ngIf="editingEntry">
+        <div class="form-group">
+          <label>Day</label>
+          <select [(ngModel)]="editingEntry.day" class="form-control">
+            <option *ngFor="let day of daysOfWeek" [value]="day">{{ day }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Period</label>
+          <select [(ngModel)]="editingEntry.period" class="form-control">
+            <option *ngFor="let period of periods" [value]="period.id">{{ period.name }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Teacher</label>
+          <select [(ngModel)]="editingEntry.teacherId" class="form-control">
+            <option [value]="null">-- Select Teacher --</option>
+            <option *ngFor="let teacher of teachers" [value]="teacher.id">
+              {{ teacher.firstName }} {{ teacher.lastName }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Class</label>
+          <select [(ngModel)]="editingEntry.classId" class="form-control">
+            <option [value]="null">-- Select Class --</option>
+            <option *ngFor="let classItem of classes" [value]="classItem.id">
+              {{ classItem.name }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Subject</label>
+          <select [(ngModel)]="editingEntry.subjectId" class="form-control">
+            <option [value]="null">-- Select Subject --</option>
+            <option *ngFor="let subject of subjects" [value]="subject.id">
+              {{ subject.name }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Room (Optional)</label>
+          <input type="text" [(ngModel)]="editingEntry.room" class="form-control" placeholder="Room number">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="cancelEdit()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveEntry()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && !selectedTimetable" class="empty-state">
+    <div class="empty-icon">📅</div>
+    <h3 *ngIf="timetables.length === 0">No Timetables Found</h3>
+    <h3 *ngIf="timetables.length > 0">No Timetable Selected</h3>
+    <p *ngIf="timetables.length === 0">No timetables exist in the system. Create one to get started.</p>
+    <p *ngIf="timetables.length > 0">Please select a timetable from the dropdown above to generate and view timetables.</p>
+    <button *ngIf="timetables.length === 0 && (isAdmin || isSuperAdmin)" class="btn btn-primary" (click)="createNewTimetable()" [disabled]="loading">
+      <span class="btn-icon">➕</span>
+      Create New Timetable
+    </button>
+  </div>
+</div>
+

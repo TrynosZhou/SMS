@@ -1,0 +1,244 @@
+<div class="dashboard-container">
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Content Header -->
+    <div class="content-header">
+      <div class="header-top">
+        <div class="header-left">
+          <div class="greeting-section">
+            <p class="welcome-text">
+              <span class="greeting-icon">👋</span>
+              Welcome back, <strong>{{ teacherName || 'Teacher' }}</strong>!
+            </p>
+            <p class="date-time">{{ getCurrentDate() }}</p>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="quick-stats-badge" *ngIf="!loading">
+            <span class="badge-icon">⚡</span>
+            <span class="badge-text">{{ teacherClasses.length }} Classes Assigned</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <div class="alert alert-error" *ngIf="error">
+      <span class="alert-icon">⚠️</span>
+      <span class="alert-text">{{ error }}</span>
+      <button class="alert-close" (click)="error = ''">✕</button>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading-stats" *ngIf="loading">
+      <div class="spinner"></div>
+      <p>Loading your dashboard...</p>
+    </div>
+
+    <!-- Statistics Cards - Teacher Specific Only -->
+    <div class="stats-grid" *ngIf="!loading">
+      <div class="stat-card primary modern-card">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon modern-icon">🏫</div>
+          <div class="icon-badge">+</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value animated-value">{{ teacherClasses.length }}</div>
+          <div class="stat-label">Assigned Classes</div>
+          <div class="stat-sublabel">
+            <span class="sublabel-item">📘 Active Term</span>
+          </div>
+        </div>
+        <div class="stat-trend up">
+          <span class="trend-icon">📈</span>
+        </div>
+      </div>
+
+      <div class="stat-card success modern-card">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon modern-icon">📚</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value animated-value">{{ availableModules.length }}</div>
+          <div class="stat-label">Available Modules</div>
+          <div class="stat-sublabel">
+            <span class="sublabel-item">Accessible Features</span>
+          </div>
+        </div>
+        <div class="stat-trend">
+          <span class="trend-icon">✨</span>
+        </div>
+      </div>
+
+      <div class="stat-card info modern-card">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon modern-icon">📝</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value animated-value">—</div>
+          <div class="stat-label">Pending Tasks</div>
+          <div class="stat-sublabel">
+            <span class="sublabel-item">Items to Review</span>
+          </div>
+        </div>
+        <div class="stat-trend">
+          <span class="trend-icon">📋</span>
+        </div>
+      </div>
+
+      <div class="stat-card warning modern-card">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon modern-icon">📊</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value animated-value">—</div>
+          <div class="stat-label">Reports</div>
+          <div class="stat-sublabel">
+            <span class="sublabel-item">Generated This Term</span>
+          </div>
+        </div>
+        <div class="stat-trend">
+          <span class="trend-icon">📄</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions Section -->
+    <div class="quick-actions-section" *ngIf="!loading">
+      <div class="card modern-card quick-actions-card">
+        <div class="card-header-modern">
+          <h2>
+            <span class="card-icon">🚀</span>
+            Quick Actions
+          </h2>
+        </div>
+        <div class="quick-actions modern-actions">
+          <a routerLink="/teacher/record-book" class="action-btn modern-action-btn primary-action" *ngIf="canAccessModule('recordBook')">
+            <span class="action-icon">📖</span>
+            <span class="action-text">Record Book</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/exams" class="action-btn modern-action-btn warning-action" *ngIf="canAccessModule('exams')">
+            <span class="action-icon">📝</span>
+            <span class="action-text">Marks Capturing</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/mark-sheet" class="action-btn modern-action-btn info-action" *ngIf="canAccessModule('exams')">
+            <span class="action-icon">📄</span>
+            <span class="action-text">Mark Sheets</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/attendance/mark" class="action-btn modern-action-btn success-action" *ngIf="canAccessModule('attendance')">
+            <span class="action-icon">✅</span>
+            <span class="action-text">Mark Attendance</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/attendance/reports" class="action-btn modern-action-btn secondary-action" *ngIf="canAccessModule('attendance')">
+            <span class="action-icon">📊</span>
+            <span class="action-text">Attendance Reports</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/rankings" class="action-btn modern-action-btn success-action" *ngIf="canAccessModule('rankings')">
+            <span class="action-icon">🏆</span>
+            <span class="action-text">View Rankings</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/report-cards" class="action-btn modern-action-btn info-action" *ngIf="canAccessModule('reportCards')">
+            <span class="action-icon">📑</span>
+            <span class="action-text">Report Cards</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/students" class="action-btn modern-action-btn primary-action" *ngIf="canAccessModule('students')">
+            <span class="action-icon">👥</span>
+            <span class="action-text">View Students</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/classes/lists" class="action-btn modern-action-btn warning-action" *ngIf="canAccessModule('classes')">
+            <span class="action-icon">🏫</span>
+            <span class="action-text">Class Lists</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/check_mark_progess" class="action-btn modern-action-btn secondary-action" *ngIf="canAccessModule('exams')">
+            <span class="action-icon">📈</span>
+            <span class="action-text">Marks Progress</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/teacher/manage-account" class="action-btn modern-action-btn danger-action">
+            <span class="action-icon">👤</span>
+            <span class="action-text">My Account</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/timetable/generate" class="action-btn modern-action-btn info-action">
+            <span class="action-icon">📅</span>
+            <span class="action-text">Timetable</span>
+            <span class="action-arrow">→</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- My Classes Section (Collapsed by default, shown when needed) -->
+    <div class="my-classes-section" *ngIf="!loading && teacherClasses.length > 0">
+      <div class="card modern-card my-classes-card">
+        <div class="card-header-flex">
+          <h2>
+            <span class="card-icon">🏫</span>
+            My Classes
+          </h2>
+          <span class="class-count-badge">{{ teacherClasses.length }} class{{ teacherClasses.length !== 1 ? 'es' : '' }}</span>
+        </div>
+        
+        <!-- Class Selector -->
+        <div class="class-selector">
+          <div class="selector-row">
+            <select 
+              class="class-dropdown"
+              [(ngModel)]="selectedClassId"
+              (change)="onClassSelected()">
+              <option value="">-- Select a Class --</option>
+              <option *ngFor="let classItem of teacherClasses" [value]="classItem.id">
+                {{ classItem.name }} {{ classItem.form ? '(' + classItem.form + ')' : '' }}
+              </option>
+            </select>
+            <button 
+              class="btn-open-record"
+              (click)="openRecordBook()"
+              [disabled]="!selectedClassId">
+              <span>📚</span> Open Record Book
+            </button>
+          </div>
+        </div>
+
+        <!-- Class Cards Grid -->
+        <div class="classes-grid">
+          <div *ngFor="let classItem of teacherClasses" class="class-item" (click)="openRecordBook(classItem)">
+            <div class="class-item-icon">
+              <span>{{ getClassInitial(classItem) }}</span>
+            </div>
+            <div class="class-item-info">
+              <div class="class-item-name">{{ classItem.name }}</div>
+              <div class="class-item-meta" *ngIf="classItem.form">Form: {{ classItem.form }}</div>
+            </div>
+            <div class="class-item-action">
+              <span class="action-arrow">→</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State for No Classes -->
+    <div class="empty-state-section" *ngIf="!loading && teacherClasses.length === 0">
+      <div class="card modern-card empty-classes-card">
+        <div class="empty-state-content">
+          <div class="empty-icon">📭</div>
+          <h3>No Classes Assigned</h3>
+          <p>You haven't been assigned to any classes yet. Please contact the administrator to get assigned to classes.</p>
+          <button class="btn-refresh" (click)="loadTeacherInfo()">
+            <span>🔄</span> Refresh
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

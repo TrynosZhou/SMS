@@ -1,0 +1,137 @@
+<div class="user-log-container" id="user-log-export-container">
+  <h2>User Activity Log</h2>
+  <p class="help-text">Shows login sessions for Admin, Super Admin, and Accountant roles.</p>
+  
+  <div class="summary-cards">
+    <div class="card">
+      <div class="card-title">Total Sessions</div>
+      <div class="card-value">{{ total }}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Active Sessions</div>
+      <div class="card-value">{{ totalActive }}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Average Duration</div>
+      <div class="card-value">{{ averageMinutes }} min</div>
+    </div>
+  </div>
+  
+  <div class="filters">
+    <label>
+      Role:
+      <select [(ngModel)]="role" (change)="page=1; load()">
+        <option value="all">All</option>
+        <option value="admin">Admin</option>
+        <option value="superadmin">Super Admin</option>
+        <option value="accountant">Accountant</option>
+      </select>
+    </label>
+    <label>
+      Search:
+      <input [ngModel]="search" (ngModelChange)="setSearch($event)" placeholder="Username or User ID" />
+    </label>
+    <label>
+      Start Date:
+      <input type="date" [(ngModel)]="startDate" (change)="page=1; load()" />
+    </label>
+    <label>
+      End Date:
+      <input type="date" [(ngModel)]="endDate" (change)="page=1; load()" />
+    </label>
+    <div class="presets">
+      <button (click)="quickPreset(1)">Today</button>
+      <button (click)="quickPreset(7)">Last 7</button>
+      <button (click)="quickPreset(30)">Last 30</button>
+    </div>
+    <label>
+      Per Page:
+      <select [(ngModel)]="limit" (change)="page=1; load()">
+        <option [value]="10">10</option>
+        <option [value]="20">20</option>
+        <option [value]="50">50</option>
+        <option [value]="100">100</option>
+      </select>
+    </label>
+    <button (click)="resetFilters()">Reset</button>
+    <button (click)="exportCSV()">Export CSV</button>
+    <button (click)="exportPDF()" [disabled]="exportingPdf">Export PDF</button>
+    <button (click)="downloadServerCSV()">Server CSV</button>
+    <button (click)="downloadServerPDF()">Server PDF</button>
+    <label class="auto-refresh">
+      <input type="checkbox" [(ngModel)]="autoRefresh" (change)="toggleAutoRefresh()" />
+      Auto refresh 30s
+    </label>
+  </div>
+  <div class="columns">
+    <span>Columns:</span>
+    <label><input type="checkbox" [(ngModel)]="columns.user" /> User</label>
+    <label><input type="checkbox" [(ngModel)]="columns.role" /> Role</label>
+    <label><input type="checkbox" [(ngModel)]="columns.loginAt" /> Login</label>
+    <label><input type="checkbox" [(ngModel)]="columns.lastActivityAt" /> Last Activity</label>
+    <label><input type="checkbox" [(ngModel)]="columns.logoutAt" /> Logout</label>
+    <label><input type="checkbox" [(ngModel)]="columns.duration" /> Duration</label>
+    <label><input type="checkbox" [(ngModel)]="columns.modules" /> Modules</label>
+    <label><input type="checkbox" [(ngModel)]="columns.sessionId" /> Session ID</label>
+    <label><input type="checkbox" [(ngModel)]="columns.ipAddress" /> IP</label>
+    <label><input type="checkbox" [(ngModel)]="columns.userAgent" /> User Agent</label>
+  </div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+  <div class="table-wrapper" *ngIf="!loading">
+    <table class="log-table" id="user-log-table" *ngIf="sessions.length > 0; else empty">
+      <thead>
+        <tr>
+          <th *ngIf="columns.user" (click)="applySort('username')">User</th>
+          <th *ngIf="columns.role" (click)="applySort('role')">Role</th>
+          <th *ngIf="columns.loginAt" (click)="applySort('loginAt')">Login Time</th>
+          <th *ngIf="columns.lastActivityAt" (click)="applySort('lastActivityAt')">Last Activity</th>
+          <th *ngIf="columns.logoutAt" (click)="applySort('logoutAt')">Logout Time</th>
+          <th *ngIf="columns.duration" (click)="applySort('timeSpentSeconds')">Time Spent</th>
+          <th *ngIf="columns.modules">Modules Accessed</th>
+          <th *ngIf="columns.sessionId" (click)="applySort('sessionId')">Session ID</th>
+          <th *ngIf="columns.ipAddress" (click)="applySort('ipAddress')">IP Address</th>
+          <th *ngIf="columns.userAgent">User Agent</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let s of sessions">
+          <td *ngIf="columns.user">
+            <span class="user-cell">
+              {{ s.username || s.userId }}
+              <button class="copy-btn" (click)="copy(s.username || s.userId)">Copy</button>
+            </span>
+          </td>
+          <td *ngIf="columns.role">
+            <span class="role-badge" [class.admin]="s.role==='admin'" [class.superadmin]="s.role==='superadmin'" [class.accountant]="s.role==='accountant'">{{ s.role }}</span>
+          </td>
+          <td *ngIf="columns.loginAt">{{ s.loginAt | date:'medium' }}</td>
+          <td *ngIf="columns.lastActivityAt">{{ s.lastActivityAt ? (s.lastActivityAt | date:'medium') : '—' }}</td>
+          <td *ngIf="columns.logoutAt">
+            <span [class.active-dot]="!s.logoutAt">{{ s.logoutAt ? (s.logoutAt | date:'medium') : 'Active' }}</span>
+          </td>
+          <td *ngIf="columns.duration">{{ (s.timeSpentSeconds || 0) / 60 | number:'1.0-0' }} min</td>
+          <td *ngIf="columns.modules">{{ s.modules || '—' }}</td>
+          <td *ngIf="columns.sessionId">
+            <span class="session-cell">
+              {{ s.sessionId || '—' }}
+              <button class="copy-btn" (click)="copy(s.sessionId)">Copy</button>
+            </span>
+          </td>
+          <td *ngIf="columns.ipAddress">{{ s.ipAddress || '—' }}</td>
+          <td *ngIf="columns.userAgent">
+            <span class="ua">{{ s.userAgent || '—' }}</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <ng-template #empty>
+      <div class="empty">No activity found.</div>
+    </ng-template>
+    <div class="pagination" *ngIf="total > limit">
+      <button (click)="onPageChange(false)">Prev</button>
+      <span>Page {{ page }} of {{ totalPages }}</span>
+      <button (click)="onPageChange(true)">Next</button>
+    </div>
+  </div>
+  <div class="loading" *ngIf="loading">Loading...</div>
+</div>

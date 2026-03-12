@@ -1,0 +1,76 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
+import { PaginatedResponse } from '../types/pagination';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class SubjectService {
+  private apiUrl = environment.apiUrl;
+
+  constructor(private http: HttpClient) { }
+
+  getSubjects(): Observable<any[]> {
+    return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/subjects`).pipe(
+      map(response => {
+        // Ensure response is valid before processing
+        if (!response) return [];
+        if (Array.isArray(response)) {
+          return response;
+        }
+        if (typeof response === 'object' && response !== null && Array.isArray(response.data)) {
+          return response.data;
+        }
+        // If response is an error object (has message but no data), return empty array
+        if (typeof response === 'object' && response !== null && 'message' in response && !('data' in response)) {
+          return [];
+        }
+        return [];
+      }),
+      map(data => {
+        if (!Array.isArray(data)) {
+          console.error('ERROR: Expected array but got:', typeof data, data);
+          return [];
+        }
+        return data;
+      }),
+      catchError((error: any) => {
+        const status = error?.status;
+        const msg = error?.error?.message || error?.message || '';
+        if (status === 0) {
+          console.warn(
+            'Error loading subjects: backend not reachable (status 0). Start the backend on port 3001.'
+          );
+        } else if (status === 504) {
+          console.warn(
+            'Error loading subjects: 504 Gateway Timeout. Backend took too long. ' +
+            'Ensure backend is running and DB is up; restart ng serve to use longer proxy timeout.'
+          );
+        } else {
+          console.error(`Error loading subjects: status ${status} ${msg ? '- ' + msg : ''}`, error);
+        }
+        return of([]);
+      })
+    );
+  }
+
+  getSubjectById(id: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/subjects/${id}`);
+  }
+
+  createSubject(subject: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/subjects`, subject);
+  }
+
+  updateSubject(id: string, subject: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/subjects/${id}`, subject);
+  }
+
+  deleteSubject(id: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/subjects/${id}`);
+  }
+}
+

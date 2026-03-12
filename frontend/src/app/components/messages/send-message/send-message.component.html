@@ -1,0 +1,311 @@
+<div class="send-message-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1>
+          <span class="header-icon">✉️</span>
+          Send Message
+        </h1>
+        <p class="header-subtitle">Send notices and fee reminders to parents</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn btn-primary" [routerLink]="['/messages/outbox']">
+          <span class="icon">📤</span> Sent Messages
+        </button>
+        <button type="button" class="btn btn-primary" [routerLink]="['/messages/drafts']">
+          <span class="icon">📝</span> Drafts
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error and Success Messages -->
+  <div *ngIf="error" class="alert alert-error">
+    <span class="alert-icon">⚠️</span>
+    <span class="alert-text">{{ error }}</span>
+    <button class="alert-close" (click)="error = ''">✕</button>
+  </div>
+  <div *ngIf="success" class="alert alert-success">
+    <span class="alert-icon">✅</span>
+    <span class="alert-text">{{ success }}</span>
+    <button class="alert-close" (click)="success = ''">✕</button>
+  </div>
+
+  <div class="main-content">
+    <!-- Compose Card -->
+    <div class="compose-card">
+      <div class="card-header">
+        <h2><span class="card-icon">📝</span> Compose Message</h2>
+      </div>
+
+      <div class="compose-form">
+        <!-- Subject -->
+        <div class="form-group">
+          <label for="subject">
+            Subject <span class="required">*</span>
+          </label>
+          <div class="input-wrapper">
+            <span class="input-icon">📌</span>
+            <input 
+              type="text" 
+              id="subject"
+              [(ngModel)]="subject" 
+              placeholder="Enter message subject..."
+              class="form-control"
+              maxlength="200"
+            />
+          </div>
+          <div class="char-count">{{ subject.length }}/200</div>
+        </div>
+
+        <!-- Recipients -->
+        <div class="form-group">
+          <label>Recipients <span class="required">*</span></label>
+          <div class="recipient-options">
+            <div 
+              class="recipient-option"
+              [class.selected]="recipientsType === 'all'"
+              (click)="setRecipientsType('all')"
+            >
+              <div class="option-icon">👥</div>
+              <div class="option-content">
+                <div class="option-title">All Parents</div>
+                <div class="option-desc">Send to all registered parents</div>
+              </div>
+              <div class="option-check" *ngIf="recipientsType === 'all'">✓</div>
+            </div>
+            <div 
+              class="recipient-option"
+              [class.selected]="recipientsType === 'selected'"
+              (click)="setRecipientsType('selected')"
+            >
+              <div class="option-icon">👤</div>
+              <div class="option-content">
+                <div class="option-title">Specific Parents</div>
+                <div class="option-desc">Choose individual recipients</div>
+              </div>
+              <div class="option-check" *ngIf="recipientsType === 'selected'">✓</div>
+            </div>
+          </div>
+
+          <!-- Parent Selection -->
+          <div class="parents-selection" *ngIf="recipientsType === 'selected'">
+            <div class="selection-header">
+              <div class="search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input 
+                  type="text" 
+                  [(ngModel)]="parentsSearch" 
+                  placeholder="Search by name, email, or phone..."
+                  class="search-input"
+                />
+                <button *ngIf="parentsSearch" class="clear-btn" (click)="parentsSearch = ''">✕</button>
+              </div>
+              <div class="selection-info">
+                <span class="selected-count">{{ selectedParentIds.size }} selected</span>
+                <button 
+                  *ngIf="selectedParentIds.size > 0" 
+                  class="btn-text" 
+                  (click)="clearSelection()"
+                >
+                  Clear all
+                </button>
+              </div>
+            </div>
+            
+            <div class="parents-grid" *ngIf="parents.length > 0">
+              <div 
+                *ngFor="let p of filteredParents()" 
+                class="parent-card"
+                [class.selected]="selectedParentIds.has(p.id)"
+                (click)="toggleParentSelection(p.id)"
+              >
+                <div class="parent-avatar">{{ getInitials(p) }}</div>
+                <div class="parent-info">
+                  <div class="parent-name">{{ p.firstName || '' }} {{ p.lastName || '' }}</div>
+                  <div class="parent-contact">{{ p.email || p.phoneNumber || 'No contact' }}</div>
+                </div>
+                <div class="parent-check">
+                  <span *ngIf="selectedParentIds.has(p.id)">✓</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="empty-state" *ngIf="parents.length === 0 && !loadingParents">
+              <span class="empty-icon">👥</span>
+              <p>No parents available</p>
+              <button class="btn btn-primary btn-sm" (click)="loadParentsIfNeeded()">
+                Reload Parents
+              </button>
+            </div>
+            
+            <div class="loading-state" *ngIf="loadingParents">
+              <div class="spinner"></div>
+              <p>Loading parents...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Message -->
+        <div class="form-group">
+          <label for="message">
+            Message <span class="required">*</span>
+          </label>
+          <div class="message-toolbar">
+            <button type="button" class="toolbar-btn" title="Bold" (click)="insertText('**', '**')">B</button>
+            <button type="button" class="toolbar-btn" title="Italic" (click)="insertText('_', '_')">I</button>
+            <span class="toolbar-divider"></span>
+            <button type="button" class="toolbar-btn" title="Bullet List" (click)="insertText('\n• ', '')">•</button>
+          </div>
+          <textarea 
+            id="message"
+            [(ngModel)]="message" 
+            rows="10" 
+            placeholder="Write your message here...
+
+You can use placeholders like:
+• {parentName} - Parent's name
+• {studentName} - Student's name
+• {balance} - Outstanding balance"
+            class="form-control message-textarea"
+            maxlength="5000"
+          ></textarea>
+          <div class="textarea-footer">
+            <div class="char-count">{{ message.length }}/5000 characters</div>
+          </div>
+        </div>
+
+        <!-- Attachments -->
+        <div class="form-group">
+          <label>Attachments <span class="optional">(Optional)</span></label>
+          <div 
+            class="drop-zone"
+            [class.drag-over]="isDragOver"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onDrop($event)"
+            (click)="fileInput.click()"
+          >
+            <input 
+              type="file" 
+              #fileInput
+              (change)="onFileChange($event)" 
+              multiple 
+              hidden
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+            />
+            <div class="drop-zone-content">
+              <span class="drop-icon">📎</span>
+              <p class="drop-text">Drag & drop files here or <span class="browse-link">browse</span></p>
+              <p class="drop-hint">PDF, DOC, DOCX, XLS, XLSX, PNG, JPG (Max 10MB each)</p>
+            </div>
+          </div>
+          
+          <div class="attachments-list" *ngIf="attachments.length > 0">
+            <div class="attachment-item" *ngFor="let f of attachments; let i = index">
+              <div class="attachment-icon">{{ getFileIcon(f.name) }}</div>
+              <div class="attachment-info">
+                <div class="attachment-name">{{ f.name }}</div>
+                <div class="attachment-size">{{ formatFileSize(f.size) }}</div>
+              </div>
+              <button class="attachment-remove" (click)="removeAttachment(i)" title="Remove">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="form-actions">
+          <button 
+            class="btn btn-primary btn-lg" 
+            [disabled]="!canSend() || loading" 
+            (click)="previewMessage()"
+          >
+            <span class="icon">👁️</span> Preview
+          </button>
+          <button 
+            class="btn btn-primary btn-lg" 
+            [disabled]="!canSend() || loading" 
+            (click)="send()"
+          >
+            <span *ngIf="loading" class="spinner"></span>
+            <span *ngIf="!loading" class="icon">📨</span>
+            {{ loading ? 'Sending...' : 'Send Message' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Templates Sidebar -->
+    <div class="templates-sidebar">
+      <div class="card-header">
+        <h2><span class="card-icon">📋</span> Quick Templates</h2>
+      </div>
+      <div class="templates-list">
+        <div 
+          *ngFor="let t of templates" 
+          class="template-card"
+          [class.selected]="selectedTemplate === t.name"
+          (click)="selectTemplate(t)"
+        >
+          <div class="template-icon">{{ t.icon }}</div>
+          <div class="template-content">
+            <div class="template-name">{{ t.name }}</div>
+            <div class="template-preview">{{ t.preview }}</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="tips-section">
+        <h3><span class="tips-icon">💡</span> Tips</h3>
+        <ul class="tips-list">
+          <li>Keep subject lines clear and concise</li>
+          <li>Use templates for common messages</li>
+          <li>Review recipients before sending</li>
+          <li>Attach relevant documents if needed</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview Modal -->
+  <div class="modal-overlay" *ngIf="showPreview" (click)="closePreview()">
+    <div class="preview-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Message Preview</h3>
+        <button class="modal-close" (click)="closePreview()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="preview-section">
+          <label>To:</label>
+          <div class="preview-value">
+            {{ recipientsType === 'all' ? 'All Parents' : selectedParentIds.size + ' selected parent(s)' }}
+          </div>
+        </div>
+        <div class="preview-section">
+          <label>Subject:</label>
+          <div class="preview-value subject">{{ subject }}</div>
+        </div>
+        <div class="preview-section">
+          <label>Message:</label>
+          <div class="preview-value message">{{ message }}</div>
+        </div>
+        <div class="preview-section" *ngIf="attachments.length > 0">
+          <label>Attachments:</label>
+          <div class="preview-attachments">
+            <span *ngFor="let f of attachments" class="preview-attachment">
+              📎 {{ f.name }}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="closePreview()">Edit</button>
+        <button class="btn btn-primary" (click)="sendFromPreview()" [disabled]="loading">
+          <span *ngIf="loading" class="spinner"></span>
+          {{ loading ? 'Sending...' : 'Send Now' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

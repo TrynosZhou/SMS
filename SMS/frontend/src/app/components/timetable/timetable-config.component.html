@@ -1,0 +1,157 @@
+<div class="timetable-config-page">
+  <div class="config-header">
+    <h2>📅 Timetable Configuration</h2>
+    <p class="subtitle">Configure scheduling rules for timetable generation</p>
+  </div>
+
+  <div class="config-content" *ngIf="!loading">
+    <!-- Basic Settings -->
+    <div class="config-section">
+      <h3>Basic Settings</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Periods Per Day</label>
+          <input type="number" [(ngModel)]="config.periodsPerDay" min="1" max="12" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>School Start Time</label>
+          <input type="time" [(ngModel)]="config.schoolStartTime" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>School End Time</label>
+          <input type="time" [(ngModel)]="config.schoolEndTime" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Period Duration (minutes)</label>
+          <input type="number" [(ngModel)]="config.periodDuration" min="15" max="120" class="form-control">
+        </div>
+      </div>
+    </div>
+
+    <!-- Days of Week -->
+    <div class="config-section">
+      <h3>Days of Week</h3>
+      <div class="days-selector">
+        <button 
+          *ngFor="let day of availableDays" 
+          type="button"
+          class="day-btn"
+          [class.active]="config.daysOfWeek.includes(day)"
+          (click)="toggleDay(day)">
+          {{ day }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Break Periods -->
+    <div class="config-section">
+      <div class="section-header">
+        <h3>Break Periods (2 Required)</h3>
+        <span class="info-text">Configure exactly 2 breaks for the timetable</span>
+      </div>
+      <div class="break-periods-list">
+        <div class="break-item" *ngFor="let break of config.breakPeriods; let i = index">
+          <div class="break-header">
+            <h4>Break {{ i + 1 }}</h4>
+            <button type="button" class="btn-reset" (click)="removeBreakPeriod(i)" title="Reset to default">↺ Reset</button>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Break Label (Editable)</label>
+              <input type="text" [(ngModel)]="break.name" placeholder="e.g., Tea Break, Lunch Break" class="form-control" required>
+              <small class="form-hint">Admin can rename this label</small>
+            </div>
+            <div class="form-group">
+              <label>Start Time</label>
+              <input type="time" [(ngModel)]="break.startTime" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>End Time</label>
+              <input type="time" [(ngModel)]="break.endTime" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>After Period</label>
+              <input type="number" [(ngModel)]="break.periodAfter" min="1" [max]="config.periodsPerDay" class="form-control">
+              <small class="form-hint">Break occurs after this period number</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preferences -->
+    <div class="config-section">
+      <h3>Additional Preferences</h3>
+      <div class="form-grid">
+        <div class="form-group checkbox-group">
+          <label>
+            <input type="checkbox" [(ngModel)]="config.preferences.allowDoublePeriods">
+            Allow Double Periods
+          </label>
+        </div>
+        <div class="form-group">
+          <label>Max Consecutive Periods</label>
+          <input type="number" [(ngModel)]="config.preferences.maxConsecutivePeriods" min="1" max="8" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Subject Distribution</label>
+          <select [(ngModel)]="config.preferences.preferredSubjectDistribution" class="form-control">
+            <option value="balanced">Balanced (Spread throughout week)</option>
+            <option value="concentrated">Concentrated (Grouped together)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Period Preview -->
+    <div class="config-section">
+      <h3>Period Schedule Preview</h3>
+      <div class="period-preview">
+        <table class="preview-table">
+          <thead>
+            <tr>
+              <th>Period</th>
+              <th>Start Time</th>
+              <th>End Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let period of calculatePeriodTimes()" [class.break-preview-row]="period.isBreak">
+              <td>
+                <span *ngIf="!period.isBreak">{{ period.number }}</span>
+                <span *ngIf="period.isBreak" class="break-preview-label">{{ period.breakLabel || period.number }}</span>
+              </td>
+              <td>{{ period.startTime }}</td>
+              <td>{{ period.endTime }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="config-actions" *ngIf="isAdmin || isSuperAdmin">
+      <button type="button" class="btn-save" (click)="saveConfig()" [disabled]="saving">
+        {{ saving ? 'Saving...' : '💾 Save Configuration' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="loading">
+    <p>Loading configuration...</p>
+  </div>
+
+  <!-- Messages -->
+  <div class="alert alert-success" *ngIf="success">
+    <span class="alert-icon">✅</span>
+    <span>{{ success }}</span>
+    <button class="alert-close" (click)="success = ''" title="Close">&times;</button>
+  </div>
+  <div class="alert alert-error" *ngIf="error">
+    <span class="alert-icon">⚠️</span>
+    <span>{{ error }}</span>
+    <button class="alert-close" (click)="error = ''" title="Close">&times;</button>
+  </div>
+</div>
+

@@ -1,0 +1,370 @@
+<div class="inbox-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1>
+          <span class="header-icon">📬</span>
+          Inbox
+          <span class="unread-badge" *ngIf="unreadCount() > 0">{{ unreadCount() }}</span>
+        </h1>
+        <p class="header-subtitle">Messages from parents</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn btn-icon" (click)="load()" title="Refresh" [disabled]="loading">
+          <span [class.spinning]="loading">🔄</span>
+        </button>
+        <label class="auto-refresh-toggle">
+          <input type="checkbox" [(ngModel)]="autoRefresh" (change)="setupAutoRefresh()" />
+          <span class="toggle-label">Auto-refresh</span>
+        </label>
+        <button type="button" class="btn btn-primary" [routerLink]="['/messages/send']">
+          <span class="icon">✉️</span> Compose
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert -->
+  <div *ngIf="error" class="alert alert-error">
+    <span class="alert-icon">⚠️</span>
+    <span class="alert-text">{{ error }}</span>
+    <button class="alert-close" (click)="error = ''">✕</button>
+  </div>
+
+  <!-- Bulk Actions Bar -->
+  <div class="bulk-actions-bar" *ngIf="selectedIds.size > 0">
+    <div class="bulk-info">
+      <span class="bulk-count">{{ selectedIds.size }}</span> selected
+    </div>
+    <div class="bulk-buttons">
+      <button class="btn btn-sm" (click)="bulkMarkRead()">
+        <span>✓</span> Mark Read
+      </button>
+      <button class="btn btn-sm" (click)="bulkMarkUnread()">
+        <span>○</span> Mark Unread
+      </button>
+      <button class="btn btn-sm btn-danger" (click)="clearSelection()">
+        <span>✕</span> Clear
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section">
+    <div class="filters-row">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          placeholder="Search messages..." 
+          [(ngModel)]="query" 
+          (input)="applyFilterAndPaginate()"
+          class="search-input"
+        />
+        <button *ngIf="query" class="clear-btn" (click)="query = ''; applyFilterAndPaginate()">✕</button>
+      </div>
+      
+      <div class="filter-chips">
+        <button 
+          class="chip" 
+          [class.active]="filterMode === 'all'"
+          (click)="filterMode = 'all'; applyFilterAndPaginate()"
+        >
+          All
+        </button>
+        <button 
+          class="chip" 
+          [class.active]="filterMode === 'unread'"
+          (click)="filterMode = 'unread'; applyFilterAndPaginate()"
+        >
+          <span class="chip-dot"></span> Unread
+        </button>
+        <button 
+          class="chip" 
+          [class.active]="filterMode === 'read'"
+          (click)="filterMode = 'read'; applyFilterAndPaginate()"
+        >
+          Read
+        </button>
+        <button 
+          class="chip" 
+          [class.active]="pinnedOnly"
+          (click)="pinnedOnly = !pinnedOnly; applyFilterAndPaginate()"
+        >
+          ⭐ Pinned
+        </button>
+      </div>
+
+      <button class="btn btn-text" (click)="showFilters = !showFilters">
+        <span>🎛️</span> {{ showFilters ? 'Hide' : 'More' }} Filters
+      </button>
+    </div>
+
+    <div class="advanced-filters" *ngIf="showFilters">
+      <div class="filter-group">
+        <label>Sender</label>
+        <select [(ngModel)]="senderFilter" (change)="applyFilterAndPaginate()">
+          <option value="">All Senders</option>
+          <option *ngFor="let s of senders" [value]="s.toLowerCase()">{{ s }}</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Date From</label>
+        <input type="date" [(ngModel)]="dateStart" (change)="applyFilterAndPaginate()" />
+      </div>
+      <div class="filter-group">
+        <label>Date To</label>
+        <input type="date" [(ngModel)]="dateEnd" (change)="applyFilterAndPaginate()" />
+      </div>
+      <div class="filter-group">
+        <label>Sort</label>
+        <select [(ngModel)]="sortMode" (change)="applyFilterAndPaginate()">
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Per Page</label>
+        <select [(ngModel)]="pageSize" (change)="applyFilterAndPaginate()">
+          <option [value]="10">10</option>
+          <option [value]="20">20</option>
+          <option [value]="50">50</option>
+        </select>
+      </div>
+      <button class="btn btn-text" (click)="clearFilters()">
+        <span>✕</span> Clear Filters
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Message List -->
+    <div class="message-list-panel">
+      <div class="list-header">
+        <label class="select-all">
+          <input type="checkbox" [checked]="isAllPageSelected()" (change)="toggleSelectAllPage()" />
+          <span>Select all</span>
+        </label>
+        <span class="list-count">{{ filtered.length }} messages</span>
+      </div>
+
+      <div class="loading-state" *ngIf="loading">
+        <div class="spinner"></div>
+        <p>Loading messages...</p>
+      </div>
+
+      <div class="empty-state" *ngIf="!loading && paged.length === 0">
+        <span class="empty-icon">📭</span>
+        <p>No messages found</p>
+        <button class="btn btn-primary btn-sm" (click)="clearFilters()">Clear Filters</button>
+      </div>
+
+      <div class="message-list" *ngIf="paged.length > 0">
+        <div 
+          *ngFor="let m of paged" 
+          class="message-item"
+          [class.unread]="!m.isRead"
+          [class.selected]="selected?.id === m.id"
+          [class.pinned]="isPinned(m)"
+        >
+          <label class="item-checkbox" (click)="$event.stopPropagation()">
+            <input type="checkbox" [checked]="isSelected(m.id)" (change)="toggleId(m.id)" />
+          </label>
+          
+          <div class="message-content" (click)="open(m)">
+            <div class="message-avatar">{{ getInitial(m) }}</div>
+            <div class="message-details">
+              <div class="message-header">
+                <span class="sender-name">{{ m.parentName || m.senderName || 'Unknown' }}</span>
+                <span class="message-time">{{ timeAgo(m.createdAt) }}</span>
+              </div>
+              <div class="message-subject">
+                <span *ngIf="isPinned(m)" class="pin-icon">⭐</span>
+                {{ m.subject || '(No Subject)' }}
+              </div>
+              <div class="message-preview">{{ getPreview(m.message) }}</div>
+            </div>
+            <span class="unread-indicator" *ngIf="!m.isRead"></span>
+          </div>
+          
+          <button class="pin-btn" (click)="togglePin(m); $event.stopPropagation()" title="Pin message">
+            {{ isPinned(m) ? '⭐' : '☆' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" *ngIf="totalPages() > 1">
+        <button class="btn btn-sm" (click)="prevPage()" [disabled]="currentPage === 1">
+          ← Prev
+        </button>
+        <span class="page-info">Page {{ currentPage }} of {{ totalPages() }}</span>
+        <button class="btn btn-sm" (click)="nextPage()" [disabled]="currentPage === totalPages()">
+          Next →
+        </button>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="list-actions">
+        <button class="btn btn-sm" (click)="exportCSV()" [disabled]="filtered.length === 0">
+          <span>📥</span> Export CSV
+        </button>
+        <button class="btn btn-sm" (click)="showTemplateManager = !showTemplateManager">
+          <span>📝</span> Templates
+        </button>
+      </div>
+    </div>
+
+    <!-- Message Detail Panel -->
+    <div class="message-detail-panel" *ngIf="selected">
+      <div class="detail-header">
+        <button class="btn btn-icon back-btn" (click)="selected = null" title="Back to list">
+          ←
+        </button>
+        <div class="detail-actions">
+          <button class="btn btn-icon" (click)="togglePin(selected)" [title]="isPinned(selected) ? 'Unpin' : 'Pin'">
+            {{ isPinned(selected) ? '⭐' : '☆' }}
+          </button>
+          <button class="btn btn-icon" (click)="printSelected()" title="Print">🖨️</button>
+          <button class="btn btn-icon" (click)="copySelected()" title="Copy">📋</button>
+          <button class="btn btn-icon" (click)="downloadSelected()" title="Download">📄</button>
+        </div>
+      </div>
+
+      <div class="detail-content">
+        <h2 class="detail-subject">{{ selected.subject || '(No Subject)' }}</h2>
+        
+        <div class="detail-meta">
+          <div class="sender-info">
+            <div class="sender-avatar">{{ getInitial(selected) }}</div>
+            <div class="sender-details">
+              <span class="sender-name">{{ selected.parentName || selected.senderName }}</span>
+              <span class="sender-date">{{ formatDate(selected.createdAt) }}</span>
+            </div>
+          </div>
+          <div class="read-status" [class.read]="selected.isRead">
+            {{ selected.isRead ? 'Read' : 'Unread' }}
+          </div>
+        </div>
+
+        <div class="detail-body">{{ selected.message }}</div>
+
+        <div class="detail-attachments" *ngIf="selected.attachments && selected.attachments.length">
+          <h4>📎 Attachments</h4>
+          <div class="attachment-list">
+            <a *ngFor="let a of selected.attachments" [href]="a" target="_blank" class="attachment-item">
+              <span class="attachment-icon">📄</span>
+              <span>Download</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-footer">
+        <div class="footer-actions">
+          <button class="btn" [class.btn-outline]="selected.isRead" (click)="selected.isRead ? markUnread() : markRead()">
+            {{ selected.isRead ? '○ Mark Unread' : '✓ Mark Read' }}
+          </button>
+          <button class="btn btn-primary" (click)="toggleReply()">
+            <span>↩️</span> {{ replying ? 'Cancel Reply' : 'Reply' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Reply Panel -->
+      <div class="reply-panel" *ngIf="replying">
+        <div class="reply-header">
+          <h3>Reply to {{ selected.parentName || selected.senderName }}</h3>
+        </div>
+
+        <div class="reply-template-select">
+          <select [(ngModel)]="selectedReplyTemplate">
+            <option value="">Use a template...</option>
+            <option *ngFor="let t of replyTemplates" [value]="t.name">{{ t.name }}</option>
+          </select>
+          <button class="btn btn-sm" (click)="applyReplyTemplate()" [disabled]="!selectedReplyTemplate">Apply</button>
+        </div>
+
+        <div class="reply-form">
+          <div class="form-group">
+            <label>Subject</label>
+            <input type="text" [(ngModel)]="replySubject" placeholder="Re: ..." />
+          </div>
+          <div class="form-group">
+            <label>Message</label>
+            <textarea rows="6" [(ngModel)]="replyBody" placeholder="Type your reply..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Attachments</label>
+            <div class="file-upload">
+              <input type="file" multiple (change)="onReplyFilesChange($event)" #replyFileInput />
+              <button class="btn btn-sm" (click)="replyFileInput.click()">
+                <span>📎</span> Add Files
+              </button>
+            </div>
+            <div class="file-list" *ngIf="replyFiles.length > 0">
+              <div *ngFor="let f of replyFiles; let i = index" class="file-item">
+                <span>📄 {{ f.name }}</span>
+                <button class="remove-btn" (click)="removeReplyFile(i)">✕</button>
+              </div>
+            </div>
+          </div>
+          <div class="reply-actions">
+            <button class="btn btn-outline" (click)="toggleReply()">Cancel</button>
+            <button class="btn btn-primary" [disabled]="!canSendReply()" (click)="sendReply()">
+              <span>📤</span> Send Reply
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty Detail State -->
+    <div class="empty-detail" *ngIf="!selected">
+      <span class="empty-icon">✉️</span>
+      <p>Select a message to read</p>
+    </div>
+  </div>
+
+  <!-- Template Manager Modal -->
+  <div class="modal-overlay" *ngIf="showTemplateManager" (click)="showTemplateManager = false">
+    <div class="template-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Reply Templates</h3>
+        <button class="modal-close" (click)="showTemplateManager = false">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="template-list" *ngIf="replyTemplates.length > 0">
+          <div *ngFor="let t of replyTemplates; let i = index" class="template-item">
+            <div class="template-field">
+              <label>Name</label>
+              <input type="text" [(ngModel)]="t.name" placeholder="Template name" />
+            </div>
+            <div class="template-field">
+              <label>Subject</label>
+              <input type="text" [(ngModel)]="t.subject" placeholder="Reply subject" />
+            </div>
+            <div class="template-field">
+              <label>Body</label>
+              <textarea rows="3" [(ngModel)]="t.body" placeholder="Reply message..."></textarea>
+            </div>
+            <button class="btn btn-sm btn-danger" (click)="removeReplyTemplate(i)">Remove</button>
+          </div>
+        </div>
+        <div class="empty-templates" *ngIf="replyTemplates.length === 0">
+          <p>No templates yet. Create one to speed up your replies!</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" (click)="addReplyTemplate()">
+          <span>➕</span> Add Template
+        </button>
+        <button class="btn btn-primary" (click)="saveReplyTemplates(); showTemplateManager = false">
+          Save & Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

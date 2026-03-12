@@ -1,0 +1,427 @@
+<div class="record-payment-container">
+  <!-- Page Header with Breadcrumb -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1>
+          <span class="header-icon">💳</span>
+          Record Payment
+        </h1>
+        <p class="header-subtitle">Search for a student and record their payment</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn btn-outline" [routerLink]="['/invoices']" title="View All Invoices">
+          <span class="icon">📋</span> View Invoices
+        </button>
+        <button type="button" class="btn btn-primary" [routerLink]="['/invoices/new']" title="Create Invoice">
+          <span class="icon">➕</span> New Invoice
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Section with Modern Design -->
+  <div class="search-section" [class.searching]="loading">
+    <div class="search-header">
+      <span class="search-icon">🔍</span>
+      <h2>Find Student</h2>
+    </div>
+    <div class="search-form">
+      <div class="search-input-wrapper">
+        <input
+          type="text"
+          id="studentId"
+          [(ngModel)]="studentId"
+          placeholder="Enter Student ID, Name, or Student Number..."
+          class="search-input"
+          (keyup.enter)="getBalance()"
+          (input)="onSearchInput()"
+          [class.has-value]="studentId"
+          autocomplete="off"
+        />
+        <button
+          *ngIf="studentId"
+          type="button"
+          class="clear-input-btn"
+          (click)="clear()"
+          title="Clear search"
+        >
+          ✕
+        </button>
+      </div>
+      <button
+        type="button"
+        class="btn btn-primary btn-search"
+        (click)="getBalance()"
+        [disabled]="loading || !studentId"
+      >
+        <span *ngIf="loading" class="spinner"></span>
+        <span *ngIf="!loading" class="icon">🔍</span>
+        {{ loading ? 'Searching...' : 'Search' }}
+      </button>
+    </div>
+    <div class="search-hints">
+      <span class="hint-item"><kbd>Enter</kbd> to search</span>
+      <span class="hint-item"><kbd>Esc</kbd> to clear</span>
+    </div>
+  </div>
+
+  <!-- Matching Students Dropdown -->
+  <div class="matching-students-section" *ngIf="matchingStudents && matchingStudents.length > 0" [@fadeSlide]>
+    <div class="matching-header">
+      <span class="icon">👥</span>
+      <span>{{ matchingStudents.length }} students found - Please select one:</span>
+    </div>
+    <div class="student-cards">
+      <div 
+        *ngFor="let s of matchingStudents" 
+        class="student-card"
+        (click)="selectStudent(s.studentId)"
+        [class.selected]="selectedMatchId === s.studentId"
+      >
+        <div class="student-avatar">{{ getInitials(s.fullName) }}</div>
+        <div class="student-details">
+          <div class="student-name">{{ s.fullName }}</div>
+          <div class="student-id">{{ s.studentNumber }}</div>
+        </div>
+        <span class="select-indicator">→</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error and Success Messages -->
+  <div *ngIf="error" class="alert alert-error" [@fadeSlide]>
+    <span class="alert-icon">⚠️</span>
+    <span class="alert-text">{{ error }}</span>
+    <button class="alert-close" (click)="error = ''">✕</button>
+  </div>
+  <div *ngIf="success" class="alert alert-success" [@fadeSlide]>
+    <span class="alert-icon">✅</span>
+    <span class="alert-text">{{ success }}</span>
+    <button class="alert-close" (click)="success = ''">✕</button>
+  </div>
+
+  <!-- Student Information and Record Payment Section -->
+  <div *ngIf="studentData" class="main-content" [@fadeSlide]>
+    <!-- Student Info Card -->
+    <div class="student-info-card">
+      <div class="card-header">
+        <div class="student-profile">
+          <div class="profile-avatar large">{{ getInitials(studentData.fullName) }}</div>
+          <div class="profile-details">
+            <h2>{{ studentData.fullName }}</h2>
+            <div class="student-meta">
+              <span class="meta-item">
+                <span class="meta-icon">🎓</span>
+                {{ studentData.studentNumber }}
+              </span>
+              <span class="meta-item" *ngIf="studentData.className">
+                <span class="meta-icon">📚</span>
+                {{ studentData.className }}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="status-badges">
+          <span *ngIf="studentData.isStaffChild" class="badge badge-info">Staff Child</span>
+          <span *ngIf="studentData.isExempted" class="badge badge-warning">Exempted</span>
+        </div>
+      </div>
+
+      <!-- Balance Overview -->
+      <div class="balance-overview">
+        <div class="balance-card primary">
+          <div class="balance-label">Tuition Balance</div>
+          <div class="balance-value" [class.positive]="studentData.balance <= 0" [class.negative]="studentData.balance > 0">
+            {{ currencySymbol }} {{ formatCurrency(studentData.balance) }}
+          </div>
+          <div class="balance-status">
+            <span *ngIf="studentData.balance <= 0" class="status-paid">✓ Fully Paid</span>
+            <span *ngIf="studentData.balance > 0" class="status-pending">Outstanding</span>
+          </div>
+        </div>
+        <div class="balance-card secondary" *ngIf="studentData.uniformBalance != null && studentData.uniformBalance > 0">
+          <div class="balance-label">Uniform Balance</div>
+          <div class="balance-value negative">
+            {{ currencySymbol }} {{ formatCurrency(studentData.uniformBalance || 0) }}
+          </div>
+          <div class="balance-note">Separate from tuition</div>
+        </div>
+      </div>
+
+      <!-- Fee Policy Notice -->
+      <div *ngIf="studentData.isStaffChild || studentData.isExempted" class="policy-notice">
+        <span class="notice-icon">ℹ️</span>
+        <div class="notice-content">
+          <strong>Fee Policy Applied:</strong>
+          No tuition or transport fees. Dining Hall charged at 50% if applicable.
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Form Card -->
+    <div class="payment-form-card">
+      <div class="card-header">
+        <h2><span class="header-icon">💰</span> Record Payment</h2>
+      </div>
+
+      <form (ngSubmit)="confirmPayment()">
+        <!-- Quick Amount Buttons -->
+        <div class="quick-amounts" *ngIf="studentData.balance > 0">
+          <label class="section-label">Quick Select Amount</label>
+          <div class="amount-buttons">
+            <button 
+              type="button" 
+              class="amount-btn"
+              [class.active]="paymentForm.amount === studentData.balance"
+              (click)="setQuickAmount(100)"
+            >
+              <span class="amount-label">Full Balance</span>
+              <span class="amount-value">{{ currencySymbol }} {{ formatCurrency(studentData.balance) }}</span>
+            </button>
+            <button 
+              type="button" 
+              class="amount-btn"
+              [class.active]="paymentForm.amount === studentData.balance * 0.5"
+              (click)="setQuickAmount(50)"
+            >
+              <span class="amount-label">50%</span>
+              <span class="amount-value">{{ currencySymbol }} {{ formatCurrency(studentData.balance * 0.5) }}</span>
+            </button>
+            <button 
+              type="button" 
+              class="amount-btn"
+              [class.active]="paymentForm.amount === studentData.balance * 0.25"
+              (click)="setQuickAmount(25)"
+            >
+              <span class="amount-label">25%</span>
+              <span class="amount-value">{{ currencySymbol }} {{ formatCurrency(studentData.balance * 0.25) }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Amount Input -->
+        <div class="form-group amount-group">
+          <label for="amount">Payment Amount <span class="required">*</span></label>
+          <div class="amount-input-wrapper">
+            <span class="currency-prefix">{{ currencySymbol }}</span>
+            <input
+              type="number"
+              id="amount"
+              [(ngModel)]="paymentForm.amount"
+              name="amount"
+              class="form-control amount-input"
+              step="0.01"
+              min="0.01"
+              required
+              placeholder="0.00"
+            />
+          </div>
+          <div class="amount-comparison" *ngIf="studentData.balance > 0">
+            <span *ngIf="paymentForm.amount >= studentData.balance" class="comparison-badge full">
+              ✓ Covers full balance
+            </span>
+            <span *ngIf="paymentForm.amount < studentData.balance && paymentForm.amount > 0" class="comparison-badge partial">
+              Remaining: {{ currencySymbol }} {{ formatCurrency(studentData.balance - paymentForm.amount) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Payment Details Grid -->
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="term">Term <span class="required">*</span></label>
+            <input
+              type="text"
+              id="term"
+              [(ngModel)]="paymentForm.term"
+              name="term"
+              class="form-control"
+              required
+            />
+            <small class="form-hint">Current: {{ currentTerm }}</small>
+          </div>
+          <div class="form-group">
+            <label for="paymentDate">Payment Date <span class="required">*</span></label>
+            <input
+              type="date"
+              id="paymentDate"
+              [(ngModel)]="paymentForm.paymentDate"
+              name="paymentDate"
+              class="form-control"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="paymentMethod">Payment Method <span class="required">*</span></label>
+          <div class="payment-method-grid">
+            <label 
+              *ngFor="let method of paymentMethods" 
+              class="method-option"
+              [class.selected]="paymentForm.paymentMethod === method.value"
+            >
+              <input 
+                type="radio" 
+                name="paymentMethod" 
+                [value]="method.value"
+                [(ngModel)]="paymentForm.paymentMethod"
+              />
+              <span class="method-icon">{{ method.icon }}</span>
+              <span class="method-label">{{ method.label }}</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="notes">Notes <span class="optional">(Optional)</span></label>
+          <textarea
+            id="notes"
+            [(ngModel)]="paymentForm.notes"
+            name="notes"
+            class="form-control"
+            rows="2"
+            placeholder="Add any additional notes about this payment..."
+          ></textarea>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button
+            type="submit"
+            class="btn btn-success btn-lg"
+            [disabled]="submitting || loading || !paymentForm.amount || paymentForm.amount <= 0"
+          >
+            <span *ngIf="submitting" class="spinner"></span>
+            <span *ngIf="!submitting" class="icon">💳</span>
+            {{ submitting ? 'Processing...' : 'Record Payment' }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-outline"
+            (click)="showReceiptPreview()"
+            [disabled]="loadingReceipt || !hasReceiptAvailable()"
+          >
+            <span class="icon">🧾</span> View Receipt
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Recent Payments -->
+    <div class="recent-payments-card" *ngIf="recentPayments && recentPayments.length > 0">
+      <div class="card-header">
+        <h2><span class="header-icon">📜</span> Recent Payments</h2>
+      </div>
+      <div class="payments-list">
+        <div *ngFor="let payment of recentPayments" class="payment-item">
+          <div class="payment-info">
+            <div class="payment-amount">{{ currencySymbol }} {{ formatCurrency(payment.amount) }}</div>
+            <div class="payment-date">{{ payment.date | date:'mediumDate' }}</div>
+          </div>
+          <div class="payment-method-badge">{{ payment.method }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Confirmation Modal -->
+  <div class="modal-overlay" *ngIf="showConfirmModal" (click)="closeConfirmModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()" [@scaleIn]>
+      <div class="modal-header">
+        <h3>Confirm Payment</h3>
+        <button class="modal-close" (click)="closeConfirmModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="confirm-summary">
+          <div class="confirm-row">
+            <span class="confirm-label">Student:</span>
+            <span class="confirm-value">{{ studentData?.fullName }}</span>
+          </div>
+          <div class="confirm-row">
+            <span class="confirm-label">Amount:</span>
+            <span class="confirm-value highlight">{{ currencySymbol }} {{ formatCurrency(paymentForm.amount) }}</span>
+          </div>
+          <div class="confirm-row">
+            <span class="confirm-label">Method:</span>
+            <span class="confirm-value">{{ paymentForm.paymentMethod }}</span>
+          </div>
+          <div class="confirm-row">
+            <span class="confirm-label">Date:</span>
+            <span class="confirm-value">{{ paymentForm.paymentDate | date:'mediumDate' }}</span>
+          </div>
+          <div class="confirm-row" *ngIf="paymentForm.notes">
+            <span class="confirm-label">Notes:</span>
+            <span class="confirm-value">{{ paymentForm.notes }}</span>
+          </div>
+        </div>
+        <div class="balance-preview">
+          <div class="preview-item">
+            <span>Current Balance:</span>
+            <span>{{ currencySymbol }} {{ formatCurrency(studentData?.balance || 0) }}</span>
+          </div>
+          <div class="preview-item">
+            <span>Payment:</span>
+            <span class="text-success">- {{ currencySymbol }} {{ formatCurrency(paymentForm.amount) }}</span>
+          </div>
+          <div class="preview-item total">
+            <span>New Balance:</span>
+            <span [class.text-success]="(studentData?.balance || 0) - paymentForm.amount <= 0">
+              {{ currencySymbol }} {{ formatCurrency(Math.max(0, (studentData?.balance || 0) - paymentForm.amount)) }}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" (click)="closeConfirmModal()">Cancel</button>
+        <button 
+          type="button" 
+          class="btn btn-success" 
+          (click)="recordPayment()"
+          [disabled]="submitting"
+        >
+          <span *ngIf="submitting" class="spinner"></span>
+          {{ submitting ? 'Processing...' : 'Confirm Payment' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Receipt Preview Modal -->
+  <div class="modal-overlay" *ngIf="showReceipt" (click)="closeReceipt()">
+    <div class="receipt-modal" (click)="$event.stopPropagation()">
+      <div class="receipt-header">
+        <h3>Payment Receipt</h3>
+        <button class="modal-close" (click)="closeReceipt()">✕</button>
+      </div>
+      <div *ngIf="loadingReceipt" class="receipt-loading">
+        <div class="spinner-large"></div>
+        <p>Loading Receipt...</p>
+      </div>
+      <div *ngIf="!loadingReceipt && !receiptPdfUrl" class="receipt-loading">
+        <span class="empty-icon">📄</span>
+        <p>Receipt not available</p>
+      </div>
+      <div *ngIf="receiptPdfUrl && !loadingReceipt" class="receipt-content">
+        <iframe 
+          [src]="receiptPdfUrl" 
+          class="receipt-iframe"
+          title="Receipt PDF"
+          type="application/pdf">
+        </iframe>
+      </div>
+      <div class="receipt-actions" *ngIf="receiptPdfUrl && !loadingReceipt">
+        <button type="button" class="btn btn-outline" (click)="openReceiptInNewWindow()">
+          <span class="icon">🔗</span> Open in New Tab
+        </button>
+        <button type="button" class="btn btn-primary" (click)="downloadReceipt()">
+          <span class="icon">💾</span> Download
+        </button>
+        <button type="button" class="btn btn-success" (click)="printReceipt()">
+          <span class="icon">🖨️</span> Print
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
