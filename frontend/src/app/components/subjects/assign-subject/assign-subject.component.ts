@@ -1,12 +1,24 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { trigger, transition, style, animate } from '@angular/animations';
 import { ClassService } from '../../../services/class.service';
 import { SubjectService } from '../../../services/subject.service';
 
 @Component({
   selector: 'app-assign-subject',
   templateUrl: './assign-subject.component.html',
-  styleUrls: ['./assign-subject.component.css']
+  styleUrls: ['./assign-subject.component.css'],
+  animations: [
+    trigger('fadeSlide', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateY(-10px)' }),
+        animate('300ms ease-out', style({ opacity: 1, transform: 'translateY(0)' }))
+      ]),
+      transition(':leave', [
+        animate('200ms ease-in', style({ opacity: 0, transform: 'translateY(-10px)' }))
+      ])
+    ])
+  ]
 })
 export class AssignSubjectComponent implements OnInit {
   classes: any[] = [];

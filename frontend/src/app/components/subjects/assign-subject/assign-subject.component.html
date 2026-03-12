@@ -1,238 +1,262 @@
-<div class="assign-subject-container">
+<div class="assign-page">
+  <!-- Modern Header -->
   <div class="page-header">
-    <h1>
-      <span class="header-icon">🔗</span>
-      Assign Subjects to Class
-    </h1>
-    <p class="page-description">Select a class and assign subjects to it</p>
-  </div>
-
-  <!-- Error Message -->
-  <div class="alert alert-error" *ngIf="error" role="alert">
-    <span class="alert-icon">⚠️</span>
-    <span>{{ error }}</span>
-  </div>
-
-  <!-- Success Message -->
-  <div class="alert alert-success success-alert" *ngIf="success" role="alert">
-    <div class="success-content">
-      <div class="success-icon-wrapper">
-        <span class="alert-icon">✅</span>
+    <div class="header-content">
+      <div class="header-title">
+        <span class="header-icon">🔗</span>
+        <div>
+          <h1>Assign Subjects to Class</h1>
+          <p class="subtitle">Select a class and assign subjects with ease</p>
+        </div>
       </div>
-      <div class="success-message-wrapper">
-        <div class="success-title">Assignment Successful!</div>
-        <div class="success-text">{{ success }}</div>
-        <div class="success-details" *ngIf="successDetails">
-          <div class="detail-item">
-            <span class="detail-label">Class:</span>
-            <span class="detail-value">{{ successDetails.class }}</span>
+      <div class="header-stats">
+        <div class="stat-item">
+          <span class="stat-value">{{ classes.length }}</span>
+          <span class="stat-label">Classes</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{{ subjects.length }}</span>
+          <span class="stat-label">Subjects</span>
+        </div>
+        <div class="stat-item highlight" *ngIf="selectedSubjectIds.length > 0">
+          <span class="stat-value">{{ selectedSubjectIds.length }}</span>
+          <span class="stat-label">Selected</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert Messages -->
+  <div class="alert-container">
+    <div class="alert alert-error" *ngIf="error" @fadeSlide>
+      <span class="alert-icon">⚠</span>
+      <div class="alert-content">
+        <strong>Error</strong>
+        <span>{{ error }}</span>
+      </div>
+      <button class="alert-close" (click)="error = ''">&times;</button>
+    </div>
+
+    <div class="alert alert-success" *ngIf="success" @fadeSlide>
+      <span class="alert-icon">✓</span>
+      <div class="alert-content">
+        <strong>Success!</strong>
+        <span>{{ success }}</span>
+        <div class="success-tags" *ngIf="successDetails && successDetails.subjects.length > 0 && successDetails.subjects.length <= 5">
+          <span class="tag" *ngFor="let subject of successDetails.subjects">{{ subject }}</span>
+        </div>
+      </div>
+      <button class="alert-close" (click)="success = ''; successDetails = null">&times;</button>
+    </div>
+  </div>
+
+  <!-- Step Indicator -->
+  <div class="steps-indicator">
+    <div class="step" [class.active]="true" [class.completed]="selectedClassId">
+      <div class="step-number">1</div>
+      <div class="step-label">Select Class</div>
+    </div>
+    <div class="step-line" [class.active]="selectedClassId"></div>
+    <div class="step" [class.active]="selectedClassId" [class.completed]="selectedSubjectIds.length > 0">
+      <div class="step-number">2</div>
+      <div class="step-label">Choose Subjects</div>
+    </div>
+    <div class="step-line" [class.active]="selectedSubjectIds.length > 0"></div>
+    <div class="step" [class.active]="selectedSubjectIds.length > 0">
+      <div class="step-number">3</div>
+      <div class="step-label">Confirm</div>
+    </div>
+  </div>
+
+  <!-- Main Content - Landscape Layout -->
+  <div class="assign-content">
+    <!-- Left Panel: Class Selection -->
+    <div class="panel class-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="panel-icon">🏫</span>
+          <h2>Select Class</h2>
+        </div>
+      </div>
+
+      <div class="panel-body">
+        <!-- Loading State -->
+        <div *ngIf="loadingClasses" class="loading-state">
+          <div class="spinner-modern"></div>
+          <p>Loading classes...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="!loadingClasses && classes.length === 0" class="empty-state">
+          <span class="empty-icon">🏫</span>
+          <h4>No Classes Found</h4>
+          <p>Create a class to get started</p>
+          <button class="btn btn-primary btn-sm" (click)="router.navigate(['/classes/new'])">
+            <span class="btn-icon">+</span> Create Class
+          </button>
+        </div>
+
+        <!-- Class Cards Grid -->
+        <div *ngIf="!loadingClasses && classes.length > 0" class="class-grid">
+          <div
+            *ngFor="let cls of classes"
+            class="class-card"
+            [class.selected]="selectedClassId === cls.id"
+            (click)="selectedClassId = cls.id; onClassChange()">
+            <div class="class-icon">🎓</div>
+            <div class="class-info">
+              <h4>{{ cls.name }}</h4>
+              <span class="class-form" *ngIf="cls.form">{{ cls.form }}</span>
+            </div>
+            <div class="class-check" *ngIf="selectedClassId === cls.id">✓</div>
           </div>
-          <div class="detail-item" *ngIf="successDetails.count > 0">
-            <span class="detail-label">Subjects Assigned:</span>
-            <span class="detail-value">{{ successDetails.count }}</span>
+        </div>
+
+        <!-- Selected Class Details -->
+        <div class="selected-class-details" *ngIf="selectedClass && !loading" @fadeSlide>
+          <div class="details-header">
+            <h3>{{ selectedClass.name }}</h3>
+            <span class="form-badge" *ngIf="selectedClass.form">{{ selectedClass.form }}</span>
           </div>
-          <div class="detail-item" *ngIf="successDetails.count === 0">
-            <span class="detail-label">Status:</span>
-            <span class="detail-value">All subjects removed</span>
-          </div>
-          <div class="detail-item detail-subjects" *ngIf="successDetails.subjects.length > 0 && successDetails.subjects.length <= 5">
-            <span class="detail-label">Subject{{ successDetails.count > 1 ? 's' : '' }}:</span>
-            <div class="subject-tags">
-              <span class="subject-tag" *ngFor="let subject of successDetails.subjects">{{ subject }}</span>
+          <p class="details-description" *ngIf="selectedClass.description">{{ selectedClass.description }}</p>
+          <div class="details-stats">
+            <div class="detail-stat">
+              <span class="detail-icon">📚</span>
+              <div>
+                <span class="detail-value">{{ getSelectedClassSubjects().length }}</span>
+                <span class="detail-label">Current Subjects</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <button 
-        type="button" 
-        class="alert-close-btn" 
-        (click)="success = ''; successDetails = null"
-        aria-label="Close success message">
-        ✕
-      </button>
-    </div>
-  </div>
 
-  <div class="form-container">
-    <!-- Class Selection -->
-    <div class="form-section">
-      <div class="section-header">
-        <h2>
-          <span class="section-icon">🏫</span>
-          Select Class
-        </h2>
-        <p class="section-description">Choose the class you want to assign subjects to</p>
-      </div>
-
-      <div class="form-group">
-        <label for="classSelect">Class *</label>
-        <div class="select-wrapper">
-          <select 
-            id="classSelect"
-            [(ngModel)]="selectedClassId" 
-            (change)="onClassChange()"
-            [disabled]="loading || loadingClasses"
-            class="class-select-dropdown">
-            <option value="">-- Select a Class --</option>
-            <option *ngFor="let cls of classes" [value]="cls.id">
-              {{ cls.name }} {{ cls.form ? '(' + cls.form + ')' : '' }}
-            </option>
-          </select>
-          <span class="select-arrow">▼</span>
-        </div>
-        <div class="loading-state" *ngIf="loadingClasses">
-          <span class="spinner"></span>
-          <span>Loading classes...</span>
-        </div>
-        <div class="empty-state-message" *ngIf="!loadingClasses && classes.length === 0 && !error">
-          <span class="empty-icon">🏫</span>
-          <p>No classes available. Please create a class first.</p>
-          <button 
-            type="button" 
-            class="btn btn-secondary btn-sm" 
-            (click)="router.navigate(['/classes/new'])">
-            Create Class
-          </button>
-        </div>
-        <div class="error-message" *ngIf="!loadingClasses && classes.length === 0 && error && error.includes('classes')">
-          <span class="error-icon">⚠️</span>
-          <span>{{ error }}</span>
-          <button 
-            type="button" 
-            class="btn btn-secondary btn-sm" 
-            (click)="loadClasses()">
-            Retry
-          </button>
-        </div>
-      </div>
-
-      <!-- Selected Class Info -->
-      <div class="class-info-card" *ngIf="selectedClass && !loading">
-        <div class="info-header">
-          <h3>{{ selectedClass.name }}</h3>
-          <span class="badge" *ngIf="selectedClass.form">{{ selectedClass.form }}</span>
-        </div>
-        <p class="info-description" *ngIf="selectedClass.description">{{ selectedClass.description }}</p>
-        <div class="info-stats">
-          <div class="stat-item">
-            <span class="stat-label">Currently Assigned Subjects:</span>
-            <span class="stat-value">{{ getSelectedClassSubjects().length }}</span>
-          </div>
+        <!-- Loading Class Details -->
+        <div *ngIf="loading && selectedClassId" class="loading-state small">
+          <div class="spinner-modern small"></div>
+          <p>Loading class details...</p>
         </div>
       </div>
     </div>
 
-    <!-- Subject Selection -->
-    <div class="form-section" *ngIf="selectedClassId && !loading">
-      <div class="section-header">
-        <div>
-          <h2>
-            <span class="section-icon">📚</span>
-            Select Subjects
-          </h2>
-          <p class="section-description">Choose subjects to assign to {{ selectedClass?.name || 'this class' }}</p>
+    <!-- Right Panel: Subject Selection -->
+    <div class="panel subject-panel" [class.inactive]="!selectedClassId">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="panel-icon">📚</span>
+          <h2>Select Subjects</h2>
         </div>
-        <div class="section-actions">
-          <button 
-            type="button" 
-            class="btn btn-secondary btn-sm" 
-            (click)="selectAllSubjects()" 
-            [disabled]="!filteredSubjects.length">
-            Select All
+        <div class="panel-actions" *ngIf="selectedClassId && !loadingSubjects && subjects.length > 0">
+          <button class="btn-action" (click)="selectAllSubjects()" [disabled]="!filteredSubjects.length">
+            <span>✓</span> All
           </button>
-          <button 
-            type="button" 
-            class="btn btn-secondary btn-sm" 
-            (click)="clearSelectedSubjects()" 
-            [disabled]="!selectedSubjectIds.length">
-            Clear
+          <button class="btn-action" (click)="clearSelectedSubjects()" [disabled]="!selectedSubjectIds.length">
+            <span>✕</span> Clear
           </button>
         </div>
       </div>
 
-      <div class="form-group full-width" *ngIf="loadingSubjects">
-        <div class="loading-state">
-          <span class="spinner"></span>
-          <span>Loading subjects...</span>
-        </div>
-      </div>
-
-      <div class="form-group full-width" *ngIf="!loadingSubjects && subjects.length > 0">
-        <div class="search-box">
-          <input 
-            type="text" 
-            [(ngModel)]="subjectSearchQuery"
-            [ngModelOptions]="{standalone: true}"
-            placeholder="Search subjects by name, code, or description..."
-            class="search-input"
-            (input)="filterSubjects()">
-          <span class="search-icon">🔍</span>
+      <div class="panel-body">
+        <!-- No Class Selected -->
+        <div *ngIf="!selectedClassId" class="no-selection-state">
+          <span class="no-selection-icon">👈</span>
+          <h3>Select a Class First</h3>
+          <p>Choose a class from the left panel to assign subjects</p>
         </div>
 
-        <div class="selected-count" *ngIf="selectedSubjectIds.length > 0">
-          <span class="count-badge">{{ selectedSubjectIds.length }}</span>
-          <span>subject(s) selected</span>
+        <!-- Loading Subjects -->
+        <div *ngIf="selectedClassId && loadingSubjects" class="loading-state">
+          <div class="spinner-modern"></div>
+          <p>Loading subjects...</p>
         </div>
 
-        <div class="select-list">
-          <div 
-            *ngFor="let subject of filteredSubjects" 
-            class="select-item"
-            [class.selected]="isSubjectSelected(subject.id)"
-            (click)="toggleSubject(subject.id)">
-            <input 
-              type="checkbox" 
-              [checked]="isSubjectSelected(subject.id)"
-              [id]="'subject-' + subject.id"
-              (change)="toggleSubject(subject.id)"
-              (click)="$event.stopPropagation()">
-            <label [for]="'subject-' + subject.id">
-              <div class="subject-info">
-                <strong>{{ subject.name }}</strong>
-                <small *ngIf="subject.code">{{ subject.code }}</small>
-              </div>
-              <p class="subject-description" *ngIf="subject.description">{{ subject.description }}</p>
-            </label>
-          </div>
-          <div *ngIf="filteredSubjects.length === 0" class="empty-state">
-            <span class="empty-icon">🔍</span>
-            <p>No subjects found matching your search</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="form-group full-width" *ngIf="!loadingSubjects && subjects.length === 0">
-        <div class="empty-state-card">
+        <!-- No Subjects Available -->
+        <div *ngIf="selectedClassId && !loadingSubjects && subjects.length === 0" class="empty-state">
           <span class="empty-icon">📚</span>
-          <p>No subjects available. Please add subjects first.</p>
-          <button 
-            type="button" 
-            class="btn btn-primary" 
-            (click)="router.navigate(['/subjects/new'])">
-            Add Subject
+          <h4>No Subjects Found</h4>
+          <p>Create subjects to assign them</p>
+          <button class="btn btn-primary btn-sm" (click)="router.navigate(['/subjects/new'])">
+            <span class="btn-icon">+</span> Add Subject
           </button>
         </div>
-      </div>
-    </div>
 
-    <!-- Submit Button -->
-    <div class="form-actions" *ngIf="selectedClassId && !loading">
-      <button 
-        type="button" 
-        class="btn btn-secondary" 
-        (click)="router.navigate(['/subjects'])"
-        [disabled]="loading">
-        Cancel
-      </button>
-      <button 
-        type="button" 
-        class="btn btn-primary" 
-        (click)="onSubmit()"
-        [disabled]="loading || !selectedClassId">
-        <span *ngIf="loading" class="spinner-small"></span>
-        <span>{{ loading ? 'Assigning...' : 'Assign Subjects' }}</span>
-      </button>
+        <!-- Subject Selection Content -->
+        <div *ngIf="selectedClassId && !loadingSubjects && subjects.length > 0" class="subject-content">
+          <!-- Search Bar -->
+          <div class="search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input
+              type="text"
+              [(ngModel)]="subjectSearchQuery"
+              [ngModelOptions]="{standalone: true}"
+              (input)="filterSubjects()"
+              placeholder="Search subjects..."
+              class="search-input">
+            <button class="clear-btn" *ngIf="subjectSearchQuery" (click)="subjectSearchQuery = ''; filterSubjects()">
+              &times;
+            </button>
+          </div>
+
+          <!-- Selection Summary -->
+          <div class="selection-summary" *ngIf="selectedSubjectIds.length > 0">
+            <div class="summary-icon">📋</div>
+            <div class="summary-text">
+              <strong>{{ selectedSubjectIds.length }}</strong> subject{{ selectedSubjectIds.length !== 1 ? 's' : '' }} selected
+            </div>
+          </div>
+
+          <!-- Subject Grid -->
+          <div class="subject-grid">
+            <div
+              *ngFor="let subject of filteredSubjects"
+              class="subject-card"
+              [class.selected]="isSubjectSelected(subject.id)"
+              (click)="toggleSubject(subject.id)">
+              <div class="subject-checkbox">
+                <input
+                  type="checkbox"
+                  [checked]="isSubjectSelected(subject.id)"
+                  (click)="$event.stopPropagation()">
+                <span class="checkmark"></span>
+              </div>
+              <div class="subject-icon">📖</div>
+              <div class="subject-info">
+                <h4>{{ subject.name }}</h4>
+                <span class="subject-code" *ngIf="subject.code">{{ subject.code }}</span>
+                <p class="subject-desc" *ngIf="subject.description">{{ subject.description }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- No Search Results -->
+          <div *ngIf="filteredSubjects.length === 0" class="empty-state small">
+            <span class="empty-icon">🔍</span>
+            <p>No subjects match your search</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Footer -->
+      <div class="panel-footer" *ngIf="selectedClassId && !loading">
+        <button
+          class="btn btn-secondary"
+          (click)="router.navigate(['/subjects'])"
+          [disabled]="loading">
+          <span class="btn-icon">←</span> Cancel
+        </button>
+        <button
+          class="btn btn-primary btn-large"
+          (click)="onSubmit()"
+          [disabled]="loading || !selectedClassId">
+          <span *ngIf="!loading" class="btn-content">
+            <span class="btn-icon">🔗</span>
+            Assign {{ selectedSubjectIds.length }} Subject{{ selectedSubjectIds.length !== 1 ? 's' : '' }}
+          </span>
+          <span *ngIf="loading" class="btn-loading">
+            <span class="spinner-small"></span>
+            Assigning...
+          </span>
+        </button>
+      </div>
     </div>
   </div>
 </div>
-

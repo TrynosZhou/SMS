@@ -1,5 +1,5 @@
-<div class="login-container">
-  <div class="login-card">
+<div class="login-container" [class.landscape-mode]="activeTab === 'signup'">
+  <div class="login-card" [class.signup-card]="activeTab === 'signup'">
     <div class="login-header">
       <h2>School Management System</h2>
       <p class="subtitle">Welcome! Please sign in to continue</p>
@@ -187,134 +187,141 @@
     </div>
 
     <!-- Sign Up Form -->
-    <div *ngIf="activeTab === 'signup'" class="tab-content">
-      <div class="info-box" style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 10px 12px; margin-bottom: 14px; border-radius: 4px;">
-        <p style="margin: 0; font-size: 11px; color: #1565c0; line-height: 1.4;">
+    <div *ngIf="activeTab === 'signup'" class="tab-content signup-content">
+      <div class="info-box">
+        <p>
           <strong>Note:</strong> Teachers log in with their EmployeeID as username (provided by the administrator). Use the Link button on the teacher dashboard to link with your teacher profile and access assigned classes.
         </p>
       </div>
-      <form (ngSubmit)="onSignUp()">
-        <div class="form-group">
-          <label>Role *</label>
-          <select 
-            [(ngModel)]="signupRole" 
-            name="signupRole" 
-            class="form-control"
-            required>
-            <option value="">Select a role...</option>
-            <option value="STUDENT">Student</option>
-            <option value="PARENT">Parent</option>
-          </select>
-          <small class="form-text">Select your role. Teachers must use temporary accounts provided by administrator.</small>
-        </div>
-        <div class="form-group" *ngIf="signupRole === 'PARENT'">
-          <label>Email *</label>
-          <input 
-            type="email" 
-            [(ngModel)]="signupEmail" 
-            name="signupEmail" 
-            placeholder="Enter a valid email address" 
-            required
-            autocomplete="email">
-          <small class="form-text">Parents can use this email to sign in.</small>
-        </div>
-        <div class="form-group">
-          <label>{{ signupRole === 'STUDENT' ? 'Student ID *' : 'Username *' }}</label>
-          <input 
-            type="text" 
-            [(ngModel)]="signupUsername" 
-            name="signupUsername" 
-            [placeholder]="signupRole === 'STUDENT' ? 'Enter your Student ID (provided by school)' : 'Choose a username'" 
-            required
-            autocomplete="username">
-          <small class="form-text" *ngIf="signupRole === 'STUDENT'">Your Student ID must already exist in the system.</small>
-        </div>
-        <div class="form-row" *ngIf="signupRole === 'PARENT'">
-          <div class="form-group">
-            <label>First Name *</label>
-            <input 
-              type="text" 
-              [(ngModel)]="signupFirstName" 
-              name="signupFirstName" 
-              placeholder="First Name" 
-              required>
+      <form (ngSubmit)="onSignUp()" class="signup-form">
+        <div class="signup-grid">
+          <!-- Left Column -->
+          <div class="signup-column">
+            <div class="form-group">
+              <label>Role *</label>
+              <select 
+                [(ngModel)]="signupRole" 
+                name="signupRole" 
+                class="form-control"
+                required>
+                <option value="">Select a role...</option>
+                <option value="STUDENT">Student</option>
+                <option value="PARENT">Parent</option>
+              </select>
+              <small class="form-text">Select your role</small>
+            </div>
+            <div class="form-group" *ngIf="signupRole === 'PARENT'">
+              <label>Email *</label>
+              <input 
+                type="email" 
+                [(ngModel)]="signupEmail" 
+                name="signupEmail" 
+                placeholder="Enter a valid email address" 
+                required
+                autocomplete="email">
+              <small class="form-text">Parents can use this email to sign in</small>
+            </div>
+            <div class="form-group">
+              <label>{{ signupRole === 'STUDENT' ? 'Student ID *' : 'Username *' }}</label>
+              <input 
+                type="text" 
+                [(ngModel)]="signupUsername" 
+                name="signupUsername" 
+                [placeholder]="signupRole === 'STUDENT' ? 'Enter your Student ID' : 'Choose a username'" 
+                required
+                autocomplete="username">
+              <small class="form-text" *ngIf="signupRole === 'STUDENT'">Your Student ID must exist in the system</small>
+            </div>
+            <div class="form-group" *ngIf="signupRole === 'PARENT'">
+              <label>First Name *</label>
+              <input 
+                type="text" 
+                [(ngModel)]="signupFirstName" 
+                name="signupFirstName" 
+                placeholder="First Name" 
+                required>
+            </div>
+            <div class="form-group" *ngIf="signupRole === 'PARENT'">
+              <label>Last Name *</label>
+              <input 
+                type="text" 
+                [(ngModel)]="signupLastName" 
+                name="signupLastName" 
+                placeholder="Last Name" 
+                required>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Last Name *</label>
-            <input 
-              type="text" 
-              [(ngModel)]="signupLastName" 
-              name="signupLastName" 
-              placeholder="Last Name" 
-              required>
-          </div>
-        </div>
-        <div class="form-group" *ngIf="signupRole === 'PARENT'">
-          <label>Gender *</label>
-          <select 
-            [(ngModel)]="signupGender" 
-            name="signupGender" 
-            class="form-control"
-            required>
-            <option value="">Select Gender...</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
-        </div>
-        <div class="form-group" *ngIf="signupRole === 'PARENT'">
-          <label>Contact Number *</label>
-          <input 
-            type="tel" 
-            [(ngModel)]="signupContactNumber" 
-            name="signupContactNumber"
-            placeholder="e.g., 0771234567 or +263771234567" 
-            required
-            [class.error]="signupContactNumberError"
-            (blur)="validateSignupContactNumber()"
-            (input)="signupContactNumberError = ''">
-          <small class="form-text" *ngIf="!signupContactNumberError">Zimbabwean format: 07XXXXXXXX or +2637XXXXXXXX</small>
-          <small class="form-error" *ngIf="signupContactNumberError">{{ signupContactNumberError }}</small>
-        </div>
-        <div class="form-group" *ngIf="signupRole === 'PARENT'">
-          <label>Physical Address *</label>
-          <textarea
-            [(ngModel)]="signupAddress"
-            name="signupAddress"
-            rows="3"
-            placeholder="Enter your physical address"
-            required></textarea>
-          <small class="form-text">Include house number, street, and suburb.</small>
-        </div>
-        <div class="form-group">
-          <label>Password *</label>
-          <div class="password-input-wrapper">
-            <input 
-              [type]="showSignupPassword ? 'text' : 'password'" 
-              [(ngModel)]="signupPassword" 
-              name="signupPassword" 
-              placeholder="At least 8 characters" 
-              required
-              minlength="8"
-              autocomplete="new-password">
-            <span class="password-toggle" (click)="toggleSignupPasswordVisibility()">
-              {{ showSignupPassword ? '👁️' : '👁️‍🗨️' }}
-            </span>
-          </div>
-          <small class="form-text">Password must be at least 8 characters long</small>
-        </div>
-        <div class="form-group">
-          <label>Confirm Password *</label>
-          <div class="password-input-wrapper">
-            <input 
-              [type]="showSignupConfirmPassword ? 'text' : 'password'" 
-              [(ngModel)]="signupConfirmPassword" 
-              name="signupConfirmPassword" 
-              placeholder="Confirm password" 
-              required
-              autocomplete="new-password">
-            <span class="password-toggle" (click)="toggleSignupConfirmPasswordVisibility()">
-              {{ showSignupConfirmPassword ? '👁️' : '👁️‍🗨️' }}
-            </span>
+
+          <!-- Right Column -->
+          <div class="signup-column">
+            <div class="form-group" *ngIf="signupRole === 'PARENT'">
+              <label>Gender *</label>
+              <select 
+                [(ngModel)]="signupGender" 
+                name="signupGender" 
+                class="form-control"
+                required>
+                <option value="">Select Gender...</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </div>
+            <div class="form-group" *ngIf="signupRole === 'PARENT'">
+              <label>Contact Number *</label>
+              <input 
+                type="tel" 
+                [(ngModel)]="signupContactNumber" 
+                name="signupContactNumber"
+                placeholder="e.g., 0771234567 or +263771234567" 
+                required
+                [class.error]="signupContactNumberError"
+                (blur)="validateSignupContactNumber()"
+                (input)="signupContactNumberError = ''">
+              <small class="form-text" *ngIf="!signupContactNumberError">Format: 07XXXXXXXX or +2637XXXXXXXX</small>
+              <small class="form-error" *ngIf="signupContactNumberError">{{ signupContactNumberError }}</small>
+            </div>
+            <div class="form-group" *ngIf="signupRole === 'PARENT'">
+              <label>Physical Address *</label>
+              <textarea
+                [(ngModel)]="signupAddress"
+                name="signupAddress"
+                rows="2"
+                placeholder="Enter your physical address"
+                required></textarea>
+              <small class="form-text">Include house number, street, suburb</small>
+            </div>
+            <div class="form-group">
+              <label>Password *</label>
+              <div class="password-input-wrapper">
+                <input 
+                  [type]="showSignupPassword ? 'text' : 'password'" 
+                  [(ngModel)]="signupPassword" 
+                  name="signupPassword" 
+                  placeholder="At least 8 characters" 
+                  required
+                  minlength="8"
+                  autocomplete="new-password">
+                <span class="password-toggle" (click)="toggleSignupPasswordVisibility()">
+                  {{ showSignupPassword ? '👁️' : '👁️‍🗨️' }}
+                </span>
+              </div>
+              <small class="form-text">Minimum 8 characters</small>
+            </div>
+            <div class="form-group">
+              <label>Confirm Password *</label>
+              <div class="password-input-wrapper">
+                <input 
+                  [type]="showSignupConfirmPassword ? 'text' : 'password'" 
+                  [(ngModel)]="signupConfirmPassword" 
+                  name="signupConfirmPassword" 
+                  placeholder="Confirm password" 
+                  required
+                  autocomplete="new-password">
+                <span class="password-toggle" (click)="toggleSignupConfirmPasswordVisibility()">
+                  {{ showSignupConfirmPassword ? '👁️' : '👁️‍🗨️' }}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
         <button type="submit" class="btn btn-primary btn-block" [disabled]="loading">

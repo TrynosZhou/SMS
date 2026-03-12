@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { trigger, transition, style, animate } from '@angular/animations';
 import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
 import { AuthService } from '../../../services/auth.service';
@@ -6,7 +7,18 @@ import { AuthService } from '../../../services/auth.service';
 @Component({
   selector: 'app-student-transfer',
   templateUrl: './student-transfer.component.html',
-  styleUrls: ['./student-transfer.component.css']
+  styleUrls: ['./student-transfer.component.css'],
+  animations: [
+    trigger('fadeSlide', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateY(-10px)' }),
+        animate('300ms ease-out', style({ opacity: 1, transform: 'translateY(0)' }))
+      ]),
+      transition(':leave', [
+        animate('200ms ease-in', style({ opacity: 0, transform: 'translateY(-10px)' }))
+      ])
+    ])
+  ]
 })
 export class StudentTransferComponent implements OnInit {
   // Search and selection
