@@ -260,6 +260,68 @@
   border: 1px solid #c3e6cb;
 }
 
+/* Modern stats row for teacher accounts */
+.stats-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 20px 0 10px;
+}
+
+.stat-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 1px solid #eef1f5;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.stat-icon.total {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.stat-icon.active {
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.stat-icon.pending {
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.stat-icon.percentage {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
 .alert-error {
   background: #f8d7da;
   color: #721c24;

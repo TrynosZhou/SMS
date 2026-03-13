@@ -55,6 +55,11 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   // Search and filter
   searchQuery = '';
   filterStatus: 'all' | 'with-account' | 'without-account' = 'all';
+
+  // Pagination for teacher accounts table
+  pageSizeOptions: number[] = [10, 20, 50];
+  pageSize = 50; // default rows per page
+  currentPage = 1;
   
   // Modals
   showCreateModal = false;
@@ -255,6 +260,8 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     }
 
     this.filteredTeachers = filtered;
+    // Reset to first page whenever filters/search change
+    this.currentPage = 1;
   }
 
   setFilter(status: 'all' | 'with-account' | 'without-account') {
@@ -271,6 +278,29 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     this.searchQuery = '';
     this.filterStatus = 'all';
     this.filterTeachers();
+  }
+
+  // Pagination helpers
+  get totalPages(): number {
+    if (!this.filteredTeachers || this.filteredTeachers.length === 0) {
+      return 1;
+    }
+    return Math.max(1, Math.ceil(this.filteredTeachers.length / this.pageSize));
+  }
+
+  get paginatedTeachers(): any[] {
+    const start = (this.currentPage - 1) * this.pageSize;
+    return safeArray(this.filteredTeachers).slice(start, start + this.pageSize);
+  }
+
+  onPageChange(page: number) {
+    if (page < 1 || page > this.totalPages) return;
+    this.currentPage = page;
+  }
+
+  onPageSizeChange(size: number) {
+    this.pageSize = Number(size) || 50;
+    this.currentPage = 1;
   }
 
   // Statistics

@@ -164,6 +164,38 @@
     </div>
   </div>
 
+  <!-- Teacher Account Overview -->
+  <div class="stats-container" *ngIf="teachers.length > 0">
+    <div class="stat-card">
+      <div class="stat-icon total">👥</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ teachers.length }}</div>
+        <div class="stat-label">Total Teachers</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon active">✅</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ getAccountsWithAccount() }}</div>
+        <div class="stat-label">With Accounts</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon pending">⚠️</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ getAccountsWithoutAccount() }}</div>
+        <div class="stat-label">Without Accounts</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon percentage">📊</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ getAccountPercentage() }}%</div>
+        <div class="stat-label">Account Coverage</div>
+      </div>
+    </div>
+  </div>
+
   <!-- Staff accounts (admin, superadmin, accountant) -->
   <div class="manual-account-card staff-accounts-card" *ngIf="canCreateManualAccounts()" [@fadeInUp]>
     <div class="manual-account-header">
@@ -556,7 +588,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let teacher of filteredTeachers" [@fadeInUp]>
+          <tr *ngFor="let teacher of paginatedTeachers" [@fadeInUp]>
             <td>
               <div class="employee-number">
                 <span class="employee-icon">🆔</span>
@@ -622,6 +654,32 @@
           </tr>
         </tbody>
       </table>
+
+      <!-- Pagination controls -->
+      <div class="pagination-bar">
+        <div class="pagination-info">
+          Showing page {{ currentPage }} of {{ totalPages }} ({{ filteredTeachers.length }} teachers)
+        </div>
+        <div class="pagination-actions">
+          <label class="page-size-label">
+            Rows per page
+            <select
+              [ngModel]="pageSize"
+              (ngModelChange)="onPageSizeChange($event)"
+              class="page-size-select">
+              <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size }}</option>
+            </select>
+          </label>
+          <div class="page-buttons">
+            <button class="btn btn-secondary" (click)="onPageChange(currentPage - 1)" [disabled]="currentPage === 1">
+              ◀ Previous
+            </button>
+            <button class="btn btn-secondary" (click)="onPageChange(currentPage + 1)" [disabled]="currentPage === totalPages">
+              Next ▶
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Empty State -->
