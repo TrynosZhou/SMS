@@ -360,18 +360,17 @@
   </div>
 
   <div id="teachers-list-pdf" class="teachers-pdf-container">
-    <div class="teachers-pdf-header">
-      <div class="teachers-pdf-header-left">
-        <div class="teachers-pdf-logo" *ngIf="schoolLogo">
-          <img [src]="schoolLogo" alt="School Logo 1">
-        </div>
-        <div class="teachers-pdf-header-text">
-          <h1>{{ schoolName || 'School Name' }}</h1>
-          <p>{{ schoolAddress }}</p>
-          <p *ngIf="schoolMotto"><em>{{ schoolMotto }}</em></p>
-          <h2>Teachers List</h2>
-        </div>
+    <!-- Top header: school logo (logo 1) from settings covers the full header -->
+    <div class="teachers-pdf-header teachers-pdf-header-with-logo">
+      <div class="teachers-pdf-header-logo-wrap" *ngIf="schoolLogo">
+        <img [src]="schoolLogo" alt="School Logo" class="teachers-pdf-header-logo-img">
       </div>
+      <div class="teachers-pdf-header-fallback" *ngIf="!schoolLogo && schoolMotto">
+        <p><em>{{ schoolMotto }}</em></p>
+      </div>
+    </div>
+    <div class="teachers-pdf-title-row">
+      <h2 class="teachers-pdf-doc-title">Teachers List</h2>
     </div>
     <table class="teachers-pdf-table">
       <thead>

@@ -276,6 +276,7 @@ export function createReceiptPDF(
       const deskFeeCfg = parseAmount(feesSettings.deskFee);
 
       const descriptionText = (invoice.description || '').toString();
+      const tryNumLocal = (v: any) => (isFinite(Number(v)) ? Number(v) : 0);
       // Prefer transport and DH from the receipt/invoice breakdown when present
       let tuitionFromDesc = 0;
       let transportFromDesc = 0;
@@ -307,7 +308,14 @@ export function createReceiptPDF(
         parseBreakdownFromDesc(descriptionText);
       }
 
-      let tuitionFee = tuitionFromDesc > 0 ? tuitionFromDesc : 0;
+      // Prefer explicit tuitionAmount stored on the invoice (this is what the
+      // invoice statement preview uses). Only fall back to description/settings
+      // when that is not available. However, this receipt is for a *single payment*,
+      // so we must never allocate more tuition than the paymentAmount itself.
+      const tuitionFromInvoice = tryNumLocal((invoice as any).tuitionAmount);
+      let tuitionFee = tuitionFromInvoice > 0
+        ? tuitionFromInvoice
+        : (tuitionFromDesc > 0 ? tuitionFromDesc : 0);
       if (tuitionFee === 0 && !student.isStaffChild && !student.isExempted) {
         tuitionFee = student.studentType === 'Boarder' ? boarderTuitionFee : dayScholarTuitionFee;
       }
@@ -318,6 +326,21 @@ export function createReceiptPDF(
       let diningHallFee = diningHallFromDesc > 0 ? diningHallFromDesc : 0;
       if (diningHallFee === 0 && student.usesDiningHall) {
         diningHallFee = (student.isStaffChild || student.isExempted) ? diningHallCost * 0.5 : diningHallCost;
+      }
+
+      // Align the charge breakdown with this specific payment.
+      // If the theoretical term fees (tuition + transport + DH) exceed the
+      // payment amount, scale them proportionally so the sum of rows never
+      // exceeds paymentAmount. This matches the allocation logic used in
+      // getCashReceipts.
+      const paymentForBreakdown = tryNumLocal(paymentAmount);
+      const allocatedSum = Math.max(0, tuitionFee) + Math.max(0, transportFee) + Math.max(0, diningHallFee);
+      if (paymentForBreakdown > 0 && allocatedSum > 0 && allocatedSum > paymentForBreakdown) {
+        const scale = paymentForBreakdown / allocatedSum;
+        const round2 = (n: number) => Math.round(n * 100) / 100;
+        tuitionFee = round2(tuitionFee * scale);
+        transportFee = round2(transportFee * scale);
+        diningHallFee = round2(diningHallFee * scale);
       }
 
       if (!student.isStaffChild && tuitionFee > 0) {
@@ -367,23 +390,32 @@ export function createReceiptPDF(
       yPos += 15;
 
       // Ensure all numeric values are properly converted to numbers
-      const invoiceAmount = parseFloat(String(invoice.amount || 0));
-      const previousBalance = parseFloat(String(invoice.previousBalance || 0));
-      const paidAmount = parseFloat(String(invoice.paidAmount || 0));
-      const prepaidAmount = parseFloat(String(invoice.prepaidAmount || 0));
+      const tryNum = (v: any) => (isFinite(Number(v)) ? Number(v) : 0);
+      const invoiceAmount = tryNum(invoice.amount);
+      let previousBalance = tryNum(invoice.previousBalance);
+      const paidAmount = tryNum(invoice.paidAmount);
+      const prepaidAmount = tryNum(invoice.prepaidAmount);
 
-      // Canonical total for the invoice (current term + brought-forward balance)
+      // Apply the same desk-fee / returning-student adjustment logic
+      // used by the invoice-statement preview (BalanceEnquiryComponent).
+      // Reuse normalizedStatus / isNewStudent defined above.
+      const configuredDeskFee = tryNum((settings as any)?.feesSettings?.deskFee);
+
+      if (!isNewStudent && configuredDeskFee > 0) {
+        const prev = Number(previousBalance.toFixed(2));
+        const desk = Number(configuredDeskFee.toFixed(2));
+        if (prev === desk) {
+          // For returning students where previousBalance only contains the
+          // desk fee that has already been handled by an adjustment, treat it as 0.
+          previousBalance = 0;
+        }
+      }
+
+      // Canonical totals using the same formula as the invoice statement:
+      // (amount + previousBalance) - paidAmount - prepaidAmount
       const totalInvoiceAmount = invoiceAmount + previousBalance;
-
-      // Total cash received to date (already corrected in controller logic)
       const totalPaid = paidAmount;
-
-      // Remaining balance must always come from the same source of truth
-      // used by the invoice statement PDF (controller pre-computes this).
-      const remainingBalance = Math.max(
-        0,
-        parseFloat(String((invoice as any).balance ?? 0))
-      );
+      const remainingBalance = Math.max(0, totalInvoiceAmount - totalPaid - prepaidAmount);
 
       // Table dimensions (reuse variables from payment details section)
       const labelColumnWidth = 350;

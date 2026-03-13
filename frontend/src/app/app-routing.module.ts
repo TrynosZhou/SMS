@@ -71,7 +71,7 @@ import { PaymentReceiptManagerComponent } from './components/settings/payment-re
 import { ParentInvoiceStatementComponent } from './components/parent/parent-invoice-statement/parent-invoice-statement.component';
 
 const routes: Routes = [
-  { path: '', component: SplashComponent, data: { title: 'Junior Primary School Management System-https://sms-apua.vercel.app/', description: 'Junior Primary School Management System - School Management System for students, parents, teachers and administrators.', robots: 'index,follow' } },
+  { path: '', component: SplashComponent, data: { title: 'Junior Primary School Management System | Smart Edu System', description: 'Junior Primary School Management System - Manage students, teachers, classes, exams and attendance. School management for administrators, teachers and parents.', robots: 'index,follow' } },
   { path: 'login', component: LoginComponent, data: { title: 'Login - Junior Primary School Management System', description: 'Sign in to Junior Primary School Management System to access your school dashboard.', robots: 'noindex,nofollow' } },
   { path: 'reset-password', component: LoginComponent, data: { title: 'Reset Password - Junior Primary School Management System', description: 'Reset your password for Junior Primary School Management System.', robots: 'noindex,nofollow' } },
   { path: 'sign-in', redirectTo: '/login', pathMatch: 'full' },

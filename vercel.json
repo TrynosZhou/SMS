@@ -1,4 +1,4 @@
-﻿{
+{
   "version": 2,
   "buildCommand": "cd frontend && rm -rf dist node_modules/.cache .angular && npm ci && npm run build:clean",
   "outputDirectory": "frontend/dist/sms-frontend",
@@ -20,6 +20,15 @@
     }
   ],
   "headers": [
+    {
+      "source": "/sitemap.xml",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/xml; charset=utf-8"
+        }
+      ]
+    },
     {
       "source": "/index.html",
       "headers": [

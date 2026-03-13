@@ -1374,6 +1374,16 @@ export const getOutstandingBalances = async (req: AuthRequest, res: Response) =>
 
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
+    const settingsRepository = AppDataSource.getRepository(Settings);
+
+    // Load settings once to get desk fee (used for returning-student adjustment logic)
+    const settings = await settingsRepository.findOne({
+      where: {},
+      order: { createdAt: 'DESC' }
+    });
+    const configuredDeskFee = settings && (settings as any).feesSettings
+      ? Number((settings as any).feesSettings.deskFee || 0)
+      : 0;
 
     // Get all students
     const allStudents = await studentRepository.find({
@@ -1392,7 +1402,32 @@ export const getOutstandingBalances = async (req: AuthRequest, res: Response) =>
       });
 
       if (latestInvoice) {
-        const balance = parseAmount(latestInvoice.balance);
+        const tryNum = (v: any) => (isFinite(Number(v)) ? Number(v) : 0);
+
+        const invoiceAmount = tryNum(latestInvoice.amount);
+        let previousBalance = tryNum(latestInvoice.previousBalance);
+        const paidAmount = tryNum(latestInvoice.paidAmount);
+        const prepaidAmount = tryNum(latestInvoice.prepaidAmount);
+
+        // Match the same desk-fee / returning-student adjustment logic
+        // used by the invoice-statement preview and receipt PDFs.
+        const normalizedStatus = String((student as any).studentStatus || '').trim().toLowerCase();
+        const isNewStudent = normalizedStatus === 'new';
+
+        if (!isNewStudent && configuredDeskFee > 0) {
+          const prev = Number(previousBalance.toFixed(2));
+          const desk = Number(configuredDeskFee.toFixed(2));
+          if (prev === desk) {
+            previousBalance = 0;
+          }
+        }
+
+        const computedBalance = Math.max(
+          0,
+          (invoiceAmount + previousBalance) - paidAmount - prepaidAmount
+        );
+
+        const balance = computedBalance;
         
         // Only include students with balance > 0
         if (balance > 0) {
