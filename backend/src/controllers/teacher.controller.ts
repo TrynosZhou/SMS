@@ -1395,7 +1395,7 @@ export const createTeacherAccount = async (req: AuthRequest, res: Response) => {
       });
       if (existingUniversalUser) {
         return res.status(400).json({
-          message: 'The universal teacher account already exists. Manage it (create or reset password) from Settings → Manage Accounts → Universal Teacher Account.'
+          message: 'The Head Teacher account already exists. Manage it (create or reset password) from Settings → Manage Accounts → Head Teacher Account.'
         });
       }
     }

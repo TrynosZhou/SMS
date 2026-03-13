@@ -324,8 +324,9 @@ export const adminResetParentPassword = async (req: AuthRequest, res: Response) 
       }
     }
 
-    if (plainPassword.length < 8) {
-      return res.status(400).json({ message: 'New password must be at least 8 characters long' });
+    // Relaxed password policy for parents: allow any non-empty string.
+    if (!plainPassword) {
+      return res.status(400).json({ message: 'New password is required' });
     }
 
     const hashedPassword = await bcrypt.hash(plainPassword, 10);

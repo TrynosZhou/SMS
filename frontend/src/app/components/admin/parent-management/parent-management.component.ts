@@ -171,8 +171,8 @@ export class ParentManagementComponent implements OnInit {
 
     if (this.createParentForm.createAccount && !this.createParentForm.generatePassword) {
       const pw = (this.createParentForm.password || '').trim();
-      if (!pw || pw.length < 8) {
-        this.error = 'Password is required and must be at least 8 characters long';
+      if (!pw) {
+        this.error = 'Password is required';
         setTimeout(() => this.error = '', 5000);
         return;
       }
@@ -255,8 +255,8 @@ export class ParentManagementComponent implements OnInit {
 
     const generatePassword = !!this.resetParentGeneratePassword;
     const newPassword = (this.resetParentNewPassword || '').trim();
-    if (!generatePassword && (!newPassword || newPassword.length < 8)) {
-      this.error = 'New password is required and must be at least 8 characters long';
+    if (!generatePassword && !newPassword) {
+      this.error = 'New password is required';
       setTimeout(() => this.error = '', 5000);
       return;
     }

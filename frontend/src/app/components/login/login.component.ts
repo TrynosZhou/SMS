@@ -268,10 +268,7 @@ export class LoginComponent implements OnInit {
       this.error = 'New password and confirmation are required';
       return;
     }
-    if (pw.length < 8) {
-      this.error = 'Password must be at least 8 characters long';
-      return;
-    }
+    // Relaxed policy: allow any non-empty string, only check match
     if (pw !== confirm) {
       this.error = 'Passwords do not match';
       return;

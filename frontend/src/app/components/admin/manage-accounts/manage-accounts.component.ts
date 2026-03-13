@@ -48,9 +48,6 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     { value: 'superadmin', label: 'Super Admin' },
     { value: 'admin', label: 'Administrator' },
     { value: 'accountant', label: 'Accountant' },
-    { value: 'teacher', label: 'Teacher' },
-    { value: 'parent', label: 'Parent' },
-    { value: 'student', label: 'Student' },
     { value: 'demo-user', label: 'Demo User' }
   ];
   manualAccount = this.getDefaultManualAccountForm();
@@ -439,9 +436,9 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Validation
-    if (!this.resetPasswordNewPassword || this.resetPasswordNewPassword.trim().length < 8) {
-      this.error = 'Password must be at least 8 characters long';
+    // Relaxed policy for teacher passwords: any non-empty string is allowed
+    if (!this.resetPasswordNewPassword || !this.resetPasswordNewPassword.trim()) {
+      this.error = 'Password is required';
       setTimeout(() => this.error = '', 5000);
       return;
     }
@@ -622,6 +619,7 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     });
       return;
     }
+    // Keep stronger policy for staff (admin/superadmin/accountant): still require 8+ chars
     if (!this.resetStaffPasswordNewPassword || this.resetStaffPasswordNewPassword.trim().length < 8) {
       this.error = 'Password must be at least 8 characters long';
       return;
@@ -1087,15 +1085,7 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   }
 
   onRoleChange() {
-    // Clear email when switching to teacher role
-    if (this.manualAccount.role === 'teacher') {
-      this.manualAccount.email = '';
-      // Ensure username is required for teachers
-      if (!this.manualAccount.username || !this.manualAccount.username.trim()) {
-        // Username will be required by the form validation
-      }
-    }
-    // Force change detection to update the view
+    // Force change detection to update the view when role changes
     this.cdr.detectChanges();
   }
 
@@ -1111,30 +1101,16 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   }
 
   createManualAccount() {
-    // For teachers, username is mandatory, email is not required
-    if (this.manualAccount.role === 'teacher') {
-      if (!this.manualAccount.username || !this.manualAccount.username.trim()) {
-        this.error = 'Username is mandatory for teacher accounts';
-        setTimeout(() => this.error = '', 5000);
-        return;
-      }
-      if (!this.manualAccount.role) {
-        this.error = 'Role is required';
-        setTimeout(() => this.error = '', 5000);
-        return;
-      }
-    } else {
-      // For other roles, email is required
-      if (!this.manualAccount.email || !this.manualAccount.role) {
-        this.error = 'Email and role are required to create an account';
-        setTimeout(() => this.error = '', 5000);
-        return;
-      }
+    // Only staff/demo users can be created here; email and role are required
+    if (!this.manualAccount.email || !this.manualAccount.role) {
+      this.error = 'Email and role are required to create an account';
+      setTimeout(() => this.error = '', 5000);
+      return;
     }
 
     if (!this.manualAccount.generatePassword) {
-      if (!this.manualAccount.password || this.manualAccount.password.trim().length < 8) {
-        this.error = 'Please provide a password with at least 8 characters';
+      if (!this.manualAccount.password || !this.manualAccount.password.trim()) {
+        this.error = 'Please provide a password';
         setTimeout(() => this.error = '', 5000);
         return;
       }
@@ -1150,14 +1126,9 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     const payload: any = {
       role: resolvedRole,
       username: this.manualAccount.username?.trim() || undefined,
+      email: this.manualAccount.email.trim(),
       generatePassword: this.manualAccount.generatePassword
     };
-    
-    // Email is not required for teachers, required for other roles
-    if (resolvedRole !== 'teacher') {
-      payload.email = this.manualAccount.email.trim();
-    }
-    // Do not include email for teachers - teachers login with username and password only
 
     if (!this.manualAccount.generatePassword) {
       payload.password = this.manualAccount.password.trim();
@@ -1178,9 +1149,6 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
         ];
         if (password) {
           messageParts.push(`<strong>Temporary Password:</strong> ${password}`);
-        }
-        if (resolvedRole === 'teacher') {
-          messageParts.push(`<small>Account linked to existing teacher. Share the credentials with the teacher.</small>`);
         }
         this.success = messageParts.join('<br>');
         this.resetManualAccountForm();

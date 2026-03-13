@@ -124,10 +124,10 @@ export class RecordBookComponent implements OnInit {
 
     this.error = ''; // Clear any previous error when we have a valid teacher
 
-    // Universal teacher: load all classes with no filtering (no teacher assignment)
+    // Head Teacher (universal teacher): load all classes with no filtering (no teacher assignment)
     if (isUniversalTeacher) {
       this.isUniversalTeacher = true;
-      this.teacher = { id: null, fullName: 'Universal Teacher' };
+      this.teacher = { id: null, fullName: 'Head Teacher' };
       this.loading = true;
       this.classService.getClasses().subscribe({
         next: (classes: any[]) => {

@@ -130,18 +130,15 @@ export class ManageAccountComponent implements OnInit {
   }
 
   get canSubmit(): boolean {
-    return !!this.currentPassword && this.passwordLengthOk && this.hasUpper && this.hasLower && this.hasNumber && this.hasSpecial && this.passwordsMatch && !this.loading;
+    // Relaxed policy for teachers/parents: only require non-empty current/new/confirm
+    // and matching passwords. Strength meter remains purely informational.
+    return !!this.currentPassword && !!this.newPassword && !!this.confirmPassword && this.passwordsMatch && !this.loading;
   }
 
   updateAccount() {
     // Validation - password fields are required, username/email are optional
     if (!this.currentPassword || !this.newPassword || !this.confirmPassword) {
       this.error = 'Please fill in all password fields';
-      return;
-    }
-
-    if (this.newPassword.length < 8) {
-      this.error = 'New password must be at least 8 characters long';
       return;
     }
 

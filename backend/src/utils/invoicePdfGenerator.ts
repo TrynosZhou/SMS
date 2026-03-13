@@ -168,12 +168,37 @@ export function createInvoicePDF(
       yPos += rowHeight;
 
       const invoiceAmount = parseAmount(invoice.amount);
-      const previousBalance = parseAmount(invoice.previousBalance);
+      let previousBalance = parseAmount(invoice.previousBalance);
       const paidAmount = parseAmount(invoice.paidAmount);
       const balance = parseAmount(invoice.balance);
       const prepaidAmount = parseAmount(invoice.prepaidAmount);
       const uniformTotal = parseAmount((invoice as any).uniformTotal);
       const baseAmount = parseFloat((invoiceAmount - uniformTotal).toFixed(2));
+
+      // Ensure we use the SAME balance logic as the receipt preview
+      // so that the invoice statement's balance exactly matches the
+      // "Invoice balance c/f (Remaining Balance)" shown on the receipt.
+      const tryNum = (v: any) => (isFinite(Number(v)) ? Number(v) : 0);
+      const normalizedStatus = String((student as any).studentStatus || '').trim().toLowerCase();
+      const isNewStudent = normalizedStatus === 'new';
+      const configuredDeskFee = tryNum((settings as any)?.feesSettings?.deskFee);
+
+      // Returning student desk-fee adjustment: if previousBalance only
+      // contains the desk fee that was already handled by an adjustment,
+      // treat it as zero (same rule used in receiptPdfGenerator).
+      if (!isNewStudent && configuredDeskFee > 0) {
+        const prev = Number(previousBalance.toFixed(2));
+        const desk = Number(configuredDeskFee.toFixed(2));
+        if (prev === desk) {
+          previousBalance = 0;
+        }
+      }
+
+      // Canonical totals – shared with the receipt:
+      // (amount + previousBalance) - paidAmount - prepaidAmount
+      const totalInvoiceAmount = invoiceAmount + previousBalance;
+      const totalPaid = paidAmount;
+      const remainingBalance = Math.max(0, totalInvoiceAmount - totalPaid - prepaidAmount);
 
       const renderTableRow = (label: string, amountValue: number, options: { fill?: string; textColor?: string } = {}) => {
         doc.rect(tableStartX, yPos, tableWidth, rowHeight)
@@ -241,12 +266,17 @@ export function createInvoicePDF(
         if (t.includes('term 1')) return 'Previous Term';
         return 'Previous Term';
       })();
-      // Balance b/d - always show (can be zero)
+      // Balance b/d - always show (can be zero), using the adjusted previousBalance
       renderTableRow(`Balance b/d (Unpaid Invoice for ${prevTermLabel})`, previousBalance, { fill: '#FFFFFF' });
       // Tuition for current term - base amount is invoice - uniform
       renderTableRow(`Tuition ${invoice.term || ''}`.trim(), baseAmount, { fill: '#FFFFFF' });
-      // Balance c/d - total for current term (previous + grand total)
-      renderTableRow(`Balance c/d (Total invoice for ${invoice.term || ''})`.trim(), previousBalance + invoiceAmount, { fill: '#F8FAFC' });
+      // Invoice balance c/f (Remaining Balance) – MUST match receipt preview
+      // so that both statements show the same outstanding amount.
+      renderTableRow(
+        `Invoice balance c/f (Remaining Balance)`.trim(),
+        remainingBalance,
+        { fill: '#F8FAFC' }
+      );
 
       const discountLine = descriptionText.split('\n').find(l => l.toLowerCase().startsWith('discount applied'));
       const noteLines = descriptionText
@@ -322,7 +352,6 @@ export function createInvoicePDF(
       doc.strokeColor('#4A90E2').lineWidth(1);
       doc.moveTo(amountColumnStartX, yPos + 2).lineTo(amountColumnStartX, yPos + rowHeight + 3).stroke();
 
-      const totalInvoiceAmount = previousBalance + invoiceAmount;
       const appliedPrepaidAmount = Math.min(prepaidAmount, totalInvoiceAmount);
       const calculatedTotal = totalInvoiceAmount - appliedPrepaidAmount;
       const finalTotal = calculatedTotal;

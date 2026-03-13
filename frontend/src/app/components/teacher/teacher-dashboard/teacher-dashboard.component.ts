@@ -160,10 +160,10 @@ export class TeacherDashboardComponent implements OnInit {
       return;
     }
 
-    // Universal teacher has no linked Teacher record; use placeholder so dashboard still works
+    // Head Teacher (universal teacher) has no linked Teacher record; use placeholder so dashboard still works
     if ((user as any).isUniversalTeacher) {
-      this.teacherName = 'Universal Teacher';
-      this.teacher = { id: null, fullName: 'Universal Teacher', firstName: 'Universal', lastName: 'Teacher', classes: [] };
+      this.teacherName = 'Head Teacher';
+      this.teacher = { id: null, fullName: 'Head Teacher', firstName: 'Head', lastName: 'Teacher', classes: [] };
       this.teacherClasses = [];
       this.loading = false;
       this.updateAvailableModules();

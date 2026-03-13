@@ -31,7 +31,13 @@ const DEFAULT_MODULE_ACCESS: Settings['moduleAccess'] = {
     reportCards: true,
     rankings: true,
     finance: false,
-    settings: false
+    settings: false,
+    subjectManager: true,
+    studentManager: true,
+    examManager: true,
+    logisticsManager: true,
+    classManager: true,
+    teacherManager: true
   },
   teachers: {
     students: true,

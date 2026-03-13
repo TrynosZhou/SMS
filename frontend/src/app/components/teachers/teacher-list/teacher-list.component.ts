@@ -35,7 +35,7 @@ export class TeacherListComponent implements OnInit {
   downloadingPdf = false;
   pagination = {
     page: 1,
-    limit: 20,
+    limit: 50,
     total: 0,
     totalPages: 1
   };

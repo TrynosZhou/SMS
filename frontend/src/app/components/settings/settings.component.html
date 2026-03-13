@@ -788,19 +788,20 @@
         <h2>Module Access Control</h2>
         <p class="section-description">Select which modules teachers and parents can access and view on the system.</p>
         
-        <!-- Universal Teacher -->
+        <!-- Head Teacher (Universal Teacher Account) -->
         <div class="module-access-group universal-teacher-group">
-          <h3>👥 Universal Teacher</h3>
+          <h3>👥 Head Teacher</h3>
           <p class="section-description" style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
             A shared teacher account that all teachers can use to test the system. Enable below and create the account in Admin → Manage Accounts. You can restrict which modules this account can access.
           </p>
           <div class="form-group checkbox-inline" style="margin-bottom: 12px;">
             <label class="checkbox-label">
               <input type="checkbox" [(ngModel)]="settings.universalTeacherEnabled" name="universalTeacherEnabled">
-              <span>Enable Universal Teacher (allow creating and using the shared teacher account)</span>
+              <span>Enable Head Teacher (allow creating and using the shared teacher account)</span>
             </label>
           </div>
           <div class="checkbox-group" *ngIf="settings.universalTeacherEnabled && settings.moduleAccess?.universalTeacher">
+            <!-- Existing high-level module toggles -->
             <label class="checkbox-label">
               <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.students" name="universalTeacherStudents">
               <span>Students</span>
@@ -832,6 +833,34 @@
             <label class="checkbox-label">
               <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.settings" name="universalTeacherSettings">
               <span>Settings</span>
+            </label>
+          </div>
+
+          <!-- Per-module manager access for Universal Teacher -->
+          <div class="checkbox-group" *ngIf="settings.universalTeacherEnabled && settings.moduleAccess?.universalTeacher" style="margin-top: 10px; border-top: 1px solid #e0e0e0; padding-top: 8px;">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.subjectManager" name="universalTeacherSubjectManager">
+              <span>Subject Manager</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.studentManager" name="universalTeacherStudentManager">
+              <span>Student Manager</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.examManager" name="universalTeacherExamManager">
+              <span>Exam Manager</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.logisticsManager" name="universalTeacherLogisticsManager">
+              <span>Logistics Manager</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.classManager" name="universalTeacherClassManager">
+              <span>Class Manager</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.teacherManager" name="universalTeacherTeacherManager">
+              <span>Teacher Manager</span>
             </label>
           </div>
         </div>

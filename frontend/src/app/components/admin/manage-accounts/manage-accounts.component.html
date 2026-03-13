@@ -49,19 +49,11 @@
             Demo User accounts are flagged as read-only demo logins and automatically receive demo permissions.
           </small>
         </div>
-        <div class="form-group" *ngIf="manualAccount.role === 'teacher'">
-          <label>Employee Number (Username) *</label>
-          <input type="text" [(ngModel)]="manualAccount.username" name="manualUsernameTeacher" 
-            placeholder="e.g., JPST1234567 (must match an existing teacher)" 
-            required
-            [disabled]="creatingUserAccount">
-          <small class="form-text">Enter the <strong>Employee Number</strong> of an existing teacher (Teachers → Add Teacher). The teacher must already exist in the system. No placeholder accounts are created.</small>
-        </div>
-        <div class="form-group" *ngIf="manualAccount.role !== 'teacher'">
+        <div class="form-group">
           <label>Email Address *</label>
           <input type="email" [(ngModel)]="manualAccount.email" name="manualEmail" placeholder="user@example.com" required [disabled]="creatingUserAccount">
         </div>
-        <div class="form-group" *ngIf="manualAccount.role !== 'teacher'">
+        <div class="form-group">
           <label>Username (optional)</label>
           <input type="text" [(ngModel)]="manualAccount.username" name="manualUsername" 
             placeholder="Leave blank to auto-generate" 
@@ -80,8 +72,7 @@
               [type]="showManualPassword ? 'text' : 'password'"
               [(ngModel)]="manualAccount.password"
               name="manualPassword"
-              minlength="8"
-              placeholder="Minimum 8 characters"
+              placeholder="Enter temporary password"
               autocomplete="new-password"
               [disabled]="creatingUserAccount"
               required>
@@ -89,11 +80,6 @@
               <span>{{ showManualPassword ? '👁️' : '👁️‍🗨️' }}</span>
             </button>
           </div>
-          <small class="form-text" *ngIf="manualAccount.role === 'teacher'">This is a temporary password. The teacher must change it on first login.</small>
-        </div>
-        <div class="info-box" *ngIf="manualAccount.role === 'teacher' && manualAccount.generatePassword">
-          <span class="info-box-icon">💡</span>
-          <p>A temporary password will be generated. The teacher must change it on first login.</p>
         </div>
         <div class="form-group checkbox-inline" *ngIf="isSuperAdmin()">
           <label class="checkbox-label">
@@ -126,21 +112,21 @@
     </form>
   </div>
 
-  <!-- Universal Teacher Account -->
+  <!-- Head Teacher Account (Universal Teacher) -->
   <div class="manual-account-card universal-teacher-card" *ngIf="canCreateManualAccounts()" [@fadeInUp]>
     <div class="manual-account-header">
       <div>
-        <h2>👥 Universal Teacher Account</h2>
-        <p>Create a shared teacher account that all teachers can use to test and use the system. Configure access in Settings → Module Access Control → Universal Teacher.</p>
+        <h2>👥 Head Teacher Account</h2>
+        <p>Create a shared teacher account (Head Teacher) that all teachers can use to test and use the system. Configure access in Settings → Module Access Control → Head Teacher.</p>
       </div>
     </div>
     <div *ngIf="loadingUniversalTeacher" class="loading-inline">Loading...</div>
     <div *ngIf="!loadingUniversalTeacher">
       <div *ngIf="!universalTeacherStatus.universalTeacherEnabled" class="alert alert-warning" style="margin-bottom: 15px;">
-        <strong>Enable first:</strong> Go to <strong>Settings</strong> → <strong>Module Access Control</strong> → turn on <strong>Enable Universal Teacher</strong>, then save. Return here to create the account.
+        <strong>Enable first:</strong> Go to <strong>Settings</strong> → <strong>Module Access Control</strong> → turn on <strong>Enable Head Teacher</strong>, then save. Return here to create the account.
       </div>
       <div *ngIf="universalTeacherStatus.universalTeacherEnabled && !universalTeacherStatus.exists" class="universal-teacher-create">
-        <p style="margin-bottom: 12px;">No universal teacher account yet. Create one below.</p>
+        <p style="margin-bottom: 12px;">No Head Teacher account yet. Create one below.</p>
         <div class="form-group checkbox-inline" style="margin-bottom: 10px;">
           <label class="checkbox-label">
             <input type="checkbox" [(ngModel)]="universalTeacherGeneratePassword" name="utGeneratePassword" [disabled]="creatingUniversalTeacher">
@@ -164,7 +150,7 @@
         </div>
         <button type="button" class="btn btn-primary" (click)="createUniversalTeacherAccount()"
           [disabled]="creatingUniversalTeacher || (!universalTeacherGeneratePassword && (!universalTeacherPassword || universalTeacherPassword.length < 8))">
-          <span *ngIf="!creatingUniversalTeacher">➕ Create Universal Teacher Account</span>
+          <span *ngIf="!creatingUniversalTeacher">➕ Create Head Teacher Account</span>
           <span *ngIf="creatingUniversalTeacher" class="submit-loading"><span class="spinner-small"></span> Creating...</span>
         </button>
       </div>

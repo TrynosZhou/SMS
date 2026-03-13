@@ -66,7 +66,7 @@ export class MyClassesComponent implements OnInit {
     if ((user as any).isUniversalTeacher) {
       this.isUniversalTeacher = true;
       this.teacher = { id: null, firstName: 'Universal', lastName: 'Teacher' };
-      this.teacherName = 'Universal Teacher';
+      this.teacherName = 'Head Teacher';
       this.classes = [];
       this.filteredClasses = [];
       this.loading = false;

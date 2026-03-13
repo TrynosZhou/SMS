@@ -135,9 +135,8 @@
                 [type]="showNewPassword ? 'text' : 'password'"
                 [(ngModel)]="newPassword"
                 name="newPassword"
-                placeholder="At least 8 characters"
+                placeholder="Enter new password"
                 required
-                minlength="8"
                 autocomplete="new-password"
                 class="field-input" />
               <button type="button" class="eye-btn" (click)="toggleNewPasswordVisibility()">
@@ -154,23 +153,7 @@
             </div>
 
             <!-- Requirements Checklist -->
-            <div class="requirements-grid" *ngIf="newPassword">
-              <div class="req-item" [class.met]="passwordLengthOk">
-                <span class="req-icon">{{ passwordLengthOk ? '✅' : '○' }}</span> 8+ characters
-              </div>
-              <div class="req-item" [class.met]="hasUpper">
-                <span class="req-icon">{{ hasUpper ? '✅' : '○' }}</span> Uppercase letter
-              </div>
-              <div class="req-item" [class.met]="hasLower">
-                <span class="req-icon">{{ hasLower ? '✅' : '○' }}</span> Lowercase letter
-              </div>
-              <div class="req-item" [class.met]="hasNumber">
-                <span class="req-icon">{{ hasNumber ? '✅' : '○' }}</span> Number
-              </div>
-              <div class="req-item" [class.met]="hasSpecial">
-                <span class="req-icon">{{ hasSpecial ? '✅' : '○' }}</span> Special character
-              </div>
-            </div>
+            <!-- Strength checklist kept for information only; no hard requirements enforced -->
           </div>
 
           <!-- Confirm Password -->

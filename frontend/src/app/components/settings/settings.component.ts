@@ -415,7 +415,13 @@ export class SettingsComponent implements OnInit {
               reportCards: true,
               rankings: true,
               finance: false,
-              settings: false
+              settings: false,
+              subjectManager: true,
+              studentManager: true,
+              examManager: true,
+              logisticsManager: true,
+              classManager: true,
+              teacherManager: true
             },
             teachers: {
               students: true,
@@ -483,7 +489,13 @@ export class SettingsComponent implements OnInit {
               reportCards: true,
               rankings: true,
               finance: false,
-              settings: false
+              settings: false,
+              subjectManager: true,
+              studentManager: true,
+              examManager: true,
+              logisticsManager: true,
+              classManager: true,
+              teacherManager: true
             };
           }
           // Ensure accountant and admin module access exist

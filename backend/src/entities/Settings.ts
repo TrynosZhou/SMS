@@ -98,7 +98,7 @@ export class Settings {
   @Column({ type: 'varchar', default: 'KES' })
   currencySymbol: string; // e.g., "KES", "$", "€", "£"
 
-  /** When true, universal teacher account can be created and used; access controlled by moduleAccess.universalTeacher */
+  /** When true, Head Teacher (universal teacher) account can be created and used; access controlled by moduleAccess.universalTeacher */
   @Column({ type: 'boolean', default: false })
   universalTeacherEnabled: boolean;
 
@@ -115,6 +115,13 @@ export class Settings {
       rankings?: boolean;
       finance?: boolean;
       settings?: boolean;
+      // Fine-grained module manager toggles for the Universal Teacher account
+      subjectManager?: boolean;
+      studentManager?: boolean;
+      examManager?: boolean;
+      logisticsManager?: boolean;
+      classManager?: boolean;
+      teacherManager?: boolean;
     };
     teachers?: {
       students?: boolean;

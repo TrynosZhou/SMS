@@ -7,7 +7,7 @@ import { Settings } from '../entities/Settings';
 import { AuthRequest } from '../middleware/auth';
 import { IsNull, Not } from 'typeorm';
 
-/** Username for the shared universal teacher account */
+/** Username for the shared Head Teacher (universal teacher) account */
 export const UNIVERSAL_TEACHER_USERNAME = 'teacher';
 
 // Update user account (username and password) - works for teachers, parents, and students
@@ -34,8 +34,17 @@ export const updateAccount = async (req: AuthRequest, res: Response) => {
     if (!updatingPassword && !updatingUsername && !updatingEmail) {
       return res.status(400).json({ message: 'Provide new password, new username, or new email to update' });
     }
-    if (updatingPassword && newPassword.length < 8) {
-      return res.status(400).json({ message: 'New password must be at least 8 characters long' });
+    // Relaxed password policy for teachers and parents: allow any non-empty string.
+    if (updatingPassword) {
+      const pwd = String(newPassword ?? '');
+      if (!pwd.trim()) {
+        return res.status(400).json({ message: 'New password is required' });
+      }
+      // Keep stronger policy for admin/superadmin/accountant only
+      const role = req.user?.role;
+      if ((role === UserRole.ADMIN || role === UserRole.SUPERADMIN || role === UserRole.ACCOUNTANT) && pwd.length < 8) {
+        return res.status(400).json({ message: 'New password must be at least 8 characters long' });
+      }
     }
 
     const userRepository = AppDataSource.getRepository(User);
@@ -809,7 +818,7 @@ export const getUniversalTeacherStatus = async (req: AuthRequest, res: Response)
 export const createUniversalTeacherAccount = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
-      return res.status(403).json({ message: 'Only Administrators can create the universal teacher account' });
+      return res.status(403).json({ message: 'Only Administrators can create the Head Teacher account' });
     }
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
 
@@ -819,7 +828,7 @@ export const createUniversalTeacherAccount = async (req: AuthRequest, res: Respo
     const [settingsRow] = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
     if (!settingsRow?.universalTeacherEnabled) {
       return res.status(400).json({
-        message: 'Universal teacher is not enabled. Enable it in Settings → Module Access Control → Universal Teacher.'
+        message: 'Head Teacher account is not enabled. Enable it in Settings → Module Access Control → Head Teacher.'
       });
     }
 

@@ -14,6 +14,13 @@ export interface ModuleAccess {
     rankings?: boolean;
     finance?: boolean;
     settings?: boolean;
+    // Per-module manager flags for Universal Teacher
+    subjectManager?: boolean;
+    studentManager?: boolean;
+    examManager?: boolean;
+    logisticsManager?: boolean;
+    classManager?: boolean;
+    teacherManager?: boolean;
   };
   teachers?: {
     students?: boolean;
@@ -26,16 +33,19 @@ export interface ModuleAccess {
     settings?: boolean;
     recordBook?: boolean;
     attendance?: boolean;
+    teacherManager?: boolean;
   };
   parents?: {
     reportCards?: boolean;
     invoices?: boolean;
     dashboard?: boolean;
+    teacherManager?: boolean;
   };
   students?: {
     dashboard?: boolean;
     reportCards?: boolean;
     invoices?: boolean;
+    teacherManager?: boolean;
   };
   accountant?: {
     students?: boolean;
@@ -48,6 +58,7 @@ export interface ModuleAccess {
     attendance?: boolean;
     classes?: boolean;
     logistics?: boolean;
+    teacherManager?: boolean;
   };
   admin?: {
     students?: boolean;
@@ -61,6 +72,7 @@ export interface ModuleAccess {
     attendance?: boolean;
     settings?: boolean;
     dashboard?: boolean;
+    teacherManager?: boolean;
   };
   superadmin?: {
     [key: string]: boolean; // Superadmin has access to everything
@@ -77,6 +89,7 @@ export interface ModuleAccess {
     finance?: boolean;
     attendance?: boolean;
     settings?: boolean;
+    teacherManager?: boolean;
   };
 }
 
@@ -94,7 +107,13 @@ export class ModuleAccessService {
       reportCards: true,
       rankings: true,
       finance: false,
-      settings: false
+      settings: false,
+      subjectManager: true,
+      studentManager: true,
+      examManager: true,
+      logisticsManager: true,
+      classManager: true,
+      teacherManager: true
     },
     teachers: {
       students: true,
@@ -106,17 +125,20 @@ export class ModuleAccessService {
       finance: false, // Teachers cannot access finance by default
       settings: false,
       recordBook: true,
-      attendance: true
+      attendance: true,
+      teacherManager: false
     },
     parents: {
       reportCards: true,
       invoices: true,
-      dashboard: true
+      dashboard: true,
+      teacherManager: false
     },
     students: {
       dashboard: true,
       reportCards: true,
-      invoices: true
+      invoices: true,
+      teacherManager: false
     },
     accountant: {
       students: true,
@@ -128,7 +150,8 @@ export class ModuleAccessService {
       reportCards: false,
       attendance: false,
       classes: false,
-      logistics: true
+      logistics: true,
+      teacherManager: false
     },
     admin: {
       students: true,
@@ -141,7 +164,8 @@ export class ModuleAccessService {
       finance: true,
       attendance: true,
       settings: true,
-      dashboard: true
+      dashboard: true,
+      teacherManager: true
     },
     superadmin: {}, // All access
     demo_user: {
@@ -155,7 +179,8 @@ export class ModuleAccessService {
       rankings: true,
       finance: true,
       attendance: true,
-      settings: false // Demo users cannot access settings
+      settings: false, // Demo users cannot access settings
+      teacherManager: true
     }
   };
 
