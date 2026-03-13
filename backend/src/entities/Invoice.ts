@@ -44,6 +44,24 @@ export class Invoice {
   @Column('decimal', { precision: 10, scale: 2, default: 0 })
   uniformTotal: number;
 
+  // Canonical fee components for this invoice (non-uniform):
+  // these are used by invoice/receipt PDFs and reports instead of
+  // re-parsing Settings or description text.
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  tuitionAmount: number;
+
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  transportAmount: number;
+
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  diningHallAmount: number;
+
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  registrationAmount: number;
+
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  deskFeeAmount: number;
+
   @Column({
     type: 'enum',
     enum: InvoiceStatus,

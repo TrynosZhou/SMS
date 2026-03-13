@@ -268,8 +268,6 @@ export function createReceiptPDF(
       };
 
       const feesSettings = settings?.feesSettings || {};
-      const dayScholarTuitionFee = parseAmount(feesSettings.dayScholarTuitionFee);
-      const boarderTuitionFee = parseAmount(feesSettings.boarderTuitionFee);
       const transportCost = parseAmount(feesSettings.transportCost);
       const diningHallCost = parseAmount(feesSettings.diningHallCost);
       const registrationFeeCfg = parseAmount(feesSettings.registrationFee);
@@ -277,82 +275,49 @@ export function createReceiptPDF(
 
       const descriptionText = (invoice.description || '').toString();
       const tryNumLocal = (v: any) => (isFinite(Number(v)) ? Number(v) : 0);
-      // Prefer transport and DH from the receipt/invoice breakdown when present
-      let tuitionFromDesc = 0;
-      let transportFromDesc = 0;
-      let diningHallFromDesc = 0;
-      if (descriptionText && descriptionText.trim() !== '') {
-        const parseBreakdownFromDesc = (t: string) => {
-          const lower = t.toLowerCase();
-          const add = (label: string, amt: number) => {
-            if (label.includes('tuition')) tuitionFromDesc += amt;
-            if (label.includes('dining') || label.includes('dh') || label.includes('d/h')) diningHallFromDesc += amt;
-            if (label.includes('transport')) transportFromDesc += amt;
-          };
-          const part = t.includes('Breakdown') ? t.split('Breakdown')[1] : t;
-          const segments = part.split(/[|\n]/).map((s) => s.trim()).filter(Boolean);
-          for (const seg of segments) {
-            const m = seg.match(/([^:]+):\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)/i);
-            if (m) {
-              const amt = parseFloat(String(m[2]).replace(/,/g, '')) || 0;
-              add(String(m[1]).toLowerCase(), amt);
-            }
+
+      // Build charge breakdown using the SAME logic as the invoice-statement preview
+      // (BalanceEnquiryComponent), so Tuition/Transport/DH always match the invoice.
+      const items: Array<{ label: string; amount: number }> = [];
+
+      // 1) Items from the invoice itself (if any)
+      if (Array.isArray((invoice as any).items) && (invoice as any).items.length > 0) {
+        (invoice as any).items.forEach((it: any) => {
+          const label = (it.item || it.description || 'Item').toString();
+          const amount = tryNumLocal(it.amount);
+          if (amount > 0) {
+            items.push({ label, amount });
           }
-          const pairRegex = /(tuition|dining\s*hall|dh\s*fee|transport(?:\s*fee)?)[^0-9-]*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)/gi;
-          let match;
-          while ((match = pairRegex.exec(t)) !== null) {
-            const amt = parseFloat(String(match[2]).replace(/,/g, '')) || 0;
-            add(String(match[1]).toLowerCase(), amt);
-          }
-        };
-        parseBreakdownFromDesc(descriptionText);
+        });
       }
 
-      // Prefer explicit tuitionAmount stored on the invoice (this is what the
-      // invoice statement preview uses). Only fall back to description/settings
-      // when that is not available. However, this receipt is for a *single payment*,
-      // so we must never allocate more tuition than the paymentAmount itself.
-      const tuitionFromInvoice = tryNumLocal((invoice as any).tuitionAmount);
-      let tuitionFee = tuitionFromInvoice > 0
-        ? tuitionFromInvoice
-        : (tuitionFromDesc > 0 ? tuitionFromDesc : 0);
-      if (tuitionFee === 0 && !student.isStaffChild && !student.isExempted) {
-        tuitionFee = student.studentType === 'Boarder' ? boarderTuitionFee : dayScholarTuitionFee;
+      // 2) Tuition / DH / Transport from explicit invoice fields
+      const tuitionAmount = tryNumLocal((invoice as any).tuitionAmount);
+      if (tuitionAmount > 0 && !items.find(i => i.label.toLowerCase().includes('tuition'))) {
+        const tuitionLabel = student.studentType === 'Boarder' ? 'Tuition Fee (Boarder)' : 'Tuition Fee (Day Scholar)';
+        items.push({ label: tuitionLabel, amount: tuitionAmount });
       }
-      let transportFee = transportFromDesc > 0 ? transportFromDesc : 0;
-      if (transportFee === 0 && student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild && !student.isExempted) {
-        transportFee = transportCost;
-      }
-      let diningHallFee = diningHallFromDesc > 0 ? diningHallFromDesc : 0;
-      if (diningHallFee === 0 && student.usesDiningHall) {
-        diningHallFee = (student.isStaffChild || student.isExempted) ? diningHallCost * 0.5 : diningHallCost;
-      }
-
-      // Align the charge breakdown with this specific payment.
-      // If the theoretical term fees (tuition + transport + DH) exceed the
-      // payment amount, scale them proportionally so the sum of rows never
-      // exceeds paymentAmount. This matches the allocation logic used in
-      // getCashReceipts.
-      const paymentForBreakdown = tryNumLocal(paymentAmount);
-      const allocatedSum = Math.max(0, tuitionFee) + Math.max(0, transportFee) + Math.max(0, diningHallFee);
-      if (paymentForBreakdown > 0 && allocatedSum > 0 && allocatedSum > paymentForBreakdown) {
-        const scale = paymentForBreakdown / allocatedSum;
-        const round2 = (n: number) => Math.round(n * 100) / 100;
-        tuitionFee = round2(tuitionFee * scale);
-        transportFee = round2(transportFee * scale);
-        diningHallFee = round2(diningHallFee * scale);
-      }
-
-      if (!student.isStaffChild && tuitionFee > 0) {
-        renderRow(student.studentType === 'Boarder' ? 'Tuition Fee (Boarder)' : 'Tuition Fee (Day Scholar)', tuitionFee);
-      }
-      if (transportFee > 0) {
-        renderRow('Transport Fee', transportFee);
-      }
-      if (diningHallFee > 0) {
+      const diningHallAmount = tryNumLocal((invoice as any).diningHallAmount);
+      if (diningHallAmount > 0 && !items.find(i => i.label.toLowerCase().includes('dining'))) {
         const dhLabel = (student.isStaffChild || student.isExempted) ? 'Dining Hall (DH) Fee (50%)' : 'Dining Hall (DH) Fee';
-        renderRow(dhLabel, diningHallFee);
+        items.push({ label: dhLabel, amount: diningHallAmount });
       }
+      const transportAmount = tryNumLocal((invoice as any).transportAmount || (invoice as any).transportCost);
+      if (transportAmount > 0 && !items.find(i => i.label.toLowerCase().includes('transport'))) {
+        items.push({ label: 'Transport Fee', amount: transportAmount });
+      }
+
+      // 3) If still no items, fall back to a single "Fees" line using invoice.amount
+      if (items.length === 0) {
+        items.push({ label: 'Fees', amount: tryNumLocal(invoice.amount) });
+      }
+
+      // Render rows
+      items.forEach(row => {
+        if (row.amount > 0) {
+          renderRow(row.label, row.amount);
+        }
+      });
 
       const formatShort = (v: number) => (Math.round(v * 100) % 100 === 0 ? String(Math.round(v)) : v.toFixed(2));
       let registrationFromDesc = 0;

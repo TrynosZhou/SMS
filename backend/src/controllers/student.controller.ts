@@ -337,6 +337,32 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
           const studentIdForInvoice = savedStudent?.id || student.id;
           console.log('📋 Using student ID for invoice:', studentIdForInvoice);
           
+          // Recompute canonical fee components for storage on the invoice
+          const tuitionForInvoice = (() => {
+            const base = validStudentType === 'Boarder' ? boarderTuition : dayScholarTuition;
+            return base > 0 ? parseFloat(base.toFixed(2)) : 0;
+          })();
+
+          const transportForInvoice = (validStudentType === 'Day Scholar' && usesTransportFlag && transportCost > 0)
+            ? parseFloat(transportCost.toFixed(2))
+            : 0;
+
+          const diningForInvoice = (() => {
+            if (usesDiningHallFlag && diningHallCost > 0) {
+              const raw = (!isStaffChildFlag && !isExemptedFlag) ? diningHallCost : diningHallCost * 0.5;
+              return parseFloat(raw.toFixed(2));
+            }
+            return 0;
+          })();
+
+          const registrationForInvoice = (!isStaffChildFlag && validStudentStatus === 'New' && registrationFee > 0)
+            ? parseFloat(registrationFee.toFixed(2))
+            : 0;
+
+          const deskForInvoice = (!isStaffChildFlag && validStudentStatus === 'New' && deskFee > 0)
+            ? parseFloat(deskFee.toFixed(2))
+            : 0;
+
           const initialInvoice = invoiceRepository.create({
             invoiceNumber,
             studentId: studentIdForInvoice,
@@ -346,6 +372,13 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
             balance: balanceValue,
             prepaidAmount: 0,
             uniformTotal: 0,
+            // Canonical fee components so invoice/receipt statements can show
+            // separate Tuition / Transport / Dining / Registration / Desk lines
+            tuitionAmount: tuitionForInvoice,
+            transportAmount: transportForInvoice,
+            diningHallAmount: diningForInvoice,
+            registrationAmount: registrationForInvoice,
+            deskFeeAmount: deskForInvoice,
             dueDate,
             term,
             description,

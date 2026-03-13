@@ -123,7 +123,9 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
 
     const previousBalance = parseAmount(lastInvoice?.balance);
     const prepaidAmount = parseAmount(lastInvoice?.prepaidAmount);
-    let baseAmount = parseAmount(amount);
+    // Base amount for this invoice comes from explicit tuition/dining/other
+    // components; we don't trust a combined "amount" from the client.
+    let baseAmount = 0;
     let transportIncrement = 0;
     let registrationIncrement = 0;
     let deskIncrement = 0;
@@ -171,10 +173,21 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     const uniformTotal = 0;
     const uniformItemsEntities: InvoiceUniformItem[] = [];
 
-    const amountNumRaw = baseAmount + transportIncrement + registrationIncrement + deskIncrement;
+    // Tuition/dining/other components explicitly provided in the payload
+    const tuitionVal = parseAmount(tuitionAmount);
+    const diningVal = parseAmount(diningHallAmount);
+    const otherVal = parseAmount(otherAmount);
+    const registrationVal = registrationIncrement;
+    const deskVal = deskIncrement;
+    const transportVal = transportIncrement;
+
+    // Prevent duplicate term fees but allow uniform-only invoices in same term
+    const isTermFeeInvoice = (tuitionVal > 0) || (diningVal > 0) || (transportVal > 0);
+
+    // Calculate new-term amount as the sum of all non-uniform fee components
+    const amountNumRaw = tuitionVal + diningVal + otherVal + transportVal + registrationVal + deskVal;
     const amountNum = Number.isFinite(amountNumRaw) ? amountNumRaw : 0;
-    
-    // Calculate total invoice amount (previous balance + new amount)
+
     const totalInvoiceAmountRaw = previousBalance + amountNum;
     const totalInvoiceAmount = Number.isFinite(totalInvoiceAmountRaw) ? totalInvoiceAmountRaw : 0;
     
@@ -207,15 +220,6 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     const invoiceNumber = `${invoicePrefix}${String(nextSequence).padStart(6, '0')}`;
 
     let finalDescription = description;
-    const tuitionVal = parseAmount(tuitionAmount);
-    const diningVal = parseAmount(diningHallAmount);
-    const otherVal = parseAmount(otherAmount);
-    const registrationVal = registrationIncrement;
-    const deskVal = deskIncrement;
-    const transportVal = transportIncrement;
-
-    // Prevent duplicate term fees but allow uniform-only invoices in same term
-    const isTermFeeInvoice = (tuitionVal > 0) || (diningVal > 0) || (transportVal > 0);
     const existingTermInvoice = await invoiceRepository
       .createQueryBuilder('invoice')
       .leftJoin('invoice.student', 'student')
@@ -252,7 +256,12 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       description: finalDescription,
       status: finalBalance <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PENDING,
       uniformTotal,
-      uniformItems: uniformItemsEntities
+      uniformItems: uniformItemsEntities,
+      tuitionAmount: tuitionVal,
+      transportAmount: transportVal,
+      diningHallAmount: diningVal,
+      registrationAmount: registrationVal,
+      deskFeeAmount: deskVal
     });
 
     const savedInvoice = await invoiceRepository.save(invoice);
