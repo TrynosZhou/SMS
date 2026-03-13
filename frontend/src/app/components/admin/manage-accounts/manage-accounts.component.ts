@@ -211,10 +211,11 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   loadTeachers() {
     this.loading = true;
     this.error = '';
-    
-    this.teacherService.getTeachers().subscribe({
-      next: (data: any) => {
-        this.teachers = Array.isArray(data) ? data : (data.teachers || []);
+    // Use paginated endpoint with a high limit so all teachers are loaded
+    this.teacherService.getTeachersPaginated(1, 500).subscribe({
+      next: (response: any) => {
+        const data = Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : []);
+        this.teachers = data;
         
         // Load account info for each teacher
         safeArray(this.teachers).forEach((teacher: any) => {
@@ -1202,6 +1203,10 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
         }
         this.success = messageParts.join('<br>');
         this.resetManualAccountForm();
+        // If a teacher account was created, refresh the teacher list so it appears in the table
+        if (resolvedRole === 'teacher') {
+          this.loadTeachers();
+        }
         setTimeout(() => this.success = '', 12000);
       },
       error: (err: any) => {
