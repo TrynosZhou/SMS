@@ -48,6 +48,7 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     { value: 'superadmin', label: 'Super Admin' },
     { value: 'admin', label: 'Administrator' },
     { value: 'accountant', label: 'Accountant' },
+    { value: 'teacher', label: 'Teacher' },
     { value: 'demo-user', label: 'Demo User' }
   ];
   manualAccount = this.getDefaultManualAccountForm();
@@ -1115,6 +1116,10 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   }
 
   onRoleChange() {
+    // Clear email when switching to teacher role (teacher accounts use TeacherID as username)
+    if (this.manualAccount.role === 'teacher') {
+      this.manualAccount.email = '';
+    }
     // Force change detection to update the view when role changes
     this.cdr.detectChanges();
   }
@@ -1131,11 +1136,22 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   }
 
   createManualAccount() {
-    // Only staff/demo users can be created here; email and role are required
-    if (!this.manualAccount.email || !this.manualAccount.role) {
-      this.error = 'Email and role are required to create an account';
-      setTimeout(() => this.error = '', 5000);
-      return;
+    const role = (this.manualAccount.role || '').trim();
+
+    // Validation for teacher accounts: username (Employee Number) is mandatory, email optional
+    if (role === 'teacher') {
+      if (!this.manualAccount.username || !this.manualAccount.username.trim()) {
+        this.error = 'Username (Teacher ID) is required for teacher accounts';
+        setTimeout(() => this.error = '', 5000);
+        return;
+      }
+    } else {
+      // For other roles, email and role are required
+      if (!this.manualAccount.email || !role) {
+        this.error = 'Email and role are required to create an account';
+        setTimeout(() => this.error = '', 5000);
+        return;
+      }
     }
 
     if (!this.manualAccount.generatePassword) {
@@ -1146,8 +1162,8 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
       }
     }
 
-    const isDemoRole = this.manualAccount.role === 'demo-user';
-    const resolvedRole = isDemoRole ? 'admin' : this.manualAccount.role;
+    const isDemoRole = role === 'demo-user';
+    const resolvedRole = isDemoRole ? 'admin' : role;
 
     this.creatingUserAccount = true;
     this.error = '';
@@ -1156,9 +1172,13 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     const payload: any = {
       role: resolvedRole,
       username: this.manualAccount.username?.trim() || undefined,
-      email: this.manualAccount.email.trim(),
       generatePassword: this.manualAccount.generatePassword
     };
+
+    // Email is required for non-teacher roles; omit email for teacher so it is username-only
+    if (resolvedRole !== 'teacher') {
+      payload.email = (this.manualAccount.email || '').trim();
+    }
 
     if (!this.manualAccount.generatePassword) {
       payload.password = this.manualAccount.password.trim();

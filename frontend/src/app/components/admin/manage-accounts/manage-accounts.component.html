@@ -49,11 +49,24 @@
             Demo User accounts are flagged as read-only demo logins and automatically receive demo permissions.
           </small>
         </div>
-        <div class="form-group">
+        <div class="form-group" *ngIf="manualAccount.role === 'teacher'">
+          <label>Teacher ID (Username) *</label>
+          <input
+            type="text"
+            [(ngModel)]="manualAccount.username"
+            name="manualUsernameTeacher"
+            placeholder="Enter Teacher ID (must match an existing teacher)"
+            required
+            [disabled]="creatingUserAccount">
+          <small class="form-text">
+            Use the exact <strong>Teacher ID / Employee Number</strong> as on the teacher record. The account will link to that teacher.
+          </small>
+        </div>
+        <div class="form-group" *ngIf="manualAccount.role !== 'teacher'">
           <label>Email Address *</label>
           <input type="email" [(ngModel)]="manualAccount.email" name="manualEmail" placeholder="user@example.com" required [disabled]="creatingUserAccount">
         </div>
-        <div class="form-group">
+        <div class="form-group" *ngIf="manualAccount.role !== 'teacher'">
           <label>Username (optional)</label>
           <input type="text" [(ngModel)]="manualAccount.username" name="manualUsername" 
             placeholder="Leave blank to auto-generate" 
