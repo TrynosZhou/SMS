@@ -17,6 +17,7 @@ import { UserRole } from '../entities/User';
 import { AuthRequest } from '../middleware/auth';
 import { createReportCardPDF } from '../utils/pdfGenerator';
 import { createMarkSheetPDF } from '../utils/markSheetPdfGenerator';
+import { createMarkSheetExcel } from '../utils/markSheetExcelGenerator';
 
 const ALLOWED_RANKING_SUBJECTS = new Set<string>(['Mathematics', 'Science', 'English']);
 
@@ -3420,10 +3421,10 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
     const settingsRepository = AppDataSource.getRepository(Settings);
     const teacherRepository = AppDataSource.getRepository(Teacher);
 
-    // Get class information
+    // Get class information (include teachers for class teacher name)
     const classEntity = await classRepository.findOne({
       where: { id: classId as string },
-      relations: ['subjects']
+      relations: ['subjects', 'teachers']
     });
 
     if (!classEntity) {
@@ -3613,12 +3614,21 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
     });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
+    // Class teacher name (first teacher linked to class, if any)
+    const classTeacher = (classEntity.teachers && classEntity.teachers.length > 0)
+      ? classEntity.teachers[0]
+      : null;
+    const classTeacherName = classTeacher
+      ? `${classTeacher.firstName} ${classTeacher.lastName}`.trim() || classTeacher.teacherId || 'N/A'
+      : null;
+
     // Prepare data for PDF
     const pdfData = {
       class: {
         id: classEntity.id,
         name: classEntity.name,
-        form: classEntity.form
+        form: classEntity.form,
+        classTeacherName
       },
       examType: examType as string,
       subjects: subjects.map(s => ({ id: s.id, name: s.name })),
@@ -3640,6 +3650,167 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
     return res.send(pdfBuffer);
   } catch (error: any) {
     console.error('Error generating mark sheet PDF:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const generateMarkSheetExcel = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const { classId, examType, term, subjectId } = req.query;
+    const user = req.user;
+    const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+    const isTeacher = user?.role === 'teacher';
+
+    if (!classId || !examType) {
+      return res.status(400).json({ message: 'Class ID and exam type are required' });
+    }
+
+    const studentRepository = AppDataSource.getRepository(Student);
+    const examRepository = AppDataSource.getRepository(Exam);
+    const marksRepository = AppDataSource.getRepository(Marks);
+    const classRepository = AppDataSource.getRepository(Class);
+    const subjectRepository = AppDataSource.getRepository(Subject);
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const teacherRepository = AppDataSource.getRepository(Teacher);
+
+    const classEntity = await classRepository.findOne({
+      where: { id: classId as string },
+      relations: ['subjects', 'teachers']
+    });
+
+    if (!classEntity) {
+      return res.status(404).json({ message: 'Class not found' });
+    }
+
+    if (isTeacher && user?.teacher?.id) {
+      const teacher = await teacherRepository.findOne({
+        where: { id: user.teacher.id },
+        relations: ['classes', 'subjects']
+      });
+      if (!teacher) return res.status(404).json({ message: 'Teacher not found' });
+      if (subjectId) {
+        const teachesSubject = teacher.subjects?.some((s: any) => s.id === subjectId);
+        const subjectInClass = classEntity?.subjects?.some((s: any) => s.id === subjectId);
+        if (!teachesSubject && !subjectInClass) {
+          return res.status(403).json({ message: 'This subject is not assigned to this class' });
+        }
+      }
+    }
+
+    const students = await studentRepository.find({
+      where: { classId: classId as string, isActive: true },
+      order: { firstName: 'ASC', lastName: 'ASC' }
+    });
+    if (students.length === 0) {
+      return res.status(404).json({ message: 'No students found in this class' });
+    }
+
+    const examWhere: any = { classId: classId as string, type: examType as ExamType };
+    if (term) examWhere.term = term as string;
+    const exams = await examRepository.find({
+      where: examWhere,
+      relations: ['subjects'],
+      order: { examDate: 'DESC' }
+    });
+    if (exams.length === 0) {
+      return res.status(404).json({ message: `No ${examType} exams found for this class${term ? ` in ${term}` : ''}` });
+    }
+
+    const examIds = exams.map((e: any) => e.id);
+    const marksWhere: any = {
+      examId: In(examIds),
+      studentId: In(students.map((s: any) => s.id))
+    };
+    if (subjectId) marksWhere.subjectId = subjectId as string;
+    const allMarks = await marksRepository.find({
+      where: marksWhere,
+      relations: ['student', 'exam', 'subject']
+    });
+
+    const classSubjects = classEntity.subjects || [];
+    if (classSubjects.length === 0) {
+      return res.status(404).json({ message: 'No subjects assigned to this class' });
+    }
+
+    let subjects = [...classSubjects];
+    if (subjectId) {
+      const selected = subjects.find((s: any) => s.id === subjectId);
+      if (!selected) return res.status(404).json({ message: 'Subject not found for this class' });
+      subjects = [selected];
+    }
+
+    const markSheetData: any[] = [];
+
+    for (const student of students) {
+      const subjectMarks: any = {};
+      for (const sub of subjects) {
+        const markRecords = allMarks.filter(
+          (m: any) =>
+            m.studentId === student.id &&
+            m.subjectId === sub.id
+        );
+        let totalScore = 0;
+        let totalMax = 0;
+        for (const m of markRecords) {
+          const score = typeof m.score === 'number' ? m.score : parseFloat(m.score) || 0;
+          const maxScore = typeof m.maxScore === 'number' ? m.maxScore : parseFloat(m.maxScore) || 100;
+          totalScore += score;
+          totalMax += maxScore;
+        }
+        const pct = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+        subjectMarks[sub.id] = {
+          subjectName: sub.name,
+          score: totalScore,
+          maxScore: totalMax,
+          percentage: pct
+        };
+      }
+      const totalScore = Object.values(subjectMarks).reduce((a: number, s: any) => a + (s?.score || 0), 0) as number;
+      const totalMaxScore = Object.values(subjectMarks).reduce((a: number, s: any) => a + (s?.maxScore || 0), 0) as number;
+      const average = totalMaxScore > 0 ? (totalScore / totalMaxScore) * 100 : 0;
+      markSheetData.push({
+        studentId: student.id,
+        studentNumber: student.studentNumber || student.id,
+        studentName: `${student.firstName} ${student.lastName}`.trim(),
+        subjects: subjectMarks,
+        totalScore,
+        totalMaxScore,
+        average
+      });
+    }
+
+    markSheetData.sort((a: any, b: any) => b.average - a.average);
+    const markSheetWithTies = assignPositionsWithTies(markSheetData);
+    const markSheetDataWithPositions = markSheetWithTies.map((row: any) => ({ ...row, position: row.position }));
+
+    const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+
+    const classTeacher = (classEntity.teachers && classEntity.teachers.length > 0) ? classEntity.teachers[0] : null;
+    const classTeacherName = classTeacher
+      ? `${classTeacher.firstName} ${classTeacher.lastName}`.trim() || classTeacher.teacherId || 'N/A'
+      : null;
+
+    const excelData = {
+      class: { id: classEntity.id, name: classEntity.name, form: classEntity.form, classTeacherName },
+      examType: examType as string,
+      subjects: subjects.map((s: any) => ({ id: s.id, name: s.name })),
+      exams: exams.map((e: any) => ({ id: e.id, name: e.name, examDate: e.examDate, term: e.term })),
+      markSheet: markSheetDataWithPositions,
+      generatedAt: new Date()
+    };
+
+    const excelBuffer = createMarkSheetExcel(excelData, settings);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="mark-sheet-${classEntity.name}-${examType}-${new Date().toISOString().split('T')[0]}.xlsx"`);
+    return res.send(excelBuffer);
+  } catch (error: any) {
+    console.error('Error generating mark sheet Excel:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

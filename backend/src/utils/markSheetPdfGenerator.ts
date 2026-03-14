@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import sizeOf from 'image-size';
 import { Settings } from '../entities/Settings';
 
 interface MarkSheetData {
@@ -6,6 +7,7 @@ interface MarkSheetData {
     id: string;
     name: string;
     form: string;
+    classTeacherName?: string | null;
   };
   examType: string;
   subjects: Array<{
@@ -53,51 +55,101 @@ export function createMarkSheetPDF(
       });
       doc.on('error', reject);
 
-      // School Header
-      const schoolName = settings?.schoolName || 'School Management System';
-      const schoolAddress = settings?.schoolAddress ? String(settings.schoolAddress).trim() : '';
-      const schoolPhone = settings?.schoolPhone ? String(settings.schoolPhone).trim() : '';
-      const academicYear = settings?.academicYear || new Date().getFullYear().toString();
+      const pageWidth = doc.page.width;
+      const bannerHeight = 100;
+      const bannerInset = 6;
+      let headerTopY = 40;
 
-      // Header with blue background
-      doc.rect(0, 0, doc.page.width, 80)
-        .fillColor('#4a90e2')
-        .fill();
-
-      // School Logo (if available in Settings; supports base64 data URLs)
-      let hasLogo = false;
-      if (settings?.schoolLogo) {
+      // Helper: add banner with contain fit and gold border (same as report card PDF)
+      const addBannerCover = (
+        imageBuffer: Buffer,
+        startX: number,
+        startY: number,
+        width: number,
+        height: number
+      ) => {
         try {
-          if (settings.schoolLogo.startsWith('data:image')) {
-            const base64Data = settings.schoolLogo.split(',')[1];
+          const dimensions = sizeOf(imageBuffer);
+          const imgWidth = dimensions.width || width;
+          const imgHeight = dimensions.height || height;
+          const scaleX = width / imgWidth;
+          const scaleY = height / imgHeight;
+          const scale = Math.min(scaleX, scaleY);
+          const finalWidth = imgWidth * scale;
+          const finalHeight = imgHeight * scale;
+          const offsetX = startX + (width - finalWidth) / 2;
+          const offsetY = startY + (height - finalHeight) / 2;
+          const radius = 14;
+          doc.save();
+          doc.roundedRect(startX, startY, width, height, radius)
+            .fillColor('#1f4aa8')
+            .fill();
+          doc.roundedRect(startX, startY, width, height, radius).clip();
+          doc.image(imageBuffer, offsetX, offsetY, { width: finalWidth, height: finalHeight });
+          doc.restore();
+          doc.save();
+          doc.lineWidth(6);
+          doc.strokeColor('#C9A227');
+          doc.roundedRect(startX, startY, width, height, radius).stroke();
+          doc.restore();
+        } catch (error) {
+          console.error('Could not add banner to mark sheet PDF:', error);
+        }
+      };
+
+      // School banner (Logo 1) - fit like report card PDF
+      const rawLogo = String(settings?.schoolLogo || '').trim();
+      if (rawLogo) {
+        try {
+          let logoSource = rawLogo
+            .replace(/^["']|["']$/g, '')
+            .replace(/\\n/g, '')
+            .replace(/\\r/g, '')
+            .replace(/\\t/g, '')
+            .replace(/\\"/g, '"');
+          let imageBuffer: Buffer | null = null;
+          if (logoSource.startsWith('data:image')) {
+            const base64Data = logoSource.split(',')[1];
             if (base64Data) {
-              const imageBuffer = Buffer.from(base64Data, 'base64');
-              // Place logo on the left side of the header bar
-              const logoWidth = 60;
-              const logoHeight = 60;
-              const logoX = 40;
-              const logoY = 10;
-              doc.image(imageBuffer, logoX, logoY, { width: logoWidth, height: logoHeight });
-              hasLogo = true;
+              imageBuffer = Buffer.from(base64Data.replace(/\s/g, ''), 'base64');
             }
+          } else if (/^[A-Za-z0-9+/=\r\n]+$/.test(logoSource) && logoSource.length > 64) {
+            imageBuffer = Buffer.from(logoSource.replace(/\s/g, ''), 'base64');
+          }
+          if (imageBuffer) {
+            addBannerCover(
+              imageBuffer,
+              bannerInset,
+              bannerInset,
+              pageWidth - bannerInset * 2,
+              bannerHeight
+            );
+            headerTopY = bannerInset + bannerHeight + 15;
           }
         } catch (error) {
-          console.error('Could not add school logo to mark sheet header:', error);
+          console.error('Could not add school banner (Logo 1) to mark sheet PDF:', error);
         }
       }
 
-      // School name and contact info (centered)
-      doc.fontSize(20).font('Helvetica-Bold').fillColor('#FFFFFF');
-      doc.text(schoolName, 40, 25, { width: doc.page.width - 80, align: 'center' });
+      // Pass rate (students with 70% and above) - below banner, in bold
+      const passCount = markSheetData.markSheet.filter(r => r.average >= 70).length;
+      const passRate = markSheetData.markSheet.length > 0
+        ? Math.round((passCount / markSheetData.markSheet.length) * 100)
+        : 0;
+      let yPos = headerTopY;
+      doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
+      doc.text(`Pass Rate: ${passRate}% (students with 70% and above)`, 40, yPos);
+      yPos += 18;
 
-      if (schoolAddress || schoolPhone) {
-        doc.fontSize(10).font('Helvetica').fillColor('#E8F4FD');
-        const contactLine = [schoolAddress, schoolPhone].filter(Boolean).join(' | ');
-        doc.text(contactLine, 40, 50, { width: doc.page.width - 80, align: 'center' });
+      // Class teacher name
+      const classTeacherName = (markSheetData.class as any)?.classTeacherName;
+      if (classTeacherName) {
+        doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
+        doc.text(`Class Teacher: ${classTeacherName}`, 40, yPos);
+        yPos += 18;
       }
 
       // Title Section
-      let yPos = 100;
       doc.fontSize(16).font('Helvetica-Bold').fillColor('#000000');
       doc.text('MARK SHEET', 40, yPos, { align: 'center', width: doc.page.width - 80 });
       
@@ -148,8 +200,11 @@ export function createMarkSheetPDF(
       doc.text('Student Name', xPos + 5, yPos + 8);
       xPos += colWidths.studentName;
       
-      // Subjects header (spans multiple columns)
-      doc.text('SUBJECTS', xPos + 5, yPos + 8, { width: subjectColWidth * markSheetData.subjects.length });
+      // Subjects header (spans multiple columns) - centered like reference
+      doc.text('SUBJECTS', xPos, yPos + 8, {
+        width: subjectColWidth * markSheetData.subjects.length,
+        align: 'center'
+      });
       xPos += subjectColWidth * markSheetData.subjects.length;
       
       // Total
@@ -173,8 +228,7 @@ export function createMarkSheetPDF(
       // Subject columns
       doc.fontSize(9).font('Helvetica-Bold').fillColor('#FFFFFF');
       for (const subject of markSheetData.subjects) {
-        const subjectName = subject.name.length > 10 ? subject.name.substring(0, 8) + '..' : subject.name;
-        doc.text(subjectName, xPos + 2, yPos + 10, { width: subjectColWidth - 4, align: 'center' });
+        doc.text(subject.name, xPos + 2, yPos + 10, { width: subjectColWidth - 4, align: 'center' });
         xPos += subjectColWidth;
       }
 

@@ -61,41 +61,31 @@ export function createReportCardPDF(
       });
       doc.on('error', reject);
 
-      // Add strong black border around the entire page
+      // Stylish solid blue vertical strips on left and right edges (like reference template)
       const pageWidth = doc.page.width;
       const initialPageHeight = doc.page.height;
-      const borderWidth = 5; // Strong border
-      const borderColor = '#000000'; // Black
-      
-      // Top border
-      doc.rect(0, 0, pageWidth, borderWidth)
-        .fillColor(borderColor)
+      const blueStripWidth = 28; // Prominent solid blue band on each edge
+      const blueColor = '#0b2f6b'; // Dark blue
+
+      // Left edge strip
+      doc.rect(0, 0, blueStripWidth, initialPageHeight)
+        .fillColor(blueColor)
         .fill();
-      // Bottom border
-      doc.rect(0, initialPageHeight - borderWidth, pageWidth, borderWidth)
-        .fillColor(borderColor)
-        .fill();
-      // Left border
-      doc.rect(0, 0, borderWidth, initialPageHeight)
-        .fillColor(borderColor)
-        .fill();
-      // Right border
-      doc.rect(pageWidth - borderWidth, 0, borderWidth, initialPageHeight)
-        .fillColor(borderColor)
+      // Right edge strip
+      doc.rect(pageWidth - blueStripWidth, 0, blueStripWidth, initialPageHeight)
+        .fillColor(blueColor)
         .fill();
 
-      // Additional dark-blue solid border inside the existing black border (keep black border intact)
-      const innerBorderInset = borderWidth + 1;
-      doc.save();
-      doc.lineWidth(2);
-      doc.strokeColor('#0b2f6b');
-      doc.rect(
-        innerBorderInset,
-        innerBorderInset,
-        pageWidth - innerBorderInset * 2,
-        initialPageHeight - innerBorderInset * 2
-      ).stroke();
-      doc.restore();
+      // Thin top and bottom accent lines
+      const accentWidth = 2;
+      doc.rect(blueStripWidth, 0, pageWidth - blueStripWidth * 2, accentWidth)
+        .fillColor(blueColor)
+        .fill();
+      doc.rect(blueStripWidth, initialPageHeight - accentWidth, pageWidth - blueStripWidth * 2, accentWidth)
+        .fillColor(blueColor)
+        .fill();
+
+      const borderWidth = blueStripWidth; // Used elsewhere for content inset
 
       // School Header
       const schoolName = settings?.schoolName || 'School Management System';
@@ -113,8 +103,8 @@ export function createReportCardPDF(
 
       let logoX = 50;
       const bannerHeight = 130;
-      const bannerInset = 6;
-      let headerTopY = (settings?.schoolLogo ? (borderWidth + bannerHeight + 20) : 55);
+      const bannerInset = 2;
+      let headerTopY = (settings?.schoolLogo ? (borderWidth + bannerHeight + 6) : 38);
       const schoolNameFontSize = 14;
       // In PDFKit, text Y is baseline; ascender is the height from baseline to top of letters
       const textAscender = schoolNameFontSize * 0.7;
@@ -334,9 +324,8 @@ export function createReportCardPDF(
         console.log('No school logo found in settings');
       }
 
-      // If banner was drawn, push header content down and add right-side logo for visibility
       if (bannerDrawn) {
-        headerTopY = borderWidth + bannerHeight + 20;
+        headerTopY = borderWidth + bannerHeight + 6;
       }
 
       doc.restore();
@@ -369,9 +358,7 @@ export function createReportCardPDF(
         currentY += 15;
       }
 
-      // Title - adjust position based on logo size and header content with styled background
-      // Ensure title is below all header content (logo, name, address, phone, academic year)
-      const titleY = Math.max(currentY + 20, logoY + logoHeight + 20);
+      const titleY = Math.max(currentY + 4, logoY + (logoHeight || 0) + 4);
       const titleBoxHeight = 40;
       
       // Title background box - Blue color (fill only, no stroke to avoid lines near logos)
@@ -386,16 +373,13 @@ export function createReportCardPDF(
       doc.fontSize(16).font('Helvetica-Bold').fillColor('#FFFFFF');
       doc.text(titleText, 50, titleY, { align: 'center', width: 500 });
       
-      // Add academic year below REPORT CARD
       if (academicYear) {
         doc.fontSize(10).font('Helvetica').fillColor('#FFFFFF');
-        doc.text(`Academic Year: ${academicYear}`, 50, titleY + 18, { align: 'center', width: 500 });
+        doc.text(`Academic Year: ${academicYear}`, 50, titleY + 14, { align: 'center', width: 500 });
       }
 
-      // Student Information - adjust position based on title with styled boxes (reduced spacing)
-      const infoStartY = titleY + titleBoxHeight + 10; // Reduced spacing to fit more content
+      const infoStartY = titleY + titleBoxHeight + 4;
       
-      // Student Information box
       doc.rect(50, infoStartY, 240, 80)
         .fillColor('#F8F9FA')
         .fill()
@@ -403,14 +387,13 @@ export function createReportCardPDF(
         .lineWidth(1)
         .stroke();
       
-      doc.fontSize(12).font('Helvetica-Bold').fillColor('#2C3E50');
-      doc.text('Student Information:', 60, infoStartY + 10);
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Student Information:', 60, infoStartY + 6);
       doc.fontSize(10).font('Helvetica').fillColor('#000000');
-      doc.text(`Name: ${reportCard.student.name}`, 60, infoStartY + 30);
-      doc.text(`Student Number: ${reportCard.student.studentNumber}`, 60, infoStartY + 50);
-      doc.text(`Class: ${reportCard.student.class}`, 60, infoStartY + 70);
+      doc.text(`Name: ${reportCard.student.name}`, 60, infoStartY + 24);
+      doc.text(`Student Number: ${reportCard.student.studentNumber}`, 60, infoStartY + 42);
+      doc.text(`Class: ${reportCard.student.class}`, 60, infoStartY + 60);
 
-      // Exam Information box - increased height to fit Class Position and Grade Position
       doc.rect(300, infoStartY, 250, 100)
         .fillColor('#F8F9FA')
         .fill()
@@ -418,42 +401,35 @@ export function createReportCardPDF(
         .lineWidth(1)
         .stroke();
       
-      doc.fontSize(12).font('Helvetica-Bold').fillColor('#2C3E50');
-      doc.text('Exam Information:', 310, infoStartY + 10);
-      doc.fontSize(9).font('Helvetica').fillColor('#000000');
-      let examInfoY = infoStartY + 25;
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Exam Information:', 310, infoStartY + 6);
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      let examInfoY = infoStartY + 22;
       
       if (reportCard.exam) {
         doc.text(`Exam: ${reportCard.exam.name}`, 310, examInfoY);
-        examInfoY += 15;
+        examInfoY += 11;
         doc.text(`Type: ${reportCard.exam.type}`, 310, examInfoY);
-        examInfoY += 15;
+        examInfoY += 11;
         doc.text(`Date: ${new Date(reportCard.exam.examDate).toLocaleDateString()}`, 310, examInfoY);
-        examInfoY += 15;
+        examInfoY += 11;
       } else if (reportCard.exams && reportCard.exams.length > 0) {
-        // Remove duplicate exam names before displaying
         const uniqueExamNames = Array.from(new Set(reportCard.exams.map((e: any) => e.name)));
         doc.text(`Exams: ${uniqueExamNames.join(', ')}`, 310, examInfoY);
-        examInfoY += 15;
+        examInfoY += 11;
       }
       
-      // Add Class Position
       const totalStudents = reportCard.totalStudents || 0;
       const classPosText = totalStudents > 0 
         ? `Class Position: ${reportCard.classPosition} out of ${totalStudents}`
         : `Class Position: ${reportCard.classPosition}`;
       doc.text(classPosText, 310, examInfoY);
-      examInfoY += 15;
+      examInfoY += 11;
       
-      // Add Total Attendance
       if (reportCard.totalAttendance !== undefined && reportCard.totalAttendance !== null) {
-        const attendanceText = `Total Attendance: ${reportCard.totalAttendance} day${reportCard.totalAttendance !== 1 ? 's' : ''}`;
-        if (reportCard.presentAttendance !== undefined && reportCard.presentAttendance !== null) {
-          doc.text(`${attendanceText} (Present: ${reportCard.presentAttendance})`, 310, examInfoY);
-        } else {
-          doc.text(attendanceText, 310, examInfoY);
-        }
-        examInfoY += 15;
+        const attendanceText = `Attendance: ${reportCard.totalAttendance}d` + 
+          (reportCard.presentAttendance != null ? ` (${reportCard.presentAttendance})` : '');
+        doc.text(attendanceText, 310, examInfoY);
       }
 
       // Grade Thresholds
@@ -528,10 +504,9 @@ export function createReportCardPDF(
           : '';
       const headmasterRemarks = storedHeadmasterRemarks || generateHeadmasterRemarkText();
 
-      // Subjects Table - adjust position based on info section (reduced spacing for one page)
       let yPos = infoStartY + 100;
       doc.fontSize(10).font('Helvetica-Bold').text('Subject Performance:', 50, yPos);
-      yPos += 16;
+      yPos += 8;
 
       // Define table dimensions - match Remarks section width (500pt) for right-edge alignment
       const tableStartX = 50;
@@ -572,8 +547,8 @@ export function createReportCardPDF(
       // Header text with multi-line labels for narrower columns
       doc.fontSize(9).font('Helvetica-Bold').fillColor('#FFFFFF');
       
-      // Single-line headers (centered vertically in 26pt row)
-      const singleLineY = headerY + (headerRowHeight / 2) - 3; // Center vertically, accounting for font height
+      // Single-line headers (centered vertically in header row)
+      const singleLineY = headerY + (headerRowHeight / 2) - 3;
       doc.text('Subject', colPositions.subject, singleLineY, { width: colWidths.subject - 10, align: 'center' });
       doc.text('Grade', colPositions.grade, singleLineY, { width: colWidths.grade - 10, align: 'center' });
       
@@ -611,7 +586,6 @@ export function createReportCardPDF(
 
       yPos = headerY + headerRowHeight;
 
-      // Subjects Data with alternating row colors
       doc.fontSize(10).font('Helvetica').fillColor('#000000');
       for (let index = 0; index < reportCard.subjects.length; index++) {
         const subject = reportCard.subjects[index];
@@ -636,8 +610,8 @@ export function createReportCardPDF(
             .fill();
         }
 
-        // Draw cell borders using same column boundaries
-        doc.strokeColor('#CCCCCC').lineWidth(0.5);
+        // Draw solid cell borders (clear grid like reference)
+        doc.strokeColor('#000000').lineWidth(1);
         // Top border
         doc.moveTo(tableStartX, rowY).lineTo(tableEndXAdjusted, rowY).stroke();
         // Bottom border
@@ -651,23 +625,23 @@ export function createReportCardPDF(
 
         // Cell text
         doc.fillColor('#000000');
-        doc.text(subject.subject, colPositions.subject, rowY + 8, { width: colWidths.subject - 10 });
+        doc.text(subject.subject, colPositions.subject, rowY + 5, { width: colWidths.subject - 10 });
         
         // Subject Code
         const subjectCodeText = subject.subjectCode || '-';
-        doc.text(subjectCodeText, colPositions.subjectCode, rowY + 8, { 
+        doc.text(subjectCodeText, colPositions.subjectCode, rowY + 5, { 
           width: colWidths.subjectCode - 10,
           align: 'center'
         });
         
-        doc.text(scoreText, colPositions.markObtained, rowY + 8, { width: colWidths.markObtained - 10, align: 'center' });
-        doc.text(maxScoreText, colPositions.possibleMark, rowY + 8, { width: colWidths.possibleMark - 10, align: 'center' });
+        doc.text(scoreText, colPositions.markObtained, rowY + 5, { width: colWidths.markObtained - 10, align: 'center' });
+        doc.text(maxScoreText, colPositions.possibleMark, rowY + 5, { width: colWidths.possibleMark - 10, align: 'center' });
         
         // Class Average (without % symbol)
         const classAverageText = subject.classAverage !== undefined && subject.classAverage !== null
           ? `${Math.round(subject.classAverage)}`
           : 'N/A';
-        doc.text(classAverageText, colPositions.classAverage, rowY + 8, { width: colWidths.classAverage - 10, align: 'center' });
+        doc.text(classAverageText, colPositions.classAverage, rowY + 5, { width: colWidths.classAverage - 10, align: 'center' });
         
         // Grade - always black color, ensure text fits well
         if (grade === 'N/A') {
@@ -681,29 +655,23 @@ export function createReportCardPDF(
         if (gradeTextWidth > gradeWidth) {
           doc.fontSize(8); // Slightly smaller font for long grades
         }
-        doc.text(grade, colPositions.grade, rowY + 8, { width: gradeWidth });
-        doc.fontSize(10); // Reset font size
+        doc.text(grade, colPositions.grade, rowY + 5, { width: gradeWidth });
+        doc.fontSize(9);
         doc.fillColor('#000000'); // Reset to black
         
         yPos += actualRowHeight;
 
         // Calculate remaining space dynamically to show all subjects
-        // A4 page height is 842pt, with 50pt margins = 742pt usable
-        // Reserve space for sections below table:
-        // Summary: ~45pt, Remarks: ~140pt, Footer: ~30pt = ~215pt
-        // So table can extend up to ~527pt (742 - 215) to fit on one page
-        // Only break if we absolutely must to prevent overflow
-        const maxTableY = 527; // Allow table to use most of the page
+        const maxTableY = 520;
         if (yPos > maxTableY) {
           // Only truncate if absolutely necessary (should rarely happen)
           break;
         }
       }
 
-      // Summary Section with styled box (reduced spacing for one page)
-      yPos += 10;
+      yPos += 6;
       const summaryBoxY = yPos;
-      const summaryBoxHeight = 50; // Slightly increased to prevent overlapping
+      const summaryBoxHeight = 50;
       
       // Summary box background
       doc.rect(50, summaryBoxY, 500, summaryBoxHeight)
@@ -714,19 +682,17 @@ export function createReportCardPDF(
         .stroke();
       
       // Summary title
-      doc.fontSize(11).font('Helvetica-Bold').fillColor('#2C3E50');
-      doc.text('Summary', 60, summaryBoxY + 8);
-      
-      // Summary content - improved spacing to prevent overlapping
-      yPos = summaryBoxY + 22;
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Summary', 60, summaryBoxY + 6);
+      yPos = summaryBoxY + 18;
       doc.fontSize(9).font('Helvetica').fillColor('#003366'); // Dark blue
       const overallPercentage = parseFloat(reportCard.overallAverage);
       const overallGrade = reportCard.overallGrade || getGrade(overallPercentage);
       
       // Overall Average with colored background - positioned on the left
       const averageBoxX = 60;
-      const averageBoxWidth = 220; // Increased width for better spacing and content
-      doc.rect(averageBoxX, yPos - 5, averageBoxWidth, 20)
+      const averageBoxWidth = 220;
+      doc.rect(averageBoxX, yPos - 4, averageBoxWidth, 16)
         .fillColor('#FFFFFF')
         .fill()
         .strokeColor('#CCCCCC')
@@ -741,9 +707,9 @@ export function createReportCardPDF(
       doc.text(`${Math.round(overallPercentage)}%`, averageBoxX + 5 + labelWidth, yPos);
       
       // Overall Grade - positioned on the right with proper spacing (20pt gap)
-      const gradeBoxX = averageBoxX + averageBoxWidth + 20; // 20pt gap between boxes
-      const gradeBoxWidth = 200; // Width for grade box
-      doc.rect(gradeBoxX, yPos - 5, gradeBoxWidth, 20)
+      const gradeBoxX = averageBoxX + averageBoxWidth + 20;
+      const gradeBoxWidth = 200;
+      doc.rect(gradeBoxX, yPos - 4, gradeBoxWidth, 16)
         .fillColor('#FFFFFF')
         .fill()
         .strokeColor('#CCCCCC')
@@ -757,18 +723,17 @@ export function createReportCardPDF(
       
       // Class Position removed from Summary - now in Exam Information section
 
-      // Remarks Section - Always display both sections (proper spacing to prevent overlap)
-      yPos += 12; // Increased spacing between Summary and Remarks
+      yPos += 8;
       
       // Calculate dynamic height for remarks section (Class Teacher and Headmaster)
       const classTeacherRemarks = reportCard.remarks?.classTeacherRemarks || 'No remarks provided.';
       const maxRemarksTextHeight = 22;
       const teacherRemarksTextHeight = doc.heightOfString(classTeacherRemarks, { width: 480 });
-      const teacherRemarksHeight = Math.min(maxRemarksTextHeight, Math.max(22, teacherRemarksTextHeight + 4));
+      const teacherRemarksHeight = Math.min(maxRemarksTextHeight, Math.max(14, teacherRemarksTextHeight + 2));
       const headRemarksTextHeight = doc.heightOfString(headmasterRemarks, { width: 480 });
-      const headRemarksHeight = Math.min(maxRemarksTextHeight, Math.max(22, headRemarksTextHeight + 4));
-      const remarksTitleHeight = 24;
-      const remarksBoxHeight = remarksTitleHeight + 18 + teacherRemarksHeight + 12 + headRemarksHeight + 27;
+      const headRemarksHeight = Math.min(maxRemarksTextHeight, Math.max(14, headRemarksTextHeight + 2));
+      const remarksTitleHeight = 18;
+      const remarksBoxHeight = remarksTitleHeight + 12 + teacherRemarksHeight + 8 + headRemarksHeight + 18;
       
       // Remarks title with styled box - full blue background
       const remarksBoxY = yPos;
@@ -776,58 +741,50 @@ export function createReportCardPDF(
       doc.rect(50, remarksBoxY, 500, remarksBoxHeight)
         .fillColor('#1f4aa8')
         .fill()
-        .strokeColor('#003366') // Dark blue border
+        .strokeColor('#003366')
         .lineWidth(2)
         .stroke();
       
-      // Main "Remarks" title - larger and more prominent
       doc.fontSize(12).font('Helvetica-Bold').fillColor('#FFFFFF');
-      doc.text('Remarks', 60, remarksBoxY + 8);
-      yPos = remarksBoxY + 28; // Increased spacing after title
+      doc.text('Remarks', 60, remarksBoxY + 5);
+      yPos = remarksBoxY + 18;
       
-      // Class Teacher Remarks - Always display
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#FFFFFF'); // Bold white text for label
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#FFFFFF');
       doc.text('Class Teacher Remarks:', 60, yPos);
-      yPos += 15; // Increased spacing before box
+      yPos += 10;
       
-      // White rectangular box for Class Teacher Remarks
-      doc.rect(60, yPos - 3, 480, teacherRemarksHeight)
+      doc.rect(60, yPos - 2, 480, teacherRemarksHeight)
         .fillColor('#FFFFFF')
         .fill()
         .strokeColor('#CCCCCC')
         .lineWidth(1)
         .stroke();
       
-      doc.fontSize(8).font('Helvetica').fillColor('#000000'); // Black text for remarks content
-      // Truncate text if needed to fit in box
       const teacherRemarksToShow = teacherRemarksTextHeight > maxRemarksTextHeight 
         ? classTeacherRemarks.substring(0, Math.floor(classTeacherRemarks.length * 0.8)) + '...'
         : classTeacherRemarks;
+      doc.fontSize(9).font('Helvetica').fillColor('#000000');
       doc.text(teacherRemarksToShow, 65, yPos, { width: 480 });
-      yPos += teacherRemarksHeight + 12; // Increased spacing after teacher remarks
+      yPos += teacherRemarksHeight + 8;
 
       doc.fontSize(9).font('Helvetica-Bold').fillColor('#FFFFFF');
       doc.text("Head's Remarks:", 60, yPos);
-      yPos += 15;
+      yPos += 10;
 
-      doc.rect(60, yPos - 3, 480, headRemarksHeight)
+      doc.rect(60, yPos - 2, 480, headRemarksHeight)
         .fillColor('#FFFFFF')
         .fill()
         .strokeColor('#CCCCCC')
         .lineWidth(1)
         .stroke();
 
-      doc.fontSize(8).font('Helvetica').fillColor('#000000');
       const headRemarksToShow = headRemarksTextHeight > maxRemarksTextHeight
         ? headmasterRemarks.substring(0, Math.floor(headmasterRemarks.length * 0.8)) + '...'
         : headmasterRemarks;
+      doc.fontSize(8).font('Helvetica').fillColor('#000000');
       doc.text(headRemarksToShow, 65, yPos, { width: 480 });
-      yPos += headRemarksHeight + 12;
-
-      yPos += 10;
-
-      // Grade Scale Footer Section (fit within single page, no new pages)
-      yPos += 8; // Compact spacing after remarks
+      yPos += headRemarksHeight + 6;
+      yPos += 4;
       
       const pageHeight = doc.page.height;
 
@@ -835,14 +792,11 @@ export function createReportCardPDF(
       const footerY = pageHeight - 25;
       const availableHeight = Math.max(0, footerY - yPos - 10); // keep small gap before footer
       
-      // Only render grade scale if there is reasonable space
       if (availableHeight > 40) {
         // Grade Scale Title
         doc.fontSize(10).font('Helvetica-Bold').fillColor('#003366');
         doc.text('Grade Scale / Attainment Levels', 50, yPos, { align: 'center', width: 500 });
         yPos += 12;
-
-        // Grade Scale Box sized to available height
         const gradeScaleBoxY = yPos;
         const gradeScaleBoxHeight = Math.min(80, availableHeight - 12);
         doc.rect(50, gradeScaleBoxY, 500, gradeScaleBoxHeight)
@@ -867,7 +821,7 @@ export function createReportCardPDF(
         const itemWidth = 115;
         const startX = 60;
         const startY = gradeScaleBoxY + 8;
-        const rowGap = Math.max(28, gradeScaleBoxHeight / 3); // compact rows
+        const rowGap = Math.max(28, gradeScaleBoxHeight / 3);
         const colGap = 20;
 
         gradeItems.forEach((item, index) => {

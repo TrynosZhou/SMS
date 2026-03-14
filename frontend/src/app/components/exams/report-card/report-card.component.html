@@ -309,10 +309,10 @@
         </div>
         <div class="view-options" *ngIf="canDownloadReportCard">
           <button 
-            class="btn btn-sm btn-secondary" 
+            class="btn btn-sm btn-secondary btn-download-all" 
             (click)="downloadAllPDFs()"
             [disabled]="loading || filteredReportCards.length === 0">
-            📥 Download All PDFs
+            <span class="download-arrow">📥</span> Download All PDFs
           </button>
         </div>
       </div>
@@ -336,10 +336,10 @@
             <div class="report-card-actions" *ngIf="canDownloadReportCard">
               <button 
                 type="button" 
-                class="btn btn-primary btn-sm" 
+                class="btn btn-primary btn-sm btn-download-pdf" 
                 (click)="downloadPDF(reportCard)" 
                 [disabled]="loading">
-                📥 Download PDF
+                <span class="download-arrow">📥</span> Download PDF
               </button>
             </div>
           </div>

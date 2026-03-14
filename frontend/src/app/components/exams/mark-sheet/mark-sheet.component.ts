@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { trigger, transition, style, animate } from '@angular/animations';
 import { ExamService } from '../../../services/exam.service';
 import { ClassService } from '../../../services/class.service';
 import { SettingsService } from '../../../services/settings.service';
@@ -8,7 +9,21 @@ import { AuthService } from '../../../services/auth.service';
 @Component({
   selector: 'app-mark-sheet',
   templateUrl: './mark-sheet.component.html',
-  styleUrls: ['./mark-sheet.component.css']
+  styleUrls: ['./mark-sheet.component.css'],
+  animations: [
+    trigger('fadeIn', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateY(8px)' }),
+        animate('280ms ease-out', style({ opacity: 1, transform: 'translateY(0)' }))
+      ])
+    ]),
+    trigger('slideIn', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateY(12px)' }),
+        animate('320ms ease-out', style({ opacity: 1, transform: 'translateY(0)' }))
+      ])
+    ])
+  ]
 })
 export class MarkSheetComponent implements OnInit {
   classes: any[] = [];
@@ -278,7 +293,47 @@ export class MarkSheetComponent implements OnInit {
   }
 
   printMarkSheet() {
-    window.print();
+    if (!this.selectedClassId || !this.selectedExamType || !this.selectedTerm) {
+      this.error = 'Please select class and exam type, and ensure term is set';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+    if (!this.markSheetData) {
+      this.error = 'Please generate mark sheet first';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    this.loading = true;
+    this.error = '';
+
+    this.examService.downloadMarkSheetPDF(
+      this.selectedClassId,
+      this.selectedExamType,
+      this.selectedTerm
+    ).subscribe({
+      next: (blob: Blob) => {
+        const blobUrl = URL.createObjectURL(blob);
+        const printWindow = window.open(blobUrl, '_blank');
+        if (printWindow) {
+          printWindow.onafterprint = () => {
+            printWindow.close();
+            URL.revokeObjectURL(blobUrl);
+          };
+          setTimeout(() => printWindow.print(), 600);
+        } else {
+          URL.revokeObjectURL(blobUrl);
+          this.error = 'Please allow pop-ups to print the mark sheet';
+        }
+        this.loading = false;
+      },
+      error: (err: any) => {
+        console.error('Error loading mark sheet PDF for print:', err);
+        this.error = err.error?.message || 'Failed to load mark sheet for printing';
+        this.loading = false;
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
   }
 
   downloadPDF() {
@@ -327,42 +382,48 @@ export class MarkSheetComponent implements OnInit {
     });
   }
 
-  exportToCSV() {
-    if (!this.markSheetData) return;
+  exportToExcel() {
+    if (!this.selectedClassId || !this.selectedExamType || !this.selectedTerm) {
+      this.error = 'Please select class and exam type, and ensure term is set';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+    if (!this.markSheetData) {
+      this.error = 'Please generate mark sheet first';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
 
-    const csvRows: string[] = [];
-    
-    // Header row
-    const headers = ['Position', 'Student Number', 'Student Name', ...this.markSheetData.subjects.map((s: any) => s.name), 'Total Score', 'Total Max Score', 'Average %'];
-    csvRows.push(headers.join(','));
+    this.loading = true;
+    this.error = '';
 
-    // Data rows
-    this.markSheetData.markSheet.forEach((row: any) => {
-      const values = [
-        row.position,
-        row.studentNumber,
-        `"${row.studentName}"`,
-        ...this.markSheetData.subjects.map((subject: any) => {
-          const subjectData = row.subjects[subject.id];
-          return subjectData ? `${subjectData.score}/${subjectData.maxScore} (${subjectData.percentage}%)` : '0/100 (0%)';
-        }),
-        row.totalScore,
-        row.totalMaxScore,
-        row.average
-      ];
-      csvRows.push(values.join(','));
+    this.examService.downloadMarkSheetExcel(
+      this.selectedClassId,
+      this.selectedExamType,
+      this.selectedTerm
+    ).subscribe({
+      next: (blob: Blob) => {
+        const fileURL = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = fileURL;
+        const className = this.markSheetData?.class?.name || 'class';
+        const examType = this.selectedExamType.replace('_', '-');
+        link.download = `mark-sheet-${className}-${examType}-${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(fileURL);
+        this.loading = false;
+        this.success = 'Mark sheet Excel downloaded successfully';
+        setTimeout(() => this.success = '', 5000);
+      },
+      error: (err: any) => {
+        console.error('Error downloading mark sheet Excel:', err);
+        this.error = err.error?.message || 'Failed to download mark sheet Excel';
+        this.loading = false;
+        setTimeout(() => this.error = '', 5000);
+      }
     });
-
-    const csvContent = csvRows.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `mark-sheet-${this.markSheetData.class.name}-${this.selectedExamType}-${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   }
 
   getSubjectMark(row: any, subjectId: string) {

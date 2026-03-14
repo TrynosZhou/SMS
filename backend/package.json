@@ -38,7 +38,8 @@
     "reflect-metadata": "^0.1.13",
     "ts-node": "^10.9.1",
     "typeorm": "^0.3.28",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

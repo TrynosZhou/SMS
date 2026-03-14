@@ -204,6 +204,16 @@ export class ExamService {
     return this.http.get(`${this.apiUrl}/exams/mark-sheet/pdf`, { params, responseType: 'blob' });
   }
 
+  downloadMarkSheetExcel(classId: string, examType: string, term?: string): Observable<Blob> {
+    let params = new HttpParams()
+      .set('classId', classId)
+      .set('examType', this.normalizeExamType(examType, false));
+
+    if (term) params = params.set('term', term);
+
+    return this.http.get(`${this.apiUrl}/exams/mark-sheet/excel`, { params, responseType: 'blob' });
+  }
+
   // ---------------- Marks Progress ----------------
   getMarksProgress(examType?: string, term?: string, classId?: string): Observable<any> {
     let params = new HttpParams();

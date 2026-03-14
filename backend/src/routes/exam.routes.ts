@@ -23,6 +23,7 @@ import {
   saveReportCardRemarks,
   generateMarkSheet,
   generateMarkSheetPDF,
+  generateMarkSheetExcel,
   getMarksEntryProgress
 } from '../controllers/exam.controller';
 
@@ -47,6 +48,7 @@ router.get('/report-card/pdf', authenticate, authorize(UserRole.SUPERADMIN, User
 router.post('/report-card/remarks', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), saveReportCardRemarks);
 router.get('/mark-sheet', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), generateMarkSheet);
 router.get('/mark-sheet/pdf', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), generateMarkSheetPDF);
+router.get('/mark-sheet/excel', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), generateMarkSheetExcel);
 router.get('/marks-progress', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER), getMarksEntryProgress);
 // Recompute grades across all classes using current settings (admin/superadmin only)
 import { recomputeGrades } from '../controllers/exam.controller';
