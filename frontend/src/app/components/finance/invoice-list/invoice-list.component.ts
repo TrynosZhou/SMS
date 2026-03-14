@@ -143,6 +143,10 @@ export class InvoiceListComponent implements OnInit {
 
   @ViewChild('uniformCatalogSelect') uniformCatalogSelectRef: ElementRef<HTMLSelectElement> | null = null;
 
+  // Term-scoped stats from backend (matches outstanding-balance page)
+  private _termStats: { totalCollected: number; totalPaidFromInvoices: number; totalOutstanding: number; totalInvoiced: number } | null = null;
+  loadingTermStats = false;
+
   // Cached computed values to prevent NG0900 errors
   private _cachedStats = {
     totalAmount: 0,
@@ -256,6 +260,7 @@ export class InvoiceListComponent implements OnInit {
         // Default term filter to active term
         if (!this.selectedTermFilter?.trim() && this.currentTermFromSettings) {
           this.selectedTermFilter = this.currentTermFromSettings;
+          this.loadTermStats();
           if (this.invoices.length > 0) {
             this.filterInvoices();
           }
@@ -423,6 +428,32 @@ export class InvoiceListComponent implements OnInit {
 
     this.filteredInvoices = filtered;
     this.updateCachedStats();
+    this.loadTermStats();
+  }
+
+  private loadTermStats(): void {
+    const term = (this.selectedTermFilter || '').trim();
+    if (!term) {
+      this._termStats = null;
+      return;
+    }
+    this.loadingTermStats = true;
+    this._termStats = null;
+    this.financeService.getCashReceipts(term, 'all', 1, 1).subscribe({
+      next: (data: any) => {
+        this._termStats = {
+          totalCollected: Number(data?.totalCollected ?? 0) || 0,
+          totalPaidFromInvoices: Number(data?.totalPaidFromInvoices ?? 0) || 0,
+          totalOutstanding: Number(data?.totalOutstanding ?? 0) || 0,
+          totalInvoiced: Number(data?.totalInvoiced ?? 0) || 0
+        };
+        this.loadingTermStats = false;
+      },
+      error: () => {
+        this._termStats = null;
+        this.loadingTermStats = false;
+      }
+    });
   }
 
   private updateCachedStats() {
@@ -466,6 +497,7 @@ export class InvoiceListComponent implements OnInit {
     this.selectedStatusFilter = '';
     this.selectedTermFilter = '';
     this.selectedStudent = '';
+    this._termStats = null;
     // After clearing filters, show all invoices
     const invoicesArray = Array.isArray(this.invoices) ? this.invoices : [];
     this.filteredInvoices = [...invoicesArray];
@@ -496,27 +528,34 @@ export class InvoiceListComponent implements OnInit {
   }
 
   getTotalAmount(): number {
-    // Grand Total = Sum of all invoice amounts (current term fees only)
+    // Use backend term stats when term filter is active (matches outstanding-balance)
+    if (this._termStats && this.selectedTermFilter?.trim()) {
+      return this._termStats.totalInvoiced;
+    }
     return this._cachedStats.totalAmount;
   }
 
   getPaidAmount(): number {
-    // Total Paid = Sum of all paid amounts from filtered invoices
+    // Use totalPaidFromInvoices (sum of invoice.paidAmount) so Total Paid + Outstanding = Total Invoice Amount
+    if (this._termStats && this.selectedTermFilter?.trim()) {
+      return this._termStats.totalPaidFromInvoices;
+    }
     return this._cachedStats.paidAmount;
   }
 
   getOutstandingAmount(): number {
-    // Outstanding Balance = Sum of all current balances
-    // Note: balance includes previousBalance, so this represents total outstanding across all invoices
+    // Use backend term stats when term filter is active (matches outstanding-balance Total Outstanding)
+    if (this._termStats && this.selectedTermFilter?.trim()) {
+      return this._termStats.totalOutstanding;
+    }
     return this._cachedStats.outstandingAmount;
   }
 
   getTotalInvoiceAmount(): number {
-    // Total Invoice Amount = Total Paid + Outstanding Balance
-    // This is the correct formula because:
-    // - Outstanding Balance already includes previousBalance in its calculation
-    // - Total Paid is what has been collected
-    // - Together they represent the total amount that should have been collected
+    // When term filter is on, use totalInvoiced so Total Paid + Outstanding = Total Invoice Amount
+    if (this._termStats && this.selectedTermFilter?.trim()) {
+      return this._termStats.totalInvoiced;
+    }
     return this._cachedStats.totalInvoiceAmount;
   }
 
@@ -2505,6 +2544,65 @@ export class InvoiceListComponent implements OnInit {
       this.error = 'No receipt available. Please record a payment first.';
       setTimeout(() => this.error = '', 5000);
     }
+  }
+
+  showReconciliationAuditModal = false;
+  auditLoading = false;
+  auditResult: {
+    term: string;
+    invoicesChecked: number;
+    violationsCount: number;
+    totalLeft: number;
+    totalRight: number;
+    totalDiscrepancy: number;
+    identity: string;
+    violations: Array<{
+      invoiceNumber: string;
+      studentNumber: string | null;
+      studentName: string | null;
+      paidAmount: number;
+      balance: number;
+      leftSide: number;
+      rightSide: number;
+      discrepancy: number;
+    }>;
+  } | null = null;
+
+  openReconciliationAudit(): void {
+    this.showReconciliationAuditModal = true;
+    this.auditResult = null;
+    this.error = '';
+    this.runReconciliationAudit();
+  }
+
+  closeReconciliationAudit(): void {
+    this.showReconciliationAuditModal = false;
+    this.auditResult = null;
+  }
+
+  runReconciliationAudit(): void {
+    this.auditLoading = true;
+    this.error = '';
+    const term = this.selectedTermFilter?.trim() || this.currentTermFromSettings || undefined;
+    this.financeService.getInvoiceReconciliationAudit(term).subscribe({
+      next: (data: any) => {
+        this.auditResult = {
+          term: data.term || '',
+          invoicesChecked: data.invoicesChecked ?? 0,
+          violationsCount: data.violationsCount ?? 0,
+          totalLeft: data.totalLeft ?? 0,
+          totalRight: data.totalRight ?? 0,
+          totalDiscrepancy: data.totalDiscrepancy ?? 0,
+          identity: data.identity || 'paidAmount + balance = amount + previousBalance - prepaidAmount',
+          violations: Array.isArray(data.violations) ? data.violations : []
+        };
+        this.auditLoading = false;
+      },
+      error: (err) => {
+        this.error = err?.error?.message || 'Reconciliation audit failed';
+        this.auditLoading = false;
+      }
+    });
   }
 
   // Helper method to check if user has admin or accountant role

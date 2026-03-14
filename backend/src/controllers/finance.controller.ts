@@ -2631,6 +2631,11 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const outstandingRaw = await outstandingQb.getRawOne<Record<string, string>>();
     const totalOutstanding = Math.round((parseFloat(String(outstandingRaw?.total ?? 0)) || 0) * 100) / 100;
 
+    // Sum of invoice.paidAmount for term invoices - ensures totalPaidFromInvoices + totalOutstanding = totalInvoiced
+    const totalPaidFromInvoices = Math.round(
+      (invoicesForTotals || []).reduce((s, iv: any) => s + (parseFloat(String(iv.paidAmount || 0)) || 0), 0) * 100
+    ) / 100;
+
     const totalCashReceived = Math.round(totalRawPayments * 100) / 100;
 
     // Totals by fee type are computed from actual payment logs (cash receipts), not from invoice.paidAmount.
@@ -2660,6 +2665,7 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
               : totalCashReceived,
       totalCollected,
       totalCashReceived,
+      totalPaidFromInvoices,
       totalInvoiced,
       invoicesCount,
       /** Financial summary by fee type: scaled so Tuition+DH+Transport = Total Collected, table column sums match. */

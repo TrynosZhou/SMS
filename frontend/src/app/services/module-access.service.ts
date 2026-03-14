@@ -59,6 +59,7 @@ export interface ModuleAccess {
     classes?: boolean;
     logistics?: boolean;
     teacherManager?: boolean;
+    payroll?: boolean;
   };
   admin?: {
     students?: boolean;
@@ -73,6 +74,7 @@ export interface ModuleAccess {
     settings?: boolean;
     dashboard?: boolean;
     teacherManager?: boolean;
+    payroll?: boolean;
   };
   superadmin?: {
     [key: string]: boolean; // Superadmin has access to everything
@@ -90,6 +92,7 @@ export interface ModuleAccess {
     attendance?: boolean;
     settings?: boolean;
     teacherManager?: boolean;
+    payroll?: boolean;
   };
 }
 
@@ -151,7 +154,8 @@ export class ModuleAccessService {
       attendance: false,
       classes: false,
       logistics: true,
-      teacherManager: false
+      teacherManager: false,
+      payroll: false
     },
     admin: {
       students: true,
@@ -165,7 +169,8 @@ export class ModuleAccessService {
       attendance: true,
       settings: true,
       dashboard: true,
-      teacherManager: true
+      teacherManager: true,
+      payroll: true
     },
     superadmin: {}, // All access
     demo_user: {
@@ -180,7 +185,8 @@ export class ModuleAccessService {
       finance: true,
       attendance: true,
       settings: false, // Demo users cannot access settings
-      teacherManager: true
+      teacherManager: true,
+      payroll: false
     }
   };
 
@@ -247,6 +253,11 @@ export class ModuleAccessService {
     // Ensure accountant can always access Logistics (Transport & Dining Hall)
     if (role === 'accountant' && moduleName === 'logistics') {
       return true;
+    }
+
+    // Payroll: only admin and superadmin
+    if (moduleName === 'payroll') {
+      return role === 'admin' || role === 'superadmin';
     }
 
     // Hard restrictions for accountant role regardless of settings

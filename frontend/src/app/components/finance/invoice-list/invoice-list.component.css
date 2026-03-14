@@ -187,6 +187,16 @@
   background: linear-gradient(135deg, #fde68a 0%, #fbbf24 100%);
 }
 
+.btn-reconciliation-audit {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #fff;
+}
+
+.btn-reconciliation-audit:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #fff;
+}
+
 @media (max-width: 768px) {
   .invoice-actions-card {
     padding: 16px;

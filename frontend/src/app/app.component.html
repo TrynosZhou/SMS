@@ -256,6 +256,41 @@
         </div>
       </div>
 
+      <!-- Payroll Manager (after Finance Manager) -->
+      <div class="sidebar-menu" *ngIf="canAccessModule('payroll')">
+        <div class="sidebar-menu-header" (click)="toggleMenu('payrollManagement')">
+          <span class="sidebar-icon">💵</span>
+          <span class="sidebar-text">Payroll Manager</span>
+          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('payrollManagement')">▼</span>
+        </div>
+        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('payrollManagement')">
+          <a routerLink="/payroll" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-icon">🏠</span>
+            <span class="sidebar-text">Payroll Overview</span>
+          </a>
+          <a routerLink="/payroll/employees" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-icon">👥</span>
+            <span class="sidebar-text">Employees</span>
+          </a>
+          <a routerLink="/payroll/salary-structures" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-icon">📊</span>
+            <span class="sidebar-text">Salary Structures</span>
+          </a>
+          <a routerLink="/payroll/assignments" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-icon">🔗</span>
+            <span class="sidebar-text">Assignments</span>
+          </a>
+          <a routerLink="/payroll/process" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-icon">⚙️</span>
+            <span class="sidebar-text">Process Payroll</span>
+          </a>
+          <a routerLink="/payroll/reports" routerLinkActive="active" class="sidebar-subitem">
+            <span class="sidebar-icon">📈</span>
+            <span class="sidebar-text">Reports</span>
+          </a>
+        </div>
+      </div>
+
       <!-- Communication Management -->
       <div class="sidebar-menu" *ngIf="isAccountant() || isAdmin() || isSuperAdmin()">
         <div class="sidebar-menu-header" (click)="toggleMenu('messages')">

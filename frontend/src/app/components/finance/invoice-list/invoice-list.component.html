@@ -62,6 +62,82 @@
           <span class="btn-icon">🧾</span>
           <span>Correct Prepaid</span>
         </button>
+        <button class="btn btn-action btn-reconciliation-audit" type="button" (click)="openReconciliationAudit()" *ngIf="canManageFinance()" title="Check for invoice identity violations (paidAmount + balance vs amount + prevBalance - prepaid)">
+          <span class="btn-icon">🔍</span>
+          <span>Reconciliation Audit</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Reconciliation Audit Modal -->
+  <div *ngIf="showReconciliationAuditModal" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+    <div class="card" style="width: 90%; max-width: 900px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; position: relative;">
+      <button (click)="closeReconciliationAudit()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; cursor: pointer; z-index: 1;">&times;</button>
+      <h2 style="margin: 0 0 16px 0; padding-right: 32px;">Invoice Reconciliation Audit</h2>
+      <p *ngIf="auditResult" style="color: #64748b; font-size: 13px; margin: 0 0 16px 0;">Term: <strong>{{ auditResult.term }}</strong> · Identity: {{ auditResult.identity }}</p>
+      
+      <div *ngIf="auditLoading" style="padding: 40px; text-align: center;">Running audit...</div>
+      
+      <div *ngIf="!auditLoading && auditResult" style="flex: 1; overflow-y: auto;">
+        <div class="audit-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px;">
+          <div style="padding: 12px; background: #f8fafc; border-radius: 8px;">
+            <div style="font-size: 12px; color: #64748b;">Invoices Checked</div>
+            <div style="font-size: 18px; font-weight: 700;">{{ auditResult.invoicesChecked }}</div>
+          </div>
+          <div style="padding: 12px; background: #fef2f2; border-radius: 8px;">
+            <div style="font-size: 12px; color: #64748b;">Violations</div>
+            <div style="font-size: 18px; font-weight: 700; color: #dc2626;">{{ auditResult.violationsCount }}</div>
+          </div>
+          <div style="padding: 12px; background: #fef2f2; border-radius: 8px;">
+            <div style="font-size: 12px; color: #64748b;">Total Discrepancy</div>
+            <div style="font-size: 18px; font-weight: 700; color: #dc2626;">{{ currencySymbol }} {{ auditResult.totalDiscrepancy | number:'1.2-2' }}</div>
+          </div>
+          <div style="padding: 12px; background: #f8fafc; border-radius: 8px;">
+            <div style="font-size: 12px; color: #64748b;">Sum (paid+balance)</div>
+            <div style="font-size: 14px;">{{ currencySymbol }} {{ auditResult.totalLeft | number:'1.2-2' }}</div>
+          </div>
+          <div style="padding: 12px; background: #f8fafc; border-radius: 8px;">
+            <div style="font-size: 12px; color: #64748b;">Sum (amount+prev-prepaid)</div>
+            <div style="font-size: 14px;">{{ currencySymbol }} {{ auditResult.totalRight | number:'1.2-2' }}</div>
+          </div>
+        </div>
+        
+        <div *ngIf="auditResult.violations.length > 0" style="overflow-x: auto;">
+          <table class="data-table" style="width: 100%; font-size: 13px;">
+            <thead>
+              <tr>
+                <th>Invoice #</th>
+                <th>Student</th>
+                <th>Paid</th>
+                <th>Balance</th>
+                <th>paid+balance</th>
+                <th>amount+prev-prepaid</th>
+                <th>Discrepancy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let v of auditResult.violations" [style.background]="v.discrepancy > 0 ? '#fef2f2' : '#fff7ed'">
+                <td>{{ v.invoiceNumber || '—' }}</td>
+                <td>{{ v.studentName || v.studentNumber || '—' }}</td>
+                <td>{{ currencySymbol }} {{ v.paidAmount | number:'1.2-2' }}</td>
+                <td>{{ currencySymbol }} {{ v.balance | number:'1.2-2' }}</td>
+                <td>{{ currencySymbol }} {{ v.leftSide | number:'1.2-2' }}</td>
+                <td>{{ currencySymbol }} {{ v.rightSide | number:'1.2-2' }}</td>
+                <td [style.color]="v.discrepancy !== 0 ? '#dc2626' : ''">{{ currencySymbol }} {{ v.discrepancy | number:'1.2-2' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div *ngIf="auditResult.violationsCount === 0" style="padding: 24px; text-align: center; color: #059669; background: #f0fdf4; border-radius: 8px;">
+          ✓ No identity violations found. All invoices satisfy: paidAmount + balance = amount + previousBalance - prepaidAmount
+        </div>
+      </div>
+      
+      <div style="padding: 16px 0 0 0; border-top: 1px solid #e2e8f0; margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" (click)="closeReconciliationAudit()">Close</button>
+        <button type="button" class="btn btn-primary" (click)="runReconciliationAudit()" [disabled]="auditLoading" style="margin-left: 8px;">Refresh</button>
       </div>
     </div>
   </div>

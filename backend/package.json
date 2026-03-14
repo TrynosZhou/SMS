@@ -18,11 +18,15 @@
     "clear-invoices": "npx ts-node scripts/clear-invoices.ts",
     "check-login": "npx ts-node scripts/check-user-login.ts",
     "fix-all-teachers": "npx ts-node src/scripts/fix-all-teachers.ts",
+    "migrate": "npx ts-node scripts/run-timetable-migration.ts",
+    "migrate-payroll": "npx ts-node scripts/run-payroll-migration.ts",
     "migrate-timetables": "npx ts-node scripts/run-timetable-migration.ts",
     "migrate-teaching-periods": "npx ts-node scripts/run-teaching-periods-migration.ts"
   },
   "dependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/image-size": "^0.7.0",
+    "archiver": "^7.0.1",
     "axios": "^1.13.6",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

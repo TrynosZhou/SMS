@@ -77,6 +77,15 @@ import { NewsFeedComponent } from './components/news/news-feed/news-feed.compone
 import { NewsFormComponent } from './components/news/news-form/news-form.component';
 import { NewsDetailComponent } from './components/news/news-detail/news-detail.component';
 import { PaymentReceiptManagerComponent } from './components/settings/payment-receipt-manager/payment-receipt-manager.component';
+import { PayrollDashboardComponent } from './components/payroll/payroll-dashboard/payroll-dashboard.component';
+import { AncillaryStaffListComponent } from './components/payroll/ancillary-staff-list/ancillary-staff-list.component';
+import { AncillaryStaffFormComponent } from './components/payroll/ancillary-staff-form/ancillary-staff-form.component';
+import { SalaryStructureListComponent } from './components/payroll/salary-structure-list/salary-structure-list.component';
+import { SalaryStructureFormComponent } from './components/payroll/salary-structure-form/salary-structure-form.component';
+import { SalaryAssignmentComponent } from './components/payroll/salary-assignment/salary-assignment.component';
+import { PayrollProcessComponent } from './components/payroll/payroll-process/payroll-process.component';
+import { PayrollEntriesComponent } from './components/payroll/payroll-entries/payroll-entries.component';
+import { PayrollReportsComponent } from './components/payroll/payroll-reports/payroll-reports.component';
 
 @NgModule({
   declarations: [
@@ -148,6 +157,15 @@ import { PaymentReceiptManagerComponent } from './components/settings/payment-re
     NewsFormComponent,
     NewsDetailComponent,
     PaymentReceiptManagerComponent,
+    PayrollDashboardComponent,
+    AncillaryStaffListComponent,
+    AncillaryStaffFormComponent,
+    SalaryStructureListComponent,
+    SalaryStructureFormComponent,
+    SalaryAssignmentComponent,
+    PayrollProcessComponent,
+    PayrollEntriesComponent,
+    PayrollReportsComponent,
   ],
   imports: [
     BrowserModule,

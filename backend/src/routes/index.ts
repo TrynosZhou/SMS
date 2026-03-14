@@ -16,6 +16,7 @@ import promotionRuleRoutes from './promotion-rule.routes';
 import recordBookRoutes from './recordBook.routes';
 import timetableRoutes from './timetable.routes';
 import newsRoutes from './news.routes';
+import payrollRoutes from './payroll.routes';
 
 const router = Router();
 
@@ -36,6 +37,7 @@ router.use('/promotion-rules', promotionRuleRoutes);
 router.use('/record-book', recordBookRoutes);
 router.use('/timetables', timetableRoutes);
 router.use('/news', newsRoutes);
+router.use('/payroll', payrollRoutes);
 
 export default router;
 

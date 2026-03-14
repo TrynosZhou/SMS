@@ -1,0 +1,129 @@
+<div class="container">
+  <div class="page-header">
+    <h1>{{ isEdit ? 'Edit' : 'Add' }} Ancillary Staff</h1>
+    <a routerLink="/payroll/employees" class="btn btn-secondary">← Back</a>
+  </div>
+
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <div class="loading-state" *ngIf="loading">Loading...</div>
+
+  <form *ngIf="!loading" (ngSubmit)="submit()" class="form-card card">
+    <div class="form-group" *ngIf="isEdit">
+      <label>Employee ID</label>
+      <input type="text" [(ngModel)]="form.employeeId" name="employeeId" class="form-control" readonly />
+    </div>
+    <div class="form-group form-hint" *ngIf="!isEdit">
+      <label>Employee ID</label>
+      <p class="auto-gen-note">Auto-generated on save (JPSA + random 7 digits, last 4 = year)</p>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>First Name *</label>
+        <input type="text" [(ngModel)]="form.firstName" name="firstName" class="form-control" required />
+      </div>
+      <div class="form-group">
+        <label>Last Name *</label>
+        <input type="text" [(ngModel)]="form.lastName" name="lastName" class="form-control" required />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Role</label>
+        <select [(ngModel)]="form.role" name="role" class="form-control">
+          <option value="">— Select Role —</option>
+          <option value="Cleaner">Cleaner</option>
+          <option value="Driver">Driver</option>
+          <option value="Security Guard">Security Guard</option>
+          <option value="Cook">Cook</option>
+          <option value="Lab Technician">Lab Technician</option>
+          <option value="Librarian">Librarian</option>
+          <option value="Secretary">Secretary</option>
+          <option value="Nurse">Nurse</option>
+          <option value="Maintenance">Maintenance</option>
+          <option value="Gardener">Gardener</option>
+          <option value="Clerk">Clerk</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Designation</label>
+        <select [(ngModel)]="form.designation" name="designation" class="form-control">
+          <option value="">— Select Designation —</option>
+          <option value="Support Staff">Support Staff</option>
+          <option value="Administrative Staff">Administrative Staff</option>
+          <option value="Maintenance Staff">Maintenance Staff</option>
+          <option value="Security Staff">Security Staff</option>
+          <option value="Kitchen Staff">Kitchen Staff</option>
+          <option value="Driver">Driver</option>
+          <option value="Librarian">Librarian</option>
+          <option value="Lab Assistant">Lab Assistant</option>
+          <option value="Nurse">Nurse</option>
+          <option value="Clerk">Clerk</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Department</label>
+        <select [(ngModel)]="form.department" name="department" class="form-control">
+          <option value="">— Select Department —</option>
+          <option value="Administration">Administration</option>
+          <option value="Maintenance">Maintenance</option>
+          <option value="Security">Security</option>
+          <option value="Kitchen">Kitchen</option>
+          <option value="Library">Library</option>
+          <option value="Laboratory">Laboratory</option>
+          <option value="Transport">Transport</option>
+          <option value="Health">Health</option>
+          <option value="Cleaning">Cleaning</option>
+          <option value="Grounds">Grounds</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Salary Type</label>
+        <select [(ngModel)]="form.salaryType" name="salaryType" class="form-control">
+          <option value="monthly">Monthly</option>
+          <option value="daily">Daily</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Employment Status</label>
+        <select [(ngModel)]="form.employmentStatus" name="employmentStatus" class="form-control">
+          <option value="active">Active</option>
+          <option value="terminated">Terminated</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Phone Number</label>
+      <input type="text" [(ngModel)]="form.phoneNumber" name="phoneNumber" class="form-control" />
+    </div>
+    <div class="form-group">
+      <label>Date Joined</label>
+      <input type="date" [(ngModel)]="form.dateJoined" name="dateJoined" class="form-control" />
+    </div>
+    <h3>Bank Details</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Bank Name</label>
+        <input type="text" [(ngModel)]="form.bankName" name="bankName" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>Account Number</label>
+        <input type="text" [(ngModel)]="form.bankAccountNumber" name="bankAccountNumber" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>Branch</label>
+        <input type="text" [(ngModel)]="form.bankBranch" name="bankBranch" class="form-control" />
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" (click)="cancel()">Cancel</button>
+      <button type="submit" class="btn btn-primary" [disabled]="submitting">{{ submitting ? 'Saving...' : 'Save' }}</button>
+    </div>
+  </form>
+</div>

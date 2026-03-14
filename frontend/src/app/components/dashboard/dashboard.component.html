@@ -153,6 +153,7 @@
             <li><a routerLink="/attendance/mark" class="feature-link">✅ Mark Attendance - Record daily student attendance</a></li>
             <li><a routerLink="/attendance/reports" class="feature-link">✅ Attendance Reports - View class attendance statistics</a></li>
             <li><a routerLink="/invoices" class="feature-link">✅ Manage Finance - Handle invoices and payments</a></li>
+            <li *ngIf="canAccessModule('payroll')"><a routerLink="/payroll" class="feature-link">✅ Payroll Manager - Process salaries and manage staff payroll</a></li>
             <li><a routerLink="/report-cards" class="feature-link">✅ View Report Cards - Access all student reports</a></li>
             <li><a routerLink="/rankings" class="feature-link">✅ View Rankings - See class and form rankings</a></li>
           </ul>
@@ -175,6 +176,7 @@
           <h3>Accountant Features</h3>
           <ul>
             <li><a routerLink="/invoices" class="feature-link">✅ Manage Finance - Create and track invoices and payments</a></li>
+            <li *ngIf="canAccessModule('payroll')"><a routerLink="/payroll" class="feature-link">✅ Payroll Manager - Process salaries and manage staff payroll</a></li>
             <li><a routerLink="/students" class="feature-link">✅ View Students - Access student directory for billing updates</a></li>
             <li><a routerLink="/outstanding-balance" class="feature-link">✅ Monitor Balances - Review outstanding balances and payment history</a></li>
           </ul>
@@ -283,6 +285,11 @@
           <a routerLink="/invoices" class="action-btn modern-action-btn danger-action" *ngIf="isAccountant()">
             <span class="action-icon">💰</span>
             <span class="action-text">Finance Overview</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/payroll" class="action-btn modern-action-btn secondary-action" *ngIf="(isAdmin() || isAccountant()) && canAccessModule('payroll')">
+            <span class="action-icon">💵</span>
+            <span class="action-text">Payroll Manager</span>
             <span class="action-arrow">→</span>
           </a>
           <a routerLink="/invoices/new" class="action-btn modern-action-btn danger-action" *ngIf="isSuperAdmin()">

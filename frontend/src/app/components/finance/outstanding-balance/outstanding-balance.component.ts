@@ -25,6 +25,7 @@ export class OutstandingBalanceComponent implements OnInit {
   activeTerm: string | null = null;
   availableTerms: string[] = [];
   totalPaymentsForTerm = 0;
+  totalOutstandingForTerm = 0;
   transactionsForTerm = 0;
   loadingTermStats = false;
   reconcileOutstandingTerm = 0;
@@ -98,11 +99,12 @@ export class OutstandingBalanceComponent implements OnInit {
         // Fallback: derive as totalInvoiced - totalOutstanding so it always matches cash_receipts.
         const invoiced = Number(data?.totalInvoiced) || 0;
         const outstanding = Number(data?.totalOutstanding) ?? 0;
-        const fromApi = data?.totalCollected;
+        const fromInvoices = data?.totalPaidFromInvoices;
         this.totalPaymentsForTerm =
-          (typeof fromApi === 'number' && !Number.isNaN(fromApi))
-            ? fromApi
+          (typeof fromInvoices === 'number' && !Number.isNaN(fromInvoices))
+            ? fromInvoices
             : (invoiced > 0 ? Math.round((invoiced - outstanding) * 100) / 100 : (Number(data?.totalPayments) || 0));
+        this.totalOutstandingForTerm = outstanding;
         this.transactionsForTerm = data?.count ?? 0;
         this.availableTerms = Array.isArray(data?.availableTerms) ? data.availableTerms : [];
         if (!this.term && data?.term) {
@@ -113,6 +115,7 @@ export class OutstandingBalanceComponent implements OnInit {
       },
       error: () => {
         this.totalPaymentsForTerm = 0;
+        this.totalOutstandingForTerm = 0;
         this.transactionsForTerm = 0;
         this.availableTerms = [];
         this.loadingTermStats = false;

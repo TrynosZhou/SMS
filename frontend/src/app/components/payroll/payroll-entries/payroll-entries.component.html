@@ -1,0 +1,78 @@
+<div class="container">
+  <div class="page-header">
+    <h1>
+      <span class="header-icon">📋</span>
+      Payroll Entries
+      <span *ngIf="run" class="run-label">({{ run.month }}/{{ run.year }})</span>
+    </h1>
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="downloadAllPayslips()" [disabled]="downloadingBulk || !entries.length" *ngIf="entries.length > 0">
+        {{ downloadingBulk ? 'Generating...' : '📦 Download All Payslips (ZIP)' }}
+      </button>
+      <button class="btn btn-secondary" (click)="back()">← Back to Process</button>
+    </div>
+  </div>
+
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <div class="loading-state" *ngIf="loading">Loading entries...</div>
+
+  <div class="table-wrapper card" *ngIf="!loading && entries.length > 0">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Gross</th>
+          <th>Allowances</th>
+          <th>Deductions</th>
+          <th>Net</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let e of entries">
+          <td>{{ getEmployeeName(e) }}</td>
+          <td>{{ currencySymbol }} {{ e.grossSalary | number:'1.2-2' }}</td>
+          <td>{{ currencySymbol }} {{ e.totalAllowances | number:'1.2-2' }}</td>
+          <td>{{ currencySymbol }} {{ e.totalDeductions | number:'1.2-2' }}</td>
+          <td>{{ currencySymbol }} {{ e.netSalary | number:'1.2-2' }}</td>
+          <td>
+            <button class="btn btn-sm btn-payslip" (click)="downloadPayslip(e)">📄 Payslip</button>
+            <button class="btn btn-sm btn-primary" *ngIf="isDraft()" (click)="openEdit(e)">✏️ Edit</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="empty-state" *ngIf="!loading && entries.length === 0">
+    <p>No entries for this run.</p>
+  </div>
+
+  <div class="modal-overlay" *ngIf="editingEntry" (click)="closeEdit()">
+    <div class="modal-content card" (click)="$event.stopPropagation()">
+      <h2>Edit Entry: {{ getEmployeeName(editingEntry) }}</h2>
+      <div class="form-group">
+        <label>Gross Salary</label>
+        <input type="number" [(ngModel)]="editForm.grossSalary" step="0.01" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>Allowances</label>
+        <input type="number" [(ngModel)]="editForm.totalAllowances" step="0.01" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>Deductions</label>
+        <input type="number" [(ngModel)]="editForm.totalDeductions" step="0.01" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>Net Salary</label>
+        <input type="number" [(ngModel)]="editForm.netSalary" step="0.01" class="form-control" />
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" (click)="closeEdit()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveEdit()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -166,14 +166,14 @@ export function createMarkSheetPDF(
       // Table Header
       yPos += 30;
       const tableStartY = yPos;
-      const rowHeight = 25;
+      const rowHeight = 28;
       const colWidths = {
         position: 35,
-        studentNumber: 70,
-        studentName: 120,
+        studentNumber: 75,
+        studentName: 200,
         subject: 60,
-        total: 60,
-        average: 50
+        total: 65,
+        average: 55
       };
 
       // Calculate subject column width
@@ -257,9 +257,8 @@ export function createMarkSheetPDF(
         doc.text(row.studentNumber, xPos + 5, yPos + 8);
         xPos += colWidths.studentNumber;
         
-        // Student Name
-        const studentName = row.studentName.length > 18 ? row.studentName.substring(0, 16) + '..' : row.studentName;
-        doc.text(studentName, xPos + 5, yPos + 8);
+        // Student Name - full name, no truncation; wrap if needed
+        doc.text(row.studentName, xPos + 5, yPos + 6, { width: colWidths.studentName - 10 });
         xPos += colWidths.studentName;
         
         // Subject marks

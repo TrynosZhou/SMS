@@ -1,0 +1,127 @@
+<div class="container assignments-page">
+  <header class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <span class="title-icon">🔗</span>
+        Salary Assignments
+      </h1>
+      <p class="subtitle">Assign salary structures to teachers and ancillary staff</p>
+    </div>
+    <a routerLink="/payroll" class="btn btn-secondary">← Back</a>
+  </header>
+
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <!-- Skeleton loading -->
+  <div class="skeleton-wrap" *ngIf="loading">
+    <div class="skeleton-card"></div>
+    <div class="skeleton-table"></div>
+  </div>
+
+  <div *ngIf="!loading">
+    <!-- Stats -->
+    <section class="stats-row">
+      <div class="stat-card">
+        <span class="stat-value">{{ assignments.length }}</span>
+        <span class="stat-label">Total Assignments</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ teacherAssignments.length }}</span>
+        <span class="stat-label">Teachers</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ ancillaryAssignments.length }}</span>
+        <span class="stat-label">Ancillary Staff</span>
+      </div>
+    </section>
+
+    <!-- Assign form -->
+    <section class="card assign-form">
+      <h2 class="form-title">Assign Salary</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Employee Type</label>
+          <select [(ngModel)]="employeeType" (ngModelChange)="onEmployeeTypeChange()" class="form-control">
+            <option value="ancillary">👷 Ancillary Staff</option>
+            <option value="teacher">👨‍🏫 Teacher</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Employee</label>
+          <select [(ngModel)]="selectedEmployeeId" class="form-control">
+            <option value="">— Select employee —</option>
+            <option *ngFor="let e of getEmployees()" [value]="e.id">{{ getEmployeeLabel(e) }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Salary Structure</label>
+          <select [(ngModel)]="selectedStructureId" class="form-control">
+            <option value="">— Select structure —</option>
+            <option *ngFor="let s of getFilteredStructures()" [value]="s.id">{{ s.name }} ({{ s.employeeCategory }})</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Effective From</label>
+          <input type="date" [(ngModel)]="effectiveFrom" class="form-control" />
+        </div>
+      </div>
+      <button class="btn btn-primary assign-btn" (click)="assign()" [disabled]="submitting">
+        {{ submitting ? 'Assigning...' : 'Assign Salary' }}
+      </button>
+    </section>
+
+    <!-- Assignments table -->
+    <section class="card assignments-card">
+      <div class="card-header-row">
+        <h2 class="card-title">Current Assignments</h2>
+        <div class="card-actions">
+          <input type="text" [(ngModel)]="searchQuery" class="search-input" placeholder="Search by name or structure..." />
+          <div class="filter-tabs">
+            <button class="tab" [class.active]="filterType === 'all'" (click)="filterType = 'all'">All</button>
+            <button class="tab" [class.active]="filterType === 'teacher'" (click)="filterType = 'teacher'">Teachers</button>
+            <button class="tab" [class.active]="filterType === 'ancillary'" (click)="filterType = 'ancillary'">Ancillary</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap" *ngIf="filteredAssignments.length > 0">
+        <table class="data-table modern-table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Category</th>
+              <th>Structure</th>
+              <th>Effective From</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let a of filteredAssignments" class="table-row">
+              <td>
+                <span class="emp-name">{{ getAssignmentEmployeeName(a) }}</span>
+              </td>
+              <td>
+                <span class="badge" [class.badge-teacher]="a.teacherId" [class.badge-ancillary]="a.ancillaryStaffId">
+                  {{ a.teacherId ? 'Teacher' : 'Ancillary' }}
+                </span>
+              </td>
+              <td>{{ a.salaryStructure?.name || '—' }}</td>
+              <td>{{ a.effectiveFrom | date:'dd MMM yyyy' }}</td>
+              <td>
+                <div class="actions-cell">
+                  <button class="btn btn-sm btn-danger" (click)="remove(a.id)">Remove</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="empty-state" *ngIf="filteredAssignments.length === 0">
+        <p *ngIf="assignments.length === 0">No salary assignments yet. Use the form above to assign salaries.</p>
+        <p *ngIf="assignments.length > 0">No assignments match your search or filter.</p>
+      </div>
+    </section>
+  </div>
+</div>

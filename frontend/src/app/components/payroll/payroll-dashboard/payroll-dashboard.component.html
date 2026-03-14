@@ -1,0 +1,109 @@
+<div class="container payroll-dashboard">
+  <header class="dashboard-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <span class="title-icon">💰</span>
+        Payroll Management
+      </h1>
+      <p class="subtitle">Manage staff payroll, salary structures, and payroll runs</p>
+    </div>
+  </header>
+
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <!-- Skeleton loading -->
+  <div class="skeleton-wrapper" *ngIf="loading">
+    <div class="stats-grid">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </div>
+    <div class="skeleton-links"></div>
+  </div>
+
+  <!-- Stats -->
+  <section class="stats-grid" *ngIf="!loading">
+    <div class="stat-card primary">
+      <div class="stat-icon-wrap">
+        <span class="stat-icon">👥</span>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ totalEmployees }}</div>
+        <div class="stat-label">Total Employees</div>
+        <div class="stat-sublabel">👨‍🏫 {{ totalTeachers }} Teachers · 👷 {{ totalAncillary }} Ancillary</div>
+      </div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-icon-wrap">
+        <span class="stat-icon">📋</span>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ runsThisMonth }}</div>
+        <div class="stat-label">Runs This Month</div>
+      </div>
+    </div>
+    <div class="stat-card info">
+      <div class="stat-icon-wrap">
+        <span class="stat-icon">📊</span>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ totalStructures }}</div>
+        <div class="stat-label">Salary Structures</div>
+      </div>
+    </div>
+    <div class="stat-card accent">
+      <div class="stat-icon-wrap">
+        <span class="stat-icon">🔗</span>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ totalAssignments }}</div>
+        <div class="stat-label">Assignments</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="dashboard-grid" *ngIf="!loading">
+    <!-- Quick actions -->
+    <section class="quick-actions card">
+      <h2 class="section-title">Quick Actions</h2>
+      <div class="actions-grid">
+        <a routerLink="/payroll/employees" class="action-card">
+          <span class="action-icon">👥</span>
+          <span class="action-text">Employees</span>
+        </a>
+        <a routerLink="/payroll/salary-structures" class="action-card">
+          <span class="action-icon">📊</span>
+          <span class="action-text">Salary Structures</span>
+        </a>
+        <a routerLink="/payroll/assignments" class="action-card">
+          <span class="action-icon">🔗</span>
+          <span class="action-text">Assignments</span>
+        </a>
+        <a routerLink="/payroll/process" class="action-card highlight">
+          <span class="action-icon">⚙️</span>
+          <span class="action-text">Process Payroll</span>
+        </a>
+        <a routerLink="/payroll/reports" class="action-card">
+          <span class="action-icon">📈</span>
+          <span class="action-text">Reports</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- Recent runs -->
+    <section class="recent-runs card">
+      <h2 class="section-title">Recent Payroll Runs</h2>
+      <div class="runs-list" *ngIf="recentRuns.length > 0">
+        <div class="run-item" *ngFor="let r of recentRuns">
+          <span class="run-period">{{ getRunLabel(r) }}</span>
+          <span class="run-status" [class.approved]="r.status === 'approved'">{{ r.status || 'pending' }}</span>
+        </div>
+      </div>
+      <div class="empty-runs" *ngIf="recentRuns.length === 0">
+        <p>No payroll runs yet.</p>
+        <a routerLink="/payroll/process" class="btn btn-sm btn-primary">Process first run →</a>
+      </div>
+    </section>
+  </div>
+</div>

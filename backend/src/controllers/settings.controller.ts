@@ -32,6 +32,7 @@ const DEFAULT_MODULE_ACCESS: Settings['moduleAccess'] = {
     rankings: true,
     finance: false,
     settings: false,
+    payroll: false,
     subjectManager: true,
     studentManager: true,
     examManager: true,
@@ -47,19 +48,22 @@ const DEFAULT_MODULE_ACCESS: Settings['moduleAccess'] = {
     reportCards: true,
     rankings: true,
     finance: false,
-    settings: false
+    settings: false,
+    payroll: false
   },
   parents: {
     reportCards: true,
     invoices: true,
-    dashboard: true
+    dashboard: true,
+    payroll: false
   },
   accountant: {
     students: true,
     invoices: true,
     finance: true,
     dashboard: true,
-    settings: false
+    settings: false,
+    payroll: true
   },
   admin: {
     students: true,
@@ -72,14 +76,16 @@ const DEFAULT_MODULE_ACCESS: Settings['moduleAccess'] = {
     finance: true,
     attendance: true,
     settings: true,
-    dashboard: true
+    dashboard: true,
+    payroll: true
   },
   students: {
     dashboard: true,
     subjects: true,
     assignments: true,
     reportCards: true,
-    finance: false
+    finance: false,
+    payroll: false
   },
   demoAccount: {
     dashboard: true,
@@ -95,7 +101,8 @@ const DEFAULT_MODULE_ACCESS: Settings['moduleAccess'] = {
     assignments: true,
     messages: true,
     accounts: true,
-    settings: false
+    settings: false,
+    payroll: true
   }
 };
 

@@ -35,6 +35,12 @@ import { LoginAttemptLog } from '../entities/LoginAttemptLog';
 import { ModuleAccessLog } from '../entities/ModuleAccessLog';
 import { UserActionLog } from '../entities/UserActionLog';
 import { News } from '../entities/News';
+import { AncillaryStaff } from '../entities/AncillaryStaff';
+import { SalaryStructure } from '../entities/SalaryStructure';
+import { SalaryAssignment } from '../entities/SalaryAssignment';
+import { PayrollRun } from '../entities/PayrollRun';
+import { PayrollEntry } from '../entities/PayrollEntry';
+import { PayrollEntryLine } from '../entities/PayrollEntryLine';
 
 // Load environment variables from .env file (backend folder so it works regardless of cwd)
 const backendRoot = path.resolve(__dirname, '../..');
@@ -59,7 +65,7 @@ console.log('[DB Config] Module type check - typeof module:', typeof module);
 
 console.log('[DB Config] Preparing entity list...');
 // Try using entity classes first, fallback to paths if needed
-const entities = [User, Student, Teacher, Class, Subject, Exam, Marks, Invoice, Parent, ParentStudent, Settings, ReportCardRemarks, Message, UniformItem, InvoiceUniformItem, UniformCharge, UniformChargeItem, UniformPaymentLog, Attendance, PromotionRule, RecordBook, StudentTransfer, Timetable, TimetableEntry, TimetableConfig, TimetableVersion, TimetableChangeLog, TeacherClass, PaymentLog, UserSessionLog, LoginAttemptLog, ModuleAccessLog, UserActionLog, News];
+const entities = [User, Student, Teacher, Class, Subject, Exam, Marks, Invoice, Parent, ParentStudent, Settings, ReportCardRemarks, Message, UniformItem, InvoiceUniformItem, UniformCharge, UniformChargeItem, UniformPaymentLog, Attendance, PromotionRule, RecordBook, StudentTransfer, Timetable, TimetableEntry, TimetableConfig, TimetableVersion, TimetableChangeLog, TeacherClass, PaymentLog, UserSessionLog, LoginAttemptLog, ModuleAccessLog, UserActionLog, News, AncillaryStaff, SalaryStructure, SalaryAssignment, PayrollRun, PayrollEntry, PayrollEntryLine];
 console.log('[DB Config] Entity count:', entities.length);
 console.log('[DB Config] Entity names:', entities.map(e => e?.name || 'unknown').join(', '));
 console.log('[DB Config] Checking each entity...');

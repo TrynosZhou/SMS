@@ -115,6 +115,7 @@ export class Settings {
       rankings?: boolean;
       finance?: boolean;
       settings?: boolean;
+      payroll?: boolean;
       // Fine-grained module manager toggles for the Universal Teacher account
       subjectManager?: boolean;
       studentManager?: boolean;
@@ -132,11 +133,13 @@ export class Settings {
       rankings?: boolean;
       finance?: boolean;
       settings?: boolean;
+      payroll?: boolean;
     };
     parents?: {
       reportCards?: boolean;
       invoices?: boolean;
       dashboard?: boolean;
+      payroll?: boolean;
     };
     accountant?: {
       students?: boolean;
@@ -144,6 +147,7 @@ export class Settings {
       finance?: boolean;
       dashboard?: boolean;
       settings?: boolean;
+      payroll?: boolean;
     };
     admin?: {
       students?: boolean;
@@ -157,6 +161,7 @@ export class Settings {
       attendance?: boolean;
       settings?: boolean;
       dashboard?: boolean;
+      payroll?: boolean;
     };
     students?: {
       dashboard?: boolean;
@@ -164,6 +169,7 @@ export class Settings {
       assignments?: boolean;
       reportCards?: boolean;
       finance?: boolean;
+      payroll?: boolean;
     };
     demoAccount?: {
       dashboard?: boolean;
@@ -180,6 +186,7 @@ export class Settings {
       messages?: boolean;
       accounts?: boolean;
       settings?: boolean;
+      payroll?: boolean;
     };
   } | null;
 
