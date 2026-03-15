@@ -506,16 +506,6 @@
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
-.btn-idcard {
-  background: #0d9488;
-  color: white;
-}
-
-.btn-idcard:hover {
-  background: #0f766e;
-  transform: translateY(-2px);
-}
-
 .btn-account {
   background: #059669;
   color: white;
@@ -1114,13 +1104,6 @@
   color: #1d4ed8;
 }
 
-.clickable-id::after {
-  content: ' 🪪';
-}
-
-.clickable-id:hover::after {
-  opacity: 0.7;
-}
 
 /* Edit Modal Styles */
 .edit-modal {

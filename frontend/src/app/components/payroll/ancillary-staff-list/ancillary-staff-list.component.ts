@@ -67,6 +67,12 @@ export class AncillaryStaffListComponent implements OnInit {
     return this.teachers.filter((t: any) => this.hasSalaryAssigned(t.id)).length;
   }
 
+  formatDateOfJoining(value: string | Date | null | undefined): string {
+    if (value == null || value === '') return '—';
+    const d = typeof value === 'string' ? new Date(value) : value;
+    return isNaN(d.getTime()) ? '—' : d.toISOString().slice(0, 10);
+  }
+
   constructor(
     private payrollService: PayrollService,
     private teacherService: TeacherService,
@@ -134,6 +140,8 @@ export class AncillaryStaffListComponent implements OnInit {
     if (field === 'name') {
       this.editFirstName = row.firstName || '';
       this.editLastName = row.lastName || '';
+    } else if (field === 'dateJoined') {
+      this.editValue = this.formatDateOfJoining(row.dateJoined) === '—' ? '' : this.formatDateOfJoining(row.dateJoined);
     } else {
       let raw = row[field];
       if (field === 'phoneNumber') raw = row.phoneNumber ?? row.phone;
@@ -162,6 +170,9 @@ export class AncillaryStaffListComponent implements OnInit {
         this.error = 'First name and last name are required';
         return;
       }
+    } else if (field === 'dateJoined') {
+      const v = (this.editValue || '').trim();
+      payload = { dateJoined: v && !isNaN(new Date(v).getTime()) ? v : null };
     } else {
       payload = { [field]: this.editValue };
     }

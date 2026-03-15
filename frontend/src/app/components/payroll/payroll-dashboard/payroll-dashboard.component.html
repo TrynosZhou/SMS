@@ -88,10 +88,6 @@
           <span class="action-icon">📈</span>
           <span class="action-text">Reports</span>
         </a>
-        <button type="button" class="action-card action-card-button" (click)="openLoansModal()">
-          <span class="action-icon">🏦</span>
-          <span class="action-text">Loans</span>
-        </button>
         <a routerLink="/payroll/loan-overview" class="action-card">
           <span class="action-icon">📋</span>
           <span class="action-text">Loan Overview</span>
@@ -113,64 +109,5 @@
         <a routerLink="/payroll/process" class="btn btn-sm btn-primary">Process first run →</a>
       </div>
     </section>
-  </div>
-
-  <!-- Loans modal -->
-  <div class="modal-overlay" *ngIf="loansModalOpen" (click)="closeLoansModal()">
-    <div class="modal-content loans-modal card" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h2 class="modal-title">Add loan</h2>
-        <button type="button" class="modal-close" (click)="closeLoansModal()" aria-label="Close">&times;</button>
-      </div>
-      <p class="modal-hint">Search by Employee ID, First Name, or Last Name. Then enter principal and tenure. The amount (principal + interest from Settings) will be added to the employee's loan account.</p>
-      <div class="alert alert-error" *ngIf="error">{{ error }}</div>
-      <div class="alert alert-success" *ngIf="loansSuccess">{{ loansSuccess }}</div>
-
-      <div class="loans-step loans-step-search">
-        <label class="step-label">Find employee</label>
-        <div class="search-row">
-          <input type="text" [(ngModel)]="loansSearchQuery" (keyup.enter)="searchLoansEmployee()" class="form-control search-input" placeholder="Employee ID, First Name, or Last Name" />
-          <button type="button" class="btn btn-primary" (click)="searchLoansEmployee()">Search</button>
-        </div>
-        <div class="search-results" *ngIf="loansSearchResults.length > 0">
-          <p class="results-caption" *ngIf="loansSearchResults.length > 1">Multiple matches — select one:</p>
-          <ul class="results-list">
-            <li *ngFor="let emp of loansSearchResults" class="result-item" (click)="selectLoansEmployee(emp)">
-              <span class="result-name">{{ emp.firstName }} {{ emp.lastName }}</span>
-              <span class="result-id">{{ emp.teacherId || emp.employeeId }}</span>
-              <span class="result-badge">{{ emp.type === 'teacher' ? 'Teacher' : 'Ancillary' }}</span>
-            </li>
-          </ul>
-        </div>
-        <p class="no-results" *ngIf="loansSearchQuery.trim() && loansSearchResults.length === 0 && loansAllEmployees.teachers.length + loansAllEmployees.staff.length > 0">No employee found. Try another search.</p>
-      </div>
-
-      <div class="loans-step loans-step-details" *ngIf="loansSelectedEmployee">
-        <div class="selected-employee">
-          <span class="selected-label">Selected:</span>
-          <strong>{{ loansSelectedEmployee.name }}</strong>
-          <span class="selected-id">({{ loansSelectedEmployee.employeeId }})</span>
-          <button type="button" class="btn btn-sm btn-secondary" (click)="clearLoansSelection()">Change</button>
-        </div>
-        <div class="form-group">
-          <label>Principal amount</label>
-          <input type="number" [(ngModel)]="loansPrincipal" min="0" step="0.01" class="form-control" placeholder="0.00" />
-        </div>
-        <div class="form-group">
-          <label>Tenure period</label>
-          <select [(ngModel)]="loansTenure" class="form-control">
-            <option [value]="1">1 month</option>
-            <option [value]="2">2 months</option>
-            <option [value]="3">3 months</option>
-          </select>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" (click)="closeLoansModal()">Cancel</button>
-          <button type="button" class="btn btn-primary" (click)="submitLoans()" [disabled]="loansSubmitting || !loansPrincipal || loansPrincipal <= 0">
-            {{ loansSubmitting ? 'Adding...' : 'Add to loan account' }}
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </div>

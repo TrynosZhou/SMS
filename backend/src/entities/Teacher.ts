@@ -30,6 +30,10 @@ export class Teacher {
   @Column({ type: 'date', nullable: true })
   dateOfBirth: Date;
 
+  /** Date the teacher joined the school (for payslip and records). */
+  @Column({ type: 'date', nullable: true })
+  dateJoined: Date | null;
+
   @Column({ nullable: true })
   sex: string | null;
 

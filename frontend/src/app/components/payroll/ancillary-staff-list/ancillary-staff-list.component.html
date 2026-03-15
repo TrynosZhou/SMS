@@ -76,6 +76,7 @@
               <th>Name</th>
               <th>Email</th>
               <th>Phone</th>
+              <th>Date of Joining</th>
               <th>Salary</th>
             </tr>
           </thead>
@@ -85,6 +86,7 @@
               <td class="emp-name editable-cell" (click)="openEdit('teacher', t, 'name', 'Name')" title="Click to edit">{{ t.firstName }} {{ t.lastName }}</td>
               <td class="editable-cell" (click)="openEdit('teacher', t, 'email', 'Email')" title="Click to edit">{{ t.user?.email || t.email || '—' }}</td>
               <td class="editable-cell" (click)="openEdit('teacher', t, 'phoneNumber', 'Phone')" title="Click to edit">{{ t.phoneNumber || t.phone || '—' }}</td>
+              <td class="editable-cell" (click)="openEdit('teacher', t, 'dateJoined', 'Date of Joining')" title="Click to edit">{{ formatDateOfJoining(t.dateJoined) }}</td>
               <td>
                 <span class="badge" [class.badge-success]="hasSalaryAssigned(t.id)" [class.badge-warning]="!hasSalaryAssigned(t.id)">
                   {{ hasSalaryAssigned(t.id) ? 'Assigned' : 'Not assigned' }}
@@ -110,6 +112,7 @@
               <th>Name</th>
               <th>Role</th>
               <th>Department</th>
+              <th>Date of Joining</th>
               <th>Status</th>
               <th>Salary Type</th>
               <th>Actions</th>
@@ -121,6 +124,7 @@
               <td class="emp-name editable-cell" (click)="openEdit('ancillary', s, 'name', 'Name')" title="Click to edit">{{ s.firstName }} {{ s.lastName }}</td>
               <td class="editable-cell" (click)="openEdit('ancillary', s, 'role', 'Role')" title="Click to edit">{{ s.role || '—' }}</td>
               <td class="editable-cell" (click)="openEdit('ancillary', s, 'department', 'Department')" title="Click to edit">{{ s.department || '—' }}</td>
+              <td class="editable-cell" (click)="openEdit('ancillary', s, 'dateJoined', 'Date of Joining')" title="Click to edit">{{ formatDateOfJoining(s.dateJoined) }}</td>
               <td>
                 <span class="badge badge-success editable-cell badge-editable" (click)="openEdit('ancillary', s, 'employmentStatus', 'Status')" title="Click to edit">{{ s.employmentStatus || 'active' }}</span>
               </td>
@@ -180,7 +184,14 @@
               </select>
             </div>
           </ng-container>
-          <ng-container *ngIf="editContext.field !== 'name' && editContext.field !== 'employmentStatus' && editContext.field !== 'salaryType'">
+          <ng-container *ngIf="editContext.field === 'dateJoined'">
+            <div class="form-group">
+              <label>Date of Joining</label>
+              <input type="date" [(ngModel)]="editValue" class="form-input" />
+              <p class="form-hint">Leave empty if not set.</p>
+            </div>
+          </ng-container>
+          <ng-container *ngIf="editContext.field !== 'name' && editContext.field !== 'employmentStatus' && editContext.field !== 'salaryType' && editContext.field !== 'dateJoined'">
             <div class="form-group">
               <label>{{ editContext.label }}</label>
               <input type="text" [(ngModel)]="editValue" class="form-input" [placeholder]="editContext.label" />

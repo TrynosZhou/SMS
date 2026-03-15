@@ -24,7 +24,7 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
-    const { firstName, lastName, nationalId, phoneNumber, address, dateOfBirth, subjectIds, classIds, photo, sex,
+    const { firstName, lastName, nationalId, phoneNumber, address, dateOfBirth, dateJoined, subjectIds, classIds, photo, sex,
       bankName, bankAccountNumber, bankBranch, paymentMethod } = req.body;
     
     // Validate required fields
@@ -95,6 +95,12 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
       normalizedPhoneNumber = phoneValidation.normalized || phoneNumber.trim();
     }
 
+    let parsedDateJoined: Date | null = null;
+    if (dateJoined) {
+      const d = typeof dateJoined === 'string' ? new Date(dateJoined) : dateJoined;
+      if (!isNaN(d.getTime())) parsedDateJoined = d;
+    }
+
     const teacherData: Partial<Teacher> = {
       firstName: normalizedFirstName,
       lastName: normalizedLastName,
@@ -107,7 +113,8 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
       bankName: bankName ? String(bankName).trim() : null,
       bankAccountNumber: bankAccountNumber ? String(bankAccountNumber).trim() : null,
       bankBranch: bankBranch ? String(bankBranch).trim() : null,
-      paymentMethod: paymentMethod === 'bank' || paymentMethod === 'both' ? paymentMethod : 'cash'
+      paymentMethod: paymentMethod === 'bank' || paymentMethod === 'both' ? paymentMethod : 'cash',
+      dateJoined: parsedDateJoined
     };
 
     // Only include dateOfBirth if it's provided
@@ -627,7 +634,7 @@ export const updateTeacher = async (req: AuthRequest, res: Response) => {
     }
 
     const { id } = req.params;
-    const { firstName, lastName, nationalId, email, phoneNumber, address, dateOfBirth, subjectIds, classIds, photo, sex,
+    const { firstName, lastName, nationalId, email, phoneNumber, address, dateOfBirth, dateJoined, subjectIds, classIds, photo, sex,
       bankName, bankAccountNumber, bankBranch, paymentMethod } = req.body;
     
     const teacherRepository = AppDataSource.getRepository(Teacher);
@@ -679,6 +686,9 @@ export const updateTeacher = async (req: AuthRequest, res: Response) => {
       if (!isNaN(parsedDate.getTime())) {
         teacher.dateOfBirth = parsedDate;
       }
+    }
+    if (dateJoined !== undefined) {
+      teacher.dateJoined = dateJoined && !isNaN(new Date(dateJoined).getTime()) ? new Date(dateJoined) : null;
     }
 
     if (bankName !== undefined) (teacher as any).bankName = bankName ? String(bankName).trim() : null;
