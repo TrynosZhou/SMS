@@ -103,10 +103,11 @@ export function createPayslipPDF(data: PayslipPDFData): Promise<Buffer> {
       const textLeft = margin + 8;
       const hasNationalId = !!nationalId && String(nationalId).trim().length > 0;
       const empCardH = 56 + (hasNationalId ? 14 : 0) + (showBankDetails ? 28 : 0);
+      const gridColor = '#9ca3af';
       doc.rect(margin, yPos, contentWidth, empCardH)
         .fillColor('#ffffff')
         .fill()
-        .strokeColor('#e2e8f0')
+        .strokeColor(gridColor)
         .lineWidth(1)
         .stroke();
 
@@ -135,81 +136,98 @@ export function createPayslipPDF(data: PayslipPDFData): Promise<Buffer> {
       }
       yPos += empCardH + 6;
 
-      // Salary breakdown (compact) - same left align as employee (textLeft)
-      doc.fontSize(12).font('Helvetica-Bold').fillColor('#0f172a');
-      doc.text('Salary Breakdown', textLeft, yPos);
-      yPos += 12;
-
+      const rawLines = (payrollEntry as any).lines;
+      const lines = Array.isArray(rawLines) ? rawLines : [];
+      const typeOf = (l: any) => String(l?.componentType || '').toLowerCase();
+      const earningsLines = lines.filter((l: any) => {
+        const t = typeOf(l);
+        return t === 'basic' || t === 'allowance';
+      });
+      const deductionLines = lines.filter((l: any) => typeOf(l) === 'deduction');
+      const totalEarnings = earningsLines.reduce((s: number, l: any) => s + parseAmount(l.amount), 0);
+      const totalDeductions = deductionLines.reduce((s: number, l: any) => s + parseAmount(l.amount), 0);
       const tableStartX = margin;
       const tableWidth = contentWidth;
-      const rowHeight = 18;
-      const headerTwoRows = 36;
+      const rowHeight = 16;
       const col1 = textLeft;
-      const col2 = tableStartX + 260;
-      const col3 = tableStartX + tableWidth - 90;
-      doc.rect(tableStartX, yPos, tableWidth, headerTwoRows)
-        .fillColor('#1e40af')
-        .fill();
-      doc.fontSize(12).font('Helvetica-Bold').fillColor('#ffffff');
-      doc.text('Component', col1, yPos + 4);
-      doc.text('Type', col2, yPos + 4);
-      doc.text('Amount', col3, yPos + 4, { align: 'right', width: 80 });
-      doc.fontSize(11).font('Helvetica').fillColor('#93c5fd');
-      doc.text(currencySymbol, col3, yPos + 22, { align: 'right', width: 80 });
-      yPos += headerTwoRows;
-
-      const lines = (payrollEntry as any).lines || [];
-      const maxTableRows = Math.min(lines.length, 15);
-      let rowIndex = 0;
-      for (let i = 0; i < maxTableRows; i++) {
-        const line = lines[i];
-        const bg = rowIndex % 2 === 0 ? '#f8fafc' : '#ffffff';
-        doc.rect(tableStartX, yPos, tableWidth, rowHeight).fillColor(bg).fill();
-        doc.rect(tableStartX, yPos, tableWidth, rowHeight).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
-        doc.fontSize(12).font('Helvetica').fillColor('#334155');
-        doc.text((line.componentName || '—').slice(0, 40), col1, yPos + 3);
-        doc.text(String(line.componentType || '—').charAt(0).toUpperCase() + String(line.componentType || '').slice(1), col2, yPos + 3);
-        doc.text(formatNumber(parseAmount(line.amount)), col3, yPos + 3, { align: 'right', width: 80 });
-        yPos += rowHeight;
-        rowIndex++;
-      }
-      if (lines.length > maxTableRows) {
-        doc.fontSize(12).fillColor('#64748b');
-        doc.text(`... and ${lines.length - maxTableRows} more component(s)`, col1, yPos + 3);
-        yPos += rowHeight;
-      }
-
-      // Totals (compact)
-      yPos += 6;
-      const totalRowH = 16;
-      const totalRows = [
-        { label: 'Gross Salary', value: parseAmount(payrollEntry.grossSalary), bold: false },
-        { label: 'Total Allowances', value: parseAmount(payrollEntry.totalAllowances), bold: false },
-        { label: 'Total Deductions', value: parseAmount(payrollEntry.totalDeductions), bold: false },
-        { label: 'Net Salary', value: parseAmount(payrollEntry.netSalary), bold: true }
-      ];
       const colLabelW = tableWidth - 90;
       const colValW = 90;
       const colValX = tableStartX + colLabelW;
-      for (let i = 0; i < totalRows.length; i++) {
-        const r = totalRows[i];
-        const cellY = yPos + i * totalRowH;
-        const bg = i % 2 === 0 ? '#f8fafc' : '#ffffff';
-        doc.rect(tableStartX, cellY, colLabelW, totalRowH).fillColor(bg).fill().strokeColor('#e2e8f0').lineWidth(0.5).stroke();
-        doc.rect(colValX, cellY, colValW, totalRowH).fillColor(bg).fill().strokeColor('#e2e8f0').lineWidth(0.5).stroke();
-        if (r.bold) {
-          doc.fontSize(12).font('Helvetica-Bold').fillColor('#0f172a');
-          doc.text(r.label, col1, cellY + 3);
-          doc.fillColor('#059669');
-          doc.text(formatNumber(r.value), colValX, cellY + 3, { align: 'right', width: colValW - 8 });
-        } else {
-          doc.fontSize(12).font('Helvetica').fillColor('#475569');
-          doc.text(r.label, col1, cellY + 3);
-          doc.fillColor('#334155');
-          doc.text(formatNumber(r.value), colValX, cellY + 3, { align: 'right', width: colValW - 8 });
+
+      const drawSection = (heading: string, items: { label: string; amount: number }[], bgHeader: string) => {
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#0f172a');
+        doc.text(heading, textLeft, yPos);
+        yPos += 10;
+        doc.rect(tableStartX, yPos, tableWidth, rowHeight).fillColor(bgHeader).fill();
+        doc.rect(tableStartX, yPos, tableWidth, rowHeight).strokeColor(gridColor).lineWidth(0.5).stroke();
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#334155');
+        doc.text('Item', col1, yPos + 3);
+        doc.text('Amount', colValX, yPos + 3, { align: 'right', width: colValW - 6 });
+        yPos += rowHeight;
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          const bg = i % 2 === 0 ? '#f8fafc' : '#ffffff';
+          doc.rect(tableStartX, yPos, tableWidth, rowHeight).fillColor(bg).fill();
+          doc.rect(tableStartX, yPos, tableWidth, rowHeight).strokeColor(gridColor).lineWidth(0.5).stroke();
+          doc.fontSize(10).font('Helvetica').fillColor('#334155');
+          doc.text(item.label.slice(0, 45), col1, yPos + 3);
+          doc.text(formatNumber(item.amount), colValX, yPos + 3, { align: 'right', width: colValW - 6 });
+          yPos += rowHeight;
         }
+        yPos += 4;
+      };
+
+      // --- EARNINGS ---
+      const earningsItems: { label: string; amount: number }[] = [];
+      const basicLines = earningsLines.filter((l: any) => typeOf(l) === 'basic');
+      const allowanceLines = earningsLines.filter((l: any) => typeOf(l) === 'allowance');
+      basicLines.forEach((l: any) => {
+        earningsItems.push({ label: (l.componentName && l.componentName.trim()) ? l.componentName : 'Basic salary', amount: parseAmount(l.amount) });
+      });
+      allowanceLines.forEach((l: any) => {
+        const name = (l.componentName || '').trim() || 'Allowance';
+        earningsItems.push({ label: name, amount: parseAmount(l.amount) });
+      });
+      if (earningsItems.length === 0) {
+        earningsItems.push({ label: 'Basic salary', amount: parseAmount(payrollEntry.grossSalary) });
       }
-      yPos += totalRows.length * totalRowH;
+      drawSection('EARNINGS', earningsItems, '#e0f2fe');
+      doc.rect(tableStartX, yPos, colLabelW, rowHeight).fillColor('#f0fdf4').fill().strokeColor(gridColor).lineWidth(0.5).stroke();
+      doc.rect(colValX, yPos, colValW, rowHeight).fillColor('#f0fdf4').fill().strokeColor(gridColor).lineWidth(0.5).stroke();
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#0f172a');
+      doc.text('Total Earnings', col1, yPos + 3);
+      doc.text(formatNumber(totalEarnings), colValX, yPos + 3, { align: 'right', width: colValW - 6 });
+      yPos += rowHeight + 8;
+
+      // --- DEDUCTIONS ---
+      const deductionItems: { label: string; amount: number }[] = [];
+      deductionLines.forEach((l: any) => {
+        const name = String(l.componentName || '').trim();
+        const isLoan = /loan|repayment|salary advance/i.test(name);
+        deductionItems.push({
+          label: name ? (isLoan ? 'Loan deduction' : name) : 'Deduction',
+          amount: parseAmount(l.amount)
+        });
+      });
+      if (deductionItems.length === 0) {
+        deductionItems.push({ label: 'No deductions', amount: 0 });
+      }
+      drawSection('DEDUCTIONS', deductionItems, '#fee2e2');
+      doc.rect(tableStartX, yPos, colLabelW, rowHeight).fillColor('#fef2f2').fill().strokeColor(gridColor).lineWidth(0.5).stroke();
+      doc.rect(colValX, yPos, colValW, rowHeight).fillColor('#fef2f2').fill().strokeColor(gridColor).lineWidth(0.5).stroke();
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#0f172a');
+      doc.text('Total Deductions', col1, yPos + 3);
+      doc.text(formatNumber(totalDeductions), colValX, yPos + 3, { align: 'right', width: colValW - 6 });
+      yPos += rowHeight + 8;
+
+      // Net Salary
+      const totalRowH = 18;
+      doc.rect(tableStartX, yPos, colLabelW, totalRowH).fillColor('#ecfdf5').fill().strokeColor(gridColor).lineWidth(1).stroke();
+      doc.rect(colValX, yPos, colValW, totalRowH).fillColor('#ecfdf5').fill().strokeColor(gridColor).lineWidth(1).stroke();
+      doc.fontSize(12).font('Helvetica-Bold').fillColor('#065f46');
+      doc.text('Net Salary', col1, yPos + 5);
+      doc.text(formatNumber(parseAmount(payrollEntry.netSalary)), colValX, yPos + 5, { align: 'right', width: colValW - 8 });
+      yPos += totalRowH;
 
       // Footer on first page only: switch back to page 0 so footer is on page 1 (no blank pages)
       if (typeof doc.switchToPage === 'function') {

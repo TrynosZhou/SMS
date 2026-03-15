@@ -241,3 +241,128 @@
 .empty-state p { margin: 0; }
 .empty-state a { color: var(--primary-color); text-decoration: none; }
 .empty-state a:hover { text-decoration: underline; }
+
+/* Editable cells */
+.editable-cell {
+  cursor: pointer;
+  transition: background-color 0.15s, outline 0.15s;
+}
+
+.editable-cell:hover {
+  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.08);
+  outline: 1px solid rgba(var(--primary-rgb, 59, 130, 246), 0.3);
+  outline-offset: -1px;
+}
+
+.badge-editable {
+  cursor: pointer;
+  display: inline-block;
+}
+
+.badge-editable:hover {
+  filter: brightness(0.95);
+  outline: 1px solid rgba(0, 0, 0, 0.2);
+  outline-offset: 1px;
+}
+
+/* Edit modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: var(--bg-primary, #fff);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  min-width: 320px;
+  max-width: 440px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--gray-200, #e5e7eb);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  padding: 0.25rem;
+  margin: -0.25rem 0 0 0;
+}
+
+.modal-close:hover {
+  color: var(--text-primary, #111827);
+}
+
+.modal-body {
+  padding: 1.25rem 1.25rem;
+}
+
+.modal-body .form-group {
+  margin-bottom: 1rem;
+}
+
+.modal-body .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.modal-body label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary, #4b5563);
+  margin-bottom: 0.35rem;
+}
+
+.modal-body .form-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--gray-300, #d1d5db);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+
+.modal-body .form-input:focus {
+  outline: none;
+  border-color: var(--primary-color, #2563eb);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.modal-error {
+  color: #b91c1c;
+  font-size: 0.875rem;
+  margin: 0 0 0.75rem 0;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--gray-200, #e5e7eb);
+}

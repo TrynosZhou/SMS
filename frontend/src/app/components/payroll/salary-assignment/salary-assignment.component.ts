@@ -13,6 +13,8 @@ export class SalaryAssignmentComponent implements OnInit {
   teachers: any[] = [];
   structures: any[] = [];
   assignments: any[] = [];
+  /** Loan accounts with balance > 0 (from backend). */
+  loanAccounts: any[] = [];
   loading = false;
   error = '';
   success = '';
@@ -89,6 +91,10 @@ export class SalaryAssignmentComponent implements OnInit {
     });
     this.payrollService.getSalaryAssignments().subscribe({
       next: (data) => { this.assignments = data || []; },
+      error: () => {}
+    });
+    this.payrollService.getLoanBalances().subscribe({
+      next: (data) => { this.loanAccounts = data || []; },
       error: () => {}
     });
   }
@@ -219,5 +225,21 @@ export class SalaryAssignmentComponent implements OnInit {
 
   hasCustomAmounts(a: any): boolean {
     return Array.isArray(a.customComponents) && a.customComponents.length > 0;
+  }
+
+  /** Loan balance for the currently selected employee in assign form. */
+  getSelectedEmployeeLoanBalance(): number {
+    if (!this.selectedEmployeeId) return 0;
+    const acc = this.loanAccounts.find((la: any) =>
+      (la.teacherId && la.teacherId === this.selectedEmployeeId) ||
+      (la.ancillaryStaffId && la.ancillaryStaffId === this.selectedEmployeeId)
+    );
+    return acc ? Number(acc.balance) || 0 : 0;
+  }
+
+  getLoanAccountEmployeeName(account: any): string {
+    if (account?.teacher) return `${account.teacher.firstName || ''} ${account.teacher.lastName || ''}`.trim();
+    if (account?.ancillaryStaff) return `${account.ancillaryStaff.firstName || ''} ${account.ancillaryStaff.lastName || ''}`.trim();
+    return '—';
   }
 }

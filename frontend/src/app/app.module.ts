@@ -86,6 +86,7 @@ import { SalaryAssignmentComponent } from './components/payroll/salary-assignmen
 import { PayrollProcessComponent } from './components/payroll/payroll-process/payroll-process.component';
 import { PayrollEntriesComponent } from './components/payroll/payroll-entries/payroll-entries.component';
 import { PayrollReportsComponent } from './components/payroll/payroll-reports/payroll-reports.component';
+import { LoanOverviewComponent } from './components/payroll/loan-overview/loan-overview.component';
 
 @NgModule({
   declarations: [
@@ -166,6 +167,7 @@ import { PayrollReportsComponent } from './components/payroll/payroll-reports/pa
     PayrollProcessComponent,
     PayrollEntriesComponent,
     PayrollReportsComponent,
+    LoanOverviewComponent,
   ],
   imports: [
     BrowserModule,

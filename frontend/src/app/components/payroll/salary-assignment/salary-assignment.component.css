@@ -75,6 +75,8 @@
   font-weight: 500;
 }
 
+.stat-card-loan .stat-value { color: #b45309; }
+
 /* Assign form */
 .assign-form {
   padding: 1.5rem;
@@ -112,6 +114,48 @@
 }
 
 .assign-btn { margin-top: 0.5rem; }
+
+.loan-balance-alert {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: #fef3c7;
+  border-radius: 8px;
+  border: 1px solid #fcd34d;
+  font-size: 0.9rem;
+  color: #92400e;
+}
+
+.loan-balance-label { margin-right: 0.35rem; }
+.loan-balance-hint { font-size: 0.85rem; opacity: 0.9; margin-left: 0.5rem; }
+
+/* Loan accounts section */
+.loan-accounts-card { padding: 1.5rem; margin-bottom: 1.5rem; }
+
+.loan-section-hint {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0 0 1rem 0;
+}
+
+.loan-section-hint a { color: var(--primary-color); text-decoration: none; }
+.loan-section-hint a:hover { text-decoration: underline; }
+
+.calculated-loan-box {
+  padding: 0.75rem 1rem;
+  background: var(--gray-50);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.modal-error {
+  color: #b91c1c;
+  font-size: 0.875rem;
+  margin: 0 0 0.75rem 0;
+}
 
 /* Negotiated amounts (assign form) */
 .custom-amounts-section {

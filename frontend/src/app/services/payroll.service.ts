@@ -88,6 +88,33 @@ export class PayrollService {
     return this.http.post(`${this.apiUrl}/entries/${entryId}/loan-deduction`, { principal, repaymentMonths });
   }
 
+  // Loan accounts (for assignments page)
+  getLoanBalances(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/loan-accounts`);
+  }
+
+  getLoanBalance(teacherId?: string, ancillaryStaffId?: string): Observable<{ balance: number; account: any }> {
+    const params: any = {};
+    if (teacherId) params.teacherId = teacherId;
+    if (ancillaryStaffId) params.ancillaryStaffId = ancillaryStaffId;
+    return this.http.get<{ balance: number; account: any }>(`${this.apiUrl}/loan-accounts/balance`, { params });
+  }
+
+  searchPayrollEmployees(query: string): Observable<{ type: string; id: string; firstName: string; lastName: string; teacherId?: string; employeeId?: string }[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/employees/search`, { params: { q: query || '' } });
+  }
+
+  getLoanHistory(teacherId?: string, ancillaryStaffId?: string): Observable<{ schedules: any[]; deductions: any[] }> {
+    const params: any = {};
+    if (teacherId) params.teacherId = teacherId;
+    if (ancillaryStaffId) params.ancillaryStaffId = ancillaryStaffId;
+    return this.http.get<{ schedules: any[]; deductions: any[] }>(`${this.apiUrl}/loan-accounts/history`, { params });
+  }
+
+  createLoan(data: { teacherId?: string; ancillaryStaffId?: string; principal: number; repaymentMonths: 1 | 2 | 3 }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/loan-accounts`, data);
+  }
+
   // Payslip PDF
   getPayslipPdf(entryId: string): Observable<Blob> {
     return this.http.get(`${this.apiUrl}/entries/${entryId}/payslip`, {

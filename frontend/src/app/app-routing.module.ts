@@ -78,6 +78,7 @@ import { SalaryAssignmentComponent } from './components/payroll/salary-assignmen
 import { PayrollProcessComponent } from './components/payroll/payroll-process/payroll-process.component';
 import { PayrollEntriesComponent } from './components/payroll/payroll-entries/payroll-entries.component';
 import { PayrollReportsComponent } from './components/payroll/payroll-reports/payroll-reports.component';
+import { LoanOverviewComponent } from './components/payroll/loan-overview/loan-overview.component';
 
 const routes: Routes = [
   { path: '', component: SplashComponent, data: { title: 'Junior Primary School Management System | Smart Edu System', description: 'Junior Primary School Management System - Manage students, teachers, classes, exams and attendance. School management for administrators, teachers and parents.', robots: 'index,follow' } },
@@ -144,6 +145,7 @@ const routes: Routes = [
   { path: 'payroll/process', component: PayrollProcessComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'payroll' } },
   { path: 'payroll/runs/:runId/entries', component: PayrollEntriesComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'payroll' } },
   { path: 'payroll/reports', component: PayrollReportsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'payroll' } },
+  { path: 'payroll/loan-overview', component: LoanOverviewComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'payroll' } },
   { path: 'settings/payment-receipt-manager', component: PaymentReceiptManagerComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'classes', component: ClassListComponent, canActivate: [AuthGuard] },
   { path: 'classes/lists', component: ClassListsComponent, canActivate: [AuthGuard] },

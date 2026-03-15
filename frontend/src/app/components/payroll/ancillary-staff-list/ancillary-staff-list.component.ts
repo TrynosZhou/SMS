@@ -21,6 +21,20 @@ export class AncillaryStaffListComponent implements OnInit {
   searchQuery = '';
   teacherFilter: 'all' | 'assigned' | 'unassigned' = 'all';
 
+  /** Inline edit modal */
+  modalOpen = false;
+  editContext: {
+    type: 'teacher' | 'ancillary';
+    id: string;
+    field: string;
+    label: string;
+    row: any;
+  } | null = null;
+  editValue = '';
+  editFirstName = '';
+  editLastName = '';
+  saving = false;
+
   get filteredTeachers(): any[] {
     let list = this.teachers;
     if (this.teacherFilter === 'assigned') list = list.filter((t: any) => this.hasSalaryAssigned(t.id));
@@ -111,6 +125,62 @@ export class AncillaryStaffListComponent implements OnInit {
       error: (err) => {
         this.error = err?.error?.message || 'Delete failed';
         setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  openEdit(type: 'teacher' | 'ancillary', row: any, field: string, label: string): void {
+    this.editContext = { type, id: row.id, field, label, row };
+    if (field === 'name') {
+      this.editFirstName = row.firstName || '';
+      this.editLastName = row.lastName || '';
+    } else {
+      let raw = row[field];
+      if (field === 'phoneNumber') raw = row.phoneNumber ?? row.phone;
+      if (field === 'email' && type === 'teacher' && row.user) raw = row.user.email ?? row.email;
+      this.editValue = raw != null ? String(raw) : '';
+    }
+    this.modalOpen = true;
+    this.error = '';
+  }
+
+  closeEdit(): void {
+    this.modalOpen = false;
+    this.editContext = null;
+    this.editValue = '';
+    this.editFirstName = '';
+    this.editLastName = '';
+  }
+
+  saveEdit(): void {
+    if (!this.editContext) return;
+    const { type, id, field } = this.editContext;
+    let payload: any;
+    if (field === 'name') {
+      payload = { firstName: (this.editFirstName || '').trim(), lastName: (this.editLastName || '').trim() };
+      if (!payload.firstName || !payload.lastName) {
+        this.error = 'First name and last name are required';
+        return;
+      }
+    } else {
+      payload = { [field]: this.editValue };
+    }
+    this.saving = true;
+    this.error = '';
+    const req = type === 'ancillary'
+      ? this.payrollService.updateAncillaryStaff(id, payload)
+      : this.teacherService.updateTeacher(id, payload);
+    req.subscribe({
+      next: () => {
+        this.saving = false;
+        this.success = 'Updated';
+        this.loadAll();
+        this.closeEdit();
+        setTimeout(() => this.success = '', 3000);
+      },
+      error: (err) => {
+        this.saving = false;
+        this.error = err?.error?.message || 'Update failed';
       }
     });
   }

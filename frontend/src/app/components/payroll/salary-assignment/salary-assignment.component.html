@@ -34,6 +34,10 @@
         <span class="stat-value">{{ ancillaryAssignments.length }}</span>
         <span class="stat-label">Ancillary Staff</span>
       </div>
+      <div class="stat-card stat-card-loan">
+        <span class="stat-value">{{ loanAccounts.length }}</span>
+        <span class="stat-label">With loan balance</span>
+      </div>
     </section>
 
     <!-- Assign form -->
@@ -66,6 +70,11 @@
           <input type="date" [(ngModel)]="effectiveFrom" class="form-control" />
         </div>
       </div>
+      <div class="loan-balance-alert" *ngIf="selectedEmployeeId && getSelectedEmployeeLoanBalance() > 0">
+        <span class="loan-balance-label">Pending loan balance:</span>
+        <strong>{{ getSelectedEmployeeLoanBalance() | number:'1.2-2' }}</strong>
+        <span class="loan-balance-hint">— Loan + interest is automatically deducted when you create a payroll run (equal installments over the loan tenure).</span>
+      </div>
       <!-- Negotiated amounts: each employee can have different amounts (from structure template, editable) -->
       <div class="custom-amounts-section" *ngIf="assignComponents.length > 0">
         <h3 class="custom-amounts-title">Salary amounts for this employee</h3>
@@ -86,6 +95,39 @@
       <button class="btn btn-primary assign-btn" (click)="assign()" [disabled]="submitting">
         {{ submitting ? 'Assigning...' : 'Assign Salary' }}
       </button>
+    </section>
+
+    <!-- Loan accounts (read-only: loans are created only from Payroll page) -->
+    <section class="card loan-accounts-card">
+      <div class="card-header-row">
+        <h2 class="card-title">Loan accounts</h2>
+      </div>
+      <p class="loan-section-hint">Employees with an outstanding loan balance. Loans are created only from the <a routerLink="/payroll">Payroll</a> page (Quick Actions → Loans). Principal + interest is automatically deducted when you create a payroll run: 1 month = full amount in one run; 2 or 3 months = equal installments over 2 or 3 runs.</p>
+      <div class="table-wrap" *ngIf="loanAccounts.length > 0">
+        <table class="data-table modern-table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Category</th>
+              <th>Pending balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let la of loanAccounts" class="table-row">
+              <td><span class="emp-name">{{ getLoanAccountEmployeeName(la) }}</span></td>
+              <td>
+                <span class="badge" [class.badge-teacher]="la.teacherId" [class.badge-ancillary]="la.ancillaryStaffId">
+                  {{ la.teacherId ? 'Teacher' : 'Ancillary' }}
+                </span>
+              </td>
+              <td><strong>{{ la.balance | number:'1.2-2' }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="empty-state" *ngIf="loanAccounts.length === 0">
+        <p>No loan balances. Create loans from the <a routerLink="/payroll">Payroll</a> page → Quick Actions → Loans.</p>
+      </div>
     </section>
 
     <!-- Assignments table -->
@@ -170,4 +212,5 @@
       </div>
     </div>
   </div>
+
 </div>

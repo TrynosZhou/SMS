@@ -20,6 +20,11 @@ import {
   getPayrollEntries,
   updatePayrollEntry,
   addLoanDeduction,
+  getLoanBalances,
+  getLoanBalance,
+  searchPayrollEmployees,
+  getLoanHistory,
+  createLoan,
   generatePayslipPDF,
   generateBulkPayslips,
   getPayrollReports
@@ -50,6 +55,13 @@ router.delete('/salary-assignments/:id', ...payAuth, removeSalaryAssignment);
 router.get('/runs', ...payAuth, getPayrollRuns);
 router.post('/runs', ...payAuth, createPayrollRun);
 router.put('/runs/:id/approve', ...payAuth, approvePayrollRun);
+
+// Loan accounts (for assignments page and loan overview)
+router.get('/loan-accounts', ...payAuth, getLoanBalances);
+router.get('/loan-accounts/balance', ...payAuth, getLoanBalance);
+router.get('/loan-accounts/history', ...payAuth, getLoanHistory);
+router.get('/employees/search', ...payAuth, searchPayrollEmployees);
+router.post('/loan-accounts', ...payAuth, createLoan);
 
 // Payroll Entries
 router.get('/runs/:runId/entries', ...payAuth, getPayrollEntries);

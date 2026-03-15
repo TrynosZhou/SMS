@@ -627,7 +627,7 @@ export const updateTeacher = async (req: AuthRequest, res: Response) => {
     }
 
     const { id } = req.params;
-    const { firstName, lastName, nationalId, phoneNumber, address, dateOfBirth, subjectIds, classIds, photo, sex,
+    const { firstName, lastName, nationalId, email, phoneNumber, address, dateOfBirth, subjectIds, classIds, photo, sex,
       bankName, bankAccountNumber, bankBranch, paymentMethod } = req.body;
     
     const teacherRepository = AppDataSource.getRepository(Teacher);
@@ -709,6 +709,20 @@ export const updateTeacher = async (req: AuthRequest, res: Response) => {
 
     // Save teacher
     await teacherRepository.save(teacher);
+
+    // Update linked User's email if provided (email is on User, not Teacher)
+    if (email !== undefined && teacher.userId) {
+      try {
+        const userRepository = AppDataSource.getRepository(User);
+        const newEmail = email && String(email).trim() ? String(email).trim() : null;
+        await userRepository.update(teacher.userId, { email: newEmail });
+      } catch (userErr: any) {
+        if (userErr?.code === '23505' || userErr?.message?.includes('unique constraint')) {
+          return res.status(400).json({ message: 'This email address is already in use by another account.' });
+        }
+        throw userErr;
+      }
+    }
 
     // Also link teacher to classes using the junction table (in addition to ManyToMany)
     if (classIds !== undefined) {
