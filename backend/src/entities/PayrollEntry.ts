@@ -30,6 +30,14 @@ export class PayrollEntry {
   @Column('decimal', { precision: 12, scale: 2, default: 0 })
   netSalary: number;
 
+  /** How salary is paid: cash, bank deposit, or both */
+  @Column({ type: 'varchar', default: 'cash' })
+  paymentMethod: 'cash' | 'bank' | 'both';
+
+  /** Bank name (from settings.banks) when paymentMethod is bank or both */
+  @Column({ type: 'varchar', nullable: true })
+  bankName: string | null;
+
   @ManyToOne(() => PayrollRun, pr => pr.entries, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'payrollRunId' })
   payrollRun: PayrollRun;

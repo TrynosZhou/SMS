@@ -56,7 +56,7 @@
         </div>
         <div class="form-group">
           <label>Salary Structure</label>
-          <select [(ngModel)]="selectedStructureId" class="form-control">
+          <select [(ngModel)]="selectedStructureId" (ngModelChange)="onStructureChange()" class="form-control">
             <option value="">— Select structure —</option>
             <option *ngFor="let s of getFilteredStructures()" [value]="s.id">{{ s.name }} ({{ s.employeeCategory }})</option>
           </select>
@@ -64,6 +64,23 @@
         <div class="form-group">
           <label>Effective From</label>
           <input type="date" [(ngModel)]="effectiveFrom" class="form-control" />
+        </div>
+      </div>
+      <!-- Negotiated amounts: each employee can have different amounts (from structure template, editable) -->
+      <div class="custom-amounts-section" *ngIf="assignComponents.length > 0">
+        <h3 class="custom-amounts-title">Salary amounts for this employee</h3>
+        <p class="custom-amounts-hint">Adjust amounts as negotiated. These override the structure defaults for this employee.</p>
+        <div class="components-edit-table">
+          <div class="component-row header-row">
+            <span class="col-name">Component</span>
+            <span class="col-type">Type</span>
+            <span class="col-amount">Amount</span>
+          </div>
+          <div class="component-row" *ngFor="let c of assignComponents; let i = index">
+            <span class="col-name">{{ c.name }}</span>
+            <span class="col-type">{{ c.type }}</span>
+            <span class="col-amount"><input type="number" [(ngModel)]="c.amount" [name]="'amt' + i" step="0.01" min="0" class="form-control input-amount" /></span>
+          </div>
         </div>
       </div>
       <button class="btn btn-primary assign-btn" (click)="assign()" [disabled]="submitting">
@@ -106,10 +123,11 @@
                   {{ a.teacherId ? 'Teacher' : 'Ancillary' }}
                 </span>
               </td>
-              <td>{{ a.salaryStructure?.name || '—' }}</td>
+              <td>{{ a.salaryStructure?.name || '—' }} <span class="badge-custom" *ngIf="hasCustomAmounts(a)">Custom</span></td>
               <td>{{ a.effectiveFrom | date:'dd MMM yyyy' }}</td>
               <td>
                 <div class="actions-cell">
+                  <button class="btn btn-sm btn-secondary" (click)="openEdit(a)">Edit</button>
                   <button class="btn btn-sm btn-danger" (click)="remove(a.id)">Remove</button>
                 </div>
               </td>
@@ -123,5 +141,33 @@
         <p *ngIf="assignments.length > 0">No assignments match your search or filter.</p>
       </div>
     </section>
+  </div>
+
+  <!-- Edit assignment modal -->
+  <div class="modal-overlay" *ngIf="editingAssignment" (click)="closeEdit()">
+    <div class="modal-content card" (click)="$event.stopPropagation()">
+      <h2>Edit salary: {{ getAssignmentEmployeeName(editingAssignment) }}</h2>
+      <p class="modal-hint">Change effective date or negotiated amounts. Structure: {{ editingAssignment.salaryStructure?.name || '—' }}</p>
+      <div class="form-group">
+        <label>Effective From</label>
+        <input type="date" [(ngModel)]="editForm.effectiveFrom" class="form-control" />
+      </div>
+      <div class="components-edit-table" *ngIf="editForm.components.length > 0">
+        <div class="component-row header-row">
+          <span class="col-name">Component</span>
+          <span class="col-type">Type</span>
+          <span class="col-amount">Amount</span>
+        </div>
+        <div class="component-row" *ngFor="let c of editForm.components; let i = index">
+          <span class="col-name">{{ c.name }}</span>
+          <span class="col-type">{{ c.type }}</span>
+          <span class="col-amount"><input type="number" [(ngModel)]="c.amount" [name]="'editAmt' + i" step="0.01" min="0" class="form-control input-amount" /></span>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeEdit()">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="saveEdit()" [disabled]="savingEdit">{{ savingEdit ? 'Saving...' : 'Save' }}</button>
+      </div>
+    </div>
   </div>
 </div>

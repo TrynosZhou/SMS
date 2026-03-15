@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { TeacherService } from '../../../services/teacher.service';
 import { SubjectService } from '../../../services/subject.service';
 import { ClassService } from '../../../services/class.service';
+import { SettingsService } from '../../../services/settings.service';
 import { validatePhoneNumber } from '../../../utils/phone-validator';
 
 @Component({
@@ -14,16 +15,22 @@ export class TeacherFormComponent implements OnInit {
   teacher: any = {
     firstName: '',
     lastName: '',
+    nationalId: '',
     sex: '',
     phoneNumber: '',
     address: '',
     dateOfBirth: '',
     subjectIds: [],
     classIds: [],
-    photo: null as string | null
+    photo: null as string | null,
+    paymentMethod: 'cash',
+    bankName: '',
+    bankAccountNumber: '',
+    bankBranch: ''
   };
   subjects: any[] = [];
   classes: any[] = [];
+  banks: Array<{ id: string; name: string }> = [];
   filteredSubjects: any[] = [];
   filteredClasses: any[] = [];
   subjectSearchQuery = '';
@@ -42,6 +49,7 @@ export class TeacherFormComponent implements OnInit {
     private teacherService: TeacherService,
     private subjectService: SubjectService,
     private classService: ClassService,
+    private settingsService: SettingsService,
     private route: ActivatedRoute,
     public router: Router
   ) {
@@ -53,6 +61,9 @@ export class TeacherFormComponent implements OnInit {
   ngOnInit() {
     this.loadSubjects();
     this.loadClasses();
+    this.settingsService.getSettings().subscribe({
+      next: (s: any) => { this.banks = Array.isArray(s?.payrollSettings?.banks) ? s.payrollSettings.banks : []; }
+    });
     const id = this.route.snapshot.params['id'];
     if (id) {
       this.isEdit = true;
@@ -94,10 +105,15 @@ export class TeacherFormComponent implements OnInit {
         this.teacher = {
           ...data,
           sex: data.sex || '',
+          nationalId: data.nationalId || '',
           dateOfBirth: data.dateOfBirth?.split('T')[0],
           subjectIds: data.subjects?.map((s: any) => s.id) || [],
           classIds: data.classes?.map((c: any) => c.id) || [],
-          photo: data.photo ?? null
+          photo: data.photo ?? null,
+          paymentMethod: data.paymentMethod || 'cash',
+          bankName: data.bankName || '',
+          bankAccountNumber: data.bankAccountNumber || '',
+          bankBranch: data.bankBranch || ''
         };
       },
       error: (err: any) => {

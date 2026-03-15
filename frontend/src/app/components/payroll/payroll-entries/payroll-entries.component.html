@@ -27,6 +27,7 @@
           <th>Allowances</th>
           <th>Deductions</th>
           <th>Net</th>
+          <th>Payment</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -37,8 +38,10 @@
           <td>{{ currencySymbol }} {{ e.totalAllowances | number:'1.2-2' }}</td>
           <td>{{ currencySymbol }} {{ e.totalDeductions | number:'1.2-2' }}</td>
           <td>{{ currencySymbol }} {{ e.netSalary | number:'1.2-2' }}</td>
+          <td>{{ e.paymentMethod || 'cash' }}{{ e.bankName ? ' · ' + e.bankName : '' }}</td>
           <td>
-            <button class="btn btn-sm btn-payslip" (click)="downloadPayslip(e)">📄 Payslip</button>
+            <button class="btn btn-sm btn-payslip" (click)="downloadPayslip(e)">📥 Download Payslip</button>
+            <button class="btn btn-sm btn-preview-payslip" (click)="previewPayslip(e)">👁 Preview Payslip</button>
             <button class="btn btn-sm btn-primary" *ngIf="isDraft()" (click)="openEdit(e)">✏️ Edit</button>
           </td>
         </tr>
@@ -68,6 +71,36 @@
       <div class="form-group">
         <label>Net Salary</label>
         <input type="number" [(ngModel)]="editForm.netSalary" step="0.01" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>Payment method</label>
+        <select [(ngModel)]="editForm.paymentMethod" name="paymentMethod" class="form-control">
+          <option value="cash">Cash</option>
+          <option value="bank">Bank deposit</option>
+          <option value="both">Cash + Bank</option>
+        </select>
+      </div>
+      <div class="form-group" *ngIf="editForm.paymentMethod !== 'cash'">
+        <label>Bank</label>
+        <select [(ngModel)]="editForm.bankName" name="bankName" class="form-control">
+          <option [ngValue]="null">— Select bank —</option>
+          <option *ngFor="let b of banks" [ngValue]="b.name">{{ b.name }}</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+        <label>Add loan deduction</label>
+        <p style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Principal amount and repayment period. Interest is applied from Settings.</p>
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+          <input type="number" [(ngModel)]="loanPrincipal" name="loanPrincipal" min="0" step="0.01" placeholder="Principal" class="form-control" style="width: 120px;" />
+          <select [(ngModel)]="loanMonths" name="loanMonths" class="form-control" style="width: 140px;">
+            <option [ngValue]="1">1 month</option>
+            <option [ngValue]="2">2 months</option>
+            <option [ngValue]="3">3 months</option>
+          </select>
+          <button type="button" class="btn btn-secondary" (click)="addLoanDeduction()" [disabled]="addingLoan || loanPrincipal <= 0">
+            {{ addingLoan ? 'Adding...' : 'Add loan deduction' }}
+          </button>
+        </div>
       </div>
       <div class="form-actions">
         <button class="btn btn-secondary" (click)="closeEdit()">Cancel</button>

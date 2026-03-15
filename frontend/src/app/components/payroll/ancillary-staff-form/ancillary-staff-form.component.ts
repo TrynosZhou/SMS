@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { PayrollService } from '../../../services/payroll.service';
+import { SettingsService } from '../../../services/settings.service';
 
 @Component({
   selector: 'app-ancillary-staff-form',
@@ -14,10 +15,12 @@ export class AncillaryStaffFormComponent implements OnInit {
     employeeId: '',
     firstName: '',
     lastName: '',
+    nationalId: '',
     role: '',
     designation: '',
     department: '',
     salaryType: 'monthly',
+    paymentMethod: 'cash',
     bankName: '',
     bankAccountNumber: '',
     bankBranch: '',
@@ -25,6 +28,7 @@ export class AncillaryStaffFormComponent implements OnInit {
     phoneNumber: '',
     dateJoined: ''
   };
+  banks: Array<{ id: string; name: string }> = [];
   loading = false;
   submitting = false;
   error = '';
@@ -32,6 +36,7 @@ export class AncillaryStaffFormComponent implements OnInit {
 
   constructor(
     private payrollService: PayrollService,
+    private settingsService: SettingsService,
     private route: ActivatedRoute,
     private router: Router
   ) {}
@@ -39,6 +44,9 @@ export class AncillaryStaffFormComponent implements OnInit {
   ngOnInit() {
     this.id = this.route.snapshot.paramMap.get('id');
     this.isEdit = !!this.id;
+    this.settingsService.getSettings().subscribe({
+      next: (s: any) => { this.banks = Array.isArray(s?.payrollSettings?.banks) ? s.payrollSettings.banks : []; }
+    });
     if (this.isEdit && this.id) {
       this.loadStaff();
     }
@@ -55,10 +63,12 @@ export class AncillaryStaffFormComponent implements OnInit {
             employeeId: s.employeeId || '',
             firstName: s.firstName || '',
             lastName: s.lastName || '',
+            nationalId: s.nationalId || '',
             role: s.role || '',
             designation: s.designation || '',
             department: s.department || '',
             salaryType: s.salaryType || 'monthly',
+            paymentMethod: s.paymentMethod || 'cash',
             bankName: s.bankName || '',
             bankAccountNumber: s.bankAccountNumber || '',
             bankBranch: s.bankBranch || '',

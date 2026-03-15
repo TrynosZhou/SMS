@@ -50,8 +50,12 @@ export class PayrollService {
     return this.http.get<any[]>(`${this.apiUrl}/salary-assignments`);
   }
 
-  assignSalary(data: { teacherId?: string; ancillaryStaffId?: string; salaryStructureId: string; effectiveFrom: string }): Observable<any> {
+  assignSalary(data: { teacherId?: string; ancillaryStaffId?: string; salaryStructureId: string; effectiveFrom: string; customComponents?: any[] }): Observable<any> {
     return this.http.post(`${this.apiUrl}/salary-assignments`, data);
+  }
+
+  updateSalaryAssignment(id: string, data: { effectiveFrom?: string; customComponents?: any[] }): Observable<any> {
+    return this.http.put(`${this.apiUrl}/salary-assignments/${id}`, data);
   }
 
   removeSalaryAssignment(id: string): Observable<any> {
@@ -76,8 +80,12 @@ export class PayrollService {
     return this.http.get<any[]>(`${this.apiUrl}/runs/${runId}/entries`);
   }
 
-  updatePayrollEntry(id: string, data: { grossSalary?: number; totalAllowances?: number; totalDeductions?: number; netSalary?: number }): Observable<any> {
+  updatePayrollEntry(id: string, data: { grossSalary?: number; totalAllowances?: number; totalDeductions?: number; netSalary?: number; paymentMethod?: string; bankName?: string | null }): Observable<any> {
     return this.http.put(`${this.apiUrl}/entries/${id}`, data);
+  }
+
+  addLoanDeduction(entryId: string, principal: number, repaymentMonths: 1 | 2 | 3): Observable<any> {
+    return this.http.post(`${this.apiUrl}/entries/${entryId}/loan-deduction`, { principal, repaymentMonths });
   }
 
   // Payslip PDF

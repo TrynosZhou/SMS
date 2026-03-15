@@ -24,6 +24,12 @@ export class SettingsComponent implements OnInit {
       diningHallCost: 0,
       otherFees: []
     },
+    payrollSettings: {
+      loanInterestRate1Month: 0,
+      loanInterestRate2Months: 0,
+      loanInterestRate3Months: 0,
+      banks: [] as Array<{ id: string; name: string }>
+    },
     gradeThresholds: {
       excellent: 90,
       veryGood: 80,
@@ -185,6 +191,7 @@ export class SettingsComponent implements OnInit {
   uniformItemModalOpen = false;
   uniformItemSubmitting = false;
   uniformItemError = '';
+  newBankName = '';
 
   constructor(
     private settingsService: SettingsService,
@@ -373,6 +380,25 @@ export class SettingsComponent implements OnInit {
           this.settings.feesSettings.dayScholarTuitionFee = oldTuitionFee;
           this.settings.feesSettings.boarderTuitionFee = oldTuitionFee;
           delete this.settings.feesSettings.tuitionFee;
+        }
+        if (data.payrollSettings) {
+          this.settings.payrollSettings = {
+            loanInterestRate1Month: Number(data.payrollSettings.loanInterestRate1Month) || 0,
+            loanInterestRate2Months: Number(data.payrollSettings.loanInterestRate2Months) || 0,
+            loanInterestRate3Months: Number(data.payrollSettings.loanInterestRate3Months) || 0,
+            banks: Array.isArray(data.payrollSettings.banks) ? data.payrollSettings.banks : []
+          };
+        }
+        if (!this.settings.payrollSettings) {
+          this.settings.payrollSettings = {
+            loanInterestRate1Month: 0,
+            loanInterestRate2Months: 0,
+            loanInterestRate3Months: 0,
+            banks: []
+          };
+        }
+        if (!this.settings.payrollSettings.banks) {
+          this.settings.payrollSettings.banks = [];
         }
         if (!this.settings.gradeThresholds) {
           this.settings.gradeThresholds = {
@@ -686,6 +712,23 @@ export class SettingsComponent implements OnInit {
       this.newFeeName = '';
       this.newFeeAmount = 0;
     }
+  }
+
+  addBank(): void {
+    const name = (this.newBankName || '').trim();
+    if (!name) return;
+    if (!this.settings.payrollSettings) {
+      this.settings.payrollSettings = { loanInterestRate1Month: 0, loanInterestRate2Months: 0, loanInterestRate3Months: 0, banks: [] };
+    }
+    if (!this.settings.payrollSettings.banks) this.settings.payrollSettings.banks = [];
+    const id = 'bank_' + Date.now();
+    this.settings.payrollSettings.banks.push({ id, name });
+    this.newBankName = '';
+  }
+
+  removeBank(index: number): void {
+    if (!this.settings.payrollSettings?.banks) return;
+    this.settings.payrollSettings.banks.splice(index, 1);
   }
 
   removeOtherFee(index: number) {
@@ -1157,6 +1200,13 @@ export class SettingsComponent implements OnInit {
     // Ensure currencySymbol is set and not empty
     if (!this.settings.currencySymbol || this.settings.currencySymbol.trim() === '') {
       this.settings.currencySymbol = 'KES';
+    }
+
+    // Ensure payrollSettings rates are numbers
+    if (this.settings.payrollSettings) {
+      this.settings.payrollSettings.loanInterestRate1Month = Number(this.settings.payrollSettings.loanInterestRate1Month) || 0;
+      this.settings.payrollSettings.loanInterestRate2Months = Number(this.settings.payrollSettings.loanInterestRate2Months) || 0;
+      this.settings.payrollSettings.loanInterestRate3Months = Number(this.settings.payrollSettings.loanInterestRate3Months) || 0;
     }
 
     console.log('✅ All validations passed, preparing payload...');

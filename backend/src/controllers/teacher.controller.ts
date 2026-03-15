@@ -24,7 +24,8 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
 
-    const { firstName, lastName, phoneNumber, address, dateOfBirth, subjectIds, classIds, photo, sex } = req.body;
+    const { firstName, lastName, nationalId, phoneNumber, address, dateOfBirth, subjectIds, classIds, photo, sex,
+      bankName, bankAccountNumber, bankBranch, paymentMethod } = req.body;
     
     // Validate required fields
     if (!firstName || !lastName) {
@@ -98,10 +99,15 @@ export const registerTeacher = async (req: AuthRequest, res: Response) => {
       firstName: normalizedFirstName,
       lastName: normalizedLastName,
       teacherId,
+      nationalId: nationalId && String(nationalId).trim() ? String(nationalId).trim() : null,
       phoneNumber: normalizedPhoneNumber,
       address: normalizedAddress,
       photo: photo && typeof photo === 'string' && photo.trim() ? photo.trim() : null,
-      sex: normalizedSex.charAt(0).toUpperCase() + normalizedSex.slice(1).toLowerCase()
+      sex: normalizedSex.charAt(0).toUpperCase() + normalizedSex.slice(1).toLowerCase(),
+      bankName: bankName ? String(bankName).trim() : null,
+      bankAccountNumber: bankAccountNumber ? String(bankAccountNumber).trim() : null,
+      bankBranch: bankBranch ? String(bankBranch).trim() : null,
+      paymentMethod: paymentMethod === 'bank' || paymentMethod === 'both' ? paymentMethod : 'cash'
     };
 
     // Only include dateOfBirth if it's provided
@@ -621,7 +627,8 @@ export const updateTeacher = async (req: AuthRequest, res: Response) => {
     }
 
     const { id } = req.params;
-    const { firstName, lastName, phoneNumber, address, dateOfBirth, subjectIds, classIds, photo, sex } = req.body;
+    const { firstName, lastName, nationalId, phoneNumber, address, dateOfBirth, subjectIds, classIds, photo, sex,
+      bankName, bankAccountNumber, bankBranch, paymentMethod } = req.body;
     
     const teacherRepository = AppDataSource.getRepository(Teacher);
     const teacher = await teacherRepository.findOne({
@@ -635,6 +642,7 @@ export const updateTeacher = async (req: AuthRequest, res: Response) => {
 
     if (firstName) teacher.firstName = firstName.trim();
     if (lastName) teacher.lastName = lastName.trim();
+    if (nationalId !== undefined) teacher.nationalId = nationalId && String(nationalId).trim() ? String(nationalId).trim() : null;
 
     if (sex !== undefined) {
       const normalizedSex = typeof sex === 'string' ? sex.trim() : '';
@@ -671,6 +679,13 @@ export const updateTeacher = async (req: AuthRequest, res: Response) => {
       if (!isNaN(parsedDate.getTime())) {
         teacher.dateOfBirth = parsedDate;
       }
+    }
+
+    if (bankName !== undefined) (teacher as any).bankName = bankName ? String(bankName).trim() : null;
+    if (bankAccountNumber !== undefined) (teacher as any).bankAccountNumber = bankAccountNumber ? String(bankAccountNumber).trim() : null;
+    if (bankBranch !== undefined) (teacher as any).bankBranch = bankBranch ? String(bankBranch).trim() : null;
+    if (paymentMethod !== undefined && ['cash', 'bank', 'both'].includes(paymentMethod)) {
+      (teacher as any).paymentMethod = paymentMethod;
     }
 
     if (subjectIds) {

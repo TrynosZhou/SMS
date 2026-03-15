@@ -20,9 +20,15 @@ export class SalaryAssignmentComponent implements OnInit {
   selectedEmployeeId = '';
   selectedStructureId = '';
   effectiveFrom = '';
+  /** Editable copy of structure components for the assign form (negotiated amounts). */
+  assignComponents: { name: string; type: string; amount: number }[] = [];
   submitting = false;
   filterType: 'all' | 'teacher' | 'ancillary' = 'all';
   searchQuery = '';
+  /** Edit assignment modal */
+  editingAssignment: any = null;
+  editForm: { effectiveFrom: string; components: { name: string; type: string; amount: number }[] } = { effectiveFrom: '', components: [] };
+  savingEdit = false;
 
   get teacherAssignments(): any[] {
     return (this.assignments || []).filter((a: any) => a.teacherId);
@@ -89,6 +95,21 @@ export class SalaryAssignmentComponent implements OnInit {
 
   onEmployeeTypeChange() {
     this.selectedEmployeeId = '';
+    this.selectedStructureId = '';
+    this.assignComponents = [];
+  }
+
+  onStructureChange() {
+    const struct = (this.structures || []).find((s: any) => s.id === this.selectedStructureId);
+    if (struct && Array.isArray(struct.components) && struct.components.length > 0) {
+      this.assignComponents = struct.components.map((c: any) => ({
+        name: c.name || '',
+        type: c.type || 'allowance',
+        amount: typeof c.amount === 'number' ? c.amount : Number(c.amount) || 0
+      }));
+    } else {
+      this.assignComponents = [];
+    }
   }
 
   getFilteredStructures() {
@@ -125,11 +146,15 @@ export class SalaryAssignmentComponent implements OnInit {
     } else {
       payload.ancillaryStaffId = this.selectedEmployeeId;
     }
+    if (this.assignComponents.length > 0) {
+      payload.customComponents = this.assignComponents.map(c => ({ name: c.name, type: c.type, amount: c.amount }));
+    }
     this.payrollService.assignSalary(payload).subscribe({
       next: () => {
         this.success = 'Salary assigned';
         this.selectedEmployeeId = '';
         this.selectedStructureId = '';
+        this.assignComponents = [];
         this.loadData();
         setTimeout(() => this.success = '', 3000);
         this.submitting = false;
@@ -151,5 +176,48 @@ export class SalaryAssignmentComponent implements OnInit {
 
   getEmployees() {
     return this.employeeType === 'teacher' ? this.teachers : this.staff;
+  }
+
+  openEdit(a: any) {
+    this.editingAssignment = a;
+    const struct = a.salaryStructure;
+    const comps = Array.isArray(a.customComponents) && a.customComponents.length > 0
+      ? a.customComponents.map((c: any) => ({ name: c.name || '', type: c.type || 'allowance', amount: Number(c.amount) || 0 }))
+      : (struct?.components || []).map((c: any) => ({ name: c.name || '', type: c.type || 'allowance', amount: Number(c.amount) || 0 }));
+    this.editForm = {
+      effectiveFrom: a.effectiveFrom ? new Date(a.effectiveFrom).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+      components: comps
+    };
+  }
+
+  closeEdit() {
+    this.editingAssignment = null;
+  }
+
+  saveEdit() {
+    if (!this.editingAssignment) return;
+    this.savingEdit = true;
+    this.error = '';
+    const payload: any = {
+      effectiveFrom: this.editForm.effectiveFrom,
+      customComponents: this.editForm.components.map(c => ({ name: c.name, type: c.type, amount: c.amount }))
+    };
+    this.payrollService.updateSalaryAssignment(this.editingAssignment.id, payload).subscribe({
+      next: () => {
+        this.success = 'Assignment updated';
+        this.closeEdit();
+        this.loadData();
+        this.savingEdit = false;
+        setTimeout(() => this.success = '', 3000);
+      },
+      error: (err) => {
+        this.error = err?.error?.message || 'Update failed';
+        this.savingEdit = false;
+      }
+    });
+  }
+
+  hasCustomAmounts(a: any): boolean {
+    return Array.isArray(a.customComponents) && a.customComponents.length > 0;
   }
 }

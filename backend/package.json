@@ -19,6 +19,7 @@
     "check-login": "npx ts-node scripts/check-user-login.ts",
     "fix-all-teachers": "npx ts-node src/scripts/fix-all-teachers.ts",
     "migrate": "npx ts-node scripts/run-timetable-migration.ts",
+    "migrate-all": "npx ts-node scripts/run-migration.ts",
     "migrate-payroll": "npx ts-node scripts/run-payroll-migration.ts",
     "migrate-timetables": "npx ts-node scripts/run-timetable-migration.ts",
     "migrate-teaching-periods": "npx ts-node scripts/run-teaching-periods-migration.ts"

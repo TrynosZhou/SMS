@@ -34,8 +34,8 @@ export const createAncillaryStaff = async (req: AuthRequest, res: Response) => {
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
     const repo = AppDataSource.getRepository(AncillaryStaff);
     const {
-      employeeId: providedEmployeeId, firstName, lastName, role, designation, department,
-      salaryType, bankName, bankAccountNumber, bankBranch, employmentStatus,
+      employeeId: providedEmployeeId, firstName, lastName, nationalId, role, designation, department,
+      salaryType, bankName, bankAccountNumber, bankBranch, paymentMethod, employmentStatus,
       phoneNumber, dateJoined
     } = req.body;
 
@@ -58,6 +58,7 @@ export const createAncillaryStaff = async (req: AuthRequest, res: Response) => {
       employeeId,
       firstName: String(firstName).trim(),
       lastName: String(lastName).trim(),
+      nationalId: nationalId && String(nationalId).trim() ? String(nationalId).trim() : null,
       role: role ? String(role).trim() : null,
       designation: designation ? String(designation).trim() : null,
       department: department ? String(department).trim() : null,
@@ -65,6 +66,7 @@ export const createAncillaryStaff = async (req: AuthRequest, res: Response) => {
       bankName: bankName ? String(bankName).trim() : null,
       bankAccountNumber: bankAccountNumber ? String(bankAccountNumber).trim() : null,
       bankBranch: bankBranch ? String(bankBranch).trim() : null,
+      paymentMethod: paymentMethod === 'bank' || paymentMethod === 'both' ? paymentMethod : 'cash',
       employmentStatus: employmentStatus === 'terminated' ? 'terminated' : 'active',
       phoneNumber: phoneNumber ? String(phoneNumber).trim() : null,
       dateJoined: dateJoined ? new Date(dateJoined) : null
@@ -85,15 +87,16 @@ export const updateAncillaryStaff = async (req: AuthRequest, res: Response) => {
     const staff = await repo.findOne({ where: { id } });
     if (!staff) return res.status(404).json({ message: 'Ancillary staff not found' });
 
-    const fields = ['employeeId', 'firstName', 'lastName', 'role', 'designation', 'department',
-      'salaryType', 'bankName', 'bankAccountNumber', 'bankBranch', 'employmentStatus',
+    const fields = ['employeeId', 'firstName', 'lastName', 'nationalId', 'role', 'designation', 'department',
+      'salaryType', 'bankName', 'bankAccountNumber', 'bankBranch', 'paymentMethod', 'employmentStatus',
       'phoneNumber', 'dateJoined'];
     for (const f of fields) {
       if (req.body[f] !== undefined) {
         (staff as any)[f] = f === 'dateJoined' ? (req.body[f] ? new Date(req.body[f]) : null)
           : f === 'salaryType' ? (req.body[f] === 'daily' ? 'daily' : 'monthly')
             : f === 'employmentStatus' ? (req.body[f] === 'terminated' ? 'terminated' : 'active')
-              : req.body[f];
+              : f === 'paymentMethod' ? (['cash', 'bank', 'both'].includes(req.body[f]) ? req.body[f] : 'cash')
+                : req.body[f];
       }
     }
     staff.updatedAt = new Date();
@@ -223,7 +226,7 @@ export const getSalaryAssignments = async (req: AuthRequest, res: Response) => {
 export const assignSalary = async (req: AuthRequest, res: Response) => {
   try {
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
-    const { teacherId, ancillaryStaffId, salaryStructureId, effectiveFrom } = req.body;
+    const { teacherId, ancillaryStaffId, salaryStructureId, effectiveFrom, customComponents } = req.body;
     if ((!teacherId && !ancillaryStaffId) || !salaryStructureId || !effectiveFrom) {
       return res.status(400).json({ message: 'Provide (teacherId XOR ancillaryStaffId), salaryStructureId, effectiveFrom' });
     }
@@ -252,17 +255,66 @@ export const assignSalary = async (req: AuthRequest, res: Response) => {
       if (!anc) return res.status(404).json({ message: 'Ancillary staff not found' });
     }
 
+    const normalizedCustom = Array.isArray(customComponents) && customComponents.length > 0
+      ? customComponents
+          .filter((c: any) => c && (c.name || c.amount !== undefined))
+          .map((c: any) => ({
+            name: String(c.name || ''),
+            type: ['basic', 'allowance', 'deduction'].includes(c.type) ? c.type : 'allowance',
+            amount: parseAmount(c.amount)
+          }))
+      : null;
+
+    const effectiveDate = new Date(effectiveFrom);
+    if (isNaN(effectiveDate.getTime())) {
+      return res.status(400).json({ message: 'Invalid effectiveFrom date' });
+    }
+
     const saRepo = AppDataSource.getRepository(SalaryAssignment);
     const sa = saRepo.create({
       teacherId: teacherId || null,
       ancillaryStaffId: ancillaryStaffId || null,
       salaryStructureId,
-      effectiveFrom: new Date(effectiveFrom)
+      effectiveFrom: effectiveDate,
+      customComponents: normalizedCustom
     });
     const saved = await saRepo.save(sa);
     res.status(201).json({ message: 'Salary assigned', assignment: saved });
   } catch (error: any) {
     console.error('assignSalary:', error);
+    const code = error?.code;
+    const msg = error?.message || 'Server error';
+    if (code === '23505') {
+      return res.status(400).json({ message: 'This employee already has an assignment with the same effective date. Remove or edit the existing one first.' });
+    }
+    res.status(500).json({ message: msg, error: msg });
+  }
+};
+
+export const updateSalaryAssignment = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+    const { id } = req.params;
+    const { effectiveFrom, customComponents } = req.body;
+    const repo = AppDataSource.getRepository(SalaryAssignment);
+    const sa = await repo.findOne({ where: { id }, relations: ['salaryStructure'] });
+    if (!sa) return res.status(404).json({ message: 'Salary assignment not found' });
+    if (effectiveFrom !== undefined) sa.effectiveFrom = new Date(effectiveFrom);
+    if (customComponents !== undefined) {
+      sa.customComponents = Array.isArray(customComponents) && customComponents.length > 0
+        ? customComponents
+            .filter((c: any) => c && (c.name || c.amount !== undefined))
+            .map((c: any) => ({
+              name: String(c.name || ''),
+              type: ['basic', 'allowance', 'deduction'].includes(c.type) ? c.type : 'allowance',
+              amount: parseAmount(c.amount)
+            }))
+        : null;
+    }
+    await repo.save(sa);
+    res.json({ message: 'Salary assignment updated', assignment: sa });
+  } catch (error: any) {
+    console.error('updateSalaryAssignment:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -374,15 +426,22 @@ export const createPayrollRun = async (req: AuthRequest, res: Response) => {
     let totalGross = 0, totalNet = 0;
     const entries: PayrollEntry[] = [];
 
+    const getComponentsForAssignment = (assignment: SalaryAssignment, struct: SalaryStructure): SalaryComponent[] => {
+      const custom = (assignment as any).customComponents;
+      if (Array.isArray(custom) && custom.length > 0) return custom;
+      return struct?.components || [];
+    };
+
     for (const t of teachers) {
       const sa = getEffectiveAssignment(assignments, lastDayOfMonth, t.id, null);
       if (!sa) continue;
       const struct = structures[sa.salaryStructureId];
-      if (!struct || !struct.components?.length) continue;
+      const components = getComponentsForAssignment(sa, struct!);
+      if (!struct || !components.length) continue;
 
       let gross = 0, allowances = 0, deductions = 0;
       const lineData: { name: string; type: 'basic' | 'allowance' | 'deduction'; amount: number }[] = [];
-      for (const comp of struct.components) {
+      for (const comp of components) {
         const amt = parseAmount(comp.amount);
         lineData.push({ name: comp.name, type: comp.type, amount: amt });
         if (comp.type === 'basic' || comp.type === 'allowance') {
@@ -393,6 +452,7 @@ export const createPayrollRun = async (req: AuthRequest, res: Response) => {
         }
       }
       const net = gross - deductions;
+      const payMethod = (t as any).paymentMethod === 'bank' || (t as any).paymentMethod === 'both' ? ((t as any).paymentMethod as 'cash' | 'bank' | 'both') : 'cash';
       const entry = entryRepo.create({
         payrollRunId: savedRun.id,
         teacherId: t.id,
@@ -400,7 +460,9 @@ export const createPayrollRun = async (req: AuthRequest, res: Response) => {
         grossSalary: gross,
         totalAllowances: allowances,
         totalDeductions: deductions,
-        netSalary: net
+        netSalary: net,
+        paymentMethod: payMethod,
+        bankName: payMethod !== 'cash' ? ((t as any).bankName || null) : null
       });
       const savedEntry = await entryRepo.save(entry);
       for (const ld of lineData) {
@@ -421,11 +483,12 @@ export const createPayrollRun = async (req: AuthRequest, res: Response) => {
       const sa = getEffectiveAssignment(assignments, lastDayOfMonth, null, a.id);
       if (!sa) continue;
       const struct = structures[sa.salaryStructureId];
-      if (!struct || !struct.components?.length) continue;
+      const ancComponents = getComponentsForAssignment(sa, struct!);
+      if (!struct || !ancComponents.length) continue;
 
       let gross = 0, allowances = 0, deductions = 0;
       const ancLineData: { name: string; type: 'basic' | 'allowance' | 'deduction'; amount: number }[] = [];
-      for (const comp of struct.components) {
+      for (const comp of ancComponents) {
         const amt = parseAmount(comp.amount);
         ancLineData.push({ name: comp.name, type: comp.type, amount: amt });
         if (comp.type === 'basic' || comp.type === 'allowance') {
@@ -436,6 +499,7 @@ export const createPayrollRun = async (req: AuthRequest, res: Response) => {
         }
       }
       const net = gross - deductions;
+      const payMethod = (a as any).paymentMethod === 'bank' || (a as any).paymentMethod === 'both' ? ((a as any).paymentMethod as 'cash' | 'bank' | 'both') : 'cash';
       const entry = entryRepo.create({
         payrollRunId: savedRun.id,
         teacherId: null,
@@ -443,7 +507,9 @@ export const createPayrollRun = async (req: AuthRequest, res: Response) => {
         grossSalary: gross,
         totalAllowances: allowances,
         totalDeductions: deductions,
-        netSalary: net
+        netSalary: net,
+        paymentMethod: payMethod,
+        bankName: payMethod !== 'cash' ? ((a as any).bankName || null) : null
       });
       const savedEntry = await entryRepo.save(entry);
       for (const ld of ancLineData) {
@@ -515,7 +581,7 @@ export const updatePayrollEntry = async (req: AuthRequest, res: Response) => {
   try {
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
     const { id } = req.params;
-    const { grossSalary, totalAllowances, totalDeductions, netSalary } = req.body;
+    const { grossSalary, totalAllowances, totalDeductions, netSalary, paymentMethod, bankName } = req.body;
 
     const entryRepo = AppDataSource.getRepository(PayrollEntry);
     const runRepo = AppDataSource.getRepository(PayrollRun);
@@ -540,6 +606,12 @@ export const updatePayrollEntry = async (req: AuthRequest, res: Response) => {
     entry.totalAllowances = allowances;
     entry.totalDeductions = deductions;
     entry.netSalary = net;
+    if (paymentMethod !== undefined && ['cash', 'bank', 'both'].includes(paymentMethod)) {
+      (entry as any).paymentMethod = paymentMethod;
+    }
+    if (bankName !== undefined) {
+      (entry as any).bankName = bankName ? String(bankName).trim() : null;
+    }
     await entryRepo.save(entry);
 
     const run = await runRepo.findOne({ where: { id: entry.payrollRunId } });
@@ -553,6 +625,79 @@ export const updatePayrollEntry = async (req: AuthRequest, res: Response) => {
     res.json({ message: 'Payroll entry updated', entry });
   } catch (error: any) {
     console.error('updatePayrollEntry:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+/** Add a loan deduction to a payroll entry. Body: { principal: number, repaymentMonths: 1|2|3 }. Interest from settings. */
+export const addLoanDeduction = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+    const { id } = req.params;
+    const { principal, repaymentMonths } = req.body;
+
+    const principalNum = parseAmount(principal);
+    if (principalNum <= 0) {
+      return res.status(400).json({ message: 'Principal must be greater than 0' });
+    }
+    const months = parseInt(String(repaymentMonths), 10);
+    if (![1, 2, 3].includes(months)) {
+      return res.status(400).json({ message: 'repaymentMonths must be 1, 2, or 3' });
+    }
+
+    const entryRepo = AppDataSource.getRepository(PayrollEntry);
+    const lineRepo = AppDataSource.getRepository(PayrollEntryLine);
+    const runRepo = AppDataSource.getRepository(PayrollRun);
+    const settingsRepo = AppDataSource.getRepository(Settings);
+
+    const entry = await entryRepo.findOne({
+      where: { id },
+      relations: ['payrollRun', 'lines']
+    });
+    if (!entry) return res.status(404).json({ message: 'Payroll entry not found' });
+    if (entry.payrollRun?.status === 'approved') {
+      return res.status(400).json({ message: 'Cannot add loan deduction to approved payroll run' });
+    }
+
+    const settingsList = await settingsRepo.find({ order: { createdAt: 'DESC' }, take: 1 });
+    const settings = settingsList[0] || null;
+    const ps = (settings as any)?.payrollSettings || {};
+    const rate =
+      months === 1 ? (ps.loanInterestRate1Month ?? 0) :
+      months === 2 ? (ps.loanInterestRate2Months ?? 0) :
+      (ps.loanInterestRate3Months ?? 0);
+    const interest = Math.round((principalNum * (rate / 100)) * 100) / 100;
+    const totalDeduction = Math.round((principalNum + interest) * 100) / 100;
+
+    const line = lineRepo.create({
+      payrollEntryId: entry.id,
+      componentName: `Loan Repayment (${months} month${months > 1 ? 's' : ''}, ${rate}% interest)`,
+      componentType: 'deduction',
+      amount: totalDeduction
+    });
+    await lineRepo.save(line);
+
+    const newTotalDeductions = parseAmount(entry.totalDeductions) + totalDeduction;
+    const newNet = Math.round((parseAmount(entry.grossSalary) - newTotalDeductions) * 100) / 100;
+    entry.totalDeductions = newTotalDeductions;
+    entry.netSalary = newNet;
+    await entryRepo.save(entry);
+
+    const run = await runRepo.findOne({ where: { id: entry.payrollRunId } });
+    if (run) {
+      const allEntries = await entryRepo.find({ where: { payrollRunId: run.id } });
+      run.totalGross = allEntries.reduce((s, e) => s + parseAmount(e.grossSalary), 0);
+      run.totalNet = allEntries.reduce((s, e) => s + parseAmount(e.netSalary), 0);
+      await runRepo.save(run);
+    }
+
+    res.json({
+      message: 'Loan deduction added',
+      entry,
+      loanDeduction: { principal: principalNum, interest, totalDeduction, rate, repaymentMonths: months }
+    });
+  } catch (error: any) {
+    console.error('addLoanDeduction:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

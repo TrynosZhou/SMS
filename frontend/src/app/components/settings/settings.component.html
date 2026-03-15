@@ -81,6 +81,43 @@
         </div>
       </div>
 
+      <!-- Payroll: Loan interest & Banks (admin/superadmin only) -->
+      <div class="form-section" *ngIf="authService.hasRole('admin') || authService.hasRole('superadmin')">
+        <h2>💰 Payroll — Loan Interest & Banks</h2>
+        <p class="section-description" style="color: #6c757d; margin-bottom: 16px;">
+          Configure interest rates for staff loans (repayable in 1, 2, or 3 months) and the list of banks used for salary deposits.
+        </p>
+        <div class="form-group">
+          <label>Loan interest — 1 month (%)</label>
+          <input type="number" [(ngModel)]="settings.payrollSettings.loanInterestRate1Month" name="loanRate1" min="0" step="0.01" style="max-width: 120px;">
+          <small>Interest rate when loan is cleared in one month</small>
+        </div>
+        <div class="form-group">
+          <label>Loan interest — 2 months (%)</label>
+          <input type="number" [(ngModel)]="settings.payrollSettings.loanInterestRate2Months" name="loanRate2" min="0" step="0.01" style="max-width: 120px;">
+          <small>Interest rate when loan is cleared in two months</small>
+        </div>
+        <div class="form-group">
+          <label>Loan interest — 3 months (%)</label>
+          <input type="number" [(ngModel)]="settings.payrollSettings.loanInterestRate3Months" name="loanRate3" min="0" step="0.01" style="max-width: 120px;">
+          <small>Interest rate when loan is cleared in three months</small>
+        </div>
+        <div class="form-group" style="margin-top: 20px;">
+          <label>Banks (for salary deposit)</label>
+          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <input type="text" [(ngModel)]="newBankName" name="newBankName" placeholder="Bank name" style="flex: 1; max-width: 300px;">
+            <button type="button" class="btn btn-secondary" (click)="addBank()">Add bank</button>
+          </div>
+          <div *ngIf="settings.payrollSettings?.banks?.length > 0" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <div *ngFor="let bank of settings.payrollSettings.banks; let i = index" style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+              <span>{{ bank.name }}</span>
+              <button type="button" class="btn btn-danger btn-sm" (click)="removeBank(i)">Remove</button>
+            </div>
+          </div>
+          <div *ngIf="!settings.payrollSettings?.banks?.length" class="alert alert-info" style="margin-top: 8px;">No banks added. Add banks that will be used for salary deposits.</div>
+        </div>
+      </div>
+
       <!-- Uniform Items -->
       <div class="form-section">
         <h2>Uniform Items</h2>

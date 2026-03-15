@@ -11,6 +11,9 @@ export class AncillaryStaff {
   @Column({ unique: true })
   employeeId: string;
 
+  @Column({ nullable: true })
+  nationalId: string | null;
+
   @Column()
   firstName: string;
 
@@ -37,6 +40,10 @@ export class AncillaryStaff {
 
   @Column({ nullable: true })
   bankBranch: string | null;
+
+  /** How salary is paid: cash, bank, or both */
+  @Column({ type: 'varchar', default: 'cash' })
+  paymentMethod: 'cash' | 'bank' | 'both';
 
   @Column({ type: 'varchar', default: 'active' })
   employmentStatus: 'active' | 'terminated';

@@ -196,6 +196,19 @@ export class Settings {
     [currentClass: string]: string; // e.g., "ECD A": "ECD B", "Grade 1": "Grade 2"
   } | null;
 
+  // Payroll: loan interest rates (% per repayment period) and banks for salary deposit
+  @Column({ type: 'json', nullable: true })
+  payrollSettings: {
+    /** Interest rate (%) when loan is repaid in 1 month */
+    loanInterestRate1Month?: number;
+    /** Interest rate (%) when loan is repaid in 2 months */
+    loanInterestRate2Months?: number;
+    /** Interest rate (%) when loan is repaid in 3 months */
+    loanInterestRate3Months?: number;
+    /** Banks available for salary deposit (admin-configured) */
+    banks?: Array<{ id: string; name: string }>;
+  } | null;
+
   // Timetable Settings
   @Column({ type: 'time', nullable: true })
   schoolStartTime: string | null; // e.g., "07:30:00"

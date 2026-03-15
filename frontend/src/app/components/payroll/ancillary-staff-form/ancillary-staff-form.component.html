@@ -18,7 +18,7 @@
       <label>Employee ID</label>
       <p class="auto-gen-note">Auto-generated on save (JPSA + random 7 digits, last 4 = year)</p>
     </div>
-    <div class="form-row">
+      <div class="form-row">
       <div class="form-group">
         <label>First Name *</label>
         <input type="text" [(ngModel)]="form.firstName" name="firstName" class="form-control" required />
@@ -27,6 +27,10 @@
         <label>Last Name *</label>
         <input type="text" [(ngModel)]="form.lastName" name="lastName" class="form-control" required />
       </div>
+    </div>
+    <div class="form-group">
+      <label>National ID</label>
+      <input type="text" [(ngModel)]="form.nationalId" name="nationalId" class="form-control" placeholder="National ID (shown on payslip)" />
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -106,11 +110,25 @@
       <label>Date Joined</label>
       <input type="date" [(ngModel)]="form.dateJoined" name="dateJoined" class="form-control" />
     </div>
+    <h3>Salary payment</h3>
+    <div class="form-group">
+      <label>Payment method</label>
+      <select [(ngModel)]="form.paymentMethod" name="paymentMethod" class="form-control">
+        <option value="cash">Cash</option>
+        <option value="bank">Bank deposit</option>
+        <option value="both">Cash + Bank</option>
+      </select>
+      <small>How this employee receives salary when payroll is processed.</small>
+    </div>
     <h3>Bank Details</h3>
     <div class="form-row">
       <div class="form-group">
         <label>Bank Name</label>
-        <input type="text" [(ngModel)]="form.bankName" name="bankName" class="form-control" />
+        <select *ngIf="banks.length > 0" [(ngModel)]="form.bankName" name="bankName" class="form-control">
+          <option value="">— Select bank —</option>
+          <option *ngFor="let b of banks" [value]="b.name">{{ b.name }}</option>
+        </select>
+        <input *ngIf="banks.length === 0" type="text" [(ngModel)]="form.bankName" name="bankName" class="form-control" placeholder="Configure banks in Settings" />
       </div>
       <div class="form-group">
         <label>Account Number</label>

@@ -284,7 +284,8 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       schoolStartTime,
       schoolEndTime,
       breakTimes,
-      classTeacherPhrases
+      classTeacherPhrases,
+      payrollSettings
     } = req.body;
 
     if (!settings) {
@@ -456,6 +457,15 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
     }
     if (breakTimes !== undefined) {
       settings.breakTimes = breakTimes || null;
+    }
+    if (payrollSettings !== undefined) {
+      const ps = payrollSettings as any;
+      settings.payrollSettings = {
+        loanInterestRate1Month: typeof ps?.loanInterestRate1Month === 'number' ? ps.loanInterestRate1Month : (settings.payrollSettings?.loanInterestRate1Month ?? 0),
+        loanInterestRate2Months: typeof ps?.loanInterestRate2Months === 'number' ? ps.loanInterestRate2Months : (settings.payrollSettings?.loanInterestRate2Months ?? 0),
+        loanInterestRate3Months: typeof ps?.loanInterestRate3Months === 'number' ? ps.loanInterestRate3Months : (settings.payrollSettings?.loanInterestRate3Months ?? 0),
+        banks: Array.isArray(ps?.banks) ? ps.banks.filter((b: any) => b && (b.name || b.id)) : (settings.payrollSettings?.banks ?? [])
+      };
     }
 
     settings.updatedAt = new Date();

@@ -19,6 +19,9 @@ export class Teacher {
   teacherId: string;
 
   @Column({ nullable: true })
+  nationalId: string | null;
+
+  @Column({ nullable: true })
   phoneNumber: string;
 
   @Column({ nullable: true })
@@ -36,6 +39,19 @@ export class Teacher {
 
   @Column({ default: true })
   isActive: boolean;
+
+  @Column({ nullable: true })
+  bankName: string | null;
+
+  @Column({ nullable: true })
+  bankAccountNumber: string | null;
+
+  @Column({ nullable: true })
+  bankBranch: string | null;
+
+  /** How salary is paid: cash, bank, or both */
+  @Column({ type: 'varchar', default: 'cash' })
+  paymentMethod: 'cash' | 'bank' | 'both';
 
   @Column({ type: 'uuid', nullable: true })
   userId: string;

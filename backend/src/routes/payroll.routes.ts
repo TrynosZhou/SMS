@@ -12,12 +12,14 @@ import {
   deleteSalaryStructure,
   getSalaryAssignments,
   assignSalary,
+  updateSalaryAssignment,
   removeSalaryAssignment,
   getPayrollRuns,
   createPayrollRun,
   approvePayrollRun,
   getPayrollEntries,
   updatePayrollEntry,
+  addLoanDeduction,
   generatePayslipPDF,
   generateBulkPayslips,
   getPayrollReports
@@ -41,6 +43,7 @@ router.delete('/salary-structures/:id', ...payAuth, deleteSalaryStructure);
 // Salary Assignments
 router.get('/salary-assignments', ...payAuth, getSalaryAssignments);
 router.post('/salary-assignments', ...payAuth, assignSalary);
+router.put('/salary-assignments/:id', ...payAuth, updateSalaryAssignment);
 router.delete('/salary-assignments/:id', ...payAuth, removeSalaryAssignment);
 
 // Payroll Runs
@@ -51,6 +54,7 @@ router.put('/runs/:id/approve', ...payAuth, approvePayrollRun);
 // Payroll Entries
 router.get('/runs/:runId/entries', ...payAuth, getPayrollEntries);
 router.put('/entries/:id', ...payAuth, updatePayrollEntry);
+router.post('/entries/:id/loan-deduction', ...payAuth, addLoanDeduction);
 
 // Payslip PDF
 router.get('/entries/:payrollEntryId/payslip', ...payAuth, generatePayslipPDF);

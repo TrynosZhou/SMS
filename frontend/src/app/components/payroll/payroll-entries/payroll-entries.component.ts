@@ -18,7 +18,11 @@ export class PayrollEntriesComponent implements OnInit {
   success = '';
   currencySymbol = 'KES';
   editingEntry: any = null;
-  editForm: any = { grossSalary: 0, totalAllowances: 0, totalDeductions: 0, netSalary: 0 };
+  editForm: any = { grossSalary: 0, totalAllowances: 0, totalDeductions: 0, netSalary: 0, paymentMethod: 'cash', bankName: null as string | null };
+  banks: Array<{ id: string; name: string }> = [];
+  loanPrincipal = 0;
+  loanMonths: 1 | 2 | 3 = 1;
+  addingLoan = false;
 
   constructor(
     private payrollService: PayrollService,
@@ -34,7 +38,10 @@ export class PayrollEntriesComponent implements OnInit {
       return;
     }
     this.settingsService.getSettings().subscribe({
-      next: (s: any) => { this.currencySymbol = s?.currencySymbol || 'KES'; },
+      next: (s: any) => {
+        this.currencySymbol = s?.currencySymbol || 'KES';
+        this.banks = Array.isArray(s?.payrollSettings?.banks) ? s.payrollSettings.banks : [];
+      },
       error: () => {}
     });
     this.loadEntries();
@@ -84,12 +91,37 @@ export class PayrollEntriesComponent implements OnInit {
       grossSalary: entry.grossSalary || 0,
       totalAllowances: entry.totalAllowances || 0,
       totalDeductions: entry.totalDeductions || 0,
-      netSalary: entry.netSalary || 0
+      netSalary: entry.netSalary || 0,
+      paymentMethod: entry.paymentMethod || 'cash',
+      bankName: entry.bankName || null
     };
+    this.loanPrincipal = 0;
+    this.loanMonths = 1;
   }
 
   closeEdit() {
     this.editingEntry = null;
+  }
+
+  addLoanDeduction() {
+    if (!this.editingEntry || this.loanPrincipal <= 0) return;
+    this.addingLoan = true;
+    this.payrollService.addLoanDeduction(this.editingEntry.id, this.loanPrincipal, this.loanMonths).subscribe({
+      next: (res: any) => {
+        this.success = `Loan deduction added: ${this.currencySymbol} ${(res?.loanDeduction?.totalDeduction ?? 0).toFixed(2)} (principal + interest)`;
+        this.addingLoan = false;
+        this.loadEntries();
+        this.editingEntry = this.entries.find((e: any) => e.id === this.editingEntry?.id) || this.editingEntry;
+        this.editForm.totalDeductions = (this.editingEntry?.totalDeductions ?? 0);
+        this.editForm.netSalary = (this.editingEntry?.netSalary ?? 0);
+        this.loanPrincipal = 0;
+        setTimeout(() => this.success = '', 4000);
+      },
+      error: (err) => {
+        this.error = err?.error?.message || 'Failed to add loan deduction';
+        this.addingLoan = false;
+      }
+    });
   }
 
   saveEdit() {
@@ -144,6 +176,19 @@ export class PayrollEntriesComponent implements OnInit {
         setTimeout(() => this.success = '', 3000);
       },
       error: (err) => { this.error = err?.error?.message || 'Download failed'; }
+    });
+  }
+
+  previewPayslip(entry: any) {
+    this.payrollService.getPayslipPdf(entry.id).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank', 'noopener,noreferrer');
+        setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+        this.success = 'Payslip opened in new tab';
+        setTimeout(() => this.success = '', 3000);
+      },
+      error: (err) => { this.error = err?.error?.message || 'Preview failed'; }
     });
   }
 

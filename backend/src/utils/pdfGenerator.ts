@@ -52,7 +52,7 @@ export function createReportCardPDF(
 ): Promise<Buffer> {
   return new Promise(async (resolve, reject) => {
     try {
-      const doc = new PDFDocument({ margin: 50, size: 'A4' });
+      const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
       const buffers: Buffer[] = [];
 
       doc.on('data', buffers.push.bind(buffers));
@@ -850,11 +850,15 @@ export function createReportCardPDF(
         });
       }
 
-      // Footer - Position at bottom of page, formatted date/time
+      // Footer - draw on first page at bottom (report card page footer)
+      if (typeof doc.switchToPage === 'function') {
+        doc.switchToPage(0);
+      }
       const genDate = new Date(reportCard.generatedAt);
       const pad = (n: number) => String(n).padStart(2, '0');
       const formatted = `${pad(genDate.getDate())}/${pad(genDate.getMonth() + 1)}/${genDate.getFullYear()}, ${pad(genDate.getHours())}:${pad(genDate.getMinutes())}:${pad(genDate.getSeconds())}`;
-      const footerYFinal = pageHeight - 25;
+      const firstPageHeight = doc.page.height;
+      const footerYFinal = firstPageHeight - 22;
       doc.fontSize(8).font('Helvetica').fillColor('#000000').text(
         `Generated on: ${formatted}`,
         50,

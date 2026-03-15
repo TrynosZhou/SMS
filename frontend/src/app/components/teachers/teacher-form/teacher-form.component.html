@@ -79,6 +79,18 @@
         </div>
 
         <div class="form-group">
+          <label for="nationalId">National ID</label>
+          <input 
+            type="text" 
+            id="nationalId"
+            [(ngModel)]="teacher.nationalId" 
+            name="nationalId"
+            placeholder="National ID number"
+            class="form-input">
+          <small class="form-hint">National ID (shown on payslip)</small>
+        </div>
+
+        <div class="form-group">
           <label for="dateOfBirth">Date of Birth</label>
           <input 
             type="date" 
@@ -178,6 +190,43 @@
               </p>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Salary payment & bank (for payroll) -->
+    <div class="form-section">
+      <div class="section-header">
+        <h2>
+          <span class="section-icon">💰</span>
+          Salary payment
+        </h2>
+        <p class="section-description">How this teacher receives salary when payroll is processed</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="paymentMethod">Payment method</label>
+          <select id="paymentMethod" [(ngModel)]="teacher.paymentMethod" name="paymentMethod" class="form-input">
+            <option value="cash">Cash</option>
+            <option value="bank">Bank deposit</option>
+            <option value="both">Cash + Bank</option>
+          </select>
+        </div>
+        <div class="form-group" *ngIf="teacher.paymentMethod !== 'cash'">
+          <label for="bankName">Bank</label>
+          <select id="bankName" [(ngModel)]="teacher.bankName" name="bankName" class="form-input" *ngIf="banks.length > 0">
+            <option value="">— Select bank —</option>
+            <option *ngFor="let b of banks" [value]="b.name">{{ b.name }}</option>
+          </select>
+          <input *ngIf="banks.length === 0" type="text" id="bankName" [(ngModel)]="teacher.bankName" name="bankName" class="form-input" placeholder="Configure banks in Settings" />
+        </div>
+        <div class="form-group" *ngIf="teacher.paymentMethod !== 'cash'">
+          <label for="bankAccountNumber">Account number</label>
+          <input type="text" id="bankAccountNumber" [(ngModel)]="teacher.bankAccountNumber" name="bankAccountNumber" class="form-input" placeholder="Account number" />
+        </div>
+        <div class="form-group" *ngIf="teacher.paymentMethod !== 'cash'">
+          <label for="bankBranch">Branch</label>
+          <input type="text" id="bankBranch" [(ngModel)]="teacher.bankBranch" name="bankBranch" class="form-input" placeholder="Branch" />
         </div>
       </div>
     </div>
