@@ -1,0 +1,124 @@
+<div class="pib-layout">
+  <aside class="pib-sidebar">
+    <div class="pib-brand">
+      <span class="brand-icon">🏫</span>
+      <div><div class="brand-title">Parent Portal</div><div class="brand-sub">{{ parentName }}</div></div>
+    </div>
+    <nav class="pib-nav">
+      <a routerLink="/parent/dashboard" routerLinkActive="active" class="pib-nav-item"><span class="nav-icon">📊</span><span>Dashboard</span></a>
+      <a routerLink="/parent/inbox" routerLinkActive="active" class="pib-nav-item">
+        <span class="nav-icon">📧</span><span>My Inbox</span>
+        <span class="unread-badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+      </a>
+      <a routerLink="/parent/send-message" routerLinkActive="active" class="pib-nav-item"><span class="nav-icon">✉️</span><span>Send Message</span></a>
+      <a routerLink="/parent/outbox" routerLinkActive="active" class="pib-nav-item"><span class="nav-icon">📤</span><span>Outbox</span></a>
+      <a routerLink="/parent/invoice-statement" routerLinkActive="active" class="pib-nav-item"><span class="nav-icon">🧾</span><span>My Invoice Statement</span></a>
+    </nav>
+    <button class="pib-logout" (click)="logout()">🚪 Logout</button>
+  </aside>
+  <main class="pib-main">
+    <div class="pib-page-header">
+      <div><h1 class="pib-title">📧 My Inbox</h1><p class="pib-subtitle">Messages from the school</p></div>
+      <div class="header-actions">
+        <div class="stat-chip" *ngIf="allMessages.length > 0"><span class="stat-num">{{ allMessages.length }}</span> total</div>
+        <div class="stat-chip unread-chip" *ngIf="unreadCount > 0"><span class="stat-num">{{ unreadCount }}</span> unread</div>
+        <button class="refresh-btn" (click)="loadMessages()" [disabled]="loading" title="Refresh"><span [class.spinning]="loading">↻</span></button>
+      </div>
+    </div>
+    <div class="pib-alert pib-alert-success" *ngIf="success">✓ {{ success }}</div>
+    <div class="pib-alert pib-alert-error" *ngIf="error">✕ {{ error }}</div>
+    <div class="search-bar" *ngIf="allMessages.length > 0">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" type="text" [(ngModel)]="searchQuery" (ngModelChange)="applyFilter()" placeholder="Search by subject, content or sender…" />
+      <button class="search-clear" *ngIf="searchQuery" (click)="searchQuery=''; applyFilter()">✕</button>
+    </div>
+    <div class="pib-loading" *ngIf="loading"><div class="loading-spinner"></div><span>Loading messages…</span></div>
+    <div class="pib-empty" *ngIf="!loading && messages.length === 0 && !searchQuery">
+      <div class="empty-icon">📭</div><h2>No Messages Yet</h2>
+      <p>Messages from the school will appear here.</p>
+      <a routerLink="/parent/send-message" class="compose-btn">✉️ Send a Message</a>
+    </div>
+    <div class="pib-empty" *ngIf="!loading && messages.length === 0 && searchQuery">
+      <div class="empty-icon">🔍</div><h2>No Results</h2>
+      <p>No messages match "<strong>{{ searchQuery }}</strong>"</p>
+      <button class="compose-btn" (click)="searchQuery=''; applyFilter()">Clear Search</button>
+    </div>
+    <div class="msg-list" *ngIf="!loading && messages.length > 0">
+      <div class="msg-card" *ngFor="let msg of messages" [class.unread]="isUnread(msg)" [class.expanded]="expandedId === msg.id">
+        <div class="msg-card-header" (click)="toggleExpand(msg)">
+          <div class="msg-left">
+            <div class="msg-avatar">{{ (msg.senderName || 'S').charAt(0).toUpperCase() }}</div>
+            <div class="msg-meta">
+              <div class="msg-subject-row">
+                <span class="msg-subject">{{ msg.subject }}</span>
+                <span class="unread-dot" *ngIf="isUnread(msg)"></span>
+              </div>
+              <span class="msg-sender">{{ msg.senderName || 'School Administration' }}</span>
+            </div>
+          </div>
+          <div class="msg-right">
+            <span class="msg-date" [title]="formatDateFull(msg.createdAt)">{{ formatDate(msg.createdAt) }}</span>
+            <span class="att-badge" *ngIf="getAttachments(msg).length > 0">📎 {{ getAttachments(msg).length }}</span>
+            <span class="expand-icon">{{ expandedId === msg.id ? '▲' : '▼' }}</span>
+          </div>
+        </div>
+        <div class="msg-body" *ngIf="expandedId === msg.id">
+          <div class="msg-body-meta">
+            <span>From: <strong>{{ msg.senderName || 'School Administration' }}</strong></span>
+            <span>{{ formatDateFull(msg.createdAt) }}</span>
+          </div>
+          <div class="msg-text">{{ msg.message }}</div>
+          <div class="msg-attachments" *ngIf="getAttachments(msg).length > 0">
+            <div class="att-header">📎 Attachments ({{ getAttachments(msg).length }})</div>
+            <div class="att-list">
+              <a *ngFor="let att of getAttachments(msg)" [href]="att.url" target="_blank" rel="noopener noreferrer" class="att-item" download>
+                <span class="att-icon">{{ att.icon }}</span><span class="att-name">{{ att.name }}</span><span class="att-dl">⬇</span>
+              </a>
+            </div>
+          </div>
+          <div class="msg-actions" *ngIf="replyingForId !== msg.id">
+            <button class="reply-btn" (click)="openReply(msg); $event.stopPropagation()">↩ Reply</button>
+          </div>
+          <div class="reply-form" *ngIf="replyingForId === msg.id" (click)="$event.stopPropagation()">
+            <div class="reply-form-title">↩ Reply</div>
+            <div class="rf-row">
+              <label class="rf-label">Send to</label>
+              <div class="rc-cards">
+                <div class="rc-card" [class.active]="replyRecipient === 'admin'" (click)="replyRecipient = 'admin'">🏫 Administrator <span class="rc-check" *ngIf="replyRecipient === 'admin'">✓</span></div>
+                <div class="rc-card" [class.active]="replyRecipient === 'accountant'" (click)="replyRecipient = 'accountant'">💼 Accountant <span class="rc-check" *ngIf="replyRecipient === 'accountant'">✓</span></div>
+              </div>
+            </div>
+            <div class="rf-row">
+              <label class="rf-label">Subject</label>
+              <input class="rf-input" type="text" [(ngModel)]="replySubject" />
+            </div>
+            <div class="rf-row">
+              <label class="rf-label">Message</label>
+              <textarea class="rf-textarea" [(ngModel)]="replyBody" placeholder="Type your reply…"></textarea>
+            </div>
+            <div class="rf-row">
+              <label class="rf-label">Attachments <span style="font-weight:400;color:#9ca3af;font-size:12px">(optional)</span></label>
+              <div class="rf-drop" [class.dragging]="isDragging" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)" (click)="replyFile.click()">
+                <input #replyFile type="file" multiple hidden (change)="onFileChange($event)" />
+                <span>📎 Drop files or <strong>click to browse</strong></span>
+              </div>
+              <div class="rf-file-list" *ngIf="attachments.length > 0">
+                <div class="rf-file" *ngFor="let f of attachments; let i = index">
+                  <span>{{ fileIcon(f.name) }} {{ f.name }}</span>
+                  <span class="rf-file-size">{{ formatBytes(f.size) }}</span>
+                  <button class="rf-remove" (click)="removeAttachment(i)" type="button">✕</button>
+                </div>
+              </div>
+            </div>
+            <div class="rf-actions">
+              <button class="rf-cancel" (click)="cancelReply()" [disabled]="sending">Cancel</button>
+              <button class="rf-send" (click)="sendReply()" [disabled]="sending || !replySubject.trim() || !replyBody.trim()">
+                <span *ngIf="!sending">✉️ Send Reply</span><span *ngIf="sending">Sending…</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

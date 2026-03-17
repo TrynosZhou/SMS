@@ -1,0 +1,123 @@
+<div class="marks-progress-container">
+  <div class="page-header">
+    <h1>Marks Entry Progress</h1>
+    <p class="subtitle">Monitor percentage completion of marks entry per class and subject</p>
+    <div class="header-actions">
+      <button class="btn btn-secondary" (click)="exportToCsv()">⬇️ Export CSV</button>
+      <button class="btn btn-secondary" (click)="refresh()">🔄 Refresh</button>
+      <button class="btn btn-secondary" (click)="expandAll()">➕ Expand All</button>
+      <button class="btn btn-secondary" (click)="collapseAll()">➖ Collapse All</button>
+    </div>
+  </div>
+
+  <div class="filters">
+    <div class="filter">
+      <label>Exam Type</label>
+      <select [(ngModel)]="selectedExamType" (change)="fetchProgress()">
+        <option *ngFor="let t of examTypes" [value]="t.value">{{ t.label }}</option>
+      </select>
+    </div>
+    <div class="filter">
+      <label>Term</label>
+      <input type="text" [(ngModel)]="selectedTerm" (change)="fetchProgress()" placeholder="e.g., Term 1 2026">
+    </div>
+    <div class="filter">
+      <label>Class (optional)</label>
+      <select [(ngModel)]="selectedClassId" (change)="fetchProgress()">
+        <option value="">All Classes</option>
+        <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
+      </select>
+    </div>
+    <div class="filter grow">
+      <label>Search</label>
+      <input type="text" [(ngModel)]="searchQuery" placeholder="Search class or subject">
+    </div>
+    <div class="filter">
+      <label>Sort By</label>
+      <select [(ngModel)]="sortColumn">
+        <option value="avgProgress">Avg Progress</option>
+        <option value="class">Class Name</option>
+        <option value="subjectsComplete">Subjects Complete</option>
+      </select>
+    </div>
+    <div class="filter">
+      <label>Direction</label>
+      <select [(ngModel)]="sortDirection">
+        <option value="desc">Desc</option>
+        <option value="asc">Asc</option>
+      </select>
+    </div>
+    <div class="filter">
+      <label>Show Incomplete Only</label>
+      <input type="checkbox" [(ngModel)]="showIncompleteOnly">
+    </div>
+    <div class="filter">
+      <label>Min Progress (%)</label>
+      <input type="number" [(ngModel)]="minProgress" min="0" max="100">
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value">{{ stats.totalClasses }}</div>
+      <div class="stat-label">Classes</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">{{ stats.totalSubjects }}</div>
+      <div class="stat-label">Subjects</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">{{ stats.subjectsComplete }}</div>
+      <div class="stat-label">Complete</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">{{ stats.subjectsIncomplete }}</div>
+      <div class="stat-label">Incomplete</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">{{ stats.averageProgress }}%</div>
+      <div class="stat-label">Avg Progress</div>
+    </div>
+  </div>
+
+  <div class="alert error" *ngIf="error">{{ error }}</div>
+  <div *ngIf="loading" class="loading">Loading progress...</div>
+  <div *ngIf="!loading && getViewData().length === 0" class="empty">
+    No data available for the selected filters.
+  </div>
+
+  <div class="class-grid" *ngIf="!loading && getViewData().length > 0">
+    <div class="class-card" *ngFor="let cls of getViewData()">
+      <div class="class-header">
+        <div>
+          <div class="class-title">{{ cls.className }}</div>
+          <div class="class-meta">
+            Students: {{ cls.totalStudents }} • Avg: {{ getAverageProgressForClass(cls) }}% • Complete: {{ getSubjectsCompleteCount(cls) }}
+          </div>
+        </div>
+        <button class="btn btn-secondary" (click)="toggleCollapse(cls.classId)">{{ collapsed[cls.classId] ? 'Expand' : 'Collapse' }}</button>
+      </div>
+      <table class="subjects-table" *ngIf="!collapsed[cls.classId]">
+        <thead>
+          <tr>
+            <th>Subject</th>
+            <th>Progress</th>
+            <th>Entered</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of cls.subjects">
+            <td>{{ s.subjectName }}</td>
+            <td>
+              <div class="progress-bar">
+                <div class="progress-fill" [style.width.%]="s.progressPercent" [style.background]="getProgressColor(s.progressPercent)"></div>
+              </div>
+              <div class="progress-label">{{ s.progressPercent }}%</div>
+            </td>
+            <td>{{ s.enteredCount }}/{{ s.expectedCount }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

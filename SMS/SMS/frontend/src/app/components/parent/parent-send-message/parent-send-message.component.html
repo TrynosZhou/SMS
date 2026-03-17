@@ -1,0 +1,147 @@
+<div class="psm-layout">
+  <!-- Sidebar -->
+  <aside class="psm-sidebar">
+    <div class="psm-sidebar-brand">
+      <span class="brand-icon">🏫</span>
+      <div>
+        <div class="brand-title">Parent Portal</div>
+        <div class="brand-sub">{{ parentName }}</div>
+      </div>
+    </div>
+    <nav class="psm-nav">
+      <a routerLink="/parent/dashboard" routerLinkActive="active" class="psm-nav-item">
+        <span class="nav-icon">📊</span><span>Dashboard</span>
+      </a>
+      <a routerLink="/parent/inbox" routerLinkActive="active" class="psm-nav-item">
+        <span class="nav-icon">📧</span><span>My Inbox</span>
+      </a>
+      <a routerLink="/parent/send-message" routerLinkActive="active" class="psm-nav-item">
+        <span class="nav-icon">✉️</span><span>Send Message</span>
+      </a>
+      <a routerLink="/parent/outbox" routerLinkActive="active" class="psm-nav-item">
+        <span class="nav-icon">📤</span><span>Outbox</span>
+      </a>
+      <a routerLink="/parent/invoice-statement" routerLinkActive="active" class="psm-nav-item">
+        <span class="nav-icon">🧾</span><span>My Invoice Statement</span>
+      </a>
+    </nav>
+    <button class="psm-logout" (click)="logout()">🚪 Logout</button>
+  </aside>
+
+  <!-- Main -->
+  <main class="psm-main">
+    <div class="psm-page-header">
+      <div>
+        <h1 class="psm-title">✉️ New Message</h1>
+        <p class="psm-subtitle">Send a message to school administration</p>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <div class="psm-alert psm-alert-success" *ngIf="success">
+      <span class="alert-icon">✓</span> {{ success }}
+    </div>
+    <div class="psm-alert psm-alert-error" *ngIf="error">
+      <span class="alert-icon">✕</span> {{ error }}
+    </div>
+
+    <div class="psm-card">
+
+      <!-- Quick Templates -->
+      <div class="templates-section">
+        <span class="templates-label">Quick Templates:</span>
+        <button class="tpl-btn" *ngFor="let t of templates" (click)="applyTemplate(t)" type="button">
+          {{ t.label }}
+        </button>
+      </div>
+
+      <!-- Recipient Cards -->
+      <div class="field-group">
+        <label class="field-label">Recipient</label>
+        <div class="recipient-cards">
+          <div class="recipient-card" [class.active]="recipient === 'admin'" (click)="recipient = 'admin'">
+            <span class="rc-icon">🏫</span>
+            <div class="rc-info">
+              <div class="rc-name">Administrator</div>
+              <div class="rc-role">School Administration</div>
+            </div>
+            <span class="rc-check" *ngIf="recipient === 'admin'">✓</span>
+          </div>
+          <div class="recipient-card" [class.active]="recipient === 'accountant'" (click)="recipient = 'accountant'">
+            <span class="rc-icon">💼</span>
+            <div class="rc-info">
+              <div class="rc-name">Accountant</div>
+              <div class="rc-role">Finance Office</div>
+            </div>
+            <span class="rc-check" *ngIf="recipient === 'accountant'">✓</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subject -->
+      <div class="field-group">
+        <label class="field-label" for="psm-subject">Subject</label>
+        <input
+          id="psm-subject"
+          class="psm-input"
+          type="text"
+          [(ngModel)]="subject"
+          placeholder="Enter the subject of your message..."
+          maxlength="150" />
+      </div>
+
+      <!-- Message Body -->
+      <div class="field-group">
+        <div class="body-label-row">
+          <label class="field-label" for="psm-body">Message</label>
+          <span class="char-counter" [class]="charClass">{{ charCount }} / {{ charLimit }}</span>
+        </div>
+        <textarea
+          id="psm-body"
+          class="psm-textarea"
+          [(ngModel)]="body"
+          placeholder="Type your message here..."
+          [maxlength]="charLimit"></textarea>
+        <div class="char-bar">
+          <div class="char-bar-fill" [class]="charClass" [style.width.%]="(charCount / charLimit) * 100"></div>
+        </div>
+      </div>
+
+      <!-- Attachments -->
+      <div class="field-group">
+        <label class="field-label">Attachments <span class="optional">(optional)</span></label>
+        <div
+          class="drop-zone"
+          [class.dragging]="isDragging"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+          (click)="fileInput.click()">
+          <input #fileInput type="file" multiple hidden (change)="onFileChange($event)" />
+          <span class="dz-icon">📎</span>
+          <span class="dz-text">Drop files here or <strong>click to browse</strong></span>
+          <span class="dz-hint">PDF, Word, Excel, Images supported</span>
+        </div>
+        <div class="file-list" *ngIf="attachments.length > 0">
+          <div class="file-item" *ngFor="let f of attachments; let i = index">
+            <span class="file-item-icon">{{ fileIcon(f.name) }}</span>
+            <div class="file-item-info">
+              <span class="file-name">{{ f.name }}</span>
+              <span class="file-size">{{ formatBytes(f.size) }}</span>
+            </div>
+            <button class="file-remove" (click)="removeAttachment(i)" title="Remove" type="button">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="psm-actions">
+        <button class="psm-btn-send" [disabled]="!canSend() || loading" (click)="send()">
+          <span *ngIf="!loading">✉️ Send Message</span>
+          <span *ngIf="loading" class="sending-spinner">Sending…</span>
+        </button>
+      </div>
+
+    </div>
+  </main>
+</div>

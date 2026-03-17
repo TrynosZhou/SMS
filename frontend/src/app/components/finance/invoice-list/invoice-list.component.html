@@ -1,0 +1,1540 @@
+<div class="container">
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="header-icon">💰</span>
+        Invoice Management
+      </h1>
+      <p class="subtitle">Manage student invoices, payments, and financial records</p>
+    </div>
+  </div>
+
+  <div class="invoice-actions-card">
+    <div class="actions-row actions-row-primary">
+      <button 
+        class="btn btn-action btn-credit" 
+        type="button"
+        (click)="openCreditNoteForm()"
+        *ngIf="canManageFinance()"
+        [disabled]="authService.hasRole('accountant')"
+        title="Credit Note - correct overcharge">
+        <span class="btn-icon">📝</span>
+        <span>Credit Note</span>
+      </button>
+      <button 
+        class="btn btn-action btn-debit" 
+        type="button"
+        (click)="openDebitNoteForm()"
+        *ngIf="canManageFinance()"
+        [disabled]="authService.hasRole('accountant')"
+        title="Debit Note - correct undercharge">
+        <span class="btn-icon">📗</span>
+        <span>Debit Note</span>
+      </button>
+      <button class="btn btn-action btn-create" type="button" (click)="openUniformItemsModal()" *ngIf="canCreateInvoice()" title="Process uniform items for a student and charge against uniform account">
+        <span class="btn-icon">👕</span>
+        <span>Uniform Items</span>
+      </button>
+      <button class="btn btn-action btn-bulk" (click)="openBulkInvoiceForm()" *ngIf="canManageFinance()">
+        <span class="btn-icon">📋</span>
+        <span>Bulk Create</span>
+      </button>
+      <button class="btn btn-action btn-reverse" (click)="reverseLastBulkCreation()" *ngIf="canManageFinance() || canCorrectTransaction()" [disabled]="reversingBulk || !canCorrectTransaction()" title="Reverse last bulk invoice creation">
+        <span class="btn-icon">↩️</span>
+        <span>Reverse Bulk</span>
+      </button>
+    </div>
+    <div class="actions-row actions-row-secondary" *ngIf="canManageFinance() || canCorrectTransaction()">
+      <div class="reverse-filters" *ngIf="authService.hasRole('admin') || authService.hasRole('superadmin')">
+        <select [(ngModel)]="reverseFilter.term" [ngModelOptions]="{standalone:true}" class="form-control form-control-inline" title="Term to reverse">
+          <option value="">Auto (following term)</option>
+          <option *ngFor="let term of getUniqueTerms()" [value]="term">{{ term }}</option>
+        </select>
+        <input type="date" [(ngModel)]="reverseFilter.startDate" [ngModelOptions]="{standalone:true}" class="form-control form-control-inline" title="Start date" />
+        <input type="date" [(ngModel)]="reverseFilter.endDate" [ngModelOptions]="{standalone:true}" class="form-control form-control-inline" title="End date" />
+      </div>
+      <div class="actions-secondary-buttons">
+        <button class="btn btn-action btn-exemption" (click)="runTuitionExemptionCorrection()" *ngIf="canManageFinance()" [disabled]="correctingExemptTuition || authService.hasRole('accountant')" title="Void unpaid tuition invoices for exempt students">
+          <span class="btn-icon">🛡️</span>
+          <span>Tuition Exemption</span>
+        </button>
+        <button class="btn btn-action btn-prepaid" type="button" (click)="openCorrectPrepaidLookupModal()" *ngIf="canManageFinance() || canCorrectTransaction()" [disabled]="!canCorrectTransaction()" title="Correct prepaid transaction by student">
+          <span class="btn-icon">🧾</span>
+          <span>Correct Prepaid</span>
+        </button>
+        <button class="btn btn-action btn-reconciliation-audit" type="button" (click)="openReconciliationAudit()" *ngIf="canManageFinance()" title="Check for invoice identity violations (paidAmount + balance vs amount + prevBalance - prepaid)">
+          <span class="btn-icon">🔍</span>
+          <span>Reconciliation Audit</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Reconciliation Audit Modal -->
+  <div *ngIf="showReconciliationAuditModal" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+    <div class="card" style="width: 90%; max-width: 900px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; position: relative;">
+      <button (click)="closeReconciliationAudit()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; cursor: pointer; z-index: 1;">&times;</button>
+      <h2 style="margin: 0 0 16px 0; padding-right: 32px;">Invoice Reconciliation Audit</h2>
+      <p *ngIf="auditResult" style="color: #64748b; font-size: 13px; margin: 0 0 16px 0;">Term: <strong>{{ auditResult.term }}</strong> · Identity: {{ auditResult.identity }}</p>
+      
+      <div *ngIf="auditLoading" style="padding: 40px; text-align: center;">Running audit...</div>
+      
+      <div *ngIf="!auditLoading && auditResult" style="flex: 1; overflow-y: auto;">
+        <div class="audit-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px;">
+          <div style="padding: 12px; background: #f8fafc; border-radius: 8px;">
+            <div style="font-size: 12px; color: #64748b;">Invoices Checked</div>
+            <div style="font-size: 18px; font-weight: 700;">{{ auditResult.invoicesChecked }}</div>
+          </div>
+          <div style="padding: 12px; background: #fef2f2; border-radius: 8px;">
+            <div style="font-size: 12px; color: #64748b;">Violations</div>
+            <div style="font-size: 18px; font-weight: 700; color: #dc2626;">{{ auditResult.violationsCount }}</div>
+          </div>
+          <div style="padding: 12px; background: #fef2f2; border-radius: 8px;">
+            <div style="font-size: 12px; color: #64748b;">Total Discrepancy</div>
+            <div style="font-size: 18px; font-weight: 700; color: #dc2626;">{{ currencySymbol }} {{ auditResult.totalDiscrepancy | number:'1.2-2' }}</div>
+          </div>
+          <div style="padding: 12px; background: #f8fafc; border-radius: 8px;">
+            <div style="font-size: 12px; color: #64748b;">Sum (paid+balance)</div>
+            <div style="font-size: 14px;">{{ currencySymbol }} {{ auditResult.totalLeft | number:'1.2-2' }}</div>
+          </div>
+          <div style="padding: 12px; background: #f8fafc; border-radius: 8px;">
+            <div style="font-size: 12px; color: #64748b;">Sum (amount+prev-prepaid)</div>
+            <div style="font-size: 14px;">{{ currencySymbol }} {{ auditResult.totalRight | number:'1.2-2' }}</div>
+          </div>
+        </div>
+        
+        <div *ngIf="auditResult.violations.length > 0" style="overflow-x: auto;">
+          <table class="data-table" style="width: 100%; font-size: 13px;">
+            <thead>
+              <tr>
+                <th>Invoice #</th>
+                <th>Student</th>
+                <th>Paid</th>
+                <th>Balance</th>
+                <th>paid+balance</th>
+                <th>amount+prev-prepaid</th>
+                <th>Discrepancy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let v of auditResult.violations" [style.background]="v.discrepancy > 0 ? '#fef2f2' : '#fff7ed'">
+                <td>{{ v.invoiceNumber || '—' }}</td>
+                <td>{{ v.studentName || v.studentNumber || '—' }}</td>
+                <td>{{ currencySymbol }} {{ v.paidAmount | number:'1.2-2' }}</td>
+                <td>{{ currencySymbol }} {{ v.balance | number:'1.2-2' }}</td>
+                <td>{{ currencySymbol }} {{ v.leftSide | number:'1.2-2' }}</td>
+                <td>{{ currencySymbol }} {{ v.rightSide | number:'1.2-2' }}</td>
+                <td [style.color]="v.discrepancy !== 0 ? '#dc2626' : ''">{{ currencySymbol }} {{ v.discrepancy | number:'1.2-2' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div *ngIf="auditResult.violationsCount === 0" style="padding: 24px; text-align: center; color: #059669; background: #f0fdf4; border-radius: 8px;">
+          ✓ No identity violations found. All invoices satisfy: paidAmount + balance = amount + previousBalance - prepaidAmount
+        </div>
+      </div>
+      
+      <div style="padding: 16px 0 0 0; border-top: 1px solid #e2e8f0; margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" (click)="closeReconciliationAudit()">Close</button>
+        <button type="button" class="btn btn-primary" (click)="runReconciliationAudit()" [disabled]="auditLoading" style="margin-left: 8px;">Refresh</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Statistics Cards -->
+  <div class="stats-grid" *ngIf="!loading && invoices.length > 0">
+    <div class="stat-card primary">
+      <div class="stat-icon">📄</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ filteredInvoices.length }}</div>
+        <div class="stat-label">Total Invoices</div>
+        <div class="stat-sublabel" *ngIf="invoices.length !== filteredInvoices.length">
+          {{ invoices.length }} total
+        </div>
+      </div>
+    </div>
+    
+    <div class="stat-card success">
+      <div class="stat-icon">✅</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ currencySymbol }} {{ getPaidAmount() | number:'1.2-2' }}</div>
+        <div class="stat-label">Total Paid</div>
+        <div class="stat-sublabel" *ngIf="getTotalAmount() > 0">
+          {{ (getPaidAmount() / getTotalAmount() * 100) | number:'1.1-1' }}% collected
+        </div>
+      </div>
+    </div>
+    
+    <div class="stat-card danger">
+      <div class="stat-icon">⚠️</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ currencySymbol }} {{ getOutstandingAmount() | number:'1.2-2' }}</div>
+        <div class="stat-label">Outstanding Balance</div>
+        <div class="stat-sublabel" *ngIf="getOverdueCount() > 0">
+          {{ getOverdueCount() }} overdue
+        </div>
+      </div>
+    </div>
+    
+    <div class="stat-card info">
+      <div class="stat-icon">📊</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ currencySymbol }} {{ getTotalInvoiceAmount() | number:'1.2-2' }}</div>
+        <div class="stat-label">Total Invoice Amount</div>
+        <div class="stat-sublabel" *ngIf="getUniformTotal() > 0">
+          {{ currencySymbol }} {{ getUniformTotal() | number:'1.2-2' }} uniforms
+        </div>
+        <div class="stat-sublabel" style="margin-top: 4px;">
+          (Current: {{ currencySymbol }} {{ getTotalAmount() | number:'1.2-2' }})
+        </div>
+      </div>
+    </div>
+    
+    <div class="stat-card" style="border-left: 4px solid #17a2b8;" *ngIf="getTotalPrepaidCredit() > 0">
+      <div class="stat-icon">💳</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ currencySymbol }} {{ getTotalPrepaidCredit() | number:'1.2-2' }}</div>
+        <div class="stat-label">Available Credits</div>
+        <div class="stat-sublabel">
+          {{ getPrepaidCreditCount() }} student(s) with credit
+        </div>
+      </div>
+    </div>
+  </div>
+    
+    <!-- Bulk Invoice Creation Form Modal -->
+    <div *ngIf="showBulkInvoiceForm" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+      <div class="card" style="width: 500px; max-width: 90%; max-height: 90vh; overflow-y: auto; position: relative;">
+        <button (click)="closeBulkInvoiceForm()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+        <h2 style="margin-top: 0;">Create Invoices for All Students</h2>
+        <div class="alert alert-info" style="margin-bottom: 20px;">
+          <p><strong>Note:</strong> Invoices will be created for the <strong>following term</strong> based on the current term you select.</p>
+          <p>Example: If you select "Term 1 2024", invoices will be created for "Term 2 2024".</p>
+        </div>
+        <form (ngSubmit)="createBulkInvoices()">
+          <div class="form-group">
+            <label>Current Term *</label>
+            <input type="text" [(ngModel)]="bulkInvoiceForm.currentTerm" name="currentTerm" 
+                   placeholder="e.g., Term 1 2024" required 
+                   class="form-control">
+            <small style="color: #666;">Enter the current term. Invoices will be created for the following term.</small>
+            <div *ngIf="bulkInvoiceForm.currentTerm" style="margin-top: 8px; padding: 8px; background: #E8F4F8; border-radius: 4px;">
+              <strong>Following Term:</strong> <span style="color: #003366;">{{ getFollowingTerm(bulkInvoiceForm.currentTerm) }}</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Due Date *</label>
+            <input type="date" [(ngModel)]="bulkInvoiceForm.dueDate" name="dueDate" required 
+                   class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Description (Optional)</label>
+            <textarea [(ngModel)]="bulkInvoiceForm.description" name="description" 
+                      placeholder="e.g., Tuition fees for next term" 
+                      class="form-control" rows="3"></textarea>
+          </div>
+          <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+            <button type="button" class="btn btn-secondary" (click)="closeBulkInvoiceForm()" [disabled]="creatingBulk">
+              ❌ Cancel
+            </button>
+            <button type="submit" class="btn btn-primary" [disabled]="creatingBulk">
+              {{ creatingBulk ? 'Creating...' : '📋 Create Invoices' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+    <!-- Invoice Filters and Display Section -->
+    <div class="invoice-section">
+      <div class="section-header">
+        <h2>Invoice List</h2>
+        <div class="section-actions">
+          <button class="btn btn-secondary" 
+                  (click)="clearInvoiceFilters()" 
+                  *ngIf="hasActiveInvoiceFilters()">
+            <span>🗑️</span> Clear Filters
+          </button>
+          <button class="btn btn-primary" 
+                  (click)="onFilterChange()">
+            <span>📊</span> View Statements
+          </button>
+        </div>
+      </div>
+      
+      <!-- Filters -->
+      <div class="filters-card">
+        <div class="filters-header">
+          <h3>🔍 Filters & Search</h3>
+        </div>
+        <div class="filters-grid">
+          <div class="filter-group">
+            <label>Search</label>
+            <div class="search-input-wrapper">
+              <span class="search-icon">🔍</span>
+              <input type="text" 
+                     [(ngModel)]="invoiceSearchQuery" 
+                     [ngModelOptions]="{standalone: true}"
+                     (input)="filterInvoices()"
+                     (keyup.enter)="filterInvoices()"
+                     placeholder="Search by student name, student number, invoice number, or term" 
+                     class="form-control search-input">
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Student</label>
+            <select [(ngModel)]="selectedStudent" 
+                    [ngModelOptions]="{standalone: true}" 
+                    (change)="filterInvoices()"
+                    class="form-control">
+              <option value="">All Students</option>
+              <option *ngFor="let student of students" [value]="student.id">
+                {{ student.firstName }} {{ student.lastName }}
+              </option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Status</label>
+            <select [(ngModel)]="selectedStatusFilter" 
+                    [ngModelOptions]="{standalone: true}" 
+                    (change)="filterInvoices()"
+                    class="form-control">
+              <option value="">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="paid">Paid</option>
+              <option value="partial">Partial</option>
+              <option value="overdue">Overdue</option>
+              <option value="void">Void</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Term</label>
+            <select [(ngModel)]="selectedTermFilter" 
+                    [ngModelOptions]="{standalone: true}" 
+                    (change)="filterInvoices()"
+                    class="form-control">
+              <option value="">All Terms</option>
+              <option *ngFor="let term of getUniqueTerms()" [value]="term">
+                {{ term }}
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div class="loading-state" *ngIf="loading">
+        <div class="spinner"></div>
+        <p>Loading invoices...</p>
+      </div>
+
+      <!-- Invoice Table -->
+      <div *ngIf="!loading">
+        <div *ngIf="filteredInvoices.length === 0" class="empty-state">
+          <div class="empty-icon">📋</div>
+          <h3>No invoices found</h3>
+          <p *ngIf="hasActiveInvoiceFilters()">
+            Try adjusting your filters or 
+            <button class="btn-link" (click)="clearInvoiceFilters()">clear all filters</button>.
+          </p>
+          <p *ngIf="!hasActiveInvoiceFilters()">
+            No invoices have been created yet. Start by creating invoices for students.
+          </p>
+        </div>
+
+        <div class="table-wrapper" *ngIf="filteredInvoices.length > 0">
+          <table class="invoice-table">
+          <thead>
+            <tr>
+              <th>Invoice Number</th>
+              <th>Student</th>
+              <th style="text-align: right;">Base Amount</th>
+              <th style="text-align: right;">Uniform Total</th>
+              <th style="text-align: right;">Grand Total</th>
+              <th style="text-align: right;">Paid</th>
+              <th style="text-align: right;">Balance</th>
+              <th style="text-align: right;">Credit 💳</th>
+              <th>Status</th>
+              <th>Due Date</th>
+              <th>Term</th>
+              <th style="text-align: center;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let invoice of filteredInvoices" (click)="selectInvoice(invoice)" [class.selected-row]="selectedInvoice?.id === invoice.id" [class.void-row]="(invoice.status || '').toLowerCase() === 'void'">
+              <td>{{ invoice.invoiceNumber }}</td>
+              <td>{{ invoice.student?.firstName }} {{ invoice.student?.lastName }}</td>
+              <td style="text-align: right;">{{ currencySymbol }} {{ (invoice.amount - (invoice.uniformTotal || 0)) | number:'1.2-2' }}</td>
+              <td style="text-align: right;">{{ currencySymbol }} {{ invoice.uniformTotal || 0 | number:'1.2-2' }}</td>
+              <td style="text-align: right;">{{ currencySymbol }} {{ invoice.amount | number:'1.2-2' }}</td>
+              <td style="text-align: right;">{{ currencySymbol }} {{ invoice.paidAmount | number:'1.2-2' }}</td>
+              <td style="text-align: right;">{{ currencySymbol }} {{ invoice.balance | number:'1.2-2' }}</td>
+              <td style="text-align: right;">
+                <span *ngIf="invoice.prepaidAmount && invoice.prepaidAmount > 0" 
+                      style="color: #17a2b8; font-weight: bold;" 
+                      title="Available prepaid credit">
+                  {{ currencySymbol }} {{ invoice.prepaidAmount | number:'1.2-2' }}
+                </span>
+                <span *ngIf="!invoice.prepaidAmount || invoice.prepaidAmount <= 0" 
+                      style="color: #999;">—</span>
+              </td>
+              <td>
+                <span [class]="getStatusClass(invoice.status)">
+                  {{ invoice.status }}
+                </span>
+              </td>
+              <td>{{ invoice.dueDate | date:'dd/MM/yyyy' }}</td>
+              <td>{{ invoice.term }}</td>
+              <td style="text-align: center;">
+                <div style="display: flex; gap: 8px; flex-wrap: nowrap; align-items: center; justify-content: center;">
+                  <button class="btn btn-primary" 
+                          type="button"
+                          (click)="viewInvoicePDF(invoice.id, $event)"
+                          title="View Invoice"
+                          style="font-size: 12px; padding: 5px 10px; white-space: nowrap;">
+                    📄 Invoice
+                  </button>
+                  <button class="btn btn-secondary" 
+                          (click)="openPaymentForm(invoice)"
+                          *ngIf="canManageFinance()"
+                          title="Record Payment"
+                          style="font-size: 12px; padding: 5px 10px; white-space: nowrap;">
+                    💳 Payment
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Summary Statistics -->
+        <div class="summary-cards" *ngIf="filteredInvoices.length > 0">
+          <div class="summary-card">
+            <div class="summary-icon">📄</div>
+            <div class="summary-content">
+              <div class="summary-label">Total Invoices</div>
+              <div class="summary-value">{{ filteredInvoices.length }}</div>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon">💵</div>
+            <div class="summary-content">
+              <div class="summary-label">Total Invoice Amount</div>
+              <div class="summary-value">{{ currencySymbol }} {{ getTotalInvoiceAmount() | number:'1.2-2' }}</div>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon">📋</div>
+            <div class="summary-content">
+              <div class="summary-label">Current Term Fees</div>
+              <div class="summary-value">{{ currencySymbol }} {{ getTotalAmount() | number:'1.2-2' }}</div>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon">👕</div>
+            <div class="summary-content">
+              <div class="summary-label">Uniform Total</div>
+              <div class="summary-value">{{ currencySymbol }} {{ getUniformTotal() | number:'1.2-2' }}</div>
+            </div>
+          </div>
+          <div class="summary-card success">
+            <div class="summary-icon">✅</div>
+            <div class="summary-content">
+              <div class="summary-label">Total Paid</div>
+              <div class="summary-value">{{ currencySymbol }} {{ getPaidAmount() | number:'1.2-2' }}</div>
+            </div>
+          </div>
+          <div class="summary-card danger">
+            <div class="summary-icon">⚠️</div>
+            <div class="summary-content">
+              <div class="summary-label">Outstanding</div>
+              <div class="summary-value">{{ currencySymbol }} {{ getOutstandingAmount() | number:'1.2-2' }}</div>
+            </div>
+          </div>
+          <div class="summary-card warning">
+            <div class="summary-icon">⏰</div>
+            <div class="summary-content">
+              <div class="summary-label">Overdue</div>
+              <div class="summary-value">{{ getOverdueCount() }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Correct Transaction Modal (Prepayment Reversal) -->
+    <div class="modal-overlay" *ngIf="showCorrectTransactionModal" (click)="closeCorrectTransactionModal()">
+      <div class="payment-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-header-content">
+            <h2>
+              <span class="modal-icon">🧾</span>
+              Correct Transaction
+            </h2>
+            <p class="modal-subtitle">Reverse prepaid credit for this invoice (admin only)</p>
+          </div>
+          <button class="modal-close-btn" (click)="closeCorrectTransactionModal()" title="Close">
+            <span>&times;</span>
+          </button>
+        </div>
+
+        <div *ngIf="correctingInvoice" class="invoice-summary-card">
+          <div class="summary-header">
+            <span class="summary-icon">📋</span>
+            <h3>Invoice</h3>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-label">Invoice Number</span>
+              <span class="summary-value">{{ correctingInvoice.invoiceNumber }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Student</span>
+              <span class="summary-value">{{ correctingInvoice.student?.firstName }} {{ correctingInvoice.student?.lastName }}</span>
+            </div>
+            <div class="summary-item" style="background: #d1ecf1; border-left: 3px solid #17a2b8;">
+              <span class="summary-label">Available Credit</span>
+              <span class="summary-value" style="color: #0c5460; font-weight: bold;">
+                {{ currencySymbol }} {{ correctingInvoice.prepaidAmount | number:'1.2-2' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <form (ngSubmit)="submitCorrectTransaction()" class="payment-form">
+          <div class="form-section">
+            <h3 class="section-title">
+              <span class="section-icon">↩️</span>
+              Prepayment Reversal
+            </h3>
+
+            <div class="form-group">
+              <label for="correctAmount">
+                Amount to Reverse <span class="required">*</span>
+              </label>
+              <div class="amount-input-wrapper">
+                <input
+                  type="number"
+                  id="correctAmount"
+                  [(ngModel)]="correctTransactionForm.amount"
+                  name="correctAmount"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  class="form-control amount-input"
+                  placeholder="0.00" />
+              </div>
+              <div class="field-hint">
+                <span class="hint-icon">💡</span>
+                Recommended: reverse only the incorrect credit.
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="correctNotes">Reason / Notes</label>
+              <textarea
+                id="correctNotes"
+                [(ngModel)]="correctTransactionForm.notes"
+                name="correctNotes"
+                class="form-control"
+                rows="3"
+                placeholder="Optional reason for audit trail"></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" (click)="closeCorrectTransactionModal()" [disabled]="correctingTransaction">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-warning" [disabled]="correctingTransaction">
+              {{ correctingTransaction ? 'Correcting...' : 'Reverse Prepayment' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Correct Prepaid (Lookup by Student) Modal -->
+    <div class="modal-overlay" *ngIf="showCorrectPrepaidLookupModal" (click)="closeCorrectPrepaidLookupModal()">
+      <div class="payment-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-header-content">
+            <h2>
+              <span class="modal-icon">🧾</span>
+              Correct Prepaid Transaction
+            </h2>
+            <p class="modal-subtitle">Search student by Student ID / First Name / Last Name</p>
+          </div>
+          <button class="modal-close-btn" (click)="closeCorrectPrepaidLookupModal()" title="Close">
+            <span>&times;</span>
+          </button>
+        </div>
+
+        <form (ngSubmit)="lookupCorrectPrepaidStudent()" class="payment-form">
+          <div class="form-section">
+            <h3 class="section-title">
+              <span class="section-icon">🔎</span>
+              Student Lookup
+            </h3>
+
+            <div class="form-group">
+              <label for="correctPrepaidLookup">Student ID / Name <span class="required">*</span></label>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input
+                  id="correctPrepaidLookup"
+                  type="text"
+                  [(ngModel)]="correctPrepaidLookupQuery"
+                  name="correctPrepaidLookup"
+                  class="form-control"
+                  placeholder="e.g. STU-00123 or John or Moyo"
+                  required />
+                <button type="submit" class="btn btn-primary" [disabled]="correctPrepaidLookupLoading">
+                  {{ correctPrepaidLookupLoading ? 'Searching...' : 'Search' }}
+                </button>
+              </div>
+            </div>
+
+            <div *ngIf="correctPrepaidLookupError" class="alert alert-danger" style="margin-top: 10px;">
+              {{ correctPrepaidLookupError }}
+            </div>
+
+            <div *ngIf="correctPrepaidCandidates.length > 0" class="candidate-list" style="margin-top: 10px;">
+              <div class="alert alert-info">Multiple students found. Select the correct student to proceed.</div>
+              <ul class="candidate-items" style="list-style: none; padding: 0; margin: 0;">
+                <li *ngFor="let c of correctPrepaidCandidates" style="margin: 4px 0;">
+                  <button type="button" class="btn btn-secondary" (click)="chooseCorrectPrepaidCandidate(c.studentId)">
+                    {{ c.fullName }} <span *ngIf="c.studentNumber">({{ c.studentNumber }})</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div *ngIf="correctPrepaidStudentInfo" style="margin-top: 12px;">
+              <div class="alert alert-success" style="display:flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                <div>
+                  <strong>Student:</strong>
+                  {{ correctPrepaidStudentInfo.firstName }} {{ correctPrepaidStudentInfo.lastName }}
+                </div>
+                <div *ngIf="correctPrepaidStudentInfo.studentNumber">
+                  <strong>ID:</strong> {{ correctPrepaidStudentInfo.studentNumber }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+
+        <div *ngIf="correctPrepaidInvoice" class="invoice-summary-card">
+          <div class="summary-header">
+            <span class="summary-icon">💳</span>
+            <h3>Prepaid Credit</h3>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-label">Invoice</span>
+              <span class="summary-value">{{ correctPrepaidInvoice.invoiceNumber }}</span>
+            </div>
+            <div class="summary-item" style="background: #d1ecf1; border-left: 3px solid #17a2b8;">
+              <span class="summary-label">Available Credit</span>
+              <span class="summary-value" style="color: #0c5460; font-weight: bold;">
+                {{ currencySymbol }} {{ correctPrepaidInvoice.prepaidAmount | number:'1.2-2' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <form *ngIf="correctPrepaidInvoice" (ngSubmit)="submitCorrectPrepaidLookup()" class="payment-form">
+          <div class="form-section">
+            <h3 class="section-title">
+              <span class="section-icon">↩️</span>
+              Correction Details
+            </h3>
+            <div class="form-group">
+              <label for="correctPrepaidAmount">Amount to Correct as Prepaid <span class="required">*</span></label>
+              <div class="amount-input-wrapper">
+                <input
+                  type="number"
+                  id="correctPrepaidAmount"
+                  [(ngModel)]="correctPrepaidForm.amount"
+                  name="correctPrepaidAmount"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  class="form-control amount-input"
+                  placeholder="0.00" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="correctPrepaidNotes">Reason / Notes</label>
+              <textarea
+                id="correctPrepaidNotes"
+                [(ngModel)]="correctPrepaidForm.notes"
+                name="correctPrepaidNotes"
+                class="form-control"
+                rows="3"
+                placeholder="Optional reason for audit trail"></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" (click)="closeCorrectPrepaidLookupModal()" [disabled]="correctPrepaidSubmitting">
+              Close
+            </button>
+            <button type="submit" class="btn btn-warning" [disabled]="correctPrepaidSubmitting">
+              {{ correctPrepaidSubmitting ? 'Correcting...' : 'Correct Prepaid' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Uniform Items Modal -->
+    <div *ngIf="showUniformItemsModal" class="modal-overlay" (click)="closeUniformItemsModal()">
+      <div class="payment-modal uniform-items-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header uniform-modal-header">
+          <div class="modal-header-content">
+            <h2><span class="modal-icon">👕</span> Uniform Items</h2>
+            <p class="modal-subtitle" *ngIf="activeUniformTab === 'charge'">Select a student, add items from the catalog, and enter quantities. Cost is calculated automatically.</p>
+            <p class="modal-subtitle" *ngIf="activeUniformTab === 'payment'">Credit sale: record payment when invoice is paid. Select student, then enter payment amount.</p>
+            <p class="modal-subtitle" *ngIf="activeUniformTab === 'cash'">Cash sale: student selects items, total is computed, then pay cash. The charge is applied to the student account and payment is recorded immediately.</p>
+          </div>
+          <button class="modal-close-btn" (click)="closeUniformItemsModal()" title="Close"><span>&times;</span></button>
+        </div>
+
+        <div class="uniform-tabs">
+          <button type="button" class="uniform-tab" [class.active]="activeUniformTab === 'charge'" (click)="setUniformTab('charge')">
+            Charge / Bill items
+          </button>
+          <button type="button" class="uniform-tab" [class.active]="activeUniformTab === 'cash'" (click)="setUniformTab('cash')">
+            Cash sales
+          </button>
+          <button type="button" class="uniform-tab" [class.active]="activeUniformTab === 'payment'" (click)="setUniformTab('payment')">
+            Record payment
+          </button>
+        </div>
+
+        <div class="modal-body uniform-modal-body">
+          <div class="alert alert-error" *ngIf="uniformError">{{ uniformError }}</div>
+          <div class="alert alert-success" *ngIf="uniformSuccess">{{ uniformSuccess }}</div>
+
+          <!-- Tab: Charge / Bill -->
+          <div *ngIf="activeUniformTab === 'charge'">
+            <div class="uniform-section uniform-student-section">
+              <label class="uniform-section-label">Student</label>
+              <input type="text" [(ngModel)]="uniformStudentSearch" (ngModelChange)="searchUniformStudent()" [ngModelOptions]="{standalone: true}" class="uniform-input" placeholder="Search by Student ID, Last name, or First name (min 2 chars)" />
+              <div *ngIf="uniformStudentSearchLoading" class="uniform-hint">Searching...</div>
+              <div *ngIf="uniformStudentCandidates.length > 0 && !uniformSelectedStudent" class="uniform-candidates">
+                <p class="uniform-hint" *ngIf="uniformStudentCandidates.length > 1">Multiple students found. Select the correct one:</p>
+                <button type="button" class="uniform-candidate-btn" *ngFor="let c of uniformStudentCandidates" (click)="selectUniformStudent(c)">
+                  {{ c.lastName }} {{ c.firstName }} ({{ c.studentNumber }})
+                </button>
+              </div>
+              <div *ngIf="uniformSelectedStudent" class="uniform-selected-banner">
+                <span class="uniform-selected-text">Selected: {{ uniformSelectedStudent.lastName }} {{ uniformSelectedStudent.firstName }} ({{ uniformSelectedStudent.studentNumber }})</span>
+                <button type="button" class="uniform-change-btn" (click)="uniformSelectedStudent = null; uniformStudentSearch = ''">Change</button>
+              </div>
+            </div>
+
+            <div class="uniform-section uniform-items-section">
+              <label class="uniform-section-label">Uniform items</label>
+              <div *ngIf="uniformCatalog.length === 0" class="uniform-empty-catalog">No uniform items in catalog. Add them in Settings → Uniform Items.</div>
+              <div *ngIf="uniformCatalog.length > 0">
+                <div class="uniform-add-row">
+                  <button type="button" class="uniform-add-item-btn" (click)="openUniformCatalogSelect()" [disabled]="uniformCatalog.length === 0">
+                    <span class="uniform-add-item-icon" aria-hidden="true">+</span>
+                    Add item from catalog
+                  </button>
+                  <select #uniformCatalogSelect class="uniform-catalog-select" [ngModel]="uniformCatalogSelection" (ngModelChange)="onUniformCatalogItemSelected($event)" [ngModelOptions]="{standalone: true}" aria-label="Select uniform item to add">
+                    <option value="">Choose an item…</option>
+                    <option *ngFor="let item of uniformCatalog" [value]="item.id">{{ item.name }} — {{ currencySymbol }} {{ item.unitPrice | number:'1.2-2' }} each</option>
+                  </select>
+                </div>
+                <div class="uniform-table-wrap" *ngIf="uniformRows.length > 0">
+                  <table class="uniform-items-table">
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Unit price</th>
+                        <th>Qty</th>
+                        <th>Total</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let row of uniformRows; let i = index">
+                        <td class="uniform-cell-item">{{ row.itemName }}</td>
+                        <td class="uniform-cell-price">{{ currencySymbol }} {{ row.unitPrice | number:'1.2-2' }}</td>
+                        <td>
+                          <input type="number" [(ngModel)]="row.quantity" (ngModelChange)="onUniformRowQuantityChange(row)" min="0" class="uniform-qty-input" />
+                        </td>
+                        <td class="uniform-cell-total">{{ currencySymbol }} {{ row.lineTotal | number:'1.2-2' }}</td>
+                        <td><button type="button" class="uniform-remove-btn" (click)="removeUniformRow(i)">Remove</button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="uniform-total-bar" *ngIf="uniformRows.length > 0">
+                  <strong>Total: {{ currencySymbol }} {{ getUniformModalTotal() | number:'1.2-2' }}</strong>
+                </div>
+                <p class="uniform-hint" *ngIf="uniformCatalog.length > 0 && uniformRows.length === 0">Click <strong>Add item from catalog</strong> or choose from the dropdown to add items. Enter quantity; total updates automatically.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: Cash sales -->
+          <div *ngIf="activeUniformTab === 'cash'">
+            <div class="uniform-section uniform-receipt-display">
+              <label class="uniform-section-label">Receipt number</label>
+              <div class="uniform-receipt-number-value" *ngIf="uniformCashReceiptLoading">Loading…</div>
+              <div class="uniform-receipt-number-value uniform-receipt-number-bold" *ngIf="!uniformCashReceiptLoading && uniformCashReceiptNumber">{{ uniformCashReceiptNumber }}</div>
+            </div>
+            <div class="uniform-section uniform-student-section">
+              <label class="uniform-section-label">Student</label>
+              <input type="text" [(ngModel)]="uniformCashStudentSearch" (ngModelChange)="searchUniformCashStudent()" [ngModelOptions]="{standalone: true}" class="uniform-input" placeholder="Search by Student ID, Last name, or First name (min 2 chars)" />
+              <div *ngIf="uniformCashSearchLoading" class="uniform-hint">Searching...</div>
+              <div *ngIf="uniformCashCandidates.length > 0 && !uniformCashSelectedStudent" class="uniform-candidates">
+                <p class="uniform-hint" *ngIf="uniformCashCandidates.length > 1">Multiple students found. Select the correct one:</p>
+                <button type="button" class="uniform-candidate-btn" *ngFor="let c of uniformCashCandidates" (click)="selectUniformCashStudent(c)">
+                  {{ c.lastName }} {{ c.firstName }} ({{ c.studentNumber }})
+                </button>
+              </div>
+              <div *ngIf="uniformCashSelectedStudent" class="uniform-selected-banner">
+                <span class="uniform-selected-text">Selected: {{ uniformCashSelectedStudent.lastName }} {{ uniformCashSelectedStudent.firstName }} ({{ uniformCashSelectedStudent.studentNumber }})</span>
+                <button type="button" class="uniform-change-btn" (click)="uniformCashSelectedStudent = null; uniformCashStudentSearch = ''">Change</button>
+              </div>
+            </div>
+            <div class="uniform-section uniform-items-section">
+              <label class="uniform-section-label">Uniform items</label>
+              <div *ngIf="uniformCatalog.length === 0" class="uniform-empty-catalog">No uniform items in catalog. Add them in Settings → Uniform Items.</div>
+              <div *ngIf="uniformCatalog.length > 0">
+                <div class="uniform-add-row">
+                  <button type="button" class="uniform-add-item-btn" (click)="openUniformCashCatalogSelect()" [disabled]="uniformCatalog.length === 0">
+                    <span class="uniform-add-item-icon" aria-hidden="true">+</span>
+                    Add item from catalog
+                  </button>
+                  <select #uniformCashCatalogSelect class="uniform-catalog-select" [ngModel]="uniformCashCatalogSelection" (ngModelChange)="onUniformCashCatalogItemSelected($event)" [ngModelOptions]="{standalone: true}">
+                    <option value="">Choose an item…</option>
+                    <option *ngFor="let item of uniformCatalog" [value]="item.id">{{ item.name }} — {{ currencySymbol }} {{ item.unitPrice | number:'1.2-2' }} each</option>
+                  </select>
+                </div>
+                <div class="uniform-table-wrap" *ngIf="uniformCashRows.length > 0">
+                  <table class="uniform-items-table">
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Unit price</th>
+                        <th>Qty</th>
+                        <th>Total</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let row of uniformCashRows; let i = index">
+                        <td class="uniform-cell-item">{{ row.itemName }}</td>
+                        <td class="uniform-cell-price">{{ currencySymbol }} {{ row.unitPrice | number:'1.2-2' }}</td>
+                        <td>
+                          <input type="number" [(ngModel)]="row.quantity" (ngModelChange)="onUniformCashRowQuantityChange(row)" min="0" class="uniform-qty-input" />
+                        </td>
+                        <td class="uniform-cell-total">{{ currencySymbol }} {{ row.lineTotal | number:'1.2-2' }}</td>
+                        <td><button type="button" class="uniform-remove-btn" (click)="removeUniformCashRow(i)">Remove</button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="uniform-total-bar" *ngIf="uniformCashRows.length > 0">
+                  <strong>Total: {{ currencySymbol }} {{ getUniformCashTotal() | number:'1.2-2' }}</strong>
+                </div>
+                <p class="uniform-hint" *ngIf="uniformCatalog.length > 0 && uniformCashRows.length === 0">Add items from the catalog. Then enter cash payment below.</p>
+              </div>
+            </div>
+            <div *ngIf="uniformCashRows.length > 0" class="uniform-section uniform-payment-section">
+              <label class="uniform-section-label">Cash payment</label>
+              <div class="uniform-payment-form">
+                <div class="uniform-form-row">
+                  <label>Amount paid</label>
+                  <input type="number" [(ngModel)]="uniformCashPaymentAmount" min="0" step="0.01" class="uniform-input" placeholder="0.00" />
+                </div>
+                <div class="uniform-form-row">
+                  <label>Payment date</label>
+                  <input type="date" [(ngModel)]="uniformCashPaymentDate" class="uniform-input" />
+                </div>
+                <div class="uniform-form-row">
+                  <label>Payment method</label>
+                  <select [(ngModel)]="uniformCashPaymentMethod" class="uniform-input uniform-select" required>
+                    <option value="Cash(USD)">Cash(USD)</option>
+                    <option value="Ecocash(USD)">Ecocash(USD)</option>
+                    <option value="Bank Transfer(USD)">Bank Transfer(USD)</option>
+                  </select>
+                </div>
+                <div class="uniform-form-row">
+                  <label>Notes</label>
+                  <input type="text" [(ngModel)]="uniformCashNotes" class="uniform-input" placeholder="Optional" />
+                </div>
+              </div>
+              <p class="uniform-hint">Charge will be applied to the student's uniform account; payment is recorded immediately. Any balance (if amount paid &lt; total) remains on account.</p>
+            </div>
+          </div>
+
+          <!-- Tab: Record payment -->
+          <div *ngIf="activeUniformTab === 'payment'">
+            <div class="uniform-section uniform-receipt-display">
+              <label class="uniform-section-label">Receipt number</label>
+              <div class="uniform-receipt-number-value" *ngIf="uniformPaymentReceiptLoading">Loading…</div>
+              <div class="uniform-receipt-number-value uniform-receipt-number-bold" *ngIf="!uniformPaymentReceiptLoading && uniformPaymentReceiptNumber">{{ uniformPaymentReceiptNumber }}</div>
+              <p class="uniform-hint" *ngIf="!uniformPaymentReceiptLoading && uniformPaymentReceiptNumber">This number is generated in sequence and will be saved when you complete the transaction.</p>
+            </div>
+            <div class="uniform-section uniform-student-section">
+              <label class="uniform-section-label">Student</label>
+              <input type="text" [(ngModel)]="uniformPaymentSearch" (ngModelChange)="searchUniformPaymentStudent()" [ngModelOptions]="{standalone: true}" class="uniform-input" placeholder="Search by Student ID, Last name, or First name (min 2 chars)" />
+              <div *ngIf="uniformPaymentSearchLoading" class="uniform-hint">Searching...</div>
+              <div *ngIf="uniformPaymentCandidates.length > 0 && !uniformPaymentSelectedStudent" class="uniform-candidates">
+                <p class="uniform-hint" *ngIf="uniformPaymentCandidates.length > 1">Multiple students found. Select the correct one:</p>
+                <button type="button" class="uniform-candidate-btn" *ngFor="let c of uniformPaymentCandidates" (click)="selectUniformPaymentStudent(c)">
+                  {{ c.lastName }} {{ c.firstName }} ({{ c.studentNumber }})
+                </button>
+              </div>
+              <div *ngIf="uniformPaymentSelectedStudent" class="uniform-selected-banner">
+                <span class="uniform-selected-text">Selected: {{ uniformPaymentSelectedStudent.lastName }} {{ uniformPaymentSelectedStudent.firstName }} ({{ uniformPaymentSelectedStudent.studentNumber }})</span>
+                <button type="button" class="uniform-change-btn" (click)="clearUniformPaymentStudent()">Change</button>
+              </div>
+            </div>
+
+            <div *ngIf="uniformPaymentSelectedStudent" class="uniform-section uniform-payment-section">
+              <label class="uniform-section-label">Uniform balance & payment</label>
+              <div class="uniform-payment-balance-row" *ngIf="uniformPaymentBalanceLoading">Loading balance…</div>
+              <div class="uniform-payment-balance-row uniform-balance-value" *ngIf="!uniformPaymentBalanceLoading && uniformPaymentBalance != null">
+                Outstanding balance: {{ currencySymbol }} {{ uniformPaymentBalance | number:'1.2-2' }}
+              </div>
+              <div class="uniform-payment-form">
+                <div class="uniform-form-row">
+                  <label>Amount</label>
+                  <input type="number" [(ngModel)]="uniformPaymentAmount" min="0" step="0.01" class="uniform-input" placeholder="0.00" />
+                </div>
+                <div class="uniform-form-row">
+                  <label>Payment date</label>
+                  <input type="date" [(ngModel)]="uniformPaymentDate" class="uniform-input" />
+                </div>
+                <div class="uniform-form-row">
+                  <label>Payment method</label>
+                  <select [(ngModel)]="uniformPaymentMethod" class="uniform-input uniform-select" required>
+                    <option value="">Select payment method</option>
+                    <option value="Cash(USD)">Cash(USD)</option>
+                    <option value="Ecocash(USD)">Ecocash(USD)</option>
+                    <option value="Bank Transfer(USD)">Bank Transfer(USD)</option>
+                  </select>
+                </div>
+                <div class="uniform-form-row">
+                  <label>Notes</label>
+                  <input type="text" [(ngModel)]="uniformPaymentNotes" class="uniform-input" placeholder="Optional" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer uniform-modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeUniformItemsModal()" [disabled]="uniformSubmitting || uniformPaymentSubmitting || uniformCashSubmitting">Cancel</button>
+          <ng-container *ngIf="activeUniformTab === 'charge'">
+            <button type="button" class="btn btn-primary uniform-submit-btn" (click)="submitUniformCharge()" [disabled]="uniformSubmitting || !uniformSelectedStudent || uniformRows.length === 0 || getUniformModalTotal() <= 0">
+              {{ uniformSubmitting ? 'Charging...' : 'Charge uniform items' }}
+            </button>
+          </ng-container>
+          <ng-container *ngIf="activeUniformTab === 'cash'">
+            <button type="button" class="btn btn-primary uniform-submit-btn" (click)="submitUniformCashSale()" [disabled]="uniformCashSubmitting || !uniformCashSelectedStudent || uniformCashRows.length === 0 || getUniformCashTotal() <= 0 || !uniformCashPaymentAmount || uniformCashPaymentAmount <= 0 || !uniformCashPaymentMethod">
+              {{ uniformCashSubmitting ? 'Processing...' : 'Complete cash sale' }}
+            </button>
+          </ng-container>
+          <ng-container *ngIf="activeUniformTab === 'payment'">
+            <button type="button" class="btn btn-primary uniform-submit-btn" (click)="submitUniformPayment()" [disabled]="uniformPaymentSubmitting || !uniformPaymentSelectedStudent || !uniformPaymentAmount || uniformPaymentAmount <= 0 || !uniformPaymentMethod">
+              {{ uniformPaymentSubmitting ? 'Recording...' : 'Record payment' }}
+            </button>
+          </ng-container>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Form Modal -->
+    <div *ngIf="showPaymentForm" class="modal-overlay" (click)="closePaymentForm()">
+      <div class="payment-modal" (click)="$event.stopPropagation()">
+        <!-- Modal Header -->
+        <div class="modal-header">
+          <div class="modal-header-content">
+            <h2>
+              <span class="modal-icon">💳</span>
+              Record Payment
+            </h2>
+            <p class="modal-subtitle">Enter payment details for this invoice</p>
+          </div>
+          <button class="modal-close-btn" (click)="closePaymentForm()" title="Close">
+            <span>&times;</span>
+          </button>
+        </div>
+
+        <!-- Invoice Summary Card -->
+        <div *ngIf="selectedInvoice" class="invoice-summary-card">
+          <div class="summary-header">
+            <span class="summary-icon">📋</span>
+            <h3>Invoice Summary</h3>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-label">Invoice Number</span>
+              <span class="summary-value">{{ selectedInvoice.invoiceNumber }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Student</span>
+              <span class="summary-value">{{ selectedInvoice.student?.firstName }} {{ selectedInvoice.student?.lastName }}</span>
+            </div>
+            <div class="summary-item highlight">
+              <span class="summary-label">Current Balance</span>
+              <span class="summary-value balance">{{ currencySymbol }} {{ selectedInvoice.balance | number:'1.2-2' }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Amount Paid So Far</span>
+              <span class="summary-value paid">{{ currencySymbol }} {{ selectedInvoice.paidAmount | number:'1.2-2' }}</span>
+            </div>
+            <div class="summary-item" 
+                 *ngIf="selectedInvoice.prepaidAmount && selectedInvoice.prepaidAmount > 0"
+                 style="background: #d1ecf1; border-left: 3px solid #17a2b8;">
+              <span class="summary-label">💳 Available Credit</span>
+              <span class="summary-value" style="color: #0c5460; font-weight: bold;">{{ currencySymbol }} {{ selectedInvoice.prepaidAmount | number:'1.2-2' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Form -->
+        <form (ngSubmit)="updatePayment()" class="payment-form">
+          <div class="form-section">
+            <h3 class="section-title">
+              <span class="section-icon">💰</span>
+              Payment Details
+            </h3>
+
+            <!-- Payment Amount -->
+            <div class="form-group">
+              <label for="amount">
+                Payment Amount <span class="required">*</span>
+              </label>
+              <div class="amount-input-wrapper">
+                <input 
+                  type="number" 
+                  id="amount"
+                  [(ngModel)]="paymentForm.amount" 
+                  name="amount" 
+                  step="0.01" 
+                  min="0.01" 
+                  required
+                  class="form-control amount-input"
+                  placeholder="0.00"
+                  (input)="onAmountChange()">
+              </div>
+              <div class="field-hint">
+                <span class="hint-icon">💡</span>
+                Default is set to the remaining balance
+              </div>
+              <div class="balance-preview" *ngIf="selectedInvoice && paymentForm.amount > 0">
+                <span class="preview-label">New Balance After Payment:</span>
+                <span class="preview-value" [class.warning]="getNewBalance() < 0" [class.success]="getNewBalance() === 0">
+                  {{ currencySymbol }} {{ getNewBalance() | number:'1.2-2' }}
+                </span>
+              </div>
+              <div class="field-hint" *ngIf="selectedInvoice && paymentForm.amount > 0 && getNewBalance() < 0" 
+                   style="margin-top: 8px; padding: 8px; background: #d1ecf1; border-left: 3px solid #17a2b8; color: #0c5460;">
+                <span class="hint-icon">ℹ️</span>
+                Overpayment of {{ currencySymbol }} {{ Math.abs(getNewBalance()) | number:'1.2-2' }} will be saved as credit and automatically applied to the next invoice.
+              </div>
+            </div>
+
+            <!-- Payment Date -->
+            <div class="form-group">
+              <label for="paymentDate">
+                Payment Date <span class="required">*</span>
+              </label>
+              <div class="date-input-wrapper">
+                <input 
+                  type="date" 
+                  id="paymentDate"
+                  [(ngModel)]="paymentForm.paymentDate" 
+                  name="paymentDate" 
+                  required
+                  class="form-control date-input">
+                <span class="date-icon">📅</span>
+              </div>
+            </div>
+
+            <!-- Payment Method -->
+            <div class="form-group">
+              <label for="paymentMethod">
+                Payment Method <span class="required">*</span>
+              </label>
+              <select 
+                id="paymentMethod"
+                [(ngModel)]="paymentForm.paymentMethod" 
+                name="paymentMethod" 
+                required
+                class="form-control">
+                <option value="Cash">💵 Cash</option>
+                <option value="Bank Transfer">🏦 Bank Transfer</option>
+                <option value="Mobile Money">📱 Mobile Money</option>
+                <option value="Cheque">📝 Cheque</option>
+                <option value="Credit Card">💳 Credit Card</option>
+                <option value="Other">🔷 Other</option>
+              </select>
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group">
+              <label for="notes">
+                Notes <span class="optional">(Optional)</span>
+              </label>
+              <textarea 
+                id="notes"
+                [(ngModel)]="paymentForm.notes" 
+                name="notes" 
+                placeholder="Additional notes about this payment (e.g., reference number, transaction ID)"
+                class="form-control notes-textarea"
+                rows="3"
+                maxlength="500"></textarea>
+              <div class="char-counter" *ngIf="paymentForm.notes">
+                {{ paymentForm.notes.length }}/500
+              </div>
+            </div>
+
+            <!-- Receipt Needed -->
+            <div class="form-group">
+              <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px; border: 2px solid #4a90e2; border-radius: 6px; background: #f0f7ff;">
+                <input 
+                  type="checkbox" 
+                  [(ngModel)]="paymentForm.receiptNeeded" 
+                  name="receiptNeeded"
+                  style="width: 18px; height: 18px; cursor: pointer;">
+                <span style="font-weight: 600; color: #2c5aa0;">🧾 Receipt Needed?</span>
+                <small style="color: #666; margin-left: 5px;">(A receipt preview will be shown after payment is recorded)</small>
+              </label>
+            </div>
+          </div>
+
+          <!-- Form Actions -->
+          <div class="form-actions" style="display: flex; gap: 10px; align-items: center;">
+            <button 
+              type="button" 
+              class="btn btn-secondary btn-cancel" 
+              (click)="closePaymentForm()"
+              [disabled]="loading">
+              ❌ Cancel
+            </button>
+            <button 
+              type="submit" 
+              class="btn btn-primary btn-submit"
+              [disabled]="loading || !canManageFinance()"
+              *ngIf="canManageFinance()">
+              <span *ngIf="!loading">
+                💳 Record Payment
+              </span>
+              <span *ngIf="loading" class="submit-loading">
+                <span class="spinner-small"></span>
+                Recording...
+              </span>
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-success btn-submit"
+              (click)="openReceiptForPrint()"
+              [disabled]="loading || !lastPaidInvoiceId || !canManageFinance()"
+              *ngIf="canManageFinance()"
+              title="Print Receipt"
+              style="min-width: 140px;">
+              🖨️ Print Receipt
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Link to Invoice Statements -->
+    <div style="margin-top: 20px; margin-bottom: 20px;">
+      <a routerLink="/invoices/statements" class="btn btn-primary" style="text-decoration: none; display: inline-block;">
+        📊 View Invoice Statements
+      </a>
+    </div>
+  </div>
+
+  <!-- PDF Viewer Modal -->
+  <div *ngIf="showPdfViewer" class="pdf-viewer-overlay" (click)="closePdfViewer()">
+    <div class="pdf-viewer-modal" (click)="$event.stopPropagation()">
+      <div class="pdf-viewer-header">
+        <h3>
+          <span>📄</span>
+          Invoice PDF - {{ currentInvoiceNumber }}
+        </h3>
+        <div class="pdf-viewer-actions">
+          <button 
+            type="button" 
+            class="btn btn-primary btn-sm" 
+            (click)="downloadInvoicePDF()"
+            title="Download PDF">
+            <span>💾</span> Download
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-secondary btn-sm" 
+            (click)="closePdfViewer()"
+            title="Close">
+            <span>✕</span> Close
+          </button>
+        </div>
+      </div>
+      <div class="pdf-viewer-content">
+        <iframe 
+          *ngIf="safePdfUrl && !loadingPdf" 
+          [src]="safePdfUrl" 
+          class="pdf-iframe"
+          title="Invoice PDF Viewer"
+          type="application/pdf">
+        </iframe>
+        <div *ngIf="loadingPdf" class="pdf-loading">
+          <div class="spinner-large"></div>
+          <p>Loading PDF...</p>
+        </div>
+        <div *ngIf="!safePdfUrl && !loadingPdf" class="pdf-loading">
+          <p>PDF not available</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logistics Adjustment Modal -->
+  <div *ngIf="showLogisticsForm" class="modal-overlay" (click)="closeLogisticsForm()">
+    <div class="payment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-content">
+          <h2>
+            <span class="modal-icon">⚙️</span>
+            Adjust Invoice
+          </h2>
+          <p class="modal-subtitle">Adjust invoice by adding Transport, Dining Hall, and/or Tuition fees</p>
+        </div>
+        <button class="modal-close-btn" (click)="closeLogisticsForm()" title="Close">
+          <span>&times;</span>
+        </button>
+      </div>
+
+      <div *ngIf="selectedInvoice" class="invoice-summary-card">
+        <div class="summary-header">
+          <span class="summary-icon">📋</span>
+          <h3>Invoice Summary</h3>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <span class="summary-label">Invoice Number</span>
+            <span class="summary-value">{{ selectedInvoice.invoiceNumber }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Student</span>
+            <span class="summary-value">
+              {{ selectedInvoice.student?.firstName }} {{ selectedInvoice.student?.lastName }}
+            </span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Current Amount</span>
+            <span class="summary-value">{{ currencySymbol }} {{ selectedInvoice.amount | number:'1.2-2' }}</span>
+          </div>
+          <div class="summary-item highlight">
+            <span class="summary-label">Current Balance</span>
+            <span class="summary-value balance">{{ currencySymbol }} {{ selectedInvoice.balance | number:'1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <form (ngSubmit)="submitLogisticsAdjustment()" class="payment-form">
+        <div class="form-section">
+          <h3 class="section-title">
+            <span class="section-icon">⚙️</span>
+            Fee Adjustment Options
+          </h3>
+
+          <div class="form-group" *ngIf="isDayScholar(selectedInvoice)">
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input 
+                type="checkbox" 
+                [(ngModel)]="logisticsForm.addTransport" 
+                name="addTransport"
+                style="width: 18px; height: 18px; cursor: pointer;">
+              <span style="font-weight: 600;">🚌 Add Transport Cost</span>
+            </label>
+            <div *ngIf="transportCostFromSettings !== null" style="margin-top: 4px; color: #555;">
+              Transport cost from Settings: 
+              <strong>{{ currencySymbol }} {{ transportCostFromSettings | number:'1.2-2' }}</strong>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input 
+                type="checkbox" 
+                [(ngModel)]="logisticsForm.addDiningHall" 
+                name="addDiningHall"
+                style="width: 18px; height: 18px; cursor: pointer;">
+              <span style="font-weight: 600;">🍽️ Add Dining Hall (DH) Cost</span>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input 
+                type="checkbox" 
+                [(ngModel)]="logisticsForm.addTuition" 
+                name="addTuition"
+                style="width: 18px; height: 18px; cursor: pointer;">
+              <span style="font-weight: 600;">🎓 Add Tuition Fee</span>
+            </label>
+            <div *ngIf="selectedInvoice?.student" style="margin-top: 4px; color: #555;">
+              Tuition fee for 
+              <strong>{{ selectedInvoice.student.studentType === 'Boarder' ? 'Boarder' : 'Day Scholar' }}</strong>: 
+              <strong>{{ currencySymbol }} {{ (selectedInvoice.student.studentType === 'Boarder' ? tuitionFeeFromSettings.boarder : tuitionFeeFromSettings.dayScholar) | number:'1.2-2' }}</strong>
+            </div>
+          </div>
+
+          <div class="form-group" *ngIf="logisticsForm.addDiningHall">
+            <label for="diningHallAmount">
+              Dining Hall Amount <span class="required">*</span>
+            </label>
+            <input 
+              type="number" 
+              id="diningHallAmount"
+              [(ngModel)]="logisticsForm.diningHallAmount" 
+              name="diningHallAmount" 
+              step="0.01" 
+              min="0.01" 
+              required
+              class="form-control"
+              placeholder="Enter DH amount">
+          </div>
+        </div>
+
+        <div class="form-actions" style="display: flex; gap: 10px; align-items: center;">
+          <button 
+            type="button" 
+            class="btn btn-secondary btn-cancel" 
+            (click)="closeLogisticsForm()"
+            [disabled]="loading">
+            ❌ Cancel
+          </button>
+          <button 
+            type="submit" 
+            class="btn btn-primary btn-submit"
+            [disabled]="loading || !canManageFinance()">
+            <span *ngIf="!loading">
+              ✅ Apply Adjustments
+            </span>
+            <span *ngIf="loading" class="submit-loading">
+              <span class="spinner-small"></span>
+              Applying...
+            </span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Receipt Viewer Modal -->
+  <div *ngIf="showReceiptViewer" class="pdf-viewer-overlay" (click)="closeReceiptViewer()">
+    <div class="pdf-viewer-modal" (click)="$event.stopPropagation()">
+      <div class="pdf-viewer-header">
+        <h3>
+          <span>🧾</span>
+          Receipt - {{ currentReceiptNumber }}
+        </h3>
+        <div class="pdf-viewer-actions">
+          <button 
+            type="button" 
+            class="btn btn-primary btn-sm" 
+            (click)="printReceipt()"
+            title="Print Receipt">
+            <span>🖨️</span> Print
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-success btn-sm" 
+            (click)="downloadReceiptPDF()"
+            title="Download Receipt">
+            <span>💾</span> Download
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-secondary btn-sm" 
+            (click)="closeReceiptViewer()"
+            title="Close">
+            <span>✕</span> Close
+          </button>
+        </div>
+      </div>
+      <div class="pdf-viewer-content">
+        <iframe 
+          *ngIf="safeReceiptUrl && !loadingReceiptPdf" 
+          [src]="safeReceiptUrl" 
+          class="pdf-iframe"
+          title="Receipt PDF Viewer"
+          type="application/pdf">
+        </iframe>
+        <div *ngIf="loadingReceiptPdf" class="pdf-loading">
+          <div class="spinner-large"></div>
+          <p>Loading Receipt...</p>
+        </div>
+        <div *ngIf="!safeReceiptUrl && !loadingReceiptPdf" class="pdf-loading">
+          <p>Receipt not available</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Credit/Debit Note Modal -->
+  <div class="modal-overlay" *ngIf="showNoteForm" (click)="closeNoteForm()">
+    <div class="payment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-content">
+          <h2>{{ noteForm.type === 'credit' ? 'Credit Note' : 'Debit Note' }}</h2>
+        </div>
+        <div class="modal-header-actions">
+          <button
+            type="button"
+            class="btn btn-icon-refresh"
+            (click)="refreshNoteData()"
+            [disabled]="loading || !selectedInvoice"
+            title="Refresh invoice data">
+            <span class="btn-icon" aria-hidden="true">🔄</span>
+            <span>Refresh</span>
+          </button>
+          <button class="modal-close-btn" (click)="closeNoteForm()" title="Close">
+            <span>&times;</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="payment-form">
+        <div class="form-section">
+          <h3 class="section-title">
+            <span class="section-icon">🧑‍🎓</span>
+            Select Student and Latest Invoice
+          </h3>
+
+          <div class="form-group">
+            <label for="noteSearchQuery">
+              Student ID or Name <span class="required">*</span>
+            </label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input
+                id="noteSearchQuery"
+                type="text"
+                [(ngModel)]="noteSearchQuery"
+                name="noteSearchQuery"
+                class="form-control"
+                placeholder="Enter Student ID, First Name, or Last Name"
+                (keyup.enter)="lookupNoteStudent()"
+              />
+              <button
+                type="button"
+                class="btn btn-primary"
+                (click)="lookupNoteStudent()"
+              >
+                Find Latest Invoice
+              </button>
+            </div>
+            <small class="form-hint">
+              Type a student number or part of the first/last name. The latest invoice will be selected automatically.
+            </small>
+            <div *ngIf="noteLookupError" class="alert alert-error" style="margin-top: 8px;">
+              {{ noteLookupError }}
+            </div>
+              <div *ngIf="noteCandidates.length > 0" class="candidate-list" style="margin-top: 8px;">
+                <div class="alert alert-info">Multiple students found. Select the correct student to proceed.</div>
+                <ul class="candidate-items" style="list-style: none; padding: 0; margin: 0;">
+                  <li *ngFor="let c of noteCandidates" style="margin: 4px 0;">
+                    <button type="button" class="btn btn-secondary" (click)="chooseNoteCandidate(c.id)">
+                      {{ c.lastName }} {{ c.firstName }} — ID: {{ c.studentNumber }} <span *ngIf="c.className">— Class: {{ c.className }}</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="selectedInvoice" class="invoice-summary-card">
+        <div class="summary-header">
+          <span class="summary-icon">📋</span>
+          <h3>Invoice Summary</h3>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <span class="summary-label">Invoice Number</span>
+            <span class="summary-value">{{ selectedInvoice.invoiceNumber }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Student</span>
+            <span class="summary-value">
+              {{ selectedInvoice.student?.firstName }} {{ selectedInvoice.student?.lastName }}
+            </span>
+          </div>
+          <div class="summary-item summary-item-balance-center highlight">
+            <span class="summary-label">Current Balance</span>
+            <span class="summary-value balance">{{ currencySymbol }} {{ selectedInvoice.balance | number:'1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <form (ngSubmit)="submitNote()" class="payment-form">
+        <div class="form-section">
+          <h3 class="section-title">
+            <span class="section-icon">🧾</span>
+            {{ noteForm.type === 'credit' ? 'Correct Overcharge (Credit Note)' : 'Correct Undercharge (Debit Note)' }}
+          </h3>
+
+          <div class="form-group">
+            <label>Cost Item *</label>
+            <select [(ngModel)]="noteForm.item" (ngModelChange)="onNoteItemChange($event)" name="noteItem" class="form-control" required>
+              <option [ngValue]="''">-- Select item --</option>
+              <option value="tuition">Tuition</option>
+              <option value="transport">Transport Fee</option>
+              <option value="diningHall">DH Fee</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Amount to {{ noteForm.type === 'credit' ? 'deduct' : 'add' }} *</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              [(ngModel)]="noteForm.amount"
+              name="noteAmount"
+              class="form-control"
+              required
+              placeholder="Enter amount"
+            />
+            <small class="form-hint" *ngIf="isNoteAmountAuto">
+              Pre-filled from Settings{{ selectedInvoice?.student?.isStaffChild || selectedInvoice?.student?.isExempted ? ' (50% for staff/exempted)' : '' }}. You can edit the amount.
+            </small>
+            <small class="form-hint" *ngIf="!isNoteAmountAuto && (noteForm.item === 'transport' || noteForm.item === 'diningHall')">
+              Enter the amount manually, or re-select DH Fee / Transport Fee to pre-fill from Settings.
+            </small>
+            <small class="form-hint">
+              {{ noteForm.type === 'credit' ? 'This amount will be subtracted from the selected cost item.' : 'This amount will be added to the selected cost item.' }}
+            </small>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeNoteForm()" [disabled]="loading">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="loading || !selectedInvoice">
+            <span *ngIf="!loading">{{ noteForm.type === 'credit' ? 'Apply Credit Note' : 'Apply Debit Note' }}</span>
+            <span *ngIf="loading" class="spinner-small"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+

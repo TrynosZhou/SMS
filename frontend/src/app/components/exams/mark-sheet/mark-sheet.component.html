@@ -1,0 +1,276 @@
+<div class="mark-sheet-page">
+  <!-- Modern Page Header -->
+  <header class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="header-icon">📊</span>
+        Generate Mark Sheet
+      </h1>
+      <p class="subtitle">Select class and exam type to generate and export class mark sheets</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-back" (click)="router.navigate(['/exams'])">
+        ⬅️ Back to Exams
+      </button>
+    </div>
+  </header>
+
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <!-- Step indicator -->
+  <div class="steps-indicator">
+    <div class="step" [class.active]="!markSheetData" [class.done]="markSheetData">
+      <span class="step-num">1</span>
+      <span class="step-label">Select options</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step" [class.active]="!!markSheetData">
+      <span class="step-num">2</span>
+      <span class="step-label">View mark sheet</span>
+    </div>
+  </div>
+
+  <!-- Selection Card -->
+  <section class="selection-card card-modern" @fadeIn>
+    <h2 class="section-title">
+      <span class="section-icon">⚙️</span>
+      Selection
+    </h2>
+    <div class="selection-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="class">Class <span class="required">*</span></label>
+          <select 
+            id="class"
+            [(ngModel)]="selectedClassId" 
+            [ngModelOptions]="{standalone: true}"
+            (change)="onClassChange()"
+            (ngModelChange)="onSelectionChange()"
+            class="form-control">
+            <option value="">-- Select Class --</option>
+            <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">
+              {{ cls.name }} ({{ cls.form }})
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="term">Term</label>
+          <input 
+            type="text" 
+            id="term"
+            [ngModel]="selectedTerm || (loadingTerm ? 'Loading...' : 'Not set')" 
+            [ngModelOptions]="{standalone: true}"
+            readonly
+            [disabled]="loadingTerm"
+            class="form-control form-control-readonly">
+          <small class="form-hint">
+            {{ loadingTerm ? 'Loading...' : (selectedTerm ? 'From settings' : 'Configure in settings') }}
+          </small>
+        </div>
+
+        <div class="form-group">
+          <label for="examType">Exam type <span class="required">*</span></label>
+          <select 
+            id="examType"
+            [(ngModel)]="selectedExamType" 
+            [ngModelOptions]="{standalone: true}"
+            (change)="onExamTypeChange()"
+            (ngModelChange)="onSelectionChange()"
+            class="form-control">
+            <option value="">-- Select Exam Type --</option>
+            <option *ngFor="let type of examTypes" [value]="type.value">
+              {{ type.label }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group form-group-action">
+          <label>&nbsp;</label>
+          <button 
+            class="btn btn-generate" 
+            (click)="generateMarkSheet()" 
+            [disabled]="loading || !selectedClassId || !selectedExamType || !selectedTerm">
+            <span *ngIf="!loading">📊 Generate</span>
+            <span *ngIf="loading" class="btn-loading"><span class="spinner-small"></span> Generating...</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mark Sheet Display -->
+  <section *ngIf="markSheetData" class="mark-sheet-result card-modern mark-sheet-container" @slideIn>
+    <div class="mark-sheet-header">
+      <div class="header-info">
+        <h2 class="result-title">{{ markSheetData.class.name }} — {{ markSheetData.class.form }}</h2>
+        <div class="header-meta">
+          <span class="meta-badge">{{ selectedExamType | titlecase }}</span>
+          <span class="meta-text">Generated {{ markSheetData.generatedAt | date:'medium' }}</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-blue" (click)="exportToExcel()" [disabled]="loading">📥 Excel</button>
+        <button class="btn btn-blue btn-download-pdf" (click)="downloadPDF()" [disabled]="loading"><span class="download-icon">📥</span> <span class="download-text">Download PDF</span></button>
+        <button class="btn btn-blue" (click)="printMarkSheet()">🖨️ Print Preview</button>
+      </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div *ngIf="showStatistics" class="statistics-grid">
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-content">
+            <div class="stat-value">{{ statistics.totalStudents }}</div>
+            <div class="stat-label">Total Students</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📊</div>
+          <div class="stat-content">
+            <div class="stat-value">{{ statistics.averageScore }}%</div>
+            <div class="stat-label">Class Average</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🏆</div>
+          <div class="stat-content">
+            <div class="stat-value">{{ statistics.highestScore }}%</div>
+            <div class="stat-label">Highest Score</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-content">
+            <div class="stat-value">{{ statistics.passRate }}%</div>
+            <div class="stat-label">Pass Rate (Core ≥ 70%)</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🎯</div>
+          <div class="stat-content">
+            <div class="stat-value">{{ statistics.highAchieversPercent }}%</div>
+            <div class="stat-label">Students with ≥ 70%</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⚠️</div>
+          <div class="stat-content">
+            <div class="stat-value">{{ statistics.lowPerformersPercent }}%</div>
+            <div class="stat-label">Below 70% in Core</div>
+          </div>
+        </div>
+      </div>
+
+    <!-- Search and Filter Bar -->
+    <div class="toolbar">
+      <div class="search-box">
+        <input 
+          type="text" 
+          [(ngModel)]="searchQuery" 
+          [ngModelOptions]="{standalone: true}"
+          (input)="onSearch()"
+          placeholder="Search by name, number, or position..."
+          class="search-input">
+      </div>
+      <div class="toolbar-actions">
+        <button 
+          class="btn btn-toggle-stats" 
+          (click)="showStatistics = !showStatistics">
+          {{ showStatistics ? 'Hide stats' : 'Show stats' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="mark-sheet-table-wrapper table-responsive">
+        <table class="mark-sheet-table">
+          <thead class="sticky-header">
+            <tr>
+              <th rowspan="2" class="position-col sortable" (click)="sortTable('position')">
+                Pos {{ getSortIcon('position') }}
+              </th>
+              <th rowspan="2" class="student-number-col sortable" (click)="sortTable('studentNumber')">
+                Student No. {{ getSortIcon('studentNumber') }}
+              </th>
+              <th rowspan="2" class="student-name-col sortable" (click)="sortTable('studentName')">
+                Student Name {{ getSortIcon('studentName') }}
+              </th>
+              <th [colSpan]="markSheetData.subjects.length" class="subjects-header">Subjects</th>
+              <th rowspan="2" class="total-col sortable" (click)="sortTable('totalScore')">
+                Total {{ getSortIcon('totalScore') }}
+              </th>
+              <th rowspan="2" class="average-col sortable" (click)="sortTable('average')">
+                Average % {{ getSortIcon('average') }}
+              </th>
+            </tr>
+            <tr>
+              <th *ngFor="let subject of (markSheetData?.subjects | safeArray)" class="subject-col">
+                <div class="subject-header">
+                  <div>{{ subject.name }}</div>
+                  <div class="subject-average">{{ getSubjectAverage(subject.id) }}%</div>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of (filteredMarkSheet | safeArray)" [class]="'performance-' + getPerformanceClass(row.average)">
+              <td class="position-cell">
+                <span class="position-badge" [style.background-color]="row.position <= 3 ? '#ffc107' : 'transparent'">
+                  {{ row.position }}
+                </span>
+              </td>
+              <td class="student-number-cell">{{ row.studentNumber }}</td>
+              <td class="student-name-cell">
+                <div class="student-name-wrapper">
+                  <span>{{ row.studentName }}</span>
+                  <span *ngIf="row.position <= 3" class="top-badge">🏆</span>
+                </div>
+              </td>
+              <td *ngFor="let subject of markSheetData.subjects" class="mark-cell">
+                <div class="mark-display">
+                  <span class="score">{{ getSubjectMark(row, subject.id).score }}</span>
+                  <span class="separator">/</span>
+                  <span class="max-score">{{ getSubjectMark(row, subject.id).maxScore }}</span>
+                  <span 
+                    class="percentage" 
+                    [style.color]="getPerformanceColor(getSubjectMark(row, subject.id).percentage)">
+                    ({{ getSubjectMark(row, subject.id).percentage }}%)
+                  </span>
+                </div>
+              </td>
+              <td class="total-cell">
+                <strong>{{ row.totalScore }} / {{ row.totalMaxScore }}</strong>
+              </td>
+              <td class="average-cell">
+                <div class="average-display" [style.color]="getPerformanceColor(row.average)">
+                  <strong>{{ row.average.toFixed(2) }}%</strong>
+                  <span class="performance-indicator" [style.background-color]="getPerformanceColor(row.average)"></span>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="filteredMarkSheet.length === 0" class="no-results">
+              <td [colSpan]="markSheetData.subjects.length + 6" class="text-center">
+                No students found matching your search criteria.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+    </div>
+
+    <div class="mark-sheet-footer">
+        <div class="footer-stats">
+          <p><strong>Total Students:</strong> {{ markSheetData.markSheet.length }}</p>
+          <p><strong>Exams Included:</strong> {{ markSheetData.exams.length }}</p>
+          <p *ngIf="searchQuery"><strong>Filtered Results:</strong> {{ filteredMarkSheet.length }}</p>
+        </div>
+        <div class="footer-top-performers" *ngIf="statistics.topPerformers.length > 0">
+          <strong>Top Performers:</strong>
+          <span *ngFor="let performer of statistics.topPerformers; let i = index" class="top-performer">
+            {{ i + 1 }}. {{ performer.name }} ({{ performer.average }}%)
+          </span>
+        </div>
+    </div>
+  </section>
+</div>
+

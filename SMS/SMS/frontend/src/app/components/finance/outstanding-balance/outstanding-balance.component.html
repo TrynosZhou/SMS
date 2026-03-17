@@ -1,0 +1,278 @@
+<div class="container modern-container">
+  <!-- Modern Header -->
+  <div class="page-header modern-header-section">
+    <div class="header-content">
+      <div class="header-title-section">
+        <div class="header-icon-wrapper">
+          <span class="header-main-icon">💰</span>
+        </div>
+        <div>
+          <h1>Unpaid Invoices</h1>
+          <p class="header-subtitle">Students with outstanding invoice balances</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert Messages -->
+  <div class="alert alert-error modern-alert" *ngIf="error">
+    <span class="alert-icon">⚠️</span>
+    <span>{{ error }}</span>
+    <button class="alert-close" (click)="error = ''" title="Close">&times;</button>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-grid" *ngIf="!loading && outstandingBalances.length > 0">
+    <div class="stat-card stat-info">
+      <div class="stat-icon-wrapper">
+        <div class="stat-icon">💵</div>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalPaymentsForTerm) }}</div>
+        <div class="stat-label">Total Collected — {{ term || 'Term' }}</div>
+        <div class="stat-breakdown">{{ transactionsForTerm }} transaction(s)</div>
+        <div *ngIf="availableTerms.length > 0" style="margin-top:8px;">
+          <label for="ob-term" style="font-size:12px;color:#64748b;margin-right:6px;">Term</label>
+          <select id="ob-term" [ngModel]="term" (ngModelChange)="onTermSelect($event)" [ngModelOptions]="{standalone:true}" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;">
+            <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
+          </select>
+          <span *ngIf="activeTerm && term === activeTerm" style="font-size:12px;color:#94a3b8;margin-left:6px;">Current</span>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card stat-primary">
+      <div class="stat-icon-wrapper">
+        <div class="stat-icon">👥</div>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ filteredBalances.length }}</div>
+        <div class="stat-label">Students with Balances</div>
+      </div>
+    </div>
+    <div class="stat-card stat-danger">
+      <div class="stat-icon-wrapper">
+        <div class="stat-icon">💵</div>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</div>
+        <div class="stat-label">Total Outstanding (latest invoice per student)</div>
+      </div>
+    </div>
+    <div class="stat-card stat-warning">
+      <div class="stat-icon-wrapper">
+        <div class="stat-icon">📊</div>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ getAverageBalance() }}</div>
+        <div class="stat-label">Average Balance</div>
+      </div>
+    </div>
+    <div class="stat-card stat-info">
+      <div class="stat-icon-wrapper">
+        <div class="stat-icon">📋</div>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ outstandingBalances.length }}</div>
+        <div class="stat-label">Total Records</div>
+      </div>
+    </div>
+    <div class="stat-card stat-warning" title="Difference represents balances on earlier invoices that are not each student's latest invoice.">
+      <div class="stat-icon-wrapper">
+        <div class="stat-icon">🧮</div>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(reconcileDifference) }}</div>
+        <div class="stat-label">Reconciliation Difference</div>
+        <div class="stat-breakdown">Term Outstanding {{ currencySymbol }} {{ formatCurrency(reconcileOutstandingTerm) }} vs Current Student Balances {{ currencySymbol }} {{ formatCurrency(reconcileOutstandingLatest) }}</div>
+        <div class="stat-breakdown">Difference represents earlier unpaid invoices where newer invoices already exist.</div>
+        <button class="btn btn-modern btn-export" style="margin-top:8px;" (click)="toggleReconcileStudents()">
+          {{ showReconcileStudents ? 'Hide Students' : 'View Students' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-section modern-table-section" *ngIf="!loading && showReconcileStudents">
+    <div class="table-header modern-table-header">
+      <div class="table-info">
+        <span class="table-count-badge">{{ reconcileStudents.length }}</span>
+        <span class="table-info-text">student(s) with earlier unpaid invoices</span>
+      </div>
+      <div class="table-summary modern-summary">
+        <button class="btn btn-modern btn-export" (click)="exportReconcileStudentsCsv()" [disabled]="reconcileStudents.length === 0">
+          <span class="btn-icon">⬇️</span>
+          Export CSV
+        </button>
+      </div>
+    </div>
+    <div class="table-wrapper modern-wrapper" *ngIf="reconcileStudents.length > 0; else noReconStudentsOB">
+      <div class="table-responsive">
+        <table class="data-table modern-table">
+          <thead>
+            <tr>
+              <th>Student #</th>
+              <th>Student</th>
+              <th>Earlier Outstanding</th>
+              <th>Earlier Invoices</th>
+              <th>Latest Invoice</th>
+              <th>Latest Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of reconcileStudents">
+              <td>{{ s.studentNumber || '—' }}</td>
+              <td>{{ s.studentName || '—' }}</td>
+              <td>{{ currencySymbol }} {{ formatCurrency(s.earlierOutstandingTotal || 0) }}</td>
+              <td>{{ s.earlierInvoicesCount || 0 }}</td>
+              <td>{{ s.latestInvoiceNumber || '—' }} ({{ s.latestInvoiceTerm || '—' }})</td>
+              <td>{{ currencySymbol }} {{ formatCurrency(s.latestBalance || 0) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <ng-template #noReconStudentsOB>
+      <div class="table-wrapper modern-wrapper" style="padding:16px;color:#64748b;">No students found for this reconciliation condition.</div>
+    </ng-template>
+  </div>
+  
+  <!-- Search and Filter Section -->
+  <div class="filters-section modern-filters" *ngIf="!loading && outstandingBalances.length > 0">
+    <div class="filters-header">
+      <h3>
+        <span class="filter-icon">🔍</span>
+        Search & Filter
+      </h3>
+      <button class="btn-clear-filters" (click)="clearFilters()" *ngIf="hasActiveFilters()">
+        🗑️ Clear Filters
+      </button>
+    </div>
+    <div class="search-input-wrapper modern-search">
+      <span class="search-icon">🔍</span>
+      <input 
+        type="text" 
+        [(ngModel)]="searchQuery" 
+        (input)="filterBalances()"
+        (keyup.enter)="filterBalances()"
+        placeholder="Search by Student ID, First Name, Last Name, or Phone Number" 
+        class="form-control search-input modern-input">
+      <button *ngIf="searchQuery" class="clear-search" (click)="clearSearch()" title="Clear search">
+        <span>&times;</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading outstanding balances...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && outstandingBalances.length === 0" class="empty-state modern-empty">
+    <div class="empty-icon-wrapper">
+      <div class="empty-icon">✅</div>
+    </div>
+    <h2>No Outstanding Balances</h2>
+    <p>All students have paid their invoices in full. Great job!</p>
+    <div class="empty-actions">
+      <button class="btn btn-primary" routerLink="/invoices">
+        <span>📋</span> View All Invoices
+      </button>
+    </div>
+  </div>
+
+  <!-- Table Section -->
+  <div *ngIf="!loading && outstandingBalances.length > 0" class="table-section modern-table-section">
+    <div class="table-header modern-table-header">
+      <div class="table-info">
+        <span class="table-count-badge">{{ filteredBalances.length }}</span>
+        <span class="table-info-text">student(s) with outstanding balances</span>
+      </div>
+      <div class="table-summary modern-summary">
+        <span class="summary-label">Total Outstanding:</span>
+        <span class="summary-value">{{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</span>
+        <button 
+          class="btn btn-modern btn-export"
+          (click)="previewPdf()"
+          [disabled]="loadingPdf || filteredBalances.length === 0"
+          title="Preview Outstanding Balances as PDF">
+          <span class="btn-icon">📄</span>
+          <span *ngIf="!loadingPdf">Preview PDF</span>
+          <span *ngIf="loadingPdf">Loading...</span>
+        </button>
+        <button 
+          class="btn btn-modern btn-export"
+          (click)="downloadPdf()"
+          [disabled]="downloadingPdf || filteredBalances.length === 0"
+          title="Download Outstanding Balances as PDF">
+          <span class="btn-icon">⬇️</span>
+          <span *ngIf="!downloadingPdf">Download PDF</span>
+          <span *ngIf="downloadingPdf">Downloading...</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="table-wrapper modern-wrapper">
+      <div *ngFor="let group of groupedBalances">
+        <h3 style="margin: 10px 0 6px 0;">Class: {{ group.className }}</h3>
+        <div class="table-responsive">
+          <table class="data-table modern-table table-mobile-cards">
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>Last Name</th>
+                <th>First Name</th>
+                <th>Sex</th>
+                <th>Phone Number</th>
+                <th>Student Type</th>
+                <th class="text-right">Invoice Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let balance of group.items; let i = index" class="table-row">
+                <td class="student-id-cell" data-label="Student ID">
+                  <span 
+                    class="id-badge clickable-id" 
+                    *ngIf="canManageFinance()"
+                    (click)="payInvoice(balance)"
+                    title="Click to record payment">
+                    {{ balance.studentNumber || balance.studentId }}
+                  </span>
+                  <span 
+                    class="id-badge" 
+                    *ngIf="!canManageFinance()">
+                    {{ balance.studentNumber || balance.studentId }}
+                  </span>
+                </td>
+                <td class="student-name-cell" data-label="Last Name">{{ balance.lastName }}</td>
+                <td class="student-name-cell" data-label="First Name">{{ balance.firstName }}</td>
+                <td class="student-name-cell" data-label="Sex">{{ balance.gender || '—' }}</td>
+                <td class="phone-cell" data-label="Phone Number">{{ balance.phoneNumber || '—' }}</td>
+                <td class="student-type-cell" data-label="Student Type">{{ balance.studentType || 'Day Scholar' }}</td>
+                <td class="balance-cell text-right" data-label="Invoice Balance">
+                  <span 
+                    class="balance-badge clickable-balance" 
+                    *ngIf="canManageFinance()"
+                    (click)="payInvoice(balance)"
+                    title="Click to record payment">
+                    {{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}
+                  </span>
+                  <span 
+                    class="balance-badge" 
+                    *ngIf="!canManageFinance()">
+                    {{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="table-footer-summary" *ngIf="filteredBalances.length > 0" style="margin-top: 10px; text-align: right;">
+        <strong>Total Outstanding: {{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</strong>
+      </div>
+    </div>
+  </div>
+</div>
+

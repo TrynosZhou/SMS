@@ -1,0 +1,216 @@
+<div class="container assignments-page">
+  <header class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <span class="title-icon">🔗</span>
+        Salary Assignments
+      </h1>
+      <p class="subtitle">Assign salary structures to teachers and ancillary staff</p>
+    </div>
+    <a routerLink="/payroll" class="btn btn-secondary">← Back</a>
+  </header>
+
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <!-- Skeleton loading -->
+  <div class="skeleton-wrap" *ngIf="loading">
+    <div class="skeleton-card"></div>
+    <div class="skeleton-table"></div>
+  </div>
+
+  <div *ngIf="!loading">
+    <!-- Stats -->
+    <section class="stats-row">
+      <div class="stat-card">
+        <span class="stat-value">{{ assignments.length }}</span>
+        <span class="stat-label">Total Assignments</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ teacherAssignments.length }}</span>
+        <span class="stat-label">Teachers</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ ancillaryAssignments.length }}</span>
+        <span class="stat-label">Ancillary Staff</span>
+      </div>
+      <div class="stat-card stat-card-loan">
+        <span class="stat-value">{{ loanAccounts.length }}</span>
+        <span class="stat-label">With loan balance</span>
+      </div>
+    </section>
+
+    <!-- Assign form -->
+    <section class="card assign-form">
+      <h2 class="form-title">Assign Salary</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Employee Type</label>
+          <select [(ngModel)]="employeeType" (ngModelChange)="onEmployeeTypeChange()" class="form-control">
+            <option value="ancillary">👷 Ancillary Staff</option>
+            <option value="teacher">👨‍🏫 Teacher</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Employee</label>
+          <select [(ngModel)]="selectedEmployeeId" class="form-control">
+            <option value="">— Select employee —</option>
+            <option *ngFor="let e of getEmployees()" [value]="e.id">{{ getEmployeeLabel(e) }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Salary Structure</label>
+          <select [(ngModel)]="selectedStructureId" (ngModelChange)="onStructureChange()" class="form-control">
+            <option value="">— Select structure —</option>
+            <option *ngFor="let s of getFilteredStructures()" [value]="s.id">{{ s.name }} ({{ s.employeeCategory }})</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Effective From</label>
+          <input type="date" [(ngModel)]="effectiveFrom" class="form-control" />
+        </div>
+      </div>
+      <div class="loan-balance-alert" *ngIf="selectedEmployeeId && getSelectedEmployeeLoanBalance() > 0">
+        <span class="loan-balance-label">Pending loan balance:</span>
+        <strong>{{ getSelectedEmployeeLoanBalance() | number:'1.2-2' }}</strong>
+        <span class="loan-balance-hint">— Loan + interest is automatically deducted when you create a payroll run (equal installments over the loan tenure).</span>
+      </div>
+      <!-- Negotiated amounts: each employee can have different amounts (from structure template, editable) -->
+      <div class="custom-amounts-section" *ngIf="assignComponents.length > 0">
+        <h3 class="custom-amounts-title">Salary amounts for this employee</h3>
+        <p class="custom-amounts-hint">Adjust amounts as negotiated. These override the structure defaults for this employee.</p>
+        <div class="components-edit-table">
+          <div class="component-row header-row">
+            <span class="col-name">Component</span>
+            <span class="col-type">Type</span>
+            <span class="col-amount">Amount</span>
+          </div>
+          <div class="component-row" *ngFor="let c of assignComponents; let i = index">
+            <span class="col-name">{{ c.name }}</span>
+            <span class="col-type">{{ c.type }}</span>
+            <span class="col-amount"><input type="number" [(ngModel)]="c.amount" [name]="'amt' + i" step="0.01" min="0" class="form-control input-amount" /></span>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary assign-btn" (click)="assign()" [disabled]="submitting">
+        {{ submitting ? 'Assigning...' : 'Assign Salary' }}
+      </button>
+    </section>
+
+    <!-- Loan accounts (read-only: loans are created only from Payroll page) -->
+    <section class="card loan-accounts-card">
+      <div class="card-header-row">
+        <h2 class="card-title">Loan accounts</h2>
+      </div>
+      <p class="loan-section-hint">Employees with an outstanding loan balance. Loans are created only from the <a routerLink="/payroll">Payroll</a> page (Quick Actions → Loans). Principal + interest is automatically deducted when you create a payroll run: 1 month = full amount in one run; 2 or 3 months = equal installments over 2 or 3 runs.</p>
+      <div class="table-wrap" *ngIf="loanAccounts.length > 0">
+        <table class="data-table modern-table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Category</th>
+              <th>Pending balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let la of loanAccounts" class="table-row">
+              <td><span class="emp-name">{{ getLoanAccountEmployeeName(la) }}</span></td>
+              <td>
+                <span class="badge" [class.badge-teacher]="la.teacherId" [class.badge-ancillary]="la.ancillaryStaffId">
+                  {{ la.teacherId ? 'Teacher' : 'Ancillary' }}
+                </span>
+              </td>
+              <td><strong>{{ la.balance | number:'1.2-2' }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="empty-state" *ngIf="loanAccounts.length === 0">
+        <p>No loan balances. Create loans from the <a routerLink="/payroll">Payroll</a> page → Quick Actions → Loans.</p>
+      </div>
+    </section>
+
+    <!-- Assignments table -->
+    <section class="card assignments-card">
+      <div class="card-header-row">
+        <h2 class="card-title">Current Assignments</h2>
+        <div class="card-actions">
+          <input type="text" [(ngModel)]="searchQuery" class="search-input" placeholder="Search by name or structure..." />
+          <div class="filter-tabs">
+            <button class="tab" [class.active]="filterType === 'all'" (click)="filterType = 'all'">All</button>
+            <button class="tab" [class.active]="filterType === 'teacher'" (click)="filterType = 'teacher'">Teachers</button>
+            <button class="tab" [class.active]="filterType === 'ancillary'" (click)="filterType = 'ancillary'">Ancillary</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap" *ngIf="filteredAssignments.length > 0">
+        <table class="data-table modern-table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Category</th>
+              <th>Structure</th>
+              <th>Effective From</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let a of filteredAssignments" class="table-row">
+              <td>
+                <span class="emp-name">{{ getAssignmentEmployeeName(a) }}</span>
+              </td>
+              <td>
+                <span class="badge" [class.badge-teacher]="a.teacherId" [class.badge-ancillary]="a.ancillaryStaffId">
+                  {{ a.teacherId ? 'Teacher' : 'Ancillary' }}
+                </span>
+              </td>
+              <td>{{ a.salaryStructure?.name || '—' }} <span class="badge-custom" *ngIf="hasCustomAmounts(a)">Custom</span></td>
+              <td>{{ a.effectiveFrom | date:'dd MMM yyyy' }}</td>
+              <td>
+                <div class="actions-cell">
+                  <button class="btn btn-sm btn-secondary" (click)="openEdit(a)">Edit</button>
+                  <button class="btn btn-sm btn-danger" (click)="remove(a.id)">Remove</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="empty-state" *ngIf="filteredAssignments.length === 0">
+        <p *ngIf="assignments.length === 0">No salary assignments yet. Use the form above to assign salaries.</p>
+        <p *ngIf="assignments.length > 0">No assignments match your search or filter.</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- Edit assignment modal -->
+  <div class="modal-overlay" *ngIf="editingAssignment" (click)="closeEdit()">
+    <div class="modal-content card" (click)="$event.stopPropagation()">
+      <h2>Edit salary: {{ getAssignmentEmployeeName(editingAssignment) }}</h2>
+      <p class="modal-hint">Change effective date or negotiated amounts. Structure: {{ editingAssignment.salaryStructure?.name || '—' }}</p>
+      <div class="form-group">
+        <label>Effective From</label>
+        <input type="date" [(ngModel)]="editForm.effectiveFrom" class="form-control" />
+      </div>
+      <div class="components-edit-table" *ngIf="editForm.components.length > 0">
+        <div class="component-row header-row">
+          <span class="col-name">Component</span>
+          <span class="col-type">Type</span>
+          <span class="col-amount">Amount</span>
+        </div>
+        <div class="component-row" *ngFor="let c of editForm.components; let i = index">
+          <span class="col-name">{{ c.name }}</span>
+          <span class="col-type">{{ c.type }}</span>
+          <span class="col-amount"><input type="number" [(ngModel)]="c.amount" [name]="'editAmt' + i" step="0.01" min="0" class="form-control input-amount" /></span>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeEdit()">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="saveEdit()" [disabled]="savingEdit">{{ savingEdit ? 'Saving...' : 'Save' }}</button>
+      </div>
+    </div>
+  </div>
+
+</div>

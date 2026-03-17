@@ -1,0 +1,54 @@
+<div class="sr-page">
+  <h1 class="sr-title">E-Learning: Student Responses</h1>
+  <p class="sr-subtitle">
+    View and open work submitted by students for your e-learning tasks.
+  </p>
+
+  <section class="sr-card">
+    <div class="sr-field">
+      <label>Select Task</label>
+      <select [(ngModel)]="selectedTaskId" (change)="onTaskChange()">
+        <option value="">-- Choose a task --</option>
+        <option *ngFor="let t of tasks" [value]="t.id">
+          {{ (t.type || 'assignment') | titlecase }} - {{ t.title || 'Untitled' }}
+        </option>
+      </select>
+      <small *ngIf="loadingTasks">Loading tasks…</small>
+    </div>
+
+    <div class="sr-alert sr-alert-error" *ngIf="error">{{ error }}</div>
+
+    <div *ngIf="loadingResponses" class="sr-muted">Loading student responses…</div>
+
+    <table class="sr-table" *ngIf="!loadingResponses && responses.length > 0">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Submitted On</th>
+          <th>Response</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of responses">
+          <td>
+            {{ r.student?.fullName || (r.student?.firstName + ' ' + r.student?.lastName) || 'Unknown' }}
+          </td>
+          <td>{{ r.submittedAt | date:'medium' }}</td>
+          <td>
+            <a *ngIf="r.fileUrl" [href]="r.fileUrl" target="_blank" rel="noopener noreferrer">
+              Open Response (PDF)
+            </a>
+            <span *ngIf="!r.fileUrl && r.text">
+              {{ r.text }}
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div *ngIf="!loadingResponses && selectedTaskId && responses.length === 0" class="sr-muted">
+      No responses submitted yet for this task.
+    </div>
+  </section>
+</div>
+

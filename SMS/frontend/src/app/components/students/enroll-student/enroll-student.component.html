@@ -1,0 +1,190 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="header-icon">📝</span>
+        Enroll Student
+      </h1>
+      <p class="subtitle">List of registered students not yet allocated to classes</p>
+    </div>
+    <div class="header-actions">
+      <a class="btn btn-back" routerLink="/students/new">
+        <span class="btn-icon">←</span> Back to Registration
+      </a>
+    </div>
+  </div>
+
+  <div class="actions-card">
+    <div class="actions-row">
+      <button type="button" class="btn btn-action btn-preview" (click)="previewPdf()">
+        <span class="btn-icon">👁️</span> Preview
+      </button>
+      <button type="button" class="btn btn-action btn-print" (click)="printList()">
+        <span class="btn-icon">🖨️</span> Print
+      </button>
+      <button type="button" class="btn btn-action btn-export" (click)="exportCsv()">
+        <span class="btn-icon">⬇</span> Export CSV
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid" *ngIf="!loading">
+    <div class="stat-card stat-primary">
+      <div class="stat-icon">👥</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats.total }}</div>
+        <div class="stat-label">Unenrolled Students</div>
+      </div>
+    </div>
+    <div class="stat-card stat-male">
+      <div class="stat-icon">♂</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats.male }}</div>
+        <div class="stat-label">Male</div>
+      </div>
+    </div>
+    <div class="stat-card stat-female">
+      <div class="stat-icon">♀</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats.female }}</div>
+        <div class="stat-label">Female</div>
+      </div>
+    </div>
+    <div class="stat-card stat-day">
+      <div class="stat-icon">🏠</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats.dayScholar }}</div>
+        <div class="stat-label">Day Scholars</div>
+      </div>
+    </div>
+    <div class="stat-card stat-boarder">
+      <div class="stat-icon">🏫</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats.boarder }}</div>
+        <div class="stat-label">Boarders</div>
+      </div>
+    </div>
+    <div class="stat-card stat-wide stat-chart" *ngIf="stats.byGrade.length">
+      <div class="stat-chart-header">
+        <span class="stat-chart-icon">📊</span>
+        <span class="stat-title">Top Grades</span>
+      </div>
+      <div class="bars">
+        <div class="bar-row" *ngFor="let g of stats.byGrade">
+          <div class="bar-label">{{ g.label }}</div>
+          <div class="bar-track">
+            <div class="bar-fill" [style.width.%]="(g.count / (stats.byGrade[0]?.count || 1)) * 100"></div>
+          </div>
+          <div class="bar-value">{{ g.count }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters & Search -->
+  <div class="filters-card">
+    <div class="filters-header">
+      <span class="filters-accent"></span>
+      <h3 class="filters-title">🔍 Filters & Search</h3>
+    </div>
+    <div class="filters-row">
+      <div class="filter-item">
+        <label>Grade</label>
+        <select class="form-control form-select" [(ngModel)]="selectedGrade" (change)="applyFilters()">
+          <option value="">All</option>
+          <option *ngFor="let g of gradeOptions" [value]="g">{{ g }}</option>
+        </select>
+      </div>
+      <div class="filter-item">
+        <label>Student Type</label>
+        <select class="form-control form-select" [(ngModel)]="selectedType" (change)="applyFilters()">
+          <option value="">All</option>
+          <option value="Day Scholar">Day Scholar</option>
+          <option value="Boarder">Boarder</option>
+        </select>
+      </div>
+      <button type="button" class="btn btn-clear-filters" (click)="clearFilters()">Clear Filters</button>
+    </div>
+    <div class="search-section">
+      <div class="search-input-wrapper">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          [(ngModel)]="searchQuery"
+          (input)="filter()"
+          placeholder="Search by Student ID, First Name, Last Name, or Phone Number"
+          class="search-input">
+        <button type="button" *ngIf="searchQuery" class="clear-search" (click)="searchQuery=''; filter()" title="Clear search">×</button>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading students...</p>
+  </div>
+
+  <div *ngIf="!loading && filtered.length === 0" class="empty-state">
+    <div class="empty-icon">✅</div>
+    <h2>No Unenrolled Students</h2>
+    <p>All registered students are allocated to classes.</p>
+  </div>
+
+  <div id="print-area" class="table-card" *ngIf="!loading && filtered.length > 0">
+    <h2 class="table-section-title">Registered Students Without Classes</h2>
+    <div class="table-wrapper">
+      <table class="data-table" *ngIf="!loading && filtered.length > 0">
+      <thead>
+        <tr>
+          <th>Student Number</th>
+          <th>First Name</th>
+          <th>Last Name</th>
+          <th>Gender</th>
+          <th>Phone</th>
+          <th>Grade</th>
+          <th *ngIf="canEnroll()">Assign Class</th>
+          <th *ngIf="canEnroll()">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let s of filtered">
+          <td class="cell-student-id">{{ s.studentNumber || '—' }}</td>
+          <td>{{ s.firstName || '—' }}</td>
+          <td>{{ s.lastName || '—' }}</td>
+          <td>{{ s.gender || '—' }}</td>
+          <td>{{ s.phoneNumber || '—' }}</td>
+          <td>{{ s.grade || s.classLevel || '—' }}</td>
+          <td *ngIf="canEnroll()">
+            <select class="form-control form-select-inline" [(ngModel)]="s._selectedClassId">
+              <option value="">Select class</option>
+              <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
+            </select>
+          </td>
+          <td *ngIf="canEnroll()">
+            <div class="action-buttons-row">
+              <button 
+                type="button"
+                class="btn btn-enroll"
+                [disabled]="!s._selectedClassId || enrollingMap[s.id || s.studentId]"
+                (click)="enroll(s, s._selectedClassId)">
+                <span *ngIf="!enrollingMap[s.id || s.studentId]">Enroll</span>
+                <span *ngIf="enrollingMap[s.id || s.studentId]" class="spinner"></span>
+              </button>
+              <button 
+                type="button"
+                class="btn btn-delete-row"
+                *ngIf="isAdmin()"
+                [disabled]="deletingMap[s.id || s.studentId]"
+                (click)="deleteStudentRecord(s)">
+                <span *ngIf="!deletingMap[s.id || s.studentId]">Delete</span>
+                <span *ngIf="deletingMap[s.id || s.studentId]" class="spinner"></span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,415 @@
+<div class="dashboard-container" [class.dark-mode]="themeService.darkMode">
+  <!-- Main Content -->
+    <main class="main-content">
+      <div class="content-header">
+        <div class="header-top">
+          <div class="header-left">
+            <div class="greeting-section">
+              <h1 class="dashboard-title">
+                <span class="title-icon">📊</span>
+                Dashboard
+              </h1>
+              <p class="welcome-text">
+                <span class="greeting-icon">👋</span>
+                Welcome back, <strong>{{ getDisplayName() }}</strong>!
+              </p>
+              <p class="date-time">{{ getCurrentDateTime() }}</p>
+            </div>
+          </div>
+          <div class="header-right">
+            <div class="school-name-container" *ngIf="displayedText">
+              <span class="school-icon">🏫</span>
+              <span class="school-name" [class.school-motto-text]="displayedText === schoolMotto">{{ displayedText }}</span>
+              <img src="assets/school-badge.png" alt="5 Years of Academic Excellence" class="school-logo school-badge" />
+            </div>
+            <div class="quick-stats-badge" *ngIf="(isAdmin() || isAccountant() || isTeacher()) && !loadingStats">
+              <span class="badge-icon">⚡</span>
+              <span class="badge-text">Live Stats</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    
+    <!-- Statistics Cards -->
+    <div class="stats-grid" *ngIf="(isAdmin() || isAccountant() || isTeacher()) && !loadingStats">
+      <div class="stat-card primary modern-card">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon modern-icon">👥</div>
+          <div class="icon-badge">+</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value animated-value">{{ stats.totalStudents }}</div>
+          <div class="stat-label">Total Students</div>
+          <div class="stat-sublabel" *ngIf="stats.totalStudents > 0">
+            <span class="sublabel-item">📘 {{ stats.dayScholars }} Day Scholars</span>
+            <span class="sublabel-item">🏠 {{ stats.boarders }} Boarders</span>
+          </div>
+        </div>
+        <div class="stat-trend up">
+          <span class="trend-icon">📈</span>
+        </div>
+      </div>
+      
+      <div class="stat-card success modern-card">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon modern-icon">👨‍🏫</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value animated-value">{{ stats.totalTeachers }}</div>
+          <div class="stat-label">Teachers</div>
+          <div class="stat-sublabel">
+            <span class="sublabel-item">Active Staff</span>
+          </div>
+        </div>
+        <div class="stat-trend">
+          <span class="trend-icon">✨</span>
+        </div>
+      </div>
+      
+      <div class="stat-card info modern-card">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon modern-icon">🏫</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value animated-value">{{ stats.totalClasses }}</div>
+          <div class="stat-label">Active Classes</div>
+          <div class="stat-sublabel">
+            <span class="sublabel-item">Currently Running</span>
+          </div>
+        </div>
+        <div class="stat-trend">
+          <span class="trend-icon">🎓</span>
+        </div>
+      </div>
+      
+      <div class="stat-card warning modern-card">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon modern-icon">📚</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value animated-value">{{ stats.totalSubjects }}</div>
+          <div class="stat-label">Subjects</div>
+          <div class="stat-sublabel">
+            <span class="sublabel-item">Available Courses</span>
+          </div>
+        </div>
+        <div class="stat-trend">
+          <span class="trend-icon">📖</span>
+        </div>
+      </div>
+      
+      <div class="stat-card danger modern-card" *ngIf="isAdmin() || isAccountant()">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon modern-icon">💰</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value animated-value">{{ stats.totalInvoices }}</div>
+          <div class="stat-label">Total Invoices</div>
+          <div class="stat-sublabel" *ngIf="stats.totalBalance > 0">
+            <span class="sublabel-item warning-text">⚠️ Outstanding: {{ stats.totalBalance | number:'1.2-2' }}</span>
+          </div>
+        </div>
+        <div class="stat-trend">
+          <span class="trend-icon">💳</span>
+        </div>
+      </div>
+      
+      <div class="stat-card secondary modern-card" *ngIf="isAdmin()">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon modern-icon">👶</div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value animated-value">{{ stats.staffChildren }}</div>
+          <div class="stat-label">Staff Children</div>
+          <div class="stat-sublabel">
+            <span class="sublabel-item">Special Category</span>
+          </div>
+        </div>
+        <div class="stat-trend">
+          <span class="trend-icon">⭐</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="loading-stats" *ngIf="(isAdmin() || isAccountant() || isTeacher()) && loadingStats">
+      <div class="spinner"></div>
+      <p>Loading statistics...</p>
+    </div>
+    
+    <div class="dashboard-cards">
+      <div class="card modern-card">
+        <div class="card-header-modern">
+          <h2>
+            <span class="card-icon">⚡</span>
+            Quick Overview
+          </h2>
+        </div>
+        <div *ngIf="isAdmin()">
+          <h3>Admin Features</h3>
+          <ul>
+            <li><a routerLink="/students/new" class="feature-link">✅ Manage Students - Register and enroll students</a></li>
+            <li><a routerLink="/teachers/new" class="feature-link">✅ Manage Teachers - Add and assign teachers</a></li>
+            <li><a routerLink="/exams" class="feature-link">✅ Manage Exams - Create and organize exams</a></li>
+            <li><a routerLink="/attendance/mark" class="feature-link">✅ Mark Attendance - Record daily student attendance</a></li>
+            <li><a routerLink="/attendance/reports" class="feature-link">✅ Attendance Reports - View class attendance statistics</a></li>
+            <li><a routerLink="/invoices" class="feature-link">✅ Manage Finance - Handle invoices and payments</a></li>
+            <li *ngIf="canAccessModule('payroll')"><a routerLink="/payroll" class="feature-link">✅ Payroll Manager - Process salaries and manage staff payroll</a></li>
+            <li><a routerLink="/report-cards" class="feature-link">✅ View Report Cards - Access all student reports</a></li>
+            <li><a routerLink="/rankings" class="feature-link">✅ View Rankings - See class and form rankings</a></li>
+          </ul>
+        </div>
+        <div *ngIf="isTeacher()">
+          <h3>Teacher Features</h3>
+          <ul>
+            <li *ngIf="canAccessModule('exams')"><a routerLink="/exams" class="feature-link">✅ Capture Marks - Enter student exam marks</a></li>
+            <li *ngIf="canAccessModule('recordBook')"><a routerLink="/teacher/record-book" class="feature-link">✅ Record Book - Enter and view student marks</a></li>
+            <li *ngIf="canAccessModule('attendance')"><a routerLink="/attendance/mark" class="feature-link">✅ Mark Attendance - Record daily student attendance</a></li>
+            <li *ngIf="canAccessModule('attendance')"><a routerLink="/attendance/reports" class="feature-link">✅ Attendance Reports - View class attendance statistics</a></li>
+            <li *ngIf="canAccessModule('rankings')"><a routerLink="/rankings" class="feature-link">✅ View Rankings - Check class and subject rankings</a></li>
+            <li *ngIf="canAccessModule('reportCards')"><a routerLink="/report-cards" class="feature-link">✅ View Report Cards - Generate student reports</a></li>
+            <li *ngIf="canAccessModule('students')"><a routerLink="/students" class="feature-link">✅ View Students - Access student information</a></li>
+            <li *ngIf="canAccessModule('classes')"><a routerLink="/classes" class="feature-link">✅ View Classes - Access class information</a></li>
+            <li *ngIf="canAccessModule('subjects')"><a routerLink="/subjects" class="feature-link">✅ View Subjects - Access subject details</a></li>
+          </ul>
+        </div>
+        <div *ngIf="isAccountant()">
+          <h3>Accountant Features</h3>
+          <ul>
+            <li><a routerLink="/invoices" class="feature-link">✅ Manage Finance - Create and track invoices and payments</a></li>
+            <li *ngIf="canAccessModule('payroll')"><a routerLink="/payroll" class="feature-link">✅ Payroll Manager - Process salaries and manage staff payroll</a></li>
+            <li><a routerLink="/students" class="feature-link">✅ View Students - Access student directory for billing updates</a></li>
+            <li><a routerLink="/outstanding-balance" class="feature-link">✅ Monitor Balances - Review outstanding balances and payment history</a></li>
+          </ul>
+        </div>
+        <div *ngIf="isParent()">
+          <h3>Parent Features</h3>
+          <ul>
+            <li><a routerLink="/parent/link-students" class="feature-link">✅ Link Students - Connect your account to your child's profile</a></li>
+            <li><a routerLink="/parent/dashboard" class="feature-link">✅ View Invoice Balance - Check your child's current invoice balance</a></li>
+            <li><a routerLink="/student/report-card" class="feature-link">✅ View Report Cards - Access your child's report cards (when balance is cleared)</a></li>
+          </ul>
+          <p style="margin-top: 15px;">
+            <a routerLink="/parent/dashboard" class="action-btn" style="text-decoration: none; display: inline-block;">
+              Go to Parent Dashboard →
+            </a>
+          </p>
+        </div>
+        <div *ngIf="isStudent()">
+          <h3>Student Dashboard</h3>
+          <div class="student-balance-display" style="background: #fff3f3; border: 2px solid #ff4444; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h4 style="margin: 0 0 5px 0; color: #333;">Current Invoice Balance</h4>
+                <p style="margin: 0; font-size: 24px; font-weight: bold; color: #ff0000;">
+                  {{ currencySymbol }} {{ studentBalance | number:'1.2-2' }}
+                </p>
+              </div>
+              <div *ngIf="loadingBalance" style="color: #666;">Loading...</div>
+            </div>
+          </div>
+          <ul>
+            <li><a routerLink="/student/report-card" class="feature-link">✅ View Report Card - Access your report card for {{ activeTerm || 'current term' }}</a></li>
+            <li><a routerLink="/student/invoice-statement" class="feature-link">✅ View Invoice Statement - Check your invoice details and payment history</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card modern-card" *ngIf="isAdmin() || isAccountant()">
+        <div class="card-header-modern">
+          <h2>
+            <span class="card-icon">🚀</span>
+            Quick Actions
+          </h2>
+        </div>
+        <div class="quick-actions modern-actions">
+          <a routerLink="/students/new" class="action-btn modern-action-btn primary-action" *ngIf="isAdmin()">
+            <span class="action-icon">👤</span>
+            <span class="action-text">Add Student</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/classes/new" class="action-btn modern-action-btn info-action" *ngIf="isAdmin()">
+            <span class="action-icon">🏫</span>
+            <span class="action-text">Add Class</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/subjects/new" class="action-btn modern-action-btn warning-action" *ngIf="isAdmin()">
+            <span class="action-icon">📚</span>
+            <span class="action-text">Add Subject</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/teachers/new" class="action-btn modern-action-btn success-action" *ngIf="isAdmin()">
+            <span class="action-icon">👨‍🏫</span>
+            <span class="action-text">Add Teacher</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a (click)="openBulkMessage()" class="action-btn modern-action-btn secondary-action" style="cursor: pointer;" *ngIf="isAdmin()">
+            <span class="action-icon">📧</span>
+            <span class="action-text">Bulk Message</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/attendance/mark" class="action-btn modern-action-btn success-action" *ngIf="(isAdmin() || isTeacher()) && canAccessModule('attendance')">
+            <span class="action-icon">✅</span>
+            <span class="action-text">Mark Attendance</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/attendance/reports" class="action-btn modern-action-btn info-action" *ngIf="(isAdmin() || isTeacher()) && canAccessModule('attendance')">
+            <span class="action-icon">📊</span>
+            <span class="action-text">Attendance Reports</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/teacher/record-book" class="action-btn modern-action-btn primary-action" *ngIf="isTeacher() && canAccessModule('recordBook')">
+            <span class="action-icon">📚</span>
+            <span class="action-text">Record Book</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/exams" class="action-btn modern-action-btn warning-action" *ngIf="isTeacher() && canAccessModule('exams')">
+            <span class="action-icon">📝</span>
+            <span class="action-text">Marks Capturing</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/rankings" class="action-btn modern-action-btn success-action" *ngIf="isTeacher() && canAccessModule('rankings')">
+            <span class="action-icon">🏆</span>
+            <span class="action-text">View Rankings</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/report-cards" class="action-btn modern-action-btn info-action" *ngIf="isTeacher() && canAccessModule('reportCards')">
+            <span class="action-icon">📊</span>
+            <span class="action-text">Report Cards</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/students" class="action-btn modern-action-btn primary-action" *ngIf="isAccountant()">
+            <span class="action-icon">📋</span>
+            <span class="action-text">View Students</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/invoices" class="action-btn modern-action-btn danger-action" *ngIf="isAccountant()">
+            <span class="action-icon">💰</span>
+            <span class="action-text">Finance Overview</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/payroll" class="action-btn modern-action-btn secondary-action" *ngIf="(isAdmin() || isAccountant()) && canAccessModule('payroll')">
+            <span class="action-icon">💵</span>
+            <span class="action-text">Payroll Manager</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/invoices/new" class="action-btn modern-action-btn danger-action" *ngIf="isSuperAdmin()">
+            <span class="action-icon">📝</span>
+            <span class="action-text">Create Invoice</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/admin/manage-accounts" class="action-btn modern-action-btn secondary-action" *ngIf="isAdmin()">
+            <span class="action-icon">👥</span>
+            <span class="action-text">Manage Accounts</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/admin/parents" class="action-btn modern-action-btn secondary-action" *ngIf="isAdmin()">
+            <span class="action-icon">👨‍👩‍👧‍👦</span>
+            <span class="action-text">Parent Management</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/admin/class-promotion" class="action-btn modern-action-btn warning-action" *ngIf="isAdmin()">
+            <span class="action-icon">⬆️</span>
+            <span class="action-text">Class Promotion</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a routerLink="/admin/elearning" class="action-btn modern-action-btn info-action" *ngIf="isAdmin()">
+            <span class="action-icon">💻</span>
+            <span class="action-text">E-Learning Services</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a (click)="viewReportCard()" class="action-btn modern-action-btn info-action" style="cursor: pointer;" *ngIf="isStudent()">
+            <span class="action-icon">📄</span>
+            <span class="action-text">View Report Card</span>
+            <span class="action-arrow">→</span>
+          </a>
+          <a (click)="viewInvoiceStatement()" class="action-btn modern-action-btn danger-action" style="cursor: pointer;" *ngIf="isStudent()">
+            <span class="action-icon">💰</span>
+            <span class="action-text">View Invoice Statement</span>
+            <span class="action-arrow">→</span>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Recent Activity Section -->
+      <div class="card recent-activity modern-card" *ngIf="(isAdmin() || isAccountant() || isTeacher()) && !loadingStats">
+        <div class="card-header-flex">
+          <h2>
+            <span class="card-icon">🕒</span>
+            Recent Activity
+          </h2>
+          <a routerLink="/students" class="view-all-link modern-link" *ngIf="recentStudents.length > 0">
+            View All 
+            <span class="link-arrow">→</span>
+          </a>
+        </div>
+        
+        <div class="activity-tabs">
+          <div class="tab-content">
+            <h3 class="tab-title">Recent Students</h3>
+            <div class="activity-list" *ngIf="recentStudents.length > 0; else noRecentStudents">
+              <div class="activity-item modern-activity-item" *ngFor="let student of recentStudents">
+                <div class="activity-icon-wrapper">
+                  <div class="activity-icon modern-activity-icon">👤</div>
+                </div>
+                <div class="activity-details">
+                  <div class="activity-name">{{ student.firstName }} {{ student.lastName }}</div>
+                  <div class="activity-meta">
+                    <span class="meta-badge">🆔 {{ student.studentNumber }}</span>
+                    <span class="meta-badge" *ngIf="student.class">🏫 {{ student.class.name }}</span>
+                    <span class="meta-badge">{{ student.studentType || 'Day Scholar' }}</span>
+                  </div>
+                </div>
+                <div class="activity-action">
+                  <a [routerLink]="['/students', student.id, 'edit']" class="btn-link modern-btn-link">
+                    <span>✏️</span> Edit
+                  </a>
+                </div>
+              </div>
+            </div>
+            <ng-template #noRecentStudents>
+              <div class="empty-state">
+                <p>No recent students</p>
+              </div>
+            </ng-template>
+          </div>
+          
+          <div class="tab-content" *ngIf="isAdmin() || isAccountant()">
+            <h3 class="tab-title">Recent Invoices</h3>
+            <div class="activity-list" *ngIf="recentInvoices.length > 0; else noRecentInvoices">
+              <div class="activity-item modern-activity-item" *ngFor="let invoice of recentInvoices">
+                <div class="activity-icon-wrapper">
+                  <div class="activity-icon modern-activity-icon invoice-icon">💰</div>
+                </div>
+                <div class="activity-details">
+                  <div class="activity-name">Invoice #{{ invoice.invoiceNumber }}</div>
+                  <div class="activity-meta">
+                    <span class="meta-badge" [class.balance-warning]="invoice.balance > 0">
+                      💵 Balance: {{ invoice.balance | number:'1.2-2' }}
+                    </span>
+                    <span class="meta-badge" *ngIf="invoice.student">
+                      👤 {{ invoice.student.firstName }} {{ invoice.student.lastName }}
+                    </span>
+                  </div>
+                </div>
+                <div class="activity-action">
+                  <a [routerLink]="['/invoices']" class="btn-link modern-btn-link">
+                    <span>👁️</span> View
+                  </a>
+                </div>
+              </div>
+            </div>
+            <ng-template #noRecentInvoices>
+              <div class="empty-state">
+                <p>No recent invoices</p>
+              </div>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bulk Message Modal -->
+  <app-bulk-message *ngIf="showBulkMessage" (close)="closeBulkMessage()"></app-bulk-message>
+</div>
+

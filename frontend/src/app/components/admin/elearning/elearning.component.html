@@ -1,0 +1,102 @@
+<div class="elearning-page">
+  <div class="elearning-header">
+    <h1>E-Learning Services</h1>
+    <p class="subtitle">
+      View classes and the assignments, quizzes and tests given to students.
+    </p>
+  </div>
+
+  <div class="elearning-layout">
+    <!-- Classes list -->
+    <aside class="classes-panel">
+      <h2 class="panel-title">Classes</h2>
+
+      <div *ngIf="loadingClasses" class="state-message">
+        Loading classes...
+      </div>
+
+      <div *ngIf="!loadingClasses && classes.length === 0" class="state-message">
+        No classes found.
+      </div>
+
+      <ul *ngIf="!loadingClasses && classes.length > 0" class="class-list">
+        <li
+          *ngFor="let cls of classes"
+          (click)="onSelectClass(cls)"
+          [class.active]="selectedClass?.id === cls.id"
+        >
+          <div class="class-name">
+            {{ cls.name || cls.className }}
+          </div>
+          <div class="class-meta" *ngIf="cls.form || cls.level">
+            {{ cls.form || cls.level }}
+          </div>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- Activities for selected class -->
+    <section class="activities-panel">
+      <div *ngIf="selectedClass" class="panel-header">
+        <h2>
+          E-Learning for
+          <span class="class-label">
+            {{ selectedClass.name || selectedClass.className }}
+          </span>
+        </h2>
+      </div>
+
+      <div *ngIf="error" class="error-message">
+        {{ error }}
+      </div>
+
+      <div *ngIf="loadingContent" class="state-message">
+        Loading assignments and tests for this class...
+      </div>
+
+      <div *ngIf="!loadingContent && activities.length === 0 && !error" class="state-message">
+        No e-learning activities (assignments, quizzes or tests) have been recorded for this class yet.
+      </div>
+
+      <div *ngIf="!loadingContent && activities.length > 0" class="activities-list">
+        <div class="activity-card" *ngFor="let activity of activities">
+          <div class="activity-header">
+            <div class="activity-type">
+              {{ (activity.examType || activity.type) | titlecase }}
+            </div>
+            <div class="activity-title">
+              {{ activity.name || activity.title || 'Untitled activity' }}
+            </div>
+          </div>
+          <div class="activity-body">
+            <div class="activity-row">
+              <span class="label">Subject:</span>
+              <span class="value">
+                {{ activity.subject?.name || activity.subjectName || '—' }}
+              </span>
+            </div>
+            <div class="activity-row">
+              <span class="label">Given on:</span>
+              <span class="value">
+                {{ activity.date || activity.createdAt | date:'mediumDate' }}
+              </span>
+            </div>
+            <div class="activity-row" *ngIf="activity.dueDate">
+              <span class="label">Due date:</span>
+              <span class="value">
+                {{ activity.dueDate | date:'mediumDate' }}
+              </span>
+            </div>
+            <div class="activity-row" *ngIf="activity.term">
+              <span class="label">Term:</span>
+              <span class="value">
+                {{ activity.term }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+

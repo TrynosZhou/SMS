@@ -1,0 +1,41 @@
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, OneToMany } from 'typeorm';
+import { User } from './User';
+import { Student } from './Student';
+import { ParentStudent } from './ParentStudent';
+
+@Entity('parents')
+export class Parent {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column()
+  firstName: string;
+
+  @Column()
+  lastName: string;
+
+  @Column({ nullable: true })
+  phoneNumber: string;
+
+  @Column({ nullable: true })
+  address: string;
+
+  @Column({ nullable: true })
+  email: string;
+
+  @Column({ nullable: true })
+  gender: string;
+
+  @OneToOne(() => User, user => user.parent)
+  user: User;
+
+  @Column({ nullable: true })
+  userId: string;
+
+  @OneToMany(() => Student, student => student.parent)
+  students: Student[];
+
+  @OneToMany(() => ParentStudent, parentStudent => parentStudent.parent)
+  parentStudents: ParentStudent[];
+}
+

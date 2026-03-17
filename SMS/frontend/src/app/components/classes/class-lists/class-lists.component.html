@@ -1,0 +1,489 @@
+<div class="class-lists-container">
+  <!-- Header Section - thin single line -->
+  <div class="page-header">
+    <div class="header-content">
+      <span class="header-icon">📋</span>
+      <h1>Class Lists</h1>
+      <span class="subtitle">View students enrolled in a selected class for a specific term</span>
+    </div>
+  </div>
+
+  <!-- Alert Messages -->
+  <div class="alert alert-success" *ngIf="success">
+    <span class="alert-icon">✓</span>
+    {{ success }}
+  </div>
+  <div class="alert alert-error" *ngIf="error">
+    <span class="alert-icon">⚠</span>
+    {{ error }}
+  </div>
+
+  <!-- Selection Form Card -->
+  <div class="card selection-card">
+    <div class="card-header">
+      <h2>
+        <span class="section-icon">🎯</span>
+        Select Criteria
+      </h2>
+      <p class="section-description">Choose class and term to load students</p>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="classSelect">
+          Select Class <span class="required">*</span>
+        </label>
+        <select 
+          id="classSelect"
+          [(ngModel)]="selectedClassId" 
+          (ngModelChange)="onSelectionChange()"
+          [ngModelOptions]="{standalone: true}"
+          class="form-control"
+          [disabled]="loading">
+          <option value="">-- Select Class --</option>
+          <option *ngFor="let cls of classes" [value]="cls.id">
+            {{ cls.name }}
+          </option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="termSelect">
+          Select Term <span class="required">*</span>
+        </label>
+        <select 
+          id="termSelect"
+          [(ngModel)]="selectedTerm" 
+          (ngModelChange)="onSelectionChange()"
+          [ngModelOptions]="{standalone: true}"
+          class="form-control"
+          [disabled]="loading">
+          <option value="">-- Select Term --</option>
+          <option *ngFor="let term of availableTerms" [value]="term">
+            {{ term }}
+          </option>
+        </select>
+      </div>
+
+      <div class="form-group form-group-action">
+        <label>&nbsp;</label>
+        <button 
+          class="btn btn-primary load-btn" 
+          (click)="loadStudents()" 
+          [disabled]="loading || loadingStudents || !selectedClassId || !selectedTerm">
+          <span class="btn-icon" *ngIf="!loadingStudents">↻</span>
+          <span class="btn-spinner" *ngIf="loadingStudents"></span>
+          <span>{{ loadingStudents ? 'Loading...' : 'Load students' }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick stats when class/term selected -->
+    <div class="selection-stats" *ngIf="selectedClassId && selectedTerm && classes.length">
+      <span class="stat-pill">
+        <strong>{{ getSelectedClassName() }}</strong>
+      </span>
+      <span class="stat-pill">{{ selectedTerm }}</span>
+      <span class="stat-pill stat-pill-hint" *ngIf="!loadingStudents && filteredStudents.length > 0">
+        {{ filteredStudents.length }} student(s)
+      </span>
+    </div>
+  </div>
+
+  <div class="card students-card card-enter" *ngIf="filteredStudents.length > 0">
+    <div class="card-header">
+      <h2 class="header-title">
+        <span class="header-title-left">
+          <span class="section-icon">👥</span>
+          Students in {{ getSelectedClassName() }} — {{ selectedTerm }}
+        </span>
+        <span class="header-title-right">
+          Class Teacher:
+          <a 
+            *ngIf="canEditClassTeacher()" 
+            href="javascript:void(0)"
+            class="class-teacher-link"
+            role="button"
+            tabindex="0"
+            title="Click to change class teacher"
+            (click)="openClassTeacherModal(); $event.preventDefault()"
+            (keyup.enter)="openClassTeacherModal(); $event.preventDefault()"
+            (keyup.space)="openClassTeacherModal(); $event.preventDefault()">
+            {{ classTeacherFullName || 'Not assigned' }}
+          </a>
+          <span *ngIf="!canEditClassTeacher()">{{ classTeacherFullName || 'Not assigned' }}</span>
+        </span>
+      </h2>
+      <div class="header-meta">
+        <div class="header-stats">
+          <span class="stat-badge">{{ filteredStudents.length }} total</span>
+          <span class="stat-badge stat-badge-f" *ngIf="getFilteredGenderCounts().female > 0">{{ getFilteredGenderCounts().female }} F</span>
+          <span class="stat-badge stat-badge-m" *ngIf="getFilteredGenderCounts().male > 0">{{ getFilteredGenderCounts().male }} M</span>
+        </div>
+        <div class="header-actions">
+          <button
+            class="btn btn-outline"
+            (click)="previewPdf()"
+            [disabled]="loadingPdf || filteredStudents.length === 0">
+            <span class="btn-icon">📄</span>
+            <span *ngIf="!loadingPdf">Preview PDF</span>
+            <span *ngIf="loadingPdf">Loading...</span>
+          </button>
+          <button
+            class="btn btn-primary"
+            (click)="downloadPdf()"
+            [disabled]="downloadingPdf || filteredStudents.length === 0">
+            <span class="btn-icon">⬇</span>
+            <span *ngIf="!downloadingPdf">Download PDF</span>
+            <span *ngIf="downloadingPdf">Downloading...</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search filter bar -->
+    <div class="table-toolbar">
+      <div class="search-wrap">
+        <span class="search-icon" aria-hidden="true">🔍</span>
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search by name or student ID..."
+          [(ngModel)]="studentSearchQuery"
+          (ngModelChange)="applySearchFilter()"
+          [ngModelOptions]="{standalone: true}">
+        <button
+          type="button"
+          class="search-clear"
+          *ngIf="studentSearchQuery"
+          (click)="studentSearchQuery = ''; applySearchFilter()"
+          title="Clear search">
+          ×
+        </button>
+      </div>
+      <span class="toolbar-hint" *ngIf="studentSearchQuery && filteredStudents.length > 0">
+        {{ filteredStudents.length }} of {{ students.length }} shown
+      </span>
+      <span class="toolbar-hint toolbar-hint-warn" *ngIf="studentSearchQuery && filteredStudents.length === 0">
+        No students match "{{ studentSearchQuery }}"
+      </span>
+    </div>
+
+    <div class="students-table-wrapper">
+      <div class="students-table-scroll">
+    <div class="students-table-container" id="class-list-pdf">
+      <div *ngIf="schoolName || schoolAddress || schoolLogo || schoolMotto || schoolPhone || schoolEmail" class="school-header">
+        <div class="school-logo-wrapper school-logo-left" *ngIf="schoolLogo">
+          <img [src]="schoolLogo" alt="School Logo" class="school-logo">
+        </div>
+        <div class="school-text">
+          <h3 *ngIf="schoolName">{{ schoolName }}</h3>
+          <p *ngIf="schoolMotto" class="school-motto">
+            {{ schoolMotto }}
+          </p>
+          <p *ngIf="schoolAddress" class="school-address">
+            {{ schoolAddress }}
+          </p>
+          <p *ngIf="schoolPhone" class="school-contact">
+            {{ schoolPhone }}
+          </p>
+          <p *ngIf="schoolEmail" class="school-contact">
+            {{ schoolEmail }}
+          </p>
+        </div>
+      </div>
+      <div class="class-list-meta">
+        <div class="meta-item">
+          <span class="meta-label">Class:</span>
+          <span class="meta-value">{{ getSelectedClassName() }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Term:</span>
+          <span class="meta-value">{{ selectedTerm }}</span>
+        </div>
+        <div class="meta-item" *ngIf="academicYear">
+          <span class="meta-label">Academic Year:</span>
+          <span class="meta-value">{{ academicYear }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Generated:</span>
+          <span class="meta-value">{{ generatedAt | date:'d MMM y' }}</span>
+        </div>
+      </div>
+      <table class="students-table">
+        <thead>
+          <tr>
+            <th (click)="changeSort('studentNumber')" class="sortable">
+              STUD ID
+              <span class="sort-indicator" [class.asc]="getSortDirection('studentNumber') === 'asc'" [class.desc]="getSortDirection('studentNumber') === 'desc'"></span>
+            </th>
+            <th (click)="changeSort('lastName')" class="sortable">
+              L.NAME
+              <span class="sort-indicator" [class.asc]="getSortDirection('lastName') === 'asc'" [class.desc]="getSortDirection('lastName') === 'desc'"></span>
+            </th>
+            <th (click)="changeSort('firstName')" class="sortable">
+              F.NAME
+              <span class="sort-indicator" [class.asc]="getSortDirection('firstName') === 'asc'" [class.desc]="getSortDirection('firstName') === 'desc'"></span>
+            </th>
+            <th>DOB</th>
+            <th>GENDER</th>
+            <th>TYPE</th>
+            <th>CLASS</th>
+            <th *ngIf="isAdmin" class="hide-in-pdf">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <ng-container *ngFor="let group of studentsGroupedByGender">
+            <tr *ngFor="let student of group.students">
+              <td>
+                <span 
+                  class="student-number student-id-link" 
+                  role="button"
+                  tabindex="0"
+                  (click)="viewStudentIdCard(student.id)"
+                  (keyup.enter)="viewStudentIdCard(student.id)"
+                  (keyup.space)="viewStudentIdCard(student.id); $event.preventDefault()"
+                  title="Click to view Student ID Card">
+                  {{ student.studentNumber || 'N/A' }}
+                </span>
+              </td>
+              <td>
+                <span
+                  class="editable"
+                  title="Click to edit Last Name"
+                  role="button"
+                  tabindex="0"
+                  (click)="openEditModal(student, 'lastName')"
+                  (keyup.enter)="openEditModal(student, 'lastName')"
+                  (keyup.space)="openEditModal(student, 'lastName')">
+                  <strong>{{ student.lastName || 'N/A' }}</strong>
+                </span>
+              </td>
+              <td>
+                <span
+                  class="editable"
+                  title="Click to edit First Name"
+                  role="button"
+                  tabindex="0"
+                  (click)="openEditModal(student, 'firstName')"
+                  (keyup.enter)="openEditModal(student, 'firstName')"
+                  (keyup.space)="openEditModal(student, 'firstName')">
+                  <strong>{{ student.firstName || 'N/A' }}</strong>
+                </span>
+              </td>
+              <td>
+                <span
+                  [class.editable]="canEditField('dob')"
+                  [title]="canEditField('dob') ? 'Click to edit DOB' : 'Not permitted'"
+                  role="button"
+                  tabindex="0"
+                  (click)="openEditModal(student, 'dob')"
+                  (keyup.enter)="openEditModal(student, 'dob')"
+                  (keyup.space)="openEditModal(student, 'dob')">
+                  {{ student.dateOfBirth ? (student.dateOfBirth | date:'dd/MM/yyyy') : 'N/A' }}
+                </span>
+              </td>
+              <td>
+                <span
+                  [class.editable]="canEditField('gender')"
+                  [title]="canEditField('gender') ? 'Click to edit Gender' : 'Not permitted'"
+                  role="button"
+                  tabindex="0"
+                  (click)="openEditModal(student, 'gender')"
+                  (keyup.enter)="openEditModal(student, 'gender')"
+                  (keyup.space)="openEditModal(student, 'gender')">
+                  {{ student.gender || 'N/A' }}
+                </span>
+              </td>
+              <td>
+                <span
+                  class="badge"
+                  [class.badge-day]="student.studentType === 'Day Scholar'" 
+                  [class.badge-boarder]="student.studentType === 'Boarder'"
+                  [class.editable]="canEditField('studentType')"
+                  [title]="canEditField('studentType') ? 'Click to edit Type' : 'Not permitted'"
+                  role="button"
+                  tabindex="0"
+                  (click)="openEditModal(student, 'studentType')"
+                  (keyup.enter)="openEditModal(student, 'studentType')"
+                  (keyup.space)="openEditModal(student, 'studentType')">
+                  {{ student.studentType || 'Day Scholar' }}
+                </span>
+              </td>
+              <td>
+                <a 
+                  *ngIf="canMoveStudent()"
+                  href="javascript:void(0)"
+                  role="button"
+                  title="Click to move student to another class"
+                  class="student-class-link"
+                  (click)="startMove(student); $event.preventDefault()">
+                  <span *ngIf="student.class; else noClass">{{ student.class?.name }}</span>
+                  <ng-template #noClass>N/A</ng-template>
+                </a>
+                <span *ngIf="!canMoveStudent()">
+                  <span *ngIf="student.class; else noClass2">{{ student.class?.name }}</span>
+                  <ng-template #noClass2>N/A</ng-template>
+                </span>
+              </td>
+              <td *ngIf="isAdmin" class="hide-in-pdf">
+                <button
+                  class="btn btn-primary"
+                  title="Delete student"
+                  (click)="deleteStudent(student.id, (student.firstName || '') + ' ' + (student.lastName || ''), student.studentNumber || 'N/A')">
+                  🗑️ Delete
+                </button>
+              </td>
+            </tr>
+          </ng-container>
+        </tbody>
+      </table>
+      <table class="students-table actions-overlay" *ngIf="false"></table>
+    </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="showEditModal"></div>
+  <div class="modal" *ngIf="showEditModal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h3 *ngIf="editModalField === 'dob'">Edit Date of Birth</h3>
+      <h3 *ngIf="editModalField === 'gender'">Edit Gender</h3>
+      <h3 *ngIf="editModalField === 'studentType'">Edit Type</h3>
+      <h3 *ngIf="editModalField === 'firstName'">Edit First Name</h3>
+      <h3 *ngIf="editModalField === 'lastName'">Edit Last Name</h3>
+    </div>
+    <div class="modal-body">
+      <div *ngIf="editModalField === 'dob'">
+        <label>Date of Birth</label>
+        <input type="date" class="form-control" [(ngModel)]="editModalValue" [ngModelOptions]="{standalone: true}">
+      </div>
+      <div *ngIf="editModalField === 'gender'">
+        <label>Gender</label>
+        <select class="form-control" [(ngModel)]="editModalValue" [ngModelOptions]="{standalone: true}">
+          <option value="">-- Select --</option>
+          <option value="Female">Female</option>
+          <option value="Male">Male</option>
+        </select>
+      </div>
+      <div *ngIf="editModalField === 'studentType'">
+        <label>Type</label>
+        <select class="form-control" [(ngModel)]="editModalValue" [ngModelOptions]="{standalone: true}">
+          <option value="Day Scholar">Day Scholar</option>
+          <option value="Boarder">Boarder</option>
+        </select>
+      </div>
+      <div *ngIf="editModalField === 'firstName'">
+        <label>First Name</label>
+        <input type="text" class="form-control" [(ngModel)]="editModalValue" [ngModelOptions]="{standalone: true}">
+      </div>
+      <div *ngIf="editModalField === 'lastName'">
+        <label>Last Name</label>
+        <input type="text" class="form-control" [(ngModel)]="editModalValue" [ngModelOptions]="{standalone: true}">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button 
+        class="btn btn-secondary"
+        type="button"
+        (click)="cancelEditModal()"
+        [disabled]="savingEdit">
+        Cancel
+      </button>
+      <button 
+        class="btn btn-primary"
+        (click)="saveEditModal()"
+        [disabled]="savingEdit">
+        {{ savingEdit ? 'Saving...' : 'Save' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Change Class Teacher Modal -->
+  <div class="modal-backdrop" *ngIf="showClassTeacherModal"></div>
+  <div class="modal" *ngIf="showClassTeacherModal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h3>Change Class Teacher</h3>
+    </div>
+    <div class="modal-body">
+      <label for="teacherSelect">Select Teacher</label>
+      <select 
+        id="teacherSelect"
+        class="form-control"
+        [(ngModel)]="selectedClassTeacherId"
+        [ngModelOptions]="{standalone: true}">
+        <option *ngFor="let t of allTeachers" [value]="t.id">
+          {{ (t.lastName || '') + ' ' + (t.firstName || '') }} ({{ t.teacherId || 'ID' }})
+        </option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button 
+        type="button" 
+        class="btn btn-secondary" 
+        (click)="closeClassTeacherModal()" 
+        [disabled]="updatingClassTeacher">
+        Cancel
+      </button>
+      <button 
+        type="button" 
+        class="btn btn-primary" 
+        (click)="saveClassTeacher()" 
+        [disabled]="updatingClassTeacher || !selectedClassTeacherId">
+        <span *ngIf="!updatingClassTeacher">Save</span>
+        <span *ngIf="updatingClassTeacher">Saving...</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="showEnrollModal"></div>
+  <div class="modal" *ngIf="showEnrollModal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h3>Move Student to Another Class</h3>
+    </div>
+    <div class="modal-body">
+      <label>Select New Class</label>
+      <select
+        class="form-control"
+        [(ngModel)]="moveTargetClassId"
+        [ngModelOptions]="{standalone: true}">
+        <option *ngFor="let cls of classes" [value]="cls.id">{{ cls.name }}</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button 
+        type="button"
+        class="btn btn-secondary"
+        (click)="cancelMove()"
+        [disabled]="enrolling">
+        Cancel
+      </button>
+      <button 
+        class="btn btn-primary"
+        (click)="confirmEnroll()"
+        [disabled]="enrolling || !moveTargetClassId">
+        Enroll
+      </button>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state card" *ngIf="!loadingStudents && !loading && selectedClassId && selectedTerm && filteredStudents.length === 0 && !error">
+    <div class="empty-state-inner">
+      <div class="empty-icon" aria-hidden="true">👥</div>
+      <h3>No students in this class</h3>
+      <p>No students are enrolled in <strong>{{ getSelectedClassName() }}</strong> for {{ selectedTerm }}.</p>
+      <p class="empty-hint">Select another class or term, or add students to this class.</p>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state card" *ngIf="loadingStudents">
+    <div class="loading-state-inner">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Loading students...</p>
+      <p class="loading-hint">Fetching class list for {{ getSelectedClassName() }}</p>
+    </div>
+  </div>
+</div>
+

@@ -1,0 +1,44 @@
+<div class="eweb-page">
+  <h1 class="eweb-title">E-Learning Services</h1>
+  <p class="eweb-subtitle">
+    Download assignments, tests and notes sent by your teachers.
+  </p>
+
+  <section class="eweb-card">
+    <div *ngIf="error" class="eweb-alert">{{ error }}</div>
+    <div *ngIf="loading" class="eweb-muted">Loading your work…</div>
+
+    <div *ngIf="!loading && tasks.length === 0 && !error" class="eweb-muted">
+      No e-learning tasks have been assigned to you yet.
+    </div>
+
+    <div class="eweb-task-list" *ngIf="!loading && tasks.length > 0">
+      <div class="eweb-task-item" *ngFor="let t of tasks">
+        <div class="eweb-task-main">
+          <div class="eweb-task-type">
+            {{ (t.type || 'assignment') | titlecase }}
+          </div>
+          <div class="eweb-task-title">
+            {{ t.title || 'Untitled Task' }}
+          </div>
+          <div class="eweb-task-meta">
+            <span>Class: {{ t.class?.name || t.className || '—' }}</span>
+            <span *ngIf="t.teacher">
+              Teacher: {{ t.teacher.fullName || (t.teacher.firstName + ' ' + t.teacher.lastName) }}
+            </span>
+            <span *ngIf="t.dueDate">Due: {{ t.dueDate | date:'mediumDate' }}</span>
+          </div>
+        </div>
+        <div class="eweb-task-links">
+          <a *ngIf="t.fileUrl" [href]="t.fileUrl" target="_blank" rel="noopener noreferrer">
+            Download / Open File
+          </a>
+          <span *ngIf="!t.fileUrl && t.description">
+            {{ t.description }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+

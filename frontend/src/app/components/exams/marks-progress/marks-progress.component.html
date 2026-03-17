@@ -1,0 +1,294 @@
+<div class="progress-container">
+  <!-- Modern Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-title-section">
+        <div class="header-icon">
+          <span>📊</span>
+        </div>
+        <div class="header-text">
+          <h1>Marks Entry Progress</h1>
+          <p>Monitor percentage completion of marks entry per class and subject</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-header" (click)="exportToCsv()" title="Export to CSV">
+          <span class="btn-icon">📥</span>
+          Export
+        </button>
+        <button class="btn btn-header" (click)="refresh()" title="Refresh data">
+          <span class="btn-icon">🔄</span>
+          Refresh
+        </button>
+        <button class="btn btn-header" (click)="expandAll()" title="Expand all classes">
+          <span class="btn-icon">➕</span>
+          Expand
+        </button>
+        <button class="btn btn-header" (click)="collapseAll()" title="Collapse all classes">
+          <span class="btn-icon">➖</span>
+          Collapse
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="quick-stats">
+    <div class="stat-card primary">
+      <div class="stat-icon">🏫</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.totalClasses }}</span>
+        <span class="stat-label">Total Classes</span>
+      </div>
+    </div>
+    <div class="stat-card info">
+      <div class="stat-icon">📚</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.totalSubjects }}</span>
+        <span class="stat-label">Total Subjects</span>
+      </div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-icon">✅</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.subjectsComplete }}</span>
+        <span class="stat-label">Complete</span>
+      </div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-icon">⏳</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.subjectsIncomplete }}</span>
+        <span class="stat-label">Incomplete</span>
+      </div>
+    </div>
+    <div class="stat-card accent">
+      <div class="stat-icon">📈</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.averageProgress }}%</span>
+        <span class="stat-label">Avg Progress</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Card -->
+  <div class="filters-card">
+    <div class="filters-header">
+      <div class="filters-title">
+        <span class="filters-icon">🔍</span>
+        <h3>Filters & Search</h3>
+      </div>
+      <button class="btn btn-text" (click)="resetFilters()">
+        Reset Filters
+      </button>
+    </div>
+    
+    <div class="filters-grid">
+      <div class="filter-group">
+        <label>
+          <span class="label-icon">📋</span>
+          Exam Type
+        </label>
+        <select [(ngModel)]="selectedExamType" (change)="fetchProgress()" class="filter-select">
+          <option *ngFor="let t of examTypes" [value]="t.value">{{ t.label }}</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>
+          <span class="label-icon">📅</span>
+          Term
+        </label>
+        <input type="text" [(ngModel)]="selectedTerm" (change)="fetchProgress()" 
+               placeholder="e.g., Term 1 2026" class="filter-input">
+      </div>
+
+      <div class="filter-group">
+        <label>
+          <span class="label-icon">🏫</span>
+          Class
+        </label>
+        <select [(ngModel)]="selectedClassId" (change)="fetchProgress()" class="filter-select">
+          <option value="">All Classes</option>
+          <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
+        </select>
+      </div>
+
+      <div class="filter-group search">
+        <label>
+          <span class="label-icon">🔎</span>
+          Search
+        </label>
+        <div class="search-box">
+          <input type="text" [(ngModel)]="searchQuery" (ngModelChange)="updateViewData()"
+                 placeholder="Search class or subject..." class="filter-input">
+          <button class="clear-search" *ngIf="searchQuery" (click)="searchQuery = ''; updateViewData()">×</button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label>
+          <span class="label-icon">📊</span>
+          Sort By
+        </label>
+        <select [(ngModel)]="sortColumn" (ngModelChange)="updateViewData()" class="filter-select">
+          <option value="avgProgress">Avg Progress</option>
+          <option value="class">Class Name</option>
+          <option value="subjectsComplete">Subjects Complete</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>
+          <span class="label-icon">↕️</span>
+          Direction
+        </label>
+        <select [(ngModel)]="sortDirection" (ngModelChange)="updateViewData()" class="filter-select">
+          <option value="desc">Descending</option>
+          <option value="asc">Ascending</option>
+        </select>
+      </div>
+
+      <div class="filter-group checkbox">
+        <label class="checkbox-label">
+          <input type="checkbox" [(ngModel)]="showIncompleteOnly" (ngModelChange)="updateViewData()" class="checkbox-input">
+          <span class="checkbox-custom"></span>
+          <span class="checkbox-text">Show Incomplete Only</span>
+        </label>
+      </div>
+
+      <div class="filter-group">
+        <label>
+          <span class="label-icon">%</span>
+          Min Progress
+        </label>
+        <input type="number" [(ngModel)]="minProgress" (ngModelChange)="updateViewData()" min="0" max="100" 
+               placeholder="0" class="filter-input number">
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert Messages -->
+  <div class="alert alert-error" *ngIf="error">
+    <span class="alert-icon">⚠️</span>
+    <span class="alert-text">{{ error }}</span>
+    <button class="alert-close" (click)="error = ''">×</button>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="loading-spinner"></div>
+    <p>Loading progress data...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && viewData.length === 0" class="empty-state">
+    <div class="empty-icon">📭</div>
+    <h3>No Data Available</h3>
+    <p>No progress data found for the selected filters. Try adjusting your filter criteria.</p>
+    <button class="btn btn-primary" (click)="resetFilters()">Reset Filters</button>
+  </div>
+
+  <!-- Class Cards Grid -->
+  <div class="class-grid" *ngIf="!loading && viewData.length > 0">
+    <div class="class-card" *ngFor="let cls of viewData; trackBy: trackByClassId" 
+         [class.collapsed]="collapsed[cls.classId]"
+         [class.complete]="getAverageProgressForClass(cls) >= 100">
+      
+      <!-- Class Header -->
+      <div class="class-header" (click)="toggleCollapse(cls.classId)">
+        <div class="class-info">
+          <div class="class-avatar">
+            {{ getClassInitial(cls.className) }}
+          </div>
+          <div class="class-details">
+            <h4 class="class-name">{{ cls.className }}</h4>
+            <div class="class-meta">
+              <span class="meta-item">
+                <span class="meta-icon">👥</span>
+                {{ cls.totalStudents }} students
+              </span>
+              <span class="meta-divider">•</span>
+              <span class="meta-item">
+                <span class="meta-icon">📚</span>
+                {{ cls.subjects?.length || 0 }} subjects
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="class-progress">
+          <div class="progress-circle" [class.complete]="getAverageProgressForClass(cls) >= 100">
+            <svg viewBox="0 0 36 36">
+              <path class="circle-bg"
+                d="M18 2.0845
+                  a 15.9155 15.9155 0 0 1 0 31.831
+                  a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              <path class="circle-progress"
+                [attr.stroke-dasharray]="getAverageProgressForClass(cls) + ', 100'"
+                d="M18 2.0845
+                  a 15.9155 15.9155 0 0 1 0 31.831
+                  a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            </svg>
+            <span class="progress-text">{{ getAverageProgressForClass(cls) }}%</span>
+          </div>
+          <div class="progress-label">
+            {{ getSubjectsCompleteCount(cls) }}/{{ cls.subjects?.length || 0 }} complete
+          </div>
+        </div>
+
+        <button class="expand-btn" [class.expanded]="!collapsed[cls.classId]">
+          <span class="expand-icon">▼</span>
+        </button>
+      </div>
+
+      <!-- Subjects Table -->
+      <div class="subjects-section" *ngIf="!collapsed[cls.classId]">
+        <table class="subjects-table">
+          <thead>
+            <tr>
+              <th class="col-subject">Subject</th>
+              <th class="col-progress">Progress</th>
+              <th class="col-count">Entered</th>
+              <th class="col-status">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of cls.subjects; trackBy: trackBySubjectId" [class.complete]="s.progressPercent >= 100">
+              <td class="col-subject">
+                <span class="subject-name">{{ s.subjectName }}</span>
+              </td>
+              <td class="col-progress">
+                <div class="progress-bar-wrapper">
+                  <div class="progress-bar" 
+                       [style.width.%]="s.progressPercent" 
+                       [class.low]="s.progressPercent < 50"
+                       [class.medium]="s.progressPercent >= 50 && s.progressPercent < 80"
+                       [class.high]="s.progressPercent >= 80">
+                  </div>
+                </div>
+                <span class="progress-percent">{{ s.progressPercent }}%</span>
+              </td>
+              <td class="col-count">
+                <span class="count-badge">
+                  {{ s.enteredCount }}/{{ s.expectedCount }}
+                </span>
+              </td>
+              <td class="col-status">
+                <span class="status-badge complete" *ngIf="s.progressPercent >= 100">
+                  ✓ Complete
+                </span>
+                <span class="status-badge in-progress" *ngIf="s.progressPercent > 0 && s.progressPercent < 100">
+                  In Progress
+                </span>
+                <span class="status-badge not-started" *ngIf="s.progressPercent === 0">
+                  Not Started
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

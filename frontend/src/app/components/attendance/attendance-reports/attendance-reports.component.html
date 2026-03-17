@@ -1,0 +1,302 @@
+<div class="container modern-container">
+  <!-- Modern Header Section -->
+  <div class="page-header modern-header-section">
+    <div class="header-content">
+      <div class="header-title-section">
+        <div class="header-icon-wrapper">
+          <span class="header-main-icon">📊</span>
+        </div>
+        <div>
+          <h1>Attendance Insights</h1>
+          <p class="header-subtitle">Generate visual analytics to understand classroom attendance performance in real time</p>
+        </div>
+      </div>
+      <div class="header-actions modern-actions" *ngIf="hasReportData">
+        <button type="button" class="btn btn-modern btn-icon-modern" (click)="toggleViewMode()" [disabled]="!hasReportData" title="Toggle View">
+          <span class="btn-icon">{{ viewMode === 'table' ? '📋' : '📊' }}</span>
+        </button>
+        <button type="button" class="btn btn-modern btn-icon-modern" (click)="showCharts = !showCharts" [disabled]="!hasReportData" title="Toggle Charts">
+          <span class="btn-icon">{{ showCharts ? '📈' : '📉' }}</span>
+        </button>
+        <button type="button" class="btn btn-modern btn-secondary-modern" (click)="resetFilters()" [disabled]="!hasReportData">
+          <span class="btn-icon">🔄</span>
+          <span>Reset</span>
+        </button>
+        <button type="button" class="btn btn-modern btn-export-modern" (click)="printReport()" [disabled]="!filteredReport.length">
+          <span class="btn-icon">🖨️</span>
+          <span>Print</span>
+        </button>
+        <button type="button" class="btn btn-modern btn-export-modern" (click)="exportToPDF()" [disabled]="!filteredReport.length">
+          <span class="btn-icon">📄</span>
+          <span>PDF</span>
+        </button>
+        <button type="button" class="btn btn-modern btn-success-modern" (click)="exportToCSV()" [disabled]="!filteredReport.length">
+          <span class="btn-icon">⬇️</span>
+          <span>CSV</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card modern-card">
+    <div class="alert alert-error modern-alert" *ngIf="error">
+      <span class="alert-icon">⚠️</span>
+      <span>{{ error }}</span>
+      <button class="alert-close" (click)="error = ''" title="Close">&times;</button>
+    </div>
+
+    <form class="filters-section modern-filters" #f="ngForm">
+      <div class="filters-header-modern">
+        <h3>
+          <span class="filter-icon">⚙️</span>
+          Report Criteria
+        </h3>
+      </div>
+      <div class="form-row modern-form-row">
+        <div class="form-group">
+          <label>
+            <span class="label-icon">🏫</span>
+            Class <span class="required">*</span>
+          </label>
+          <select [(ngModel)]="selectedClassId" (ngModelChange)="onSelectionChange()" name="classId" required class="modern-select">
+            <option value="">Select Class</option>
+            <option *ngFor="let cls of classes" [value]="cls.id">{{ cls.name }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <span class="label-icon">📅</span>
+            Term
+          </label>
+          <select [(ngModel)]="selectedTerm" (ngModelChange)="onSelectionChange()" name="term" class="modern-select">
+            <option value="">All Terms</option>
+            <option *ngFor="let term of availableTerms" [value]="term">{{ term }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row modern-form-row">
+        <div class="form-group full-width">
+          <label>
+            <span class="label-icon">📆</span>
+            Date Range Presets
+          </label>
+          <div class="preset-buttons modern-presets">
+            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'today'" (click)="applyDateRangePreset('today')">Today</button>
+            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'last7days'" (click)="applyDateRangePreset('last7days')">Last 7 Days</button>
+            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'last30days'" (click)="applyDateRangePreset('last30days')">Last 30 Days</button>
+            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'thisMonth'" (click)="applyDateRangePreset('thisMonth')">This Month</button>
+            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'lastMonth'" (click)="applyDateRangePreset('lastMonth')">Last Month</button>
+            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'thisTerm'" (click)="applyDateRangePreset('thisTerm')">This Term</button>
+            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'custom'" (click)="applyDateRangePreset('custom')">Custom</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row modern-form-row" *ngIf="dateRangePreset === 'custom' || (!dateRangePreset && (startDate || endDate))">
+        <div class="form-group">
+          <label>
+            <span class="label-icon">📅</span>
+            Start Date <span class="optional">(Optional)</span>
+          </label>
+          <input type="date" [(ngModel)]="startDate" name="startDate" class="modern-input">
+        </div>
+
+        <div class="form-group">
+          <label>
+            <span class="label-icon">📅</span>
+            End Date <span class="optional">(Optional)</span>
+          </label>
+          <input type="date" [(ngModel)]="endDate" name="endDate" class="modern-input">
+        </div>
+      </div>
+
+      <div class="form-actions modern-actions-section">
+        <button type="button" class="btn btn-primary modern-btn-primary" (click)="generateReport()" [disabled]="loading || !selectedClassId">
+          <span *ngIf="!loading">📊</span>
+          <span *ngIf="loading" class="loading-spinner">⏳</span>
+          <span>{{ loading ? 'Generating...' : 'Generate Report' }}</span>
+        </button>
+      </div>
+    </form>
+
+    <div *ngIf="hasReportData" class="filters-advanced modern-advanced-filters">
+      <div class="filters-advanced-header">
+        <h3>
+          <span class="filter-icon">🔍</span>
+          Advanced Filters
+        </h3>
+      </div>
+      <div class="search-box modern-search-box">
+        <label>Search Students</label>
+        <div class="search-input modern-search-input">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            placeholder="Type name or student number..."
+            [(ngModel)]="searchTerm"
+            name="searchTerm"
+            (ngModelChange)="onSearchChange()"
+            class="modern-input-field"
+          >
+          <button *ngIf="searchTerm" class="clear-search-btn" (click)="searchTerm = ''; onSearchChange()" title="Clear search">
+            <span>&times;</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <label>Minimum Attendance</label>
+          <span class="slider-value">{{ minAttendance }}%</span>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          step="5"
+          [ngModel]="minAttendance"
+          (ngModelChange)="onMinAttendanceChange($event)"
+        >
+      </div>
+
+      <div class="toggle-group">
+        <label class="toggle">
+          <input type="checkbox" [checked]="showOnlyConcerns" (change)="toggleConcerns()">
+          <span class="toggle-slider"></span>
+        </label>
+        <div class="toggle-text">
+          <strong>Show Only At-Risk Students</strong>
+          <small>Students below {{ concernThreshold }}% attendance</small>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="loading" class="loading">Generating report...</div>
+
+    <div *ngIf="report && !loading" class="report-section">
+      <div class="report-meta" *ngIf="lastGeneratedAt">
+        <span>Last generated: <strong>{{ lastGeneratedAt | date:'dd/MM/yyyy' }}</strong></span>
+        <span>Total records: <strong>{{ filteredReport.length }}</strong> of {{ rawReportRows.length }}</span>
+      </div>
+
+      <!-- insights cards removed per request -->
+
+      <!-- charts section removed as requested -->
+
+      <div class="no-data" *ngIf="!hasReportData">
+        <div class="no-data-icon">📊</div>
+        <h3>No attendance data available for the selected filters.</h3>
+        <p>Choose a class and term, then generate a report to view analytics.</p>
+      </div>
+
+      <div class="no-results" *ngIf="hasReportData && !filteredReport.length">
+        <div class="no-results-icon">🕵️‍♀️</div>
+        <h3>No students match the current filters.</h3>
+        <p>Adjust the search or attendance threshold to broaden your results.</p>
+      </div>
+
+      <!-- Cards View -->
+      <div class="report-cards" *ngIf="filteredReport.length && viewMode === 'cards'">
+        <div class="student-card" *ngFor="let item of filteredReport; trackBy: trackByStudent">
+          <div class="card-header-mini">
+            <div>
+              <h4>{{ item.firstName }} {{ item.lastName }}</h4>
+              <span class="student-number">#{{ item.studentNumber }}</span>
+            </div>
+            <span class="badge" [ngClass]="getAttendanceBadgeClass(item.attendanceRateNumber ?? 0)">
+              {{ (item.attendanceRateNumber ?? 0) | number:'1.1-2' }}%
+            </span>
+          </div>
+          <div class="card-stats">
+            <div class="stat-item">
+              <span class="stat-label">Present</span>
+              <span class="stat-value present">{{ item.present }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Absent</span>
+              <span class="stat-value absent">{{ item.absent }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Late</span>
+              <span class="stat-value late">{{ item.late }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Excused</span>
+              <span class="stat-value excused">{{ item.excused }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Total</span>
+              <span class="stat-value total">{{ item.total }}</span>
+            </div>
+          </div>
+          <div class="card-progress">
+            <div class="progress-bar" [ngStyle]="getProgressStyle(item.attendanceRateNumber ?? 0)"></div>
+          </div>
+          <div class="card-status">
+            <span class="status-chip" [ngClass]="getAttendanceBadgeClass(item.attendanceRateNumber ?? 0)">
+              {{ getAttendanceStatus(item.attendanceRateNumber ?? 0) }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table View -->
+      <div class="report-table modern-report-table" *ngIf="filteredReport.length && viewMode === 'table'">
+        <table class="modern-data-table">
+          <thead>
+            <tr>
+              <th (click)="changeSort('studentNumber')" class="sortable">
+                Student #
+                <span class="sort-indicator" [class.asc]="getSortDirection('studentNumber') === 'asc'" [class.desc]="getSortDirection('studentNumber') === 'desc'"></span>
+              </th>
+              <th (click)="changeSort('firstName')" class="sortable">
+                Student Name
+                <span class="sort-indicator" [class.asc]="getSortDirection('firstName') === 'asc'" [class.desc]="getSortDirection('firstName') === 'desc'"></span>
+              </th>
+              <th>Present</th>
+              <th>Absent</th>
+              <th>Late</th>
+              <th>Excused</th>
+              <th>Total</th>
+              <th (click)="changeSort('attendanceRateNumber')" class="sortable">
+                Attendance
+                <span class="sort-indicator" [class.asc]="getSortDirection('attendanceRateNumber') === 'asc'" [class.desc]="getSortDirection('attendanceRateNumber') === 'desc'"></span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of filteredReport; trackBy: trackByStudent">
+              <td>{{ item.studentNumber }}</td>
+              <td>
+                <div class="name-cell">
+                  <span class="name">{{ item.firstName }} {{ item.lastName }}</span>
+                  <small class="status-chip" [ngClass]="getAttendanceBadgeClass(item.attendanceRateNumber ?? 0)">
+                    {{ getAttendanceStatus(item.attendanceRateNumber ?? 0) }}
+                  </small>
+                </div>
+              </td>
+              <td class="present">{{ item.present }}</td>
+              <td class="absent">{{ item.absent }}</td>
+              <td class="late">{{ item.late }}</td>
+              <td class="excused">{{ item.excused }}</td>
+              <td><strong>{{ item.total }}</strong></td>
+              <td>
+                <div class="attendance-cell">
+                  <span class="badge" [ngClass]="getAttendanceBadgeClass(item.attendanceRateNumber ?? 0)">
+                    {{ (item.attendanceRateNumber ?? 0) | number:'1.1-2' }}%
+                  </span>
+                  <div class="progress">
+                    <div class="progress-bar" [ngStyle]="getProgressStyle(item.attendanceRateNumber ?? 0)"></div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+

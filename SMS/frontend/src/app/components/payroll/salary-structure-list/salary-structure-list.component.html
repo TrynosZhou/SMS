@@ -1,0 +1,92 @@
+<div class="container structures-page">
+  <header class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <span class="title-icon">📊</span>
+        Salary Structures
+      </h1>
+      <p class="subtitle">Templates with basic pay, allowances, and deductions</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="addNew()">➕ Add Structure</button>
+      <a routerLink="/payroll" class="btn btn-outline">← Back</a>
+    </div>
+  </header>
+
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <!-- Skeleton -->
+  <div class="skeleton-wrap" *ngIf="loading">
+    <div class="skeleton-stats"></div>
+    <div class="skeleton-table"></div>
+  </div>
+
+  <div *ngIf="!loading">
+    <!-- Stats -->
+    <section class="stats-row">
+      <div class="stat-card">
+        <span class="stat-value">{{ structures.length }}</span>
+        <span class="stat-label">Total Structures</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ teacherStructures.length }}</span>
+        <span class="stat-label">Teacher</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ ancillaryStructures.length }}</span>
+        <span class="stat-label">Ancillary</span>
+      </div>
+    </section>
+
+    <!-- Search & filter -->
+    <div class="toolbar card" *ngIf="structures.length > 0">
+      <input type="text" [(ngModel)]="searchQuery" class="search-input" placeholder="Search by name or component..." />
+      <div class="filter-tabs">
+        <button class="filter-tab" [class.active]="categoryFilter === 'all'" (click)="categoryFilter = 'all'">All</button>
+        <button class="filter-tab" [class.active]="categoryFilter === 'teacher'" (click)="categoryFilter = 'teacher'">Teacher</button>
+        <button class="filter-tab" [class.active]="categoryFilter === 'ancillary'" (click)="categoryFilter = 'ancillary'">Ancillary</button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <section class="card table-card" *ngIf="structures.length > 0">
+      <div class="table-wrap" *ngIf="filteredStructures.length > 0">
+        <table class="modern-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Components</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of filteredStructures" class="table-row">
+              <td class="struct-name">{{ s.name }}</td>
+              <td>
+                <span class="badge" [class.badge-teacher]="s.employeeCategory === 'teacher'" [class.badge-ancillary]="s.employeeCategory === 'ancillary'">
+                  {{ s.employeeCategory }}
+                </span>
+              </td>
+              <td class="components-cell">{{ formatComponents(s) }}</td>
+              <td>
+                <div class="actions-cell">
+                  <button class="btn btn-sm btn-secondary" (click)="edit(s.id)">Edit</button>
+                  <button class="btn btn-sm btn-danger" (click)="delete(s.id, s.name)">Delete</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="empty-state" *ngIf="filteredStructures.length === 0">
+        <p>No structures match your search or filter.</p>
+      </div>
+    </section>
+
+    <div class="empty-state card" *ngIf="structures.length === 0">
+      <p>No salary structures yet. <a routerLink="/payroll/salary-structures/new">Add the first</a></p>
+    </div>
+  </div>
+</div>

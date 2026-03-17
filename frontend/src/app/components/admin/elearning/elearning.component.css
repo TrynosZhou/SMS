@@ -1,0 +1,153 @@
+.elearning-page {
+  padding: 20px;
+}
+
+.elearning-header h1 {
+  margin: 0 0 4px 0;
+  font-size: 24px;
+}
+
+.elearning-header .subtitle {
+  margin: 0 0 16px 0;
+  color: #555;
+  font-size: 13px;
+}
+
+.elearning-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 20px;
+}
+
+.classes-panel,
+.activities-panel {
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+  padding: 16px;
+}
+
+.panel-title {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.class-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.class-list li {
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 6px;
+  transition: background 0.2s ease, transform 0.1s ease;
+  border: 1px solid transparent;
+}
+
+.class-list li:hover {
+  background: #f3f4ff;
+  transform: translateY(-1px);
+}
+
+.class-list li.active {
+  background: #eef2ff;
+  border-color: #6366f1;
+}
+
+.class-name {
+  font-weight: 600;
+}
+
+.class-meta {
+  font-size: 11px;
+  color: #666;
+}
+
+.panel-header h2 {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+}
+
+.class-label {
+  color: #4f46e5;
+}
+
+.state-message {
+  padding: 12px 10px;
+  border-radius: 8px;
+  background: #f9fafb;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.error-message {
+  padding: 12px 10px;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.activities-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.activity-card {
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.activity-header {
+  margin-bottom: 8px;
+}
+
+.activity-type {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #4f46e5;
+  font-weight: 700;
+}
+
+.activity-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+.activity-body {
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.activity-row {
+  display: flex;
+  margin-top: 4px;
+}
+
+.activity-row .label {
+  width: 80px;
+  font-weight: 600;
+}
+
+.activity-row .value {
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .elearning-layout {
+    grid-template-columns: 1fr;
+  }
+}
+

@@ -1,0 +1,89 @@
+<div class="container structure-form-page">
+  <header class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <span class="title-icon">{{ isEdit ? '✏️' : '➕' }}</span>
+        {{ isEdit ? 'Edit' : 'Add' }} Salary Structure
+      </h1>
+      <p class="subtitle">Define basic pay, allowances, and deductions</p>
+    </div>
+    <a routerLink="/payroll/salary-structures" class="btn btn-outline">← Back</a>
+  </header>
+
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <!-- Skeleton -->
+  <div class="skeleton-wrap" *ngIf="loading">
+    <div class="skeleton-form"></div>
+  </div>
+
+  <form *ngIf="!loading" (ngSubmit)="submit()" class="form-layout">
+    <div class="form-main card">
+      <section class="form-section">
+        <h2 class="section-title">Basic Info</h2>
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label>Name *</label>
+            <input type="text" [(ngModel)]="name" name="name" class="form-control" required placeholder="e.g. Senior Teacher Grade 1" />
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <select [(ngModel)]="category" name="category" class="form-control">
+              <option value="teacher">Teacher</option>
+              <option value="ancillary">Ancillary</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h2 class="section-title">Components</h2>
+        <p class="section-hint">Add salary components: basic pay, allowances, and deductions.</p>
+        <div class="components-card">
+          <div class="component-row header">
+            <span class="col-name">Name</span>
+            <span class="col-type">Type</span>
+            <span class="col-amount">Amount</span>
+            <span class="col-action"></span>
+          </div>
+          <div class="component-row" *ngFor="let c of components; let i = index">
+            <input type="text" [(ngModel)]="c.name" [name]="'compName' + i" class="form-control col-name" placeholder="e.g. Basic Salary" />
+            <select [(ngModel)]="c.type" [name]="'compType' + i" class="form-control col-type">
+              <option value="basic">Basic</option>
+              <option value="allowance">Allowance</option>
+              <option value="deduction">Deduction</option>
+            </select>
+            <input type="number" [(ngModel)]="c.amount" [name]="'compAmount' + i" class="form-control col-amount" step="0.01" min="0" placeholder="0" />
+            <button type="button" class="btn btn-sm btn-danger col-action" (click)="removeComponent(i)">Remove</button>
+          </div>
+          <button type="button" class="btn btn-secondary add-btn" (click)="addComponent()">+ Add Component</button>
+        </div>
+      </section>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" (click)="cancel()">Cancel</button>
+        <button type="submit" class="btn btn-primary" [disabled]="submitting">
+          {{ submitting ? 'Saving...' : (isEdit ? 'Update' : 'Create') }}
+        </button>
+      </div>
+    </div>
+
+    <aside class="summary-card card" *ngIf="components.length > 0">
+      <h3 class="summary-title">Summary</h3>
+      <div class="summary-row">
+        <span>Gross (Basic + Allowances)</span>
+        <strong>{{ grossSalary | number:'1.2-2' }}</strong>
+      </div>
+      <div class="summary-row">
+        <span>Deductions</span>
+        <strong class="text-danger">-{{ totalDeductions | number:'1.2-2' }}</strong>
+      </div>
+      <div class="summary-divider"></div>
+      <div class="summary-row summary-net">
+        <span>Net Salary</span>
+        <strong>{{ netSalary | number:'1.2-2' }}</strong>
+      </div>
+    </aside>
+  </form>
+</div>

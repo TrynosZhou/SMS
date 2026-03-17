@@ -1,0 +1,291 @@
+<div class="container">
+  <div class="exam-list-wrapper">
+    <!-- Header Section - thin single line -->
+    <div class="form-header">
+      <div class="header-content">
+        <span class="icon">📝</span>
+        <h1>Enter Marks</h1>
+        <span class="subtitle">Enter and manage student exam marks</span>
+      </div>
+    </div>
+
+    <!-- Alert Messages -->
+    <div class="alert alert-success" *ngIf="success" [@fadeInOut]>
+      <span class="alert-icon">✓</span>
+      <span>{{ success }}</span>
+    </div>
+    <div class="alert alert-error" *ngIf="error" [@fadeInOut]>
+      <span class="alert-icon">✕</span>
+      <span>{{ error }}</span>
+    </div>
+    <div class="alert alert-info" *ngIf="isAutoSaving" [@fadeInOut] style="background-color: #d1ecf1; color: #0c5460; border-color: #bee5eb;">
+      <span class="alert-icon">💾</span>
+      <span>Auto-saving marks...</span>
+    </div>
+
+    <!-- Selection Form Card -->
+    <div class="card selection-card">
+      <div class="card-header">
+        <h2>
+          <span class="section-icon">🎯</span>
+          Select Criteria
+        </h2>
+        <p class="section-description">Choose class, term, exam type, and subject to enter marks</p>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group" [class.has-error]="isFieldInvalid('class')">
+          <label>
+            Class <span class="required">*</span>
+          </label>
+          <select 
+            [(ngModel)]="selectedClassId" 
+            (change)="onSelectionChange()" 
+            (ngModelChange)="onSelectionChange()"
+            required
+            [class.invalid]="isFieldInvalid('class')"
+            class="form-control">
+            <option value="">Select Class</option>
+            <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">{{ cls.name }}</option>
+          </select>
+          <div class="field-error" *ngIf="isFieldInvalid('class')">
+            {{ getFieldError('class') }}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>
+            Term
+          </label>
+          <input 
+            type="text" 
+            [ngModel]="selectedTerm || (loadingTerm ? 'Loading...' : 'Not set')" 
+            name="term" 
+            readonly
+            [disabled]="loadingTerm"
+            style="background-color: #f5f5f5; cursor: not-allowed;"
+            class="form-control">
+          <small style="color: #666; font-style: italic; display: block; margin-top: 4px; font-size: 11px; line-height: 1.3;">
+            {{ loadingTerm ? 'Loading...' : (selectedTerm ? 'Auto-set from settings' : 'Configure in settings') }}
+          </small>
+        </div>
+
+        <div class="form-group" [class.has-error]="isFieldInvalid('examType')">
+          <label>
+            Exam Type <span class="required">*</span>
+          </label>
+          <select 
+            [(ngModel)]="selectedExamType" 
+            (change)="onSelectionChange()"
+            (ngModelChange)="onSelectionChange()"
+            required
+            [class.invalid]="isFieldInvalid('examType')"
+            class="form-control">
+            <option value="">Select Exam Type</option>
+            <option *ngFor="let examType of examTypes" [value]="examType.value">
+              {{ examType.label }}
+            </option>
+          </select>
+          <div class="field-error" *ngIf="isFieldInvalid('examType')">
+            {{ getFieldError('examType') }}
+          </div>
+        </div>
+
+        <div class="form-group" [class.has-error]="isFieldInvalid('subject')">
+          <label>
+            Subject <span class="required">*</span>
+          </label>
+          <select 
+            [(ngModel)]="selectedSubjectId" 
+            (change)="onSelectionChange()"
+            (ngModelChange)="onSelectionChange()"
+            required
+            [class.invalid]="isFieldInvalid('subject')"
+            [disabled]="!selectedClassId || subjects.length === 0"
+            class="form-control">
+            <option value="">{{ selectedClassId ? (subjects.length === 0 ? 'No subjects available' : 'Select Subject') : 'Select Class first' }}</option>
+            <option *ngFor="let subject of subjects" [value]="subject.id">
+              {{ subject.name }} ({{ subject.code }})
+            </option>
+          </select>
+          <div class="field-error" *ngIf="isFieldInvalid('subject')">
+            {{ getFieldError('subject') }}
+          </div>
+          <small *ngIf="selectedClassId && subjects.length === 0 && !isAdmin" style="color: #e74c3c; font-style: italic; display: block; margin-top: 5px;">
+            No subjects assigned to you for this class. Please contact administrator.
+          </small>
+          <small *ngIf="selectedClassId && subjects.length > 0" style="color: #666; font-style: italic; display: block; margin-top: 5px;">
+            Showing subjects you teach for this class
+          </small>
+        </div>
+      </div>
+
+      <div class="form-actions-inline">
+        <button 
+          class="btn btn-primary btn-load" 
+          (click)="loadStudents()" 
+          [disabled]="!isSelectionValid() || loadingStudents">
+          <span *ngIf="!loadingStudents">
+            🔍 Load Students
+          </span>
+          <span *ngIf="loadingStudents" class="loading-content">
+            <span class="spinner-small"></span>
+            Loading...
+          </span>
+        </button>
+        <button 
+          class="btn btn-secondary" 
+          (click)="resetSelection()"
+          [disabled]="loadingStudents">
+          🔄 Reset
+        </button>
+      </div>
+    </div>
+
+    <!-- Marks Entry Section -->
+    <div *ngIf="showMarksEntry && students.length > 0" class="marks-entry-section">
+      <!-- Top Progress Bar -->
+      <div class="top-progress-bar-wrapper">
+        <div class="top-progress-bar" [style.width.%]="getMarksProgress()"></div>
+      </div>
+
+      <!-- Search and Quick Actions -->
+      <div class="table-controls">
+        <div class="search-box">
+          <input 
+            type="text" 
+            [(ngModel)]="studentSearchQuery"
+            [ngModelOptions]="{standalone: true}"
+            placeholder="🔍 Search students by name or ID..."
+            class="search-input"
+            (input)="filterStudents()">
+        </div>
+        <div class="quick-actions">
+          <button 
+            class="btn btn-sm btn-secondary" 
+            (click)="clearAllMarks()"
+            [disabled]="loading || getEnteredMarksCount() === 0 || isPublished">
+            🗑️ Clear All
+          </button>
+          <button 
+            class="btn btn-sm btn-secondary" 
+            (click)="fillRemainingWithZero()"
+            [disabled]="loading || isPublished">
+            🔢 Fill Empty with 0
+          </button>
+        </div>
+      </div>
+
+      <!-- Marks Entry Form -->
+      <form (ngSubmit)="onSubmit()" class="marks-form">
+        <div class="table-wrapper table-responsive">
+          <table class="marks-entry-table">
+            <thead>
+              <tr>
+                <th style="width: 60px;">#</th>
+                <th style="min-width: 120px;">Student ID</th>
+                <th style="min-width: 150px;">Last Name</th>
+                <th style="min-width: 150px;">First Name</th>
+                <th style="min-width: 140px;">Marks</th>
+                <th style="width: 100px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let student of (filteredStudents | safeArray); let i = index" 
+                  [class.has-marks]="hasMarks(student.id)"
+                  [class.no-marks]="!hasMarks(student.id)">
+                <td class="row-number">{{ i + 1 }}</td>
+                <td>
+                  <strong class="student-id">{{ student.studentNumber }}</strong>
+                </td>
+                <td>{{ student.lastName }}</td>
+                <td>{{ student.firstName }}</td>
+                <td>
+                  <div class="marks-input-wrapper">
+                    <input 
+                      type="number" 
+                      [(ngModel)]="marks[getMarkKey(student.id, selectedSubjectId)].score"
+                      [name]="'score_' + student.id"
+                      placeholder="0"
+                      min="0"
+                      max="100"
+                      step="1"
+                      class="marks-input"
+                      [disabled]="isPublished"
+                      [readonly]="isPublished"
+                      (input)="onMarkChange(student.id)"
+                      (blur)="validateMark(student.id); onStudentBlur(student.id)"
+                      (focus)="onStudentFocus(student.id)">
+                    <span class="max-score">/ 100</span>
+                  </div>
+                </td>
+                <td class="status-cell">
+                  <span class="status-badge" 
+                        [class.completed]="hasMarks(student.id)" 
+                        [class.pending]="!hasMarks(student.id)"
+                        [class.saved]="isRecordSaved(student.id)">
+                    <span *ngIf="isRecordSaved(student.id)" class="saved-indicator" title="Saved">✓ Saved</span>
+                    <span *ngIf="!isRecordSaved(student.id) && hasMarks(student.id)" class="unsaved-indicator" title="Not saved yet">○ Entered</span>
+                    <span *ngIf="!hasMarks(student.id)" class="pending-indicator">○ Pending</span>
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Statistics Footer -->
+        <div class="marks-statistics">
+          <div class="stat-item">
+            <span class="stat-label">Total Students:</span>
+            <span class="stat-value">{{ filteredStudents.length }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Marks Entered:</span>
+            <span class="stat-value success">{{ getEnteredMarksCount() }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Pending:</span>
+            <span class="stat-value warning">{{ filteredStudents.length - getEnteredMarksCount() }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Average Score:</span>
+            <span class="stat-value">{{ getAverageScore() | number:'1.0-0' }}</span>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions" style="display: flex; justify-content: flex-end;">
+          <button 
+            type="button" 
+            class="btn btn-secondary" 
+            (click)="cancelMarksEntry()"
+            [disabled]="loading">
+            ❌ Cancel
+          </button>
+        </div>
+        <div *ngIf="isPublished" class="alert alert-info" style="margin-top: 15px; background-color: #d1ecf1; color: #0c5460; border-color: #bee5eb;">
+          <span class="alert-icon">ℹ️</span>
+          <span>Results have been published. Editing is disabled. Students, parents, and teachers can now view these results.</span>
+        </div>
+      </form>
+    </div>
+
+    <!-- Empty States -->
+    <div *ngIf="showMarksEntry && filteredStudents.length === 0 && !loadingStudents" class="empty-state-card">
+      <span class="empty-icon">🔍</span>
+      <h3>No students found</h3>
+      <p *ngIf="studentSearchQuery">No students match your search criteria. Try adjusting your search.</p>
+      <p *ngIf="!studentSearchQuery">No students found in the selected class.</p>
+      <button class="btn btn-secondary" (click)="studentSearchQuery = ''; filterStudents()" *ngIf="studentSearchQuery">
+        Clear Search
+      </button>
+    </div>
+
+    <div *ngIf="!showMarksEntry && !loadingStudents" class="empty-state-card info">
+      <span class="empty-icon">📝</span>
+      <h3>Ready to Enter Marks</h3>
+      <p>Select a class, term, exam type, and subject above, then click "Load Students" to begin entering marks.</p>
+    </div>
+  </div>
+</div>

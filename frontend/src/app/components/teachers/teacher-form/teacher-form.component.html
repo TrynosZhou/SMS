@@ -1,0 +1,283 @@
+<div class="form-container">
+  <div class="form-header">
+    <div class="header-content">
+      <h1>
+        <span class="icon">👨‍🏫</span>
+        {{ isEdit ? 'Edit Teacher' : 'Register New Teacher' }}
+      </h1>
+      <p class="subtitle">{{ isEdit ? 'Update teacher information' : 'Fill in the details to register a new teacher' }}</p>
+    </div>
+    <div class="header-actions">
+      <ng-container *ngIf="isEdit && teacher?.id">
+        <button type="button" class="btn btn-secondary" (click)="previewIdCard()" [disabled]="idCardLoading">
+          <span *ngIf="!idCardLoading">🪪</span><span *ngIf="idCardLoading" class="spinner-small"></span>
+          {{ idCardLoading ? 'Loading...' : 'Preview ID Card' }}
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="downloadIdCard()" [disabled]="idCardLoading">
+          <span *ngIf="!idCardLoading">⬇</span><span *ngIf="idCardLoading" class="spinner-small"></span>
+          {{ idCardLoading ? 'Loading...' : 'Download ID Card' }}
+        </button>
+      </ng-container>
+      <button type="button" class="btn btn-secondary" (click)="router.navigate(['/teachers'])">
+        <span>←</span> Back to Teachers
+      </button>
+    </div>
+  </div>
+
+  <!-- Alert Messages -->
+  <div class="alert alert-success" *ngIf="success">
+    <span class="alert-icon">✓</span>
+    {{ success }}
+  </div>
+  <div class="alert alert-error" *ngIf="error">
+    <span class="alert-icon">⚠</span>
+    {{ error }}
+  </div>
+
+  <form (ngSubmit)="onSubmit()" #teacherForm="ngForm" class="teacher-form">
+    <!-- Personal Information Section -->
+    <div class="form-section">
+      <div class="section-header">
+        <h2>
+          <span class="section-icon">👤</span>
+          Personal Information
+        </h2>
+        <p class="section-description">Basic details about the teacher</p>
+      </div>
+      
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="firstName">
+            First Name <span class="required">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="firstName"
+            [(ngModel)]="teacher.firstName" 
+            name="firstName" 
+            required
+            placeholder="Enter first name"
+            class="form-input"
+            [class.error]="teacherForm.submitted && !teacher.firstName">
+          <small class="form-hint">Teacher's first name</small>
+        </div>
+
+        <div class="form-group">
+          <label for="lastName">
+            Last Name <span class="required">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="lastName"
+            [(ngModel)]="teacher.lastName" 
+            name="lastName" 
+            required
+            placeholder="Enter last name"
+            class="form-input"
+            [class.error]="teacherForm.submitted && !teacher.lastName">
+          <small class="form-hint">Teacher's last name</small>
+        </div>
+
+        <div class="form-group">
+          <label for="nationalId">National ID</label>
+          <input 
+            type="text" 
+            id="nationalId"
+            [(ngModel)]="teacher.nationalId" 
+            name="nationalId"
+            placeholder="National ID number"
+            class="form-input">
+          <small class="form-hint">National ID (shown on payslip)</small>
+        </div>
+
+        <div class="form-group">
+          <label for="dateOfBirth">Date of Birth</label>
+          <input 
+            type="date" 
+            id="dateOfBirth"
+            [(ngModel)]="teacher.dateOfBirth" 
+            name="dateOfBirth"
+            class="form-input"
+            [max]="maxDate">
+          <small class="form-hint">Select date of birth</small>
+        </div>
+
+        <div class="form-group">
+          <label for="dateJoined">Date of Joining</label>
+          <input 
+            type="date" 
+            id="dateJoined"
+            [(ngModel)]="teacher.dateJoined" 
+            name="dateJoined"
+            class="form-input"
+            [max]="maxDate">
+          <small class="form-hint">Date teacher joined the school (used on payslips)</small>
+        </div>
+
+        <div class="form-group">
+          <label for="sex">
+            Sex <span class="required">*</span>
+          </label>
+          <select 
+            id="sex"
+            [(ngModel)]="teacher.sex" 
+            name="sex" 
+            required
+            class="form-input"
+            [class.error]="teacherForm.submitted && !teacher.sex">
+            <option value="">Select Sex</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+          <small class="form-hint">Teacher's sex</small>
+        </div>
+
+        <!-- Passport-size photo (optional on new; can upload when editing) -->
+        <div class="form-group photo-upload-group">
+          <label>Passport-size Photo</label>
+          <div class="photo-upload-area">
+            <div class="photo-preview" *ngIf="teacher.photo">
+              <img [src]="teacher.photo" alt="Teacher photo" class="photo-preview-img">
+              <button type="button" class="btn-remove-photo" (click)="removePhoto()" title="Remove photo">×</button>
+            </div>
+            <div class="photo-placeholder" *ngIf="!teacher.photo">
+              <span class="photo-icon">📷</span>
+              <span class="photo-hint">{{ isEdit ? 'Upload or change photo' : 'Upload photo (optional)' }}</span>
+              <input type="file" accept="image/*" (change)="onPhotoSelected($event)" class="photo-input">
+            </div>
+          </div>
+          <small class="form-hint">Passport-size photo for ID card. Optional when registering; can be added when editing.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="phoneNumber">Phone Number</label>
+          <input 
+            type="tel" 
+            id="phoneNumber"
+            [(ngModel)]="teacher.phoneNumber" 
+            name="phoneNumber"
+            placeholder="e.g., 0771234567 or +263771234567"
+            class="form-input"
+            [class.error]="phoneNumberError"
+            (blur)="validatePhoneNumber()"
+            (input)="phoneNumberError = ''">
+          <small class="form-hint" *ngIf="!phoneNumberError">Contact phone number (Zimbabwean format: 07XXXXXXXX or +2637XXXXXXXX)</small>
+          <small class="form-error" *ngIf="phoneNumberError">{{ phoneNumberError }}</small>
+        </div>
+      </div>
+
+      <div class="form-group full-width">
+        <label for="address">Address</label>
+        <textarea 
+          id="address"
+          [(ngModel)]="teacher.address" 
+          name="address"
+          placeholder="Enter full address"
+          class="form-input"
+          rows="3"></textarea>
+        <small class="form-hint">Residential or postal address</small>
+      </div>
+    </div>
+
+    <!-- Employee Information Section -->
+    <div class="form-section">
+      <div class="section-header">
+        <h2>
+          <span class="section-icon">🆔</span>
+          Employee Information
+        </h2>
+        <p class="section-description">Employee identification details</p>
+      </div>
+
+      <div class="form-group">
+        <label>Teacher ID</label>
+        <div class="info-box">
+          <div class="info-content">
+            <span class="info-icon">🔢</span>
+            <div>
+              <strong *ngIf="isEdit">{{ teacher.teacherId }}</strong>
+              <strong *ngIf="!isEdit">Auto-generated (JPST format)</strong>
+              <p class="info-text">
+                {{ isEdit ? 'Employee number cannot be changed' : 'A unique 7-digit number with prefix JPST will be automatically generated (e.g., JPST1234567)' }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Salary payment & bank (for payroll) -->
+    <div class="form-section">
+      <div class="section-header">
+        <h2>
+          <span class="section-icon">💰</span>
+          Salary payment
+        </h2>
+        <p class="section-description">How this teacher receives salary when payroll is processed</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="paymentMethod">Payment method</label>
+          <select id="paymentMethod" [(ngModel)]="teacher.paymentMethod" name="paymentMethod" class="form-input">
+            <option value="cash">Cash</option>
+            <option value="bank">Bank deposit</option>
+            <option value="both">Cash + Bank</option>
+          </select>
+        </div>
+        <div class="form-group" *ngIf="teacher.paymentMethod !== 'cash'">
+          <label for="bankName">Bank</label>
+          <select id="bankName" [(ngModel)]="teacher.bankName" name="bankName" class="form-input" *ngIf="banks.length > 0">
+            <option value="">— Select bank —</option>
+            <option *ngFor="let b of banks" [value]="b.name">{{ b.name }}</option>
+          </select>
+          <input *ngIf="banks.length === 0" type="text" id="bankName" [(ngModel)]="teacher.bankName" name="bankName" class="form-input" placeholder="Configure banks in Settings" />
+        </div>
+        <div class="form-group" *ngIf="teacher.paymentMethod !== 'cash'">
+          <label for="bankAccountNumber">Account number</label>
+          <input type="text" id="bankAccountNumber" [(ngModel)]="teacher.bankAccountNumber" name="bankAccountNumber" class="form-input" placeholder="Account number" />
+        </div>
+        <div class="form-group" *ngIf="teacher.paymentMethod !== 'cash'">
+          <label for="bankBranch">Branch</label>
+          <input type="text" id="bankBranch" [(ngModel)]="teacher.bankBranch" name="bankBranch" class="form-input" placeholder="Branch" />
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="section-header">
+        <h2>
+          <span class="section-icon">📚</span>
+          Teaching Assignments
+        </h2>
+        <p class="section-description">Assignments handled separately on Allocate Classes page</p>
+      </div>
+      <div class="info-box">
+        <div class="info-content">
+          <span class="info-icon">ℹ️</span>
+          <div>
+            <strong>Teacher assignments are managed on the Allocate Classes page.</strong>
+            <p class="info-text">After registration, go to Teacher Management → Allocate Classes to assign subjects and classes.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="form-actions">
+      <button 
+        type="button" 
+        class="btn btn-secondary" 
+        (click)="router.navigate(['/teachers'])">
+        <span>❌</span> Cancel
+      </button>
+      <button 
+        type="submit" 
+        class="btn btn-primary"
+        [disabled]="submitting">
+        <span *ngIf="!submitting">{{ isEdit ? '💾' : '➕' }}</span>
+        <span *ngIf="submitting" class="spinner"></span>
+        {{ submitting ? 'Processing...' : (isEdit ? 'Update Teacher' : 'Register Teacher') }}
+      </button>
+    </div>
+  </form>
+</div>

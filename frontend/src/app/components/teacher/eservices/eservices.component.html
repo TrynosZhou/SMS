@@ -1,0 +1,113 @@
+<div class="es-page">
+  <h1 class="es-title">E-Learning: Create Task / Assign</h1>
+  <p class="es-subtitle">
+    Create assignments, tests or notes for a whole class or a specific student.
+  </p>
+
+  <div class="es-layout">
+    <!-- Left: Create form -->
+    <section class="es-card es-form-card">
+      <h2>Create Task / Assignment</h2>
+
+      <div class="es-alert es-alert-success" *ngIf="success">{{ success }}</div>
+      <div class="es-alert es-alert-error" *ngIf="error">{{ error }}</div>
+
+      <div class="es-field">
+        <label>Class <span class="req">*</span></label>
+        <select [(ngModel)]="selectedClassId" (change)="onClassChange()">
+          <option value="">-- Select Class --</option>
+          <option *ngFor="let cls of classes" [value]="cls.id">
+            {{ cls.name || cls.className }}
+          </option>
+        </select>
+        <small *ngIf="loadingClasses">Loading classes…</small>
+      </div>
+
+      <div class="es-field">
+        <label>Target Student</label>
+        <select [(ngModel)]="selectedStudentId" [disabled]="!selectedClassId || loadingStudents">
+          <option value="">Whole class (all students)</option>
+          <option *ngFor="let s of students" [value]="s.id">
+            {{ s.firstName }} {{ s.lastName }} ({{ s.studentNumber }})
+          </option>
+        </select>
+        <small *ngIf="loadingStudents">Loading students…</small>
+      </div>
+
+      <div class="es-field">
+        <label>Task Type <span class="req">*</span></label>
+        <div class="es-type-buttons">
+          <button type="button" [class.active]="taskType === 'assignment'" (click)="taskType = 'assignment'">
+            Assignment
+          </button>
+          <button type="button" [class.active]="taskType === 'test'" (click)="taskType = 'test'">
+            Test
+          </button>
+          <button type="button" [class.active]="taskType === 'notes'" (click)="taskType = 'notes'">
+            Notes
+          </button>
+        </div>
+      </div>
+
+      <div class="es-field">
+        <label>Title</label>
+        <input type="text" [(ngModel)]="title" placeholder="e.g. Algebra Assignment 1" />
+      </div>
+
+      <div class="es-field">
+        <label>Description / Instructions</label>
+        <textarea
+          [(ngModel)]="description"
+          rows="4"
+          placeholder="Write the task here or upload a file below."></textarea>
+      </div>
+
+      <div class="es-field">
+        <label>Due Date</label>
+        <input type="date" [(ngModel)]="dueDate" />
+      </div>
+
+      <div class="es-field">
+        <label>Attachment (PDF / document)</label>
+        <input type="file" (change)="onFileChange($event)" />
+        <small>Optional: upload a PDF or document from your computer.</small>
+      </div>
+
+      <button class="es-btn-primary" (click)="createTask()" [disabled]="submitting">
+        {{ submitting ? 'Sending…' : 'Send to Students' }}
+      </button>
+    </section>
+
+    <!-- Right: Existing tasks -->
+    <section class="es-card es-tasks-card">
+      <h2>Tasks You Have Created</h2>
+
+      <div *ngIf="loadingTasks" class="es-muted">Loading tasks…</div>
+      <div *ngIf="!loadingTasks && tasks.length === 0" class="es-muted">
+        No e-learning tasks created yet.
+      </div>
+
+      <div class="es-task-list" *ngIf="!loadingTasks && tasks.length > 0">
+        <div class="es-task-item" *ngFor="let t of tasks">
+          <div class="es-task-main">
+            <div class="es-task-type">{{ (t.type || 'assignment') | titlecase }}</div>
+            <div class="es-task-title">{{ t.title || 'Untitled Task' }}</div>
+            <div class="es-task-meta">
+              <span>Class: {{ t.class?.name || t.className || '—' }}</span>
+              <span *ngIf="t.student">
+                Student: {{ t.student.firstName }} {{ t.student.lastName }}
+              </span>
+              <span *ngIf="t.dueDate">Due: {{ t.dueDate | date:'mediumDate' }}</span>
+            </div>
+          </div>
+          <div class="es-task-links">
+            <a *ngIf="t.fileUrl" [href]="t.fileUrl" target="_blank" rel="noopener noreferrer">
+              Preview PDF
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+

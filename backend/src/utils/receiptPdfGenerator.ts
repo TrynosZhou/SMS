@@ -1,0 +1,760 @@
+import PDFDocument from 'pdfkit';
+import { Invoice } from '../entities/Invoice';
+import { Student } from '../entities/Student';
+import { Settings } from '../entities/Settings';
+import { parseAmount } from './numberUtils';
+
+interface ReceiptPDFData {
+  invoice: Invoice;
+  student: Student;
+  settings: Settings | null;
+  paymentAmount: number;
+  paymentDate: Date;
+  paymentMethod?: string;
+  notes?: string;
+  receiptNumber: string;
+  isPrepayment?: boolean;
+}
+
+export function createReceiptPDF(
+  data: ReceiptPDFData
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ margin: 50, size: 'A4' });
+      const buffers: Buffer[] = [];
+
+      doc.on('data', buffers.push.bind(buffers));
+      doc.on('end', () => {
+        resolve(Buffer.concat(buffers));
+      });
+      doc.on('error', reject);
+
+      const { invoice, student, settings, paymentAmount, paymentDate, paymentMethod, notes, receiptNumber, isPrepayment } = data;
+      const currencySymbol = settings?.currencySymbol || 'KES';
+
+      // School Header
+      const schoolName = settings?.schoolName || 'School Management System';
+      const schoolAddress = settings?.schoolAddress ? String(settings.schoolAddress).trim() : '';
+      const schoolPhone = settings?.schoolPhone || '';
+      const schoolEmail = settings?.schoolEmail || '';
+
+      // Header Section
+      let yPos = 50;
+      const schoolNameFontSize = 18;
+
+      // School Logo (if available)
+      if ((settings as any)?.schoolLogo2) {
+        try {
+          const rawLogo2 = String((settings as any).schoolLogo2 || '').trim();
+          if (rawLogo2.startsWith('data:image')) {
+            const base64Data = rawLogo2.split(',')[1];
+            if (base64Data) {
+              const imageBuffer = Buffer.from(base64Data, 'base64');
+              const logoY = yPos - schoolNameFontSize * 0.7;
+              doc.image(imageBuffer, 50, logoY, { width: 80, height: 80 });
+            }
+          }
+        } catch (error) {
+          console.error('Could not add school logo to receipt:', error);
+        }
+      }
+
+      // School Information
+      const textStartX = (settings as any)?.schoolLogo2 ? 150 : 50;
+      doc.fontSize(schoolNameFontSize).font('Helvetica-Bold').text(schoolName, textStartX, yPos);
+      yPos += 25;
+
+      if (schoolAddress) {
+        doc.fontSize(10).font('Helvetica').text(schoolAddress, textStartX, yPos);
+        yPos += 15;
+      }
+
+      if (schoolPhone) {
+        doc.fontSize(10).font('Helvetica').text(`Phone: ${schoolPhone}`, textStartX, yPos);
+        yPos += 15;
+      }
+
+      if (schoolEmail) {
+        doc.fontSize(10).font('Helvetica').text(`Email: ${schoolEmail}`, textStartX, yPos);
+        yPos += 15;
+      }
+
+      yPos += 20;
+
+      // Horizontal divider line after header
+      doc.strokeColor('#CCCCCC').lineWidth(1);
+      doc.moveTo(50, yPos).lineTo(545, yPos).stroke();
+      yPos += 15;
+
+      // Receipt Title
+      doc.fontSize(20).font('Helvetica-Bold').fillColor('#28A745');
+      doc.text('PAYMENT RECEIPT', 50, yPos, { align: 'center', width: 500 });
+      yPos += 30;
+
+      // Receipt Details Box with improved styling
+      const detailsBoxY = yPos;
+      const detailsBoxHeight = 110;
+      doc.rect(50, detailsBoxY, 500, detailsBoxHeight)
+        .fillColor('#F8F9FA')
+        .fill()
+        .strokeColor('#28A745')
+        .lineWidth(2)
+        .stroke();
+
+      // Vertical divider line in details box
+      const dividerX = 300;
+      doc.strokeColor('#DEE2E6').lineWidth(0.5);
+      doc.moveTo(dividerX, detailsBoxY + 5).lineTo(dividerX, detailsBoxY + detailsBoxHeight - 5).stroke();
+
+      // Left Column - Receipt Info
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Receipt Number:', 60, detailsBoxY + 10);
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      doc.text(receiptNumber, 60, detailsBoxY + 25);
+
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Payment Date:', 60, detailsBoxY + 45);
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      doc.text(paymentDate.toLocaleDateString(), 60, detailsBoxY + 60);
+
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Invoice Number:', 60, detailsBoxY + 80);
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      doc.text(invoice.invoiceNumber, 60, detailsBoxY + 95);
+
+      // Right Column - Student Info
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Received From:', 320, detailsBoxY + 10);
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      doc.text(`${student.firstName} ${student.lastName}`, 320, detailsBoxY + 25);
+      doc.text(`Student Number: ${student.studentNumber}`, 320, detailsBoxY + 40);
+      if (student.classEntity) {
+        doc.text(`Class: ${student.classEntity.name}`, 320, detailsBoxY + 55);
+      }
+      doc.text(`Term: ${invoice.term}`, 320, detailsBoxY + 70);
+
+      yPos = detailsBoxY + detailsBoxHeight + 15;
+
+      // Horizontal divider line before payment details
+      doc.strokeColor('#CCCCCC').lineWidth(1);
+      doc.moveTo(50, yPos).lineTo(545, yPos).stroke();
+      yPos += 15;
+
+      // Payment Details Section Header
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Payment Details', 50, yPos);
+      yPos += 25;
+
+      // A4 page width is 595pt, with 50pt margins = 495pt usable width
+      const tableStartX = 50;
+      const tableEndX = 545; // Keep within page margins
+      const tableWidth = tableEndX - tableStartX; // 495pt
+      const amountColumnWidth = 150; // Width for amount column
+      const amountColumnStartX = tableEndX - amountColumnWidth; // Start position for amount column
+      const rowHeight = 25;
+
+      // Payment Amount Row with header-like styling
+      doc.rect(tableStartX, yPos, tableWidth, rowHeight)
+        .fillColor('#E8F5E9')
+        .fill()
+        .strokeColor('#28A745')
+        .lineWidth(1.5)
+        .stroke();
+
+      // Vertical divider in payment amount row
+      doc.strokeColor('#28A745').lineWidth(0.5);
+      doc.moveTo(amountColumnStartX, yPos + 2).lineTo(amountColumnStartX, yPos + rowHeight - 2).stroke();
+
+      // Ensure paymentAmount is a number
+      const paymentAmountNum = parseFloat(String(paymentAmount || 0));
+      
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000');
+      doc.text('Amount Paid', tableStartX + 10, yPos + 9);
+      doc.fontSize(13).font('Helvetica-Bold').fillColor('#28A745');
+      doc.text(`${currencySymbol} ${paymentAmountNum.toFixed(2)}`, amountColumnStartX, yPos + 9, { align: 'right', width: amountColumnWidth - 10 });
+      yPos += rowHeight;
+
+      // Prepaid Amount Row (if this is a prepayment)
+      if (isPrepayment) {
+        doc.rect(tableStartX, yPos, tableWidth, rowHeight)
+          .fillColor('#E3F2FD')
+          .fill()
+          .strokeColor('#2196F3')
+          .lineWidth(0.5)
+          .stroke();
+
+        doc.strokeColor('#BBDEFB').lineWidth(0.5);
+        doc.moveTo(amountColumnStartX, yPos + 2).lineTo(amountColumnStartX, yPos + rowHeight - 2).stroke();
+
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#1976D2');
+        doc.text('Prepaid Amount (for future terms)', tableStartX + 10, yPos + 9);
+        doc.fontSize(12).font('Helvetica-Bold').fillColor('#1976D2');
+        doc.text(`${currencySymbol} ${paymentAmountNum.toFixed(2)}`, amountColumnStartX, yPos + 9, { align: 'right', width: amountColumnWidth - 10 });
+        yPos += rowHeight;
+      }
+
+      // Payment Method Row
+      if (paymentMethod) {
+        doc.rect(tableStartX, yPos, tableWidth, rowHeight)
+          .fillColor('#F8F9FA')
+          .fill()
+          .strokeColor('#CCCCCC')
+          .lineWidth(0.5)
+          .stroke();
+
+        // Vertical divider line
+        doc.strokeColor('#E0E0E0').lineWidth(0.5);
+        doc.moveTo(amountColumnStartX, yPos + 2).lineTo(amountColumnStartX, yPos + rowHeight - 2).stroke();
+
+        doc.fontSize(10).font('Helvetica').fillColor('#000000');
+        doc.text('Payment Method', tableStartX + 10, yPos + 9);
+        // Payment method text should fit in the available space
+        const methodColumnWidth = amountColumnWidth;
+        const methodColumnStartX = amountColumnStartX;
+        doc.text(paymentMethod, methodColumnStartX, yPos + 9, { align: 'right', width: methodColumnWidth - 10 });
+        yPos += rowHeight;
+      }
+      yPos += 10;
+
+      // Horizontal divider before invoice summary
+      doc.strokeColor('#CCCCCC').lineWidth(1);
+      doc.moveTo(tableStartX, yPos).lineTo(tableEndX, yPos).stroke();
+      yPos += 15;
+
+      // Transaction Details Section Header
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Transaction Details', 50, yPos);
+      yPos += 25;
+
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Charge Breakdown', 50, yPos);
+      yPos += 20;
+
+      const tableStartX2 = 50;
+      const tableEndX2 = 545;
+      const tableWidth2 = tableEndX2 - tableStartX2;
+      const amountColumnWidth2 = 150;
+      const amountColumnStartX2 = tableEndX2 - amountColumnWidth2;
+      const rowHeight2 = 25;
+
+      doc.rect(tableStartX2, yPos, tableWidth2, rowHeight2)
+        .fillColor('#EFEFEF')
+        .fill()
+        .strokeColor('#CCCCCC')
+        .lineWidth(1)
+        .stroke();
+      doc.strokeColor('#CCCCCC').lineWidth(0.5);
+      doc.moveTo(amountColumnStartX2, yPos + 2).lineTo(amountColumnStartX2, yPos + rowHeight2 - 2).stroke();
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000');
+      doc.text('Description', tableStartX2 + 10, yPos + 7);
+      doc.text('Amount', amountColumnStartX2, yPos + 7, { align: 'right', width: amountColumnWidth2 - 10 });
+      yPos += rowHeight2;
+
+      const renderRow = (label: string, amountValue: number) => {
+        doc.rect(tableStartX2, yPos, tableWidth2, rowHeight2)
+          .fillColor('#FFFFFF')
+          .fill()
+          .strokeColor('#E0E0E0')
+          .lineWidth(0.5)
+          .stroke();
+        doc.strokeColor('#E0E0E0').lineWidth(0.5);
+        doc.moveTo(amountColumnStartX2, yPos + 2).lineTo(amountColumnStartX2, yPos + rowHeight2 - 2).stroke();
+        doc.fontSize(10).font('Helvetica').fillColor('#000000');
+        const maxDescriptionWidth = amountColumnStartX2 - tableStartX2 - 20;
+        doc.text(label, tableStartX2 + 10, yPos + 7, { width: maxDescriptionWidth, ellipsis: true });
+        doc.text(`${currencySymbol} ${amountValue.toFixed(2)}`, amountColumnStartX2, yPos + 7, { align: 'right', width: amountColumnWidth2 - 10 });
+        yPos += rowHeight2;
+      };
+
+      const feesSettings = settings?.feesSettings || {};
+      const transportCost = parseAmount(feesSettings.transportCost);
+      const diningHallCost = parseAmount(feesSettings.diningHallCost);
+      const registrationFeeCfg = parseAmount(feesSettings.registrationFee);
+      const deskFeeCfg = parseAmount(feesSettings.deskFee);
+
+      const descriptionText = (invoice.description || '').toString();
+      const tryNumLocal = (v: any) => (isFinite(Number(v)) ? Number(v) : 0);
+
+      // Build charge breakdown using the SAME logic as the invoice-statement preview
+      // (BalanceEnquiryComponent), so Tuition/Transport/DH always match the invoice.
+      const items: Array<{ label: string; amount: number }> = [];
+
+      // 1) Items from the invoice itself (if any)
+      if (Array.isArray((invoice as any).items) && (invoice as any).items.length > 0) {
+        (invoice as any).items.forEach((it: any) => {
+          const label = (it.item || it.description || 'Item').toString();
+          const amount = tryNumLocal(it.amount);
+          if (amount > 0) {
+            items.push({ label, amount });
+          }
+        });
+      }
+
+      // 2) Tuition / DH / Transport from explicit invoice fields
+      const tuitionAmount = tryNumLocal((invoice as any).tuitionAmount);
+      if (tuitionAmount > 0 && !items.find(i => i.label.toLowerCase().includes('tuition'))) {
+        const tuitionLabel = student.studentType === 'Boarder' ? 'Tuition Fee (Boarder)' : 'Tuition Fee (Day Scholar)';
+        items.push({ label: tuitionLabel, amount: tuitionAmount });
+      }
+      const diningHallAmount = tryNumLocal((invoice as any).diningHallAmount);
+      if (diningHallAmount > 0 && !items.find(i => i.label.toLowerCase().includes('dining'))) {
+        const dhLabel = (student.isStaffChild || student.isExempted) ? 'Dining Hall (DH) Fee (50%)' : 'Dining Hall (DH) Fee';
+        items.push({ label: dhLabel, amount: diningHallAmount });
+      }
+      const transportAmount = tryNumLocal((invoice as any).transportAmount || (invoice as any).transportCost);
+      if (transportAmount > 0 && !items.find(i => i.label.toLowerCase().includes('transport'))) {
+        items.push({ label: 'Transport Fee', amount: transportAmount });
+      }
+
+      // 3) If still no items, fall back to a single "Fees" line using invoice.amount
+      if (items.length === 0) {
+        items.push({ label: 'Fees', amount: tryNumLocal(invoice.amount) });
+      }
+
+      // Render rows
+      items.forEach(row => {
+        if (row.amount > 0) {
+          renderRow(row.label, row.amount);
+        }
+      });
+
+      const formatShort = (v: number) => (Math.round(v * 100) % 100 === 0 ? String(Math.round(v)) : v.toFixed(2));
+      let registrationFromDesc = 0;
+      let deskFromDesc = 0;
+      if (descriptionText && descriptionText.trim() !== '') {
+        const regMatch = descriptionText.match(/Registration Fee:\s*([0-9]+(?:\.[0-9]+)?)/i);
+        const deskMatch = descriptionText.match(/Desk Fee:\s*([0-9]+(?:\.[0-9]+)?)/i);
+        if (regMatch) {
+          const val = parseFloat(regMatch[1]);
+          if (Number.isFinite(val)) registrationFromDesc = val;
+        }
+        if (deskMatch) {
+          const val = parseFloat(deskMatch[1]);
+          if (Number.isFinite(val)) deskFromDesc = val;
+        }
+      }
+      let registrationDeskTotal = 0;
+      const normalizedStatus = String((student as any).studentStatus || '').trim().toLowerCase();
+      const isNewStudent = normalizedStatus === 'new';
+      if (!student.isStaffChild && !student.isExempted && isNewStudent) {
+        const regVal = registrationFromDesc > 0 ? registrationFromDesc : 0;
+        const deskVal = deskFromDesc > 0 ? deskFromDesc : 0;
+        if (regVal > 0 || deskVal > 0) {
+          registrationDeskTotal = regVal + deskVal;
+          const label = `Desk fee + Registration fee(${formatShort(deskVal)}+${formatShort(regVal)})`;
+          renderRow(label, registrationDeskTotal);
+        }
+      }
+
+      // Notes like "Debit Note" / "Credit Note" are not treated as charges paid on a receipt.
+
+      yPos += 10;
+      doc.strokeColor('#CCCCCC').lineWidth(1);
+      doc.moveTo(50, yPos).lineTo(545, yPos).stroke();
+      yPos += 15;
+
+      // Ensure all numeric values are properly converted to numbers
+      const tryNum = (v: any) => (isFinite(Number(v)) ? Number(v) : 0);
+      const invoiceAmount = tryNum(invoice.amount);
+      let previousBalance = tryNum(invoice.previousBalance);
+      const paidAmount = tryNum(invoice.paidAmount);
+      const prepaidAmount = tryNum(invoice.prepaidAmount);
+
+      // Apply the same desk-fee / returning-student adjustment logic
+      // used by the invoice-statement preview (BalanceEnquiryComponent).
+      // Reuse normalizedStatus / isNewStudent defined above.
+      const configuredDeskFee = tryNum((settings as any)?.feesSettings?.deskFee);
+
+      if (!isNewStudent && configuredDeskFee > 0) {
+        const prev = Number(previousBalance.toFixed(2));
+        const desk = Number(configuredDeskFee.toFixed(2));
+        if (prev === desk) {
+          // For returning students where previousBalance only contains the
+          // desk fee that has already been handled by an adjustment, treat it as 0.
+          previousBalance = 0;
+        }
+      }
+
+      // Canonical totals using the same formula as the invoice statement:
+      // (amount + previousBalance) - paidAmount - prepaidAmount
+      const totalInvoiceAmount = invoiceAmount + previousBalance;
+      const totalPaid = paidAmount;
+      const remainingBalance = Math.max(0, totalInvoiceAmount - totalPaid - prepaidAmount);
+
+      // Table dimensions (reuse variables from payment details section)
+      const labelColumnWidth = 350;
+      const valueColumnWidth = 145;
+      const valueColumnStartX = tableEndX - valueColumnWidth;
+      const transactionRowHeight = 20;
+
+      // Draw table with borders
+      // Table has 5 rows: Total Invoice Amount, Previous Balance, Total Paid, Remaining Balance, Prepaid Amount
+      const numRows = 5;
+      const tableStartY = yPos;
+      const tableHeight = numRows * transactionRowHeight;
+
+      // Draw table border
+      doc.strokeColor('#000000').lineWidth(1);
+      doc.rect(tableStartX, tableStartY, tableWidth, tableHeight).stroke();
+
+      // Draw vertical divider
+      doc.moveTo(valueColumnStartX, tableStartY).lineTo(valueColumnStartX, tableStartY + tableHeight).stroke();
+
+      // Draw horizontal dividers between rows
+      for (let i = 1; i < numRows; i++) {
+        const dividerY = tableStartY + (i * transactionRowHeight);
+        doc.moveTo(tableStartX, dividerY).lineTo(tableEndX, dividerY).stroke();
+      }
+
+      // Row 1: Total Invoice Amount
+      yPos = tableStartY + 5;
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      doc.text('Total Invoice Amount:', tableStartX + 5, yPos + 5);
+      doc.text(`${currencySymbol} ${totalInvoiceAmount.toFixed(2)}`, valueColumnStartX + 5, yPos + 5, { align: 'right', width: valueColumnWidth - 10 });
+      yPos += transactionRowHeight;
+
+      // Row 2: Invoice balance b/f (Previous Balance)
+      doc.text('Invoice balance b/f (Previous Balance):', tableStartX + 5, yPos + 5);
+      doc.text(`${currencySymbol} ${previousBalance.toFixed(2)}`, valueColumnStartX + 5, yPos + 5, { align: 'right', width: valueColumnWidth - 10 });
+      yPos += transactionRowHeight;
+
+      // Row 3: Payment:Total Paid (including this payment)
+      doc.text('Payment:Total Paid (including this payment)', tableStartX + 5, yPos + 5);
+      doc.text(`${currencySymbol} ${totalPaid.toFixed(2)}`, valueColumnStartX + 5, yPos + 5, { align: 'right', width: valueColumnWidth - 10 });
+      yPos += transactionRowHeight;
+
+      // Row 4: Invoice balance c/f (Remaining Balance) - Value in red and bold
+      doc.text('Invoice balance c/f (Remaining Balance):', tableStartX + 5, yPos + 5);
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#DC3545'); // Red color
+      doc.text(`${currencySymbol} ${remainingBalance.toFixed(2)}`, valueColumnStartX + 5, yPos + 5, { align: 'right', width: valueColumnWidth - 10 });
+      // Reset font and color for next row
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      yPos += transactionRowHeight;
+
+      // Row 5: Prepaid Amount
+      doc.text('Prepaid Amount:', tableStartX + 5, yPos + 5);
+      doc.text(`${currencySymbol} ${prepaidAmount.toFixed(2)}`, valueColumnStartX + 5, yPos + 5, { align: 'right', width: valueColumnWidth - 10 });
+      
+      yPos = tableStartY + tableHeight + 20;
+
+      // Horizontal divider after invoice summary
+      doc.strokeColor('#CCCCCC').lineWidth(1);
+      doc.moveTo(50, yPos).lineTo(545, yPos).stroke();
+      yPos += 15;
+
+      // Notes section with box
+      if (notes) {
+        const notesBoxY = yPos;
+        const notesBoxHeight = 50;
+        
+        doc.rect(50, notesBoxY, 500, notesBoxHeight)
+          .fillColor('#F5F5F5')
+          .fill()
+          .strokeColor('#DEE2E6')
+          .lineWidth(1)
+          .stroke();
+
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+        doc.text('Notes:', 60, notesBoxY + 10);
+        
+        // Horizontal divider in notes box
+        doc.strokeColor('#E0E0E0').lineWidth(0.5);
+        doc.moveTo(60, notesBoxY + 20).lineTo(540, notesBoxY + 20).stroke();
+
+        doc.fontSize(9).font('Helvetica').fillColor('#000000');
+        // Wrap text if too long
+        doc.text(notes, 60, notesBoxY + 30, { width: 480, align: 'left' });
+        yPos = notesBoxY + notesBoxHeight + 20;
+      }
+
+      // Status Box
+      const statusBoxY = yPos;
+      doc.rect(50, statusBoxY, 500, 30)
+        .fillColor('#E8F5E9')
+        .fill()
+        .strokeColor('#28A745')
+        .lineWidth(1.5)
+        .stroke();
+
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Payment Status:', 60, statusBoxY + 10);
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#28A745');
+      const statusText = invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1);
+      doc.text(statusText, 180, statusBoxY + 10);
+      yPos = statusBoxY + 50;
+
+      // Thank You Message Box
+      const thankYouBoxY = yPos;
+      doc.rect(50, thankYouBoxY, 500, 35)
+        .fillColor('#E8F5E9')
+        .fill()
+        .strokeColor('#28A745')
+        .lineWidth(2)
+        .stroke();
+
+      doc.fontSize(12).font('Helvetica-Bold').fillColor('#28A745');
+      doc.text('Thank you for your payment!', 50, thankYouBoxY + 12, { align: 'center', width: 500 });
+      yPos = thankYouBoxY + 50;
+
+      // Footer with divider line
+      const pageHeight = doc.page.height;
+      const footerY = pageHeight - 50;
+      
+      // Horizontal divider line before footer
+      doc.strokeColor('#CCCCCC').lineWidth(0.5);
+      doc.moveTo(50, footerY).lineTo(545, footerY).stroke();
+      
+      doc.fontSize(8).font('Helvetica').fillColor('#666666');
+      doc.text(
+        `Generated on: ${new Date().toLocaleString()}`,
+        50,
+        footerY + 10,
+        { align: 'center', width: 500 }
+      );
+
+      doc.end();
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+export interface UniformReceiptChargeItem {
+  itemName: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface UniformReceiptPDFData {
+  student: Student;
+  settings: Settings | null;
+  receiptNumber: string;
+  paymentAmount: number;
+  paymentDate: Date;
+  paymentMethod: string;
+  notes?: string | null;
+  uniformBalanceAfter: number;
+  chargeItems?: UniformReceiptChargeItem[];
+}
+
+/** Uniform items payment receipt PDF – structure similar to tuition receipt, labels match the Record payment page. */
+export function createUniformReceiptPDF(data: UniformReceiptPDFData): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ margin: 50, size: 'A4' });
+      const buffers: Buffer[] = [];
+      doc.on('data', buffers.push.bind(buffers));
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
+      doc.on('error', reject);
+
+      const { student, settings, receiptNumber, paymentAmount, paymentDate, paymentMethod, notes, uniformBalanceAfter, chargeItems = [] } = data;
+      const currencySymbol = settings?.currencySymbol || 'KES';
+
+      let yPos = 50;
+      const textStartX = 50;
+      const logoSize = 80;
+
+      // Logo: use Logo 2 from settings for uniform items receipt
+      const rawLogo = String((settings as any)?.schoolLogo2 || '').trim();
+      if (rawLogo.startsWith('data:image')) {
+        try {
+          const base64Data = rawLogo.split(',')[1];
+          if (base64Data) {
+            const imageBuffer = Buffer.from(base64Data, 'base64');
+            doc.image(imageBuffer, 50, yPos, { width: logoSize, height: logoSize });
+          }
+        } catch (_) {}
+      }
+      yPos += logoSize + 12;
+      if (settings?.schoolAddress) {
+        doc.fontSize(10).font('Helvetica').text(String(settings.schoolAddress).trim(), textStartX, yPos);
+        yPos += 14;
+      }
+      if (settings?.schoolPhone) {
+        doc.fontSize(10).font('Helvetica').text(`Phone: ${settings.schoolPhone}`, textStartX, yPos);
+        yPos += 14;
+      }
+      if (settings?.schoolEmail) {
+        doc.fontSize(10).font('Helvetica').text(`Email: ${settings.schoolEmail}`, textStartX, yPos);
+        yPos += 14;
+      }
+      yPos += 18;
+
+      doc.strokeColor('#CCCCCC').lineWidth(1);
+      doc.moveTo(50, yPos).lineTo(545, yPos).stroke();
+      yPos += 15;
+
+      doc.fontSize(20).font('Helvetica-Bold').fillColor('#28A745');
+      doc.text('UNIFORM ITEMS PAYMENT RECEIPT', 50, yPos, { align: 'center', width: 500 });
+      yPos += 28;
+
+      const detailsBoxY = yPos;
+      const detailsBoxHeight = 120;
+      doc.rect(50, detailsBoxY, 500, detailsBoxHeight)
+        .fillColor('#F8F9FA')
+        .fill()
+        .strokeColor('#28A745')
+        .lineWidth(2)
+        .stroke();
+
+      const dividerX = 300;
+      doc.strokeColor('#DEE2E6').lineWidth(0.5);
+      doc.moveTo(dividerX, detailsBoxY + 5).lineTo(dividerX, detailsBoxY + detailsBoxHeight - 5).stroke();
+
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Receipt Number:', 60, detailsBoxY + 12);
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      doc.text(receiptNumber, 60, detailsBoxY + 27);
+
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Payment Date:', 60, detailsBoxY + 47);
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      doc.text(paymentDate.toLocaleDateString(), 60, detailsBoxY + 62);
+
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Student:', 60, detailsBoxY + 82);
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      const studentDisplay = `${student.firstName || ''} ${student.lastName || ''} (${student.studentNumber || ''})`.trim();
+      doc.text(studentDisplay, 60, detailsBoxY + 97);
+
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Payment Method:', 320, detailsBoxY + 12);
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      doc.text(paymentMethod, 320, detailsBoxY + 27);
+
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Amount Paid:', 320, detailsBoxY + 47);
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#28A745');
+      doc.text(`${currencySymbol} ${Number(paymentAmount).toFixed(2)}`, 320, detailsBoxY + 62);
+
+      yPos = detailsBoxY + detailsBoxHeight + 18;
+
+      doc.strokeColor('#CCCCCC').lineWidth(1);
+      doc.moveTo(50, yPos).lineTo(545, yPos).stroke();
+      yPos += 15;
+
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Payment Details', 50, yPos);
+      yPos += 24;
+
+      const tableStartX = 50;
+      const tableWidth = 495;
+      const rowHeight = 26;
+      const amountColWidth = 150;
+      const amountColStart = 545 - amountColWidth;
+
+      doc.rect(tableStartX, yPos, tableWidth, rowHeight)
+        .fillColor('#E8F5E9')
+        .fill()
+        .strokeColor('#28A745')
+        .lineWidth(1.5)
+        .stroke();
+      doc.strokeColor('#28A745').lineWidth(0.5);
+      doc.moveTo(amountColStart, yPos + 2).lineTo(amountColStart, yPos + rowHeight - 2).stroke();
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000');
+      doc.text('Amount Paid', tableStartX + 10, yPos + 8);
+      doc.fontSize(13).font('Helvetica-Bold').fillColor('#28A745');
+      doc.text(`${currencySymbol} ${Number(paymentAmount).toFixed(2)}`, amountColStart, yPos + 8, { align: 'right', width: amountColWidth - 10 });
+      yPos += rowHeight;
+
+      doc.rect(tableStartX, yPos, tableWidth, rowHeight)
+        .fillColor('#F8F9FA')
+        .fill()
+        .strokeColor('#CCCCCC')
+        .lineWidth(0.5)
+        .stroke();
+      doc.strokeColor('#E0E0E0').lineWidth(0.5);
+      doc.moveTo(amountColStart, yPos + 2).lineTo(amountColStart, yPos + rowHeight - 2).stroke();
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      doc.text('Payment Method', tableStartX + 10, yPos + 8);
+      doc.text(paymentMethod, amountColStart, yPos + 8, { align: 'right', width: amountColWidth - 10 });
+      yPos += rowHeight + 16;
+
+      if (chargeItems.length > 0) {
+        doc.strokeColor('#CCCCCC').lineWidth(1);
+        doc.moveTo(50, yPos).lineTo(545, yPos).stroke();
+        yPos += 15;
+        doc.fontSize(14).font('Helvetica-Bold').fillColor('#2C3E50');
+        doc.text('Uniform items charged (paid from student account)', 50, yPos);
+        yPos += 20;
+        const colW = { item: 220, qty: 60, unit: 100, total: 115 };
+        const tableW = 495;
+        const rowH = 20;
+        doc.rect(tableStartX, yPos, tableW, rowH).fillColor('#E8F5E9').fill().strokeColor('#28A745').lineWidth(1).stroke();
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b');
+        doc.text('Item', tableStartX + 6, yPos + 6);
+        doc.text('Qty', tableStartX + colW.item + 6, yPos + 6);
+        doc.text('Unit price', tableStartX + colW.item + colW.qty + 6, yPos + 6);
+        doc.text('Total', tableStartX + tableW - colW.total + 6, yPos + 6);
+        yPos += rowH;
+        doc.fontSize(10).font('Helvetica').fillColor('#000000');
+        for (const row of chargeItems) {
+          doc.rect(tableStartX, yPos, tableW, rowH).strokeColor('#E0E0E0').lineWidth(0.5).stroke();
+          doc.text(String(row.itemName || '').slice(0, 35), tableStartX + 6, yPos + 6, { width: colW.item - 6 });
+          doc.text(String(row.quantity ?? 0), tableStartX + colW.item + 6, yPos + 6);
+          doc.text(`${currencySymbol} ${Number(row.unitPrice ?? 0).toFixed(2)}`, tableStartX + colW.item + colW.qty + 6, yPos + 6);
+          doc.text(`${currencySymbol} ${Number(row.lineTotal ?? 0).toFixed(2)}`, tableStartX + tableW - colW.total + 6, yPos + 6);
+          yPos += rowH;
+        }
+        yPos += 14;
+      }
+
+      doc.strokeColor('#CCCCCC').lineWidth(1);
+      doc.moveTo(50, yPos).lineTo(545, yPos).stroke();
+      yPos += 15;
+
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Uniform Items Balance (after payment)', 50, yPos);
+      yPos += 22;
+
+      doc.rect(tableStartX, yPos, tableWidth, rowHeight)
+        .fillColor('#FEF2F2')
+        .fill()
+        .strokeColor('#DC3545')
+        .lineWidth(1)
+        .stroke();
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Uniform Items Balance:', tableStartX + 10, yPos + 8);
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#DC3545');
+      doc.text(`${currencySymbol} ${Number(uniformBalanceAfter).toFixed(2)}`, amountColStart, yPos + 8, { align: 'right', width: amountColWidth - 10 });
+      yPos += rowHeight + 18;
+
+      if (notes && String(notes).trim()) {
+        doc.rect(50, yPos, 500, 44)
+          .fillColor('#F5F5F5')
+          .fill()
+          .strokeColor('#DEE2E6')
+          .lineWidth(1)
+          .stroke();
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+        doc.text('Notes:', 60, yPos + 10);
+        doc.fontSize(9).font('Helvetica').fillColor('#000000');
+        doc.text(String(notes).trim(), 60, yPos + 24, { width: 480 });
+        yPos += 54;
+      }
+
+      doc.rect(50, yPos, 500, 36)
+        .fillColor('#E8F5E9')
+        .fill()
+        .strokeColor('#28A745')
+        .lineWidth(2)
+        .stroke();
+      doc.fontSize(12).font('Helvetica-Bold').fillColor('#28A745');
+      doc.text('Thank you for your payment!', 50, yPos + 12, { align: 'center', width: 500 });
+      yPos += 44;
+
+      const footerY = doc.page.height - 50;
+      doc.strokeColor('#CCCCCC').lineWidth(0.5);
+      doc.moveTo(50, footerY).lineTo(545, footerY).stroke();
+      doc.fontSize(8).font('Helvetica').fillColor('#666666');
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 50, footerY + 10, { align: 'center', width: 500 });
+
+      doc.end();
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+

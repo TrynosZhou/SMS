@@ -1,0 +1,210 @@
+<div class="container employees-page">
+  <header class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <span class="title-icon">👥</span>
+        Employees
+      </h1>
+      <p class="subtitle">Teachers & ancillary staff — assign salaries in <a routerLink="/payroll/assignments">Assignments</a></p>
+    </div>
+    <div class="header-actions">
+      <a routerLink="/payroll/assignments" class="btn btn-secondary">🔗 Assign Salary</a>
+      <button class="btn btn-primary" (click)="addNew()" *ngIf="activeTab === 'ancillary'">➕ Add Staff</button>
+      <a routerLink="/payroll" class="btn btn-outline">← Back</a>
+    </div>
+  </header>
+
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <!-- Skeleton -->
+  <div class="skeleton-wrap" *ngIf="loading">
+    <div class="skeleton-stats"></div>
+    <div class="skeleton-tabs"></div>
+    <div class="skeleton-table"></div>
+  </div>
+
+  <div *ngIf="!loading">
+    <!-- Stats -->
+    <section class="stats-row">
+      <div class="stat-card">
+        <span class="stat-value">{{ teachers.length + staff.length }}</span>
+        <span class="stat-label">Total Employees</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ teachers.length }}</span>
+        <span class="stat-label">Teachers</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ teachersWithSalary }}</span>
+        <span class="stat-label">Teachers with Salary</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ staff.length }}</span>
+        <span class="stat-label">Ancillary Staff</span>
+      </div>
+    </section>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab" [class.active]="activeTab === 'teachers'" (click)="activeTab = 'teachers'; searchQuery = ''">
+        👨‍🏫 Teachers ({{ teachers.length }})
+      </button>
+      <button class="tab" [class.active]="activeTab === 'ancillary'" (click)="activeTab = 'ancillary'; searchQuery = ''">
+        👷 Ancillary Staff ({{ staff.length }})
+      </button>
+    </div>
+
+    <!-- Search & filters -->
+    <div class="toolbar card" *ngIf="(activeTab === 'teachers' && teachers.length > 0) || (activeTab === 'ancillary' && staff.length > 0)">
+      <input type="text" [(ngModel)]="searchQuery" class="search-input" placeholder="Search by name, ID, email..." />
+      <div class="filter-tabs" *ngIf="activeTab === 'teachers'">
+        <button class="filter-tab" [class.active]="teacherFilter === 'all'" (click)="teacherFilter = 'all'">All</button>
+        <button class="filter-tab" [class.active]="teacherFilter === 'assigned'" (click)="teacherFilter = 'assigned'">Salary Assigned</button>
+        <button class="filter-tab" [class.active]="teacherFilter === 'unassigned'" (click)="teacherFilter = 'unassigned'">Not Assigned</button>
+      </div>
+    </div>
+
+    <!-- Teachers tab -->
+    <section class="card table-card" *ngIf="activeTab === 'teachers'">
+      <p class="tab-note">Teachers are managed in <a routerLink="/teachers">Teacher Manager</a>. Assign salaries on the <a routerLink="/payroll/assignments">Assignments</a> page.</p>
+      <div class="table-wrap" *ngIf="filteredTeachers.length > 0">
+        <table class="modern-table">
+          <thead>
+            <tr>
+              <th>Employee ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Date of Joining</th>
+              <th>Salary</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let t of filteredTeachers" class="table-row">
+              <td class="emp-id">{{ t.employeeId || t.teacherId || '—' }}</td>
+              <td class="emp-name editable-cell" (click)="openEdit('teacher', t, 'name', 'Name')" title="Click to edit">{{ t.firstName }} {{ t.lastName }}</td>
+              <td class="editable-cell" (click)="openEdit('teacher', t, 'email', 'Email')" title="Click to edit">{{ t.user?.email || t.email || '—' }}</td>
+              <td class="editable-cell" (click)="openEdit('teacher', t, 'phoneNumber', 'Phone')" title="Click to edit">{{ t.phoneNumber || t.phone || '—' }}</td>
+              <td class="editable-cell" (click)="openEdit('teacher', t, 'dateJoined', 'Date of Joining')" title="Click to edit">{{ formatDateOfJoining(t.dateJoined) }}</td>
+              <td>
+                <span class="badge" [class.badge-success]="hasSalaryAssigned(t.id)" [class.badge-warning]="!hasSalaryAssigned(t.id)">
+                  {{ hasSalaryAssigned(t.id) ? 'Assigned' : 'Not assigned' }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="empty-state" *ngIf="filteredTeachers.length === 0">
+        <p *ngIf="teachers.length === 0">No teachers yet. Add in <a routerLink="/teachers">Teacher Manager</a>.</p>
+        <p *ngIf="teachers.length > 0">No teachers match your search or filter.</p>
+      </div>
+    </section>
+
+    <!-- Ancillary Staff tab -->
+    <section class="card table-card" *ngIf="activeTab === 'ancillary'">
+      <div class="table-wrap" *ngIf="filteredStaff.length > 0">
+        <table class="modern-table">
+          <thead>
+            <tr>
+              <th>Employee ID</th>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Department</th>
+              <th>Date of Joining</th>
+              <th>Status</th>
+              <th>Salary Type</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of filteredStaff" class="table-row">
+              <td class="emp-id">{{ s.employeeId }}</td>
+              <td class="emp-name editable-cell" (click)="openEdit('ancillary', s, 'name', 'Name')" title="Click to edit">{{ s.firstName }} {{ s.lastName }}</td>
+              <td class="editable-cell" (click)="openEdit('ancillary', s, 'role', 'Role')" title="Click to edit">{{ s.role || '—' }}</td>
+              <td class="editable-cell" (click)="openEdit('ancillary', s, 'department', 'Department')" title="Click to edit">{{ s.department || '—' }}</td>
+              <td class="editable-cell" (click)="openEdit('ancillary', s, 'dateJoined', 'Date of Joining')" title="Click to edit">{{ formatDateOfJoining(s.dateJoined) }}</td>
+              <td>
+                <span class="badge badge-success editable-cell badge-editable" (click)="openEdit('ancillary', s, 'employmentStatus', 'Status')" title="Click to edit">{{ s.employmentStatus || 'active' }}</span>
+              </td>
+              <td class="editable-cell" (click)="openEdit('ancillary', s, 'salaryType', 'Salary Type')" title="Click to edit">{{ s.salaryType || 'monthly' }}</td>
+              <td>
+                <div class="actions-cell">
+                  <button class="btn btn-sm btn-secondary" (click)="edit(s.id)">Edit</button>
+                  <button class="btn btn-sm btn-danger" (click)="delete(s.id, s.firstName + ' ' + s.lastName)">Delete</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="empty-state" *ngIf="filteredStaff.length === 0">
+        <p *ngIf="staff.length === 0">No ancillary staff yet. <a routerLink="/payroll/employees/new">Add the first</a></p>
+        <p *ngIf="staff.length > 0">No staff match your search.</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- Edit field modal -->
+  <div class="modal-overlay" *ngIf="modalOpen" (click)="closeEdit()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Edit {{ editContext?.label }}</h3>
+        <button type="button" class="modal-close" (click)="closeEdit()" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-error" *ngIf="error">{{ error }}</p>
+        <ng-container *ngIf="editContext">
+          <ng-container *ngIf="editContext.field === 'name'">
+            <div class="form-group">
+              <label>First name</label>
+              <input type="text" [(ngModel)]="editFirstName" class="form-input" placeholder="First name" />
+            </div>
+            <div class="form-group">
+              <label>Last name</label>
+              <input type="text" [(ngModel)]="editLastName" class="form-input" placeholder="Last name" />
+            </div>
+          </ng-container>
+          <ng-container *ngIf="editContext.field === 'employmentStatus'">
+            <div class="form-group">
+              <label>Status</label>
+              <select [(ngModel)]="editValue" class="form-input">
+                <option value="active">Active</option>
+                <option value="terminated">Terminated</option>
+              </select>
+            </div>
+          </ng-container>
+          <ng-container *ngIf="editContext.field === 'salaryType'">
+            <div class="form-group">
+              <label>Salary type</label>
+              <select [(ngModel)]="editValue" class="form-input">
+                <option value="monthly">Monthly</option>
+                <option value="daily">Daily</option>
+              </select>
+            </div>
+          </ng-container>
+          <ng-container *ngIf="editContext.field === 'dateJoined'">
+            <div class="form-group">
+              <label>Date of Joining</label>
+              <input type="date" [(ngModel)]="editValue" class="form-input" />
+              <p class="form-hint">Leave empty if not set.</p>
+            </div>
+          </ng-container>
+          <ng-container *ngIf="editContext.field !== 'name' && editContext.field !== 'employmentStatus' && editContext.field !== 'salaryType' && editContext.field !== 'dateJoined'">
+            <div class="form-group">
+              <label>{{ editContext.label }}</label>
+              <input type="text" [(ngModel)]="editValue" class="form-input" [placeholder]="editContext.label" />
+            </div>
+          </ng-container>
+        </ng-container>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeEdit()">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="saveEdit()" [disabled]="saving">
+          {{ saving ? 'Saving…' : 'Save' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

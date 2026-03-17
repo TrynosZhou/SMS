@@ -1,0 +1,41 @@
+<div class="esub-page">
+  <h1 class="esub-title">Submit Task / Assignment</h1>
+  <p class="esub-subtitle">
+    Choose a task/assignment from your teacher and upload or type your response.
+  </p>
+
+  <section class="esub-card">
+    <div class="esub-field">
+      <label>Task / Assignment <span class="req">*</span></label>
+      <select [(ngModel)]="selectedTaskId">
+        <option value="">-- Select --</option>
+        <option *ngFor="let t of tasks" [value]="t.id">
+          {{ (t.type || 'assignment') | titlecase }} - {{ t.title || 'Untitled' }}
+        </option>
+      </select>
+      <small *ngIf="loadingTasks">Loading tasks…</small>
+      <small *ngIf="!loadingTasks && tasks.length === 0">
+        No tasks have been assigned yet.
+      </small>
+    </div>
+
+    <div class="esub-alert esub-alert-success" *ngIf="success">{{ success }}</div>
+    <div class="esub-alert esub-alert-error" *ngIf="error">{{ error }}</div>
+
+    <div class="esub-field">
+      <label>Your Answer (optional if you upload a file)</label>
+      <textarea [(ngModel)]="text" rows="5" placeholder="Type your answer here..."></textarea>
+    </div>
+
+    <div class="esub-field">
+      <label>Upload File (PDF / document)</label>
+      <input type="file" (change)="onFileChange($event)" />
+      <small>If you upload a file, your teacher will see it as a PDF/document.</small>
+    </div>
+
+    <button class="esub-btn-primary" (click)="submit()" [disabled]="submitting">
+      {{ submitting ? 'Submitting…' : 'Submit Task/Assign' }}
+    </button>
+  </section>
+</div>
+

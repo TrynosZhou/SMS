@@ -1,0 +1,110 @@
+<div class="prm-container">
+  <div class="page-header">
+    <div class="header-content">
+      <span class="header-icon">🧾</span>
+      <h1>Payment / Receipt Manager</h1>
+      <p class="subtitle">View and manage payment logs. Protected Desk Fee and Status Correction entries cannot be deleted.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary" (click)="load()" [disabled]="loading">Refresh</button>
+    </div>
+  </div>
+
+  <div class="alert alert-error" *ngIf="error" style="margin-bottom: 12px;">
+    {{ error }}
+  </div>
+
+  <div class="filters-card">
+    <div class="filters-grid">
+      <div class="filter-group">
+        <label>Search</label>
+        <input class="form-control" [(ngModel)]="search" (input)="onApplyFilters()" placeholder="Receipt number, payer name, method" />
+      </div>
+
+      <div class="filter-group">
+        <label>Method</label>
+        <select class="form-control" [(ngModel)]="paymentMethod" (change)="onApplyFilters()">
+          <option value="">All Methods</option>
+          <option value="CASH(USD)">CASH(USD)</option>
+          <option value="ECOCASH(USD)">ECOCASH(USD)</option>
+          <option value="BANK TRANSFER(USD)">BANK TRANSFER(USD)</option>
+          <option value="ADJUSTMENT">ADJUSTMENT</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Date Range</label>
+        <div class="date-range">
+          <input type="date" class="form-control" [(ngModel)]="startDate" (change)="onApplyFilters()" />
+          <input type="date" class="form-control" [(ngModel)]="endDate" (change)="onApplyFilters()" />
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label>Rows per page</label>
+        <select class="form-control" [ngModel]="limit" (ngModelChange)="onChangeLimit($event)">
+          <option [ngValue]="10">10</option>
+          <option [ngValue]="20">20</option>
+          <option [ngValue]="50">50</option>
+          <option [ngValue]="100">100</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading payment logs...</p>
+  </div>
+
+  <div class="table-wrapper" *ngIf="!loading">
+    <div class="table-container">
+      <table class="prm-table">
+        <thead>
+          <tr>
+            <th>Recipient</th>
+            <th>Student ID</th>
+            <th style="text-align:right;">Paid</th>
+            <th>Payment Date</th>
+            <th>Payment Method</th>
+            <th>Receipt/Ref</th>
+            <th>Notes</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let log of paymentLogs">
+            <td>
+              {{ (log.student?.firstName || '') + ' ' + (log.student?.lastName || '') }}
+            </td>
+            <td>{{ log.student?.studentNumber || '' }}</td>
+            <td style="text-align:right;">{{ (log.amountPaid || 0) | number:'1.2-2' }}</td>
+            <td>{{ log.paymentDate ? (log.paymentDate | date:'shortDate') : '—' }}</td>
+            <td>{{ log.paymentMethod || '—' }}</td>
+            <td>{{ log.receiptNumber || '—' }}</td>
+            <td>{{ log.notes || '—' }}</td>
+            <td>
+              <button class="btn btn-secondary" (click)="deleteLog(log)" [disabled]="!canDeleteLog(log) || deletingId===log.id">
+                Delete
+              </button>
+            </td>
+          </tr>
+
+          <tr *ngIf="paymentLogs.length === 0">
+            <td colspan="8" style="text-align:center; color:#6b7280; padding:16px;">No payment logs found</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination-bar">
+      <div class="page-info">
+        Page {{ page }} of {{ getTotalPages() }} • {{ total }} records
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-secondary" (click)="prevPage()" [disabled]="page<=1">◀ Prev</button>
+        <button class="btn btn-secondary" (click)="nextPage()" [disabled]="page>=getTotalPages()">Next ▶</button>
+      </div>
+    </div>
+  </div>
+</div>
