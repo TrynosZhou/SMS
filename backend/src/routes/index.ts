@@ -10,10 +10,7 @@ import settingsRoutes from './settings.routes';
 import parentRoutes from './parent.routes';
 import accountRoutes from './account.routes';
 import messageRoutes from './message.routes';
-<<<<<<< HEAD
 import elearningRoutes from './elearning.routes';
-=======
->>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
 import attendanceRoutes from './attendance.routes';
 import auditRoutes from './audit.routes';
 import promotionRuleRoutes from './promotion-rule.routes';
@@ -42,10 +39,10 @@ router.use('/record-book', recordBookRoutes);
 router.use('/timetables', timetableRoutes);
 router.use('/news', newsRoutes);
 router.use('/payroll', payrollRoutes);
-<<<<<<< HEAD
+
 router.use('/elearning', elearningRoutes);
-=======
->>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
+
+
 
 export default router;
 

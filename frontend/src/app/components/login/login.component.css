@@ -29,21 +29,12 @@
 
 @media (min-width: 992px) {
   :host {
-<<<<<<< HEAD
     justify-content: center;
   }
 
   .login-container {
     justify-content: center;
     margin-left: auto;
-=======
-    justify-content: flex-start;
-  }
-
-  .login-container {
-    justify-content: flex-start;
-    margin-left: 8%;
->>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
     margin-right: auto;
   }
 
@@ -55,11 +46,7 @@
 
 @media (min-width: 1200px) {
   .login-container {
-<<<<<<< HEAD
     margin-left: auto;
-=======
-    margin-left: 10%;
->>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
   }
 }
 

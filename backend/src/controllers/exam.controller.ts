@@ -1666,16 +1666,12 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     });
     
     // Filter by exam status:
-<<<<<<< HEAD
+    //
     // Business rule: report cards must NEVER be based on unpublished data.
     // For BOTH Mid-Term and End-Term, only PUBLISHED exams are allowed for ALL roles.
     // This prevents generating End-Term report cards using draft or mid-term data.
     const requirePublished = true;
-=======
-    // - Parents and students can only see published exams
-    // - Admins and teachers can view draft exams for report generation
-    const requirePublished = (isParent || isStudent) && !isAdmin;
->>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
+
     if (requirePublished) {
       exams = exams.filter(exam => exam.status === ExamStatus.PUBLISHED);
     }
@@ -1745,11 +1741,11 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     }
 
     if (exams.length === 0) {
-<<<<<<< HEAD
+
       // Check if there are any exams for this class at all (any type/status)
-=======
+
       // Check if there are any exams for this class at all
->>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
+
       const allClassExams = await examRepository.find({
         where: { classId: classId as string, term: termValue },
         relations: ['subjects']
@@ -1757,7 +1753,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       console.log('[getReportCard] Total exams for this class and term:', allClassExams.length);
       console.log('[getReportCard] Available exam types:', allClassExams.map(e => ({ name: e.name, type: e.type, status: e.status })));
       console.log('[getReportCard] Requested examType (original):', examType, 'normalized:', normalizedExamType);
-<<<<<<< HEAD
+
       console.log('[getReportCard] Filtered exams (after status/status filter):', exams.length);
 
       // Detect case where exams of this type exist but are not yet published (for students/parents)
@@ -1779,11 +1775,11 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       }
 
       // Provide more helpful error message when exams of this type truly do not exist
-=======
+
       console.log('[getReportCard] Filtered exams (after status filter):', exams.length);
       
       // Provide more helpful error message
->>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
+
       const availableTypes = [...new Set(allClassExams.map(e => e.type))];
       
       // Convert enum values to user-friendly names

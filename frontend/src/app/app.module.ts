@@ -87,14 +87,11 @@ import { PayrollProcessComponent } from './components/payroll/payroll-process/pa
 import { PayrollEntriesComponent } from './components/payroll/payroll-entries/payroll-entries.component';
 import { PayrollReportsComponent } from './components/payroll/payroll-reports/payroll-reports.component';
 import { LoanOverviewComponent } from './components/payroll/loan-overview/loan-overview.component';
-<<<<<<< HEAD
 import { ElearningComponent } from './components/admin/elearning/elearning.component';
 import { EservicesComponent } from './components/teacher/eservices/eservices.component';
 import { StudentResponsesComponent } from './components/teacher/student-responses/student-responses.component';
 import { EwebComponent } from './components/student/eweb/eweb.component';
 import { EsubmitComponent } from './components/student/esubmit/esubmit.component';
-=======
->>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
 
 @NgModule({
   declarations: [
@@ -176,14 +173,11 @@ import { EsubmitComponent } from './components/student/esubmit/esubmit.component
     PayrollEntriesComponent,
     PayrollReportsComponent,
     LoanOverviewComponent,
-<<<<<<< HEAD
     ElearningComponent,
     EservicesComponent,
     StudentResponsesComponent,
     EwebComponent,
     EsubmitComponent,
-=======
->>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
   ],
   imports: [
     BrowserModule,

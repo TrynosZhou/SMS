@@ -54,7 +54,6 @@
           <span class="sidebar-icon">💰</span>
           <span class="sidebar-text">My Invoice Statement</span>
         </a>
-<<<<<<< HEAD
 
         <!-- Student E-Learning menu -->
         <div class="sidebar-menu">
@@ -74,8 +73,6 @@
             </a>
           </div>
         </div>
-=======
->>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
       </div>
 
       <!-- Regular sidebar (for non-students) -->
@@ -392,7 +389,6 @@
 
       <!-- Reports Management section removed per request -->
 
-<<<<<<< HEAD
       <!-- E-Learning (Teachers only, previously Record Keeping) -->
       <div class="sidebar-menu" *ngIf="isTeacher() && canAccessModule('recordBook')">
         <div class="sidebar-menu-header" (click)="toggleMenu('recordKeeping')">
@@ -409,16 +405,6 @@
             <span class="sidebar-icon">📥</span>
             <span class="sidebar-text">Student Response</span>
           </a>
-=======
-      <!-- Record Keeping (Teachers only) -->
-      <div class="sidebar-menu" *ngIf="isTeacher() && canAccessModule('recordBook')">
-        <div class="sidebar-menu-header" (click)="toggleMenu('recordKeeping')">
-          <span class="sidebar-icon">📝</span>
-          <span class="sidebar-text">Record Keeping</span>
-          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('recordKeeping')">▼</span>
-        </div>
-        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('recordKeeping')">
->>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
           <a routerLink="/teacher/record-book" routerLinkActive="active" class="sidebar-subitem">
             <span class="sidebar-icon">📖</span>
             <span class="sidebar-text">Record Book</span>

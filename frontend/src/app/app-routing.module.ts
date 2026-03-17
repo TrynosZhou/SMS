@@ -68,14 +68,11 @@ import { NewsFeedComponent } from './components/news/news-feed/news-feed.compone
 import { NewsFormComponent } from './components/news/news-form/news-form.component';
 import { NewsDetailComponent } from './components/news/news-detail/news-detail.component';
 import { PaymentReceiptManagerComponent } from './components/settings/payment-receipt-manager/payment-receipt-manager.component';
-<<<<<<< HEAD
 import { ElearningComponent } from './components/admin/elearning/elearning.component';
 import { EservicesComponent } from './components/teacher/eservices/eservices.component';
 import { StudentResponsesComponent } from './components/teacher/student-responses/student-responses.component';
 import { EwebComponent } from './components/student/eweb/eweb.component';
 import { EsubmitComponent } from './components/student/esubmit/esubmit.component';
-=======
->>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
 import { ParentInvoiceStatementComponent } from './components/parent/parent-invoice-statement/parent-invoice-statement.component';
 import { PayrollDashboardComponent } from './components/payroll/payroll-dashboard/payroll-dashboard.component';
 import { AncillaryStaffListComponent } from './components/payroll/ancillary-staff-list/ancillary-staff-list.component';
@@ -112,11 +109,8 @@ const routes: Routes = [
   { path: 'messages/drafts', component: DraftMessagesComponent, canActivate: [AuthGuard] },
   { path: 'teacher/record-book', component: RecordBookComponent, canActivate: [AuthGuard] },
   { path: 'teacher/my-classes', component: MyClassesComponent, canActivate: [AuthGuard] },
-<<<<<<< HEAD
   { path: 'teacher/eservices', component: EservicesComponent, canActivate: [AuthGuard] },
   { path: 'teacher/student-responses', component: StudentResponsesComponent, canActivate: [AuthGuard] },
-=======
->>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
   { path: 'admin/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'admin/manage-accounts', component: ManageAccountsComponent, canActivate: [AuthGuard] },
   { path: 'admin/parents', component: ParentManagementComponent, canActivate: [AuthGuard] },
@@ -160,10 +154,7 @@ const routes: Routes = [
   { path: 'payroll/reports', component: PayrollReportsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'payroll' } },
   { path: 'payroll/loan-overview', component: LoanOverviewComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'payroll' } },
   { path: 'settings/payment-receipt-manager', component: PaymentReceiptManagerComponent, canActivate: [AuthGuard, AdminGuard] },
-<<<<<<< HEAD
   { path: 'admin/elearning', component: ElearningComponent, canActivate: [AuthGuard, AdminGuard] },
-=======
->>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
   { path: 'classes', component: ClassListComponent, canActivate: [AuthGuard] },
   { path: 'classes/lists', component: ClassListsComponent, canActivate: [AuthGuard] },
   { path: 'classes/new', component: ClassFormComponent, canActivate: [AuthGuard] },
@@ -183,11 +174,8 @@ const routes: Routes = [
   { path: 'timetable/generate', component: TimetableGenerateComponent, canActivate: [AuthGuard] },
   { path: 'student/report-card', component: StudentReportCardComponent, canActivate: [AuthGuard] },
   { path: 'student/invoice-statement', component: StudentInvoiceStatementComponent, canActivate: [AuthGuard] },
-<<<<<<< HEAD
   { path: 'eweb', component: EwebComponent, canActivate: [AuthGuard] },
   { path: 'student/esubmit', component: EsubmitComponent, canActivate: [AuthGuard] },
-=======
->>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
   { path: 'user-manual', component: UserManualComponent, canActivate: [AuthGuard] },
   { path: 'user-log', component: UserLogComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'help', redirectTo: '/user-manual', pathMatch: 'full' },
