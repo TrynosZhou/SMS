@@ -249,6 +249,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
       error: (err: any) => {
         this.loading = false;
         const msg = err.error?.message || '';
+<<<<<<< HEAD
         // Clear any stale data so we never show Mid-Term when End-Term fails.
         this.reportCard = null;
         this.inlinePdf = null;
@@ -257,6 +258,17 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
         if (err.status === 403) {
           this.error = msg || 'Report card access is restricted.';
         } else if (err.status === 404) {
+=======
+        if (err.status === 403) {
+          this.error = msg || 'Report card access is restricted.';
+        } else if (err.status === 404) {
+          const avail = err.error?.availableTypes;
+          if (avail?.length && !avail.includes(this.selectedExamType)) {
+            this.selectedExamType = avail[0];
+            setTimeout(() => this.generateAndPreview(), 400);
+            return;
+          }
+>>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
           this.error = msg || 'No report card found for the selected term and exam type.';
         } else {
           this.error = msg || 'Failed to load report card. Please try again.';

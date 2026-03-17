@@ -42,8 +42,13 @@ export class ReportCardComponent implements OnInit {
   filteredReportCards: any[] = [];
   classInfo: any = null;
   examTypes = [
+<<<<<<< HEAD
     { value: 'mid_term', label: 'Mid-Term' },
     { value: 'end_term', label: 'End-Term' }
+=======
+    { value: 'mid_term', label: 'mid_term' },
+    { value: 'end_erm', label: 'end_term' }
+>>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
   ];
   loading = false;
   error = '';
@@ -674,12 +679,15 @@ export class ReportCardComponent implements OnInit {
         console.error('Error message:', err.message);
         console.error('Error error:', err.error);
         
+<<<<<<< HEAD
         // Clear any previously generated report cards so we never show
         // Mid-Term data when End-Term fails (or vice versa).
         this.reportCards = [];
         this.filteredReportCards = [];
         this.classInfo = null;
 
+=======
+>>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
         if (err.status === 0) {
           this.error = 'Cannot connect to server. Please ensure the backend server is running.';
         } else if (err.status === 404) {

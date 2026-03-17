@@ -29,7 +29,11 @@
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^16.2.0",
+<<<<<<< HEAD
     "@angular/cli": "^16.2.16",
+=======
+    "@angular/cli": "^16.2.0",
+>>>>>>> 0a0a199c1f2947db9d1a0b24ba40d040883f145d
     "@angular/compiler-cli": "^16.2.0",
     "@types/jasmine": "^5.1.15",
     "@types/node": "^20.10.5",
