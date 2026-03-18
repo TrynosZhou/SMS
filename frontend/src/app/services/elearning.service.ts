@@ -40,6 +40,16 @@ export class ElearningService {
     return this.http.get<any[]>(`${this.apiUrl}/elearning/tasks/student`);
   }
 
+  /** Student: get a single assigned task by id. */
+  getStudentTaskById(taskId: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/elearning/tasks/student/${taskId}`);
+  }
+
+  /** Admin: all teacher tasks for a class. */
+  getAdminClassTasks(classId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/elearning/admin/class/${classId}/tasks`);
+  }
+
   /**
    * Student: submit a response (file or text) for a task.
    */

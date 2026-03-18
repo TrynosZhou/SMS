@@ -129,6 +129,94 @@ export const getStudentTasks = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const getStudentTaskById = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const { taskId } = req.params;
+    if (!taskId) {
+      return res.status(400).json({ message: 'taskId is required' });
+    }
+
+    // Resolve student similar to getStudentTasks (tolerant of role flags).
+    let student = req.user.student as Student | undefined;
+    if (!student) {
+      const studentRepo = AppDataSource.getRepository(Student);
+      student =
+        (await studentRepo.findOne({
+          where: { user: { id: req.user.id } },
+          relations: ['user'],
+        })) ||
+        (await studentRepo.findOne({
+          where: { studentNumber: req.user.username },
+          relations: ['user'],
+        })) ||
+        undefined;
+    }
+
+    if (!student) {
+      return res.status(403).json({ message: 'Only students can view assigned tasks' });
+    }
+
+    const taskRepo = AppDataSource.getRepository(ElearningTask);
+    const task = await taskRepo.findOne({
+      where: { id: taskId },
+      relations: ['classEntity', 'teacher', 'student'],
+    });
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const studentCanAccess =
+      task.classId === student.classId &&
+      (task.studentId === null || task.studentId === student.id);
+
+    if (!studentCanAccess) {
+      return res.status(403).json({ message: 'You are not allowed to access this task' });
+    }
+
+    return res.json(task);
+  } catch (error: any) {
+    console.error('Error loading student task by id:', error);
+    return res.status(500).json({ message: 'Failed to load task', error: error.message });
+  }
+};
+
+/** Admin / superadmin: all e-learning tasks for a class (monitoring). */
+export const getAdminClassTasks = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    const role = req.user.role;
+    if (role !== UserRole.ADMIN && role !== UserRole.SUPERADMIN) {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const { classId } = req.params;
+    if (!classId) {
+      return res.status(400).json({ message: 'classId is required' });
+    }
+
+    const repo = AppDataSource.getRepository(ElearningTask);
+    const tasks = await repo
+      .createQueryBuilder('task')
+      .leftJoinAndSelect('task.teacher', 'teacher')
+      .leftJoinAndSelect('task.student', 'student')
+      .where('task.classId = :classId', { classId })
+      .orderBy('task.createdAt', 'DESC')
+      .getMany();
+
+    return res.json(tasks);
+  } catch (error: any) {
+    console.error('Error loading admin class tasks:', error);
+    return res.status(500).json({ message: 'Failed to load tasks', error: error.message });
+  }
+};
+
 export const getTaskResponses = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user || req.user.role !== UserRole.TEACHER) {

@@ -49,6 +49,36 @@
   display: flex;
   justify-content: space-between;
   gap: 10px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.eweb-task-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
+  background: #fbfdff;
+}
+
+.eweb-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.eweb-open-btn {
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.eweb-open-btn:hover {
+  background: #e0e7ff;
 }
 
 .eweb-task-type {

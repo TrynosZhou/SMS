@@ -44,7 +44,12 @@ export class MarkAttendanceComponent implements OnInit {
     this.loadActiveTerm();
     // Set default date to today
     const today = new Date();
-    this.selectedDate = today.toISOString().split('T')[0];
+    this.selectedDate = this.toIsoDate(today);
+    // Enforce Mon–Fri only: if today is weekend, move to nearest school day
+    const normalized = this.normalizeToWeekday(this.selectedDate);
+    if (normalized !== this.selectedDate) {
+      this.selectedDate = normalized;
+    }
   }
 
   loadActiveTerm() {
@@ -188,8 +193,13 @@ export class MarkAttendanceComponent implements OnInit {
 
   onDateChange() {
     if (this.selectedClassId && this.selectedDate) {
-      // Show warning and avoid loading when weekend? We still load for viewing, but block submission.
-      if (this.isWeekendSelected()) {
+      // Enforce Mon–Fri only: if weekend selected, auto-correct to nearest weekday.
+      const normalized = this.normalizeToWeekday(this.selectedDate);
+      if (normalized !== this.selectedDate) {
+        this.selectedDate = normalized;
+        this.error = 'Weekends are not allowed. Date was moved to the nearest school day (Mon–Fri).';
+      } else if (this.isWeekendSelected()) {
+        // Fallback (should not happen because normalizeToWeekday handles it)
         this.error = 'You cannot mark attendance on weekends (Saturday or Sunday).';
       } else {
         this.error = '';
@@ -277,9 +287,57 @@ export class MarkAttendanceComponent implements OnInit {
 
   isWeekendSelected(): boolean {
     if (!this.selectedDate) return false;
-    const d = new Date(this.selectedDate + 'T00:00:00');
-    const day = d.getUTCDay();
+    const day = this.getIsoWeekdayUtc(this.selectedDate);
     return day === 0 || day === 6;
+  }
+
+  private toIsoDate(d: Date): string {
+    return d.toISOString().split('T')[0];
+  }
+
+  private fromIsoDate(iso: string): Date {
+    const { y, m, d } = this.parseIsoDateParts(iso);
+    // Create a Date at UTC midnight for stable weekday math
+    return new Date(Date.UTC(y, m - 1, d));
+  }
+
+  /**
+   * Enforce school days only (Mon–Fri).
+   * - Saturday → Friday (backward) or Monday (forward)
+   * - Sunday   → Friday (backward) or Monday (forward)
+   */
+  private normalizeToWeekday(iso: string, direction: 'forward' | 'backward' = 'forward'): string {
+    if (!iso) return iso;
+    const d = this.fromIsoDate(iso);
+    const day = d.getUTCDay(); // 0=Sun, 6=Sat (stable because d is UTC midnight)
+    if (day === 6) {
+      // Saturday
+      d.setUTCDate(d.getUTCDate() + (direction === 'forward' ? 2 : -1));
+      return this.toIsoDate(d);
+    }
+    if (day === 0) {
+      // Sunday
+      d.setUTCDate(d.getUTCDate() + (direction === 'forward' ? 1 : -2));
+      return this.toIsoDate(d);
+    }
+    return iso;
+  }
+
+  private parseIsoDateParts(iso: string): { y: number; m: number; d: number } {
+    const parts = String(iso || '').split('-').map(p => parseInt(p, 10));
+    if (parts.length !== 3 || parts.some(n => Number.isNaN(n))) {
+      // Fallback: let Date parse if format is unexpected
+      const dt = new Date(iso);
+      return { y: dt.getUTCFullYear(), m: dt.getUTCMonth() + 1, d: dt.getUTCDate() };
+    }
+    const [y, m, d] = parts;
+    return { y, m, d };
+  }
+
+  /** Returns 0..6 for Sun..Sat computed from YYYY-MM-DD without timezone shifting. */
+  private getIsoWeekdayUtc(iso: string): number {
+    const { y, m, d } = this.parseIsoDateParts(iso);
+    return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
   }
 
   // Statistics
@@ -362,15 +420,20 @@ export class MarkAttendanceComponent implements OnInit {
 
   // Date navigation
   navigateDate(days: number) {
-    const currentDate = new Date(this.selectedDate);
+    const currentDate = this.fromIsoDate(this.selectedDate);
     currentDate.setDate(currentDate.getDate() + days);
-    this.selectedDate = currentDate.toISOString().split('T')[0];
+    let nextIso = this.toIsoDate(currentDate);
+    // Skip weekends when navigating
+    nextIso = this.normalizeToWeekday(nextIso, days >= 0 ? 'forward' : 'backward');
+    this.selectedDate = nextIso;
     this.onDateChange();
   }
 
   goToToday() {
     const today = new Date();
-    this.selectedDate = today.toISOString().split('T')[0];
+    let iso = this.toIsoDate(today);
+    iso = this.normalizeToWeekday(iso);
+    this.selectedDate = iso;
     this.onDateChange();
   }
 

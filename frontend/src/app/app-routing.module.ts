@@ -73,6 +73,7 @@ import { EservicesComponent } from './components/teacher/eservices/eservices.com
 import { StudentResponsesComponent } from './components/teacher/student-responses/student-responses.component';
 import { EwebComponent } from './components/student/eweb/eweb.component';
 import { EsubmitComponent } from './components/student/esubmit/esubmit.component';
+import { BlankPageComponent } from './components/student/blank-page/blank-page.component';
 import { ParentInvoiceStatementComponent } from './components/parent/parent-invoice-statement/parent-invoice-statement.component';
 import { PayrollDashboardComponent } from './components/payroll/payroll-dashboard/payroll-dashboard.component';
 import { AncillaryStaffListComponent } from './components/payroll/ancillary-staff-list/ancillary-staff-list.component';
@@ -176,6 +177,7 @@ const routes: Routes = [
   { path: 'student/invoice-statement', component: StudentInvoiceStatementComponent, canActivate: [AuthGuard] },
   { path: 'eweb', component: EwebComponent, canActivate: [AuthGuard] },
   { path: 'student/esubmit', component: EsubmitComponent, canActivate: [AuthGuard] },
+  { path: 'student/blank_page/:taskId', component: BlankPageComponent, canActivate: [AuthGuard] },
   { path: 'user-manual', component: UserManualComponent, canActivate: [AuthGuard] },
   { path: 'user-log', component: UserLogComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'help', redirectTo: '/user-manual', pathMatch: 'full' },

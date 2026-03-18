@@ -92,6 +92,7 @@ import { EservicesComponent } from './components/teacher/eservices/eservices.com
 import { StudentResponsesComponent } from './components/teacher/student-responses/student-responses.component';
 import { EwebComponent } from './components/student/eweb/eweb.component';
 import { EsubmitComponent } from './components/student/esubmit/esubmit.component';
+import { BlankPageComponent } from './components/student/blank-page/blank-page.component';
 
 @NgModule({
   declarations: [
@@ -178,6 +179,7 @@ import { EsubmitComponent } from './components/student/esubmit/esubmit.component
     StudentResponsesComponent,
     EwebComponent,
     EsubmitComponent,
+    BlankPageComponent,
   ],
   imports: [
     BrowserModule,

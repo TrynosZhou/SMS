@@ -1,16 +1,34 @@
-.esub-page {
-  padding: 20px;
-}
+.esub-page { padding: 20px; }
 
-.esub-title {
-  margin: 0 0 4px 0;
-  font-size: 24px;
+.esub-hero {
+  position: relative;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #312e81 0%, #4f46e5 45%, #7c3aed 100%);
+  color: #fff;
+  box-shadow: 0 14px 36px rgba(79, 70, 229, 0.28);
 }
+.esub-hero-inner { padding: 18px 20px; }
+.esub-badge {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.15);
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+.esub-title { margin: 0 0 4px 0; font-size: 22px; font-weight: 800; }
 
 .esub-subtitle {
   margin: 0 0 16px 0;
   color: #555;
   font-size: 13px;
+  color: rgba(255,255,255,0.9);
 }
 
 .esub-card {
@@ -43,6 +61,114 @@
 
 .esub-field textarea {
   resize: vertical;
+}
+
+.answer-textarea {
+  min-height: 280px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.esub-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.counter {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.esub-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.esub-btn-secondary {
+  border: none;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s, opacity 0.15s;
+}
+
+.esub-btn-secondary:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+.esub-btn-secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.file-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #4338ca;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.esub-btn-remove {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.esub-btn-remove:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+}
+
+.esub-task-overview {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  font-size: 12px;
+  color: #111827;
+  font-weight: 700;
+}
+.chip.kind {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #4338ca;
 }
 
 .esub-field small {

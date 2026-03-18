@@ -1,102 +1,211 @@
-<div class="elearning-page">
-  <div class="elearning-header">
-    <h1>E-Learning Services</h1>
-    <p class="subtitle">
-      View classes and the assignments, quizzes and tests given to students.
-    </p>
-  </div>
+<div class="el-wrap" [class.dark-mode]="themeService.darkMode">
+  <!-- Hero -->
+  <header class="el-hero">
+    <div class="el-hero-bg"></div>
+    <div class="el-hero-inner">
+      <div class="el-hero-text">
+        <span class="el-badge">Admin · E-Learning</span>
+        <h1>E-Learning overview</h1>
+        <p class="el-lead">
+          Monitor exam-based activities and teacher portal tasks across every class in one place.
+        </p>
+      </div>
+      <div class="el-hero-actions">
+        <button type="button" class="el-btn el-btn-ghost" (click)="refresh()" [disabled]="loadingClasses || loadingContent">
+          <span class="el-btn-icon" [class.spin]="loadingContent">↻</span>
+          Refresh
+        </button>
+      </div>
+    </div>
+  </header>
 
-  <div class="elearning-layout">
-    <!-- Classes list -->
-    <aside class="classes-panel">
-      <h2 class="panel-title">Classes</h2>
-
-      <div *ngIf="loadingClasses" class="state-message">
-        Loading classes...
+  <div class="el-layout">
+    <!-- Classes sidebar -->
+    <aside class="el-panel el-classes">
+      <div class="el-panel-head">
+        <h2>Classes</h2>
+        <span class="el-count" *ngIf="classes.length">{{ filteredClasses.length }} shown</span>
+      </div>
+      <div class="el-search-wrap">
+        <span class="el-search-icon">🔍</span>
+        <input
+          type="search"
+          class="el-search"
+          placeholder="Search class…"
+          [(ngModel)]="classSearch"
+          (ngModelChange)="onClassSearchChange()"
+          aria-label="Search classes"
+        />
       </div>
 
-      <div *ngIf="!loadingClasses && classes.length === 0" class="state-message">
-        No classes found.
+      <div class="el-skeleton-list" *ngIf="loadingClasses">
+        <div class="el-sk" *ngFor="let _ of [1,2,3,4,5]"></div>
       </div>
 
-      <ul *ngIf="!loadingClasses && classes.length > 0" class="class-list">
+      <div class="el-empty" *ngIf="!loadingClasses && classes.length === 0">
+        <span class="el-empty-icon">🏫</span>
+        <p>No active classes found.</p>
+      </div>
+
+      <ul class="el-class-list" *ngIf="!loadingClasses && filteredClasses.length > 0">
         <li
-          *ngFor="let cls of classes"
+          *ngFor="let cls of filteredClasses"
           (click)="onSelectClass(cls)"
           [class.active]="selectedClass?.id === cls.id"
+          role="button"
+          tabindex="0"
+          (keydown.enter)="onSelectClass(cls)"
         >
-          <div class="class-name">
-            {{ cls.name || cls.className }}
+          <span class="el-class-dot"></span>
+          <div class="el-class-body">
+            <span class="el-class-name">{{ cls.name || cls.className }}</span>
+            <span class="el-class-meta" *ngIf="cls.form || cls.level">{{ cls.form || cls.level }}</span>
           </div>
-          <div class="class-meta" *ngIf="cls.form || cls.level">
-            {{ cls.form || cls.level }}
-          </div>
+          <span class="el-chevron">›</span>
         </li>
       </ul>
     </aside>
 
-    <!-- Activities for selected class -->
-    <section class="activities-panel">
-      <div *ngIf="selectedClass" class="panel-header">
-        <h2>
-          E-Learning for
-          <span class="class-label">
-            {{ selectedClass.name || selectedClass.className }}
-          </span>
-        </h2>
+    <!-- Main -->
+    <main class="el-main">
+      <div class="el-placeholder" *ngIf="!selectedClass && !loadingClasses">
+        <span class="el-placeholder-icon">👈</span>
+        <p>Select a class to view activities.</p>
       </div>
 
-      <div *ngIf="error" class="error-message">
-        {{ error }}
-      </div>
-
-      <div *ngIf="loadingContent" class="state-message">
-        Loading assignments and tests for this class...
-      </div>
-
-      <div *ngIf="!loadingContent && activities.length === 0 && !error" class="state-message">
-        No e-learning activities (assignments, quizzes or tests) have been recorded for this class yet.
-      </div>
-
-      <div *ngIf="!loadingContent && activities.length > 0" class="activities-list">
-        <div class="activity-card" *ngFor="let activity of activities">
-          <div class="activity-header">
-            <div class="activity-type">
-              {{ (activity.examType || activity.type) | titlecase }}
-            </div>
-            <div class="activity-title">
-              {{ activity.name || activity.title || 'Untitled activity' }}
-            </div>
+      <ng-container *ngIf="selectedClass">
+        <div class="el-toolbar">
+          <div class="el-toolbar-title">
+            <h2>{{ selectedClass.name || selectedClass.className }}</h2>
+            <p class="el-toolbar-sub">Exam activities + teacher portal tasks</p>
           </div>
-          <div class="activity-body">
-            <div class="activity-row">
-              <span class="label">Subject:</span>
-              <span class="value">
-                {{ activity.subject?.name || activity.subjectName || '—' }}
-              </span>
+          <div class="el-stat-chips">
+            <div class="el-chip el-chip-total">
+              <span class="el-chip-val">{{ activities.length }}</span>
+              <span class="el-chip-label">Total</span>
             </div>
-            <div class="activity-row">
-              <span class="label">Given on:</span>
-              <span class="value">
-                {{ activity.date || activity.createdAt | date:'mediumDate' }}
-              </span>
+            <div class="el-chip el-chip-exam">
+              <span class="el-chip-val">{{ examCount }}</span>
+              <span class="el-chip-label">Exams</span>
             </div>
-            <div class="activity-row" *ngIf="activity.dueDate">
-              <span class="label">Due date:</span>
-              <span class="value">
-                {{ activity.dueDate | date:'mediumDate' }}
-              </span>
-            </div>
-            <div class="activity-row" *ngIf="activity.term">
-              <span class="label">Term:</span>
-              <span class="value">
-                {{ activity.term }}
-              </span>
+            <div class="el-chip el-chip-portal">
+              <span class="el-chip-val">{{ taskCount }}</span>
+              <span class="el-chip-label">Portal</span>
             </div>
           </div>
         </div>
-      </div>
-    </section>
+
+        <div class="el-filters">
+          <div class="el-filter-row">
+            <div class="el-search-wrap el-search-wide">
+              <span class="el-search-icon">🔎</span>
+              <input
+                type="search"
+                class="el-search"
+                placeholder="Filter by title, subject, teacher…"
+                [(ngModel)]="activitySearch"
+                aria-label="Filter activities"
+              />
+            </div>
+            <select class="el-select" [(ngModel)]="sortOrder" aria-label="Sort order">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+            </select>
+          </div>
+          <div class="el-chips-row">
+            <span class="el-filter-label">Type</span>
+            <button type="button" class="el-pill" [class.on]="typeFilter === 'all'" (click)="typeFilter = 'all'">All</button>
+            <button type="button" class="el-pill" [class.on]="typeFilter === 'assignment'" (click)="typeFilter = 'assignment'">Assignments</button>
+            <button type="button" class="el-pill" [class.on]="typeFilter === 'quiz'" (click)="typeFilter = 'quiz'">Quizzes</button>
+            <button type="button" class="el-pill" [class.on]="typeFilter === 'test'" (click)="typeFilter = 'test'">Tests</button>
+            <button type="button" class="el-pill" [class.on]="typeFilter === 'notes'" (click)="typeFilter = 'notes'">Notes</button>
+          </div>
+          <div class="el-chips-row">
+            <span class="el-filter-label">Source</span>
+            <button type="button" class="el-pill" [class.on]="sourceFilter === 'all'" (click)="sourceFilter = 'all'">All sources</button>
+            <button type="button" class="el-pill" [class.on]="sourceFilter === 'exam'" (click)="sourceFilter = 'exam'">Exam system</button>
+            <button type="button" class="el-pill" [class.on]="sourceFilter === 'task'" (click)="sourceFilter = 'task'">Teacher portal</button>
+            <button
+              type="button"
+              class="el-btn el-btn-sm el-btn-outline"
+              (click)="copySummary()"
+              *ngIf="filteredActivities.length"
+            >
+              📋 Copy list
+            </button>
+            <span class="el-copy-toast" *ngIf="copyFeedback">{{ copyFeedback }}</span>
+          </div>
+        </div>
+
+        <div class="el-alert el-alert-error" *ngIf="error">{{ error }}</div>
+
+        <div class="el-grid-skel" *ngIf="loadingContent">
+          <div class="el-card-skel" *ngFor="let _ of [1,2,3,4,5,6]">
+            <div class="el-card-skel-bar"></div>
+            <div class="el-card-skel-line lg"></div>
+            <div class="el-card-skel-line"></div>
+            <div class="el-card-skel-line sm"></div>
+          </div>
+        </div>
+
+        <div class="el-empty el-empty-soft" *ngIf="!loadingContent && !error && filteredActivities.length === 0 && activities.length > 0">
+          <span class="el-empty-icon">🔍</span>
+          <p>No activities match your filters.</p>
+          <button type="button" class="el-link-btn" (click)="activitySearch = ''; typeFilter = 'all'; sourceFilter = 'all'">
+            Clear filters
+          </button>
+        </div>
+
+        <div class="el-empty el-empty-soft" *ngIf="!loadingContent && !error && activities.length === 0">
+          <span class="el-empty-icon">📭</span>
+          <p>No assignments, quizzes, tests, or portal tasks for this class yet.</p>
+        </div>
+
+        <div class="el-grid" *ngIf="!loadingContent && filteredActivities.length > 0">
+          <article
+            class="el-card"
+            *ngFor="let a of filteredActivities; let i = index"
+            [style.animation-delay.ms]="i * 40"
+            [ngClass]="kindClass(a.kind)"
+          >
+            <div class="el-card-accent"></div>
+            <div class="el-card-top">
+              <span class="el-card-icon">{{ kindIcon(a.kind) }}</span>
+              <div class="el-card-badges">
+                <span class="el-tag" [class.exam]="a.source === 'exam'" [class.portal]="a.source === 'task'">
+                  {{ a.source === 'exam' ? 'Exam' : 'Portal' }}
+                </span>
+                <span class="el-tag el-tag-kind">{{ a.kind | titlecase }}</span>
+              </div>
+            </div>
+            <h3 class="el-card-title">{{ a.title }}</h3>
+            <div class="el-card-meta">
+              <span *ngIf="a.subjectName" class="el-meta-item">📚 {{ a.subjectName }}</span>
+              <span *ngIf="a.teacherName" class="el-meta-item">👤 {{ a.teacherName }}</span>
+              <span *ngIf="a.audience" class="el-meta-item">👥 {{ a.audience }}</span>
+              <span *ngIf="a.term" class="el-meta-item">📅 {{ a.term }}</span>
+            </div>
+            <p class="el-card-desc" *ngIf="a.description">{{ a.description.length > 160 ? (a.description | slice:0:160) + '…' : a.description }}</p>
+            <div class="el-card-dates">
+              <span *ngIf="a.date" class="el-date">
+                <strong>Posted</strong> {{ a.date | date:'mediumDate' }}
+              </span>
+              <span *ngIf="a.dueDate" class="el-date due">
+                <strong>Due</strong> {{ a.dueDate | date:'mediumDate' }}
+              </span>
+            </div>
+            <a
+              *ngIf="a.fileUrl"
+              class="el-file-link"
+              [href]="fileHref(a.fileUrl)"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              📎 Open attachment
+            </a>
+          </article>
+        </div>
+      </ng-container>
+    </main>
   </div>
 </div>
-

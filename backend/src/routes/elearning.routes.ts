@@ -3,7 +3,15 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { authenticate } from '../middleware/auth';
-import { createTask, getMyTasks, getStudentTasks, getTaskResponses, submitResponse } from '../controllers/elearning.controller';
+import {
+  createTask,
+  getMyTasks,
+  getStudentTasks,
+  getStudentTaskById,
+  getTaskResponses,
+  submitResponse,
+  getAdminClassTasks
+} from '../controllers/elearning.controller';
 
 const router = Router();
 
@@ -26,6 +34,9 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// Admin: tasks by class (must be before /tasks/:taskId routes)
+router.get('/admin/class/:classId/tasks', authenticate, getAdminClassTasks);
+
 // Teacher endpoints
 router.post('/tasks', authenticate, upload.single('file'), createTask);
 router.get('/tasks/my', authenticate, getMyTasks);
@@ -33,6 +44,7 @@ router.get('/tasks/:taskId/responses', authenticate, getTaskResponses);
 
 // Student endpoints
 router.get('/tasks/student', authenticate, getStudentTasks);
+router.get('/tasks/student/:taskId', authenticate, getStudentTaskById);
 router.post('/tasks/:taskId/responses', authenticate, upload.single('file'), submitResponse);
 
 export default router;

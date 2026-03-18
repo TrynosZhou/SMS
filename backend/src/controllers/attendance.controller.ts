@@ -43,7 +43,12 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
 
     const attendanceDate = new Date(date);
     // Prevent weekend attendance marking (Saturday=6, Sunday=0)
-    const dayOfWeek = attendanceDate.getUTCDay();
+    // Compute weekday from the YYYY-MM-DD string to avoid timezone shifting
+    const [yy, mm, dd] = String(date).split('-').map(v => parseInt(v, 10));
+    const dayOfWeek =
+      Number.isFinite(yy) && Number.isFinite(mm) && Number.isFinite(dd)
+        ? new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay()
+        : attendanceDate.getUTCDay();
     if (dayOfWeek === 0 || dayOfWeek === 6) {
       return res.status(400).json({ message: 'Attendance cannot be marked on weekends (Saturday and Sunday).' });
     }

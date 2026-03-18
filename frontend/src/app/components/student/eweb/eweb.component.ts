@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ElearningService } from '../../../services/elearning.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-eweb',
@@ -11,7 +12,10 @@ export class EwebComponent implements OnInit {
   loading = false;
   error: string | null = null;
 
-  constructor(private elearningService: ElearningService) {}
+  constructor(
+    private elearningService: ElearningService,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
     this.loadTasks();
@@ -30,6 +34,20 @@ export class EwebComponent implements OnInit {
         this.error = 'Failed to load assigned work.';
       }
     });
+  }
+
+  openTask(t: any): void {
+    if (!t || !t.id) {
+      return;
+    }
+    const type = (t.type || '').toString().toLowerCase();
+    if (type === 'assignment' || type === 'test' || type === 'quiz') {
+      this.router.navigate(['/student/blank_page', t.id]);
+      return;
+    }
+    if (t.fileUrl) {
+      window.open(t.fileUrl, '_blank', 'noopener,noreferrer');
+    }
   }
 }
 

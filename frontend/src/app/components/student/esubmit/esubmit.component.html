@@ -1,13 +1,20 @@
 <div class="esub-page">
-  <h1 class="esub-title">Submit Task / Assignment</h1>
-  <p class="esub-subtitle">
-    Choose a task/assignment from your teacher and upload or type your response.
-  </p>
+  <header class="esub-hero">
+    <div class="esub-hero-inner">
+      <div class="esub-hero-text">
+        <span class="esub-badge">Student · E‑Learning</span>
+        <h1 class="esub-title">Submit Task / Assignment</h1>
+        <p class="esub-subtitle">
+          Choose a task from your teacher, write your answers on the expanded page, or attach a document.
+        </p>
+      </div>
+    </div>
+  </header>
 
   <section class="esub-card">
     <div class="esub-field">
       <label>Task / Assignment <span class="req">*</span></label>
-      <select [(ngModel)]="selectedTaskId">
+      <select [(ngModel)]="selectedTaskId" (ngModelChange)="onTaskChange()">
         <option value="">-- Select --</option>
         <option *ngFor="let t of tasks" [value]="t.id">
           {{ (t.type || 'assignment') | titlecase }} - {{ t.title || 'Untitled' }}
@@ -19,17 +26,54 @@
       </small>
     </div>
 
+    <div class="esub-task-overview" *ngIf="selectedTask">
+      <div class="chip kind">
+        {{ (selectedTask.type || 'assignment') | titlecase }}
+      </div>
+      <div class="chip" *ngIf="selectedTask.dueDate">
+        Due: {{ selectedTask.dueDate | date:'mediumDate' }}
+      </div>
+      <div class="chip" *ngIf="selectedTask.teacher">
+        Teacher: {{ selectedTask.teacher.fullName || (selectedTask.teacher.firstName + ' ' + selectedTask.teacher.lastName) }}
+      </div>
+    </div>
+
     <div class="esub-alert esub-alert-success" *ngIf="success">{{ success }}</div>
     <div class="esub-alert esub-alert-error" *ngIf="error">{{ error }}</div>
 
     <div class="esub-field">
-      <label>Your Answer (optional if you upload a file)</label>
-      <textarea [(ngModel)]="text" rows="5" placeholder="Type your answer here..."></textarea>
+      <div class="esub-field-row">
+        <label>Your Answer (optional if you upload a file)</label>
+        <span class="counter">{{ charCount | number }} / {{ maxChars | number }}</span>
+      </div>
+      <textarea
+        [(ngModel)]="text"
+        (ngModelChange)="onTextChange()"
+        [attr.maxLength]="maxChars"
+        rows="14"
+        class="answer-textarea"
+        placeholder="Type your answer here..."
+      ></textarea>
+      <div class="esub-actions">
+        <button type="button" class="esub-btn-secondary" (click)="clearAnswer()" [disabled]="!text">Clear</button>
+      </div>
     </div>
 
     <div class="esub-field">
       <label>Upload File (PDF / document)</label>
-      <input type="file" (change)="onFileChange($event)" />
+      <div class="file-row">
+        <input #fileInput type="file" (change)="onFileChange($event)" />
+        <span class="file-pill" *ngIf="file">{{ file.name }}</span>
+        <button
+          type="button"
+          class="esub-btn-remove"
+          *ngIf="file"
+          (click)="removeFile()"
+          title="Remove this file and choose another"
+        >
+          Remove file
+        </button>
+      </div>
       <small>If you upload a file, your teacher will see it as a PDF/document.</small>
     </div>
 

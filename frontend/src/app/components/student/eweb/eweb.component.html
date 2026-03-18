@@ -13,7 +13,7 @@
     </div>
 
     <div class="eweb-task-list" *ngIf="!loading && tasks.length > 0">
-      <div class="eweb-task-item" *ngFor="let t of tasks">
+      <div class="eweb-task-item" *ngFor="let t of tasks" (click)="openTask(t)" role="button" tabindex="0" (keydown.enter)="openTask(t)">
         <div class="eweb-task-main">
           <div class="eweb-task-type">
             {{ (t.type || 'assignment') | titlecase }}
@@ -30,9 +30,20 @@
           </div>
         </div>
         <div class="eweb-task-links">
-          <a *ngIf="t.fileUrl" [href]="t.fileUrl" target="_blank" rel="noopener noreferrer">
-            Download / Open File
-          </a>
+          <div class="eweb-actions">
+            <button type="button" class="eweb-open-btn" (click)="openTask(t); $event.stopPropagation()">
+              Open
+            </button>
+            <a
+              *ngIf="t.fileUrl"
+              [href]="t.fileUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              (click)="$event.stopPropagation()"
+            >
+              Attachment
+            </a>
+          </div>
           <span *ngIf="!t.fileUrl && t.description">
             {{ t.description }}
           </span>

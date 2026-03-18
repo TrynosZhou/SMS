@@ -1,0 +1,84 @@
+<div class="blank-page">
+  <div class="blank-topbar">
+    <button type="button" class="btn-back" (click)="backToTasks()">← Back</button>
+    <div class="topbar-title">
+      <div class="topbar-label">Blank Page</div>
+      <div class="topbar-name" *ngIf="task">{{ task.title || 'Untitled task' }}</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div *ngIf="loading" class="muted">Loading task…</div>
+    <div *ngIf="error" class="alert alert-error">{{ error }}</div>
+    <div *ngIf="success" class="alert alert-success">{{ success }}</div>
+
+    <ng-container *ngIf="!loading && task">
+      <div class="task-meta">
+        <div class="meta-row">
+          <span class="meta-label">Type</span>
+          <span class="meta-value">{{ (task.type || 'assignment') | titlecase }}</span>
+        </div>
+        <div class="meta-row" *ngIf="task.dueDate">
+          <span class="meta-label">Due date</span>
+          <span class="meta-value">{{ task.dueDate | date:'mediumDate' }}</span>
+        </div>
+        <div class="meta-row" *ngIf="task.teacher">
+          <span class="meta-label">Teacher</span>
+          <span class="meta-value">{{ task.teacher.fullName || (task.teacher.firstName + ' ' + task.teacher.lastName) }}</span>
+        </div>
+      </div>
+
+      <div class="task-body" *ngIf="task.description">
+        <h3>Questions / Instructions</h3>
+        <div class="instructions">{{ task.description }}</div>
+      </div>
+
+      <div class="task-body" *ngIf="task.fileUrl">
+        <h3>Attachment</h3>
+        <a class="file-link" [href]="task.fileUrl" target="_blank" rel="noopener noreferrer">
+          Open assignment/test file
+        </a>
+      </div>
+
+      <div class="answer">
+        <div class="answer-head">
+          <h3>Your Answer</h3>
+          <span class="answer-hint">Plenty of space — drag the corner to resize if you need more.</span>
+        </div>
+        <textarea
+          [(ngModel)]="answerText"
+          rows="18"
+          placeholder="Type your answers here…"
+          class="answer-text"
+        ></textarea>
+
+        <div class="upload-row">
+          <label class="file-label">
+            <input #fileInput type="file" (change)="onPickFile($event)" />
+            Attach file (optional)
+          </label>
+          <span class="file-pill" *ngIf="selectedFile">{{ selectedFile.name }}</span>
+          <button
+            type="button"
+            class="btn-remove-file"
+            *ngIf="selectedFile"
+            (click)="removeFile()"
+            title="Remove this file and choose another"
+          >
+            Remove file
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="btn-submit"
+          (click)="submit()"
+          [disabled]="submitting"
+        >
+          {{ submitting ? 'Submitting…' : 'Submit to teacher' }}
+        </button>
+      </div>
+    </ng-container>
+  </div>
+</div>
+
