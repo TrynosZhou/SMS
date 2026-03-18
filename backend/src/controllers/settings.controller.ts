@@ -159,7 +159,7 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
           },
           academicYear: new Date().getFullYear().toString(),
           currentTerm: `Term 1 ${new Date().getFullYear()}`,
-          currencySymbol: 'KES',
+          currencySymbol: '$',
           moduleAccess: ensureModuleAccessDefaults()
         });
         await settingsRepository.save(settings);
@@ -188,20 +188,35 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
           },
           academicYear: new Date().getFullYear().toString(),
           currentTerm: `Term 1 ${new Date().getFullYear()}`,
-          currencySymbol: 'KES',
+          currencySymbol: '$',
           moduleAccess: ensureModuleAccessDefaults()
         });
       }
-    } else if (settings.feesSettings) {
+    } else {
+      // Auto-migrate old default currency symbol
+      // If your system was previously using "KES" and you want "$" as the default,
+      // we update it once here so all pages reflect the new default immediately.
+      let didUpdate = false;
+      if ((settings.currencySymbol || '').trim() === 'KES') {
+        settings.currencySymbol = '$';
+        didUpdate = true;
+      }
+
       // Migrate old tuitionFee to both dayScholarTuitionFee and boarderTuitionFee
-      const feesSettingsAny = settings.feesSettings as any;
-      if (feesSettingsAny.tuitionFee !== undefined &&
-          settings.feesSettings.dayScholarTuitionFee === undefined &&
-          settings.feesSettings.boarderTuitionFee === undefined) {
-        const oldTuitionFee = feesSettingsAny.tuitionFee;
-        settings.feesSettings.dayScholarTuitionFee = oldTuitionFee;
-        settings.feesSettings.boarderTuitionFee = oldTuitionFee;
-        delete feesSettingsAny.tuitionFee;
+      if (settings.feesSettings) {
+        const feesSettingsAny = settings.feesSettings as any;
+        if (feesSettingsAny.tuitionFee !== undefined &&
+            settings.feesSettings.dayScholarTuitionFee === undefined &&
+            settings.feesSettings.boarderTuitionFee === undefined) {
+          const oldTuitionFee = feesSettingsAny.tuitionFee;
+          settings.feesSettings.dayScholarTuitionFee = oldTuitionFee;
+          settings.feesSettings.boarderTuitionFee = oldTuitionFee;
+          delete feesSettingsAny.tuitionFee;
+          didUpdate = true;
+        }
+      }
+
+      if (didUpdate) {
         await settingsRepository.save(settings);
       }
     }

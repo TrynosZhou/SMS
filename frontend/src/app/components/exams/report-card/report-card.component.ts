@@ -390,7 +390,7 @@ export class ReportCardComponent implements OnInit {
   loadSettings() {
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
-        this.currencySymbol = data.currencySymbol || 'KES';
+        this.currencySymbol = data.currencySymbol || '$';
         // Use Logo 1 (schoolLogo) for report card banner; fallback to Logo 2 if Logo 1 not set
         this.schoolLogo = this.normalizeImageSrc(data.schoolLogo || data.schoolLogo2 || null);
         this.safeSchoolLogoUrl = this.schoolLogo ? this.sanitizer.bypassSecurityTrustUrl(this.schoolLogo) : null;
@@ -432,7 +432,7 @@ export class ReportCardComponent implements OnInit {
       },
       error: (err: any) => {
         // Use default values if settings fail to load
-        this.currencySymbol = 'KES';
+        this.currencySymbol = '$';
         this.headmasterName = '';
         this.schoolWidePhrases = [];
         this.gradeThresholds = {

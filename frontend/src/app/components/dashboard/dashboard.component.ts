@@ -57,7 +57,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   studentBalance: number = 0;
   loadingBalance = false;
   activeTerm: string = '';
-  currencySymbol: string = 'KES';
+  currencySymbol: string = '$';
   private studentDataRetryCount = 0;
   private readonly MAX_STUDENT_DATA_RETRIES = 3;
   
@@ -215,7 +215,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.schoolLogo = data.schoolLogo || null;
         this.schoolLogo2 = data.schoolLogo2 || null;
         this.moduleAccess = data.moduleAccess || {};
-        this.currencySymbol = data.currencySymbol || 'KES';
+        this.currencySymbol = data.currencySymbol || '$';
         
         // Update module access service with latest settings
         if (data.moduleAccess) {

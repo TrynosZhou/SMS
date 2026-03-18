@@ -95,7 +95,7 @@ export class Settings {
   termEndDate: Date | null; // Closing day of the term
 
   // Currency Symbol
-  @Column({ type: 'varchar', default: 'KES' })
+  @Column({ type: 'varchar', default: '$' })
   currencySymbol: string; // e.g., "KES", "$", "€", "£"
 
   /** When true, Head Teacher (universal teacher) account can be created and used; access controlled by moduleAccess.universalTeacher */

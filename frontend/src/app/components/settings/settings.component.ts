@@ -57,7 +57,7 @@ export class SettingsComponent implements OnInit {
     currentTerm: `Term 1 ${new Date().getFullYear()}`,
     schoolLogo: null,
     schoolLogo2: null,
-    currencySymbol: 'KES',
+    currencySymbol: '$',
     universalTeacherEnabled: false,
     moduleAccess: {
       universalTeacher: {
@@ -425,7 +425,7 @@ export class SettingsComponent implements OnInit {
           this.settings.classLevels = [];
         }
         if (!this.settings.currencySymbol) {
-          this.settings.currencySymbol = 'KES';
+          this.settings.currencySymbol = '$';
         }
         if (!this.settings.currentTerm) {
           const currentYear = new Date().getFullYear();
@@ -1199,7 +1199,7 @@ export class SettingsComponent implements OnInit {
 
     // Ensure currencySymbol is set and not empty
     if (!this.settings.currencySymbol || this.settings.currencySymbol.trim() === '') {
-      this.settings.currencySymbol = 'KES';
+      this.settings.currencySymbol = '$';
     }
 
     // Ensure payrollSettings rates are numbers

@@ -43,7 +43,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
   schoolName = '';
   schoolLogo: string | null = null;
   safeSchoolLogoUrl: SafeUrl | null = null;
-  currencySymbol = 'KES';
+  currencySymbol = '$';
 
   // Inline PDF preview
   inlinePdf: SafeResourceUrl | null = null;
@@ -111,7 +111,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
       next: (data: any) => {
         this.headmasterName = data.headmasterName || '';
         this.schoolName     = data.schoolName || '';
-        this.currencySymbol = data.currencySymbol || 'KES';
+        this.currencySymbol = data.currencySymbol || '$';
         this.schoolLogo = this.normalizeImageSrc(data.schoolLogo || data.schoolLogo2 || null);
         this.safeSchoolLogoUrl = this.schoolLogo
           ? this.sanitizer.bypassSecurityTrustUrl(this.schoolLogo) : null;
