@@ -9,8 +9,12 @@ import { Router } from '@angular/router';
 })
 export class EwebComponent implements OnInit {
   tasks: any[] = [];
+  marked: any[] = [];
+  activeTab: 'assigned' | 'marked' = 'assigned';
   loading = false;
+  loadingMarked = false;
   error: string | null = null;
+  markedError: string | null = null;
 
   constructor(
     private elearningService: ElearningService,
@@ -19,6 +23,7 @@ export class EwebComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadTasks();
+    this.loadMarked();
   }
 
   loadTasks(): void {
@@ -36,6 +41,25 @@ export class EwebComponent implements OnInit {
     });
   }
 
+  loadMarked(): void {
+    this.loadingMarked = true;
+    this.markedError = null;
+    this.elearningService.getStudentResponses(true).subscribe({
+      next: rows => {
+        this.loadingMarked = false;
+        this.marked = Array.isArray(rows) ? rows : [];
+      },
+      error: () => {
+        this.loadingMarked = false;
+        this.markedError = 'Failed to load marked scripts.';
+      },
+    });
+  }
+
+  setTab(tab: 'assigned' | 'marked'): void {
+    this.activeTab = tab;
+  }
+
   openTask(t: any): void {
     if (!t || !t.id) {
       return;
@@ -47,6 +71,13 @@ export class EwebComponent implements OnInit {
     }
     if (t.fileUrl) {
       window.open(t.fileUrl, '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  openMarkedScript(r: any): void {
+    const url = r?.feedbackFileUrl;
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   }
 }

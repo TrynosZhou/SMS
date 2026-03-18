@@ -9,7 +9,10 @@ import {
   getStudentTasks,
   getStudentTaskById,
   getTaskResponses,
+  getResponseByIdForTeacher,
+  markResponse,
   submitResponse,
+  getStudentResponses,
   getAdminClassTasks
 } from '../controllers/elearning.controller';
 
@@ -46,6 +49,11 @@ router.get('/tasks/:taskId/responses', authenticate, getTaskResponses);
 router.get('/tasks/student', authenticate, getStudentTasks);
 router.get('/tasks/student/:taskId', authenticate, getStudentTaskById);
 router.post('/tasks/:taskId/responses', authenticate, upload.single('file'), submitResponse);
+router.get('/responses/student', authenticate, getStudentResponses);
+
+// Teacher marking endpoints (must be AFTER /responses/student so it doesn't match :responseId="student")
+router.get('/responses/:responseId', authenticate, getResponseByIdForTeacher);
+router.put('/responses/:responseId/mark', authenticate, upload.single('file'), markResponse);
 
 export default router;
 

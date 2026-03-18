@@ -21,6 +21,32 @@
   padding: 16px;
 }
 
+.eweb-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 10px;
+}
+
+.eweb-tab {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.eweb-tab.active {
+  border: none;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);
+}
+
 .eweb-alert {
   margin-bottom: 8px;
   padding: 8px 10px;
@@ -109,6 +135,43 @@
 }
 
 .eweb-task-links a:hover {
+  text-decoration: underline;
+}
+
+.eweb-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.eweb-table th,
+.eweb-table td {
+  padding: 10px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  vertical-align: top;
+}
+
+.eweb-table th {
+  background: #f9fafb;
+  font-weight: 800;
+}
+
+.eweb-small {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.eweb-link {
+  color: #2563eb;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.eweb-link:hover {
   text-decoration: underline;
 }
 

@@ -5,51 +5,105 @@
   </p>
 
   <section class="eweb-card">
-    <div *ngIf="error" class="eweb-alert">{{ error }}</div>
-    <div *ngIf="loading" class="eweb-muted">Loading your work…</div>
-
-    <div *ngIf="!loading && tasks.length === 0 && !error" class="eweb-muted">
-      No e-learning tasks have been assigned to you yet.
+    <div class="eweb-tabs">
+      <button type="button" class="eweb-tab" [class.active]="activeTab === 'assigned'" (click)="setTab('assigned')">
+        Assigned Work
+      </button>
+      <button type="button" class="eweb-tab" [class.active]="activeTab === 'marked'" (click)="setTab('marked')">
+        Marked Scripts
+      </button>
     </div>
 
-    <div class="eweb-task-list" *ngIf="!loading && tasks.length > 0">
-      <div class="eweb-task-item" *ngFor="let t of tasks" (click)="openTask(t)" role="button" tabindex="0" (keydown.enter)="openTask(t)">
-        <div class="eweb-task-main">
-          <div class="eweb-task-type">
-            {{ (t.type || 'assignment') | titlecase }}
+    <!-- TAB 1: Assigned Work (same info as before) -->
+    <ng-container *ngIf="activeTab === 'assigned'">
+      <div *ngIf="error" class="eweb-alert">{{ error }}</div>
+      <div *ngIf="loading" class="eweb-muted">Loading your work…</div>
+
+      <div *ngIf="!loading && tasks.length === 0 && !error" class="eweb-muted">
+        No e-learning tasks have been assigned to you yet.
+      </div>
+
+      <div class="eweb-task-list" *ngIf="!loading && tasks.length > 0">
+        <div class="eweb-task-item" *ngFor="let t of tasks" (click)="openTask(t)" role="button" tabindex="0" (keydown.enter)="openTask(t)">
+          <div class="eweb-task-main">
+            <div class="eweb-task-type">
+              {{ (t.type || 'assignment') | titlecase }}
+            </div>
+            <div class="eweb-task-title">
+              {{ t.title || 'Untitled Task' }}
+            </div>
+            <div class="eweb-task-meta">
+              <span>Class: {{ t.class?.name || t.className || '—' }}</span>
+              <span *ngIf="t.teacher">
+                Teacher: {{ t.teacher.fullName || (t.teacher.firstName + ' ' + t.teacher.lastName) }}
+              </span>
+              <span *ngIf="t.dueDate">Due: {{ t.dueDate | date:'mediumDate' }}</span>
+            </div>
           </div>
-          <div class="eweb-task-title">
-            {{ t.title || 'Untitled Task' }}
-          </div>
-          <div class="eweb-task-meta">
-            <span>Class: {{ t.class?.name || t.className || '—' }}</span>
-            <span *ngIf="t.teacher">
-              Teacher: {{ t.teacher.fullName || (t.teacher.firstName + ' ' + t.teacher.lastName) }}
+          <div class="eweb-task-links">
+            <div class="eweb-actions">
+              <button type="button" class="eweb-open-btn" (click)="openTask(t); $event.stopPropagation()">
+                Open
+              </button>
+              <a
+                *ngIf="t.fileUrl"
+                [href]="t.fileUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                (click)="$event.stopPropagation()"
+              >
+                Attachment
+              </a>
+            </div>
+            <span *ngIf="!t.fileUrl && t.description">
+              {{ t.description }}
             </span>
-            <span *ngIf="t.dueDate">Due: {{ t.dueDate | date:'mediumDate' }}</span>
           </div>
-        </div>
-        <div class="eweb-task-links">
-          <div class="eweb-actions">
-            <button type="button" class="eweb-open-btn" (click)="openTask(t); $event.stopPropagation()">
-              Open
-            </button>
-            <a
-              *ngIf="t.fileUrl"
-              [href]="t.fileUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              (click)="$event.stopPropagation()"
-            >
-              Attachment
-            </a>
-          </div>
-          <span *ngIf="!t.fileUrl && t.description">
-            {{ t.description }}
-          </span>
         </div>
       </div>
-    </div>
+    </ng-container>
+
+    <!-- TAB 2: Marked Scripts -->
+    <ng-container *ngIf="activeTab === 'marked'">
+      <div *ngIf="markedError" class="eweb-alert">{{ markedError }}</div>
+      <div *ngIf="loadingMarked" class="eweb-muted">Loading marked scripts…</div>
+
+      <div *ngIf="!loadingMarked && marked.length === 0 && !markedError" class="eweb-muted">
+        No marked scripts yet. When your teacher marks your work and uploads a marked script, it will appear here.
+      </div>
+
+      <table class="eweb-table" *ngIf="!loadingMarked && marked.length > 0">
+        <thead>
+          <tr>
+            <th>Task</th>
+            <th>Submitted</th>
+            <th>Score</th>
+            <th>Marked Script</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of marked">
+            <td>
+              {{ r.task?.title || 'Untitled Task' }}
+              <div class="eweb-small" *ngIf="r.task?.teacher">
+                Teacher: {{ r.task.teacher.fullName || (r.task.teacher.firstName + ' ' + r.task.teacher.lastName) }}
+              </div>
+              <div class="eweb-small" *ngIf="r.feedbackText">
+                Feedback: {{ r.feedbackText }}
+              </div>
+            </td>
+            <td>{{ r.submittedAt | date:'mediumDate' }}</td>
+            <td>{{ r.score === null || r.score === undefined ? '—' : r.score }}</td>
+            <td>
+              <a *ngIf="r.feedbackFileUrl" class="eweb-link" (click)="openMarkedScript(r)">
+                View marked script
+              </a>
+              <span *ngIf="!r.feedbackFileUrl">—</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </ng-container>
   </section>
 </div>
 

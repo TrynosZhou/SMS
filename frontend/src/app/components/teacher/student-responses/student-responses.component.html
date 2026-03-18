@@ -26,6 +26,7 @@
           <th>Student</th>
           <th>Submitted On</th>
           <th>Response</th>
+          <th>Mark</th>
         </tr>
       </thead>
       <tbody>
@@ -41,6 +42,11 @@
             <span *ngIf="!r.fileUrl && r.text">
               {{ r.text }}
             </span>
+          </td>
+          <td>
+            <a [routerLink]="['/teacher/mark-response', r.id]" class="sr-mark-link">
+              Open & Mark
+            </a>
           </td>
         </tr>
       </tbody>

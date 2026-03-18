@@ -33,6 +33,16 @@ export class ElearningService {
     return this.http.get<any[]>(`${this.apiUrl}/elearning/tasks/${taskId}/responses`);
   }
 
+  /** Teacher: get a single response (with task & student). */
+  getResponseById(responseId: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/elearning/responses/${responseId}`);
+  }
+
+  /** Teacher: mark a student response (score + feedback + optional file). */
+  markResponse(responseId: string, payload: FormData): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/elearning/responses/${responseId}/mark`, payload);
+  }
+
   /**
    * Student: list tasks assigned to the current student.
    */
@@ -55,6 +65,12 @@ export class ElearningService {
    */
   submitResponse(taskId: string, payload: FormData): Observable<any> {
     return this.http.post(`${this.apiUrl}/elearning/tasks/${taskId}/responses`, payload);
+  }
+
+  /** Student: list my submitted responses (optionally only those marked). */
+  getStudentResponses(markedOnly = false): Observable<any[]> {
+    const params = markedOnly ? new HttpParams().set('marked', 'true') : undefined;
+    return this.http.get<any[]>(`${this.apiUrl}/elearning/responses/student`, { params });
   }
 }
 

@@ -71,6 +71,7 @@ import { PaymentReceiptManagerComponent } from './components/settings/payment-re
 import { ElearningComponent } from './components/admin/elearning/elearning.component';
 import { EservicesComponent } from './components/teacher/eservices/eservices.component';
 import { StudentResponsesComponent } from './components/teacher/student-responses/student-responses.component';
+import { MarkResponseComponent } from './components/teacher/mark-response/mark-response.component';
 import { EwebComponent } from './components/student/eweb/eweb.component';
 import { EsubmitComponent } from './components/student/esubmit/esubmit.component';
 import { BlankPageComponent } from './components/student/blank-page/blank-page.component';
@@ -112,6 +113,7 @@ const routes: Routes = [
   { path: 'teacher/my-classes', component: MyClassesComponent, canActivate: [AuthGuard] },
   { path: 'teacher/eservices', component: EservicesComponent, canActivate: [AuthGuard] },
   { path: 'teacher/student-responses', component: StudentResponsesComponent, canActivate: [AuthGuard] },
+  { path: 'teacher/mark-response/:responseId', component: MarkResponseComponent, canActivate: [AuthGuard] },
   { path: 'admin/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'admin/manage-accounts', component: ManageAccountsComponent, canActivate: [AuthGuard] },
   { path: 'admin/parents', component: ParentManagementComponent, canActivate: [AuthGuard] },

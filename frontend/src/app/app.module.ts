@@ -90,6 +90,7 @@ import { LoanOverviewComponent } from './components/payroll/loan-overview/loan-o
 import { ElearningComponent } from './components/admin/elearning/elearning.component';
 import { EservicesComponent } from './components/teacher/eservices/eservices.component';
 import { StudentResponsesComponent } from './components/teacher/student-responses/student-responses.component';
+import { MarkResponseComponent } from './components/teacher/mark-response/mark-response.component';
 import { EwebComponent } from './components/student/eweb/eweb.component';
 import { EsubmitComponent } from './components/student/esubmit/esubmit.component';
 import { BlankPageComponent } from './components/student/blank-page/blank-page.component';
@@ -177,6 +178,7 @@ import { BlankPageComponent } from './components/student/blank-page/blank-page.c
     ElearningComponent,
     EservicesComponent,
     StudentResponsesComponent,
+    MarkResponseComponent,
     EwebComponent,
     EsubmitComponent,
     BlankPageComponent,

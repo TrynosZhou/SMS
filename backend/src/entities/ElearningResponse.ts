@@ -29,5 +29,21 @@ export class ElearningResponse {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   submittedAt: Date;
+
+  // Teacher marking / feedback
+  @Column({ type: 'int', nullable: true })
+  score: number | null;
+
+  @Column({ type: 'text', nullable: true })
+  feedbackText: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  feedbackFileUrl: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  markedAt: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  markedByTeacherId: string | null;
 }
 

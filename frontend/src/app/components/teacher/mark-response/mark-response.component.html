@@ -1,0 +1,73 @@
+<div class="mr-page">
+  <div class="mr-topbar">
+    <button type="button" class="mr-back" (click)="back()">← Back</button>
+    <div class="mr-title">
+      <div class="mr-kicker">Teacher · Mark response</div>
+      <div class="mr-heading" *ngIf="response">
+        {{ response.task?.title || 'Task' }} — {{ response.student?.firstName }} {{ response.student?.lastName }}
+      </div>
+    </div>
+  </div>
+
+  <div class="mr-card">
+    <div *ngIf="loading" class="mr-muted">Loading response…</div>
+    <div *ngIf="error" class="mr-alert mr-alert-error">{{ error }}</div>
+    <div *ngIf="success" class="mr-alert mr-alert-success">{{ success }}</div>
+
+    <ng-container *ngIf="!loading && response">
+      <div class="mr-meta">
+        <div class="mr-chip">
+          <span class="k">Submitted</span>
+          <span class="v">{{ response.submittedAt | date:'medium' }}</span>
+        </div>
+        <div class="mr-chip" *ngIf="response.task?.type">
+          <span class="k">Type</span>
+          <span class="v">{{ (response.task.type) | titlecase }}</span>
+        </div>
+        <div class="mr-chip" *ngIf="response.task?.dueDate">
+          <span class="k">Due</span>
+          <span class="v">{{ response.task.dueDate | date:'mediumDate' }}</span>
+        </div>
+      </div>
+
+      <div class="mr-section">
+        <h3>Student answer</h3>
+        <div class="mr-answer" *ngIf="response.text">{{ response.text }}</div>
+        <a class="mr-link" *ngIf="response.fileUrl" [href]="response.fileUrl" target="_blank" rel="noopener noreferrer">
+          Open student attachment
+        </a>
+        <div class="mr-muted" *ngIf="!response.text && !response.fileUrl">No text/file was submitted.</div>
+      </div>
+
+      <div class="mr-section">
+        <h3>Mark & feedback (send back to student)</h3>
+        <div class="mr-grid">
+          <div class="mr-field">
+            <label>Score (optional)</label>
+            <input type="number" [(ngModel)]="score" min="0" class="mr-input" placeholder="e.g. 20" />
+          </div>
+          <div class="mr-field span2">
+            <label>Feedback</label>
+            <textarea [(ngModel)]="feedbackText" rows="8" class="mr-textarea" placeholder="Write feedback…"></textarea>
+          </div>
+          <div class="mr-field span2">
+            <label>Upload marked script (optional)</label>
+            <div class="mr-file-row">
+              <input #fileInput type="file" (change)="onPickFile($event)" />
+              <span class="mr-pill" *ngIf="feedbackFile">{{ feedbackFile.name }}</span>
+              <button type="button" class="mr-remove" *ngIf="feedbackFile" (click)="removeFile()">Remove file</button>
+            </div>
+            <a class="mr-link" *ngIf="response.feedbackFileUrl" [href]="response.feedbackFileUrl" target="_blank" rel="noopener noreferrer">
+              Open previously sent feedback file
+            </a>
+          </div>
+        </div>
+
+        <button type="button" class="mr-save" (click)="save()" [disabled]="saving">
+          {{ saving ? 'Saving…' : 'Save marking & send to student' }}
+        </button>
+      </div>
+    </ng-container>
+  </div>
+</div>
+
