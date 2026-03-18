@@ -32,6 +32,7 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
   private logoutReasonKey = 'logoutReason';
+  private readonly studentPortalKey = 'studentPortalStudent';
   private inactivityTimeoutMs = 30 * 60 * 1000;
   private inactivityTimerId: any = null;
   private lastActivityKey = 'lastActivityTimestamp';
@@ -115,6 +116,7 @@ export class AuthService {
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user');
     sessionStorage.removeItem('sessionId');
+    sessionStorage.removeItem(this.studentPortalKey);
     this.currentUserSubject.next(null);
     this.clearInactivityTimer();
     this.router.navigate(['/login']);
@@ -154,6 +156,43 @@ export class AuthService {
 
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;
+  }
+
+  isStudentPortalActive(): boolean {
+    return !!this.getStudentPortalStudentId();
+  }
+
+  /** Student id to impersonate (parent-only feature). */
+  getStudentPortalStudentId(): string | null {
+    try {
+      const raw = sessionStorage.getItem(this.studentPortalKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const id = String(parsed?.id || '').trim();
+      return id || null;
+    } catch {
+      return null;
+    }
+  }
+
+  getStudentPortalStudent(): any | null {
+    try {
+      const raw = sessionStorage.getItem(this.studentPortalKey);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  /** Enter "Act as student" mode for a linked student. */
+  enterStudentPortal(student: any): void {
+    if (!student?.id) return;
+    sessionStorage.setItem(this.studentPortalKey, JSON.stringify(student));
+  }
+
+  exitStudentPortal(): void {
+    sessionStorage.removeItem(this.studentPortalKey);
   }
 
   setCurrentUser(user: User): void {

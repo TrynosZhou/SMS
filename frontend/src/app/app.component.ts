@@ -137,8 +137,12 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.authService.hasRole('parent');
   }
 
+  isActingAsStudent(): boolean {
+    return this.authService.isStudentPortalActive();
+  }
+
   isStudent(): boolean {
-    return this.authService.hasRole('student');
+    return this.authService.hasRole('student') || this.isActingAsStudent();
   }
 
   isTeacher(): boolean {
@@ -194,6 +198,11 @@ export class AppComponent implements OnInit, OnDestroy {
       credentials: 'include',
       headers: { 'Authorization': `Bearer ${this.authService.getToken() || ''}` }
     }).finally(() => this.authService.logout());
+  }
+
+  exitStudentPortal(): void {
+    this.authService.exitStudentPortal();
+    this.router.navigate(['/parent/dashboard']).catch(() => {});
   }
 
   toggleSidebar(): void {

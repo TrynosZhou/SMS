@@ -23,6 +23,14 @@
       <img *ngIf="schoolLogo2" [src]="schoolLogo2" alt="School Logo" class="top-navbar-logo" />
     </div>
     <div class="top-navbar-actions">
+      <button
+        *ngIf="isActingAsStudent()"
+        type="button"
+        class="btn btn-secondary"
+        (click)="exitStudentPortal()"
+        title="Return to parent dashboard">
+        <span>Exit Student Mode</span>
+      </button>
       <button type="button" class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="themeService.darkMode ? 'Switch to light mode' : 'Switch to dark mode'" [title]="themeService.darkMode ? 'Light mode' : 'Dark mode'">
         <span class="theme-icon" *ngIf="!themeService.darkMode">🌙</span>
         <span class="theme-icon" *ngIf="themeService.darkMode">☀️</span>
@@ -36,12 +44,12 @@
 
 <!-- Mobile overlay for staff sidebar drawer (Teachers/Admin/SuperAdmin) -->
 <div class="mobile-sidebar-overlay"
-     *ngIf="isAuthenticated() && !isParent()"
+     *ngIf="isAuthenticated() && (!isParent() || isActingAsStudent())"
      (click)="closeMobileMenu()"
      [class.show]="mobileMenuOpen"></div>
 
 <!-- Collapsible Sidebar -->
-<aside class="sidebar" [class.collapsed]="sidebarCollapsed" [class.mobile-open]="mobileMenuOpen" *ngIf="isAuthenticated() && !isParent()">
+<aside class="sidebar" [class.collapsed]="sidebarCollapsed" [class.mobile-open]="mobileMenuOpen" *ngIf="isAuthenticated() && (!isParent() || isActingAsStudent())">
   <div class="sidebar-content">
     <nav class="sidebar-nav">
       <!-- Student-specific sidebar (only for students) -->
@@ -393,7 +401,7 @@
       <div class="sidebar-menu" *ngIf="isTeacher() && canAccessModule('recordBook')">
         <div class="sidebar-menu-header" (click)="toggleMenu('recordKeeping')">
           <span class="sidebar-icon">💻</span>
-          <span class="sidebar-text">E-Learning</span>
+          <span class="sidebar-text">E-Learning Manager</span>
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('recordKeeping')">▼</span>
         </div>
         <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('recordKeeping')">
@@ -468,7 +476,7 @@
 <!-- Parent Navigation (Mobile) -->
 <div class="mobile-sidebar" 
      [class.open]="mobileMenuOpen" 
-     *ngIf="isAuthenticated() && isParent()">
+     *ngIf="isAuthenticated() && isParent() && !isActingAsStudent()">
   <!-- Overlay -->
   <div class="mobile-sidebar-overlay" 
        (click)="closeMobileMenu()"
@@ -496,6 +504,13 @@
         <span class="nav-icon">🏠</span>
         <span>Parent Dashboard</span>
       </a>
+      <a routerLink="/parent/student-portal"
+         routerLinkActive="active"
+         class="mobile-nav-link"
+         (click)="closeMobileMenu()">
+        <span class="nav-icon">🎓</span>
+        <span>Student Portal</span>
+      </a>
     </nav>
 
     <!-- Mobile Logout Button -->
@@ -512,7 +527,7 @@
 <button class="mobile-menu-toggle" 
         (click)="toggleMobileMenu()" 
         aria-label="Toggle menu"
-        *ngIf="isAuthenticated() && isParent()">
+        *ngIf="isAuthenticated() && isParent() && !isActingAsStudent()">
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <line x1="3" y1="12" x2="21" y2="12" *ngIf="!mobileMenuOpen"></line>
     <line x1="3" y1="6" x2="21" y2="6" *ngIf="!mobileMenuOpen"></line>

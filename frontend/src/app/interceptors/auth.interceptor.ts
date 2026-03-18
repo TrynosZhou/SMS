@@ -70,9 +70,12 @@ export class AuthInterceptor implements HttpInterceptor {
         update.url = cleanedUrl;
       }
       if (requiresAuth && token) {
-        update.setHeaders = {
-          Authorization: `Bearer ${token}`
-        };
+        const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+        const actingStudentId = this.authService.getStudentPortalStudentId();
+        if (actingStudentId) {
+          headers['x-student-id'] = actingStudentId;
+        }
+        update.setHeaders = headers;
       }
       authReq = req.clone(update);
     }

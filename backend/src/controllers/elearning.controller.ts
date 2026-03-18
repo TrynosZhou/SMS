@@ -5,6 +5,58 @@ import { ElearningResponse } from '../entities/ElearningResponse';
 import { AuthRequest } from '../middleware/auth';
 import { UserRole } from '../entities/User';
 import { Student } from '../entities/Student';
+import { ParentStudent } from '../entities/ParentStudent';
+import { Parent } from '../entities/Parent';
+
+async function resolveStudentForRequest(req: AuthRequest): Promise<Student | null> {
+  if (!req.user) return null;
+
+  // Parent acting as a linked student (Student Portal)
+  const actingStudentIdRaw = (req.headers['x-student-id'] as any) ?? (req.headers['X-Student-Id'] as any);
+  const actingStudentId = String(actingStudentIdRaw || '').trim();
+  if (actingStudentId && req.user.role === UserRole.PARENT) {
+    const parentRepo = AppDataSource.getRepository(Parent);
+    const parentStudentRepo = AppDataSource.getRepository(ParentStudent);
+    const studentRepo = AppDataSource.getRepository(Student);
+
+    let parent = req.user.parent as Parent | undefined;
+    if (!parent) {
+      parent = (await parentRepo.findOne({ where: { userId: req.user.id } })) || undefined;
+    }
+    if (!parent) return null;
+
+    const link = await parentStudentRepo.findOne({
+      where: { parentId: parent.id, studentId: actingStudentId },
+    });
+    if (!link) return null;
+
+    const student = await studentRepo.findOne({
+      where: { id: actingStudentId },
+      relations: ['user', 'classEntity'],
+    });
+    return student || null;
+  }
+
+  // Normal student token flow: resolve the student associated with this user.
+  let student = req.user.student as Student | undefined;
+
+  // If middleware did not attach student, try to look it up by userId or username.
+  if (!student) {
+    const studentRepo = AppDataSource.getRepository(Student);
+    student =
+      (await studentRepo.findOne({
+        where: { user: { id: req.user.id } },
+        relations: ['user', 'classEntity'],
+      })) ||
+      (await studentRepo.findOne({
+        where: { studentNumber: req.user.username },
+        relations: ['user', 'classEntity'],
+      })) ||
+      undefined;
+  }
+
+  return student || null;
+}
 
 export const createTask = async (req: AuthRequest, res: Response) => {
   try {
@@ -73,24 +125,7 @@ export const getStudentTasks = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    // Try to resolve the student associated with this user in a tolerant way.
-    let student = req.user.student as Student | undefined;
-
-    // If middleware did not attach student, try to look it up by userId or username.
-    if (!student) {
-      const studentRepo = AppDataSource.getRepository(Student);
-      student =
-        (await studentRepo.findOne({
-          where: { user: { id: req.user.id } },
-          relations: ['user'],
-        })) ||
-        (await studentRepo.findOne({
-          where: { studentNumber: req.user.username },
-          relations: ['user'],
-        })) ||
-        undefined;
-    }
-
+    const student = await resolveStudentForRequest(req);
     if (!student) {
       console.warn('[Elearning] getStudentTasks: no student profile for user', {
         userId: req.user.id,
@@ -140,22 +175,7 @@ export const getStudentTaskById = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'taskId is required' });
     }
 
-    // Resolve student similar to getStudentTasks (tolerant of role flags).
-    let student = req.user.student as Student | undefined;
-    if (!student) {
-      const studentRepo = AppDataSource.getRepository(Student);
-      student =
-        (await studentRepo.findOne({
-          where: { user: { id: req.user.id } },
-          relations: ['user'],
-        })) ||
-        (await studentRepo.findOne({
-          where: { studentNumber: req.user.username },
-          relations: ['user'],
-        })) ||
-        undefined;
-    }
-
+    const student = await resolveStudentForRequest(req);
     if (!student) {
       return res.status(403).json({ message: 'Only students can view assigned tasks' });
     }
@@ -329,22 +349,7 @@ export const submitResponse = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    // Resolve student similar to getStudentTasks (tolerant of role flags).
-    let student = req.user.student as Student | undefined;
-    if (!student) {
-      const studentRepo = AppDataSource.getRepository(Student);
-      student =
-        (await studentRepo.findOne({
-          where: { user: { id: req.user.id } },
-          relations: ['user'],
-        })) ||
-        (await studentRepo.findOne({
-          where: { studentNumber: req.user.username },
-          relations: ['user'],
-        })) ||
-        undefined;
-    }
-
+    const student = await resolveStudentForRequest(req);
     if (!student) {
       return res.status(403).json({ message: 'Only students can submit responses' });
     }
@@ -388,22 +393,7 @@ export const getStudentResponses = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    // Resolve student similar to getStudentTasks (tolerant of role flags).
-    let student = req.user.student as Student | undefined;
-    if (!student) {
-      const studentRepo = AppDataSource.getRepository(Student);
-      student =
-        (await studentRepo.findOne({
-          where: { user: { id: req.user.id } },
-          relations: ['user'],
-        })) ||
-        (await studentRepo.findOne({
-          where: { studentNumber: req.user.username },
-          relations: ['user'],
-        })) ||
-        undefined;
-    }
-
+    const student = await resolveStudentForRequest(req);
     if (!student) {
       console.warn('[Elearning] getStudentResponses: no student profile for user', {
         userId: req.user.id,

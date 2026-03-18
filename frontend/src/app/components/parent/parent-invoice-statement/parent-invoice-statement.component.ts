@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { ParentService } from '../../../services/parent.service';
 import { FinanceService } from '../../../services/finance.service';
@@ -47,13 +47,16 @@ export class ParentInvoiceStatementComponent implements OnInit, OnDestroy {
   error = '';
   success = '';
 
+  private requestedStudentId: string | null = null;
+
   constructor(
     private authService: AuthService,
     private parentService: ParentService,
     private financeService: FinanceService,
     private settingsService: SettingsService,
     private sanitizer: DomSanitizer,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {
     const user = this.authService.getCurrentUser();
     if (user?.parent) {
@@ -66,6 +69,9 @@ export class ParentInvoiceStatementComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadSettings();
+    this.route.queryParamMap.subscribe(q => {
+      this.requestedStudentId = q.get('studentId');
+    });
     this.loadStudents();
   }
 
@@ -100,7 +106,10 @@ export class ParentInvoiceStatementComponent implements OnInit, OnDestroy {
         this.students = response.students || [];
         this.loadingStudents = false;
         if (this.students.length > 0) {
-          this.selectStudent(this.students[0]);
+          const preferred = this.requestedStudentId
+            ? this.students.find(s => String(s?.id) === String(this.requestedStudentId))
+            : null;
+          this.selectStudent(preferred || this.students[0]);
         }
       },
       error: (err: any) => {

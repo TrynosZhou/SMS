@@ -94,6 +94,7 @@ import { MarkResponseComponent } from './components/teacher/mark-response/mark-r
 import { EwebComponent } from './components/student/eweb/eweb.component';
 import { EsubmitComponent } from './components/student/esubmit/esubmit.component';
 import { BlankPageComponent } from './components/student/blank-page/blank-page.component';
+import { StudentPortalComponent } from './components/parent/student-portal/student-portal.component';
 
 @NgModule({
   declarations: [
@@ -182,6 +183,7 @@ import { BlankPageComponent } from './components/student/blank-page/blank-page.c
     EwebComponent,
     EsubmitComponent,
     BlankPageComponent,
+    StudentPortalComponent,
   ],
   imports: [
     BrowserModule,
