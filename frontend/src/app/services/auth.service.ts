@@ -33,6 +33,7 @@ export class AuthService {
   public currentUser$ = this.currentUserSubject.asObservable();
   private logoutReasonKey = 'logoutReason';
   private readonly studentPortalKey = 'studentPortalStudent';
+  private readonly parentPortalKey = 'parentPortalParent';
   private inactivityTimeoutMs = 30 * 60 * 1000;
   private inactivityTimerId: any = null;
   private lastActivityKey = 'lastActivityTimestamp';
@@ -117,6 +118,7 @@ export class AuthService {
     sessionStorage.removeItem('user');
     sessionStorage.removeItem('sessionId');
     sessionStorage.removeItem(this.studentPortalKey);
+    sessionStorage.removeItem(this.parentPortalKey);
     this.currentUserSubject.next(null);
     this.clearInactivityTimer();
     this.router.navigate(['/login']);
@@ -193,6 +195,41 @@ export class AuthService {
 
   exitStudentPortal(): void {
     sessionStorage.removeItem(this.studentPortalKey);
+  }
+
+  isParentPortalActive(): boolean {
+    return !!this.getParentPortalParentId();
+  }
+
+  getParentPortalParentId(): string | null {
+    try {
+      const raw = sessionStorage.getItem(this.parentPortalKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const id = String(parsed?.id || '').trim();
+      return id || null;
+    } catch {
+      return null;
+    }
+  }
+
+  getParentPortalParent(): any | null {
+    try {
+      const raw = sessionStorage.getItem(this.parentPortalKey);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  enterParentPortal(parent: any): void {
+    if (!parent?.id) return;
+    sessionStorage.setItem(this.parentPortalKey, JSON.stringify(parent));
+  }
+
+  exitParentPortal(): void {
+    sessionStorage.removeItem(this.parentPortalKey);
   }
 
   setCurrentUser(user: User): void {

@@ -134,11 +134,15 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   isParent(): boolean {
-    return this.authService.hasRole('parent');
+    return this.authService.hasRole('parent') || this.authService.isParentPortalActive();
   }
 
   isActingAsStudent(): boolean {
     return this.authService.isStudentPortalActive();
+  }
+
+  isActingAsParent(): boolean {
+    return this.authService.isParentPortalActive();
   }
 
   isStudent(): boolean {
@@ -203,6 +207,11 @@ export class AppComponent implements OnInit, OnDestroy {
   exitStudentPortal(): void {
     this.authService.exitStudentPortal();
     this.router.navigate(['/parent/dashboard']).catch(() => {});
+  }
+
+  exitParentPortal(): void {
+    this.authService.exitParentPortal();
+    this.router.navigate(['/eweb']).catch(() => {});
   }
 
   toggleSidebar(): void {

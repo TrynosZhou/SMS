@@ -75,6 +75,10 @@ export class AuthInterceptor implements HttpInterceptor {
         if (actingStudentId) {
           headers['x-student-id'] = actingStudentId;
         }
+        const actingParentId = this.authService.getParentPortalParentId();
+        if (actingParentId) {
+          headers['x-parent-id'] = actingParentId;
+        }
         update.setHeaders = headers;
       }
       authReq = req.clone(update);

@@ -1,0 +1,39 @@
+<div class="pp-wrap">
+  <div class="pp-header">
+    <div>
+      <h1 class="pp-title">👨‍👩‍👧‍👦 Parent Portal</h1>
+      <p class="pp-subtitle">Open your linked parent dashboard without re-login.</p>
+    </div>
+    <button class="pp-btn pp-btn-outline" (click)="load()" [disabled]="loading">↻ Refresh</button>
+  </div>
+
+  <div class="pp-alert pp-alert-error" *ngIf="error">⚠️ {{ error }}</div>
+
+  <div class="pp-loading" *ngIf="loading">
+    <div class="pp-spinner"></div>
+    <span>Loading linked parents…</span>
+  </div>
+
+  <div class="pp-empty" *ngIf="!loading && parents.length === 0 && !error">
+    <div class="pp-empty-icon">👨‍👩‍👧‍👦</div>
+    <h3>No Linked Parent</h3>
+    <p>If your parent account is not linked, ask the school administrator to link it.</p>
+  </div>
+
+  <div class="pp-grid" *ngIf="!loading && parents.length > 0">
+    <div class="pp-card" *ngFor="let p of parents">
+      <div class="pp-card-head">
+        <div class="pp-avatar">{{ (p?.firstName || 'P').charAt(0).toUpperCase() }}{{ (p?.lastName || '').charAt(0).toUpperCase() }}</div>
+        <div class="pp-name-block">
+          <div class="pp-name">{{ parentName(p) }}</div>
+          <div class="pp-meta">{{ p.email || '—' }}</div>
+        </div>
+      </div>
+
+      <div class="pp-card-actions">
+        <button class="pp-btn pp-btn-primary" (click)="openParentDashboard(p)">🚀 Open Parent Dashboard</button>
+      </div>
+    </div>
+  </div>
+</div>
+

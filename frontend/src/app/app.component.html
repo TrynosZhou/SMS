@@ -31,6 +31,14 @@
         title="Return to parent dashboard">
         <span>Exit Student Mode</span>
       </button>
+      <button
+        *ngIf="isActingAsParent()"
+        type="button"
+        class="btn btn-secondary"
+        (click)="exitParentPortal()"
+        title="Return to student dashboard">
+        <span>Exit Parent Mode</span>
+      </button>
       <button type="button" class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="themeService.darkMode ? 'Switch to light mode' : 'Switch to dark mode'" [title]="themeService.darkMode ? 'Light mode' : 'Dark mode'">
         <span class="theme-icon" *ngIf="!themeService.darkMode">🌙</span>
         <span class="theme-icon" *ngIf="themeService.darkMode">☀️</span>
@@ -44,12 +52,12 @@
 
 <!-- Mobile overlay for staff sidebar drawer (Teachers/Admin/SuperAdmin) -->
 <div class="mobile-sidebar-overlay"
-     *ngIf="isAuthenticated() && (!isParent() || isActingAsStudent())"
+     *ngIf="isAuthenticated() && (!isParent() || isActingAsStudent()) && !isActingAsParent()"
      (click)="closeMobileMenu()"
      [class.show]="mobileMenuOpen"></div>
 
 <!-- Collapsible Sidebar -->
-<aside class="sidebar" [class.collapsed]="sidebarCollapsed" [class.mobile-open]="mobileMenuOpen" *ngIf="isAuthenticated() && (!isParent() || isActingAsStudent())">
+<aside class="sidebar" [class.collapsed]="sidebarCollapsed" [class.mobile-open]="mobileMenuOpen" *ngIf="isAuthenticated() && (!isParent() || isActingAsStudent()) && !isActingAsParent()">
   <div class="sidebar-content">
     <nav class="sidebar-nav">
       <!-- Student-specific sidebar (only for students) -->
@@ -81,6 +89,11 @@
             </a>
           </div>
         </div>
+
+        <a routerLink="/student/parent-portal" routerLinkActive="active" class="sidebar-item">
+          <span class="sidebar-icon">👨‍👩‍👧‍👦</span>
+          <span class="sidebar-text">Parent Portal</span>
+        </a>
       </div>
 
       <!-- Regular sidebar (for non-students) -->

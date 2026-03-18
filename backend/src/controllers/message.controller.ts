@@ -8,6 +8,48 @@ import { User, UserRole } from '../entities/User';
 import { Settings } from '../entities/Settings';
 import { Message } from '../entities/Message';
 import { AuthRequest } from '../middleware/auth';
+import { ParentStudent } from '../entities/ParentStudent';
+
+async function resolveStudentForMessage(req: AuthRequest): Promise<Student | null> {
+  if (!req.user) return null;
+  if (req.user.role !== UserRole.STUDENT) return null;
+  let student = req.user.student as Student | undefined;
+  if (!student) {
+    const studentRepository = AppDataSource.getRepository(Student);
+    student =
+      (await studentRepository.findOne({ where: { user: { id: req.user.id } }, relations: ['user'] })) ||
+      (await studentRepository.findOne({ where: { studentNumber: req.user.username }, relations: ['user'] })) ||
+      undefined;
+  }
+  return student || null;
+}
+
+async function resolveParentForMessage(req: AuthRequest): Promise<{ parent: Parent; senderUserId: string } | null> {
+  if (!req.user) return null;
+
+  const actingParentId = String((req.headers['x-parent-id'] as any) || '').trim();
+  const parentRepository = AppDataSource.getRepository(Parent);
+
+  // Student acting as a linked parent
+  if (actingParentId && req.user.role === UserRole.STUDENT) {
+    const student = await resolveStudentForMessage(req);
+    if (!student) return null;
+    const linkRepo = AppDataSource.getRepository(ParentStudent);
+    const link = await linkRepo.findOne({ where: { parentId: actingParentId, studentId: student.id } });
+    if (!link) return null;
+    const parent = await parentRepository.findOne({ where: { id: actingParentId } });
+    if (!parent) return null;
+    // In this mode, senderId must be the parent userId (if exists), otherwise fallback to student user id.
+    const senderUserId = parent.userId || req.user.id;
+    return { parent, senderUserId };
+  }
+
+  // Normal parent user
+  if (req.user.role !== UserRole.PARENT) return null;
+  const parent = await parentRepository.findOne({ where: { userId: req.user.id } });
+  if (!parent) return null;
+  return { parent, senderUserId: req.user.id };
+}
 
 export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
   try {
@@ -436,22 +478,13 @@ export const getParentMessages = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
     
-    const user = req.user;
-
-    if (!user || user.role !== 'parent') {
+    const ctx = await resolveParentForMessage(req);
+    if (!ctx) {
       return res.status(403).json({ message: 'Access denied. Parent role required.' });
     }
-    const parentRepository = AppDataSource.getRepository(Parent);
     const messageRepository = AppDataSource.getRepository(Message);
 
-    // Find parent by user ID
-    const parent = await parentRepository.findOne({
-      where: { userId: user.id }
-    });
-
-    if (!parent) {
-      return res.status(404).json({ message: 'Parent profile not found' });
-    }
+    const parent = ctx.parent;
 
     // Get all messages for this parent, ordered by most recent first
     const messages = await messageRepository.find({
@@ -553,8 +586,8 @@ export const sendParentMessage = async (req: AuthRequest, res: Response) => {
     if (!AppDataSource.isInitialized) {
       await AppDataSource.initialize();
     }
-    const user = req.user;
-    if (!user || user.role !== 'parent') {
+    const ctx = await resolveParentForMessage(req);
+    if (!ctx) {
       return res.status(403).json({ message: 'Access denied. Parent role required.' });
     }
     const { subject, message, recipient } = req.body as { subject?: string; message?: string; recipient?: string };
@@ -568,18 +601,14 @@ export const sendParentMessage = async (req: AuthRequest, res: Response) => {
     if (!recipient || !allowedRecipients.includes(recipient.toLowerCase())) {
       return res.status(400).json({ message: 'Recipient must be admin or accountant' });
     }
-    const parentRepository = AppDataSource.getRepository(Parent);
     const messageRepository = AppDataSource.getRepository(Message);
-    const parent = await parentRepository.findOne({ where: { userId: user.id } });
-    if (!parent) {
-      return res.status(404).json({ message: 'Parent profile not found' });
-    }
+    const parent = ctx.parent;
     const record = messageRepository.create({
       subject: subject.trim(),
       message: message.trim(),
       recipients: recipient.toLowerCase(),
-      senderId: user.id,
-      senderName: `${parent.firstName || ''} ${parent.lastName || ''}`.trim() || user.email || 'Parent',
+      senderId: ctx.senderUserId,
+      senderName: `${parent.firstName || ''} ${parent.lastName || ''}`.trim() || req.user?.email || 'Parent',
       parentId: parent.id,
       isRead: false,
       attachments: Array.isArray((req as any).files) && (req as any).files.length > 0
@@ -604,13 +633,13 @@ export const getParentOutbox = async (req: AuthRequest, res: Response) => {
     if (!AppDataSource.isInitialized) {
       await AppDataSource.initialize();
     }
-    const user = req.user;
-    if (!user || user.role !== 'parent') {
+    const ctx = await resolveParentForMessage(req);
+    if (!ctx) {
       return res.status(403).json({ message: 'Access denied. Parent role required.' });
     }
     const messageRepository = AppDataSource.getRepository(Message);
     const messages = await messageRepository.find({
-      where: { senderId: user.id },
+      where: { senderId: ctx.senderUserId },
       order: { createdAt: 'DESC' }
     });
     res.json({
@@ -633,14 +662,14 @@ export const getParentOutboxById = async (req: AuthRequest, res: Response) => {
     if (!AppDataSource.isInitialized) {
       await AppDataSource.initialize();
     }
-    const user = req.user;
-    if (!user || user.role !== 'parent') {
+    const ctx = await resolveParentForMessage(req);
+    if (!ctx) {
       return res.status(403).json({ message: 'Access denied. Parent role required.' });
     }
     const { id } = req.params as { id: string };
     const messageRepository = AppDataSource.getRepository(Message);
     const msg = await messageRepository.findOne({ where: { id } });
-    if (!msg || msg.senderId !== user.id) {
+    if (!msg || msg.senderId !== ctx.senderUserId) {
       return res.status(404).json({ message: 'Message not found' });
     }
     res.json({

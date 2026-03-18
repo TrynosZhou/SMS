@@ -87,6 +87,7 @@ import { PayrollEntriesComponent } from './components/payroll/payroll-entries/pa
 import { PayrollReportsComponent } from './components/payroll/payroll-reports/payroll-reports.component';
 import { LoanOverviewComponent } from './components/payroll/loan-overview/loan-overview.component';
 import { StudentPortalComponent } from './components/parent/student-portal/student-portal.component';
+import { ParentPortalComponent } from './components/student/parent-portal/parent-portal.component';
 
 const routes: Routes = [
   { path: '', component: SplashComponent, data: { title: 'Junior Primary School Management System | Smart Edu System', description: 'Junior Primary School Management System - Manage students, teachers, classes, exams and attendance. School management for administrators, teachers and parents.', robots: 'index,follow' } },
@@ -179,6 +180,7 @@ const routes: Routes = [
   { path: 'timetable/generate', component: TimetableGenerateComponent, canActivate: [AuthGuard] },
   { path: 'student/report-card', component: StudentReportCardComponent, canActivate: [AuthGuard] },
   { path: 'student/invoice-statement', component: StudentInvoiceStatementComponent, canActivate: [AuthGuard] },
+  { path: 'student/parent-portal', component: ParentPortalComponent, canActivate: [AuthGuard] },
   { path: 'eweb', component: EwebComponent, canActivate: [AuthGuard] },
   { path: 'student/esubmit', component: EsubmitComponent, canActivate: [AuthGuard] },
   { path: 'student/blank_page/:taskId', component: BlankPageComponent, canActivate: [AuthGuard] },

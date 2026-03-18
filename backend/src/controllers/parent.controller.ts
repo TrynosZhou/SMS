@@ -17,6 +17,58 @@ const generateTemporaryPassword = () => {
   return `Temp-${randomBytes(4).toString('hex')}-${Date.now().toString().slice(-4)}`;
 };
 
+async function resolveStudentForParentMode(req: AuthRequest): Promise<Student | null> {
+  if (!req.user) return null;
+
+  if (req.user.role !== UserRole.STUDENT) return null;
+
+  let student = req.user.student as Student | undefined;
+  if (!student) {
+    const studentRepo = AppDataSource.getRepository(Student);
+    student =
+      (await studentRepo.findOne({
+        where: { user: { id: req.user.id } },
+        relations: ['user'],
+      })) ||
+      (await studentRepo.findOne({
+        where: { studentNumber: req.user.username },
+        relations: ['user'],
+      })) ||
+      undefined;
+  }
+  return student || null;
+}
+
+async function resolveParentForRequest(req: AuthRequest): Promise<Parent | null> {
+  if (!req.user) return null;
+  const parentRepository = AppDataSource.getRepository(Parent);
+
+  // Student acting as a linked parent (Parent Portal from student dashboard)
+  const actingParentId = String((req.headers['x-parent-id'] as any) || '').trim();
+  if (actingParentId && req.user.role === UserRole.STUDENT) {
+    const student = await resolveStudentForParentMode(req);
+    if (!student) return null;
+
+    const parentStudentRepository = AppDataSource.getRepository(ParentStudent);
+    const link = await parentStudentRepository.findOne({
+      where: { parentId: actingParentId, studentId: student.id },
+    });
+    if (!link) return null;
+
+    const parent = await parentRepository.findOne({
+      where: { id: actingParentId },
+    });
+    return parent || null;
+  }
+
+  // Normal parent flow
+  let parent = req.user?.parent || null;
+  if (!parent) {
+    parent = await parentRepository.findOne({ where: { userId: req.user.id } });
+  }
+  return parent || null;
+}
+
 // Get current parent's profile
 export const getCurrentParentProfile = async (req: AuthRequest, res: Response) => {
   try {
@@ -25,14 +77,7 @@ export const getCurrentParentProfile = async (req: AuthRequest, res: Response) =
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const parentRepository = AppDataSource.getRepository(Parent);
-    let parent = req.user?.parent || null;
-    
-    if (!parent) {
-      parent = await parentRepository.findOne({
-        where: { userId }
-      });
-    }
+    const parent = await resolveParentForRequest(req);
 
     if (!parent) {
       return res.status(404).json({ message: 'Parent profile not found' });
@@ -66,12 +111,7 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
 
     const parentRepository = AppDataSource.getRepository(Parent);
     const parentStudentRepository = AppDataSource.getRepository(ParentStudent);
-    let parent = req.user?.parent || null;
-    if (!parent) {
-      parent = await parentRepository.findOne({
-        where: { userId }
-      });
-    }
+    const parent = await resolveParentForRequest(req);
 
     if (!parent) {
       return res.status(404).json({ message: 'Parent profile not found' });

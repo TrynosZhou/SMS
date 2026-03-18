@@ -7,6 +7,7 @@ import {
   bulkCorrectStudentStatus,
   getStudents,
   getStudentById,
+  getLinkedParentsForStudent,
   enrollStudent,
   updateStudent,
   deleteStudent,
@@ -36,6 +37,7 @@ router.get('/logistics/dining-hall/report', authenticate, generateDiningHallStud
 router.get('/:id/id-card', authenticate, generateStudentIdCard);
 router.get('/:id/bus-id-card', authenticate, generateStudentTransportIdCard);
 router.get('/:id/transfers', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.TEACHER, UserRole.DEMO_USER), getStudentTransfers);
+router.get('/linked-parents', authenticate, authorize(UserRole.STUDENT, UserRole.DEMO_USER, UserRole.ADMIN, UserRole.SUPERADMIN), getLinkedParentsForStudent);
 router.get('/:id', authenticate, getStudentById);
 router.put(
   '/:id',

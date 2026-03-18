@@ -91,6 +91,20 @@ export const authorize = (...roles: UserRole[]) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
+    // Allow "Student acting as Parent" when a parent context header is present.
+    // The controller must still verify the student is linked to that parent.
+    const parentContextId = String((req.headers['x-parent-id'] as any) || '').trim();
+    if (parentContextId && req.user.role === UserRole.STUDENT && roles.includes(UserRole.PARENT)) {
+      return next();
+    }
+
+    // Allow "Parent acting as Student" when a student context header is present.
+    // The controller must still verify the parent is linked to that student.
+    const studentContextId = String((req.headers['x-student-id'] as any) || '').trim();
+    if (studentContextId && req.user.role === UserRole.PARENT && roles.includes(UserRole.STUDENT)) {
+      return next();
+    }
+
     if (!roles.includes(req.user.role)) {
       console.log('Authorization failed:', {
         userRole: req.user.role,

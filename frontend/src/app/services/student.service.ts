@@ -114,6 +114,10 @@ export class StudentService {
     return this.http.get(`${this.apiUrl}/students/${id}`);
   }
 
+  getLinkedParentsForStudent(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/students/linked-parents`);
+  }
+
   createStudent(student: any, photo?: File): Observable<any> {
     if (photo) {
       const formData = new FormData();

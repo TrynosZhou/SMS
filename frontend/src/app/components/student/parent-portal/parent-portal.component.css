@@ -1,0 +1,52 @@
+.pp-wrap{ max-width: 980px; margin: 22px auto; padding: 0 16px 24px; }
+.pp-header{
+  display:flex; align-items:flex-end; justify-content:space-between; gap:12px;
+  padding: 16px 16px; border-radius: 16px;
+  background: linear-gradient(135deg,#16a34a,#0ea5e9);
+  color:#fff; box-shadow: 0 14px 38px rgba(2,6,23,.18);
+}
+.pp-title{ margin:0; font-size: 26px; font-weight: 900; }
+.pp-subtitle{ margin:6px 0 0; opacity:.92; }
+.pp-btn{
+  border:0; border-radius: 12px; padding: 10px 12px; font-weight: 900;
+  cursor:pointer; transition: transform .12s ease, opacity .12s ease;
+}
+.pp-btn:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
+.pp-btn-primary{ background:#fff; color:#0b3aa6; }
+.pp-btn-outline{ background: rgba(255,255,255,.18); color:#fff; border: 1px solid rgba(255,255,255,.35); }
+.pp-btn:hover:not(:disabled){ transform: translateY(-1px); }
+
+.pp-alert{ margin-top: 12px; padding: 12px 14px; border-radius: 12px; font-weight: 800; }
+.pp-alert-error{ background:#fee2e2; color:#7f1d1d; border:1px solid #fecaca; }
+
+.pp-loading{ margin-top: 14px; display:flex; align-items:center; gap:10px; color:#334155; font-weight:800; }
+.pp-spinner{
+  width: 18px; height: 18px; border-radius: 999px;
+  border: 3px solid rgba(15,23,42,.15); border-top-color:#2563eb;
+  animation: ppSpin .85s linear infinite;
+}
+@keyframes ppSpin{ to { transform: rotate(360deg); } }
+
+.pp-empty{
+  margin-top: 16px; padding: 16px; border-radius: 16px; background:#fff;
+  box-shadow: 0 10px 30px rgba(2,6,23,.08);
+}
+.pp-empty-icon{ font-size: 38px; }
+
+.pp-grid{ margin-top: 16px; display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.pp-card{ border-radius:16px; background:#fff; box-shadow: 0 10px 30px rgba(2,6,23,.08); padding: 14px; }
+.pp-card-head{ display:flex; gap:12px; align-items:center; }
+.pp-avatar{
+  width:44px; height:44px; border-radius: 14px; display:flex; align-items:center; justify-content:center;
+  font-weight: 900; background: linear-gradient(135deg,#16a34a,#0ea5e9); color:#fff;
+}
+.pp-name{ font-weight: 900; color:#0f172a; }
+.pp-meta{ font-size: 12px; color:#64748b; margin-top: 2px; }
+.pp-card-actions{ margin-top: 12px; display:flex; gap:10px; flex-wrap:wrap; }
+
+@media (prefers-color-scheme: dark){
+  .pp-empty,.pp-card{ background:#0b1220; color:#e5e7eb; box-shadow:none; border:1px solid rgba(148,163,184,.18); }
+  .pp-name{ color:#e5e7eb; }
+  .pp-meta{ color:#a3b3c6; }
+}
+

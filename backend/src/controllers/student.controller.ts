@@ -8,6 +8,7 @@ import { Invoice, InvoiceStatus } from '../entities/Invoice';
 import { ReportCardRemarks } from '../entities/ReportCardRemarks';
 import { Parent } from '../entities/Parent';
 import { AuthRequest } from '../middleware/auth';
+import { ParentStudent } from '../entities/ParentStudent';
 import { generateStudentId } from '../utils/studentIdGenerator';
 import { Settings } from '../entities/Settings';
 import QRCode from 'qrcode';
@@ -936,6 +937,52 @@ export const getStudentById = async (req: AuthRequest, res: Response) => {
     res.json(studentObj);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });
+  }
+};
+
+export const getLinkedParentsForStudent = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    // Resolve the logged-in student (tolerant lookup)
+    let student = req.user.student as any;
+    if (!student) {
+      const studentRepository = AppDataSource.getRepository(Student);
+      student =
+        (await studentRepository.findOne({ where: { user: { id: req.user.id } }, relations: ['user'] })) ||
+        (await studentRepository.findOne({ where: { studentNumber: req.user.username }, relations: ['user'] })) ||
+        null;
+    }
+
+    if (!student?.id) {
+      return res.json({ parents: [] });
+    }
+
+    const parentStudentRepo = AppDataSource.getRepository(ParentStudent);
+    const links = await parentStudentRepo.find({
+      where: { studentId: student.id },
+      relations: ['parent', 'parent.user'],
+    });
+
+    const parents = (links || [])
+      .map(l => l.parent)
+      .filter(Boolean)
+      .map((p: Parent) => ({
+        id: p.id,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        email: p.email,
+        phoneNumber: p.phoneNumber,
+        gender: p.gender,
+        fullName: `${p.lastName || ''} ${p.firstName || ''}`.trim(),
+      }));
+
+    return res.json({ parents });
+  } catch (error: any) {
+    console.error('Error getting linked parents for student:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };
 
