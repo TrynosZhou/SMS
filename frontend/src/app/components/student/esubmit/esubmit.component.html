@@ -41,23 +41,20 @@
     <div class="esub-alert esub-alert-success" *ngIf="success">{{ success }}</div>
     <div class="esub-alert esub-alert-error" *ngIf="error">{{ error }}</div>
 
-    <div class="esub-field">
-      <div class="esub-field-row">
-        <label>Your Answer (optional if you upload a file)</label>
-        <span class="counter">{{ charCount | number }} / {{ maxChars | number }}</span>
+      <div class="esub-field">
+        <div class="esub-field-row">
+          <label>Your Answer (optional if you upload a file)</label>
+          <span class="counter">{{ charCount | number }} / {{ maxChars | number }}</span>
+        </div>
+        <app-doc-editor
+          [value]="text"
+          (valueChange)="onTextEditorChange($event)"
+          [surfaceMinHeight]="320"
+        ></app-doc-editor>
+        <div class="esub-actions">
+          <button type="button" class="esub-btn-secondary" (click)="clearAnswer()" [disabled]="!text">Clear</button>
+        </div>
       </div>
-      <textarea
-        [(ngModel)]="text"
-        (ngModelChange)="onTextChange()"
-        [attr.maxLength]="maxChars"
-        rows="14"
-        class="answer-textarea"
-        placeholder="Type your answer here..."
-      ></textarea>
-      <div class="esub-actions">
-        <button type="button" class="esub-btn-secondary" (click)="clearAnswer()" [disabled]="!text">Clear</button>
-      </div>
-    </div>
 
     <div class="esub-field">
       <label>Upload File (PDF / document)</label>

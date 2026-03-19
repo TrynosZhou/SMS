@@ -1,0 +1,75 @@
+<div class="doc-editor">
+  <div class="doc-toolbar">
+    <button type="button" class="doc-btn" (click)="exec('bold')" aria-label="Bold" title="Bold">
+      <strong>B</strong>
+    </button>
+    <button type="button" class="doc-btn" (click)="exec('italic')" aria-label="Italic" title="Italic">
+      <em>I</em>
+    </button>
+    <button type="button" class="doc-btn" (click)="exec('underline')" aria-label="Underline" title="Underline">
+      <u>U</u>
+    </button>
+
+    <span class="doc-divider"></span>
+
+    <div class="doc-format-group">
+      <button
+        type="button"
+        class="doc-btn doc-text-tool"
+        (mousedown)="$event.preventDefault()"
+        (click)="activateSelectedShapeText()"
+        title="Add text to selected shape"
+        aria-label="Add text to selected shape"
+      >
+        Text
+      </button>
+      <select class="doc-select" [(ngModel)]="fontSizeIndex" (change)="applyFontSize()">
+        <option *ngFor="let o of fontSizeOptions" [ngValue]="o.index">
+          {{ o.px }}px
+        </option>
+      </select>
+      <label class="doc-color">
+        <span class="doc-color-label">Color</span>
+        <input type="color" [(ngModel)]="textColor" (change)="applyTextColor()" />
+      </label>
+    </div>
+
+    <span class="doc-divider"></span>
+
+    <div class="doc-shapes">
+      <span class="doc-shapes-label">Shapes:</span>
+      <label class="doc-color">
+        <span class="doc-color-label">Fill</span>
+        <input type="color" [(ngModel)]="shapeFillHex" />
+      </label>
+      <label class="doc-color">
+        <span class="doc-color-label">Stroke</span>
+        <input type="color" [(ngModel)]="shapeStrokeHex" />
+      </label>
+      <button
+        *ngFor="let s of shapes"
+        type="button"
+        class="doc-btn doc-shape-btn"
+        (click)="insertShape(s.key)"
+        [attr.aria-label]="s.label"
+        [attr.title]="s.label"
+      >
+        {{ s.label }}
+      </button>
+    </div>
+  </div>
+
+  <div
+    #editor
+    class="doc-surface"
+    [style.minHeight.px]="surfaceMinHeight"
+    contenteditable="true"
+    spellcheck="false"
+    (pointerdown)="onEditorPointerDown($event)"
+    (input)="onInput()"
+    (mouseup)="captureSelection()"
+    (keyup)="captureSelection()"
+    (blur)="onInput()"
+  ></div>
+</div>
+

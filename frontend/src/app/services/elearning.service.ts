@@ -26,6 +26,11 @@ export class ElearningService {
     return this.http.get<any[]>(`${this.apiUrl}/elearning/tasks/my`);
   }
 
+  /** Teacher: delete a task I created. */
+  deleteTask(taskId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/elearning/tasks/${taskId}`);
+  }
+
   /**
    * Teacher: get student responses for a given task.
    */

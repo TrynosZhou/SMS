@@ -15,7 +15,8 @@
 
 .es-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  /* Left container +50%, right container -50% */
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 0.5fr);
   gap: 20px;
 }
 
@@ -78,6 +79,25 @@
   background: #4f46e5;
   border-color: #4f46e5;
   color: #ffffff;
+}
+
+.es-file-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.es-file-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #4338ca;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .es-btn-primary {
@@ -169,6 +189,29 @@
 
 .es-task-links a:hover {
   text-decoration: underline;
+}
+
+.es-task-links {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.es-btn-danger {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.es-btn-danger:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 @media (max-width: 900px) {

@@ -1,6 +1,7 @@
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ElearningService } from '../../../services/elearning.service';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-blank-page',
@@ -12,6 +13,7 @@ export class BlankPageComponent implements OnInit {
 
   taskId = '';
   task: any | null = null;
+  safeTaskDescription: SafeHtml | null = null;
 
   loading = false;
   submitting = false;
@@ -24,7 +26,8 @@ export class BlankPageComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private elearningService: ElearningService
+    private elearningService: ElearningService,
+    private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit(): void {
@@ -60,8 +63,8 @@ export class BlankPageComponent implements OnInit {
   submit(): void {
     if (!this.taskId) return;
 
-    const trimmed = (this.answerText || '').trim();
-    if (!trimmed && !this.selectedFile) {
+    const plain = this.stripHtml(this.answerText || '').trim();
+    if (plain.length === 0 && !this.selectedFile) {
       this.error = 'Please type your answer or attach a file before submitting.';
       this.success = null;
       return;
@@ -72,8 +75,8 @@ export class BlankPageComponent implements OnInit {
     this.success = null;
 
     const formData = new FormData();
-    if (trimmed) {
-      formData.append('text', trimmed);
+    if (plain.length > 0) {
+      formData.append('text', (this.answerText || '').trim());
     }
     if (this.selectedFile) {
       formData.append('file', this.selectedFile);
@@ -94,6 +97,12 @@ export class BlankPageComponent implements OnInit {
     });
   }
 
+  private stripHtml(input: string): string {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = input || '';
+    return tmp.textContent || tmp.innerText || '';
+  }
+
   private loadTask(): void {
     this.loading = true;
     this.error = null;
@@ -103,6 +112,9 @@ export class BlankPageComponent implements OnInit {
       next: (task: any) => {
         this.loading = false;
         this.task = task || null;
+        this.safeTaskDescription = this.task?.description
+          ? this.sanitizer.bypassSecurityTrustHtml(String(this.task.description))
+          : null;
       },
       error: (err: any) => {
         this.loading = false;

@@ -96,6 +96,7 @@ import { EsubmitComponent } from './components/student/esubmit/esubmit.component
 import { BlankPageComponent } from './components/student/blank-page/blank-page.component';
 import { StudentPortalComponent } from './components/parent/student-portal/student-portal.component';
 import { ParentPortalComponent } from './components/student/parent-portal/parent-portal.component';
+import { DocEditorComponent } from './components/shared/doc-editor/doc-editor.component';
 
 @NgModule({
   declarations: [
@@ -186,6 +187,7 @@ import { ParentPortalComponent } from './components/student/parent-portal/parent
     BlankPageComponent,
     StudentPortalComponent,
     ParentPortalComponent,
+    DocEditorComponent,
   ],
   imports: [
     BrowserModule,

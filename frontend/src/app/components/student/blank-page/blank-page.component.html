@@ -30,7 +30,7 @@
 
       <div class="task-body" *ngIf="task.description">
         <h3>Questions / Instructions</h3>
-        <div class="instructions">{{ task.description }}</div>
+        <div class="instructions" [innerHTML]="safeTaskDescription"></div>
       </div>
 
       <div class="task-body" *ngIf="task.fileUrl">
@@ -45,12 +45,7 @@
           <h3>Your Answer</h3>
           <span class="answer-hint">Plenty of space — drag the corner to resize if you need more.</span>
         </div>
-        <textarea
-          [(ngModel)]="answerText"
-          rows="18"
-          placeholder="Type your answers here…"
-          class="answer-text"
-        ></textarea>
+        <app-doc-editor [(value)]="answerText" [surfaceMinHeight]="360"></app-doc-editor>
 
         <div class="upload-row">
           <label class="file-label">

@@ -1,4 +1,4 @@
-<div class="mr-page">
+<div class="mr-page" #pageRoot>
   <div class="mr-topbar">
     <button type="button" class="mr-back" (click)="back()">← Back</button>
     <div class="mr-title">
@@ -47,8 +47,75 @@
             <input type="number" [(ngModel)]="score" min="0" class="mr-input" placeholder="e.g. 20" />
           </div>
           <div class="mr-field span2">
-            <label>Feedback</label>
-            <textarea [(ngModel)]="feedbackText" rows="8" class="mr-textarea" placeholder="Write feedback…"></textarea>
+            <div class="mr-preview-head">
+              <label>Feedback (mark student response here)</label>
+              <div class="mr-zoom" *ngIf="response?.text || studentAttachmentUrl">
+                <button type="button" class="mr-zoom-btn" (click)="zoomOut()" data-tip="Zoom out" aria-label="Zoom out">−</button>
+                <button type="button" class="mr-zoom-btn" (click)="zoomReset()" data-tip="Reset zoom" aria-label="Reset zoom">
+                  {{ (previewZoom * 100) | number:'1.0-0' }}%
+                </button>
+                <button type="button" class="mr-zoom-btn" (click)="zoomIn()" data-tip="Zoom in" aria-label="Zoom in">+</button>
+              </div>
+            </div>
+
+            <div class="mr-preview-box">
+              <div class="mr-preview-scroll">
+                <div
+                  class="mr-preview-zoom"
+                  #previewContent
+                  [style.transform]="'scale(' + previewZoom + ')'"
+                  [style.width]="'100%'"
+                  [style.transformOrigin]="'top left'">
+                  <div class="mr-preview-text" *ngIf="safeResponseText" [innerHTML]="safeResponseText"></div>
+
+                  <ng-container *ngIf="studentAttachmentUrl">
+                    <div class="mr-pdf" *ngIf="studentAttachmentKind === 'pdf'">
+                      <div class="mr-muted" *ngIf="pdfLoading">Loading PDF preview…</div>
+                      <div class="mr-alert mr-alert-error" *ngIf="pdfError">{{ pdfError }}</div>
+                      <img *ngFor="let src of pdfPageImages" class="mr-pdf-page" [src]="src" alt="PDF page preview" />
+                      <a class="mr-link" *ngIf="!pdfLoading && !pdfError && !pdfPageImages.length" [href]="studentAttachmentUrl" target="_blank" rel="noopener noreferrer">
+                        Open student attachment
+                      </a>
+                    </div>
+
+                    <img
+                      *ngIf="studentAttachmentKind === 'image'"
+                      class="mr-preview-img"
+                      [src]="studentAttachmentUrl"
+                      alt="Student attachment preview"
+                    />
+
+                    <a
+                      *ngIf="studentAttachmentKind === 'other'"
+                      class="mr-link"
+                      [href]="studentAttachmentUrl"
+                      target="_blank"
+                      rel="noopener noreferrer">
+                      Open student attachment
+                    </a>
+                  </ng-container>
+
+                  <div class="mr-preview-empty" *ngIf="!safeResponseText && !studentAttachmentUrl">
+                    No student response to preview here.
+                  </div>
+
+                  <!-- Marking overlay anchored to the preview content (scrolls/zooms with it) -->
+                  <canvas
+                    #pageMarkCanvas
+                    class="mr-preview-canvas"
+                    [class.enabled]="markerEnabled"
+                    (pointerdown)="onPointerDown($event)"
+                    (pointermove)="onPointerMove($event)"
+                    (pointerup)="onPointerUp($event)"
+                    (pointercancel)="onPointerUp($event)"
+                    (pointerleave)="onPointerUp($event)"
+                  ></canvas>
+                </div>
+              </div>
+            </div>
+
+            <label class="mr-sub-label">Teacher feedback (optional)</label>
+            <textarea [(ngModel)]="feedbackText" rows="3" class="mr-textarea mr-textarea-compact" placeholder="Write feedback…"></textarea>
           </div>
           <div class="mr-field span2">
             <label>Upload marked script (optional)</label>
@@ -63,6 +130,13 @@
           </div>
         </div>
 
+        <div class="mr-section">
+          <h3>Digital marker</h3>
+          <div class="mr-muted">
+            Click the marker button to draw anywhere on this page. Your drawing is attached automatically when you save (unless you upload a file).
+          </div>
+        </div>
+
         <button type="button" class="mr-save" (click)="save()" [disabled]="saving">
           {{ saving ? 'Saving…' : 'Save marking & send to student' }}
         </button>
@@ -70,4 +144,99 @@
     </ng-container>
   </div>
 </div>
+
+<!-- Right-side digital marker tools -->
+<aside class="mr-tools-rail" *ngIf="!loading && response">
+  <div class="mr-tools-card">
+    <div class="mr-tools-title">Marking tools</div>
+
+    <button
+      type="button"
+      class="mr-rail-btn mr-rail-btn-primary"
+      [class.active]="markerEnabled"
+      (click)="toggleMarker()"
+      data-tip="Digital marker: turn ON to draw anywhere on this page. Turn OFF to scroll/click normally."
+      aria-label="Toggle digital marker">
+      <span class="mr-rail-label">{{ markerEnabled ? 'Marker ON' : 'Marker OFF' }}</span>
+    </button>
+
+    <div class="mr-tools-divider"></div>
+
+    <div class="mr-pen-row-inline">
+      <button
+        type="button"
+        class="mr-rail-btn"
+        [class.active]="tool === 'pen'"
+        (click)="setTool('pen')"
+        data-tip="Pen: freehand draw anywhere on the page."
+        aria-label="Pen tool">
+        <span class="mr-rail-label">Pen</span>
+      </button>
+
+      <button
+        type="button"
+        class="mr-rail-btn"
+        [class.active]="tool === 'eraser'"
+        (click)="setTool('eraser')"
+        data-tip="Eraser: erase parts of your marks."
+        aria-label="Eraser tool">
+        <span class="mr-rail-label">Eraser</span>
+      </button>
+    </div>
+
+    <div class="mr-stamp-grid">
+      <button
+        *ngFor="let s of stamps"
+        type="button"
+        class="mr-stamp-btn"
+        [class.active]="tool === 'stamp' && selectedStampKey === s.key"
+        (click)="setStamp(s.key)"
+        [attr.data-tip]="s.tooltip"
+        [attr.aria-label]="s.tooltip">
+        <span class="mr-stamp" [style.color]="s.color" [class.boxed]="s.kind === 'boxed'" [class.lambda]="s.kind === 'lambda'">
+          {{ s.label }}
+        </span>
+      </button>
+    </div>
+
+    <div class="mr-tools-divider"></div>
+
+    <div class="mr-rail-group" data-tip="Pen color: choose the digital pen color.">
+      <div class="mr-rail-group-title">Color</div>
+      <input type="color" [(ngModel)]="penColor" class="mr-color" aria-label="Pen color" />
+    </div>
+
+    <div class="mr-rail-group" data-tip="Pen size: increase/decrease the pen thickness.">
+      <div class="mr-rail-group-title">Size</div>
+      <div class="mr-rail-row">
+        <input type="range" min="1" max="14" [(ngModel)]="penSize" class="mr-range" aria-label="Pen size" />
+        <span class="mr-mini-pill">{{ penSize }}</span>
+      </div>
+    </div>
+
+    <div class="mr-tools-divider"></div>
+
+    <button
+      type="button"
+      class="mr-rail-btn"
+      (click)="undoStroke()"
+      data-tip="Undo: remove the last stroke you drew."
+      aria-label="Undo last stroke">
+      ↶ <span class="mr-rail-label">Undo</span>
+    </button>
+
+    <button
+      type="button"
+      class="mr-rail-btn danger"
+      (click)="clearCanvas()"
+      data-tip="Clear: remove all digital marks from the page."
+      aria-label="Clear all marks">
+      🗑 <span class="mr-rail-label">Clear</span>
+    </button>
+
+    <div class="mr-muted mr-tools-foot">
+      Tip: your marks are attached automatically as a PNG when you click “Save”, unless you upload a file.
+    </div>
+  </div>
+</aside>
 

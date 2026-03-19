@@ -26,6 +26,7 @@
           <th>Student</th>
           <th>Submitted On</th>
           <th>Response</th>
+          <th>Score</th>
           <th>Mark</th>
         </tr>
       </thead>
@@ -42,6 +43,17 @@
             <span *ngIf="!r.fileUrl && r.text">
               {{ r.text }}
             </span>
+          </td>
+          <td>
+            <ng-container *ngIf="r.score === null || r.score === undefined; else srHasScore">
+              —
+            </ng-container>
+            <ng-template #srHasScore>
+              <ng-container *ngIf="r.task?.maxScore; else srPlainScore">
+                {{ r.score }}/{{ r.task.maxScore }}
+              </ng-container>
+              <ng-template #srPlainScore>{{ r.score }}</ng-template>
+            </ng-template>
           </td>
           <td>
             <a [routerLink]="['/teacher/mark-response', r.id]" class="sr-mark-link">

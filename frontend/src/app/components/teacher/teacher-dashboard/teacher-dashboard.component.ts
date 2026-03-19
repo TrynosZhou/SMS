@@ -17,6 +17,8 @@ export class TeacherDashboardComponent implements OnInit {
   loading = false;
   error = '';
   teacherName = '';
+  /** Greeting line: e.g. "Mr Zhou Trynos" (LastName FirstName with honorific). */
+  teacherWelcomeName = '';
   schoolName = '';
   moduleAccess: any = null;
   availableModules: any[] = [];
@@ -40,8 +42,15 @@ export class TeacherDashboardComponent implements OnInit {
         this.teacherName = this.getFullName(user.teacher.firstName, user.teacher.lastName);
         console.log('Constructor: Constructed fullName:', this.teacherName);
       }
+      this.teacherWelcomeName = this.buildWelcomeDisplay(
+        user.teacher.firstName,
+        user.teacher.lastName,
+        user.teacher.sex,
+        user.teacher.fullName && user.teacher.fullName.trim() ? user.teacher.fullName.trim() : undefined
+      );
     } else {
       this.teacherName = 'Teacher';
+      this.teacherWelcomeName = 'Teacher';
       console.log('Constructor: No teacher data, using default:', this.teacherName);
     }
   }
@@ -61,6 +70,34 @@ export class TeacherDashboardComponent implements OnInit {
     
     // Return full name if available, otherwise return 'Teacher'
     return fullName || 'Teacher';
+  }
+
+  private getHonorific(sex: string | null | undefined): string {
+    const s = String(sex || '').trim().toLowerCase();
+    if (s === 'male' || s === 'm') return 'Mr';
+    if (s === 'female' || s === 'f') return 'Mrs';
+    return '';
+  }
+
+  /**
+   * Display: Mr/Mrs + LastName + FirstName (e.g. Mr Zhou Trynos).
+   * If sex is unknown, shows name only until API fills sex.
+   */
+  private buildWelcomeDisplay(
+    firstName?: string,
+    lastName?: string,
+    sex?: string | null,
+    fullNameOverride?: string
+  ): string {
+    let base = '';
+    if (fullNameOverride && fullNameOverride.trim() && fullNameOverride !== 'Teacher') {
+      base = fullNameOverride.trim();
+    } else {
+      base = this.getFullName(firstName, lastName);
+    }
+    if (!base || base === 'Teacher') return base || 'Teacher';
+    const h = this.getHonorific(sex);
+    return h ? `${h} ${base}` : base;
   }
 
   ngOnInit() {
@@ -163,6 +200,7 @@ export class TeacherDashboardComponent implements OnInit {
     // Head Teacher (universal teacher) has no linked Teacher record; use placeholder so dashboard still works
     if ((user as any).isUniversalTeacher) {
       this.teacherName = 'Head Teacher';
+      this.teacherWelcomeName = 'Head Teacher';
       this.teacher = { id: null, fullName: 'Head Teacher', firstName: 'Head', lastName: 'Teacher', classes: [] };
       this.teacherClasses = [];
       this.loading = false;
@@ -191,16 +229,24 @@ export class TeacherDashboardComponent implements OnInit {
           const firstName = teacher.firstName.trim();
           const lastName = teacher.lastName.trim();
           this.teacherName = this.getFullName(firstName, lastName);
+          this.teacherWelcomeName = this.buildWelcomeDisplay(firstName, lastName, teacher.sex);
           console.log('Using valid firstName/lastName to construct fullName:', this.teacherName);
         } else if (teacher.fullName && teacher.fullName.trim() && teacher.fullName !== 'Teacher') {
           // Use fullName from backend response if firstName/lastName are empty
           this.teacherName = teacher.fullName.trim();
+          this.teacherWelcomeName = this.buildWelcomeDisplay(
+            teacher.firstName,
+            teacher.lastName,
+            teacher.sex,
+            teacher.fullName.trim()
+          );
           console.log('Using fullName from response:', this.teacherName);
         } else {
           // Last resort: try to construct from whatever we have
           const firstName = (teacher.firstName && teacher.firstName.trim()) ? teacher.firstName.trim() : '';
           const lastName = (teacher.lastName && teacher.lastName.trim()) ? teacher.lastName.trim() : '';
           this.teacherName = this.getFullName(firstName, lastName);
+          this.teacherWelcomeName = this.buildWelcomeDisplay(firstName, lastName, teacher.sex);
           console.log('Fallback: Constructed fullName from available data:', this.teacherName);
         }
         
@@ -234,12 +280,23 @@ export class TeacherDashboardComponent implements OnInit {
             // Try fullName first
             if (user.teacher.fullName && user.teacher.fullName.trim() && user.teacher.fullName !== 'Teacher') {
               this.teacherName = user.teacher.fullName.trim();
+              this.teacherWelcomeName = this.buildWelcomeDisplay(
+                user.teacher.firstName,
+                user.teacher.lastName,
+                user.teacher.sex ?? teacher?.sex,
+                user.teacher.fullName.trim()
+              );
               console.log('Fallback: Set teacherName from user.teacher.fullName:', this.teacherName);
             } 
             // Try constructing from firstName/lastName
             else if (user.teacher.firstName && user.teacher.lastName && 
                      user.teacher.firstName.trim() && user.teacher.lastName.trim()) {
               this.teacherName = this.getFullName(user.teacher.firstName, user.teacher.lastName);
+              this.teacherWelcomeName = this.buildWelcomeDisplay(
+                user.teacher.firstName,
+                user.teacher.lastName,
+                user.teacher.sex ?? teacher?.sex
+              );
               console.log('Fallback: Constructed teacherName from user.teacher:', this.teacherName);
             }
             
@@ -262,9 +319,20 @@ export class TeacherDashboardComponent implements OnInit {
         if (user?.teacher) {
           if (user.teacher.fullName && user.teacher.fullName.trim() && user.teacher.fullName !== 'Teacher') {
             this.teacherName = user.teacher.fullName.trim();
+            this.teacherWelcomeName = this.buildWelcomeDisplay(
+              user.teacher.firstName,
+              user.teacher.lastName,
+              user.teacher.sex,
+              user.teacher.fullName.trim()
+            );
             console.log('Error handler: Using fullName from user object:', this.teacherName);
           } else {
             this.teacherName = this.getFullName(user.teacher.firstName, user.teacher.lastName);
+            this.teacherWelcomeName = this.buildWelcomeDisplay(
+              user.teacher.firstName,
+              user.teacher.lastName,
+              user.teacher.sex
+            );
             console.log('Error handler: Constructed fullName:', this.teacherName);
           }
           this.cdr.detectChanges();

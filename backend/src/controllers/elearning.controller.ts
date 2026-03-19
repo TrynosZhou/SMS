@@ -7,6 +7,8 @@ import { UserRole } from '../entities/User';
 import { Student } from '../entities/Student';
 import { ParentStudent } from '../entities/ParentStudent';
 import { Parent } from '../entities/Parent';
+import path from 'path';
+import fs from 'fs';
 
 async function resolveStudentForRequest(req: AuthRequest): Promise<Student | null> {
   if (!req.user) return null;
@@ -64,7 +66,7 @@ export const createTask = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: 'Only teachers can create e-learning tasks' });
     }
 
-    const { classId, studentId, type, title, description, dueDate } = req.body;
+    const { classId, studentId, type, title, description, dueDate, maxScore } = req.body;
     if (!classId || !type) {
       return res.status(400).json({ message: 'classId and type are required' });
     }
@@ -80,6 +82,15 @@ export const createTask = async (req: AuthRequest, res: Response) => {
       fileUrl = `/uploads/elearning/${file.filename}`;
     }
 
+    let parsedMaxScore: number | null = null;
+    if (maxScore !== undefined && maxScore !== null && String(maxScore).trim() !== '') {
+      const n = Number(maxScore);
+      if (!Number.isFinite(n) || n <= 0) {
+        return res.status(400).json({ message: 'maxScore must be a positive number' });
+      }
+      parsedMaxScore = Math.round(n);
+    }
+
     const repo = AppDataSource.getRepository(ElearningTask);
     const task = repo.create({
       classId,
@@ -89,7 +100,8 @@ export const createTask = async (req: AuthRequest, res: Response) => {
       title: title || null,
       description: description || null,
       dueDate: dueDate ? new Date(dueDate) : null,
-      fileUrl
+      fileUrl,
+      maxScore: parsedMaxScore,
     });
 
     const saved = await repo.save(task);
@@ -116,6 +128,71 @@ export const getMyTasks = async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     console.error('Error loading teacher tasks:', error);
     return res.status(500).json({ message: 'Failed to load tasks', error: error.message });
+  }
+};
+
+function safeUnlinkUpload(fileUrl: string | null | undefined): void {
+  try {
+    const raw = String(fileUrl || '').trim();
+    if (!raw) return;
+    const prefix = '/uploads/elearning/';
+    if (!raw.startsWith(prefix)) return;
+    const filename = raw.slice(prefix.length);
+    if (!filename) return;
+    const abs = path.join(process.cwd(), 'uploads', 'elearning', filename);
+    if (fs.existsSync(abs)) {
+      fs.unlinkSync(abs);
+    }
+  } catch {
+    // best-effort cleanup; ignore filesystem errors
+  }
+}
+
+export const deleteTask = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== UserRole.TEACHER) {
+      return res.status(403).json({ message: 'Only teachers can delete tasks' });
+    }
+
+    const { taskId } = req.params;
+    if (!taskId) {
+      return res.status(400).json({ message: 'taskId is required' });
+    }
+
+    const teacherId = req.user.teacher?.id || req.user.id;
+
+    const taskRepo = AppDataSource.getRepository(ElearningTask);
+    const responseRepo = AppDataSource.getRepository(ElearningResponse);
+
+    const task = await taskRepo.findOne({ where: { id: taskId } });
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    if (task.teacherId !== teacherId) {
+      return res.status(403).json({ message: 'You are not allowed to delete this task' });
+    }
+
+    // Delete related responses first (no cascade configured)
+    const responses = await responseRepo.find({ where: { taskId } });
+    // Best-effort cleanup of response-related uploads
+    for (const r of responses) {
+      safeUnlinkUpload(r.fileUrl);
+      safeUnlinkUpload(r.feedbackFileUrl);
+    }
+    if (responses.length) {
+      await responseRepo.delete({ taskId });
+    }
+
+    // Delete task attachment if any
+    safeUnlinkUpload(task.fileUrl);
+
+    await taskRepo.delete({ id: taskId });
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error deleting e-learning task:', error);
+    return res.status(500).json({ message: 'Failed to delete task', error: error.message });
   }
 };
 

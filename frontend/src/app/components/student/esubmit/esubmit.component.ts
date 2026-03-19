@@ -31,7 +31,8 @@ export class EsubmitComponent implements OnInit {
   }
 
   get charCount(): number {
-    return (this.text || '').length;
+    const plain = this.stripHtml(this.text || '');
+    return plain.length;
   }
 
   loadTasks(): void {
@@ -55,6 +56,11 @@ export class EsubmitComponent implements OnInit {
   onTaskChange(): void {
     // When task changes, pull draft text (if present)
     this.loadDraft(this.selectedTaskId);
+  }
+
+  onTextEditorChange(next: string): void {
+    this.text = next || '';
+    this.onTextChange();
   }
 
   onFileChange(event: Event): void {
@@ -98,13 +104,14 @@ export class EsubmitComponent implements OnInit {
       this.error = 'Please choose a task/assignment.';
       return;
     }
-    if (!this.text.trim() && !this.file) {
+    if (this.stripHtml(this.text || '').trim().length === 0 && !this.file) {
       this.error = 'Please type your answer or attach a file.';
       return;
     }
 
     const form = new FormData();
-    if (this.text.trim()) {
+    if (this.stripHtml(this.text || '').trim()) {
+      // Store editor HTML so teacher can render formatting/shapes.
       form.append('text', this.text.trim());
     }
     if (this.file) {
@@ -147,6 +154,13 @@ export class EsubmitComponent implements OnInit {
     } catch {
       this.text = '';
     }
+  }
+
+  private stripHtml(input: string): string {
+    // Remove tags but keep content (works for our simple inline SVG shapes too).
+    const tmp = document.createElement('div');
+    tmp.innerHTML = input || '';
+    return tmp.textContent || tmp.innerText || '';
   }
 }
 

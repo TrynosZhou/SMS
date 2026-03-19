@@ -51,6 +51,10 @@ export class ElearningTask {
   @Column({ type: 'uuid', nullable: true })
   studentId: string | null;
 
+  // Optional maximum score/marks for this task (e.g. 10, 20, 30).
+  @Column({ type: 'int', nullable: true })
+  maxScore: number | null;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 }

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { ClassService } from '../../../services/class.service';
 import { StudentService } from '../../../services/student.service';
 import { ElearningService } from '../../../services/elearning.service';
@@ -20,6 +20,8 @@ export class EservicesComponent implements OnInit {
   description = '';
   dueDate = '';
   attachment: File | null = null;
+  maxScore: number | null = null;
+  @ViewChild('fileInput') fileInputRef?: ElementRef<HTMLInputElement>;
 
   loadingClasses = false;
   loadingStudents = false;
@@ -29,6 +31,7 @@ export class EservicesComponent implements OnInit {
 
   tasks: any[] = [];
   loadingTasks = false;
+  deletingTaskId: string | null = null;
 
   constructor(
     private classService: ClassService,
@@ -83,6 +86,12 @@ export class EservicesComponent implements OnInit {
     }
   }
 
+  removeAttachment(): void {
+    this.attachment = null;
+    const el = this.fileInputRef?.nativeElement;
+    if (el) el.value = '';
+  }
+
   createTask(): void {
     this.success = null;
     this.error = null;
@@ -114,6 +123,9 @@ export class EservicesComponent implements OnInit {
     }
     if (this.dueDate) {
       form.append('dueDate', this.dueDate);
+    }
+    if (this.maxScore !== null && this.maxScore !== undefined && String(this.maxScore).trim() !== '') {
+      form.append('maxScore', String(this.maxScore));
     }
     if (this.attachment) {
       form.append('file', this.attachment);
@@ -148,13 +160,40 @@ export class EservicesComponent implements OnInit {
     });
   }
 
+  deleteTask(task: any): void {
+    const taskId = String(task?.id || '').trim();
+    if (!taskId) return;
+    const title = (task?.title || 'this task').toString();
+    const ok = confirm(`Delete "${title}"?\n\nThis will remove the task and its student responses.`);
+    if (!ok) return;
+
+    this.error = null;
+    this.success = null;
+    this.deletingTaskId = taskId;
+    this.elearningService.deleteTask(taskId).subscribe({
+      next: () => {
+        this.deletingTaskId = null;
+        this.success = 'Task deleted successfully.';
+        this.tasks = this.tasks.filter(t => String(t?.id) !== taskId);
+      },
+      error: (err: any) => {
+        this.deletingTaskId = null;
+        this.error = err?.error?.message || 'Failed to delete task.';
+      }
+    });
+  }
+
   private resetForm(): void {
     this.taskType = '';
     this.title = '';
     this.description = '';
     this.dueDate = '';
     this.attachment = null;
+    // Also clear native file input so the same file can be re-selected.
+    const el = this.fileInputRef?.nativeElement;
+    if (el) el.value = '';
     this.selectedStudentId = '';
+    this.maxScore = null;
   }
 }
 

@@ -93,7 +93,17 @@
               </div>
             </td>
             <td>{{ r.submittedAt | date:'mediumDate' }}</td>
-            <td>{{ r.score === null || r.score === undefined ? '—' : r.score }}</td>
+            <td>
+              <ng-container *ngIf="r.score === null || r.score === undefined; else hasScore">
+                —
+              </ng-container>
+              <ng-template #hasScore>
+                <ng-container *ngIf="r.task?.maxScore; else plainScore">
+                  {{ r.score }}/{{ r.task.maxScore }}
+                </ng-container>
+                <ng-template #plainScore>{{ r.score }}</ng-template>
+              </ng-template>
+            </td>
             <td>
               <a *ngIf="r.feedbackFileUrl" class="eweb-link" (click)="openMarkedScript(r)">
                 View marked script

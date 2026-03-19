@@ -5,6 +5,7 @@ import fs from 'fs';
 import { authenticate } from '../middleware/auth';
 import {
   createTask,
+  deleteTask,
   getMyTasks,
   getStudentTasks,
   getStudentTaskById,
@@ -43,6 +44,7 @@ router.get('/admin/class/:classId/tasks', authenticate, getAdminClassTasks);
 // Teacher endpoints
 router.post('/tasks', authenticate, upload.single('file'), createTask);
 router.get('/tasks/my', authenticate, getMyTasks);
+router.delete('/tasks/:taskId', authenticate, deleteTask);
 router.get('/tasks/:taskId/responses', authenticate, getTaskResponses);
 
 // Student endpoints

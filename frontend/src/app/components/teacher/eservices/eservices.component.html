@@ -55,11 +55,19 @@
       </div>
 
       <div class="es-field">
+        <label>Total marks (optional)</label>
+        <input
+          type="number"
+          min="1"
+          step="1"
+          [(ngModel)]="maxScore"
+          placeholder="e.g. 10, 20, 30" />
+        <small>Used to show scores like 8/10 or 20/30.</small>
+      </div>
+
+      <div class="es-field">
         <label>Description / Instructions</label>
-        <textarea
-          [(ngModel)]="description"
-          rows="4"
-          placeholder="Write the task here or upload a file below."></textarea>
+        <app-doc-editor [(value)]="description" [surfaceMinHeight]="520"></app-doc-editor>
       </div>
 
       <div class="es-field">
@@ -69,8 +77,14 @@
 
       <div class="es-field">
         <label>Attachment (PDF / document)</label>
-        <input type="file" (change)="onFileChange($event)" />
+        <input #fileInput type="file" (change)="onFileChange($event)" />
         <small>Optional: upload a PDF or document from your computer.</small>
+        <div class="es-file-row" *ngIf="attachment">
+          <span class="es-file-pill">{{ attachment.name }}</span>
+          <button type="button" class="es-btn-danger" (click)="removeAttachment()">
+            Remove
+          </button>
+        </div>
       </div>
 
       <button class="es-btn-primary" (click)="createTask()" [disabled]="submitting">
@@ -104,6 +118,13 @@
             <a *ngIf="t.fileUrl" [href]="t.fileUrl" target="_blank" rel="noopener noreferrer">
               Preview PDF
             </a>
+            <button
+              type="button"
+              class="es-btn-danger"
+              (click)="deleteTask(t)"
+              [disabled]="deletingTaskId === t.id">
+              {{ deletingTaskId === t.id ? 'Deleting…' : 'Delete' }}
+            </button>
           </div>
         </div>
       </div>
