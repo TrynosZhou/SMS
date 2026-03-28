@@ -317,6 +317,14 @@ export class TeacherListComponent implements OnInit {
     this.router.navigate([`/teachers/${id}/edit`]);
   }
 
+  allocateClass(teacher: any) {
+    if (!teacher?.id) return;
+    this.closeTeacherDetails();
+    this.router.navigate(['/class_allocation'], { 
+      queryParams: { teacherId: teacher.id } 
+    });
+  }
+
   createTeacherAccount(teacher: any) {
     if (!teacher?.id) return;
     this.error = '';

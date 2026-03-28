@@ -665,6 +665,25 @@
   transform: translateY(-2px);
 }
 
+.btn-link-small {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid #667eea;
+  border-radius: 6px;
+  color: #667eea;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.btn-link-small:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-2px);
+}
+
 /* Modal Styles */
 .modal-overlay {
   position: fixed;

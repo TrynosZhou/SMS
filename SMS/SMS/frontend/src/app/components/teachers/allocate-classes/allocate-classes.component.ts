@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { TeacherService } from '../../../services/teacher.service';
@@ -56,13 +57,39 @@ export class AllocateClassesComponent implements OnInit {
   constructor(
     private teacherService: TeacherService,
     private subjectService: SubjectService,
-    private classService: ClassService
+    private classService: ClassService,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
     this.loadTeachers();
     this.loadSubjects();
     this.loadClasses();
+    this.checkQueryParams();
+  }
+
+  checkQueryParams() {
+    this.route.queryParams.subscribe(params => {
+      const teacherId = params['teacherId'];
+      if (teacherId) {
+        // We need to wait for teachers to be loaded before we can open the modal
+        this.waitForTeachersAndOpenModal(teacherId);
+      }
+    });
+  }
+
+  private waitForTeachersAndOpenModal(teacherId: string) {
+    const check = () => {
+      if (!this.loading && this.teachers.length > 0) {
+        const teacher = this.teachers.find(t => t.id === teacherId);
+        if (teacher) {
+          this.openAllocationModal(teacher);
+        }
+      } else {
+        setTimeout(check, 100);
+      }
+    };
+    check();
   }
 
   loadTeachers() {

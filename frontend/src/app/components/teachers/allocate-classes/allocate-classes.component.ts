@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { TeacherService } from '../../../services/teacher.service';
@@ -45,21 +46,55 @@ export class AllocateClassesComponent implements OnInit {
   selectedTeacherIds: string[] = [];
   bulkProgress = { total: 0, done: 0, failed: 0 };
 
+  // Modal properties
+  showAllocationModal = false;
+  teacherToAllocate: any = null;
+  selectedModalSubjectIds: string[] = [];
+  selectedModalClassIds: string[] = [];
+  modalSubjectSearch = '';
+  modalClassSearch = '';
+
   constructor(
     private teacherService: TeacherService,
     private subjectService: SubjectService,
-    private classService: ClassService
+    private classService: ClassService,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
     this.loadTeachers();
     this.loadSubjects();
     this.loadClasses();
+    this.checkQueryParams();
+  }
+
+  checkQueryParams() {
+    this.route.queryParams.subscribe(params => {
+      const teacherId = params['teacherId'];
+      if (teacherId) {
+        // We need to wait for teachers to be loaded before we can open the modal
+        this.waitForTeachersAndOpenModal(teacherId);
+      }
+    });
+  }
+
+  private waitForTeachersAndOpenModal(teacherId: string) {
+    const check = () => {
+      if (!this.loading && this.teachers.length > 0) {
+        const teacher = this.teachers.find(t => t.id === teacherId);
+        if (teacher) {
+          this.openAllocationModal(teacher);
+        }
+      } else {
+        setTimeout(check, 100);
+      }
+    };
+    check();
   }
 
   loadTeachers() {
     this.loading = true;
-    this.teacherService.getTeachers().subscribe({
+    this.teacherService.getTeachers(1, 1000).subscribe({
       next: (data: any[]) => {
         this.teachers = Array.isArray(data) ? data : [];
         this.filteredTeachers = this.teachers;
@@ -371,6 +406,74 @@ export class AllocateClassesComponent implements OnInit {
     this.unallocPageSize = Number.isFinite(v) && v > 0 ? v : this.unallocPageSize;
     this.unallocPage = 1;
     this.refreshUnallocatedView();
+  }
+
+  // Modal methods
+  openAllocationModal(teacher: any) {
+    this.teacherToAllocate = { ...teacher };
+    this.selectedModalSubjectIds = (teacher.subjects || []).map((s: any) => s.id);
+    this.selectedModalClassIds = (teacher.classes || []).map((c: any) => c.id);
+    this.modalSubjectSearch = '';
+    this.modalClassSearch = '';
+    this.showAllocationModal = true;
+  }
+
+  closeAllocationModal() {
+    this.showAllocationModal = false;
+    this.teacherToAllocate = null;
+    this.selectedModalSubjectIds = [];
+    this.selectedModalClassIds = [];
+    this.modalSubjectSearch = '';
+    this.modalClassSearch = '';
+  }
+
+  get filteredModalSubjects() {
+    const q = (this.modalSubjectSearch || '').toLowerCase().trim();
+    if (!q) return this.subjects;
+    return this.subjects.filter(s => (s.name || '').toLowerCase().includes(q));
+  }
+
+  get filteredModalClasses() {
+    const q = (this.modalClassSearch || '').toLowerCase().trim();
+    if (!q) return this.classes;
+    return this.classes.filter(c => (c.name || '').toLowerCase().includes(q));
+  }
+
+  toggleModalSubject(id: string) {
+    const i = this.selectedModalSubjectIds.indexOf(id);
+    if (i >= 0) this.selectedModalSubjectIds.splice(i, 1);
+    else this.selectedModalSubjectIds.push(id);
+  }
+
+  toggleModalClass(id: string) {
+    const i = this.selectedModalClassIds.indexOf(id);
+    if (i >= 0) this.selectedModalClassIds.splice(i, 1);
+    else this.selectedModalClassIds.push(id);
+  }
+
+  saveModalAllocation() {
+    if (!this.teacherToAllocate) return;
+    this.saving = true;
+    this.error = '';
+    this.success = '';
+    const payload = {
+      subjectIds: this.selectedModalSubjectIds,
+      classIds: this.selectedModalClassIds
+    };
+    this.teacherService.updateTeacher(this.teacherToAllocate.id, payload).subscribe({
+      next: (resp: any) => {
+        this.success = resp?.message || 'Teacher assignment saved successfully';
+        this.saving = false;
+        this.closeAllocationModal();
+        this.loadTeachers();
+        setTimeout(() => this.success = '', 4000);
+      },
+      error: (err: any) => {
+        this.error = err?.error?.message || 'Failed to save teacher assignment';
+        this.saving = false;
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
   }
 
   exportUnallocatedCSV() {
