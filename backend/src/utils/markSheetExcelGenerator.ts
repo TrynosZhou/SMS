@@ -32,6 +32,7 @@ interface MarkSheetExcelData {
     totalScore: number;
     totalMaxScore: number;
     average: number;
+    includeInClassPassRate?: boolean;
   }>;
   generatedAt: Date;
 }
@@ -42,12 +43,11 @@ export function createMarkSheetExcel(
 ): Buffer {
   const rows: (string | number)[][] = [];
 
-  // Pass rate (like PDF)
-  const passCount = data.markSheet.filter((r) => r.average >= 70).length;
+  // Pass rate (like PDF): only students included for class pass rate
+  const passRateRows = data.markSheet.filter((r) => r.includeInClassPassRate !== false);
+  const passCount = passRateRows.filter((r) => r.average >= 70).length;
   const passRate =
-    data.markSheet.length > 0
-      ? Math.round((passCount / data.markSheet.length) * 100)
-      : 0;
+    passRateRows.length > 0 ? Math.round((passCount / passRateRows.length) * 100) : 0;
   rows.push([`Pass Rate: ${passRate}% (students with 70% and above)`]);
 
   // Class teacher (like PDF)

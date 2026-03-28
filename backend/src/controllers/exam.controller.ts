@@ -3,6 +3,7 @@ import { In, IsNull } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { Exam, ExamType, ExamStatus } from '../entities/Exam';
 import { Marks } from '../entities/Marks';
+import { ExamStudentPassRateInclusion } from '../entities/ExamStudentPassRateInclusion';
 import { Student } from '../entities/Student';
 import { Subject } from '../entities/Subject';
 import { Class } from '../entities/Class';
@@ -114,6 +115,122 @@ function assignPositionsWithTies<T extends { studentId: string } & ({ average?: 
   
   return result;
 }
+
+/** Merge pass-rate flags: any false across scoped exams excludes the student from class pass rate. */
+async function loadPassRateInclusionForStudents(
+  examIds: string[],
+  studentIds: string[]
+): Promise<Map<string, boolean>> {
+  const map = new Map<string, boolean>();
+  studentIds.forEach(id => map.set(id, true));
+  if (!examIds.length || !studentIds.length) return map;
+  const repo = AppDataSource.getRepository(ExamStudentPassRateInclusion);
+  const rows = await repo.find({
+    where: { examId: In(examIds), studentId: In(studentIds) }
+  });
+  rows.forEach(r => {
+    if (r.includeInClassPassRate === false) {
+      map.set(r.studentId, false);
+    }
+  });
+  return map;
+}
+
+async function upsertPassRateInclusionAcrossExamScope(
+  examId: string,
+  studentId: string,
+  includeInClassPassRate: boolean
+): Promise<void> {
+  const examRepository = AppDataSource.getRepository(Exam);
+  const inclusionRepo = AppDataSource.getRepository(ExamStudentPassRateInclusion);
+  const ex = await examRepository.findOne({ where: { id: examId } });
+  if (!ex) return;
+  const siblings = await examRepository.find({
+    where: { classId: ex.classId, term: ex.term, type: ex.type }
+  });
+  for (const e of siblings) {
+    await inclusionRepo.upsert(
+      {
+        examId: e.id,
+        studentId: String(studentId),
+        includeInClassPassRate
+      },
+      ['examId', 'studentId']
+    );
+  }
+}
+
+export const getPassRateInclusionsByScope = async (req: AuthRequest, res: Response) => {
+  try {
+    const { classId, term, examType } = req.query;
+    if (!classId || !term || !examType) {
+      return res.status(400).json({ message: 'classId, term, and examType are required' });
+    }
+    let normalizedType: ExamType;
+    try {
+      normalizedType = normalizeExamType(String(examType));
+    } catch (e: any) {
+      return res.status(400).json({ message: e.message || 'Invalid exam type' });
+    }
+    const examRepository = AppDataSource.getRepository(Exam);
+    const exams = await examRepository.find({
+      where: { classId: classId as string, term: String(term).trim(), type: normalizedType }
+    });
+    const examIds = exams.map(e => e.id);
+    if (examIds.length === 0) {
+      return res.json({ inclusions: {} as Record<string, boolean> });
+    }
+    const studentRepository = AppDataSource.getRepository(Student);
+    const students = await studentRepository.find({
+      where: { classId: classId as string, isActive: true }
+    });
+    const studentIds = students.map(s => s.id);
+    const map = await loadPassRateInclusionForStudents(examIds, studentIds);
+    const inclusions: Record<string, boolean> = {};
+    map.forEach((v, k) => {
+      inclusions[k] = v;
+    });
+    res.json({ inclusions });
+  } catch (error: any) {
+    console.error('getPassRateInclusionsByScope:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+export const setPassRateInclusionByScope = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const { classId, term, examType, studentId, includeInClassPassRate } = req.body;
+    if (!classId || !term || !examType || !studentId) {
+      return res.status(400).json({ message: 'classId, term, examType, and studentId are required' });
+    }
+    let normalizedType: ExamType;
+    try {
+      normalizedType = normalizeExamType(String(examType));
+    } catch (e: any) {
+      return res.status(400).json({ message: e.message || 'Invalid exam type' });
+    }
+    const examRepository = AppDataSource.getRepository(Exam);
+    const exams = await examRepository.find({
+      where: { classId: String(classId), term: String(term).trim(), type: normalizedType }
+    });
+    if (exams.length === 0) {
+      return res.status(404).json({ message: 'No exams found for this class, term, and exam type' });
+    }
+    const published = exams.some(e => e.status === ExamStatus.PUBLISHED);
+    if (published) {
+      return res.status(403).json({ message: 'Cannot change pass-rate settings after results are published.' });
+    }
+    const flag = includeInClassPassRate !== false;
+    await upsertPassRateInclusionAcrossExamScope(exams[0].id, String(studentId), flag);
+    res.json({ message: 'Pass rate inclusion updated', includeInClassPassRate: flag });
+  } catch (error: any) {
+    console.error('setPassRateInclusionByScope:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
 
 export const createExam = async (req: AuthRequest, res: Response) => {
   try {
@@ -828,6 +945,21 @@ export const captureMarks = async (req: AuthRequest, res: Response) => {
     }
 
     await marksRepository.save(marksToSave);
+
+    const studentsWithInclusionFlag = new Set<string>();
+    for (const mark of marksData) {
+      if (Object.prototype.hasOwnProperty.call(mark, 'includeInClassPassRate')) {
+        studentsWithInclusionFlag.add(String(mark.studentId));
+      }
+    }
+    for (const sid of studentsWithInclusionFlag) {
+      const src = marksData.find(
+        (m: any) => String(m.studentId) === sid && Object.prototype.hasOwnProperty.call(m, 'includeInClassPassRate')
+      );
+      if (src) {
+        await upsertPassRateInclusionAcrossExamScope(String(examId), sid, src.includeInClassPassRate !== false);
+      }
+    }
     
     res.json({ 
       message: 'Marks saved successfully. Report cards are now available for all students.',
@@ -3321,6 +3453,8 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       relations: ['student', 'exam', 'subject']
     });
 
+    const passRateInclusionMap = await loadPassRateInclusionForStudents(examIds, students.map(s => s.id));
+
     // Build subject list strictly from subjects assigned to the class.
     // Even if marks exist for other subjects, they are ignored for the mark sheet.
     const classSubjects = classEntity.subjects || [];
@@ -3422,6 +3556,8 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       } else {
         studentRow.average = 0;
       }
+
+      studentRow.includeInClassPassRate = passRateInclusionMap.get(student.id) !== false;
 
       markSheetData.push(studentRow);
     }
@@ -3555,6 +3691,8 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       relations: ['student', 'exam', 'subject']
     });
 
+    const passRateInclusionMapPdf = await loadPassRateInclusionForStudents(examIds, students.map(s => s.id));
+
     // Build subject list strictly from subjects assigned to the class.
     // Even if marks exist for other subjects, they are ignored for the mark sheet PDF.
     const classSubjects = classEntity.subjects || [];
@@ -3656,6 +3794,8 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       } else {
         studentRow.average = 0;
       }
+
+      studentRow.includeInClassPassRate = passRateInclusionMapPdf.get(student.id) !== false;
 
       markSheetData.push(studentRow);
     }
@@ -3788,6 +3928,11 @@ export const generateMarkSheetExcel = async (req: AuthRequest, res: Response) =>
       relations: ['student', 'exam', 'subject']
     });
 
+    const passRateInclusionMapXls = await loadPassRateInclusionForStudents(
+      examIds,
+      students.map((s: any) => s.id)
+    );
+
     const classSubjects = classEntity.subjects || [];
     if (classSubjects.length === 0) {
       return res.status(404).json({ message: 'No subjects assigned to this class' });
@@ -3836,7 +3981,8 @@ export const generateMarkSheetExcel = async (req: AuthRequest, res: Response) =>
         subjects: subjectMarks,
         totalScore,
         totalMaxScore,
-        average
+        average,
+        includeInClassPassRate: passRateInclusionMapXls.get(student.id) !== false
       });
     }
 
@@ -4004,7 +4150,14 @@ export const getMarksEntryProgress = async (req: AuthRequest, res: Response) => 
 
     const settings = await settingsRepository.findOne({ where: {}, order: { createdAt: 'DESC' } });
     const termUsed = (term && String(term).trim()) || settings?.activeTerm || settings?.currentTerm || null;
-    const normalizedType = examType ? normalizeExamType(examType) : null;
+    let normalizedType: ExamType | null = null;
+    if (examType && String(examType).trim()) {
+      try {
+        normalizedType = normalizeExamType(String(examType));
+      } catch {
+        normalizedType = null;
+      }
+    }
 
     // Load classes (optionally single class)
     const classes = await classRepository.find({
@@ -4028,60 +4181,52 @@ export const getMarksEntryProgress = async (req: AuthRequest, res: Response) => 
       const subjectProgress: any[] = [];
 
       for (const subject of subjects) {
-        const baseWhere: any = { classId: cls.id };
-        if (normalizedType) baseWhere.type = normalizedType as any;
-        if (termUsed) baseWhere.term = termUsed as any;
-
-        const filteredExams = await examRepository.find({
-          where: baseWhere,
-          order: { examDate: 'DESC' }
-        });
-
         let chosenExam: Exam | null = null;
         let enteredCount = 0;
 
-        // Count only marks for ACTIVE students
-        const computeMaxFor = async (examsToCheck: Exam[]) => {
-          let maxCount = 0;
-          let maxExam: Exam | null = null;
-          for (const ex of examsToCheck) {
-            // Count marks only for active students
-            let count = 0;
-            if (activeStudentIds.length > 0) {
-              count = await marksRepository.count({
-                where: { 
-                  examId: ex.id, 
-                  subjectId: subject.id,
-                  studentId: In(activeStudentIds)
-                }
-              });
-            }
-            if (count > maxCount) {
-              maxCount = count;
-              maxExam = ex;
-            }
-          }
-          return { maxCount, maxExam };
-        };
-
-        if (filteredExams.length > 0) {
-          const { maxCount, maxExam } = await computeMaxFor(filteredExams);
-          enteredCount = maxCount;
-          chosenExam = maxExam ?? filteredExams[0];
-        } else {
-          const anyExams = await examRepository.find({
-            where: { classId: cls.id },
-            order: { examDate: 'DESC' }
+        // Progress is only for the selected term + exam type. No fallback to other periods.
+        if (!normalizedType || !termUsed) {
+          subjectProgress.push({
+            subjectId: subject.id,
+            subjectName: subject.name,
+            progressPercent: 0,
+            enteredCount: 0,
+            expectedCount: totalStudents,
+            examId: null,
+            examType: normalizedType || null,
+            term: termUsed || null
           });
-          if (anyExams.length > 0) {
-            const { maxCount, maxExam } = await computeMaxFor(anyExams);
-            enteredCount = maxCount;
-            chosenExam = maxExam ?? anyExams[0];
+          continue;
+        }
+
+        const filteredExams = await examRepository.find({
+          where: {
+            classId: cls.id,
+            type: normalizedType as any,
+            term: termUsed as any
+          },
+          relations: ['subjects'],
+          order: { examDate: 'DESC' }
+        });
+
+        const examsForSubject = filteredExams.filter(ex =>
+          (ex.subjects || []).some((s: Subject) => s.id === subject.id)
+        );
+
+        if (examsForSubject.length > 0) {
+          chosenExam = examsForSubject[0];
+          if (activeStudentIds.length > 0) {
+            enteredCount = await marksRepository
+              .createQueryBuilder('m')
+              .where('m.examId = :examId', { examId: chosenExam.id })
+              .andWhere('m.subjectId = :subjectId', { subjectId: subject.id })
+              .andWhere('m.studentId IN (:...sids)', { sids: activeStudentIds })
+              .andWhere('m.score IS NOT NULL')
+              .getCount();
           }
         }
 
         const expectedCount = totalStudents;
-        // Ensure enteredCount doesn't exceed expectedCount (safety cap)
         const safeEnteredCount = Math.min(enteredCount, expectedCount);
         const progressPercent = expectedCount > 0 ? Math.round((safeEnteredCount / expectedCount) * 100) : 0;
 

@@ -36,6 +36,7 @@ interface MarkSheetData {
     totalScore: number;
     totalMaxScore: number;
     average: number;
+    includeInClassPassRate?: boolean;
   }>;
   generatedAt: Date;
 }
@@ -131,11 +132,13 @@ export function createMarkSheetPDF(
         }
       }
 
-      // Pass rate (students with 70% and above) - below banner, in bold
-      const passCount = markSheetData.markSheet.filter(r => r.average >= 70).length;
-      const passRate = markSheetData.markSheet.length > 0
-        ? Math.round((passCount / markSheetData.markSheet.length) * 100)
-        : 0;
+      // Pass rate: only students ticked for class pass rate (default included)
+      const passRateRows = markSheetData.markSheet.filter(
+        (r) => r.includeInClassPassRate !== false
+      );
+      const passCount = passRateRows.filter((r) => r.average >= 70).length;
+      const passRate =
+        passRateRows.length > 0 ? Math.round((passCount / passRateRows.length) * 100) : 0;
       let yPos = headerTopY;
       doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
       doc.text(`Pass Rate: ${passRate}% (students with 70% and above)`, 40, yPos);

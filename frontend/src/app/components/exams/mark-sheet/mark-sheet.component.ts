@@ -511,7 +511,8 @@ export class MarkSheetComponent implements OnInit {
     );
     this.statistics.highestScore = Math.max(...averages);
     this.statistics.lowestScore = Math.min(...averages);
-    // Core-subject pass rate: percentage of students with core average ≥ 70
+    // Core-subject pass rate: only students ticked for pass rate (default all)
+    const marksForPassRate = marks.filter((row: any) => row.includeInClassPassRate !== false);
     const coreSubjectIds: string[] = (() => {
       if (!this.markSheetData?.subjects) return [];
       const ids: string[] = [];
@@ -523,7 +524,7 @@ export class MarkSheetComponent implements OnInit {
       });
       return ids;
     })();
-    const studentsWithCore = marks.map((row: any) => {
+    const studentsWithCore = marksForPassRate.map((row: any) => {
       const corePercentages: number[] = coreSubjectIds
         .map(id => row.subjects?.[id]?.percentage)
         .filter((p: any) => Number.isFinite(p));
@@ -537,7 +538,6 @@ export class MarkSheetComponent implements OnInit {
 
     // Distribution
     const highCount = averages.filter((avg: number) => avg >= 70).length;
-    // Core-below-70 percentage replaces previous "< 50%" card
     const below70Core = studentsWithCore.filter((s: { hasCore: boolean; coreAvg: number }) => s.hasCore && s.coreAvg < 70).length;
 
     this.statistics.highAchieversPercent = total ? Math.round((highCount / total) * 100) : 0;

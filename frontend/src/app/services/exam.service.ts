@@ -97,6 +97,29 @@ export class ExamService {
     );
   }
 
+  getPassRateInclusionsByScope(classId: string, term: string, examType: string): Observable<{ inclusions: Record<string, boolean> }> {
+    const params = new HttpParams()
+      .set('classId', classId)
+      .set('term', term)
+      .set('examType', this.normalizeExamType(examType, false));
+    return this.http.get<{ inclusions: Record<string, boolean> }>(`${this.apiUrl}/exams/pass-rate-inclusion`, { params }).pipe(
+      catchError(err => throwError(() => err))
+    );
+  }
+
+  setPassRateInclusionByScope(payload: {
+    classId: string;
+    term: string;
+    examType: string;
+    studentId: string;
+    includeInClassPassRate: boolean;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/exams/pass-rate-inclusion`, {
+      ...payload,
+      examType: this.normalizeExamType(payload.examType, false)
+    }).pipe(catchError(err => throwError(() => err)));
+  }
+
   getMarks(examId?: string, studentId?: string, classId?: string): Observable<any> {
     let params = new HttpParams();
     if (examId) params = params.set('examId', examId);

@@ -90,6 +90,7 @@
           Exam Type
         </label>
         <select [(ngModel)]="selectedExamType" (change)="fetchProgress()" class="filter-select">
+          <option value="">Select</option>
           <option *ngFor="let t of examTypes" [value]="t.value">{{ t.label }}</option>
         </select>
       </div>

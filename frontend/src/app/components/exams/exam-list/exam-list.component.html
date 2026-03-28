@@ -277,6 +277,7 @@
             <thead>
               <tr>
                 <th class="col-num">#</th>
+                <th class="col-pass" title="Include in class pass rate on mark sheet">Pass rate</th>
                 <th class="col-id">Student ID</th>
                 <th class="col-name">Last Name</th>
                 <th class="col-name">First Name</th>
@@ -290,6 +291,16 @@
                   [class.is-saved]="isRecordSaved(student.id)">
                 <td class="col-num">
                   <span class="row-number">{{ i + 1 }}</span>
+                </td>
+                <td class="col-pass">
+                  <input
+                    type="checkbox"
+                    class="pass-rate-checkbox"
+                    [ngModel]="passRateInclusionForStudent(student.id)"
+                    (ngModelChange)="onPassRateInclusionChange(student.id, $event)"
+                    [disabled]="isPublished"
+                    [ngModelOptions]="{standalone: true}"
+                    title="Ticked: counts toward class pass rate on mark sheet" />
                 </td>
                 <td class="col-id">
                   <span class="student-id">{{ student.studentNumber }}</span>

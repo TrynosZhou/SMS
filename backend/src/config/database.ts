@@ -8,6 +8,7 @@ import { Class } from '../entities/Class';
 import { Subject } from '../entities/Subject';
 import { Exam } from '../entities/Exam';
 import { Marks } from '../entities/Marks';
+import { ExamStudentPassRateInclusion } from '../entities/ExamStudentPassRateInclusion';
 import { Invoice } from '../entities/Invoice';
 import { Parent } from '../entities/Parent';
 import { ParentStudent } from '../entities/ParentStudent';
@@ -69,7 +70,7 @@ console.log('[DB Config] Module type check - typeof module:', typeof module);
 
 console.log('[DB Config] Preparing entity list...');
 // Try using entity classes first, fallback to paths if needed
-const entities = [User, Student, Teacher, Class, Subject, Exam, Marks, Invoice, Parent, ParentStudent, Settings, ReportCardRemarks, Message, UniformItem, InvoiceUniformItem, UniformCharge, UniformChargeItem, UniformPaymentLog, Attendance, PromotionRule, RecordBook, StudentTransfer, Timetable, TimetableEntry, TimetableConfig, TimetableVersion, TimetableChangeLog, TeacherClass, PaymentLog, UserSessionLog, LoginAttemptLog, ModuleAccessLog, UserActionLog, News, AncillaryStaff, SalaryStructure, SalaryAssignment, PayrollRun, PayrollEntry, PayrollEntryLine, EmployeeLoanAccount, LoanSchedule, ElearningTask, ElearningResponse];
+const entities = [User, Student, Teacher, Class, Subject, Exam, Marks, ExamStudentPassRateInclusion, Invoice, Parent, ParentStudent, Settings, ReportCardRemarks, Message, UniformItem, InvoiceUniformItem, UniformCharge, UniformChargeItem, UniformPaymentLog, Attendance, PromotionRule, RecordBook, StudentTransfer, Timetable, TimetableEntry, TimetableConfig, TimetableVersion, TimetableChangeLog, TeacherClass, PaymentLog, UserSessionLog, LoginAttemptLog, ModuleAccessLog, UserActionLog, News, AncillaryStaff, SalaryStructure, SalaryAssignment, PayrollRun, PayrollEntry, PayrollEntryLine, EmployeeLoanAccount, LoanSchedule, ElearningTask, ElearningResponse];
 console.log('[DB Config] Entity count:', entities.length);
 console.log('[DB Config] Entity names:', entities.map(e => e?.name || 'unknown').join(', '));
 console.log('[DB Config] Checking each entity...');

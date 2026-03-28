@@ -15,7 +15,7 @@ export class MarksProgressComponent implements OnInit {
   viewData: any[] = []; // Cached view data to prevent flickering
   loading = false;
   error = '';
-  selectedExamType = 'mid_term';
+  selectedExamType = '';
   selectedTerm = '';
   selectedClassId = '';
   searchQuery = '';
@@ -47,7 +47,6 @@ export class MarksProgressComponent implements OnInit {
   ngOnInit(): void {
     this.loadDefaults();
     this.loadClasses();
-    this.fetchProgress();
   }
 
   loadDefaults() {
@@ -69,6 +68,14 @@ export class MarksProgressComponent implements OnInit {
   }
 
   fetchProgress() {
+    if (!this.selectedExamType) {
+      this.progressData = [];
+      this.viewData = [];
+      this.computeStats();
+      this.updateViewData();
+      this.loading = false;
+      return;
+    }
     this.loading = true;
     this.error = '';
     this.examService.getMarksProgress(this.selectedExamType, this.selectedTerm, this.selectedClassId).subscribe({
@@ -224,7 +231,7 @@ export class MarksProgressComponent implements OnInit {
   }
 
   resetFilters() {
-    this.selectedExamType = 'mid_term';
+    this.selectedExamType = '';
     this.selectedClassId = '';
     this.searchQuery = '';
     this.sortColumn = 'avgProgress';

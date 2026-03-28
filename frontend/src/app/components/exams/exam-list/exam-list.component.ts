@@ -46,6 +46,8 @@ export class ExamListComponent implements OnInit, OnDestroy {
   // Marks entry
   marks: any = {};
   currentExam: any = null;
+  /** When true, student's marks count toward class pass rate on mark sheet (default true). */
+  studentPassRateInclusion: Record<string, boolean> = {};
   
   // UI state
   loading = false;
@@ -386,6 +388,7 @@ export class ExamListComponent implements OnInit, OnDestroy {
     this.filteredStudents = [];
     this.marks = {};
     this.currentExam = null;
+    this.studentPassRateInclusion = {};
     this.studentSearchQuery = '';
     this.canPublish = false;
     this.isPublished = false;
@@ -490,6 +493,7 @@ export class ExamListComponent implements OnInit, OnDestroy {
           }
           
           this.initializeMarks();
+          this.loadPassRateInclusionsForScope();
           this.loadExistingMarks();
           this.filteredStudents = [...this.students];
           this.showMarksEntry = true;
@@ -581,6 +585,55 @@ export class ExamListComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadPassRateInclusionsForScope() {
+    this.students.forEach(s => {
+      this.studentPassRateInclusion[s.id] = true;
+    });
+    if (!this.selectedClassId || !this.selectedTerm || !this.selectedExamType) {
+      return;
+    }
+    this.examService
+      .getPassRateInclusionsByScope(this.selectedClassId, this.selectedTerm, this.selectedExamType)
+      .subscribe({
+        next: (res: any) => {
+          const inc = res?.inclusions || {};
+          this.students.forEach(s => {
+            this.studentPassRateInclusion[s.id] = inc[s.id] !== false;
+          });
+        },
+        error: () => {
+          this.students.forEach(s => {
+            this.studentPassRateInclusion[s.id] = true;
+          });
+        }
+      });
+  }
+
+  passRateInclusionForStudent(studentId: string): boolean {
+    return this.studentPassRateInclusion[studentId] !== false;
+  }
+
+  onPassRateInclusionChange(studentId: string, checked: boolean) {
+    if (this.isPublished) {
+      return;
+    }
+    this.studentPassRateInclusion[studentId] = checked;
+    if (!this.selectedClassId || !this.selectedTerm || !this.selectedExamType) {
+      return;
+    }
+    this.examService
+      .setPassRateInclusionByScope({
+        classId: this.selectedClassId,
+        term: this.selectedTerm,
+        examType: this.selectedExamType,
+        studentId,
+        includeInClassPassRate: checked
+      })
+      .subscribe({
+        error: (err: any) => console.error('Pass rate inclusion update failed:', err)
+      });
+  }
+
   loadExistingMarks() {
     if (!this.currentExam || !this.selectedSubjectId) return;
 
@@ -646,6 +699,7 @@ export class ExamListComponent implements OnInit, OnDestroy {
     this.students = [];
     this.filteredStudents = [];
     this.marks = {};
+    this.studentPassRateInclusion = {};
     this.studentSearchQuery = '';
     this.lastSavedStudentId = null;
     this.pendingSaves.clear();
@@ -866,7 +920,8 @@ export class ExamListComponent implements OnInit, OnDestroy {
       subjectId: this.selectedSubjectId,
       score: mark.score ? Math.round(parseFloat(mark.score)) : null,
       maxScore: 100,
-      comments: mark.comments || ''
+      comments: mark.comments || '',
+      includeInClassPassRate: this.passRateInclusionForStudent(studentId)
     }];
 
     this.isAutoSaving = true;
@@ -906,7 +961,8 @@ export class ExamListComponent implements OnInit, OnDestroy {
           subjectId: this.selectedSubjectId,
           score: mark.score ? Math.round(parseFloat(mark.score)) : null,
           maxScore: 100,
-          comments: mark.comments || ''
+          comments: mark.comments || '',
+          includeInClassPassRate: this.passRateInclusionForStudent(studentId)
         };
       }
       return null;
@@ -1021,7 +1077,8 @@ export class ExamListComponent implements OnInit, OnDestroy {
           subjectId: this.selectedSubjectId,
           score: mark.score ? Math.round(parseFloat(mark.score)) : null,
           maxScore: 100, // Default max score of 100
-          comments: mark.comments || ''
+          comments: mark.comments || '',
+          includeInClassPassRate: this.passRateInclusionForStudent(student.id)
         };
       }
       return null;
