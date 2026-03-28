@@ -238,58 +238,66 @@
 
   <!-- Teacher Details Modal -->
   <div class="modal-overlay" *ngIf="selectedTeacher" (click)="closeTeacherDetails()">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-      <button class="modal-close" (click)="closeTeacherDetails()">&times;</button>
-      <div class="modal-header">
+    <div class="modal-content landscape-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header modern-header">
         <div class="modal-title">
-          <h2>{{ selectedTeacher.firstName }} {{ selectedTeacher.lastName }}</h2>
+          <h2>{{ selectedTeacher.lastName }} {{ selectedTeacher.firstName }}</h2>
           <p class="employee-number">{{ selectedTeacher.teacherId }}</p>
         </div>
+        <button class="modal-close-circle" (click)="closeTeacherDetails()">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="detail-section">
-          <h3>Contact Information</h3>
+        <div class="detail-section contact-section">
+          <h3 class="section-title">Contact Information</h3>
           <div class="detail-grid">
             <div class="detail-item">
-              <span class="detail-label">Phone Number</span>
+              <span class="detail-label">PHONE NUMBER</span>
               <span class="detail-value">{{ selectedTeacher.phoneNumber || 'Not provided' }}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">Sex</span>
+              <span class="detail-label">SEX</span>
               <span class="detail-value">{{ selectedTeacher.sex || 'Not provided' }}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">Address</span>
+              <span class="detail-label">ADDRESS</span>
               <span class="detail-value">{{ selectedTeacher.address || 'Not provided' }}</span>
             </div>
-            <div class="detail-item" *ngIf="selectedTeacher.dateOfBirth">
-              <span class="detail-label">Date of Birth</span>
-              <span class="detail-value">{{ selectedTeacher.dateOfBirth | date }}</span>
+            <div class="detail-item">
+              <span class="detail-label">DATE OF BIRTH</span>
+              <span class="detail-value">{{ selectedTeacher.dateOfBirth ? (selectedTeacher.dateOfBirth | date:'d MMM y') : 'Not provided' }}</span>
             </div>
           </div>
         </div>
-        <div class="detail-section" *ngIf="selectedTeacher.subjects && selectedTeacher.subjects.length > 0">
-          <h3>Subjects ({{ selectedTeacher.subjects.length }})</h3>
-          <div class="tags-container">
-            <span *ngFor="let subject of selectedTeacher.subjects" class="subject-tag">
-              {{ subject.name }}
-            </span>
+
+        <div class="assignment-details">
+          <div class="detail-section">
+            <h3 class="section-title">Subjects ({{ selectedTeacher.subjects?.length || 0 }})</h3>
+            <div class="tags-container" *ngIf="selectedTeacher.subjects?.length > 0; else noSubjects">
+              <span *ngFor="let subject of selectedTeacher.subjects" class="subject-tag">
+                {{ subject.name }}
+              </span>
+            </div>
+            <ng-template #noSubjects><span class="no-data">No subjects assigned</span></ng-template>
           </div>
-        </div>
-        <div class="detail-section" *ngIf="selectedTeacher.classes && selectedTeacher.classes.length > 0">
-          <h3>Classes ({{ selectedTeacher.classes.length }})</h3>
-          <div class="tags-container">
-            <span *ngFor="let cls of selectedTeacher.classes" class="class-tag">
-              {{ cls.name }}
-            </span>
+          <div class="detail-section">
+            <h3 class="section-title">Classes ({{ selectedTeacher.classes?.length || 0 }})</h3>
+            <div class="tags-container" *ngIf="selectedTeacher.classes?.length > 0; else noClasses">
+              <span *ngFor="let cls of selectedTeacher.classes" class="class-tag">
+                {{ cls.name }}
+              </span>
+            </div>
+            <ng-template #noClasses><span class="no-data">No classes assigned</span></ng-template>
           </div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" (click)="closeTeacherDetails()">Close</button>
-        <button class="btn btn-secondary" (click)="allocateClass(selectedTeacher)" title="Allocate Class">🏫 Allocate Class</button>
-        <button class="btn btn-secondary" (click)="createTeacherAccount(selectedTeacher)" *ngIf="!selectedTeacher.userId" [disabled]="loading">👤 Create Account</button>
-        <button class="btn btn-primary" (click)="editTeacher(selectedTeacher.id)">✏️ Edit Teacher</button>
+      <div class="modal-footer modern-footer">
+        <button class="btn btn-close-grey" (click)="closeTeacherDetails()">Close</button>
+        <button class="btn btn-allocate-blue" (click)="allocateClass(selectedTeacher)">
+          <span class="btn-icon">🏫</span> Allocate Class
+        </button>
+        <button class="btn btn-edit-purple" (click)="editTeacher(selectedTeacher.id)">
+          <span class="btn-icon">✏️</span> Edit Teacher
+        </button>
       </div>
     </div>
   </div>
