@@ -3,6 +3,11 @@ import axios from 'axios';
 import sizeOf from 'image-size';
 import { Settings } from '../entities/Settings';
 
+function isEcdAOrBClass(className: string | undefined | null): boolean {
+  const raw = (className || '').toString().trim();
+  return /\bECD\s*A\b/i.test(raw) || /\bECD\s*B\b/i.test(raw);
+}
+
 interface ReportCardData {
   student: {
     id: string;
@@ -419,12 +424,14 @@ export function createReportCardPDF(
         examInfoY += 11;
       }
       
-      const totalStudents = reportCard.totalStudents || 0;
-      const classPosText = totalStudents > 0 
-        ? `Class Position: ${reportCard.classPosition} out of ${totalStudents}`
-        : `Class Position: ${reportCard.classPosition}`;
-      doc.text(classPosText, 310, examInfoY);
-      examInfoY += 11;
+      if (!isEcdAOrBClass(reportCard.student?.class)) {
+        const totalStudents = reportCard.totalStudents || 0;
+        const classPosText = totalStudents > 0
+          ? `Class Position: ${reportCard.classPosition} out of ${totalStudents}`
+          : `Class Position: ${reportCard.classPosition}`;
+        doc.text(classPosText, 310, examInfoY);
+        examInfoY += 11;
+      }
       
       if (reportCard.totalAttendance !== undefined && reportCard.totalAttendance !== null) {
         const attendanceText = `Attendance: ${reportCard.totalAttendance}d` + 

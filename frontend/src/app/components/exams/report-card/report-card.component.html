@@ -363,7 +363,7 @@
               <span class="info-label">Class:</span>
               <span class="info-value">{{ reportCard.student.class }}</span>
             </div>
-            <div class="info-item">
+            <div class="info-item" *ngIf="!isEcdAOrBClass(reportCard.student.class)">
               <span class="info-label">Class Position:</span>
               <span class="info-value">
                 {{ reportCard.classPosition ? reportCard.classPosition : 0 }} out of {{ reportCard.totalStudents ? reportCard.totalStudents : 0 }}

@@ -800,6 +800,12 @@ export class ReportCardComponent implements OnInit {
     return (card?.student?.class || card?.class || '').toString().trim();
   }
 
+  /** True for ECD A / ECD B — class position is not shown on report cards or PDFs */
+  isEcdAOrBClass(className: string | undefined | null): boolean {
+    const raw = (className || '').toString().trim();
+    return /\bECD\s*A\b/i.test(raw) || /\bECD\s*B\b/i.test(raw);
+  }
+
   private getGradeGroupName(className: string): string {
     const raw = (className || '').toString().trim().replace(/\s+/g, ' ');
     // Special rule: ECD A and ECD B are standalone grades equal to their class
