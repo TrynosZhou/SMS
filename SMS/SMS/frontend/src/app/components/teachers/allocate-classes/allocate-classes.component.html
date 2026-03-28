@@ -95,7 +95,7 @@
       <button type="button" class="btn btn-primary" (click)="save()" [disabled]="saving || !hasChanges()">
         <span class="btn-icon" *ngIf="!saving">💾</span>
         <span class="btn-spinner" *ngIf="saving"></span>
-        <span>{{ saving ? 'Saving…' : 'Save to selected teachers' }}</span>
+        <span>{{ saving ? 'Saving…' : 'Save assignment' }}</span>
       </button>
       <div class="bulk-progress" *ngIf="bulkProgress.total > 0">
         <span class="bulk-stat">Total: {{ bulkProgress.total }}</span>
@@ -167,7 +167,7 @@
       <button type="button" class="btn btn-ghost" (click)="closeAllocationModal()">Cancel</button>
       <button type="button" class="btn btn-primary" (click)="saveModalAllocation()" [disabled]="saving">
         <span class="btn-spinner" *ngIf="saving"></span>
-        {{ saving ? 'Saving...' : 'Save Allocation' }}
+        {{ saving ? 'Saving...' : 'Save assignment' }}
       </button>
     </div>
   </div>

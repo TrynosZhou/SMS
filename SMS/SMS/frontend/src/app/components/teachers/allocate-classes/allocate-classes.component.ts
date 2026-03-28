@@ -67,7 +67,7 @@ export class AllocateClassesComponent implements OnInit {
 
   loadTeachers() {
     this.loading = true;
-    this.teacherService.getTeachers().subscribe({
+    this.teacherService.getTeachers(1, 1000).subscribe({
       next: (data: any[]) => {
         this.teachers = Array.isArray(data) ? data : [];
         this.filteredTeachers = this.teachers;
@@ -435,14 +435,14 @@ export class AllocateClassesComponent implements OnInit {
     };
     this.teacherService.updateTeacher(this.teacherToAllocate.id, payload).subscribe({
       next: (resp: any) => {
-        this.success = resp?.message || 'Allocation saved successfully';
+        this.success = resp?.message || 'Teacher assignment saved successfully';
         this.saving = false;
         this.closeAllocationModal();
         this.loadTeachers();
         setTimeout(() => this.success = '', 4000);
       },
       error: (err: any) => {
-        this.error = err?.error?.message || 'Failed to save allocation';
+        this.error = err?.error?.message || 'Failed to save teacher assignment';
         this.saving = false;
         setTimeout(() => this.error = '', 5000);
       }

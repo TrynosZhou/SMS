@@ -13,8 +13,10 @@ export class TeacherService {
 
   constructor(private http: HttpClient) { }
 
-  getTeachers(): Observable<any[]> {
-    return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/teachers`).pipe(
+  getTeachers(page = 1, limit = 1000): Observable<any[]> {
+    return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/teachers`, {
+      params: { page, limit }
+    }).pipe(
       map(response => {
         // Ensure response is valid before processing
         if (!response) return [];
