@@ -1665,12 +1665,9 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       relations: ['subjects']
     });
     
-    // Filter by exam status:
-    //
-    // Business rule: report cards must NEVER be based on unpublished data.
-    // For BOTH Mid-Term and End-Term, only PUBLISHED exams are allowed for ALL roles.
-    // This prevents generating End-Term report cards using draft or mid-term data.
-    const requirePublished = true;
+    // Filter by exam status: parents and students only see published results.
+    // Teachers and administrators may load report cards from draft exams for remarks and preview.
+    const requirePublished = isParent || isStudent;
 
     if (requirePublished) {
       exams = exams.filter(exam => exam.status === ExamStatus.PUBLISHED);
@@ -1756,7 +1753,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
 
       console.log('[getReportCard] Filtered exams (after status/status filter):', exams.length);
 
-      // Detect case where exams of this type exist but are not yet published (for students/parents)
+      // Exams exist for this type/term but none published — block only parents/students
       const requestedTypeExams = allClassExams.filter(e => e.type === normalizedExamType);
       const hasRequestedType = requestedTypeExams.length > 0;
       const hasPublishedRequestedType = requestedTypeExams.some(e => e.status === ExamStatus.PUBLISHED);
@@ -2351,6 +2348,8 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
     const user = req.user;
     const isParent = user?.role === 'parent';
     const isStudent = user?.role === 'student';
+    /** Parents/students: PDF only from published exams. Admins may print draft report cards. */
+    const requirePublishedPdf = isParent || isStudent;
     const termValue = term ? String(term).trim() : null;
     
     console.log('[generateReportCardPDF] PDF generation request:', { studentId, examId, classId, examType, term: termValue, isParent, isStudent, query: req.query });
@@ -2528,10 +2527,27 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       }
       
       // Get all exams of the specified type for this class
-      const exams = await examRepository.find({
+      let exams = await examRepository.find({
         where: { classId: classId as string, type: normalizedExamType, term: termValue as string },
         relations: ['subjects']
       });
+
+      if (requirePublishedPdf) {
+        const beforeCount = exams.length;
+        exams = exams.filter(e => e.status === ExamStatus.PUBLISHED);
+        if (beforeCount > 0 && exams.length === 0) {
+          const friendlyType = normalizedExamType === ExamType.MID_TERM ? 'Mid-Term' :
+            normalizedExamType === ExamType.END_TERM ? 'End-Term' :
+            String(normalizedExamType);
+          const message = `${friendlyType} results for ${termValue} have not been published yet for this class. Please check with the administrator or class teacher.`;
+          return res.status(404).json({
+            message,
+            requestedType: examType,
+            normalizedType: normalizedExamType,
+            term: termValue
+          });
+        }
+      }
 
       if (exams.length === 0) {
         return res.status(404).json({ message: `No ${examType} exams found for this class` });
@@ -2900,6 +2916,16 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
 
       if (marks.length === 0) {
         return res.status(404).json({ message: 'No marks found for this student and exam' });
+      }
+
+      const examForPdf = marks[0]?.exam;
+      if (requirePublishedPdf && examForPdf && examForPdf.status !== ExamStatus.PUBLISHED) {
+        const friendlyType = examForPdf.type === ExamType.MID_TERM ? 'Mid-Term' :
+          examForPdf.type === ExamType.END_TERM ? 'End-Term' :
+          String(examForPdf.type || examType);
+        const termLabel = examForPdf.term || termValue || '';
+        const message = `${friendlyType} results for ${termLabel} have not been published yet for this class. Please check with the administrator or class teacher.`;
+        return res.status(404).json({ message });
       }
 
       // Get settings
