@@ -9,21 +9,21 @@ export class Marks {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Student, student => student.marks)
+  @ManyToOne(() => Student, student => student.marks, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'studentId' })
   student: Student;
 
   @Column()
   studentId: string;
 
-  @ManyToOne(() => Exam, exam => exam.marks)
+  @ManyToOne(() => Exam, exam => exam.marks, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'examId' })
   exam: Exam;
 
   @Column()
   examId: string;
 
-  @ManyToOne(() => Subject)
+  @ManyToOne(() => Subject, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'subjectId' })
   subject: Subject;
 

@@ -4052,39 +4052,67 @@ export const generateMarkSheetExcel = async (req: AuthRequest, res: Response) =>
     const markSheetData: any[] = [];
 
     for (const student of students) {
-      const subjectMarks: any = {};
+      const subjectRow: any = {};
+      let studentTotalScore = 0;
+      let studentTotalMaxScore = 0;
+      let coreTotalScore = 0;
+      let coreTotalMaxScore = 0;
+
       for (const sub of subjects) {
         const markRecords = allMarks.filter(
           (m: any) =>
             m.studentId === student.id &&
             m.subjectId === sub.id
         );
-        let totalScore = 0;
-        let totalMax = 0;
-        for (const m of markRecords) {
-          const score = typeof m.score === 'number' ? m.score : parseFloat(m.score) || 0;
-          const maxScore = typeof m.maxScore === 'number' ? m.maxScore : parseFloat(m.maxScore) || 100;
-          totalScore += score;
-          totalMax += maxScore;
+
+        if (markRecords.length > 0) {
+          // Use the most recent mark (latest exam)
+          const latestMark = markRecords.sort((a: any, b: any) => 
+            new Date(b.exam?.examDate || 0).getTime() - new Date(a.exam?.examDate || 0).getTime()
+          )[0];
+
+          const score = Math.round(parseFloat(String(latestMark.score)) || 0);
+          const maxScore = Math.round(parseFloat(String(latestMark.maxScore)) || 100);
+          const pct = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+
+          subjectRow[sub.id] = {
+            subjectName: sub.name,
+            score,
+            maxScore,
+            percentage: pct
+          };
+
+          const subjectName = String(sub.name || '').trim();
+          if (ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
+            coreTotalScore += score;
+            coreTotalMaxScore += maxScore;
+          }
+        } else {
+          subjectRow[sub.id] = {
+            subjectName: sub.name,
+            score: 0,
+            maxScore: 100,
+            percentage: 0
+          };
+          const subjectName = String(sub.name || '').trim();
+          if (ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
+            coreTotalMaxScore += 100;
+          }
         }
-        const pct = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
-        subjectMarks[sub.id] = {
-          subjectName: sub.name,
-          score: totalScore,
-          maxScore: totalMax,
-          percentage: pct
-        };
       }
-      const totalScore = Object.values(subjectMarks).reduce((a: number, s: any) => a + (s?.score || 0), 0) as number;
-      const totalMaxScore = Object.values(subjectMarks).reduce((a: number, s: any) => a + (s?.maxScore || 0), 0) as number;
-      const average = totalMaxScore > 0 ? (totalScore / totalMaxScore) * 100 : 0;
+
+      // Use core subjects for total/average if applicable, or all subjects if no core ones found
+      const finalTotalScore = coreTotalMaxScore > 0 ? coreTotalScore : Object.values(subjectRow).reduce((a: number, s: any) => a + (s?.score || 0), 0) as number;
+      const finalTotalMaxScore = coreTotalMaxScore > 0 ? coreTotalMaxScore : Object.values(subjectRow).reduce((a: number, s: any) => a + (s?.maxScore || 0), 0) as number;
+      const average = finalTotalMaxScore > 0 ? (finalTotalScore / finalTotalMaxScore) * 100 : 0;
+
       markSheetData.push({
         studentId: student.id,
         studentNumber: student.studentNumber || student.id,
         studentName: `${student.firstName} ${student.lastName}`.trim(),
-        subjects: subjectMarks,
-        totalScore,
-        totalMaxScore,
+        subjects: subjectRow,
+        totalScore: Math.round(finalTotalScore),
+        totalMaxScore: Math.round(finalTotalMaxScore),
         average,
         includeInClassPassRate: passRateInclusionMapXls.get(student.id) !== false
       });
