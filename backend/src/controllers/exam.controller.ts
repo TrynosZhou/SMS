@@ -59,7 +59,7 @@ function normalizeExamType(type: string): ExamType {
 
 // Compute core-subject average (Mathematics, Science, English) - same logic as mark-sheet for ranking
 function computeCoreAverageFromMarks(
-  marks: Array<{ subject?: { name: string } | null; score: number | string; maxScore: number | string }>
+  marks: Array<{ subject?: { name: string } | null; score: number | string; maxScore: number | string; examId?: string; updatedAt?: Date; createdAt?: Date }>
 ): number {
   let coreTotalScore = 0;
   let coreTotalMaxScore = 0;
@@ -68,9 +68,23 @@ function computeCoreAverageFromMarks(
       const name = m.subject?.name ? String(m.subject.name).trim() : '';
       return name === subjectName;
     });
+    
     if (subjectMarks.length > 0) {
-      const totalScore = subjectMarks.reduce((s, m) => s + (parseFloat(String(m.score)) || 0), 0);
-      const totalMax = subjectMarks.reduce((s, m) => s + (parseFloat(String(m.maxScore)) || 100), 0);
+      // Group by examId to prevent duplicate marks for the same exam being summed
+      const examMarksMap: { [key: string]: typeof subjectMarks[0] } = {};
+      subjectMarks.forEach(m => {
+        const eid = m.examId || 'unknown';
+        const existing = examMarksMap[eid];
+        const mDate = m.updatedAt || m.createdAt || new Date(0);
+        const eDate = existing ? (existing.updatedAt || existing.createdAt || new Date(0)) : new Date(0);
+        if (!existing || mDate > eDate) {
+          examMarksMap[eid] = m;
+        }
+      });
+
+      const uniqueMarks = Object.values(examMarksMap);
+      const totalScore = uniqueMarks.reduce((s, m) => s + (parseFloat(String(m.score)) || 0), 0);
+      const totalMax = uniqueMarks.reduce((s, m) => s + (parseFloat(String(m.maxScore)) || 100), 0);
       coreTotalScore += totalScore;
       coreTotalMaxScore += totalMax;
     } else {
@@ -2307,26 +2321,45 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       const studentMarks = allMarks.filter(m => m.studentId === student.id);
       console.log(`[getReportCard] Student ${student.studentNumber} (${student.id}): Found ${studentMarks.length} marks across ${exams.length} exams`);
 
-      // Group marks by subject (across all exams)
-      const subjectMarksMap: { [key: string]: { scores: number[]; maxScores: number[]; comments: string[] } } = {};
+      // Group marks by subject AND exam (to prevent duplicate marks for the same exam being summed)
+      // If duplicates exist for the same exam, the latest one is preferred
+      const subjectExamMarksMap: { [key: string]: { [key: string]: Marks } } = {};
 
       studentMarks.forEach(mark => {
-        // Skip marks with missing relations
-        if (!mark.subject || !mark.score || !mark.maxScore) {
-          console.warn('Skipping mark with missing data:', { markId: mark.id, hasSubject: !!mark.subject, hasScore: !!mark.score, hasMaxScore: !!mark.maxScore });
-          return;
-        }
+        if (!mark.subject || !mark.exam) return;
         
         const subjectName = mark.subject.name;
-        if (!subjectMarksMap[subjectName]) {
-          subjectMarksMap[subjectName] = { scores: [], maxScores: [], comments: [] };
+        const examId = mark.examId;
+        
+        if (!subjectExamMarksMap[subjectName]) {
+          subjectExamMarksMap[subjectName] = {};
         }
-        // Round scores to integers
-        subjectMarksMap[subjectName].scores.push(Math.round(parseFloat(String(mark.score)) || 0));
-        subjectMarksMap[subjectName].maxScores.push(Math.round(parseFloat(String(mark.maxScore)) || 100));
-        if (mark.comments) {
-          subjectMarksMap[subjectName].comments.push(mark.comments);
+        
+        // If multiple marks for same subject and exam, keep the latest one (by updatedAt or createdAt)
+        const existingMark = subjectExamMarksMap[subjectName][examId];
+        const markDate = mark.updatedAt || mark.createdAt || new Date(0);
+        const existingMarkDate = existingMark ? (existingMark.updatedAt || existingMark.createdAt || new Date(0)) : new Date(0);
+        
+        if (!existingMark || markDate > existingMarkDate) {
+          subjectExamMarksMap[subjectName][examId] = mark;
         }
+      });
+
+      // Now group marks by subject for the report card (across all unique exam marks)
+      const subjectMarksMap: { [key: string]: { scores: number[]; maxScores: number[]; comments: string[] } } = {};
+
+      Object.keys(subjectExamMarksMap).forEach(subjectName => {
+        const examsMap = subjectExamMarksMap[subjectName];
+        subjectMarksMap[subjectName] = { scores: [], maxScores: [], comments: [] };
+        
+        Object.values(examsMap).forEach(mark => {
+          // Round scores to integers
+          subjectMarksMap[subjectName].scores.push(Math.round(parseFloat(String(mark.score)) || 0));
+          subjectMarksMap[subjectName].maxScores.push(Math.round(parseFloat(String(mark.maxScore)) || 100));
+          if (mark.comments) {
+            subjectMarksMap[subjectName].comments.push(mark.comments);
+          }
+        });
       });
 
       // Create a map of all class subjects
@@ -2863,23 +2896,45 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         return gradeLabels.fail || 'Fail';
       }
 
-      // Group marks by subject
-      const subjectMarksMap: { [key: string]: { scores: number[]; maxScores: number[]; comments: string[] } } = {};
+      // Group marks by subject AND exam (to prevent duplicate marks for the same exam being summed)
+      // If duplicates exist for the same exam, the latest one is preferred
+      const subjectExamMarksMap: { [key: string]: { [key: string]: Marks } } = {};
 
       allMarks.forEach(mark => {
-        if (!mark.subject || !mark.score || !mark.maxScore) {
-          return;
-        }
+        if (!mark.subject || !mark.exam) return;
+        
         const subjectName = mark.subject.name;
-        if (!subjectMarksMap[subjectName]) {
-          subjectMarksMap[subjectName] = { scores: [], maxScores: [], comments: [] };
+        const examId = mark.examId;
+        
+        if (!subjectExamMarksMap[subjectName]) {
+          subjectExamMarksMap[subjectName] = {};
         }
-        // Round scores to integers
-        subjectMarksMap[subjectName].scores.push(Math.round(parseFloat(String(mark.score)) || 0));
-        subjectMarksMap[subjectName].maxScores.push(Math.round(parseFloat(String(mark.maxScore)) || 100));
-        if (mark.comments) {
-          subjectMarksMap[subjectName].comments.push(mark.comments);
+        
+        // If multiple marks for same subject and exam, keep the latest one (by updatedAt or createdAt)
+        const existingMark = subjectExamMarksMap[subjectName][examId];
+        const markDate = mark.updatedAt || mark.createdAt || new Date(0);
+        const existingMarkDate = existingMark ? (existingMark.updatedAt || existingMark.createdAt || new Date(0)) : new Date(0);
+        
+        if (!existingMark || markDate > existingMarkDate) {
+          subjectExamMarksMap[subjectName][examId] = mark;
         }
+      });
+
+      // Now group marks by subject for the report card (across all unique exam marks)
+      const subjectMarksMap: { [key: string]: { scores: number[]; maxScores: number[]; comments: string[] } } = {};
+
+      Object.keys(subjectExamMarksMap).forEach(subjectName => {
+        const examsMap = subjectExamMarksMap[subjectName];
+        subjectMarksMap[subjectName] = { scores: [], maxScores: [], comments: [] };
+        
+        Object.values(examsMap).forEach(mark => {
+          // Round scores to integers
+          subjectMarksMap[subjectName].scores.push(Math.round(parseFloat(String(mark.score)) || 0));
+          subjectMarksMap[subjectName].maxScores.push(Math.round(parseFloat(String(mark.maxScore)) || 100));
+          if (mark.comments) {
+            subjectMarksMap[subjectName].comments.push(mark.comments);
+          }
+        });
       });
 
       // Calculate subject data - include ALL subjects from the class
