@@ -112,15 +112,25 @@
           {{ getSelectedClassName() }} — {{ selectedTerm }}
         </h2>
         <div class="class-teacher-info">
-          Class Teacher:
+          Class Teacher 1:
           <a 
             *ngIf="canEditClassTeacher()" 
             href="javascript:void(0)"
             class="teacher-link"
-            (click)="openClassTeacherModal(); $event.preventDefault()">
-            {{ classTeacherFullName || 'Not assigned' }}
+            (click)="openClassTeacherModal(1); $event.preventDefault()">
+            {{ classTeacher1FullName || 'Not assigned' }}
           </a>
-          <span *ngIf="!canEditClassTeacher()">{{ classTeacherFullName || 'Not assigned' }}</span>
+          <span *ngIf="!canEditClassTeacher()">{{ classTeacher1FullName || 'Not assigned' }}</span>
+          <span class="teacher-sep">|</span>
+          Class Teacher 2:
+          <a 
+            *ngIf="canEditClassTeacher()" 
+            href="javascript:void(0)"
+            class="teacher-link"
+            (click)="openClassTeacherModal(2); $event.preventDefault()">
+            {{ classTeacher2FullName || 'Not assigned' }}
+          </a>
+          <span *ngIf="!canEditClassTeacher()">{{ classTeacher2FullName || 'Not assigned' }}</span>
         </div>
       </div>
       <div class="card-stats">
@@ -429,7 +439,7 @@
         <div class="modal-header-content">
           <div class="modal-icon teacher-icon">👨‍🏫</div>
           <div class="modal-title-group">
-            <h3>Change Class Teacher</h3>
+            <h3>Change Class Teacher {{ editingClassTeacherSlot }}</h3>
             <p class="modal-subtitle">{{ getSelectedClassName() }}</p>
           </div>
         </div>
@@ -438,9 +448,9 @@
 
       <div class="modal-body">
         <!-- Current Teacher Info -->
-        <div class="current-value-box" *ngIf="classTeacherFullName">
+        <div class="current-value-box" *ngIf="(editingClassTeacherSlot === 1 ? classTeacher1FullName : classTeacher2FullName)">
           <span class="current-label">Current Teacher:</span>
-          <span class="current-value">{{ classTeacherFullName }}</span>
+          <span class="current-value">{{ editingClassTeacherSlot === 1 ? classTeacher1FullName : classTeacher2FullName }}</span>
         </div>
 
         <div class="form-group">

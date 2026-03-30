@@ -63,13 +63,15 @@ export class ClassListsComponent implements OnInit {
   editModalStudent: any | null = null;
   editModalValue: any = null;
   savingEdit = false;
-  classTeacherFullName: string = '';
+  classTeacher1FullName: string = '';
+  classTeacher2FullName: string = '';
   // Class teacher editor
   showClassTeacherModal = false;
   allTeachers: any[] = [];
   filteredTeachersList: any[] = [];
   teacherSearchQuery: string = '';
   selectedClassTeacherId: string = '';
+  editingClassTeacherSlot: 1 | 2 = 1;
   updatingClassTeacher = false;
   
   // Date validation
@@ -105,8 +107,9 @@ export class ClassListsComponent implements OnInit {
     return (this.isAdmin || this.isSuperAdmin) && !!this.selectedClassId;
   }
 
-  openClassTeacherModal() {
+  openClassTeacherModal(slot: 1 | 2 = 1) {
     if (!this.canEditClassTeacher()) return;
+    this.editingClassTeacherSlot = slot;
     this.selectedClassTeacherId = '';
     this.teacherSearchQuery = '';
     this.showClassTeacherModal = true;
@@ -154,14 +157,28 @@ export class ClassListsComponent implements OnInit {
   saveClassTeacher() {
     if (!this.canEditClassTeacher() || !this.selectedClassTeacherId) return;
     this.updatingClassTeacher = true;
-    this.classService.updateClass(this.selectedClassId, { teacherIds: [this.selectedClassTeacherId] }).subscribe({
+    const payload: any = {};
+    if (this.editingClassTeacherSlot === 1) {
+      payload.classTeacher1Id = this.selectedClassTeacherId;
+    } else {
+      payload.classTeacher2Id = this.selectedClassTeacherId;
+    }
+    // Backward compatibility: keep teachers[] populated for legacy consumers
+    payload.teacherIds = [this.selectedClassTeacherId];
+
+    this.classService.updateClass(this.selectedClassId, payload).subscribe({
       next: (resp: any) => {
         // Update UI label
         const t = this.allTeachers.find(x => x.id === this.selectedClassTeacherId);
         if (t) {
           const ln = String(t.lastName || '').trim();
           const fn = String(t.firstName || '').trim();
-          this.classTeacherFullName = [ln, fn].filter(Boolean).join(' ').trim() || 'Teacher';
+          const newName = [ln, fn].filter(Boolean).join(' ').trim() || 'Teacher';
+          if (this.editingClassTeacherSlot === 1) {
+            this.classTeacher1FullName = newName;
+          } else {
+            this.classTeacher2FullName = newName;
+          }
         } else {
           this.loadClassTeacherName();
         }
@@ -854,43 +871,46 @@ export class ClassListsComponent implements OnInit {
     });
   }
 
-  private resolveClassTeacherNameFromClass(cls: any): string {
-    if (!cls) return '';
-    if (cls.classTeacher && (cls.classTeacher.firstName || cls.classTeacher.lastName)) {
-      const fn = (cls.classTeacher.firstName || '').toString().trim();
-      const ln = (cls.classTeacher.lastName || '').toString().trim();
-      return [fn, ln].filter(Boolean).join(' ').trim();
-    }
-    if (cls.teacher && (cls.teacher.firstName || cls.teacher.lastName)) {
-      const fn = (cls.teacher.firstName || '').toString().trim();
-      const ln = (cls.teacher.lastName || '').toString().trim();
-      return [fn, ln].filter(Boolean).join(' ').trim();
-    }
+  private resolveTeacherFullName(teacher: any): string {
+    if (!teacher) return '';
+    const fn = (teacher.firstName || '').toString().trim();
+    const ln = (teacher.lastName || '').toString().trim();
+    return [ln, fn].filter(Boolean).join(' ').trim();
+  }
+
+  private resolveClassTeacherNamesFromClass(cls: any): { teacher1: string; teacher2: string } {
+    if (!cls) return { teacher1: '', teacher2: '' };
+
+    const t1 = cls.classTeacher1 || cls.classTeacher || null;
+    const t2 = cls.classTeacher2 || null;
     const teachers = Array.isArray(cls.teachers) ? cls.teachers : [];
-    if (teachers.length > 0) {
-      const t = teachers[0] || {};
-      const fn = (t.firstName || '').toString().trim();
-      const ln = (t.lastName || '').toString().trim();
-      return [fn, ln].filter(Boolean).join(' ').trim();
-    }
-    return '';
-    }
+
+    const teacher1 = this.resolveTeacherFullName(t1) || this.resolveTeacherFullName(teachers[0]);
+    const teacher2 = this.resolveTeacherFullName(t2) || this.resolveTeacherFullName(teachers[1]);
+
+    return { teacher1, teacher2 };
+  }
 
   loadClassTeacherName() {
-    this.classTeacherFullName = '';
+    this.classTeacher1FullName = '';
+    this.classTeacher2FullName = '';
     const selected = this.classes.find(c => c.id === this.selectedClassId);
-    const fromList = this.resolveClassTeacherNameFromClass(selected);
-    if (fromList) {
-      this.classTeacherFullName = fromList;
+    const fromList = this.resolveClassTeacherNamesFromClass(selected);
+    if (fromList.teacher1 || fromList.teacher2) {
+      this.classTeacher1FullName = fromList.teacher1;
+      this.classTeacher2FullName = fromList.teacher2;
       return;
     }
     if (this.selectedClassId) {
       this.classService.getClassById(this.selectedClassId).subscribe({
         next: (cls: any) => {
-          this.classTeacherFullName = this.resolveClassTeacherNameFromClass(cls);
+          const names = this.resolveClassTeacherNamesFromClass(cls);
+          this.classTeacher1FullName = names.teacher1;
+          this.classTeacher2FullName = names.teacher2;
         },
         error: () => {
-          this.classTeacherFullName = '';
+          this.classTeacher1FullName = '';
+          this.classTeacher2FullName = '';
         }
       });
     }

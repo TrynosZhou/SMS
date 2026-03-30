@@ -40,7 +40,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
     let total = 0;
     try {
       [classes, total] = await classRepository.findAndCount({
-        relations: ['students', 'students.user', 'teachers', 'subjects'],
+        relations: ['students', 'students.user', 'teachers', 'subjects', 'classTeacher1', 'classTeacher2'],
         order: { name: 'ASC' },
         skip,
         take: limit
@@ -62,7 +62,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
         // Fallback 1: load without teachers relation
         try {
           const fallbackResults = await classRepository.find({
-            relations: ['students', 'students.user', 'subjects']
+            relations: ['students', 'students.user', 'subjects', 'classTeacher1', 'classTeacher2']
           });
           total = fallbackResults.length;
           classes = fallbackResults.slice(skip, skip + limit);
@@ -77,7 +77,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
           // Fallback 2: load without nested user relation
           try {
             const fallbackResults = await classRepository.find({
-              relations: ['students', 'subjects']
+              relations: ['students', 'subjects', 'classTeacher1', 'classTeacher2']
             });
             total = fallbackResults.length;
             classes = fallbackResults.slice(skip, skip + limit);
@@ -116,7 +116,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
         console.log('[getClasses] Non-table error, trying fallback before rethrowing');
         try {
           const fallbackResults = await classRepository.find({
-            relations: ['subjects']
+            relations: ['subjects', 'classTeacher1', 'classTeacher2']
           });
           total = fallbackResults.length;
           classes = fallbackResults.slice(skip, skip + limit);
@@ -174,7 +174,7 @@ router.get('/:id', authenticate, async (req, res) => {
     try {
       classEntity = await classRepository.findOne({
         where: { id },
-        relations: ['students', 'teachers', 'subjects']
+        relations: ['students', 'teachers', 'subjects', 'classTeacher1', 'classTeacher2']
       });
     } catch (relationError: any) {
       console.error('[getClassById] Error loading with relations:', relationError.message);
@@ -191,7 +191,7 @@ router.get('/:id', authenticate, async (req, res) => {
         try {
           classEntity = await classRepository.findOne({
             where: { id },
-            relations: ['students', 'subjects']
+            relations: ['students', 'subjects', 'classTeacher1', 'classTeacher2']
           });
           if (classEntity) {
             (classEntity as any).teachers = [];
@@ -228,7 +228,7 @@ router.get('/:id', authenticate, async (req, res) => {
 
 router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), async (req, res) => {
   try {
-    const { name, form, description, teacherIds, subjectIds } = req.body;
+    const { name, form, description, teacherIds, subjectIds, classTeacher1Id, classTeacher2Id } = req.body;
     const classRepository = AppDataSource.getRepository(Class);
     
     // Validate required fields
@@ -245,6 +245,14 @@ router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, Us
     }
 
     const classEntity = classRepository.create({ name, form, description });
+
+    if (classTeacher1Id !== undefined) {
+      classEntity.classTeacher1Id = classTeacher1Id || null;
+    }
+
+    if (classTeacher2Id !== undefined) {
+      classEntity.classTeacher2Id = classTeacher2Id || null;
+    }
     
     // Assign subjects if provided
     if (subjectIds && Array.isArray(subjectIds) && subjectIds.length > 0) {
@@ -277,7 +285,7 @@ router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, Us
     // Load the class with relations
     const savedClass = await classRepository.findOne({
       where: { id: classEntity.id },
-      relations: ['students', 'teachers', 'subjects']
+      relations: ['students', 'teachers', 'subjects', 'classTeacher1', 'classTeacher2']
     });
     
     res.status(201).json({ message: 'Class created successfully', class: savedClass });
@@ -289,12 +297,12 @@ router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, Us
 router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, form, description, isActive, teacherIds, subjectIds } = req.body;
+    const { name, form, description, isActive, teacherIds, subjectIds, classTeacher1Id, classTeacher2Id } = req.body;
     const classRepository = AppDataSource.getRepository(Class);
 
     const classEntity = await classRepository.findOne({ 
       where: { id },
-      relations: ['teachers', 'subjects']
+      relations: ['teachers', 'subjects', 'classTeacher1', 'classTeacher2']
     });
     if (!classEntity) {
       return res.status(404).json({ message: 'Class not found' });
@@ -315,6 +323,14 @@ router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, 
     if (form !== undefined) classEntity.form = form;
     if (description !== undefined) classEntity.description = description;
     if (isActive !== undefined) classEntity.isActive = isActive;
+
+    if (classTeacher1Id !== undefined) {
+      classEntity.classTeacher1Id = classTeacher1Id || null;
+    }
+
+    if (classTeacher2Id !== undefined) {
+      classEntity.classTeacher2Id = classTeacher2Id || null;
+    }
 
     // Update subjects if provided
     if (subjectIds !== undefined) {
@@ -365,7 +381,7 @@ router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, 
     // Load the updated class with all relations
     const updatedClass = await classRepository.findOne({
       where: { id },
-      relations: ['students', 'teachers', 'subjects']
+      relations: ['students', 'teachers', 'subjects', 'classTeacher1', 'classTeacher2']
     });
     
     res.json({ message: 'Class updated successfully', class: updatedClass });

@@ -883,13 +883,16 @@ export const captureMarks = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Exam ID is required' });
     }
     
-    // Check if exam is published - prevent editing
+    // Check if exam is published - prevent editing (except admin/superadmin corrections)
     const examRepository = AppDataSource.getRepository(Exam);
     const exam = await examRepository.findOne({ where: { id: examId } });
     
-    if (exam && exam.status === ExamStatus.PUBLISHED) {
-      return res.status(403).json({ 
-        message: 'Cannot edit marks. Exam results have been published and are now read-only.' 
+    const role = req.user?.role;
+    const isAdminOrSuperAdmin = role === 'admin' || role === 'superadmin';
+
+    if (exam && exam.status === ExamStatus.PUBLISHED && !isAdminOrSuperAdmin) {
+      return res.status(403).json({
+        message: 'Cannot edit marks. Exam results have been published and are now read-only.'
       });
     }
     
@@ -2402,10 +2405,8 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         }
       });
 
-      // Calculate overall average (only for subjects with marks, not N/A)
-      const subjectsWithMarks = subjectData.filter((sub: any) => sub.grade !== 'N/A');
-      const totalPercentage = subjectsWithMarks.reduce((sum: number, sub: any) => sum + parseFloat(sub.percentage), 0);
-      const overallAverage = subjectsWithMarks.length > 0 ? Math.round(totalPercentage / subjectsWithMarks.length) : 0;
+      // Calculate overall average based on CORE SUBJECTS ONLY (Mathematics, Science, English)
+      const overallAverage = Math.round(computeCoreAverageFromMarks(studentMarks) * 100) / 100;
 
       // Find class position (only within the current class) - using position from tie-handled rankings
       const classRankEntry = classRankings.find(r => r.studentId === student.id);
@@ -2974,10 +2975,8 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         }
       });
 
-      // Calculate overall average (only for subjects with marks, not N/A)
-      const subjectsWithMarks = subjectData.filter(sub => sub.grade !== 'N/A');
-      const totalPercentage = subjectsWithMarks.reduce((sum, sub) => sum + parseFloat(sub.percentage), 0);
-      const overallAverage = subjectsWithMarks.length > 0 ? totalPercentage / subjectsWithMarks.length : 0;
+      // Calculate overall average based on CORE SUBJECTS ONLY (Mathematics, Science, English)
+      const overallAverage = computeCoreAverageFromMarks(allMarks);
 
       // Calculate class position using CORE SUBJECTS ONLY (Mathematics, Science, English) - same logic as mark-sheet
       const allClassMarks = await marksRepository.find({
@@ -3187,7 +3186,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         };
       });
 
-      const overallAverage = marks.length > 0 ? totalPercentage / marks.length : 0;
+      const overallAverage = computeCoreAverageFromMarks(marks);
 
       // Calculate class position using CORE SUBJECTS ONLY (Mathematics, Science, English) - same logic as mark-sheet
       const allClassMarks = await marksRepository.find({
@@ -3915,12 +3914,14 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
     });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
-    // Class teacher name (first teacher linked to class, if any)
-    const classTeacher = (classEntity.teachers && classEntity.teachers.length > 0)
+    // Class teacher name: prefer Class.classTeacher1, fallback to first linked teacher
+    const classTeacher1 = (classEntity as any).classTeacher1 || null;
+    const fallbackTeacher = (classEntity.teachers && classEntity.teachers.length > 0)
       ? classEntity.teachers[0]
       : null;
-    const classTeacherName = classTeacher
-      ? `${classTeacher.firstName} ${classTeacher.lastName}`.trim() || classTeacher.teacherId || 'N/A'
+    const teacherForDisplay = classTeacher1 || fallbackTeacher;
+    const classTeacherName = teacherForDisplay
+      ? `${teacherForDisplay.firstName} ${teacherForDisplay.lastName}`.trim() || teacherForDisplay.teacherId || 'N/A'
       : null;
 
     // Prepare data for PDF
@@ -4125,9 +4126,11 @@ export const generateMarkSheetExcel = async (req: AuthRequest, res: Response) =>
     const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
-    const classTeacher = (classEntity.teachers && classEntity.teachers.length > 0) ? classEntity.teachers[0] : null;
-    const classTeacherName = classTeacher
-      ? `${classTeacher.firstName} ${classTeacher.lastName}`.trim() || classTeacher.teacherId || 'N/A'
+    const classTeacher1 = (classEntity as any).classTeacher1 || null;
+    const fallbackTeacher = (classEntity.teachers && classEntity.teachers.length > 0) ? classEntity.teachers[0] : null;
+    const teacherForDisplay = classTeacher1 || fallbackTeacher;
+    const classTeacherName = teacherForDisplay
+      ? `${teacherForDisplay.firstName} ${teacherForDisplay.lastName}`.trim() || teacherForDisplay.teacherId || 'N/A'
       : null;
 
     const excelData = {

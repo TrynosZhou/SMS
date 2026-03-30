@@ -138,7 +138,24 @@ export class ReportCardComponent implements OnInit {
       'Respectful but can be talkative; should manage classroom chatter.',
       'Displays honesty and integrity; a good role model.'
     ];
-    return suggestions.slice(0, 12);
+
+    // Academic "failure pool" suggestions
+    const subjects = card?.subjects || [];
+    const failedSubjects = subjects.filter((s: any) => {
+      const pct = parseFloat(String(s.percentage || 0));
+      return pct < 50;
+    });
+
+    if (failedSubjects.length > 0) {
+      const subjectNames = failedSubjects.map((s: any) => s.subject || s.name).join(', ');
+      suggestions.unshift(
+        `Focused attention is required in ${subjectNames} to improve results.`,
+        `Urgent support and extra practice are needed in ${subjectNames}.`,
+        `Serious commitment is essential in ${subjectNames} where performance is currently below expectation.`
+      );
+    }
+
+    return suggestions.slice(0, 15);
   }
 
   applyClassTeacherSuggestion(reportCard: any, suggestion: string) {
@@ -1140,6 +1157,49 @@ export class ReportCardComponent implements OnInit {
       : '';
     const namePart = studentName ? ` by ${studentName}` : '';
     const signature = headName ? `. ${headName}` : '';
+    
+    // Condition: Check if student scored less than 50% in ALL subjects
+    const subjects = card.subjects || [];
+    const hasSubjects = subjects.length > 0;
+    const failedSubjects = subjects.filter((sub: any) => {
+      const pct = parseFloat(String(sub.percentage || 0));
+      return pct < 50;
+    });
+
+    const allSubjectsUnder50 = hasSubjects && failedSubjects.length === subjects.length;
+    const someSubjectsUnder50 = hasSubjects && failedSubjects.length > 0 && failedSubjects.length < subjects.length;
+
+    if (allSubjectsUnder50) {
+      return `The learner requires urgent and sustained support${namePart}. Close follow-up and serious commitment are essential for improvement${signature}`;
+    }
+
+    if (someSubjectsUnder50) {
+      const criticallyLowSubjects = failedSubjects.filter((s: any) => parseFloat(String(s.percentage || 0)) < 30);
+      const subjectNames = failedSubjects.map((s: any) => s.subject || s.name).join(', ');
+      
+      const rawAverage = card.overallAverage;
+      let average = 0;
+      if (typeof rawAverage === 'number') {
+        average = rawAverage;
+      } else if (typeof rawAverage === 'string') {
+        const parsed = parseFloat(rawAverage);
+        average = isNaN(parsed) ? 0 : parsed;
+      }
+
+      let performancePrefix = '';
+      if (average >= 75) performancePrefix = `A commendable overall performance${namePart}, however, serious attention is needed in ${subjectNames} where results are below expectation`;
+      else if (average >= 65) performancePrefix = `Good overall performance${namePart}, but targeted support in ${subjectNames} is essential for a balanced academic profile`;
+      else if (average >= 50) performancePrefix = `Satisfactory overall performance${namePart}, yet improvement is required in ${subjectNames}`;
+      else performancePrefix = `Overall performance is below expected level${namePart}. Immediate intervention is required in ${subjectNames}`;
+
+      if (criticallyLowSubjects.length > 0) {
+        const criticalNames = criticallyLowSubjects.map((s: any) => s.subject || s.name).join(', ');
+        return `${performancePrefix}. Note that performance in ${criticalNames} is critically low${signature}`;
+      }
+      
+      return `${performancePrefix}${signature}`;
+    }
+
     const rawAverage = card.overallAverage;
     let average = 0;
     if (typeof rawAverage === 'number') {

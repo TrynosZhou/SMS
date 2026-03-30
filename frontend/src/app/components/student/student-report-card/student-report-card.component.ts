@@ -380,6 +380,48 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
     const studentName = card.student?.name ? String(card.student.name).trim() : '';
     const namePart    = studentName ? ` by ${studentName}` : '';
     const sig         = headName ? `. ${headName}` : '';
+
+    // Condition: Check if student scored less than 50% in ALL subjects
+    const subjects = card.subjects || [];
+    const hasSubjects = subjects.length > 0;
+    const failedSubjects = subjects.filter((sub: any) => {
+      // Handle different possible property names for percentage
+      const pctValue = sub.percentage !== undefined ? sub.percentage : (sub.score / sub.maxScore) * 100;
+      const pct = parseFloat(String(pctValue || 0));
+      return pct < 50;
+    });
+
+    const allSubjectsUnder50 = hasSubjects && failedSubjects.length === subjects.length;
+    const someSubjectsUnder50 = hasSubjects && failedSubjects.length > 0 && failedSubjects.length < subjects.length;
+
+    if (allSubjectsUnder50) {
+      return `The learner requires urgent and sustained support${namePart}. Close follow-up and serious commitment are essential for improvement${sig}`;
+    }
+
+    if (someSubjectsUnder50) {
+      const criticallyLowSubjects = failedSubjects.filter((s: any) => {
+        const pctValue = s.percentage !== undefined ? s.percentage : (s.score / s.maxScore) * 100;
+        return parseFloat(String(pctValue || 0)) < 30;
+      });
+      const subjectNames = failedSubjects.map((s: any) => s.subject || s.name || s.subjectName).join(', ');
+      
+      const avg = typeof card.overallAverage === 'number' ? card.overallAverage
+        : parseFloat(String(card.overallAverage)) || 0;
+
+      let performancePrefix = '';
+      if (avg >= 75) performancePrefix = `A commendable overall performance${namePart}, however, serious attention is needed in ${subjectNames} where results are below expectation`;
+      else if (avg >= 65) performancePrefix = `Good overall performance${namePart}, but targeted support in ${subjectNames} is essential for a balanced academic profile`;
+      else if (avg >= 50) performancePrefix = `Satisfactory overall performance${namePart}, yet improvement is required in ${subjectNames}`;
+      else performancePrefix = `Overall performance is below expected level${namePart}. Immediate intervention is required in ${subjectNames}`;
+
+      if (criticallyLowSubjects.length > 0) {
+        const criticalNames = criticallyLowSubjects.map((s: any) => s.subject || s.name || s.subjectName).join(', ');
+        return `${performancePrefix}. Note that performance in ${criticalNames} is critically low${sig}`;
+      }
+      
+      return `${performancePrefix}${sig}`;
+    }
+
     const avg = typeof card.overallAverage === 'number' ? card.overallAverage
       : parseFloat(String(card.overallAverage)) || 0;
 
@@ -388,6 +430,6 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
     if (avg >= 60) return `Good results${namePart}. Continued hard work will yield even better outcomes${sig}`;
     if (avg >= 50) return `Satisfactory performance${namePart}. Greater consistency and focus are encouraged${sig}`;
     if (avg >= 40) return `Performance is below expected level${namePart}. Increased effort and support are needed${sig}`;
-    return `The learner requires urgent and sustained support${namePart}. Close follow-up and serious commitment are essential${sig}`;
+    return `The learner requires urgent and sustained support${namePart}. Close follow-up and serious commitment are essential for improvement${sig}`;
   }
 }
