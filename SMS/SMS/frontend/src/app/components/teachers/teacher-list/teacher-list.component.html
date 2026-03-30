@@ -288,7 +288,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="closeTeacherDetails()">Close</button>
-        <button class="btn btn-secondary" (click)="allocateClass(selectedTeacher)" title="Allocate Class">🏫 Allocate Class</button>
+        <button class="btn btn-danger" (click)="deleteTeacher(selectedTeacher.id, selectedTeacher.firstName + ' ' + selectedTeacher.lastName, selectedTeacher.teacherId)" title="Delete">🗑️ Delete</button>
         <button class="btn btn-secondary" (click)="previewIdCard(selectedTeacher)" title="Preview ID Card">🪪 ID Card</button>
         <button class="btn btn-secondary" (click)="createTeacherAccount(selectedTeacher)" *ngIf="!selectedTeacher.userId" [disabled]="loading">👤 Create Account</button>
         <button class="btn btn-primary" (click)="editTeacher(selectedTeacher.id)">✏️ Edit Teacher</button>

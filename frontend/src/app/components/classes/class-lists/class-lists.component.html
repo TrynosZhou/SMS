@@ -112,7 +112,7 @@
           {{ getSelectedClassName() }} — {{ selectedTerm }}
         </h2>
         <div class="class-teacher-info">
-          Class Teacher 1:
+          Home class teacher:
           <a 
             *ngIf="canEditClassTeacher()" 
             href="javascript:void(0)"
@@ -122,7 +122,7 @@
           </a>
           <span *ngIf="!canEditClassTeacher()">{{ classTeacher1FullName || 'Not assigned' }}</span>
           <span class="teacher-sep">|</span>
-          Class Teacher 2:
+          Class teacher:
           <a 
             *ngIf="canEditClassTeacher()" 
             href="javascript:void(0)"
@@ -439,7 +439,7 @@
         <div class="modal-header-content">
           <div class="modal-icon teacher-icon">👨‍🏫</div>
           <div class="modal-title-group">
-            <h3>Change Class Teacher {{ editingClassTeacherSlot }}</h3>
+            <h3>{{ editingClassTeacherSlot === 1 ? 'Change Home Class Teacher' : 'Change Class Teacher' }}</h3>
             <p class="modal-subtitle">{{ getSelectedClassName() }}</p>
           </div>
         </div>

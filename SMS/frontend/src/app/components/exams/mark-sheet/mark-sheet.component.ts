@@ -278,7 +278,40 @@ export class MarkSheetComponent implements OnInit {
   }
 
   printMarkSheet() {
-    window.print();
+    if (!this.selectedClassId || !this.selectedExamType || !this.selectedTerm) {
+      this.error = 'Please select class and exam type, and ensure term is set';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+    if (!this.markSheetData) {
+      this.error = 'Please generate mark sheet first';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    this.loading = true;
+    this.error = '';
+
+    this.examService.downloadMarkSheetPDF(
+      this.selectedClassId,
+      this.selectedExamType,
+      this.selectedTerm
+    ).subscribe({
+      next: (blob: Blob) => {
+        const blobUrl = URL.createObjectURL(blob);
+        // Open the PDF in a new tab for preview
+        window.open(blobUrl, '_blank');
+        this.loading = false;
+        this.success = 'Mark sheet preview generated successfully';
+        setTimeout(() => this.success = '', 5000);
+      },
+      error: (err: any) => {
+        console.error('Error loading mark sheet PDF for preview:', err);
+        this.error = err.error?.message || 'Failed to load mark sheet for preview';
+        this.loading = false;
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
   }
 
   downloadPDF() {

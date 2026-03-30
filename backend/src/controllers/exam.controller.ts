@@ -3490,10 +3490,10 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
     const subjectRepository = AppDataSource.getRepository(Subject);
     const teacherRepository = AppDataSource.getRepository(Teacher);
 
-    // Get class information
+    // Get class information (include teachers for class teacher name)
     const classEntity = await classRepository.findOne({
       where: { id: classId as string },
-      relations: ['subjects']
+      relations: ['subjects', 'teachers', 'classTeacher1', 'classTeacher2']
     });
 
     if (!classEntity) {
@@ -3669,11 +3669,18 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
     const markSheetWithTies = assignPositionsWithTies(markSheetData);
     const markSheetDataWithPositions = markSheetWithTies.map(row => ({ ...row, position: row.position }));
 
+    // Class teacher name: strictly use the assigned classTeacher1 (Home class teacher)
+    const t1 = classEntity.classTeacher1;
+    const classTeacherName = t1
+      ? `${t1.lastName} ${t1.firstName}`.trim() || t1.teacherId || 'Not assigned'
+      : 'Not assigned';
+
     res.json({
       class: {
         id: classEntity.id,
         name: classEntity.name,
-        form: classEntity.form
+        form: classEntity.form,
+        classTeacherName
       },
       examType,
       term: term || exams[0]?.term || null,
@@ -3720,7 +3727,7 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
     // Get class information (include teachers for class teacher name)
     const classEntity = await classRepository.findOne({
       where: { id: classId as string },
-      relations: ['subjects', 'teachers']
+      relations: ['subjects', 'teachers', 'classTeacher1', 'classTeacher2']
     });
 
     if (!classEntity) {
@@ -3914,15 +3921,11 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
     });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
-    // Class teacher name: prefer Class.classTeacher1, fallback to first linked teacher
-    const classTeacher1 = (classEntity as any).classTeacher1 || null;
-    const fallbackTeacher = (classEntity.teachers && classEntity.teachers.length > 0)
-      ? classEntity.teachers[0]
-      : null;
-    const teacherForDisplay = classTeacher1 || fallbackTeacher;
-    const classTeacherName = teacherForDisplay
-      ? `${teacherForDisplay.firstName} ${teacherForDisplay.lastName}`.trim() || teacherForDisplay.teacherId || 'N/A'
-      : null;
+    // Class teacher name: strictly use Class.classTeacher1 (Home class teacher)
+    const t1 = classEntity.classTeacher1;
+    const classTeacherName = t1
+      ? `${t1.lastName} ${t1.firstName}`.trim() || t1.teacherId || 'Not assigned'
+      : 'Not assigned';
 
     // Prepare data for PDF
     const pdfData = {
@@ -3981,7 +3984,7 @@ export const generateMarkSheetExcel = async (req: AuthRequest, res: Response) =>
 
     const classEntity = await classRepository.findOne({
       where: { id: classId as string },
-      relations: ['subjects', 'teachers']
+      relations: ['subjects', 'teachers', 'classTeacher1', 'classTeacher2']
     });
 
     if (!classEntity) {
@@ -4126,12 +4129,11 @@ export const generateMarkSheetExcel = async (req: AuthRequest, res: Response) =>
     const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
-    const classTeacher1 = (classEntity as any).classTeacher1 || null;
-    const fallbackTeacher = (classEntity.teachers && classEntity.teachers.length > 0) ? classEntity.teachers[0] : null;
-    const teacherForDisplay = classTeacher1 || fallbackTeacher;
-    const classTeacherName = teacherForDisplay
-      ? `${teacherForDisplay.firstName} ${teacherForDisplay.lastName}`.trim() || teacherForDisplay.teacherId || 'N/A'
-      : null;
+    // Class teacher name: strictly use Class.classTeacher1 (Home class teacher)
+    const t1 = classEntity.classTeacher1;
+    const classTeacherName = t1
+      ? `${t1.lastName} ${t1.firstName}`.trim() || t1.teacherId || 'Not assigned'
+      : 'Not assigned';
 
     const excelData = {
       class: { id: classEntity.id, name: classEntity.name, form: classEntity.form, classTeacherName },

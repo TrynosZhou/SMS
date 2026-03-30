@@ -158,7 +158,6 @@ export class ClassListsComponent implements OnInit {
     if (!this.canEditClassTeacher() || !this.selectedClassTeacherId) return;
     this.updatingClassTeacher = true;
     
-    // Get the current selected class to see existing teachers
     const selectedClass = this.classes.find(c => c.id === this.selectedClassId);
     
     const payload: any = {};
@@ -167,25 +166,21 @@ export class ClassListsComponent implements OnInit {
     if (this.editingClassTeacherSlot === 1) {
       payload.classTeacher1Id = this.selectedClassTeacherId;
       teacherIds.push(this.selectedClassTeacherId);
-      // Keep existing teacher 2 if present
       if (selectedClass?.classTeacher2Id) {
         teacherIds.push(selectedClass.classTeacher2Id);
       }
     } else {
       payload.classTeacher2Id = this.selectedClassTeacherId;
       teacherIds.push(this.selectedClassTeacherId);
-      // Keep existing teacher 1 if present
       if (selectedClass?.classTeacher1Id) {
         teacherIds.push(selectedClass.classTeacher1Id);
       }
     }
     
-    // Ensure unique IDs in the array
     payload.teacherIds = [...new Set(teacherIds)];
 
     this.classService.updateClass(this.selectedClassId, payload).subscribe({
       next: (resp: any) => {
-        // Update local class object so subsequent edits use correct data
         if (selectedClass) {
           if (this.editingClassTeacherSlot === 1) {
             selectedClass.classTeacher1Id = this.selectedClassTeacherId;
@@ -194,12 +189,9 @@ export class ClassListsComponent implements OnInit {
           }
         }
         
-        // Update UI label
         const t = this.allTeachers.find(x => x.id === this.selectedClassTeacherId);
         if (t) {
-          const ln = String(t.lastName || '').trim();
-          const fn = String(t.firstName || '').trim();
-          const newName = [ln, fn].filter(Boolean).join(' ').trim() || 'Teacher';
+          const newName = this.resolveTeacherFullName(t);
           if (this.editingClassTeacherSlot === 1) {
             this.classTeacher1FullName = newName;
           } else {
@@ -907,12 +899,11 @@ export class ClassListsComponent implements OnInit {
   private resolveClassTeacherNamesFromClass(cls: any): { teacher1: string; teacher2: string } {
     if (!cls) return { teacher1: '', teacher2: '' };
 
-    const t1 = cls.classTeacher1 || cls.classTeacher || null;
+    const t1 = cls.classTeacher1 || null;
     const t2 = cls.classTeacher2 || null;
-    const teachers = Array.isArray(cls.teachers) ? cls.teachers : [];
 
-    const teacher1 = this.resolveTeacherFullName(t1) || this.resolveTeacherFullName(teachers[0]);
-    const teacher2 = this.resolveTeacherFullName(t2) || this.resolveTeacherFullName(teachers[1]);
+    const teacher1 = this.resolveTeacherFullName(t1);
+    const teacher2 = this.resolveTeacherFullName(t2);
 
     return { teacher1, teacher2 };
   }

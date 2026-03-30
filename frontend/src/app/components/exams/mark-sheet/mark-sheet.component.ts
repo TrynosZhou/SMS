@@ -314,22 +314,15 @@ export class MarkSheetComponent implements OnInit {
     ).subscribe({
       next: (blob: Blob) => {
         const blobUrl = URL.createObjectURL(blob);
-        const printWindow = window.open(blobUrl, '_blank');
-        if (printWindow) {
-          printWindow.onafterprint = () => {
-            printWindow.close();
-            URL.revokeObjectURL(blobUrl);
-          };
-          setTimeout(() => printWindow.print(), 600);
-        } else {
-          URL.revokeObjectURL(blobUrl);
-          this.error = 'Please allow pop-ups to print the mark sheet';
-        }
+        // Open the PDF in a new tab for preview
+        window.open(blobUrl, '_blank');
         this.loading = false;
+        this.success = 'Mark sheet preview generated successfully';
+        setTimeout(() => this.success = '', 5000);
       },
       error: (err: any) => {
-        console.error('Error loading mark sheet PDF for print:', err);
-        this.error = err.error?.message || 'Failed to load mark sheet for printing';
+        console.error('Error loading mark sheet PDF for preview:', err);
+        this.error = err.error?.message || 'Failed to load mark sheet for preview';
         this.loading = false;
         setTimeout(() => this.error = '', 5000);
       }

@@ -108,12 +108,13 @@
         <div class="header-meta">
           <span class="meta-badge">{{ selectedExamType | titlecase }}</span>
           <span class="meta-text">Generated {{ markSheetData.generatedAt | date:'medium' }}</span>
+          <span class="meta-text" *ngIf="markSheetData.class.classTeacherName"> | Class Teacher: {{ markSheetData.class.classTeacherName }}</span>
         </div>
       </div>
       <div class="header-actions">
         <button class="btn btn-blue" (click)="exportToExcel()" [disabled]="loading">📥 Excel</button>
         <button class="btn btn-blue btn-download-pdf" (click)="downloadPDF()" [disabled]="loading"><span class="download-icon">📥</span> <span class="download-text">Download PDF</span></button>
-        <button class="btn btn-blue" (click)="printMarkSheet()">🖨️ Print Preview</button>
+        <button class="btn btn-blue" (click)="printMarkSheet()" [disabled]="loading">🖨️ Print Preview</button>
       </div>
     </div>
 
