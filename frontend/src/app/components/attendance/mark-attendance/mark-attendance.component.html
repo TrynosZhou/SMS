@@ -8,10 +8,13 @@
         <span class="header-subtitle">Record daily student attendance with ease</span>
       </div>
       <div class="header-actions" *ngIf="isAdmin()">
-        <button class="btn btn-primary bulk-btn" (click) = "openBulkModal()">
-          <span>🚀</span> Bulk Marking
-        </button>
-      </div>
+      <button class="btn btn-primary bulk-btn" (click)="openBulkModal()">
+        <span>🚀</span> Bulk Marking
+      </button>
+      <button class="btn btn-secondary reverse-bulk-btn" (click)="openReverseBulkModal()">
+        <span>🔄</span> Reverse Bulk
+      </button>
+    </div>
       <div class="header-actions" *ngIf="selectedClassId && students.length > 0">
         <div class="save-indicator modern-indicator" *ngIf="hasUnsavedChanges">
           <span class="indicator-dot"></span>
@@ -375,6 +378,70 @@
         <button class="btn btn-primary bulk-start-btn" (click)="startBulkMarking()" [disabled]="bulkMarkingInProgress || !bulkSelectedClassId">
           <span *ngIf="!bulkMarkingInProgress">Start Bulk Marking</span>
           <span *ngIf="bulkMarkingInProgress">Marking...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reverse Bulk Marking Modal -->
+  <div class="modal-overlay" *ngIf="showReverseBulkModal" (click)="closeReverseBulkModal()">
+    <div class="modal-content bulk-modal reverse-bulk-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header modern-header reverse-header">
+        <div class="modal-title">
+          <h2>🔄 Reverse Bulk Marking</h2>
+          <p class="subtitle">Remove attendance records for a class for the entire term</p>
+        </div>
+        <button class="modal-close-circle" (click)="closeReverseBulkModal()" [disabled]="reverseBulkInProgress">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="bulk-modal-alert danger" *ngIf="!reverseBulkInProgress">
+          <span class="alert-icon">⚠️</span>
+          <div class="alert-content">
+            <p>This will <strong>permanently delete</strong> all attendance records for students in the selected class from the <strong>Term Start Date</strong> to the <strong>Term End Date</strong>.</p>
+            <p>This action cannot be undone.</p>
+          </div>
+        </div>
+
+        <div class="bulk-form" *ngIf="!reverseBulkInProgress">
+          <div class="modal-form-group">
+            <label for="reverseBulkClass">Select Class to Reverse</label>
+            <select id="reverseBulkClass" [(ngModel)]="reverseBulkSelectedClassId" class="form-control">
+              <option value="">-- Select a Class --</option>
+              <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="bulk-progress-section" *ngIf="reverseBulkInProgress">
+          <div class="progress-info">
+            <div class="progress-text">Processing: {{ reverseBulkProgress.current | date:'dd/MM/yyyy' }}</div>
+            <div class="progress-stats">
+              <span>Removed: {{ reverseBulkProgress.done }}</span>
+              <span>Total: {{ reverseBulkProgress.total }}</span>
+            </div>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar danger" [style.width.%]="(reverseBulkProgress.done + reverseBulkProgress.skipped) / reverseBulkProgress.total * 100"></div>
+          </div>
+          <p class="loading-text">Reversing bulk marking, please wait...</p>
+        </div>
+
+        <div class="alert alert-success" *ngIf="success">
+          <span class="alert-icon">✅</span>
+          <span>{{ success }}</span>
+        </div>
+        <div class="alert alert-error" *ngIf="error">
+          <span class="alert-icon">❌</span>
+          <span>{{ error }}</span>
+        </div>
+      </div>
+
+      <div class="modal-footer modern-footer">
+        <button class="btn btn-close-grey" (click)="closeReverseBulkModal()" [disabled]="reverseBulkInProgress">Cancel</button>
+        <button class="btn btn-danger reverse-start-btn" (click)="startReverseBulk()" [disabled]="reverseBulkInProgress || !reverseBulkSelectedClassId">
+          <span *ngIf="!reverseBulkInProgress">Start Reverse Bulk</span>
+          <span *ngIf="reverseBulkInProgress">Reversing...</span>
         </button>
       </div>
     </div>

@@ -813,37 +813,34 @@ export class ExamListComponent implements OnInit, OnDestroy {
     if (mark && mark.score !== null && mark.score !== undefined && mark.score !== '') {
       const score = parseFloat(mark.score);
       if (isNaN(score) || score < 0) {
-        mark.score = null;
+        mark.score = 0;
+      } else if (score > 100) {
+        alert('Maximum mark allowed is 100%. The mark has been adjusted to 100.');
+        mark.score = 100;
       } else {
-        // Round to integer
-        const roundedScore = Math.round(score);
-        if (roundedScore > 100) {
-          if (confirm(`Score ${roundedScore} exceeds 100. Do you want to keep it?`)) {
-            mark.score = roundedScore;
-          } else {
-            mark.score = 100;
-          }
-        } else {
-          mark.score = roundedScore;
-        }
+        mark.score = Math.round(score);
       }
     }
   }
 
   onMarkChange(studentId: string) {
-    // Round to integer when user types
     const key = this.getMarkKey(studentId, this.selectedSubjectId);
     const mark = this.marks[key];
     if (mark && mark.score !== null && mark.score !== undefined && mark.score !== '') {
       const score = parseFloat(mark.score);
       if (!isNaN(score)) {
-        const roundedScore = Math.round(score);
-        mark.score = roundedScore;
+        if (score > 100) {
+          mark.score = 100;
+        } else if (score < 0) {
+          mark.score = 0;
+        } else {
+          mark.score = Math.round(score);
+        }
       }
     }
-    // Remove from saved records when mark changes (will be re-added after save)
+    // Strict replacement: This updates the local model which is then sent to the backend
+    // Remove from saved records to trigger a fresh save
     this.savedRecords.delete(key);
-    // Schedule auto-save for this student
     this.scheduleAutoSave(studentId);
   }
 

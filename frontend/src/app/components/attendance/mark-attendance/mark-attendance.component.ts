@@ -32,9 +32,13 @@ export class MarkAttendanceComponent implements OnInit {
 
   // Bulk marking properties
   showBulkModal = false;
+  showReverseBulkModal = false;
   bulkSelectedClassId = '';
+  reverseBulkSelectedClassId = '';
   bulkMarkingInProgress = false;
+  reverseBulkInProgress = false;
   bulkProgress = { total: 0, done: 0, skipped: 0, current: '' };
+  reverseBulkProgress = { total: 0, done: 0, skipped: 0, current: '' };
 
   constructor(
     private attendanceService: AttendanceService,
@@ -364,6 +368,96 @@ export class MarkAttendanceComponent implements OnInit {
   closeBulkModal() {
     if (this.bulkMarkingInProgress) return;
     this.showBulkModal = false;
+  }
+
+  openReverseBulkModal() {
+    this.showReverseBulkModal = true;
+    this.reverseBulkSelectedClassId = '';
+    this.reverseBulkInProgress = false;
+    this.reverseBulkProgress = { total: 0, done: 0, skipped: 0, current: '' };
+  }
+
+  closeReverseBulkModal() {
+    if (this.reverseBulkInProgress) return;
+    this.showReverseBulkModal = false;
+  }
+
+  async startReverseBulk() {
+    if (!this.reverseBulkSelectedClassId) {
+      this.error = 'Please select a class for reverse bulk marking';
+      return;
+    }
+
+    if (!confirm('Are you sure you want to reverse bulk marking for this class? This will delete all attendance records for the entire term.')) {
+      return;
+    }
+
+    this.reverseBulkInProgress = true;
+    this.error = '';
+    this.success = '';
+
+    try {
+      // 1. Fetch settings to get term start and end dates
+      const settings = await this.settingsService.getSettings().toPromise();
+      const termStartDateStr = settings.termStartDate || settings.openingDay;
+      const termEndDateStr = settings.termEndDate || settings.closingDay;
+
+      if (!termStartDateStr || !termEndDateStr) {
+        throw new Error('Term start or end dates are not configured in settings');
+      }
+
+      const termStartDate = this.fromIsoDate(termStartDateStr);
+      const termEndDate = this.fromIsoDate(termEndDateStr);
+
+      // 2. Iterate through each date from start to end
+      let currentDate = new Date(termStartDate);
+      const datesToProcess: string[] = [];
+
+      while (currentDate <= termEndDate) {
+        const isoDate = this.toIsoDate(currentDate);
+        const day = currentDate.getUTCDay();
+        // Only process week days (Mon-Fri)
+        if (day !== 0 && day !== 6) {
+          datesToProcess.push(isoDate);
+        }
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+      }
+
+      this.reverseBulkProgress.total = datesToProcess.length;
+      this.reverseBulkProgress.done = 0;
+      this.reverseBulkProgress.skipped = 0;
+
+      for (const date of datesToProcess) {
+        this.reverseBulkProgress.current = date;
+
+        // Check if attendance exists for this date
+        const existing = await this.attendanceService.getAttendance({
+          classId: this.reverseBulkSelectedClassId,
+          date: date
+        }).toPromise();
+
+        if (existing && existing.attendance && existing.attendance.length > 0) {
+          // Delete attendance for this date
+          await this.attendanceService.deleteAttendance(this.reverseBulkSelectedClassId, date).toPromise();
+          this.reverseBulkProgress.done++;
+        } else {
+          this.reverseBulkProgress.skipped++;
+        }
+      }
+
+      this.success = `Reverse bulk marking completed. Records removed for ${this.reverseBulkProgress.done} days.`;
+      this.reverseBulkInProgress = false;
+      setTimeout(() => {
+        this.closeReverseBulkModal();
+        if (this.selectedClassId === this.reverseBulkSelectedClassId) {
+          this.loadExistingAttendance();
+        }
+      }, 3000);
+
+    } catch (err: any) {
+      this.error = err.message || 'Failed to complete reverse bulk marking';
+      this.reverseBulkInProgress = false;
+    }
   }
 
   async startBulkMarking() {

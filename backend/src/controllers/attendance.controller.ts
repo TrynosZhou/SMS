@@ -329,3 +329,42 @@ export const getStudentTotalAttendance = async (req: AuthRequest, res: Response)
   }
 };
 
+export const deleteAttendance = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    
+    // Check if user has permission (admin or superadmin)
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPERADMIN)) {
+      return res.status(403).json({ message: 'You do not have permission to delete attendance' });
+    }
+
+    const { classId, date } = req.query;
+
+    if (!classId || !date) {
+      return res.status(400).json({ message: 'Class ID and date are required' });
+    }
+
+    const attendanceRepository = AppDataSource.getRepository(Attendance);
+    const attendanceDate = new Date(date as string);
+
+    if (isNaN(attendanceDate.getTime())) {
+      return res.status(400).json({ message: 'Invalid date format' });
+    }
+
+    const deleteResult = await attendanceRepository.delete({
+      classId: classId as string,
+      date: attendanceDate
+    });
+
+    res.json({
+      message: `Attendance records deleted for ${date}`,
+      deletedCount: deleteResult.affected,
+      date: date,
+      classId
+    });
+  } catch (error: any) {
+    console.error('Error deleting attendance:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+

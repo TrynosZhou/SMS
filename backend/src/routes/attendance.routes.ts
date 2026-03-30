@@ -5,7 +5,8 @@ import {
   markAttendance,
   getAttendance,
   getAttendanceReport,
-  getStudentTotalAttendance
+  getStudentTotalAttendance,
+  deleteAttendance
 } from '../controllers/attendance.controller';
 
 const router = Router();
@@ -15,6 +16,9 @@ router.post('/', authenticate, authorize(UserRole.TEACHER, UserRole.ADMIN, UserR
 
 // Get attendance records
 router.get('/', authenticate, authorize(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), getAttendance);
+
+// Delete attendance records for a class on a date
+router.delete('/', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), deleteAttendance);
 
 // Get attendance report for a class
 router.get('/report', authenticate, authorize(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), getAttendanceReport);

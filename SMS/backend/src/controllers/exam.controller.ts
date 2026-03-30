@@ -800,19 +800,27 @@ export const captureMarks = async (req: AuthRequest, res: Response) => {
       });
 
       if (existing) {
-        // Update existing mark
-        existing.score = mark.score ? Math.round(parseFloat(String(mark.score))) : 0;
-        existing.maxScore = mark.maxScore ? Math.round(parseFloat(String(mark.maxScore))) : 100;
-        existing.comments = mark.comments || existing.comments;
+        // Strict replacement logic: Take the new mark directly and enforce 0-100 range
+        let newScore = mark.score !== null && mark.score !== undefined ? Math.round(parseFloat(String(mark.score))) : existing.score;
+        
+        // Ensure newScore is in 0-100 range and NOT an accumulation
+        newScore = Math.max(0, Math.min(100, newScore));
+        
+        existing.score = newScore;
+        existing.maxScore = 100;
+        existing.comments = mark.comments !== undefined ? mark.comments : existing.comments;
         marksToSave.push(existing);
       } else {
         // Create new mark
+        let newScore = mark.score !== null && mark.score !== undefined ? Math.round(parseFloat(String(mark.score))) : 0;
+        newScore = Math.max(0, Math.min(100, newScore));
+
         const newMark = marksRepository.create({
-          examId: String(examId), // Ensure examId is a string
+          examId: String(examId),
           studentId: String(mark.studentId),
           subjectId: String(mark.subjectId),
-          score: mark.score ? Math.round(parseFloat(String(mark.score))) : 0,
-          maxScore: mark.maxScore ? Math.round(parseFloat(String(mark.maxScore))) : 100,
+          score: newScore,
+          maxScore: 100,
           comments: mark.comments || null,
         });
         console.log('Creating new mark:', {

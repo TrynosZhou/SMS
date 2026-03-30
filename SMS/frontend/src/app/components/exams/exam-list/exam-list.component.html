@@ -213,7 +213,7 @@
                       class="marks-input"
                       [disabled]="isPublished"
                       [readonly]="isPublished"
-                      (input)="onMarkChange(student.id)"
+                      (ngModelChange)="onMarkChange(student.id)"
                       (blur)="validateMark(student.id); onStudentBlur(student.id)"
                       (focus)="onStudentFocus(student.id)">
                     <span class="max-score">/ 100</span>

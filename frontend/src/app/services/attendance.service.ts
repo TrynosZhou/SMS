@@ -34,5 +34,11 @@ export class AttendanceService {
     }
     return this.http.get(`${this.apiUrl}/attendance/student/total`, { params });
   }
+
+  deleteAttendance(classId: string, date: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/attendance`, {
+      params: { classId, date }
+    });
+  }
 }
 
