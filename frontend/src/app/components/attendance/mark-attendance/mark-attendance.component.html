@@ -7,6 +7,11 @@
         <h1>Mark Attendance</h1>
         <span class="header-subtitle">Record daily student attendance with ease</span>
       </div>
+      <div class="header-actions" *ngIf="isAdmin()">
+        <button class="btn btn-primary bulk-btn" (click) = "openBulkModal()">
+          <span>🚀</span> Bulk Marking
+        </button>
+      </div>
       <div class="header-actions" *ngIf="selectedClassId && students.length > 0">
         <div class="save-indicator modern-indicator" *ngIf="hasUnsavedChanges">
           <span class="indicator-dot"></span>
@@ -308,5 +313,70 @@
     <div class="initial-icon">✅</div>
     <h3>Get Started</h3>
     <p>Select a class and date to begin marking attendance.</p>
+  </div>
+
+  <!-- Bulk Marking Modal -->
+  <div class="modal-overlay" *ngIf="showBulkModal" (click)="closeBulkModal()">
+    <div class="modal-content bulk-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header modern-header">
+        <div class="modal-title">
+          <h2>🚀 Bulk Attendance Marking</h2>
+          <p class="subtitle">Mark entire term as present for a selected class</p>
+        </div>
+        <button class="modal-close-circle" (click)="closeBulkModal()" [disabled]="bulkMarkingInProgress">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="bulk-modal-alert" *ngIf="!bulkMarkingInProgress">
+          <span class="alert-icon">ℹ️</span>
+          <div class="alert-content">
+            <p>This will mark all students in the selected class as <strong>Present</strong> for every school day from the <strong>Term Start Date</strong> to the <strong>Term End Date</strong>.</p>
+            <p>Days already marked will be <strong>skipped</strong> automatically.</p>
+          </div>
+        </div>
+
+        <div class="bulk-form" *ngIf="!bulkMarkingInProgress">
+          <div class="modal-form-group">
+            <label for="bulkClass">Select Class to Mark</label>
+            <select id="bulkClass" [(ngModel)]="bulkSelectedClassId" class="form-control">
+              <option value="">-- Select a Class --</option>
+              <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="bulk-progress-section" *ngIf="bulkMarkingInProgress">
+          <div class="progress-info">
+            <div class="progress-text">Processing: {{ bulkProgress.current | date:'dd/MM/yyyy' }}</div>
+            <div class="progress-stats">
+              <span>Marked: {{ bulkProgress.done }}</span>
+              <span>Skipped: {{ bulkProgress.skipped }}</span>
+              <span>Total: {{ bulkProgress.total }}</span>
+            </div>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" [style.width.%]="(bulkProgress.done + bulkProgress.skipped) / bulkProgress.total * 100"></div>
+          </div>
+          <p class="loading-text">Please do not close this window while bulk marking is in progress...</p>
+        </div>
+
+        <div class="alert alert-success" *ngIf="success">
+          <span class="alert-icon">✅</span>
+          <span>{{ success }}</span>
+        </div>
+        <div class="alert alert-error" *ngIf="error">
+          <span class="alert-icon">❌</span>
+          <span>{{ error }}</span>
+        </div>
+      </div>
+
+      <div class="modal-footer modern-footer">
+        <button class="btn btn-close-grey" (click)="closeBulkModal()" [disabled]="bulkMarkingInProgress">Cancel</button>
+        <button class="btn btn-primary bulk-start-btn" (click)="startBulkMarking()" [disabled]="bulkMarkingInProgress || !bulkSelectedClassId">
+          <span *ngIf="!bulkMarkingInProgress">Start Bulk Marking</span>
+          <span *ngIf="bulkMarkingInProgress">Marking...</span>
+        </button>
+      </div>
+    </div>
   </div>
 </div>

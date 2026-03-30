@@ -274,6 +274,30 @@ export class AuthService {
     return user.role.toLowerCase() === role.toLowerCase();
   }
 
+  isAccountant(): boolean {
+    return this.hasRole('accountant');
+  }
+
+  isAdmin(): boolean {
+    return this.hasRole('admin') || this.hasRole('superadmin');
+  }
+
+  isTeacher(): boolean {
+    return this.hasRole('teacher');
+  }
+
+  isStudent(): boolean {
+    return this.hasRole('student');
+  }
+
+  isParent(): boolean {
+    return this.hasRole('parent');
+  }
+
+  isSuperAdmin(): boolean {
+    return this.hasRole('superadmin');
+  }
+
   requestPasswordReset(email: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/auth/reset-password`, { email });
   }

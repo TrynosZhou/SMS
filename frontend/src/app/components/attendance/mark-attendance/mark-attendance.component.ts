@@ -30,6 +30,12 @@ export class MarkAttendanceComponent implements OnInit {
   hasUnsavedChanges = false;
   lastSavedDate: Date | null = null;
 
+  // Bulk marking properties
+  showBulkModal = false;
+  bulkSelectedClassId = '';
+  bulkMarkingInProgress = false;
+  bulkProgress = { total: 0, done: 0, skipped: 0, current: '' };
+
   constructor(
     private attendanceService: AttendanceService,
     private classService: ClassService,
@@ -338,6 +344,121 @@ export class MarkAttendanceComponent implements OnInit {
   private getIsoWeekdayUtc(iso: string): number {
     const { y, m, d } = this.parseIsoDateParts(iso);
     return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  }
+
+  isAccountant(): boolean {
+    return this.authService.isAccountant();
+  }
+
+  isAdmin(): boolean {
+    return this.authService.isAdmin();
+  }
+
+  openBulkModal() {
+    this.showBulkModal = true;
+    this.bulkSelectedClassId = '';
+    this.bulkMarkingInProgress = false;
+    this.bulkProgress = { total: 0, done: 0, skipped: 0, current: '' };
+  }
+
+  closeBulkModal() {
+    if (this.bulkMarkingInProgress) return;
+    this.showBulkModal = false;
+  }
+
+  async startBulkMarking() {
+    if (!this.bulkSelectedClassId) {
+      this.error = 'Please select a class for bulk marking';
+      return;
+    }
+
+    this.bulkMarkingInProgress = true;
+    this.error = '';
+    this.success = '';
+
+    try {
+      // 1. Fetch settings to get term start and end dates
+      const settings = await this.settingsService.getSettings().toPromise();
+      const termStartDateStr = settings.termStartDate || settings.openingDay;
+      const termEndDateStr = settings.termEndDate || settings.closingDay;
+
+      if (!termStartDateStr || !termEndDateStr) {
+        throw new Error('Term start or end dates are not configured in settings');
+      }
+
+      const termStartDate = this.fromIsoDate(termStartDateStr);
+      const termEndDate = this.fromIsoDate(termEndDateStr);
+      
+      // 2. Load students for the selected class to mark them all as present
+      const students = await this.studentService.getStudents(this.bulkSelectedClassId).toPromise();
+      if (!students) {
+        throw new Error('Could not fetch students for the selected class');
+      }
+      const activeStudents = students.filter((s: any) => s.isActive);
+      
+      if (activeStudents.length === 0) {
+        throw new Error('No active students found in the selected class');
+      }
+
+      const attendanceData = activeStudents.map((s: any) => ({
+        studentId: s.id,
+        status: 'present',
+        remarks: 'Bulk marked as present'
+      }));
+
+      // 3. Iterate through each date from start to end
+      let currentDate = new Date(termStartDate);
+      const datesToProcess: string[] = [];
+      
+      while (currentDate <= termEndDate) {
+        const isoDate = this.toIsoDate(currentDate);
+        const day = currentDate.getUTCDay();
+        // Skip weekends (0=Sun, 6=Sat)
+        if (day !== 0 && day !== 6) {
+          datesToProcess.push(isoDate);
+        }
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+      }
+
+      this.bulkProgress.total = datesToProcess.length;
+      this.bulkProgress.done = 0;
+      this.bulkProgress.skipped = 0;
+
+      for (const date of datesToProcess) {
+        this.bulkProgress.current = date;
+        
+        // Check if attendance already exists for this date
+        const existing = await this.attendanceService.getAttendance({
+          classId: this.bulkSelectedClassId,
+          date: date
+        }).toPromise();
+
+        if (existing && existing.attendance && existing.attendance.length > 0) {
+          this.bulkProgress.skipped++;
+        } else {
+          // Mark attendance
+          await this.attendanceService.markAttendance(
+            this.bulkSelectedClassId,
+            date,
+            attendanceData
+          ).toPromise();
+          this.bulkProgress.done++;
+        }
+      }
+
+      this.success = `Bulk marking completed. Marked: ${this.bulkProgress.done}, Skipped: ${this.bulkProgress.skipped} (already marked).`;
+      this.bulkMarkingInProgress = false;
+      setTimeout(() => {
+        this.closeBulkModal();
+        if (this.selectedClassId === this.bulkSelectedClassId) {
+          this.loadExistingAttendance();
+        }
+      }, 3000);
+
+    } catch (err: any) {
+      this.error = err.message || 'Failed to complete bulk marking';
+      this.bulkMarkingInProgress = false;
+    }
   }
 
   // Statistics

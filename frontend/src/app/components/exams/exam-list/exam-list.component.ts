@@ -1067,15 +1067,18 @@ export class ExamListComponent implements OnInit, OnDestroy {
     this.success = '';
 
     // Prepare marks data for the selected subject only
+    // Only include marks that have been modified or entered
     const marksData = this.filteredStudents.map((student: any) => {
       const key = this.getMarkKey(student.id, this.selectedSubjectId);
       const mark = this.marks[key];
       
-      if (mark && (mark.score !== null || mark.comments)) {
+      // Only include this student if their mark is not already saved in the backend
+      // OR if it's currently being edited (not in savedRecords)
+      if (mark && !this.isRecordSaved(student.id)) {
         return {
           studentId: student.id,
           subjectId: this.selectedSubjectId,
-          score: mark.score ? Math.round(parseFloat(mark.score)) : null,
+          score: (mark.score !== null && mark.score !== undefined && mark.score !== '') ? Math.round(parseFloat(String(mark.score))) : null,
           maxScore: 100, // Default max score of 100
           comments: mark.comments || '',
           includeInClassPassRate: this.passRateInclusionForStudent(student.id)
@@ -1085,7 +1088,7 @@ export class ExamListComponent implements OnInit, OnDestroy {
     }).filter((m: any) => m !== null);
 
     if (marksData.length === 0) {
-      this.error = 'Please enter at least one mark or remark';
+      this.success = 'All marks are already up to date.';
       this.loading = false;
       return;
     }
@@ -1107,7 +1110,7 @@ export class ExamListComponent implements OnInit, OnDestroy {
           }
         });
         
-        // Reload existing marks to reflect saved data
+        // Reload existing marks to reflect saved data and ensure cascade
         setTimeout(() => {
           this.loadExistingMarks();
           // Check completeness after saving

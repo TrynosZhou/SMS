@@ -919,9 +919,9 @@ export const captureMarks = async (req: AuthRequest, res: Response) => {
 
       if (existing) {
         // Update existing mark
-        existing.score = mark.score ? Math.round(parseFloat(String(mark.score))) : 0;
-        existing.maxScore = mark.maxScore ? Math.round(parseFloat(String(mark.maxScore))) : 100;
-        existing.comments = mark.comments || existing.comments;
+        existing.score = mark.score !== null && mark.score !== undefined ? Math.round(parseFloat(String(mark.score))) : existing.score;
+        existing.maxScore = mark.maxScore !== null && mark.maxScore !== undefined ? Math.round(parseFloat(String(mark.maxScore))) : existing.maxScore;
+        existing.comments = mark.comments !== undefined ? mark.comments : existing.comments;
         marksToSave.push(existing);
       } else {
         // Create new mark
