@@ -26,7 +26,8 @@ import {
   generateMarkSheetExcel,
   getMarksEntryProgress,
   getPassRateInclusionsByScope,
-  setPassRateInclusionByScope
+  setPassRateInclusionByScope,
+  deleteMark
 } from '../controllers/exam.controller';
 
 const router = Router();
@@ -38,6 +39,7 @@ router.post('/publish-by-type', authenticate, authorize(UserRole.SUPERADMIN, Use
 router.post('/unpublish-by-type', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), unpublishExamByType);
 router.post('/marks', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), captureMarks);
 router.get('/marks', authenticate, getMarks);
+router.delete('/:examId/marks', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), deleteMark);
 router.get('/pass-rate-inclusion', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), getPassRateInclusionsByScope);
 router.post('/pass-rate-inclusion', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), setPassRateInclusionByScope);
 router.get('/rankings/class', authenticate, getStudentRankings);

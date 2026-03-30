@@ -97,6 +97,14 @@ export class ExamService {
     );
   }
 
+  deleteMark(examId: string, studentId: string, subjectId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/exams/${examId}/marks`, {
+      params: { studentId, subjectId }
+    }).pipe(
+      catchError(err => throwError(() => err))
+    );
+  }
+
   getPassRateInclusionsByScope(classId: string, term: string, examType: string): Observable<{ inclusions: Record<string, boolean> }> {
     const params = new HttpParams()
       .set('classId', classId)

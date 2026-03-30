@@ -983,6 +983,47 @@ export const captureMarks = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const deleteMark = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const { examId } = req.params;
+    const { studentId, subjectId } = req.query;
+
+    if (!examId || !studentId || !subjectId) {
+      return res.status(400).json({ message: 'Exam ID, student ID, and subject ID are required' });
+    }
+
+    // Check if exam is published - prevent deletion
+    const examRepository = AppDataSource.getRepository(Exam);
+    const exam = await examRepository.findOne({ where: { id: examId } });
+    
+    if (exam && exam.status === ExamStatus.PUBLISHED) {
+      return res.status(403).json({ 
+        message: 'Cannot delete mark. Exam results have been published and are now read-only.' 
+      });
+    }
+
+    const marksRepository = AppDataSource.getRepository(Marks);
+    const deleteResult = await marksRepository.delete({
+      examId: examId as string,
+      studentId: studentId as string,
+      subjectId: subjectId as string
+    });
+
+    if (deleteResult.affected === 0) {
+      return res.status(404).json({ message: 'Mark not found' });
+    }
+
+    res.json({ message: 'Mark deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting mark:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
 export const getMarks = async (req: AuthRequest, res: Response) => {
   try {
     const marksRepository = AppDataSource.getRepository(Marks);

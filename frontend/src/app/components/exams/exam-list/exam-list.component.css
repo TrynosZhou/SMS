@@ -418,8 +418,54 @@
   border: 2px solid #e5e7eb;
 }
 
-.btn-cancel:hover:not(:disabled) {
-  background: #e5e7eb;
+.btn-cancel:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.btn-restore {
+  background: white;
+  border: 1px solid #e2e8f0;
+  color: #0891b2;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-restore:hover:not(:disabled) {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+.btn-icon-delete {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-icon-delete:hover:not(:disabled) {
+  background: #fee2e2;
+  transform: scale(1.1);
+}
+
+.btn-icon-delete:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.col-actions {
+  width: 80px;
+  text-align: center;
 }
 
 .btn-action {

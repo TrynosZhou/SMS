@@ -283,6 +283,7 @@
                 <th class="col-name">First Name</th>
                 <th class="col-marks">Marks (/ 100)</th>
                 <th class="col-status">Status</th>
+                <th class="col-actions">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -312,6 +313,7 @@
                     <input 
                       type="number" 
                       [(ngModel)]="marks[getMarkKey(student.id, selectedSubjectId)].score"
+                      [id]="'score_' + student.id"
                       [name]="'score_' + student.id"
                       placeholder="0"
                       min="0"
@@ -337,6 +339,16 @@
                     <span class="status-icon">○</span> Pending
                   </span>
                 </td>
+                <td class="col-actions">
+                  <button 
+                    type="button" 
+                    class="btn-icon-delete" 
+                    (click)="deleteMark(student.id)"
+                    [disabled]="isPublished || !isRecordSaved(student.id)"
+                    title="Delete Mark">
+                    🗑️
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -351,6 +363,13 @@
           (click)="cancelMarksEntry()"
           [disabled]="loading">
           <span class="btn-icon">❌</span> Cancel
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-restore" 
+          (click)="restoreMarks()"
+          [disabled]="loading || isPublished">
+          <span class="btn-icon">🔄</span> Restore Marks
         </button>
       </div>
 

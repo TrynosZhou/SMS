@@ -1043,6 +1043,84 @@ export class ExamListComponent implements OnInit, OnDestroy {
     });
   }
 
+  deleteMark(studentId: string) {
+    if (!this.currentExam || !this.currentExam.id) return;
+    
+    const student = this.students.find(s => s.id === studentId);
+    const studentName = student ? `${student.firstName} ${student.lastName}` : 'this student';
+    
+    if (!confirm(`Are you sure you want to delete the mark for ${studentName}? This will also remove it from marksheets and report cards.`)) {
+      return;
+    }
+
+    const key = this.getMarkKey(studentId, this.selectedSubjectId);
+    
+    this.loading = true;
+    this.examService.deleteMark(this.currentExam.id, studentId, this.selectedSubjectId).subscribe({
+      next: () => {
+        this.success = `Mark deleted for ${studentName}`;
+        this.loading = false;
+        
+        // Update local state
+        if (this.marks[key]) {
+          this.marks[key].score = null;
+          this.marks[key].comments = '';
+        }
+        this.savedRecords.delete(key);
+        
+        // Set focus back to the input
+        setTimeout(() => {
+          const inputElement = document.getElementById(`score_${studentId}`);
+          if (inputElement) {
+            inputElement.focus();
+          }
+          this.success = '';
+        }, 100);
+      },
+      error: (err: any) => {
+        this.error = err.error?.message || 'Failed to delete mark';
+        this.loading = false;
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  restoreMarks() {
+    if (!this.currentExam || !this.selectedSubjectId) return;
+    
+    this.loading = true;
+    this.success = 'Restoring marks from database...';
+    
+    this.examService.getMarks(this.currentExam.id).subscribe({
+      next: (marksData: any) => {
+        const marksArray = Array.isArray(marksData) ? marksData : [];
+        const subjectMarks = marksArray.filter((m: any) => m.subjectId === this.selectedSubjectId);
+        
+        if (subjectMarks.length === 0) {
+          this.success = 'No marks found in database to restore.';
+        } else {
+          subjectMarks.forEach((mark: any) => {
+            const key = this.getMarkKey(mark.studentId, this.selectedSubjectId);
+            if (this.marks[key]) {
+              this.marks[key].score = mark.score;
+              this.marks[key].maxScore = mark.maxScore;
+              this.marks[key].comments = mark.comments || '';
+              this.savedRecords.add(key);
+            }
+          });
+          this.success = `Successfully restored ${subjectMarks.length} marks from database.`;
+        }
+        this.loading = false;
+        setTimeout(() => this.success = '', 4000);
+      },
+      error: (err: any) => {
+        this.error = 'Failed to restore marks';
+        this.loading = false;
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
   onSubmit() {
     if (!this.currentExam) {
       this.error = 'No exam selected';
