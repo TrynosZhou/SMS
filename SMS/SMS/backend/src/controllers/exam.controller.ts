@@ -3661,12 +3661,23 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
     });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
 
+    // Class teacher name: prefer Class.classTeacher1, fallback to first linked teacher
+    const classTeacher1 = (classEntity as any).classTeacher1 || null;
+    const fallbackTeacher = (classEntity.teachers && classEntity.teachers.length > 0)
+      ? classEntity.teachers[0]
+      : null;
+    const teacherForDisplay = classTeacher1 || fallbackTeacher;
+    const classTeacherName = teacherForDisplay
+      ? `${teacherForDisplay.firstName} ${teacherForDisplay.lastName}`.trim() || teacherForDisplay.teacherId || 'N/A'
+      : null;
+
     // Prepare data for PDF
     const pdfData = {
       class: {
         id: classEntity.id,
         name: classEntity.name,
-        form: classEntity.form
+        form: classEntity.form,
+        classTeacherName
       },
       examType: examType as string,
       subjects: subjects.map(s => ({ id: s.id, name: s.name })),
