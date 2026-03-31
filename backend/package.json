@@ -23,7 +23,9 @@
     "migrate-payroll": "npx ts-node scripts/run-payroll-migration.ts",
     "migrate-timetables": "npx ts-node scripts/run-timetable-migration.ts",
     "migrate-teaching-periods": "npx ts-node scripts/run-teaching-periods-migration.ts",
-    "clear-payroll-runs": "npx ts-node scripts/clear-payroll-runs.ts"
+    "clear-payroll-runs": "npx ts-node scripts/clear-payroll-runs.ts",
+    "check-exam-duplicates": "node scripts/check-exam-duplicates.js",
+    "fix-exam-duplicates": "node scripts/fix-exam-duplicates.js"
   },
   "dependencies": {
     "@types/archiver": "^7.0.0",

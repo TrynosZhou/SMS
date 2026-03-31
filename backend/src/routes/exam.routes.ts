@@ -5,6 +5,7 @@ import {
   createExam,
   getExams,
   getExamById,
+  updateExam,
   deleteExam,
   deleteAllExams,
   publishExam,
@@ -34,6 +35,7 @@ const router = Router();
 
 router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), createExam);
 router.get('/', authenticate, getExams);
+router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), updateExam);
 router.post('/publish', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), publishExam);
 router.post('/publish-by-type', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), publishExamByType);
 router.post('/unpublish-by-type', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), unpublishExamByType);

@@ -759,6 +759,15 @@ export class ClassListsComponent implements OnInit {
 
   private resolveClassTeacherNameFromClass(cls: any): string {
     if (!cls) return '';
+    
+    // Strictly use classTeacher1 (Home Class Teacher) as assigned by the administrator
+    if (cls.classTeacher1 && (cls.classTeacher1.firstName || cls.classTeacher1.lastName)) {
+      const fn = (cls.classTeacher1.firstName || '').toString().trim();
+      const ln = (cls.classTeacher1.lastName || '').toString().trim();
+      return [fn, ln].filter(Boolean).join(' ').trim();
+    }
+    
+    // Legacy/Fallback checks
     if (cls.classTeacher && (cls.classTeacher.firstName || cls.classTeacher.lastName)) {
       const fn = (cls.classTeacher.firstName || '').toString().trim();
       const ln = (cls.classTeacher.lastName || '').toString().trim();
@@ -769,8 +778,11 @@ export class ClassListsComponent implements OnInit {
       const ln = (cls.teacher.lastName || '').toString().trim();
       return [fn, ln].filter(Boolean).join(' ').trim();
     }
+    
     const teachers = Array.isArray(cls.teachers) ? cls.teachers : [];
     if (teachers.length > 0) {
+      // If teachers are sorted alphabetically, this could pick the wrong one
+      // but we only reach here if classTeacher1 is not assigned.
       const t = teachers[0] || {};
       const fn = (t.firstName || '').toString().trim();
       const ln = (t.lastName || '').toString().trim();

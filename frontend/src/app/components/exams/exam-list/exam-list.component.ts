@@ -514,56 +514,93 @@ export class ExamListComponent implements OnInit, OnDestroy {
 
   findOrCreateExam(): Promise<any> {
     return new Promise((resolve, reject) => {
+      if (!this.selectedClassId || !this.selectedTerm || !this.selectedExamType || !this.selectedSubjectId) {
+        reject(new Error('Missing selection criteria'));
+        return;
+      }
+
+      // Normalize term for consistent lookup
+      const normalizedTerm = (this.selectedTerm || '').trim();
+      const normalizedType = this.selectedExamType;
+      const normalizedClassId = this.selectedClassId;
+      const normalizedSubjectId = this.selectedSubjectId;
+
       // Try to find existing exam with matching criteria
-      const examName = `${this.selectedTerm} - ${this.examTypes.find(t => t.value === this.selectedExamType)?.label} - ${this.classes.find(c => c.id === this.selectedClassId)?.name}`;
+      const examName = `${normalizedTerm} - ${this.examTypes.find(t => t.value === normalizedType)?.label} - ${this.classes.find(c => c.id === normalizedClassId)?.name}`;
       
-      // For now, create a new exam or find existing one
-      // We'll need a backend endpoint for this, but for now let's use the existing exam creation
       const examData = {
         name: examName,
-        type: this.selectedExamType,
-        term: this.selectedTerm,
+        type: normalizedType,
+        term: normalizedTerm,
         examDate: new Date().toISOString().split('T')[0],
-        classId: this.selectedClassId,
-        subjectIds: [this.selectedSubjectId]
+        classId: normalizedClassId,
+        subjectIds: [normalizedSubjectId]
       };
 
       // Check if exam exists first by getting exams for this class
-      this.examService.getExams(this.selectedClassId).subscribe({
+      this.examService.getExams(normalizedClassId).subscribe({
         next: (exams: any) => {
+          const examsArray = Array.isArray(exams) ? exams : [];
           // Find exam with matching term, type, and subject
-          const existingExam = exams.find((e: any) => 
-            e.term === this.selectedTerm &&
-            e.type === this.selectedExamType &&
-            e.classId === this.selectedClassId &&
-            e.subjects?.some((s: any) => s.id === this.selectedSubjectId)
+          // Be more lenient with term matching (trimming) and subject check
+          const existingExam = examsArray.find((e: any) => 
+            (e.term || '').trim() === normalizedTerm &&
+            e.type === normalizedType &&
+            e.classId === normalizedClassId &&
+            e.subjects?.some((s: any) => s.id === normalizedSubjectId)
           );
 
           if (existingExam) {
             console.log('Found existing exam:', existingExam);
             resolve(existingExam);
           } else {
-            // Create new exam
-            console.log('Creating new exam with data:', examData);
-            this.examService.createExam(examData).subscribe({
-              next: (response: any) => {
-                // Backend returns { message: '...', exam: {...} }
-                const exam = response.exam || response;
-                console.log('Exam created, response:', response);
-                console.log('Extracted exam:', exam);
-                console.log('Exam ID:', exam.id);
-                if (!exam.id) {
-                  console.error('Created exam missing ID:', exam);
-                  reject(new Error('Created exam is missing ID'));
-                } else {
-                  resolve(exam);
-                }
-              },
-              error: (err: any) => {
-                console.error('Error creating exam:', err);
-                reject(err);
+            // Check if there is an exam of the same type and term for this class, even without this subject
+            // We might want to add this subject to THAT exam instead of creating a new one
+            const generalExam = examsArray.find((e: any) => 
+              (e.term || '').trim() === normalizedTerm &&
+              e.type === normalizedType &&
+              e.classId === normalizedClassId
+            );
+
+            if (generalExam) {
+              console.log('Found general exam for this class/term/type, adding subject to it:', generalExam.id);
+              // Update existing exam with new subject
+              const currentSubjectIds = (generalExam.subjects || []).map((s: any) => s.id);
+              if (!currentSubjectIds.includes(normalizedSubjectId)) {
+                currentSubjectIds.push(normalizedSubjectId);
+                const updateData = {
+                  ...generalExam,
+                  subjectIds: currentSubjectIds
+                };
+                this.examService.updateExam(generalExam.id, updateData).subscribe({
+                  next: (updated: any) => resolve(updated.exam || updated),
+                  error: (err: any) => {
+                    console.error('Error updating exam with subject:', err);
+                    // Fallback: use the general exam anyway, it might work if subject was already there but missed in lookup
+                    resolve(generalExam);
+                  }
+                });
+                return;
               }
-            });
+              resolve(generalExam);
+            } else {
+              // Create new exam
+              console.log('Creating new exam with data:', examData);
+              this.examService.createExam(examData).subscribe({
+                next: (response: any) => {
+                  const exam = response.exam || response;
+                  if (!exam.id) {
+                    reject(new Error('Created exam is missing ID'));
+                  } else {
+                    resolve(exam);
+                  }
+                },
+                error: (err: any) => {
+                  console.error('Error creating exam:', err);
+                  reject(err);
+                }
+              });
+            }
           }
         },
         error: (err: any) => reject(err)

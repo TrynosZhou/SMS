@@ -318,6 +318,21 @@ export const createExam = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const normalizedTerm = term ? String(term).trim() : null;
+    const existingExam = await examRepository.findOne({
+      where: {
+        classId: trimmedClassId,
+        type: type as ExamType,
+        term: normalizedTerm
+      }
+    });
+
+    if (existingExam) {
+      return res.status(400).json({
+        message: 'An exam already exists for this class, term, and type.'
+      });
+    }
+
     // Parse examDate if it's a string
     let parsedExamDate: Date;
     if (typeof examDate === 'string') {
@@ -345,7 +360,7 @@ export const createExam = async (req: AuthRequest, res: Response) => {
       type: type as ExamType,
       examDate: parsedExamDate,
       classId: trimmedClassId,
-      term: term ? String(term).trim() : null
+      term: normalizedTerm
     };
     
     // Only include description if it's provided and not empty
@@ -489,7 +504,7 @@ export const createExam = async (req: AuthRequest, res: Response) => {
     
     // Handle specific database errors
     if (error.code === '23505') {
-      return res.status(400).json({ message: 'Exam with this name already exists' });
+      return res.status(400).json({ message: 'An exam already exists for this class, term, and type.' });
     }
     
     if (error.code === '23503') {
@@ -569,6 +584,141 @@ export const getExamById = async (req: AuthRequest, res: Response) => {
       message: 'Server error', 
       error: error.message || 'Unknown error' 
     });
+  }
+};
+
+export const updateExam = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const examRepository = AppDataSource.getRepository(Exam);
+    const subjectRepository = AppDataSource.getRepository(Subject);
+
+    const { id } = req.params;
+    const { name, type, examDate, description, term, classId, subjectIds, status } = req.body;
+
+    const exam = await examRepository.findOne({
+      where: { id },
+      relations: ['classEntity', 'subjects']
+    });
+
+    if (!exam) {
+      return res.status(404).json({ message: 'Exam not found' });
+    }
+
+    if (name !== undefined) {
+      const trimmed = String(name).trim();
+      if (!trimmed) return res.status(400).json({ message: 'Exam name cannot be empty' });
+      exam.name = trimmed;
+    }
+
+    if (type !== undefined) {
+      const validTypes = Object.values(ExamType);
+      if (!validTypes.includes(type as ExamType)) {
+        return res.status(400).json({ message: `Invalid exam type. Must be one of: ${validTypes.join(', ')}` });
+      }
+      exam.type = type as ExamType;
+    }
+
+    if (term !== undefined) {
+      exam.term = term ? String(term).trim() : null;
+    }
+
+    if (description !== undefined) {
+      const trimmed = description ? String(description).trim() : '';
+      exam.description = trimmed ? trimmed : null;
+    }
+
+    if (examDate !== undefined) {
+      if (!examDate) {
+        return res.status(400).json({ message: 'Exam date is required' });
+      }
+      let parsed: Date;
+      if (typeof examDate === 'string') {
+        if (examDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          const [year, month, day] = examDate.split('-').map(Number);
+          parsed = new Date(year, month - 1, day);
+        } else {
+          parsed = new Date(examDate);
+        }
+        if (isNaN(parsed.getTime())) {
+          return res.status(400).json({ message: `Invalid exam date format: ${examDate}` });
+        }
+      } else {
+        parsed = new Date(examDate);
+        if (isNaN(parsed.getTime())) {
+          return res.status(400).json({ message: 'Exam date must be a valid date' });
+        }
+      }
+      exam.examDate = parsed;
+    }
+
+    if (classId !== undefined) {
+      const trimmedClassId = classId ? String(classId).trim() : '';
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (trimmedClassId && !uuidPattern.test(trimmedClassId)) {
+        return res.status(400).json({ message: 'Invalid class ID format. Please select a valid class.' });
+      }
+      if (trimmedClassId) {
+        exam.classId = trimmedClassId;
+      }
+    }
+
+    if (status !== undefined) {
+      const validStatuses = Object.values(ExamStatus);
+      if (!validStatuses.includes(status as ExamStatus)) {
+        return res.status(400).json({ message: `Invalid exam status. Must be one of: ${validStatuses.join(', ')}` });
+      }
+      exam.status = status as ExamStatus;
+    }
+
+    if (subjectIds !== undefined) {
+      if (!Array.isArray(subjectIds)) {
+        return res.status(400).json({ message: 'Subject IDs must be an array' });
+      }
+      const validSubjectIds = subjectIds
+        .filter((sid: any) => sid !== null && sid !== undefined)
+        .map((sid: any) => String(sid).trim())
+        .filter((sid: string) => sid && sid !== 'null' && sid !== 'undefined');
+      if (validSubjectIds.length > 0) {
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const invalid = validSubjectIds.filter((sid: string) => !uuidPattern.test(sid));
+        if (invalid.length > 0) {
+          return res.status(400).json({ message: `Invalid subject ID format: ${invalid.join(', ')}` });
+        }
+        const subjects = await subjectRepository.find({ where: { id: In(validSubjectIds) } });
+        const foundIds = new Set(subjects.map(s => s.id));
+        const missing = validSubjectIds.filter((sid: string) => !foundIds.has(sid));
+        if (missing.length > 0) {
+          return res.status(400).json({ message: `One or more subjects not found. Invalid subject IDs: ${missing.join(', ')}` });
+        }
+        exam.subjects = subjects;
+      } else {
+        exam.subjects = [];
+      }
+    }
+
+    let saved: Exam;
+    try {
+      saved = await examRepository.save(exam);
+    } catch (saveError: any) {
+      if (saveError?.code === '23505') {
+        return res.status(400).json({ message: 'An exam already exists for this class, term, and type.' });
+      }
+      throw saveError;
+    }
+
+    const finalExam = await examRepository.findOne({
+      where: { id: saved.id },
+      relations: ['classEntity', 'subjects']
+    });
+
+    return res.json({ message: 'Exam updated successfully', exam: finalExam || saved });
+  } catch (error: any) {
+    console.error('Error updating exam:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };
 
@@ -2898,25 +3048,37 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       }
 
       // Group marks by subject AND exam (to prevent duplicate marks for the same exam being summed)
-      // If duplicates exist for the same exam, the latest one is preferred
+      // If duplicates exist for the same subject and same exam type/term, the latest one is preferred
       const subjectExamMarksMap: { [key: string]: { [key: string]: Marks } } = {};
 
       allMarks.forEach(mark => {
         if (!mark.subject || !mark.exam) return;
         
         const subjectName = mark.subject.name;
+        // For report cards, we want to treat multiple exams of the same type/term as ONE exam if they share subjects
+        // However, the current system allows multiple assignments/quizzes to be summed.
+        // For MID_TERM and END_TERM, we should definitely NOT sum them if it's the same subject.
+        const isMajorExam = normalizedExamType === ExamType.MID_TERM || normalizedExamType === ExamType.END_TERM;
+        
         const examId = mark.examId;
+        const subjectId = mark.subjectId;
+        const key = `${subjectId}`;
         
         if (!subjectExamMarksMap[subjectName]) {
           subjectExamMarksMap[subjectName] = {};
         }
         
-        // If multiple marks for same subject and exam, keep the latest one (by updatedAt or createdAt)
-        const existingMark = subjectExamMarksMap[subjectName][examId];
-        const markDate = mark.updatedAt || mark.createdAt || new Date(0);
-        const existingMarkDate = existingMark ? (existingMark.updatedAt || existingMark.createdAt || new Date(0)) : new Date(0);
-        
-        if (!existingMark || markDate > existingMarkDate) {
+        // If it's a major exam, we only keep the LATEST mark for each subject
+        if (isMajorExam) {
+          const existingMark = subjectExamMarksMap[subjectName][key];
+          const markDate = mark.updatedAt || mark.createdAt || new Date(0);
+          const existingMarkDate = existingMark ? (existingMark.updatedAt || existingMark.createdAt || new Date(0)) : new Date(0);
+          
+          if (!existingMark || markDate > existingMarkDate) {
+            subjectExamMarksMap[subjectName][key] = mark;
+          }
+        } else {
+          // For assignments/quizzes, we might still want to keep them separate for summing
           subjectExamMarksMap[subjectName][examId] = mark;
         }
       });

@@ -84,6 +84,12 @@ export class ExamService {
     );
   }
 
+  updateExam(id: string, exam: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/exams/${id}`, exam).pipe(
+      catchError(err => throwError(() => err))
+    );
+  }
+
   deleteAllExams(): Observable<any> {
     return this.http.delete(`${this.apiUrl}/exams`).pipe(
       catchError(err => throwError(() => err))

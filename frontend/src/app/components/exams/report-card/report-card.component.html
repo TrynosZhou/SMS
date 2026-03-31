@@ -447,6 +447,14 @@
                       class="saved-badge" title="Saved">✓ Saved</span>
                 <span *ngIf="canEditRemarks && !isRemarksSaved(reportCard.student.id, 'classTeacher') && reportCard.remarks?.classTeacherRemarks" 
                       class="unsaved-badge" title="Not saved yet">○ Entered</span>
+                <button *ngIf="canEditRemarks" 
+                        type="button" 
+                        class="btn btn-xs btn-ai-sparkle" 
+                        (click)="generateAIRemark(reportCard, 'classTeacher')"
+                        [disabled]="aiGeneratingMap.get(reportCard.student.id + '_classTeacher')">
+                  <span *ngIf="!aiGeneratingMap.get(reportCard.student.id + '_classTeacher')">✨ AI Remark</span>
+                  <span *ngIf="aiGeneratingMap.get(reportCard.student.id + '_classTeacher')" class="spinner-tiny"></span>
+                </button>
               </label>
               <textarea 
                 *ngIf="canEditRemarks"
@@ -512,6 +520,14 @@
                 <span *ngIf="isAdmin && !isRemarksSaved(reportCard.student.id, 'headmaster') && (reportCard.remarks?.headmasterRemarks || reportCard.headmasterAutoRemarks)" 
                       class="unsaved-badge" title="Not saved yet">○ Entered</span>
                 <span *ngIf="!isAdmin" class="read-only-badge">Read-only</span>
+                <button *ngIf="isAdmin" 
+                        type="button" 
+                        class="btn btn-xs btn-ai-sparkle" 
+                        (click)="generateAIRemark(reportCard, 'headmaster')"
+                        [disabled]="aiGeneratingMap.get(reportCard.student.id + '_headmaster')">
+                  <span *ngIf="!aiGeneratingMap.get(reportCard.student.id + '_headmaster')">✨ AI Remark</span>
+                  <span *ngIf="aiGeneratingMap.get(reportCard.student.id + '_headmaster')" class="spinner-tiny"></span>
+                </button>
               </label>
               <textarea 
                 *ngIf="isAdmin"

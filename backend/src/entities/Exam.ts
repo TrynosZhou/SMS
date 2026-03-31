@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, ManyToMany, JoinTable } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, ManyToMany, JoinTable, Index } from 'typeorm';
 import { Class } from './Class';
 import { Subject } from './Subject';
 import { Marks } from './Marks';
@@ -16,6 +16,7 @@ export enum ExamStatus {
 }
 
 @Entity('exams')
+@Index(['classId', 'term', 'type'], { unique: true })
 export class Exam {
   @PrimaryGeneratedColumn('uuid')
   id: string;

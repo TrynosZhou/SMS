@@ -53,6 +53,7 @@ export class ReportCardComponent implements OnInit {
   validationError: any = null; // Store detailed validation error data
   Math = Math; // Make Math available in template
   studentSearchQuery = '';
+  aiGeneratingMap: Map<string, boolean> = new Map();
   
   // Form validation
   fieldErrors: any = {};
@@ -128,32 +129,16 @@ export class ReportCardComponent implements OnInit {
       'Polite and courteous; follows school rules diligently.',
       'Focused and attentive in class; maintains a positive attitude.',
       'Works independently with minimal supervision; takes initiative.',
-      'Shows resilience and perseveres through challenging tasks.',
+      'Shows resilience and a growth mindset when facing challenges.',
       'Improving organization and time management; keep practicing routines.',
       'Needs to participate more actively and ask for help when unsure.',
       'Friendly and cooperative; contributes to a positive class environment.',
       'Occasional lapses in attention; would benefit from minimizing distractions.',
-      'Needs consistent homework completion; parental support recommended.',
+      'Needs more consistency in completing assigned responsibilities on time.',
       'Behaviour improving; continue to practice self-discipline.',
       'Respectful but can be talkative; should manage classroom chatter.',
       'Displays honesty and integrity; a good role model.'
     ];
-
-    // Academic "failure pool" suggestions
-    const subjects = card?.subjects || [];
-    const failedSubjects = subjects.filter((s: any) => {
-      const pct = parseFloat(String(s.percentage || 0));
-      return pct < 50;
-    });
-
-    if (failedSubjects.length > 0) {
-      const subjectNames = failedSubjects.map((s: any) => s.subject || s.name).join(', ');
-      suggestions.unshift(
-        `Focused attention is required in ${subjectNames} to improve results.`,
-        `Urgent support and extra practice are needed in ${subjectNames}.`,
-        `Serious commitment is essential in ${subjectNames} where performance is currently below expectation.`
-      );
-    }
 
     return suggestions.slice(0, 15);
   }
@@ -1224,6 +1209,58 @@ export class ReportCardComponent implements OnInit {
       return `Performance is below expected level${namePart}. Increased effort and support at home and school are needed${signature}`;
     }
     return `The learner requires urgent and sustained support${namePart}. Close follow-up and serious commitment are essential for improvement${signature}`;
+  }
+
+  generateAIRemark(reportCard: any, remarkType: 'classTeacher' | 'headmaster') {
+    if (!reportCard || !reportCard.student) return;
+    
+    const key = reportCard.student.id + '_' + remarkType;
+    this.aiGeneratingMap.set(key, true);
+    
+    // Simulate AI processing delay
+    setTimeout(() => {
+      let remark = '';
+      const studentName = reportCard.student.name || 'the student';
+      const avg = parseFloat(reportCard.overallAverage || '0');
+      
+      if (remarkType === 'classTeacher') {
+        const behaviorOnlyRemarks = [
+          `${studentName} demonstrates good conduct, respect for others, and a positive attitude in class. Continued consistency in discipline and responsibility is encouraged.`,
+          `${studentName} is generally polite and cooperative with peers and teachers. Improving attentiveness and active participation will further strengthen character growth.`,
+          `${studentName} shows responsibility and responds well to guidance. Consistent self-discipline and time management should remain a priority.`,
+          `${studentName} contributes positively to the classroom environment and relates well with others. Keep building confidence, leadership, and good behaviour habits.`,
+          `${studentName} displays respectful behaviour and willingness to learn. Continued focus on punctuality, organization, and classroom conduct is recommended.`
+        ];
+        const randomIndex = Math.floor(Math.random() * behaviorOnlyRemarks.length);
+        remark = behaviorOnlyRemarks[randomIndex];
+      } else {
+        // Headmaster AI remark is strictly marks/performance-based,
+        // and automatically addresses failed subjects (<50%) where present.
+        remark = this.generateHeadmasterRemark(reportCard);
+        if (!remark) {
+          if (avg >= 80) remark = `Excellent performance by ${studentName}. Maintain this high standard.`;
+          else if (avg >= 70) remark = `Very good performance by ${studentName}. Keep working consistently.`;
+          else if (avg >= 60) remark = `${studentName} is making good progress. Continue applying effort for stronger outcomes.`;
+          else if (avg >= 50) remark = `${studentName}'s performance is satisfactory. More effort is needed to improve overall results.`;
+          else remark = `${studentName}'s results are below expectation and require urgent academic support.`;
+        }
+      }
+      
+      if (!reportCard.remarks) {
+        reportCard.remarks = {};
+      }
+      
+      if (remarkType === 'classTeacher') {
+        reportCard.remarks.classTeacherRemarks = remark;
+      } else {
+        reportCard.remarks.headmasterRemarks = remark;
+      }
+      
+      this.onRemarksChange(reportCard, remarkType);
+      this.aiGeneratingMap.set(key, false);
+      this.success = `AI ${remarkType === 'classTeacher' ? 'teacher' : 'headmaster'} remark generated!`;
+      setTimeout(() => this.success = '', 3000);
+    }, 1200);
   }
 
   // Validation

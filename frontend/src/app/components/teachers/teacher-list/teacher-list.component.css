@@ -943,6 +943,13 @@
   padding: 10px 24px;
 }
 
+.btn-danger {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+}
+
 .btn-allocate-blue {
   background: #4a5568;
   color: white;
