@@ -100,16 +100,28 @@ async function initializeDatabase(attempt: number = 1): Promise<void> {
     await startServer();
   } catch (error: any) {
     clearTimeout(initTimeout);
+    const errorMessage = error?.message || '';
+    const errorCode = (error as any)?.code;
+    const failedQuery = String((error as any)?.query || '');
+    const driverDetail = String((error as any)?.detail || (error as any)?.driverError?.detail || '');
+
+    const isUniqueIndexBuildFailure =
+      errorCode === '23505' &&
+      (failedQuery.toUpperCase().includes('CREATE UNIQUE INDEX') || errorMessage.toLowerCase().includes('unique index'));
+
+    const isSchemaDataIntegrityError =
+      isUniqueIndexBuildFailure &&
+      (failedQuery.toLowerCase().includes('"exams"') || driverDetail.toLowerCase().includes('"classid", term, type'));
     
     // Check if it's a connection error that might be retryable
     const isConnectionError = 
-      error.code === 'ECONNREFUSED' ||
-      error.code === 'ETIMEDOUT' ||
-      error.code === 'ENOTFOUND' ||
-      error.message?.includes('timeout') ||
-      error.message?.includes('connection') ||
-      error.message?.includes('ECONNRESET') ||
-      error.message?.includes('terminated unexpectedly');
+      errorCode === 'ECONNREFUSED' ||
+      errorCode === 'ETIMEDOUT' ||
+      errorCode === 'ENOTFOUND' ||
+      errorMessage.includes('timeout') ||
+      errorMessage.includes('connection') ||
+      errorMessage.includes('ECONNRESET') ||
+      errorMessage.includes('terminated unexpectedly');
     
     if (isConnectionError && attempt < maxInitAttempts) {
       initAttempts++;
@@ -122,22 +134,32 @@ async function initializeDatabase(attempt: number = 1): Promise<void> {
     }
     
     // If all retries failed or it's not a connection error, throw
-    console.error('[Server] ✗ ERROR connecting to database:', error);
+    if (isSchemaDataIntegrityError) {
+      console.error('[Server] ✗ ERROR applying schema changes: existing duplicate data blocks unique index creation.');
+    } else {
+      console.error('[Server] ✗ ERROR connecting to database:', error);
+    }
     if (error instanceof Error) {
       console.error('[Server] Error message:', error.message);
-      console.error('[Server] Error code:', (error as any).code);
-      if ((error as any).code) {
+      console.error('[Server] Error code:', errorCode);
+      if (errorCode) {
         console.error('[Server] Error stack:', error.stack);
       }
     }
     
     // Check for specific error types and provide targeted guidance
-    const errorMessage = error?.message || '';
-    const errorCode = (error as any)?.code;
-    
     console.error('\n[Server] 🔍 Diagnostic Information:');
-    
-    if (errorMessage.includes('timeout') || errorCode === 'ETIMEDOUT') {
+
+    if (isSchemaDataIntegrityError) {
+      console.error('[Server] ❌ Schema/data integrity issue detected (not a network/connectivity problem).');
+      console.error('[Server]   Reason: Duplicate rows exist for unique key exams(classId, term, type).');
+      if (driverDetail) {
+        console.error('[Server]   Duplicate detail:', driverDetail);
+      }
+      console.error('[Server]   Fix: remove duplicates in the exams table, then restart.');
+      console.error('[Server]   Suggested command: node scripts/fix-exam-duplicates.js --apply');
+      console.error('[Server]   Verify command:   node scripts/check-exam-duplicates.js');
+    } else if (errorMessage.includes('timeout') || errorCode === 'ETIMEDOUT') {
       console.error('[Server] ❌ Connection timeout detected!');
       console.error('[Server] ');
       console.error('[Server] For Render.com databases, this usually means:');
