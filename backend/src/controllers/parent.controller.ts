@@ -6,6 +6,7 @@ import { Student } from '../entities/Student';
 import { Invoice } from '../entities/Invoice';
 import { Settings } from '../entities/Settings';
 import { parseAmount } from '../utils/numberUtils';
+import { computeInvoiceFeesOutstanding, getConfiguredDeskFee } from '../utils/invoiceFeesBalance';
 import { ParentStudent } from '../entities/ParentStudent';
 import { validatePhoneNumber } from '../utils/phoneValidator';
 import bcrypt from 'bcryptjs';
@@ -140,20 +141,19 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
         // This prevents showing next-term tuition in balances when only the current term is relevant (e.g., Mid Term).
         const latestInvoice = termToUse
           ? await invoiceRepository.findOne({
-              where: { studentId: student.id, term: termToUse },
+              where: { studentId: student.id, term: termToUse, isVoided: false },
               order: { createdAt: 'DESC' }
             })
           : await invoiceRepository.findOne({
-              where: { studentId: student.id },
+              where: { studentId: student.id, isVoided: false },
               order: { createdAt: 'DESC' }
             });
 
-        // Calculate term balance and current invoice balance
+        const deskFeeLinked = getConfiguredDeskFee(settings);
         let termBalance = 0;
         let currentBalance = 0;
-        
         if (latestInvoice) {
-          termBalance = parseFloat(String(latestInvoice.balance || 0));
+          termBalance = computeInvoiceFeesOutstanding(latestInvoice, student, deskFeeLinked);
           currentBalance = termBalance;
         }
 

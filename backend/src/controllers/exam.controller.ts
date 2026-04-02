@@ -19,6 +19,11 @@ import { AuthRequest } from '../middleware/auth';
 import { createReportCardPDF } from '../utils/pdfGenerator';
 import { createMarkSheetPDF } from '../utils/markSheetPdfGenerator';
 import { createMarkSheetExcel } from '../utils/markSheetExcelGenerator';
+import {
+  computeInvoiceFeesOutstanding,
+  findInvoiceForReportCardAccess,
+  getConfiguredDeskFee
+} from '../utils/invoiceFeesBalance';
 
 const ALLOWED_RANKING_SUBJECTS = new Set<string>(['Mathematics', 'Science', 'English']);
 
@@ -1782,20 +1787,23 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         }
       }
 
-      // Student: block access if the student has a positive invoice (tuition) balance
+      // Student: block access if fees outstanding for this report-card term (derived balance, not stale invoice.balance)
       const invoiceRepositoryStudent = AppDataSource.getRepository(Invoice);
       const settingsRepositoryStudent = AppDataSource.getRepository(Settings);
-      const latestInvoiceStudent = await invoiceRepositoryStudent.findOne({
-        where: { studentId: loggedInStudent.id },
-        order: { createdAt: 'DESC' }
-      });
-      let studentTermBalance = 0;
-      if (latestInvoiceStudent) {
-        studentTermBalance = parseFloat(String(latestInvoiceStudent.balance || 0));
-      }
+      const settingsListStudent = await settingsRepositoryStudent.find({ order: { createdAt: 'DESC' }, take: 1 });
+      const settingsStudent = settingsListStudent.length > 0 ? settingsListStudent[0] : null;
+      const deskFeeStudent = getConfiguredDeskFee(settingsStudent);
+      const termInvoiceStudent = await findInvoiceForReportCardAccess(
+        invoiceRepositoryStudent,
+        loggedInStudent.id,
+        termValue
+      );
+      const studentTermBalance = computeInvoiceFeesOutstanding(
+        termInvoiceStudent,
+        loggedInStudent,
+        deskFeeStudent
+      );
       if (studentTermBalance > 0) {
-        const settingsListStudent = await settingsRepositoryStudent.find({ order: { createdAt: 'DESC' }, take: 1 });
-        const settingsStudent = settingsListStudent.length > 0 ? settingsListStudent[0] : null;
         const currencySymbolStudent = settingsStudent?.currencySymbol || 'KES';
         return res.status(403).json({
           message: `Report card access is restricted. Please clear the outstanding fees (tuition) balance of ${currencySymbolStudent} ${studentTermBalance.toFixed(2)} to view the report card.`,
@@ -1839,17 +1847,13 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       });
       const settings = settingsList.length > 0 ? settingsList[0] : null;
 
-      // Get latest invoice for balance calculation
-      const latestInvoice = await invoiceRepository.findOne({
-        where: { studentId: student.id },
-        order: { createdAt: 'DESC' }
-      });
-
-      // Report card access is based on fees (tuition) balance only. Uniform item balance does not affect access.
-      let termBalance = 0;
-      if (latestInvoice) {
-        termBalance = parseFloat(String(latestInvoice.balance || 0));
-      }
+      const deskFeeParent = getConfiguredDeskFee(settings);
+      const termInvoiceParent = await findInvoiceForReportCardAccess(
+        invoiceRepository,
+        student.id,
+        termValue
+      );
+      const termBalance = computeInvoiceFeesOutstanding(termInvoiceParent, student, deskFeeParent);
 
       if (termBalance > 0) {
         const currencySymbol = settings?.currencySymbol || 'KES';
@@ -2776,20 +2780,23 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         }
       }
 
-      // Student: block PDF access if the student has a positive invoice (tuition) balance
+      // Student: block PDF if fees outstanding for this report term (derived balance)
       const invoiceRepositoryStudentPdf = AppDataSource.getRepository(Invoice);
       const settingsRepositoryStudentPdf = AppDataSource.getRepository(Settings);
-      const latestInvoiceStudentPdf = await invoiceRepositoryStudentPdf.findOne({
-        where: { studentId: loggedInStudent.id },
-        order: { createdAt: 'DESC' }
-      });
-      let studentTermBalancePdf = 0;
-      if (latestInvoiceStudentPdf) {
-        studentTermBalancePdf = parseFloat(String(latestInvoiceStudentPdf.balance || 0));
-      }
+      const settingsListStudentPdf = await settingsRepositoryStudentPdf.find({ order: { createdAt: 'DESC' }, take: 1 });
+      const settingsStudentPdf = settingsListStudentPdf.length > 0 ? settingsListStudentPdf[0] : null;
+      const deskFeeStudentPdf = getConfiguredDeskFee(settingsStudentPdf);
+      const termInvoiceStudentPdf = await findInvoiceForReportCardAccess(
+        invoiceRepositoryStudentPdf,
+        loggedInStudent.id,
+        termValue
+      );
+      const studentTermBalancePdf = computeInvoiceFeesOutstanding(
+        termInvoiceStudentPdf,
+        loggedInStudent,
+        deskFeeStudentPdf
+      );
       if (studentTermBalancePdf > 0) {
-        const settingsListStudentPdf = await settingsRepositoryStudentPdf.find({ order: { createdAt: 'DESC' }, take: 1 });
-        const settingsStudentPdf = settingsListStudentPdf.length > 0 ? settingsListStudentPdf[0] : null;
         const currencySymbolStudentPdf = settingsStudentPdf?.currencySymbol || 'KES';
         return res.status(403).json({
           message: `Report card access is restricted. Please clear the outstanding fees (tuition) balance of ${currencySymbolStudentPdf} ${studentTermBalancePdf.toFixed(2)} to view the report card.`,
@@ -2833,17 +2840,13 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       });
       const settings = settingsList.length > 0 ? settingsList[0] : null;
 
-      // Get latest invoice for balance calculation
-      const latestInvoice = await invoiceRepository.findOne({
-        where: { studentId: student.id },
-        order: { createdAt: 'DESC' }
-      });
-
-      // Report card access is based on fees (tuition) balance only. Uniform item balance does not affect access.
-      let termBalance = 0;
-      if (latestInvoice) {
-        termBalance = parseFloat(String(latestInvoice.balance || 0));
-      }
+      const deskFeeParent = getConfiguredDeskFee(settings);
+      const termInvoiceParent = await findInvoiceForReportCardAccess(
+        invoiceRepository,
+        student.id,
+        termValue
+      );
+      const termBalance = computeInvoiceFeesOutstanding(termInvoiceParent, student, deskFeeParent);
 
       if (termBalance > 0) {
         const currencySymbol = settings?.currencySymbol || 'KES';

@@ -68,8 +68,10 @@ export class LoginComponent implements OnInit {
   signupContactNumberError = '';
 
   signinHelpTooltip =
-    'Teachers: Use your EmployeeID as username and your password. ' +
-    'Students: Use your StudentID as username and the password you created during sign up.';
+    'Enter your Username in the field above. You may also use: Email (parents), Student ID (students), or Employee ID (teachers), depending on your role. ' +
+    'Teachers: Employee ID and password. ' +
+    'Students: Student ID and the password you created during sign up. ' +
+    'Parents: Email address and password.';
 
   constructor(
     private authService: AuthService,

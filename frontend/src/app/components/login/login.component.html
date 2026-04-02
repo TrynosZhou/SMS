@@ -37,7 +37,7 @@
       <form (ngSubmit)="onSignIn()">
         <div class="form-group">
           <label>
-            Username / EmployeeID / StudentID
+            Username
             <span
               class="help-icon"
               [attr.title]="signinHelpTooltip"
@@ -45,14 +45,15 @@
               ?
             </span>
           </label>
+          <p class="form-hint-signin">You may sign in with Username OR Email Address OR Student ID or Employee ID (see below).</p>
           <input 
             type="text" 
             [(ngModel)]="email" 
             name="email" 
-            placeholder="Enter EmployeeID (teachers), StudentID (students), or username" 
+            placeholder="Enter your username" 
             required
             autocomplete="username">
-          <small class="form-text">Teachers: EmployeeID. Students: StudentID.</small>
+          <small class="form-text">Teachers: Employee ID. Students: Student ID. Parents: Email Address.</small>
         </div>
         <div class="form-group">
           <label>
