@@ -385,58 +385,94 @@ export function createReportCardPDF(
 
       const infoStartY = titleY + titleBoxHeight + 4;
       
-      doc.rect(50, infoStartY, 240, 80)
-        .fillColor('#F8F9FA')
-        .fill()
-        .strokeColor('#DEE2E6')
-        .lineWidth(1)
-        .stroke();
-      
-      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
-      doc.text('Student Information:', 60, infoStartY + 6);
-      doc.fontSize(10).font('Helvetica').fillColor('#000000');
-      doc.text(`Name: ${reportCard.student.name}`, 60, infoStartY + 24);
-      doc.text(`Student Number: ${reportCard.student.studentNumber}`, 60, infoStartY + 42);
-      doc.text(`Class: ${reportCard.student.class}`, 60, infoStartY + 60);
+      const studentTextX = 60;
+      const studentTextWidth = 220;
+      const examTextX = 310;
+      const examTextWidth = 232;
+      const panelLineGap = 5;
 
-      doc.rect(300, infoStartY, 250, 100)
-        .fillColor('#F8F9FA')
-        .fill()
-        .strokeColor('#DEE2E6')
-        .lineWidth(1)
-        .stroke();
-      
-      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
-      doc.text('Exam Information:', 310, infoStartY + 6);
       doc.fontSize(10).font('Helvetica').fillColor('#000000');
-      let examInfoY = infoStartY + 22;
-      
+      const studentFieldLines = [
+        `Name: ${reportCard.student.name}`,
+        `Student Number: ${reportCard.student.studentNumber}`,
+        `Class: ${reportCard.student.class || ''}`
+      ];
+      let studentContentHeight = 0;
+      for (let i = 0; i < studentFieldLines.length; i++) {
+        studentContentHeight += doc.heightOfString(studentFieldLines[i], { width: studentTextWidth });
+        if (i < studentFieldLines.length - 1) studentContentHeight += panelLineGap;
+      }
+      const studentBoxHeight = Math.max(80, 22 + studentContentHeight + 12);
+
+      const examLines: string[] = [];
       if (reportCard.exam) {
-        doc.text(`Exam: ${reportCard.exam.name}`, 310, examInfoY);
-        examInfoY += 11;
-        doc.text(`Type: ${reportCard.exam.type}`, 310, examInfoY);
-        examInfoY += 11;
-        doc.text(`Date: ${new Date(reportCard.exam.examDate).toLocaleDateString()}`, 310, examInfoY);
-        examInfoY += 11;
+        examLines.push(`Exam: ${reportCard.exam.name}`);
+        examLines.push(`Type: ${reportCard.exam.type}`);
+        examLines.push(`Date: ${new Date(reportCard.exam.examDate).toLocaleDateString()}`);
       } else if (reportCard.exams && reportCard.exams.length > 0) {
         const uniqueExamNames = Array.from(new Set(reportCard.exams.map((e: any) => e.name)));
-        doc.text(`Exams: ${uniqueExamNames.join(', ')}`, 310, examInfoY);
-        examInfoY += 11;
+        examLines.push(`Exams: ${uniqueExamNames.join(', ')}`);
       }
-      
-      if (!isEcdAOrBClass(reportCard.student?.class)) {
+      if (!isEcdAOrBClass(reportCard.student?.class) && reportCard.classPosition != null && reportCard.classPosition !== undefined) {
         const totalStudents = reportCard.totalStudents || 0;
-        const classPosText = totalStudents > 0
-          ? `Class Position: ${reportCard.classPosition} out of ${totalStudents}`
-          : `Class Position: ${reportCard.classPosition}`;
-        doc.text(classPosText, 310, examInfoY);
-        examInfoY += 11;
+        examLines.push(
+          totalStudents > 0
+            ? `Class Position: ${reportCard.classPosition} out of ${totalStudents}`
+            : `Class Position: ${reportCard.classPosition}`
+        );
       }
-      
       if (reportCard.totalAttendance !== undefined && reportCard.totalAttendance !== null) {
-        const attendanceText = `Attendance: ${reportCard.totalAttendance}d` + 
-          (reportCard.presentAttendance != null ? ` (${reportCard.presentAttendance})` : '');
-        doc.text(attendanceText, 310, examInfoY);
+        examLines.push(
+          `Attendance: ${reportCard.totalAttendance}d` +
+            (reportCard.presentAttendance != null ? ` (${reportCard.presentAttendance})` : '')
+        );
+      }
+
+      let examContentHeight = 0;
+      for (let i = 0; i < examLines.length; i++) {
+        examContentHeight += doc.heightOfString(examLines[i], { width: examTextWidth });
+        if (i < examLines.length - 1) examContentHeight += panelLineGap;
+      }
+      const examBoxHeight = Math.max(100, 22 + examContentHeight + 12);
+
+      const panelsHeight = Math.max(studentBoxHeight, examBoxHeight);
+
+      doc.rect(50, infoStartY, 240, panelsHeight)
+        .fillColor('#F8F9FA')
+        .fill()
+        .strokeColor('#DEE2E6')
+        .lineWidth(1)
+        .stroke();
+
+      doc.rect(300, infoStartY, 250, panelsHeight)
+        .fillColor('#F8F9FA')
+        .fill()
+        .strokeColor('#DEE2E6')
+        .lineWidth(1)
+        .stroke();
+
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Student Information:', studentTextX, infoStartY + 6);
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      let studentLineY = infoStartY + 22;
+      for (let si = 0; si < studentFieldLines.length; si++) {
+        const line = studentFieldLines[si];
+        doc.text(line, studentTextX, studentLineY, { width: studentTextWidth });
+        const h = doc.heightOfString(line, { width: studentTextWidth });
+        studentLineY += h;
+        if (si < studentFieldLines.length - 1) studentLineY += panelLineGap;
+      }
+
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2C3E50');
+      doc.text('Exam Information:', examTextX, infoStartY + 6);
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      let examInfoY = infoStartY + 22;
+      for (let ei = 0; ei < examLines.length; ei++) {
+        const line = examLines[ei];
+        doc.text(line, examTextX, examInfoY, { width: examTextWidth });
+        const h = doc.heightOfString(line, { width: examTextWidth });
+        examInfoY += h;
+        if (ei < examLines.length - 1) examInfoY += panelLineGap;
       }
 
       // Grade Thresholds
@@ -557,7 +593,7 @@ export function createReportCardPDF(
           : '';
       const headmasterRemarks = storedHeadmasterRemarks || generateHeadmasterRemarkText();
 
-      let yPos = infoStartY + 100;
+      let yPos = infoStartY + panelsHeight + 10;
       doc.fontSize(10).font('Helvetica-Bold').text('Subject Performance:', 50, yPos);
       yPos += 8;
 
