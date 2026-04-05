@@ -138,8 +138,8 @@
 .subtitle-contact {
   margin: 0;
   font-size: clamp(0.78rem, 2.1vw, 0.88rem);
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.88);
+  font-weight: 700;
+  color: #ffffff;
   text-align: center;
   letter-spacing: 0.04em;
 }
