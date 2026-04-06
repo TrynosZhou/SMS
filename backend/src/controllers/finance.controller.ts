@@ -958,9 +958,23 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
       errors: [] as string[]
     };
 
-    // Get current invoice count for numbering
-    const invoiceCount = await invoiceRepository.count();
-    let invoiceCounter = invoiceCount + 1;
+    // Next invoice number must follow the highest existing sequence for this year — count() can be lower if rows were removed or numbers are non-contiguous
+    const currentYear = new Date().getFullYear();
+    const invoicePrefix = `INV-${currentYear}-`;
+    const lastInvoiceForYear = await invoiceRepository
+      .createQueryBuilder('invoice')
+      .where('invoice.invoiceNumber LIKE :prefix', { prefix: `${invoicePrefix}%` })
+      .orderBy('invoice.invoiceNumber', 'DESC')
+      .getOne();
+    let nextSequence = 1;
+    if (lastInvoiceForYear?.invoiceNumber) {
+      const parts = String(lastInvoiceForYear.invoiceNumber).split('-');
+      const lastSeqRaw = parts[2] || '';
+      const lastSeq = parseInt(lastSeqRaw, 10);
+      if (!isNaN(lastSeq) && lastSeq >= 1) {
+        nextSequence = lastSeq + 1;
+      }
+    }
 
     // Process each student
     for (const student of students) {
@@ -979,9 +993,9 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
         // The term provided is the current term, so we calculate fees for the following term
         const nextTerm = getNextTerm(term);
         
-        // Prevent duplicate invoice in the following term
+        // Ignore voided invoices so a replacement can be generated after voiding
         const existingNextTermInvoice = await invoiceRepository.findOne({
-          where: { studentId: student.id, term: nextTerm }
+          where: { studentId: student.id, term: nextTerm, isVoided: false }
         });
         if (existingNextTermInvoice) {
           results.failed++;
@@ -1045,9 +1059,8 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
         const remainingPrepaid = previousPrepaid - appliedPrepaid;
         const finalBalance = totalAmount - appliedPrepaid;
 
-        // Generate invoice number
-        const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCounter).padStart(6, '0')}`;
-        invoiceCounter++;
+        // Generate invoice number (advance sequence only after we commit to this number)
+        const invoiceNumber = `${invoicePrefix}${String(nextSequence).padStart(6, '0')}`;
 
         // Create invoice for the following term
         // term variable is the current term, but we're creating invoice for next term
@@ -1066,7 +1079,8 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
         });
 
         const savedInvoice = await invoiceRepository.save(invoice);
-        
+        nextSequence += 1;
+
         results.created++;
         results.invoices.push({
           invoiceNumber: savedInvoice.invoiceNumber,
