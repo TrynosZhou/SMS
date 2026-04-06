@@ -10,6 +10,41 @@ import { SubjectService } from '../../services/subject.service';
 import { ModuleAccessService } from '../../services/module-access.service';
 import { ThemeService } from '../../services/theme.service';
 
+export interface DashboardAdminHubTile {
+  route: string;
+  icon: string;
+  title: string;
+  desc: string;
+  search: string;
+  module?: string;
+  accent?: 'violet' | 'sky' | 'emerald' | 'amber' | 'rose' | 'slate';
+}
+
+export interface DashboardAdminHubGroup {
+  id: string;
+  label: string;
+  subtitle: string;
+  tiles: DashboardAdminHubTile[];
+}
+
+export type DashboardModulePastel =
+  | 'violet'
+  | 'sky'
+  | 'emerald'
+  | 'amber'
+  | 'rose'
+  | 'pink'
+  | 'slate';
+
+export interface DashboardModuleShortcut {
+  route: string;
+  label: string;
+  icon: string;
+  pastel: DashboardModulePastel;
+  module?: string;
+  adminOnly?: boolean;
+}
+
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
@@ -29,14 +64,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private rotateIndex = 0;
   teacherName: string = '';
 
-  // Sidebar collapse state
   studentManagementOpen = true;
   examManagementOpen = true;
   financeManagementOpen = true;
   reportsOpen = true;
   generalSettingsOpen = true;
-  
-  // Statistics
+
   stats = {
     totalStudents: 0,
     totalTeachers: 0,
@@ -44,23 +77,124 @@ export class DashboardComponent implements OnInit, OnDestroy {
     totalSubjects: 0,
     totalInvoices: 0,
     totalBalance: 0,
+    totalInvoicedAmount: 0,
+    totalPaidAmount: 0,
     dayScholars: 0,
     boarders: 0,
     staffChildren: 0
   };
-  
+
   loadingStats = true;
+  statsLastUpdated: Date | null = null;
+  private statsPendingRequests = 0;
   recentStudents: any[] = [];
   recentInvoices: any[] = [];
-  
-  // Student-specific properties
+
+  adminHubSearch = '';
+  readonly statSkeletonSlots = [0, 1, 2, 3, 4, 5];
+
+  readonly adminModuleShortcuts: DashboardModuleShortcut[] = [
+    { route: '/students', label: 'Students', icon: '👥', pastel: 'violet', module: 'students' },
+    { route: '/teachers', label: 'Teachers', icon: '👨‍🏫', pastel: 'sky', module: 'teachers' },
+    { route: '/classes', label: 'Classes', icon: '🏫', pastel: 'emerald', module: 'classes' },
+    { route: '/invoices', label: 'Billing', icon: '💳', pastel: 'rose', module: 'finance' },
+    { route: '/attendance/mark', label: 'Attendance', icon: '📋', pastel: 'amber', module: 'attendance' },
+    { route: '/report-cards', label: 'Reports', icon: '📊', pastel: 'violet', module: 'reportCards' },
+    { route: '/timetable/generate', label: 'Timetable', icon: '📅', pastel: 'sky' },
+    { route: '/messages/inbox', label: 'Messages', icon: '💬', pastel: 'pink' },
+    { route: '/settings', label: 'Settings', icon: '⚙️', pastel: 'slate', module: 'settings' },
+    { route: '/admin/elearning', label: 'E-Learning', icon: '💻', pastel: 'violet', adminOnly: true }
+  ];
+
+  readonly accountantModuleShortcuts: DashboardModuleShortcut[] = [
+    { route: '/students', label: 'Students', icon: '👥', pastel: 'violet', module: 'students' },
+    { route: '/invoices', label: 'Billing', icon: '💳', pastel: 'rose', module: 'finance' },
+    { route: '/outstanding-balance', label: 'Outstanding', icon: '⚠️', pastel: 'amber', module: 'finance' },
+    { route: '/payments/record', label: 'Record payment', icon: '💵', pastel: 'emerald', module: 'finance' },
+    { route: '/attendance/reports', label: 'Attendance', icon: '📋', pastel: 'amber', module: 'attendance' },
+    { route: '/report-cards', label: 'Reports', icon: '📊', pastel: 'violet', module: 'reportCards' },
+    { route: '/classes', label: 'Classes', icon: '🏫', pastel: 'emerald', module: 'classes' },
+    { route: '/messages/inbox', label: 'Messages', icon: '💬', pastel: 'pink' },
+    { route: '/settings', label: 'Settings', icon: '⚙️', pastel: 'slate', module: 'settings' }
+  ];
+
+  readonly parentModuleShortcuts: DashboardModuleShortcut[] = [
+    { route: '/parent/dashboard', label: 'Balances', icon: '💳', pastel: 'rose' },
+    { route: '/parent/link-students', label: 'Link students', icon: '🔗', pastel: 'sky' },
+    { route: '/parent/invoice-statement', label: 'Statement', icon: '📑', pastel: 'violet' },
+    { route: '/student/report-card', label: 'Report cards', icon: '📄', pastel: 'amber' },
+    { route: '/messages/inbox', label: 'Messages', icon: '💬', pastel: 'pink' },
+    { route: '/parent/manage-account', label: 'Account', icon: '⚙️', pastel: 'slate' }
+  ];
+
+  readonly studentModuleShortcuts: DashboardModuleShortcut[] = [
+    { route: '/student/report-card', label: 'Report card', icon: '📄', pastel: 'violet' },
+    { route: '/student/invoice-statement', label: 'Statement', icon: '📑', pastel: 'sky' }
+  ];
+
+  readonly adminHubGroups: DashboardAdminHubGroup[] = [
+    {
+      id: 'people',
+      label: 'People & structure',
+      subtitle: 'Enroll students and staff, define classes and subjects',
+      tiles: [
+        { route: '/students/new', icon: '👥', title: 'Add student', desc: 'Register and enroll new learners', search: 'student enroll admission register learner', accent: 'violet' },
+        { route: '/teachers/new', icon: '👨‍🏫', title: 'Add teacher', desc: 'Onboard staff and assignments', search: 'teacher staff hire faculty', accent: 'violet' },
+        { route: '/classes/new', icon: '🏫', title: 'Add class', desc: 'Forms, streams, and grading', search: 'class form grade stream', accent: 'sky' },
+        { route: '/subjects/new', icon: '📚', title: 'Add subject', desc: 'Build your course catalog', search: 'subject course syllabus catalog', accent: 'sky' },
+        { route: '/students', icon: '📇', title: 'Student directory', desc: 'Browse and edit profiles', search: 'student list directory search', accent: 'sky' },
+      ],
+    },
+    {
+      id: 'academic',
+      label: 'Academic operations',
+      subtitle: 'Exams, attendance, and day-to-day teaching',
+      tiles: [
+        { route: '/exams', icon: '📋', title: 'Exams', desc: 'Schedules, types, and marks', search: 'exam test marks assessment', accent: 'amber' },
+        { route: '/attendance/mark', icon: '✅', title: 'Mark attendance', desc: 'Daily rolls by class', search: 'attendance present absent register', accent: 'emerald' },
+        { route: '/attendance/reports', icon: '📈', title: 'Attendance reports', desc: 'Class and term analytics', search: 'attendance report statistics analytics', accent: 'emerald' },
+      ],
+    },
+    {
+      id: 'finance',
+      label: 'Finance & payroll',
+      subtitle: 'Fees, billing, and staff compensation',
+      tiles: [
+        { route: '/invoices', icon: '💰', title: 'Finance hub', desc: 'Invoices, payments, balances', search: 'invoice payment fees balance billing money', accent: 'rose' },
+        { route: '/payroll', icon: '💵', title: 'Payroll', desc: 'Salaries and payroll runs', search: 'payroll salary pay slip wages', module: 'payroll', accent: 'rose' },
+        { route: '/outstanding-balance', icon: '⚠️', title: 'Outstanding balances', desc: 'Who owes what', search: 'outstanding debt arrears balance', accent: 'rose' },
+      ],
+    },
+    {
+      id: 'reports',
+      label: 'Reports & insight',
+      subtitle: 'Report cards and performance rankings',
+      tiles: [
+        { route: '/report-cards', icon: '📄', title: 'Report cards', desc: 'Generate and review PDFs', search: 'report card transcript grade', accent: 'violet' },
+        { route: '/rankings', icon: '🏆', title: 'Rankings', desc: 'Class and subject leagues', search: 'ranking position leaderboard top', accent: 'amber' },
+      ],
+    },
+    {
+      id: 'admin',
+      label: 'School administration',
+      subtitle: 'Accounts, parents, and platform configuration',
+      tiles: [
+        { route: '/admin/manage-accounts', icon: '👤', title: 'Manage accounts', desc: 'Users, roles, and access', search: 'user account role login admin', accent: 'slate' },
+        { route: '/admin/parents', icon: '👨‍👩‍👧', title: 'Parent management', desc: 'Guardian linking and outreach', search: 'parent guardian family portal', accent: 'slate' },
+        { route: '/admin/class-promotion', icon: '⬆️', title: 'Class promotion', desc: 'Move cohorts to next level', search: 'promotion graduate advance year', accent: 'sky' },
+        { route: '/admin/elearning', icon: '💻', title: 'E-learning', desc: 'Digital content and services', search: 'elearning online learning lms', accent: 'sky' },
+        { route: '/settings', icon: '⚙️', title: 'School settings', desc: 'Branding, fees, terms, modules', search: 'settings configuration logo fees term', accent: 'slate' },
+      ],
+    },
+  ];
+
   studentBalance: number = 0;
   loadingBalance = false;
   activeTerm: string = '';
   currencySymbol: string = '$';
   private studentDataRetryCount = 0;
   private readonly MAX_STUDENT_DATA_RETRIES = 3;
-  
+
   constructor(
     private authService: AuthService,
     private router: Router,
@@ -72,32 +206,27 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private subjectService: SubjectService,
     private moduleAccessService: ModuleAccessService,
     public themeService: ThemeService
-  ) { }
+  ) {}
 
   ngOnInit() {
     this.user = this.authService.getCurrentUser();
-    
-    // IMPORTANT: Teachers should always use their own dashboard, not the admin dashboard
-    // Redirect teachers to /teacher/dashboard to show teacher-specific view
+
     if (this.isTeacher()) {
       this.router.navigate(['/teacher/dashboard']);
       return;
     }
-    
-    // Load module access from service
+
     this.moduleAccessService.loadModuleAccess();
     this.loadSettings();
     if (this.isAdmin() || this.isAccountant()) {
       this.loadStatistics();
     }
-    // Load student-specific data if user is a student
     if (this.isStudent()) {
       this.loadStudentData();
     }
   }
 
   ngOnDestroy() {
-    // Clear interval when component is destroyed
     if (this.textToggleInterval) {
       clearInterval(this.textToggleInterval);
     }
@@ -105,7 +234,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   loadStatistics() {
     this.loadingStats = true;
-    
+    this.statsPendingRequests = 5;
+
+    const markStatsSliceDone = () => {
+      this.statsPendingRequests = Math.max(0, this.statsPendingRequests - 1);
+      if (this.statsPendingRequests === 0) {
+        this.loadingStats = false;
+        this.statsLastUpdated = new Date();
+      }
+    };
+
     this.studentService.getStudentsPaginated({ page: 1, limit: 5 }).subscribe({
       next: (response: any) => {
         const studentsArray = Array.isArray(response?.data) ? response.data : [];
@@ -118,86 +256,162 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.recentStudents = studentsArray
           .sort((a: any, b: any) => new Date(b.enrollmentDate || b.createdAt || 0).getTime() - new Date(a.enrollmentDate || a.createdAt || 0).getTime())
           .slice(0, 5);
-        this.checkLoadingComplete();
+        markStatsSliceDone();
       },
-      error: (err) => {
-        console.error('Error loading students:', err);
+      error: () => {
         this.stats.totalStudents = 0;
         this.stats.dayScholars = 0;
         this.stats.boarders = 0;
         this.stats.staffChildren = 0;
         this.recentStudents = [];
-        this.checkLoadingComplete();
+        markStatsSliceDone();
       }
     });
-    
+
     this.teacherService.getTeachersPaginated(1, 1).subscribe({
       next: (response: any) => {
         this.stats.totalTeachers = Number(response?.total || 0);
-        this.checkLoadingComplete();
+        markStatsSliceDone();
       },
-      error: (err) => {
-        console.error('Error loading teachers:', err);
+      error: () => {
         this.stats.totalTeachers = 0;
-        this.checkLoadingComplete();
+        markStatsSliceDone();
       }
     });
-    
-    // Load classes
+
     this.classService.getClasses().subscribe({
       next: (classes: any[]) => {
         const classesArray = Array.isArray(classes) ? classes : [];
         this.stats.totalClasses = classesArray.filter(c => c.isActive).length;
-        this.checkLoadingComplete();
+        markStatsSliceDone();
       },
-      error: (err) => {
-        console.error('Error loading classes:', err);
+      error: () => {
         this.stats.totalClasses = 0;
-        this.checkLoadingComplete();
+        markStatsSliceDone();
       }
     });
-    
-    // Load subjects
+
     this.subjectService.getSubjects().subscribe({
       next: (subjects: any[]) => {
         const subjectsArray = Array.isArray(subjects) ? subjects : [];
         this.stats.totalSubjects = subjectsArray.length;
-        this.checkLoadingComplete();
+        markStatsSliceDone();
       },
-      error: (err) => {
-        console.error('Error loading subjects:', err);
+      error: () => {
         this.stats.totalSubjects = 0;
-        this.checkLoadingComplete();
+        markStatsSliceDone();
       }
     });
-    
-    if (this.isAdmin() || this.isAccountant()) {
-      this.financeService.getInvoicesPaginated({ page: 1, limit: 5 }).subscribe({
-        next: (response: any) => {
-          const invoicesArray = Array.isArray(response?.data) ? response.data : [];
-          this.stats.totalInvoices = Number(response?.total || invoicesArray.length || 0);
-          this.stats.totalBalance = Number(response?.totalBalance || 0);
-          this.recentInvoices = invoicesArray
-            .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-            .slice(0, 5);
-          this.checkLoadingComplete();
-        },
-        error: (err) => {
-          console.error('Error loading invoices:', err);
-          this.stats.totalInvoices = 0;
-          this.stats.totalBalance = 0;
-          this.recentInvoices = [];
-          this.checkLoadingComplete();
-        }
-      });
-    }
+
+    this.financeService.getInvoicesPaginated({ page: 1, limit: 5 }).subscribe({
+      next: (response: any) => {
+        const invoicesArray = Array.isArray(response?.data) ? response.data : [];
+        this.stats.totalInvoices = Number(response?.total || invoicesArray.length || 0);
+        this.stats.totalBalance = Number(response?.totalBalance || 0);
+        this.stats.totalInvoicedAmount = Number(response?.totalInvoicedAmount ?? 0);
+        this.stats.totalPaidAmount = Number(response?.totalPaidAmount ?? 0);
+        this.recentInvoices = invoicesArray
+          .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+          .slice(0, 5);
+        markStatsSliceDone();
+      },
+      error: () => {
+        this.stats.totalInvoices = 0;
+        this.stats.totalBalance = 0;
+        this.stats.totalInvoicedAmount = 0;
+        this.stats.totalPaidAmount = 0;
+        this.recentInvoices = [];
+        markStatsSliceDone();
+      }
+    });
   }
-  
-  private checkLoadingComplete() {
-    // Simple check - in a real app, you'd use a more sophisticated loading state
-    setTimeout(() => {
-      this.loadingStats = false;
-    }, 500);
+
+  refreshDashboardStats(): void {
+    if (!this.isAdmin() && !this.isAccountant()) {
+      return;
+    }
+    this.loadStatistics();
+  }
+
+  getRoleLabel(): string {
+    const u = this.authService.getCurrentUser();
+    if (!u) return 'Guest';
+    const r = String(u.role || '').toLowerCase();
+    if (r === 'superadmin') return 'Super Admin';
+    if (r === 'admin') return 'Administrator';
+    if (r === 'accountant') return 'Accountant';
+    if (r === 'teacher') return 'Teacher';
+    if (r === 'parent') return 'Parent';
+    if (r === 'student') return 'Student';
+    return 'User';
+  }
+
+  formatStatsUpdatedAt(): string {
+    if (!this.statsLastUpdated) return '';
+    return this.statsLastUpdated.toLocaleString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  }
+
+  getSmartGreeting(): string {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  getCollectionRatePercent(): number {
+    const inv = this.stats.totalInvoicedAmount;
+    if (!inv || inv <= 0) {
+      return 0;
+    }
+    return Math.min(100, Math.round((this.stats.totalPaidAmount / inv) * 100));
+  }
+
+  getModuleShortcutsForView(): DashboardModuleShortcut[] {
+    let list: DashboardModuleShortcut[];
+    if (this.isAccountant()) {
+      list = this.accountantModuleShortcuts;
+    } else if (this.isStudent()) {
+      return this.studentModuleShortcuts;
+    } else if (this.isParent()) {
+      return this.parentModuleShortcuts;
+    } else {
+      list = this.adminModuleShortcuts;
+    }
+    return list.filter(m => {
+      if (m.adminOnly && !this.isAdmin()) {
+        return false;
+      }
+      if (m.module && !this.canAccessModule(m.module)) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  clearAdminHubSearch(): void {
+    this.adminHubSearch = '';
+  }
+
+  getAdminHubGroupsForView(): DashboardAdminHubGroup[] {
+    const q = this.adminHubSearch.trim().toLowerCase();
+    if (!q) {
+      return this.adminHubGroups;
+    }
+    return this.adminHubGroups
+      .map(group => ({
+        ...group,
+        tiles: group.tiles.filter(
+          t =>
+            t.search.includes(q) ||
+            t.title.toLowerCase().includes(q) ||
+            t.desc.toLowerCase().includes(q)
+        ),
+      }))
+      .filter(g => g.tiles.length > 0);
   }
 
   isDemoUser(): boolean {
@@ -216,13 +430,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.schoolLogo2 = data.schoolLogo2 || null;
         this.moduleAccess = data.moduleAccess || {};
         this.currencySymbol = data.currencySymbol || '$';
-        
-        // Update module access service with latest settings
+
         if (data.moduleAccess) {
           (this.moduleAccessService as any).moduleAccess = data.moduleAccess;
         }
-        
-        // Rotate between school name and motto ("After Instruction We Soar")
+
         const motto = (this.schoolMotto || 'After Instruction We Soar').trim();
         const names = [this.schoolName, motto].filter(Boolean);
         this.rotateTexts = [...new Set(names)];
@@ -238,18 +450,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
           }, 4000);
         }
       },
-      error: (err: any) => {
-        console.error('Error loading settings:', err);
+      error: () => {
         this.schoolName = '';
-        // Use default module access from service
         this.moduleAccess = this.moduleAccessService.getModuleAccess();
       }
     });
   }
 
-
   isAdmin(): boolean {
-    // Check if user is SUPERADMIN or ADMIN
     const user = this.authService.getCurrentUser();
     return user ? (user.role === 'admin' || user.role === 'superadmin') : false;
   }
@@ -304,12 +512,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   hasModuleAccess(module: string): boolean {
-    // Use module access service which has proper defaults and settings integration
     return this.moduleAccessService.canAccessModule(module);
   }
 
   canAccessModule(module: string): boolean {
-    // Alias for hasModuleAccess for consistency
     return this.moduleAccessService.canAccessModule(module);
   }
 
@@ -339,10 +545,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   getCurrentDateTime(): string {
     const now = new Date();
-    const options: Intl.DateTimeFormatOptions = { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
@@ -356,39 +562,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Universal teacher has no linked teacher profile
     if ((user as any).isUniversalTeacher) {
       this.teacherName = 'Universal Teacher';
       return;
     }
 
-    // First, try to get name from user object (from login response)
     if (user.teacher) {
-      // Prioritize fullName from login response
-      if (user.teacher.fullName && 
-          user.teacher.fullName.trim() && 
-          user.teacher.fullName !== 'Teacher' && 
-          user.teacher.fullName !== 'Account Teacher') {
+      if (
+        user.teacher.fullName &&
+        user.teacher.fullName.trim() &&
+        user.teacher.fullName !== 'Teacher' &&
+        user.teacher.fullName !== 'Account Teacher'
+      ) {
         this.teacherName = user.teacher.fullName.trim();
         return;
       }
-      
-      // Fallback to extracting from firstName/lastName
-        const name = this.extractTeacherName(user.teacher);
-        if (name && name !== 'Teacher' && name.trim()) {
-          this.teacherName = name;
-          return;
-        }
+
+      const name = this.extractTeacherName(user.teacher);
+      if (name && name !== 'Teacher' && name.trim()) {
+        this.teacherName = name;
+        return;
+      }
     }
 
-    // If not available in user object, fetch from API as fallback
     this.teacherService.getCurrentTeacher().subscribe({
       next: (teacher: any) => {
-        // Prioritize fullName from API response
-        if (teacher.fullName && 
-            teacher.fullName.trim() && 
-            teacher.fullName !== 'Teacher' && 
-            teacher.fullName !== 'Account Teacher') {
+        if (
+          teacher.fullName &&
+          teacher.fullName.trim() &&
+          teacher.fullName !== 'Teacher' &&
+          teacher.fullName !== 'Account Teacher'
+        ) {
           this.teacherName = teacher.fullName.trim();
         } else {
           const name = this.extractTeacherName(teacher);
@@ -397,9 +601,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           }
         }
       },
-      error: (err) => {
-        console.error('Error loading teacher name from API:', err);
-        // Keep teacherName empty, getDisplayName() will handle fallback
+      error: () => {
         this.teacherName = '';
       }
     });
@@ -410,20 +612,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return '';
     }
 
-    // Use fullName if available and valid
     if (teacher.fullName && teacher.fullName.trim() && teacher.fullName !== 'Teacher' && teacher.fullName !== 'Account Teacher') {
       return teacher.fullName.trim();
     }
 
-    // Otherwise construct from firstName and lastName
-    const firstName = (teacher.firstName && typeof teacher.firstName === 'string') ? teacher.firstName.trim() : '';
-    const lastName = (teacher.lastName && typeof teacher.lastName === 'string') ? teacher.lastName.trim() : '';
-    
-    // Filter out placeholder values
-    const validFirst = (firstName && firstName !== 'Teacher' && firstName !== 'Account') ? firstName : '';
-    const validLast = (lastName && lastName !== 'Teacher' && lastName !== 'Account') ? lastName : '';
-    
-    // Combine as LastName + FirstName
+    const firstName = teacher.firstName && typeof teacher.firstName === 'string' ? teacher.firstName.trim() : '';
+    const lastName = teacher.lastName && typeof teacher.lastName === 'string' ? teacher.lastName.trim() : '';
+
+    const validFirst = firstName && firstName !== 'Teacher' && firstName !== 'Account' ? firstName : '';
+    const validLast = lastName && lastName !== 'Teacher' && lastName !== 'Account' ? lastName : '';
+
     const parts = [validLast, validFirst].filter(part => part.length > 0);
     return parts.join(' ').trim();
   }
@@ -434,12 +632,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return 'User';
     }
 
-    // Prefer full name from database (set by login for teacher/student/parent)
     if (user.fullName && user.fullName.trim()) {
       return user.fullName.trim();
     }
 
-    // For teachers, fallback to teacher fullName from login response
     if (user.role === 'teacher') {
       if (this.teacherName && this.teacherName !== 'Teacher' && this.teacherName.trim()) {
         return this.teacherName;
@@ -456,7 +652,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return 'Teacher';
     }
 
-    // For students/parents, build from linked profile if fullName was not set
     if (user.student && (user.student.firstName || user.student.lastName)) {
       return [user.student.firstName, user.student.lastName].filter(Boolean).join(' ').trim();
     }
@@ -464,11 +659,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return [user.parent.firstName, user.parent.lastName].filter(Boolean).join(' ').trim();
     }
 
-    // Fallback: show a friendly label instead of raw email/username (e.g. "changamire2026@admin.local" -> "Changamire2026")
     return this.formatFriendlyDisplay(user.email || user.username || '') || 'User';
   }
 
-  /** Derives a display-friendly label from email/username when full name is not available */
   private formatFriendlyDisplay(emailOrUsername: string): string {
     if (!emailOrUsername || !emailOrUsername.trim()) return '';
     const local = emailOrUsername.split('@')[0].trim();
@@ -491,7 +684,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loadStudentData() {
     const user = this.authService.getCurrentUser();
     if (!user) {
-      // User might not be loaded yet, try again after a short delay
       if (this.studentDataRetryCount < this.MAX_STUDENT_DATA_RETRIES) {
         this.studentDataRetryCount++;
         setTimeout(() => this.loadStudentData(), 500);
@@ -500,51 +692,41 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     if (!user.student) {
-      // Student data might not be loaded yet, wait a bit and retry
       if (this.studentDataRetryCount < this.MAX_STUDENT_DATA_RETRIES) {
         this.studentDataRetryCount++;
         setTimeout(() => {
           const retryUser = this.authService.getCurrentUser();
           if (retryUser && retryUser.student && retryUser.student.id) {
-            this.studentDataRetryCount = 0; // Reset on success
+            this.studentDataRetryCount = 0;
             this.loadStudentData();
           }
         }, 1000);
-      } else {
-        console.warn('Student data not available after retries');
       }
       return;
     }
 
     if (!user.student.id) {
-      console.error('Student ID not available');
       return;
     }
 
-    // Reset retry count on successful load
     this.studentDataRetryCount = 0;
     const studentId = user.student.id;
-    
-    // Load active term
+
     this.settingsService.getActiveTerm().subscribe({
       next: (data: any) => {
         this.activeTerm = data.activeTerm || data.currentTerm || '';
       },
-      error: (err: any) => {
-        console.error('Error loading active term:', err);
-      }
+      error: () => {}
     });
 
-    // Load student balance
     this.loadingBalance = true;
     this.financeService.getStudentBalance(studentId).subscribe({
       next: (data: any) => {
         this.loadingBalance = false;
         this.studentBalance = parseFloat(String(data.balance || 0));
       },
-      error: (err: any) => {
+      error: () => {
         this.loadingBalance = false;
-        console.error('Error loading student balance:', err);
         this.studentBalance = 0;
       }
     });
@@ -555,7 +737,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!user || !user.student || !user.student.id) {
       return;
     }
-    
+
     this.router.navigate(['/report-cards'], {
       queryParams: { studentId: user.student.id }
     });
@@ -566,10 +748,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!user || !user.student || !user.student.id) {
       return;
     }
-    
+
     this.router.navigate(['/invoices/statements'], {
       queryParams: { studentId: user.student.id }
     });
   }
 }
-

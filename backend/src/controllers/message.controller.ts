@@ -562,6 +562,14 @@ export const getStaffMessages = async (req: AuthRequest, res: Response) => {
 
     const result = messages.map(msg => {
       const parent = msg.parentId ? parentsById[msg.parentId] : undefined;
+      let attachments: { name?: string; url?: string }[] = [];
+      if (msg.attachments) {
+        try {
+          attachments = JSON.parse(msg.attachments);
+        } catch {
+          attachments = [];
+        }
+      }
       return {
         id: msg.id,
         subject: msg.subject,
@@ -570,7 +578,8 @@ export const getStaffMessages = async (req: AuthRequest, res: Response) => {
         recipientName: parent ? `${parent.firstName} ${parent.lastName}` : undefined,
         parentId: msg.parentId || undefined,
         createdAt: msg.createdAt,
-        isRead: msg.isRead
+        isRead: msg.isRead,
+        attachments
       };
     });
 

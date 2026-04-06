@@ -481,6 +481,8 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
     const sumQuery = invoiceRepository
       .createQueryBuilder('invoice')
       .select('COALESCE(SUM(invoice.balance), 0)', 'totalBalance')
+      .addSelect('COALESCE(SUM(invoice.amount), 0)', 'totalInvoicedAmount')
+      .addSelect('COALESCE(SUM(invoice.paidAmount), 0)', 'totalPaidAmount')
       .andWhere('COALESCE(invoice.isVoided, false) = false');
 
     if (studentId) {
@@ -500,10 +502,14 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
 
     const sumRaw = await sumQuery.getRawOne();
     const totalBalance = Number(sumRaw?.totalBalance ?? 0);
+    const totalInvoicedAmount = Number(sumRaw?.totalInvoicedAmount ?? 0);
+    const totalPaidAmount = Number(sumRaw?.totalPaidAmount ?? 0);
 
     res.json(
       buildPaginationResponse(invoices, total, page, limit, {
-        totalBalance
+        totalBalance,
+        totalInvoicedAmount,
+        totalPaidAmount
       })
     );
   } catch (error) {
@@ -909,11 +915,16 @@ export const calculateNextTermBalance = async (req: AuthRequest, res: Response) 
 export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
   try {
     // term is the CURRENT term - invoices will be created for the FOLLOWING term
-    const { term, dueDate, description } = req.body;
-    
+    const { term, dueDate, description, batchOffset: batchOffsetBody, batchSize: batchSizeBody } = req.body;
+
     if (!term || !dueDate) {
       return res.status(400).json({ message: 'Current term and due date are required' });
     }
+
+    const batchSizeNum = batchSizeBody != null && batchSizeBody !== '' ? Number(batchSizeBody) : NaN;
+    const batchMode = Number.isFinite(batchSizeNum) && batchSizeNum > 0;
+    const batchOffset = batchMode ? Math.max(0, parseInt(String(batchOffsetBody ?? 0), 10) || 0) : 0;
+    const batchSize = batchMode ? Math.min(500, Math.max(1, Math.floor(batchSizeNum))) : 0;
 
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
@@ -940,15 +951,22 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
     // structure. Bulk invoices must only include tuition, one‑time desk fee,
     // one‑time registration fee, transport, and dining hall as configured.
 
-    // Get all active students
+    // Get all active students (stable order so batch offsets are repeatable)
     const students = await studentRepository.find({
       where: { isActive: true },
-      relations: ['classEntity']
+      relations: ['classEntity'],
+      order: { lastName: 'ASC', firstName: 'ASC', id: 'ASC' }
     });
 
     if (students.length === 0) {
       return res.status(404).json({ message: 'No active students found' });
     }
+
+    const studentsToProcess = batchMode
+      ? students.slice(batchOffset, batchOffset + batchSize)
+      : students;
+    const nextOffset = batchOffset + studentsToProcess.length;
+    const hasMore = batchMode && nextOffset < students.length;
 
     const results = {
       total: students.length,
@@ -976,8 +994,8 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Process each student
-    for (const student of students) {
+    // Process each student (full list, or one batch when batchMode)
+    for (const student of studentsToProcess) {
       try {
         // Get previous balance from last invoice (this is the outstanding fees balance)
         const lastInvoice = await invoiceRepository.findOne({
@@ -1100,8 +1118,31 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    const baseMessage = `Bulk invoice creation completed. Created: ${results.created}, Failed: ${results.failed}`;
+
+    if (batchMode) {
+      const rangeMsg =
+        studentsToProcess.length === 0
+          ? `(no students in range offset ${batchOffset})`
+          : `(students ${batchOffset + 1}–${nextOffset} of ${students.length})`;
+      return res.status(201).json({
+        message: `${baseMessage} ${rangeMsg}`,
+        summary: {
+          ...results,
+          batchOffset,
+          batchProcessed: studentsToProcess.length
+        },
+        batch: {
+          offset: batchOffset,
+          nextOffset,
+          totalStudents: students.length,
+          hasMore
+        }
+      });
+    }
+
     res.status(201).json({
-      message: `Bulk invoice creation completed. Created: ${results.created}, Failed: ${results.failed}`,
+      message: baseMessage,
       summary: results
     });
   } catch (error: any) {

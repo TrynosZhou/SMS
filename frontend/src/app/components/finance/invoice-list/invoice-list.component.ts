@@ -1,4 +1,5 @@
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { Router } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FinanceService } from '../../../services/finance.service';
@@ -23,6 +24,9 @@ export class InvoiceListComponent implements OnInit {
   viewMode: 'grid' | 'list' = 'grid';
   loading = false;
   creatingBulk = false;
+  /** 0–100: share of active students processed in the current bulk run (server batched) */
+  bulkCreateProgress = 0;
+  private readonly bulkInvoiceBatchSize = 40;
   reversingBulk = false;
   correctingExemptTuition = false;
   reverseFilter: any = {
@@ -2182,7 +2186,10 @@ export class InvoiceListComponent implements OnInit {
     this.success = '';
   }
 
-  closeBulkInvoiceForm() {
+  closeBulkInvoiceForm(force = false) {
+    if (this.creatingBulk && !force) {
+      return;
+    }
     this.showBulkInvoiceForm = false;
     this.bulkInvoiceForm = {
       currentTerm: '',
@@ -2191,8 +2198,11 @@ export class InvoiceListComponent implements OnInit {
     };
   }
 
-  createBulkInvoices() {
-    // Check if user is authenticated
+  createBulkInvoices(): void {
+    void this.runBulkCreateInvoices();
+  }
+
+  private async runBulkCreateInvoices(): Promise<void> {
     if (!this.authService.isAuthenticated()) {
       this.error = 'You must be logged in to create invoices. Please log in and try again.';
       return;
@@ -2203,14 +2213,17 @@ export class InvoiceListComponent implements OnInit {
       return;
     }
 
-    // Validate date format
     const dueDate = new Date(this.bulkInvoiceForm.dueDate);
     if (isNaN(dueDate.getTime())) {
       this.error = 'Invalid date format. Please use YYYY-MM-DD format.';
       return;
     }
 
-    if (!confirm(`This will create invoices for all active students for the following term (based on current term: ${this.bulkInvoiceForm.currentTerm}). Continue?`)) {
+    if (
+      !confirm(
+        `This will create invoices for all active students for the following term (based on current term: ${this.bulkInvoiceForm.currentTerm}). Continue?`
+      )
+    ) {
       return;
     }
     const verify = prompt('Type BULK to confirm bulk creation:');
@@ -2222,53 +2235,81 @@ export class InvoiceListComponent implements OnInit {
     this.creatingBulk = true;
     this.error = '';
     this.success = '';
+    this.bulkCreateProgress = 0;
 
-    // Pass the current term - backend will calculate the following term
-    this.financeService.createBulkInvoices(
-      this.bulkInvoiceForm.currentTerm, 
-      this.bulkInvoiceForm.dueDate, 
-      this.bulkInvoiceForm.description || undefined
-    ).subscribe({
-      next: (response: any) => {
-        this.creatingBulk = false;
-        this.success = response.message || 'Bulk invoices created successfully';
-        
-        // Show detailed summary
-        const summary = response.summary;
-        let message = `Created: ${summary.created} invoices\nFailed: ${summary.failed}`;
-        if (summary.errors && summary.errors.length > 0) {
-          message += `\n\nErrors:\n${summary.errors.slice(0, 5).join('\n')}`;
-          if (summary.errors.length > 5) {
-            message += `\n... and ${summary.errors.length - 5} more errors`;
+    const term = this.bulkInvoiceForm.currentTerm;
+    const due = this.bulkInvoiceForm.dueDate;
+    const desc = this.bulkInvoiceForm.description || undefined;
+    const batchSize = this.bulkInvoiceBatchSize;
+
+    let offset = 0;
+    let totalCreated = 0;
+    let totalFailed = 0;
+    const allErrors: string[] = [];
+
+    try {
+      while (true) {
+        const response: any = await firstValueFrom(
+          this.financeService.createBulkInvoices(term, due, desc, { batchOffset: offset, batchSize })
+        );
+
+        const summary = response.summary || {};
+        const batch = response.batch;
+
+        if (batch && typeof batch.totalStudents === 'number') {
+          totalCreated += summary.created ?? 0;
+          totalFailed += summary.failed ?? 0;
+          if (Array.isArray(summary.errors)) {
+            allErrors.push(...summary.errors);
           }
-        }
-        
-        // Show success message with summary (no automatic PDF downloads)
-        alert(message + '\n\nYou can now view and download invoices from the invoice list.');
-        
-        // Reload invoices to show the newly created ones
-        this.loadInvoices();
-        
-        // Close the form
-        this.closeBulkInvoiceForm();
-        
-        // Clear success message after 5 seconds
-        setTimeout(() => this.success = '', 5000);
-      },
-      error: (err: any) => {
-        this.creatingBulk = false;
-        if (err.status === 401) {
-          this.error = 'Authentication required. Please log in again.';
-          // Optionally redirect to login
-          setTimeout(() => {
-            this.authService.logout();
-          }, 2000);
+          offset = batch.nextOffset ?? offset + batchSize;
+          const total = batch.totalStudents;
+          if (total > 0) {
+            this.bulkCreateProgress = Math.min(100, (Math.min(offset, total) / total) * 100);
+          }
+          if (!batch.hasMore) {
+            break;
+          }
         } else {
-          this.error = err.error?.message || 'Failed to create bulk invoices';
+          totalCreated += summary.created ?? 0;
+          totalFailed += summary.failed ?? 0;
+          if (Array.isArray(summary.errors)) {
+            allErrors.push(...summary.errors);
+          }
+          this.bulkCreateProgress = 100;
+          break;
         }
-        setTimeout(() => this.error = '', 5000);
       }
-    });
+
+      this.bulkCreateProgress = 100;
+      this.success = `Bulk invoices finished. Created: ${totalCreated}, Failed: ${totalFailed}`;
+
+      let message = `Created: ${totalCreated} invoices\nFailed: ${totalFailed}`;
+      if (allErrors.length > 0) {
+        message += `\n\nErrors:\n${allErrors.slice(0, 5).join('\n')}`;
+        if (allErrors.length > 5) {
+          message += `\n... and ${allErrors.length - 5} more errors`;
+        }
+      }
+      alert(message + '\n\nYou can now view and download invoices from the invoice list.');
+
+      this.loadInvoices();
+      this.creatingBulk = false;
+      this.bulkCreateProgress = 0;
+      this.closeBulkInvoiceForm(true);
+
+      setTimeout(() => (this.success = ''), 5000);
+    } catch (err: any) {
+      this.bulkCreateProgress = 0;
+      if (err?.status === 401) {
+        this.error = 'Authentication required. Please log in again.';
+        setTimeout(() => this.authService.logout(), 2000);
+      } else {
+        this.error = err?.error?.message || 'Failed to create bulk invoices';
+      }
+      setTimeout(() => (this.error = ''), 5000);
+      this.creatingBulk = false;
+    }
   }
 
   reverseLastBulkCreation() {

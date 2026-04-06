@@ -1,41 +1,187 @@
-<div class="inbox-container">
-  <div class="inbox-header">
-    <h1>My Inbox</h1>
-    <p class="welcome-text">Messages from parents</p>
-  </div>
+<div class="inbox-page" [class.inbox-page--dark]="themeService.darkMode">
+  <header class="inbox-hero">
+    <div class="inbox-hero__text">
+      <div class="inbox-hero__eyebrow">
+        <span class="inbox-hero__dot" aria-hidden="true"></span>
+        Communication
+      </div>
+      <h1 class="inbox-hero__title">Inbox</h1>
+      <p class="inbox-hero__sub">
+        Messages from parents and guardians. <span class="inbox-hero__welcome">Signed in as {{ userName }}</span>
+      </p>
+      <div class="inbox-stat-row" *ngIf="!loading && messages.length > 0">
+        <span class="inbox-stat">
+          <strong>{{ messages.length }}</strong>
+          <span>Total</span>
+        </span>
+        <span class="inbox-stat inbox-stat--accent" *ngIf="unreadCount > 0">
+          <strong>{{ unreadCount }}</strong>
+          <span>Unread</span>
+        </span>
+      </div>
+    </div>
+    <div class="inbox-hero__actions">
+      <button
+        type="button"
+        class="inbox-icon-btn"
+        (click)="themeService.toggleTheme()"
+        [attr.aria-label]="themeService.darkMode ? 'Light mode' : 'Dark mode'"
+        title="Theme"
+      >
+        {{ themeService.darkMode ? '☀️' : '🌙' }}
+      </button>
+      <button
+        type="button"
+        class="inbox-btn inbox-btn--primary"
+        (click)="refresh()"
+        [disabled]="loading"
+      >
+        <span class="inbox-btn__ic" [class.inbox-btn__ic--spin]="loading">↻</span>
+        Refresh
+      </button>
+    </div>
+  </header>
 
-  <div class="search-bar">
-    <input type="text" [(ngModel)]="query" (ngModelChange)="applyFilter()" placeholder="Search by subject, sender, or content..." />
-  </div>
+  <div class="inbox-alert inbox-alert--error" *ngIf="error" role="alert">{{ error }}</div>
 
-  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
-
-  <div *ngIf="loading" class="loading-message">Loading messages...</div>
-
-  <div *ngIf="!loading && messages.length === 0" class="empty-state">
-    <div class="empty-state-content">
-      <h2>No messages yet</h2>
-      <p>When parents send messages to accounts, they will appear here.</p>
+  <div class="inbox-toolbar" *ngIf="!loading && messages.length > 0">
+    <div class="inbox-search">
+      <span class="inbox-search__icon" aria-hidden="true">🔍</span>
+      <input
+        type="search"
+        class="inbox-search__input"
+        [(ngModel)]="query"
+        (ngModelChange)="applyFilter()"
+        placeholder="Search subject, sender, or body…"
+        aria-label="Search messages"
+        autocomplete="off"
+      />
+      <button type="button" class="inbox-search__clear" *ngIf="query" (click)="clearQuery()">Clear</button>
+    </div>
+    <div class="inbox-filter-chips" role="tablist" aria-label="Filter messages">
+      <button
+        type="button"
+        role="tab"
+        class="inbox-chip"
+        [class.inbox-chip--active]="filterTab === 'all'"
+        [attr.aria-selected]="filterTab === 'all'"
+        (click)="setFilterTab('all')"
+      >
+        All
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="inbox-chip"
+        [class.inbox-chip--active]="filterTab === 'unread'"
+        [attr.aria-selected]="filterTab === 'unread'"
+        (click)="setFilterTab('unread')"
+      >
+        Unread
+        <span class="inbox-chip__badge" *ngIf="unreadCount">{{ unreadCount }}</span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="inbox-chip"
+        [class.inbox-chip--active]="filterTab === 'read'"
+        [attr.aria-selected]="filterTab === 'read'"
+        (click)="setFilterTab('read')"
+      >
+        Read
+      </button>
     </div>
   </div>
 
-  <div *ngIf="!loading && messages.length > 0" class="messages-section">
-    <div *ngFor="let m of filtered" class="message-card">
-      <div class="message-header">
-        <h3>{{ m.subject }}</h3>
-        <span class="message-date">{{ formatDate(m.createdAt) }}</span>
-      </div>
-      <div class="message-content">
-        <p>{{ m.message }}</p>
-        <div class="attachments" *ngIf="m.attachments && m.attachments.length">
-          <div class="attachment" *ngFor="let a of m.attachments">
-            <a [href]="a.url" target="_blank">📎 {{ a.name || 'Attachment' }}</a>
+  <div class="inbox-skeleton" *ngIf="loading" aria-busy="true">
+    <div class="inbox-skeleton__panel inbox-skeleton__panel--list">
+      <div class="inbox-skeleton__line" *ngFor="let _ of [1, 2, 3, 4, 5]"></div>
+    </div>
+    <div class="inbox-skeleton__panel inbox-skeleton__panel--detail">
+      <div class="inbox-skeleton__block"></div>
+      <div class="inbox-skeleton__block inbox-skeleton__block--short"></div>
+      <div class="inbox-skeleton__block inbox-skeleton__block--tall"></div>
+    </div>
+  </div>
+
+  <div class="inbox-empty" *ngIf="!loading && messages.length === 0">
+    <div class="inbox-empty__card">
+      <span class="inbox-empty__icon" aria-hidden="true">✉️</span>
+      <h2 class="inbox-empty__title">Inbox is clear</h2>
+      <p class="inbox-empty__text">When parents send messages to accounts, they will show up here.</p>
+    </div>
+  </div>
+
+  <div class="inbox-empty inbox-empty--muted" *ngIf="!loading && messages.length > 0 && filtered.length === 0">
+    <div class="inbox-empty__card">
+      <span class="inbox-empty__icon" aria-hidden="true">🔎</span>
+      <h2 class="inbox-empty__title">No matches</h2>
+      <p class="inbox-empty__text">Try another search or switch filters.</p>
+      <button type="button" class="inbox-btn inbox-btn--ghost" (click)="clearQuery(); setFilterTab('all')">
+        Reset filters
+      </button>
+    </div>
+  </div>
+
+  <div class="inbox-split" *ngIf="!loading && messages.length > 0 && filtered.length > 0">
+    <aside class="inbox-list" aria-label="Message list">
+      <ul class="inbox-list__ul">
+        <li *ngFor="let m of filtered; trackBy: trackById">
+          <button
+            type="button"
+            class="inbox-thread"
+            [class.inbox-thread--active]="selectedMessage?.id === m.id"
+            [class.inbox-thread--unread]="!m.isRead"
+            (click)="selectMessage(m)"
+          >
+            <span class="inbox-thread__avatar" aria-hidden="true">{{ senderInitials(m) }}</span>
+            <span class="inbox-thread__body">
+              <span class="inbox-thread__top">
+                <span class="inbox-thread__subject">{{ m.subject || '(No subject)' }}</span>
+                <time class="inbox-thread__time" [attr.datetime]="m.createdAt" [title]="formatDate(m.createdAt)">{{
+                  formatRelative(m.createdAt)
+                }}</time>
+              </span>
+              <span class="inbox-thread__meta">
+                {{ m.senderName || m.parentName || 'Parent' }}
+                <span *ngIf="m.recipientName" class="inbox-thread__meta-sep">·</span>
+                <span *ngIf="m.recipientName">{{ m.recipientName }}</span>
+              </span>
+              <span class="inbox-thread__preview">{{ previewBody(m.message) }}</span>
+            </span>
+          </button>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="inbox-detail" aria-label="Message detail">
+      <ng-container *ngIf="selectedMessage as detail">
+        <div class="inbox-detail__header">
+          <h2 class="inbox-detail__title">{{ detail.subject || '(No subject)' }}</h2>
+          <div class="inbox-detail__meta">
+            <span class="inbox-detail__pill">{{ detail.senderName || detail.parentName || 'Parent' }}</span>
+            <time class="inbox-detail__date" [attr.datetime]="detail.createdAt">{{ formatDate(detail.createdAt) }}</time>
           </div>
         </div>
+        <div class="inbox-detail__content">
+          <p class="inbox-detail__body">{{ detail.message }}</p>
+          <div class="inbox-attachments" *ngIf="detail.attachments?.length">
+            <span class="inbox-attachments__label">Attachments</span>
+            <div class="inbox-attachments__list">
+              <a *ngFor="let a of detail.attachments" [href]="a.url" target="_blank" rel="noopener noreferrer" class="inbox-attach-link">
+                <span aria-hidden="true">📎</span> {{ a.name || 'File' }}
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="inbox-detail__footer" *ngIf="detail.isRead">
+          <button type="button" class="inbox-btn inbox-btn--ghost" (click)="markUnread(detail)">Mark as unread</button>
+        </div>
+      </ng-container>
+      <div class="inbox-detail__placeholder" *ngIf="!selectedMessage">
+        <span class="inbox-detail__placeholder-icon" aria-hidden="true">👈</span>
+        <p>Select a message to read the full thread.</p>
       </div>
-      <div class="message-footer">
-        <span class="message-sender">From: {{ m.senderName || 'Parent' }}</span>
-      </div>
-    </div>
+    </main>
   </div>
 </div>

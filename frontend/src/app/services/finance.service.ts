@@ -80,8 +80,24 @@ export class FinanceService {
     return this.http.post(`${this.apiUrl}/finance/calculate-balance`, { studentId, nextTermAmount });
   }
 
-  createBulkInvoices(term: string, dueDate: string, description?: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/finance/bulk`, { term, dueDate, description });
+  createBulkInvoices(
+    term: string,
+    dueDate: string,
+    description?: string,
+    batch?: { batchOffset: number; batchSize: number }
+  ): Observable<any> {
+    const body: {
+      term: string;
+      dueDate: string;
+      description?: string;
+      batchOffset?: number;
+      batchSize?: number;
+    } = { term, dueDate, description };
+    if (batch) {
+      body.batchOffset = batch.batchOffset;
+      body.batchSize = batch.batchSize;
+    }
+    return this.http.post(`${this.apiUrl}/finance/bulk`, body);
   }
 
   reverseBulkInvoices(payload: { term?: string; currentTerm?: string; startDate?: string; endDate?: string }): Observable<any> {
