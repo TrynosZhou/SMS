@@ -100,6 +100,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { route: '/invoices', label: 'Billing', icon: '💳', pastel: 'rose', module: 'finance' },
     { route: '/attendance/mark', label: 'Attendance', icon: '📋', pastel: 'amber', module: 'attendance' },
     { route: '/report-cards', label: 'Reports', icon: '📊', pastel: 'violet', module: 'reportCards' },
+    { route: '/inventory', label: 'Inventory Manager', icon: '📦', pastel: 'emerald', module: 'inventory' },
     { route: '/timetable/generate', label: 'Timetable', icon: '📅', pastel: 'sky' },
     { route: '/messages/inbox', label: 'Messages', icon: '💬', pastel: 'pink' },
     { route: '/settings', label: 'Settings', icon: '⚙️', pastel: 'slate', module: 'settings' },
@@ -115,6 +116,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { route: '/report-cards', label: 'Reports', icon: '📊', pastel: 'violet', module: 'reportCards' },
     { route: '/classes', label: 'Classes', icon: '🏫', pastel: 'emerald', module: 'classes' },
     { route: '/messages/inbox', label: 'Messages', icon: '💬', pastel: 'pink' },
+    { route: '/inventory', label: 'Inventory Manager', icon: '📦', pastel: 'emerald', module: 'inventory' },
     { route: '/settings', label: 'Settings', icon: '⚙️', pastel: 'slate', module: 'settings' }
   ];
 
@@ -129,7 +131,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   readonly studentModuleShortcuts: DashboardModuleShortcut[] = [
     { route: '/student/report-card', label: 'Report card', icon: '📄', pastel: 'violet' },
-    { route: '/student/invoice-statement', label: 'Statement', icon: '📑', pastel: 'sky' }
+    { route: '/student/invoice-statement', label: 'Statement', icon: '📑', pastel: 'sky' },
+    { route: '/student/inventory', label: 'Books & fines', icon: '📚', pastel: 'emerald', module: 'inventory' }
   ];
 
   readonly adminHubGroups: DashboardAdminHubGroup[] = [
@@ -153,6 +156,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
         { route: '/exams', icon: '📋', title: 'Exams', desc: 'Schedules, types, and marks', search: 'exam test marks assessment', accent: 'amber' },
         { route: '/attendance/mark', icon: '✅', title: 'Mark attendance', desc: 'Daily rolls by class', search: 'attendance present absent register', accent: 'emerald' },
         { route: '/attendance/reports', icon: '📈', title: 'Attendance reports', desc: 'Class and term analytics', search: 'attendance report statistics analytics', accent: 'emerald' },
+      ],
+    },
+    {
+      id: 'inventory',
+      label: 'Inventory & library',
+      subtitle: 'Textbooks, furniture, loans, fines, and stock',
+      tiles: [
+        {
+          route: '/inventory',
+          icon: '📦',
+          title: 'Inventory Manager',
+          desc: 'Stock, issuance, returns, and reports',
+          search: 'inventory textbook library furniture loan fine asset catalog issue return isbn desk chair',
+          module: 'inventory',
+          accent: 'emerald',
+        },
       ],
     },
     {

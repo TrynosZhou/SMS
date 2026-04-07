@@ -18,6 +18,7 @@ import recordBookRoutes from './recordBook.routes';
 import timetableRoutes from './timetable.routes';
 import newsRoutes from './news.routes';
 import payrollRoutes from './payroll.routes';
+import inventoryRoutes from './inventory.routes';
 
 const router = Router();
 
@@ -39,6 +40,7 @@ router.use('/record-book', recordBookRoutes);
 router.use('/timetables', timetableRoutes);
 router.use('/news', newsRoutes);
 router.use('/payroll', payrollRoutes);
+router.use('/inventory', inventoryRoutes);
 
 router.use('/elearning', elearningRoutes);
 

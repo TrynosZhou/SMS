@@ -97,6 +97,9 @@ import { BlankPageComponent } from './components/student/blank-page/blank-page.c
 import { StudentPortalComponent } from './components/parent/student-portal/student-portal.component';
 import { ParentPortalComponent } from './components/student/parent-portal/parent-portal.component';
 import { DocEditorComponent } from './components/shared/doc-editor/doc-editor.component';
+import { InventoryHubComponent } from './components/inventory/inventory-hub/inventory-hub.component';
+import { StudentInventoryComponent } from './components/inventory/student-inventory/student-inventory.component';
+import { StudentInventoryPanelComponent } from './components/inventory/student-inventory-panel/student-inventory-panel.component';
 
 @NgModule({
   declarations: [
@@ -188,6 +191,9 @@ import { DocEditorComponent } from './components/shared/doc-editor/doc-editor.co
     StudentPortalComponent,
     ParentPortalComponent,
     DocEditorComponent,
+    InventoryHubComponent,
+    StudentInventoryComponent,
+    StudentInventoryPanelComponent,
   ],
   imports: [
     BrowserModule,

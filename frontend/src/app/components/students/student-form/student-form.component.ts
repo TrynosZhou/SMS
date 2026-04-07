@@ -5,6 +5,7 @@ import { ClassService } from '../../../services/class.service';
 import { SettingsService } from '../../../services/settings.service';
 import { validatePhoneNumber } from '../../../utils/phone-validator';
 import { AuthService } from '../../../services/auth.service';
+import { ModuleAccessService } from '../../../services/module-access.service';
 
 @Component({
   selector: 'app-student-form',
@@ -69,7 +70,8 @@ export class StudentFormComponent implements OnInit {
     private settingsService: SettingsService,
     private route: ActivatedRoute,
     public router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    public moduleAccess: ModuleAccessService
   ) {
     // Set max date to today (for date of birth)
     const today = new Date();

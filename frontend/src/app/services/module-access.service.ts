@@ -21,6 +21,7 @@ export interface ModuleAccess {
     logisticsManager?: boolean;
     classManager?: boolean;
     teacherManager?: boolean;
+    inventory?: boolean;
   };
   teachers?: {
     students?: boolean;
@@ -34,6 +35,7 @@ export interface ModuleAccess {
     recordBook?: boolean;
     attendance?: boolean;
     teacherManager?: boolean;
+    inventory?: boolean;
   };
   parents?: {
     reportCards?: boolean;
@@ -46,6 +48,7 @@ export interface ModuleAccess {
     reportCards?: boolean;
     invoices?: boolean;
     teacherManager?: boolean;
+    inventory?: boolean;
   };
   accountant?: {
     students?: boolean;
@@ -60,6 +63,7 @@ export interface ModuleAccess {
     logistics?: boolean;
     teacherManager?: boolean;
     payroll?: boolean;
+    inventory?: boolean;
   };
   admin?: {
     students?: boolean;
@@ -75,6 +79,7 @@ export interface ModuleAccess {
     dashboard?: boolean;
     teacherManager?: boolean;
     payroll?: boolean;
+    inventory?: boolean;
   };
   superadmin?: {
     [key: string]: boolean; // Superadmin has access to everything
@@ -93,6 +98,7 @@ export interface ModuleAccess {
     settings?: boolean;
     teacherManager?: boolean;
     payroll?: boolean;
+    inventory?: boolean;
   };
 }
 
@@ -116,7 +122,8 @@ export class ModuleAccessService {
       examManager: true,
       logisticsManager: true,
       classManager: true,
-      teacherManager: true
+      teacherManager: true,
+      inventory: false
     },
     teachers: {
       students: true,
@@ -129,7 +136,8 @@ export class ModuleAccessService {
       settings: false,
       recordBook: true,
       attendance: true,
-      teacherManager: false
+      teacherManager: false,
+      inventory: false
     },
     parents: {
       reportCards: true,
@@ -141,7 +149,8 @@ export class ModuleAccessService {
       dashboard: true,
       reportCards: true,
       invoices: true,
-      teacherManager: false
+      teacherManager: false,
+      inventory: true
     },
     accountant: {
       students: true,
@@ -155,7 +164,8 @@ export class ModuleAccessService {
       classes: false,
       logistics: true,
       teacherManager: false,
-      payroll: false
+      payroll: false,
+      inventory: true
     },
     admin: {
       students: true,
@@ -170,7 +180,8 @@ export class ModuleAccessService {
       settings: true,
       dashboard: true,
       teacherManager: true,
-      payroll: true
+      payroll: true,
+      inventory: true
     },
     superadmin: {}, // All access
     demo_user: {
@@ -186,7 +197,8 @@ export class ModuleAccessService {
       attendance: true,
       settings: false, // Demo users cannot access settings
       teacherManager: true,
-      payroll: false
+      payroll: false,
+      inventory: true
     }
   };
 

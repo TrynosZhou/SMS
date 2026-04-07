@@ -1,0 +1,618 @@
+<div class="inv-page" [class.inv-page--dark]="theme.darkMode">
+  <!-- Toast -->
+  <div
+    class="inv-toast"
+    *ngIf="toast"
+    [class.inv-toast--success]="toast.type === 'success'"
+    [class.inv-toast--error]="toast.type === 'error'"
+    [class.inv-toast--info]="toast.type === 'info'"
+    role="status"
+  >
+    <span class="inv-toast__icon" aria-hidden="true">{{ toast.type === 'success' ? '✓' : toast.type === 'error' ? '!' : 'ℹ' }}</span>
+    <span class="inv-toast__text">{{ toast.message }}</span>
+    <button type="button" class="inv-toast__close" (click)="dismissToast()" aria-label="Dismiss">×</button>
+  </div>
+
+  <header class="inv-hero">
+    <div class="inv-hero__bg" aria-hidden="true"></div>
+    <div class="inv-hero__content">
+      <div class="inv-hero__titles">
+        <p class="inv-hero__eyebrow">Inventory Manager</p>
+        <h1 class="inv-hero__title">Library &amp; assets</h1>
+        <p class="inv-hero__subtitle">Textbooks, furniture, loans, fines, and accountability in one place.</p>
+        <div class="inv-hero__meta" *ngIf="lastRefreshedAt && !loading">
+          <span class="inv-live-dot"></span>
+          Updated {{ formatRefreshed() }}
+        </div>
+      </div>
+      <div class="inv-hero__actions">
+        <button
+          type="button"
+          class="inv-btn inv-btn--ghost"
+          (click)="refresh()"
+          [disabled]="loading"
+          [attr.aria-busy]="loading"
+        >
+          <span class="inv-btn__icon" [class.inv-spin]="loading">↻</span>
+          {{ loading ? 'Syncing…' : 'Refresh data' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="inv-stats" *ngIf="!loading || textbooks.length || furniture.length">
+      <div class="inv-stats__track" [class.inv-stats--skeleton]="loading && !textbooks.length && !furniture.length">
+        <article class="inv-stat-card">
+          <span class="inv-stat-card__icon" aria-hidden="true">📚</span>
+          <div class="inv-stat-card__body">
+            <span class="inv-stat-card__value">{{ loading ? '—' : statTextbookTitles }}</span>
+            <span class="inv-stat-card__label">Catalog titles</span>
+          </div>
+        </article>
+        <article class="inv-stat-card">
+          <span class="inv-stat-card__icon" aria-hidden="true">📗</span>
+          <div class="inv-stat-card__body">
+            <span class="inv-stat-card__value">{{ loading ? '—' : statCopiesAvailable }}</span>
+            <span class="inv-stat-card__label">Copies available</span>
+            <span class="inv-stat-card__hint" *ngIf="!loading">of {{ statCopiesTotal }} total</span>
+          </div>
+        </article>
+        <article class="inv-stat-card">
+          <span class="inv-stat-card__icon" aria-hidden="true">🪑</span>
+          <div class="inv-stat-card__body">
+            <span class="inv-stat-card__value">{{ loading ? '—' : statFurnitureAvailable }}</span>
+            <span class="inv-stat-card__label">Furniture free</span>
+          </div>
+        </article>
+        <article class="inv-stat-card">
+          <span class="inv-stat-card__icon" aria-hidden="true">📤</span>
+          <div class="inv-stat-card__body">
+            <span class="inv-stat-card__value">{{ loading ? '—' : statActiveLoans }}</span>
+            <span class="inv-stat-card__label">Active loans</span>
+          </div>
+        </article>
+        <article class="inv-stat-card inv-stat-card--accent">
+          <span class="inv-stat-card__icon" aria-hidden="true">💳</span>
+          <div class="inv-stat-card__body">
+            <span class="inv-stat-card__value">{{ loading ? '—' : statPendingFines.count }}</span>
+            <span class="inv-stat-card__label">Pending fines</span>
+            <span class="inv-stat-card__hint" *ngIf="!loading && statPendingFines.total">{{ statPendingFines.total | number:'1.2-2' }} due</span>
+          </div>
+        </article>
+      </div>
+    </div>
+  </header>
+
+  <div class="inv-err inv-err--banner" *ngIf="err" role="alert">
+    <span class="inv-err__icon" aria-hidden="true">⚠</span>
+    {{ err }}
+  </div>
+
+  <nav class="inv-tabs" aria-label="Inventory sections">
+    <button
+      type="button"
+      *ngFor="let t of tabs"
+      class="inv-tab"
+      [class.inv-tab--active]="tab === t.id"
+      (click)="setTab(t.id)"
+      [attr.aria-current]="tab === t.id ? 'page' : null"
+    >
+      <span class="inv-tab__icon" aria-hidden="true">{{ t.icon }}</span>
+      <span class="inv-tab__label">{{ t.label }}</span>
+      <span class="inv-tab__hint">{{ t.hint }}</span>
+    </button>
+  </nav>
+
+  <!-- Textbooks -->
+  <section *ngIf="tab === 'textbooks'" class="inv-panel">
+    <div class="inv-toolbar">
+      <h2 class="inv-panel-title">Textbook catalog</h2>
+      <div class="inv-toolbar__search">
+        <label class="inv-search">
+          <span class="inv-search__icon" aria-hidden="true">🔍</span>
+          <input type="search" [(ngModel)]="tbSearch" placeholder="Search title, ISBN, grade…" class="inv-search__input" />
+        </label>
+      </div>
+    </div>
+
+    <div class="inv-card inv-card--form" *ngIf="canManageStock">
+      <div class="inv-card__head">
+        <h3 class="inv-card__title">Add catalog title</h3>
+        <p class="inv-card__desc">Creates stock for a new textbook. Copies update live when you issue or return.</p>
+      </div>
+      <div class="inv-grid">
+        <label class="inv-field">Title<span class="inv-req">*</span>
+          <input [(ngModel)]="tbForm.title" class="inv-input" placeholder="e.g. New General Mathematics" />
+        </label>
+        <label class="inv-field">ISBN
+          <input [(ngModel)]="tbForm.isbn" class="inv-input" placeholder="978-..." />
+        </label>
+        <label class="inv-field">Grade
+          <input [(ngModel)]="tbForm.gradeLevel" class="inv-input" placeholder="e.g. Grade 7" />
+        </label>
+        <label class="inv-field">Condition
+          <input [(ngModel)]="tbForm.condition" class="inv-input" />
+        </label>
+        <label class="inv-field">Copies (qty)<span class="inv-req">*</span>
+          <input type="number" min="0" [(ngModel)]="tbForm.quantityTotal" class="inv-input" />
+        </label>
+      </div>
+      <button type="button" class="inv-btn inv-btn--primary" (click)="addTextbook()">Add to catalog</button>
+    </div>
+
+    <div class="inv-table-wrap" *ngIf="filteredTextbooks.length; else noTb">
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>ISBN</th>
+            <th>Grade</th>
+            <th>Stock</th>
+            <th>Condition</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let t of filteredTextbooks">
+            <td><span class="inv-cell-strong">{{ t.title }}</span></td>
+            <td><code class="inv-code">{{ t.isbn || '—' }}</code></td>
+            <td>{{ t.gradeLevel || '—' }}</td>
+            <td>
+              <span class="inv-stock-bar" [attr.title]="t.quantityAvailable + ' of ' + t.quantityTotal + ' available'">
+                <span class="inv-stock-bar__fill" [style.width.%]="t.quantityTotal ? (100 * t.quantityAvailable / t.quantityTotal) : 0"></span>
+              </span>
+              <span class="inv-stock-label">{{ t.quantityAvailable }} / {{ t.quantityTotal }}</span>
+            </td>
+            <td><span class="inv-badge" [ngClass]="statusClass(t.condition === 'good' ? 'active' : 'pending')">{{ t.condition }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #noTb>
+      <div class="inv-empty">
+        <span class="inv-empty__icon" aria-hidden="true">📭</span>
+        <p class="inv-empty__title">
+          {{ loading ? 'Loading catalog…' : (tbSearch ? 'No titles match your search' : 'No textbooks yet') }}
+        </p>
+        <p class="inv-empty__text" *ngIf="!tbSearch && !loading && canManageStock">Add your first title using the form above.</p>
+      </div>
+    </ng-template>
+  </section>
+
+  <!-- Furniture -->
+  <section *ngIf="tab === 'furniture'" class="inv-panel">
+    <div class="inv-toolbar">
+      <h2 class="inv-panel-title">Furniture</h2>
+      <div class="inv-toolbar__search">
+        <label class="inv-search">
+          <span class="inv-search__icon" aria-hidden="true">🔍</span>
+          <input type="search" [(ngModel)]="furnSearch" placeholder="Search code, type, location…" class="inv-search__input" />
+        </label>
+      </div>
+    </div>
+
+    <div class="inv-card inv-card--form" *ngIf="canManageStock">
+      <div class="inv-card__head">
+        <h3 class="inv-card__title">Register asset</h3>
+        <p class="inv-card__desc">Track desks and chairs by code and location.</p>
+      </div>
+      <div class="inv-grid">
+        <label class="inv-field">Type
+          <select [(ngModel)]="furnForm.itemType" class="inv-input">
+            <option value="desk">Desk</option>
+            <option value="chair">Chair</option>
+          </select>
+        </label>
+        <label class="inv-field">Asset ID<span class="inv-req">*</span>
+          <input [(ngModel)]="furnForm.itemCode" class="inv-input" placeholder="e.g. DK-104" />
+        </label>
+        <label class="inv-field">Condition
+          <input [(ngModel)]="furnForm.condition" class="inv-input" />
+        </label>
+        <label class="inv-field">Location / classroom
+          <input [(ngModel)]="furnForm.locationLabel" class="inv-input" placeholder="Room or block" />
+        </label>
+      </div>
+      <button type="button" class="inv-btn inv-btn--primary" (click)="addFurniture()">Save item</button>
+    </div>
+
+    <div class="inv-table-wrap" *ngIf="filteredFurniture.length; else noFn">
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Location</th>
+            <th>Condition</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let f of filteredFurniture">
+            <td><code class="inv-code">{{ f.itemCode }}</code></td>
+            <td><span class="inv-badge inv-badge--neutral">{{ f.itemType }}</span></td>
+            <td><span class="inv-badge" [ngClass]="statusClass(f.status)">{{ f.status }}</span></td>
+            <td>{{ f.locationLabel || '—' }}</td>
+            <td>{{ f.condition }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #noFn>
+      <div class="inv-empty">
+        <span class="inv-empty__icon" aria-hidden="true">🪑</span>
+        <p class="inv-empty__title">{{ furnSearch ? 'No items match' : loading ? 'Loading…' : 'No furniture registered' }}</p>
+      </div>
+    </ng-template>
+  </section>
+
+  <!-- Ops -->
+  <section *ngIf="tab === 'ops'" class="inv-panel">
+    <div class="inv-toolbar">
+      <h2 class="inv-panel-title">Issuance &amp; returns</h2>
+      <div class="inv-toolbar__search">
+        <label class="inv-search">
+          <span class="inv-search__icon" aria-hidden="true">🔍</span>
+          <input type="search" [(ngModel)]="opsSearch" placeholder="Filter by student or item…" class="inv-search__input" />
+        </label>
+      </div>
+    </div>
+
+    <div class="inv-card inv-card--form" *ngIf="canManageStock">
+      <div class="inv-split">
+        <div class="inv-split__col">
+          <div class="inv-card__head">
+            <h3 class="inv-card__title">Textbook issue</h3>
+            <p class="inv-card__desc">Permanent assignment or timed library loan.</p>
+          </div>
+          <div class="inv-grid">
+            <label class="inv-field">Mode
+              <select [(ngModel)]="op.mode" class="inv-input">
+                <option value="perm">Permanent</option>
+                <option value="loan">Library loan</option>
+              </select>
+            </label>
+            <label class="inv-field">Textbook
+              <select [(ngModel)]="op.catalogId" class="inv-input">
+                <option value="">Select…</option>
+                <option *ngFor="let t of textbooks" [value]="t.id">{{ t.title }} ({{ t.quantityAvailable }} avail)</option>
+              </select>
+            </label>
+            <label class="inv-field">Student
+              <select [(ngModel)]="op.studentId" class="inv-input">
+                <option value="">Select…</option>
+                <option *ngFor="let s of students" [value]="s.id">{{ studentLabel(s) }}</option>
+              </select>
+            </label>
+            <label class="inv-field" *ngIf="op.mode === 'loan'">Due date
+              <input type="date" [(ngModel)]="op.loanDueAt" class="inv-input" />
+            </label>
+            <label class="inv-field inv-field--full">Notes
+              <textarea [(ngModel)]="op.notes" class="inv-input inv-input--area" rows="2" placeholder="Optional"></textarea>
+            </label>
+          </div>
+          <button type="button" class="inv-btn inv-btn--primary" (click)="doIssue()">Issue textbook</button>
+        </div>
+        <div class="inv-split__col">
+          <div class="inv-card__head">
+            <h3 class="inv-card__title">Furniture issue</h3>
+            <p class="inv-card__desc">Assign a desk or chair to a student.</p>
+          </div>
+          <div class="inv-grid">
+            <label class="inv-field">Item
+              <select [(ngModel)]="op.furnitureId" class="inv-input">
+                <option value="">Select…</option>
+                <option *ngFor="let f of furniture" [value]="f.id" [disabled]="f.status !== 'available'">
+                  {{ f.itemCode }} — {{ f.itemType }} ({{ f.status }})
+                </option>
+              </select>
+            </label>
+          </div>
+          <button type="button" class="inv-btn inv-btn--primary" (click)="doFurnIssue()">Issue furniture</button>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="inv-subsection-title">Active textbook issuances</h3>
+    <div class="inv-table-wrap" *ngIf="filteredActiveTb.length; else noOpsTb">
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Book</th>
+            <th>Type</th>
+            <th>Due</th>
+            <th>Status</th>
+            <th *ngIf="canManageStock" class="inv-th-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let i of filteredActiveTb">
+            <td>{{ i.student?.firstName }} {{ i.student?.lastName }}</td>
+            <td>{{ i.catalog?.title }}</td>
+            <td><span class="inv-badge inv-badge--neutral">{{ i.issuanceType }}</span></td>
+            <td>{{ i.loanDueAt ? (i.loanDueAt | date: 'mediumDate') : '—' }}</td>
+            <td><span class="inv-badge" [ngClass]="statusClass(i.status)">{{ i.status }}</span></td>
+            <td *ngIf="canManageStock" class="inv-td-actions">
+              <button type="button" class="inv-chip inv-chip--primary" (click)="retTb(i.id)">Return</button>
+              <button type="button" class="inv-chip inv-chip--danger" (click)="lostTb(i.id)">Lost</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #noOpsTb>
+      <div class="inv-empty inv-empty--compact" *ngIf="!opsSearch || activeTbIssuances.length === 0">
+        <p>No active textbook issuances.</p>
+      </div>
+      <div class="inv-empty inv-empty--compact" *ngIf="opsSearch && activeTbIssuances.length">
+        <p>No textbook rows match this filter.</p>
+      </div>
+    </ng-template>
+
+    <h3 class="inv-subsection-title">Furniture issuances</h3>
+    <div class="inv-table-wrap" *ngIf="filteredActiveFurn.length; else noOpsFn">
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Item</th>
+            <th>Status</th>
+            <th *ngIf="canManageStock" class="inv-th-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let i of filteredActiveFurn">
+            <td>{{ i.student?.firstName }} {{ i.student?.lastName }}</td>
+            <td>{{ i.furnitureItem?.itemCode }} ({{ i.furnitureItem?.itemType }})</td>
+            <td><span class="inv-badge" [ngClass]="statusClass(i.status)">{{ i.status }}</span></td>
+            <td *ngIf="canManageStock" class="inv-td-actions">
+              <button type="button" class="inv-chip inv-chip--primary" (click)="retFurn(i.id)">Return</button>
+              <button type="button" class="inv-chip inv-chip--danger" (click)="lostFurn(i.id)">Lost</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #noOpsFn>
+      <div class="inv-empty inv-empty--compact"><p>No active furniture issuances.</p></div>
+    </ng-template>
+  </section>
+
+  <!-- Fines -->
+  <section *ngIf="tab === 'fines'" class="inv-panel">
+    <div class="inv-toolbar">
+      <h2 class="inv-panel-title">Fines</h2>
+      <div class="inv-toolbar__search">
+        <label class="inv-search">
+          <span class="inv-search__icon" aria-hidden="true">🔍</span>
+          <input type="search" [(ngModel)]="finesSearch" placeholder="Student, type, status…" class="inv-search__input" />
+        </label>
+      </div>
+    </div>
+
+    <div class="inv-card inv-card--form" *ngIf="canAssessFines">
+      <div class="inv-card__head">
+        <h3 class="inv-card__title">Record fine</h3>
+        <p class="inv-card__desc">Damage, loss, or manual overdue adjustments.</p>
+      </div>
+      <div class="inv-grid">
+        <label class="inv-field">Student
+          <select [(ngModel)]="fineForm.studentId" class="inv-input">
+            <option value="">Select…</option>
+            <option *ngFor="let s of students" [value]="s.id">{{ studentLabel(s) }}</option>
+          </select>
+        </label>
+        <label class="inv-field">Type
+          <select [(ngModel)]="fineForm.fineType" class="inv-input">
+            <option value="furniture_damage">Furniture damage</option>
+            <option value="lost_book">Lost book</option>
+            <option value="lost_furniture">Lost furniture</option>
+            <option value="loan_overdue">Loan overdue (manual)</option>
+          </select>
+        </label>
+        <label class="inv-field">Amount
+          <input type="number" step="0.01" min="0" [(ngModel)]="fineForm.amount" class="inv-input" />
+        </label>
+        <label class="inv-field inv-field--full">Description
+          <textarea [(ngModel)]="fineForm.description" class="inv-input inv-input--area" rows="2"></textarea>
+        </label>
+      </div>
+      <button type="button" class="inv-btn inv-btn--primary" (click)="addFine()">Save fine</button>
+    </div>
+
+    <div class="inv-table-wrap" *ngIf="filteredFines.length; else noFines">
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th *ngIf="canAssessFines" class="inv-th-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let f of filteredFines">
+            <td>{{ f.student?.firstName }} {{ f.student?.lastName }}</td>
+            <td>{{ fineTypeLabel(f.fineType) }}</td>
+            <td class="inv-num">{{ f.amount | number: '1.2-2' }}</td>
+            <td><span class="inv-badge" [ngClass]="statusClass(f.status)">{{ f.status }}</span></td>
+            <td>{{ f.createdAt | date: 'medium' }}</td>
+            <td *ngIf="canAssessFines" class="inv-td-actions">
+              <ng-container *ngIf="f.status === 'pending'">
+                <button type="button" class="inv-chip inv-chip--primary" (click)="markFinePaid(f.id, 'paid')">Paid</button>
+                <button type="button" class="inv-chip" (click)="markFinePaid(f.id, 'waived')">Waive</button>
+                <button type="button" class="inv-chip" (click)="markFinePaid(f.id, 'invoiced')">Invoiced</button>
+              </ng-container>
+              <span *ngIf="f.status !== 'pending'" class="inv-muted">—</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #noFines>
+      <div class="inv-empty"><p>No fines {{ finesSearch ? 'match this search' : 'recorded yet' }}.</p></div>
+    </ng-template>
+  </section>
+
+  <!-- Reports -->
+  <section *ngIf="tab === 'reports'" class="inv-panel">
+    <div class="inv-toolbar">
+      <h2 class="inv-panel-title">Reports</h2>
+    </div>
+    <div class="inv-card inv-card--inline">
+      <label class="inv-field inv-field--inline">From
+        <input type="date" [(ngModel)]="rFrom" class="inv-input" />
+      </label>
+      <label class="inv-field inv-field--inline">To
+        <input type="date" [(ngModel)]="rTo" class="inv-input" />
+      </label>
+      <button type="button" class="inv-btn inv-btn--primary" (click)="runReports()" [disabled]="reportsLoading">
+        <span [class.inv-spin]="reportsLoading">↻</span>
+        {{ reportsLoading ? 'Running…' : 'Run reports' }}
+      </button>
+    </div>
+
+    <div class="inv-reports-loading" *ngIf="reportsLoading">
+      <div class="inv-skeleton inv-skeleton--line"></div>
+      <div class="inv-skeleton inv-skeleton--line inv-skeleton--short"></div>
+    </div>
+
+    <ng-container *ngIf="!reportsLoading && reportLost !== null">
+      <h3 class="inv-subsection-title">Lost items</h3>
+      <p class="inv-muted" *ngIf="!lostTextbookRows.length && !lostFurnitureRows.length">No lost items in this range.</p>
+      <div class="inv-table-wrap" *ngIf="lostTextbookRows.length">
+        <h4 class="inv-mini-title">Textbooks</h4>
+        <table class="inv-table">
+          <thead>
+            <tr><th>Student</th><th>Title</th><th>Lost reported</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of lostTextbookRows">
+              <td>{{ r.student?.firstName }} {{ r.student?.lastName }}</td>
+              <td>{{ r.catalog?.title }}</td>
+              <td>{{ r.lostReportedAt | date:'medium' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="inv-table-wrap" *ngIf="lostFurnitureRows.length">
+        <h4 class="inv-mini-title">Furniture</h4>
+        <table class="inv-table">
+          <thead>
+            <tr><th>Student</th><th>Item</th><th>Lost reported</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of lostFurnitureRows">
+              <td>{{ r.student?.firstName }} {{ r.student?.lastName }}</td>
+              <td>{{ r.furnitureItem?.itemCode }} ({{ r.furnitureItem?.itemType }})</td>
+              <td>{{ r.lostReportedAt | date:'medium' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </ng-container>
+
+    <h3 class="inv-subsection-title">Textbook issuance (period)</h3>
+    <div class="inv-table-wrap" *ngIf="reportTb?.length; else noRepTb">
+      <table class="inv-table">
+        <thead>
+          <tr><th>Student</th><th>Title</th><th>Status</th><th>Type</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of reportTb">
+            <td>{{ r.student?.firstName }} {{ r.student?.lastName }}</td>
+            <td>{{ r.catalog?.title }}</td>
+            <td><span class="inv-badge" [ngClass]="statusClass(r.status)">{{ r.status }}</span></td>
+            <td>{{ r.issuanceType }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #noRepTb><p class="inv-muted">Run a report with a date range (optional) to load data.</p></ng-template>
+
+    <h3 class="inv-subsection-title">Furniture issuance (period)</h3>
+    <div class="inv-table-wrap" *ngIf="reportFurn?.length; else noRepFurn">
+      <table class="inv-table">
+        <thead>
+          <tr><th>Student</th><th>Item</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of reportFurn">
+            <td>{{ r.student?.firstName }} {{ r.student?.lastName }}</td>
+            <td>{{ r.furnitureItem?.itemCode }} ({{ r.furnitureItem?.itemType }})</td>
+            <td><span class="inv-badge" [ngClass]="statusClass(r.status)">{{ r.status }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #noRepFurn><p class="inv-muted">—</p></ng-template>
+
+    <h3 class="inv-subsection-title">Loan history</h3>
+    <div class="inv-table-wrap" *ngIf="reportLoans?.length; else noLoans">
+      <table class="inv-table">
+        <thead>
+          <tr><th>Student</th><th>Title</th><th>Borrowed</th><th>Due</th><th>Returned</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of reportLoans">
+            <td>{{ r.student?.firstName }} {{ r.student?.lastName }}</td>
+            <td>{{ r.catalog?.title }}</td>
+            <td>{{ r.createdAt | date:'mediumDate' }}</td>
+            <td>{{ r.loanDueAt | date:'mediumDate' }}</td>
+            <td>{{ r.returnedAt ? (r.returnedAt | date:'mediumDate') : '—' }}</td>
+            <td><span class="inv-badge" [ngClass]="statusClass(r.status)">{{ r.status }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #noLoans><p class="inv-muted">—</p></ng-template>
+
+    <h3 class="inv-subsection-title">Fines (filtered)</h3>
+    <div class="inv-table-wrap" *ngIf="reportFines?.length; else noRepFi">
+      <table class="inv-table">
+        <thead>
+          <tr><th>Student</th><th>Type</th><th>Amount</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let f of reportFines">
+            <td>{{ f.student?.firstName }} {{ f.student?.lastName }}</td>
+            <td>{{ fineTypeLabel(f.fineType) }}</td>
+            <td class="inv-num">{{ f.amount | number:'1.2-2' }}</td>
+            <td><span class="inv-badge" [ngClass]="statusClass(f.status)">{{ f.status }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #noRepFi><p class="inv-muted">—</p></ng-template>
+  </section>
+
+  <!-- Settings -->
+  <section *ngIf="tab === 'settings'" class="inv-panel">
+    <div class="inv-toolbar">
+      <h2 class="inv-panel-title">Loan &amp; fine defaults</h2>
+    </div>
+    <div class="inv-card">
+      <p class="inv-card__desc">Used for new loans and overdue calculations. Admins can save; others view.</p>
+      <div class="inv-grid" *ngIf="settings">
+        <label class="inv-field">Loan days (default)
+          <input type="number" min="1" [(ngModel)]="settings.loanDaysDefault" class="inv-input" />
+        </label>
+        <label class="inv-field">Overdue fine / day
+          <input type="number" step="0.01" min="0" [(ngModel)]="settings.overdueFinePerDay" class="inv-input" />
+        </label>
+        <label class="inv-field">Loss grace (days after due)
+          <input type="number" min="0" [(ngModel)]="settings.lossGraceDaysAfterDue" class="inv-input" />
+        </label>
+      </div>
+      <button
+        *ngIf="auth.getCurrentUser()?.role === 'admin' || auth.getCurrentUser()?.role === 'superadmin'"
+        type="button"
+        class="inv-btn inv-btn--primary"
+        (click)="saveSettings()"
+      >
+        Save settings
+      </button>
+    </div>
+  </section>
+</div>

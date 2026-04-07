@@ -70,6 +70,10 @@
           <span class="sidebar-icon">💰</span>
           <span class="sidebar-text">My Invoice Statement</span>
         </a>
+        <a routerLink="/student/inventory" routerLinkActive="active" class="sidebar-item" *ngIf="canAccessModule('inventory')">
+          <span class="sidebar-icon">📚</span>
+          <span class="sidebar-text">My Books &amp; Fines</span>
+        </a>
 
         <!-- Student E-Learning menu -->
         <div class="sidebar-menu">
@@ -407,6 +411,12 @@
           </a>
         </div>
       </div>
+
+      <!-- Inventory Manager (textbooks, furniture, loans, fines) -->
+      <a routerLink="/inventory" routerLinkActive="active" class="sidebar-item" *ngIf="isAdmin() || isSuperAdmin() || canAccessModule('inventory')">
+        <span class="sidebar-icon">📦</span>
+        <span class="sidebar-text">Inventory Manager</span>
+      </a>
 
       <!-- Reports Management section removed per request -->
 

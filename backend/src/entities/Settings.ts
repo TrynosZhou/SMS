@@ -123,6 +123,7 @@ export class Settings {
       logisticsManager?: boolean;
       classManager?: boolean;
       teacherManager?: boolean;
+      inventory?: boolean;
     };
     teachers?: {
       students?: boolean;
@@ -134,6 +135,8 @@ export class Settings {
       finance?: boolean;
       settings?: boolean;
       payroll?: boolean;
+      /** Librarian / stock management */
+      inventory?: boolean;
     };
     parents?: {
       reportCards?: boolean;
@@ -148,6 +151,7 @@ export class Settings {
       dashboard?: boolean;
       settings?: boolean;
       payroll?: boolean;
+      inventory?: boolean;
     };
     admin?: {
       students?: boolean;
@@ -162,6 +166,7 @@ export class Settings {
       settings?: boolean;
       dashboard?: boolean;
       payroll?: boolean;
+      inventory?: boolean;
     };
     students?: {
       dashboard?: boolean;
@@ -170,6 +175,8 @@ export class Settings {
       reportCards?: boolean;
       finance?: boolean;
       payroll?: boolean;
+      /** View own textbooks / furniture / fines */
+      inventory?: boolean;
     };
     demoAccount?: {
       dashboard?: boolean;
@@ -197,6 +204,16 @@ export class Settings {
   } | null;
 
   // Payroll: loan interest rates (% per repayment period) and banks for salary deposit
+  @Column({ type: 'json', nullable: true })
+  inventorySettings: {
+    /** Default loan period in days for library borrows */
+    loanDaysDefault?: number;
+    /** Currency units charged per calendar day overdue */
+    overdueFinePerDay?: number;
+    /** After due date + grace, item may be flagged lost / accountability */
+    lossGraceDaysAfterDue?: number;
+  } | null;
+
   @Column({ type: 'json', nullable: true })
   payrollSettings: {
     /** Interest rate (%) when loan is repaid in 1 month */

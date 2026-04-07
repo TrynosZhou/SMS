@@ -386,4 +386,18 @@
       </button>
     </div>
   </form>
+
+  <section class="form-section section-card inventory-on-student" *ngIf="isEdit && student?.id && moduleAccess.canAccessModule('inventory')">
+    <div class="section-header">
+      <span class="section-accent"></span>
+      <div>
+        <h2>
+          <span class="section-icon">📦</span>
+          Inventory &amp; library
+        </h2>
+        <p class="section-description">Issued books, furniture, loans, and fines for this student</p>
+      </div>
+    </div>
+    <app-student-inventory-panel [studentId]="student.id"></app-student-inventory-panel>
+  </section>
 </div>

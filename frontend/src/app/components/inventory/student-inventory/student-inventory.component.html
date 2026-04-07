@@ -1,0 +1,42 @@
+<div class="si-wrap">
+  <h1>📚 My textbooks &amp; furniture</h1>
+  <p class="si-sub">Issued items and inventory fine balance</p>
+  <div *ngIf="loading">Loading…</div>
+  <div class="si-err" *ngIf="err">{{ err }}</div>
+  <ng-container *ngIf="summary as s">
+    <div class="si-flag" *ngIf="s.hasUnpaidInventoryFines">
+      ⚠️ You have pending inventory fines: {{ s.pendingFinesTotal | number: '1.2-2' }} ({{ s.pendingFinesCount }} line(s))
+    </div>
+    <section class="si-block">
+      <h2>Textbooks</h2>
+      <ul>
+        <li *ngFor="let i of s.textbookIssuances">
+          <strong>{{ i.catalog?.title }}</strong> — {{ i.issuanceType }}
+          <span *ngIf="i.issuanceType === 'loan'"> · due {{ i.loanDueAt | date: 'mediumDate' }}</span>
+          · {{ i.status }}
+        </li>
+      </ul>
+      <p *ngIf="!s.textbookIssuances?.length" class="si-empty">No textbook records.</p>
+    </section>
+    <section class="si-block">
+      <h2>Furniture</h2>
+      <ul>
+        <li *ngFor="let i of s.furnitureIssuances">
+          <strong>{{ i.furnitureItem?.itemCode }}</strong> ({{ i.furnitureItem?.itemType }}) — {{ i.status }}
+        </li>
+      </ul>
+      <p *ngIf="!s.furnitureIssuances?.length" class="si-empty">No furniture assigned.</p>
+    </section>
+    <section class="si-block" *ngIf="s.fines?.length">
+      <h2>Fine history</h2>
+      <table class="si-table">
+        <tr *ngFor="let f of s.fines">
+          <td>{{ f.fineType }}</td>
+          <td>{{ f.amount | number: '1.2-2' }}</td>
+          <td>{{ f.status }}</td>
+          <td>{{ f.description }}</td>
+        </tr>
+      </table>
+    </section>
+  </ng-container>
+</div>
