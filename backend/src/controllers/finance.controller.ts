@@ -2532,9 +2532,8 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       return amt;
     };
 
-    // Fee-type reporting: totals by Tuition, DH Fee (Day Scholar Meals), Transport Fee.
-    // Boarders: tuition only. Day scholars: tuition + optional Transport and/or DH.
-    // Allocate each payment so Tuition + Transport + DH = payment exactly.
+    // Tuition / "all": split payment across components using invoice weights (may scale DH/transport if they exceed invoice).
+    // Transport / DH logistics views: show only settings-based flat fees ($transportCost, full or 50% DH) per line — never a proportion of cash paid.
     let totalRawPayments = 0;
     let totalTransportSum = 0;
     let totalDHSum = 0;
@@ -2542,10 +2541,11 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
 
     const allocatedItems = allLogs.map((l: any) => {
       const invAmount = parseFloat(String(l.invoiceAmount ?? 0)) || 0;
-      let transportAmt = getTransportAmount(l);
-      let dhAmt = getDHAmount(l);
+      const transportFlat = getTransportAmount(l);
+      const dhFlat = getDHAmount(l);
 
-      // Cap transport+DH so they never exceed invoice amount (avoids overstating when invoice has less)
+      let transportAmt = transportFlat;
+      let dhAmt = dhFlat;
       if (invAmount > 0 && transportAmt + dhAmt > invAmount) {
         const scale = invAmount / (transportAmt + dhAmt);
         transportAmt = Math.round(transportAmt * scale);
@@ -2556,47 +2556,50 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       const denom = invAmount > 0 ? invAmount : (transportAmt + dhAmt + tuitionAmt);
       const safeDenom = denom > 0 ? denom : 1;
       const payment = parseFloat(String(l.amountPaid ?? 0)) || 0;
-      const effectivePayment = payment;
 
-      // Allocate proportionally with 2-decimal rounding; tuition is remainder to keep exact equality.
       const transportPortion = transportAmt > 0
-        ? Math.round(((effectivePayment * transportAmt) / safeDenom) * 100) / 100
+        ? Math.round(((payment * transportAmt) / safeDenom) * 100) / 100
         : 0;
       const dhPortion = dhAmt > 0
-        ? Math.round(((effectivePayment * dhAmt) / safeDenom) * 100) / 100
+        ? Math.round(((payment * dhAmt) / safeDenom) * 100) / 100
         : 0;
-      const tuitionPortion = Math.round((effectivePayment - transportPortion - dhPortion) * 100) / 100;
+      const tuitionPortion = Math.round((payment - transportPortion - dhPortion) * 100) / 100;
       const tuitionWithOverpayment = Math.max(0, tuitionPortion);
 
       totalRawPayments += payment;
-      totalTransportSum += transportPortion;
-      totalDHSum += dhPortion;
-      totalTuitionSum += tuitionWithOverpayment;
 
       let allocated = payment;
       if (filterFeeType === 'transport') {
-        allocated = transportPortion;
+        allocated = transportFlat;
+        totalTransportSum += transportFlat;
       } else if (filterFeeType === 'dh') {
-        allocated = dhPortion;
+        allocated = dhFlat;
+        totalDHSum += dhFlat;
       } else if (filterFeeType === 'tuition') {
         allocated = tuitionWithOverpayment;
+        totalTuitionSum += tuitionWithOverpayment;
+        totalTransportSum += transportPortion;
+        totalDHSum += dhPortion;
       } else {
         allocated = payment;
+        totalTuitionSum += tuitionWithOverpayment;
+        totalTransportSum += transportPortion;
+        totalDHSum += dhPortion;
       }
 
       return {
         ...l,
         amountPaid: allocated,
         tuitionAmount: Math.round(tuitionWithOverpayment * 100) / 100,
-        transportAmount: Math.round(transportPortion * 100) / 100,
-        dhAmount: Math.round(dhPortion * 100) / 100
+        transportAmount:
+          filterFeeType === 'transport' ? transportFlat : Math.round(transportPortion * 100) / 100,
+        dhAmount: filterFeeType === 'dh' ? dhFlat : Math.round(dhPortion * 100) / 100
       };
     });
 
     const rawTuitionTotal = Math.round(totalTuitionSum * 100) / 100;
     const rawDHTotal = Math.round(totalDHSum * 100) / 100;
     const rawTransportTotal = Math.round(totalTransportSum * 100) / 100;
-    const rawReceiptsSum = Math.round((rawTuitionTotal + rawDHTotal + rawTransportTotal) * 100) / 100;
 
     // Pagination: default 50 per page, max 100
     const CASH_RECEIPTS_DEFAULT_LIMIT = 50;
@@ -2723,14 +2726,14 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       totalPaidFromInvoices,
       totalInvoiced,
       invoicesCount,
-      /** Financial summary by fee type: scaled so Tuition+DH+Transport = Total Collected, table column sums match. */
+      /** Tuition/all: proportional split. Transport/DH tabs: sums of settings flat fees per receipt line (not a % of payment). */
       totalTuitionCollected,
       totalDHFeeCollected,
       totalTransportFeeCollected,
       totalTuition: totalTuitionCollected,
       totalTransport: totalTransportFeeCollected,
       totalDH: totalDHFeeCollected,
-      /** Sum of scaled fee-type totals = Total Collected. */
+      /** For feeType=all, matches total cash; for transport/dh, sum of flat fee lines (can differ from cash). */
       totalReceiptsSum: totalCashReceived,
       studentsWithInvoices,
       studentsFullyPaid,

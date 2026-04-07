@@ -1,0 +1,231 @@
+<div class="cl-page">
+  <header class="cl-hero" aria-labelledby="cl-page-title">
+    <div class="cl-hero__bg" aria-hidden="true"></div>
+    <div class="cl-hero__inner">
+      <div class="cl-hero__text">
+        <p class="cl-kicker">Finance · Logistics</p>
+        <h1 id="cl-page-title">Logistics receipts</h1>
+        <p class="cl-lead">
+          Day-scholar <strong>transport</strong> and <strong>dining hall (DH)</strong> lines use your
+          <a routerLink="/settings" class="cl-link">School Settings</a> rates — not a split of cash paid.
+        </p>
+        <div class="cl-hero__chips" *ngIf="data || term">
+          <span class="cl-chip" *ngIf="term"><span class="cl-chip__dot"></span>{{ term }}</span>
+          <span class="cl-chip cl-chip--accent" *ngIf="activeTermBadge">{{ activeTermBadge }}</span>
+          <span class="cl-chip cl-chip--muted" *ngIf="lastRefreshed">Updated {{ formatTime(lastRefreshed) }}</span>
+        </div>
+      </div>
+      <div class="cl-hero__actions">
+        <button
+          type="button"
+          class="cl-btn cl-btn--teal"
+          (click)="downloadFullPdf()"
+          [disabled]="downloadingPdf"
+          title="Download combined cash receipts PDF for the term"
+        >
+          <span class="cl-btn__icon" aria-hidden="true">{{ downloadingPdf ? '⏳' : '📄' }}</span>
+          {{ downloadingPdf ? 'Preparing…' : 'Full term PDF' }}
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="cl-tabs" role="tablist" aria-label="Receipt type">
+    <button
+      type="button"
+      role="tab"
+      class="cl-tab"
+      [class.cl-tab--active]="serviceTab === 'transport'"
+      [attr.aria-selected]="serviceTab === 'transport'"
+      (click)="setTab('transport')"
+    >
+      <span class="cl-tab__icon" aria-hidden="true">🚌</span>
+      Transport
+    </button>
+    <button
+      type="button"
+      role="tab"
+      class="cl-tab"
+      [class.cl-tab--active]="serviceTab === 'dh'"
+      [attr.aria-selected]="serviceTab === 'dh'"
+      (click)="setTab('dh')"
+    >
+      <span class="cl-tab__icon" aria-hidden="true">🍽️</span>
+      DH services
+    </button>
+  </div>
+  <p class="cl-tab-desc">{{ tabTitle }}</p>
+
+  <div class="cl-alert cl-alert--error" *ngIf="error" role="alert">
+    <span class="cl-alert__icon" aria-hidden="true">⚠️</span>
+    <span>{{ error }}</span>
+    <button type="button" class="cl-alert__close" (click)="error = ''" aria-label="Dismiss">×</button>
+  </div>
+
+  <section class="cl-panel cl-panel--toolbar" aria-label="Filters">
+    <div class="cl-toolbar-grid">
+      <div class="cl-field">
+        <label for="cl-term">Term</label>
+        <select id="cl-term" [(ngModel)]="term" (ngModelChange)="onTermChange()" [ngModelOptions]="{standalone: true}">
+          <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
+          <option *ngIf="term && availableTerms.indexOf(term) < 0" [value]="term">{{ term }}</option>
+        </select>
+      </div>
+      <div class="cl-field">
+        <label for="cl-from">From</label>
+        <input id="cl-from" type="date" [(ngModel)]="startDate" [ngModelOptions]="{standalone: true}" />
+      </div>
+      <div class="cl-field">
+        <label for="cl-to">To</label>
+        <input id="cl-to" type="date" [(ngModel)]="endDate" [ngModelOptions]="{standalone: true}" />
+      </div>
+      <div class="cl-field cl-field--grow">
+        <label for="cl-search">Search this page</label>
+        <input
+          id="cl-search"
+          type="search"
+          [(ngModel)]="searchQuery"
+          [ngModelOptions]="{standalone: true}"
+          placeholder="Name, student no., invoice, receipt…"
+          autocomplete="off"
+        />
+      </div>
+    </div>
+    <div class="cl-toolbar-row">
+      <div class="cl-presets">
+        <span class="cl-presets__label">Quick dates</span>
+        <button type="button" class="cl-btn cl-btn--ghost cl-btn--sm" (click)="applyPreset('month')" [disabled]="loading">This month</button>
+        <button type="button" class="cl-btn cl-btn--ghost cl-btn--sm" (click)="applyPreset('30d')" [disabled]="loading">Last 30 days</button>
+      </div>
+      <div class="cl-toolbar-actions">
+        <button type="button" class="cl-btn cl-btn--primary" (click)="applyFilters()" [disabled]="loading">Apply filters</button>
+        <button type="button" class="cl-btn cl-btn--ghost" (click)="clearDates()" [disabled]="loading">Clear dates</button>
+        <button type="button" class="cl-btn cl-btn--ghost" (click)="load()" [disabled]="loading" title="Reload from server">
+          <span aria-hidden="true">↺</span> Refresh
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Skeleton loading -->
+  <div class="cl-skeleton-block" *ngIf="loading" aria-busy="true" aria-label="Loading">
+    <div class="cl-kpi-skel">
+      <div class="cl-skel cl-skel--card" *ngFor="let _ of [1,2,3]"></div>
+    </div>
+    <div class="cl-skel cl-skel--bar"></div>
+    <div class="cl-skel-table">
+      <div class="cl-skel cl-skel--row" *ngFor="let _ of [1,2,3,4,5,6]"></div>
+    </div>
+  </div>
+
+  <div class="cl-kpi-grid" *ngIf="!loading && data">
+    <article class="cl-kpi cl-kpi--main">
+      <div class="cl-kpi__icon" aria-hidden="true">{{ serviceTab === 'transport' ? '🚌' : '🍽️' }}</div>
+      <div>
+        <p class="cl-kpi__label">Total {{ serviceTab === 'transport' ? 'transport' : 'DH' }} (term view)</p>
+        <p class="cl-kpi__value">{{ currencySymbol }}{{ formatMoney(totalLine) }}</p>
+        <p class="cl-kpi__hint" *ngIf="serviceTab === 'transport'">Settings: {{ currencySymbol }}{{ formatMoney(transportRate) }} per eligible day scholar</p>
+        <p class="cl-kpi__hint" *ngIf="serviceTab === 'dh'">Settings: {{ currencySymbol }}{{ formatMoney(dhRate) }} full · 50% for staff child / exempt</p>
+      </div>
+    </article>
+    <article class="cl-kpi">
+      <div class="cl-kpi__icon cl-kpi__icon--muted" aria-hidden="true">📋</div>
+      <div>
+        <p class="cl-kpi__label">Matching lines</p>
+        <p class="cl-kpi__value cl-kpi__value--sm">{{ data.total ?? 0 }}</p>
+        <p class="cl-kpi__hint">Receipt rows for this service</p>
+      </div>
+    </article>
+    <article class="cl-kpi">
+      <div class="cl-kpi__icon cl-kpi__icon--muted" aria-hidden="true">📑</div>
+      <div>
+        <p class="cl-kpi__label">Pagination</p>
+        <p class="cl-kpi__value cl-kpi__value--sm">Page {{ data.page }} / {{ data.totalPages }}</p>
+        <p class="cl-kpi__hint" *ngIf="data.total">Rows {{ rangeLabel }} of {{ data.total }}</p>
+      </div>
+    </article>
+  </div>
+
+  <section class="cl-panel cl-panel--table" *ngIf="!loading && data && items.length === 0">
+    <div class="cl-empty">
+      <div class="cl-empty__art" aria-hidden="true">📭</div>
+      <h2 class="cl-empty__title">No receipts for this view</h2>
+      <p class="cl-empty__text">Try another term, clear date filters, or switch between Transport and DH.</p>
+      <button type="button" class="cl-btn cl-btn--primary" (click)="clearDates()">Clear date filters</button>
+    </div>
+  </section>
+
+  <section class="cl-panel cl-panel--table" *ngIf="!loading && items.length > 0">
+    <div class="cl-table-head">
+      <div class="cl-table-head__info">
+        <span class="cl-table-head__title">Receipt lines</span>
+        <span class="cl-badge" *ngIf="searchQuery.trim()">{{ filteredItems.length }} / {{ items.length }} on page</span>
+        <span class="cl-muted" *ngIf="!searchQuery.trim()">{{ items.length }} on this page</span>
+      </div>
+      <button type="button" class="cl-btn cl-btn--ghost cl-btn--sm" (click)="exportCsv()" title="Export filtered rows on this page">
+        ⬇ Export CSV
+      </button>
+    </div>
+    <div class="cl-table-scroll">
+      <table class="cl-table">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Date</th>
+            <th scope="col">Student</th>
+            <th scope="col">Stud. no.</th>
+            <th scope="col">Invoice</th>
+            <th scope="col">Receipt</th>
+            <th scope="col">Method</th>
+            <th scope="col" class="cl-num">{{ serviceTab === 'transport' ? 'Transport' : 'DH' }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of filteredItems; let i = index">
+            <td class="cl-mono">{{ (data.page - 1) * limit + items.indexOf(row) + 1 }}</td>
+            <td>{{ formatDate(row.paymentDate) }}</td>
+            <td><strong>{{ row.studentName }}</strong></td>
+            <td class="cl-mono">{{ row.studentNumber || '—' }}</td>
+            <td>
+              <button
+                type="button"
+                class="cl-copy-cell"
+                (click)="copyText('Invoice', row.invoiceNumber)"
+                [title]="'Copy ' + (row.invoiceNumber || '')"
+              >
+                {{ row.invoiceNumber || '—' }}
+                <span class="cl-copy-hint" aria-hidden="true">⎘</span>
+              </button>
+            </td>
+            <td>
+              <button
+                type="button"
+                class="cl-copy-cell"
+                (click)="copyText('Receipt', row.receiptNumber)"
+                [title]="'Copy ' + (row.receiptNumber || '')"
+              >
+                {{ row.receiptNumber || '—' }}
+                <span class="cl-copy-hint" aria-hidden="true">⎘</span>
+              </button>
+            </td>
+            <td>
+              <span [class]="paymentMethodClass(row.paymentMethod)">{{ row.paymentMethod || '—' }}</span>
+            </td>
+            <td class="cl-num cl-amount">{{ currencySymbol }}{{ formatMoney(row.amountPaid) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="cl-search-empty" *ngIf="filteredItems.length === 0 && searchQuery.trim()">No rows match “{{ searchQuery }}” on this page.</p>
+  </section>
+
+  <nav class="cl-pager" *ngIf="!loading && data && (data.totalPages || 1) > 1" aria-label="Pagination">
+    <button type="button" class="cl-btn cl-btn--ghost cl-btn--sm" (click)="goFirstPage()" [disabled]="page <= 1">First</button>
+    <button type="button" class="cl-btn cl-btn--ghost" (click)="prevPage()" [disabled]="page <= 1">Previous</button>
+    <span class="cl-pager__meta">Page <strong>{{ page }}</strong> of {{ data.totalPages }}</span>
+    <button type="button" class="cl-btn cl-btn--ghost" (click)="nextPage()" [disabled]="page >= (data.totalPages || 1)">Next</button>
+    <button type="button" class="cl-btn cl-btn--ghost cl-btn--sm" (click)="goLastPage()" [disabled]="page >= (data.totalPages || 1)">Last</button>
+  </nav>
+
+  <div class="cl-toast" *ngIf="toastMessage" role="status" aria-live="polite">{{ toastMessage }}</div>
+</div>

@@ -60,6 +60,7 @@ import { SafeArrayPipe } from './pipes/safe-array.pipe';
 import { UserManualComponent } from './components/user-manual/user-manual.component';
 import { MarksProgressComponent } from './components/exams/marks-progress/marks-progress.component';
 import { BalanceEnquiryComponent } from './components/finance/balance-enquiry/balance-enquiry.component';
+import { CashLogisticsComponent } from './components/finance/cash-logistics/cash-logistics.component';
 import { AuditComponent } from './components/finance/audit/audit.component';
 import { SendMessageComponent } from './components/messages/send-message/send-message.component';
 import { AccountantInboxComponent } from './components/messages/accountant-inbox/accountant-inbox.component';
@@ -155,6 +156,7 @@ import { StudentInventoryPanelComponent } from './components/inventory/student-i
     UserManualComponent,
     MarksProgressComponent,
     BalanceEnquiryComponent,
+    CashLogisticsComponent,
     AuditComponent,
     SendMessageComponent,
     AccountantInboxComponent,
