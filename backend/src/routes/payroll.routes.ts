@@ -17,6 +17,7 @@ import {
   getPayrollRuns,
   createPayrollRun,
   approvePayrollRun,
+  clearPayrollYear,
   getPayrollEntries,
   updatePayrollEntry,
   addLoanDeduction,
@@ -54,6 +55,7 @@ router.delete('/salary-assignments/:id', ...payAuth, removeSalaryAssignment);
 // Payroll Runs
 router.get('/runs', ...payAuth, getPayrollRuns);
 router.post('/runs', ...payAuth, createPayrollRun);
+router.post('/runs/clear-year', ...payAuth, clearPayrollYear);
 router.put('/runs/:id/approve', ...payAuth, approvePayrollRun);
 
 // Loan accounts (for assignments page and loan overview)

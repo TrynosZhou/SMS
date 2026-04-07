@@ -75,6 +75,11 @@ export class PayrollService {
     return this.http.put(`${this.apiUrl}/runs/${id}/approve`, {});
   }
 
+  /** Delete all payroll runs for a calendar year (Jan–Dec). Requires matching confirmYear. */
+  clearPayrollYear(year: number, confirmYear: number): Observable<any> {
+    return this.http.post(`${this.apiUrl}/runs/clear-year`, { year, confirmYear });
+  }
+
   // Payroll Entries
   getPayrollEntries(runId: string): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/runs/${runId}/entries`);

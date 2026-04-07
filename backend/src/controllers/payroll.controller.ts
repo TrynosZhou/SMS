@@ -18,6 +18,66 @@ import { In, LessThanOrEqual } from 'typeorm';
 
 const parseAmount = (v: any): number => (isFinite(Number(v)) ? Number(v) : 0);
 
+/** Interest % from settings for the chosen repayment tenure (Settings → Payroll). */
+function getLoanRateForTenure(payrollSettings: any, tenureMonths: number): number {
+  const ps = payrollSettings || {};
+  if (tenureMonths === 1) return Number(ps.loanInterestRate1Month ?? 0) || 0;
+  if (tenureMonths === 2) return Number(ps.loanInterestRate2Months ?? 0) || 0;
+  return Number(ps.loanInterestRate3Months ?? 0) || 0;
+}
+
+/** Simple interest on principal; total = principal + interest; per-period amount for equal installments. */
+function computeLoanRepaymentSchedule(
+  principal: number,
+  tenureMonths: 1 | 2 | 3,
+  ratePercent: number
+): { interest: number; totalRepayment: number; installment: number } {
+  const p = Math.round(parseAmount(principal) * 100) / 100;
+  const r = parseAmount(ratePercent);
+  const interest = Math.round((p * (r / 100)) * 100) / 100;
+  const totalRepayment = Math.round((p + interest) * 100) / 100;
+  const m = tenureMonths === 1 ? 1 : tenureMonths === 2 ? 2 : 3;
+  const installment =
+    m <= 1
+      ? totalRepayment
+      : Math.round((totalRepayment / m) * 100) / 100;
+  return { interest, totalRepayment, installment };
+}
+
+/** Create loan account row (or increase balance) and append one schedule row. */
+async function createOrIncrementLoanAccountAndSchedule(
+  loanRepo: any,
+  scheduleRepo: any,
+  teacherId: string | null,
+  ancillaryStaffId: string | null,
+  totalRepayment: number,
+  tenureMonths: number
+): Promise<LoanSchedule> {
+  let account = await loanRepo.findOne({
+    where: teacherId ? { teacherId } : { ancillaryStaffId: ancillaryStaffId! }
+  });
+  if (!account) {
+    account = loanRepo.create({
+      teacherId: teacherId || null,
+      ancillaryStaffId: ancillaryStaffId || null,
+      balance: totalRepayment
+    });
+    await loanRepo.save(account);
+  } else {
+    account.balance = Math.round((parseAmount(account.balance) + totalRepayment) * 100) / 100;
+    account.updatedAt = new Date();
+    await loanRepo.save(account);
+  }
+  const schedule = scheduleRepo.create({
+    teacherId: teacherId || null,
+    ancillaryStaffId: ancillaryStaffId || null,
+    totalAmount: totalRepayment,
+    tenureMonths,
+    amountPaid: 0
+  });
+  return await scheduleRepo.save(schedule);
+}
+
 /** Get monthly loan deduction for an employee from all unpaid schedules (equal installments by tenure). */
 async function getMonthlyLoanDeduction(
   scheduleRepo: any,
@@ -644,6 +704,44 @@ export const approvePayrollRun = async (req: AuthRequest, res: Response) => {
   }
 };
 
+/** Remove every payroll run for a calendar year (months 1–12). Cascades entries and payslip lines. Body: { year, confirmYear } must be equal. */
+export const clearPayrollYear = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+    const year = parseInt(String(req.body?.year), 10);
+    const confirmYear = parseInt(String(req.body?.confirmYear), 10);
+    if (isNaN(year) || year < 2000 || year > 2100) {
+      return res.status(400).json({ message: 'Valid year is required (2000–2100)' });
+    }
+    if (isNaN(confirmYear) || confirmYear !== year) {
+      return res.status(400).json({
+        message: 'Type the same year in both Year and Confirm year fields to proceed.'
+      });
+    }
+
+    const runRepo = AppDataSource.getRepository(PayrollRun);
+    const countBefore = await runRepo.count({ where: { year } });
+    if (countBefore === 0) {
+      return res.json({
+        message: `No payroll runs found for ${year}.`,
+        deletedRuns: 0
+      });
+    }
+
+    const result = await runRepo.delete({ year });
+    const deletedRuns = typeof result.affected === 'number' ? result.affected : countBefore;
+
+    res.json({
+      message: `Removed ${deletedRuns} payroll run(s) for ${year} (all months January–December). Payslips and payroll lines are deleted. Loan account balances and schedules were not changed—adjust those separately if loan repayments had been applied through payroll.`,
+      deletedRuns,
+      year
+    });
+  } catch (error: any) {
+    console.error('clearPayrollYear:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 // --- Payroll Entries ---
 export const getPayrollEntries = async (req: AuthRequest, res: Response) => {
   try {
@@ -713,7 +811,7 @@ export const updatePayrollEntry = async (req: AuthRequest, res: Response) => {
   }
 };
 
-/** Add a loan deduction to a payroll entry. Body: { principal: number, repaymentMonths: 1|2|3 }. Interest from settings. */
+/** Add loan to employee books + first installment on this payslip. Body: { principal, repaymentMonths: 1|2|3 }. Rate from Settings per tenure; 1mo = full P+I once; 2/3mo = equal installments. */
 export const addLoanDeduction = async (req: AuthRequest, res: Response) => {
   try {
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
@@ -724,7 +822,7 @@ export const addLoanDeduction = async (req: AuthRequest, res: Response) => {
     if (principalNum <= 0) {
       return res.status(400).json({ message: 'Principal must be greater than 0' });
     }
-    const months = parseInt(String(repaymentMonths), 10);
+    const months = parseInt(String(repaymentMonths), 10) as 1 | 2 | 3;
     if (![1, 2, 3].includes(months)) {
       return res.status(400).json({ message: 'repaymentMonths must be 1, 2, or 3' });
     }
@@ -733,6 +831,8 @@ export const addLoanDeduction = async (req: AuthRequest, res: Response) => {
     const lineRepo = AppDataSource.getRepository(PayrollEntryLine);
     const runRepo = AppDataSource.getRepository(PayrollRun);
     const settingsRepo = AppDataSource.getRepository(Settings);
+    const loanRepo = AppDataSource.getRepository(EmployeeLoanAccount);
+    const scheduleRepo = AppDataSource.getRepository(LoanSchedule);
 
     const entry = await entryRepo.findOne({
       where: { id },
@@ -743,29 +843,57 @@ export const addLoanDeduction = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Cannot add loan deduction to approved payroll run' });
     }
 
+    const tid = entry.teacherId || null;
+    const aid = entry.ancillaryStaffId || null;
+    if (!tid && !aid) {
+      return res.status(400).json({ message: 'Payroll entry has no linked employee' });
+    }
+
     const settingsList = await settingsRepo.find({ order: { createdAt: 'DESC' }, take: 1 });
     const settings = settingsList[0] || null;
     const ps = (settings as any)?.payrollSettings || {};
-    const rate =
-      months === 1 ? (ps.loanInterestRate1Month ?? 0) :
-      months === 2 ? (ps.loanInterestRate2Months ?? 0) :
-      (ps.loanInterestRate3Months ?? 0);
-    const interest = Math.round((principalNum * (rate / 100)) * 100) / 100;
-    const totalDeduction = Math.round((principalNum + interest) * 100) / 100;
+    const rate = getLoanRateForTenure(ps, months);
+    const { interest, totalRepayment, installment } = computeLoanRepaymentSchedule(principalNum, months, rate);
+
+    const schedule = await createOrIncrementLoanAccountAndSchedule(
+      loanRepo,
+      scheduleRepo,
+      tid,
+      aid,
+      totalRepayment,
+      months
+    );
+
+    const schedTotal = parseAmount(schedule.totalAmount);
+    const schedPaid = parseAmount(schedule.amountPaid);
+    const schedRemaining = Math.round((schedTotal - schedPaid) * 100) / 100;
+    const deductThisPayslip = Math.min(
+      installment,
+      schedRemaining > 0 ? schedRemaining : installment
+    );
+
+    const lineLabel =
+      months === 1
+        ? `Loan repayment (${months} mo, ${rate}%): principal ${principalNum.toFixed(2)} + interest ${interest.toFixed(2)} = ${totalRepayment.toFixed(2)} (full)`
+        : `Loan repayment (${months} mo, ${rate}%): installment 1/${months} of ${totalRepayment.toFixed(2)} (P+I) = ${deductThisPayslip.toFixed(2)}`;
 
     const line = lineRepo.create({
       payrollEntryId: entry.id,
-      componentName: `Loan Repayment (${months} month${months > 1 ? 's' : ''}, ${rate}% interest)`,
+      componentName: lineLabel,
       componentType: 'deduction',
-      amount: totalDeduction
+      amount: deductThisPayslip
     });
     await lineRepo.save(line);
 
-    const newTotalDeductions = parseAmount(entry.totalDeductions) + totalDeduction;
+    const newTotalDeductions = Math.round((parseAmount(entry.totalDeductions) + deductThisPayslip) * 100) / 100;
     const newNet = Math.round((parseAmount(entry.grossSalary) - newTotalDeductions) * 100) / 100;
     entry.totalDeductions = newTotalDeductions;
     entry.netSalary = newNet;
     await entryRepo.save(entry);
+
+    await applyLoanDeduction(loanRepo, scheduleRepo, tid, aid, deductThisPayslip, [
+      { schedule, deduct: deductThisPayslip }
+    ]);
 
     const run = await runRepo.findOne({ where: { id: entry.payrollRunId } });
     if (run) {
@@ -775,37 +903,19 @@ export const addLoanDeduction = async (req: AuthRequest, res: Response) => {
       await runRepo.save(run);
     }
 
-    // Reduce employee loan account and apply to schedules so auto-deduction stays in sync
-    const loanRepo = AppDataSource.getRepository(EmployeeLoanAccount);
-    const scheduleRepo = AppDataSource.getRepository(LoanSchedule);
-    const tid = entry.teacherId || null;
-    const aid = entry.ancillaryStaffId || null;
-    if (tid || aid) {
-      const sWhere = tid ? { teacherId: tid } : { ancillaryStaffId: aid! };
-      const schedules = await scheduleRepo.find({ where: sWhere, order: { createdAt: 'ASC' } });
-      let remaining = totalDeduction;
-      for (const s of schedules) {
-        if (remaining <= 0) break;
-        const total = parseAmount(s.totalAmount);
-        const paid = parseAmount(s.amountPaid);
-        const scheduleRemaining = Math.round((total - paid) * 100) / 100;
-        if (scheduleRemaining <= 0) continue;
-        const apply = Math.min(remaining, scheduleRemaining);
-        const newPaid = Math.round((paid + apply) * 100) / 100;
-        await scheduleRepo.update(s.id, { amountPaid: newPaid });
-        remaining = Math.round((remaining - apply) * 100) / 100;
-      }
-      const account = await loanRepo.findOne({ where: tid ? { teacherId: tid } : { ancillaryStaffId: aid! } });
-      if (account) {
-        const newBalance = Math.max(0, Math.round((parseAmount(account.balance) - totalDeduction) * 100) / 100);
-        await loanRepo.update(account.id, { balance: newBalance, updatedAt: new Date() });
-      }
-    }
-
+    const reloaded = await entryRepo.findOne({ where: { id: entry.id }, relations: ['lines'] });
     res.json({
-      message: 'Loan deduction added',
-      entry,
-      loanDeduction: { principal: principalNum, interest, totalDeduction, rate, repaymentMonths: months }
+      message: 'Loan recorded; installment deducted on this payslip',
+      entry: reloaded || entry,
+      loanDeduction: {
+        principal: principalNum,
+        interest,
+        totalRepayment,
+        installment: deductThisPayslip,
+        rate,
+        repaymentMonths: months,
+        tenureMonths: months
+      }
     });
   } catch (error: any) {
     console.error('addLoanDeduction:', error);
@@ -964,7 +1074,7 @@ export const getLoanHistory = async (req: AuthRequest, res: Response) => {
   }
 };
 
-/** Add a loan to an employee's account. Body: { teacherId?, ancillaryStaffId?, principal, repaymentMonths: 1|2|3 }. */
+/** Add a loan to an employee's account (no payslip line). Body: { teacherId?, ancillaryStaffId?, principal, repaymentMonths: 1|2|3 }. */
 export const createLoan = async (req: AuthRequest, res: Response) => {
   try {
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
@@ -973,7 +1083,7 @@ export const createLoan = async (req: AuthRequest, res: Response) => {
     if (principalNum <= 0) {
       return res.status(400).json({ message: 'Principal must be greater than 0' });
     }
-    const months = parseInt(String(repaymentMonths), 10);
+    const months = parseInt(String(repaymentMonths), 10) as 1 | 2 | 3;
     if (![1, 2, 3].includes(months)) {
       return res.status(400).json({ message: 'repaymentMonths must be 1, 2, or 3' });
     }
@@ -983,45 +1093,35 @@ export const createLoan = async (req: AuthRequest, res: Response) => {
 
     const settingsRepo = AppDataSource.getRepository(Settings);
     const settingsList = await settingsRepo.find({ order: { createdAt: 'DESC' }, take: 1 });
-    const settings = settingsList[0] || null;
-    const ps = (settings as any)?.payrollSettings || {};
-    const rate =
-      months === 1 ? (ps.loanInterestRate1Month ?? 0) :
-      months === 2 ? (ps.loanInterestRate2Months ?? 0) :
-      (ps.loanInterestRate3Months ?? 0);
-    const interest = Math.round((principalNum * (rate / 100)) * 100) / 100;
-    const totalAmount = Math.round((principalNum + interest) * 100) / 100;
+    const ps = ((settingsList[0] as any)?.payrollSettings || {}) as any;
+    const rate = getLoanRateForTenure(ps, months);
+    const { interest, totalRepayment, installment } = computeLoanRepaymentSchedule(principalNum, months, rate);
 
     const repo = AppDataSource.getRepository(EmployeeLoanAccount);
     const scheduleRepo = AppDataSource.getRepository(LoanSchedule);
-    let account = await repo.findOne({
+    await createOrIncrementLoanAccountAndSchedule(
+      repo,
+      scheduleRepo,
+      teacherId || null,
+      ancillaryStaffId || null,
+      totalRepayment,
+      months
+    );
+    const account = await repo.findOne({
       where: teacherId ? { teacherId } : { ancillaryStaffId: ancillaryStaffId! },
       relations: ['teacher', 'ancillaryStaff']
     });
-    if (!account) {
-      account = repo.create({
-        teacherId: teacherId || null,
-        ancillaryStaffId: ancillaryStaffId || null,
-        balance: totalAmount
-      });
-      await repo.save(account);
-    } else {
-      account.balance = Math.round((parseAmount(account.balance) + totalAmount) * 100) / 100;
-      account.updatedAt = new Date();
-      await repo.save(account);
-    }
-    const schedule = scheduleRepo.create({
-      teacherId: teacherId || null,
-      ancillaryStaffId: ancillaryStaffId || null,
-      totalAmount,
-      tenureMonths: months,
-      amountPaid: 0
-    });
-    await scheduleRepo.save(schedule);
     res.status(201).json({
       message: 'Loan added',
       account,
-      loanDetail: { principal: principalNum, interest, totalAmount, rate, repaymentMonths: months }
+      loanDetail: {
+        principal: principalNum,
+        interest,
+        totalAmount: totalRepayment,
+        installmentPerMonth: installment,
+        rate,
+        repaymentMonths: months
+      }
     });
   } catch (error: any) {
     console.error('createLoan:', error);

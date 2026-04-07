@@ -475,11 +475,15 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
     }
     if (payrollSettings !== undefined) {
       const ps = payrollSettings as any;
+      const prev = settings.payrollSettings || {};
+      const n1 = ps?.loanInterestRate1Month;
+      const n2 = ps?.loanInterestRate2Months;
+      const n3 = ps?.loanInterestRate3Months;
       settings.payrollSettings = {
-        loanInterestRate1Month: typeof ps?.loanInterestRate1Month === 'number' ? ps.loanInterestRate1Month : (settings.payrollSettings?.loanInterestRate1Month ?? 0),
-        loanInterestRate2Months: typeof ps?.loanInterestRate2Months === 'number' ? ps.loanInterestRate2Months : (settings.payrollSettings?.loanInterestRate2Months ?? 0),
-        loanInterestRate3Months: typeof ps?.loanInterestRate3Months === 'number' ? ps.loanInterestRate3Months : (settings.payrollSettings?.loanInterestRate3Months ?? 0),
-        banks: Array.isArray(ps?.banks) ? ps.banks.filter((b: any) => b && (b.name || b.id)) : (settings.payrollSettings?.banks ?? [])
+        loanInterestRate1Month: n1 !== undefined && n1 !== null && n1 !== '' ? Number(n1) : (prev.loanInterestRate1Month ?? 0),
+        loanInterestRate2Months: n2 !== undefined && n2 !== null && n2 !== '' ? Number(n2) : (prev.loanInterestRate2Months ?? 0),
+        loanInterestRate3Months: n3 !== undefined && n3 !== null && n3 !== '' ? Number(n3) : (prev.loanInterestRate3Months ?? 0),
+        banks: Array.isArray(ps?.banks) ? ps.banks.filter((b: any) => b && (b.name || b.id)) : (prev.banks ?? [])
       };
     }
 

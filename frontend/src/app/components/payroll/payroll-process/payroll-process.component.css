@@ -164,3 +164,33 @@
   text-align: center;
   color: var(--text-secondary);
 }
+
+.clear-year-card {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border: 1px solid #fecaca;
+  background: #fffafb;
+}
+.clear-year-row {
+  align-items: flex-end;
+  margin-top: 0.5rem;
+}
+.clear-year-btn {
+  align-self: flex-end;
+}
+.btn-danger {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+.btn-danger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

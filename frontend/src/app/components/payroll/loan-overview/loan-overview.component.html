@@ -17,7 +17,7 @@
     <!-- Create loan -->
     <section class="card section-card">
       <h2 class="section-title">Create loan</h2>
-      <p class="section-hint">Add a new loan for an employee. Principal + interest (from Settings) will be added to their loan account and deducted over the chosen tenure.</p>
+      <p class="section-hint">Add a new loan: interest % comes from Settings (per 1 / 2 / 3 month tenure). Total repayment is principal + interest, deducted in equal installments when payroll runs.</p>
       <button type="button" class="btn btn-primary" (click)="openCreateLoanModal()">Create loan</button>
     </section>
 
@@ -137,7 +137,7 @@
         <h2 class="modal-title">Create loan</h2>
         <button type="button" class="modal-close" (click)="closeCreateLoanModal()" aria-label="Close">&times;</button>
       </div>
-      <p class="modal-hint">Search by Employee ID, First Name, or Last Name. Then enter principal and tenure. The amount (principal + interest from Settings) will be added to the employee's loan account.</p>
+      <p class="modal-hint">Search by Employee ID, First Name, or Last Name. Enter principal and tenure (1–3 months). Interest uses the matching rate in Settings → Payroll; total = principal + interest. Repayment is split equally across payroll months (full amount in one month if tenure is 1).</p>
       <div class="loans-step loans-step-search">
         <label class="step-label">Find employee</label>
         <div class="search-row">

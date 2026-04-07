@@ -108,7 +108,14 @@ export class PayrollEntriesComponent implements OnInit {
     this.addingLoan = true;
     this.payrollService.addLoanDeduction(this.editingEntry.id, this.loanPrincipal, this.loanMonths).subscribe({
       next: (res: any) => {
-        this.success = `Loan deduction added: ${this.currencySymbol} ${(res?.loanDeduction?.totalDeduction ?? 0).toFixed(2)} (principal + interest)`;
+        const ld = res?.loanDeduction;
+        const total = ld?.totalRepayment ?? 0;
+        const inst = ld?.installment ?? 0;
+        const mo = ld?.repaymentMonths ?? 1;
+        this.success =
+          mo <= 1
+            ? `Loan applied: ${this.currencySymbol} ${Number(inst).toFixed(2)} deducted (full principal + interest, total ${this.currencySymbol} ${Number(total).toFixed(2)}).`
+            : `Loan applied: total ${this.currencySymbol} ${Number(total).toFixed(2)} (P+I). This payslip: ${this.currencySymbol} ${Number(inst).toFixed(2)} (${mo} equal installments).`;
         this.addingLoan = false;
         this.loadEntries();
         this.editingEntry = this.entries.find((e: any) => e.id === this.editingEntry?.id) || this.editingEntry;

@@ -101,6 +101,32 @@
     </div>
   </section>
 
+  <section class="card clear-year-card">
+    <h2 class="card-title">Reset payroll for a full year</h2>
+    <p class="card-hint">
+      Deletes <strong>all</strong> payroll runs for the chosen calendar year (January through December), including every payslip line.
+      This does <strong>not</strong> reset salary structures, assignments, or loan balances—correct loans in Loan Overview if employees had repayments on those payslips.
+    </p>
+    <div class="form-inline clear-year-row">
+      <div class="form-group">
+        <label>Year to clear</label>
+        <input type="number" [(ngModel)]="clearYear" class="form-control" min="2000" max="2100" />
+      </div>
+      <div class="form-group">
+        <label>Confirm year (same number)</label>
+        <input type="number" [(ngModel)]="clearYearConfirm" class="form-control" min="2000" max="2100" placeholder="Re-type year" />
+      </div>
+      <button
+        type="button"
+        class="btn btn-danger clear-year-btn"
+        (click)="clearEntireYear()"
+        [disabled]="clearingYear || numberOrZero(clearYear) !== numberOrZero(clearYearConfirm)"
+      >
+        {{ clearingYear ? 'Clearing…' : 'Clear entire year' }}
+      </button>
+    </div>
+  </section>
+
   <div class="empty-state card" *ngIf="!loading && runs.length === 0">
     <p>No payroll runs yet. Generate one using the form above.</p>
   </div>
