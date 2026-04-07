@@ -90,6 +90,7 @@ import { StudentPortalComponent } from './components/parent/student-portal/stude
 import { ParentPortalComponent } from './components/student/parent-portal/parent-portal.component';
 import { InventoryHubComponent } from './components/inventory/inventory-hub/inventory-hub.component';
 import { StudentInventoryComponent } from './components/inventory/student-inventory/student-inventory.component';
+import { TeacherInventoryRecordComponent } from './components/teacher/teacher-inventory-record/teacher-inventory-record.component';
 
 const routes: Routes = [
   { path: '', component: SplashComponent, data: { title: 'Junior Primary School Management System | Smart Edu System', description: 'Junior Primary School Management System - Manage students, teachers, classes, exams and attendance. School management for administrators, teachers and parents.', robots: 'index,follow' } },
@@ -123,17 +124,17 @@ const routes: Routes = [
   { path: 'admin/manage-accounts', component: ManageAccountsComponent, canActivate: [AuthGuard] },
   { path: 'admin/parents', component: ParentManagementComponent, canActivate: [AuthGuard] },
   { path: 'admin/class-promotion', component: ClassPromotionComponent, canActivate: [AuthGuard] },
-  { path: 'admin/teacher-record-book', component: TeacherRecordBookComponent, canActivate: [AuthGuard] },
+  { path: 'admin/teacher-record-book', component: TeacherRecordBookComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'students', component: StudentListComponent, canActivate: [AuthGuard] },
   { path: 'students/new', component: StudentFormComponent, canActivate: [AuthGuard] },
   { path: 'students/enroll_student', component: EnrollStudentComponent, canActivate: [AuthGuard] },
   { path: 'students/:id/edit', component: StudentFormComponent, canActivate: [AuthGuard] },
   { path: 'students/transfer', component: StudentTransferComponent, canActivate: [AuthGuard] },
-  { path: 'teachers', component: TeacherListComponent, canActivate: [AuthGuard] },
-  { path: 'teachers/new', component: TeacherFormComponent, canActivate: [AuthGuard] },
-  { path: 'teachers/allocate_class', component: AllocateClassesComponent, canActivate: [AuthGuard] },
-  { path: 'class_allocation', component: AllocateClassesComponent, canActivate: [AuthGuard] },
-  { path: 'teachers/:id/edit', component: TeacherFormComponent, canActivate: [AuthGuard] },
+  { path: 'teachers', component: TeacherListComponent, canActivate: [AuthGuard, AdminGuard] },
+  { path: 'teachers/new', component: TeacherFormComponent, canActivate: [AuthGuard, AdminGuard] },
+  { path: 'teachers/allocate_class', component: AllocateClassesComponent, canActivate: [AuthGuard, AdminGuard] },
+  { path: 'class_allocation', component: AllocateClassesComponent, canActivate: [AuthGuard, AdminGuard] },
+  { path: 'teachers/:id/edit', component: TeacherFormComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'exams', component: ExamListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
   // { path: 'exams/new', component: ExamFormComponent, canActivate: [AuthGuard] }, // Disabled - exam creation removed
   { path: 'exams/:id/marks', component: MarksEntryComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
@@ -185,6 +186,7 @@ const routes: Routes = [
   { path: 'student/invoice-statement', component: StudentInvoiceStatementComponent, canActivate: [AuthGuard] },
   { path: 'student/inventory', component: StudentInventoryComponent, canActivate: [AuthGuard] },
   { path: 'inventory', component: InventoryHubComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'inventory' } },
+  { path: 'teacher/inventory-record', component: TeacherInventoryRecordComponent, canActivate: [AuthGuard] },
   { path: 'student/parent-portal', component: ParentPortalComponent, canActivate: [AuthGuard] },
   { path: 'eweb', component: EwebComponent, canActivate: [AuthGuard] },
   { path: 'student/esubmit', component: EsubmitComponent, canActivate: [AuthGuard] },

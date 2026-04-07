@@ -5,12 +5,15 @@ import { AppDataSource } from '../config/database';
 import { User, UserRole } from '../entities/User';
 import { Settings } from '../entities/Settings';
 import { Student } from '../entities/Student';
+import { Teacher } from '../entities/Teacher';
 import { InventoryTextbookCatalog } from '../entities/InventoryTextbookCatalog';
 import { InventoryFurnitureItem } from '../entities/InventoryFurnitureItem';
 import { InventoryTextbookIssuance } from '../entities/InventoryTextbookIssuance';
 import { InventoryFurnitureIssuance } from '../entities/InventoryFurnitureIssuance';
 import { InventoryFine } from '../entities/InventoryFine';
 import { InventoryAuditLog } from '../entities/InventoryAuditLog';
+import { InventoryTeacherTextbookAllocation } from '../entities/InventoryTeacherTextbookAllocation';
+import { InventoryTeacherFurnitureAllocation } from '../entities/InventoryTeacherFurnitureAllocation';
 import {
   canUserManageInventory,
   canUserViewInventoryReports,
@@ -820,6 +823,525 @@ export const listInventoryAudit = async (req: AuthRequest, res: Response) => {
     const toD = parseDate(to);
     if (fromD && toD) qb.andWhere('a.createdAt BETWEEN :x AND :y', { x: fromD, y: toD });
     res.json(await qb.getMany());
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+};
+
+/* ================================================================
+   TEACHER ALLOCATION LAYER
+   Admin → Teacher (bulk), Teacher → Student (single items)
+   ================================================================ */
+
+/** Generate the next sequential code: J0001…J9999 for textbooks, JP0001…JP9999 for furniture */
+async function getNextSequentialCode(prefix: 'J' | 'JP'): Promise<string> {
+  if (prefix === 'J') {
+    const row = await AppDataSource.getRepository(InventoryTextbookIssuance)
+      .createQueryBuilder('i')
+      .select('i.copyNumber', 'cn')
+      .where("i.copyNumber LIKE 'J%'")
+      .andWhere("i.copyNumber NOT LIKE 'JP%'")
+      .orderBy("i.copyNumber", 'DESC')
+      .limit(1)
+      .getRawOne();
+    const last = row?.cn as string | undefined;
+    const num = last ? parseInt(last.replace(/^J/, ''), 10) : 0;
+    return `J${String(num + 1).padStart(4, '0')}`;
+  } else {
+    const row = await AppDataSource.getRepository(InventoryFurnitureItem)
+      .createQueryBuilder('f')
+      .select('f.itemCode', 'ic')
+      .where("f.itemCode LIKE 'JP%'")
+      .orderBy("f.itemCode", 'DESC')
+      .limit(1)
+      .getRawOne();
+    const last = row?.ic as string | undefined;
+    const num = last ? parseInt(last.replace(/^JP/, ''), 10) : 0;
+    return `JP${String(num + 1).padStart(4, '0')}`;
+  }
+}
+
+async function getNextSequentialCodes(prefix: 'J' | 'JP', count: number): Promise<string[]> {
+  const codes: string[] = [];
+  // Get the current highest number first
+  let startNum: number;
+  if (prefix === 'J') {
+    const row = await AppDataSource.getRepository(InventoryTextbookIssuance)
+      .createQueryBuilder('i')
+      .select('i.copyNumber', 'cn')
+      .where("i.copyNumber LIKE 'J%'")
+      .andWhere("i.copyNumber NOT LIKE 'JP%'")
+      .orderBy("i.copyNumber", 'DESC')
+      .limit(1)
+      .getRawOne();
+    startNum = row?.cn ? parseInt((row.cn as string).replace(/^J/, ''), 10) : 0;
+  } else {
+    const row = await AppDataSource.getRepository(InventoryFurnitureItem)
+      .createQueryBuilder('f')
+      .select('f.itemCode', 'ic')
+      .where("f.itemCode LIKE 'JP%'")
+      .orderBy("f.itemCode", 'DESC')
+      .limit(1)
+      .getRawOne();
+    startNum = row?.ic ? parseInt((row.ic as string).replace(/^JP/, ''), 10) : 0;
+  }
+  for (let i = 1; i <= count; i++) {
+    codes.push(`${prefix}${String(startNum + i).padStart(4, '0')}`);
+  }
+  return codes;
+}
+
+/* ---- List all teachers (for admin dropdowns) ---- */
+export const listTeachersForInventory = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
+      return res.status(403).json({ message: 'Admin only' });
+    }
+    const teachers = await AppDataSource.getRepository(Teacher).find({
+      where: { isActive: true },
+      order: { firstName: 'ASC', lastName: 'ASC' }
+    });
+    res.json(teachers.map(t => ({
+      id: t.id,
+      userId: t.userId,
+      firstName: t.firstName,
+      lastName: t.lastName,
+      teacherId: t.teacherId
+    })));
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+};
+
+/* ---- Admin: bulk issue textbooks to teacher ---- */
+export const issueTextbookToTeacher = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
+      return res.status(403).json({ message: 'Admin only' });
+    }
+    const { catalogId } = req.params;
+    const { teacherUserId, quantity, notes } = req.body;
+    if (!teacherUserId || !quantity || quantity < 1) {
+      return res.status(400).json({ message: 'teacherUserId and quantity required' });
+    }
+    const qty = Number(quantity);
+    const catalog = await AppDataSource.getRepository(InventoryTextbookCatalog).findOneBy({ id: catalogId });
+    if (!catalog) return res.status(404).json({ message: 'Textbook not found' });
+    if (catalog.quantityAvailable < qty) {
+      return res.status(400).json({ message: `Only ${catalog.quantityAvailable} copies available` });
+    }
+
+    const copyNumbers = await getNextSequentialCodes('J', qty);
+
+    const alloc = AppDataSource.getRepository(InventoryTeacherTextbookAllocation).create({
+      catalogId,
+      teacherUserId,
+      quantity: qty,
+      copyNumbers,
+      status: 'active',
+      authorizedByUserId: req.user.id,
+      notes: notes || null
+    });
+    await AppDataSource.getRepository(InventoryTeacherTextbookAllocation).save(alloc);
+
+    catalog.quantityAvailable -= qty;
+    await AppDataSource.getRepository(InventoryTextbookCatalog).save(catalog);
+
+    res.status(201).json({ ...alloc, copyNumbers });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+};
+
+/* ---- Admin: bulk create furniture in stock ---- */
+export const bulkCreateFurniture = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
+      return res.status(403).json({ message: 'Admin only' });
+    }
+    const { deskQuantity, chairQuantity, condition, locationLabel } = req.body;
+    const desks = Number(deskQuantity) || 0;
+    const chairs = Number(chairQuantity) || 0;
+    if (desks + chairs < 1) return res.status(400).json({ message: 'Provide at least 1 desk or chair' });
+
+    const repo = AppDataSource.getRepository(InventoryFurnitureItem);
+    const created: InventoryFurnitureItem[] = [];
+
+    for (let i = 0; i < desks; i++) {
+      const code = await getNextSequentialCode('JP');
+      const item = repo.create({ itemType: 'desk', itemCode: code, condition: condition || 'good', locationLabel: locationLabel || null, status: 'available' });
+      created.push(await repo.save(item));
+    }
+    for (let i = 0; i < chairs; i++) {
+      const code = await getNextSequentialCode('JP');
+      const item = repo.create({ itemType: 'chair', itemCode: code, condition: condition || 'good', locationLabel: locationLabel || null, status: 'available' });
+      created.push(await repo.save(item));
+    }
+    res.status(201).json({ created: created.length, items: created });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+};
+
+/* ---- Admin: bulk create furniture AND allocate to teacher ---- */
+export const bulkAllocateFurnitureToTeacher = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
+      return res.status(403).json({ message: 'Admin only' });
+    }
+    const { teacherUserId, deskQuantity, chairQuantity, condition, locationLabel, notes } = req.body;
+    if (!teacherUserId) return res.status(400).json({ message: 'teacherUserId required' });
+    const desks = Number(deskQuantity) || 0;
+    const chairs = Number(chairQuantity) || 0;
+    if (desks + chairs < 1) return res.status(400).json({ message: 'Provide at least 1 desk or chair' });
+
+    const furnRepo = AppDataSource.getRepository(InventoryFurnitureItem);
+    const allocRepo = AppDataSource.getRepository(InventoryTeacherFurnitureAllocation);
+    const allocs: InventoryTeacherFurnitureAllocation[] = [];
+
+    for (let i = 0; i < desks; i++) {
+      const code = await getNextSequentialCode('JP');
+      const item = await furnRepo.save(furnRepo.create({ itemType: 'desk', itemCode: code, condition: condition || 'good', locationLabel: locationLabel || null, status: 'issued' }));
+      const alloc = await allocRepo.save(allocRepo.create({ furnitureItemId: item.id, teacherUserId, status: 'active', authorizedByUserId: req.user.id, notes: notes || null }));
+      allocs.push(alloc);
+    }
+    for (let i = 0; i < chairs; i++) {
+      const code = await getNextSequentialCode('JP');
+      const item = await furnRepo.save(furnRepo.create({ itemType: 'chair', itemCode: code, condition: condition || 'good', locationLabel: locationLabel || null, status: 'issued' }));
+      const alloc = await allocRepo.save(allocRepo.create({ furnitureItemId: item.id, teacherUserId, status: 'active', authorizedByUserId: req.user.id, notes: notes || null }));
+      allocs.push(alloc);
+    }
+    res.status(201).json({ created: allocs.length, allocations: allocs });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+};
+
+/* ---- Admin/Teacher: list teacher textbook allocations ---- */
+export const listTeacherTextbookAllocations = async (req: AuthRequest, res: Response) => {
+  try {
+    const role = req.user?.role;
+    const qb = AppDataSource.getRepository(InventoryTeacherTextbookAllocation)
+      .createQueryBuilder('a')
+      .leftJoinAndSelect('a.catalog', 'catalog')
+      .leftJoinAndSelect('a.teacherUser', 'teacher')
+      .orderBy('a.createdAt', 'DESC');
+    if (role === UserRole.TEACHER) {
+      qb.where('a.teacherUserId = :uid', { uid: req.user!.id });
+    } else if (req.query.teacherUserId) {
+      qb.where('a.teacherUserId = :uid', { uid: String(req.query.teacherUserId) });
+    }
+    const allocs = await qb.getMany();
+
+    // Attach quantityDistributed: count of issuances made from each allocation
+    const issuanceRepo = AppDataSource.getRepository(InventoryTextbookIssuance);
+    const withCounts = await Promise.all(allocs.map(async alloc => {
+      const quantityDistributed = await issuanceRepo.count({
+        where: { teacherAllocationId: alloc.id } as any
+      });
+      return { ...alloc, quantityDistributed };
+    }));
+
+    res.json(withCounts);
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+};
+
+/* ---- Admin/Teacher: list teacher furniture allocations ---- */
+export const listTeacherFurnitureAllocations = async (req: AuthRequest, res: Response) => {
+  try {
+    const role = req.user?.role;
+    const qb = AppDataSource.getRepository(InventoryTeacherFurnitureAllocation)
+      .createQueryBuilder('a')
+      .leftJoinAndSelect('a.furnitureItem', 'item')
+      .leftJoinAndSelect('a.teacherUser', 'teacher')
+      .orderBy('a.createdAt', 'DESC');
+    if (role === UserRole.TEACHER) {
+      qb.where('a.teacherUserId = :uid', { uid: req.user!.id });
+    } else if (req.query.teacherUserId) {
+      qb.where('a.teacherUserId = :uid', { uid: String(req.query.teacherUserId) });
+    }
+    res.json(await qb.getMany());
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+};
+
+/* ---- Teacher: issue a textbook copy to a student from their allocation ---- */
+export const issueTextbookFromTeacherAllocation = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== UserRole.TEACHER) {
+      return res.status(403).json({ message: 'Teacher only' });
+    }
+    const { allocationId } = req.params;
+    const { studentId, issuanceType, loanDueAt, notes } = req.body;
+    if (!studentId) return res.status(400).json({ message: 'studentId required' });
+
+    const alloc = await AppDataSource.getRepository(InventoryTeacherTextbookAllocation).findOne({
+      where: { id: allocationId, teacherUserId: req.user.id },
+      relations: ['catalog']
+    });
+    if (!alloc) return res.status(404).json({ message: 'Allocation not found or not yours' });
+    if (alloc.status !== 'active') return res.status(400).json({ message: 'Allocation is not active' });
+
+    // Find already-issued copy numbers from this allocation
+    const alreadyIssued = await AppDataSource.getRepository(InventoryTextbookIssuance).find({
+      where: { teacherAllocationId: allocationId } as any
+    });
+    const usedCopyNumbers = alreadyIssued.map(i => i.copyNumber).filter(Boolean);
+    const availableCopyNumbers = (alloc.copyNumbers || []).filter(cn => !usedCopyNumbers.includes(cn));
+
+    if (availableCopyNumbers.length === 0) {
+      return res.status(400).json({ message: 'No more copies available in this allocation' });
+    }
+
+    // If the teacher selected a specific J-number, use that; otherwise pick the next available
+    let copyNumber: string;
+    const requestedCopy = req.body.specificCopyNumber as string | undefined;
+    if (requestedCopy) {
+      if (!(alloc.copyNumbers || []).includes(requestedCopy)) {
+        return res.status(400).json({ message: `Copy ${requestedCopy} is not part of this allocation` });
+      }
+      if (usedCopyNumbers.includes(requestedCopy)) {
+        return res.status(400).json({ message: `Copy ${requestedCopy} has already been issued` });
+      }
+      copyNumber = requestedCopy;
+    } else {
+      copyNumber = availableCopyNumbers[0];
+    }
+
+    const issuance = AppDataSource.getRepository(InventoryTextbookIssuance).create({
+      catalogId: alloc.catalogId,
+      studentId,
+      issuanceType: issuanceType === 'loan' ? 'loan' : 'permanent',
+      loanDueAt: loanDueAt ? new Date(loanDueAt) : null,
+      status: 'active',
+      authorizedByUserId: req.user.id,
+      notes: notes || null,
+      copyNumber,
+      teacherAllocationId: allocationId
+    });
+    await AppDataSource.getRepository(InventoryTextbookIssuance).save(issuance);
+
+    res.status(201).json({ ...issuance, copyNumber });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+};
+
+/* ---- Teacher: issue furniture to a student from their allocation ---- */
+export const issueFurnitureFromTeacherAllocation = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== UserRole.TEACHER) {
+      return res.status(403).json({ message: 'Teacher only' });
+    }
+    const { allocationId } = req.params;
+    const { studentId, notes } = req.body;
+    if (!studentId) return res.status(400).json({ message: 'studentId required' });
+
+    const alloc = await AppDataSource.getRepository(InventoryTeacherFurnitureAllocation).findOne({
+      where: { id: allocationId, teacherUserId: req.user.id },
+      relations: ['furnitureItem']
+    });
+    if (!alloc) return res.status(404).json({ message: 'Allocation not found or not yours' });
+    if (alloc.status !== 'active') return res.status(400).json({ message: 'Allocation is not active' });
+
+    // Check item is not already issued to a student
+    const existing = await AppDataSource.getRepository(InventoryFurnitureIssuance).findOne({
+      where: { furnitureItemId: alloc.furnitureItemId, status: 'active' }
+    });
+    if (existing) return res.status(400).json({ message: 'This furniture item is already issued to a student' });
+
+    // Enforce one-desk / one-chair per student rule
+    const itemType = alloc.furnitureItem?.itemType;
+    if (itemType === 'desk' || itemType === 'chair') {
+      const alreadyHasSameType = await AppDataSource.getRepository(InventoryFurnitureIssuance)
+        .createQueryBuilder('iss')
+        .innerJoin(InventoryFurnitureItem, 'item', 'item.id = iss.furnitureItemId')
+        .where('iss.studentId = :studentId', { studentId })
+        .andWhere('iss.status = :status', { status: 'active' })
+        .andWhere('item.itemType = :itemType', { itemType })
+        .getOne();
+      if (alreadyHasSameType) {
+        return res.status(400).json({
+          message: `This student already has an active ${itemType} issued to them. Each student may only receive one ${itemType}.`
+        });
+      }
+    }
+
+    const issuance = AppDataSource.getRepository(InventoryFurnitureIssuance).create({
+      furnitureItemId: alloc.furnitureItemId,
+      studentId,
+      status: 'active',
+      authorizedByUserId: req.user.id,
+      notes: notes || null
+    });
+    await AppDataSource.getRepository(InventoryFurnitureIssuance).save(issuance);
+
+    // Mark teacher allocation as returned (furniture moved to student)
+    alloc.status = 'returned';
+    await AppDataSource.getRepository(InventoryTeacherFurnitureAllocation).save(alloc);
+
+    res.status(201).json(issuance);
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+};
+
+/* ---- Teacher: return textbook allocation (hand back copies to stock) ---- */
+export const returnTeacherTextbookAllocation = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== UserRole.TEACHER) {
+      return res.status(403).json({ message: 'Teacher only' });
+    }
+    const { allocationId } = req.params;
+    const alloc = await AppDataSource.getRepository(InventoryTeacherTextbookAllocation).findOne({
+      where: { id: allocationId, teacherUserId: req.user.id }
+    });
+    if (!alloc) return res.status(404).json({ message: 'Allocation not found' });
+    alloc.status = 'returned';
+    await AppDataSource.getRepository(InventoryTeacherTextbookAllocation).save(alloc);
+
+    const catalog = await AppDataSource.getRepository(InventoryTextbookCatalog).findOneBy({ id: alloc.catalogId });
+    if (catalog) {
+      catalog.quantityAvailable += alloc.quantity;
+      await AppDataSource.getRepository(InventoryTextbookCatalog).save(catalog);
+    }
+    res.json({ message: 'Returned' });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+};
+
+/* ---- Teacher: return furniture allocation ---- */
+export const returnTeacherFurnitureAllocation = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== UserRole.TEACHER) {
+      return res.status(403).json({ message: 'Teacher only' });
+    }
+    const { allocationId } = req.params;
+    const alloc = await AppDataSource.getRepository(InventoryTeacherFurnitureAllocation).findOne({
+      where: { id: allocationId, teacherUserId: req.user.id }
+    });
+    if (!alloc) return res.status(404).json({ message: 'Allocation not found' });
+    alloc.status = 'returned';
+    await AppDataSource.getRepository(InventoryTeacherFurnitureAllocation).save(alloc);
+
+    const item = await AppDataSource.getRepository(InventoryFurnitureItem).findOneBy({ id: alloc.furnitureItemId });
+    if (item) { item.status = 'available'; await AppDataSource.getRepository(InventoryFurnitureItem).save(item); }
+    res.json({ message: 'Returned' });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+};
+
+/* ---- Teacher: full class issuance report (textbooks + furniture) ---- */
+export const getTeacherClassReport = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== UserRole.TEACHER) {
+      return res.status(403).json({ message: 'Teacher only' });
+    }
+
+    const teacher = await AppDataSource.getRepository(Teacher).findOneBy({ userId: req.user.id });
+    if (!teacher) return res.json({ textbooks: [], furniture: [] });
+
+    const { Class } = await import('../entities/Class');
+    const ownedClasses = await AppDataSource.getRepository(Class).find({
+      where: [{ classTeacher1Id: teacher.id }, { classTeacher2Id: teacher.id }]
+    });
+
+    let classIds = ownedClasses.map(c => c.id);
+    if (!classIds.length) {
+      const { getTeacherClassIds } = await import('../utils/teacherClassLinker');
+      classIds = await getTeacherClassIds(teacher.id);
+    }
+    if (!classIds.length) return res.json({ textbooks: [], furniture: [], classNames: [] });
+
+    const classNames = ownedClasses.map(c => c.name);
+
+    // Fetch all active students in the teacher's classes
+    const students = await AppDataSource.getRepository(Student)
+      .createQueryBuilder('s')
+      .leftJoinAndSelect('s.classEntity', 'cls')
+      .where('s.classId IN (:...classIds)', { classIds })
+      .andWhere('s.isActive = true')
+      .getMany();
+
+    const studentIds = students.map(s => s.id);
+    if (!studentIds.length) return res.json({ textbooks: [], furniture: [], classNames });
+
+    // Textbook issuances for these students
+    const textbooks = await AppDataSource.getRepository(InventoryTextbookIssuance)
+      .createQueryBuilder('iss')
+      .leftJoinAndSelect('iss.catalog', 'catalog')
+      .leftJoinAndSelect('iss.student', 'student')
+      .leftJoinAndSelect('student.classEntity', 'cls')
+      .where('iss.studentId IN (:...studentIds)', { studentIds })
+      .orderBy('student.lastName', 'ASC')
+      .addOrderBy('catalog.title', 'ASC')
+      .getMany();
+
+    // Furniture issuances for these students
+    const furniture = await AppDataSource.getRepository(InventoryFurnitureIssuance)
+      .createQueryBuilder('iss')
+      .leftJoinAndSelect('iss.furnitureItem', 'item')
+      .leftJoinAndSelect('iss.student', 'student')
+      .leftJoinAndSelect('student.classEntity', 'cls')
+      .where('iss.studentId IN (:...studentIds)', { studentIds })
+      .orderBy('student.lastName', 'ASC')
+      .addOrderBy('item.itemType', 'ASC')
+      .getMany();
+
+    res.json({ textbooks, furniture, classNames });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+};
+
+/* ---- Teacher: get students enrolled in teacher's OWN class(es) only ---- */
+export const getTeacherClassStudents = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== UserRole.TEACHER) {
+      return res.status(403).json({ message: 'Teacher only' });
+    }
+
+    // Find the teacher record linked to this user
+    const teacher = await AppDataSource.getRepository(Teacher).findOneBy({ userId: req.user.id });
+    if (!teacher) return res.json([]);
+
+    // For inventory purposes: only fetch students from classes where this teacher
+    // is the form/class teacher (classTeacher1 or classTeacher2).
+    // This prevents a subject-teacher who teaches in many classes from seeing all students.
+    const { Class } = await import('../entities/Class');
+    const ownedClasses = await AppDataSource.getRepository(Class).find({
+      where: [
+        { classTeacher1Id: teacher.id },
+        { classTeacher2Id: teacher.id }
+      ]
+    });
+
+    let classIds = ownedClasses.map(c => c.id);
+
+    // Fallback: if not a class teacher anywhere, fall back to junction table classes
+    if (!classIds.length) {
+      const { getTeacherClassIds } = await import('../utils/teacherClassLinker');
+      classIds = await getTeacherClassIds(teacher.id);
+    }
+
+    if (!classIds.length) return res.json([]);
+
+    const students = await AppDataSource.getRepository(Student)
+      .createQueryBuilder('s')
+      .leftJoinAndSelect('s.classEntity', 'cls')
+      .where('s.classId IN (:...classIds)', { classIds })
+      .andWhere('s.isActive = true')
+      .orderBy('cls.name', 'ASC')
+      .addOrderBy('s.lastName', 'ASC')
+      .addOrderBy('s.firstName', 'ASC')
+      .getMany();
+
+    res.json(students);
   } catch (e: any) {
     res.status(500).json({ message: e.message || 'Error' });
   }

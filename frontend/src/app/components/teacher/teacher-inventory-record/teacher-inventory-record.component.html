@@ -1,0 +1,510 @@
+<div class="tir-page">
+  <!-- Header -->
+  <div class="tir-header">
+    <div class="tir-header-left">
+      <span class="tir-icon">📦</span>
+      <div>
+        <h1 class="tir-title">Inventory Record</h1>
+        <p class="tir-subtitle">Issue textbooks &amp; furniture to your students</p>
+      </div>
+    </div>
+    <button class="tir-btn tir-btn-secondary" routerLink="/teacher/dashboard">← Dashboard</button>
+  </div>
+
+  <!-- Mode toggle -->
+  <div class="tir-mode-bar">
+    <button class="tir-mode-btn" [class.active]="mode === 'textbooks'" (click)="setMode('textbooks')">
+      📚 Textbooks
+    </button>
+    <button class="tir-mode-btn" [class.active]="mode === 'furniture'" (click)="setMode('furniture')">
+      🪑 Furniture
+    </button>
+    <button class="tir-mode-btn" [class.active]="mode === 'reports'" (click)="setMode('reports')">
+      📊 Reports
+    </button>
+  </div>
+
+  <!-- Success banners -->
+  <div class="tir-alert tir-alert-success" *ngIf="issueTextbookSuccess">{{ issueTextbookSuccess }}</div>
+  <div class="tir-alert tir-alert-success" *ngIf="issueFurnitureSuccess">{{ issueFurnitureSuccess }}</div>
+
+  <!-- =================== TEXTBOOKS =================== -->
+  <ng-container *ngIf="mode === 'textbooks'">
+    <div class="tir-section-header">
+      <h2>📚 My Textbook Allocations</h2>
+      <p class="tir-hint">These textbooks were assigned to you by the administrator. Issue them to your students below.</p>
+    </div>
+
+    <div class="tir-loading" *ngIf="loadingTB">Loading textbook allocations…</div>
+    <div class="tir-alert tir-alert-error" *ngIf="errorTB">{{ errorTB }}</div>
+
+    <div *ngIf="!loadingTB && textbookAllocations.length === 0 && !errorTB" class="tir-empty">
+      <span class="tir-empty-icon">📭</span>
+      <p>No textbooks have been allocated to you yet.</p>
+      <small>Contact the administrator to allocate textbooks to you.</small>
+    </div>
+
+    <!-- Active allocations -->
+    <div *ngIf="!loadingTB && activeTextbooks.length > 0">
+      <h3 class="tir-sub-header">Active Allocations (ready to issue)</h3>
+      <div class="tir-cards">
+        <div class="tir-card" *ngFor="let alloc of activeTextbooks">
+          <div class="tir-card-icon">📚</div>
+          <div class="tir-card-body">
+            <div class="tir-card-title">{{ alloc.catalog?.title || 'Textbook' }}</div>
+            <div class="tir-card-meta" *ngIf="alloc.catalog?.gradeLevel">Grade: {{ alloc.catalog.gradeLevel }}</div>
+            <div class="tir-card-meta" *ngIf="alloc.catalog?.subject?.name">Subject: {{ alloc.catalog.subject.name }}</div>
+            <div class="tir-card-stats">
+              <span class="tir-stat-pill tir-stat-total">Received: {{ alloc.quantity || alloc.quantityAllocated || 0 }}</span>
+              <span class="tir-stat-pill tir-stat-issued">Issued: {{ alloc.quantityDistributed || 0 }}</span>
+              <span class="tir-stat-pill" [class.tir-stat-ok]="remaining(alloc) > 0" [class.tir-stat-zero]="remaining(alloc) === 0">
+                Remaining: {{ remaining(alloc) }}
+              </span>
+            </div>
+            <div class="tir-copy-numbers" *ngIf="alloc.copyNumbers?.length">
+              <span class="tir-cn-label">Copy J-Numbers — click to issue:</span>
+              <span
+                *ngFor="let cn of alloc.copyNumbers"
+                class="tir-copy-badge"
+                [class.tir-copy-available]="isCopyAvailable(alloc, cn)"
+                [class.tir-copy-issued]="!isCopyAvailable(alloc, cn)"
+                [title]="isCopyAvailable(alloc, cn) ? 'Click to issue ' + cn + ' to a student' : cn + ' already issued'"
+                (click)="isCopyAvailable(alloc, cn) && openIssueTextbookForm(alloc, cn)"
+                [style.cursor]="isCopyAvailable(alloc, cn) ? 'pointer' : 'default'"
+              >{{ cn }}</span>
+            </div>
+          </div>
+          <div class="tir-card-actions">
+            <button class="tir-btn tir-btn-primary" [disabled]="remaining(alloc) === 0" (click)="openIssueTextbookForm(alloc, '')">
+              Issue Next Available
+            </button>
+            <button class="tir-btn tir-btn-outline-danger" [disabled]="returningMap[alloc.id]" (click)="returnTextbookAllocation(alloc)">
+              <span *ngIf="!returningMap[alloc.id]">Return to Admin</span>
+              <span *ngIf="returningMap[alloc.id]">Returning…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Past allocations -->
+    <div *ngIf="!loadingTB && pastTextbooks.length > 0">
+      <h3 class="tir-sub-header tir-sub-muted">Past Allocations</h3>
+      <table class="tir-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Received</th>
+            <th>Issued to Students</th>
+            <th>J-Numbers</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let alloc of pastTextbooks">
+            <td>{{ alloc.catalog?.title }}</td>
+            <td>{{ alloc.quantity || alloc.quantityAllocated || 0 }}</td>
+            <td>{{ alloc.quantityDistributed || 0 }}</td>
+            <td>
+              <span *ngFor="let cn of (alloc.copyNumbers || [])" class="tir-copy-badge">{{ cn }}</span>
+              <span *ngIf="!alloc.copyNumbers?.length" class="tir-muted">—</span>
+            </td>
+            <td><span class="tir-badge" [class.badge-returned]="alloc.status === 'returned'">{{ alloc.status }}</span></td>
+            <td>{{ alloc.createdAt | date:'mediumDate' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Issue textbook form modal -->
+    <div class="tir-modal-overlay" *ngIf="issueTextbookForm"></div>
+    <div class="tir-modal" *ngIf="issueTextbookForm">
+      <div class="tir-modal-header">
+        <button class="tir-back-btn" (click)="closeIssueTextbookForm()" title="Back to textbook list">← Back</button>
+        <h3>📚 Issue Textbook to Student</h3>
+        <button class="tir-modal-close" (click)="closeIssueTextbookForm()">✕</button>
+      </div>
+      <div class="tir-modal-body">
+
+        <!-- Error state with back button -->
+        <div class="tir-alert tir-alert-error" *ngIf="issueTextbookError">
+          {{ issueTextbookError }}
+          <button class="tir-btn tir-btn-sm tir-btn-secondary" style="margin-top:8px;" (click)="closeIssueTextbookForm()">← Back to list</button>
+        </div>
+
+        <div class="tir-class-notice" *ngIf="myClassNames !== '—'">
+          🏫 Students from your class only: <strong>{{ myClassNames }}</strong>
+        </div>
+
+        <div class="tir-info-row">
+          <span class="tir-info-label">📎 Copy J-Number to be issued:</span>
+          <span class="tir-copy-badge tir-copy-available">
+            {{ issueTextbookForm.specificCopyNumber || nextAvailableCopyNumber(issueTextbookForm.allocationId) }}
+          </span>
+          <small *ngIf="!issueTextbookForm.specificCopyNumber" class="tir-hint" style="margin-left:6px;">(auto — next available)</small>
+        </div>
+
+        <!-- Custom student picker -->
+        <div class="tir-form-group">
+          <label>Select Student <span class="req">*</span></label>
+
+          <div *ngIf="loadingStudents" class="tir-hint">⏳ Loading students…</div>
+
+          <div *ngIf="!loadingStudents && classStudents.length === 0" class="tir-hint tir-hint-warn">
+            ⚠ No students found for your class. Contact the administrator.
+            <button class="tir-btn tir-btn-sm tir-btn-secondary" style="margin-top:6px;" (click)="closeIssueTextbookForm()">← Back to list</button>
+          </div>
+
+          <div *ngIf="!loadingStudents && classStudents.length > 0" class="tir-picker-wrap">
+            <!-- Selected display / trigger -->
+            <div class="tir-picker-trigger" (click)="studentPickerOpen = !studentPickerOpen">
+              <span *ngIf="!issueTextbookForm.studentId" class="tir-picker-placeholder">Click to select a student…</span>
+              <span *ngIf="issueTextbookForm.studentId" class="tir-picker-selected">✔ {{ selectedStudentName(issueTextbookForm.studentId) }}</span>
+              <span class="tir-picker-arrow">{{ studentPickerOpen ? '▲' : '▼' }}</span>
+            </div>
+            <!-- Dropdown list -->
+            <div class="tir-picker-dropdown" *ngIf="studentPickerOpen">
+              <input
+                type="text"
+                [(ngModel)]="studentPickerSearch"
+                class="tir-picker-search"
+                placeholder="Search student name or number…"
+                (click)="$event.stopPropagation()"
+                autofocus
+              />
+              <div class="tir-picker-empty" *ngIf="filteredStudents.length === 0">No students match</div>
+              <div class="tir-picker-items-scroll">
+                <div
+                  *ngFor="let s of filteredStudents"
+                  class="tir-picker-item"
+                  [class.tir-picker-item--selected]="issueTextbookForm.studentId === s.id"
+                  (click)="selectStudent(s.id, 'textbook')"
+                >
+                  <span class="tir-picker-name">{{ studentName(s) }}</span>
+                  <span class="tir-picker-class">{{ s.classEntity?.name }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tir-form-group">
+          <label>Issuance Type</label>
+          <div class="tir-radio-group">
+            <label class="tir-radio">
+              <input type="radio" [(ngModel)]="issueTextbookForm.issuanceType" value="permanent"> Permanent
+            </label>
+            <label class="tir-radio">
+              <input type="radio" [(ngModel)]="issueTextbookForm.issuanceType" value="loan"> Loan
+            </label>
+          </div>
+        </div>
+
+        <div class="tir-form-group" *ngIf="issueTextbookForm.issuanceType === 'loan'">
+          <label>Loan Due Date</label>
+          <input type="date" [(ngModel)]="issueTextbookForm.loanDueAt" class="tir-input">
+        </div>
+
+        <div class="tir-form-group">
+          <label>Notes (optional)</label>
+          <input type="text" [(ngModel)]="issueTextbookForm.notes" class="tir-input" placeholder="e.g. Book condition noted">
+        </div>
+      </div>
+      <div class="tir-modal-footer">
+        <button class="tir-btn tir-btn-secondary" (click)="closeIssueTextbookForm()">← Back</button>
+        <button class="tir-btn tir-btn-primary" [disabled]="issuingTextbook || !issueTextbookForm.studentId" (click)="submitIssueTextbook()">
+          <span *ngIf="!issuingTextbook">✔ Issue Textbook</span>
+          <span *ngIf="issuingTextbook">Issuing…</span>
+        </button>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- =================== FURNITURE =================== -->
+  <ng-container *ngIf="mode === 'furniture'">
+    <div class="tir-section-header">
+      <h2>🪑 My Furniture Allocations</h2>
+      <p class="tir-hint">These desks and chairs were assigned to you by the administrator. Issue them to your students below.</p>
+    </div>
+
+    <div class="tir-loading" *ngIf="loadingFN">Loading furniture allocations…</div>
+    <div class="tir-alert tir-alert-error" *ngIf="errorFN">{{ errorFN }}</div>
+
+    <div *ngIf="!loadingFN && furnitureAllocations.length === 0 && !errorFN" class="tir-empty">
+      <span class="tir-empty-icon">📭</span>
+      <p>No furniture has been allocated to you yet.</p>
+      <small>Contact the administrator to allocate desks or chairs to you.</small>
+    </div>
+
+    <!-- Active furniture allocations -->
+    <div *ngIf="!loadingFN && activeFurniture.length > 0">
+      <h3 class="tir-sub-header">Available to Issue</h3>
+      <div class="tir-cards">
+        <div class="tir-card" *ngFor="let alloc of activeFurniture">
+          <div class="tir-card-icon">{{ alloc.furnitureItem?.itemType === 'desk' ? '🖥️' : '🪑' }}</div>
+          <div class="tir-card-body">
+            <div class="tir-card-title">
+              {{ alloc.furnitureItem?.itemType === 'desk' ? 'Desk' : 'Chair' }}
+              <span class="tir-copy-badge" style="margin-left:6px">{{ alloc.furnitureItem?.itemCode }}</span>
+            </div>
+            <div class="tir-card-meta">Condition: {{ alloc.furnitureItem?.condition || 'good' }}</div>
+            <div class="tir-card-meta" *ngIf="alloc.furnitureItem?.locationLabel">Location: {{ alloc.furnitureItem.locationLabel }}</div>
+            <span class="tir-badge badge-active">Ready to issue</span>
+          </div>
+          <div class="tir-card-actions">
+            <button class="tir-btn tir-btn-primary" (click)="openIssueFurnitureForm(alloc)">Issue to Student</button>
+            <button class="tir-btn tir-btn-outline-danger" [disabled]="returningMap[alloc.id]" (click)="returnFurnitureAllocation(alloc)">
+              <span *ngIf="!returningMap[alloc.id]">Return to Admin</span>
+              <span *ngIf="returningMap[alloc.id]">Returning…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Past furniture allocations -->
+    <div *ngIf="!loadingFN && pastFurniture.length > 0">
+      <h3 class="tir-sub-header tir-sub-muted">Past Allocations</h3>
+      <table class="tir-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>JP CODE</th>
+            <th>Condition</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let alloc of pastFurniture">
+            <td>{{ alloc.furnitureItem?.itemType === 'desk' ? 'Desk' : 'Chair' }}</td>
+            <td><span class="tir-copy-badge">{{ alloc.furnitureItem?.itemCode }}</span></td>
+            <td>{{ alloc.furnitureItem?.condition }}</td>
+            <td>
+              <span class="tir-badge"
+                [class.badge-returned]="alloc.status === 'returned'"
+                [class.badge-distributed]="alloc.status === 'distributed'">
+                {{ alloc.status }}
+              </span>
+            </td>
+            <td>{{ alloc.createdAt | date:'mediumDate' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Issue furniture form modal -->
+    <div class="tir-modal-overlay" *ngIf="issueFurnitureForm"></div>
+    <div class="tir-modal" *ngIf="issueFurnitureForm">
+      <div class="tir-modal-header">
+        <button class="tir-back-btn" (click)="closeIssueFurnitureForm()" title="Back to furniture list">← Back</button>
+        <h3>🪑 Issue Furniture to Student</h3>
+        <button class="tir-modal-close" (click)="closeIssueFurnitureForm()">✕</button>
+      </div>
+      <div class="tir-modal-body">
+
+        <!-- Error state with back button -->
+        <div class="tir-alert tir-alert-error" *ngIf="issueFurnitureError">
+          {{ issueFurnitureError }}
+          <button class="tir-btn tir-btn-sm tir-btn-secondary" style="margin-top:8px;" (click)="closeIssueFurnitureForm()">← Back to list</button>
+        </div>
+
+        <div class="tir-class-notice" *ngIf="myClassNames !== '—'">
+          🏫 Students from your class only: <strong>{{ myClassNames }}</strong>
+        </div>
+
+        <div class="tir-info-row">
+          <span class="tir-info-label">🪑 Item JP-Number:</span>
+          <span class="tir-copy-badge tir-copy-available">{{ issueFurnitureForm.itemCode }}</span>
+        </div>
+
+        <!-- Custom student picker -->
+        <div class="tir-form-group">
+          <label>Select Student <span class="req">*</span></label>
+
+          <div *ngIf="loadingStudents" class="tir-hint">⏳ Loading students…</div>
+
+          <div *ngIf="!loadingStudents && classStudents.length === 0" class="tir-hint tir-hint-warn">
+            ⚠ No students found for your class. Contact the administrator.
+            <button class="tir-btn tir-btn-sm tir-btn-secondary" style="margin-top:6px;" (click)="closeIssueFurnitureForm()">← Back to list</button>
+          </div>
+
+          <div *ngIf="!loadingStudents && classStudents.length > 0" class="tir-picker-wrap">
+            <div class="tir-picker-trigger" (click)="studentPickerOpen = !studentPickerOpen">
+              <span *ngIf="!issueFurnitureForm.studentId" class="tir-picker-placeholder">Click to select a student…</span>
+              <span *ngIf="issueFurnitureForm.studentId" class="tir-picker-selected">✔ {{ selectedStudentName(issueFurnitureForm.studentId) }}</span>
+              <span class="tir-picker-arrow">{{ studentPickerOpen ? '▲' : '▼' }}</span>
+            </div>
+            <div class="tir-picker-dropdown" *ngIf="studentPickerOpen">
+              <input
+                type="text"
+                [(ngModel)]="studentPickerSearch"
+                class="tir-picker-search"
+                placeholder="Search student name or number…"
+                (click)="$event.stopPropagation()"
+              />
+              <div class="tir-picker-empty" *ngIf="filteredStudents.length === 0">No students match</div>
+              <div class="tir-picker-items-scroll">
+                <div
+                  *ngFor="let s of filteredStudents"
+                  class="tir-picker-item"
+                  [class.tir-picker-item--selected]="issueFurnitureForm.studentId === s.id"
+                  [class.tir-picker-item--warn]="furnitureWarning(s.id) === 'already has desk & chair'"
+                  (click)="furnitureWarning(s.id) !== 'already has desk & chair' && selectStudent(s.id, 'furniture')"
+                  [title]="furnitureWarning(s.id) ? 'Warning: ' + furnitureWarning(s.id) : ''"
+                >
+                  <span class="tir-picker-name">{{ studentName(s) }}</span>
+                  <span class="tir-picker-warn-badge" *ngIf="furnitureWarning(s.id)">⚠ {{ furnitureWarning(s.id) }}</span>
+                  <span class="tir-picker-class" *ngIf="!furnitureWarning(s.id)">{{ s.classEntity?.name }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tir-form-group">
+          <label>Notes (optional)</label>
+          <input type="text" [(ngModel)]="issueFurnitureForm.notes" class="tir-input" placeholder="e.g. Condition noted">
+        </div>
+      </div>
+      <div class="tir-modal-footer">
+        <button class="tir-btn tir-btn-secondary" (click)="closeIssueFurnitureForm()">← Back</button>
+        <button class="tir-btn tir-btn-primary" [disabled]="issuingFurniture || !issueFurnitureForm.studentId" (click)="submitIssueFurniture()">
+          <span *ngIf="!issuingFurniture">✔ Issue Furniture</span>
+          <span *ngIf="issuingFurniture">Issuing…</span>
+        </button>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- =================== REPORTS =================== -->
+  <ng-container *ngIf="mode === 'reports'">
+    <div class="tir-section-header">
+      <h2>📊 Class Inventory Reports</h2>
+      <p class="tir-hint">Textbooks and furniture issued to students in your class.</p>
+    </div>
+
+    <div class="tir-loading" *ngIf="loadingReport">⏳ Loading report data…</div>
+    <div class="tir-alert tir-alert-error" *ngIf="reportError">{{ reportError }}</div>
+
+    <ng-container *ngIf="!loadingReport && !reportError">
+
+      <!-- Action bar -->
+      <div class="tir-report-actions">
+        <div class="tir-report-tabs">
+          <button class="tir-rep-tab" [class.active]="reportPreviewMode === 'textbooks'" (click)="reportPreviewMode = 'textbooks'">
+            📚 Textbooks ({{ reportTextbooks.length }})
+          </button>
+          <button class="tir-rep-tab" [class.active]="reportPreviewMode === 'furniture'" (click)="reportPreviewMode = 'furniture'">
+            🪑 Furniture ({{ reportFurniture.length }})
+          </button>
+        </div>
+        <div class="tir-report-btns">
+          <button class="tir-btn tir-btn-secondary" (click)="loadReport()">↺ Refresh</button>
+          <button class="tir-btn tir-btn-outline-print" (click)="previewPDF(reportPreviewMode)">
+            🔍 Preview {{ reportPreviewMode === 'textbooks' ? 'Textbooks' : 'Furniture' }} PDF
+          </button>
+          <button class="tir-btn tir-btn-outline-print" (click)="previewPDF('both')">🔍 Preview Full PDF</button>
+          <button class="tir-btn tir-btn-pdf" (click)="downloadPDF(reportPreviewMode)">
+            ⬇ {{ reportPreviewMode === 'textbooks' ? 'Textbooks' : 'Furniture' }} PDF
+          </button>
+          <button class="tir-btn tir-btn-pdf-full" (click)="downloadPDF('both')">⬇ Full Report PDF</button>
+        </div>
+      </div>
+
+      <div class="tir-class-notice" *ngIf="reportClassNames.length">
+        🏫 Report for class: <strong>{{ reportClassNames.join(', ') }}</strong>
+      </div>
+
+      <!-- Textbooks table -->
+      <div *ngIf="reportPreviewMode === 'textbooks'">
+        <div class="tir-print-header">{{ reportTitle }} · Textbook Issuances</div>
+        <div class="tir-empty" *ngIf="reportTextbooks.length === 0">
+          <span class="tir-empty-icon">📭</span><p>No textbooks issued to your class yet.</p>
+        </div>
+        <div class="tir-table-wrap" *ngIf="reportTextbooks.length > 0">
+          <table class="tir-table tir-report-table">
+            <thead>
+              <tr>
+                <th>#</th><th>Student Name</th><th>Stud. No.</th>
+                <th>Book Title</th><th>J-Number</th><th>Type</th><th>Status</th><th>Date Issued</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of reportTextbooks; let i = index">
+                <td>{{ i + 1 }}</td>
+                <td><strong>{{ r.student?.firstName }} {{ r.student?.lastName }}</strong></td>
+                <td>{{ r.student?.studentNumber || '—' }}</td>
+                <td>{{ r.catalog?.title || '—' }}</td>
+                <td><span class="tir-copy-badge" [class.tir-copy-available]="r.status==='active'" [class.tir-copy-issued]="r.status!=='active'">{{ r.copyNumber || '—' }}</span></td>
+                <td><span class="tir-badge">{{ r.issuanceType }}</span></td>
+                <td>
+                  <span class="tir-badge" [class.badge-active]="r.status==='active'" [class.badge-returned]="r.status==='returned'">{{ r.status }}</span>
+                </td>
+                <td>{{ r.createdAt | date:'dd/MM/yyyy' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Furniture table -->
+      <div *ngIf="reportPreviewMode === 'furniture'">
+        <div class="tir-print-header">{{ reportTitle }} · Furniture Issuances</div>
+        <div class="tir-empty" *ngIf="reportFurniture.length === 0">
+          <span class="tir-empty-icon">📭</span><p>No furniture issued to your class yet.</p>
+        </div>
+        <div class="tir-table-wrap" *ngIf="reportFurniture.length > 0">
+          <table class="tir-table tir-report-table">
+            <thead>
+              <tr>
+                <th>#</th><th>Student Name</th><th>Stud. No.</th>
+                <th>Type</th><th>JP-Number</th><th>Condition</th><th>Status</th><th>Date Issued</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of reportFurniture; let i = index">
+                <td>{{ i + 1 }}</td>
+                <td><strong>{{ r.student?.firstName }} {{ r.student?.lastName }}</strong></td>
+                <td>{{ r.student?.studentNumber || '—' }}</td>
+                <td><span class="tir-badge">{{ r.furnitureItem?.itemType === 'desk' ? '🖥️ Desk' : '🪑 Chair' }}</span></td>
+                <td><span class="tir-copy-badge tir-copy-available">{{ r.furnitureItem?.itemCode || '—' }}</span></td>
+                <td>{{ r.furnitureItem?.condition || '—' }}</td>
+                <td>
+                  <span class="tir-badge" [class.badge-active]="r.status==='active'" [class.badge-returned]="r.status==='returned'">{{ r.status }}</span>
+                </td>
+                <td>{{ r.issuedAt | date:'dd/MM/yyyy' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </ng-container>
+  </ng-container>
+
+</div>
+
+<!-- ═══════════════════════  PDF PREVIEW OVERLAY  ═══════════════════════ -->
+<div class="tir-pdf-overlay" *ngIf="pdfPreviewUrl" (click)="closePdfPreview()">
+  <div class="tir-pdf-modal" (click)="$event.stopPropagation()">
+    <div class="tir-pdf-modal-header">
+      <span class="tir-pdf-modal-title">
+        📄 PDF Preview —
+        <span *ngIf="pdfPreviewSection === 'textbooks'">Textbook Issuance Report</span>
+        <span *ngIf="pdfPreviewSection === 'furniture'">Furniture Issuance Report</span>
+        <span *ngIf="pdfPreviewSection === 'both'">Full Inventory Report</span>
+      </span>
+      <div class="tir-pdf-modal-actions">
+        <button class="tir-btn tir-btn-pdf" (click)="downloadPDF(pdfPreviewSection === 'textbooks' ? 'textbooks' : pdfPreviewSection === 'furniture' ? 'furniture' : 'both')">
+          ⬇ Download PDF
+        </button>
+        <button class="tir-btn tir-btn-danger" (click)="closePdfPreview()">✕ Close</button>
+      </div>
+    </div>
+    <div class="tir-pdf-modal-body">
+      <iframe [src]="pdfPreviewUrl" class="tir-pdf-frame" title="PDF Preview"></iframe>
+    </div>
+  </div>
+</div>

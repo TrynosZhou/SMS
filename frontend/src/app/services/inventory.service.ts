@@ -138,6 +138,62 @@ export class InventoryService {
     return this.http.get<any[]>(`${this.base}/audit`, { params: this.toParams(params) });
   }
 
+  /* ---- Teacher allocation (admin → teacher) ---- */
+
+  listTeachers(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.base}/teachers-list`);
+  }
+
+  issueTextbookToTeacher(catalogId: string, teacherUserId: string, quantity: number, notes?: string): Observable<any> {
+    return this.http.post(`${this.base}/textbooks/${catalogId}/issue-to-teacher`, { teacherUserId, quantity, notes });
+  }
+
+  issueFurnitureToTeacher(furnitureId: string, teacherUserId: string, notes?: string): Observable<any> {
+    return this.http.post(`${this.base}/furniture/${furnitureId}/issue-to-teacher`, { teacherUserId, notes });
+  }
+
+  bulkCreateFurniture(body: { deskQuantity: number; chairQuantity: number; condition?: string; locationLabel?: string }): Observable<any> {
+    return this.http.post(`${this.base}/furniture/bulk`, body);
+  }
+
+  bulkAllocateFurnitureToTeacher(body: { teacherUserId: string; deskQuantity: number; chairQuantity: number; condition?: string; locationLabel?: string; notes?: string }): Observable<any> {
+    return this.http.post(`${this.base}/furniture/bulk-allocate-to-teacher`, body);
+  }
+
+  listTeacherTextbookAllocations(teacherUserId?: string): Observable<any[]> {
+    const params = teacherUserId ? { teacherUserId } : undefined;
+    return this.http.get<any[]>(`${this.base}/teacher-allocations/textbooks`, { params: this.toParams(params) });
+  }
+
+  listTeacherFurnitureAllocations(teacherUserId?: string): Observable<any[]> {
+    const params = teacherUserId ? { teacherUserId } : undefined;
+    return this.http.get<any[]>(`${this.base}/teacher-allocations/furniture`, { params: this.toParams(params) });
+  }
+
+  issueTextbookFromTeacherAllocation(allocationId: string, studentId: string, issuanceType: string, loanDueAt?: string, notes?: string, specificCopyNumber?: string): Observable<any> {
+    return this.http.post(`${this.base}/teacher-textbook-allocations/${allocationId}/issue-to-student`, { studentId, issuanceType, loanDueAt, notes, specificCopyNumber });
+  }
+
+  issueFurnitureFromTeacherAllocation(allocationId: string, studentId: string, notes?: string): Observable<any> {
+    return this.http.post(`${this.base}/teacher-furniture-allocations/${allocationId}/issue-to-student`, { studentId, notes });
+  }
+
+  returnTeacherTextbookAllocation(allocationId: string): Observable<any> {
+    return this.http.post(`${this.base}/teacher-textbook-allocations/${allocationId}/return`, {});
+  }
+
+  returnTeacherFurnitureAllocation(allocationId: string): Observable<any> {
+    return this.http.post(`${this.base}/teacher-furniture-allocations/${allocationId}/return`, {});
+  }
+
+  getTeacherClassStudents(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.base}/teacher/my-class-students`);
+  }
+
+  getTeacherClassReport(): Observable<{ textbooks: any[]; furniture: any[]; classNames: string[] }> {
+    return this.http.get<any>(`${this.base}/teacher/my-class-report`);
+  }
+
   private toParams(obj?: Record<string, string | undefined>): HttpParams {
     let p = new HttpParams();
     if (!obj) return p;

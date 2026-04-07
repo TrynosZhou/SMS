@@ -99,6 +99,7 @@ import { ParentPortalComponent } from './components/student/parent-portal/parent
 import { DocEditorComponent } from './components/shared/doc-editor/doc-editor.component';
 import { InventoryHubComponent } from './components/inventory/inventory-hub/inventory-hub.component';
 import { StudentInventoryComponent } from './components/inventory/student-inventory/student-inventory.component';
+import { TeacherInventoryRecordComponent } from './components/teacher/teacher-inventory-record/teacher-inventory-record.component';
 import { StudentInventoryPanelComponent } from './components/inventory/student-inventory-panel/student-inventory-panel.component';
 
 @NgModule({
@@ -193,6 +194,7 @@ import { StudentInventoryPanelComponent } from './components/inventory/student-i
     DocEditorComponent,
     InventoryHubComponent,
     StudentInventoryComponent,
+    TeacherInventoryRecordComponent,
     StudentInventoryPanelComponent,
   ],
   imports: [

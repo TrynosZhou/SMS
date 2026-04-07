@@ -7,7 +7,7 @@ import { AuthService } from '../../../services/auth.service';
 import { ModuleAccessService } from '../../../services/module-access.service';
 import { ThemeService } from '../../../services/theme.service';
 
-export type InvTab = 'textbooks' | 'furniture' | 'ops' | 'fines' | 'reports' | 'settings';
+export type InvTab = 'textbooks' | 'furniture' | 'teacherAlloc' | 'ops' | 'fines' | 'reports' | 'settings';
 
 @Component({
   selector: 'app-inventory-hub',
@@ -20,6 +20,7 @@ export class InventoryHubComponent implements OnInit, OnDestroy {
   readonly tabs: { id: InvTab; label: string; icon: string; hint: string }[] = [
     { id: 'textbooks', label: 'Textbooks', icon: '📖', hint: 'Catalog & stock' },
     { id: 'furniture', label: 'Furniture', icon: '🪑', hint: 'Desks & chairs' },
+    { id: 'teacherAlloc', label: 'Teacher Allocations', icon: '🧑‍🏫', hint: 'Bulk issue to teachers' },
     { id: 'ops', label: 'Issuance', icon: '🔄', hint: 'Issue & return' },
     { id: 'fines', label: 'Fines', icon: '💳', hint: 'Assess & collect' },
     { id: 'reports', label: 'Reports', icon: '📊', hint: 'Export views' },
@@ -32,6 +33,19 @@ export class InventoryHubComponent implements OnInit, OnDestroy {
   furnIssuances: any[] = [];
   fines: any[] = [];
   students: any[] = [];
+
+  /* ---- Teacher allocation ---- */
+  teacherList: any[] = [];
+  teacherTbAllocations: any[] = [];
+  teacherFurnAllocations: any[] = [];
+  teacherAllocLoading = false;
+
+  bulkTbAllocForm: { teacherUserId: string; catalogId: string; quantity: number; notes: string } = {
+    teacherUserId: '', catalogId: '', quantity: 1, notes: ''
+  };
+  bulkFurnAllocForm: { teacherUserId: string; deskQuantity: number; chairQuantity: number; condition: string; locationLabel: string; notes: string } = {
+    teacherUserId: '', deskQuantity: 0, chairQuantity: 0, condition: 'good', locationLabel: '', notes: ''
+  };
 
   settings: any = {};
   loading = false;
@@ -90,6 +104,9 @@ export class InventoryHubComponent implements OnInit, OnDestroy {
   setTab(t: InvTab) {
     this.tab = t;
     this.err = '';
+    if (t === 'teacherAlloc' && !this.teacherList.length) {
+      this.loadTeacherAllocationData();
+    }
   }
 
   private showToast(type: 'success' | 'error' | 'info', message: string) {
@@ -402,6 +419,81 @@ export class InventoryHubComponent implements OnInit, OnDestroy {
         },
         error: () => this.showToast('error', 'Could not load reports')
       });
+  }
+
+  /* ---- Teacher allocation methods ---- */
+
+  loadTeacherAllocationData() {
+    this.teacherAllocLoading = true;
+    this.inventory.listTeachers().subscribe({
+      next: t => {
+        this.teacherList = t;
+        this.inventory.listTeacherTextbookAllocations().subscribe({
+          next: a => (this.teacherTbAllocations = a),
+          error: () => {}
+        });
+        this.inventory.listTeacherFurnitureAllocations().subscribe({
+          next: a => {
+            this.teacherFurnAllocations = a;
+            this.teacherAllocLoading = false;
+          },
+          error: () => (this.teacherAllocLoading = false)
+        });
+      },
+      error: () => (this.teacherAllocLoading = false)
+    });
+  }
+
+  bulkAllocateTextbooksToTeacher() {
+    const f = this.bulkTbAllocForm;
+    if (!f.teacherUserId || !f.catalogId || f.quantity < 1) {
+      this.showToast('error', 'Select teacher, textbook, and quantity ≥ 1');
+      return;
+    }
+    this.inventory.issueTextbookToTeacher(f.catalogId, f.teacherUserId, f.quantity, f.notes || undefined).subscribe({
+      next: () => {
+        this.showToast('success', `${f.quantity} copy/copies allocated to teacher with auto J-numbers`);
+        this.bulkTbAllocForm = { teacherUserId: '', catalogId: '', quantity: 1, notes: '' };
+        this.loadTeacherAllocationData();
+        this.refresh();
+      },
+      error: e => this.showToast('error', e.error?.message || 'Allocation failed')
+    });
+  }
+
+  bulkAllocateFurnitureToTeacher() {
+    const f = this.bulkFurnAllocForm;
+    if (!f.teacherUserId || (f.deskQuantity < 1 && f.chairQuantity < 1)) {
+      this.showToast('error', 'Select a teacher and provide at least 1 desk or chair');
+      return;
+    }
+    this.inventory.bulkAllocateFurnitureToTeacher({
+      teacherUserId: f.teacherUserId,
+      deskQuantity: Number(f.deskQuantity),
+      chairQuantity: Number(f.chairQuantity),
+      condition: f.condition || 'good',
+      locationLabel: f.locationLabel || undefined,
+      notes: f.notes || undefined
+    } as any).subscribe({
+      next: () => {
+        const total = Number(f.deskQuantity) + Number(f.chairQuantity);
+        this.showToast('success', `${total} furniture item(s) created & allocated with auto JP-numbers`);
+        this.bulkFurnAllocForm = { teacherUserId: '', deskQuantity: 0, chairQuantity: 0, condition: 'good', locationLabel: '', notes: '' };
+        this.loadTeacherAllocationData();
+        this.refresh();
+      },
+      error: e => this.showToast('error', e.error?.message || 'Furniture allocation failed')
+    });
+  }
+
+  teacherNameByUserId(teacherUserId: string): string {
+    const t = this.teacherList.find((t: any) => t.userId === teacherUserId || t.id === teacherUserId);
+    if (!t) return teacherUserId || '—';
+    return `${t.firstName || ''} ${t.lastName || ''}`.trim() || t.email || teacherUserId;
+  }
+
+  get availableFurniture(): any[] {
+    return (this.furniture || []).filter((f: any) => f.status === 'available');
   }
 
   studentLabel(s: any) {

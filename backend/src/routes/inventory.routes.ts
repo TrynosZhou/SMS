@@ -29,7 +29,20 @@ import {
   reportTextbookIssuance,
   reportFurnitureIssuance,
   reportLoanHistory,
-  listInventoryAudit
+  listInventoryAudit,
+  /* Teacher allocation */
+  listTeachersForInventory,
+  issueTextbookToTeacher,
+  bulkCreateFurniture,
+  bulkAllocateFurnitureToTeacher,
+  listTeacherTextbookAllocations,
+  listTeacherFurnitureAllocations,
+  issueTextbookFromTeacherAllocation,
+  issueFurnitureFromTeacherAllocation,
+  returnTeacherTextbookAllocation,
+  returnTeacherFurnitureAllocation,
+  getTeacherClassStudents,
+  getTeacherClassReport
 } from '../controllers/inventory.controller';
 
 const router = Router();
@@ -43,13 +56,18 @@ router.post('/textbooks', createTextbook);
 router.put('/textbooks/:id', updateTextbook);
 router.delete('/textbooks/:id', deleteTextbook);
 
+/* Furniture — static/bulk routes MUST come before parameterized /:id routes */
 router.get('/furniture', listFurniture);
+router.post('/furniture/bulk', bulkCreateFurniture);
+router.post('/furniture/bulk-allocate-to-teacher', bulkAllocateFurnitureToTeacher);
 router.post('/furniture', createFurniture);
 router.put('/furniture/:id', updateFurniture);
 router.delete('/furniture/:id', deleteFurniture);
 
 router.post('/textbooks/:catalogId/issue-permanent', issueTextbookPermanent);
 router.post('/textbooks/:catalogId/borrow', borrowTextbook);
+router.post('/textbooks/:catalogId/issue-to-teacher', issueTextbookToTeacher);
+
 router.post('/textbook-issuances/:id/return', returnTextbookIssuance);
 router.post('/textbook-issuances/:id/mark-lost', markTextbookLost);
 
@@ -72,5 +90,18 @@ router.get('/reports/textbook-issuance', reportTextbookIssuance);
 router.get('/reports/furniture-issuance', reportFurnitureIssuance);
 router.get('/reports/loan-history', reportLoanHistory);
 router.get('/audit', listInventoryAudit);
+
+/* ---- Teacher allocation routes ---- */
+router.get('/teachers-list', listTeachersForInventory);
+router.get('/teacher/my-class-students', getTeacherClassStudents);
+router.get('/teacher/my-class-report', getTeacherClassReport);
+
+router.get('/teacher-allocations/textbooks', listTeacherTextbookAllocations);
+router.get('/teacher-allocations/furniture', listTeacherFurnitureAllocations);
+
+router.post('/teacher-textbook-allocations/:allocationId/issue-to-student', issueTextbookFromTeacherAllocation);
+router.post('/teacher-furniture-allocations/:allocationId/issue-to-student', issueFurnitureFromTeacherAllocation);
+router.post('/teacher-textbook-allocations/:allocationId/return', returnTeacherTextbookAllocation);
+router.post('/teacher-furniture-allocations/:allocationId/return', returnTeacherFurnitureAllocation);
 
 export default router;

@@ -49,6 +49,14 @@ export class InventoryTextbookIssuance {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
+  /** Unique copy number (e.g. J0001) assigned when issued via teacher allocation */
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  copyNumber: string | null;
+
+  /** Links back to the teacher allocation this copy came from, if issued via teacher */
+  @Column({ type: 'uuid', nullable: true })
+  teacherAllocationId: string | null;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 }

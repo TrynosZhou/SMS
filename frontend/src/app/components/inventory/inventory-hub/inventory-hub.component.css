@@ -727,6 +727,25 @@
   }
 }
 
+/* Copy number badges (J-numbers, JP-numbers) */
+.inv-copy-badge {
+  display: inline-block;
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: monospace;
+  padding: 1px 6px;
+  margin: 1px 2px;
+  letter-spacing: 0.04em;
+}
+
+.inv-spinner-wrap {
+  padding: 1rem 0;
+}
+
 @media (max-width: 640px) {
   .inv-hero__content {
     padding: 1.15rem;
