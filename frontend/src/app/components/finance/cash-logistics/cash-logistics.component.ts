@@ -13,8 +13,6 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
   term = '';
   startDate = '';
   endDate = '';
-  page = 1;
-  readonly limit = 50;
 
   loading = false;
   error = '';
@@ -28,7 +26,7 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
   items: any[] = [];
   availableTerms: string[] = [];
 
-  /** Client-side filter on the current page (instant search) */
+  /** Client-side filter on loaded rows */
   searchQuery = '';
 
   lastRefreshed: Date | null = null;
@@ -65,12 +63,35 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
       : 'DH services (dining hall — day scholars; staff children / exempt 50% where applicable)';
   }
 
-  get totalLine(): number {
+  /** Total for the active tab (all matching payment lines, settings flat amounts) */
+  get totalCurrentTab(): number {
     if (!this.data) return 0;
-    return Number(this.data.totalPayments ?? this.data.totalCollected ?? 0) || 0;
+    if (this.serviceTab === 'transport') {
+      return Number(this.data.allRecordsTransportTotal ?? this.data.totalPayments ?? 0) || 0;
+    }
+    return Number(this.data.allRecordsDHTotal ?? this.data.totalPayments ?? 0) || 0;
   }
 
-  /** Rows visible after search (current page only) */
+  get allTransportTotal(): number {
+    return Number(this.data?.allRecordsTransportTotal ?? 0) || 0;
+  }
+
+  get allDHTotal(): number {
+    return Number(this.data?.allRecordsDHTotal ?? 0) || 0;
+  }
+
+  get transportLineCount(): number {
+    return Number(this.data?.allRecordsTransportLineCount ?? 0) || 0;
+  }
+
+  get dhLineCount(): number {
+    return Number(this.data?.allRecordsDHLineCount ?? 0) || 0;
+  }
+
+  get currentTabLineCount(): number {
+    return this.serviceTab === 'transport' ? this.transportLineCount : this.dhLineCount;
+  }
+
   get filteredItems(): any[] {
     const q = (this.searchQuery || '').trim().toLowerCase();
     if (!q) return this.items;
@@ -83,15 +104,12 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
     });
   }
 
-  get rangeLabel(): string {
-    if (!this.data?.total) return '';
-    const start = (this.page - 1) * this.limit + 1;
-    const end = Math.min(this.page * this.limit, this.data.total);
-    return `${start}–${end}`;
-  }
-
   get activeTermBadge(): string {
     return this.data?.activeTerm && this.term === this.data.activeTerm ? 'Current term' : '';
+  }
+
+  get truncated(): boolean {
+    return !!this.data?.cashLogisticsTruncated;
   }
 
   private showToast(msg: string, ms = 3200): void {
@@ -108,7 +126,15 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
     this.error = '';
     const termArg = this.term?.trim() || undefined;
     this.finance
-      .getCashReceipts(termArg, this.feeType, this.page, this.limit, this.startDate?.trim() || undefined, this.endDate?.trim() || undefined)
+      .getCashReceipts(
+        termArg,
+        this.feeType,
+        undefined,
+        undefined,
+        this.startDate?.trim() || undefined,
+        this.endDate?.trim() || undefined,
+        { fetchAll: true }
+      )
       .subscribe({
         next: (res: any) => {
           this.data = res;
@@ -119,6 +145,12 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
           }
           this.lastRefreshed = new Date();
           this.loading = false;
+          if (this.truncated) {
+            this.showToast(
+              `Showing first ${res.cashLogisticsReturnedCount} of ${res.total} rows (server limit). Export or narrow dates if needed.`,
+              6000
+            );
+          }
         },
         error: (e: any) => {
           this.error = e.error?.message || 'Failed to load logistics receipts';
@@ -130,29 +162,24 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
   setTab(t: 'transport' | 'dh'): void {
     if (this.serviceTab === t) return;
     this.serviceTab = t;
-    this.page = 1;
     this.searchQuery = '';
     this.load();
   }
 
   onTermChange(): void {
-    this.page = 1;
     this.load();
   }
 
   applyFilters(): void {
-    this.page = 1;
     this.load();
   }
 
   clearDates(): void {
     this.startDate = '';
     this.endDate = '';
-    this.page = 1;
     this.load();
   }
 
-  /** Quick date range presets (payment date filter) */
   applyPreset(preset: 'month' | '30d'): void {
     const end = new Date();
     const start = new Date();
@@ -163,39 +190,8 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
     }
     this.startDate = start.toISOString().slice(0, 10);
     this.endDate = end.toISOString().slice(0, 10);
-    this.page = 1;
     this.load();
     this.showToast(`Date filter: ${preset === 'month' ? 'This month' : 'Last 30 days'}`);
-  }
-
-  prevPage(): void {
-    if (this.page > 1) {
-      this.page--;
-      this.load();
-    }
-  }
-
-  nextPage(): void {
-    const tp = this.data?.totalPages ?? 1;
-    if (this.page < tp) {
-      this.page++;
-      this.load();
-    }
-  }
-
-  goFirstPage(): void {
-    if (this.page !== 1) {
-      this.page = 1;
-      this.load();
-    }
-  }
-
-  goLastPage(): void {
-    const tp = this.data?.totalPages ?? 1;
-    if (this.page !== tp) {
-      this.page = tp;
-      this.load();
-    }
   }
 
   downloadFullPdf(): void {
@@ -222,14 +218,14 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
   exportCsv(): void {
     const rows = this.filteredItems;
     if (!rows.length) {
-      this.showToast('Nothing to export on this page');
+      this.showToast('Nothing to export');
       return;
     }
     const svc = this.serviceTab === 'transport' ? 'Transport' : 'DH';
     const headers = ['#', 'Date', 'Student', 'Student No.', 'Invoice', 'Receipt', 'Method', `${svc} amount`];
     const lines = [headers.join(',')];
-    rows.forEach((row: any, i: number) => {
-      const idx = (this.data.page - 1) * this.limit + this.items.indexOf(row) + 1;
+    rows.forEach((row: any) => {
+      const idx = this.items.indexOf(row) + 1;
       const line = [
         idx,
         this.formatDate(row.paymentDate),

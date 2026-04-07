@@ -276,8 +276,16 @@ export class FinanceService {
     });
   }
 
-  /** Cash receipts: total payments via /payments/record for the term (Tuition + DH + Transport). Optional feeType, page, limit, startDate, endDate. */
-  getCashReceipts(term?: string, feeType?: string, page?: number, limit?: number, startDate?: string, endDate?: string): Observable<{
+  /** Cash receipts: total payments via /payments/record for the term (Tuition + DH + Transport). Optional feeType, page, limit, startDate, endDate. Pass fetchAll to return every line (backend cap). */
+  getCashReceipts(
+    term?: string,
+    feeType?: string,
+    page?: number,
+    limit?: number,
+    startDate?: string,
+    endDate?: string,
+    options?: { fetchAll?: boolean }
+  ): Observable<{
     term: string;
     activeTerm: string | null;
     feeType: string;
@@ -313,8 +321,12 @@ export class FinanceService {
     const params: any = {};
     if (term && term.trim()) params.term = term.trim();
     if (feeType && feeType !== 'all') params.feeType = feeType;
-    if (page != null && page >= 1) params.page = String(page);
-    if (limit != null && limit >= 1) params.limit = String(Math.min(100, Math.max(1, limit)));
+    if (options?.fetchAll) {
+      params.all = '1';
+    } else {
+      if (page != null && page >= 1) params.page = String(page);
+      if (limit != null && limit >= 1) params.limit = String(Math.min(100, Math.max(1, limit)));
+    }
     if (startDate && startDate.trim()) params.startDate = startDate.trim();
     if (endDate && endDate.trim()) params.endDate = endDate.trim();
     return this.http.get<any>(`${this.apiUrl}/finance/cash-receipts`, { params });

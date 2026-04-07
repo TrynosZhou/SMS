@@ -62,6 +62,13 @@
     <button type="button" class="cl-alert__close" (click)="error = ''" aria-label="Dismiss">×</button>
   </div>
 
+  <div class="cl-alert cl-alert--warn" *ngIf="!loading && truncated" role="status">
+    <span class="cl-alert__icon" aria-hidden="true">✂️</span>
+    <span
+      >List capped at {{ data?.cashLogisticsReturnedCount }} rows ({{ data?.total }} total). Narrow the date range or term if you need a smaller set.</span
+    >
+  </div>
+
   <section class="cl-panel cl-panel--toolbar" aria-label="Filters">
     <div class="cl-toolbar-grid">
       <div class="cl-field">
@@ -110,7 +117,7 @@
   <!-- Skeleton loading -->
   <div class="cl-skeleton-block" *ngIf="loading" aria-busy="true" aria-label="Loading">
     <div class="cl-kpi-skel">
-      <div class="cl-skel cl-skel--card" *ngFor="let _ of [1,2,3]"></div>
+      <div class="cl-skel cl-skel--card" *ngFor="let _ of [1,2,3,4]"></div>
     </div>
     <div class="cl-skel cl-skel--bar"></div>
     <div class="cl-skel-table">
@@ -118,30 +125,37 @@
     </div>
   </div>
 
-  <div class="cl-kpi-grid" *ngIf="!loading && data">
-    <article class="cl-kpi cl-kpi--main">
-      <div class="cl-kpi__icon" aria-hidden="true">{{ serviceTab === 'transport' ? '🚌' : '🍽️' }}</div>
+  <div class="cl-kpi-grid cl-kpi-grid--four" *ngIf="!loading && data">
+    <article class="cl-kpi" [class.cl-kpi--accent]="serviceTab === 'transport'">
+      <div class="cl-kpi__icon" aria-hidden="true">🚌</div>
       <div>
-        <p class="cl-kpi__label">Total {{ serviceTab === 'transport' ? 'transport' : 'DH' }} (term view)</p>
-        <p class="cl-kpi__value">{{ currencySymbol }}{{ formatMoney(totalLine) }}</p>
-        <p class="cl-kpi__hint" *ngIf="serviceTab === 'transport'">Settings: {{ currencySymbol }}{{ formatMoney(transportRate) }} per eligible day scholar</p>
-        <p class="cl-kpi__hint" *ngIf="serviceTab === 'dh'">Settings: {{ currencySymbol }}{{ formatMoney(dhRate) }} full · 50% for staff child / exempt</p>
+        <p class="cl-kpi__label">All transport (settings rates)</p>
+        <p class="cl-kpi__value">{{ currencySymbol }}{{ formatMoney(allTransportTotal) }}</p>
+        <p class="cl-kpi__hint">{{ transportLineCount }} receipt line(s) · {{ currencySymbol }}{{ formatMoney(transportRate) }} / eligible payer</p>
+      </div>
+    </article>
+    <article class="cl-kpi" [class.cl-kpi--accent]="serviceTab === 'dh'">
+      <div class="cl-kpi__icon" aria-hidden="true">🍽️</div>
+      <div>
+        <p class="cl-kpi__label">All DH (settings rates)</p>
+        <p class="cl-kpi__value">{{ currencySymbol }}{{ formatMoney(allDHTotal) }}</p>
+        <p class="cl-kpi__hint">{{ dhLineCount }} receipt line(s) · full {{ currencySymbol }}{{ formatMoney(dhRate) }} · 50% staff / exempt</p>
+      </div>
+    </article>
+    <article class="cl-kpi cl-kpi--main">
+      <div class="cl-kpi__icon" aria-hidden="true">{{ serviceTab === 'transport' ? '📊' : '📊' }}</div>
+      <div>
+        <p class="cl-kpi__label">Active tab total</p>
+        <p class="cl-kpi__value">{{ currencySymbol }}{{ formatMoney(totalCurrentTab) }}</p>
+        <p class="cl-kpi__hint">Same scope as filters · {{ currentTabLineCount }} line(s) below</p>
       </div>
     </article>
     <article class="cl-kpi">
       <div class="cl-kpi__icon cl-kpi__icon--muted" aria-hidden="true">📋</div>
       <div>
-        <p class="cl-kpi__label">Matching lines</p>
-        <p class="cl-kpi__value cl-kpi__value--sm">{{ data.total ?? 0 }}</p>
-        <p class="cl-kpi__hint">Receipt rows for this service</p>
-      </div>
-    </article>
-    <article class="cl-kpi">
-      <div class="cl-kpi__icon cl-kpi__icon--muted" aria-hidden="true">📑</div>
-      <div>
-        <p class="cl-kpi__label">Pagination</p>
-        <p class="cl-kpi__value cl-kpi__value--sm">Page {{ data.page }} / {{ data.totalPages }}</p>
-        <p class="cl-kpi__hint" *ngIf="data.total">Rows {{ rangeLabel }} of {{ data.total }}</p>
+        <p class="cl-kpi__label">Rows loaded</p>
+        <p class="cl-kpi__value cl-kpi__value--sm">{{ items.length }}</p>
+        <p class="cl-kpi__hint">All records for this tab (no paging)</p>
       </div>
     </article>
   </div>
@@ -158,11 +172,11 @@
   <section class="cl-panel cl-panel--table" *ngIf="!loading && items.length > 0">
     <div class="cl-table-head">
       <div class="cl-table-head__info">
-        <span class="cl-table-head__title">Receipt lines</span>
-        <span class="cl-badge" *ngIf="searchQuery.trim()">{{ filteredItems.length }} / {{ items.length }} on page</span>
-        <span class="cl-muted" *ngIf="!searchQuery.trim()">{{ items.length }} on this page</span>
+        <span class="cl-table-head__title">All receipt lines</span>
+        <span class="cl-badge" *ngIf="searchQuery.trim()">{{ filteredItems.length }} / {{ items.length }} shown</span>
+        <span class="cl-muted" *ngIf="!searchQuery.trim()">{{ items.length }} record(s)</span>
       </div>
-      <button type="button" class="cl-btn cl-btn--ghost cl-btn--sm" (click)="exportCsv()" title="Export filtered rows on this page">
+      <button type="button" class="cl-btn cl-btn--ghost cl-btn--sm" (click)="exportCsv()" title="Export visible rows (respects search)">
         ⬇ Export CSV
       </button>
     </div>
@@ -182,7 +196,7 @@
         </thead>
         <tbody>
           <tr *ngFor="let row of filteredItems; let i = index">
-            <td class="cl-mono">{{ (data.page - 1) * limit + items.indexOf(row) + 1 }}</td>
+            <td class="cl-mono">{{ items.indexOf(row) + 1 }}</td>
             <td>{{ formatDate(row.paymentDate) }}</td>
             <td><strong>{{ row.studentName }}</strong></td>
             <td class="cl-mono">{{ row.studentNumber || '—' }}</td>
@@ -216,16 +230,8 @@
         </tbody>
       </table>
     </div>
-    <p class="cl-search-empty" *ngIf="filteredItems.length === 0 && searchQuery.trim()">No rows match “{{ searchQuery }}” on this page.</p>
+    <p class="cl-search-empty" *ngIf="filteredItems.length === 0 && searchQuery.trim()">No rows match “{{ searchQuery }}” in the loaded list.</p>
   </section>
-
-  <nav class="cl-pager" *ngIf="!loading && data && (data.totalPages || 1) > 1" aria-label="Pagination">
-    <button type="button" class="cl-btn cl-btn--ghost cl-btn--sm" (click)="goFirstPage()" [disabled]="page <= 1">First</button>
-    <button type="button" class="cl-btn cl-btn--ghost" (click)="prevPage()" [disabled]="page <= 1">Previous</button>
-    <span class="cl-pager__meta">Page <strong>{{ page }}</strong> of {{ data.totalPages }}</span>
-    <button type="button" class="cl-btn cl-btn--ghost" (click)="nextPage()" [disabled]="page >= (data.totalPages || 1)">Next</button>
-    <button type="button" class="cl-btn cl-btn--ghost cl-btn--sm" (click)="goLastPage()" [disabled]="page >= (data.totalPages || 1)">Last</button>
-  </nav>
 
   <div class="cl-toast" *ngIf="toastMessage" role="status" aria-live="polite">{{ toastMessage }}</div>
 </div>

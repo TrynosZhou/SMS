@@ -2435,10 +2435,25 @@ export const getPaymentLogsSummary = async (req: AuthRequest, res: Response) => 
   }
 };
 
-/** Cash receipts: total of all payments via /payments/record for the selected term (Tuition + DH + Transport). Optional filter by fee type. Pagination: default 50 per page, max 100. */
+/** Cash receipts: total of all payments via /payments/record for the selected term (Tuition + DH + Transport). Optional filter by fee type. Pagination: default 50 per page, max 100. Query all=1 returns every line (cap 25k) with both transport/DH summary totals. */
 export const getCashReceipts = async (req: AuthRequest, res: Response) => {
   try {
-    const { term: termParam, feeType: feeTypeParam, page: pageParam, limit: limitParam, startDate: startDateParam, endDate: endDateParam } = req.query as { term?: string; feeType?: string; page?: string; limit?: string; startDate?: string; endDate?: string };
+    const {
+      term: termParam,
+      feeType: feeTypeParam,
+      page: pageParam,
+      limit: limitParam,
+      startDate: startDateParam,
+      endDate: endDateParam,
+      all: allParam
+    } = req.query as { term?: string; feeType?: string; page?: string; limit?: string; startDate?: string; endDate?: string; all?: string };
+    const fetchAll =
+      String(allParam || '')
+        .toLowerCase()
+        .trim() === '1' ||
+      String(allParam || '')
+        .toLowerCase()
+        .trim() === 'true';
     const settingsRepository = AppDataSource.getRepository(Settings);
     const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
     const invoiceRepository = AppDataSource.getRepository(Invoice);
@@ -2601,15 +2616,58 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const rawDHTotal = Math.round(totalDHSum * 100) / 100;
     const rawTransportTotal = Math.round(totalTransportSum * 100) / 100;
 
-    // Pagination: default 50 per page, max 100
+    // Grand totals for transport & DH (same term/date scope), independent of feeType filter — for logistics dashboard
+    let summaryAllTransportTotal = 0;
+    let summaryAllDHTotal = 0;
+    let summaryTransportLineCount = 0;
+    let summaryDHLineCount = 0;
+    for (const l of allLogs) {
+      const tf = getTransportAmount(l);
+      const df = getDHAmount(l);
+      if (tf > 0) {
+        summaryAllTransportTotal += tf;
+        summaryTransportLineCount += 1;
+      }
+      if (df > 0) {
+        summaryAllDHTotal += df;
+        summaryDHLineCount += 1;
+      }
+    }
+    summaryAllTransportTotal = Math.round(summaryAllTransportTotal * 100) / 100;
+    summaryAllDHTotal = Math.round(summaryAllDHTotal * 100) / 100;
+
+    // Pagination: default 50 per page, max 100; all=1 returns full list (capped)
     const CASH_RECEIPTS_DEFAULT_LIMIT = 50;
     const CASH_RECEIPTS_MAX_LIMIT = 100;
-    const page = Math.max(1, parseInt(String(pageParam || ''), 10) || 1);
-    const limitRaw = parseInt(String(limitParam || ''), 10);
-    const limit = Math.min(Math.max(Number.isFinite(limitRaw) ? limitRaw : CASH_RECEIPTS_DEFAULT_LIMIT, 1), CASH_RECEIPTS_MAX_LIMIT);
-    const skip = (page - 1) * limit;
+    const CASH_RECEIPTS_ALL_MAX = 25000;
     const totalItemCount = allocatedItems.filter((l) => (l.amountPaid || 0) > 0).length;
-    const totalPages = Math.max(1, Math.ceil(totalItemCount / limit));
+    const allItems = allocatedItems.filter((l) => (l.amountPaid || 0) > 0);
+
+    let page: number;
+    let limit: number;
+    let totalPages: number;
+    let items: typeof allItems;
+    let cashLogisticsAllTruncated = false;
+
+    if (fetchAll) {
+      page = 1;
+      if (allItems.length > CASH_RECEIPTS_ALL_MAX) {
+        items = allItems.slice(0, CASH_RECEIPTS_ALL_MAX);
+        limit = items.length;
+        cashLogisticsAllTruncated = true;
+      } else {
+        items = allItems;
+        limit = items.length;
+      }
+      totalPages = 1;
+    } else {
+      page = Math.max(1, parseInt(String(pageParam || ''), 10) || 1);
+      const limitRaw = parseInt(String(limitParam || ''), 10);
+      limit = Math.min(Math.max(Number.isFinite(limitRaw) ? limitRaw : CASH_RECEIPTS_DEFAULT_LIMIT, 1), CASH_RECEIPTS_MAX_LIMIT);
+      const skip = (page - 1) * limit;
+      totalPages = Math.max(1, Math.ceil(totalItemCount / limit));
+      items = allItems.slice(skip, skip + limit);
+    }
 
     // Use term match only (same as invoice list) so Total Invoiced syncs with Total Invoice Amount
     const invoicesScopeForTotalsQb = invoiceRepository
@@ -2646,9 +2704,6 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const totalPrepaidInTerm = Math.round(
       (invoicesForTotals || []).reduce((s, iv: any) => s + (parseFloat(String(iv.prepaidAmount || 0)) || 0), 0) * 100
     ) / 100;
-
-    const allItems = allocatedItems.filter((l) => (l.amountPaid || 0) > 0);
-    const items = allItems.slice(skip, skip + limit);
 
     const invoicesCount = invoicesForTotals.length;
     const uniqueStudentsWithInvoices = new Set((invoicesForTotals || []).map(iv => iv.studentId));
@@ -2746,7 +2801,14 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       page,
       limit,
       total: totalItemCount,
-      totalPages
+      totalPages,
+      /** Full-scope logistics totals (same term/date filters); not affected by feeType tab. */
+      allRecordsTransportTotal: summaryAllTransportTotal,
+      allRecordsDHTotal: summaryAllDHTotal,
+      allRecordsTransportLineCount: summaryTransportLineCount,
+      allRecordsDHLineCount: summaryDHLineCount,
+      cashLogisticsTruncated: cashLogisticsAllTruncated,
+      cashLogisticsReturnedCount: items.length
     });
   } catch (error: any) {
     console.error('Error fetching cash receipts:', error);
