@@ -114,31 +114,6 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
     return Number(this.data?.logisticsDHUnpaidAmount ?? 0) || 0;
   }
 
-  /** Cash payment lines attributed (flat per payment row) — for reconciliation. */
-  get cashLinesTransport(): number {
-    return Number(this.data?.allRecordsTransportTotal ?? 0) || 0;
-  }
-
-  get cashLinesDH(): number {
-    return Number(this.data?.allRecordsDHTotal ?? 0) || 0;
-  }
-
-  get cashLineCountTransport(): number {
-    return Number(this.data?.allRecordsTransportLineCount ?? 0) || 0;
-  }
-
-  get cashLineCountDH(): number {
-    return Number(this.data?.allRecordsDHLineCount ?? 0) || 0;
-  }
-
-  get totalTransportReceipts(): number {
-    return Number(this.data?.totalTransportReceipts ?? this.data?.allRecordsTransportTotal ?? 0) || 0;
-  }
-
-  get totalDHReceipts(): number {
-    return Number(this.data?.totalDHReceipts ?? this.data?.allRecordsDHTotal ?? 0) || 0;
-  }
-
   get transportReceiptsByStudent(): Array<{
     studentId: string;
     studentNumber: string;
@@ -207,13 +182,6 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
       const rcpt = String(row.receiptNumber || '').toLowerCase();
       return name.includes(q) || num.includes(q) || inv.includes(q) || rcpt.includes(q);
     });
-  }
-
-  get rangeLabel(): string {
-    if (!this.data?.total) return '';
-    const start = (this.page - 1) * this.limit + 1;
-    const end = Math.min(this.page * this.limit, this.data.total);
-    return `${start}–${end}`;
   }
 
   get activeTermBadge(): string {

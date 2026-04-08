@@ -6,12 +6,9 @@
         <p class="cl-kicker">Finance · Logistics</p>
         <h1 id="cl-page-title">Logistics receipts</h1>
         <p class="cl-lead">
-          <strong>Total Transport Receipts</strong> and <strong>Total DH Receipts</strong> use <strong>Settings</strong> transport
-          and DH rates (DH half price for staff / exempted day scholars). For each payment, cash is applied in order:
-          <strong>previous balance → transport → dining hall → tuition</strong> (no proportional split). Cleared invoices top up
-          logistics totals to the full settings caps when needed. Only payments on <strong>invoices for the report term</strong>
-          count. Transport: day scholars who use school transport. DH: day scholars on dining hall. Date filters apply to
-          <em>payment</em> dates.
+          Transport and DH use <strong>Settings</strong> rates (DH half price for staff / exempted day scholars). Cash is applied in
+          order: <strong>previous balance → transport → dining hall → tuition</strong>. Choose the <strong>report term</strong> below;
+          the table can be narrowed with dates. Transport: day scholars who use school transport. DH: day scholars on dining hall.
         </p>
         <div class="cl-hero__chips" *ngIf="data || term">
           <span class="cl-chip" *ngIf="term"><span class="cl-chip__dot"></span>{{ term }}</span>
@@ -64,22 +61,13 @@
     <p class="cl-context__title">How to read these numbers</p>
     <ul class="cl-context__list">
       <li>
-        <strong>Large figure</strong> on each card is <em>eligible day scholars × Settings rate</em> for transport or DH (DH half
-        rate for staff / exempt children). It is expected billing for the cohort, not cash collected.
+        <strong>Large figure</strong> on each transport/DH card is <em>eligible day scholars × Settings rate</em> (DH half rate
+        for staff / exempt children). That is expected billing for the cohort, not a cash-collected total.
       </li>
       <li>
-        <strong>Total Transport Receipts</strong> / <strong>Total DH Receipts</strong> sum the transport and DH portions from
-        the payment waterfall (previous balance first, then transport, then DH, then tuition) across the <strong>whole report
-        term</strong> — not just the current table page or date filter. School-wide <strong>outstanding</strong> excludes unpaid
-        transport; DH may still appear as owed.
-      </li>
-      <li *ngIf="cashLineCountTransport > 0 && serviceTab === 'transport'">
-        There are <strong>{{ cashLineCountTransport }}</strong> term-wide payment line(s) with a positive transport share. The
-        table shows only rows that match your date filter and current page (see “Table (paged / filtered)” card).
-      </li>
-      <li *ngIf="cashLineCountDH > 0 && serviceTab === 'dh'">
-        There are <strong>{{ cashLineCountDH }}</strong> term-wide payment line(s) with a positive DH share. The table shows only
-        rows that match your date filter and current page.
+        The <strong>table</strong> lists payment lines for the selected tab; use dates and paging to browse. Per-student attributed
+        cash is in the section below. School-wide <strong>outstanding</strong> on this report excludes unpaid transport; DH may
+        still show as owed.
       </li>
     </ul>
   </div>
@@ -179,38 +167,22 @@
     <article class="cl-kpi" [class.cl-kpi--accent]="serviceTab === 'transport'">
       <div class="cl-kpi__icon" aria-hidden="true">🚌</div>
       <div>
-        <p class="cl-kpi__label">Term transport (invoiced or eligible × rate)</p>
+        <p class="cl-kpi__label">Term transport (invoiced and Collected)</p>
         <p class="cl-kpi__value">{{ currencySymbol }}{{ formatMoney(termTransportTotal) }}</p>
-        <p class="cl-kpi__receipts-total">
-          Total Transport Receipts:
-          <strong class="cl-kpi__receipts-amount">{{ currencySymbol }}{{ formatWholeDollars(totalTransportReceipts) }}</strong>
-          <span class="cl-kpi__receipts-meta"
-            >({{ cashLineCountTransport }} payment line(s) with transport share · <strong>entire term</strong>, all pages;
-            not limited to the table date filter)</span
-          >
-        </p>
         <p class="cl-kpi__hint">
           {{ transportEligibleCount }} eligible day scholar(s) · {{ currencySymbol }}{{ formatMoney(transportRate) }} / student
         </p>
         <p class="cl-kpi__hint cl-kpi__hint--strong">
           Outstanding on transport: {{ transportUnpaidCount }} student(s), {{ currencySymbol }}{{ formatMoney(transportUnpaidAmount) }}
-          <span class="cl-kpi__micro">(payments apply to prior balance &amp; tuition before transport)</span>
+          <span class="cl-kpi__micro">(waterfall: after previous balance, before DH &amp; tuition)</span>
         </p>
       </div>
     </article>
     <article class="cl-kpi" [class.cl-kpi--accent]="serviceTab === 'dh'">
       <div class="cl-kpi__icon" aria-hidden="true">🍽️</div>
       <div>
-        <p class="cl-kpi__label">Term DH (invoiced or eligible × rate)</p>
+        <p class="cl-kpi__label">Term DH (invoiced and Collected)</p>
         <p class="cl-kpi__value">{{ currencySymbol }}{{ formatMoney(termDHTotal) }}</p>
-        <p class="cl-kpi__receipts-total">
-          Total DH Receipts:
-          <strong class="cl-kpi__receipts-amount">{{ currencySymbol }}{{ formatWholeDollars(totalDHReceipts) }}</strong>
-          <span class="cl-kpi__receipts-meta"
-            >({{ cashLineCountDH }} payment line(s) with DH share · <strong>entire term</strong>, all pages; not limited to the
-            table date filter)</span
-          >
-        </p>
         <p class="cl-kpi__hint">
           {{ dhEligibleCount }} student(s) · full {{ currencySymbol }}{{ formatMoney(dhRate) }} · 50% staff / exempt
         </p>
@@ -226,22 +198,32 @@
         <p class="cl-kpi__label">Active tab — term total</p>
         <p class="cl-kpi__value">{{ currencySymbol }}{{ formatMoney(activeTabTermTotal) }}</p>
         <p class="cl-kpi__hint">
-          {{ serviceTab === 'transport' ? transportEligibleCount + ' transport-eligible' : dhEligibleCount + ' DH-eligible' }}
-          · dollar totals above = <strong>all</strong> eligible payment lines for the term; table is paged (and may use date
-          filters)
+          Same as the large figure on the {{ serviceTab === 'transport' ? 'transport' : 'DH' }} card for this tab · table below is
+          paged and can use date filters
         </p>
       </div>
     </article>
     <article class="cl-kpi">
       <div class="cl-kpi__icon cl-kpi__icon--muted" aria-hidden="true">📋</div>
       <div>
-        <p class="cl-kpi__label">Table (paged / filtered)</p>
-        <p class="cl-kpi__value cl-kpi__value--sm">{{ data?.total ?? 0 }}</p>
-        <p class="cl-kpi__hint" *ngIf="!allRowsMode">
-          {{ rangeLabel }} visible · page {{ data?.page }} / {{ data?.totalPages }} · {{ limit }}/page · date filters narrow
-          rows only (totals above stay term-wide)
+        <p class="cl-kpi__label">Table — this page / matching filter</p>
+        <p
+          class="cl-kpi__value cl-kpi__value--fraction"
+          [attr.aria-label]="
+            'Payment lines: ' + items.length + ' on this page, ' + (data?.total ?? 0) + ' matching current table filters'
+          "
+        >
+          <span class="cl-kpi__num-strong">{{ items.length }}</span>
+          <span class="cl-kpi__num-denom" aria-hidden="true">/</span>
+          <span class="cl-kpi__num-denom">{{ data?.total ?? 0 }}</span>
         </p>
-        <p class="cl-kpi__hint" *ngIf="allRowsMode">Showing {{ items.length }} line(s) in table scope (no paging)</p>
+        <p class="cl-kpi__micro cl-kpi__micro--below-value">
+          Rows on this page · total rows that match the table filters (term + tab + dates)
+        </p>
+        <p class="cl-kpi__hint" *ngIf="!allRowsMode">
+          Page {{ data?.page }} / {{ data?.totalPages }} · up to {{ limit }} per page
+        </p>
+        <p class="cl-kpi__hint" *ngIf="allRowsMode">{{ items.length }} line(s) loaded · no paging</p>
       </div>
     </article>
   </div>
@@ -250,7 +232,7 @@
     <div class="cl-breakdown__head">
       <h2 class="cl-breakdown__title">Per-student cash attribution</h2>
       <p class="cl-breakdown__lede">
-        Sums match <strong>Total Transport Receipts</strong> and <strong>Total DH Receipts</strong> above (rounded to whole dollars per student).
+        Transport and DH cash attributed per student for the report term (whole dollars). Expand a column to see the list.
       </p>
     </div>
     <div class="cl-breakdown__grid">
