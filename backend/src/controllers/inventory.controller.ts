@@ -28,6 +28,72 @@ function parseDate(s: string | undefined): Date | undefined {
   return Number.isNaN(d.getTime()) ? undefined : d;
 }
 
+/** Physical condition for textbook copies (teacher modal): Good | Lost | Torn */
+function textbookPhysicalConditionLabel(raw: string | null | undefined): 'Good' | 'Lost' | 'Torn' {
+  const s = String(raw || 'good').trim().toLowerCase();
+  if (s === 'lost' || s === 'missing') return 'Lost';
+  if (s === 'torn' || s === 'ripped' || s === 'damaged' || s === 'poor') return 'Torn';
+  return 'Good';
+}
+
+/** Furniture asset condition (teacher modal): Good | Damaged | Lost */
+function furnitureConditionDisplayLabel(raw: string | null | undefined): 'Good' | 'Damaged' | 'Lost' {
+  const s = String(raw || 'good').trim().toLowerCase();
+  if (s === 'lost' || s === 'missing') return 'Lost';
+  if (s === 'damaged' || s === 'broken' || s === 'poor') return 'Damaged';
+  return 'Good';
+}
+
+function parseTeacherTextbookConditionInput(input: unknown): 'good' | 'lost' | 'torn' | null {
+  const k = String(input ?? '')
+    .trim()
+    .toLowerCase();
+  if (k === 'good' || k === 'lost' || k === 'torn') return k;
+  return null;
+}
+
+function parseTeacherFurnitureConditionInput(input: unknown): 'good' | 'damaged' | 'lost' | null {
+  const k = String(input ?? '')
+    .trim()
+    .toLowerCase();
+  if (k === 'good' || k === 'damaged' || k === 'lost') return k;
+  return null;
+}
+
+async function getTeacherScopedStudentIds(teacherUserId: string): Promise<string[]> {
+  const teacher = await AppDataSource.getRepository(Teacher).findOneBy({ userId: teacherUserId });
+  if (!teacher) return [];
+  const { Class } = await import('../entities/Class');
+  const ownedClasses = await AppDataSource.getRepository(Class).find({
+    where: [{ classTeacher1Id: teacher.id }, { classTeacher2Id: teacher.id }]
+  });
+  let classIds = ownedClasses.map(c => c.id);
+  if (!classIds.length) {
+    const { getTeacherClassIds } = await import('../utils/teacherClassLinker');
+    classIds = await getTeacherClassIds(teacher.id);
+  }
+  if (!classIds.length) return [];
+  const students = await AppDataSource.getRepository(Student)
+    .createQueryBuilder('s')
+    .where('s.classId IN (:...classIds)', { classIds })
+    .andWhere('s.isActive = true')
+    .getMany();
+  return students.map(s => s.id);
+}
+
+async function teacherCanUpdateFurnitureItem(userId: string, furnitureItemId: string): Promise<boolean> {
+  const hasAlloc = await AppDataSource.getRepository(InventoryTeacherFurnitureAllocation).findOne({
+    where: { furnitureItemId, teacherUserId: userId }
+  });
+  if (hasAlloc) return true;
+  const activeIss = await AppDataSource.getRepository(InventoryFurnitureIssuance).findOne({
+    where: { furnitureItemId, status: 'active' as any }
+  });
+  if (!activeIss) return false;
+  const scoped = await getTeacherScopedStudentIds(userId);
+  return scoped.includes(activeIss.studentId);
+}
+
 async function requireManage(req: AuthRequest, res: Response): Promise<Settings | null> {
   const settings = await loadSettingsRow();
   if (!req.user || !canUserManageInventory(req.user, settings)) {
@@ -1032,15 +1098,62 @@ export const listTeacherTextbookAllocations = async (req: AuthRequest, res: Resp
       qb.where('a.teacherUserId = :uid', { uid: String(req.query.teacherUserId) });
     }
     const allocs = await qb.getMany();
+    if (!allocs.length) {
+      return res.json([]);
+    }
 
-    // Attach quantityDistributed: count of issuances made from each allocation
     const issuanceRepo = AppDataSource.getRepository(InventoryTextbookIssuance);
-    const withCounts = await Promise.all(allocs.map(async alloc => {
-      const quantityDistributed = await issuanceRepo.count({
-        where: { teacherAllocationId: alloc.id } as any
-      });
-      return { ...alloc, quantityDistributed };
-    }));
+    const allocIds = allocs.map(a => a.id);
+    const issuances = await issuanceRepo
+      .createQueryBuilder('i')
+      .where('i.teacherAllocationId IN (:...ids)', { ids: allocIds })
+      .getMany();
+
+    const issuanceByAllocCopy = new Map<string, (typeof issuances)[0]>();
+    for (const i of issuances) {
+      if (i.teacherAllocationId && i.copyNumber) {
+        issuanceByAllocCopy.set(`${i.teacherAllocationId}:${i.copyNumber}`, i);
+      }
+    }
+
+    const withCounts = allocs.map(alloc => {
+      const copyNumbers = alloc.copyNumbers || [];
+      const issuedSet = new Set(
+        issuances.filter(i => i.teacherAllocationId === alloc.id).map(i => i.copyNumber).filter(Boolean) as string[]
+      );
+      const issuedCopyNumbers = copyNumbers.filter(cn => issuedSet.has(cn));
+      const availableCopyNumbers = copyNumbers.filter(cn => !issuedSet.has(cn));
+      const quantityDistributed = issuedCopyNumbers.length;
+      const totalCopies = copyNumbers.length > 0 ? copyNumbers.length : alloc.quantity || 0;
+      const overrides = alloc.copyConditions || {};
+      const catalogCond = alloc.catalog?.condition;
+      const copyConditionByNumber: Record<string, 'Good' | 'Lost' | 'Torn'> = {};
+      for (const cn of copyNumbers) {
+        const iss = issuanceByAllocCopy.get(`${alloc.id}:${cn}`);
+        if (iss) {
+          if (iss.physicalCondition) {
+            copyConditionByNumber[cn] = textbookPhysicalConditionLabel(iss.physicalCondition);
+          } else if (iss.status === 'lost') {
+            copyConditionByNumber[cn] = 'Lost';
+          } else {
+            const raw = overrides[cn] ?? catalogCond;
+            copyConditionByNumber[cn] = textbookPhysicalConditionLabel(raw);
+          }
+        } else {
+          const raw = overrides[cn] ?? catalogCond;
+          copyConditionByNumber[cn] = textbookPhysicalConditionLabel(raw);
+        }
+      }
+      const { copyConditions: _omit, ...rest } = alloc as InventoryTeacherTextbookAllocation & { copyConditions?: unknown };
+      return {
+        ...rest,
+        quantityDistributed,
+        totalCopies,
+        issuedCopyNumbers,
+        availableCopyNumbers,
+        copyConditionByNumber
+      };
+    });
 
     res.json(withCounts);
   } catch (e: any) {
@@ -1062,7 +1175,12 @@ export const listTeacherFurnitureAllocations = async (req: AuthRequest, res: Res
     } else if (req.query.teacherUserId) {
       qb.where('a.teacherUserId = :uid', { uid: String(req.query.teacherUserId) });
     }
-    res.json(await qb.getMany());
+    const rows = await qb.getMany();
+    const enriched = rows.map(a => ({
+      ...a,
+      conditionLabel: furnitureConditionDisplayLabel(a.furnitureItem?.condition)
+    }));
+    res.json(enriched);
   } catch (e: any) {
     res.status(500).json({ message: e.message || 'Error' });
   }
@@ -1200,12 +1318,19 @@ export const returnTeacherTextbookAllocation = async (req: AuthRequest, res: Res
       where: { id: allocationId, teacherUserId: req.user.id }
     });
     if (!alloc) return res.status(404).json({ message: 'Allocation not found' });
+    const copyNumbers = alloc.copyNumbers || [];
+    const issued = await AppDataSource.getRepository(InventoryTextbookIssuance).count({
+      where: { teacherAllocationId: allocationId } as any
+    });
+    const totalCopies = copyNumbers.length > 0 ? copyNumbers.length : alloc.quantity || 0;
+    const unusedToReturn = Math.max(0, totalCopies - issued);
+
     alloc.status = 'returned';
     await AppDataSource.getRepository(InventoryTeacherTextbookAllocation).save(alloc);
 
     const catalog = await AppDataSource.getRepository(InventoryTextbookCatalog).findOneBy({ id: alloc.catalogId });
-    if (catalog) {
-      catalog.quantityAvailable += alloc.quantity;
+    if (catalog && unusedToReturn > 0) {
+      catalog.quantityAvailable += unusedToReturn;
       await AppDataSource.getRepository(InventoryTextbookCatalog).save(catalog);
     }
     res.json({ message: 'Returned' });
@@ -1231,6 +1356,118 @@ export const returnTeacherFurnitureAllocation = async (req: AuthRequest, res: Re
     const item = await AppDataSource.getRepository(InventoryFurnitureItem).findOneBy({ id: alloc.furnitureItemId });
     if (item) { item.status = 'available'; await AppDataSource.getRepository(InventoryFurnitureItem).save(item); }
     res.json({ message: 'Returned' });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+};
+
+/* ---- Teacher: update textbook copy condition (allocation, not yet issued / metadata on copy) ---- */
+export const patchTeacherTextbookAllocationCopyCondition = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== UserRole.TEACHER) {
+      return res.status(403).json({ message: 'Teacher only' });
+    }
+    const { allocationId } = req.params;
+    const { copyNumber, condition } = req.body;
+    const cond = parseTeacherTextbookConditionInput(condition);
+    if (!copyNumber || !cond) {
+      return res.status(400).json({ message: 'copyNumber and condition (good|lost|torn) required' });
+    }
+    const allocRepo = AppDataSource.getRepository(InventoryTeacherTextbookAllocation);
+    const alloc = await allocRepo.findOne({
+      where: { id: allocationId, teacherUserId: req.user.id }
+    });
+    if (!alloc) return res.status(404).json({ message: 'Allocation not found or not yours' });
+    const nums = alloc.copyNumbers || [];
+    if (!nums.includes(String(copyNumber))) {
+      return res.status(400).json({ message: 'Copy number is not part of this allocation' });
+    }
+    const next = { ...(alloc.copyConditions || {}) };
+    next[String(copyNumber)] = cond;
+    alloc.copyConditions = next;
+    await allocRepo.save(alloc);
+    const conditionLabel = textbookPhysicalConditionLabel(cond);
+    res.json({ message: 'OK', conditionLabel });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+};
+
+/* ---- Teacher: update issued textbook condition (class students only); syncs lost ↔ stock when applicable ---- */
+export const patchTeacherTextbookIssuanceCondition = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== UserRole.TEACHER) {
+      return res.status(403).json({ message: 'Teacher only' });
+    }
+    const { issuanceId } = req.params;
+    const cond = parseTeacherTextbookConditionInput(req.body?.condition);
+    if (!cond) {
+      return res.status(400).json({ message: 'condition must be good, lost, or torn' });
+    }
+    const issRepo = AppDataSource.getRepository(InventoryTextbookIssuance);
+    const iss = await issRepo.findOne({ where: { id: issuanceId }, relations: ['catalog'] });
+    if (!iss || !iss.catalog) return res.status(404).json({ message: 'Issuance not found' });
+
+    const scoped = await getTeacherScopedStudentIds(req.user.id);
+    if (!scoped.includes(iss.studentId)) {
+      return res.status(403).json({ message: 'Not allowed for this student' });
+    }
+
+    const wasLost = iss.status === 'lost';
+    const activeLike = iss.status === 'active' || iss.status === 'overdue';
+
+    iss.physicalCondition = cond;
+
+    if (cond === 'lost') {
+      if (activeLike) {
+        iss.status = 'lost';
+        iss.lostReportedAt = new Date();
+        iss.catalog.quantityTotal = Math.max(0, iss.catalog.quantityTotal - 1);
+        await AppDataSource.getRepository(InventoryTextbookCatalog).save(iss.catalog);
+      }
+    } else {
+      if (wasLost) {
+        iss.status = 'active';
+        iss.lostReportedAt = null;
+        iss.catalog.quantityTotal += 1;
+        await AppDataSource.getRepository(InventoryTextbookCatalog).save(iss.catalog);
+      }
+    }
+
+    await issRepo.save(iss);
+    const conditionLabel =
+      iss.physicalCondition != null
+        ? textbookPhysicalConditionLabel(iss.physicalCondition)
+        : iss.status === 'lost'
+          ? 'Lost'
+          : textbookPhysicalConditionLabel(iss.catalog.condition);
+    res.json({ message: 'OK', conditionLabel, issuance: iss });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+};
+
+/* ---- Teacher: update furniture item condition (their allocation or class issuance) ---- */
+export const patchTeacherFurnitureItemCondition = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== UserRole.TEACHER) {
+      return res.status(403).json({ message: 'Teacher only' });
+    }
+    const { furnitureItemId } = req.params;
+    const cond = parseTeacherFurnitureConditionInput(req.body?.condition);
+    if (!cond) {
+      return res.status(400).json({ message: 'condition must be good, damaged, or lost' });
+    }
+    const allowed = await teacherCanUpdateFurnitureItem(req.user.id, furnitureItemId);
+    if (!allowed) return res.status(403).json({ message: 'Not allowed for this item' });
+
+    const itemRepo = AppDataSource.getRepository(InventoryFurnitureItem);
+    const item = await itemRepo.findOneBy({ id: furnitureItemId });
+    if (!item) return res.status(404).json({ message: 'Furniture not found' });
+    item.condition = cond;
+    await itemRepo.save(item);
+    const conditionLabel = furnitureConditionDisplayLabel(cond);
+    res.json({ message: 'OK', conditionLabel, item });
   } catch (e: any) {
     res.status(500).json({ message: e.message || 'Error' });
   }
@@ -1282,6 +1519,31 @@ export const getTeacherClassReport = async (req: AuthRequest, res: Response) => 
       .addOrderBy('catalog.title', 'ASC')
       .getMany();
 
+    const tbAllocRepo = AppDataSource.getRepository(InventoryTeacherTextbookAllocation);
+    const tbAllocIds = [...new Set(textbooks.map(t => t.teacherAllocationId).filter(Boolean))] as string[];
+    const tbAllocs = tbAllocIds.length
+      ? await tbAllocRepo.findBy({ id: In(tbAllocIds) })
+      : [];
+    const tbAllocMap = new Map(tbAllocs.map(a => [a.id, a]));
+
+    const textbooksOut = textbooks.map(iss => {
+      let conditionLabel: 'Good' | 'Lost' | 'Torn';
+      if (iss.physicalCondition) {
+        conditionLabel = textbookPhysicalConditionLabel(iss.physicalCondition);
+      } else if (iss.status === 'lost') {
+        conditionLabel = 'Lost';
+      } else {
+        let raw = iss.catalog?.condition;
+        if (iss.teacherAllocationId && iss.copyNumber) {
+          const al = tbAllocMap.get(iss.teacherAllocationId);
+          const o = al?.copyConditions?.[iss.copyNumber];
+          if (o) raw = o;
+        }
+        conditionLabel = textbookPhysicalConditionLabel(raw);
+      }
+      return { ...iss, conditionLabel };
+    });
+
     // Furniture issuances for these students
     const furniture = await AppDataSource.getRepository(InventoryFurnitureIssuance)
       .createQueryBuilder('iss')
@@ -1293,7 +1555,12 @@ export const getTeacherClassReport = async (req: AuthRequest, res: Response) => 
       .addOrderBy('item.itemType', 'ASC')
       .getMany();
 
-    res.json({ textbooks, furniture, classNames });
+    const furnitureOut = furniture.map(iss => ({
+      ...iss,
+      conditionLabel: furnitureConditionDisplayLabel(iss.furnitureItem?.condition)
+    }));
+
+    res.json({ textbooks: textbooksOut, furniture: furnitureOut, classNames });
   } catch (e: any) {
     res.status(500).json({ message: e.message || 'Error' });
   }

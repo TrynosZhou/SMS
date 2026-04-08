@@ -57,6 +57,10 @@ export class InventoryTextbookIssuance {
   @Column({ type: 'uuid', nullable: true })
   teacherAllocationId: string | null;
 
+  /** Teacher-recorded physical state: good | lost | torn (overrides display when set) */
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  physicalCondition: string | null;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 }

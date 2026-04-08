@@ -42,7 +42,10 @@ import {
   returnTeacherTextbookAllocation,
   returnTeacherFurnitureAllocation,
   getTeacherClassStudents,
-  getTeacherClassReport
+  getTeacherClassReport,
+  patchTeacherTextbookAllocationCopyCondition,
+  patchTeacherTextbookIssuanceCondition,
+  patchTeacherFurnitureItemCondition
 } from '../controllers/inventory.controller';
 
 const router = Router();
@@ -103,5 +106,9 @@ router.post('/teacher-textbook-allocations/:allocationId/issue-to-student', issu
 router.post('/teacher-furniture-allocations/:allocationId/issue-to-student', issueFurnitureFromTeacherAllocation);
 router.post('/teacher-textbook-allocations/:allocationId/return', returnTeacherTextbookAllocation);
 router.post('/teacher-furniture-allocations/:allocationId/return', returnTeacherFurnitureAllocation);
+
+router.patch('/teacher-textbook-allocations/:allocationId/copy-condition', patchTeacherTextbookAllocationCopyCondition);
+router.patch('/teacher-textbook-issuances/:issuanceId/condition', patchTeacherTextbookIssuanceCondition);
+router.patch('/teacher/furniture-items/:furnitureItemId/condition', patchTeacherFurnitureItemCondition);
 
 export default router;

@@ -281,6 +281,97 @@
   border-top: 1px solid #e2e8f0;
 }
 
+.tir-modal-overlay--detail {
+  z-index: 1500;
+}
+.tir-modal--detail {
+  z-index: 1501;
+  max-width: 440px;
+}
+
+.tir-detail-body {
+  padding-top: 4px;
+}
+.tir-detail-row {
+  display: grid;
+  grid-template-columns: 118px 1fr;
+  gap: 10px 14px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.9rem;
+}
+.tir-detail-row:last-child {
+  border-bottom: none;
+}
+.tir-detail-k {
+  font-weight: 600;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+.tir-detail-v {
+  color: #1e293b;
+  word-break: break-word;
+}
+
+.tir-detail-row--cond {
+  align-items: flex-start;
+}
+.tir-detail-cond-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.tir-select-inline {
+  width: auto;
+  min-width: 140px;
+  flex: 1 1 140px;
+}
+.tir-mono {
+  font-family: 'Courier New', Consolas, monospace;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.tir-cond-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.tir-cond-good { background: #dcfce7; color: #166534; }
+.tir-cond-lost { background: #fee2e2; color: #991b1b; }
+.tir-cond-torn { background: #fef3c7; color: #92400e; }
+.tir-cond-damaged { background: #ffedd5; color: #c2410c; }
+
+.tir-copy-badge.tir-code-link {
+  cursor: pointer;
+}
+.tir-copy-badge.tir-code-link:hover {
+  transform: scale(1.06);
+  box-shadow: 0 2px 8px rgba(67, 56, 202, 0.2);
+}
+.tir-copy-badge.tir-copy-past {
+  text-decoration: none;
+}
+.tir-copy-badge.tir-copy-issued.tir-code-link {
+  text-decoration: none;
+  color: #64748b;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+.tir-copy-badge.tir-copy-issued.tir-code-link:hover {
+  background: #e2e8f0;
+  color: #475569;
+}
+.tir-jp-badge {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #6ee7b7;
+}
+
 /* Form elements */
 .tir-form-group { margin-bottom: 16px; }
 .tir-form-group label {
@@ -319,6 +410,65 @@
   cursor: pointer;
 }
 .req { color: #ef4444; }
+
+/* Furniture tab — desk/chair totals */
+.tir-furniture-summary {
+  margin: 0 0 20px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #f8fafc 100%);
+  border: 1px solid #bbf7d0;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+.tir-furniture-summary-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 28px;
+  align-items: stretch;
+}
+.tir-furniture-summary-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1 1 260px;
+  min-width: min(100%, 240px);
+  padding: 10px 14px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+.tir-furniture-summary-desk {
+  border-left: 4px solid #0d9488;
+}
+.tir-furniture-summary-chair {
+  border-left: 4px solid #16a34a;
+}
+.tir-furniture-summary-icon {
+  font-size: 1.75rem;
+  line-height: 1;
+  margin-top: 2px;
+}
+.tir-furniture-summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.88rem;
+  color: #475569;
+}
+.tir-furniture-summary-title {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #0f172a;
+  letter-spacing: 0.02em;
+}
+.tir-furniture-summary-line strong {
+  color: #0f172a;
+  font-weight: 800;
+}
+.tir-furniture-summary-sep {
+  color: #94a3b8;
+  margin: 0 4px;
+}
 
 /* Copy / JP number badges */
 .tir-copy-badge {

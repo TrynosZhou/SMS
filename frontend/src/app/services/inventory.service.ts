@@ -194,6 +194,37 @@ export class InventoryService {
     return this.http.get<any>(`${this.base}/teacher/my-class-report`);
   }
 
+  patchTeacherTextbookAllocationCopyCondition(
+    allocationId: string,
+    copyNumber: string,
+    condition: string
+  ): Observable<{ message: string; conditionLabel: string }> {
+    return this.http.patch<{ message: string; conditionLabel: string }>(
+      `${this.base}/teacher-textbook-allocations/${allocationId}/copy-condition`,
+      { copyNumber, condition }
+    );
+  }
+
+  patchTeacherTextbookIssuanceCondition(
+    issuanceId: string,
+    condition: string
+  ): Observable<{ message: string; conditionLabel: string; issuance?: any }> {
+    return this.http.patch<{ message: string; conditionLabel: string; issuance?: any }>(
+      `${this.base}/teacher-textbook-issuances/${issuanceId}/condition`,
+      { condition }
+    );
+  }
+
+  patchTeacherFurnitureItemCondition(
+    furnitureItemId: string,
+    condition: string
+  ): Observable<{ message: string; conditionLabel: string; item?: any }> {
+    return this.http.patch<{ message: string; conditionLabel: string; item?: any }>(
+      `${this.base}/teacher/furniture-items/${furnitureItemId}/condition`,
+      { condition }
+    );
+  }
+
   private toParams(obj?: Record<string, string | undefined>): HttpParams {
     let p = new HttpParams();
     if (!obj) return p;

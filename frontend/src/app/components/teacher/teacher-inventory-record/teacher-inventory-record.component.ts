@@ -67,6 +67,20 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
   pdfPreviewSection = '';
   private _blobUrl: string | null = null;
 
+  /** Detail modals (book J-number / furniture JP code) */
+  textbookDetail:
+    | { source: 'allocation'; alloc: any; copyNumber: string }
+    | { source: 'report'; row: any }
+    | null = null;
+  furnitureDetail: { source: 'allocation'; alloc: any } | { source: 'report'; row: any } | null = null;
+
+  textbookConditionDraft: 'Good' | 'Lost' | 'Torn' = 'Good';
+  furnitureConditionDraft: 'Good' | 'Damaged' | 'Lost' = 'Good';
+  savingTextbookCondition = false;
+  savingFurnitureCondition = false;
+  textbookConditionSaveError = '';
+  furnitureConditionSaveError = '';
+
   schoolName = '';
   schoolLogo2: string | null = null;
 
@@ -245,7 +259,8 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
   }
 
   returnTextbookAllocation(alloc: any) {
-    if (!confirm(`Return ${alloc.quantityAllocated - alloc.quantityDistributed} unused copies of "${alloc.catalog?.title}" to admin stock?`)) return;
+    const unused = this.remaining(alloc);
+    if (!confirm(`Return ${unused} unused cop${unused === 1 ? 'y' : 'ies'} of "${alloc.catalog?.title}" to admin stock?`)) return;
     this.returningMap[alloc.id] = true;
     this.inventory.returnTeacherTextbookAllocation(alloc.id).subscribe({
       next: () => { this.returningMap[alloc.id] = false; this.loadTextbookAllocations(); },
@@ -262,10 +277,18 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** Copies in this allocation (J-numbers are authoritative when present). */
+  textbookTotalCopies(alloc: any): number {
+    if (alloc?.totalCopies != null && alloc.totalCopies > 0) return alloc.totalCopies;
+    const n = alloc?.copyNumbers?.length;
+    if (n != null && n > 0) return n;
+    return alloc?.quantity || alloc?.quantityAllocated || 0;
+  }
+
   remaining(alloc: any): number {
-    const total = alloc.quantity || alloc.quantityAllocated || 0;
+    const total = this.textbookTotalCopies(alloc);
     const distributed = alloc.quantityDistributed || 0;
-    return total - distributed;
+    return Math.max(0, total - distributed);
   }
 
   get activeTextbooks(): any[] {
@@ -282,6 +305,29 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
 
   get pastFurniture(): any[] {
     return this.furnitureAllocations.filter(a => a.status !== 'active');
+  }
+
+  /** Count desk or chair rows in a furniture allocation list */
+  private countFurnitureType(allocs: any[], itemType: 'desk' | 'chair'): number {
+    return allocs.filter(a => a.furnitureItem?.itemType === itemType).length;
+  }
+
+  /** All desks ever allocated to this teacher (any status) */
+  furnitureDesksAllocatedTotal(): number {
+    return this.countFurnitureType(this.furnitureAllocations, 'desk');
+  }
+
+  /** Desks still on hand — not yet issued to a student (active allocation) */
+  furnitureDesksOnHand(): number {
+    return this.countFurnitureType(this.activeFurniture, 'desk');
+  }
+
+  furnitureChairsAllocatedTotal(): number {
+    return this.countFurnitureType(this.furnitureAllocations, 'chair');
+  }
+
+  furnitureChairsOnHand(): number {
+    return this.countFurnitureType(this.activeFurniture, 'chair');
   }
 
   /** Flat filtered list for the custom student picker */
@@ -332,14 +378,16 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
   nextAvailableCopyNumber(allocationId: string): string {
     const alloc = this.textbookAllocations.find(a => a.id === allocationId);
     if (!alloc || !alloc.copyNumbers?.length) return '—';
-    const used = alloc.quantityDistributed || 0;
-    const next = alloc.copyNumbers[used];
-    return next || '—';
+    const avail = this.availableCopyNumbers(alloc);
+    return avail[0] || '—';
   }
 
   /** Returns all copy numbers for an allocation that have not yet been issued */
   availableCopyNumbers(alloc: any): string[] {
     if (!alloc?.copyNumbers?.length) return [];
+    if (Array.isArray(alloc.availableCopyNumbers)) {
+      return alloc.availableCopyNumbers;
+    }
     const distributed = alloc.quantityDistributed || 0;
     return alloc.copyNumbers.slice(distributed);
   }
@@ -347,6 +395,9 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
   /** Returns all copy numbers for an allocation that have already been issued */
   issuedCopyNumbers(alloc: any): string[] {
     if (!alloc?.copyNumbers?.length) return [];
+    if (Array.isArray(alloc.issuedCopyNumbers)) {
+      return alloc.issuedCopyNumbers;
+    }
     const distributed = alloc.quantityDistributed || 0;
     return alloc.copyNumbers.slice(0, distributed);
   }
@@ -398,6 +449,22 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
     if (hasDesk) return 'already has desk';
     if (hasChair) return 'already has chair';
     return '';
+  }
+
+  /** Readable condition for PDF when API label is missing */
+  private textbookConditionForPdfRow(r: any): string {
+    if (r?.conditionLabel) return String(r.conditionLabel);
+    if (r?.status === 'lost') return 'Lost';
+    return 'Good';
+  }
+
+  private furnitureConditionForPdfRow(r: any): string {
+    if (r?.conditionLabel) return String(r.conditionLabel);
+    const raw = r?.furnitureItem?.condition;
+    const s = String(raw || 'good').trim().toLowerCase();
+    if (s === 'lost' || s === 'missing') return 'Lost';
+    if (s === 'damaged' || s === 'broken' || s === 'poor') return 'Damaged';
+    return 'Good';
   }
 
   private buildPDF(section: 'textbooks' | 'furniture' | 'both'): jsPDF {
@@ -463,7 +530,20 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
 
       autoTable(doc, {
         startY: HEADER_H + 18,
-        head: [['#', 'Student Name', 'Student No.', 'Class', 'Book Title', 'J-Number', 'Type', 'Status', 'Date Issued']],
+        head: [
+          [
+            '#',
+            'Student Name',
+            'Student No.',
+            'Class',
+            'Book Title',
+            'J-Number',
+            'Condition',
+            'Type',
+            'Status',
+            'Date Issued'
+          ]
+        ],
         body: this.reportTextbooks.length
           ? this.reportTextbooks.map((r, i) => [
               i + 1,
@@ -472,15 +552,19 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
               r.student?.classEntity?.name || classLabel,
               r.catalog?.title || '—',
               r.copyNumber || '—',
+              this.textbookConditionForPdfRow(r),
               (r.issuanceType || '—').toUpperCase(),
               (r.status || '—').toUpperCase(),
               r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'
             ])
-          : [['', 'No textbook records found.', '', '', '', '', '', '', '']],
+          : [['', 'No textbook records found.', '', '', '', '', '', '', '', '']],
         styles: { fontSize: 8, cellPadding: 2.5 },
         headStyles: { fillColor: [30, 58, 95], textColor: 255, fontSize: 8, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [240, 245, 255] },
-        columnStyles: { 5: { fontStyle: 'bold', textColor: [30, 58, 95] } },
+        columnStyles: {
+          5: { fontStyle: 'bold', textColor: [30, 58, 95] },
+          6: { fontStyle: 'bold' }
+        },
         margin: { left: 14, right: 14 }
       });
     }
@@ -516,7 +600,7 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
               r.student?.classEntity?.name || classLabel,
               (r.furnitureItem?.itemType || '—').toUpperCase(),
               r.furnitureItem?.itemCode || '—',
-              (r.furnitureItem?.condition || '—').toUpperCase(),
+              this.furnitureConditionForPdfRow(r),
               (r.status || '—').toUpperCase(),
               r.issuedAt ? new Date(r.issuedAt).toLocaleDateString() : '—'
             ])
@@ -564,5 +648,175 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
     this._blobUrl = URL.createObjectURL(blob);
     this.pdfPreviewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this._blobUrl);
     this.pdfPreviewSection = section;
+  }
+
+  /** CSS tone for condition pill (Good | Lost | Torn | Damaged) */
+  conditionTone(label: string | undefined): 'good' | 'lost' | 'torn' | 'damaged' {
+    const u = String(label || 'Good').trim();
+    if (u === 'Lost') return 'lost';
+    if (u === 'Torn') return 'torn';
+    if (u === 'Damaged') return 'damaged';
+    return 'good';
+  }
+
+  closeTextbookDetail() {
+    this.textbookDetail = null;
+    this.textbookConditionSaveError = '';
+  }
+
+  openTextbookDetailFromAllocation(alloc: any, copyNumber: string) {
+    this.textbookDetail = { source: 'allocation', alloc, copyNumber };
+    this.textbookConditionDraft = this.textbookDetailCondition as 'Good' | 'Lost' | 'Torn';
+    this.textbookConditionSaveError = '';
+  }
+
+  openTextbookDetailFromReport(row: any) {
+    this.textbookDetail = { source: 'report', row };
+    this.textbookConditionDraft = this.textbookDetailCondition as 'Good' | 'Lost' | 'Torn';
+    this.textbookConditionSaveError = '';
+  }
+
+  get textbookDetailCondition(): string {
+    const d = this.textbookDetail;
+    if (!d) return 'Good';
+    if (d.source === 'report') {
+      return d.row.conditionLabel || 'Good';
+    }
+    const map = d.alloc.copyConditionByNumber as Record<string, string> | undefined;
+    return (map && map[d.copyNumber]) || 'Good';
+  }
+
+  get textbookDetailCanIssue(): boolean {
+    const d = this.textbookDetail;
+    if (!d || d.source !== 'allocation') return false;
+    return d.alloc.status === 'active' && this.isCopyAvailable(d.alloc, d.copyNumber);
+  }
+
+  issueFromTextbookDetail() {
+    const d = this.textbookDetail;
+    if (!d || d.source !== 'allocation') return;
+    const alloc = d.alloc;
+    const cn = d.copyNumber;
+    this.closeTextbookDetail();
+    this.openIssueTextbookForm(alloc, cn);
+  }
+
+  closeFurnitureDetail() {
+    this.furnitureDetail = null;
+    this.furnitureConditionSaveError = '';
+  }
+
+  openFurnitureDetailFromAllocation(alloc: any) {
+    this.furnitureDetail = { source: 'allocation', alloc };
+    this.furnitureConditionDraft = this.furnitureDetailCondition as 'Good' | 'Damaged' | 'Lost';
+    this.furnitureConditionSaveError = '';
+  }
+
+  openFurnitureDetailFromReport(row: any) {
+    this.furnitureDetail = { source: 'report', row };
+    this.furnitureConditionDraft = this.furnitureDetailCondition as 'Good' | 'Damaged' | 'Lost';
+    this.furnitureConditionSaveError = '';
+  }
+
+  get furnitureDetailCondition(): string {
+    const d = this.furnitureDetail;
+    if (!d) return 'Good';
+    if (d.source === 'report') {
+      return d.row.conditionLabel || 'Good';
+    }
+    return d.alloc.conditionLabel || 'Good';
+  }
+
+  get furnitureDetailCanIssue(): boolean {
+    const d = this.furnitureDetail;
+    return !!d && d.source === 'allocation' && d.alloc.status === 'active';
+  }
+
+  issueFromFurnitureDetail() {
+    const d = this.furnitureDetail;
+    if (!d || d.source !== 'allocation') return;
+    const alloc = d.alloc;
+    this.closeFurnitureDetail();
+    this.openIssueFurnitureForm(alloc);
+  }
+
+  saveTextbookCondition() {
+    const d = this.textbookDetail;
+    if (!d) return;
+    this.savingTextbookCondition = true;
+    this.textbookConditionSaveError = '';
+    if (d.source === 'allocation') {
+      this.inventory
+        .patchTeacherTextbookAllocationCopyCondition(d.alloc.id, d.copyNumber, this.textbookConditionDraft)
+        .subscribe({
+          next: res => {
+            this.savingTextbookCondition = false;
+            if (!d.alloc.copyConditionByNumber) d.alloc.copyConditionByNumber = {};
+            d.alloc.copyConditionByNumber[d.copyNumber] = res.conditionLabel;
+            this.textbookConditionDraft = res.conditionLabel as 'Good' | 'Lost' | 'Torn';
+            this.loadTextbookAllocations();
+          },
+          error: e => {
+            this.savingTextbookCondition = false;
+            this.textbookConditionSaveError = e.error?.message || 'Could not save condition';
+          }
+        });
+    } else {
+      this.inventory.patchTeacherTextbookIssuanceCondition(d.row.id, this.textbookConditionDraft).subscribe({
+        next: res => {
+          this.savingTextbookCondition = false;
+          d.row.conditionLabel = res.conditionLabel;
+          if (res.issuance) {
+            d.row.status = res.issuance.status;
+            d.row.physicalCondition = res.issuance.physicalCondition;
+          }
+          this.textbookConditionDraft = res.conditionLabel as 'Good' | 'Lost' | 'Torn';
+          this.loadReport();
+          this.loadTextbookAllocations();
+        },
+        error: e => {
+          this.savingTextbookCondition = false;
+          this.textbookConditionSaveError = e.error?.message || 'Could not save condition';
+        }
+      });
+    }
+  }
+
+  saveFurnitureCondition() {
+    const d = this.furnitureDetail;
+    if (!d) return;
+    const fid =
+      d.source === 'allocation'
+        ? d.alloc.furnitureItemId || d.alloc.furnitureItem?.id
+        : d.row.furnitureItemId || d.row.furnitureItem?.id;
+    if (!fid) {
+      this.furnitureConditionSaveError = 'Missing furniture item';
+      return;
+    }
+    this.savingFurnitureCondition = true;
+    this.furnitureConditionSaveError = '';
+    this.inventory.patchTeacherFurnitureItemCondition(fid, this.furnitureConditionDraft).subscribe({
+      next: res => {
+        this.savingFurnitureCondition = false;
+        if (d.source === 'allocation') {
+          d.alloc.conditionLabel = res.conditionLabel;
+          if (d.alloc.furnitureItem && res.item?.condition != null) {
+            d.alloc.furnitureItem.condition = res.item.condition;
+          }
+        } else {
+          d.row.conditionLabel = res.conditionLabel;
+          if (d.row.furnitureItem && res.item?.condition != null) {
+            d.row.furnitureItem.condition = res.item.condition;
+          }
+        }
+        this.furnitureConditionDraft = res.conditionLabel as 'Good' | 'Damaged' | 'Lost';
+        this.loadFurnitureAllocations();
+        this.loadReport();
+      },
+      error: e => {
+        this.savingFurnitureCondition = false;
+        this.furnitureConditionSaveError = e.error?.message || 'Could not save condition';
+      }
+    });
   }
 }

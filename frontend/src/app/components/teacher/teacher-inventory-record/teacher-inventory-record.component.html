@@ -55,22 +55,21 @@
             <div class="tir-card-meta" *ngIf="alloc.catalog?.gradeLevel">Grade: {{ alloc.catalog.gradeLevel }}</div>
             <div class="tir-card-meta" *ngIf="alloc.catalog?.subject?.name">Subject: {{ alloc.catalog.subject.name }}</div>
             <div class="tir-card-stats">
-              <span class="tir-stat-pill tir-stat-total">Received: {{ alloc.quantity || alloc.quantityAllocated || 0 }}</span>
+              <span class="tir-stat-pill tir-stat-total">Received: {{ textbookTotalCopies(alloc) }}</span>
               <span class="tir-stat-pill tir-stat-issued">Issued: {{ alloc.quantityDistributed || 0 }}</span>
               <span class="tir-stat-pill" [class.tir-stat-ok]="remaining(alloc) > 0" [class.tir-stat-zero]="remaining(alloc) === 0">
                 Remaining: {{ remaining(alloc) }}
               </span>
             </div>
             <div class="tir-copy-numbers" *ngIf="alloc.copyNumbers?.length">
-              <span class="tir-cn-label">Copy J-Numbers — click to issue:</span>
+              <span class="tir-cn-label">Copy J-Numbers — click for details:</span>
               <span
                 *ngFor="let cn of alloc.copyNumbers"
-                class="tir-copy-badge"
+                class="tir-copy-badge tir-code-link"
                 [class.tir-copy-available]="isCopyAvailable(alloc, cn)"
                 [class.tir-copy-issued]="!isCopyAvailable(alloc, cn)"
-                [title]="isCopyAvailable(alloc, cn) ? 'Click to issue ' + cn + ' to a student' : cn + ' already issued'"
-                (click)="isCopyAvailable(alloc, cn) && openIssueTextbookForm(alloc, cn)"
-                [style.cursor]="isCopyAvailable(alloc, cn) ? 'pointer' : 'default'"
+                [title]="'View details for ' + cn"
+                (click)="openTextbookDetailFromAllocation(alloc, cn)"
               >{{ cn }}</span>
             </div>
           </div>
@@ -104,10 +103,15 @@
         <tbody>
           <tr *ngFor="let alloc of pastTextbooks">
             <td>{{ alloc.catalog?.title }}</td>
-            <td>{{ alloc.quantity || alloc.quantityAllocated || 0 }}</td>
+            <td>{{ textbookTotalCopies(alloc) }}</td>
             <td>{{ alloc.quantityDistributed || 0 }}</td>
             <td>
-              <span *ngFor="let cn of (alloc.copyNumbers || [])" class="tir-copy-badge">{{ cn }}</span>
+              <span
+                *ngFor="let cn of (alloc.copyNumbers || [])"
+                class="tir-copy-badge tir-code-link tir-copy-past"
+                (click)="openTextbookDetailFromAllocation(alloc, cn)"
+                title="View book details"
+              >{{ cn }}</span>
               <span *ngIf="!alloc.copyNumbers?.length" class="tir-muted">—</span>
             </td>
             <td><span class="tir-badge" [class.badge-returned]="alloc.status === 'returned'">{{ alloc.status }}</span></td>
@@ -228,6 +232,33 @@
       <p class="tir-hint">These desks and chairs were assigned to you by the administrator. Issue them to your students below.</p>
     </div>
 
+    <div class="tir-furniture-summary" *ngIf="!loadingFN">
+      <div class="tir-furniture-summary-inner">
+        <div class="tir-furniture-summary-block tir-furniture-summary-desk">
+          <span class="tir-furniture-summary-icon" aria-hidden="true">🖥️</span>
+          <div class="tir-furniture-summary-text">
+            <span class="tir-furniture-summary-title">Desks</span>
+            <span class="tir-furniture-summary-line">
+              <strong>{{ furnitureDesksAllocatedTotal() }}</strong> allocated in total
+              <span class="tir-furniture-summary-sep">·</span>
+              <strong>{{ furnitureDesksOnHand() }}</strong> on hand (not yet issued to students)
+            </span>
+          </div>
+        </div>
+        <div class="tir-furniture-summary-block tir-furniture-summary-chair">
+          <span class="tir-furniture-summary-icon" aria-hidden="true">🪑</span>
+          <div class="tir-furniture-summary-text">
+            <span class="tir-furniture-summary-title">Chairs</span>
+            <span class="tir-furniture-summary-line">
+              <strong>{{ furnitureChairsAllocatedTotal() }}</strong> allocated in total
+              <span class="tir-furniture-summary-sep">·</span>
+              <strong>{{ furnitureChairsOnHand() }}</strong> on hand (not yet issued to students)
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="tir-loading" *ngIf="loadingFN">Loading furniture allocations…</div>
     <div class="tir-alert tir-alert-error" *ngIf="errorFN">{{ errorFN }}</div>
 
@@ -246,9 +277,17 @@
           <div class="tir-card-body">
             <div class="tir-card-title">
               {{ alloc.furnitureItem?.itemType === 'desk' ? 'Desk' : 'Chair' }}
-              <span class="tir-copy-badge" style="margin-left:6px">{{ alloc.furnitureItem?.itemCode }}</span>
+              <span
+                class="tir-copy-badge tir-code-link tir-jp-badge"
+                style="margin-left:6px"
+                (click)="openFurnitureDetailFromAllocation(alloc)"
+                title="View furniture details"
+              >{{ alloc.furnitureItem?.itemCode }}</span>
             </div>
-            <div class="tir-card-meta">Condition: {{ alloc.furnitureItem?.condition || 'good' }}</div>
+            <div class="tir-card-meta">
+              Condition:
+              <span class="tir-cond-pill" [ngClass]="'tir-cond-' + conditionTone(alloc.conditionLabel)">{{ alloc.conditionLabel || 'Good' }}</span>
+            </div>
             <div class="tir-card-meta" *ngIf="alloc.furnitureItem?.locationLabel">Location: {{ alloc.furnitureItem.locationLabel }}</div>
             <span class="tir-badge badge-active">Ready to issue</span>
           </div>
@@ -279,8 +318,16 @@
         <tbody>
           <tr *ngFor="let alloc of pastFurniture">
             <td>{{ alloc.furnitureItem?.itemType === 'desk' ? 'Desk' : 'Chair' }}</td>
-            <td><span class="tir-copy-badge">{{ alloc.furnitureItem?.itemCode }}</span></td>
-            <td>{{ alloc.furnitureItem?.condition }}</td>
+            <td>
+              <span
+                class="tir-copy-badge tir-code-link tir-jp-badge tir-copy-past"
+                (click)="openFurnitureDetailFromAllocation(alloc)"
+                title="View furniture details"
+              >{{ alloc.furnitureItem?.itemCode }}</span>
+            </td>
+            <td>
+              <span class="tir-cond-pill" [ngClass]="'tir-cond-' + conditionTone(alloc.conditionLabel)">{{ alloc.conditionLabel || 'Good' }}</span>
+            </td>
             <td>
               <span class="tir-badge"
                 [class.badge-returned]="alloc.status === 'returned'"
@@ -428,7 +475,7 @@
             <thead>
               <tr>
                 <th>#</th><th>Student Name</th><th>Stud. No.</th>
-                <th>Book Title</th><th>J-Number</th><th>Type</th><th>Status</th><th>Date Issued</th>
+                <th>Book Title</th><th>J-Number</th><th>Condition</th><th>Type</th><th>Status</th><th>Date Issued</th>
               </tr>
             </thead>
             <tbody>
@@ -437,7 +484,16 @@
                 <td><strong>{{ r.student?.firstName }} {{ r.student?.lastName }}</strong></td>
                 <td>{{ r.student?.studentNumber || '—' }}</td>
                 <td>{{ r.catalog?.title || '—' }}</td>
-                <td><span class="tir-copy-badge" [class.tir-copy-available]="r.status==='active'" [class.tir-copy-issued]="r.status!=='active'">{{ r.copyNumber || '—' }}</span></td>
+                <td>
+                  <span
+                    class="tir-copy-badge tir-code-link tir-copy-past"
+                    (click)="openTextbookDetailFromReport(r)"
+                    title="View book details"
+                  >{{ r.copyNumber || '—' }}</span>
+                </td>
+                <td>
+                  <span class="tir-cond-pill" [ngClass]="'tir-cond-' + conditionTone(r.conditionLabel)">{{ r.conditionLabel || 'Good' }}</span>
+                </td>
                 <td><span class="tir-badge">{{ r.issuanceType }}</span></td>
                 <td>
                   <span class="tir-badge" [class.badge-active]="r.status==='active'" [class.badge-returned]="r.status==='returned'">{{ r.status }}</span>
@@ -469,8 +525,16 @@
                 <td><strong>{{ r.student?.firstName }} {{ r.student?.lastName }}</strong></td>
                 <td>{{ r.student?.studentNumber || '—' }}</td>
                 <td><span class="tir-badge">{{ r.furnitureItem?.itemType === 'desk' ? '🖥️ Desk' : '🪑 Chair' }}</span></td>
-                <td><span class="tir-copy-badge tir-copy-available">{{ r.furnitureItem?.itemCode || '—' }}</span></td>
-                <td>{{ r.furnitureItem?.condition || '—' }}</td>
+                <td>
+                  <span
+                    class="tir-copy-badge tir-code-link tir-jp-badge tir-copy-past"
+                    (click)="openFurnitureDetailFromReport(r)"
+                    title="View furniture details"
+                  >{{ r.furnitureItem?.itemCode || '—' }}</span>
+                </td>
+                <td>
+                  <span class="tir-cond-pill" [ngClass]="'tir-cond-' + conditionTone(r.conditionLabel)">{{ r.conditionLabel || 'Good' }}</span>
+                </td>
                 <td>
                   <span class="tir-badge" [class.badge-active]="r.status==='active'" [class.badge-returned]="r.status==='returned'">{{ r.status }}</span>
                 </td>
@@ -483,6 +547,222 @@
 
     </ng-container>
   </ng-container>
+
+  <!-- Textbook (J-number) detail modal -->
+  <div class="tir-modal-overlay tir-modal-overlay--detail" *ngIf="textbookDetail" (click)="closeTextbookDetail()"></div>
+  <div class="tir-modal tir-modal--detail" *ngIf="textbookDetail" (click)="$event.stopPropagation()">
+    <div class="tir-modal-header">
+      <h3>📚 Textbook details</h3>
+      <button type="button" class="tir-modal-close" (click)="closeTextbookDetail()" aria-label="Close">✕</button>
+    </div>
+    <div class="tir-modal-body tir-detail-body">
+      <ng-container *ngIf="textbookDetail.source === 'allocation'">
+        <div class="tir-detail-row">
+          <span class="tir-detail-k">Title</span>
+          <span class="tir-detail-v">{{ textbookDetail.alloc.catalog?.title || '—' }}</span>
+        </div>
+        <div class="tir-detail-row" *ngIf="textbookDetail.alloc.catalog?.gradeLevel">
+          <span class="tir-detail-k">Grade</span>
+          <span class="tir-detail-v">{{ textbookDetail.alloc.catalog.gradeLevel }}</span>
+        </div>
+        <div class="tir-detail-row" *ngIf="textbookDetail.alloc.catalog?.subject?.name">
+          <span class="tir-detail-k">Subject</span>
+          <span class="tir-detail-v">{{ textbookDetail.alloc.catalog.subject.name }}</span>
+        </div>
+        <div class="tir-detail-row" *ngIf="textbookDetail.alloc.catalog?.isbn">
+          <span class="tir-detail-k">ISBN</span>
+          <span class="tir-detail-v tir-mono">{{ textbookDetail.alloc.catalog.isbn }}</span>
+        </div>
+        <div class="tir-detail-row">
+          <span class="tir-detail-k">J-Number</span>
+          <span class="tir-detail-v tir-mono">{{ textbookDetail.copyNumber }}</span>
+        </div>
+        <div class="tir-detail-row tir-detail-row--cond">
+          <span class="tir-detail-k">Condition</span>
+          <div class="tir-detail-cond-edit">
+            <select class="tir-select tir-select-inline" [(ngModel)]="textbookConditionDraft">
+              <option value="Good">Good</option>
+              <option value="Lost">Lost</option>
+              <option value="Torn">Torn</option>
+            </select>
+            <button
+              type="button"
+              class="tir-btn tir-btn-sm tir-btn-primary"
+              [disabled]="savingTextbookCondition"
+              (click)="saveTextbookCondition()"
+            >{{ savingTextbookCondition ? 'Saving…' : 'Save' }}</button>
+          </div>
+        </div>
+        <div class="tir-detail-row">
+          <span class="tir-detail-k">Copy status</span>
+          <span class="tir-detail-v">{{ textbookDetailCanIssue ? 'Available to issue to a student' : 'Already issued to a student' }}</span>
+        </div>
+        <div class="tir-detail-row" *ngIf="textbookDetail.alloc.status !== 'active'">
+          <span class="tir-detail-k">Allocation</span>
+          <span class="tir-detail-v">{{ textbookDetail.alloc.status }}</span>
+        </div>
+      </ng-container>
+      <ng-container *ngIf="textbookDetail.source === 'report'">
+        <div class="tir-detail-row">
+          <span class="tir-detail-k">Student</span>
+          <span class="tir-detail-v">
+            {{ textbookDetail.row.student?.firstName }} {{ textbookDetail.row.student?.lastName }}
+            <span class="tir-muted" *ngIf="textbookDetail.row.student?.studentNumber">({{ textbookDetail.row.student.studentNumber }})</span>
+          </span>
+        </div>
+        <div class="tir-detail-row" *ngIf="textbookDetail.row.student?.classEntity?.name">
+          <span class="tir-detail-k">Class</span>
+          <span class="tir-detail-v">{{ textbookDetail.row.student.classEntity.name }}</span>
+        </div>
+        <div class="tir-detail-row">
+          <span class="tir-detail-k">Title</span>
+          <span class="tir-detail-v">{{ textbookDetail.row.catalog?.title || '—' }}</span>
+        </div>
+        <div class="tir-detail-row">
+          <span class="tir-detail-k">J-Number</span>
+          <span class="tir-detail-v tir-mono">{{ textbookDetail.row.copyNumber || '—' }}</span>
+        </div>
+        <div class="tir-detail-row tir-detail-row--cond">
+          <span class="tir-detail-k">Condition</span>
+          <div class="tir-detail-cond-edit">
+            <select class="tir-select tir-select-inline" [(ngModel)]="textbookConditionDraft">
+              <option value="Good">Good</option>
+              <option value="Lost">Lost</option>
+              <option value="Torn">Torn</option>
+            </select>
+            <button
+              type="button"
+              class="tir-btn tir-btn-sm tir-btn-primary"
+              [disabled]="savingTextbookCondition"
+              (click)="saveTextbookCondition()"
+            >{{ savingTextbookCondition ? 'Saving…' : 'Save' }}</button>
+          </div>
+        </div>
+        <div class="tir-detail-row">
+          <span class="tir-detail-k">Issuance type</span>
+          <span class="tir-detail-v">{{ textbookDetail.row.issuanceType || '—' }}</span>
+        </div>
+        <div class="tir-detail-row">
+          <span class="tir-detail-k">Status</span>
+          <span class="tir-detail-v">{{ textbookDetail.row.status || '—' }}</span>
+        </div>
+        <div class="tir-detail-row" *ngIf="textbookDetail.row.createdAt">
+          <span class="tir-detail-k">Date issued</span>
+          <span class="tir-detail-v">{{ textbookDetail.row.createdAt | date:'mediumDate' }}</span>
+        </div>
+      </ng-container>
+      <div class="tir-alert tir-alert-error" *ngIf="textbookConditionSaveError" style="margin-top:12px">{{ textbookConditionSaveError }}</div>
+    </div>
+    <div class="tir-modal-footer">
+      <button type="button" class="tir-btn tir-btn-secondary" (click)="closeTextbookDetail()">Close</button>
+      <button
+        type="button"
+        *ngIf="textbookDetailCanIssue"
+        class="tir-btn tir-btn-primary"
+        (click)="issueFromTextbookDetail()"
+      >Issue to student</button>
+    </div>
+  </div>
+
+  <!-- Furniture (JP code) detail modal -->
+  <div class="tir-modal-overlay tir-modal-overlay--detail" *ngIf="furnitureDetail" (click)="closeFurnitureDetail()"></div>
+  <div class="tir-modal tir-modal--detail" *ngIf="furnitureDetail" (click)="$event.stopPropagation()">
+    <div class="tir-modal-header">
+      <h3>🪑 Furniture details</h3>
+      <button type="button" class="tir-modal-close" (click)="closeFurnitureDetail()" aria-label="Close">✕</button>
+    </div>
+    <div class="tir-modal-body tir-detail-body">
+      <ng-container *ngIf="furnitureDetail.source === 'allocation'">
+        <div class="tir-detail-row">
+          <span class="tir-detail-k">Type</span>
+          <span class="tir-detail-v">{{ furnitureDetail.alloc.furnitureItem?.itemType === 'desk' ? 'Desk' : 'Chair' }}</span>
+        </div>
+        <div class="tir-detail-row">
+          <span class="tir-detail-k">JP number</span>
+          <span class="tir-detail-v tir-mono">{{ furnitureDetail.alloc.furnitureItem?.itemCode || '—' }}</span>
+        </div>
+        <div class="tir-detail-row tir-detail-row--cond">
+          <span class="tir-detail-k">Condition</span>
+          <div class="tir-detail-cond-edit">
+            <select class="tir-select tir-select-inline" [(ngModel)]="furnitureConditionDraft">
+              <option value="Good">Good</option>
+              <option value="Damaged">Damaged</option>
+              <option value="Lost">Lost</option>
+            </select>
+            <button
+              type="button"
+              class="tir-btn tir-btn-sm tir-btn-primary"
+              [disabled]="savingFurnitureCondition"
+              (click)="saveFurnitureCondition()"
+            >{{ savingFurnitureCondition ? 'Saving…' : 'Save' }}</button>
+          </div>
+        </div>
+        <div class="tir-detail-row" *ngIf="furnitureDetail.alloc.furnitureItem?.locationLabel">
+          <span class="tir-detail-k">Location</span>
+          <span class="tir-detail-v">{{ furnitureDetail.alloc.furnitureItem.locationLabel }}</span>
+        </div>
+        <div class="tir-detail-row">
+          <span class="tir-detail-k">Allocation status</span>
+          <span class="tir-detail-v">{{ furnitureDetail.alloc.status }}</span>
+        </div>
+      </ng-container>
+      <ng-container *ngIf="furnitureDetail.source === 'report'">
+        <div class="tir-detail-row">
+          <span class="tir-detail-k">Student</span>
+          <span class="tir-detail-v">
+            {{ furnitureDetail.row.student?.firstName }} {{ furnitureDetail.row.student?.lastName }}
+            <span class="tir-muted" *ngIf="furnitureDetail.row.student?.studentNumber">({{ furnitureDetail.row.student.studentNumber }})</span>
+          </span>
+        </div>
+        <div class="tir-detail-row" *ngIf="furnitureDetail.row.student?.classEntity?.name">
+          <span class="tir-detail-k">Class</span>
+          <span class="tir-detail-v">{{ furnitureDetail.row.student.classEntity.name }}</span>
+        </div>
+        <div class="tir-detail-row">
+          <span class="tir-detail-k">Type</span>
+          <span class="tir-detail-v">{{ furnitureDetail.row.furnitureItem?.itemType === 'desk' ? 'Desk' : 'Chair' }}</span>
+        </div>
+        <div class="tir-detail-row">
+          <span class="tir-detail-k">JP number</span>
+          <span class="tir-detail-v tir-mono">{{ furnitureDetail.row.furnitureItem?.itemCode || '—' }}</span>
+        </div>
+        <div class="tir-detail-row tir-detail-row--cond">
+          <span class="tir-detail-k">Condition</span>
+          <div class="tir-detail-cond-edit">
+            <select class="tir-select tir-select-inline" [(ngModel)]="furnitureConditionDraft">
+              <option value="Good">Good</option>
+              <option value="Damaged">Damaged</option>
+              <option value="Lost">Lost</option>
+            </select>
+            <button
+              type="button"
+              class="tir-btn tir-btn-sm tir-btn-primary"
+              [disabled]="savingFurnitureCondition"
+              (click)="saveFurnitureCondition()"
+            >{{ savingFurnitureCondition ? 'Saving…' : 'Save' }}</button>
+          </div>
+        </div>
+        <div class="tir-detail-row">
+          <span class="tir-detail-k">Status</span>
+          <span class="tir-detail-v">{{ furnitureDetail.row.status || '—' }}</span>
+        </div>
+        <div class="tir-detail-row" *ngIf="furnitureDetail.row.issuedAt">
+          <span class="tir-detail-k">Date issued</span>
+          <span class="tir-detail-v">{{ furnitureDetail.row.issuedAt | date:'mediumDate' }}</span>
+        </div>
+      </ng-container>
+      <div class="tir-alert tir-alert-error" *ngIf="furnitureConditionSaveError" style="margin-top:12px">{{ furnitureConditionSaveError }}</div>
+    </div>
+    <div class="tir-modal-footer">
+      <button type="button" class="tir-btn tir-btn-secondary" (click)="closeFurnitureDetail()">Close</button>
+      <button
+        type="button"
+        *ngIf="furnitureDetailCanIssue"
+        class="tir-btn tir-btn-primary"
+        (click)="issueFromFurnitureDetail()"
+      >Issue to student</button>
+    </div>
+  </div>
 
 </div>
 

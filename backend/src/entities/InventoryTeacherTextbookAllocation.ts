@@ -31,6 +31,10 @@ export class InventoryTeacherTextbookAllocation {
   @Column({ type: 'simple-json', nullable: true })
   copyNumbers: string[] | null;
 
+  /** Optional per–J-number condition (good | lost | torn); falls back to catalog condition */
+  @Column({ type: 'simple-json', nullable: true })
+  copyConditions: Record<string, string> | null;
+
   @Column({ type: 'varchar', length: 32, default: 'active' })
   status: TeacherTextbookAllocationStatus;
 
