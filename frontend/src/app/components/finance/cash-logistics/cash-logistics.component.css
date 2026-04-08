@@ -278,6 +278,13 @@
   margin-bottom: 1rem;
 }
 
+.cl-alert--info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  margin-bottom: 1rem;
+}
+
 .cl-alert__icon {
   flex-shrink: 0;
 }

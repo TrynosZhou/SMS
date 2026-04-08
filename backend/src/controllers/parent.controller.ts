@@ -150,10 +150,16 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
             });
 
         const deskFeeLinked = getConfiguredDeskFee(settings);
+        const feesLinked = (settings as any)?.feesSettings || {};
+        const transportCostLinked = parseFloat(String(feesLinked.transportCost ?? 0)) || 0;
+        const diningHallCostLinked = parseFloat(String(feesLinked.diningHallCost ?? 0)) || 0;
         let termBalance = 0;
         let currentBalance = 0;
         if (latestInvoice) {
-          termBalance = computeInvoiceFeesOutstanding(latestInvoice, student, deskFeeLinked);
+          termBalance = computeInvoiceFeesOutstanding(latestInvoice, student, deskFeeLinked, {
+            transportCost: transportCostLinked,
+            diningHallCost: diningHallCostLinked
+          });
           currentBalance = termBalance;
         }
 

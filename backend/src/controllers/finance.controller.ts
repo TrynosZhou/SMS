@@ -18,7 +18,14 @@ import { PaymentLog } from '../entities/PaymentLog';
 import { UniformCharge } from '../entities/UniformCharge';
 import { UniformChargeItem } from '../entities/UniformChargeItem';
 import { UniformPaymentLog } from '../entities/UniformPaymentLog';
-import { Brackets } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
+import {
+  allocatePaymentLogsWaterfall,
+  outstandingExcludingTransportBucket,
+  remainingBucketsAfterAppliedTotals,
+  snapshotFromInvoiceAndStudent,
+  WATERFALL_EPS as LOGISTICS_WATERFALL_EPS
+} from '../utils/transportDhWaterfall';
 
 const normalizePaymentMethod = (raw?: string): string | null => {
   const val = String(raw || '').trim().toLowerCase();
@@ -63,6 +70,40 @@ function getNextTerm(currentTerm: string): string {
   }
 
   return currentTerm;
+}
+
+/**
+ * Resolve which invoice term cash receipts should use. If the client omits `term`, pick the term that has the most
+ * qualifying payment lines so Term 1 collections stay visible after the school rolls active term to Term 2.
+ */
+async function resolveCashReceiptsTerm(
+  paymentLogRepository: Repository<PaymentLog>,
+  termParam: string | undefined,
+  activeTerm: string | null
+): Promise<{ termToUse: string; cashLogisticsTermAutoPicked: boolean }> {
+  const termTrimmed = termParam && String(termParam).trim() ? String(termParam).trim() : '';
+  if (termTrimmed) {
+    return { termToUse: termTrimmed, cashLogisticsTermAutoPicked: false };
+  }
+  const busiestTermRow = await paymentLogRepository
+    .createQueryBuilder('log')
+    .innerJoin('log.invoice', 'inv')
+    .select('inv.term', 'term')
+    .addSelect('COUNT(log.id)', 'cnt')
+    .where('COALESCE(inv.isVoided, false) = false')
+    .andWhere('ROUND(CAST(log.amountPaid AS numeric), 2) > 0')
+    .andWhere("UPPER(COALESCE(log.paymentMethod, '')) NOT IN ('ADJUSTMENT', '')")
+    .andWhere("inv.term IS NOT NULL AND TRIM(inv.term) != ''")
+    .groupBy('inv.term')
+    .orderBy('cnt', 'DESC')
+    .addOrderBy('MAX(log.paymentDate)', 'DESC')
+    .limit(1)
+    .getRawOne();
+  const fromPayments = busiestTermRow?.term ? String(busiestTermRow.term).trim() : '';
+  if (fromPayments) {
+    return { termToUse: fromPayments, cashLogisticsTermAutoPicked: true };
+  }
+  return { termToUse: activeTerm || `Term 1 ${new Date().getFullYear()}`, cashLogisticsTermAutoPicked: false };
 }
 
 export const createInvoice = async (req: AuthRequest, res: Response) => {
@@ -2461,7 +2502,11 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
     const activeTerm = (settings as any)?.activeTerm || (settings as any)?.currentTerm || null;
-    const termToUse = (termParam && String(termParam).trim()) || activeTerm || `Term 1 ${new Date().getFullYear()}`;
+    const { termToUse, cashLogisticsTermAutoPicked } = await resolveCashReceiptsTerm(
+      paymentLogRepository,
+      termParam,
+      activeTerm
+    );
     const feeType = (feeTypeParam && String(feeTypeParam).toLowerCase()) || 'all';
     const validFeeTypes = ['all', 'tuition', 'dh', 'transport'];
     const filterFeeType = validFeeTypes.includes(feeType) ? feeType : 'all';
@@ -2512,6 +2557,7 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       const desc = String(inv.description || '');
       return {
         id: log.id,
+        invoiceId: String(inv.id || log.invoiceId || ''),
         amountPaid: parseFloat(String(log.amountPaid ?? 0)),
         paymentDate: log.paymentDate,
         paymentMethod: log.paymentMethod,
@@ -2537,102 +2583,68 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       };
     });
 
+    /** Full payment history per invoice (term-scoped) so waterfall order is correct when the UI date filter hides earlier lines. */
+    const invoiceIdsInScope = [...new Set(allLogs.map((l: any) => l.invoiceId).filter(Boolean))] as string[];
+    let fullHistoryEntities: any[] = [];
+    if (invoiceIdsInScope.length > 0) {
+      const fullQb = paymentLogRepository
+        .createQueryBuilder('log')
+        .innerJoinAndSelect('log.invoice', 'invoice')
+        .leftJoinAndSelect('invoice.student', 'student')
+        .where('log.invoiceId IN (:...iids)', { iids: invoiceIdsInScope })
+        .andWhere('ROUND(CAST(log.amountPaid AS numeric), 2) > 0')
+        .andWhere("UPPER(COALESCE(log.paymentMethod, '')) NOT IN ('ADJUSTMENT', '')")
+        .andWhere(`invoice.id IN (${invoiceScopeQb.getQuery()})`)
+        .setParameters(invoiceScopeQb.getParameters())
+        .orderBy('log.paymentDate', 'ASC')
+        .addOrderBy('log.createdAt', 'ASC');
+      fullHistoryEntities = await fullQb.getMany();
+    }
+
+    const byInvoiceFullHistory = new Map<string, any[]>();
+    for (const log of fullHistoryEntities) {
+      const iid = String((log as any).invoiceId || '');
+      if (!iid) continue;
+      if (!byInvoiceFullHistory.has(iid)) byInvoiceFullHistory.set(iid, []);
+      byInvoiceFullHistory.get(iid)!.push(log);
+    }
+
+    const globalPerLog = new Map<
+      string,
+      { transportPortion: number; dhPortion: number; tuitionWithOverpayment: number }
+    >();
+    let clearedBoostTrSum = 0;
+    let clearedBoostDhSum = 0;
+
+    for (const [, rows] of byInvoiceFullHistory) {
+      if (!rows.length) continue;
+      const first = rows[0] as any;
+      const inv = first.invoice || {};
+      const stu = inv.student || first.student || {};
+      const snap = snapshotFromInvoiceAndStudent(inv, stu);
+      const slices = rows.map((r: any) => ({
+        id: r.id,
+        amountPaid: parseFloat(String(r.amountPaid ?? 0)) || 0,
+        paymentDate: r.paymentDate,
+        createdAt: r.createdAt
+      }));
+      const { perLog, clearedBoostTr, clearedBoostDh } = allocatePaymentLogsWaterfall(
+        snap,
+        slices,
+        transportCost,
+        diningHallCost
+      );
+      clearedBoostTrSum += clearedBoostTr;
+      clearedBoostDhSum += clearedBoostDh;
+      for (const [id, v] of perLog.entries()) {
+        globalPerLog.set(id, v);
+      }
+    }
+
     /**
-     * Split each payment across invoice fee lines.
-     * If the payment is at or below the DH (or transport) line amount, the full payment counts toward that fee only —
-     * so a $90 DH payment is not diluted by a large tuition total. Larger payments use proportional split on invoice weights.
-     * Transport: day scholar + uses transport (+ staff/exempt). DH: day scholar + uses DH.
+     * Day scholars (DH / transport): payments apply previous balance → transport (settings) → DH (settings; half for staff/exempt) → tuition — no proportional split.
+     * Cleared invoices: if legacy postings under-allocate logistics, top up to settings caps on the last payment line (or summary boost if no lines).
      */
-    const round2 = (x: number) => Math.round(x * 100) / 100;
-    const COMP_EPS = 0.005;
-    const allocateTransportDhFromInvoice = (
-      payment: number,
-      l: {
-        invoiceAmount: number;
-        invTuitionAmount: number;
-        invTransportAmount: number;
-        invDiningHallAmount: number;
-        invRegistrationAmount: number;
-        invDeskFeeAmount: number;
-        studentType: string;
-        usesTransport: boolean;
-        usesDiningHall: boolean;
-        isStaffChild: boolean;
-        isExempted: boolean;
-      }
-    ) => {
-      const invAmt = Math.max(0, l.invoiceAmount || 0);
-      const invTu = Math.max(0, l.invTuitionAmount || 0);
-      const invTrRaw = Math.max(0, l.invTransportAmount || 0);
-      const invDhRaw = Math.max(0, l.invDiningHallAmount || 0);
-      const invReg = Math.max(0, l.invRegistrationAmount || 0);
-      const invDesk = Math.max(0, l.invDeskFeeAmount || 0);
-
-      const st = String(l.studentType || '').trim().toLowerCase();
-      const transportEligible =
-        st === 'day scholar' && l.usesTransport && !l.isStaffChild && !l.isExempted && transportCost > 0;
-      const dhEligible = st === 'day scholar' && l.usesDiningHall && diningHallCost > 0;
-
-      const compSum = invTu + invTrRaw + invDhRaw + invReg + invDesk;
-      const otherGap = Math.max(0, invAmt - compSum);
-      let wTu = invTu + invReg + invDesk + otherGap;
-
-      let wTr = 0;
-      let wTrLine = 0;
-      if (transportEligible) {
-        wTrLine = invTrRaw > COMP_EPS ? invTrRaw : transportCost;
-        wTr = wTrLine;
-      }
-      let wDh = 0;
-      let wDhLine = 0;
-      if (dhEligible) {
-        const dhSynth = l.isStaffChild || l.isExempted ? Math.round(diningHallCost * 0.5) : diningHallCost;
-        wDhLine = invDhRaw > COMP_EPS ? invDhRaw : dhSynth;
-        wDh = wDhLine;
-      }
-
-      let S = wTu + wTr + wDh;
-      if (S <= 0 && invAmt > 0) {
-        wTu = invAmt;
-        S = invAmt;
-      }
-      if (invAmt > 0 && S > invAmt + 0.02) {
-        const f = invAmt / S;
-        wTu *= f;
-        wTr *= f;
-        wDh *= f;
-        S = invAmt;
-      }
-
-      const P = Math.max(0, payment);
-      /** Compare to pre-scale line amounts so a $90 DH payment still counts fully if weights were scaled to fit invoice total. */
-      const PAY_AT_OR_BELOW_LINE_EPS = 0.02;
-
-      if (dhEligible && wDhLine > COMP_EPS && P > 0 && P <= wDhLine + PAY_AT_OR_BELOW_LINE_EPS) {
-        return {
-          transportPortion: 0,
-          dhPortion: round2(P),
-          tuitionWithOverpayment: 0
-        };
-      }
-      if (transportEligible && wTrLine > COMP_EPS && P > 0 && P <= wTrLine + PAY_AT_OR_BELOW_LINE_EPS) {
-        return {
-          transportPortion: round2(P),
-          dhPortion: 0,
-          tuitionWithOverpayment: 0
-        };
-      }
-
-      const denom = S > 0 ? S : invAmt > 0 ? invAmt : 1;
-      const transportPortion =
-        transportEligible && wTr > COMP_EPS ? round2((P * wTr) / denom) : 0;
-      const dhPortion = dhEligible && wDh > COMP_EPS ? round2((P * wDh) / denom) : 0;
-      const tuitionPortion = round2(Math.max(0, P - transportPortion - dhPortion));
-      const tuitionWithOverpayment = Math.max(0, tuitionPortion);
-      return { transportPortion, dhPortion, tuitionWithOverpayment };
-    };
-
-    // Tuition / "all": below-line payments → full to that fee; otherwise proportional split on invoice weights.
     let totalRawPayments = 0;
     let totalTransportSum = 0;
     let totalDHSum = 0;
@@ -2651,7 +2663,12 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
 
     const allocatedItems = allLogs.map((l: any) => {
       const payment = parseFloat(String(l.amountPaid ?? 0)) || 0;
-      const { transportPortion, dhPortion, tuitionWithOverpayment } = allocateTransportDhFromInvoice(payment, l);
+      const fromWaterfall = globalPerLog.get(l.id);
+      const transportPortion = fromWaterfall?.transportPortion ?? 0;
+      const dhPortion = fromWaterfall?.dhPortion ?? 0;
+      const tuitionWithOverpayment = fromWaterfall
+        ? fromWaterfall.tuitionWithOverpayment
+        : Math.round(payment * 100) / 100;
 
       summaryAllTransportTotal += transportPortion;
       summaryAllDHTotal += dhPortion;
@@ -2712,6 +2729,9 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
         dhAmount: Math.round(dhPortion * 100) / 100
       };
     });
+
+    summaryAllTransportTotal += clearedBoostTrSum;
+    summaryAllDHTotal += clearedBoostDhSum;
 
     const logisticsTransportReceiptsByStudent = [...transportReceiptsByStudent.values()]
       .map((r) => ({
@@ -2810,77 +2830,50 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       cohortDHFromSettings += v;
     });
     const cohortTransportFromSettings = transportEligibleStudentIds.size * transportCost;
-    const logisticsTermTransportTotal =
-      sumInvoiceTransport > 0.005 ? Math.round(sumInvoiceTransport * 100) / 100 : Math.round(cohortTransportFromSettings * 100) / 100;
-    const logisticsTermDHTotal =
-      sumInvoiceDH > 0.005 ? Math.round(sumInvoiceDH * 100) / 100 : Math.round(cohortDHFromSettings * 100) / 100;
+    /** Term logistics headline: always eligible cohort × settings (transport / DH with staff half-price). */
+    const logisticsTermTransportTotal = Math.round(cohortTransportFromSettings * 100) / 100;
+    const logisticsTermDHTotal = Math.round(cohortDHFromSettings * 100) / 100;
     const logisticsTransportEligibleCount = transportEligibleStudentIds.size;
     const logisticsDHEligibleCount = dhPerStudent.size;
 
     /**
-     * Outstanding transport / DH per invoice: apply paidAmount sequentially to
-     * previous balance → tuition & other line items → transport → dining hall.
-     * Remaining in each logistics bucket is what's still owed on that fee (full $120 / $180 / $90
-     * when payment never reaches that bucket), not a % of total balance.
+     * Outstanding: same waterfall as receipts (previous → transport → DH → tuition). School-wide totalOutstanding excludes
+     * any unpaid transport bucket. Logistics KPIs do not report transport as “unpaid”; DH unpaid uses remaining DH bucket.
      */
-    const UNPAID_EPS = 0.02;
+    const UNPAID_EPS = LOGISTICS_WATERFALL_EPS;
     let logisticsTransportUnpaidCount = 0;
-    let logisticsDHUnpaidCount = 0;
     let logisticsTransportUnpaidAmount = 0;
+    let logisticsDHUnpaidCount = 0;
     let logisticsDHUnpaidAmount = 0;
+    let totalOutstanding = 0;
+    let totalOutstandingRaw = 0;
+
     for (const iv of invoicesForTotals || []) {
       const st = (iv as any).student;
-      if (!st) continue;
-      const bal = Math.max(0, parseFloat(String((iv as any).balance || 0)) || 0);
-      if (bal <= UNPAID_EPS) continue;
+      const balRaw = Math.max(0, parseFloat(String((iv as any).balance || 0)) || 0);
+      totalOutstandingRaw += balRaw;
 
-      const paid = Math.max(0, parseFloat(String((iv as any).paidAmount || 0)) || 0);
+      if (!st) {
+        totalOutstanding += balRaw;
+        continue;
+      }
+
+      const snap = snapshotFromInvoiceAndStudent(iv, st);
+      const remaining = remainingBucketsAfterAppliedTotals(snap, transportCost, diningHallCost);
+      totalOutstanding += outstandingExcludingTransportBucket(remaining);
+
+      if (balRaw <= UNPAID_EPS) continue;
+
       const stType = String(st.studentType || '').trim().toLowerCase();
-      const prev = Math.max(0, parseFloat(String((iv as any).previousBalance || 0)) || 0);
-      const amt = parseFloat(String((iv as any).amount || 0)) || 0;
-
-      const t0 = parseFloat(String((iv as any).tuitionAmount || 0)) || 0;
-      let tr = parseFloat(String((iv as any).transportAmount || 0)) || 0;
-      let dh = parseFloat(String((iv as any).diningHallAmount || 0)) || 0;
-      const reg = parseFloat(String((iv as any).registrationAmount || 0)) || 0;
-      const desk = parseFloat(String((iv as any).deskFeeAmount || 0)) || 0;
-
-      const trEligible =
-        stType === 'day scholar' && st.usesTransport && !st.isStaffChild && !st.isExempted && transportCost > 0;
       const dhEligible = stType === 'day scholar' && st.usesDiningHall && diningHallCost > 0;
-      if (trEligible && tr < 0.005) tr = transportCost;
-      if (dhEligible && dh < 0.005) {
-        dh = st.isStaffChild || st.isExempted ? Math.round(diningHallCost * 0.5) : diningHallCost;
-      }
-
-      const compSum = t0 + tr + dh + reg + desk;
-      const otherGap = Math.max(0, amt - compSum);
-      const bTuition = t0 + otherGap + reg + desk;
-      const bTr = tr;
-      const bDh = dh;
-
-      let pool = paid;
-      const payPrev = Math.min(pool, prev);
-      pool -= payPrev;
-      const payTu = Math.min(pool, bTuition);
-      pool -= payTu;
-      const payTr = Math.min(pool, bTr);
-      pool -= payTr;
-      const payDh = Math.min(pool, bDh);
-
-      const unpaidTr = Math.round((bTr - payTr) * 100) / 100;
-      const unpaidDh = Math.round((bDh - payDh) * 100) / 100;
-
-      if (bTr > 0.005 && unpaidTr > UNPAID_EPS) {
-        logisticsTransportUnpaidCount += 1;
-        logisticsTransportUnpaidAmount += unpaidTr;
-      }
-      if (bDh > 0.005 && unpaidDh > UNPAID_EPS) {
+      const unpaidDh = Math.round(remaining.remDh * 100) / 100;
+      if (dhEligible && unpaidDh > UNPAID_EPS) {
         logisticsDHUnpaidCount += 1;
         logisticsDHUnpaidAmount += unpaidDh;
       }
     }
-    logisticsTransportUnpaidAmount = Math.round(logisticsTransportUnpaidAmount * 100) / 100;
+    totalOutstanding = Math.round(totalOutstanding * 100) / 100;
+    totalOutstandingRaw = Math.round(totalOutstandingRaw * 100) / 100;
     logisticsDHUnpaidAmount = Math.round(logisticsDHUnpaidAmount * 100) / 100;
 
     // Total invoiced (net) for reconciliation = sum(amount + previousBalance - prepaidAmount).
@@ -2942,15 +2935,7 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       availableTerms = [activeTerm, ...availableTerms];
     }
 
-    const outstandingQb = invoiceRepository
-      .createQueryBuilder('invoice')
-      .select('COALESCE(SUM(CAST(COALESCE(invoice.balance, 0) AS numeric)), 0)', 'total')
-      .andWhere('COALESCE(invoice.isVoided, false) = false')
-      .andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
-    const outstandingRaw = await outstandingQb.getRawOne<Record<string, string>>();
-    const totalOutstanding = Math.round((parseFloat(String(outstandingRaw?.total ?? 0)) || 0) * 100) / 100;
-
-    // Sum of invoice.paidAmount for term invoices - ensures totalPaidFromInvoices + totalOutstanding = totalInvoiced
+    // Sum of invoice.paidAmount for term invoices (totalOutstanding above excludes unpaid transport bucket where applicable)
     const totalPaidFromInvoices = Math.round(
       (invoicesForTotals || []).reduce((s, iv: any) => s + (parseFloat(String(iv.paidAmount || 0)) || 0), 0) * 100
     ) / 100;
@@ -2973,6 +2958,7 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     res.json({
       term: termToUse,
       activeTerm: activeTerm || null,
+      cashLogisticsTermAutoPicked,
       feeType: filterFeeType,
       totalPayments:
         filterFeeType === 'tuition'
@@ -2987,7 +2973,7 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       totalPaidFromInvoices,
       totalInvoiced,
       invoicesCount,
-      /** Tuition/all: proportional split. Transport/DH tabs: sum of invoice-attributed transport/DH portions per line. */
+      /** Tuition/all: waterfall split (previous → transport → DH → tuition). Transport/DH tabs: attributed portions per line. */
       totalTuitionCollected,
       totalDHFeeCollected,
       totalTransportFeeCollected,
@@ -3001,6 +2987,8 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       studentsPartiallyPaid,
       studentsUnpaid,
       totalOutstanding,
+      /** Sum of raw invoice.balance for the term (includes full balance; transport not stripped). */
+      totalOutstandingRaw,
       count: totalItemCount,
       items,
       availableTerms,
@@ -3008,7 +2996,7 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       limit,
       total: totalItemCount,
       totalPages,
-      /** Cash receipts attributed to transport/DH from invoice fee mix (proportional); term + optional date filters; whole dollars. */
+      /** Cash receipts attributed to transport/DH (settings-based waterfall); term + optional date filters; whole dollars. */
       allRecordsTransportTotal: summaryAllTransportTotal,
       allRecordsDHTotal: summaryAllDHTotal,
       totalTransportReceipts: summaryAllTransportTotal,
@@ -3021,14 +3009,14 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       logisticsDHReceiptsByStudent,
       cashLogisticsTruncated: cashLogisticsAllTruncated,
       cashLogisticsReturnedCount: items.length,
-      /** Term totals for logistics KPIs: invoice transport/DH sums, or eligible students × settings if invoice lines are zero. */
+      /** Term totals for logistics KPIs: eligible cohort × settings (transport / DH with staff half-price). */
       logisticsTermTransportTotal,
       logisticsTermDHTotal,
       logisticsTransportEligibleCount,
       logisticsDHEligibleCount,
       logisticsFromInvoiceTransport: Math.round(sumInvoiceTransport * 100) / 100,
       logisticsFromInvoiceDH: Math.round(sumInvoiceDH * 100) / 100,
-      /** Per term invoice: unpaid transport/DH after applying paidAmount in order: prior balance → tuition & fees → transport → DH. */
+      /** Per term: DH still owed after waterfall (previous → transport → DH → tuition). Transport is not reported as unpaid. */
       logisticsTransportUnpaidCount,
       logisticsDHUnpaidCount,
       logisticsTransportUnpaidAmount,
@@ -3050,7 +3038,7 @@ export const getCashReceiptsPDF = async (req: AuthRequest, res: Response) => {
     const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
     const settings = settingsList.length > 0 ? settingsList[0] : null;
     const activeTerm = (settings as any)?.activeTerm || (settings as any)?.currentTerm || null;
-    const termToUse = (termParam && String(termParam).trim()) || activeTerm || `Term 1 ${new Date().getFullYear()}`;
+    const { termToUse } = await resolveCashReceiptsTerm(paymentLogRepository, termParam, activeTerm);
 
     const targetSettings = await settingsRepository.findOne({
       where: [{ activeTerm: termToUse }, { currentTerm: termToUse }],

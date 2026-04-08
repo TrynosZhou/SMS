@@ -6,10 +6,12 @@
         <p class="cl-kicker">Finance · Logistics</p>
         <h1 id="cl-page-title">Logistics receipts</h1>
         <p class="cl-lead">
-          <strong>Total Transport Receipts</strong> and <strong>Total DH Receipts</strong>: if a payment is at or below the
-          student’s transport or DH line on the invoice, the <em>whole</em> payment counts toward that fee (e.g. a full $90 DH
-          payment). Larger payments are split across tuition, transport, and DH in proportion to those invoice lines. Transport:
-          day scholars who use school transport. DH: day scholars on dining hall. Date filters apply to <em>payment</em> dates.
+          <strong>Total Transport Receipts</strong> and <strong>Total DH Receipts</strong> use <strong>Settings</strong> transport
+          and DH rates (DH half price for staff / exempted day scholars). For each payment, cash is applied in order:
+          <strong>previous balance → transport → dining hall → tuition</strong> (no proportional split). Cleared invoices top up
+          logistics totals to the full settings caps when needed. Only payments on <strong>invoices for the report term</strong>
+          count. Transport: day scholars who use school transport. DH: day scholars on dining hall. Date filters apply to
+          <em>payment</em> dates.
         </p>
         <div class="cl-hero__chips" *ngIf="data || term">
           <span class="cl-chip" *ngIf="term"><span class="cl-chip__dot"></span>{{ term }}</span>
@@ -62,13 +64,13 @@
     <p class="cl-context__title">How to read these numbers</p>
     <ul class="cl-context__list">
       <li>
-        <strong>Large figure</strong> on each card (e.g. $15,840 / $28,080) is this term’s <em>billed</em> transport or DH for the
-        eligible cohort — it is <em>not</em> cash collected.
+        <strong>Large figure</strong> on each card is <em>eligible day scholars × Settings rate</em> for transport or DH (DH half
+        rate for staff / exempt children). It is expected billing for the cohort, not cash collected.
       </li>
       <li>
-        <strong>Total Transport Receipts</strong> / <strong>Total DH Receipts</strong> sum how much of each payment is assigned to
-        that fee (payments ≤ the fee line go entirely to that fee; bigger payments are split by invoice proportions). They are not
-        “eligible students × fee.”
+        <strong>Total Transport Receipts</strong> / <strong>Total DH Receipts</strong> sum the transport and DH portions from
+        the payment waterfall (previous balance first, then transport, then DH, then tuition). School-wide
+        <strong>outstanding</strong> on this report excludes unpaid transport; DH may still appear as owed.
       </li>
       <li *ngIf="paymentLinesInScope > 0 && serviceTab === 'transport'">
         The table lists <strong>{{ paymentLinesInScope }}</strong> line(s) with a positive transport share (day scholars who use
@@ -81,6 +83,22 @@
         <strong>Total DH Receipts</strong>.
       </li>
     </ul>
+  </div>
+
+  <div class="cl-alert cl-alert--info" *ngIf="data && data.cashLogisticsTermAutoPicked && !loading" role="status">
+    <span class="cl-alert__icon" aria-hidden="true">ℹ️</span>
+    <span
+      >No report term was sent, so the system chose <strong>{{ data.term }}</strong> — the invoice term with the most payment
+      lines in the database. Pick another term in the filter if you need Term 1 vs Term 2 explicitly.</span
+    >
+  </div>
+
+  <div class="cl-alert cl-alert--warn" *ngIf="data && reportTermDiffersFromActive && !loading" role="status">
+    <span class="cl-alert__icon" aria-hidden="true">📌</span>
+    <span
+      >School <strong>active term</strong> is <strong>{{ data.activeTerm }}</strong>; this screen is using report term
+      <strong>{{ term }}</strong>. Totals include only payments linked to invoices for <strong>{{ term }}</strong>.</span
+    >
   </div>
 
   <div class="cl-alert cl-alert--error" *ngIf="error" role="alert">
@@ -99,7 +117,7 @@
   <section class="cl-panel cl-panel--toolbar" aria-label="Filters">
     <div class="cl-toolbar-grid">
       <div class="cl-field">
-        <label for="cl-term">Term</label>
+        <label for="cl-term">Report term (invoices)</label>
         <select id="cl-term" [(ngModel)]="term" (ngModelChange)="onTermChange()" [ngModelOptions]="{standalone: true}">
           <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
           <option *ngIf="term && availableTerms.indexOf(term) < 0" [value]="term">{{ term }}</option>

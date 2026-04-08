@@ -2,6 +2,11 @@ import { Repository } from 'typeorm';
 import { Invoice } from '../entities/Invoice';
 import { Student } from '../entities/Student';
 import { Settings } from '../entities/Settings';
+import {
+  outstandingExcludingTransportBucket,
+  remainingBucketsAfterAppliedTotals,
+  snapshotFromInvoiceAndStudent
+} from './transportDhWaterfall';
 
 /**
  * Desk fee from settings (same shape as finance / outstanding-balance).
@@ -11,15 +16,24 @@ export function getConfiguredDeskFee(settings: Settings | null | undefined): num
   return Number((settings as any).feesSettings.deskFee || 0);
 }
 
+export type LogisticsFeesForOutstanding = {
+  transportCost: number;
+  diningHallCost: number;
+};
+
 /**
  * Outstanding tuition/fees for one invoice — aligned with getOutstandingBalances (JSON)
  * and getStudentBalance: uses amount + previousBalance − paid − prepaid,
  * not the raw persisted invoice.balance column (which can be stale).
+ *
+ * When `logisticsFees` is set (parent portal / finance), the returned amount excludes any unpaid **transport**
+ * bucket after the same waterfall as cash logistics (previous balance → transport → DH → tuition); DH may still show.
  */
 export function computeInvoiceFeesOutstanding(
   invoice: Invoice | null | undefined,
   student: Student | null | undefined,
-  configuredDeskFee: number
+  configuredDeskFee: number,
+  logisticsFees?: LogisticsFeesForOutstanding | null
 ): number {
   if (!invoice || invoice.isVoided) return 0;
 
@@ -40,10 +54,21 @@ export function computeInvoiceFeesOutstanding(
     }
   }
 
-  return Math.max(
+  const base = Math.max(
     0,
     parseFloat((invoiceAmount + previousBalance - paidAmount - prepaidAmount).toFixed(2))
   );
+
+  if (!logisticsFees || !student) {
+    return base;
+  }
+
+  const tr = tryNum(logisticsFees.transportCost);
+  const dh = tryNum(logisticsFees.diningHallCost);
+  const snap = snapshotFromInvoiceAndStudent(invoice, student);
+  snap.previousBalance = previousBalance;
+  const remaining = remainingBucketsAfterAppliedTotals(snap, tr, dh);
+  return Math.max(0, outstandingExcludingTransportBucket(remaining));
 }
 
 /**

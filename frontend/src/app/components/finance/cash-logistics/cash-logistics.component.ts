@@ -2,6 +2,8 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FinanceService } from '../../../services/finance.service';
 import { SettingsService } from '../../../services/settings.service';
 
+const CASH_LOGISTICS_TERM_KEY = 'sms.cashLogistics.term';
+
 @Component({
   selector: 'app-cash-logistics',
   templateUrl: './cash-logistics.component.html',
@@ -46,6 +48,14 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    try {
+      const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(CASH_LOGISTICS_TERM_KEY) : null;
+      if (saved?.trim()) {
+        this.term = saved.trim();
+      }
+    } catch {
+      /* ignore quota / private mode */
+    }
     this.settings.getSettings().subscribe({
       next: (s: any) => {
         this.currencySymbol = s?.currencySymbol || '$';
@@ -211,7 +221,14 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
   }
 
   get activeTermBadge(): string {
-    return this.data?.activeTerm && this.term === this.data.activeTerm ? 'Current term' : '';
+    return this.data?.activeTerm && this.term === this.data.activeTerm ? 'School active term' : '';
+  }
+
+  /** Shown when the report term differs from the school’s active term (e.g. viewing Term 1 while Term 2 is active). */
+  get reportTermDiffersFromActive(): boolean {
+    const a = (this.data?.activeTerm || '').trim();
+    const t = (this.term || '').trim();
+    return !!t && !!a && t.toLowerCase() !== a.toLowerCase();
   }
 
   get truncated(): boolean {
@@ -254,6 +271,13 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
           if (!this.term && res.term) {
             this.term = res.term;
           }
+          try {
+            if (typeof localStorage !== 'undefined' && !localStorage.getItem(CASH_LOGISTICS_TERM_KEY)?.trim() && this.term?.trim()) {
+              localStorage.setItem(CASH_LOGISTICS_TERM_KEY, this.term.trim());
+            }
+          } catch {
+            /* ignore */
+          }
           this.lastRefreshed = new Date();
           this.loading = false;
           if (this.truncated) {
@@ -279,6 +303,17 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
   }
 
   onTermChange(): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        if (this.term?.trim()) {
+          localStorage.setItem(CASH_LOGISTICS_TERM_KEY, this.term.trim());
+        } else {
+          localStorage.removeItem(CASH_LOGISTICS_TERM_KEY);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
     this.page = 1;
     this.load();
   }

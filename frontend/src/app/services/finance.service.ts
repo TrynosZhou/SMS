@@ -288,6 +288,7 @@ export class FinanceService {
   ): Observable<{
     term: string;
     activeTerm: string | null;
+    cashLogisticsTermAutoPicked?: boolean;
     feeType: string;
     totalPayments: number;
     totalCollected: number;
@@ -298,6 +299,7 @@ export class FinanceService {
     studentsPartiallyPaid: number;
     studentsUnpaid: number;
     totalOutstanding: number;
+    totalOutstandingRaw?: number;
     count: number;
     items: Array<{
       id: string;
