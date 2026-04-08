@@ -2538,9 +2538,10 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     });
 
     /**
-     * Split each payment across invoice fee lines by proportion of the current invoice amount.
-     * Transport share only if day scholar + uses school transport (+ staff/exempt rules); DH only if not boarder + uses DH.
-     * Uses invoice transportAmount / diningHallAmount; if a line is missing but the student is eligible, falls back to settings rate.
+     * Split each payment across invoice fee lines.
+     * If the payment is at or below the DH (or transport) line amount, the full payment counts toward that fee only —
+     * so a $90 DH payment is not diluted by a large tuition total. Larger payments use proportional split on invoice weights.
+     * Transport: day scholar + uses transport (+ staff/exempt). DH: day scholar + uses DH.
      */
     const round2 = (x: number) => Math.round(x * 100) / 100;
     const COMP_EPS = 0.005;
@@ -2570,20 +2571,24 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       const st = String(l.studentType || '').trim().toLowerCase();
       const transportEligible =
         st === 'day scholar' && l.usesTransport && !l.isStaffChild && !l.isExempted && transportCost > 0;
-      const dhEligible = st !== 'boarder' && l.usesDiningHall && diningHallCost > 0;
+      const dhEligible = st === 'day scholar' && l.usesDiningHall && diningHallCost > 0;
 
       const compSum = invTu + invTrRaw + invDhRaw + invReg + invDesk;
       const otherGap = Math.max(0, invAmt - compSum);
       let wTu = invTu + invReg + invDesk + otherGap;
 
       let wTr = 0;
+      let wTrLine = 0;
       if (transportEligible) {
-        wTr = invTrRaw > COMP_EPS ? invTrRaw : transportCost;
+        wTrLine = invTrRaw > COMP_EPS ? invTrRaw : transportCost;
+        wTr = wTrLine;
       }
       let wDh = 0;
+      let wDhLine = 0;
       if (dhEligible) {
         const dhSynth = l.isStaffChild || l.isExempted ? Math.round(diningHallCost * 0.5) : diningHallCost;
-        wDh = invDhRaw > COMP_EPS ? invDhRaw : dhSynth;
+        wDhLine = invDhRaw > COMP_EPS ? invDhRaw : dhSynth;
+        wDh = wDhLine;
       }
 
       let S = wTu + wTr + wDh;
@@ -2598,16 +2603,36 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
         wDh *= f;
         S = invAmt;
       }
+
+      const P = Math.max(0, payment);
+      /** Compare to pre-scale line amounts so a $90 DH payment still counts fully if weights were scaled to fit invoice total. */
+      const PAY_AT_OR_BELOW_LINE_EPS = 0.02;
+
+      if (dhEligible && wDhLine > COMP_EPS && P > 0 && P <= wDhLine + PAY_AT_OR_BELOW_LINE_EPS) {
+        return {
+          transportPortion: 0,
+          dhPortion: round2(P),
+          tuitionWithOverpayment: 0
+        };
+      }
+      if (transportEligible && wTrLine > COMP_EPS && P > 0 && P <= wTrLine + PAY_AT_OR_BELOW_LINE_EPS) {
+        return {
+          transportPortion: round2(P),
+          dhPortion: 0,
+          tuitionWithOverpayment: 0
+        };
+      }
+
       const denom = S > 0 ? S : invAmt > 0 ? invAmt : 1;
       const transportPortion =
-        transportEligible && wTr > COMP_EPS ? round2((payment * wTr) / denom) : 0;
-      const dhPortion = dhEligible && wDh > COMP_EPS ? round2((payment * wDh) / denom) : 0;
-      const tuitionPortion = round2(Math.max(0, payment - transportPortion - dhPortion));
+        transportEligible && wTr > COMP_EPS ? round2((P * wTr) / denom) : 0;
+      const dhPortion = dhEligible && wDh > COMP_EPS ? round2((P * wDh) / denom) : 0;
+      const tuitionPortion = round2(Math.max(0, P - transportPortion - dhPortion));
       const tuitionWithOverpayment = Math.max(0, tuitionPortion);
       return { transportPortion, dhPortion, tuitionWithOverpayment };
     };
 
-    // Tuition / "all": same proportional split; transport & DH tabs show invoice-attributed portions per payment line.
+    // Tuition / "all": below-line payments → full to that fee; otherwise proportional split on invoice weights.
     let totalRawPayments = 0;
     let totalTransportSum = 0;
     let totalDHSum = 0;
@@ -2718,8 +2743,15 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const CASH_RECEIPTS_DEFAULT_LIMIT = 100;
     const CASH_RECEIPTS_MAX_LIMIT = 100;
     const CASH_RECEIPTS_ALL_MAX = 25000;
-    const totalItemCount = allocatedItems.filter((l: any) => (l.rawAmountPaid || 0) > 0).length;
-    const allItems = allocatedItems.filter((l: any) => (l.rawAmountPaid || 0) > 0);
+    /** Logistics transport/dh tabs: list only payers with a positive attributed share (hides $0 and non‑eligible cohorts). */
+    const logisticsReceiptLineVisible = (l: any) => {
+      if ((l.rawAmountPaid || 0) <= 0) return false;
+      if (filterFeeType === 'transport') return (l.transportAmount || 0) > PORTION_LINE_EPS;
+      if (filterFeeType === 'dh') return (l.dhAmount || 0) > PORTION_LINE_EPS;
+      return true;
+    };
+    const allItems = allocatedItems.filter(logisticsReceiptLineVisible);
+    const totalItemCount = allItems.length;
 
     let page: number;
     let limit: number;
@@ -2768,7 +2800,7 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       if (st && stType === 'day scholar' && st.usesTransport && !st.isStaffChild && !st.isExempted && transportCost > 0) {
         transportEligibleStudentIds.add(iv.studentId);
       }
-      if (st && stType !== 'boarder' && st.usesDiningHall && diningHallCost > 0) {
+      if (st && stType === 'day scholar' && st.usesDiningHall && diningHallCost > 0) {
         const dhOne = st.isStaffChild || st.isExempted ? Math.round(diningHallCost * 0.5) : diningHallCost;
         if (!dhPerStudent.has(iv.studentId)) dhPerStudent.set(iv.studentId, dhOne);
       }
@@ -2815,7 +2847,7 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
 
       const trEligible =
         stType === 'day scholar' && st.usesTransport && !st.isStaffChild && !st.isExempted && transportCost > 0;
-      const dhEligible = stType !== 'boarder' && st.usesDiningHall && diningHallCost > 0;
+      const dhEligible = stType === 'day scholar' && st.usesDiningHall && diningHallCost > 0;
       if (trEligible && tr < 0.005) tr = transportCost;
       if (dhEligible && dh < 0.005) {
         dh = st.isStaffChild || st.isExempted ? Math.round(diningHallCost * 0.5) : diningHallCost;

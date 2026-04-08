@@ -66,8 +66,8 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
 
   get tabTitle(): string {
     return this.serviceTab === 'transport'
-      ? 'Transport services (day scholars)'
-      : 'DH services (dining hall — day scholars; staff children / exempt 50% where applicable)';
+      ? 'Transport — day scholars who use school transport (table lists lines with a transport share only; $0 hidden)'
+      : 'DH — day scholars who use dining hall (table lists lines with a DH share only; boarders excluded; $0 hidden)';
   }
 
   /** Term total from invoices or eligible students × settings (full cohort). */
@@ -127,11 +127,6 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
 
   get totalDHReceipts(): number {
     return Number(this.data?.totalDHReceipts ?? this.data?.allRecordsDHTotal ?? 0) || 0;
-  }
-
-  /** Sum of all payment amounts in current term/date scope (before splitting into fee types). */
-  get totalCashInScope(): number {
-    return Number(this.data?.totalCashReceived ?? 0) || 0;
   }
 
   get paymentLinesInScope(): number {

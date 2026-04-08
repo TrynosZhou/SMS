@@ -6,10 +6,10 @@
         <p class="cl-kicker">Finance · Logistics</p>
         <h1 id="cl-page-title">Logistics receipts</h1>
         <p class="cl-lead">
-          <strong>Total Transport Receipts</strong> and <strong>Total DH Receipts</strong> allocate each payment across the
-          student’s invoice fee lines (transport, DH, tuition, and other items) in proportion to those amounts. Partial payments
-          are split the same way. Transport totals include only day scholars who use school transport; DH totals only non-boarders
-          subscribed to dining hall. Optional date filters apply to <em>payment</em> dates.
+          <strong>Total Transport Receipts</strong> and <strong>Total DH Receipts</strong>: if a payment is at or below the
+          student’s transport or DH line on the invoice, the <em>whole</em> payment counts toward that fee (e.g. a full $90 DH
+          payment). Larger payments are split across tuition, transport, and DH in proportion to those invoice lines. Transport:
+          day scholars who use school transport. DH: day scholars on dining hall. Date filters apply to <em>payment</em> dates.
         </p>
         <div class="cl-hero__chips" *ngIf="data || term">
           <span class="cl-chip" *ngIf="term"><span class="cl-chip__dot"></span>{{ term }}</span>
@@ -66,15 +66,19 @@
         eligible cohort — it is <em>not</em> cash collected.
       </li>
       <li>
-        <strong>Total Transport Receipts</strong> / <strong>Total DH Receipts</strong> are <em>only the share of actual payments</em>
-        assigned to that fee, using each invoice’s fee lines and proportional split. They grow as more cash is paid; they are not
+        <strong>Total Transport Receipts</strong> / <strong>Total DH Receipts</strong> sum how much of each payment is assigned to
+        that fee (payments ≤ the fee line go entirely to that fee; bigger payments are split by invoice proportions). They are not
         “eligible students × fee.”
       </li>
-      <li *ngIf="paymentLinesInScope > 0">
-        Right now: <strong>{{ formatMoney(totalCashInScope) }}</strong> total cash across
-        <strong>{{ paymentLinesInScope }}</strong> payment line(s). Only
-        <strong>{{ cashLineCountTransport }}</strong> / <strong>{{ cashLineCountDH }}</strong> of those lines had any amount
-        attributed to transport / DH (others are often non‑eligible payers or invoices with no weight in that fee).
+      <li *ngIf="paymentLinesInScope > 0 && serviceTab === 'transport'">
+        The table lists <strong>{{ paymentLinesInScope }}</strong> line(s) with a positive transport share (day scholars who use
+        transport; <strong>$0</strong> hidden). That matches the <strong>{{ cashLineCountTransport }}</strong> line(s) in
+        <strong>Total Transport Receipts</strong>.
+      </li>
+      <li *ngIf="paymentLinesInScope > 0 && serviceTab === 'dh'">
+        The table lists <strong>{{ paymentLinesInScope }}</strong> line(s) with a positive DH share (day scholars on dining hall;
+        boarders excluded; <strong>$0</strong> hidden). That matches the <strong>{{ cashLineCountDH }}</strong> line(s) in
+        <strong>Total DH Receipts</strong>.
       </li>
     </ul>
   </div>
@@ -315,8 +319,15 @@
   <section class="cl-panel cl-panel--table" *ngIf="!loading && data && items.length === 0">
     <div class="cl-empty">
       <div class="cl-empty__art" aria-hidden="true">📭</div>
-      <h2 class="cl-empty__title">No receipts for this view</h2>
-      <p class="cl-empty__text">Try another term, clear date filters, or switch between Transport and DH.</p>
+      <h2 class="cl-empty__title">No matching receipt lines</h2>
+      <p class="cl-empty__text" *ngIf="serviceTab === 'transport'">
+        There are no payments in this period from <strong>day scholars who use school transport</strong> with any cash attributed
+        to transport (lines with $0 share are hidden).
+      </p>
+      <p class="cl-empty__text" *ngIf="serviceTab === 'dh'">
+        There are no payments in this period from <strong>day scholars who use dining hall</strong> with any cash attributed to DH
+        (boarders excluded; $0 share lines hidden).
+      </p>
       <button type="button" class="cl-btn cl-btn--primary" (click)="clearDates()">Clear date filters</button>
     </div>
   </section>
@@ -326,7 +337,12 @@
       <div class="cl-table-head__info">
         <span class="cl-table-head__title">Payment receipt lines</span>
         <span class="cl-badge" *ngIf="searchQuery.trim()">{{ filteredItems.length }} / {{ items.length }} on this page</span>
-        <span class="cl-muted" *ngIf="!searchQuery.trim() && !allRowsMode">{{ items.length }} on page · {{ data?.total }} total lines</span>
+        <span class="cl-muted" *ngIf="!searchQuery.trim() && !allRowsMode && serviceTab === 'transport'">
+          {{ items.length }} on page · {{ data?.total }} with transport share (day scholars who use transport; no $0)
+        </span>
+        <span class="cl-muted" *ngIf="!searchQuery.trim() && !allRowsMode && serviceTab === 'dh'">
+          {{ items.length }} on page · {{ data?.total }} with DH share (day scholars on DH; no $0)
+        </span>
         <span class="cl-muted" *ngIf="!searchQuery.trim() && allRowsMode">{{ items.length }} line(s) loaded</span>
       </div>
       <button type="button" class="cl-btn cl-btn--ghost cl-btn--sm" (click)="exportCsv()" title="Export visible rows (respects search)">
