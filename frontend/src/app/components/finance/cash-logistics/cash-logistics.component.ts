@@ -13,6 +13,8 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
   term = '';
   startDate = '';
   endDate = '';
+  page = 1;
+  readonly limit = 100;
 
   loading = false;
   error = '';
@@ -26,7 +28,6 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
   items: any[] = [];
   availableTerms: string[] = [];
 
-  /** Client-side filter on loaded rows */
   searchQuery = '';
 
   lastRefreshed: Date | null = null;
@@ -63,33 +64,59 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
       : 'DH services (dining hall — day scholars; staff children / exempt 50% where applicable)';
   }
 
-  /** Total for the active tab (all matching payment lines, settings flat amounts) */
-  get totalCurrentTab(): number {
-    if (!this.data) return 0;
-    if (this.serviceTab === 'transport') {
-      return Number(this.data.allRecordsTransportTotal ?? this.data.totalPayments ?? 0) || 0;
-    }
-    return Number(this.data.allRecordsDHTotal ?? this.data.totalPayments ?? 0) || 0;
+  /** Term total from invoices or eligible students × settings (full cohort). */
+  get termTransportTotal(): number {
+    return Number(this.data?.logisticsTermTransportTotal ?? 0) || 0;
   }
 
-  get allTransportTotal(): number {
+  get termDHTotal(): number {
+    return Number(this.data?.logisticsTermDHTotal ?? 0) || 0;
+  }
+
+  get transportEligibleCount(): number {
+    return Number(this.data?.logisticsTransportEligibleCount ?? 0) || 0;
+  }
+
+  get dhEligibleCount(): number {
+    return Number(this.data?.logisticsDHEligibleCount ?? 0) || 0;
+  }
+
+  /** Unpaid transport after sequential payment application (see API). */
+  get transportUnpaidCount(): number {
+    return Number(this.data?.logisticsTransportUnpaidCount ?? 0) || 0;
+  }
+
+  get dhUnpaidCount(): number {
+    return Number(this.data?.logisticsDHUnpaidCount ?? 0) || 0;
+  }
+
+  get transportUnpaidAmount(): number {
+    return Number(this.data?.logisticsTransportUnpaidAmount ?? 0) || 0;
+  }
+
+  get dhUnpaidAmount(): number {
+    return Number(this.data?.logisticsDHUnpaidAmount ?? 0) || 0;
+  }
+
+  /** Cash payment lines attributed (flat per payment row) — for reconciliation. */
+  get cashLinesTransport(): number {
     return Number(this.data?.allRecordsTransportTotal ?? 0) || 0;
   }
 
-  get allDHTotal(): number {
+  get cashLinesDH(): number {
     return Number(this.data?.allRecordsDHTotal ?? 0) || 0;
   }
 
-  get transportLineCount(): number {
+  get cashLineCountTransport(): number {
     return Number(this.data?.allRecordsTransportLineCount ?? 0) || 0;
   }
 
-  get dhLineCount(): number {
+  get cashLineCountDH(): number {
     return Number(this.data?.allRecordsDHLineCount ?? 0) || 0;
   }
 
-  get currentTabLineCount(): number {
-    return this.serviceTab === 'transport' ? this.transportLineCount : this.dhLineCount;
+  get activeTabTermTotal(): number {
+    return this.serviceTab === 'transport' ? this.termTransportTotal : this.termDHTotal;
   }
 
   get filteredItems(): any[] {
@@ -104,12 +131,25 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
     });
   }
 
+  get rangeLabel(): string {
+    if (!this.data?.total) return '';
+    const start = (this.page - 1) * this.limit + 1;
+    const end = Math.min(this.page * this.limit, this.data.total);
+    return `${start}–${end}`;
+  }
+
   get activeTermBadge(): string {
     return this.data?.activeTerm && this.term === this.data.activeTerm ? 'Current term' : '';
   }
 
   get truncated(): boolean {
     return !!this.data?.cashLogisticsTruncated;
+  }
+
+  rowDisplayIndex(row: any): number {
+    const idx = this.items.indexOf(row);
+    if (idx < 0) return 0;
+    return this.allRowsMode ? idx + 1 : (this.page - 1) * this.limit + idx + 1;
   }
 
   private showToast(msg: string, ms = 3200): void {
@@ -129,11 +169,10 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
       .getCashReceipts(
         termArg,
         this.feeType,
-        undefined,
-        undefined,
+        this.page,
+        this.limit,
         this.startDate?.trim() || undefined,
-        this.endDate?.trim() || undefined,
-        { fetchAll: true }
+        this.endDate?.trim() || undefined
       )
       .subscribe({
         next: (res: any) => {
@@ -147,7 +186,7 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
           this.loading = false;
           if (this.truncated) {
             this.showToast(
-              `Showing first ${res.cashLogisticsReturnedCount} of ${res.total} rows (server limit). Export or narrow dates if needed.`,
+              `List capped at ${res.cashLogisticsReturnedCount} payment line(s) (${res.total} total).`,
               6000
             );
           }
@@ -162,21 +201,25 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
   setTab(t: 'transport' | 'dh'): void {
     if (this.serviceTab === t) return;
     this.serviceTab = t;
+    this.page = 1;
     this.searchQuery = '';
     this.load();
   }
 
   onTermChange(): void {
+    this.page = 1;
     this.load();
   }
 
   applyFilters(): void {
+    this.page = 1;
     this.load();
   }
 
   clearDates(): void {
     this.startDate = '';
     this.endDate = '';
+    this.page = 1;
     this.load();
   }
 
@@ -190,8 +233,83 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
     }
     this.startDate = start.toISOString().slice(0, 10);
     this.endDate = end.toISOString().slice(0, 10);
+    this.page = 1;
     this.load();
     this.showToast(`Date filter: ${preset === 'month' ? 'This month' : 'Last 30 days'}`);
+  }
+
+  prevPage(): void {
+    if (this.page > 1) {
+      this.page--;
+      this.load();
+    }
+  }
+
+  nextPage(): void {
+    const tp = this.data?.totalPages ?? 1;
+    if (this.page < tp) {
+      this.page++;
+      this.load();
+    }
+  }
+
+  goFirstPage(): void {
+    if (this.page !== 1) {
+      this.page = 1;
+      this.load();
+    }
+  }
+
+  goLastPage(): void {
+    const tp = this.data?.totalPages ?? 1;
+    if (this.page !== tp) {
+      this.page = tp;
+      this.load();
+    }
+  }
+
+  /** Fetch every payment line (server cap); totals in KPIs still come from term-wide API fields. */
+  loadAllRows(): void {
+    this.page = 1;
+    this.loading = true;
+    this.error = '';
+    const termArg = this.term?.trim() || undefined;
+    this.finance
+      .getCashReceipts(
+        termArg,
+        this.feeType,
+        undefined,
+        undefined,
+        this.startDate?.trim() || undefined,
+        this.endDate?.trim() || undefined,
+        { fetchAll: true }
+      )
+      .subscribe({
+        next: (res: any) => {
+          this.data = { ...res, _allRowsMode: true };
+          this.items = res.items || [];
+          this.availableTerms = res.availableTerms || [];
+          this.loading = false;
+          if (res.cashLogisticsTruncated) {
+            this.showToast(`Showing first ${res.cashLogisticsReturnedCount} of ${res.total} payment lines.`, 5000);
+          } else {
+            this.showToast(`Loaded all ${this.items.length} payment line(s).`, 3000);
+          }
+        },
+        error: (e: any) => {
+          this.error = e.error?.message || 'Failed to load';
+          this.loading = false;
+        }
+      });
+  }
+
+  exitAllRowsMode(): void {
+    this.page = 1;
+    this.load();
+  }
+
+  get allRowsMode(): boolean {
+    return !!this.data?._allRowsMode;
   }
 
   downloadFullPdf(): void {
@@ -225,7 +343,7 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
     const headers = ['#', 'Date', 'Student', 'Student No.', 'Invoice', 'Receipt', 'Method', `${svc} amount`];
     const lines = [headers.join(',')];
     rows.forEach((row: any) => {
-      const idx = this.items.indexOf(row) + 1;
+      const idx = this.rowDisplayIndex(row);
       const line = [
         idx,
         this.formatDate(row.paymentDate),

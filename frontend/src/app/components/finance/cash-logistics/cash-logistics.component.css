@@ -512,11 +512,47 @@
   font-size: 1.25rem;
 }
 
+.cl-kpi__receipts-total {
+  margin: 0.5rem 0 0;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--cl-text);
+  line-height: 1.45;
+}
+
+.cl-kpi__receipts-amount {
+  font-weight: 800;
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+  margin-left: 0.2rem;
+}
+
+.cl-kpi__receipts-meta {
+  margin-left: 0.35rem;
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: var(--cl-muted);
+}
+
 .cl-kpi__hint {
   margin: 0.35rem 0 0;
   font-size: 0.78rem;
   color: var(--cl-muted);
   line-height: 1.4;
+}
+
+.cl-kpi__hint--strong {
+  margin-top: 0.5rem;
+  font-weight: 600;
+  color: var(--cl-text);
+}
+
+.cl-kpi__micro {
+  display: block;
+  margin-top: 0.25rem;
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: var(--cl-muted);
 }
 
 /* ─── Empty ─── */
