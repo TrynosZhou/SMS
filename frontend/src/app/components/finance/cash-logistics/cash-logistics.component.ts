@@ -129,6 +129,15 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
     return Number(this.data?.totalDHReceipts ?? this.data?.allRecordsDHTotal ?? 0) || 0;
   }
 
+  /** Sum of all payment amounts in current term/date scope (before splitting into fee types). */
+  get totalCashInScope(): number {
+    return Number(this.data?.totalCashReceived ?? 0) || 0;
+  }
+
+  get paymentLinesInScope(): number {
+    return Number(this.data?.total ?? 0) || 0;
+  }
+
   get transportReceiptsByStudent(): Array<{
     studentId: string;
     studentNumber: string;

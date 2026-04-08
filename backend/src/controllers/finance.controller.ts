@@ -2955,14 +2955,14 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       totalPaidFromInvoices,
       totalInvoiced,
       invoicesCount,
-      /** Tuition/all: proportional split. Transport/DH tabs: sums of settings flat fees per receipt line (not a % of payment). */
+      /** Tuition/all: proportional split. Transport/DH tabs: sum of invoice-attributed transport/DH portions per line. */
       totalTuitionCollected,
       totalDHFeeCollected,
       totalTransportFeeCollected,
       totalTuition: totalTuitionCollected,
       totalTransport: totalTransportFeeCollected,
       totalDH: totalDHFeeCollected,
-      /** For feeType=all, matches total cash; for transport/dh, sum of flat fee lines (can differ from cash). */
+      /** Sum of raw payment amounts for lines in this response scope (same filter as items). */
       totalReceiptsSum: totalCashReceived,
       studentsWithInvoices,
       studentsFullyPaid,

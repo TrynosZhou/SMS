@@ -555,6 +555,40 @@
   color: var(--cl-muted);
 }
 
+/* ─── Billed vs receipts explainer ─── */
+.cl-context {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem 0.95rem;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: var(--cl-radius, 14px);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--cl-text);
+}
+
+.cl-context__title {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #0369a1;
+}
+
+.cl-context__list {
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
+.cl-context__list li {
+  margin-bottom: 0.35rem;
+}
+
+.cl-context__list li:last-child {
+  margin-bottom: 0;
+}
+
 /* ─── Per-student breakdown ─── */
 .cl-breakdown {
   margin-top: 1rem;

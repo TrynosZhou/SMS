@@ -58,6 +58,27 @@
   </div>
   <p class="cl-tab-desc">{{ tabTitle }}</p>
 
+  <div class="cl-context" *ngIf="data && !loading" role="note">
+    <p class="cl-context__title">How to read these numbers</p>
+    <ul class="cl-context__list">
+      <li>
+        <strong>Large figure</strong> on each card (e.g. $15,840 / $28,080) is this term’s <em>billed</em> transport or DH for the
+        eligible cohort — it is <em>not</em> cash collected.
+      </li>
+      <li>
+        <strong>Total Transport Receipts</strong> / <strong>Total DH Receipts</strong> are <em>only the share of actual payments</em>
+        assigned to that fee, using each invoice’s fee lines and proportional split. They grow as more cash is paid; they are not
+        “eligible students × fee.”
+      </li>
+      <li *ngIf="paymentLinesInScope > 0">
+        Right now: <strong>{{ formatMoney(totalCashInScope) }}</strong> total cash across
+        <strong>{{ paymentLinesInScope }}</strong> payment line(s). Only
+        <strong>{{ cashLineCountTransport }}</strong> / <strong>{{ cashLineCountDH }}</strong> of those lines had any amount
+        attributed to transport / DH (others are often non‑eligible payers or invoices with no weight in that fee).
+      </li>
+    </ul>
+  </div>
+
   <div class="cl-alert cl-alert--error" *ngIf="error" role="alert">
     <span class="cl-alert__icon" aria-hidden="true">⚠️</span>
     <span>{{ error }}</span>
