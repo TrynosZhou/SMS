@@ -6,8 +6,10 @@
         <p class="cl-kicker">Finance · Logistics</p>
         <h1 id="cl-page-title">Logistics receipts</h1>
         <p class="cl-lead">
-          Day-scholar <strong>transport</strong> and <strong>dining hall (DH)</strong> lines use your
-          <a routerLink="/settings" class="cl-link">School Settings</a> rates — not a split of cash paid.
+          <strong>Total Transport Receipts</strong> and <strong>Total DH Receipts</strong> allocate each payment across the
+          student’s invoice fee lines (transport, DH, tuition, and other items) in proportion to those amounts. Partial payments
+          are split the same way. Transport totals include only day scholars who use school transport; DH totals only non-boarders
+          subscribed to dining hall. Optional date filters apply to <em>payment</em> dates.
         </p>
         <div class="cl-hero__chips" *ngIf="data || term">
           <span class="cl-chip" *ngIf="term"><span class="cl-chip__dot"></span>{{ term }}</span>
@@ -138,9 +140,9 @@
         <p class="cl-kpi__label">Term transport (invoiced or eligible × rate)</p>
         <p class="cl-kpi__value">{{ currencySymbol }}{{ formatMoney(termTransportTotal) }}</p>
         <p class="cl-kpi__receipts-total">
-          Total receipts from transport services:
-          <strong class="cl-kpi__receipts-amount">{{ currencySymbol }}{{ formatMoney(cashLinesTransport) }}</strong>
-          <span class="cl-kpi__receipts-meta">({{ cashLineCountTransport }} receipt line(s))</span>
+          Total Transport Receipts:
+          <strong class="cl-kpi__receipts-amount">{{ currencySymbol }}{{ formatWholeDollars(totalTransportReceipts) }}</strong>
+          <span class="cl-kpi__receipts-meta">({{ cashLineCountTransport }} payment line(s) with transport share · all matching payments)</span>
         </p>
         <p class="cl-kpi__hint">
           {{ transportEligibleCount }} eligible day scholar(s) · {{ currencySymbol }}{{ formatMoney(transportRate) }} / student
@@ -157,9 +159,9 @@
         <p class="cl-kpi__label">Term DH (invoiced or eligible × rate)</p>
         <p class="cl-kpi__value">{{ currencySymbol }}{{ formatMoney(termDHTotal) }}</p>
         <p class="cl-kpi__receipts-total">
-          Total receipts from DH services:
-          <strong class="cl-kpi__receipts-amount">{{ currencySymbol }}{{ formatMoney(cashLinesDH) }}</strong>
-          <span class="cl-kpi__receipts-meta">({{ cashLineCountDH }} receipt line(s))</span>
+          Total DH Receipts:
+          <strong class="cl-kpi__receipts-amount">{{ currencySymbol }}{{ formatWholeDollars(totalDHReceipts) }}</strong>
+          <span class="cl-kpi__receipts-meta">({{ cashLineCountDH }} payment line(s) with DH share · all matching payments)</span>
         </p>
         <p class="cl-kpi__hint">
           {{ dhEligibleCount }} student(s) · full {{ currencySymbol }}{{ formatMoney(dhRate) }} · 50% staff / exempt
@@ -193,6 +195,101 @@
       </div>
     </article>
   </div>
+
+  <section class="cl-panel cl-breakdown" *ngIf="!loading && data" aria-label="Per-student receipts breakdown">
+    <div class="cl-breakdown__head">
+      <h2 class="cl-breakdown__title">Per-student cash attribution</h2>
+      <p class="cl-breakdown__lede">
+        Sums match <strong>Total Transport Receipts</strong> and <strong>Total DH Receipts</strong> above (rounded to whole dollars per student).
+      </p>
+    </div>
+    <div class="cl-breakdown__grid">
+      <div class="cl-breakdown__col">
+        <button
+          type="button"
+          class="cl-breakdown__toggle"
+          (click)="showTransportBreakdown = !showTransportBreakdown"
+          [attr.aria-expanded]="showTransportBreakdown"
+        >
+          <span class="cl-breakdown__toggle-icon" aria-hidden="true">{{ showTransportBreakdown ? '▼' : '▶' }}</span>
+          Transport — {{ transportReceiptsByStudent.length }} student(s)
+        </button>
+        <div class="cl-breakdown__body" *ngIf="showTransportBreakdown">
+          <label class="cl-breakdown__search-label" for="cl-bd-tr">Search students</label>
+          <input
+            id="cl-bd-tr"
+            type="search"
+            class="cl-breakdown__search"
+            [(ngModel)]="transportBreakdownSearch"
+            [ngModelOptions]="{standalone: true}"
+            placeholder="Name or student no."
+            autocomplete="off"
+          />
+          <div class="cl-breakdown__table-wrap">
+            <table class="cl-breakdown__table">
+              <thead>
+                <tr>
+                  <th scope="col">Student</th>
+                  <th scope="col">No.</th>
+                  <th scope="col" class="cl-num">Attributed</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let r of filteredTransportBreakdown">
+                  <td>{{ r.studentName }}</td>
+                  <td class="cl-mono">{{ r.studentNumber || '—' }}</td>
+                  <td class="cl-num">{{ currencySymbol }}{{ formatWholeDollars(r.totalAttributed) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="cl-breakdown__empty" *ngIf="!filteredTransportBreakdown.length">No matching students.</p>
+        </div>
+      </div>
+      <div class="cl-breakdown__col">
+        <button
+          type="button"
+          class="cl-breakdown__toggle"
+          (click)="showDhBreakdown = !showDhBreakdown"
+          [attr.aria-expanded]="showDhBreakdown"
+        >
+          <span class="cl-breakdown__toggle-icon" aria-hidden="true">{{ showDhBreakdown ? '▼' : '▶' }}</span>
+          DH — {{ dhReceiptsByStudent.length }} student(s)
+        </button>
+        <div class="cl-breakdown__body" *ngIf="showDhBreakdown">
+          <label class="cl-breakdown__search-label" for="cl-bd-dh">Search students</label>
+          <input
+            id="cl-bd-dh"
+            type="search"
+            class="cl-breakdown__search"
+            [(ngModel)]="dhBreakdownSearch"
+            [ngModelOptions]="{standalone: true}"
+            placeholder="Name or student no."
+            autocomplete="off"
+          />
+          <div class="cl-breakdown__table-wrap">
+            <table class="cl-breakdown__table">
+              <thead>
+                <tr>
+                  <th scope="col">Student</th>
+                  <th scope="col">No.</th>
+                  <th scope="col" class="cl-num">Attributed</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let r of filteredDhBreakdown">
+                  <td>{{ r.studentName }}</td>
+                  <td class="cl-mono">{{ r.studentNumber || '—' }}</td>
+                  <td class="cl-num">{{ currencySymbol }}{{ formatWholeDollars(r.totalAttributed) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="cl-breakdown__empty" *ngIf="!filteredDhBreakdown.length">No matching students.</p>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <section class="cl-panel cl-panel--table" *ngIf="!loading && data && items.length === 0">
     <div class="cl-empty">

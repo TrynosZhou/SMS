@@ -30,6 +30,12 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
 
   searchQuery = '';
 
+  /** Drill-down: per-student attributed cash (from API). */
+  showTransportBreakdown = false;
+  showDhBreakdown = false;
+  transportBreakdownSearch = '';
+  dhBreakdownSearch = '';
+
   lastRefreshed: Date | null = null;
   toastMessage = '';
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -113,6 +119,68 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
 
   get cashLineCountDH(): number {
     return Number(this.data?.allRecordsDHLineCount ?? 0) || 0;
+  }
+
+  get totalTransportReceipts(): number {
+    return Number(this.data?.totalTransportReceipts ?? this.data?.allRecordsTransportTotal ?? 0) || 0;
+  }
+
+  get totalDHReceipts(): number {
+    return Number(this.data?.totalDHReceipts ?? this.data?.allRecordsDHTotal ?? 0) || 0;
+  }
+
+  get transportReceiptsByStudent(): Array<{
+    studentId: string;
+    studentNumber: string;
+    studentName: string;
+    totalAttributed: number;
+  }> {
+    return Array.isArray(this.data?.logisticsTransportReceiptsByStudent)
+      ? this.data.logisticsTransportReceiptsByStudent
+      : [];
+  }
+
+  get dhReceiptsByStudent(): Array<{
+    studentId: string;
+    studentNumber: string;
+    studentName: string;
+    totalAttributed: number;
+  }> {
+    return Array.isArray(this.data?.logisticsDHReceiptsByStudent) ? this.data.logisticsDHReceiptsByStudent : [];
+  }
+
+  get filteredTransportBreakdown(): Array<{
+    studentId: string;
+    studentNumber: string;
+    studentName: string;
+    totalAttributed: number;
+  }> {
+    const q = (this.transportBreakdownSearch || '').trim().toLowerCase();
+    const rows = this.transportReceiptsByStudent;
+    if (!q) return rows;
+    return rows.filter(
+      (r) =>
+        String(r.studentName || '')
+          .toLowerCase()
+          .includes(q) || String(r.studentNumber || '').toLowerCase().includes(q)
+    );
+  }
+
+  get filteredDhBreakdown(): Array<{
+    studentId: string;
+    studentNumber: string;
+    studentName: string;
+    totalAttributed: number;
+  }> {
+    const q = (this.dhBreakdownSearch || '').trim().toLowerCase();
+    const rows = this.dhReceiptsByStudent;
+    if (!q) return rows;
+    return rows.filter(
+      (r) =>
+        String(r.studentName || '')
+          .toLowerCase()
+          .includes(q) || String(r.studentNumber || '').toLowerCase().includes(q)
+    );
   }
 
   get activeTabTermTotal(): number {
@@ -381,6 +449,13 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
     const v = Number(n);
     if (!Number.isFinite(v)) return '0';
     return v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  /** Logistics cash-receipt KPIs: always whole dollars (no cents in UI). */
+  formatWholeDollars(n: number | string | undefined | null): string {
+    const v = Math.round(Number(n));
+    if (!Number.isFinite(v)) return '0';
+    return v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   }
 
   formatDate(d: string | Date | undefined): string {

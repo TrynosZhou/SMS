@@ -2435,7 +2435,7 @@ export const getPaymentLogsSummary = async (req: AuthRequest, res: Response) => 
   }
 };
 
-/** Cash receipts: total of all payments via /payments/record for the selected term (Tuition + DH + Transport). Optional filter by fee type. Pagination: default 50 per page, max 100. Query all=1 returns every line (cap 25k) with both transport/DH summary totals. */
+/** Cash receipts: payments for the term (optional date filter). Transport/DH cash uses invoice fee lines + proportional split. Pagination default 100; all=1 returns full list (cap 25k). */
 export const getCashReceipts = async (req: AuthRequest, res: Response) => {
   try {
     const {
@@ -2504,8 +2504,6 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
 
     const logsEntities = await qb.getMany();
     const feesCfg: any = (settings as any)?.feesSettings || {};
-    const dayScholarTuitionFee = parseFloat(String(feesCfg.dayScholarTuitionFee ?? 0)) || 0;
-    const boarderTuitionFee = parseFloat(String(feesCfg.boarderTuitionFee ?? 0)) || 0;
     const diningHallCost = Math.round(parseFloat(String(feesCfg.diningHallCost ?? 0)) || 0);
     const transportCost = Math.round(parseFloat(String(feesCfg.transportCost ?? 0)) || 0);
     const allLogs = logsEntities.map((log: any) => {
@@ -2521,8 +2519,14 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
         createdAt: log.createdAt,
         invoiceNumber: inv.invoiceNumber || '',
         invoiceTerm: inv.term || '',
-        invoiceAmount: parseFloat(String(inv.amount ?? 0)),
+        invoiceAmount: parseFloat(String(inv.amount ?? 0)) || 0,
         invoiceDescription: desc,
+        invTuitionAmount: parseFloat(String(inv.tuitionAmount ?? 0)) || 0,
+        invTransportAmount: parseFloat(String(inv.transportAmount ?? 0)) || 0,
+        invDiningHallAmount: parseFloat(String(inv.diningHallAmount ?? 0)) || 0,
+        invRegistrationAmount: parseFloat(String(inv.registrationAmount ?? 0)) || 0,
+        invDeskFeeAmount: parseFloat(String(inv.deskFeeAmount ?? 0)) || 0,
+        studentId: String(stu.id || log.studentId || ''),
         studentType: String(stu.studentType || ''),
         usesTransport: !!stu.usesTransport,
         usesDiningHall: !!stu.usesDiningHall,
@@ -2533,63 +2537,135 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       };
     });
 
-    // Transport and DH: always use amounts from settings (whole numbers only). Boarders = 0.
-    const getTransportAmount = (s: { studentType?: string; usesTransport?: boolean; isStaffChild?: boolean; isExempted?: boolean }): number => {
-      if (s?.studentType === 'Day Scholar' && s?.usesTransport && !s?.isStaffChild && !s?.isExempted && transportCost > 0) {
-        return transportCost;
+    /**
+     * Split each payment across invoice fee lines by proportion of the current invoice amount.
+     * Transport share only if day scholar + uses school transport (+ staff/exempt rules); DH only if not boarder + uses DH.
+     * Uses invoice transportAmount / diningHallAmount; if a line is missing but the student is eligible, falls back to settings rate.
+     */
+    const round2 = (x: number) => Math.round(x * 100) / 100;
+    const COMP_EPS = 0.005;
+    const allocateTransportDhFromInvoice = (
+      payment: number,
+      l: {
+        invoiceAmount: number;
+        invTuitionAmount: number;
+        invTransportAmount: number;
+        invDiningHallAmount: number;
+        invRegistrationAmount: number;
+        invDeskFeeAmount: number;
+        studentType: string;
+        usesTransport: boolean;
+        usesDiningHall: boolean;
+        isStaffChild: boolean;
+        isExempted: boolean;
       }
-      return 0;
-    };
-    const getDHAmount = (s: { studentType?: string; usesDiningHall?: boolean; isStaffChild?: boolean; isExempted?: boolean }): number => {
-      if (String(s?.studentType || '').trim() === 'Boarder') return 0;
-      if (!s?.usesDiningHall || diningHallCost <= 0) return 0;
-      const amt = (s?.isStaffChild || s?.isExempted) ? Math.round(diningHallCost * 0.5) : diningHallCost;
-      return amt;
+    ) => {
+      const invAmt = Math.max(0, l.invoiceAmount || 0);
+      const invTu = Math.max(0, l.invTuitionAmount || 0);
+      const invTrRaw = Math.max(0, l.invTransportAmount || 0);
+      const invDhRaw = Math.max(0, l.invDiningHallAmount || 0);
+      const invReg = Math.max(0, l.invRegistrationAmount || 0);
+      const invDesk = Math.max(0, l.invDeskFeeAmount || 0);
+
+      const st = String(l.studentType || '').trim().toLowerCase();
+      const transportEligible =
+        st === 'day scholar' && l.usesTransport && !l.isStaffChild && !l.isExempted && transportCost > 0;
+      const dhEligible = st !== 'boarder' && l.usesDiningHall && diningHallCost > 0;
+
+      const compSum = invTu + invTrRaw + invDhRaw + invReg + invDesk;
+      const otherGap = Math.max(0, invAmt - compSum);
+      let wTu = invTu + invReg + invDesk + otherGap;
+
+      let wTr = 0;
+      if (transportEligible) {
+        wTr = invTrRaw > COMP_EPS ? invTrRaw : transportCost;
+      }
+      let wDh = 0;
+      if (dhEligible) {
+        const dhSynth = l.isStaffChild || l.isExempted ? Math.round(diningHallCost * 0.5) : diningHallCost;
+        wDh = invDhRaw > COMP_EPS ? invDhRaw : dhSynth;
+      }
+
+      let S = wTu + wTr + wDh;
+      if (S <= 0 && invAmt > 0) {
+        wTu = invAmt;
+        S = invAmt;
+      }
+      if (invAmt > 0 && S > invAmt + 0.02) {
+        const f = invAmt / S;
+        wTu *= f;
+        wTr *= f;
+        wDh *= f;
+        S = invAmt;
+      }
+      const denom = S > 0 ? S : invAmt > 0 ? invAmt : 1;
+      const transportPortion =
+        transportEligible && wTr > COMP_EPS ? round2((payment * wTr) / denom) : 0;
+      const dhPortion = dhEligible && wDh > COMP_EPS ? round2((payment * wDh) / denom) : 0;
+      const tuitionPortion = round2(Math.max(0, payment - transportPortion - dhPortion));
+      const tuitionWithOverpayment = Math.max(0, tuitionPortion);
+      return { transportPortion, dhPortion, tuitionWithOverpayment };
     };
 
-    // Tuition / "all": split payment across components using invoice weights (may scale DH/transport if they exceed invoice).
-    // Transport / DH logistics views: show only settings-based flat fees ($transportCost, full or 50% DH) per line — never a proportion of cash paid.
+    // Tuition / "all": same proportional split; transport & DH tabs show invoice-attributed portions per payment line.
     let totalRawPayments = 0;
     let totalTransportSum = 0;
     let totalDHSum = 0;
     let totalTuitionSum = 0;
 
+    /** Invoice-proportional cash attributed to transport/DH; summed over all payment lines in term/date scope. */
+    let summaryAllTransportTotal = 0;
+    let summaryAllDHTotal = 0;
+    let summaryTransportLineCount = 0;
+    let summaryDHLineCount = 0;
+    const PORTION_LINE_EPS = 0.005;
+
+    type StudentReceiptAgg = { studentId: string; studentNumber: string; studentName: string; total: number };
+    const transportReceiptsByStudent = new Map<string, StudentReceiptAgg>();
+    const dhReceiptsByStudent = new Map<string, StudentReceiptAgg>();
+
     const allocatedItems = allLogs.map((l: any) => {
-      const invAmount = parseFloat(String(l.invoiceAmount ?? 0)) || 0;
-      const transportFlat = getTransportAmount(l);
-      const dhFlat = getDHAmount(l);
-
-      let transportAmt = transportFlat;
-      let dhAmt = dhFlat;
-      if (invAmount > 0 && transportAmt + dhAmt > invAmount) {
-        const scale = invAmount / (transportAmt + dhAmt);
-        transportAmt = Math.round(transportAmt * scale);
-        dhAmt = Math.round(dhAmt * scale);
-      }
-
-      const tuitionAmt = Math.max(0, invAmount - transportAmt - dhAmt);
-      const denom = invAmount > 0 ? invAmount : (transportAmt + dhAmt + tuitionAmt);
-      const safeDenom = denom > 0 ? denom : 1;
       const payment = parseFloat(String(l.amountPaid ?? 0)) || 0;
+      const { transportPortion, dhPortion, tuitionWithOverpayment } = allocateTransportDhFromInvoice(payment, l);
 
-      const transportPortion = transportAmt > 0
-        ? Math.round(((payment * transportAmt) / safeDenom) * 100) / 100
-        : 0;
-      const dhPortion = dhAmt > 0
-        ? Math.round(((payment * dhAmt) / safeDenom) * 100) / 100
-        : 0;
-      const tuitionPortion = Math.round((payment - transportPortion - dhPortion) * 100) / 100;
-      const tuitionWithOverpayment = Math.max(0, tuitionPortion);
+      summaryAllTransportTotal += transportPortion;
+      summaryAllDHTotal += dhPortion;
+      if (transportPortion > PORTION_LINE_EPS) summaryTransportLineCount += 1;
+      if (dhPortion > PORTION_LINE_EPS) summaryDHLineCount += 1;
+
+      const sid = String(l.studentId || '').trim();
+      if (sid && transportPortion > PORTION_LINE_EPS) {
+        const cur =
+          transportReceiptsByStudent.get(sid) || {
+            studentId: sid,
+            studentNumber: l.studentNumber || '',
+            studentName: l.studentName || 'N/A',
+            total: 0
+          };
+        cur.total += transportPortion;
+        transportReceiptsByStudent.set(sid, cur);
+      }
+      if (sid && dhPortion > PORTION_LINE_EPS) {
+        const cur =
+          dhReceiptsByStudent.get(sid) || {
+            studentId: sid,
+            studentNumber: l.studentNumber || '',
+            studentName: l.studentName || 'N/A',
+            total: 0
+          };
+        cur.total += dhPortion;
+        dhReceiptsByStudent.set(sid, cur);
+      }
 
       totalRawPayments += payment;
 
       let allocated = payment;
       if (filterFeeType === 'transport') {
-        allocated = transportFlat;
-        totalTransportSum += transportFlat;
+        allocated = transportPortion;
+        totalTransportSum += transportPortion;
       } else if (filterFeeType === 'dh') {
-        allocated = dhFlat;
-        totalDHSum += dhFlat;
+        allocated = dhPortion;
+        totalDHSum += dhPortion;
       } else if (filterFeeType === 'tuition') {
         allocated = tuitionWithOverpayment;
         totalTuitionSum += tuitionWithOverpayment;
@@ -2604,44 +2680,46 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
 
       return {
         ...l,
+        rawAmountPaid: payment,
         amountPaid: allocated,
         tuitionAmount: Math.round(tuitionWithOverpayment * 100) / 100,
-        transportAmount:
-          filterFeeType === 'transport' ? transportFlat : Math.round(transportPortion * 100) / 100,
-        dhAmount: filterFeeType === 'dh' ? dhFlat : Math.round(dhPortion * 100) / 100
+        transportAmount: Math.round(transportPortion * 100) / 100,
+        dhAmount: Math.round(dhPortion * 100) / 100
       };
     });
+
+    const logisticsTransportReceiptsByStudent = [...transportReceiptsByStudent.values()]
+      .map((r) => ({
+        studentId: r.studentId,
+        studentNumber: r.studentNumber,
+        studentName: r.studentName,
+        totalAttributed: Math.round(r.total)
+      }))
+      .sort((a, b) => String(a.studentName).localeCompare(String(b.studentName), undefined, { sensitivity: 'base' }));
+
+    const logisticsDHReceiptsByStudent = [...dhReceiptsByStudent.values()]
+      .map((r) => ({
+        studentId: r.studentId,
+        studentNumber: r.studentNumber,
+        studentName: r.studentName,
+        totalAttributed: Math.round(r.total)
+      }))
+      .sort((a, b) => String(a.studentName).localeCompare(String(b.studentName), undefined, { sensitivity: 'base' }));
 
     const rawTuitionTotal = Math.round(totalTuitionSum * 100) / 100;
     const rawDHTotal = Math.round(totalDHSum * 100) / 100;
     const rawTransportTotal = Math.round(totalTransportSum * 100) / 100;
 
-    // Grand totals for transport & DH (same term/date scope), independent of feeType filter — for logistics dashboard
-    let summaryAllTransportTotal = 0;
-    let summaryAllDHTotal = 0;
-    let summaryTransportLineCount = 0;
-    let summaryDHLineCount = 0;
-    for (const l of allLogs) {
-      const tf = getTransportAmount(l);
-      const df = getDHAmount(l);
-      if (tf > 0) {
-        summaryAllTransportTotal += tf;
-        summaryTransportLineCount += 1;
-      }
-      if (df > 0) {
-        summaryAllDHTotal += df;
-        summaryDHLineCount += 1;
-      }
-    }
-    summaryAllTransportTotal = Math.round(summaryAllTransportTotal * 100) / 100;
-    summaryAllDHTotal = Math.round(summaryAllDHTotal * 100) / 100;
+    // Whole dollars only: proportional line amounts are cents; published totals must be integers.
+    summaryAllTransportTotal = Math.round(summaryAllTransportTotal);
+    summaryAllDHTotal = Math.round(summaryAllDHTotal);
 
     // Pagination: default 100 per page, max 100; all=1 returns full list (capped)
     const CASH_RECEIPTS_DEFAULT_LIMIT = 100;
     const CASH_RECEIPTS_MAX_LIMIT = 100;
     const CASH_RECEIPTS_ALL_MAX = 25000;
-    const totalItemCount = allocatedItems.filter((l) => (l.amountPaid || 0) > 0).length;
-    const allItems = allocatedItems.filter((l) => (l.amountPaid || 0) > 0);
+    const totalItemCount = allocatedItems.filter((l: any) => (l.rawAmountPaid || 0) > 0).length;
+    const allItems = allocatedItems.filter((l: any) => (l.rawAmountPaid || 0) > 0);
 
     let page: number;
     let limit: number;
@@ -2898,11 +2976,17 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       limit,
       total: totalItemCount,
       totalPages,
-      /** Payment-log lines (flat settings per cash line); subset of payments, not full enrolment. */
+      /** Cash receipts attributed to transport/DH from invoice fee mix (proportional); term + optional date filters; whole dollars. */
       allRecordsTransportTotal: summaryAllTransportTotal,
       allRecordsDHTotal: summaryAllDHTotal,
+      totalTransportReceipts: summaryAllTransportTotal,
+      totalDHReceipts: summaryAllDHTotal,
+      /** Payment lines with any transport / DH portion of cash (> $0.005). */
       allRecordsTransportLineCount: summaryTransportLineCount,
       allRecordsDHLineCount: summaryDHLineCount,
+      /** Per-student sum of attributed cash (rounded dollars), sorted by name. */
+      logisticsTransportReceiptsByStudent,
+      logisticsDHReceiptsByStudent,
       cashLogisticsTruncated: cashLogisticsAllTruncated,
       cashLogisticsReturnedCount: items.length,
       /** Term totals for logistics KPIs: invoice transport/DH sums, or eligible students × settings if invoice lines are zero. */

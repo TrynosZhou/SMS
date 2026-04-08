@@ -555,6 +555,132 @@
   color: var(--cl-muted);
 }
 
+/* ─── Per-student breakdown ─── */
+.cl-breakdown {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.cl-breakdown__head {
+  margin-bottom: 1rem;
+}
+
+.cl-breakdown__title {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--cl-text);
+}
+
+.cl-breakdown__lede {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--cl-muted);
+  line-height: 1.45;
+}
+
+.cl-breakdown__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .cl-breakdown__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cl-breakdown__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--cl-border);
+  border-radius: 10px;
+  background: var(--cl-surface);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--cl-text);
+  cursor: pointer;
+}
+
+.cl-breakdown__toggle:hover {
+  border-color: var(--cl-teal);
+}
+
+.cl-breakdown__toggle-icon {
+  font-size: 0.65rem;
+  color: var(--cl-muted);
+}
+
+.cl-breakdown__body {
+  margin-top: 0.65rem;
+  padding: 0 0.15rem;
+}
+
+.cl-breakdown__search-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--cl-muted);
+  margin-bottom: 0.25rem;
+}
+
+.cl-breakdown__search {
+  width: 100%;
+  max-width: 16rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--cl-border);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  margin-bottom: 0.6rem;
+}
+
+.cl-breakdown__table-wrap {
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid var(--cl-border);
+  border-radius: 8px;
+}
+
+.cl-breakdown__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.cl-breakdown__table th,
+.cl-breakdown__table td {
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+  border-bottom: 1px solid var(--cl-border);
+}
+
+.cl-breakdown__table th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: var(--cl-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.cl-breakdown__table tr:last-child td {
+  border-bottom: none;
+}
+
+.cl-breakdown__empty {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  color: var(--cl-muted);
+}
+
 /* ─── Empty ─── */
 .cl-empty {
   text-align: center;
