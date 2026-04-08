@@ -139,10 +139,6 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
     return Number(this.data?.totalDHReceipts ?? this.data?.allRecordsDHTotal ?? 0) || 0;
   }
 
-  get paymentLinesInScope(): number {
-    return Number(this.data?.total ?? 0) || 0;
-  }
-
   get transportReceiptsByStudent(): Array<{
     studentId: string;
     studentNumber: string;

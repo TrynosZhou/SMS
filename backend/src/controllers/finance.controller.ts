@@ -2525,7 +2525,13 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       .where('COALESCE(iv.isVoided, false) = false')
       .andWhere('LOWER(TRIM(COALESCE(iv.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
 
-    const qb = paymentLogRepository
+    const dateFrom = startDateParam && String(startDateParam).trim() ? new Date(String(startDateParam).trim()) : null;
+    let dateTo: Date | null = endDateParam && String(endDateParam).trim() ? new Date(String(endDateParam).trim()) : null;
+    if (dateTo && !isNaN(dateTo.getTime())) {
+      dateTo.setHours(23, 59, 59, 999); // include full end date
+    }
+
+    const qbBase = paymentLogRepository
       .createQueryBuilder('log')
       .innerJoinAndSelect('log.invoice', 'invoice')
       .leftJoinAndSelect('log.student', 'student')
@@ -2534,24 +2540,29 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       .andWhere(`log.invoiceId IN (${invoiceScopeQb.getQuery()})`)
       .setParameters(invoiceScopeQb.getParameters());
 
-    const dateFrom = startDateParam && String(startDateParam).trim() ? new Date(String(startDateParam).trim()) : null;
-    let dateTo: Date | null = endDateParam && String(endDateParam).trim() ? new Date(String(endDateParam).trim()) : null;
-    if (dateTo && !isNaN(dateTo.getTime())) {
-      dateTo.setHours(23, 59, 59, 999); // include full end date
-    }
-    if (dateFrom && !isNaN(dateFrom.getTime())) {
-      qb.andWhere('log.paymentDate >= :dateFrom', { dateFrom });
-    }
-    if (dateTo && !isNaN(dateTo.getTime())) {
-      qb.andWhere('log.paymentDate <= :dateTo', { dateTo });
-    }
-    qb.orderBy('log.paymentDate', 'DESC').addOrderBy('log.createdAt', 'DESC');
+    const logsTermWideEntities = await qbBase
+      .clone()
+      .orderBy('log.paymentDate', 'DESC')
+      .addOrderBy('log.createdAt', 'DESC')
+      .getMany();
 
-    const logsEntities = await qb.getMany();
+    const qbFiltered = qbBase.clone();
+    if (dateFrom && !isNaN(dateFrom.getTime())) {
+      qbFiltered.andWhere('log.paymentDate >= :dateFrom', { dateFrom });
+    }
+    if (dateTo && !isNaN(dateTo.getTime())) {
+      qbFiltered.andWhere('log.paymentDate <= :dateTo', { dateTo });
+    }
+    const logsEntities = await qbFiltered
+      .orderBy('log.paymentDate', 'DESC')
+      .addOrderBy('log.createdAt', 'DESC')
+      .getMany();
+
     const feesCfg: any = (settings as any)?.feesSettings || {};
     const diningHallCost = Math.round(parseFloat(String(feesCfg.diningHallCost ?? 0)) || 0);
     const transportCost = Math.round(parseFloat(String(feesCfg.transportCost ?? 0)) || 0);
-    const allLogs = logsEntities.map((log: any) => {
+
+    const mapLogEntity = (log: any) => {
       const inv = log.invoice || {};
       const stu = log.student || {};
       const desc = String(inv.description || '');
@@ -2581,10 +2592,13 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
         studentName: [stu.firstName, stu.lastName].filter(Boolean).join(' ').trim() || 'N/A',
         studentNumber: stu.studentNumber || ''
       };
-    });
+    };
 
-    /** Full payment history per invoice (term-scoped) so waterfall order is correct when the UI date filter hides earlier lines. */
-    const invoiceIdsInScope = [...new Set(allLogs.map((l: any) => l.invoiceId).filter(Boolean))] as string[];
+    const allLogsTermWide = logsTermWideEntities.map(mapLogEntity);
+    const allLogs = logsEntities.map(mapLogEntity);
+
+    /** Invoices with any term payment — use full term so date filters on the table do not shrink waterfall / KPI totals. */
+    const invoiceIdsInScope = [...new Set(allLogsTermWide.map((l: any) => l.invoiceId).filter(Boolean))] as string[];
     let fullHistoryEntities: any[] = [];
     if (invoiceIdsInScope.length > 0) {
       const fullQb = paymentLogRepository
@@ -2650,7 +2664,7 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     let totalDHSum = 0;
     let totalTuitionSum = 0;
 
-    /** Invoice-proportional cash attributed to transport/DH; summed over all payment lines in term/date scope. */
+    /** Transport/DH receipts & line counts: entire report term (all pages; ignores table date filter). */
     let summaryAllTransportTotal = 0;
     let summaryAllDHTotal = 0;
     let summaryTransportLineCount = 0;
@@ -2661,7 +2675,7 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
     const transportReceiptsByStudent = new Map<string, StudentReceiptAgg>();
     const dhReceiptsByStudent = new Map<string, StudentReceiptAgg>();
 
-    const allocatedItems = allLogs.map((l: any) => {
+    const accumulateTermWideRow = (l: any) => {
       const payment = parseFloat(String(l.amountPaid ?? 0)) || 0;
       const fromWaterfall = globalPerLog.get(l.id);
       const transportPortion = fromWaterfall?.transportPortion ?? 0;
@@ -2700,24 +2714,43 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       }
 
       totalRawPayments += payment;
-
-      let allocated = payment;
       if (filterFeeType === 'transport') {
-        allocated = transportPortion;
         totalTransportSum += transportPortion;
       } else if (filterFeeType === 'dh') {
-        allocated = dhPortion;
         totalDHSum += dhPortion;
       } else if (filterFeeType === 'tuition') {
-        allocated = tuitionWithOverpayment;
         totalTuitionSum += tuitionWithOverpayment;
         totalTransportSum += transportPortion;
         totalDHSum += dhPortion;
       } else {
-        allocated = payment;
         totalTuitionSum += tuitionWithOverpayment;
         totalTransportSum += transportPortion;
         totalDHSum += dhPortion;
+      }
+    };
+
+    for (const l of allLogsTermWide) {
+      accumulateTermWideRow(l);
+    }
+
+    const allocatedItems = allLogs.map((l: any) => {
+      const payment = parseFloat(String(l.amountPaid ?? 0)) || 0;
+      const fromWaterfall = globalPerLog.get(l.id);
+      const transportPortion = fromWaterfall?.transportPortion ?? 0;
+      const dhPortion = fromWaterfall?.dhPortion ?? 0;
+      const tuitionWithOverpayment = fromWaterfall
+        ? fromWaterfall.tuitionWithOverpayment
+        : Math.round(payment * 100) / 100;
+
+      let allocated = payment;
+      if (filterFeeType === 'transport') {
+        allocated = transportPortion;
+      } else if (filterFeeType === 'dh') {
+        allocated = dhPortion;
+      } else if (filterFeeType === 'tuition') {
+        allocated = tuitionWithOverpayment;
+      } else {
+        allocated = payment;
       }
 
       return {
@@ -2980,7 +3013,7 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
       totalTuition: totalTuitionCollected,
       totalTransport: totalTransportFeeCollected,
       totalDH: totalDHFeeCollected,
-      /** Sum of raw payment amounts for lines in this response scope (same filter as items). */
+      /** Sum of raw payment amounts for all term payment lines (same scope as transport/DH KPI totals; not limited to table date filter or page). */
       totalReceiptsSum: totalCashReceived,
       studentsWithInvoices,
       studentsFullyPaid,

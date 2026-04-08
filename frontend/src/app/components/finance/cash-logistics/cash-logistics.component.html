@@ -69,18 +69,17 @@
       </li>
       <li>
         <strong>Total Transport Receipts</strong> / <strong>Total DH Receipts</strong> sum the transport and DH portions from
-        the payment waterfall (previous balance first, then transport, then DH, then tuition). School-wide
-        <strong>outstanding</strong> on this report excludes unpaid transport; DH may still appear as owed.
+        the payment waterfall (previous balance first, then transport, then DH, then tuition) across the <strong>whole report
+        term</strong> — not just the current table page or date filter. School-wide <strong>outstanding</strong> excludes unpaid
+        transport; DH may still appear as owed.
       </li>
-      <li *ngIf="paymentLinesInScope > 0 && serviceTab === 'transport'">
-        The table lists <strong>{{ paymentLinesInScope }}</strong> line(s) with a positive transport share (day scholars who use
-        transport; <strong>$0</strong> hidden). That matches the <strong>{{ cashLineCountTransport }}</strong> line(s) in
-        <strong>Total Transport Receipts</strong>.
+      <li *ngIf="cashLineCountTransport > 0 && serviceTab === 'transport'">
+        There are <strong>{{ cashLineCountTransport }}</strong> term-wide payment line(s) with a positive transport share. The
+        table shows only rows that match your date filter and current page (see “Table (paged / filtered)” card).
       </li>
-      <li *ngIf="paymentLinesInScope > 0 && serviceTab === 'dh'">
-        The table lists <strong>{{ paymentLinesInScope }}</strong> line(s) with a positive DH share (day scholars on dining hall;
-        boarders excluded; <strong>$0</strong> hidden). That matches the <strong>{{ cashLineCountDH }}</strong> line(s) in
-        <strong>Total DH Receipts</strong>.
+      <li *ngIf="cashLineCountDH > 0 && serviceTab === 'dh'">
+        There are <strong>{{ cashLineCountDH }}</strong> term-wide payment line(s) with a positive DH share. The table shows only
+        rows that match your date filter and current page.
       </li>
     </ul>
   </div>
@@ -185,7 +184,10 @@
         <p class="cl-kpi__receipts-total">
           Total Transport Receipts:
           <strong class="cl-kpi__receipts-amount">{{ currencySymbol }}{{ formatWholeDollars(totalTransportReceipts) }}</strong>
-          <span class="cl-kpi__receipts-meta">({{ cashLineCountTransport }} payment line(s) with transport share · all matching payments)</span>
+          <span class="cl-kpi__receipts-meta"
+            >({{ cashLineCountTransport }} payment line(s) with transport share · <strong>entire term</strong>, all pages;
+            not limited to the table date filter)</span
+          >
         </p>
         <p class="cl-kpi__hint">
           {{ transportEligibleCount }} eligible day scholar(s) · {{ currencySymbol }}{{ formatMoney(transportRate) }} / student
@@ -204,7 +206,10 @@
         <p class="cl-kpi__receipts-total">
           Total DH Receipts:
           <strong class="cl-kpi__receipts-amount">{{ currencySymbol }}{{ formatWholeDollars(totalDHReceipts) }}</strong>
-          <span class="cl-kpi__receipts-meta">({{ cashLineCountDH }} payment line(s) with DH share · all matching payments)</span>
+          <span class="cl-kpi__receipts-meta"
+            >({{ cashLineCountDH }} payment line(s) with DH share · <strong>entire term</strong>, all pages; not limited to the
+            table date filter)</span
+          >
         </p>
         <p class="cl-kpi__hint">
           {{ dhEligibleCount }} student(s) · full {{ currencySymbol }}{{ formatMoney(dhRate) }} · 50% staff / exempt
@@ -222,19 +227,21 @@
         <p class="cl-kpi__value">{{ currencySymbol }}{{ formatMoney(activeTabTermTotal) }}</p>
         <p class="cl-kpi__hint">
           {{ serviceTab === 'transport' ? transportEligibleCount + ' transport-eligible' : dhEligibleCount + ' DH-eligible' }}
-          · table shows payment lines only (paged)
+          · dollar totals above = <strong>all</strong> eligible payment lines for the term; table is paged (and may use date
+          filters)
         </p>
       </div>
     </article>
     <article class="cl-kpi">
       <div class="cl-kpi__icon cl-kpi__icon--muted" aria-hidden="true">📋</div>
       <div>
-        <p class="cl-kpi__label">This page</p>
-        <p class="cl-kpi__value cl-kpi__value--sm">{{ items.length }}</p>
+        <p class="cl-kpi__label">Table (paged / filtered)</p>
+        <p class="cl-kpi__value cl-kpi__value--sm">{{ data?.total ?? 0 }}</p>
         <p class="cl-kpi__hint" *ngIf="!allRowsMode">
-          {{ rangeLabel }} of {{ data?.total }} line(s) · page {{ data?.page }} / {{ data?.totalPages }} · {{ limit }} per page
+          {{ rangeLabel }} visible · page {{ data?.page }} / {{ data?.totalPages }} · {{ limit }}/page · date filters narrow
+          rows only (totals above stay term-wide)
         </p>
-        <p class="cl-kpi__hint" *ngIf="allRowsMode">All matching payment lines loaded (no paging)</p>
+        <p class="cl-kpi__hint" *ngIf="allRowsMode">Showing {{ items.length }} line(s) in table scope (no paging)</p>
       </div>
     </article>
   </div>
