@@ -6,7 +6,11 @@ import { ActivatedRoute } from '@angular/router';
 import { finalize, timeout } from 'rxjs/operators';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-login',
+=======
+  selector: 'app-login',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })

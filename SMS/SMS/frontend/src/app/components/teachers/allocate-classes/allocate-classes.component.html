@@ -1,0 +1,174 @@
+<div class="allocate-container">
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="header-content">
+      <span class="header-icon" aria-hidden="true">🏫</span>
+      <div class="header-text">
+        <h1>Allocate Classes</h1>
+        <p class="subtitle">Assign subjects and classes to teachers</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  <div class="alert alert-error" *ngIf="error" role="alert">
+    <span class="alert-icon" aria-hidden="true">⚠</span>
+    <span class="alert-message">{{ error }}</span>
+    <button type="button" class="alert-close" (click)="error = ''" title="Dismiss">&times;</button>
+  </div>
+  <div class="alert alert-success" *ngIf="success" role="alert">
+    <span class="alert-icon" aria-hidden="true">✓</span>
+    <span class="alert-message">{{ success }}</span>
+    <button type="button" class="alert-close" (click)="success = ''" title="Dismiss">&times;</button>
+  </div>
+
+  <!-- All Registered Teachers Section -->
+  <div class="card all-teachers-card">
+    <div class="card-header">
+      <div class="card-header-text">
+        <h2>
+          <span class="section-icon">👨‍🏫</span>
+          Registered Teachers
+        </h2>
+        <p class="card-description">Click on a teacher to allocate classes or subjects</p>
+      </div>
+      <div class="card-header-stats">
+        <span class="stat-pill">{{ teachers.length }} Total</span>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="search-wrap" style="margin-bottom: 0; min-width: 300px;">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input type="text" [(ngModel)]="teacherSearch" (input)="filterTeachers()" placeholder="Search teachers..." class="search-input">
+        </div>
+      </div>
+    </div>
+
+    <div class="table-scroll">
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th>Teacher Name</th>
+            <th>Employee ID</th>
+            <th>Current Load</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let t of filteredTeachers" (click)="openAllocationModal(t)" class="clickable-row">
+            <td>
+              <div class="teacher-cell">
+                <span class="teacher-name">{{ t.firstName }} {{ t.lastName }}</span>
+                <span class="teacher-meta">{{ t.phoneNumber || 'No phone' }}</span>
+              </div>
+            </td>
+            <td><span class="cell-id">{{ t.teacherId || t.id }}</span></td>
+            <td>
+              <div class="teacher-meta">
+                <div>{{ (t.subjects || []).length }} Subjects</div>
+                <div>{{ (t.classes || []).length }} Classes</div>
+              </div>
+            </td>
+            <td>
+              <span class="status-pill" [class.status-allocated]="(t.classes || []).length > 0" [class.status-unallocated]="(t.classes || []).length === 0">
+                {{ (t.classes || []).length > 0 ? 'Allocated' : 'Unallocated' }}
+              </span>
+            </td>
+            <td>
+              <button type="button" class="btn btn-primary btn-sm" (click)="$event.stopPropagation(); openAllocationModal(t)">
+                Allocate
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Form actions -->
+  <div class="form-actions card" *ngIf="bulkMode">
+    <div class="form-actions-inner">
+      <button type="button" class="btn btn-ghost" (click)="clearTeacherSelection()">Cancel</button>
+      <button type="button" class="btn btn-primary" (click)="save()" [disabled]="saving || !hasChanges()">
+        <span class="btn-icon" *ngIf="!saving">💾</span>
+        <span class="btn-spinner" *ngIf="saving"></span>
+        <span>{{ saving ? 'Saving…' : 'Save assignment' }}</span>
+      </button>
+      <div class="bulk-progress" *ngIf="bulkProgress.total > 0">
+        <span class="bulk-stat">Total: {{ bulkProgress.total }}</span>
+        <span class="bulk-stat bulk-done">Done: {{ bulkProgress.done }}</span>
+        <span class="bulk-stat bulk-failed" *ngIf="bulkProgress.failed > 0">Failed: {{ bulkProgress.failed }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Allocation Modal -->
+<div class="modal-overlay" *ngIf="showAllocationModal" (click)="closeAllocationModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Allocate Classes & Subjects</h2>
+      <button type="button" class="modal-close" (click)="closeAllocationModal()">&times;</button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="modal-teacher-info" *ngIf="teacherToAllocate">
+        <div class="modal-teacher-name">{{ teacherToAllocate.firstName }} {{ teacherToAllocate.lastName }}</div>
+        <div class="modal-teacher-id">ID: {{ teacherToAllocate.teacherId || teacherToAllocate.id }}</div>
+      </div>
+
+      <div class="modal-grid">
+        <!-- Subjects Column -->
+        <div class="modal-column">
+          <h3 class="modal-section-title">
+            <span>📚</span> Subjects
+          </h3>
+          <div class="search-wrap" style="margin-bottom: 10px;">
+            <span class="search-icon">🔍</span>
+            <input type="text" [(ngModel)]="modalSubjectSearch" placeholder="Search subjects..." class="search-input">
+            <button type="button" *ngIf="modalSubjectSearch" class="search-clear" (click)="modalSubjectSearch=''">×</button>
+          </div>
+          <div class="modal-list">
+            <label class="checkbox-item" *ngFor="let s of filteredModalSubjects" [class.selected]="selectedModalSubjectIds.includes(s.id)">
+              <input type="checkbox" [checked]="selectedModalSubjectIds.includes(s.id)" (change)="toggleModalSubject(s.id)" class="checkbox-input">
+              <span class="checkbox-custom"></span>
+              <span class="checkbox-text">{{ s.name }}</span>
+            </label>
+            <div *ngIf="filteredModalSubjects.length === 0" class="assign-empty">No subjects found.</div>
+          </div>
+        </div>
+
+        <!-- Classes Column -->
+        <div class="modal-column">
+          <h3 class="modal-section-title">
+            <span>🏫</span> Classes
+          </h3>
+          <div class="search-wrap" style="margin-bottom: 10px;">
+            <span class="search-icon">🔍</span>
+            <input type="text" [(ngModel)]="modalClassSearch" placeholder="Search classes..." class="search-input">
+            <button type="button" *ngIf="modalClassSearch" class="search-clear" (click)="modalClassSearch=''">×</button>
+          </div>
+          <div class="modal-list">
+            <label class="checkbox-item" *ngFor="let c of filteredModalClasses" [class.selected]="selectedModalClassIds.includes(c.id)">
+              <input type="checkbox" [checked]="selectedModalClassIds.includes(c.id)" (change)="toggleModalClass(c.id)" class="checkbox-input">
+              <span class="checkbox-custom"></span>
+              <span class="checkbox-text">{{ c.name }}</span>
+            </label>
+            <div *ngIf="filteredModalClasses.length === 0" class="assign-empty">No classes found.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" (click)="closeAllocationModal()">Cancel</button>
+      <button type="button" class="btn btn-primary" (click)="saveModalAllocation()" [disabled]="saving">
+        <span class="btn-spinner" *ngIf="saving"></span>
+        {{ saving ? 'Saving...' : 'Save assignment' }}
+      </button>
+    </div>
+  </div>
+</div>

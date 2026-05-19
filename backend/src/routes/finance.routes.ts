@@ -25,8 +25,12 @@ import {
   createUniformCharge,
   recordUniformPayment,
   getNextUniformReceiptNumberController,
+<<<<<<< HEAD
   generateUniformReceiptPDF,
   syncStudentExemptionInvoices
+=======
+  generateUniformReceiptPDF
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 } from '../controllers/finance.controller';
 
 const router = Router();
@@ -36,12 +40,15 @@ router.post('/', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, Us
 router.post('/bulk', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), createBulkInvoices);
 router.post('/bulk/reverse', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), reverseBulkInvoices);
 router.post('/void/tuition-exempt', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), voidTuitionExemptInvoices);
+<<<<<<< HEAD
 router.post(
   '/students/:studentId/sync-exemption-invoices',
   authenticate,
   authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER),
   syncStudentExemptionInvoices
 );
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 router.get('/', authenticate, getInvoices);
 router.get('/balance', authenticate, getStudentBalance);
 router.get('/next-uniform-receipt', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), getNextUniformReceiptNumberController);

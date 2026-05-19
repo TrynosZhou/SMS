@@ -40,7 +40,11 @@ export class TimetableService {
 
   getWizardSubjects(): any[] {
     const stored = localStorage.getItem('timetable_wizard_subjects');
+<<<<<<< HEAD
     return stored ? JSON.parse(stored) : [];
+=======
+    return stored ? JSON.parse(stored) : null;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   saveWizardClasses(classes: any[]) {
@@ -50,7 +54,11 @@ export class TimetableService {
 
   getWizardClasses(): any[] {
     const stored = localStorage.getItem('timetable_wizard_classes');
+<<<<<<< HEAD
     return stored ? JSON.parse(stored) : [];
+=======
+    return stored ? JSON.parse(stored) : null;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   saveWizardTeachers(teachers: any[]) {
@@ -60,7 +68,11 @@ export class TimetableService {
 
   getWizardTeachers(): any[] {
     const stored = localStorage.getItem('timetable_wizard_teachers');
+<<<<<<< HEAD
     return stored ? JSON.parse(stored) : [];
+=======
+    return stored ? JSON.parse(stored) : null;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   saveWizardData(data: any) {

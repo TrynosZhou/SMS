@@ -1,0 +1,134 @@
+<div class="container reports-page">
+  <header class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <span class="title-icon">📈</span>
+        Payroll Reports
+      </h1>
+      <p class="subtitle">View monthly summaries, deductions, and department breakdowns</p>
+    </div>
+    <a routerLink="/payroll" class="btn btn-outline">← Back</a>
+  </header>
+
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <!-- Report type selection -->
+  <section class="card report-types">
+    <h2 class="section-title">Report Type</h2>
+    <div class="type-tabs">
+      <button class="type-tab" [class.active]="reportType === 'monthly_summary'" (click)="reportType = 'monthly_summary'">
+        <span class="tab-icon">📋</span>
+        <span>Monthly Summary</span>
+      </button>
+      <button class="type-tab" [class.active]="reportType === 'deduction_summary'" (click)="reportType = 'deduction_summary'">
+        <span class="tab-icon">💰</span>
+        <span>Deduction Summary</span>
+      </button>
+      <button class="type-tab" [class.active]="reportType === 'department_summary'" (click)="reportType = 'department_summary'">
+        <span class="tab-icon">🏢</span>
+        <span>Department Report</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Filters -->
+  <section class="card filters-card">
+    <h2 class="section-title">Filters</h2>
+    <div class="form-inline">
+      <div class="form-group">
+        <label>Month</label>
+        <select [(ngModel)]="month" class="form-control">
+          <option *ngFor="let m of [1,2,3,4,5,6,7,8,9,10,11,12]" [value]="m">{{ monthNames[m] }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Year</label>
+        <input type="number" [(ngModel)]="year" class="form-control" min="2020" max="2030" />
+      </div>
+      <button class="btn btn-primary load-btn" (click)="loadReport()" [disabled]="loading">
+        {{ loading ? 'Loading...' : 'Load Report' }}
+      </button>
+    </div>
+  </section>
+
+  <!-- Skeleton -->
+  <div class="skeleton-wrap" *ngIf="loading">
+    <div class="skeleton-report"></div>
+  </div>
+
+  <!-- Report output -->
+  <section class="card report-card" *ngIf="report && !loading">
+    <h2 class="report-title">{{ reportTitle }} — {{ monthNames[month] }} {{ year }}</h2>
+
+    <div *ngIf="reportType === 'monthly_summary'" class="report-content">
+      <div class="stats-grid">
+        <div class="stat-card stat-gross">
+          <span class="stat-label">Total Gross</span>
+          <span class="stat-value">{{ currencySymbol }} {{ report.totalGross | number:'1.2-2' }}</span>
+        </div>
+        <div class="stat-card stat-allowances">
+          <span class="stat-label">Total Allowances</span>
+          <span class="stat-value">{{ currencySymbol }} {{ report.totalAllowances | number:'1.2-2' }}</span>
+        </div>
+        <div class="stat-card stat-deductions">
+          <span class="stat-label">Total Deductions</span>
+          <span class="stat-value">{{ currencySymbol }} {{ report.totalDeductions | number:'1.2-2' }}</span>
+        </div>
+        <div class="stat-card stat-net">
+          <span class="stat-label">Total Net</span>
+          <span class="stat-value">{{ currencySymbol }} {{ report.totalNet | number:'1.2-2' }}</span>
+        </div>
+        <div class="stat-card stat-count">
+          <span class="stat-label">Employees</span>
+          <span class="stat-value">{{ report.employeeCount }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="reportType === 'deduction_summary'" class="report-content">
+      <div class="table-wrap">
+        <table class="modern-table">
+          <thead>
+            <tr>
+              <th>Component</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let k of getDeductionKeys()">
+              <td>{{ k }}</td>
+              <td>{{ currencySymbol }} {{ report.byComponent[k] | number:'1.2-2' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="total-row">
+        <strong>Total Deductions:</strong>
+        <span>{{ currencySymbol }} {{ report.totalDeductions | number:'1.2-2' }}</span>
+      </div>
+    </div>
+
+    <div *ngIf="reportType === 'department_summary'" class="report-content">
+      <div class="table-wrap">
+        <table class="modern-table">
+          <thead>
+            <tr>
+              <th>Department</th>
+              <th>Count</th>
+              <th>Gross</th>
+              <th>Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let k of getDepartmentKeys()">
+              <td>{{ k }}</td>
+              <td>{{ report.byDepartment[k]?.count }}</td>
+              <td>{{ currencySymbol }} {{ report.byDepartment[k]?.gross | number:'1.2-2' }}</td>
+              <td>{{ currencySymbol }} {{ report.byDepartment[k]?.net | number:'1.2-2' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>

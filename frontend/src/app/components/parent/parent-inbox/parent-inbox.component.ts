@@ -4,7 +4,11 @@ import { AuthService } from '../../../services/auth.service';
 import { environment } from '../../../../environments/environment';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-parent-inbox',
+=======
+  selector: 'app-parent-inbox',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './parent-inbox.component.html',
   styleUrls: ['./parent-inbox.component.css']
 })

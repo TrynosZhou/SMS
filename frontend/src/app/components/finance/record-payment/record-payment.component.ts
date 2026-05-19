@@ -1,15 +1,24 @@
+<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
+=======
+import { Component, OnInit, HostListener } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { FinanceService } from '../../../services/finance.service';
 import { SettingsService } from '../../../services/settings.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { trigger, transition, style, animate } from '@angular/animations';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-record-payment',
+=======
+  selector: 'app-record-payment',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './record-payment.component.html',
   styleUrls: ['./record-payment.component.css'],
   animations: [
@@ -30,8 +39,12 @@ import { trigger, transition, style, animate } from '@angular/animations';
     ])
   ]
 })
+<<<<<<< HEAD
 export class RecordPaymentComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+=======
+export class RecordPaymentComponent implements OnInit {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   studentId: string = '';
   studentData: any = null;
   loading = false;
@@ -72,9 +85,13 @@ export class RecordPaymentComponent implements OnInit, OnDestroy {
     private financeService: FinanceService,
     private settingsService: SettingsService,
     private sanitizer: DomSanitizer,
+<<<<<<< HEAD
     private route: ActivatedRoute,
     private router: Router,
     private cdr: ChangeDetectorRef
+=======
+    private route: ActivatedRoute
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   ) { }
 
   @HostListener('document:keydown.escape')
@@ -89,6 +106,7 @@ export class RecordPaymentComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+<<<<<<< HEAD
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe((params) => {
       this.applyQueryParams(params);
     });
@@ -162,11 +180,67 @@ export class RecordPaymentComponent implements OnInit, OnDestroy {
           }
         },
         error: () => {
+=======
+    this.loadCurrentTerm();
+    
+    this.route.queryParams.subscribe(params => {
+      if (params['studentId']) {
+        this.studentId = params['studentId'];
+        
+        if (params['firstName'] && params['lastName'] && params['balance']) {
+          this.studentData = {
+            studentNumber: params['studentId'],
+            firstName: params['firstName'],
+            lastName: params['lastName'],
+            fullName: `${params['firstName']} ${params['lastName']}`,
+            balance: parseFloat(params['balance']) || 0
+          };
+          this.paymentForm.amount = parseFloat(params['balance']) || 0;
+        }
+        
+        if (this.studentId) {
+          setTimeout(() => this.getBalance(), 300);
+        }
+      }
+    });
+  }
+
+  loadCurrentTerm(): void {
+    this.settingsService.getSettings().subscribe({
+      next: (settings: any) => {
+        if (settings) {
+          this.currencySymbol = settings.currencySymbol || 'USD';
+          this.currentTerm = settings.currentTerm || settings.activeTerm || '';
+          
+          if (!this.currentTerm && (settings.term || settings.year)) {
+            const term = settings.term || '';
+            const year = settings.year || new Date().getFullYear();
+            this.currentTerm = term ? `${term} ${year}` : '';
+          }
+          
+          if (!this.currentTerm) {
+            const currentYear = new Date().getFullYear();
+            this.currentTerm = `Term 1 ${currentYear}`;
+          }
+          
+          this.paymentForm.term = this.currentTerm;
+        } else {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           const currentYear = new Date().getFullYear();
           this.currentTerm = `Term 1 ${currentYear}`;
           this.paymentForm.term = this.currentTerm;
         }
+<<<<<<< HEAD
       });
+=======
+      },
+      error: () => {
+        const currentYear = new Date().getFullYear();
+        this.currentTerm = `Term 1 ${currentYear}`;
+        this.paymentForm.term = this.currentTerm;
+      }
+    });
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   onSearchInput(): void {
@@ -212,6 +286,7 @@ export class RecordPaymentComponent implements OnInit, OnDestroy {
     this.matchingStudents = [];
     this.selectedMatchId = '';
 
+<<<<<<< HEAD
     this.cdr.markForCheck();
     this.financeService
       .getStudentBalance(this.studentId.trim())
@@ -223,6 +298,11 @@ export class RecordPaymentComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: (data: any) => {
+=======
+    this.financeService.getStudentBalance(this.studentId.trim()).subscribe({
+      next: (data: any) => {
+        this.loading = false;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
         if (data && data.multipleMatches && Array.isArray(data.matches) && data.matches.length > 0) {
           this.matchingStudents = data.matches;
           this.studentData = null;
@@ -246,13 +326,22 @@ export class RecordPaymentComponent implements OnInit, OnDestroy {
           }
         }
       },
+<<<<<<< HEAD
         error: (error: any) => {
+=======
+      error: (error: any) => {
+        this.loading = false;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
         this.error = error.error?.message || 'Student not found. Please check the details and try again.';
         this.studentData = null;
         this.paymentRecorded = false;
         this.lastPaymentInvoiceId = null;
       }
+<<<<<<< HEAD
       });
+=======
+    });
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   selectStudent(studentId: string): void {
@@ -269,6 +358,7 @@ export class RecordPaymentComponent implements OnInit, OnDestroy {
     this.studentData = null;
     this.paymentForm.amount = 0;
 
+<<<<<<< HEAD
     this.cdr.markForCheck();
     this.financeService
       .getStudentBalance(this.selectedMatchId)
@@ -294,6 +384,26 @@ export class RecordPaymentComponent implements OnInit, OnDestroy {
           this.matchingStudents = [];
         }
       });
+=======
+    this.financeService.getStudentBalance(this.selectedMatchId).subscribe({
+      next: (data: any) => {
+        this.loading = false;
+        this.studentData = data;
+        this.paymentForm.amount = data.balance || 0;
+        this.matchingStudents = [];
+        
+        if (data.recentPayments) {
+          this.recentPayments = data.recentPayments;
+        }
+      },
+      error: (error: any) => {
+        this.loading = false;
+        this.error = error.error?.message || 'Failed to get student balance.';
+        this.studentData = null;
+        this.matchingStudents = [];
+      }
+    });
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   clear(): void {

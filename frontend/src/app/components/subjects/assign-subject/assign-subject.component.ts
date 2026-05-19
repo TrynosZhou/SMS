@@ -5,7 +5,11 @@ import { ClassService } from '../../../services/class.service';
 import { SubjectService } from '../../../services/subject.service';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-assign-subject',
+=======
+  selector: 'app-assign-subject',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './assign-subject.component.html',
   styleUrls: ['./assign-subject.component.css'],
   animations: [

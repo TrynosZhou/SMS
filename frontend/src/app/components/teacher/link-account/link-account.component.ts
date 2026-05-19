@@ -5,7 +5,11 @@ import { AuthService } from '../../../services/auth.service';
 import { TeacherService } from '../../../services/teacher.service';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-link-account',
+=======
+  selector: 'app-link-account',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './link-account.component.html',
   styleUrls: ['./link-account.component.css']
 })

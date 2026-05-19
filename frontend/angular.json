@@ -74,15 +74,26 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
+<<<<<<< HEAD
             "buildTarget": "sms-frontend:build",
+=======
+            "browserTarget": "sms-frontend:build",
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
             "proxyConfig": "proxy.conf.js"
           },
           "configurations": {
             "production": {
+<<<<<<< HEAD
               "buildTarget": "sms-frontend:build:production"
             },
             "development": {
               "buildTarget": "sms-frontend:build:development"
+=======
+              "browserTarget": "sms-frontend:build:production"
+            },
+            "development": {
+              "browserTarget": "sms-frontend:build:development"
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
             }
           },
           "defaultConfiguration": "development"

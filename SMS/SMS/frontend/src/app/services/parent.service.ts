@@ -1,0 +1,98 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ParentService {
+  private apiUrl = environment.apiUrl;
+
+  constructor(private http: HttpClient) { }
+
+  getLinkedStudents(term?: string): Observable<any> {
+    const params: any = {};
+    if (term && String(term).trim()) {
+      params.term = String(term).trim();
+    }
+    return this.http.get(`${this.apiUrl}/parent/students`, { params });
+  }
+
+  searchStudents(query: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/parent/search-students`, { params: { query } });
+  }
+
+  linkStudent(studentId: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/parent/link-student`, { studentId });
+  }
+
+  linkStudentByIdAndDob(studentId: string, dateOfBirth?: string): Observable<any> {
+    const body: { studentId: string; dateOfBirth?: string } = { studentId };
+    if (dateOfBirth) body.dateOfBirth = dateOfBirth;
+    return this.http.post(`${this.apiUrl}/parent/link-student-by-id-dob`, body);
+  }
+
+  unlinkStudent(studentId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/parent/unlink-student/${studentId}`);
+  }
+
+  getAllParentsAdmin(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/parent/admin/parents`);
+  }
+
+  /** Search parent emails by fragment (for admin reset password). Min 2 characters. */
+  searchParentEmails(search: string): Observable<{ parents: { id: string; email: string; firstName: string; lastName: string }[] }> {
+    const params = { search: (search || '').trim() };
+    return this.http.get<{ parents: { id: string; email: string; firstName: string; lastName: string }[] }>(
+      `${this.apiUrl}/parent/admin/parents/search-emails`,
+      { params }
+    );
+  }
+
+  getAllParentsStaff(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/parent/staff/parents`);
+  }
+
+  adminLinkStudentToParent(parentId: string, studentId: string, relationshipType: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/parent/admin/link-student`, {
+      parentId,
+      studentId,
+      relationshipType
+    });
+  }
+
+  adminUnlinkStudentFromParent(linkId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/parent/admin/unlink-student/${linkId}`);
+  }
+
+  updateParentAdmin(parentId: string, data: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/parent/admin/parents/${parentId}`, data);
+  }
+
+  deleteParentAdmin(parentId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/parent/admin/parents/${parentId}`);
+  }
+
+  adminCreateParent(payload: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber?: string | null;
+    address?: string | null;
+    createAccount?: boolean;
+    password?: string;
+    generatePassword?: boolean;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/parent/admin/parents`, payload);
+  }
+
+  adminResetParentPassword(payload: {
+    email: string;
+    newPassword?: string;
+    generatePassword?: boolean;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/parent/admin/reset-parent-password`, payload);
+  }
+}
+

@@ -7,7 +7,11 @@ import { ClassService } from '../../services/class.service';
 import { validatePhoneNumber } from '../../utils/phone-validator';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-settings',
+=======
+  selector: 'app-settings',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.css']
 })

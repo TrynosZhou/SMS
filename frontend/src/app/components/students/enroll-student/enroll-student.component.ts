@@ -1,12 +1,19 @@
+<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { StudentService } from '../../../services/student.service';
 import { StudentRefreshService } from '../../../services/student-refresh.service';
+=======
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { StudentService } from '../../../services/student.service';
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { ClassService } from '../../../services/class.service';
 import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+<<<<<<< HEAD
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
@@ -18,6 +25,15 @@ import { activatePageLoad } from '../../../utils/route-activation';
 })
 export class EnrollStudentComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+=======
+
+@Component({
+  selector: 'app-enroll-student',
+  templateUrl: './enroll-student.component.html',
+  styleUrls: ['./enroll-student.component.css']
+})
+export class EnrollStudentComponent implements OnInit {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   loading = false;
   error = '';
   success = '';
@@ -44,20 +60,28 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
   gradeOptions: string[] = [];
   selectedGrade: string = '';
   selectedType: string = '';
+<<<<<<< HEAD
   private searchDebounce: ReturnType<typeof setTimeout> | null = null;
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 
   constructor(
     private studentService: StudentService,
     private classService: ClassService,
     private settingsService: SettingsService,
     private authService: AuthService,
+<<<<<<< HEAD
     private router: Router,
     private studentRefresh: StudentRefreshService,
     private cdr: ChangeDetectorRef
+=======
+    private router: Router
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   ) {}
 
   ngOnInit(): void {
     this.loadSettings();
+<<<<<<< HEAD
     activatePageLoad(this.router, this.destroy$, '/students/enroll_student', () => {
       this.loadClasses();
       this.loadUnenrolledStudents();
@@ -75,6 +99,10 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
     if (this.searchDebounce) {
       clearTimeout(this.searchDebounce);
     }
+=======
+    this.loadClasses();
+    this.loadUnenrolledStudents();
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   async previewPdf(): Promise<void> {
@@ -147,7 +175,10 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
         this.schoolAddress = settings?.schoolAddress || '';
         this.schoolMotto = settings?.schoolMotto || '';
         this.schoolLogo = settings?.schoolLogo || null;
+<<<<<<< HEAD
         this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       },
       error: () => {}
     });
@@ -161,6 +192,7 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
   }
 
   loadClasses(): void {
+<<<<<<< HEAD
     this.classService
       .getClassesPaginated(1, 500)
       .pipe(finalize(() => this.cdr.markForCheck()))
@@ -172,11 +204,25 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
           this.classes = [];
         }
       });
+=======
+    this.classService.getClasses().subscribe({
+      next: (data: any[]) => {
+        this.classes = Array.isArray(data) ? data : [];
+      },
+      error: () => {}
+    });
+  }
+
+  private isUnenrolled(student: any): boolean {
+    const id = student?.classId || student?.class?.id || student?.classEntity?.id;
+    return !id;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   loadUnenrolledStudents(): void {
     this.loading = true;
     this.error = '';
+<<<<<<< HEAD
     this.cdr.markForCheck();
     const search = this.searchQuery.trim() || undefined;
     this.studentService
@@ -221,17 +267,65 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
       clearTimeout(this.searchDebounce);
     }
     this.searchDebounce = setTimeout(() => this.loadUnenrolledStudents(), 350);
+=======
+    this.studentService.getStudents().subscribe({
+      next: (data: any[]) => {
+        const list = Array.isArray(data) ? data : [];
+        this.students = list.filter(s => this.isUnenrolled(s));
+        this.recomputeOptions();
+        this.applyFilters();
+        this.loading = false;
+      },
+      error: (err: any) => {
+        this.error = err?.error?.message || err?.message || 'Failed to load students';
+        this.students = [];
+        this.filtered = [];
+        this.loading = false;
+      }
+    });
+  }
+
+  filter(): void {
+    this.applyFilters();
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   clearFilters(): void {
     this.selectedGrade = '';
     this.selectedType = '';
+<<<<<<< HEAD
     this.searchQuery = '';
     this.loadUnenrolledStudents();
   }
 
   applyFilters(): void {
     this.filtered = [...this.students];
+=======
+    this.applyFilters();
+  }
+
+  applyFilters(): void {
+    const q = (this.searchQuery || '').toLowerCase().trim();
+    let list = [...this.students];
+    if (this.selectedGrade) {
+      const g = this.selectedGrade.toLowerCase();
+      list = list.filter(s => (s.grade || s.classLevel || '').toString().toLowerCase() === g);
+    }
+    if (this.selectedType) {
+      const t = this.selectedType.toLowerCase();
+      list = list.filter(s => (s.studentType || '').toString().toLowerCase() === t);
+    }
+    if (q) {
+      list = list.filter(s =>
+        (s.studentNumber || '').toString().toLowerCase().includes(q) ||
+        (s.firstName || '').toString().toLowerCase().includes(q) ||
+        (s.lastName || '').toString().toLowerCase().includes(q) ||
+        (s.gender || '').toString().toLowerCase().includes(q) ||
+        (s.phoneNumber || '').toString().toLowerCase().includes(q)
+      );
+    }
+    this.filtered = list;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     this.recomputeStats();
   }
 
@@ -247,11 +341,16 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
   private recomputeStats(): void {
     const src = this.filtered;
     const byGradeMap = new Map<string, number>();
+<<<<<<< HEAD
     let male = 0;
     let female = 0;
     let boarder = 0;
     let day = 0;
     src.forEach((s) => {
+=======
+    let male = 0, female = 0, boarder = 0, day = 0;
+    src.forEach(s => {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       const g = (s.grade || s.classLevel || '—').toString();
       byGradeMap.set(g, (byGradeMap.get(g) || 0) + 1);
       const gender = (s.gender || '').toString().toLowerCase();
@@ -270,7 +369,10 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 8);
+<<<<<<< HEAD
     this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   enroll(student: any, classId: string): void {
@@ -293,6 +395,7 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
     this.studentService.enrollStudent(String(sid), String(classId)).subscribe({
       next: () => {
         this.success = 'Student enrolled successfully';
+<<<<<<< HEAD
         this.students = this.students.filter((s) => (s.id || s.studentId) !== sid);
         this.filtered = this.filtered.filter((s) => (s.id || s.studentId) !== sid);
         this.recomputeOptions();
@@ -300,15 +403,39 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
         this.enrollingMap[sid] = false;
         this.studentRefresh.requestRefresh();
         this.cdr.markForCheck();
+=======
+        // Remove student from lists
+        this.students = this.students.filter(s => (s.id || s.studentId) !== sid);
+        this.filtered = this.filtered.filter(s => (s.id || s.studentId) !== sid);
+        this.recomputeOptions();
+        this.recomputeStats();
+        this.enrollingMap[sid] = false;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       },
       error: (err: any) => {
         this.error = err?.error?.message || err?.message || 'Failed to enroll student';
         this.enrollingMap[sid] = false;
+<<<<<<< HEAD
         this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       }
     });
   }
 
+<<<<<<< HEAD
+=======
+  previewList(): void {
+    const html = this.buildPrintHtml(false);
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (win) {
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    }
+  }
+
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   printList(): void {
     const html = this.buildPrintHtml(true);
     const blob = new Blob([html], { type: 'text/html' });
@@ -323,7 +450,11 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
     const rows = [
       ['StudentNumber', 'FirstName', 'LastName', 'Gender', 'Phone', 'Grade', 'StudentType']
     ];
+<<<<<<< HEAD
     this.filtered.forEach((s) => {
+=======
+    this.filtered.forEach(s => {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       rows.push([
         String(s.studentNumber || ''),
         String(s.firstName || ''),
@@ -334,7 +465,11 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
         String(s.studentType || '')
       ]);
     });
+<<<<<<< HEAD
     const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+=======
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -346,17 +481,26 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
     URL.revokeObjectURL(url);
   }
 
+<<<<<<< HEAD
   resolveImage(path: string): string {
+=======
+  resolveImage(path: string | null): string {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     if (!path) return '';
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
     const origin = window.location.origin;
     return path.startsWith('/') ? `${origin}${path}` : `${origin}/${path}`;
   }
 
+<<<<<<< HEAD
   buildPrintTableHtml(): string {
     const rows = this.filtered
       .map(
         (s) => `
+=======
+  private buildPrintTableHtml(): string {
+    const rows = this.filtered.map(s => `
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       <tr>
         <td>${s.studentNumber || '—'}</td>
         <td>${s.firstName || '—'}</td>
@@ -365,12 +509,17 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
         <td>${s.phoneNumber || '—'}</td>
         <td>${s.grade || s.classLevel || '—'}</td>
       </tr>
+<<<<<<< HEAD
     `
       )
       .join('');
     const table =
       this.filtered.length > 0
         ? `
+=======
+    `).join('');
+    const table = this.filtered.length > 0 ? `
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       <table>
         <thead>
           <tr>
@@ -386,6 +535,7 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
           ${rows}
         </tbody>
       </table>
+<<<<<<< HEAD
     `
         : `<div>No Unenrolled Students</div>`;
     return `<h2 style="margin: 16px 0;">Registered Students Without Classes</h2>${table}`;
@@ -395,6 +545,15 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
     const header =
       this.schoolName || this.schoolAddress || this.schoolLogo || this.schoolMotto
         ? `
+=======
+    ` : `<div>No Unenrolled Students</div>`;
+    return `<h2 style="margin: 16px 0;">Registered Students Without Classes</h2>${table}`;
+  }
+
+  private buildPrintHtml(print: boolean): string {
+    const header = (this.schoolName || this.schoolAddress || this.schoolLogo || this.schoolMotto)
+      ? `
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
         <div class="school-header">
           ${this.schoolLogo ? `<div class="school-logo-wrapper"><img src="${this.resolveImage(this.schoolLogo)}" alt="School Logo" class="school-logo" /></div>` : `<div></div>`}
           <div class="school-text">
@@ -404,8 +563,12 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
           </div>
           <div></div>
         </div>
+<<<<<<< HEAD
       `
         : '';
+=======
+      ` : '';
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     const table = this.buildPrintTableHtml();
     const printScript = print ? `<script>window.onload=function(){window.print();}</script>` : '';
     return `
@@ -443,12 +606,19 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
     if (!sid) return;
     if (!this.isAdmin()) {
       this.error = 'You do not have permission to delete students';
+<<<<<<< HEAD
       setTimeout(() => (this.error = ''), 4000);
       return;
     }
     const confirmed = confirm(
       `Are you sure you want to delete "${name || 'Student'}" (${number})? This will also delete related marks, invoices and the associated user account. This action cannot be undone.`
     );
+=======
+      setTimeout(() => this.error = '', 4000);
+      return;
+    }
+    const confirmed = confirm(`Are you sure you want to delete "${name || 'Student'}" (${number})? This will also delete related marks, invoices and the associated user account. This action cannot be undone.`);
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     if (!confirmed) return;
     this.deletingMap[sid] = true;
     this.error = '';
@@ -456,6 +626,7 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
     this.studentService.deleteStudent(String(sid)).subscribe({
       next: (data: any) => {
         this.success = data?.message || 'Student deleted successfully';
+<<<<<<< HEAD
         this.students = this.students.filter((s) => (s.id || s.studentId) !== sid);
         this.filtered = this.filtered.filter((s) => (s.id || s.studentId) !== sid);
         this.recomputeOptions();
@@ -463,6 +634,14 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
         this.deletingMap[sid] = false;
         setTimeout(() => (this.success = ''), 5000);
         this.cdr.markForCheck();
+=======
+        this.students = this.students.filter(s => (s.id || s.studentId) !== sid);
+        this.filtered = this.filtered.filter(s => (s.id || s.studentId) !== sid);
+        this.recomputeOptions();
+        this.recomputeStats();
+        this.deletingMap[sid] = false;
+        setTimeout(() => this.success = '', 5000);
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       },
       error: (err: any) => {
         let msg = 'Failed to delete student';
@@ -476,8 +655,12 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
         }
         this.error = msg;
         this.deletingMap[sid] = false;
+<<<<<<< HEAD
         setTimeout(() => (this.error = ''), 5000);
         this.cdr.markForCheck();
+=======
+        setTimeout(() => this.error = '', 5000);
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       }
     });
   }

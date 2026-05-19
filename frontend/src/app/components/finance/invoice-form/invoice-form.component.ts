@@ -7,7 +7,11 @@ import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-invoice-form',
+=======
+  selector: 'app-invoice-form',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './invoice-form.component.html',
   styleUrls: ['./invoice-form.component.css']
 })

@@ -1,0 +1,187 @@
+<div class="container loan-overview-page">
+  <header class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <span class="title-icon">📋</span>
+        Loan Overview
+      </h1>
+      <p class="subtitle">Create loans, check loan balance, and view loan history by employee</p>
+    </div>
+    <a routerLink="/payroll" class="btn btn-secondary">← Back</a>
+  </header>
+
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+
+  <div class="overview-grid">
+    <!-- Create loan -->
+    <section class="card section-card">
+      <h2 class="section-title">Create loan</h2>
+      <p class="section-hint">Add a new loan for an employee. Principal + interest (from Settings) will be added to their loan account and deducted over the chosen tenure.</p>
+      <button type="button" class="btn btn-primary" (click)="openCreateLoanModal()">Create loan</button>
+    </section>
+
+    <!-- Loan balance -->
+    <section class="card section-card">
+      <h2 class="section-title">Loan balance</h2>
+      <p class="section-hint">Search by Employee ID, First Name, or Last Name. If multiple matches, select the correct employee to see their current loan balance.</p>
+      <div class="search-row">
+        <input type="text" [(ngModel)]="balanceSearchQuery" (keyup.enter)="searchBalance()" class="form-control search-input" placeholder="Employee ID, First Name, or Last Name" />
+        <button type="button" class="btn btn-primary" (click)="searchBalance()" [disabled]="balanceSearching">{{ balanceSearching ? 'Searching...' : 'Search' }}</button>
+      </div>
+      <div class="search-results" *ngIf="balanceSearchResults.length > 0">
+        <p class="results-caption" *ngIf="balanceSearchResults.length > 1">Multiple matches — select one:</p>
+        <ul class="results-list">
+          <li *ngFor="let emp of balanceSearchResults" class="result-item" (click)="selectBalanceEmployee(emp)">
+            <span class="result-name">{{ emp.firstName }} {{ emp.lastName }}</span>
+            <span class="result-id">{{ emp.employeeId }}</span>
+            <span class="result-badge">{{ emp.type === 'teacher' ? 'Teacher' : 'Ancillary' }}</span>
+          </li>
+        </ul>
+      </div>
+      <p class="no-results" *ngIf="balanceSearchQuery.trim() && balanceSearchResults.length === 0 && !balanceSearching">No employee found.</p>
+      <div class="selected-result" *ngIf="balanceSelectedEmployee">
+        <div class="selected-info">
+          <span class="selected-label">Selected:</span>
+          <strong>{{ balanceSelectedEmployee.name }}</strong>
+          <span class="selected-id">({{ balanceSelectedEmployee.employeeId }})</span>
+          <button type="button" class="btn btn-sm btn-secondary" (click)="clearBalanceSelection()">Change</button>
+        </div>
+        <div class="balance-display" *ngIf="balanceLoading">Loading...</div>
+        <div class="balance-display balance-value" *ngIf="!balanceLoading && balanceValue !== null">
+          Current loan balance: <strong>{{ balanceValue | number:'1.2-2' }}</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- Loan history -->
+    <section class="card section-card section-card-wide">
+      <h2 class="section-title">Loan history</h2>
+      <p class="section-hint">Search by Employee ID, First Name, or Last Name. Select the employee to view all loan schedules and deduction transactions up to date.</p>
+      <div class="search-row">
+        <input type="text" [(ngModel)]="historySearchQuery" (keyup.enter)="searchHistory()" class="form-control search-input" placeholder="Employee ID, First Name, or Last Name" />
+        <button type="button" class="btn btn-primary" (click)="searchHistory()" [disabled]="historySearching">{{ historySearching ? 'Searching...' : 'Search' }}</button>
+      </div>
+      <div class="search-results" *ngIf="historySearchResults.length > 0">
+        <p class="results-caption" *ngIf="historySearchResults.length > 1">Multiple matches — select one:</p>
+        <ul class="results-list">
+          <li *ngFor="let emp of historySearchResults" class="result-item" (click)="selectHistoryEmployee(emp)">
+            <span class="result-name">{{ emp.firstName }} {{ emp.lastName }}</span>
+            <span class="result-id">{{ emp.employeeId }}</span>
+            <span class="result-badge">{{ emp.type === 'teacher' ? 'Teacher' : 'Ancillary' }}</span>
+          </li>
+        </ul>
+      </div>
+      <p class="no-results" *ngIf="historySearchQuery.trim() && historySearchResults.length === 0 && !historySearching">No employee found.</p>
+      <div class="selected-result" *ngIf="historySelectedEmployee">
+        <div class="selected-info">
+          <span class="selected-label">Selected:</span>
+          <strong>{{ historySelectedEmployee.name }}</strong>
+          <span class="selected-id">({{ historySelectedEmployee.employeeId }})</span>
+          <button type="button" class="btn btn-sm btn-secondary" (click)="clearHistorySelection()">Change</button>
+        </div>
+        <div class="history-loading" *ngIf="historyLoading">Loading history...</div>
+        <div class="history-content" *ngIf="!historyLoading && historyData">
+          <div class="history-schedules" *ngIf="historyData.schedules.length > 0">
+            <h3 class="history-subtitle">Loan schedules</h3>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Created</th>
+                  <th>Total (P+I)</th>
+                  <th>Tenure</th>
+                  <th>Paid</th>
+                  <th>Remaining</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let s of historyData.schedules">
+                  <td>{{ s.createdAt | date:'dd MMM yyyy' }}</td>
+                  <td>{{ s.totalAmount | number:'1.2-2' }}</td>
+                  <td>{{ s.tenureMonths }} month(s)</td>
+                  <td>{{ s.amountPaid | number:'1.2-2' }}</td>
+                  <td>{{ s.remaining | number:'1.2-2' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="history-deductions" *ngIf="historyData.deductions.length > 0">
+            <h3 class="history-subtitle">Deduction history</h3>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Period</th>
+                  <th>Description</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let d of historyData.deductions">
+                  <td>{{ getRunLabel(d.runMonth, d.runYear) }}</td>
+                  <td>{{ d.componentName }}</td>
+                  <td>{{ d.amount | number:'1.2-2' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="history-empty" *ngIf="historyData.schedules.length === 0 && historyData.deductions.length === 0">No loan schedules or deductions recorded for this employee.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Create loan modal -->
+  <div class="modal-overlay" *ngIf="createLoanModalOpen" (click)="closeCreateLoanModal()">
+    <div class="modal-content loans-modal card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">Create loan</h2>
+        <button type="button" class="modal-close" (click)="closeCreateLoanModal()" aria-label="Close">&times;</button>
+      </div>
+      <p class="modal-hint">Search by Employee ID, First Name, or Last Name. Then enter principal and tenure. The amount (principal + interest from Settings) will be added to the employee's loan account.</p>
+      <div class="loans-step loans-step-search">
+        <label class="step-label">Find employee</label>
+        <div class="search-row">
+          <input type="text" [(ngModel)]="createSearchQuery" (keyup.enter)="searchCreateEmployee()" class="form-control search-input" placeholder="Employee ID, First Name, or Last Name" />
+          <button type="button" class="btn btn-primary" (click)="searchCreateEmployee()" [disabled]="createSearching">{{ createSearching ? 'Searching...' : 'Search' }}</button>
+        </div>
+        <div class="search-results" *ngIf="createSearchResults.length > 0">
+          <p class="results-caption" *ngIf="createSearchResults.length > 1">Multiple matches — select one:</p>
+          <ul class="results-list">
+            <li *ngFor="let emp of createSearchResults" class="result-item" (click)="selectCreateEmployee(emp)">
+              <span class="result-name">{{ emp.firstName }} {{ emp.lastName }}</span>
+              <span class="result-id">{{ emp.employeeId }}</span>
+              <span class="result-badge">{{ emp.type === 'teacher' ? 'Teacher' : 'Ancillary' }}</span>
+            </li>
+          </ul>
+        </div>
+        <p class="no-results" *ngIf="createSearchQuery.trim() && createSearchResults.length === 0 && !createSearching">No employee found.</p>
+      </div>
+      <div class="loans-step loans-step-details" *ngIf="createSelectedEmployee">
+        <div class="selected-employee">
+          <span class="selected-label">Selected:</span>
+          <strong>{{ createSelectedEmployee.name }}</strong>
+          <span class="selected-id">({{ createSelectedEmployee.employeeId }})</span>
+          <button type="button" class="btn btn-sm btn-secondary" (click)="clearCreateSelection()">Change</button>
+        </div>
+        <div class="form-group">
+          <label>Principal amount</label>
+          <input type="number" [(ngModel)]="createPrincipal" min="0" step="0.01" class="form-control" placeholder="0.00" />
+        </div>
+        <div class="form-group">
+          <label>Tenure period</label>
+          <select [(ngModel)]="createTenure" class="form-control">
+            <option [value]="1">1 month</option>
+            <option [value]="2">2 months</option>
+            <option [value]="3">3 months</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeCreateLoanModal()">Cancel</button>
+          <button type="button" class="btn btn-primary" (click)="submitCreateLoan()" [disabled]="createSubmitting || !createPrincipal || createPrincipal <= 0">
+            {{ createSubmitting ? 'Adding...' : 'Add to loan account' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

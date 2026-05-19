@@ -789,6 +789,7 @@ export const adjustInvoiceLogistics = async (req: AuthRequest, res: Response) =>
     invoice.amount = currentAmount + increment;
     invoice.balance = currentBalance + increment;
 
+<<<<<<< HEAD
     if (transportAmountToAdd > 0) {
       invoice.transportAmount = parseAmount(invoice.transportAmount) + transportAmountToAdd;
     }
@@ -796,6 +797,8 @@ export const adjustInvoiceLogistics = async (req: AuthRequest, res: Response) =>
       invoice.diningHallAmount = parseAmount(invoice.diningHallAmount) + diningHallAmountToAdd;
     }
 
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     if (invoice.balance <= 0) {
       invoice.status = InvoiceStatus.PAID;
     } else if (invoice.paidAmount && parseAmount(invoice.paidAmount) > 0) {
@@ -3617,6 +3620,7 @@ export const repairReturningDeskFeeInvoices = async (req: AuthRequest, res: Resp
   }
 };
 
+<<<<<<< HEAD
 /** Recalculate open (unpaid/partial) term-fee invoices for a student after exemption changes. */
 export const syncStudentExemptionInvoices = async (req: AuthRequest, res: Response) => {
   try {
@@ -3645,3 +3649,5 @@ export const syncStudentExemptionInvoices = async (req: AuthRequest, res: Respon
   }
 };
 
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7

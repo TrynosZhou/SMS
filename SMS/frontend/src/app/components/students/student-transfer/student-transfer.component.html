@@ -1,0 +1,273 @@
+<div class="container">
+  <div class="transfer-wrapper">
+    <!-- Header -->
+    <div class="form-header">
+      <div class="header-content">
+        <h1>
+          <span class="icon">🔄</span>
+          Transfer Student
+        </h1>
+        <p class="subtitle">Transfer students internally or externally</p>
+      </div>
+    </div>
+
+    <!-- Alert Messages -->
+    <div class="alert alert-success" *ngIf="success">
+      <span class="alert-icon">✓</span>
+      <span>{{ success }}</span>
+    </div>
+    <div class="alert alert-error" *ngIf="error">
+      <span class="alert-icon">✕</span>
+      <span>{{ error }}</span>
+    </div>
+
+    <!-- Search and Select Student Section -->
+    <div class="card">
+      <div class="card-header">
+        <h2>
+          <span class="section-icon">🔍</span>
+          Search and Select Student
+        </h2>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label>Search Student</label>
+          <input
+            type="text"
+            [(ngModel)]="searchQuery"
+            (input)="searchStudents()"
+            placeholder="Search by Student ID, First Name, Last Name, or Class..."
+            class="form-control"
+            [disabled]="loadingStudents">
+        </div>
+
+        <div *ngIf="loadingStudents" class="loading-state">
+          <span class="spinner"></span>
+          Loading students...
+        </div>
+
+        <div *ngIf="!loadingStudents && filteredStudents.length === 0" class="empty-state">
+          <p>No students found. Try adjusting your search.</p>
+        </div>
+
+        <div *ngIf="!loadingStudents && filteredStudents.length > 0" class="student-list">
+          <div
+            *ngFor="let student of filteredStudents"
+            class="student-item"
+            [class.selected]="selectedStudent?.id === student.id"
+            (click)="selectStudent(student)">
+            <div class="student-info">
+              <div class="student-name">
+                <strong>{{ student.firstName }} {{ student.lastName }}</strong>
+                <span class="student-id">{{ student.studentNumber }}</span>
+              </div>
+              <div class="student-details">
+                <span class="detail-item">
+                  <span class="label">Class:</span>
+                  <span class="value">{{ student.class?.name || student.className || 'N/A' }}</span>
+                </span>
+                <span class="detail-item">
+                  <span class="label">Status:</span>
+                  <span class="value">{{ student.status || 'Active' }}</span>
+                </span>
+              </div>
+            </div>
+            <div class="select-indicator" *ngIf="selectedStudent?.id === student.id">
+              ✓ Selected
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transfer Form Section -->
+    <div class="card" *ngIf="selectedStudent">
+      <div class="card-header">
+        <h2>
+          <span class="section-icon">📝</span>
+          Transfer Details
+        </h2>
+      </div>
+      <div class="card-body">
+        <!-- Selected Student Info -->
+        <div class="selected-student-info">
+          <h3>Selected Student</h3>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="label">Name:</span>
+              <span class="value">{{ selectedStudent.firstName }} {{ selectedStudent.lastName }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Student ID:</span>
+              <span class="value">{{ selectedStudent.studentNumber }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Current Class:</span>
+              <span class="value">{{ selectedStudent.class?.name || selectedStudent.className || 'N/A' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Status:</span>
+              <span class="value">{{ selectedStudent.status || 'Active' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transfer Type Selection -->
+        <div class="form-group">
+          <label>Transfer Type <span class="required">*</span></label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input
+                type="radio"
+                [(ngModel)]="transferType"
+                value="internal"
+                (change)="onTransferTypeChange()"
+                name="transferType">
+              <span>Internal Transfer (Within School)</span>
+            </label>
+            <label class="radio-label">
+              <input
+                type="radio"
+                [(ngModel)]="transferType"
+                value="external"
+                (change)="onTransferTypeChange()"
+                name="transferType">
+              <span>External Transfer (To Another School)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Internal Transfer Fields -->
+        <div *ngIf="transferType === 'internal'" class="transfer-fields">
+          <div class="form-group">
+            <label>Target Class <span class="required">*</span></label>
+            <select
+              [(ngModel)]="targetClassId"
+              class="form-control"
+              [disabled]="loadingClasses">
+              <option value="">Select Target Class</option>
+              <option *ngFor="let cls of availableClasses" [value]="cls.id">
+                {{ cls.name }}
+              </option>
+            </select>
+            <small class="form-text">Select the class to transfer the student into.</small>
+          </div>
+        </div>
+
+        <!-- External Transfer Fields -->
+        <div *ngIf="transferType === 'external'" class="transfer-fields">
+          <div class="form-group">
+            <label>Destination School <span class="required">*</span></label>
+            <input
+              type="text"
+              [(ngModel)]="destinationSchool"
+              class="form-control"
+              placeholder="Enter destination school name"
+              required>
+          </div>
+
+          <div class="form-group">
+            <label>Transfer Date <span class="required">*</span></label>
+            <input
+              type="date"
+              [(ngModel)]="transferDate"
+              class="form-control"
+              [max]="getCurrentDate()"
+              required>
+          </div>
+
+          <div class="form-group">
+            <label>Reason for Transfer</label>
+            <textarea
+              [(ngModel)]="transferReason"
+              class="form-control"
+              rows="3"
+              placeholder="Enter reason for transfer (optional)"></textarea>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="form-actions">
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="submitTransfer()"
+            [disabled]="loading || loadingClasses">
+            <span *ngIf="!loading">
+              {{ transferType === 'internal' ? '🔄 Transfer to Class' : '🚪 Transfer Out' }}
+            </span>
+            <span *ngIf="loading" class="loading-content">
+              <span class="spinner-small"></span>
+              Processing...
+            </span>
+          </button>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="resetForm()"
+            [disabled]="loading">
+            🔄 Reset
+          </button>
+          <button
+            type="button"
+            class="btn btn-info"
+            (click)="showHistory = !showHistory"
+            *ngIf="transferHistory.length > 0">
+            📜 {{ showHistory ? 'Hide' : 'Show' }} Transfer History
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transfer History Section -->
+    <div class="card" *ngIf="showHistory && transferHistory.length > 0">
+      <div class="card-header">
+        <h2>
+          <span class="section-icon">📜</span>
+          Transfer History
+        </h2>
+      </div>
+      <div class="card-body">
+        <div class="history-list">
+          <div *ngFor="let transfer of transferHistory" class="history-item">
+            <div class="history-header">
+              <span class="transfer-type-badge" [class.internal]="transfer.transferType === 'internal'" [class.external]="transfer.transferType === 'external'">
+                {{ transfer.transferType === 'internal' ? 'Internal' : 'External' }}
+              </span>
+              <span class="transfer-date">{{ formatDate(transfer.transferDate || transfer.createdAt) }}</span>
+            </div>
+            <div class="history-details">
+              <div *ngIf="transfer.transferType === 'internal'">
+                <span class="detail">
+                  <strong>From:</strong> {{ transfer.fromClass?.name || transfer.oldClass || 'N/A' }}
+                </span>
+                <span class="detail">
+                  <strong>To:</strong> {{ transfer.toClass?.name || transfer.newClass || 'N/A' }}
+                </span>
+              </div>
+              <div *ngIf="transfer.transferType === 'external'">
+                <span class="detail">
+                  <strong>Destination:</strong> {{ transfer.destinationSchool || 'N/A' }}
+                </span>
+                <span class="detail" *ngIf="transfer.transferReason">
+                  <strong>Reason:</strong> {{ transfer.transferReason }}
+                </span>
+              </div>
+              <div class="detail" *ngIf="transfer.transferredBy">
+                <strong>Transferred by:</strong> {{ transfer.transferredBy }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!selectedStudent && !loadingStudents" class="empty-state-card">
+      <span class="empty-icon">👤</span>
+      <h3>Select a Student</h3>
+      <p>Search and select a student above to begin the transfer process.</p>
+    </div>
+  </div>
+</div>
+

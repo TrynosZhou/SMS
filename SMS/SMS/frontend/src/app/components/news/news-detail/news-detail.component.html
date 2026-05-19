@@ -1,0 +1,130 @@
+<div class="news-detail-container">
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner-large"></div>
+    <p>Loading news article...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-state" *ngIf="error && !loading">
+    <div class="error-icon">⚠️</div>
+    <h3>Unable to Load News</h3>
+    <p>{{ error }}</p>
+    <button class="btn btn-primary" (click)="loadNews()">Try Again</button>
+    <button class="btn btn-secondary" (click)="goBack()">Back to News</button>
+  </div>
+
+  <!-- News Content -->
+  <div class="news-content" *ngIf="news && !loading">
+    <!-- Header -->
+    <div class="news-header">
+      <button class="back-btn" (click)="goBack()">← Back to News</button>
+      <div class="news-actions" *ngIf="canManageNews()">
+        <button class="btn btn-secondary" (click)="editNews()">✏️ Edit</button>
+        <button class="btn btn-danger" (click)="deleteNews()">🗑️ Delete</button>
+      </div>
+    </div>
+
+    <!-- Article -->
+    <article class="news-article">
+      <!-- Title Section -->
+      <header class="article-header">
+        <div class="article-meta">
+          <span class="category-badge" [style.background-color]="getCategoryColor(news.category)">
+            {{ getCategoryLabel(news.category) }}
+          </span>
+          <span class="status-badge" [style.background-color]="getStatusColor(news.status)">
+            {{ getStatusLabel(news.status) }}
+          </span>
+          <span class="pin-indicator" *ngIf="news.isPinned">📌 Pinned</span>
+        </div>
+        <h1 class="article-title">{{ news.title }}</h1>
+        <div class="article-info">
+          <div class="author-info">
+            <span class="author">👤 {{ news.author.firstName }} {{ news.author.lastName }}</span>
+            <span class="role">({{ news.author.role }})</span>
+          </div>
+          <div class="date-info">
+            <span class="published">📅 Published: {{ formatDate(news.publishedAt || news.createdAt) }}</span>
+            <span class="updated" *ngIf="news.updatedAt !== news.createdAt">
+              🔄 Updated: {{ formatDate(news.updatedAt) }}
+            </span>
+          </div>
+        </div>
+        <div class="article-stats">
+          <span class="view-count">👁️ {{ formatViewCount(news.viewCount) }} views</span>
+          <span class="expiry" *ngIf="news.expiresAt">
+            ⏰ Expires: {{ formatDate(news.expiresAt) }}
+          </span>
+        </div>
+      </header>
+
+      <!-- Featured Image -->
+      <div class="featured-image" *ngIf="news.imageUrl">
+        <img [src]="normalizeImageUrl(news.imageUrl)" [alt]="news.title" (error)="$event.target.style.display='none'">
+      </div>
+
+      <!-- Summary -->
+      <div class="article-summary" *ngIf="news.summary">
+        <div class="summary-content">
+          {{ news.summary }}
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="article-content">
+        <div class="content-text" [innerHTML]="news.content"></div>
+      </div>
+
+      <!-- Tags -->
+      <div class="article-tags" *ngIf="getTagsArray().length > 0">
+        <h3>Tags</h3>
+        <div class="tags-list">
+          <span class="tag" *ngFor="let tag of getTagsArray()">#{{ tag }}</span>
+        </div>
+      </div>
+
+      <!-- Attachments -->
+      <div class="article-attachments" *ngIf="news.attachments && news.attachments.length > 0">
+        <h3>Attachments</h3>
+        <div class="attachments-list">
+          <a 
+            *ngFor="let attachment of news.attachments" 
+            [href]="attachment" 
+            target="_blank"
+            class="attachment-link">
+            📎 {{ getFileName(attachment) }}
+          </a>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <footer class="article-footer">
+        <div class="footer-info">
+          <span class="comments-info" *ngIf="news.allowComments">
+            💬 Comments are enabled
+          </span>
+          <span class="comments-info" *ngIf="!news.allowComments">
+            🔒 Comments are disabled
+          </span>
+        </div>
+        <div class="share-actions">
+          <button class="btn btn-secondary" (click)="shareNews()">
+            📤 Share
+          </button>
+          <button class="btn btn-secondary" (click)="printNews()">
+            🖨️ Print
+          </button>
+        </div>
+      </footer>
+    </article>
+
+    <!-- Related News (Optional) -->
+    <div class="related-news" *ngIf="false">
+      <h2>Related News</h2>
+      <div class="related-news-grid">
+        <!-- Related news items would go here -->
+      </div>
+    </div>
+  </div>
+</div>

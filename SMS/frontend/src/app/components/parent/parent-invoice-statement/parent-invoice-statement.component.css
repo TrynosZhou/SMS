@@ -1,0 +1,520 @@
+/* ============================================================
+   Parent Invoice Statement  –  Blue Theme
+   ============================================================ */
+
+/* ── Layout ─────────────────────────────────────────────────── */
+.pis-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f0f4f8;
+  font-family: inherit;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
+.pis-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: linear-gradient(160deg, #1e3a8a 0%, #1d4ed8 60%, #2563eb 100%);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.pis-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.brand-icon { font-size: 28px; flex-shrink: 0; }
+
+.brand-logo {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+  background: white;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.brand-text { display: flex; flex-direction: column; }
+.brand-title { font-size: 14px; font-weight: 700; opacity: 0.95; }
+.brand-sub   { font-size: 11px; opacity: 0.7; }
+
+.pis-nav { display: flex; flex-direction: column; padding: 12px 0; flex: 1; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 18px;
+  color: rgba(255,255,255,0.8);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+}
+
+.nav-item:hover { background: rgba(255,255,255,0.12); color: white; }
+
+.nav-item.active {
+  background: rgba(255,255,255,0.18);
+  color: white;
+  border-left-color: white;
+  font-weight: 700;
+}
+
+.nav-icon { font-size: 16px; flex-shrink: 0; }
+
+.pis-logout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  color: rgba(255,255,255,0.75);
+  cursor: pointer;
+  font-size: 14px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  transition: all 0.2s;
+}
+
+.pis-logout:hover { background: rgba(255,255,255,0.1); color: white; }
+
+/* ── Main ────────────────────────────────────────────────────── */
+.pis-main {
+  flex: 1;
+  padding: 24px;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+/* ── Page Header ─────────────────────────────────────────────── */
+.pis-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.ph-title {
+  margin: 0 0 4px 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1e3a8a;
+}
+
+.ph-subtitle { margin: 0; font-size: 13px; color: #64748b; }
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.pis-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.22s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.pis-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.pis-btn-primary {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: white;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.26);
+}
+
+.pis-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(37, 99, 235, 0.36);
+}
+
+.pis-btn-outline {
+  background: white;
+  color: #1d4ed8;
+  border: 1.5px solid #bfdbfe;
+}
+
+.pis-btn-outline:hover:not(:disabled) { background: #eff6ff; border-color: #2563eb; }
+
+.pis-btn-sm { padding: 7px 14px; font-size: 12px; }
+
+/* ── Alerts ──────────────────────────────────────────────────── */
+.pis-alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.pis-alert-error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.pis-alert-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+
+/* ── Loader ──────────────────────────────────────────────────── */
+.pis-loader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 40px;
+  justify-content: center;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.pis-loader.sm { padding: 20px; }
+
+.pis-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid #dbeafe;
+  border-top: 3px solid #2563eb;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+
+.pis-spinner.sm   { width: 22px; height: 22px; border-width: 2px; }
+.pis-spinner.dark { border-color: rgba(37,99,235,0.15); border-top-color: #2563eb; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Empty States ────────────────────────────────────────────── */
+.pis-empty {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+}
+
+.pis-empty.sm {
+  padding: 30px 20px;
+  background: #f8faff;
+  box-shadow: none;
+  border: 1px dashed #bfdbfe;
+}
+
+.empty-icon { font-size: 56px; display: block; margin-bottom: 16px; opacity: 0.45; }
+.pis-empty h3 { margin: 0 0 10px 0; color: #1e3a8a; font-size: 20px; }
+.pis-empty p  { color: #64748b; font-size: 14px; margin: 0 0 20px 0; }
+
+/* ── Student Tabs ────────────────────────────────────────────── */
+.pis-student-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.student-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.student-tab:hover { border-color: #93c5fd; background: #eff6ff; }
+
+.student-tab.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+
+.tab-avatar {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.tab-name  { color: #1e3a8a; font-weight: 600; }
+
+.tab-chip {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+.tab-chip.cleared { background: #dcfce7; color: #166534; }
+.tab-chip.owing   { background: #fef9c3; color: #92400e; }
+
+/* ── Two-Column Content Grid ─────────────────────────────────── */
+.pis-content-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ── Left Panel ──────────────────────────────────────────────── */
+.pis-left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Student summary */
+.pis-student-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  border-top: 3px solid #2563eb;
+}
+
+.ss-avatar {
+  width: 48px; height: 48px;
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ss-info { flex: 1; min-width: 0; }
+.ss-name { font-size: 15px; font-weight: 700; color: #1e3a8a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ss-meta { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+.ss-balance { text-align: right; flex-shrink: 0; }
+.balance-label  { font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+.balance-amount { font-size: 16px; font-weight: 700; }
+.balance-owed   .balance-amount { color: #dc2626; }
+.balance-clear  .balance-amount { color: #16a34a; }
+
+/* Stats row */
+.pis-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.pis-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  border: 1px solid #dbeafe;
+}
+
+.pis-stat-val { font-size: 20px; font-weight: 700; color: #1e3a8a; }
+.pis-stat-lbl { font-size: 11px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px; }
+
+/* Invoice list */
+.pis-invoice-list {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  overflow: hidden;
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
+}
+
+.pis-invoice-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f4f8;
+  cursor: pointer;
+  transition: all 0.18s;
+  position: relative;
+}
+
+.pis-invoice-row:last-child { border-bottom: none; }
+
+.pis-invoice-row:hover { background: #f8faff; }
+
+.pis-invoice-row.selected {
+  background: #eff6ff;
+  border-left: 3px solid #2563eb;
+}
+
+.ir-left  { flex: 1; min-width: 0; }
+.ir-num   { font-size: 14px; font-weight: 700; color: #1e3a8a; }
+.ir-date  { font-size: 12px; color: #64748b; margin-top: 2px; }
+.ir-term  { font-size: 11px; color: #2563eb; margin-top: 2px; font-weight: 500; }
+
+.ir-right { text-align: right; flex-shrink: 0; }
+.ir-amount { font-size: 14px; font-weight: 700; color: #1e293b; }
+.ir-bal    { font-size: 11px; color: #dc2626; margin-top: 3px; font-weight: 600; }
+
+.ir-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 4px;
+}
+
+.badge-paid    { background: #dcfce7; color: #166534; }
+.badge-partial { background: #fef9c3; color: #92400e; }
+.badge-overdue { background: #fee2e2; color: #991b1b; }
+.badge-pending { background: #f1f5f9; color: #475569; }
+
+.ir-arrow {
+  font-size: 18px;
+  color: #94a3b8;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.pis-invoice-row:hover   .ir-arrow,
+.pis-invoice-row.selected .ir-arrow { color: #2563eb; }
+
+/* ── Right Panel (PDF Viewer) ────────────────────────────────── */
+.pis-right-panel {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 600px;
+  position: sticky;
+  top: 24px;
+}
+
+.pis-pdf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border-bottom: 1px solid #bfdbfe;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pdf-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e3a8a;
+  flex: 1;
+}
+
+.pdf-title-icon { font-size: 18px; }
+
+.pdf-date { font-size: 12px; color: #64748b; font-weight: 400; }
+
+.pis-pdf-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 30px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.placeholder-icon { font-size: 60px; display: block; margin-bottom: 16px; opacity: 0.4; }
+.pis-pdf-placeholder h3 { margin: 0 0 8px 0; color: #64748b; font-size: 18px; }
+.pis-pdf-placeholder p  { margin: 0; font-size: 13px; }
+
+.pis-pdf-loading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #64748b;
+  font-size: 14px;
+  gap: 14px;
+}
+
+.pis-pdf-frame {
+  display: block;
+  width: 100%;
+  flex: 1;
+  min-height: 600px;
+  border: none;
+}
+
+.pis-pdf-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 60px 30px;
+  font-size: 14px;
+  color: #64748b;
+  text-align: center;
+}
+
+.pis-pdf-error span { font-size: 40px; }
+.pis-pdf-error p    { margin: 0; }
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .pis-content-grid { grid-template-columns: 300px 1fr; }
+}
+
+@media (max-width: 768px) {
+  .pis-sidebar { display: none; }
+
+  .pis-main { padding: 14px; }
+
+  .pis-content-grid { grid-template-columns: 1fr; }
+
+  .pis-right-panel { position: static; min-height: 450px; }
+  .pis-pdf-frame   { min-height: 450px; }
+
+  .pis-invoice-list { max-height: 300px; }
+
+  .student-tab { padding: 8px 12px; }
+}
+
+@media (max-width: 480px) {
+  .pis-student-tabs { flex-direction: column; }
+  .student-tab { width: 100%; }
+}

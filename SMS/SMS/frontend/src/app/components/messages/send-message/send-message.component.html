@@ -1,0 +1,67 @@
+<div class="container">
+  <div class="card">
+    <div class="card-header">
+      <h2>Send Message</h2>
+      <p class="subtitle">Send notices and fee reminders to parents</p>
+    </div>
+
+    <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+    <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+
+    <div class="form-group">
+      <label>Subject *</label>
+      <input type="text" [(ngModel)]="subject" name="subject" placeholder="Enter subject/title" />
+    </div>
+
+    <div class="form-group">
+      <label>Recipients *</label>
+      <div class="radio-group">
+        <label><input type="radio" name="recipientsType" [(ngModel)]="recipientsType" value="all" (change)="onRecipientsTypeChange()" /> All Parents</label>
+        <label><input type="radio" name="recipientsType" [(ngModel)]="recipientsType" value="selected" (change)="onRecipientsTypeChange()" /> Specific Parent(s)</label>
+      </div>
+      <div class="parents-list" *ngIf="recipientsType === 'selected'">
+        <input type="text" [(ngModel)]="parentsSearch" name="parentsSearch" placeholder="Search parents..." />
+        <div class="parent-item" *ngFor="let p of filteredParents()">
+          <label>
+            <input type="checkbox" [checked]="selectedParentIds.has(p.id)" (change)="toggleParentSelection(p.id)" />
+            {{ p.firstName || '' }} {{ p.lastName || '' }} <span *ngIf="p.email">({{ p.email }})</span>
+          </label>
+        </div>
+        <div class="empty-state" *ngIf="parents.length === 0">
+          <p>Parent list unavailable. Try again later.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Template</label>
+      <select [(ngModel)]="selectedTemplate" name="selectedTemplate" (change)="applyTemplate()">
+        <option value="">Select a template…</option>
+        <option *ngFor="let t of templates" [value]="t.name">{{ t.name }}</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Message *</label>
+      <textarea [(ngModel)]="message" name="message" rows="8" placeholder="Write your message here"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Attachments</label>
+      <input type="file" (change)="onFileChange($event)" multiple />
+      <div class="attachments" *ngIf="attachments.length > 0">
+        <div class="attachment" *ngFor="let f of attachments; let i = index">
+          <span>📎 {{ f.name }}</span>
+          <button class="btn btn-link" (click)="removeAttachment(i)">Remove</button>
+        </div>
+      </div>
+      <small class="form-text">Supported formats vary by server; PDF, DOCX, and images are common.</small>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary" [disabled]="!canSend()" (click)="send()">
+        {{ loading ? 'Sending...' : '📨 Send' }}
+      </button>
+    </div>
+  </div>
+</div>

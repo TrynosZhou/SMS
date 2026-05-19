@@ -1,8 +1,12 @@
+<<<<<<< HEAD
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
+=======
+import { Component, OnInit } from '@angular/core';
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { ClassService } from '../../../services/class.service';
 import { StudentService } from '../../../services/student.service';
 import { SettingsService } from '../../../services/settings.service';
@@ -18,7 +22,11 @@ interface PromotionData {
 }
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-class-promotion',
+=======
+  selector: 'app-class-promotion',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './class-promotion.component.html',
   styleUrls: ['./class-promotion.component.css'],
   animations: [
@@ -45,8 +53,12 @@ interface PromotionData {
     ])
   ]
 })
+<<<<<<< HEAD
 export class ClassPromotionComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+=======
+export class ClassPromotionComponent implements OnInit {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   classes: any[] = [];
   students: any[] = [];
   promotionData: PromotionData[] = [];
@@ -78,6 +90,7 @@ export class ClassPromotionComponent implements OnInit, OnDestroy {
     private classService: ClassService,
     private studentService: StudentService,
     private settingsService: SettingsService,
+<<<<<<< HEAD
     private promotionRuleService: PromotionRuleService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -93,14 +106,24 @@ export class ClassPromotionComponent implements OnInit, OnDestroy {
   }
 
   private bootstrapPage(): void {
+=======
+    private promotionRuleService: PromotionRuleService
+  ) { }
+
+  ngOnInit() {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     this.loadPromotionRules();
   }
 
   loadPromotionRules() {
+<<<<<<< HEAD
     this.promotionRuleService
       .getActivePromotionRules()
       .pipe(finalize(() => this.cdr.markForCheck()))
       .subscribe({
+=======
+    this.promotionRuleService.getActivePromotionRules().subscribe({
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       next: (rules: any) => {
         this.promotionRules = Array.isArray(rules) ? rules : [];
         // Build a map for quick lookup by fromClassId
@@ -160,12 +183,18 @@ export class ClassPromotionComponent implements OnInit, OnDestroy {
       
       console.log(`Built promotion data for ${this.promotionData.length} classes`);
       this.loading = false;
+<<<<<<< HEAD
       this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     }).catch((err: any) => {
       console.error('Error loading data:', err);
       this.error = err.error?.message || 'Failed to load data';
       this.loading = false;
+<<<<<<< HEAD
       this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
         setTimeout(() => this.error = '', 5000);
     });
   }

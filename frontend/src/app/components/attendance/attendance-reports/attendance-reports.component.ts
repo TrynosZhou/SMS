@@ -1,19 +1,31 @@
+<<<<<<< HEAD
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
+=======
+import { Component, OnInit } from '@angular/core';
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { AttendanceService } from '../../../services/attendance.service';
 import { ClassService } from '../../../services/class.service';
 import { SettingsService } from '../../../services/settings.service';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-attendance-reports',
   templateUrl: './attendance-reports.component.html',
   styleUrls: ['./attendance-reports.component.css']
 })
 export class AttendanceReportsComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+=======
+  selector: 'app-attendance-reports',
+  templateUrl: './attendance-reports.component.html',
+  styleUrls: ['./attendance-reports.component.css']
+})
+export class AttendanceReportsComponent implements OnInit {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   classes: any[] = [];
   selectedClassId: string = '';
   selectedTerm: string = '';
@@ -62,6 +74,7 @@ export class AttendanceReportsComponent implements OnInit, OnDestroy {
   constructor(
     private attendanceService: AttendanceService,
     private classService: ClassService,
+<<<<<<< HEAD
     private settingsService: SettingsService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -77,6 +90,12 @@ export class AttendanceReportsComponent implements OnInit, OnDestroy {
   }
 
   private bootstrapPage(): void {
+=======
+    private settingsService: SettingsService
+  ) {}
+
+  ngOnInit() {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     this.loadClasses();
     this.loadAvailableTerms();
   }
@@ -94,10 +113,14 @@ export class AttendanceReportsComponent implements OnInit, OnDestroy {
     ];
 
     // Load active term and set it as default
+<<<<<<< HEAD
     this.settingsService
       .getActiveTerm()
       .pipe(finalize(() => this.cdr.markForCheck()))
       .subscribe({
+=======
+    this.settingsService.getActiveTerm().subscribe({
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       next: (data: any) => {
         if (data.activeTerm) {
           this.selectedTerm = data.activeTerm;
@@ -110,16 +133,23 @@ export class AttendanceReportsComponent implements OnInit, OnDestroy {
             this.availableTerms.unshift(data.currentTerm);
           }
         }
+<<<<<<< HEAD
         this.cdr.markForCheck();
       },
       error: (err: any) => {
         console.error('Error loading active term:', err);
         this.cdr.markForCheck();
+=======
+      },
+      error: (err: any) => {
+        console.error('Error loading active term:', err);
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       }
     });
   }
 
   loadClasses() {
+<<<<<<< HEAD
     this.classService
       .getClasses()
       .pipe(finalize(() => this.cdr.markForCheck()))
@@ -128,12 +158,21 @@ export class AttendanceReportsComponent implements OnInit, OnDestroy {
         const classesArray = Array.isArray(data) ? data : [];
         this.classes = classesArray.filter((c: any) => c.isActive);
         this.cdr.markForCheck();
+=======
+    this.classService.getClasses().subscribe({
+      next: (data: any) => {
+        const classesArray = Array.isArray(data) ? data : [];
+        this.classes = classesArray.filter((c: any) => c.isActive);
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       },
       error: (err: any) => {
         this.error = 'Failed to load classes';
         this.classes = [];
         console.error(err);
+<<<<<<< HEAD
         this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       }
     });
   }

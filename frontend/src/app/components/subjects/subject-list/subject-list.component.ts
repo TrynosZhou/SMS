@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -12,6 +13,18 @@ import { SubjectService } from '../../../services/subject.service';
 })
 export class SubjectListComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+=======
+import { Component, OnInit } from '@angular/core';
+import { Router, ActivatedRoute } from '@angular/router';
+import { SubjectService } from '../../../services/subject.service';
+
+@Component({
+  selector: 'app-subject-list',
+  templateUrl: './subject-list.component.html',
+  styleUrls: ['./subject-list.component.css']
+})
+export class SubjectListComponent implements OnInit {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   subjects: any[] = [];
   filteredSubjects: any[] = [];
   loading = false;
@@ -28,8 +41,12 @@ export class SubjectListComponent implements OnInit, OnDestroy {
   constructor(
     private subjectService: SubjectService,
     private router: Router,
+<<<<<<< HEAD
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef
+=======
+    private route: ActivatedRoute
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   ) { }
 
   ngOnInit() {
@@ -49,17 +66,23 @@ export class SubjectListComponent implements OnInit, OnDestroy {
         }, 5000);
       }
     });
+<<<<<<< HEAD
     activatePageLoad(this.router, this.destroy$, '/subjects', () => this.loadSubjects());
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+=======
+    // Load subjects on component initialization
+    this.loadSubjects();
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   loadSubjects() {
     this.loading = true;
     this.error = '';
+<<<<<<< HEAD
     this.subjectService
       .getSubjects()
       .pipe(
@@ -69,10 +92,17 @@ export class SubjectListComponent implements OnInit, OnDestroy {
         })
       )
       .subscribe({
+=======
+    this.subjectService.getSubjects().subscribe({
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       next: (data: any) => {
         this.subjects = data || [];
         this.filteredSubjects = [...this.subjects];
         this.sortSubjects();
+<<<<<<< HEAD
+=======
+        this.loading = false;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       },
       error: (err: any) => {
         console.error('Error loading subjects:', err);
@@ -94,6 +124,10 @@ export class SubjectListComponent implements OnInit, OnDestroy {
         }
         
         this.error = errorMessage;
+<<<<<<< HEAD
+=======
+        this.loading = false;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
         this.subjects = []; // Clear subjects array on error
         this.filteredSubjects = [];
       }

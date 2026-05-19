@@ -1,0 +1,233 @@
+<div class="allocate-container">
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="header-content">
+      <span class="header-icon" aria-hidden="true">🏫</span>
+      <div class="header-text">
+        <h1>Allocate Classes</h1>
+        <p class="subtitle">Assign subjects and classes to teachers</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  <div class="alert alert-error" *ngIf="error" role="alert">
+    <span class="alert-icon" aria-hidden="true">⚠</span>
+    <span class="alert-message">{{ error }}</span>
+    <button type="button" class="alert-close" (click)="error = ''" title="Dismiss">&times;</button>
+  </div>
+  <div class="alert alert-success" *ngIf="success" role="alert">
+    <span class="alert-icon" aria-hidden="true">✓</span>
+    <span class="alert-message">{{ success }}</span>
+    <button type="button" class="alert-close" (click)="success = ''" title="Dismiss">&times;</button>
+  </div>
+
+  <!-- Unallocated teachers card -->
+  <div class="card unallocated-card">
+    <div class="card-header">
+      <div class="card-header-text">
+        <h2>
+          <span class="section-icon">👤</span>
+          Teachers Not Yet Allocated
+        </h2>
+        <p class="card-description">Assign a subject and class directly per teacher</p>
+      </div>
+      <div class="card-header-stats" *ngIf="unallocatedTeachers.length > 0">
+        <span class="stat-pill">{{ unallocatedTeachers.length }} unallocated</span>
+      </div>
+    </div>
+
+    <div class="toolbar" *ngIf="unallocatedTeachers.length > 0">
+      <div class="toolbar-left">
+        <button type="button" class="btn btn-outline" (click)="exportUnallocatedCSV()">
+          <span class="btn-icon">📥</span> Export CSV
+        </button>
+      </div>
+      <div class="toolbar-right">
+        <label class="page-size-label">Rows per page</label>
+        <select class="page-size-select" [ngModel]="unallocPageSize" (ngModelChange)="onUnallocPageSizeChange($event)" [ngModelOptions]="{standalone:true}">
+          <option [ngValue]="10">10</option>
+          <option [ngValue]="20">20</option>
+          <option [ngValue]="50">50</option>
+        </select>
+      </div>
+    </div>
+
+    <div *ngIf="unallocatedTeachers.length > 0" class="table-scroll">
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th (click)="toggleUnallocSort('name')" class="sortable">
+              Teacher
+              <span class="sort-indicator" *ngIf="unallocSortKey==='name'" [class.asc]="unallocSortDir==='asc'" [class.desc]="unallocSortDir==='desc'"></span>
+            </th>
+            <th (click)="toggleUnallocSort('employeeId')" class="sortable">
+              Employee ID
+              <span class="sort-indicator" *ngIf="unallocSortKey==='employeeId'" [class.asc]="unallocSortDir==='asc'" [class.desc]="unallocSortDir==='desc'"></span>
+            </th>
+            <th>Assign Subject</th>
+            <th>Assign Class</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let t of unallocPaged">
+            <td>
+              <div class="teacher-cell">
+                <span class="teacher-name">{{ t.firstName }} {{ t.lastName }}</span>
+                <span class="teacher-meta" *ngIf="t.sex || t.phoneNumber">
+                  <span *ngIf="t.sex">{{ t.sex }}</span>
+                  <span *ngIf="t.phoneNumber"> · {{ t.phoneNumber }}</span>
+                </span>
+              </div>
+            </td>
+            <td><span class="cell-id">{{ t.teacherId || t.id }}</span></td>
+            <td>
+              <select class="assign-select" [(ngModel)]="selectedSubjectFor[t.id]" [ngModelOptions]="{standalone:true}">
+                <option [ngValue]="null">Select subject…</option>
+                <option *ngFor="let s of subjects" [value]="s.id">{{ s.name }}</option>
+              </select>
+            </td>
+            <td>
+              <select class="assign-select" [(ngModel)]="selectedClassFor[t.id]" [ngModelOptions]="{standalone:true}" [disabled]="!selectedSubjectFor[t.id]">
+                <option [ngValue]="null">Select class…</option>
+                <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
+              </select>
+            </td>
+            <td>
+              <div class="row-actions">
+                <button type="button" class="btn btn-primary btn-sm" (click)="allocateClassForTeacher(t.id)" [disabled]="!selectedSubjectFor[t.id] || !selectedClassFor[t.id] || saving">Allocate</button>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="deleteTeacher(t.id, t.firstName + ' ' + t.lastName, t.teacherId)" [disabled]="loading">Delete</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination-bar" *ngIf="unallocatedTeachers.length > 0">
+      <span class="pagination-info">Page {{ unallocPage }} of {{ unallocTotalPages }}</span>
+      <div class="pagination-actions">
+        <button type="button" class="btn btn-outline btn-sm" (click)="onUnallocPageChange(unallocPage-1)" [disabled]="unallocPage<=1">Previous</button>
+        <button type="button" class="btn btn-outline btn-sm" (click)="onUnallocPageChange(unallocPage+1)" [disabled]="unallocPage>=unallocTotalPages">Next</button>
+      </div>
+    </div>
+
+    <div class="empty-state" *ngIf="unallocatedTeachers.length === 0">
+      <div class="empty-state-inner">
+        <span class="empty-icon" aria-hidden="true">✓</span>
+        <h3>All teachers allocated</h3>
+        <p>Every teacher has at least one class assigned.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Choose teacher card -->
+  <div class="card selector-card">
+    <div class="card-header">
+      <h2>
+        <span class="section-icon">🎯</span>
+        Choose Teacher
+      </h2>
+      <label class="bulk-toggle">
+        <input type="checkbox" [(ngModel)]="bulkMode">
+        <span class="toggle-label">Bulk mode</span>
+      </label>
+    </div>
+    <div class="selector-body">
+      <div class="search-wrap">
+        <span class="search-icon" aria-hidden="true">🔍</span>
+        <input type="text" [(ngModel)]="teacherSearch" (input)="filterTeachers()" placeholder="Search by name or employee ID…" class="search-input">
+        <button type="button" *ngIf="teacherSearch" class="search-clear" (click)="teacherSearch=''; filterTeachers()" title="Clear">×</button>
+      </div>
+      <ng-container *ngIf="!bulkMode">
+        <select [ngModel]="selectedTeacherId" (ngModelChange)="onSelectTeacher($event)" class="teacher-select">
+          <option [ngValue]="null">Select a teacher…</option>
+          <option *ngFor="let t of filteredTeachers" [value]="t.id">
+            {{ t.firstName }} {{ t.lastName }} — {{ t.teacherId || 'ID' }}
+          </option>
+        </select>
+      </ng-container>
+      <ng-container *ngIf="bulkMode">
+        <div class="teacher-list">
+          <label class="teacher-item" *ngFor="let t of filteredTeachers" [class.selected]="isTeacherSelected(t.id)">
+            <input type="checkbox" [checked]="isTeacherSelected(t.id)" (change)="toggleTeacher(t.id)" class="checkbox-input">
+            <span class="checkbox-custom"></span>
+            <span class="checkbox-text"><strong>{{ t.firstName }} {{ t.lastName }}</strong> — {{ t.teacherId || 'ID' }}</span>
+          </label>
+        </div>
+        <div class="teacher-actions">
+          <button type="button" class="btn btn-outline btn-sm" (click)="selectAllFilteredTeachers()">Select all</button>
+          <button type="button" class="btn btn-outline btn-sm" (click)="clearTeacherSelection()">Clear</button>
+        </div>
+      </ng-container>
+    </div>
+    <div class="summary-card" *ngIf="selectedTeacher && !bulkMode">
+      <div class="summary-label">Selected teacher</div>
+      <div class="summary-name">{{ selectedTeacher.firstName }} {{ selectedTeacher.lastName }}</div>
+      <div class="summary-meta">ID: {{ selectedTeacher.teacherId || selectedTeacher.id }}</div>
+    </div>
+  </div>
+
+  <!-- Assignments: Subjects & Classes (shown when teacher selected or bulk mode) -->
+  <div class="assignments-section card-enter" *ngIf="selectedTeacher || bulkMode">
+    <div class="assign-card card">
+      <div class="assign-card-header">
+        <h3><span class="section-icon">📚</span> Subjects</h3>
+        <div class="search-wrap search-wrap-inline">
+          <span class="search-icon">🔍</span>
+          <input type="text" [(ngModel)]="subjectSearch" (input)="filterSubjects()" placeholder="Search subjects…" class="search-input">
+          <button type="button" *ngIf="subjectSearch" class="search-clear" (click)="subjectSearch=''; filterSubjects()">×</button>
+        </div>
+      </div>
+      <div class="checkbox-group" *ngIf="filteredSubjects.length > 0">
+        <label class="checkbox-item" *ngFor="let s of filteredSubjects" [class.selected]="selectedSubjectIds.includes(s.id)">
+          <input type="checkbox" [checked]="selectedSubjectIds.includes(s.id)" (change)="toggleSubject(s.id)" class="checkbox-input">
+          <span class="checkbox-custom"></span>
+          <span class="checkbox-text">{{ s.name }}</span>
+        </label>
+      </div>
+      <div class="assign-empty" *ngIf="filteredSubjects.length === 0">
+        <span>No subjects found.</span>
+      </div>
+    </div>
+
+    <div class="assign-card card">
+      <div class="assign-card-header">
+        <h3><span class="section-icon">🏫</span> Classes</h3>
+        <div class="search-wrap search-wrap-inline">
+          <span class="search-icon">🔍</span>
+          <input type="text" [(ngModel)]="classSearch" (input)="filterClasses()" placeholder="Search classes…" class="search-input">
+          <button type="button" *ngIf="classSearch" class="search-clear" (click)="classSearch=''; filterClasses()">×</button>
+        </div>
+      </div>
+      <div class="checkbox-group" *ngIf="filteredClasses.length > 0">
+        <label class="checkbox-item" *ngFor="let c of filteredClasses" [class.selected]="selectedClassIds.includes(c.id)">
+          <input type="checkbox" [checked]="selectedClassIds.includes(c.id)" (change)="toggleClass(c.id)" class="checkbox-input">
+          <span class="checkbox-custom"></span>
+          <span class="checkbox-text">{{ c.name }}</span>
+        </label>
+      </div>
+      <div class="assign-empty" *ngIf="filteredClasses.length === 0">
+        <span>No classes found.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form actions -->
+  <div class="form-actions card" *ngIf="selectedTeacher || bulkMode">
+    <div class="form-actions-inner">
+      <button type="button" class="btn btn-ghost" (click)="bulkMode ? clearTeacherSelection() : (selectedTeacher=null)">Cancel</button>
+      <button type="button" class="btn btn-primary" (click)="save()" [disabled]="saving || !hasChanges()">
+        <span class="btn-icon" *ngIf="!saving">💾</span>
+        <span class="btn-spinner" *ngIf="saving"></span>
+        <span>{{ saving ? 'Saving…' : (bulkMode ? 'Save to selected teachers' : 'Save assignments') }}</span>
+      </button>
+      <div class="bulk-progress" *ngIf="bulkMode && bulkProgress.total > 0">
+        <span class="bulk-stat">Total: {{ bulkProgress.total }}</span>
+        <span class="bulk-stat bulk-done">Done: {{ bulkProgress.done }}</span>
+        <span class="bulk-stat bulk-failed" *ngIf="bulkProgress.failed > 0">Failed: {{ bulkProgress.failed }}</span>
+      </div>
+    </div>
+  </div>
+</div>

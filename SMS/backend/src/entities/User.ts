@@ -1,0 +1,83 @@
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, Index } from 'typeorm';
+import { Student } from './Student';
+import { Teacher } from './Teacher';
+import { Parent } from './Parent';
+
+export enum UserRole {
+  SUPERADMIN = 'superadmin',
+  ADMIN = 'admin',
+  ACCOUNTANT = 'accountant',
+  TEACHER = 'teacher',
+  PARENT = 'parent',
+  STUDENT = 'student',
+  DEMO_USER = 'demo_user'
+}
+
+@Entity('users')
+@Index(['email'], { unique: true, where: '"email" IS NOT NULL' })
+@Index(['username'], { unique: true })
+export class User {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ nullable: true })
+  email: string | null;
+
+  @Column()
+  username: string;
+
+  @Column({ nullable: true })
+  firstName: string | null;
+
+  @Column({ nullable: true })
+  lastName: string | null;
+
+  @Column()
+  password: string;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.STUDENT
+  })
+  role: UserRole;
+
+  @Column({ default: true })
+  isActive: boolean;
+
+  @Column({ default: false })
+  mustChangePassword: boolean;
+
+  @Column({ default: false })
+  isTemporaryAccount: boolean;
+
+  @Column({ default: false })
+  isDemo: boolean;
+
+  /** Shared teacher account used by all teachers for testing; uses moduleAccess.universalTeacher */
+  @Column({ default: false })
+  isUniversalTeacher: boolean;
+
+  /** Failed login attempts (for admin/superadmin/accountant lock after 3 failures) */
+  @Column({ type: 'int', default: 0 })
+  failedLoginAttempts: number;
+
+  /** Account locked until this time (null = not locked) */
+  @Column({ type: 'timestamp', nullable: true })
+  lockedUntil: Date | null;
+
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt: Date;
+
+  @OneToOne(() => Student, student => student.user, { nullable: true })
+  @JoinColumn()
+  student: Student;
+
+  @OneToOne(() => Teacher, teacher => teacher.user, { nullable: true })
+  teacher: Teacher;
+
+  @OneToOne(() => Parent, parent => parent.user, { nullable: true })
+  @JoinColumn()
+  parent: Parent;
+}
+

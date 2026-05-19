@@ -7,7 +7,11 @@ import { SettingsService } from '../../../services/settings.service';
 import { ClassService } from '../../../services/class.service';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-record-book',
+=======
+  selector: 'app-record-book',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './record-book.component.html',
   styleUrls: ['./record-book.component.css']
 })

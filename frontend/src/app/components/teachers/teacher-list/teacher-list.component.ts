@@ -1,8 +1,13 @@
+<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
+=======
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Router } from '@angular/router';
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { TeacherService } from '../../../services/teacher.service';
 import { SubjectService } from '../../../services/subject.service';
 import { ClassService } from '../../../services/class.service';
@@ -12,12 +17,20 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-teacher-list',
   templateUrl: './teacher-list.component.html',
   styleUrls: ['./teacher-list.component.css']
 })
 export class TeacherListComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+=======
+  selector: 'app-teacher-list',
+  templateUrl: './teacher-list.component.html',
+  styleUrls: ['./teacher-list.component.css']
+})
+export class TeacherListComponent implements OnInit {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   teachers: any[] = [];
   filteredTeachers: any[] = [];
   allSubjects: any[] = [];
@@ -68,6 +81,7 @@ export class TeacherListComponent implements OnInit, OnDestroy {
   ) { }
 
   ngOnInit() {
+<<<<<<< HEAD
     this.loadSubjects();
     this.loadClasses();
     this.loadSchoolDetails();
@@ -79,10 +93,17 @@ export class TeacherListComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+=======
+    this.loadTeachers();
+    this.loadSubjects();
+    this.loadClasses();
+    this.loadSchoolDetails();
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   loadTeachers(page = this.pagination.page) {
     this.loading = true;
+<<<<<<< HEAD
     this.teacherService
       .getTeachersPaginated(page, this.pagination.limit)
       .pipe(
@@ -92,6 +113,9 @@ export class TeacherListComponent implements OnInit, OnDestroy {
         })
       )
       .subscribe({
+=======
+    this.teacherService.getTeachersPaginated(page, this.pagination.limit).subscribe({
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       next: (response: any) => {
         const data = Array.isArray(response) ? response : (response?.data || []);
         this.teachers = data;
@@ -108,6 +132,10 @@ export class TeacherListComponent implements OnInit, OnDestroy {
           this.pagination.page = page;
         }
         this.filteredTeachers = this.teachers;
+<<<<<<< HEAD
+=======
+        this.loading = false;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
         // Defer filtering to avoid NG0900 error
         setTimeout(() => {
           this.filterTeachers();
@@ -115,6 +143,10 @@ export class TeacherListComponent implements OnInit, OnDestroy {
       },
       error: (err: any) => {
         console.error('Error loading teachers:', err);
+<<<<<<< HEAD
+=======
+        this.loading = false;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
         this.teachers = [];
         this.filteredTeachers = [];
         

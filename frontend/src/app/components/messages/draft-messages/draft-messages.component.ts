@@ -4,7 +4,11 @@ import { MessageService } from '../../../services/message.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-draft-messages',
+=======
+  selector: 'app-draft-messages',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './draft-messages.component.html',
   styleUrls: ['./draft-messages.component.css']
 })

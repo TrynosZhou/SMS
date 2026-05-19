@@ -1,8 +1,14 @@
+<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { firstValueFrom, Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { activatePageLoad } from '../../../utils/route-activation';
+=======
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { Router } from '@angular/router';
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FinanceService } from '../../../services/finance.service';
 import { StudentService } from '../../../services/student.service';
@@ -10,12 +16,20 @@ import { AuthService } from '../../../services/auth.service';
 import { SettingsService } from '../../../services/settings.service';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-invoice-list',
   templateUrl: './invoice-list.component.html',
   styleUrls: ['./invoice-list.component.css']
 })
 export class InvoiceListComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+=======
+  selector: 'app-invoice-list',
+  templateUrl: './invoice-list.component.html',
+  styleUrls: ['./invoice-list.component.css']
+})
+export class InvoiceListComponent implements OnInit {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   invoices: any[] = [];
   filteredInvoices: any[] = [];
   students: any[] = [];
@@ -238,8 +252,12 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     public authService: AuthService,
     private router: Router,
     private settingsService: SettingsService,
+<<<<<<< HEAD
     private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef
+=======
+    private sanitizer: DomSanitizer
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   ) { }
 
   ngOnInit() {
@@ -255,12 +273,16 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
         this.loadStudents();
     }
     this.loadSettings();
+<<<<<<< HEAD
     activatePageLoad(this.router, this.destroy$, '/invoices', () => this.loadInvoices());
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+=======
+    this.loadInvoices();
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   loadSettings() {
@@ -344,6 +366,7 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
 
   loadInvoices() {
     this.loading = true;
+<<<<<<< HEAD
     this.financeService
       .getInvoices()
       .pipe(
@@ -377,6 +400,35 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
           setTimeout(() => (this.error = ''), 5000);
         }
       });
+=======
+    this.financeService.getInvoices().subscribe({
+      next: (data: any[]) => {
+        const invoicesArray = Array.isArray(data) ? data : [];
+        this.invoices = invoicesArray.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        });
+        // Initialize filteredInvoices with all invoices if no filters are active
+        if (!this.hasActiveInvoiceFilters()) {
+          this.filteredInvoices = [...this.invoices];
+        } else {
+          this.filterInvoices();
+        }
+        this.updateCachedStats();
+        this.loading = false;
+      },
+      error: (err: any) => {
+        console.error('Error loading invoices:', err);
+        this.invoices = [];
+        this.filteredInvoices = [];
+        this.updateCachedStats();
+        this.error = 'Failed to load invoices';
+        this.loading = false;
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   onFilterChange() {

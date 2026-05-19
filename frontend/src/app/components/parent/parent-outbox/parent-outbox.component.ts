@@ -4,7 +4,11 @@ import { AuthService } from '../../../services/auth.service';
 import { environment } from '../../../../environments/environment';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-parent-outbox',
+=======
+  selector: 'app-parent-outbox',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './parent-outbox.component.html',
   styleUrls: ['./parent-outbox.component.css']
 })

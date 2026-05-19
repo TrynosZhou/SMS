@@ -10,7 +10,11 @@ import { ThemeService } from '../../../services/theme.service';
 export type InvTab = 'textbooks' | 'furniture' | 'teacherAlloc' | 'ops' | 'fines' | 'reports' | 'settings';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-inventory-hub',
+=======
+  selector: 'app-inventory-hub',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './inventory-hub.component.html',
   styleUrls: ['./inventory-hub.component.css']
 })

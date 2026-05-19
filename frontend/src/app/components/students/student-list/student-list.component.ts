@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { activatePageLoad } from '../../../utils/route-activation';
@@ -14,6 +15,20 @@ import { finalize, takeUntil } from 'rxjs/operators';
   styleUrls: ['./student-list.component.css']
 })
 export class StudentListComponent implements OnInit, OnDestroy {
+=======
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Router, ActivatedRoute } from '@angular/router';
+import { StudentService } from '../../../services/student.service';
+import { ClassService } from '../../../services/class.service';
+import { AuthService } from '../../../services/auth.service';
+
+@Component({
+  selector: 'app-student-list',
+  templateUrl: './student-list.component.html',
+  styleUrls: ['./student-list.component.css']
+})
+export class StudentListComponent implements OnInit {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   students: any[] = [];
   filteredStudents: any[] = [];
   classes: any[] = [];
@@ -25,10 +40,15 @@ export class StudentListComponent implements OnInit, OnDestroy {
   searchQuery = '';
   viewMode: 'grid' | 'list' = 'list';
   loading = false;
+<<<<<<< HEAD
   loadFailed = false;
   error = '';
   success = '';
   private destroy$ = new Subject<void>();
+=======
+  error = '';
+  success = '';
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   selectedStudent: any = null;
   pagination = {
     page: 1,
@@ -61,8 +81,12 @@ export class StudentListComponent implements OnInit, OnDestroy {
     private router: Router,
     private cdr: ChangeDetectorRef,
     private route: ActivatedRoute,
+<<<<<<< HEAD
     private authService: AuthService,
     private studentRefresh: StudentRefreshService
+=======
+    private authService: AuthService
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   ) { }
 
   ngOnInit() {
@@ -84,6 +108,7 @@ export class StudentListComponent implements OnInit, OnDestroy {
       this.pageSubtitle = 'Day scholar students using dining hall meals';
       this.pageIcon = '🍽️';
     }
+<<<<<<< HEAD
     this.studentRefresh.onRefreshRequested().pipe(takeUntil(this.destroy$)).subscribe(() => {
       this.loadStudents(1);
     });
@@ -98,6 +123,10 @@ export class StudentListComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+=======
+    this.loadClasses();
+    this.loadStudents();
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   canBulkCorrectStatus(): boolean {
@@ -179,7 +208,10 @@ export class StudentListComponent implements OnInit, OnDestroy {
 
   loadStudents(page = this.pagination.page) {
     this.loading = true;
+<<<<<<< HEAD
     this.loadFailed = false;
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     this.selectedStudentIds.clear();
     const logisticsMode = this.route.snapshot.data?.['logisticsMode'];
     const usesTransport = this.filterUsesTransport || this.isLogisticsTransport;
@@ -193,6 +225,7 @@ export class StudentListComponent implements OnInit, OnDestroy {
       studentType: this.selectedType || (logisticsMode ? 'Day Scholar' : undefined),
       usesTransport: usesTransport ? true : undefined,
       usesDiningHall: usesDiningHall ? true : undefined
+<<<<<<< HEAD
     }).pipe(
       finalize(() => {
         this.loading = false;
@@ -214,12 +247,29 @@ export class StudentListComponent implements OnInit, OnDestroy {
 
         this.students = studentsArray.map((student: any) => {
           const normalizedStudent = { ...student };
+=======
+    }).subscribe({
+      next: (response: any) => {
+        // Ensure response.data is an array
+        const studentsData = response?.data;
+        const studentsArray = Array.isArray(studentsData) ? studentsData : [];
+        
+        // Normalize class property - create new objects instead of mutating
+        this.students = studentsArray.map((student: any) => {
+          // Create a new object to avoid mutation issues
+          const normalizedStudent = { ...student };
+          // Ensure 'class' maps to 'classEntity' if needed
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           if (normalizedStudent.classEntity && !normalizedStudent.class) {
             normalizedStudent.class = normalizedStudent.classEntity;
           }
           return normalizedStudent;
         });
 
+<<<<<<< HEAD
+=======
+        // Populate grade options from loaded students
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
         try {
           const set = new Set<string>();
           for (const s of this.students) {
@@ -230,11 +280,19 @@ export class StudentListComponent implements OnInit, OnDestroy {
         } catch {
           this.gradeOptions = this.gradeOptions || [];
         }
+<<<<<<< HEAD
 
         this.pagination = {
           page: response?.page || page,
           limit: response?.limit || this.pagination.limit,
           total: response?.total ?? this.students.length,
+=======
+        
+        this.pagination = {
+          page: response?.page || page,
+          limit: response?.limit || this.pagination.limit,
+          total: response?.total || this.students.length,
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           totalPages: response?.totalPages || 1
         };
         this.stats = {
@@ -242,6 +300,7 @@ export class StudentListComponent implements OnInit, OnDestroy {
           totalBoarders: response?.stats?.totalBoarders ?? 0,
           classCount: response?.stats?.classCount ?? this.classes.length
         };
+<<<<<<< HEAD
 
         this.applyFilters();
         this.cdr.markForCheck();
@@ -253,6 +312,23 @@ export class StudentListComponent implements OnInit, OnDestroy {
         this.filteredStudents = [];
         this.groupedStudents = [];
         this.error = err?.error?.message || 'Failed to load students';
+=======
+        this.loading = false;
+        // Use ChangeDetectorRef to properly trigger change detection
+        this.cdr.detectChanges();
+        // Defer filtering to avoid NG0900 error
+        setTimeout(() => {
+          this.applyFilters();
+        }, 0);
+      },
+      error: (err: any) => {
+        console.error('Error loading students:', err);
+        this.error = 'Failed to load students';
+        this.loading = false;
+        this.students = [];
+        this.filteredStudents = [];
+        setTimeout(() => this.error = '', 5000);
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       }
     });
   }

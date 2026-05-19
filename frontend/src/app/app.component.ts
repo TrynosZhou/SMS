@@ -11,7 +11,11 @@ import { AuditService } from './services/audit.service';
 import { environment } from '../environments/environment';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-root',
+=======
+  selector: 'app-root',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
@@ -268,7 +272,10 @@ export class AppComponent implements OnInit, OnDestroy {
     if (url.startsWith('/classes')) return 'Classes';
     if (url.startsWith('/subjects')) return 'Subjects';
     if (url.startsWith('/exams') || url.startsWith('/mark-sheet') || url.startsWith('/report-cards') || url.startsWith('/publish-results') || url.startsWith('/check_mark_progess') || url.startsWith('/rankings')) return 'Exams';
+<<<<<<< HEAD
     if (url.startsWith('/timetable')) return 'Timetable';
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     if (url.startsWith('/settings')) return 'Settings';
     if (url.startsWith('/attendance')) return 'Attendance';
     if (url.startsWith('/invoices') || url.startsWith('/payments') || url.startsWith('/finance')) return 'Finance';

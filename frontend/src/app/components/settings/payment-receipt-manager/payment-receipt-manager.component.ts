@@ -3,7 +3,11 @@ import { FinanceService } from '../../../services/finance.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-payment-receipt-manager',
+=======
+  selector: 'app-payment-receipt-manager',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './payment-receipt-manager.component.html',
   styleUrls: ['./payment-receipt-manager.component.css']
 })

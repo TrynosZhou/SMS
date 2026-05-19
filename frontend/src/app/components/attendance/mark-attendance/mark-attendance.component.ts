@@ -1,8 +1,12 @@
+<<<<<<< HEAD
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
+=======
+import { Component, OnInit } from '@angular/core';
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { AttendanceService } from '../../../services/attendance.service';
 import { ClassService } from '../../../services/class.service';
 import { TeacherService } from '../../../services/teacher.service';
@@ -11,12 +15,20 @@ import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-mark-attendance',
   templateUrl: './mark-attendance.component.html',
   styleUrls: ['./mark-attendance.component.css']
 })
 export class MarkAttendanceComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+=======
+  selector: 'app-mark-attendance',
+  templateUrl: './mark-attendance.component.html',
+  styleUrls: ['./mark-attendance.component.css']
+})
+export class MarkAttendanceComponent implements OnInit {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   classes: any[] = [];
   students: any[] = [];
   selectedClassId: string = '';
@@ -51,6 +63,7 @@ export class MarkAttendanceComponent implements OnInit, OnDestroy {
     private teacherService: TeacherService,
     private studentService: StudentService,
     private settingsService: SettingsService,
+<<<<<<< HEAD
     private authService: AuthService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -68,10 +81,23 @@ export class MarkAttendanceComponent implements OnInit, OnDestroy {
   private bootstrapPage(): void {
     const today = new Date();
     this.selectedDate = this.toIsoDate(today);
+=======
+    private authService: AuthService
+  ) {}
+
+  ngOnInit() {
+    this.loadClasses();
+    this.loadActiveTerm();
+    // Set default date to today
+    const today = new Date();
+    this.selectedDate = this.toIsoDate(today);
+    // Enforce Mon–Fri only: if today is weekend, move to nearest school day
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     const normalized = this.normalizeToWeekday(this.selectedDate);
     if (normalized !== this.selectedDate) {
       this.selectedDate = normalized;
     }
+<<<<<<< HEAD
     this.loadClasses();
     this.loadActiveTerm();
   }
@@ -88,6 +114,17 @@ export class MarkAttendanceComponent implements OnInit, OnDestroy {
       error: (err: any) => {
         console.error('Error loading active term:', err);
         this.cdr.markForCheck();
+=======
+  }
+
+  loadActiveTerm() {
+    this.settingsService.getActiveTerm().subscribe({
+      next: (data: any) => {
+        this.currentTerm = data.activeTerm || data.currentTerm || '';
+      },
+      error: (err: any) => {
+        console.error('Error loading active term:', err);
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       }
     });
   }
@@ -116,13 +153,19 @@ export class MarkAttendanceComponent implements OnInit, OnDestroy {
               } else {
                 this.error = '';
               }
+<<<<<<< HEAD
               this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
             },
             error: (err: any) => {
               this.error = 'Failed to load your assigned classes';
               this.classes = [];
               console.error(err);
+<<<<<<< HEAD
               this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
             }
           });
         },
@@ -130,6 +173,7 @@ export class MarkAttendanceComponent implements OnInit, OnDestroy {
           this.error = 'Failed to load teacher profile';
           this.classes = [];
           console.error(err);
+<<<<<<< HEAD
           this.cdr.markForCheck();
         }
       });
@@ -150,6 +194,23 @@ export class MarkAttendanceComponent implements OnInit, OnDestroy {
             this.cdr.markForCheck();
           }
         });
+=======
+        }
+      });
+    } else {
+      // Admins and superadmins see all classes
+      this.classService.getClasses().subscribe({
+        next: (data: any) => {
+          this.classes = data.filter((c: any) => c.isActive !== false);
+          this.error = '';
+        },
+        error: (err: any) => {
+          this.error = 'Failed to load classes';
+          this.classes = [];
+          console.error(err);
+        }
+      });
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     }
   }
 

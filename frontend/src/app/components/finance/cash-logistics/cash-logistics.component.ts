@@ -1,20 +1,31 @@
+<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
+=======
+import { Component, OnInit, OnDestroy } from '@angular/core';
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { FinanceService } from '../../../services/finance.service';
 import { SettingsService } from '../../../services/settings.service';
 
 const CASH_LOGISTICS_TERM_KEY = 'sms.cashLogistics.term';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-cash-logistics',
+=======
+  selector: 'app-cash-logistics',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './cash-logistics.component.html',
   styleUrls: ['./cash-logistics.component.css']
 })
 export class CashLogisticsComponent implements OnInit, OnDestroy {
+<<<<<<< HEAD
   private readonly destroy$ = new Subject<void>();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   serviceTab: 'transport' | 'dh' = 'transport';
 
   term = '';
@@ -49,9 +60,13 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
 
   constructor(
     private finance: FinanceService,
+<<<<<<< HEAD
     private settings: SettingsService,
     private router: Router,
     private cdr: ChangeDetectorRef
+=======
+    private settings: SettingsService
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   ) {}
 
   ngOnInit(): void {
@@ -63,6 +78,7 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
     } catch {
       /* ignore quota / private mode */
     }
+<<<<<<< HEAD
     activatePageLoad(this.router, this.destroy$, '/finance/cash-logistics', () => {
       this.settings.getSettings().subscribe({
         next: (s: any) => {
@@ -79,6 +95,19 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+=======
+    this.settings.getSettings().subscribe({
+      next: (s: any) => {
+        this.currencySymbol = s?.currencySymbol || '$';
+        this.transportRate = Math.round(Number(s?.feesSettings?.transportCost) || 0);
+        this.dhRate = Math.round(Number(s?.feesSettings?.diningHallCost) || 0);
+      }
+    });
+    this.load();
+  }
+
+  ngOnDestroy(): void {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     if (this.toastTimer) clearTimeout(this.toastTimer);
   }
 
@@ -229,7 +258,10 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
   load(): void {
     this.loading = true;
     this.error = '';
+<<<<<<< HEAD
     this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     const termArg = this.term?.trim() || undefined;
     this.finance
       .getCashReceipts(
@@ -240,12 +272,15 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
         this.startDate?.trim() || undefined,
         this.endDate?.trim() || undefined
       )
+<<<<<<< HEAD
       .pipe(
         finalize(() => {
           this.loading = false;
           this.cdr.markForCheck();
         })
       )
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       .subscribe({
         next: (res: any) => {
           this.data = res;
@@ -262,6 +297,10 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
             /* ignore */
           }
           this.lastRefreshed = new Date();
+<<<<<<< HEAD
+=======
+          this.loading = false;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           if (this.truncated) {
             this.showToast(
               `List capped at ${res.cashLogisticsReturnedCount} payment line(s) (${res.total} total).`,
@@ -271,6 +310,10 @@ export class CashLogisticsComponent implements OnInit, OnDestroy {
         },
         error: (e: any) => {
           this.error = e.error?.message || 'Failed to load logistics receipts';
+<<<<<<< HEAD
+=======
+          this.loading = false;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
         }
       });
   }

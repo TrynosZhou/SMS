@@ -22,7 +22,11 @@ export interface ElearningActivityRow {
 }
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-elearning',
+=======
+  selector: 'app-elearning',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './elearning.component.html',
   styleUrls: ['./elearning.component.css']
 })

@@ -91,14 +91,22 @@
     <div class="filters-row">
       <div class="filter-item">
         <label>Grade</label>
+<<<<<<< HEAD
         <select class="form-control form-select" [(ngModel)]="selectedGrade" (change)="loadUnenrolledStudents()">
+=======
+        <select class="form-control form-select" [(ngModel)]="selectedGrade" (change)="applyFilters()">
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           <option value="">All</option>
           <option *ngFor="let g of gradeOptions" [value]="g">{{ g }}</option>
         </select>
       </div>
       <div class="filter-item">
         <label>Student Type</label>
+<<<<<<< HEAD
         <select class="form-control form-select" [(ngModel)]="selectedType" (change)="loadUnenrolledStudents()">
+=======
+        <select class="form-control form-select" [(ngModel)]="selectedType" (change)="applyFilters()">
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           <option value="">All</option>
           <option value="Day Scholar">Day Scholar</option>
           <option value="Boarder">Boarder</option>
@@ -120,14 +128,21 @@
     </div>
   </div>
 
+<<<<<<< HEAD
   <div *ngIf="error && !loading" class="alert alert-error">{{ error }}</div>
 
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   <div *ngIf="loading" class="loading-state">
     <div class="spinner"></div>
     <p>Loading students...</p>
   </div>
 
+<<<<<<< HEAD
   <div *ngIf="!loading && !error && filtered.length === 0" class="empty-state">
+=======
+  <div *ngIf="!loading && filtered.length === 0" class="empty-state">
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     <div class="empty-icon">✅</div>
     <h2>No Unenrolled Students</h2>
     <p>All registered students are allocated to classes.</p>

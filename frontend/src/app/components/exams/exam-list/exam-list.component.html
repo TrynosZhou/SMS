@@ -92,9 +92,14 @@
           (ngModelChange)="onSelectionChange()"
           required
           [class.invalid]="isFieldInvalid('class')"
+<<<<<<< HEAD
           [disabled]="loadingClasses"
           class="form-control">
           <option value="">{{ loadingClasses ? 'Loading classes...' : 'Select Class' }}</option>
+=======
+          class="form-control">
+          <option value="">Select Class</option>
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">{{ cls.name }}</option>
         </select>
         <div class="field-error" *ngIf="isFieldInvalid('class')">
@@ -155,6 +160,7 @@
           (ngModelChange)="onSelectionChange()"
           required
           [class.invalid]="isFieldInvalid('subject')"
+<<<<<<< HEAD
           [disabled]="!selectedClassId || loadingSubjectsList || subjects.length === 0"
           class="form-control">
           <option value="">{{
@@ -166,6 +172,11 @@
                   ? 'No subjects available'
                   : 'Select Subject'
           }}</option>
+=======
+          [disabled]="!selectedClassId || subjects.length === 0"
+          class="form-control">
+          <option value="">{{ selectedClassId ? (subjects.length === 0 ? 'No subjects available' : 'Select Subject') : 'Select Class first' }}</option>
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           <option *ngFor="let subject of subjects" [value]="subject.id">
             {{ subject.name }} ({{ subject.code }})
           </option>

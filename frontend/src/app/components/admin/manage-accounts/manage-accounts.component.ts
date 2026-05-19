@@ -7,7 +7,11 @@ import { Subscription } from 'rxjs';
 import { safeArray } from '../../../utils/array-utils';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-manage-accounts',
+=======
+  selector: 'app-manage-accounts',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './manage-accounts.component.html',
   styleUrls: ['./manage-accounts.component.css'],
   animations: [

@@ -1,15 +1,23 @@
+<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
+=======
+import { Component, OnInit } from '@angular/core';
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { trigger, transition, style, animate } from '@angular/animations';
 import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-student-transfer',
+=======
+  selector: 'app-student-transfer',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './student-transfer.component.html',
   styleUrls: ['./student-transfer.component.css'],
   animations: [
@@ -24,8 +32,12 @@ import { AuthService } from '../../../services/auth.service';
     ])
   ]
 })
+<<<<<<< HEAD
 export class StudentTransferComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+=======
+export class StudentTransferComponent implements OnInit {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   // Search and selection
   students: any[] = [];
   filteredStudents: any[] = [];
@@ -58,6 +70,7 @@ export class StudentTransferComponent implements OnInit, OnDestroy {
   constructor(
     private studentService: StudentService,
     private classService: ClassService,
+<<<<<<< HEAD
     public authService: AuthService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -73,10 +86,19 @@ export class StudentTransferComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+=======
+    public authService: AuthService
+  ) {}
+
+  ngOnInit(): void {
+    this.loadStudents();
+    this.loadClasses();
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   loadStudents(): void {
     this.loadingStudents = true;
+<<<<<<< HEAD
     this.cdr.markForCheck();
     this.studentService
       .getStudents()
@@ -102,10 +124,31 @@ export class StudentTransferComponent implements OnInit, OnDestroy {
           this.filteredStudents = [];
         }
       });
+=======
+    this.studentService.getStudents().subscribe({
+      next: (students: any[]) => {
+        this.students = Array.isArray(students) ? students : [];
+        this.filteredStudents = [...this.students];
+        this.loadingStudents = false;
+      },
+      error: (err: any) => {
+        console.error('Error loading students:', err);
+        if (err.status === 0 || err.message?.includes('Connection refused')) {
+          this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+        } else {
+          this.error = err.error?.message || 'Failed to load students. Please try again.';
+        }
+        this.students = [];
+        this.filteredStudents = [];
+        this.loadingStudents = false;
+      }
+    });
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   loadClasses(): void {
     this.loadingClasses = true;
+<<<<<<< HEAD
     this.cdr.markForCheck();
     this.classService
       .getClassesPaginated(1, 200)
@@ -140,6 +183,32 @@ export class StudentTransferComponent implements OnInit, OnDestroy {
           this.availableClasses = [];
         }
       });
+=======
+    this.classService.getClassesPaginated(1, 200).subscribe({
+      next: (response: any) => {
+        const classes = response?.data || response || [];
+        this.availableClasses = Array.isArray(classes) ? classes : [];
+        // Filter out the student's current class for internal transfers
+        if (this.selectedStudent) {
+          const currentClassId = this.selectedStudent.classId || this.selectedStudent.class?.id || this.selectedStudent.classEntity?.id;
+          if (currentClassId) {
+            this.availableClasses = this.availableClasses.filter(
+              (cls: any) => cls.id !== currentClassId
+            );
+          }
+        }
+        this.loadingClasses = false;
+      },
+      error: (err: any) => {
+        console.error('Error loading classes:', err);
+        if (err.status === 0 || err.message?.includes('Connection refused')) {
+          this.error = 'Cannot connect to server. Please ensure the backend server is running.';
+        }
+        this.availableClasses = [];
+        this.loadingClasses = false;
+      }
+    });
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   searchStudents(): void {

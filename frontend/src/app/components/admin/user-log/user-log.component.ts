@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuditService } from '../../../services/audit.service';
@@ -7,12 +8,24 @@ import { activatePageLoad } from '../../../utils/route-activation';
 
 @Component({
   standalone: false,  selector: 'app-user-log',
+=======
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { AuditService } from '../../../services/audit.service';
+import { Subscription, Subject, interval } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
+
+@Component({
+  selector: 'app-user-log',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './user-log.component.html',
   styleUrls: ['./user-log.component.css']
 })
 export class UserLogComponent implements OnInit, OnDestroy {
+<<<<<<< HEAD
   private readonly destroy$ = new Subject<void>();
   private loadSeq = 0;
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   loading = false;
   error = '';
   sessions: any[] = [];
@@ -47,6 +60,7 @@ export class UserLogComponent implements OnInit, OnDestroy {
     userAgent: false
   };
 
+<<<<<<< HEAD
   constructor(
     private auditService: AuditService,
     private router: Router,
@@ -74,16 +88,37 @@ export class UserLogComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+=======
+  constructor(private auditService: AuditService) {}
+
+  ngOnInit(): void {
+    this.restoreState();
+    this.searchSub = this.searchInput$.pipe(debounceTime(300)).subscribe(v => {
+      this.search = v || '';
+      this.page = 1;
+      this.load();
+    });
+    this.load();
+    this.updateAutoRefresh();
+  }
+
+  ngOnDestroy(): void {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     this.refreshSub?.unsubscribe();
     this.searchSub?.unsubscribe();
   }
 
   load(): void {
+<<<<<<< HEAD
     const seq = ++this.loadSeq;
     this.loading = true;
     this.error = '';
     this.cdr.markForCheck();
 
+=======
+    this.loading = true;
+    this.error = '';
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     const params: any = {
       startDate: this.startDate,
       endDate: this.endDate,
@@ -94,6 +129,7 @@ export class UserLogComponent implements OnInit, OnDestroy {
       sortKey: this.sortKey,
       sortDir: this.sortDir.toUpperCase()
     };
+<<<<<<< HEAD
 
     this.auditService
       .getUserSessions(params)
@@ -123,6 +159,20 @@ export class UserLogComponent implements OnInit, OnDestroy {
           this.error = err?.error?.message || 'Failed to load user sessions';
         }
       });
+=======
+    this.auditService.getUserSessions(params).subscribe({
+      next: (res: any) => {
+        this.sessions = Array.isArray(res) ? res : (res?.data || []);
+        this.total = Array.isArray(res) ? this.sessions.length : (res?.total || this.sessions.length);
+        this.loading = false;
+        this.saveState();
+      },
+      error: (err: any) => {
+        this.error = err?.error?.message || 'Failed to load user sessions';
+        this.loading = false;
+      }
+    });
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   resetFilters(): void {
@@ -209,9 +259,13 @@ export class UserLogComponent implements OnInit, OnDestroy {
   updateAutoRefresh(): void {
     this.refreshSub?.unsubscribe();
     if (this.autoRefresh) {
+<<<<<<< HEAD
       this.refreshSub = interval(this.refreshMs)
         .pipe(takeUntil(this.destroy$))
         .subscribe(() => this.load());
+=======
+      this.refreshSub = interval(this.refreshMs).subscribe(() => this.load());
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     }
   }
 
@@ -315,7 +369,10 @@ export class UserLogComponent implements OnInit, OnDestroy {
       this.error = e?.message || 'Failed to export PDF';
     } finally {
       this.exportingPdf = false;
+<<<<<<< HEAD
       this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     }
   }
 

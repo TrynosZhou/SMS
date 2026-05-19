@@ -62,7 +62,10 @@ import { MarksProgressComponent } from './components/exams/marks-progress/marks-
 import { BalanceEnquiryComponent } from './components/finance/balance-enquiry/balance-enquiry.component';
 import { CashLogisticsComponent } from './components/finance/cash-logistics/cash-logistics.component';
 import { AuditComponent } from './components/finance/audit/audit.component';
+<<<<<<< HEAD
 import { ExemptionsManagementComponent } from './components/finance/exemptions-management/exemptions-management.component';
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { SendMessageComponent } from './components/messages/send-message/send-message.component';
 import { AccountantInboxComponent } from './components/messages/accountant-inbox/accountant-inbox.component';
 import { ParentSendMessageComponent } from './components/parent/parent-send-message/parent-send-message.component';
@@ -159,7 +162,10 @@ import { StudentInventoryPanelComponent } from './components/inventory/student-i
     BalanceEnquiryComponent,
     CashLogisticsComponent,
     AuditComponent,
+<<<<<<< HEAD
     ExemptionsManagementComponent,
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     SendMessageComponent,
     AccountantInboxComponent,
     ParentSendMessageComponent,

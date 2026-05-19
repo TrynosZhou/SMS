@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: sms-backend
+    env: node
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: rm -rf dist node_modules/.cache && npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        value: postgresql://school_db_primary_loib_user:PEm5uuEGHSRmm7sxpjjhgCXo5pAJZWjS@dpg-d5evptur433s7391emu0-a.oregon-postgres.render.com:5432/school_db_primary_loib
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+databases:
+  - name: school_db
+    databaseName: sms_db
+    user: school_db_primary_user
+    plan: free
+

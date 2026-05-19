@@ -16,6 +16,7 @@ import PDFDocument from 'pdfkit';
 import { createStudentIdCardPDF, createStudentIdCardsPDFBatch } from '../utils/studentIdCardPdf';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
+<<<<<<< HEAD
 import { parseBoolean } from '../utils/booleanUtils';
 import {
   computeLogisticsFees,
@@ -24,6 +25,8 @@ import {
   syncStudentLogisticsInvoices
 } from '../utils/studentLogisticsInvoice';
 import { isStaffSiblingExemption } from '../utils/exemptionInvoice';
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { calculateAge } from '../utils/ageUtils';
 import { StudentTransfer, StudentTransferStatus, TransferType } from '../entities/StudentTransfer';
 import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
@@ -179,11 +182,14 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
     const usesDiningHallFlag = parseBoolean(usesDiningHall);
     const isStaffChildFlag = parseBoolean(isStaffChild);
     const isExemptedFlag = parseBoolean(isExempted);
+<<<<<<< HEAD
     const registrationExemptionType = (req.body as any).exemptionType
       ? String((req.body as any).exemptionType).trim()
       : null;
     const isStaffSiblingOnly =
       isStaffChildFlag || registrationExemptionType === 'staff_sibling';
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 
     // Create student with auto-generated ID; class assignment is optional (enrollment happens later)
     const student = studentRepository.create({
@@ -257,7 +263,11 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
         let totalAmount = 0;
         const invoiceItems: string[] = [];
         
+<<<<<<< HEAD
         if (!isStaffSiblingOnly) {
+=======
+        if (!isStaffChildFlag && !isExemptedFlag) {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           if (validStudentStatus === 'New') {
             if (registrationFee > 0) {
               totalAmount += registrationFee;
@@ -283,22 +293,38 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
             console.warn(`⚠️ Please set ${validStudentType === 'Boarder' ? 'boarderTuitionFee' : 'dayScholarTuitionFee'} in Settings`);
           }
           
+<<<<<<< HEAD
+=======
+          // Transport fee: only for day scholars who use transport
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           if (validStudentType === 'Day Scholar' && usesTransportFlag && transportCost > 0) {
             totalAmount += transportCost;
             invoiceItems.push(`Transport Fee: ${transportCost}`);
           }
           
+<<<<<<< HEAD
+=======
+          // Dining hall fee: day scholars who take DH meals pay full fee (no discount)
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           if (validStudentType === 'Day Scholar' && usesDiningHallFlag && diningHallCost > 0) {
             totalAmount += diningHallCost;
             invoiceItems.push(`Dining Hall Fee: ${diningHallCost}`);
           }
         } else {
+<<<<<<< HEAD
+=======
+          // Staff children or exempted students: pay nothing unless they take DH meals (then pay 50% of DH fee)
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           if (usesDiningHallFlag && diningHallCost > 0) {
             const staffChildDHFee = diningHallCost * 0.5;
             totalAmount += staffChildDHFee;
             invoiceItems.push(`Dining Hall Fee (50%): ${staffChildDHFee}`);
           } else {
+<<<<<<< HEAD
             console.log('ℹ️ Staff sibling - no fees applicable (no DH meals)');
+=======
+            console.log('ℹ️ Staff child / Exempted - no fees applicable (no DH meals)');
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           }
         }
 
@@ -336,8 +362,13 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
           // Build description from invoice items
           const description = invoiceItems.length > 0 
             ? `Initial fees upon registration: ${invoiceItems.join(', ')}`
+<<<<<<< HEAD
             : isStaffSiblingOnly && !usesDiningHallFlag
               ? 'Staff sibling - no fees applicable'
+=======
+            : isStaffChildFlag && !usesDiningHallFlag
+              ? 'Staff child - no fees applicable'
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
               : 'Initial fees upon registration';
           
           // Ensure balance is a proper decimal number
@@ -350,13 +381,17 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
           
           // Recompute canonical fee components for storage on the invoice
           const tuitionForInvoice = (() => {
+<<<<<<< HEAD
             if (isStaffSiblingOnly) {
               return 0;
             }
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
             const base = validStudentType === 'Boarder' ? boarderTuition : dayScholarTuition;
             return base > 0 ? parseFloat(base.toFixed(2)) : 0;
           })();
 
+<<<<<<< HEAD
           const transportForInvoice =
             !isStaffSiblingOnly &&
             validStudentType === 'Day Scholar' &&
@@ -382,6 +417,27 @@ export const registerStudent = async (req: AuthRequest, res: Response) => {
             !isStaffSiblingOnly && validStudentStatus === 'New' && deskFee > 0
               ? parseFloat(deskFee.toFixed(2))
               : 0;
+=======
+          const transportForInvoice = (validStudentType === 'Day Scholar' && usesTransportFlag && transportCost > 0)
+            ? parseFloat(transportCost.toFixed(2))
+            : 0;
+
+          const diningForInvoice = (() => {
+            if (usesDiningHallFlag && diningHallCost > 0) {
+              const raw = (!isStaffChildFlag && !isExemptedFlag) ? diningHallCost : diningHallCost * 0.5;
+              return parseFloat(raw.toFixed(2));
+            }
+            return 0;
+          })();
+
+          const registrationForInvoice = (!isStaffChildFlag && validStudentStatus === 'New' && registrationFee > 0)
+            ? parseFloat(registrationFee.toFixed(2))
+            : 0;
+
+          const deskForInvoice = (!isStaffChildFlag && validStudentStatus === 'New' && deskFee > 0)
+            ? parseFloat(deskFee.toFixed(2))
+            : 0;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 
           const initialInvoice = invoiceRepository.create({
             invoiceNumber,
@@ -525,12 +581,21 @@ export const correctStudentStatus = async (req: AuthRequest, res: Response) => {
 
     if (initialInvoice && settings?.feesSettings) {
       const isDayScholar = student.studentType === 'Day Scholar';
+<<<<<<< HEAD
       const staffSibling = isStaffSiblingExemption(student);
+=======
+      const isStaffChild = student.isStaffChild === true;
+      const isExempted = student.isExempted === true;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 
       let totalAmount = 0;
       const invoiceItems: string[] = [];
 
+<<<<<<< HEAD
       if (!staffSibling) {
+=======
+      if (!isStaffChild && !isExempted) {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
         if (newStatus === 'New') {
           if (registrationFee > 0) {
             totalAmount += registrationFee;
@@ -603,8 +668,13 @@ export const correctStudentStatus = async (req: AuthRequest, res: Response) => {
 
       const description = invoiceItems.length > 0
         ? `Initial fees upon registration: ${invoiceItems.join(', ')}`
+<<<<<<< HEAD
         : staffSibling && !student.usesDiningHall
           ? 'Staff sibling - no fees applicable'
+=======
+        : (isStaffChild && !student.usesDiningHall && !isExempted)
+          ? 'Staff child - no fees applicable'
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           : 'Initial fees upon registration';
 
       initialInvoice.amount = totalAmount;
@@ -729,7 +799,11 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     }
 
     const studentRepository = AppDataSource.getRepository(Student);
+<<<<<<< HEAD
     const { classId, grade, page: pageParam, limit: limitParam, search, usesTransport, usesDiningHall, studentType, hasExemption, unenrolled } = req.query;
+=======
+    const { classId, grade, page: pageParam, limit: limitParam, search, usesTransport, usesDiningHall, studentType } = req.query;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     const { page, limit, skip } = resolvePaginationParams(
       pageParam as string,
       limitParam as string,
@@ -741,6 +815,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     const normalizedStudentType = studentType ? String(studentType).trim() : null;
     const normalizedSearch = trimmedSearch ? trimmedSearch.toLowerCase() : null;
 
+<<<<<<< HEAD
     const unenrolledOnly =
       unenrolled !== undefined &&
       (typeof unenrolled === 'string'
@@ -748,10 +823,14 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
         : Boolean(unenrolled));
 
     console.log('Fetching students with classId:', classId || 'ALL', unenrolledOnly ? '(unenrolled only)' : '');
+=======
+    console.log('Fetching students with classId:', classId || 'ALL');
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 
     let queryBuilder = studentRepository
       .createQueryBuilder('student')
       .leftJoinAndSelect('student.classEntity', 'classEntity')
+<<<<<<< HEAD
       .where('(student.isActive IS NULL OR student.isActive = :active)', { active: true });
 
     if (!unenrolledOnly) {
@@ -764,6 +843,12 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       queryBuilder = queryBuilder.andWhere('student.classId IS NULL');
     }
 
+=======
+      .leftJoinAndSelect('student.parent', 'parent')
+      .leftJoinAndSelect('student.user', 'user')
+      .where('(student.isActive IS NULL OR student.isActive = :active)', { active: true });
+
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     if (trimmedClassId) {
       queryBuilder = queryBuilder.andWhere(
         '(student.classId = :classId OR classEntity.id = :classId)',
@@ -804,6 +889,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       });
     }
 
+<<<<<<< HEAD
     if (hasExemption !== undefined) {
       const hasExemptionFlag =
         typeof hasExemption === 'string'
@@ -816,6 +902,8 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       }
     }
 
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     if (normalizedSearch) {
       const like = `%${normalizedSearch}%`;
       queryBuilder = queryBuilder.andWhere(
@@ -978,11 +1066,14 @@ export const getStudentById = async (req: AuthRequest, res: Response) => {
       studentObj.class = studentObj.classEntity;
     }
 
+<<<<<<< HEAD
     studentObj.usesTransport = parseBoolean(student.usesTransport);
     studentObj.usesDiningHall = parseBoolean(student.usesDiningHall);
     studentObj.isStaffChild = parseBoolean(student.isStaffChild);
     studentObj.isExempted = parseBoolean(student.isExempted);
 
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     res.json(studentObj);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });
@@ -1108,8 +1199,11 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
 
     console.log('Found student:', student.firstName, student.lastName);
 
+<<<<<<< HEAD
     const logisticsBefore = snapshotFromStudent(student);
 
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     // Basic information - always editable by allowed roles (including teachers)
     if (firstName !== undefined && firstName !== null) {
       student.firstName = String(firstName).trim();
@@ -1201,6 +1295,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       student.studentStatus = normalizedStatus.includes('existing') ? 'Existing' : 'New';
     }
 
+<<<<<<< HEAD
     // Transport / dining / staff-child / exemption affect billing – block edits from teachers
     if (!isTeacherEditor) {
       if (usesTransport !== undefined) {
@@ -1238,6 +1333,34 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       if ((req.body as any).exemptionDescription !== undefined) {
         const d = (req.body as any).exemptionDescription;
         student.exemptionDescription = d ? String(d).trim() : null;
+=======
+    // Capture original flags before update to detect newly enabled services
+    const originalUsesTransport = student.usesTransport === true;
+    const originalUsesDiningHall = student.usesDiningHall === true;
+    const originalStudentType = student.studentType;
+    const originalIsStaffChild = student.isStaffChild === true;
+    const originalIsExempted = student.isExempted === true;
+
+    // Transport / dining / staff-child / exemption affect billing – block edits from teachers
+    if (!isTeacherEditor) {
+      if (usesTransport !== undefined) {
+        student.usesTransport = Boolean(usesTransport);
+      }
+
+      if (usesDiningHall !== undefined) {
+        student.usesDiningHall = Boolean(usesDiningHall);
+      }
+
+      if (isStaffChild !== undefined) {
+        student.isStaffChild = Boolean(isStaffChild);
+      }
+
+      if ((req.body as any).isExempted !== undefined) {
+        student.isExempted = Boolean((req.body as any).isExempted);
+        if (student.isExempted) {
+          student.usesTransport = false;
+        }
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       }
     }
 
@@ -1347,8 +1470,11 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     console.log('Updated student classEntity name:', updatedStudent.classEntity?.name || 'N/A');
     console.log('Updated student classEntity id:', updatedStudent.classEntity?.id || 'N/A');
     
+<<<<<<< HEAD
     let initialInvoiceRecalculated = false;
 
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     try {
       const invoiceRepository = AppDataSource.getRepository(Invoice);
       const settingsRepository = AppDataSource.getRepository(Settings);
@@ -1380,14 +1506,24 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
             const diningHallCost = parseAmount(fees.diningHallCost);
 
             const isDayScholar = updatedStudent.studentType === 'Day Scholar';
+<<<<<<< HEAD
             const staffSibling = isStaffSiblingExemption(updatedStudent);
+=======
+            const isStaffChild = updatedStudent.isStaffChild === true;
+            const isExempted = updatedStudent.isExempted === true;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
             const studentStatus = (updatedStudent as any).studentStatus || 'New';
 
             let totalAmount = 0;
             const invoiceItems: string[] = [];
+<<<<<<< HEAD
             const tuitionFee = isDayScholar ? dayScholarTuition : boarderTuition;
 
             if (!staffSibling) {
+=======
+
+            if (!isStaffChild && !isExempted) {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
               if (studentStatus === 'New') {
                 if (registrationFee > 0) {
                   totalAmount += registrationFee;
@@ -1399,6 +1535,10 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
                 }
               }
 
+<<<<<<< HEAD
+=======
+              const tuitionFee = isDayScholar ? dayScholarTuition : boarderTuition;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
               if (tuitionFee > 0) {
                 totalAmount += tuitionFee;
                 invoiceItems.push(`Tuition Fee (${updatedStudent.studentType}): ${tuitionFee}`);
@@ -1422,6 +1562,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
             }
 
             totalAmount = parseFloat(totalAmount.toFixed(2));
+<<<<<<< HEAD
 
             const description = invoiceItems.length > 0
               ? `Initial fees upon registration: ${invoiceItems.join(', ')}`
@@ -1467,6 +1608,26 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
               studentId: updatedStudent.id,
               amount: latestInvoice.amount,
               balance: latestInvoice.balance,
+=======
+            const paidAmountValue = parseAmount(latestInvoice.paidAmount);
+            const newBalance = parseFloat(Math.max(totalAmount - paidAmountValue, 0).toFixed(2));
+
+            const description = invoiceItems.length > 0
+              ? `Initial fees upon registration: ${invoiceItems.join(', ')}`
+              : isStaffChild && !updatedStudent.usesDiningHall && !isExempted
+                ? 'Staff child - no fees applicable'
+                : 'Initial fees upon registration';
+
+            latestInvoice.amount = totalAmount;
+            latestInvoice.balance = newBalance;
+            latestInvoice.description = description;
+
+            await invoiceRepository.save(latestInvoice);
+            console.log('✅ Recalculated initial invoice after student update:', {
+              studentId: updatedStudent.id,
+              amount: totalAmount,
+              balance: newBalance,
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
               items: invoiceItems
             });
           }
@@ -1492,13 +1653,22 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
         const diningHallCost = parseAmount(fees.diningHallCost);
 
         const isDayScholar = updatedStudent.studentType === 'Day Scholar';
+<<<<<<< HEAD
         const staffSibling = isStaffSiblingExemption(updatedStudent);
+=======
+        const isStaffChild = updatedStudent.isStaffChild === true;
+        const isExempted = updatedStudent.isExempted === true;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
         const studentStatus = (updatedStudent as any).studentStatus || 'New';
 
         let totalAmount = 0;
         const invoiceItems: string[] = [];
 
+<<<<<<< HEAD
         if (!staffSibling) {
+=======
+        if (!isStaffChild && !isExempted) {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           if (studentStatus === 'New') {
             if (registrationFee > 0) {
               totalAmount += registrationFee;
@@ -1515,6 +1685,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
             totalAmount += tuitionFee;
             invoiceItems.push(`Tuition Fee (${updatedStudent.studentType}): ${tuitionFee}`);
           }
+<<<<<<< HEAD
 
           if (isDayScholar && updatedStudent.usesTransport && transportCost > 0) {
             totalAmount += transportCost;
@@ -1529,6 +1700,30 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
           const half = diningHallCost * 0.5;
           totalAmount += half;
           invoiceItems.push(`Dining Hall Fee (50%): ${half}`);
+=======
+        }
+
+        // Transport (Day Scholars only)
+        if (isDayScholar && updatedStudent.usesTransport && transportCost > 0) {
+          if (!isStaffChild && !isExempted) {
+            totalAmount += transportCost;
+            invoiceItems.push(`Transport Fee: ${transportCost}`);
+          } else {
+            invoiceItems.push(`Transport Fee: 0.00 (Exempted/Staff)`);
+          }
+        }
+
+        // Dining Hall (Day Scholars only; 50% for staff/exempted)
+        if (isDayScholar && updatedStudent.usesDiningHall && diningHallCost > 0) {
+          if (isStaffChild || isExempted) {
+            const half = diningHallCost * 0.5;
+            totalAmount += half;
+            invoiceItems.push(`Dining Hall Fee (50%): ${half}`);
+          } else {
+            totalAmount += diningHallCost;
+            invoiceItems.push(`Dining Hall Fee: ${diningHallCost}`);
+          }
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
         }
 
         totalAmount = parseFloat(totalAmount.toFixed(2));
@@ -1555,6 +1750,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
             ? `Fees: ${invoiceItems.join(', ')}`
             : 'Fees';
 
+<<<<<<< HEAD
           const logisticsSnap = staffSibling
             ? snapshotFromStudent(updatedStudent)
             : {
@@ -1575,6 +1771,8 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
               ? parseFloat(deskFee.toFixed(2))
               : 0;
 
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           const initialInvoice = invoiceRepository.create({
             invoiceNumber,
             studentId: updatedStudent.id,
@@ -1584,22 +1782,28 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
             balance: totalAmount,
             prepaidAmount: 0,
             uniformTotal: 0,
+<<<<<<< HEAD
             tuitionAmount: tuitionForInvoice,
             transportAmount: logisticsFees.transport,
             diningHallAmount: logisticsFees.diningHall,
             registrationAmount: registrationForInvoice,
             deskFeeAmount: deskForInvoice,
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
             dueDate,
             term: termText,
             description,
             status: InvoiceStatus.PENDING,
             uniformItems: []
           });
+<<<<<<< HEAD
           recomputeInvoiceTotalsFromLineItems(initialInvoice);
           const { applyExemptionToInvoice, isBalanceOnlyExemption } = await import('../utils/exemptionInvoice');
           if (isBalanceOnlyExemption(updatedStudent)) {
             applyExemptionToInvoice(updatedStudent, initialInvoice, fees);
           }
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           await invoiceRepository.save(initialInvoice);
           console.log('✅ Created initial invoice for existing student without invoice:', invoiceNumber);
         } else {
@@ -1609,6 +1813,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     } catch (initInvoiceError) {
       console.error('⚠️ Initial invoice creation failed:', initInvoiceError);
     }
+<<<<<<< HEAD
 
     let logisticsInvoiceSync: Awaited<ReturnType<typeof syncStudentLogisticsInvoices>> | null = null;
     if (!isTeacherEditor) {
@@ -1642,6 +1847,10 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       student: updatedStudent,
       logisticsInvoiceSync
     });
+=======
+    
+    res.json({ message: 'Student updated successfully', student: updatedStudent });
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   } catch (error: any) {
     console.error('Error updating student:', error);
     console.error('Error stack:', error.stack);

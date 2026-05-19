@@ -8,7 +8,11 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-parent-invoice-statement',
+=======
+  selector: 'app-parent-invoice-statement',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './parent-invoice-statement.component.html',
   styleUrls: ['./parent-invoice-statement.component.css'],
   animations: [

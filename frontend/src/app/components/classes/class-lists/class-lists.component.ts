@@ -1,8 +1,12 @@
+<<<<<<< HEAD
 import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
+=======
+import { Component, OnInit, HostListener } from '@angular/core';
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
 import { TeacherService } from '../../../services/teacher.service';
@@ -12,12 +16,20 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-class-lists',
   templateUrl: './class-lists.component.html',
   styleUrls: ['./class-lists.component.css']
 })
 export class ClassListsComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+=======
+  selector: 'app-class-lists',
+  templateUrl: './class-lists.component.html',
+  styleUrls: ['./class-lists.component.css']
+})
+export class ClassListsComponent implements OnInit {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   classes: any[] = [];
   students: any[] = [];
   filteredStudents: any[] = [];
@@ -87,9 +99,13 @@ export class ClassListsComponent implements OnInit, OnDestroy {
     private classService: ClassService,
     private teacherService: TeacherService,
     private settingsService: SettingsService,
+<<<<<<< HEAD
     public authService: AuthService,
     private router: Router,
     private cdr: ChangeDetectorRef
+=======
+    public authService: AuthService
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   ) {
     const user = this.authService.getCurrentUser();
     this.isAdmin = user ? (user.role === 'admin') : false;
@@ -220,6 +236,7 @@ export class ClassListsComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+<<<<<<< HEAD
     activatePageLoad(this.router, this.destroy$, '/classes/lists', () => this.bootstrapPage());
   }
 
@@ -229,6 +246,8 @@ export class ClassListsComponent implements OnInit, OnDestroy {
   }
 
   private bootstrapPage(): void {
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     this.loadClasses();
     this.loadTerms();
   }
@@ -273,14 +292,20 @@ export class ClassListsComponent implements OnInit, OnDestroy {
                 this.error = '';
               }
               this.loading = false;
+<<<<<<< HEAD
               this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
             },
             error: (err) => {
               console.error('Error loading teacher classes:', err);
               this.error = 'Failed to load your assigned classes. Please try again.';
               this.classes = [];
               this.loading = false;
+<<<<<<< HEAD
               this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
             }
           });
         },
@@ -289,11 +314,15 @@ export class ClassListsComponent implements OnInit, OnDestroy {
           this.error = 'Failed to load teacher profile. Please try again.';
           this.classes = [];
           this.loading = false;
+<<<<<<< HEAD
           this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
         }
       });
     } else {
       // Admins, superadmins, and universal teachers see all classes
+<<<<<<< HEAD
       this.classService
         .getClasses()
         .pipe(
@@ -328,14 +357,46 @@ export class ClassListsComponent implements OnInit, OnDestroy {
             this.cdr.markForCheck();
           }
         });
+=======
+      this.classService.getClasses().subscribe({
+        next: (response: any) => {
+          const classesData = Array.isArray(response) ? response : (response?.classes || response?.data || []);
+          this.classes = Array.isArray(classesData) ? classesData : [];
+          this.classes = this.classes.filter((cls: any) => cls.isActive !== false);
+          const uniqueClassesMap = new Map<string, any>();
+          this.classes.forEach((classItem: any) => {
+            if (classItem.id && !uniqueClassesMap.has(classItem.id)) {
+              uniqueClassesMap.set(classItem.id, classItem);
+            }
+          });
+          this.classes = Array.from(uniqueClassesMap.values());
+          this.classes.sort((a: any, b: any) => {
+            const nameA = (a.name || '').toLowerCase();
+            const nameB = (b.name || '').toLowerCase();
+            return nameA.localeCompare(nameB);
+          });
+          this.error = '';
+          this.loading = false;
+        },
+        error: (err) => {
+          console.error('Error loading classes:', err);
+          this.error = 'Failed to load classes. Please try again.';
+          this.loading = false;
+        }
+      });
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     }
   }
 
   loadTerms() {
+<<<<<<< HEAD
     this.settingsService
       .getSettings()
       .pipe(finalize(() => this.cdr.markForCheck()))
       .subscribe({
+=======
+    this.settingsService.getSettings().subscribe({
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       next: (settings: any) => {
         this.schoolName = settings.schoolName || '';
         this.schoolAddress = settings.schoolAddress || '';

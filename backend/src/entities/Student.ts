@@ -55,6 +55,7 @@ export class Student {
   @Column({ type: 'boolean', default: false })
   isExempted: boolean; // Exempted students follow staff-child fee rules (no tuition, 50% DH, no transport)
 
+<<<<<<< HEAD
   /** fixed | percentage | staff_sibling */
   @Column({ type: 'varchar', nullable: true })
   exemptionType: string | null;
@@ -68,6 +69,8 @@ export class Student {
   @Column({ type: 'text', nullable: true })
   exemptionDescription: string | null;
 
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   @Column({ type: 'varchar', nullable: true })
   photo: string | null; // Path to student's passport photo
 

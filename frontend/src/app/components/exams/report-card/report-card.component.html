@@ -154,11 +154,18 @@
               name="class" 
               required
               [class.invalid]="isFieldInvalid('class')"
+<<<<<<< HEAD
               [disabled]="loadingClasses"
               class="form-control"
               (ngModelChange)="onSelectionChange()"
               (change)="onSelectionChange()">
               <option value="">{{ loadingClasses ? 'Loading classes...' : 'Select Class' }}</option>
+=======
+              class="form-control"
+              (ngModelChange)="onSelectionChange()"
+              (change)="onSelectionChange()">
+              <option value="">Select Class</option>
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
               <option *ngFor="let class of (classes | safeArray)" [value]="class.id">
                 {{ class.name }}
               </option>

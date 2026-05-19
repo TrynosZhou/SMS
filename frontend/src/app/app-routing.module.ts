@@ -22,7 +22,10 @@ import { OutstandingBalanceComponent } from './components/finance/outstanding-ba
 import { BalanceEnquiryComponent } from './components/finance/balance-enquiry/balance-enquiry.component';
 import { CashLogisticsComponent } from './components/finance/cash-logistics/cash-logistics.component';
 import { AuditComponent } from './components/finance/audit/audit.component';
+<<<<<<< HEAD
 import { ExemptionsManagementComponent } from './components/finance/exemptions-management/exemptions-management.component';
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { ClassListComponent } from './components/classes/class-list/class-list.component';
 import { ClassFormComponent } from './components/classes/class-form/class-form.component';
 import { ClassListsComponent } from './components/classes/class-lists/class-lists.component';
@@ -150,7 +153,10 @@ const routes: Routes = [
   { path: 'invoices/statements', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'payments/record', component: RecordPaymentComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'outstanding-balance', component: OutstandingBalanceComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
+<<<<<<< HEAD
   { path: 'finance/exemptions', component: ExemptionsManagementComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   { path: 'finance/balance-enquiry', component: BalanceEnquiryComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'finance/cash-logistics', component: CashLogisticsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'finance/audit', component: AuditComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
@@ -186,7 +192,10 @@ const routes: Routes = [
   { path: 'settings', component: SettingsComponent, canActivate: [AuthGuard] },
   { path: 'timetable/config', component: TimetableConfigComponent, canActivate: [AuthGuard] },
   { path: 'timetable/generate', component: TimetableGenerateComponent, canActivate: [AuthGuard] },
+<<<<<<< HEAD
   { path: 'timetable/view', component: TimetableGenerateComponent, canActivate: [AuthGuard], data: { timetableMode: 'view' } },
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   { path: 'student/report-card', component: StudentReportCardComponent, canActivate: [AuthGuard] },
   { path: 'student/invoice-statement', component: StudentInvoiceStatementComponent, canActivate: [AuthGuard] },
   { path: 'student/inventory', component: StudentInventoryComponent, canActivate: [AuthGuard] },

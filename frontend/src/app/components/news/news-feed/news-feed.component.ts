@@ -4,7 +4,11 @@ import { AuthService } from '../../../services/auth.service';
 import { News, NewsCategory } from '../../../types/news';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-news-feed',
+=======
+  selector: 'app-news-feed',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './news-feed.component.html',
   styleUrls: ['./news-feed.component.css']
 })

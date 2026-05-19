@@ -5,7 +5,11 @@ import { ParentService } from '../../../services/parent.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
+<<<<<<< HEAD
   standalone: false,  selector: 'app-send-message',
+=======
+  selector: 'app-send-message',
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   templateUrl: './send-message.component.html',
   styleUrls: ['./send-message.component.css']
 })

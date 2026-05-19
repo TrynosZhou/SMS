@@ -416,6 +416,7 @@
 }
 
 /* Loading state */
+<<<<<<< HEAD
 .alert-error {
   margin-bottom: 16px;
   padding: 12px 16px;
@@ -426,6 +427,8 @@
   font-size: 14px;
 }
 
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 .loading-state {
   display: flex;
   flex-direction: column;

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -11,6 +12,17 @@ import { PayrollService } from '../../../services/payroll.service';
 })
 export class LoanOverviewComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+=======
+import { Component } from '@angular/core';
+import { PayrollService } from '../../../services/payroll.service';
+
+@Component({
+  selector: 'app-loan-overview',
+  templateUrl: './loan-overview.component.html',
+  styleUrls: ['./loan-overview.component.css']
+})
+export class LoanOverviewComponent {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   error = '';
   success = '';
 
@@ -42,6 +54,7 @@ export class LoanOverviewComponent implements OnInit, OnDestroy {
 
   monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+<<<<<<< HEAD
   constructor(
     private payrollService: PayrollService,
     private router: Router,
@@ -60,6 +73,9 @@ export class LoanOverviewComponent implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
   }
+=======
+  constructor(private payrollService: PayrollService) {}
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 
   openCreateLoanModal(): void {
     this.createLoanModalOpen = true;

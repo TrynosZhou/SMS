@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+=======
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { TimetableService } from '../../services/timetable.service';
 import { ClassService } from '../../services/class.service';
 import { TeacherService } from '../../services/teacher.service';
@@ -10,6 +15,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+<<<<<<< HEAD
 import { Subject, forkJoin, of } from 'rxjs';
 import { catchError, finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../utils/route-activation';
@@ -23,6 +29,15 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
   /** Read-only timetable display (route /timetable/view). */
   isViewMode = false;
+=======
+
+@Component({
+  selector: 'app-timetable-generate',
+  templateUrl: './timetable-generate.component.html',
+  styleUrls: ['./timetable-generate.component.css']
+})
+export class TimetableGenerateComponent implements OnInit {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   // Data from backend
   teachers: any[] = [];
   classes: any[] = [];
@@ -79,6 +94,7 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
     private settingsService: SettingsService,
     private authService: AuthService,
     private http: HttpClient,
+<<<<<<< HEAD
     private router: Router,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef
@@ -103,6 +119,16 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
     const user = this.authService.getCurrentUser();
     this.isAdmin = user ? user.role === 'admin' : false;
     this.isSuperAdmin = user ? user.role === 'superadmin' : false;
+=======
+    private router: Router
+  ) {
+    const user = this.authService.getCurrentUser();
+    this.isAdmin = user ? (user.role === 'admin') : false;
+    this.isSuperAdmin = user ? (user.role === 'superadmin') : false;
+  }
+  
+  ngOnInit() {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     this.loadConfig();
     this.loadAllData();
     this.loadTimetables();
@@ -110,6 +136,7 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
   }
   
   loadConfig() {
+<<<<<<< HEAD
     this.settingsService
       .getSettings()
       .pipe(takeUntil(this.destroy$))
@@ -119,6 +146,13 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
           .getTimetableConfig()
           .pipe(takeUntil(this.destroy$))
           .subscribe({
+=======
+    // Load settings first to get times
+    this.settingsService.getSettings().subscribe({
+      next: (settingsData: any) => {
+        // Now load timetable config
+        this.timetableService.getTimetableConfig().subscribe({
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           next: (data: any) => {
             this.config = data;
             if (data) {
@@ -167,7 +201,10 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
                 this.config.breakPeriods = data.breakPeriods.slice(0, 2);
               }
               this.initializePeriods();
+<<<<<<< HEAD
               this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
             }
           },
           error: (err) => {
@@ -190,13 +227,17 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
               ]
             };
             this.initializePeriods();
+<<<<<<< HEAD
             this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           }
         });
       },
       error: (settingsErr) => {
         console.error('Error loading settings:', settingsErr);
         // Fallback to loading config without settings
+<<<<<<< HEAD
         this.timetableService
           .getTimetableConfig()
           .pipe(takeUntil(this.destroy$))
@@ -221,15 +262,40 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
               this.cdr.markForCheck();
             }
           });
+=======
+        this.timetableService.getTimetableConfig().subscribe({
+          next: (data: any) => {
+            this.config = data;
+            if (data) {
+              this.daysOfWeek = data.daysOfWeek || this.daysOfWeek;
+              if (!data.breakPeriods || data.breakPeriods.length === 0) {
+                this.config.breakPeriods = [
+                { name: 'Tea Break', startTime: '10:00', endTime: '10:20', periodAfter: 4 },
+                { name: 'Lunch Break', startTime: '12:00', endTime: '13:00', periodAfter: 8 }
+                ];
+              }
+              this.initializePeriods();
+            }
+          },
+          error: (err) => {
+            console.error('Error loading config:', err);
+            this.initializePeriods();
+          }
+        });
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       }
     });
   }
   
   loadSchoolInfo() {
+<<<<<<< HEAD
     this.settingsService
       .getSettings()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
+=======
+    this.settingsService.getSettings().subscribe({
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
       next: (data: any) => {
         this.schoolName = data?.schoolName || 'School';
         this.schoolLogo = data?.logo || '';
@@ -264,6 +330,7 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
           // Reinitialize periods with updated break times
           this.initializePeriods();
         }
+<<<<<<< HEAD
         this.cdr.markForCheck();
       },
       error: (err) => {
@@ -273,6 +340,15 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
     });
   }
 
+=======
+      },
+      error: (err) => {
+        console.error('Error loading school info:', err);
+      }
+    });
+  }
+  
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   initializePeriods() {
     if (this.config) {
       const start = this.parseTime(this.config.schoolStartTime);
@@ -360,7 +436,10 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
         { id: 10, name: 'Period 10', startTime: '15:40', endTime: '16:10', isBreak: false, periodNumber: 10 }
       ];
     }
+<<<<<<< HEAD
     this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
   
   private parseTime(time: string): Date {
@@ -377,6 +456,7 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
   loadAllData() {
     this.loading = true;
     this.error = '';
+<<<<<<< HEAD
     this.cdr.markForCheck();
 
     forkJoin({
@@ -403,6 +483,46 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         }
       });
+=======
+    
+    // Load teachers with their assignments
+    this.teacherService.getTeachers().subscribe({
+      next: (teachersData: any) => {
+        const teachersArray = Array.isArray(teachersData) ? teachersData : [];
+        this.teachers = teachersArray.filter((t: any) => t.isActive);
+        
+        // Load teacher assignments (classes and subjects)
+        this.loadTeacherAssignments();
+      },
+      error: (err) => {
+        console.error('Error loading teachers:', err);
+        this.error = 'Failed to load teachers';
+        this.loading = false;
+      }
+    });
+    
+    // Load classes
+    this.classService.getClasses().subscribe({
+      next: (classesData: any) => {
+        const classesArray = Array.isArray(classesData) ? classesData : [];
+        this.classes = classesArray.filter((c: any) => c.isActive);
+      },
+      error: (err) => {
+        console.error('Error loading classes:', err);
+      }
+    });
+    
+    // Load subjects
+    this.subjectService.getSubjects().subscribe({
+      next: (subjectsData: any) => {
+        const subjectsArray = Array.isArray(subjectsData) ? subjectsData : [];
+        this.subjects = subjectsArray;
+      },
+      error: (err) => {
+        console.error('Error loading subjects:', err);
+      }
+    });
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
   
   loadTeacherAssignments() {
@@ -414,6 +534,7 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
     
     if (totalTeachers === 0) {
       this.loading = false;
+<<<<<<< HEAD
       this.cdr.markForCheck();
       return;
     }
@@ -423,6 +544,14 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
         .get(`${environment.apiUrl}/teachers/${teacher.id}`)
         .pipe(takeUntil(this.destroy$))
         .subscribe({
+=======
+      return;
+    }
+    
+    this.teachers.forEach((teacher: any) => {
+      // Load teacher details with classes and subjects
+      this.http.get(`${environment.apiUrl}/teachers/${teacher.id}`).subscribe({
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
         next: (teacherData: any) => {
           const teacherWithAssignments = teacherData.teacher || teacherData;
           
@@ -449,22 +578,33 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
           if (loadedCount === totalTeachers) {
             this.teacherAssignments = assignments;
             this.loading = false;
+<<<<<<< HEAD
             this.cdr.markForCheck();
+=======
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           }
         },
         error: (err) => {
           console.error(`Error loading assignments for teacher ${teacher.id}:`, err);
           loadedCount++;
+<<<<<<< HEAD
 
           if (loadedCount === totalTeachers) {
             this.teacherAssignments = assignments;
             this.loading = false;
             this.cdr.markForCheck();
+=======
+          
+          if (loadedCount === totalTeachers) {
+            this.teacherAssignments = assignments;
+            this.loading = false;
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
           }
         }
       });
     });
   }
+<<<<<<< HEAD
 
   loadTimetables() {
     this.timetableService
@@ -488,6 +628,27 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         }
       });
+=======
+  
+  loadTimetables() {
+    this.timetableService.getTimetables().subscribe({
+      next: (data: any) => {
+        const timetablesArray = Array.isArray(data) ? data : (data?.timetables || data?.data || []);
+        this.timetables = timetablesArray;
+        if (this.timetables.length > 0 && !this.selectedTimetable) {
+          this.selectedTimetable = this.timetables[0];
+          this.loadTimetableEntries(this.selectedTimetable.id);
+        } else if (this.timetables.length === 0) {
+          // No timetables exist - user needs to create one first
+          this.error = 'No timetables found. Please create a timetable first.';
+        }
+      },
+      error: (err) => {
+        console.error('Error loading timetables:', err);
+        this.error = 'Failed to load timetables. Please try again.';
+      }
+    });
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
   
   createNewTimetable() {
@@ -528,6 +689,7 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
   
   loadTimetableEntries(timetableId: string) {
     this.loading = true;
+<<<<<<< HEAD
     this.cdr.markForCheck();
     this.timetableService
       .getTimetableById(timetableId)
@@ -549,6 +711,21 @@ export class TimetableGenerateComponent implements OnInit, OnDestroy {
           this.error = 'Failed to load timetable entries';
         }
       });
+=======
+    this.timetableService.getTimetableById(timetableId).subscribe({
+      next: (data: any) => {
+        this.timetableEntries = data?.entries || [];
+        this.loadVersions(timetableId);
+        this.detectConflicts();
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Error loading timetable entries:', err);
+        this.error = 'Failed to load timetable entries';
+        this.loading = false;
+      }
+    });
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
   
   loadVersions(timetableId: string) {

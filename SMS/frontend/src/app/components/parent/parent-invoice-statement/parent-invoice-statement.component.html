@@ -1,0 +1,228 @@
+<div class="pis-layout">
+
+  <!-- ── Sidebar ─────────────────────────────────────────────── -->
+  <aside class="pis-sidebar">
+    <div class="pis-brand">
+      <div class="brand-icon">
+        <img *ngIf="schoolLogo2" [src]="schoolLogo2" alt="School Logo" class="brand-logo" />
+        <span *ngIf="!schoolLogo2">🏫</span>
+      </div>
+      <div class="brand-text">
+        <span class="brand-title">Parent Portal</span>
+        <span class="brand-sub">{{ parentName }}</span>
+      </div>
+    </div>
+
+    <nav class="pis-nav">
+      <a routerLink="/parent/dashboard"         routerLinkActive="active" class="nav-item">
+        <span class="nav-icon">📊</span><span>Dashboard</span>
+      </a>
+      <a routerLink="/parent/inbox"             routerLinkActive="active" class="nav-item">
+        <span class="nav-icon">📧</span><span>My Inbox</span>
+      </a>
+      <a routerLink="/parent/send-message"      routerLinkActive="active" class="nav-item">
+        <span class="nav-icon">✉️</span><span>Send Message</span>
+      </a>
+      <a routerLink="/parent/outbox"            routerLinkActive="active" class="nav-item">
+        <span class="nav-icon">📤</span><span>Outbox</span>
+      </a>
+      <a routerLink="/parent/invoice-statement" routerLinkActive="active" class="nav-item">
+        <span class="nav-icon">🧾</span><span>My Invoice Statement</span>
+      </a>
+      <a routerLink="/parent/link-students"     routerLinkActive="active" class="nav-item">
+        <span class="nav-icon">🔗</span><span>Link Students</span>
+      </a>
+      <a routerLink="/parent/manage-account"    routerLinkActive="active" class="nav-item">
+        <span class="nav-icon">👤</span><span>My Account</span>
+      </a>
+    </nav>
+
+    <div class="pis-logout" (click)="logout()">
+      <span class="nav-icon">🚪</span><span>Logout</span>
+    </div>
+  </aside>
+
+  <!-- ── Main ────────────────────────────────────────────────── -->
+  <main class="pis-main">
+
+    <!-- Page header -->
+    <div class="pis-page-header">
+      <div class="ph-left">
+        <h1 class="ph-title">🧾 Invoice Statement</h1>
+        <p class="ph-subtitle">View and download your student's fee invoices</p>
+      </div>
+      <div class="ph-actions" *ngIf="selectedInvoice">
+        <button class="pis-btn pis-btn-primary"
+                (click)="downloadPdf(selectedInvoice)"
+                [disabled]="loadingPdf || loadingInvoices">
+          ⬇️ Download PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <div class="pis-alert pis-alert-error"   *ngIf="error"   [@fadeIn]>⚠️ {{ error }}</div>
+    <div class="pis-alert pis-alert-success" *ngIf="success" [@fadeIn]>✓ {{ success }}</div>
+
+    <!-- Loading students -->
+    <div class="pis-loader" *ngIf="loadingStudents">
+      <div class="pis-spinner"></div><span>Loading students…</span>
+    </div>
+
+    <!-- Empty: no linked students -->
+    <div class="pis-empty" *ngIf="!loadingStudents && students.length === 0 && !error" [@fadeIn]>
+      <span class="empty-icon">👨‍👩‍👧‍👦</span>
+      <h3>No Linked Students</h3>
+      <p>Link your child's student account to view their invoice statements.</p>
+      <button class="pis-btn pis-btn-primary" routerLink="/parent/link-students">➕ Link a Student</button>
+    </div>
+
+    <!-- Content (students loaded) -->
+    <ng-container *ngIf="!loadingStudents && students.length > 0">
+
+      <!-- Student selector tabs -->
+      <div class="pis-student-tabs" *ngIf="students.length > 0">
+        <button
+          *ngFor="let s of students"
+          class="student-tab"
+          [class.active]="selectedStudent?.id === s.id"
+          (click)="selectStudent(s)">
+          <span class="tab-avatar">{{ studentInitials(s) }}</span>
+          <span class="tab-name">{{ s.firstName }} {{ s.lastName }}</span>
+          <span class="tab-chip" [class.cleared]="(s.termBalance || 0) <= 0" [class.owing]="(s.termBalance || 0) > 0">
+            {{ (s.termBalance || 0) <= 0 ? '✅ Cleared' : '⚠️ Balance Due' }}
+          </span>
+        </button>
+      </div>
+
+      <!-- Two-column layout: invoice list + PDF viewer -->
+      <div class="pis-content-grid" *ngIf="selectedStudent">
+
+        <!-- Left: Invoice List -->
+        <div class="pis-left-panel">
+
+          <!-- Student summary card -->
+          <div class="pis-student-summary">
+            <div class="ss-avatar">{{ studentInitials(selectedStudent) }}</div>
+            <div class="ss-info">
+              <div class="ss-name">{{ selectedStudent.firstName }} {{ selectedStudent.lastName }}</div>
+              <div class="ss-meta">{{ selectedStudent.studentNumber }}</div>
+              <div class="ss-meta">{{ (selectedStudent.class || selectedStudent.classEntity)?.name || 'N/A' }}</div>
+            </div>
+            <div class="ss-balance" [class.balance-owed]="(selectedStudent.termBalance || 0) > 0"
+                                    [class.balance-clear]="(selectedStudent.termBalance || 0) <= 0">
+              <div class="balance-label">Balance</div>
+              <div class="balance-amount">
+                {{ currencySymbol }} {{ (selectedStudent.currentInvoiceBalance || 0) | number:'1.2-2' }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Invoice stats row -->
+          <div class="pis-stats-row" *ngIf="!loadingInvoices && invoices.length > 0">
+            <div class="pis-stat">
+              <span class="pis-stat-val">{{ invoices.length }}</span>
+              <span class="pis-stat-lbl">Total Invoices</span>
+            </div>
+            <div class="pis-stat">
+              <span class="pis-stat-val">{{ paidCount }}</span>
+              <span class="pis-stat-lbl">Paid</span>
+            </div>
+            <div class="pis-stat">
+              <span class="pis-stat-val">{{ invoices.length - paidCount }}</span>
+              <span class="pis-stat-lbl">Pending</span>
+            </div>
+          </div>
+
+          <!-- Loading invoices -->
+          <div class="pis-loader sm" *ngIf="loadingInvoices">
+            <div class="pis-spinner sm"></div><span>Loading invoices…</span>
+          </div>
+
+          <!-- Invoice list -->
+          <div class="pis-invoice-list" *ngIf="!loadingInvoices && invoices.length > 0">
+            <div
+              *ngFor="let inv of invoices"
+              class="pis-invoice-row"
+              [class.selected]="selectedInvoice?.id === inv.id"
+              (click)="selectInvoice(inv)"
+              role="button" tabindex="0"
+              (keyup.enter)="selectInvoice(inv)">
+
+              <div class="ir-left">
+                <div class="ir-num">{{ inv.invoiceNumber || ('INV-' + inv.id) }}</div>
+                <div class="ir-date">{{ formatDate(inv.createdAt || inv.dueDate) }}</div>
+                <div class="ir-term" *ngIf="inv.term">{{ inv.term }}</div>
+              </div>
+
+              <div class="ir-right">
+                <div class="ir-amount">{{ currencySymbol }} {{ (inv.totalAmount || inv.amount || 0) | number:'1.2-2' }}</div>
+                <span class="ir-badge" [ngClass]="statusClass(inv.status)">{{ inv.status || 'Pending' }}</span>
+                <div class="ir-bal" *ngIf="(inv.balance || inv.remainingBalance || 0) > 0">
+                  Due: {{ currencySymbol }} {{ (inv.balance || inv.remainingBalance || 0) | number:'1.2-2' }}
+                </div>
+              </div>
+
+              <span class="ir-arrow">›</span>
+            </div>
+          </div>
+
+          <!-- No invoices -->
+          <div class="pis-empty sm" *ngIf="!loadingInvoices && invoices.length === 0 && !error">
+            <span>📄</span>
+            <p>No invoices found for {{ selectedStudent.firstName }}.</p>
+          </div>
+        </div>
+
+        <!-- Right: PDF Viewer -->
+        <div class="pis-right-panel">
+          <div class="pis-pdf-header" *ngIf="selectedInvoice">
+            <div class="pdf-title">
+              <span class="pdf-title-icon">📄</span>
+              <span>{{ selectedInvoice.invoiceNumber || ('INV-' + selectedInvoice.id) }}</span>
+              <span class="pdf-date">{{ formatDate(selectedInvoice.createdAt || selectedInvoice.dueDate) }}</span>
+            </div>
+            <button class="pis-btn pis-btn-sm pis-btn-outline" (click)="downloadPdf(selectedInvoice)">
+              ⬇️ Download
+            </button>
+          </div>
+
+          <!-- No invoice selected yet -->
+          <div class="pis-pdf-placeholder" *ngIf="!selectedInvoice && !loadingInvoices">
+            <span class="placeholder-icon">🧾</span>
+            <h3>Select an Invoice</h3>
+            <p>Click any invoice from the list to view its PDF preview here.</p>
+          </div>
+
+          <!-- PDF loading -->
+          <div class="pis-pdf-loading" *ngIf="loadingPdf">
+            <div class="pis-spinner dark"></div>
+            <p>Generating PDF preview…</p>
+          </div>
+
+          <!-- PDF iframe -->
+          <iframe
+            *ngIf="inlinePdf && !loadingPdf && !pdfError"
+            [src]="inlinePdf"
+            class="pis-pdf-frame"
+            frameborder="0"
+            title="Invoice PDF"
+            [@fadeIn]>
+          </iframe>
+
+          <!-- PDF error -->
+          <div class="pis-pdf-error" *ngIf="pdfError && !loadingPdf">
+            <span>⚠️</span>
+            <p>Could not render the PDF preview.</p>
+            <button class="pis-btn pis-btn-outline" (click)="retryPdf()">🔄 Retry</button>
+            <button class="pis-btn pis-btn-primary" (click)="downloadPdf(selectedInvoice)" *ngIf="selectedInvoice">
+              ⬇️ Download Instead
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </ng-container>
+
+  </main>
+</div>

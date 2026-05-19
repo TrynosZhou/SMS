@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -12,6 +13,18 @@ import { PayrollService } from '../../../services/payroll.service';
 })
 export class PayrollProcessComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+=======
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { PayrollService } from '../../../services/payroll.service';
+
+@Component({
+  selector: 'app-payroll-process',
+  templateUrl: './payroll-process.component.html',
+  styleUrls: ['./payroll-process.component.css']
+})
+export class PayrollProcessComponent implements OnInit {
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   runs: any[] = [];
   month = new Date().getMonth() + 1;
   year = new Date().getFullYear();
@@ -35,6 +48,7 @@ export class PayrollProcessComponent implements OnInit, OnDestroy {
 
   constructor(
     private payrollService: PayrollService,
+<<<<<<< HEAD
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -46,10 +60,18 @@ export class PayrollProcessComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+=======
+    private router: Router
+  ) {}
+
+  ngOnInit() {
+    this.loadRuns();
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   loadRuns() {
     this.loading = true;
+<<<<<<< HEAD
     this.error = '';
     this.cdr.markForCheck();
     this.payrollService
@@ -68,6 +90,18 @@ export class PayrollProcessComponent implements OnInit, OnDestroy {
           this.error = err?.error?.message || 'Failed to load runs';
         }
       });
+=======
+    this.payrollService.getPayrollRuns().subscribe({
+      next: (data: any[]) => {
+        this.runs = (data || []).sort((a, b) => (b.year - a.year) || (b.month - a.month));
+        this.loading = false;
+      },
+      error: (err) => {
+        this.error = err?.error?.message || 'Failed to load runs';
+        this.loading = false;
+      }
+    });
+>>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
   }
 
   generate() {
