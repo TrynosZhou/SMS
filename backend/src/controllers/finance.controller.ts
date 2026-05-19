@@ -789,16 +789,6 @@ export const adjustInvoiceLogistics = async (req: AuthRequest, res: Response) =>
     invoice.amount = currentAmount + increment;
     invoice.balance = currentBalance + increment;
 
-<<<<<<< HEAD
-    if (transportAmountToAdd > 0) {
-      invoice.transportAmount = parseAmount(invoice.transportAmount) + transportAmountToAdd;
-    }
-    if (diningHallAmountToAdd > 0) {
-      invoice.diningHallAmount = parseAmount(invoice.diningHallAmount) + diningHallAmountToAdd;
-    }
-
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     if (invoice.balance <= 0) {
       invoice.status = InvoiceStatus.PAID;
     } else if (invoice.paidAmount && parseAmount(invoice.paidAmount) > 0) {
@@ -3620,34 +3610,3 @@ export const repairReturningDeskFeeInvoices = async (req: AuthRequest, res: Resp
   }
 };
 
-<<<<<<< HEAD
-/** Recalculate open (unpaid/partial) term-fee invoices for a student after exemption changes. */
-export const syncStudentExemptionInvoices = async (req: AuthRequest, res: Response) => {
-  try {
-    const { studentId } = req.params;
-    if (!studentId) {
-      return res.status(400).json({ message: 'Student ID is required' });
-    }
-
-    if (!AppDataSource.isInitialized) {
-      await AppDataSource.initialize();
-    }
-
-    const { syncExemptionInvoicesForStudent } = await import('../utils/exemptionInvoice');
-    const result = await syncExemptionInvoicesForStudent(studentId);
-    res.json({ message: result.message, updated: result.updated });
-  } catch (error: any) {
-    console.error('Error syncing exemption invoices:', error);
-    const msg = error?.message || 'Unknown error';
-    if (msg === 'Student not found') {
-      return res.status(404).json({ message: msg });
-    }
-    if (msg.includes('Fee settings not configured')) {
-      return res.status(400).json({ message: msg });
-    }
-    res.status(500).json({ message: 'Server error', error: msg });
-  }
-};
-
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7

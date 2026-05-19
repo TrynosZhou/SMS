@@ -11,10 +11,7 @@
     "start": "node dist/server.js",
     "typeorm": "typeorm-ts-node-commonjs -d src/data-source.ts",
     "setup-db": "node scripts/create-database.js",
-<<<<<<< HEAD
     "sync-schema": "npx ts-node scripts/sync-schema.ts",
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     "create-admin": "npx ts-node scripts/create-admin.ts",
     "reset-admin-password": "npx ts-node scripts/reset-admin-password.ts",
     "create-demo": "npx ts-node scripts/create-demo.ts",

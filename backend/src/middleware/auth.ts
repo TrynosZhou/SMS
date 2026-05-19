@@ -80,17 +80,6 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ message: 'Invalid token' });
     }
-<<<<<<< HEAD
-    const dbCode = error.driverError?.code ?? error.code;
-    if (error.name === 'QueryFailedError' || dbCode === '42703') {
-      console.error('Auth database error:', error.message);
-      return res.status(503).json({
-        message: 'Database schema is out of date. Run migrations or sync scripts, then restart the server.',
-        error: error.message,
-      });
-    }
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     console.error('Auth error:', error);
     return res.status(500).json({ message: 'Authentication error', error: error.message });
   }
