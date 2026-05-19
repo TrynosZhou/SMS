@@ -1,0 +1,221 @@
+.doc-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.doc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
+.doc-btn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 10px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1;
+}
+
+.doc-btn:hover {
+  background: #f3f4f6;
+}
+
+.doc-divider {
+  width: 1px;
+  height: 28px;
+  background: #e5e7eb;
+  display: inline-block;
+}
+
+.doc-shapes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.doc-format-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.doc-group-label {
+  font-size: 12px;
+  font-weight: 900;
+  color: #374151;
+}
+
+.doc-text-tool {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.doc-select {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.doc-color {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #374151;
+}
+
+.doc-color-label {
+  font-size: 12px;
+  font-weight: 900;
+  color: #374151;
+}
+
+.doc-color input[type='color'] {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.doc-shapes-label {
+  font-size: 12px;
+  font-weight: 900;
+  color: #374151;
+}
+
+.doc-shape-btn {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.doc-surface {
+  position: relative;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 16px;
+  min-height: 220px;
+  font-size: 14px;
+  line-height: 1.55;
+  outline: none;
+  background: #ffffff;
+}
+
+.doc-surface:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+/* Resizable shape wrapper inserted into contenteditable; draggable when not resizing */
+.doc-shape-wrap {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 4px 0;
+  border: 1px dashed #94a3b8;
+  background: rgba(148, 163, 184, 0.06);
+  overflow: hidden;
+  position: relative;
+  min-width: 80px;
+  min-height: 50px;
+  user-select: none;
+  touch-action: none;
+  cursor: move;
+}
+
+.doc-shape-wrap.is-selected {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
+}
+
+.doc-resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+  cursor: se-resize;
+  background: rgba(148, 163, 184, 0.25);
+  z-index: 10;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top-left-radius: 6px;
+}
+
+.doc-resize-plus {
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 900;
+  color: #475569;
+  user-select: none;
+  pointer-events: none;
+}
+
+.doc-shape-text {
+  position: absolute;
+  /* Inset so text sits inside the shape; leave room for resize handle at bottom-right */
+  inset: 8px 22px 22px 8px;
+  display: none;
+  padding: 8px;
+  min-height: 24px;
+  outline: none;
+  text-align: left;
+  user-select: text;
+  pointer-events: auto;
+  cursor: text;
+  z-index: 1;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: 4px;
+  box-sizing: border-box;
+  line-height: 1.35;
+}
+
+.doc-shape-text.is-visible {
+  display: block;
+  border: 1px dashed rgba(37, 99, 235, 0.55);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.doc-shape-menu {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 20;
+  display: none;
+  pointer-events: auto;
+}
+
+.doc-shape-menu-btn {
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #3730a3;
+  font-weight: 900;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.doc-shape-menu-btn:hover {
+  filter: brightness(1.05);
+}
+

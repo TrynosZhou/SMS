@@ -1,0 +1,242 @@
+<div class="news-container">
+  <!-- Alert Messages -->
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <!-- Header Section -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>
+        <span class="header-icon">📰</span>
+        News & Announcements
+      </h1>
+      <p class="subtitle">Manage and view all news articles and announcements</p>
+    </div>
+    <div class="header-actions" *ngIf="canManageNews()">
+      <button class="btn btn-primary" routerLink="/news/create">
+        <span>➕</span> Create News
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">📊</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ totalItems }}</div>
+        <div class="stat-label">Total Articles</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ newsList.filter(n => n.status === 'published').length }}</div>
+        <div class="stat-label">Published</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📝</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ newsList.filter(n => n.status === 'draft').length }}</div>
+        <div class="stat-label">Drafts</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📌</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ newsList.filter(n => n.isPinned).length }}</div>
+        <div class="stat-label">Pinned</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search and Filter Section -->
+  <div class="filter-card">
+    <div class="filter-header">
+      <h2>
+        <span class="icon">🔍</span>
+        Search & Filter
+      </h2>
+      <button class="btn-clear" (click)="clearFilters()" *ngIf="hasActiveFilters()">
+        🗑️ Clear Filters
+      </button>
+    </div>
+    <div class="filter-content">
+      <div class="search-box">
+        <input 
+          type="text" 
+          [(ngModel)]="searchQuery" 
+          placeholder="Search news articles..."
+          class="search-input"
+          (keyup.enter)="onSearch()">
+        <button class="search-btn" (click)="onSearch()">🔍</button>
+      </div>
+      <div class="filter-options">
+        <div class="filter-group">
+          <label>Category</label>
+          <select [(ngModel)]="selectedCategory" (change)="onFilterChange()" class="filter-select">
+            <option value="">All Categories</option>
+            <option *ngFor="let category of categories" [value]="category">
+              {{ getCategoryLabel(category) }}
+            </option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Status</label>
+          <select [(ngModel)]="selectedStatus" (change)="onFilterChange()" class="filter-select">
+            <option value="">All Status</option>
+            <option *ngFor="let status of statuses" [value]="status">
+              {{ getStatusLabel(status) }}
+            </option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Sort By</label>
+          <select [(ngModel)]="selectedSortBy" (change)="onSortChange()" class="filter-select">
+            <option *ngFor="let option of sortOptions" [value]="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Order</label>
+          <select [(ngModel)]="selectedSortOrder" (change)="onSortChange()" class="filter-select">
+            <option value="DESC">Newest First</option>
+            <option value="ASC">Oldest First</option>
+          </select>
+        </div>
+      </div>
+      <div class="filter-actions">
+        <label class="checkbox-label">
+          <input type="checkbox" [(ngModel)]="showPinnedOnly" (change)="onFilterChange()">
+          <span class="checkmark"></span>
+          Show Pinned Only
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner-large"></div>
+    <p>Loading news articles...</p>
+  </div>
+
+  <!-- News List -->
+  <div class="news-list" *ngIf="!loading && newsList.length > 0">
+    <div class="news-item" *ngFor="let news of newsList" [class.pinned]="news.isPinned">
+      <div class="news-header">
+        <div class="news-title-section">
+          <h3 class="news-title">
+            <span class="pin-icon" *ngIf="news.isPinned">📌</span>
+            {{ news.title }}
+          </h3>
+          <div class="news-meta">
+            <span class="category-badge" [style.background-color]="getCategoryColor(news.category)">
+              {{ getCategoryLabel(news.category) }}
+            </span>
+            <span class="status-badge" [style.background-color]="getStatusColor(news.status)">
+              {{ getStatusLabel(news.status) }}
+            </span>
+            <span class="view-count">👁️ {{ formatViewCount(news.viewCount) }}</span>
+          </div>
+        </div>
+        <div class="news-actions" *ngIf="canManageNews()">
+          <button class="btn-icon" [routerLink]="['/news/edit', news.id]" title="Edit">
+            ✏️
+          </button>
+          <button class="btn-icon btn-delete" (click)="confirmDelete(news)" title="Delete">
+            🗑️
+          </button>
+        </div>
+      </div>
+      
+      <div class="news-content">
+        <p class="news-summary" *ngIf="news.summary">{{ news.summary }}</p>
+        <div class="news-excerpt" *ngIf="!news.summary">{{ news.content | slice:0:200 }}...</div>
+      </div>
+      
+      <div class="news-footer">
+        <div class="news-info">
+          <span class="author">👤 {{ news.author.firstName }} {{ news.author.lastName }}</span>
+          <span class="date">📅 {{ formatDate(news.publishedAt || news.createdAt) }}</span>
+          <span class="expiry" *ngIf="news.expiresAt">
+            ⏰ Expires: {{ formatDate(news.expiresAt) }}
+          </span>
+        </div>
+        <div class="news-links">
+          <a [routerLink]="['/news', news.id]" class="read-more-link">
+            Read More →
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!loading && newsList.length === 0">
+    <div class="empty-icon">📰</div>
+    <h3>{{ hasActiveFilters() ? 'No News Found' : 'No News Articles Yet' }}</h3>
+    <p *ngIf="hasActiveFilters()">
+      Try adjusting your search or filters to find news articles.
+    </p>
+    <p *ngIf="!hasActiveFilters() && canManageNews()">
+      Get started by creating your first news article.
+    </p>
+    <button class="btn btn-primary" routerLink="/news/create" *ngIf="!hasActiveFilters() && canManageNews()">
+      ➕ Create First News
+    </button>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination" *ngIf="!loading && totalPages > 1">
+    <div class="pagination-info">
+      Showing page {{ currentPage }} of {{ totalPages }} ({{ totalItems }} articles)
+    </div>
+    <div class="pagination-controls">
+      <button 
+        class="btn btn-secondary" 
+        (click)="onPageChange(getPrevPage())"
+        [disabled]="isFirstPage()">
+        ◀ Previous
+      </button>
+      <span class="page-numbers">
+        <span 
+          *ngFor="let page of getPageNumbers()" 
+          class="page-number"
+          [class.active]="page === currentPage"
+          (click)="onPageChange(page)">
+          {{ page }}
+        </span>
+      </span>
+      <button 
+        class="btn btn-secondary" 
+        (click)="onPageChange(getNextPage())"
+        [disabled]="isLastPage()">
+        Next ▶
+      </button>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-overlay" *ngIf="showDeleteModal" (click)="cancelDelete()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Confirm Delete</h3>
+        <button class="modal-close" (click)="cancelDelete()">×</button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete this news article?</p>
+        <div class="delete-preview">
+          <strong>{{ getNewsTitle() }}</strong>
+          <p>{{ getNewsSummary() }}...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="cancelDelete()">Cancel</button>
+        <button class="btn btn-danger" (click)="deleteNews()">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>

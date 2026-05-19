@@ -1,0 +1,268 @@
+<div class="employee-page" [class.employee-page-bordered]="!isEdit">
+  <!-- Top bar -->
+  <div class="employee-topbar">
+    <nav class="employee-breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/teachers">Teachers</a>
+      <span class="bc-sep">/</span>
+      <span class="bc-current">{{ isEdit ? 'Edit Teacher' : 'New Staff' }}</span>
+    </nav>
+    <div class="employee-topbar-actions">
+      <ng-container *ngIf="isEdit && teacher?.id">
+        <button type="button" class="btn-top btn-top-outline" (click)="previewIdCard()" [disabled]="idCardLoading">
+          {{ idCardLoading ? 'Loading...' : 'Preview ID Card' }}
+        </button>
+        <button type="button" class="btn-top btn-top-outline" (click)="downloadIdCard()" [disabled]="idCardLoading">
+          {{ idCardLoading ? 'Loading...' : 'Download ID Card' }}
+        </button>
+      </ng-container>
+      <button type="button" class="btn-top btn-top-outline" (click)="router.navigate(['/teachers'])">
+        ← Back to Teachers
+      </button>
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  <div class="alert alert-success" *ngIf="success">
+    <span class="alert-icon">✓</span> {{ success }}
+  </div>
+  <div class="alert alert-error" *ngIf="error">
+    <span class="alert-icon">⚠</span> {{ error }}
+  </div>
+
+  <form (ngSubmit)="onSubmit()" #teacherForm="ngForm" class="employee-form">
+    <header class="employee-form-header">
+      <h1 class="employee-title">{{ isEdit ? 'Edit Teacher' : 'Teacher Registration' }}</h1>
+      <div class="employee-legend">
+        <span class="legend-item"><span class="legend-dot legend-required"></span> Required*</span>
+        <span class="legend-item"><span class="legend-dot legend-optional"></span> Optional</span>
+      </div>
+    </header>
+
+    <!-- Section 1: Basic Information -->
+    <section class="employee-section">
+      <h2 class="section-title">
+        <span class="section-num">1</span>
+        Basic Information
+      </h2>
+      <div class="section-rule"></div>
+
+      <div class="employee-grid">
+        <div class="eskooly-field required">
+          <label class="eskooly-label" for="firstName">First Name*</label>
+          <input
+            type="text"
+            id="firstName"
+            class="eskooly-input"
+            [(ngModel)]="teacher.firstName"
+            name="firstName"
+            required
+            placeholder="First name"
+            [class.input-error]="teacherForm.submitted && !teacher.firstName">
+        </div>
+
+        <div class="eskooly-field required">
+          <label class="eskooly-label" for="lastName">Last Name*</label>
+          <input
+            type="text"
+            id="lastName"
+            class="eskooly-input"
+            [(ngModel)]="teacher.lastName"
+            name="lastName"
+            required
+            placeholder="Last name"
+            [class.input-error]="teacherForm.submitted && !teacher.lastName">
+        </div>
+
+        <div class="eskooly-field optional">
+          <label class="eskooly-label" for="phoneNumber">Mobile No. for SMS/WhatsApp</label>
+          <input
+            type="tel"
+            id="phoneNumber"
+            class="eskooly-input"
+            [(ngModel)]="teacher.phoneNumber"
+            name="phoneNumber"
+            placeholder="e.g. 0771234567"
+            [class.input-error]="phoneNumberError"
+            (blur)="validatePhoneNumber()"
+            (input)="phoneNumberError = ''">
+          <small class="field-error" *ngIf="phoneNumberError">{{ phoneNumberError }}</small>
+        </div>
+
+        <div class="eskooly-field optional">
+          <label class="eskooly-label">Picture – Optional</label>
+          <div class="photo-field">
+            <div class="photo-upload-box" *ngIf="!teacher.photo">
+              <span class="photo-upload-hint">Choose File</span>
+              <input type="file" accept="image/*" class="photo-file-input" (change)="onPhotoSelected($event)">
+            </div>
+            <div class="photo-preview-inline" *ngIf="teacher.photo">
+              <img [src]="teacher.photo" alt="Teacher photo">
+              <button type="button" class="photo-remove" (click)="removePhoto()" title="Remove">×</button>
+            </div>
+            <span class="file-hint-badge">Max size 2MB</span>
+          </div>
+        </div>
+
+        <div class="eskooly-field optional">
+          <label class="eskooly-label" for="dateJoined">Date of Joining</label>
+          <input
+            type="date"
+            id="dateJoined"
+            class="eskooly-input"
+            [(ngModel)]="teacher.dateJoined"
+            name="dateJoined"
+            [max]="maxDate">
+        </div>
+
+        <div class="eskooly-field optional teacher-id-field">
+          <label class="eskooly-label">Teacher ID</label>
+          <div class="eskooly-readonly">
+            <strong *ngIf="isEdit">{{ teacher.teacherId }}</strong>
+            <span *ngIf="!isEdit">Auto-generated (JPST format)</span>
+          </div>
+          <small class="field-note" *ngIf="!isEdit">e.g. JPST1234567</small>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Other Information -->
+    <section class="employee-section">
+      <h2 class="section-title">
+        <span class="section-num">2</span>
+        Other Information
+      </h2>
+      <div class="section-rule"></div>
+
+      <div class="employee-grid">
+        <div class="eskooly-field required">
+          <label class="eskooly-label" for="dateOfBirth">Date of Birth*</label>
+          <input
+            type="date"
+            id="dateOfBirth"
+            class="eskooly-input"
+            [(ngModel)]="teacher.dateOfBirth"
+            name="dateOfBirth"
+            required
+            [max]="maxDate"
+            [class.input-error]="teacherForm.submitted && !teacher.dateOfBirth">
+        </div>
+
+        <div class="eskooly-field required">
+          <label class="eskooly-label" for="sex">Gender*</label>
+          <select
+            id="sex"
+            class="eskooly-input"
+            [(ngModel)]="teacher.sex"
+            name="sex"
+            required
+            [class.input-error]="teacherForm.submitted && !teacher.sex">
+            <option value="">Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+
+        <div class="eskooly-field optional">
+          <label class="eskooly-label" for="nationalId">National ID</label>
+          <input
+            type="text"
+            id="nationalId"
+            class="eskooly-input"
+            [(ngModel)]="teacher.nationalId"
+            name="nationalId"
+            placeholder="National ID number">
+        </div>
+
+        <div class="eskooly-field optional full-row">
+          <label class="eskooly-label" for="address">Address</label>
+          <textarea
+            id="address"
+            class="eskooly-input eskooly-textarea"
+            [(ngModel)]="teacher.address"
+            name="address"
+            placeholder="Residential address"
+            rows="2"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Salary Payment -->
+    <section class="employee-section">
+      <h2 class="section-title">
+        <span class="section-num">3</span>
+        Salary Payment
+      </h2>
+      <div class="section-rule"></div>
+
+      <div class="employee-grid">
+        <div class="eskooly-field optional">
+          <label class="eskooly-label" for="paymentMethod">Payment Method</label>
+          <select id="paymentMethod" class="eskooly-input" [(ngModel)]="teacher.paymentMethod" name="paymentMethod">
+            <option value="cash">Cash</option>
+            <option value="bank">Bank deposit</option>
+            <option value="both">Cash + Bank</option>
+          </select>
+        </div>
+
+        <div class="eskooly-field optional" *ngIf="teacher.paymentMethod !== 'cash'">
+          <label class="eskooly-label" for="bankName">Bank</label>
+          <select id="bankName" class="eskooly-input" [(ngModel)]="teacher.bankName" name="bankName" *ngIf="banks.length > 0">
+            <option value="">— Select bank —</option>
+            <option *ngFor="let b of banks" [value]="b.name">{{ b.name }}</option>
+          </select>
+          <input
+            *ngIf="banks.length === 0"
+            type="text"
+            id="bankName"
+            class="eskooly-input"
+            [(ngModel)]="teacher.bankName"
+            name="bankName"
+            placeholder="Configure banks in Settings">
+        </div>
+
+        <div class="eskooly-field optional" *ngIf="teacher.paymentMethod !== 'cash'">
+          <label class="eskooly-label" for="bankAccountNumber">Account Number</label>
+          <input
+            type="text"
+            id="bankAccountNumber"
+            class="eskooly-input"
+            [(ngModel)]="teacher.bankAccountNumber"
+            name="bankAccountNumber"
+            placeholder="Account number">
+        </div>
+
+        <div class="eskooly-field optional" *ngIf="teacher.paymentMethod !== 'cash'">
+          <label class="eskooly-label" for="bankBranch">Branch</label>
+          <input
+            type="text"
+            id="bankBranch"
+            class="eskooly-input"
+            [(ngModel)]="teacher.bankBranch"
+            name="bankBranch"
+            placeholder="Branch">
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Teaching Assignments -->
+    <section class="employee-section">
+      <h2 class="section-title">
+        <span class="section-num">4</span>
+        Teaching Assignments
+      </h2>
+      <div class="section-rule"></div>
+      <div class="info-note">
+        <strong>Assignments are managed on the Allocate Classes page.</strong>
+        <p>After registration, go to Teacher Management → Allocate Classes to assign subjects and classes.</p>
+      </div>
+    </section>
+
+    <footer class="employee-actions">
+      <button type="button" class="btn-action btn-cancel" (click)="router.navigate(['/teachers'])">Cancel</button>
+      <button type="submit" class="btn-action btn-save" [disabled]="submitting">
+        <span *ngIf="submitting" class="spinner"></span>
+        {{ submitting ? 'Processing...' : (isEdit ? 'Update Teacher' : 'Register Teacher') }}
+      </button>
+    </footer>
+  </form>
+</div>

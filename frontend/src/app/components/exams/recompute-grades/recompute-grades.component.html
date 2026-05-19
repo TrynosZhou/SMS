@@ -1,0 +1,24 @@
+<div class="recompute-container">
+  <h2>Recompute Grades</h2>
+  <p class="helper">
+    Regenerate grades for all classes using the current thresholds and labels from Settings.
+  </p>
+
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <div *ngIf="summary" class="summary">
+    <div><strong>Term:</strong> {{ summary.term || 'N/A' }}</div>
+    <div><strong>Classes Processed:</strong> {{ summary.classesProcessed }}</div>
+    <div><strong>Exams Processed:</strong> {{ summary.examsProcessed }}</div>
+    <div><strong>Marks Processed:</strong> {{ summary.marksProcessed }}</div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" (click)="recompute()" [disabled]="loading">
+      {{ loading ? 'Recomputing...' : 'Recompute' }}
+    </button>
+    <button class="btn btn-secondary" (click)="cancel()" [disabled]="loading">Cancel</button>
+  </div>
+</div>
+

@@ -1,0 +1,42 @@
+.si-wrap {
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.si-sub {
+  color: #64748b;
+}
+.si-flag {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  padding: 12px;
+  border-radius: 10px;
+  margin: 16px 0;
+  font-weight: 600;
+}
+.si-block {
+  margin: 20px 0;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+.si-block h2 {
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+}
+.si-empty {
+  color: #94a3b8;
+  margin: 0;
+}
+.si-err {
+  color: #b91c1c;
+}
+.si-table {
+  width: 100%;
+  font-size: 14px;
+}
+.si-table td {
+  padding: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}

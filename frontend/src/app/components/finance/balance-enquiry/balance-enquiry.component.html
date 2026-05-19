@@ -1,0 +1,250 @@
+<div class="balance-enquiry-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1>
+          <span class="header-icon">💰</span>
+          Balance Enquiry
+        </h1>
+        <p class="header-subtitle">Check student balance and generate statements</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn btn-primary" [routerLink]="['/payments/record']">
+          <span class="icon">💳</span> Record Payment
+        </button>
+        <button type="button" class="btn btn-primary" [routerLink]="['/outstanding-balance']">
+          <span class="icon">📊</span> Outstanding Balances
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Section -->
+  <div class="search-section" [class.searching]="loading">
+    <div class="search-header">
+      <span class="search-icon">🔍</span>
+      <h2>Find Student</h2>
+    </div>
+    <div class="search-form">
+      <div class="search-input-wrapper">
+        <input
+          type="text"
+          id="query"
+          [(ngModel)]="query"
+          placeholder="Enter Student ID, Name, or Student Number..."
+          class="search-input"
+          (keyup.enter)="search()"
+          [class.has-value]="query"
+          autocomplete="off"
+        />
+        <button
+          *ngIf="query"
+          type="button"
+          class="clear-input-btn"
+          (click)="clearSearch()"
+          title="Clear search"
+        >
+          ✕
+        </button>
+      </div>
+      <button
+        type="button"
+        class="btn btn-primary btn-search"
+        (click)="search()"
+        [disabled]="loading || !query"
+      >
+        <span *ngIf="loading" class="spinner"></span>
+        <span *ngIf="!loading" class="icon">🔍</span>
+        {{ loading ? 'Searching...' : 'Search' }}
+      </button>
+    </div>
+    <div class="search-hints">
+      <span class="hint-item"><kbd>Enter</kbd> to search</span>
+      <span class="hint-item"><kbd>Esc</kbd> to clear</span>
+    </div>
+  </div>
+
+  <!-- Error and Success Messages -->
+  <div *ngIf="error" class="alert alert-error">
+    <span class="alert-icon">⚠️</span>
+    <span class="alert-text">{{ error }}</span>
+    <button class="alert-close" (click)="error = ''">✕</button>
+  </div>
+  <div *ngIf="success" class="alert alert-success">
+    <span class="alert-icon">✅</span>
+    <span class="alert-text">{{ success }}</span>
+    <button class="alert-close" (click)="success = ''">✕</button>
+  </div>
+
+  <!-- Matching Students Section -->
+  <div class="matching-students-section" *ngIf="matchingStudents && matchingStudents.length > 0">
+    <div class="matching-header">
+      <span class="icon">👥</span>
+      <span>{{ matchingStudents.length }} students found - Please select one:</span>
+    </div>
+    <div class="student-cards">
+      <div 
+        *ngFor="let s of matchingStudents" 
+        class="student-card"
+        (click)="selectStudent(s.studentId)"
+        [class.selected]="selectedMatchId === s.studentId"
+      >
+        <div class="student-avatar">{{ getInitials(s.fullName) }}</div>
+        <div class="student-details">
+          <div class="student-name">{{ s.fullName }}</div>
+          <div class="student-id">{{ s.studentNumber }}</div>
+        </div>
+        <span class="select-indicator">→</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Student Result Section -->
+  <div *ngIf="studentData" class="main-content">
+    <!-- Student Info Card -->
+    <div class="student-info-card">
+      <div class="card-header">
+        <div class="student-profile">
+          <div class="profile-avatar">{{ getInitials(studentData.fullName) }}</div>
+          <div class="profile-details">
+            <h2>{{ studentData.fullName }}</h2>
+            <div class="student-meta">
+              <span class="meta-item">
+                <span class="meta-icon">🎓</span>
+                {{ studentData.studentNumber }}
+              </span>
+              <span class="meta-item" *ngIf="studentData.className">
+                <span class="meta-icon">📚</span>
+                {{ studentData.className }}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="status-badges">
+          <span *ngIf="studentData.isStaffChild" class="badge badge-info">Staff Child</span>
+          <span *ngIf="studentData.isExempted" class="badge badge-warning">Exempted</span>
+        </div>
+      </div>
+
+      <!-- Balance Overview -->
+      <div class="balance-overview">
+        <div class="balance-card primary">
+          <div class="balance-icon">💵</div>
+          <div class="balance-content">
+            <div class="balance-label">Tuition Balance</div>
+            <div class="balance-value" [class.positive]="studentData.balance <= 0" [class.negative]="studentData.balance > 0">
+              {{ currencySymbol }} {{ studentData.balance | number:'1.2-2' }}
+            </div>
+            <div class="balance-status">
+              <span *ngIf="studentData.balance <= 0" class="status-paid">✓ Fully Paid</span>
+              <span *ngIf="studentData.balance > 0 && studentData.balance <= 1000" class="status-low">Low Balance</span>
+              <span *ngIf="studentData.balance > 1000" class="status-pending">Outstanding</span>
+            </div>
+          </div>
+        </div>
+        <div class="balance-card secondary" *ngIf="studentData.uniformBalance != null && studentData.uniformBalance > 0">
+          <div class="balance-icon">👔</div>
+          <div class="balance-content">
+            <div class="balance-label">Uniform Balance</div>
+            <div class="balance-value negative">
+              {{ currencySymbol }} {{ (studentData.uniformBalance || 0) | number:'1.2-2' }}
+            </div>
+            <div class="balance-note">Separate from tuition</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fee Policy Notice -->
+      <div *ngIf="studentData.isStaffChild || studentData.isExempted" class="policy-notice">
+        <span class="notice-icon">ℹ️</span>
+        <div class="notice-content">
+          <strong>Fee Policy Applied:</strong>
+          No tuition or transport fees. Dining Hall charged at 50% if applicable.
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="quick-stats" *ngIf="latestInvoice">
+        <div class="stat-item">
+          <span class="stat-label">Latest Invoice</span>
+          <span class="stat-value">#{{ latestInvoice.invoiceNumber || latestInvoice.id }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Term</span>
+          <span class="stat-value">{{ latestInvoice.term || 'N/A' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Due Date</span>
+          <span class="stat-value">{{ latestInvoice.dueDate | date:'mediumDate' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Amount Paid</span>
+          <span class="stat-value paid">{{ currencySymbol }} {{ (latestInvoice.paidAmount || 0) | number:'1.2-2' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions Card -->
+    <div class="actions-card">
+      <div class="card-header">
+        <h2><span class="header-icon">📄</span> Statement & Actions</h2>
+      </div>
+      <div class="actions-content">
+        <p class="actions-description">Generate and download the student's invoice statement with complete payment history.</p>
+        
+        <div class="action-buttons">
+          <button class="btn btn-primary btn-action" (click)="previewStatement()" [disabled]="loadingPdf">
+            <span *ngIf="loadingPdf && previewMode" class="spinner"></span>
+            <span *ngIf="!loadingPdf || !previewMode" class="icon">👁️</span>
+            {{ loadingPdf && previewMode ? 'Loading...' : 'Preview Statement' }}
+          </button>
+          <button class="btn btn-primary btn-action" (click)="downloadStatement()" [disabled]="loadingPdf">
+            <span *ngIf="loadingPdf && !previewMode" class="spinner"></span>
+            <span *ngIf="!loadingPdf || previewMode" class="icon">⬇️</span>
+            {{ loadingPdf && !previewMode ? 'Generating...' : 'Download PDF' }}
+          </button>
+          <button class="btn btn-primary btn-action" (click)="printStatement()" [disabled]="loadingPdf">
+            <span class="icon">🖨️</span>
+            Print Statement
+          </button>
+        </div>
+
+        <div class="quick-links">
+          <a [routerLink]="['/payments/record']" [queryParams]="{studentId: studentData.studentNumber, firstName: studentData.firstName, lastName: studentData.lastName, balance: studentData.balance}" class="quick-link">
+            <span class="link-icon">💳</span>
+            <span class="link-text">Record Payment</span>
+          </a>
+          <a [routerLink]="['/invoices']" [queryParams]="{studentId: studentData.studentId}" class="quick-link">
+            <span class="link-icon">📋</span>
+            <span class="link-text">View Invoices</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF Preview Modal -->
+  <div class="modal-overlay" *ngIf="previewUrl" (click)="clearPreview()">
+    <div class="preview-modal" (click)="$event.stopPropagation()">
+      <div class="preview-header">
+        <h3>Invoice Statement Preview</h3>
+        <button class="modal-close" (click)="clearPreview()">✕</button>
+      </div>
+      <div class="preview-content">
+        <iframe [src]="previewUrl" class="preview-iframe" type="application/pdf"></iframe>
+      </div>
+      <div class="preview-actions">
+        <button class="btn btn-primary" (click)="downloadStatement()">
+          <span class="icon">⬇️</span> Download
+        </button>
+        <button class="btn btn-primary" (click)="printStatement()">
+          <span class="icon">🖨️</span> Print
+        </button>
+        <button class="btn btn-outline" (click)="clearPreview()">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

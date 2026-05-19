@@ -1,0 +1,205 @@
+<div class="news-feed-container">
+  <!-- Modern Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-title-section">
+        <div class="header-icon">
+          <span>📰</span>
+        </div>
+        <div class="header-text">
+          <h1>News & Announcements</h1>
+          <p>Stay updated with the latest school news and important announcements</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-header" (click)="refreshNews()" [disabled]="loading" title="Refresh news">
+          <span class="refresh-icon" [class.spinning]="loading">🔄</span>
+          Refresh
+        </button>
+        <button *ngIf="canManageNews()" class="btn btn-header-primary" routerLink="/news/create">
+          <span class="btn-icon">➕</span>
+          Create Article
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="quick-stats" *ngIf="!loading && !error">
+    <div class="stat-card primary">
+      <div class="stat-icon">📌</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ pinnedNews.length }}</span>
+        <span class="stat-label">Pinned</span>
+      </div>
+    </div>
+    <div class="stat-card info">
+      <div class="stat-icon">📰</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ latestNews.length }}</span>
+        <span class="stat-label">Latest</span>
+      </div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-icon">👁️</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ getTotalViews() }}</span>
+        <span class="stat-label">Total Views</span>
+      </div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-icon">📅</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ getThisWeekCount() }}</span>
+        <span class="stat-label">This Week</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="loading-spinner"></div>
+    <p>Loading news articles...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-state" *ngIf="error && !loading">
+    <div class="error-icon">⚠️</div>
+    <h3>Unable to Load News</h3>
+    <p>{{ error }}</p>
+    <button class="btn btn-primary" (click)="refreshNews()">
+      <span class="btn-icon">🔄</span>
+      Try Again
+    </button>
+  </div>
+
+  <!-- News Content -->
+  <div class="news-content" *ngIf="!loading && !error">
+    <!-- Pinned News Section -->
+    <div class="pinned-section" *ngIf="pinnedNews.length > 0">
+      <div class="section-header">
+        <h2 class="section-title">
+          <span class="title-icon pinned">📌</span>
+          Pinned Announcements
+        </h2>
+        <span class="section-count">{{ pinnedNews.length }} pinned</span>
+      </div>
+      
+      <div class="pinned-news-grid">
+        <div class="news-card pinned" *ngFor="let news of pinnedNews; trackBy: trackByNews" 
+             (click)="onNewsClick(news)">
+          <div class="pin-badge">📌 Pinned</div>
+          <div class="card-header">
+            <span class="category-badge" [style.background]="getCategoryColor(news.category)">
+              {{ getCategoryLabel(news.category) }}
+            </span>
+            <span class="view-count">
+              <span class="view-icon">👁️</span>
+              {{ formatViewCount(news.viewCount) }}
+            </span>
+          </div>
+          <h3 class="card-title">{{ news.title }}</h3>
+          <p class="card-summary" *ngIf="news.summary">{{ news.summary }}</p>
+          <p class="card-excerpt" *ngIf="!news.summary">{{ news.content | slice:0:150 }}...</p>
+          <div class="card-footer">
+            <div class="author-info">
+              <div class="author-avatar">
+                {{ getInitials(news.author) }}
+              </div>
+              <div class="author-details">
+                <span class="author-name">{{ news.author.firstName }} {{ news.author.lastName }}</span>
+                <span class="publish-date">{{ formatDate(news.publishedAt || news.createdAt) }}</span>
+              </div>
+            </div>
+            <a [routerLink]="['/news', news.id]" class="read-more-btn" (click)="$event.stopPropagation()">
+              Read More
+              <span class="arrow">→</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Latest News Section -->
+    <div class="latest-section" *ngIf="latestNews.length > 0">
+      <div class="section-header">
+        <h2 class="section-title">
+          <span class="title-icon latest">📰</span>
+          Latest News
+        </h2>
+        <span class="section-count">{{ latestNews.length }} articles</span>
+      </div>
+
+      <div class="latest-news-list">
+        <div class="news-item" *ngFor="let news of latestNews; let i = index; trackBy: trackByNews" 
+             (click)="onNewsClick(news)"
+             [class.featured]="i === 0">
+          <!-- Featured image placeholder or first letter -->
+          <div class="item-visual" [class.new]="isNewArticle(news)">
+            <span class="visual-letter">{{ news.title.charAt(0).toUpperCase() }}</span>
+            <span class="new-badge" *ngIf="isNewArticle(news)">NEW</span>
+          </div>
+          
+          <div class="item-content">
+            <div class="item-header">
+              <span class="category-badge" [style.background]="getCategoryColor(news.category)">
+                {{ getCategoryLabel(news.category) }}
+              </span>
+              <div class="item-stats">
+                <span class="view-count">
+                  <span class="view-icon">👁️</span>
+                  {{ formatViewCount(news.viewCount) }}
+                </span>
+                <span class="expiry-badge" *ngIf="news.expiresAt && isExpiringSoon(news)">
+                  ⏰ Expiring Soon
+                </span>
+              </div>
+            </div>
+            
+            <h3 class="item-title">{{ news.title }}</h3>
+            <p class="item-summary" *ngIf="news.summary">{{ news.summary }}</p>
+            <p class="item-excerpt" *ngIf="!news.summary">{{ news.content | slice:0:120 }}...</p>
+            
+            <div class="item-meta">
+              <div class="meta-left">
+                <span class="author">
+                  <span class="meta-icon">👤</span>
+                  {{ news.author.firstName }} {{ news.author.lastName }}
+                </span>
+                <span class="date">
+                  <span class="meta-icon">📅</span>
+                  {{ formatDate(news.publishedAt || news.createdAt) }}
+                </span>
+              </div>
+              <a [routerLink]="['/news', news.id]" class="read-more-link" (click)="$event.stopPropagation()">
+                Read Article →
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="pinnedNews.length === 0 && latestNews.length === 0">
+      <div class="empty-illustration">
+        <div class="empty-icon">📰</div>
+        <div class="empty-decoration">✨</div>
+      </div>
+      <h3>No News Articles Yet</h3>
+      <p>There are currently no news articles or announcements available.</p>
+      <div class="empty-actions" *ngIf="canManageNews()">
+        <button class="btn btn-primary" routerLink="/news/create">
+          <span class="btn-icon">➕</span>
+          Create First Article
+        </button>
+      </div>
+      <div class="empty-tips">
+        <div class="tip">
+          <span class="tip-icon">💡</span>
+          <span>News articles keep everyone informed about school events and updates</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,114 @@
+.user-log-container {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+}
+.help-text {
+  color: #6b7280;
+  margin-bottom: 10px;
+}
+.summary-cards {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.summary-cards .card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px 12px;
+  min-width: 160px;
+}
+.summary-cards .card-title {
+  font-size: 12px;
+  color: #6b7280;
+}
+.summary-cards .card-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+.filters {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.filters label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.presets button {
+  margin-right: 6px;
+}
+.auto-refresh {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.columns {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.table-wrapper {
+  overflow-x: auto;
+}
+.log-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.log-table th, .log-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  text-align: left;
+}
+.log-table thead th {
+  background: #f1f5f9;
+  font-weight: 600;
+}
+.user-cell, .session-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.copy-btn {
+  font-size: 12px;
+  padding: 4px 8px;
+}
+.role-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: #e5e7eb;
+}
+.role-badge.admin { background: #fde68a; }
+.role-badge.superadmin { background: #bfdbfe; }
+.role-badge.accountant { background: #d1fae5; }
+.active-dot {
+  color: #10b981;
+  font-weight: 600;
+}
+.ua {
+  max-width: 320px;
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.empty {
+  color: #6b7280;
+  padding: 16px;
+}
+.loading { color: #6b7280; }
+.pagination {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+}

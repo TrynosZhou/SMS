@@ -1,0 +1,49 @@
+<div class="sp-wrap">
+  <div class="sp-header">
+    <div>
+      <h1 class="sp-title">🎓 Student Portal</h1>
+      <p class="sp-subtitle">Open your linked student profile(s).</p>
+    </div>
+    <div class="sp-actions">
+      <button class="sp-btn sp-btn-outline" (click)="loadStudents()" [disabled]="loading">↻ Refresh</button>
+      <button class="sp-btn sp-btn-primary" (click)="linkStudents()">🔗 Link Students</button>
+    </div>
+  </div>
+
+  <div class="sp-alert sp-alert-error" *ngIf="error">⚠️ {{ error }}</div>
+
+  <div class="sp-loading" *ngIf="loading">
+    <div class="sp-spinner"></div>
+    <span>Loading linked students…</span>
+  </div>
+
+  <div class="sp-empty" *ngIf="!loading && students.length === 0 && !error">
+    <div class="sp-empty-icon">👨‍👩‍👧‍👦</div>
+    <h3>No Linked Students</h3>
+    <p>Link your account to your child’s student profile to access their dashboard.</p>
+    <button class="sp-btn sp-btn-primary" (click)="linkStudents()">🔗 Link a Student</button>
+  </div>
+
+  <div class="sp-grid" *ngIf="!loading && students.length > 0">
+    <div class="sp-card" *ngFor="let s of students">
+      <div class="sp-card-head">
+        <div class="sp-avatar">{{ (s.firstName || 'S').charAt(0).toUpperCase() }}{{ (s.lastName || '').charAt(0).toUpperCase() }}</div>
+        <div class="sp-name-block">
+          <div class="sp-name">{{ studentName(s) }}</div>
+          <div class="sp-meta">{{ studentMeta(s) }}</div>
+        </div>
+      </div>
+
+      <div class="sp-card-actions">
+        <button class="sp-btn sp-btn-primary" (click)="openStudentDashboard(s)">🚀 Open Student Dashboard</button>
+        <button class="sp-btn sp-btn-primary" (click)="openReportCard(s)">📄 Report Card</button>
+        <button class="sp-btn sp-btn-outline" (click)="openInvoiceStatement(s)">🧾 Invoice Statement</button>
+      </div>
+
+      <div class="sp-note">
+        Tip: you can open report cards and invoices without re-logging in as the student.
+      </div>
+    </div>
+  </div>
+</div>
+

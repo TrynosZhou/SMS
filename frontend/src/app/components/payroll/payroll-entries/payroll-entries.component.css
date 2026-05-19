@@ -1,0 +1,35 @@
+.page-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+.header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.run-label { font-size: 0.9rem; color: var(--text-secondary); font-weight: normal; margin-left: 0.5rem; }
+.btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; margin-right: 0.25rem; }
+/* Same size for both payslip action buttons */
+.btn-payslip,
+.btn-preview-payslip {
+  min-width: 150px;
+  box-sizing: border-box;
+}
+.btn-payslip {
+  background-color: #2563eb;
+  color: #fff;
+  font-weight: 700;
+  border: 1px solid #1d4ed8;
+}
+.btn-payslip:hover {
+  background-color: #1d4ed8;
+}
+.btn-preview-payslip {
+  background-color: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+  border: 1px solid #cbd5e1;
+}
+.btn-preview-payslip:hover {
+  background-color: #e2e8f0;
+  color: #1e293b;
+}
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1050; }
+.modal-content { padding: 1.5rem; max-width: 400px; width: 90%; }
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; margin-bottom: 0.25rem; font-weight: 600; }
+.form-control { width: 100%; padding: 0.5rem; }
+.form-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }

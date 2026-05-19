@@ -1,0 +1,265 @@
+<div class="src-page">
+
+  <!-- ── Page Header ───────────────────────────────────────── -->
+  <div class="src-header">
+    <div class="src-header-left">
+      <div class="src-avatar" *ngIf="!safeSchoolLogoUrl">📄</div>
+      <img *ngIf="safeSchoolLogoUrl" [src]="safeSchoolLogoUrl" alt="School Logo" class="src-school-logo" />
+      <div>
+        <h1 class="src-title">My Report Card</h1>
+        <p class="src-subtitle" *ngIf="studentFullName">{{ studentFullName }}</p>
+      </div>
+    </div>
+    <div class="src-header-actions">
+      <button class="src-btn src-btn-outline"
+              (click)="generateAndPreview()"
+              [disabled]="!canGenerate || loading || loadingPdf">
+        <span *ngIf="!loading && !loadingPdf">🔄 Refresh</span>
+        <span *ngIf="loading || loadingPdf" class="src-spinner-inline"></span>
+      </button>
+      <button class="src-btn src-btn-primary"
+              (click)="downloadPDF()"
+              [disabled]="!inlinePdf || loading">
+        ⬇️ Download PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Alerts ────────────────────────────────────────────── -->
+  <div class="src-alert src-alert-error" *ngIf="error" [@fadeIn]>
+    <span>⚠️</span> {{ error }}
+  </div>
+  <div class="src-alert src-alert-success" *ngIf="success" [@fadeIn]>
+    <span>✓</span> {{ success }}
+  </div>
+
+  <!-- ── Selection Panel ───────────────────────────────────── -->
+  <div class="src-selection-card" [@fadeIn]>
+    <div class="src-selection-grid">
+
+      <!-- Student Info chips (read-only) -->
+      <div class="src-info-chip">
+        <span class="src-chip-label">Student</span>
+        <span class="src-chip-value">{{ studentFullName || '—' }}</span>
+      </div>
+
+      <div class="src-info-chip">
+        <span class="src-chip-label">Student No.</span>
+        <span class="src-chip-value">{{ student?.studentNumber || '—' }}</span>
+      </div>
+
+      <div class="src-info-chip">
+        <span class="src-chip-label">Class</span>
+        <span class="src-chip-value">{{ className || student?.class?.name || '—' }}</span>
+      </div>
+
+      <!-- Term (read-only from settings) -->
+      <div class="src-info-chip src-chip-accent">
+        <span class="src-chip-label">Active Term</span>
+        <span class="src-chip-value" *ngIf="!loadingTerms">
+          {{ activeTerm || 'Not configured' }}
+        </span>
+        <span class="src-chip-value" *ngIf="loadingTerms">Loading…</span>
+      </div>
+
+    </div>
+
+    <!-- Exam Type selector -->
+    <div class="src-exam-selector">
+      <div class="src-field-group">
+        <label class="src-label">Exam Type <span class="src-required">*</span></label>
+        <div class="src-select-wrapper">
+          <select
+            class="src-select"
+            [(ngModel)]="selectedExamType"
+            (ngModelChange)="onExamTypeChange()"
+            [disabled]="loadingTerms">
+            <option value="">— Select Exam Type —</option>
+            <option *ngFor="let t of examTypes" [value]="t">
+              {{ t === 'mid_term' ? 'Mid-Term' : t === 'end_term' ? 'End-Term' : t }}
+            </option>
+          </select>
+          <span class="src-select-arrow">▾</span>
+        </div>
+        <p class="src-field-hint" *ngIf="!selectedExamType">
+          Select an exam type above — the report card will load automatically.
+        </p>
+      </div>
+
+      <!-- Status strip -->
+      <div class="src-status-strip" *ngIf="selectedExamType">
+        <span class="src-status-dot"
+              [class.dot-loading]="loading || loadingPdf"
+              [class.dot-ready]="inlinePdf && !loading && !loadingPdf"
+              [class.dot-error]="pdfLoadError"></span>
+        <span *ngIf="loading">Fetching report card…</span>
+        <span *ngIf="!loading && loadingPdf">Rendering PDF…</span>
+        <span *ngIf="!loading && !loadingPdf && inlinePdf">Report card ready</span>
+        <span *ngIf="!loading && !loadingPdf && pdfLoadError">PDF render failed — HTML view shown below</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main content area ─────────────────────────────────── -->
+  <ng-container *ngIf="selectedExamType">
+
+    <!-- Loading spinner -->
+    <div class="src-loader-center" *ngIf="loading">
+      <div class="src-spinner"></div>
+      <p>Fetching your report card…</p>
+    </div>
+
+    <!-- PDF inline viewer (primary display) -->
+    <div class="src-pdf-container" *ngIf="!loading && !pdfLoadError" [@fadeIn]>
+
+      <!-- PDF loading overlay -->
+      <div class="src-pdf-loading" *ngIf="loadingPdf">
+        <div class="src-spinner src-spinner-dark"></div>
+        <p>Rendering report card PDF…</p>
+      </div>
+
+      <!-- The PDF iframe -->
+      <iframe
+        *ngIf="inlinePdf && !loadingPdf"
+        [src]="inlinePdf"
+        class="src-pdf-frame"
+        frameborder="0"
+        title="Report Card PDF">
+      </iframe>
+    </div>
+
+    <!-- ── HTML Fallback view (shown if PDF render failed or as supplement) -->
+    <div class="src-card" *ngIf="!loading && reportCard && pdfLoadError" [@fadeIn]>
+
+      <!-- Report card info grid -->
+      <div class="src-rc-info">
+        <div class="src-rc-info-header">
+          <div class="src-rc-avatar">
+            {{ (reportCard.student?.name || studentFullName || '?')[0].toUpperCase() }}
+          </div>
+          <div>
+            <h2 class="src-rc-name">{{ reportCard.student?.name || studentFullName }}</h2>
+            <p class="src-rc-meta">
+              <span>{{ student?.studentNumber }}</span>
+              <span>{{ reportCard.class || className }}</span>
+              <span>{{ activeTerm }}</span>
+              <span *ngIf="reportCard.classPosition">
+                Position {{ reportCard.classPosition }} of {{ reportCard.totalStudents }}
+              </span>
+            </p>
+          </div>
+          <div class="src-rc-overall">
+            <div class="src-overall-circle" [ngClass]="overallGradeClass">
+              {{ reportCard.overallAverage | number:'1.0-0' }}%
+            </div>
+            <p class="src-overall-label">Overall Average</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subjects table -->
+      <div class="src-table-wrap" *ngIf="reportCard.subjects?.length">
+        <table class="src-table">
+          <thead>
+            <tr>
+              <th>Subject</th>
+              <th>Code</th>
+              <th>Score</th>
+              <th>Max</th>
+              <th>Class Avg</th>
+              <th>Grade</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of reportCard.subjects"
+                [class.row-high]="(s.percentage ?? 0) >= 80"
+                [class.row-low]="(s.percentage ?? 0) < 50">
+              <td data-label="Subject">{{ s.subject || s.name || s.subjectName || '—' }}</td>
+              <td data-label="Code">{{ s.subjectCode || s.code || '—' }}</td>
+              <td data-label="Score" class="td-num">{{ s.score ?? '—' }}</td>
+              <td data-label="Max" class="td-num">{{ s.maxScore ?? '—' }}</td>
+              <td data-label="Class Avg" class="td-num">{{ s.classAverage ?? '—' }}</td>
+              <td data-label="Grade">
+                <span class="src-badge" [ngClass]="subjectGradeClass(s)">{{ s.grade || '—' }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Performance row -->
+      <div class="src-perf-row">
+        <div class="src-perf-chip highlight">
+          <span class="pchip-label">Overall Average</span>
+          <span class="pchip-value">{{ reportCard.overallAverage | number:'1.1-1' }}%</span>
+        </div>
+        <div class="src-perf-chip">
+          <span class="pchip-label">Overall Grade</span>
+          <span class="pchip-value">
+            <span class="src-badge" [ngClass]="overallGradeClass">{{ reportCard.overallGrade }}</span>
+          </span>
+        </div>
+        <div class="src-perf-chip" *ngIf="reportCard.classPosition">
+          <span class="pchip-label">Class Position</span>
+          <span class="pchip-value">{{ reportCard.classPosition }} / {{ reportCard.totalStudents }}</span>
+        </div>
+        <div class="src-perf-chip" *ngIf="reportCard.totalAttendance !== undefined">
+          <span class="pchip-label">Attendance</span>
+          <span class="pchip-value">{{ reportCard.presentAttendance ?? '—' }} / {{ reportCard.totalAttendance }} days</span>
+        </div>
+      </div>
+
+      <!-- Remarks -->
+      <div class="src-remarks" *ngIf="reportCard.remarks">
+        <h3 class="src-remarks-title">Remarks</h3>
+        <div class="src-remark-item" *ngIf="reportCard.remarks.classTeacherRemarks">
+          <span class="src-remark-role">Class Teacher</span>
+          <p>{{ reportCard.remarks.classTeacherRemarks }}</p>
+        </div>
+        <div class="src-remark-item" *ngIf="reportCard.remarks.headmasterRemarks">
+          <span class="src-remark-role">Head's Remarks</span>
+          <p>{{ reportCard.remarks.headmasterRemarks }}</p>
+        </div>
+        <div class="src-remark-empty"
+             *ngIf="!reportCard.remarks.classTeacherRemarks && !reportCard.remarks.headmasterRemarks">
+          No remarks have been entered for this report card yet.
+        </div>
+      </div>
+
+      <!-- Retry PDF button -->
+      <div class="src-retry-row">
+        <button class="src-btn src-btn-outline" (click)="loadInlinePdf()">
+          🔄 Retry PDF Render
+        </button>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="src-empty" *ngIf="!loading && !reportCard && !error && !loadingPdf" [@fadeIn]>
+      <span class="src-empty-icon">📄</span>
+      <h3>No Report Card Found</h3>
+      <p>No report card is available for the selected exam type and term.<br>
+         Please check with your class teacher or administrator.</p>
+    </div>
+
+  </ng-container>
+
+  <!-- Placeholder when no exam type selected yet -->
+  <div class="src-placeholder" *ngIf="!selectedExamType && !loading" [@fadeIn]>
+    <div class="src-placeholder-inner">
+      <span class="src-placeholder-icon">🎓</span>
+      <h3>Select Exam Type to View Your Report Card</h3>
+      <p>Your class and the active term have been set automatically.<br>
+         Choose an exam type above and your report card will load instantly.</p>
+      <div class="src-quick-types">
+        <button class="src-quick-btn" (click)="selectedExamType = 'mid_term'; onExamTypeChange()">
+          📋 Mid-Term
+        </button>
+        <button class="src-quick-btn" (click)="selectedExamType = 'end_term'; onExamTypeChange()">
+          📋 End-Term
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

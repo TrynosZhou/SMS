@@ -1,0 +1,272 @@
+<div class="drafts-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1>
+          <span class="header-icon">📝</span>
+          Drafts
+          <span class="draft-count" *ngIf="messages.length > 0">{{ messages.length }}</span>
+        </h1>
+        <p class="header-subtitle">Unsent and failed messages</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn btn-icon" (click)="load()" title="Refresh" [disabled]="loading">
+          <span [class.spinning]="loading">🔄</span>
+        </button>
+        <button type="button" class="btn btn-primary" [routerLink]="['/messages/send']">
+          <span class="icon">✉️</span> New Message
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="quick-stats" *ngIf="messages.length > 0">
+      <div class="stat-item">
+        <span class="stat-value">{{ messages.length }}</span>
+        <span class="stat-label">Total Drafts</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">{{ getFailedCount() }}</span>
+        <span class="stat-label">Failed</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">{{ getPendingCount() }}</span>
+        <span class="stat-label">Pending</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">{{ getTodayCount() }}</span>
+        <span class="stat-label">Today</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert -->
+  <div *ngIf="error" class="alert alert-error">
+    <span class="alert-icon">⚠️</span>
+    <span class="alert-text">{{ error }}</span>
+    <button class="alert-close" (click)="error = ''">✕</button>
+  </div>
+
+  <!-- Success Alert -->
+  <div *ngIf="successMessage" class="alert alert-success">
+    <span class="alert-icon">✓</span>
+    <span class="alert-text">{{ successMessage }}</span>
+    <button class="alert-close" (click)="successMessage = ''">✕</button>
+  </div>
+
+  <!-- Bulk Actions Bar -->
+  <div class="bulk-actions-bar" *ngIf="selectedIds.size > 0">
+    <div class="bulk-info">
+      <span class="bulk-count">{{ selectedIds.size }}</span> drafts selected
+    </div>
+    <div class="bulk-buttons">
+      <button class="btn btn-sm" (click)="bulkResend()">
+        <span>📤</span> Resend All
+      </button>
+      <button class="btn btn-sm btn-danger" (click)="bulkDelete()">
+        <span>🗑️</span> Delete All
+      </button>
+      <button class="btn btn-sm" (click)="clearSelection()">
+        <span>✕</span> Clear
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section" *ngIf="messages.length > 0 || query">
+    <div class="filters-row">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          placeholder="Search drafts..." 
+          [(ngModel)]="query" 
+          (input)="applyFilter()"
+          class="search-input"
+        />
+        <button *ngIf="query" class="clear-btn" (click)="query = ''; applyFilter()">✕</button>
+      </div>
+
+      <div class="filter-chips">
+        <button 
+          class="chip" 
+          [class.active]="statusFilter === 'all'"
+          (click)="setStatusFilter('all')"
+        >
+          All
+        </button>
+        <button 
+          class="chip" 
+          [class.active]="statusFilter === 'failed'"
+          (click)="setStatusFilter('failed')"
+        >
+          <span class="chip-icon failed">!</span> Failed
+        </button>
+        <button 
+          class="chip" 
+          [class.active]="statusFilter === 'pending'"
+          (click)="setStatusFilter('pending')"
+        >
+          <span class="chip-icon pending">○</span> Pending
+        </button>
+      </div>
+
+      <div class="sort-toggle">
+        <button class="btn btn-text" (click)="toggleSort()">
+          {{ sortDesc ? '↓ Newest' : '↑ Oldest' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Draft List Panel -->
+    <div class="draft-list-panel">
+      <div class="list-header" *ngIf="filtered.length > 0">
+        <label class="select-all">
+          <input type="checkbox" [checked]="isAllSelected()" (change)="toggleSelectAll()" />
+          <span>Select all</span>
+        </label>
+        <span class="list-count">{{ filtered.length }} drafts</span>
+      </div>
+
+      <div class="loading-state" *ngIf="loading">
+        <div class="spinner"></div>
+        <p>Loading drafts...</p>
+      </div>
+
+      <div class="empty-state" *ngIf="!loading && filtered.length === 0">
+        <span class="empty-icon">📄</span>
+        <h3>No drafts</h3>
+        <p *ngIf="!query">All your messages have been sent successfully!</p>
+        <p *ngIf="query">No drafts match your search</p>
+        <button *ngIf="query" class="btn btn-primary btn-sm" (click)="query = ''; applyFilter()">Clear Search</button>
+      </div>
+
+      <div class="draft-list" *ngIf="!loading && filtered.length > 0">
+        <div 
+          *ngFor="let m of filtered" 
+          class="draft-item"
+          [class.selected]="selected?.id === m.id"
+          [class.failed]="m.failedReason"
+        >
+          <label class="item-checkbox" (click)="$event.stopPropagation()">
+            <input type="checkbox" [checked]="isSelected(m.id)" (change)="toggleSelection(m.id)" />
+          </label>
+          
+          <div class="draft-content" (click)="select(m)">
+            <div class="draft-status">
+              <span class="status-icon" [class.failed]="m.failedReason" [class.pending]="!m.failedReason">
+                {{ m.failedReason ? '!' : '○' }}
+              </span>
+            </div>
+            <div class="draft-details">
+              <div class="draft-header">
+                <span class="recipient-name">{{ m.parentName || 'Parent' }}</span>
+                <span class="draft-time">{{ timeAgo(m.createdAt) }}</span>
+              </div>
+              <div class="draft-subject">{{ m.subject || '(No Subject)' }}</div>
+              <div class="draft-preview">{{ getPreview(m.message) }}</div>
+              <div class="draft-reason" *ngIf="m.failedReason">
+                <span class="reason-icon">⚠️</span> {{ m.failedReason }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Draft Detail Panel -->
+    <div class="draft-detail-panel" *ngIf="selected">
+      <div class="detail-header">
+        <button class="btn btn-icon back-btn" (click)="selected = null" title="Back to list">
+          ←
+        </button>
+        <div class="detail-actions">
+          <button class="btn btn-icon" (click)="editDraft(selected)" title="Edit">✏️</button>
+          <button class="btn btn-icon" (click)="copyDraft(selected)" title="Copy">📋</button>
+          <button class="btn btn-icon btn-delete" (click)="confirmDelete(selected)" title="Delete">🗑️</button>
+        </div>
+      </div>
+
+      <div class="detail-content">
+        <div class="status-badge" [class.failed]="selected.failedReason" [class.pending]="!selected.failedReason">
+          <span>{{ selected.failedReason ? '⚠️ Failed' : '○ Pending' }}</span>
+        </div>
+        
+        <h2 class="detail-subject">{{ selected.subject || '(No Subject)' }}</h2>
+        
+        <div class="detail-meta">
+          <div class="recipient-info">
+            <div class="recipient-avatar">{{ getInitial(selected.parentName) }}</div>
+            <div class="recipient-details">
+              <span class="recipient-label">To:</span>
+              <span class="recipient-name">{{ selected.parentName || 'Parent' }}</span>
+              <span class="created-date">Created: {{ formatDate(selected.createdAt) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="failure-reason" *ngIf="selected.failedReason">
+          <div class="reason-header">
+            <span class="reason-icon">⚠️</span>
+            <span>Failed to send</span>
+          </div>
+          <p class="reason-text">{{ selected.failedReason }}</p>
+        </div>
+
+        <div class="detail-body">{{ selected.message }}</div>
+
+        <div class="detail-attachments" *ngIf="selected.attachments?.length">
+          <h4>📎 Attachments</h4>
+          <div class="attachment-list">
+            <div *ngFor="let a of selected.attachments" class="attachment-item">
+              <span class="attachment-icon">📄</span>
+              <span>{{ a.name || 'Attachment' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-footer">
+        <div class="footer-actions">
+          <button class="btn btn-outline" (click)="editDraft(selected)">
+            <span>✏️</span> Edit
+          </button>
+          <button class="btn btn-primary" (click)="resend(selected)" [disabled]="resending">
+            <span>{{ resending ? '⏳' : '📤' }}</span> {{ resending ? 'Sending...' : 'Resend Now' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty Detail State -->
+    <div class="empty-detail" *ngIf="!selected">
+      <span class="empty-icon">📝</span>
+      <p>Select a draft to view details</p>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-overlay" *ngIf="showDeleteConfirm" (click)="showDeleteConfirm = false">
+    <div class="confirm-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Delete Draft?</h3>
+        <button class="modal-close" (click)="showDeleteConfirm = false">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete this draft? This action cannot be undone.</p>
+        <div class="draft-preview-box" *ngIf="draftToDelete">
+          <strong>{{ draftToDelete.subject || '(No Subject)' }}</strong>
+          <span>To: {{ draftToDelete.parentName || 'Parent' }}</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="showDeleteConfirm = false">Cancel</button>
+        <button class="btn btn-danger" (click)="deleteDraft()">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>

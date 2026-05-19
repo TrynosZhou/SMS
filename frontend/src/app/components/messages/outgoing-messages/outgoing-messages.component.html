@@ -1,0 +1,286 @@
+<div class="outbox-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1>
+          <span class="header-icon">📤</span>
+          Sent Messages
+        </h1>
+        <p class="header-subtitle">View all messages sent to parents</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn btn-icon" (click)="load()" title="Refresh" [disabled]="loading">
+          <span [class.spinning]="loading">🔄</span>
+        </button>
+        <button type="button" class="btn btn-primary" [routerLink]="['/messages/send']">
+          <span class="icon">✉️</span> New Message
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="quick-stats">
+      <div class="stat-item">
+        <span class="stat-value">{{ messages.length }}</span>
+        <span class="stat-label">Total Sent</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">{{ getTodayCount() }}</span>
+        <span class="stat-label">Today</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">{{ getThisWeekCount() }}</span>
+        <span class="stat-label">This Week</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">{{ recipients.length }}</span>
+        <span class="stat-label">Recipients</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert -->
+  <div *ngIf="error" class="alert alert-error">
+    <span class="alert-icon">⚠️</span>
+    <span class="alert-text">{{ error }}</span>
+    <button class="alert-close" (click)="error = ''">✕</button>
+  </div>
+
+  <!-- Bulk Actions Bar -->
+  <div class="bulk-actions-bar" *ngIf="selectedIds.size > 0">
+    <div class="bulk-info">
+      <span class="bulk-count">{{ selectedCount }}</span> messages selected
+    </div>
+    <div class="bulk-buttons">
+      <button class="btn btn-sm" (click)="exportSelectedCSV()">
+        <span>📥</span> Export Selected
+      </button>
+      <button class="btn btn-sm btn-danger" (click)="clearSelection()">
+        <span>✕</span> Clear
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section">
+    <div class="filters-row">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          placeholder="Search messages..." 
+          [(ngModel)]="query" 
+          (input)="applyFilter()"
+          class="search-input"
+        />
+        <button *ngIf="query" class="clear-btn" (click)="query = ''; applyFilter()">✕</button>
+      </div>
+
+      <div class="filter-chips">
+        <button 
+          class="chip" 
+          [class.active]="!dateFilter"
+          (click)="setDateFilter('')"
+        >
+          All Time
+        </button>
+        <button 
+          class="chip" 
+          [class.active]="dateFilter === 'today'"
+          (click)="setDateFilter('today')"
+        >
+          Today
+        </button>
+        <button 
+          class="chip" 
+          [class.active]="dateFilter === 'week'"
+          (click)="setDateFilter('week')"
+        >
+          This Week
+        </button>
+        <button 
+          class="chip" 
+          [class.active]="dateFilter === 'month'"
+          (click)="setDateFilter('month')"
+        >
+          This Month
+        </button>
+      </div>
+
+      <button class="btn btn-text" (click)="showFilters = !showFilters">
+        <span>🎛️</span> {{ showFilters ? 'Hide' : 'More' }} Filters
+      </button>
+    </div>
+
+    <div class="advanced-filters" *ngIf="showFilters">
+      <div class="filter-group">
+        <label>Recipient</label>
+        <select [(ngModel)]="recipientFilter" (change)="applyFilter()">
+          <option value="">All Recipients</option>
+          <option *ngFor="let r of recipients" [value]="r.toLowerCase()">{{ r }}</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Date From</label>
+        <input type="date" [(ngModel)]="dateStart" (change)="applyFilter()" />
+      </div>
+      <div class="filter-group">
+        <label>Date To</label>
+        <input type="date" [(ngModel)]="dateEnd" (change)="applyFilter()" />
+      </div>
+      <div class="filter-group">
+        <label>Sort</label>
+        <select [(ngModel)]="sortDesc" (change)="applyFilter()">
+          <option [ngValue]="true">Newest First</option>
+          <option [ngValue]="false">Oldest First</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Per Page</label>
+        <select [(ngModel)]="pageSize" (change)="setPageSize(pageSize)">
+          <option [value]="10">10</option>
+          <option [value]="20">20</option>
+          <option [value]="50">50</option>
+        </select>
+      </div>
+      <button class="btn btn-text" (click)="clearFilters()">
+        <span>✕</span> Clear Filters
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Message List Panel -->
+    <div class="message-list-panel">
+      <div class="list-header">
+        <label class="select-all">
+          <input type="checkbox" [checked]="isAllPageSelected()" (change)="toggleSelectAllPage()" />
+          <span>Select all</span>
+        </label>
+        <span class="list-count">{{ filtered.length }} messages</span>
+      </div>
+
+      <div class="loading-state" *ngIf="loading">
+        <div class="spinner"></div>
+        <p>Loading messages...</p>
+      </div>
+
+      <div class="empty-state" *ngIf="!loading && filtered.length === 0">
+        <span class="empty-icon">📭</span>
+        <h3>No sent messages</h3>
+        <p>Messages you send will appear here</p>
+        <button class="btn btn-primary btn-sm" [routerLink]="['/messages/send']">Send Message</button>
+      </div>
+
+      <div class="message-list" *ngIf="!loading && displayed.length > 0">
+        <div 
+          *ngFor="let m of displayed" 
+          class="message-item"
+          [class.selected]="selected?.id === m.id"
+        >
+          <label class="item-checkbox" (click)="$event.stopPropagation()">
+            <input type="checkbox" [checked]="isRowSelected(m)" (change)="toggleRowSelection(m)" />
+          </label>
+          
+          <div class="message-content" (click)="open(m)">
+            <div class="message-avatar">{{ getRecipientInitial(m) }}</div>
+            <div class="message-details">
+              <div class="message-header">
+                <span class="recipient-name">{{ m.recipientName || 'Parent(s)' }}</span>
+                <span class="message-time">{{ timeAgo(m.createdAt) }}</span>
+              </div>
+              <div class="message-subject">{{ m.subject || '(No Subject)' }}</div>
+              <div class="message-preview">{{ getPreview(m.message) }}</div>
+            </div>
+            <span class="sent-indicator" title="Sent">✓</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" *ngIf="totalPages > 1">
+        <button class="btn btn-sm" (click)="goToPage(page - 1)" [disabled]="page <= 1">
+          ← Prev
+        </button>
+        <span class="page-info">Page {{ page }} of {{ totalPages }}</span>
+        <button class="btn btn-sm" (click)="goToPage(page + 1)" [disabled]="page >= totalPages">
+          Next →
+        </button>
+      </div>
+
+      <!-- List Actions -->
+      <div class="list-actions">
+        <button class="btn btn-sm" (click)="exportCSV()" [disabled]="filtered.length === 0">
+          <span>📥</span> Export All
+        </button>
+        <button class="btn btn-sm" (click)="selectPage()">
+          <span>☑️</span> Select Page
+        </button>
+      </div>
+    </div>
+
+    <!-- Message Detail Panel -->
+    <div class="message-detail-panel" *ngIf="selected">
+      <div class="detail-header">
+        <button class="btn btn-icon back-btn" (click)="selected = null" title="Back to list">
+          ←
+        </button>
+        <div class="detail-actions">
+          <button class="btn btn-icon" (click)="printSelected()" title="Print">🖨️</button>
+          <button class="btn btn-icon" (click)="copySelected()" title="Copy">📋</button>
+          <button class="btn btn-icon" (click)="downloadSelected()" title="Download">📄</button>
+        </div>
+      </div>
+
+      <div class="detail-content">
+        <div class="sent-badge">
+          <span>✓</span> Sent
+        </div>
+        
+        <h2 class="detail-subject">{{ selected.subject || '(No Subject)' }}</h2>
+        
+        <div class="detail-meta">
+          <div class="recipient-info">
+            <div class="recipient-avatar">{{ getRecipientInitial(selected) }}</div>
+            <div class="recipient-details">
+              <span class="recipient-label">To:</span>
+              <span class="recipient-name">{{ selected.recipientName || 'Parent(s)' }}</span>
+              <span class="sent-date">{{ formatDate(selected.createdAt) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-body">{{ selected.message }}</div>
+
+        <div class="detail-attachments" *ngIf="selected.attachments?.length">
+          <h4>📎 Attachments</h4>
+          <div class="attachment-list">
+            <a *ngFor="let a of selected.attachments" [href]="a.url || a" target="_blank" class="attachment-item">
+              <span class="attachment-icon">📄</span>
+              <span>{{ a.name || 'Download' }}</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-footer">
+        <div class="footer-actions">
+          <button class="btn btn-outline" (click)="forwardMessage()">
+            <span>↪️</span> Forward
+          </button>
+          <button class="btn btn-primary" (click)="resendSelected()">
+            <span>📤</span> Resend
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty Detail State -->
+    <div class="empty-detail" *ngIf="!selected">
+      <span class="empty-icon">📨</span>
+      <p>Select a message to view details</p>
+    </div>
+  </div>
+</div>

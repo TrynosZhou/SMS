@@ -1,0 +1,196 @@
+<div class="ma-page">
+  <div class="ma-wrapper">
+
+    <!-- ── Left Panel: Profile Card ─────────────────────────────────────── -->
+    <aside class="ma-profile">
+      <div class="profile-avatar">
+        <span class="avatar-initials">{{ (currentUsername || '?').charAt(0).toUpperCase() }}</span>
+      </div>
+      <div class="profile-name">{{ currentUsername || 'User' }}</div>
+      <div class="profile-role-badge">
+        {{ isTeacher ? '🧑‍🏫 Teacher' : isAccountant ? '🧾 Accountant' : '👤 Parent' }}
+      </div>
+
+      <div class="profile-info-block" *ngIf="accountInfo">
+        <div class="profile-info-row">
+          <span class="pi-label">Username</span>
+          <span class="pi-value">{{ currentUsername || '—' }}</span>
+        </div>
+        <div class="profile-info-row" *ngIf="!isTeacher && !isAccountant">
+          <span class="pi-label">Email</span>
+          <span class="pi-value">{{ currentEmail || '—' }}</span>
+        </div>
+        <div class="profile-info-row">
+          <span class="pi-label">Role</span>
+          <span class="pi-value">{{ accountInfo?.role || '—' }}</span>
+        </div>
+      </div>
+
+      <button class="back-btn" (click)="goToDashboard()">← Back to Dashboard</button>
+    </aside>
+
+    <!-- ── Right Panel: Form ─────────────────────────────────────────────── -->
+    <main class="ma-form-panel">
+
+      <!-- Header -->
+      <div class="ma-form-header">
+        <h1 class="form-title">{{ isAccountant ? '🔒 Change Password' : '⚙️ Manage Account' }}</h1>
+        <p class="form-subtitle">{{ isAccountant ? 'Update your login password securely.' : 'Update your credentials and keep your account secure.' }}</p>
+      </div>
+
+      <!-- Alerts -->
+      <div class="ma-alert success" *ngIf="success">
+        <span>✅</span> {{ success }}
+      </div>
+      <div class="ma-alert error" *ngIf="error">
+        <span>⚠️</span> {{ error }}
+      </div>
+
+      <!-- Loading -->
+      <div class="ma-loading" *ngIf="loading && !accountInfo">
+        <div class="spinner"></div>
+        <span>Loading account information…</span>
+      </div>
+
+      <!-- First-login notice -->
+      <div class="ma-notice" *ngIf="isTeacher && mustChangePassword">
+        <span class="notice-icon">⚠️</span>
+        <div>
+          <strong>First Login Required</strong>
+          <p>You must change your temporary password. Your username (TeacherID) cannot be changed.</p>
+        </div>
+      </div>
+
+      <form *ngIf="accountInfo" (ngSubmit)="updateAccount()" autocomplete="off">
+
+        <!-- Account Info Section -->
+        <div class="form-section">
+          <div class="section-label">Account Information</div>
+
+          <div class="field-group">
+            <label class="field-label">{{ isTeacher ? 'Username (TeacherID)' : 'Username' }}</label>
+            <div class="field-readonly">
+              <span class="field-icon">👤</span>
+              <span>{{ currentUsername || 'N/A' }}</span>
+              <span class="readonly-badge">Read only</span>
+            </div>
+            <small class="field-hint" *ngIf="isTeacher">Your TeacherID cannot be changed.</small>
+            <small class="field-hint" *ngIf="!isTeacher">Your current username.</small>
+          </div>
+
+          <div class="field-group" *ngIf="!isTeacher && !isAccountant">
+            <label class="field-label">Current Email</label>
+            <div class="field-readonly">
+              <span class="field-icon">📧</span>
+              <span>{{ currentEmail || 'N/A' }}</span>
+              <span class="readonly-badge">Read only</span>
+            </div>
+          </div>
+
+          <div class="field-group" *ngIf="!isTeacher && !isAccountant">
+            <label class="field-label">New Email <span class="optional">(optional)</span></label>
+            <div class="field-input-wrap">
+              <span class="field-icon">📧</span>
+              <input
+                type="email"
+                [(ngModel)]="newEmail"
+                name="newEmail"
+                placeholder="Enter new email address"
+                autocomplete="off"
+                class="field-input" />
+            </div>
+            <small class="field-hint">Leave blank to keep your current email.</small>
+          </div>
+        </div>
+
+        <!-- Password Section -->
+        <div class="form-section">
+          <div class="section-label">Change Password</div>
+
+          <!-- Current Password -->
+          <div class="field-group">
+            <label class="field-label">Current Password <span class="required">*</span></label>
+            <div class="field-input-wrap">
+              <span class="field-icon">🔑</span>
+              <input
+                [type]="showCurrentPassword ? 'text' : 'password'"
+                [(ngModel)]="currentPassword"
+                name="currentPassword"
+                placeholder="Enter your current password"
+                required
+                autocomplete="current-password"
+                class="field-input" />
+              <button type="button" class="eye-btn" (click)="toggleCurrentPasswordVisibility()">
+                {{ showCurrentPassword ? '🙈' : '👁️' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- New Password -->
+          <div class="field-group">
+            <label class="field-label">New Password <span class="required">*</span></label>
+            <div class="field-input-wrap">
+              <span class="field-icon">🔒</span>
+              <input
+                [type]="showNewPassword ? 'text' : 'password'"
+                [(ngModel)]="newPassword"
+                name="newPassword"
+                placeholder="Enter new password"
+                required
+                autocomplete="new-password"
+                class="field-input" />
+              <button type="button" class="eye-btn" (click)="toggleNewPasswordVisibility()">
+                {{ showNewPassword ? '🙈' : '👁️' }}
+              </button>
+            </div>
+
+            <!-- Strength Meter -->
+            <div class="strength-wrap" *ngIf="newPassword">
+              <div class="strength-track">
+                <div class="strength-fill" [ngClass]="strengthClass"></div>
+              </div>
+              <span class="strength-text" [ngClass]="strengthClass">{{ strengthLabel }}</span>
+            </div>
+
+            <!-- Requirements Checklist -->
+            <!-- Strength checklist kept for information only; no hard requirements enforced -->
+          </div>
+
+          <!-- Confirm Password -->
+          <div class="field-group">
+            <label class="field-label">Confirm New Password <span class="required">*</span></label>
+            <div class="field-input-wrap" [class.match]="passwordsMatch" [class.mismatch]="confirmPassword && !passwordsMatch">
+              <span class="field-icon">🔒</span>
+              <input
+                [type]="showConfirmPassword ? 'text' : 'password'"
+                [(ngModel)]="confirmPassword"
+                name="confirmPassword"
+                placeholder="Re-enter new password"
+                required
+                autocomplete="new-password"
+                class="field-input" />
+              <button type="button" class="eye-btn" (click)="toggleConfirmPasswordVisibility()">
+                {{ showConfirmPassword ? '🙈' : '👁️' }}
+              </button>
+            </div>
+            <small class="field-hint match-hint" *ngIf="passwordsMatch">✅ Passwords match</small>
+            <small class="field-hint mismatch-hint" *ngIf="confirmPassword && !passwordsMatch">❌ Passwords do not match</small>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="submit" class="btn-save" [disabled]="!canSubmit">
+            <span *ngIf="!loading">💾 Update Account</span>
+            <span *ngIf="loading" class="loading-row"><span class="spinner sm"></span> Updating…</span>
+          </button>
+          <button type="button" class="btn-cancel" (click)="goToDashboard()" [disabled]="loading">
+            ✕ Cancel
+          </button>
+        </div>
+
+      </form>
+
+    </main>
+  </div>
+</div>

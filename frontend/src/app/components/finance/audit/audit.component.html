@@ -1,0 +1,367 @@
+<div class="audit-container">
+  <!-- Modern Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-title-section">
+        <div class="header-icon">
+          <span>🛡️</span>
+        </div>
+        <div class="header-text">
+          <h1>System Auditor</h1>
+          <p>Real-time monitoring and validation of fee transactions</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="auto-refresh-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" [(ngModel)]="autoRefreshEnabled" (change)="toggleAutoRefresh()">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">Auto-refresh ({{ (refreshPeriodMs/1000) | number:'1.0-0' }}s)</span>
+        </div>
+        <button class="btn btn-header" (click)="load()" [disabled]="loading" title="Refresh data">
+          <span class="btn-icon" [class.spinning]="loading">🔄</span>
+          Refresh
+        </button>
+        <button class="btn btn-header" (click)="exportCSV()" title="Export current page to CSV">
+          <span class="btn-icon">📥</span>
+          Export Page
+        </button>
+      </div>
+    </div>
+    <div class="last-refresh-info" *ngIf="lastRefresh">
+      <span class="refresh-icon">⏱️</span>
+      Last refresh: {{ lastRefresh | date:'short' }}
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="quick-stats">
+    <div class="stat-card primary">
+      <div class="stat-icon">📊</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ mode === 'payments' ? serverTotal : total }}</span>
+        <span class="stat-label">Total Records</span>
+      </div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-icon">💰</div>
+      <div class="stat-info">
+        <span class="stat-value">${{ fullTotals.paid | number:'1.2-2' }}</span>
+        <span class="stat-label">Total Paid</span>
+      </div>
+    </div>
+    <div class="stat-card info" *ngIf="mode === 'invoices'">
+      <div class="stat-icon">📋</div>
+      <div class="stat-info">
+        <span class="stat-value">${{ fullTotals.balance | number:'1.2-2' }}</span>
+        <span class="stat-label">Total Balance</span>
+      </div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-icon">⚠️</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ getAnomalyCount() }}</span>
+        <span class="stat-label">Anomalies</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mode Tabs -->
+  <div class="mode-tabs">
+    <button class="mode-tab" [class.active]="mode === 'payments'" (click)="setMode('payments')">
+      <span class="tab-icon">💳</span>
+      <span class="tab-text">Payment Events</span>
+      <span class="tab-count" *ngIf="mode === 'payments'">{{ serverTotal }}</span>
+    </button>
+    <button class="mode-tab" [class.active]="mode === 'invoices'" (click)="setMode('invoices')">
+      <span class="tab-icon">📄</span>
+      <span class="tab-text">Invoices</span>
+      <span class="tab-count" *ngIf="mode === 'invoices'">{{ total }}</span>
+    </button>
+  </div>
+
+  <!-- Filters Card -->
+  <div class="filters-card">
+    <div class="filters-header">
+      <div class="filters-title">
+        <span class="filters-icon">🔍</span>
+        <h3>Filters</h3>
+      </div>
+      <button class="btn btn-text" (click)="clearFilters()">Clear All</button>
+    </div>
+    
+    <div class="filters-grid">
+      <!-- Search for Invoices -->
+      <div class="filter-group" *ngIf="mode === 'invoices'">
+        <label>
+          <span class="label-icon">🔎</span>
+          Search
+        </label>
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="filter-input" [(ngModel)]="search" (input)="applyFilters()" 
+                 placeholder="Student name, ID, Invoice number">
+          <button class="clear-search" *ngIf="search" (click)="search = ''; applyFilters()">×</button>
+        </div>
+      </div>
+
+      <!-- Search for Payments -->
+      <div class="filter-group" *ngIf="mode === 'payments'">
+        <label>
+          <span class="label-icon">🔎</span>
+          Search
+        </label>
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="filter-input" [(ngModel)]="paymentSearch" (input)="applyPaymentFilters()" 
+                 placeholder="Receipt number, payer name, method">
+          <button class="clear-search" *ngIf="paymentSearch" (click)="paymentSearch = ''; applyPaymentFilters()">×</button>
+        </div>
+      </div>
+
+      <!-- Status Filter (Invoices) -->
+      <div class="filter-group" *ngIf="mode === 'invoices'">
+        <label>
+          <span class="label-icon">📊</span>
+          Status
+        </label>
+        <select class="filter-select" [(ngModel)]="statusFilter" (change)="applyFilters()">
+          <option value="">All Statuses</option>
+          <option value="paid">Paid</option>
+          <option value="partial">Partial</option>
+          <option value="pending">Pending</option>
+          <option value="overdue">Overdue</option>
+          <option value="void">Void</option>
+        </select>
+      </div>
+
+      <!-- Method Filter (Payments) -->
+      <div class="filter-group" *ngIf="mode === 'payments'">
+        <label>
+          <span class="label-icon">💳</span>
+          Payment Method
+        </label>
+        <select class="filter-select" [(ngModel)]="paymentMethod" (change)="applyPaymentFilters()">
+          <option value="">All Methods</option>
+          <option value="CASH(USD)">Cash (USD)</option>
+          <option value="ECOCASH(USD)">EcoCash (USD)</option>
+          <option value="BANK TRANSFER(USD)">Bank Transfer (USD)</option>
+        </select>
+      </div>
+
+      <!-- Date Range (Payments) -->
+      <div class="filter-group date-range" *ngIf="mode === 'payments'">
+        <label>
+          <span class="label-icon">📅</span>
+          Date Range
+        </label>
+        <div class="date-inputs">
+          <input type="date" class="filter-input date" [(ngModel)]="paymentStartDate" (change)="applyPaymentFilters()" placeholder="Start">
+          <span class="date-separator">to</span>
+          <input type="date" class="filter-input date" [(ngModel)]="paymentEndDate" (change)="applyPaymentFilters()" placeholder="End">
+        </div>
+      </div>
+
+      <!-- Rows per page -->
+      <div class="filter-group">
+        <label>
+          <span class="label-icon">📋</span>
+          Rows per page
+        </label>
+        <select class="filter-select" [ngModel]="limit" (ngModelChange)="onChangeLimit($event)">
+          <option [ngValue]="10">10</option>
+          <option [ngValue]="20">20</option>
+          <option [ngValue]="50">50</option>
+          <option [ngValue]="100">100</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  <div class="alert alert-error" *ngIf="error">
+    <span class="alert-icon">⚠️</span>
+    <span class="alert-text">{{ error }}</span>
+    <button class="alert-close" (click)="error = ''">×</button>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="loading-spinner"></div>
+    <p>Loading transactions...</p>
+  </div>
+
+  <!-- Data Table -->
+  <div class="table-card" *ngIf="!loading">
+    <div class="table-header">
+      <div class="table-title">
+        <span class="table-icon">{{ mode === 'payments' ? '💳' : '📄' }}</span>
+        <h3>{{ mode === 'payments' ? 'Payment Events' : 'Invoice Records' }}</h3>
+      </div>
+      <div class="table-actions">
+        <button class="btn btn-outline" *ngIf="mode === 'payments'" (click)="exportPaymentsFullCSV()">
+          <span class="btn-icon">📥</span>
+          Export Full CSV
+        </button>
+        <button class="btn btn-outline" *ngIf="mode === 'invoices'" (click)="exportInvoicesFullCSV()">
+          <span class="btn-icon">📥</span>
+          Export Full CSV
+        </button>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="audit-table">
+        <thead>
+          <tr>
+            <th *ngIf="mode === 'invoices'" class="col-invoice">Invoice No</th>
+            <th class="col-recipient">Recipient</th>
+            <th class="col-student">Student ID</th>
+            <th *ngIf="mode === 'invoices'" class="col-status">Status</th>
+            <th *ngIf="mode === 'invoices'" class="col-amount">Amount</th>
+            <th class="col-paid">Paid</th>
+            <th *ngIf="mode === 'invoices'" class="col-balance">Balance</th>
+            <th *ngIf="mode === 'invoices'" class="col-prev">Prev Balance</th>
+            <th *ngIf="mode === 'invoices'" class="col-prepaid">Prepaid</th>
+            <th *ngIf="mode === 'invoices'" class="col-term">Term</th>
+            <th class="col-date">Payment Date</th>
+            <th class="col-method">Method</th>
+            <th class="col-ref">Reference</th>
+            <th class="col-updated">Updated</th>
+            <th class="col-anomaly">Anomaly</th>
+            <th class="col-pdf">PDF</th>
+            <th *ngIf="mode === 'payments'" class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let tx of paged; trackBy: trackByTransaction" 
+              [class.row-anomaly]="hasAnomaly(tx)">
+            <td *ngIf="mode === 'invoices'" class="col-invoice">
+              <span class="invoice-number">{{ tx.invoiceNumber }}</span>
+            </td>
+            <td class="col-recipient">
+              <div class="recipient-info">
+                <div class="recipient-avatar">{{ getInitials(tx.recipientName) }}</div>
+                <span class="recipient-name">{{ tx.recipientName || '—' }}</span>
+              </div>
+            </td>
+            <td class="col-student">
+              <span class="student-id">{{ tx.studentNumber }}</span>
+            </td>
+            <td *ngIf="mode === 'invoices'" class="col-status">
+              <span class="status-badge" 
+                    [class.status-paid]="tx.status === 'paid'"
+                    [class.status-pending]="tx.status === 'pending'"
+                    [class.status-partial]="tx.status === 'partial'"
+                    [class.status-overdue]="tx.status === 'overdue'"
+                    [class.status-void]="tx.status === 'void'">
+                {{ tx.status }}
+              </span>
+            </td>
+            <td *ngIf="mode === 'invoices'" class="col-amount amount-cell">
+              ${{ tx.amount | number:'1.2-2' }}
+            </td>
+            <td class="col-paid amount-cell paid">
+              ${{ tx.paidAmount | number:'1.2-2' }}
+            </td>
+            <td *ngIf="mode === 'invoices'" class="col-balance amount-cell" [class.negative]="tx.balance > 0">
+              ${{ tx.balance | number:'1.2-2' }}
+            </td>
+            <td *ngIf="mode === 'invoices'" class="col-prev amount-cell">
+              ${{ tx.previousBalance | number:'1.2-2' }}
+            </td>
+            <td *ngIf="mode === 'invoices'" class="col-prepaid amount-cell">
+              ${{ tx.prepaidAmount | number:'1.2-2' }}
+            </td>
+            <td *ngIf="mode === 'invoices'" class="col-term">
+              <span class="term-badge">{{ tx.term || '—' }}</span>
+            </td>
+            <td class="col-date">
+              {{ tx.updatedAt ? (tx.updatedAt | date:'shortDate') : '—' }}
+            </td>
+            <td class="col-method">
+              <span class="method-badge" 
+                    [class.cash]="isMethodCash(tx.paymentMethod)"
+                    [class.ecocash]="isMethodEcocash(tx.paymentMethod)"
+                    [class.bank]="isMethodBank(tx.paymentMethod)">
+                {{ tx.paymentMethod || 'Unknown' }}
+              </span>
+            </td>
+            <td class="col-ref">
+              <span class="reference-text">{{ tx.referenceNumber || '—' }}</span>
+            </td>
+            <td class="col-updated">
+              {{ tx.updatedAt ? (tx.updatedAt | date:'short') : '—' }}
+            </td>
+            <td class="col-anomaly">
+              <span class="anomaly-badge" [class.danger]="hasAnomaly(tx)" [class.ok]="!hasAnomaly(tx)">
+                {{ hasAnomaly(tx) ? '⚠️ Check' : '✓ OK' }}
+              </span>
+            </td>
+            <td class="col-pdf">
+              <div class="pdf-buttons">
+                <button class="btn btn-pdf" *ngIf="mode === 'invoices' && tx.id" (click)="viewInvoicePDF(tx.id)" title="Download Invoice">
+                  📄
+                </button>
+                <button class="btn btn-pdf" *ngIf="tx.id" (click)="viewReceiptPDF(tx.id)" title="Download Receipt">
+                  🧾
+                </button>
+              </div>
+            </td>
+            <td *ngIf="mode === 'payments'" class="col-actions">
+              <button class="btn btn-danger-sm" 
+                      (click)="deletePayment(tx)" 
+                      [disabled]="!canDeletePayment(tx) || deletingId === tx.id"
+                      title="Delete payment">
+                <span *ngIf="deletingId !== tx.id">🗑️</span>
+                <span *ngIf="deletingId === tx.id" class="btn-spinner"></span>
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="paged.length === 0">
+            <td [attr.colspan]="mode === 'invoices' ? 16 : 11" class="empty-row">
+              <div class="empty-message">
+                <span class="empty-icon">📭</span>
+                <p>No transactions match the filters</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Bar -->
+    <div class="pagination-bar">
+      <div class="page-summary">
+        <span class="page-info">Page {{ page }} of {{ getTotalPages() }}</span>
+        <span class="record-info">• {{ mode === 'payments' ? serverTotal : total }} records</span>
+      </div>
+      <div class="page-totals">
+        <span class="total-item">
+          <span class="total-label">Page Total:</span>
+          <span class="total-value">${{ pageTotals.paid | number:'1.2-2' }}</span>
+        </span>
+        <span class="total-item" *ngIf="mode === 'invoices'">
+          <span class="total-label">Balance:</span>
+          <span class="total-value">${{ pageTotals.balance | number:'1.2-2' }}</span>
+        </span>
+      </div>
+      <div class="page-controls">
+        <button class="btn btn-page" (click)="goToPage(1)" [disabled]="page <= 1" title="First page">
+          ⏮️
+        </button>
+        <button class="btn btn-page" (click)="prevPage()" [disabled]="page <= 1" title="Previous page">
+          ◀️ Prev
+        </button>
+        <span class="page-number">{{ page }}</span>
+        <button class="btn btn-page" (click)="nextPage()" [disabled]="page >= getTotalPages()" title="Next page">
+          Next ▶️
+        </button>
+        <button class="btn btn-page" (click)="goToPage(getTotalPages())" [disabled]="page >= getTotalPages()" title="Last page">
+          ⏭️
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

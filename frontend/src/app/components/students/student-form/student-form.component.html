@@ -1,0 +1,321 @@
+<div class="admission-page" [class.admission-page-bordered]="!isEdit">
+  <!-- Top bar -->
+  <div class="admission-topbar">
+    <nav class="admission-breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/students">Students</a>
+      <span class="bc-sep">/</span>
+      <span class="bc-current">{{ isEdit ? 'Edit Student' : 'Admission Form' }}</span>
+    </nav>
+    <div class="admission-topbar-actions">
+      <button type="button" class="btn-top btn-top-outline" (click)="goBack()">
+        ← Back to Students
+      </button>
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  <div class="alert alert-success" *ngIf="success">
+    <span class="alert-icon">✓</span> {{ success }}
+  </div>
+  <div class="alert alert-error" *ngIf="error">
+    <span class="alert-icon">⚠</span> {{ error }}
+  </div>
+  <div class="alert alert-info" *ngIf="loadingStudent && isEdit">
+    <span class="alert-icon">⏳</span> Loading student record…
+  </div>
+
+  <form (ngSubmit)="onSubmit()" #studentForm="ngForm" class="admission-form" [class.form-loading]="loadingStudent && isEdit">
+    <!-- Form title -->
+    <header class="admission-form-header">
+      <h1 class="admission-title">{{ isEdit ? 'Edit Student' : 'Admission Form' }}</h1>
+      <div class="admission-legend">
+        <span class="legend-item"><span class="legend-dot legend-required"></span> Required*</span>
+        <span class="legend-item"><span class="legend-dot legend-optional"></span> Optional</span>
+      </div>
+    </header>
+
+    <!-- Section 1: Student Information -->
+    <section class="admission-section">
+      <h2 class="section-title">
+        <span class="section-num">1</span>
+        Student Information
+      </h2>
+      <div class="section-rule"></div>
+
+      <div class="admission-grid">
+        <div class="eskooly-field required">
+          <label class="eskooly-label" for="firstName">First Name*</label>
+          <input
+            type="text"
+            id="firstName"
+            class="eskooly-input"
+            [(ngModel)]="student.firstName"
+            name="firstName"
+            required
+            placeholder="First name"
+            [class.input-error]="studentForm.submitted && !student.firstName">
+        </div>
+
+        <div class="eskooly-field required">
+          <label class="eskooly-label" for="lastName">Last Name*</label>
+          <input
+            type="text"
+            id="lastName"
+            class="eskooly-input"
+            [(ngModel)]="student.lastName"
+            name="lastName"
+            required
+            placeholder="Last name"
+            [class.input-error]="studentForm.submitted && !student.lastName">
+        </div>
+
+        <div class="eskooly-field required">
+          <label class="eskooly-label" for="gender">Gender*</label>
+          <select
+            id="gender"
+            class="eskooly-input"
+            [(ngModel)]="student.gender"
+            name="gender"
+            required
+            [class.input-error]="studentForm.submitted && !student.gender">
+            <option value="">Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+
+        <div class="eskooly-field optional">
+          <label class="eskooly-label" for="photo">Picture – Optional</label>
+          <div class="photo-field">
+            <input
+              type="file"
+              id="photo"
+              accept="image/*"
+              class="eskooly-input file-input"
+              (change)="onPhotoSelected($event)">
+            <span class="file-hint-badge">Max size 2MB</span>
+          </div>
+          <div class="photo-preview-inline" *ngIf="photoPreview">
+            <img [src]="photoPreview" alt="Photo preview">
+            <button type="button" class="photo-remove" (click)="removePhoto()" title="Remove">×</button>
+          </div>
+        </div>
+
+        <div class="eskooly-field optional">
+          <label class="eskooly-label" for="gradeLevel">Grade</label>
+          <select
+            id="gradeLevel"
+            class="eskooly-input"
+            [(ngModel)]="selectedGradeLevel"
+            name="gradeLevel">
+            <option value="">Select Grade</option>
+            <option *ngFor="let level of gradeLevels" [value]="level">{{ level }}</option>
+          </select>
+        </div>
+
+        <div class="eskooly-field optional" *ngIf="!limitedEditMode && isEdit">
+          <label class="eskooly-label" for="studentStatus">Student Status</label>
+          <select
+            id="studentStatus"
+            class="eskooly-input"
+            [(ngModel)]="student.studentStatus"
+            name="studentStatus"
+            (change)="onStudentStatusChange()">
+            <option value="Select Status">Select Status</option>
+            <option value="Returning Student">Returning Student</option>
+            <option value="New Student">New Student</option>
+          </select>
+        </div>
+
+        <div class="eskooly-field optional student-number-field" *ngIf="!limitedEditMode">
+          <label class="eskooly-label">Student Number</label>
+          <div class="eskooly-readonly">
+            <strong *ngIf="isEdit">{{ student.studentNumber }}</strong>
+            <span *ngIf="!isEdit">Auto-generated ({{ studentIdPrefix }} format)</span>
+          </div>
+          <small class="field-note" *ngIf="!isEdit">e.g. {{ studentIdPrefix }}1234567</small>
+        </div>
+
+        <div class="eskooly-field optional">
+          <label class="eskooly-label" for="contactNumber">Mobile No. for SMS/WhatsApp</label>
+          <input
+            type="tel"
+            id="contactNumber"
+            class="eskooly-input"
+            [(ngModel)]="student.contactNumber"
+            name="contactNumber"
+            placeholder="e.g. 0771234567"
+            [class.input-error]="contactNumberError"
+            (blur)="validateContactNumber()"
+            (input)="contactNumberError = ''">
+          <small class="field-error" *ngIf="contactNumberError">{{ contactNumberError }}</small>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Other Information -->
+    <section class="admission-section">
+      <h2 class="section-title">
+        <span class="section-num">2</span>
+        Other Information
+      </h2>
+      <div class="section-rule"></div>
+
+      <div class="admission-grid">
+        <div class="eskooly-field optional">
+          <label class="eskooly-label" for="dateOfBirth">Date Of Birth</label>
+          <input
+            type="text"
+            id="dateOfBirth"
+            class="eskooly-input"
+            [(ngModel)]="student.dateOfBirth"
+            name="dateOfBirth"
+            placeholder="dd/mm/yyyy"
+            (input)="onDobInput($event)"
+            (blur)="onDobBlur()"
+            [class.input-error]="dobError">
+          <small class="field-error" *ngIf="dobError">{{ dobError }}</small>
+        </div>
+
+        <div class="eskooly-field optional">
+          <label class="eskooly-label" for="phoneNumber">Phone Number (Optional)</label>
+          <input
+            type="tel"
+            id="phoneNumber"
+            class="eskooly-input"
+            [(ngModel)]="student.phoneNumber"
+            name="phoneNumber"
+            placeholder="e.g. 0771234567"
+            [class.input-error]="phoneNumberError"
+            (blur)="validatePhoneNumber()"
+            (input)="phoneNumberError = ''">
+          <small class="field-error" *ngIf="phoneNumberError">{{ phoneNumberError }}</small>
+        </div>
+
+        <div class="eskooly-field optional full-row">
+          <label class="eskooly-label" for="address">Address</label>
+          <textarea
+            id="address"
+            class="eskooly-input eskooly-textarea"
+            [(ngModel)]="student.address"
+            name="address"
+            placeholder="Residential address"
+            rows="2"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Student Type & Services -->
+    <section class="admission-section" *ngIf="!limitedEditMode">
+      <h2 class="section-title">
+        <span class="section-num">3</span>
+        Student Type &amp; Services
+      </h2>
+      <div class="section-rule"></div>
+
+      <div class="admission-grid">
+        <div class="eskooly-field required">
+          <label class="eskooly-label" for="studentType">Student Type*</label>
+          <select
+            id="studentType"
+            class="eskooly-input"
+            [(ngModel)]="student.studentType"
+            name="studentType"
+            required
+            (change)="onStudentTypeChange()"
+            [class.input-error]="studentForm.submitted && !student.studentType">
+            <option value="">Select Type</option>
+            <option value="Day Scholar">Day Scholar</option>
+            <option value="Boarder">Boarder</option>
+          </select>
+        </div>
+
+        <div class="eskooly-field optional" *ngIf="student.studentType">
+          <label class="eskooly-label">Type Summary</label>
+          <div class="type-summary" [class.day]="student.studentType === 'Day Scholar'" [class.boarder]="student.studentType === 'Boarder'">
+            <span>{{ student.studentType === 'Day Scholar' ? '🏠' : '🏫' }}</span>
+            <div>
+              <strong>{{ student.studentType }}</strong>
+              <p>{{ student.studentType === 'Day Scholar' ? 'Attends during the day' : 'Resides at school' }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="services-block">
+        <label class="eskooly-checkbox-row">
+          <input
+            type="checkbox"
+            [(ngModel)]="student.isStaffChild"
+            name="isStaffChild"
+            (change)="onStaffChildChange()">
+          <span class="checkbox-text">
+            <strong>Staff Child</strong>
+            <small>No tuition; 50% DH meals; no transport cost</small>
+          </span>
+        </label>
+
+        <div *ngIf="student.studentType === 'Day Scholar'" class="day-scholar-services">
+          <p class="services-heading">Additional Services (Day Scholars)</p>
+          <div class="services-checkboxes">
+            <label class="eskooly-checkbox-row">
+              <input
+                type="checkbox"
+                [(ngModel)]="student.usesTransport"
+                name="usesTransport"
+                [disabled]="student.isStaffChild"
+                (change)="onUsesTransportChange()">
+              <span class="checkbox-text"><strong>School Transport</strong></span>
+            </label>
+            <label class="eskooly-checkbox-row">
+              <input
+                type="checkbox"
+                [(ngModel)]="student.usesDiningHall"
+                name="usesDiningHall"
+                (change)="onUsesDiningHallChange()">
+              <span class="checkbox-text"><strong>Dining Hall (DH) Meals</strong></span>
+            </label>
+            <label class="eskooly-checkbox-row">
+              <input
+                type="checkbox"
+                [(ngModel)]="student.isExempted"
+                name="isExempted"
+                (change)="onExemptedChange()">
+              <span class="checkbox-text"><strong>Exempted</strong></span>
+            </label>
+          </div>
+
+          <div class="estimated-invoice" *ngIf="feesSettings">
+            <div class="estimated-title">Estimated Initial Invoice</div>
+            <div class="estimated-lines">
+              <div *ngIf="estimatedFees.registration">Registration: {{ currencySymbol }} {{ estimatedFees.registration | number:'1.2-2' }}</div>
+              <div *ngIf="estimatedFees.desk">Desk: {{ currencySymbol }} {{ estimatedFees.desk | number:'1.2-2' }}</div>
+              <div *ngIf="estimatedFees.tuition">Tuition: {{ currencySymbol }} {{ estimatedFees.tuition | number:'1.2-2' }}</div>
+              <div *ngIf="estimatedFees.transport">Transport: {{ currencySymbol }} {{ estimatedFees.transport | number:'1.2-2' }}</div>
+              <div *ngIf="estimatedFees.diningHall">Dining Hall: {{ currencySymbol }} {{ estimatedFees.diningHall | number:'1.2-2' }}</div>
+              <div class="estimated-total">Total: {{ currencySymbol }} {{ estimatedFees.total | number:'1.2-2' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Actions -->
+    <footer class="admission-actions">
+      <button type="button" class="btn-action btn-cancel" (click)="goBack()">Cancel</button>
+      <button type="submit" class="btn-action btn-save" [disabled]="submitting">
+        <span *ngIf="submitting" class="spinner"></span>
+        {{ submitting ? 'Processing...' : (isEdit ? 'Update Student' : 'Register Student') }}
+      </button>
+    </footer>
+  </form>
+
+  <section class="admission-section inventory-section" *ngIf="isEdit && student?.id && moduleAccess.canAccessModule('inventory')">
+    <h2 class="section-title">
+      <span class="section-num">4</span>
+      Inventory &amp; Library
+    </h2>
+    <div class="section-rule"></div>
+    <app-student-inventory-panel [studentId]="student.id"></app-student-inventory-panel>
+  </section>
+</div>

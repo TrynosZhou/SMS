@@ -1,0 +1,21 @@
+<div class="sip" *ngIf="studentId">
+  <h3 class="sip-title">📚 Inventory &amp; library</h3>
+  <div *ngIf="loading">Loading inventory…</div>
+  <ng-container *ngIf="summary as s">
+    <div class="sip-alert" *ngIf="s.hasUnpaidInventoryFines">
+      Pending inventory fines: <strong>{{ s.pendingFinesTotal | number: '1.2-2' }}</strong>
+    </div>
+    <p class="sip-line"><strong>Textbooks</strong></p>
+    <ul class="sip-list">
+      <li *ngFor="let i of s.textbookIssuances | slice: 0 : 8">
+        {{ i.catalog?.title }} — {{ i.issuanceType }} ({{ i.status }})
+      </li>
+    </ul>
+    <p class="sip-line"><strong>Furniture:</strong></p>
+    <ul class="sip-list">
+      <li *ngFor="let i of s.furnitureIssuances | slice: 0 : 8">
+        {{ i.furnitureItem?.itemCode }} ({{ i.furnitureItem?.itemType }}) — {{ i.status }}
+      </li>
+    </ul>
+  </ng-container>
+</div>
