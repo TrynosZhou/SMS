@@ -3,6 +3,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
+import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FinanceService } from '../../../services/finance.service';
 import { StudentService } from '../../../services/student.service';
@@ -389,7 +390,7 @@ if (params['studentId']) {
         
         // Create blob URL for preview (not download)
         this.pdfUrl = window.URL.createObjectURL(result.blob);
-        this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfUrl);
+        this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlobViewerUrl(this.pdfUrl));
         this.currentInvoiceFilename = result.filename;
         this.loadingPdf = false;
         

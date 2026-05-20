@@ -3,6 +3,7 @@ import { firstValueFrom, Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { activatePageLoad } from '../../../utils/route-activation';
+import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FinanceService } from '../../../services/finance.service';
 import { StudentService } from '../../../services/student.service';
@@ -1678,7 +1679,7 @@ invoices: any[] = [];
         
         // Create blob URL for preview (not download)
         this.pdfUrl = window.URL.createObjectURL(result.blob);
-        this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfUrl);
+        this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlobViewerUrl(this.pdfUrl));
         this.currentInvoiceFilename = result.filename;
         this.loadingPdf = false;
       },
@@ -1760,7 +1761,7 @@ invoices: any[] = [];
         
         // Create blob URL for preview
         this.receiptUrl = window.URL.createObjectURL(blob);
-        this.safeReceiptUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.receiptUrl);
+        this.safeReceiptUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlobViewerUrl(this.receiptUrl));
         this.currentReceiptFilename = `Receipt-${this.currentReceiptNumber}.pdf`;
         this.loadingReceiptPdf = false;
       },
@@ -1789,7 +1790,7 @@ invoices: any[] = [];
           window.URL.revokeObjectURL(this.receiptUrl);
         }
         this.receiptUrl = window.URL.createObjectURL(blob);
-        this.safeReceiptUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.receiptUrl);
+        this.safeReceiptUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlobViewerUrl(this.receiptUrl));
         this.currentReceiptFilename = `Uniform-Receipt-${this.currentReceiptNumber}.pdf`;
         this.loadingReceiptPdf = false;
       },

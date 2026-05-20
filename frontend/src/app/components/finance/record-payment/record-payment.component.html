@@ -388,39 +388,40 @@
     </div>
   </div>
 
-  <!-- Receipt Preview Modal -->
-  <div class="modal-overlay" *ngIf="showReceipt" (click)="closeReceipt()">
-    <div class="receipt-modal" (click)="$event.stopPropagation()">
+  <!-- Receipt Preview Modal (full screen) -->
+  <div class="modal-overlay pdf-preview-maximized-overlay" *ngIf="showReceipt" (click)="closeReceipt()">
+    <div class="receipt-modal pdf-preview-maximized-modal" (click)="$event.stopPropagation()">
       <div class="receipt-header">
         <h3>Payment Receipt</h3>
-        <button class="modal-close" (click)="closeReceipt()">✕</button>
+        <div class="receipt-toolbar" *ngIf="receiptPdfUrl && !loadingReceipt">
+          <button type="button" class="btn btn-outline btn-sm" (click)="openReceiptInNewWindow()">
+            <span class="icon">🔗</span> New Tab
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" (click)="downloadReceipt()">
+            <span class="icon">💾</span> Download
+          </button>
+          <button type="button" class="btn btn-success btn-sm" (click)="printReceipt()">
+            <span class="icon">🖨️</span> Print
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" (click)="closeReceipt()">Close</button>
+        </div>
+        <button type="button" class="modal-close" (click)="closeReceipt()" aria-label="Close">✕</button>
       </div>
-      <div *ngIf="loadingReceipt" class="receipt-loading">
+      <div *ngIf="loadingReceipt" class="receipt-loading pdf-preview-body">
         <div class="spinner-large"></div>
         <p>Loading Receipt...</p>
       </div>
-      <div *ngIf="!loadingReceipt && !receiptPdfUrl" class="receipt-loading">
+      <div *ngIf="!loadingReceipt && !receiptPdfUrl" class="receipt-loading pdf-preview-body">
         <span class="empty-icon">📄</span>
         <p>Receipt not available</p>
       </div>
-      <div *ngIf="receiptPdfUrl && !loadingReceipt" class="receipt-content">
-        <iframe 
-          [src]="receiptPdfUrl" 
+      <div *ngIf="receiptPdfUrl && !loadingReceipt" class="receipt-content pdf-preview-body">
+        <iframe
+          [src]="receiptPdfUrl"
           class="receipt-iframe"
           title="Receipt PDF"
           type="application/pdf">
         </iframe>
-      </div>
-      <div class="receipt-actions" *ngIf="receiptPdfUrl && !loadingReceipt">
-        <button type="button" class="btn btn-outline" (click)="openReceiptInNewWindow()">
-          <span class="icon">🔗</span> Open in New Tab
-        </button>
-        <button type="button" class="btn btn-primary" (click)="downloadReceipt()">
-          <span class="icon">💾</span> Download
-        </button>
-        <button type="button" class="btn btn-success" (click)="printReceipt()">
-          <span class="icon">🖨️</span> Print
-        </button>
       </div>
     </div>
   </div>

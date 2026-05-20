@@ -1,0 +1,104 @@
+/* ============================================================
+   Maximized PDF previews (invoices, statements, receipts)
+   ============================================================ */
+
+.pdf-preview-maximized-overlay,
+.modal-overlay.pdf-preview-maximized-overlay,
+.pdf-viewer-overlay.pdf-preview-maximized-overlay {
+  padding: 0 !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  background: rgba(0, 0, 0, 0.88) !important;
+}
+
+.pdf-preview-maximized-modal,
+.preview-modal.pdf-preview-maximized-modal,
+.receipt-modal.pdf-preview-maximized-modal,
+.pdf-viewer-modal.pdf-preview-maximized-modal {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.pdf-preview-maximized-modal .preview-header,
+.pdf-preview-maximized-modal .receipt-header,
+.pdf-preview-maximized-modal .pdf-viewer-header {
+  flex-shrink: 0;
+  border-radius: 0 !important;
+}
+
+.pdf-preview-maximized-modal .preview-actions,
+.pdf-preview-maximized-modal .receipt-actions {
+  flex-shrink: 0;
+}
+
+.pdf-preview-maximized-modal .preview-content,
+.pdf-preview-maximized-modal .receipt-content,
+.pdf-preview-maximized-modal .pdf-viewer-content,
+.pdf-preview-maximized-modal .pdf-preview-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  position: relative !important;
+  overflow: hidden !important;
+  background: #525659 !important;
+}
+
+.pdf-preview-maximized-modal .preview-iframe,
+.pdf-preview-maximized-modal .receipt-iframe,
+.pdf-preview-maximized-modal .pdf-iframe {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+}
+
+.pdf-preview-maximized-modal .receipt-loading,
+.pdf-preview-maximized-modal .pdf-loading {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+/* Inline invoice PDF panels (student / parent portals) */
+.pdf-inline-preview-maximized {
+  min-height: calc(100vh - 12rem) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.pdf-inline-preview-maximized .sis-pdf-frame,
+.pdf-inline-preview-maximized .pis-pdf-frame {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-height: calc(100vh - 14rem) !important;
+  height: 100% !important;
+  border: none !important;
+}
+
+.pdf-inline-preview-maximized .sis-pdf-loading,
+.pdf-inline-preview-maximized .sis-pdf-placeholder,
+.pdf-inline-preview-maximized .sis-pdf-error,
+.pdf-inline-preview-maximized .pis-pdf-loading,
+.pdf-inline-preview-maximized .pis-pdf-placeholder,
+.pdf-inline-preview-maximized .pis-pdf-error {
+  flex: 1 1 auto !important;
+  min-height: calc(100vh - 14rem) !important;
+}
+
+@media (max-width: 768px) {
+  .pdf-inline-preview-maximized {
+    min-height: calc(100vh - 10rem) !important;
+  }
+
+  .pdf-inline-preview-maximized .sis-pdf-frame,
+  .pdf-inline-preview-maximized .pis-pdf-frame {
+    min-height: calc(100vh - 11rem) !important;
+  }
+}

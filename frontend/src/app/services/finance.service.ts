@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, throwError } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { Observable, of, throwError, from } from 'rxjs';
+import { map, catchError, switchMap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { PaginatedResponse } from '../types/pagination';
 
@@ -192,8 +192,32 @@ getStudentBalance(studentId: string): Observable<any> {
 
   getReceiptPDF(invoiceId: string): Observable<Blob> {
     return this.http.get(`${this.apiUrl}/finance/${invoiceId}/receipt`, {
-      responseType: 'blob'
-    });
+      responseType: 'blob',
+      observe: 'response'
+    }).pipe(
+      switchMap((response) => {
+        const contentType = (response.headers.get('Content-Type') || '').toLowerCase();
+        const body = response.body;
+        if (!body || body.size === 0) {
+          return throwError(() => ({ status: response.status, error: { message: 'Receipt PDF is empty' } }));
+        }
+        if (contentType.includes('application/json')) {
+          return from(body.text()).pipe(
+            switchMap((text) => {
+              let message = 'Failed to load receipt';
+              try {
+                const parsed = JSON.parse(text);
+                message = parsed?.message || message;
+              } catch {
+                if (text) message = text;
+              }
+              return throwError(() => ({ status: response.status, error: { message } }));
+            })
+          );
+        }
+        return of(body);
+      })
+    );
   }
 
   getOutstandingBalancePDF(): Observable<Blob> {

@@ -1237,3 +1237,40 @@ table tbody tr:hover {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* Full-screen invoice PDF preview */
+.pdf-viewer-overlay.pdf-preview-maximized-overlay {
+  padding: 0 !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+}
+
+.pdf-viewer-modal.pdf-preview-maximized-modal {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+.pdf-viewer-modal.pdf-preview-maximized-modal .pdf-viewer-header {
+  flex-shrink: 0;
+  border-radius: 0 !important;
+}
+
+.pdf-viewer-modal.pdf-preview-maximized-modal .pdf-preview-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  background: #525659;
+}
+
+.pdf-viewer-modal.pdf-preview-maximized-modal .pdf-iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}

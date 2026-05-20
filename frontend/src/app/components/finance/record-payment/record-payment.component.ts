@@ -1,8 +1,9 @@
 import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { finalize, takeUntil } from 'rxjs/operators';
+import { finalize, takeUntil, timeout } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
+import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
 import { FinanceService } from '../../../services/finance.service';
 import { SettingsService } from '../../../services/settings.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -207,10 +208,12 @@ const currentYear = new Date().getFullYear();
       this.loadCurrentTerm();
     }
     
-    this.studentData = null;
-    this.paymentForm.amount = 0;
-    this.matchingStudents = [];
-    this.selectedMatchId = '';
+    if (!preservePaymentFlag) {
+      this.studentData = null;
+      this.paymentForm.amount = 0;
+      this.matchingStudents = [];
+      this.selectedMatchId = '';
+    }
 
     this.cdr.markForCheck();
     this.financeService
@@ -405,16 +408,15 @@ this.error = error.error?.message || 'Student not found. Please check the detail
         this.lastPaymentInvoiceId = invoiceIdForPayment;
         this.submitting = false;
         this.showConfirmModal = false;
-        
-        // Refresh student balance
+
+        if (response?.receiptPdf) {
+          this.showReceiptFromBase64(String(response.receiptPdf));
+        } else if (this.lastPaymentInvoiceId) {
+          this.showReceiptPreview();
+        }
+
+        // Refresh student balance without clearing the receipt modal
         this.getBalance(true);
-        
-        // Auto-show receipt
-        setTimeout(() => {
-          if (this.lastPaymentInvoiceId) {
-            this.showReceiptPreview();
-          }
-        }, 500);
         
         // Auto-hide success message
         setTimeout(() => {
@@ -428,6 +430,55 @@ this.error = error.error?.message || 'Student not found. Please check the detail
         this.submitting = false;
       }
     });
+  }
+
+  private showReceiptFromBase64(base64: string): void {
+    const trimmed = (base64 || '').trim();
+    if (!trimmed) {
+      this.error = 'Receipt data is missing.';
+      return;
+    }
+
+    this.loadingReceipt = true;
+    this.error = '';
+    this.showReceipt = true;
+
+    if (this.receiptBlobUrl) {
+      window.URL.revokeObjectURL(this.receiptBlobUrl);
+      this.receiptBlobUrl = null;
+    }
+    this.receiptPdfUrl = null;
+
+    try {
+      const blob = this.base64ToPdfBlob(trimmed);
+      if (!blob.size) {
+        this.error = 'Receipt PDF is empty';
+        this.loadingReceipt = false;
+        this.showReceipt = false;
+        this.cdr.markForCheck();
+        return;
+      }
+      const url = window.URL.createObjectURL(blob);
+      this.receiptBlobUrl = url;
+      this.receiptPdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlobViewerUrl(url));
+      this.loadingReceipt = false;
+      this.cdr.markForCheck();
+    } catch {
+      this.error = 'Failed to display receipt';
+      this.loadingReceipt = false;
+      this.showReceipt = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  private base64ToPdfBlob(base64: string): Blob {
+    const raw = base64.includes(',') ? base64.split(',')[1] : base64;
+    const binary = atob(raw);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: 'application/pdf' });
   }
 
   showReceiptPreview(): void {
@@ -464,45 +515,54 @@ this.error = error.error?.message || 'Student not found. Please check the detail
     }
     this.receiptPdfUrl = null;
     
-    this.financeService.getReceiptPDF(invoiceId).subscribe({
-      next: (blob: Blob) => {
-        if (!blob || blob.size === 0) {
-          this.error = 'Receipt PDF is empty or invalid';
+    this.financeService
+      .getReceiptPDF(invoiceId)
+      .pipe(
+        timeout(90000),
+        takeUntil(this.destroy$),
+        finalize(() => {
           this.loadingReceipt = false;
-          this.showReceipt = false;
-          return;
-        }
-
-        try {
-          const url = window.URL.createObjectURL(blob);
-          this.receiptBlobUrl = url;
-          this.receiptPdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-          this.loadingReceipt = false;
-        } catch (err: any) {
-          this.error = 'Failed to create receipt preview';
-          this.loadingReceipt = false;
-          this.showReceipt = false;
-        }
-      },
-      error: (error: any) => {
-        this.loadingReceipt = false;
-        this.showReceipt = false;
-        this.receiptPdfUrl = null;
-        this.receiptBlobUrl = null;
-        
-        if (error.status === 404) {
-          this.error = 'Receipt not found.';
-        } else {
-          this.error = 'Error loading receipt. Please try again.';
-        }
-        
-        setTimeout(() => {
-          if (this.error.includes('receipt')) {
-            this.error = '';
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (blob: Blob) => {
+          if (!blob || blob.size === 0) {
+            this.error = 'Receipt PDF is empty or invalid';
+            this.showReceipt = false;
+            return;
           }
-        }, 5000);
-      }
-    });
+
+          try {
+            const url = window.URL.createObjectURL(blob);
+            this.receiptBlobUrl = url;
+            this.receiptPdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlobViewerUrl(url));
+            this.cdr.markForCheck();
+          } catch {
+            this.error = 'Failed to create receipt preview';
+            this.showReceipt = false;
+          }
+        },
+        error: (error: any) => {
+          this.showReceipt = false;
+          this.receiptPdfUrl = null;
+          this.receiptBlobUrl = null;
+
+          if (error.status === 404) {
+            this.error = error?.error?.message || 'Receipt not found.';
+          } else if (error?.name === 'TimeoutError') {
+            this.error = 'Receipt generation timed out. Please try again.';
+          } else {
+            this.error = error?.error?.message || 'Error loading receipt. Please try again.';
+          }
+
+          setTimeout(() => {
+            if (this.error.includes('receipt') || this.error.includes('Receipt')) {
+              this.error = '';
+            }
+          }, 8000);
+        }
+      });
   }
 
   closeReceipt(): void {

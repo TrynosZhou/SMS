@@ -224,26 +224,24 @@
     </div>
   </div>
 
-  <!-- PDF Preview Modal -->
-  <div class="modal-overlay" *ngIf="previewUrl" (click)="clearPreview()">
-    <div class="preview-modal" (click)="$event.stopPropagation()">
+  <!-- PDF Preview Modal (full screen) -->
+  <div class="modal-overlay pdf-preview-maximized-overlay" *ngIf="previewUrl" (click)="clearPreview()">
+    <div class="preview-modal pdf-preview-maximized-modal" (click)="$event.stopPropagation()">
       <div class="preview-header">
         <h3>Invoice Statement Preview</h3>
-        <button class="modal-close" (click)="clearPreview()">✕</button>
+        <div class="preview-toolbar">
+          <button type="button" class="btn btn-primary btn-sm" (click)="downloadStatement()">
+            <span class="icon">⬇️</span> Download
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" (click)="printStatement()">
+            <span class="icon">🖨️</span> Print
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" (click)="clearPreview()">Close</button>
+          <button type="button" class="modal-close" (click)="clearPreview()" aria-label="Close">✕</button>
+        </div>
       </div>
-      <div class="preview-content">
-        <iframe [src]="previewUrl" class="preview-iframe" type="application/pdf"></iframe>
-      </div>
-      <div class="preview-actions">
-        <button class="btn btn-primary" (click)="downloadStatement()">
-          <span class="icon">⬇️</span> Download
-        </button>
-        <button class="btn btn-primary" (click)="printStatement()">
-          <span class="icon">🖨️</span> Print
-        </button>
-        <button class="btn btn-outline" (click)="clearPreview()">
-          Close
-        </button>
+      <div class="preview-content pdf-preview-body">
+        <iframe [src]="previewUrl" class="preview-iframe" title="Invoice Statement PDF" type="application/pdf"></iframe>
       </div>
     </div>
   </div>

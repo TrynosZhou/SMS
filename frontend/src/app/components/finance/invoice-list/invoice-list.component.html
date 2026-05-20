@@ -1178,8 +1178,8 @@
   </div>
 
   <!-- PDF Viewer Modal -->
-  <div *ngIf="showPdfViewer" class="pdf-viewer-overlay" (click)="closePdfViewer()">
-    <div class="pdf-viewer-modal" (click)="$event.stopPropagation()">
+  <div *ngIf="showPdfViewer" class="pdf-viewer-overlay pdf-preview-maximized-overlay" (click)="closePdfViewer()">
+    <div class="pdf-viewer-modal pdf-preview-maximized-modal" (click)="$event.stopPropagation()">
       <div class="pdf-viewer-header">
         <h3>
           <span>📄</span>
@@ -1202,7 +1202,7 @@
           </button>
         </div>
       </div>
-      <div class="pdf-viewer-content">
+      <div class="pdf-viewer-content pdf-preview-body">
         <iframe 
           *ngIf="safePdfUrl && !loadingPdf" 
           [src]="safePdfUrl" 
@@ -1356,8 +1356,8 @@
   </div>
 
   <!-- Receipt Viewer Modal -->
-  <div *ngIf="showReceiptViewer" class="pdf-viewer-overlay" (click)="closeReceiptViewer()">
-    <div class="pdf-viewer-modal" (click)="$event.stopPropagation()">
+  <div *ngIf="showReceiptViewer" class="pdf-viewer-overlay pdf-preview-maximized-overlay" (click)="closeReceiptViewer()">
+    <div class="pdf-viewer-modal pdf-preview-maximized-modal" (click)="$event.stopPropagation()">
       <div class="pdf-viewer-header">
         <h3>
           <span>🧾</span>
@@ -1387,7 +1387,7 @@
           </button>
         </div>
       </div>
-      <div class="pdf-viewer-content">
+      <div class="pdf-viewer-content pdf-preview-body">
         <iframe 
           *ngIf="safeReceiptUrl && !loadingReceiptPdf" 
           [src]="safeReceiptUrl" 

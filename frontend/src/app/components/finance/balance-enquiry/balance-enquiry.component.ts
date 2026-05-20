@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
+import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
 import { FinanceService } from '../../../services/finance.service';
 import { SettingsService } from '../../../services/settings.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -195,58 +196,86 @@ query = '';
 
   async previewStatement(): Promise<void> {
     if (!this.studentData) return;
-    
+
     this.loadingPdf = true;
     this.previewMode = true;
     this.error = '';
-    this.clearPreview();
-    
+    this.revokeStatementPreviewUrlsOnly();
+
     try {
-      const latestInvoice = await this.loadLatestInvoiceForStudent(this.studentData.studentId);
+      await this.yieldToBrowser();
+      this.cdr.detectChanges();
+
+      const latestInvoice = await this.getInvoiceForStatement();
       const blob = this.buildStatementPDFBlob(this.studentData, latestInvoice);
       const url = URL.createObjectURL(blob);
       this.previewBlobUrl = url;
-      this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-      this.loadingPdf = false;
+      this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlobViewerUrl(url));
     } catch (e: any) {
-      this.loadingPdf = false;
       this.error = e?.message || 'Failed to load statement preview';
+    } finally {
+      this.finishPdfOperation();
     }
   }
 
   async downloadStatement(): Promise<void> {
     if (!this.studentData) return;
-    
+
     this.loadingPdf = true;
     this.previewMode = false;
     this.error = '';
-    
+    this.cdr.detectChanges();
+
+    let objectUrl: string | null = null;
     try {
-      const latestInvoice = await this.loadLatestInvoiceForStudent(this.studentData.studentId);
+      await this.yieldToBrowser();
+
+      const latestInvoice = await this.getInvoiceForStatement();
       const blob = this.buildStatementPDFBlob(this.studentData, latestInvoice);
+      objectUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
+      link.href = objectUrl;
       link.download = `Invoice_Statement_${this.studentData.studentNumber || this.studentData.studentId}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      this.loadingPdf = false;
+
+      // After a programmatic download, some browsers defer focus/UI work; clear loading on the next turn
+      // so the template always leaves "Generating..." and change detection runs reliably.
       this.success = 'Statement downloaded successfully!';
-      setTimeout(() => this.success = '', 3000);
+      setTimeout(() => {
+        this.finishPdfOperation();
+      }, 0);
+      setTimeout(() => {
+        this.success = '';
+      }, 3000);
+      setTimeout(() => {
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          objectUrl = null;
+        }
+      }, 60_000);
     } catch (e: any) {
-      this.loadingPdf = false;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
       this.error = e?.message || 'Failed to download statement';
+      this.finishPdfOperation();
     }
   }
 
   async printStatement(): Promise<void> {
     if (!this.studentData) return;
-    
+
     this.loadingPdf = true;
+    this.previewMode = false;
     this.error = '';
-    
+    this.cdr.detectChanges();
+
     try {
-      const latestInvoice = await this.loadLatestInvoiceForStudent(this.studentData.studentId);
+      await this.yieldToBrowser();
+
+      const latestInvoice = await this.getInvoiceForStatement();
       const blob = this.buildStatementPDFBlob(this.studentData, latestInvoice);
       const url = URL.createObjectURL(blob);
       const printWindow = window.open(url, '_blank');
@@ -255,14 +284,21 @@ query = '';
           printWindow.print();
         };
       }
-      this.loadingPdf = false;
     } catch (e: any) {
-      this.loadingPdf = false;
       this.error = e?.message || 'Failed to print statement';
+    } finally {
+      this.finishPdfOperation();
     }
   }
 
   clearPreview(): void {
+    this.revokeStatementPreviewUrlsOnly();
+    this.previewMode = false;
+    this.cdr.markForCheck();
+  }
+
+  /** Drop blob URL / iframe src without changing previewMode (used before rebuilding preview). */
+  private revokeStatementPreviewUrlsOnly(): void {
     if (this.previewBlobUrl) {
       URL.revokeObjectURL(this.previewBlobUrl);
       this.previewBlobUrl = null;
@@ -276,6 +312,28 @@ query = '';
       return invoices[0];
     }
     return null;
+  }
+
+  /** Reuse invoice already loaded with the student when possible (faster preview/download/print). */
+  private async getInvoiceForStatement(): Promise<any | null> {
+    const sid = this.studentData?.studentId;
+    if (!sid) return null;
+    if (this.latestInvoice) {
+      return this.latestInvoice;
+    }
+    const inv = await this.loadLatestInvoiceForStudent(sid);
+    this.latestInvoice = inv;
+    return inv;
+  }
+
+  /** Let the browser paint the loading state before heavy jsPDF work on the main thread. */
+  private yieldToBrowser(): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  private finishPdfOperation(): void {
+    this.loadingPdf = false;
+    this.cdr.detectChanges();
   }
 
   private buildStatementPDFBlob(student: any, invoice: any | null): Blob {

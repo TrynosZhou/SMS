@@ -5,6 +5,7 @@ import { FinanceService } from '../../../services/finance.service';
 import { StudentService } from '../../../services/student.service';
 import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
+import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
 
 @Component({
   standalone: false,  selector: 'app-invoice-form',
@@ -493,7 +494,7 @@ export class InvoiceFormComponent implements OnInit {
           window.URL.revokeObjectURL(this.pdfUrl);
         }
         this.pdfUrl = window.URL.createObjectURL(result.blob);
-        this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfUrl);
+        this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlobViewerUrl(this.pdfUrl));
         this.showPdfViewer = true;
         this.loadingPdf = false;
       },

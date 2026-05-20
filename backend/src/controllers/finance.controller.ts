@@ -644,6 +644,22 @@ export const updateInvoicePayment = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Invalid payment method. Allowed: CASH(USD), ECOCASH(USD), BANK TRANSFER(USD)' });
     }
 
+    const payer = req.user;
+    const payerName = payer ? `${payer.firstName || ''} ${payer.lastName || ''}`.trim() : null;
+    const logRepo = AppDataSource.getRepository(PaymentLog);
+    const log = logRepo.create({
+      invoiceId: invoice.id,
+      studentId: invoice.studentId,
+      amountPaid: parseAmount(paidAmount),
+      paymentDate: actualPaymentDate,
+      paymentMethod: normalizedMethod,
+      receiptNumber,
+      payerUserId: payer?.id || null,
+      payerName: payerName || null,
+      notes: notes || null
+    });
+    await logRepo.save(log);
+
     const receiptPDF = await createReceiptPDF({
       invoice,
       student,
@@ -656,32 +672,12 @@ export const updateInvoicePayment = async (req: AuthRequest, res: Response) => {
       isPrepayment: isPrepayment || false
     });
 
-    res.json({ 
-      message: 'Payment updated successfully', 
+    res.json({
+      message: 'Payment updated successfully',
       invoice,
       receiptPdf: receiptPDF.toString('base64'),
       receiptNumber
     });
-
-    try {
-      const payer = req.user;
-      const payerName = payer ? `${payer.firstName || ''} ${payer.lastName || ''}`.trim() : null;
-      const logRepo = AppDataSource.getRepository(PaymentLog);
-      const log = logRepo.create({
-        invoiceId: invoice.id,
-        studentId: invoice.studentId,
-        amountPaid: parseAmount(paidAmount),
-        paymentDate: actualPaymentDate,
-        paymentMethod: normalizedMethod,
-        receiptNumber,
-        payerUserId: payer?.id || null,
-        payerName: payerName || null,
-        notes: notes || null
-      });
-      await logRepo.save(log);
-    } catch (e) {
-      console.error('Failed to record payment log:', e);
-    }
   } catch (error: any) {
     console.error('Error updating payment:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });

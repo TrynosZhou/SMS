@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { AuthService } from '../../../services/auth.service';
 import { FinanceService } from '../../../services/finance.service';
+import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
 import { SettingsService } from '../../../services/settings.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { trigger, state, style, transition, animate } from '@angular/animations';
@@ -190,7 +191,7 @@ export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
         if (!blob || blob.size === 0) { this.pdfError = true; return; }
         this.revokePdfUrl();
         this.pdfBlobUrl = window.URL.createObjectURL(blob);
-        this.inlinePdf  = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfBlobUrl);
+        this.inlinePdf = this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlobViewerUrl(this.pdfBlobUrl));
       },
       error: () => {
         this.loadingPdf = false;
