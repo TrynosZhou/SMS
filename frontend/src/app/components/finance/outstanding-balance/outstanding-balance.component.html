@@ -169,7 +169,7 @@
   </div>
 
   <!-- Empty State -->
-  <div *ngIf="!loading && outstandingBalances.length === 0" class="empty-state modern-empty">
+  <div *ngIf="!loading && !error && outstandingBalances.length === 0" class="empty-state modern-empty">
     <div class="empty-icon-wrapper">
       <div class="empty-icon">✅</div>
     </div>
