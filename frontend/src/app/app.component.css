@@ -351,6 +351,14 @@
   padding: 2rem;
 }
 
+/* Login route: full viewport, no padding (blue border frame on login component) */
+.main-content:has(app-login) {
+  padding: 0;
+  margin-left: 0 !important;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
 .sidebar ~ .main-content {
   margin-left: 260px;
 }

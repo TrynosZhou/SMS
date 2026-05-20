@@ -104,6 +104,35 @@ Deploy after backend is live.
 
 ---
 
+## Troubleshooting: Tier matrix empty but Features tab shows data
+
+The matrix only renders when **both** `GET /api/admin/features` and `GET /api/admin/tiers` succeed and tiers are non-empty.
+
+| Symptom | Likely cause |
+|---------|----------------|
+| Features (12) but empty matrix | `license_tiers` missing/empty, or `/admin/tiers` returned 500 |
+| Blank tier dropdown | Same — `tiers` array is `[]` in the browser |
+| Works locally, not on Render | Production DB never ran `npm run migrate-license` |
+
+**Fix on production Postgres:**
+
+```bash
+cd backend
+npm run migrate-license
+```
+
+Then redeploy backend (auto-seed on `/admin/tiers` also creates Gold/Bronze/Platinum if the table exists but rows were missing).
+
+Verify in SQL:
+
+```sql
+SELECT "tierName", "displayName" FROM license_tiers ORDER BY "tierName";
+```
+
+You should see `bronze`, `gold`, `platinum`.
+
+---
+
 ## Checklist
 
 - [ ] Migrations applied on production DB

@@ -34,6 +34,7 @@ export class LicenseConfigComponent implements OnInit, OnDestroy {
   savingMetaId: string | null = null;
   bulkTierAction: string | null = null;
   error = '';
+  tiersError = '';
   success = '';
 
   showCreateFeature = false;
@@ -41,6 +42,11 @@ export class LicenseConfigComponent implements OnInit, OnDestroy {
 
   /** Immutable map so Angular detects pending-state changes */
   pendingToggles: Record<string, true> = {};
+
+  /** Matrix checkbox state per tier (tierId -> featureIds) */
+  private tierAssignmentDraft = new Map<string, Set<string>>();
+  /** Last persisted state from server per tier */
+  private tierAssignmentSaved = new Map<string, Set<string>>();
 
   private readonly destroy$ = new Subject<void>();
   private successTimer: ReturnType<typeof setTimeout> | null = null;
@@ -73,6 +79,7 @@ export class LicenseConfigComponent implements OnInit, OnDestroy {
   loadAll(): void {
     this.loading = true;
     this.error = '';
+    this.tiersError = '';
 
     forkJoin({
       features: this.licenseAdmin.listFeatures().pipe(
@@ -83,7 +90,9 @@ export class LicenseConfigComponent implements OnInit, OnDestroy {
       ),
       tiers: this.licenseAdmin.listTiers().pipe(
         catchError((err) => {
-          this.error = err?.error?.message || 'Failed to load tiers';
+          this.tiersError =
+            err?.error?.message ||
+            'Failed to load license tiers. The tier matrix cannot be shown until tiers are available.';
           return of({ tiers: [] as LicenseTierView[] });
         })
       ),
@@ -100,6 +109,7 @@ export class LicenseConfigComponent implements OnInit, OnDestroy {
           if (!this.selectedTierId && this.tiers.length) {
             this.selectedTierId = this.tiers[0].id;
           }
+          this.syncDraftFromTiers();
           this.cdr.markForCheck();
         }
       });
@@ -107,6 +117,47 @@ export class LicenseConfigComponent implements OnInit, OnDestroy {
 
   setTab(tab: LicenseTab): void {
     this.activeTab = tab;
+    if (tab === 'matrix' && !this.tiers.length && !this.loading) {
+      this.reloadTiersOnly();
+    }
+  }
+
+  get matrixEmptyMessage(): string {
+    if (this.tiersError) {
+      return this.tiersError;
+    }
+    if (!this.tiers.length && this.features.length) {
+      return (
+        'License tiers (Gold, Bronze, Platinum) are not available. ' +
+        'Run the license database migration on the server (npm run migrate-license), then click Refresh.'
+      );
+    }
+    if (!this.features.length) {
+      return 'Register features first, then assign them in the matrix above.';
+    }
+    if (this.filteredFeatures.length === 0) {
+      return 'No features match your filter. Clear the search box to see the matrix.';
+    }
+    return 'Unable to display the tier matrix.';
+  }
+
+  private reloadTiersOnly(): void {
+    this.licenseAdmin.listTiers().subscribe({
+      next: (res) => {
+        this.tiers = (res.tiers || []).sort((a, b) => a.tierName.localeCompare(b.tierName));
+        this.tiersError = '';
+        if (!this.selectedTierId && this.tiers.length) {
+          this.selectedTierId = this.tiers[0].id;
+        }
+        this.syncDraftFromTiers();
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        this.tiersError =
+          err?.error?.message || 'Failed to load license tiers from the server.';
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   get activeFeatures(): AdminFeature[] {
@@ -131,7 +182,63 @@ export class LicenseConfigComponent implements OnInit, OnDestroy {
   }
 
   featureCountForTier(tier: LicenseTierView): number {
-    return tier.features.filter((f) => f.isActive).length;
+    if (tier.id === this.selectedTierId) {
+      const draft = this.tierAssignmentDraft.get(tier.id);
+      if (draft) {
+        return draft.size;
+      }
+    }
+    return tier.features.length;
+  }
+
+  hasUnsavedSelectedTierChanges(): boolean {
+    const tierId = this.selectedTierId;
+    if (!tierId) {
+      return false;
+    }
+    const draft = this.tierAssignmentDraft.get(tierId) ?? new Set<string>();
+    const saved = this.tierAssignmentSaved.get(tierId) ?? new Set<string>();
+    if (draft.size !== saved.size) {
+      return true;
+    }
+    for (const id of draft) {
+      if (!saved.has(id)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Checkbox state in the matrix (selected tier uses editable draft). */
+  isMatrixChecked(tier: LicenseTierView, featureId: string): boolean {
+    if (tier.id === this.selectedTierId) {
+      return this.tierAssignmentDraft.get(tier.id)?.has(featureId) ?? false;
+    }
+    return this.isFeatureOnTier(tier, featureId);
+  }
+
+  private syncDraftFromTiers(): void {
+    this.tierAssignmentDraft.clear();
+    this.tierAssignmentSaved.clear();
+    for (const tier of this.tiers) {
+      const ids = new Set(tier.features.map((f) => f.featureId));
+      this.tierAssignmentDraft.set(tier.id, new Set(ids));
+      this.tierAssignmentSaved.set(tier.id, new Set(ids));
+    }
+  }
+
+  private getSelectedTierOrAlert(): LicenseTierView | null {
+    const tierId = String(this.selectedTierId || '').trim();
+    if (!tierId) {
+      this.error = 'Select a tier from the dropdown first.';
+      return null;
+    }
+    const tier = this.tiers.find((t) => String(t.id) === tierId);
+    if (!tier) {
+      this.error = 'Selected tier is no longer available. Refresh and try again.';
+      return null;
+    }
+    return tier;
   }
 
   totalAssignments(): number {
@@ -221,9 +328,23 @@ export class LicenseConfigComponent implements OnInit, OnDestroy {
 
   onCheckboxClick(event: Event, tier: LicenseTierView, feature: AdminFeature): void {
     event.preventDefault();
-    if (!feature.isActive || this.isTogglePending(tier.id, feature.id)) {
+    event.stopPropagation();
+    if (!feature.isActive || this.isTogglePending(tier.id, feature.id) || this.bulkTierAction) {
       return;
     }
+
+    if (tier.id === this.selectedTierId) {
+      const draft = new Set(this.tierAssignmentDraft.get(tier.id) ?? []);
+      if (draft.has(feature.id)) {
+        draft.delete(feature.id);
+      } else {
+        draft.add(feature.id);
+      }
+      this.tierAssignmentDraft.set(tier.id, draft);
+      this.cdr.markForCheck();
+      return;
+    }
+
     const next = !this.isFeatureOnTier(tier, feature.id);
     this.onTierFeatureToggle(tier, feature, next);
   }
@@ -267,6 +388,7 @@ export class LicenseConfigComponent implements OnInit, OnDestroy {
     this.licenseAdmin.listTiers().subscribe({
       next: (res) => {
         this.tiers = (res.tiers || []).sort((a, b) => a.tierName.localeCompare(b.tierName));
+        this.syncDraftFromTiers();
         this.cdr.markForCheck();
       }
     });
@@ -376,99 +498,133 @@ export class LicenseConfigComponent implements OnInit, OnDestroy {
     return this.savingMetaId === featureId;
   }
 
-  assignAllActiveToTier(tier: LicenseTierView): void {
-    if (this.bulkTierAction) {
+  /**
+   * Applies every active feature to the selected tier draft, then persists only that tier.
+   */
+  grantAllActiveForSelectedTier(event: Event): void {
+    event.stopPropagation();
+    const tier = this.getSelectedTierOrAlert();
+    if (!tier || this.bulkTierAction) {
       return;
     }
-    const missing = this.activeFeatures.filter((f) => !this.isFeatureOnTier(tier, f.id));
-    if (!missing.length) {
-      this.showSuccess('All active features are already on this tier');
+
+    const draft = new Set<string>();
+    for (const f of this.activeFeatures) {
+      draft.add(f.id);
+    }
+    this.tierAssignmentDraft.set(tier.id, draft);
+    this.cdr.markForCheck();
+
+    if (
+      !confirm(
+        `Save all ${this.activeFeatures.length} active feature(s) to ${tier.displayName}? Other tiers will not change.`
+      )
+    ) {
       return;
     }
-    if (!confirm(`Grant all ${missing.length} active feature(s) to ${tier.displayName}?`)) {
-      return;
-    }
-    this.bulkTierAction = tier.id;
-    this.runBulkGrant(tier, missing, 0);
+
+    this.saveSelectedTierAssignments();
   }
 
-  private runBulkGrant(tier: LicenseTierView, queue: AdminFeature[], index: number): void {
-    if (index >= queue.length) {
-      this.bulkTierAction = null;
-      this.showSuccess(`Granted ${queue.length} feature(s) to ${tier.displayName}`);
-      this.licenseService.refresh().subscribe({ error: () => undefined });
-      this.reloadTiersAndAudit();
-      this.cdr.markForCheck();
+  saveSelectedTierAssignments(): void {
+    const tier = this.getSelectedTierOrAlert();
+    if (!tier || this.bulkTierAction) {
       return;
     }
 
-    const feature = queue[index];
-    this.licenseAdmin.grantTierFeature(tier.id, feature.id).subscribe({
-      next: () => {
-        if (!this.isFeatureOnTier(tier, feature.id)) {
-          tier.features = [
-            ...tier.features,
-            {
-              assignmentId: `bulk-${Date.now()}-${index}`,
-              featureId: feature.id,
-              featureKey: feature.featureKey,
-              displayName: feature.displayName,
-              description: feature.description,
-              isActive: feature.isActive
-            }
-          ];
+    const tierId = tier.id;
+    const draft = this.tierAssignmentDraft.get(tierId) ?? new Set<string>();
+    const saved = this.tierAssignmentSaved.get(tierId) ?? new Set<string>();
+    const toGrant = [...draft].filter((id) => !saved.has(id));
+    const toRevoke = [...saved].filter((id) => !draft.has(id));
+
+    if (!toGrant.length && !toRevoke.length) {
+      this.showSuccess(`${tier.displayName} is already up to date`);
+      return;
+    }
+
+    this.bulkTierAction = tierId;
+    this.error = '';
+    this.runBulkTierSync(tier, toGrant, toRevoke);
+  }
+
+  clearSelectedTier(event: Event): void {
+    event.stopPropagation();
+    const tier = this.getSelectedTierOrAlert();
+    if (!tier || this.bulkTierAction) {
+      return;
+    }
+
+    const draft = this.tierAssignmentDraft.get(tier.id) ?? new Set<string>();
+    if (!draft.size) {
+      this.showSuccess(`${tier.displayName} has no features to clear`);
+      return;
+    }
+
+    if (
+      !confirm(
+        `Remove all features from ${tier.displayName}? Schools on this tier will lose access immediately.`
+      )
+    ) {
+      return;
+    }
+
+    this.tierAssignmentDraft.set(tier.id, new Set());
+    this.saveSelectedTierAssignments();
+  }
+
+  private runBulkTierSync(tier: LicenseTierView, toGrant: string[], toRevoke: string[]): void {
+    const tierId = tier.id;
+    let revokeIndex = 0;
+
+    const runRevokes = (): void => {
+      if (revokeIndex >= toRevoke.length) {
+        runGrants(0);
+        return;
+      }
+      const featureId = toRevoke[revokeIndex];
+      this.licenseAdmin.revokeTierFeature(tierId, featureId).subscribe({
+        next: () => {
+          revokeIndex += 1;
+          runRevokes();
+        },
+        error: (err) => {
+          this.bulkTierAction = null;
+          this.error = err?.error?.message || 'Failed while removing features from tier';
+          this.reloadTiersAndAudit();
+          this.cdr.markForCheck();
         }
-        this.runBulkGrant(tier, queue, index + 1);
-      },
-      error: (err) => {
+      });
+    };
+
+    const runGrants = (grantIndex: number): void => {
+      if (grantIndex >= toGrant.length) {
         this.bulkTierAction = null;
-        this.error = err?.error?.message || 'Bulk grant stopped due to an error';
+        this.showSuccess(`Saved ${tier.displayName} tier assignments`);
+        this.licenseService.refresh().subscribe({ error: () => undefined });
         this.reloadTiersAndAudit();
         this.cdr.markForCheck();
+        return;
       }
-    });
-  }
+      const featureId = toGrant[grantIndex];
+      this.licenseAdmin.grantTierFeature(tierId, featureId).subscribe({
+        next: () => {
+          runGrants(grantIndex + 1);
+        },
+        error: (err) => {
+          this.bulkTierAction = null;
+          this.error = err?.error?.message || 'Failed while granting features to tier';
+          this.reloadTiersAndAudit();
+          this.cdr.markForCheck();
+        }
+      });
+    };
 
-  clearTierFeatures(tier: LicenseTierView): void {
-    if (this.bulkTierAction || !tier.features.length) {
-      return;
+    if (toRevoke.length) {
+      runRevokes();
+    } else {
+      runGrants(0);
     }
-    if (!confirm(`Remove all features from ${tier.displayName}? Schools on this tier will lose access immediately.`)) {
-      return;
-    }
-    this.bulkTierAction = tier.id;
-    const toRevoke = [...tier.features];
-    this.runBulkRevoke(tier, toRevoke, 0);
-  }
-
-  private runBulkRevoke(
-    tier: LicenseTierView,
-    queue: LicenseTierView['features'],
-    index: number
-  ): void {
-    if (index >= queue.length) {
-      this.bulkTierAction = null;
-      tier.features = [];
-      this.showSuccess(`Cleared all features from ${tier.displayName}`);
-      this.licenseService.refresh().subscribe({ error: () => undefined });
-      this.reloadTiersAndAudit();
-      this.cdr.markForCheck();
-      return;
-    }
-
-    const item = queue[index];
-    this.licenseAdmin.revokeTierFeature(tier.id, item.featureId).subscribe({
-      next: () => {
-        tier.features = tier.features.filter((f) => f.featureId !== item.featureId);
-        this.runBulkRevoke(tier, queue, index + 1);
-      },
-      error: (err) => {
-        this.bulkTierAction = null;
-        this.error = err?.error?.message || 'Bulk revoke stopped due to an error';
-        this.reloadTiersAndAudit();
-        this.cdr.markForCheck();
-      }
-    });
   }
 
   copyFeatureKey(key: string): void {

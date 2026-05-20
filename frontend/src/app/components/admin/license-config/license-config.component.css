@@ -549,6 +549,17 @@
   color: #4f46e5;
 }
 
+.lc-unsaved-hint {
+  font-size: 0.8rem;
+  color: #b45309;
+  font-weight: 600;
+}
+
+.lc-panel .lc-btn-primary.lc-btn-sm {
+  background: #2563eb;
+  color: #fff;
+}
+
 .lc-matrix-feature-col {
   min-width: 200px;
 }

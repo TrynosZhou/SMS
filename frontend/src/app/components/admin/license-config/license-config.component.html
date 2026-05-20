@@ -18,7 +18,7 @@
     </div>
   </header>
 
-  <div class="lc-alerts" *ngIf="success || error">
+  <div class="lc-alerts" *ngIf="success || error || tiersError">
     <div class="lc-alert lc-alert-success" *ngIf="success">
       <span>{{ success }}</span>
       <button type="button" class="lc-alert-close" (click)="success = ''" aria-label="Dismiss">×</button>
@@ -26,6 +26,10 @@
     <div class="lc-alert lc-alert-error" *ngIf="error">
       <span>{{ error }}</span>
       <button type="button" class="lc-alert-close" (click)="error = ''" aria-label="Dismiss">×</button>
+    </div>
+    <div class="lc-alert lc-alert-error" *ngIf="tiersError && !error">
+      <span>{{ tiersError }}</span>
+      <button type="button" class="lc-alert-close" (click)="tiersError = ''" aria-label="Dismiss">×</button>
     </div>
   </div>
 
@@ -237,7 +241,7 @@
         <label class="lc-field lc-field-inline">
           <span>Tier</span>
           <select class="lc-select" [(ngModel)]="selectedTierId">
-            <option *ngFor="let tier of tiers" [value]="tier.id">
+            <option *ngFor="let tier of tiers" [ngValue]="tier.id">
               {{ tier.displayName }} ({{ featureCountForTier(tier) }} features)
             </option>
           </select>
@@ -245,20 +249,30 @@
         <ng-container *ngIf="selectedTier as tier">
           <button
             type="button"
+            class="lc-btn lc-btn-sm lc-btn-primary"
+            (click)="saveSelectedTierAssignments()"
+            [disabled]="!!bulkTierAction || !hasUnsavedSelectedTierChanges()">
+            Save {{ tier.displayName }}
+          </button>
+          <button
+            type="button"
             class="lc-btn lc-btn-sm"
-            (click)="assignAllActiveToTier(tier)"
+            (click)="grantAllActiveForSelectedTier($event)"
             [disabled]="!!bulkTierAction || !activeFeatures.length">
             Grant all active
           </button>
           <button
             type="button"
             class="lc-btn lc-btn-sm lc-btn-ghost"
-            (click)="clearTierFeatures(tier)"
-            [disabled]="!!bulkTierAction || !tier.features.length">
+            (click)="clearSelectedTier($event)"
+            [disabled]="!!bulkTierAction">
             Clear tier
           </button>
           <span class="lc-bulk-status" *ngIf="bulkTierAction === tier.id">
-            <span class="lc-spinner lc-spinner-sm"></span> Updating tier…
+            <span class="lc-spinner lc-spinner-sm"></span> Saving tier…
+          </span>
+          <span class="lc-unsaved-hint" *ngIf="hasUnsavedSelectedTierChanges() && !bulkTierAction">
+            Unsaved changes for {{ tier.displayName }}
           </span>
         </ng-container>
       </div>
@@ -285,7 +299,7 @@
             <tr
               *ngFor="let f of filteredFeatures"
               [class.lc-row-inactive]="!f.isActive"
-              [class.lc-row-highlight]="selectedTier && isFeatureOnTier(selectedTier, f.id)">
+              [class.lc-row-highlight]="selectedTier && isMatrixChecked(selectedTier, f.id)">
               <td class="lc-matrix-feature-col">
                 <strong>{{ f.displayName }}</strong>
                 <code>{{ f.featureKey }}</code>
@@ -297,7 +311,7 @@
                   [class.disabled]="!f.isActive">
                   <input
                     type="checkbox"
-                    [checked]="isFeatureOnTier(tier, f.id)"
+                    [checked]="isMatrixChecked(tier, f.id)"
                     [disabled]="!f.isActive || isTogglePending(tier.id, f.id) || !!bulkTierAction"
                     (click)="onCheckboxClick($event, tier, f)" />
                   <span class="lc-matrix-check-ui" aria-hidden="true"></span>
@@ -309,7 +323,14 @@
       </div>
 
       <ng-template #matrixEmpty>
-        <p class="lc-empty">Register features first, then assign them in the matrix above.</p>
+        <p class="lc-empty">{{ matrixEmptyMessage }}</p>
+        <button
+          type="button"
+          class="lc-btn lc-btn-primary lc-btn-sm"
+          *ngIf="!tiers.length && features.length"
+          (click)="loadAll()">
+          ↻ Refresh tiers
+        </button>
       </ng-template>
 
       <!-- Quick assign cards for selected tier -->
@@ -319,12 +340,12 @@
           <label
             class="lc-chip"
             *ngFor="let f of filteredFeatures"
-            [class.lc-chip-on]="isFeatureOnTier(tier, f.id)"
+            [class.lc-chip-on]="isMatrixChecked(tier, f.id)"
             [class.lc-chip-pending]="isTogglePending(tier.id, f.id)"
             [class.lc-chip-off]="!f.isActive">
             <input
               type="checkbox"
-              [checked]="isFeatureOnTier(tier, f.id)"
+              [checked]="isMatrixChecked(tier, f.id)"
               [disabled]="!f.isActive || isTogglePending(tier.id, f.id) || !!bulkTierAction"
               (click)="onCheckboxClick($event, tier, f)" />
             <span>{{ f.displayName }}</span>

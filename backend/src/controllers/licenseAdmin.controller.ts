@@ -9,6 +9,7 @@ import {
   invalidateAllLicenseCache,
   invalidateTierLicenseCache
 } from '../services/licenseAccess.service';
+import { ensureDefaultLicenseTiers } from '../services/licenseTierSeed.service';
 
 async function writeAudit(
   action: LicenseAuditAction,
@@ -156,18 +157,31 @@ export const deactivateFeature = async (req: AuthRequest, res: Response) => {
 
 export const listTiersWithFeatures = async (_req: AuthRequest, res: Response) => {
   try {
+    await ensureDefaultLicenseTiers();
+
     const tierRepo = AppDataSource.getRepository(LicenseTier);
     const tiers = await tierRepo.find({ order: { tierName: 'ASC' } });
 
     const tierFeatureRepo = AppDataSource.getRepository(TierFeature);
-    const assignments = await tierFeatureRepo.find({
-      relations: ['feature', 'grantedByUser']
-    });
+    let assignments: TierFeature[] = [];
+    try {
+      assignments = await tierFeatureRepo.find({
+        relations: ['feature']
+      });
+    } catch (assignErr: any) {
+      console.warn(
+        '[licenseAdmin.listTiersWithFeatures] tier_features load failed — returning tiers without assignments:',
+        assignErr?.message || assignErr
+      );
+    }
 
     const payload = tiers.map((tier) => {
       const tierAssignments = assignments.filter((a) => a.tierId === tier.id);
       return {
-        ...tier,
+        id: tier.id,
+        tierName: tier.tierName,
+        displayName: tier.displayName,
+        description: tier.description,
         features: tierAssignments
           .filter((a) => a.feature)
           .map((a) => ({
@@ -179,10 +193,7 @@ export const listTiersWithFeatures = async (_req: AuthRequest, res: Response) =>
             isActive: a.feature.isActive,
             grantedAt: a.grantedAt,
             grantedBy: a.grantedBy,
-            grantedByName: a.grantedByUser
-              ? `${a.grantedByUser.firstName || ''} ${a.grantedByUser.lastName || ''}`.trim() ||
-                a.grantedByUser.email
-              : null
+            grantedByName: null as string | null
           }))
       };
     });
@@ -190,6 +201,14 @@ export const listTiersWithFeatures = async (_req: AuthRequest, res: Response) =>
     return res.json({ tiers: payload });
   } catch (error: any) {
     console.error('[licenseAdmin.listTiersWithFeatures]', error);
+    const msg = String(error?.message || '');
+    if (msg.includes('license_tiers') || msg.includes('does not exist')) {
+      return res.status(503).json({
+        message:
+          'License tables are missing on this database. Run: npm run migrate-license',
+        error: error.message
+      });
+    }
     return res.status(500).json({ message: 'Failed to list tiers', error: error.message });
   }
 };
