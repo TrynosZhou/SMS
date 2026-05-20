@@ -12,6 +12,18 @@ export function isStaffSiblingExemption(student: Student): boolean {
   return student.isStaffChild === true || student.exemptionType === 'staff_sibling';
 }
 
+/**
+ * True when fee logic should treat the student as exempt (matches sync-exemption-invoices).
+ * Does not treat orphan `exemptionType` alone as exempt — requires staff flag/type or isExempted + fixed/percentage.
+ */
+export function studentHasActiveFeeExemption(student: Student): boolean {
+  return (
+    isStaffSiblingExemption(student) ||
+    (student.isExempted === true &&
+      (student.exemptionType === 'fixed' || student.exemptionType === 'percentage'))
+  );
+}
+
 /** Fixed/percentage: full fees on the invoice; only the balance is reduced. */
 export function isBalanceOnlyExemption(student: Student): boolean {
   return (
@@ -280,9 +292,7 @@ export async function syncExemptionInvoicesForStudent(
   }
 
   const fees = settings.feesSettings as Record<string, unknown>;
-  const hasExemption =
-    isStaffSiblingExemption(student) ||
-    (student.isExempted && (student.exemptionType === 'fixed' || student.exemptionType === 'percentage'));
+  const hasExemption = studentHasActiveFeeExemption(student);
 
   const openInvoices = await invoiceRepository
     .createQueryBuilder('invoice')

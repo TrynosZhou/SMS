@@ -59,7 +59,7 @@ invoices: any[] = [];
   studentIdLookup = '';
   studentBalanceInfo: any = null;
   loadingBalance = false;
-  currencySymbol = 'KES'; // Default, will be loaded from settings
+  currencySymbol = ''; // Loaded from settings
   academicYear = ''; // Will be loaded from settings
   currentTermFromSettings = ''; // Current term from settings
   quickPaymentAmount = 0;
@@ -266,7 +266,7 @@ invoices: any[] = [];
   loadSettings() {
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
-        this.currencySymbol = data.currencySymbol || 'KES';
+        this.currencySymbol = data.currencySymbol || '';
         this.academicYear = data.academicYear || new Date().getFullYear().toString();
         this.currentTermFromSettings = data.currentTerm || `Term 1 ${new Date().getFullYear()}`;
         this.quickPaymentTerm = this.currentTermFromSettings;

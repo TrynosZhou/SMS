@@ -564,12 +564,27 @@
   background: #fff;
 }
 
+.data-table th.action-col,
+.data-table td.action-cell {
+  white-space: nowrap;
+  width: 1%;
+  min-width: 200px;
+}
+
 .action-buttons-row {
-  display: flex;
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-start;
   gap: 8px;
-  flex-wrap: wrap;
+}
+
+.action-buttons-row .btn {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 36px;
+  margin: 0;
 }
 
 .btn-enroll {

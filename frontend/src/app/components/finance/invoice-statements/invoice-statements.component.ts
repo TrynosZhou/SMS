@@ -50,7 +50,7 @@ invoices: any[] = [];
     notes: '',
     isPrepayment: false
   };
-  currencySymbol = 'KES'; // Default, will be loaded from settings
+  currencySymbol = ''; // Loaded from settings
   submitting = false;
   
   // Form validation
@@ -64,6 +64,9 @@ invoices: any[] = [];
   loadingPdf = false;
   currentInvoiceFilename: string = '';
   currentInvoiceNumber: string = '';
+  hideInvoiceActions = false;
+  pageTitle = 'Invoice Statements';
+  pageSubtitle = 'View and manage invoice statements by student and status';
 
   constructor(
     public financeService: FinanceService,
@@ -77,6 +80,15 @@ invoices: any[] = [];
   ) { }
 
   ngOnInit() {
+    const routeData = this.route.snapshot.data || {};
+    this.hideInvoiceActions = !!routeData['hideInvoiceActions'];
+    if (routeData['pageTitle']) {
+      this.pageTitle = String(routeData['pageTitle']);
+    }
+    if (this.hideInvoiceActions) {
+      this.pageSubtitle = 'Student invoice ledger entries by term and status';
+    }
+
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe((params) => {
 if (params['studentId']) {
         this.selectedStudent = params['studentId'];
@@ -87,7 +99,10 @@ if (params['studentId']) {
       this.loadInvoices();
     });
 
-    activatePageLoad(this.router, this.destroy$, '/invoices/statements', () => {
+    const loadPath = this.hideInvoiceActions
+      ? '/financial-reports/student-ledgers'
+      : '/invoices/statements';
+    activatePageLoad(this.router, this.destroy$, loadPath, () => {
       this.loadSettings();
       if (this.authService.hasRole('parent')) {
         const user = this.authService.getCurrentUser();
@@ -119,11 +134,11 @@ if (params['studentId']) {
   loadSettings() {
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
-        this.currencySymbol = data.currencySymbol || 'KES';
+        this.currencySymbol = data.currencySymbol || '';
       },
       error: (err: any) => {
         console.error('Error loading settings:', err);
-        // Keep default 'KES' if settings fail to load
+        // Keep empty symbol if settings fail to load
       }
     });
   }

@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { FinanceService } from '../../../services/finance.service';
 import { SettingsService } from '../../../services/settings.service';
@@ -14,38 +14,22 @@ import { AuthService } from '../../../services/auth.service';
 })
 export class OutstandingBalanceComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-outstandingBalances: any[] = [];
+  private readonly searchInput$ = new Subject<string>();
+  readonly skeletonRows = [0, 1, 2, 3, 4, 5];
+  outstandingBalances: any[] = [];
   filteredBalances: any[] = [];
   groupedBalances: Array<{ className: string; items: any[] }> = [];
+  availableClasses: string[] = [];
   loading = false;
   loadingPdf = false;
   downloadingPdf = false;
   error = '';
   searchQuery = '';
-  currencySymbol = 'KES';
+  selectedClass = 'all';
+  sortDirection: 'desc' | 'asc' = 'desc';
+  currencySymbol = '';
+  lastLoadedAt: Date | null = null;
   private _cachedTotalOutstanding = 0;
-  // Payments stats by term
-  term: string = '';
-  activeTerm: string | null = null;
-  availableTerms: string[] = [];
-  totalPaymentsForTerm = 0;
-  totalOutstandingForTerm = 0;
-  transactionsForTerm = 0;
-  loadingTermStats = false;
-  reconcileOutstandingTerm = 0;
-  reconcileOutstandingLatest = 0;
-  reconcileDifference = 0;
-  reconcileStudents: Array<{
-    studentId: string;
-    studentNumber: string;
-    studentName: string;
-    earlierOutstandingTotal: number;
-    earlierInvoicesCount: number;
-    latestInvoiceNumber: string | null;
-    latestInvoiceTerm: string | null;
-    latestBalance: number | null;
-  }> = [];
-  showReconcileStudents = false;
 
   constructor(
     private financeService: FinanceService,
@@ -53,28 +37,44 @@ outstandingBalances: any[] = [];
     private router: Router,
     private authService: AuthService,
     private cdr: ChangeDetectorRef
-) { }
+  ) { }
+
+  private readonly outstandingRoutePaths = [
+    '/outstanding-balance',
+    '/financial-reports/outstanding-fees'
+  ];
 
   ngOnInit(): void {
-    activatePageLoad(this.router, this.destroy$, '/outstanding-balance', () => this.bootstrapPage());
+    this.searchInput$
+      .pipe(debounceTime(200), distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((query) => {
+        this.searchQuery = query;
+        this.applyFiltersAndGrouping();
+        this.cdr.markForCheck();
+      });
+
+    const reload = () => this.bootstrapPage();
+    reload();
+    for (const path of this.outstandingRoutePaths) {
+      activatePageLoad(this.router, this.destroy$, path, reload);
+    }
   }
 
   private bootstrapPage(): void {
     this.loadSettings();
-    this.loadActiveTermAndStats();
     this.loadOutstandingBalances();
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-}
+  }
 
   loadSettings(): void {
     this.settingsService.getSettings().subscribe({
       next: (settings: any) => {
         if (settings) {
-          this.currencySymbol = settings.currencySymbol || 'KES';
+          this.currencySymbol = settings.currencySymbol || '';
         }
       },
       error: (error) => {
@@ -83,126 +83,13 @@ outstandingBalances: any[] = [];
     });
   }
 
-  private loadActiveTermAndStats(): void {
-    this.settingsService.getActiveTerm().subscribe({
-      next: (resp: any) => {
-        this.activeTerm = resp?.activeTerm || null;
-        if (!this.term && this.activeTerm) {
-          this.term = this.activeTerm;
-        }
-        this.loadTermPaymentStats();
-      },
-      error: () => {
-        // Fallback: still try to load using empty term (API will decide)
-        this.loadTermPaymentStats();
-      }
-    });
-  }
-
-  onTermSelect(val: string): void {
-    this.term = val;
-    this.showReconcileStudents = false;
-    this.loadTermPaymentStats();
-  }
-
-  private loadTermPaymentStats(): void {
-    this.loadingTermStats = true;
-    this.financeService.getCashReceipts(this.term || undefined, 'all').subscribe({
-      next: (data: any) => {
-        // Use same "Total Collected" as Cash Receipts: backend sends totalCollected (reconciled).
-        // Fallback: derive as totalInvoiced - totalOutstanding so it always matches cash_receipts.
-        const invoiced = Number(data?.totalInvoiced) || 0;
-        const outstanding = Number(data?.totalOutstanding) ?? 0;
-        const fromInvoices = data?.totalPaidFromInvoices;
-        this.totalPaymentsForTerm =
-          (typeof fromInvoices === 'number' && !Number.isNaN(fromInvoices))
-            ? fromInvoices
-            : (invoiced > 0 ? Math.round((invoiced - outstanding) * 100) / 100 : (Number(data?.totalPayments) || 0));
-        this.totalOutstandingForTerm = outstanding;
-        this.transactionsForTerm = data?.count ?? 0;
-        this.availableTerms = Array.isArray(data?.availableTerms) ? data.availableTerms : [];
-        if (!this.term && data?.term) {
-          this.term = data.term;
-        }
-        this.loadingTermStats = false;
-        this.loadReconcileSummary();
-      },
-      error: () => {
-        this.totalPaymentsForTerm = 0;
-        this.totalOutstandingForTerm = 0;
-        this.transactionsForTerm = 0;
-        this.availableTerms = [];
-        this.loadingTermStats = false;
-        this.loadReconcileSummary();
-      }
-    });
-  }
-
-  private loadReconcileSummary(): void {
-    this.financeService.getReconcileSummary(this.term || undefined).subscribe({
-      next: (data: any) => {
-        this.reconcileOutstandingTerm = data?.totalOutstandingTerm ?? 0;
-        this.reconcileOutstandingLatest = data?.totalOutstandingLatest ?? 0;
-        this.reconcileDifference = data?.difference ?? ((this.reconcileOutstandingTerm || 0) - (this.reconcileOutstandingLatest || 0));
-        this.reconcileStudents = Array.isArray(data?.discrepancyStudents) ? data.discrepancyStudents : [];
-      },
-      error: () => {
-        this.reconcileOutstandingTerm = 0;
-        this.reconcileOutstandingLatest = 0;
-        this.reconcileDifference = 0;
-        this.reconcileStudents = [];
-        this.showReconcileStudents = false;
-      }
-    });
-  }
-
-  toggleReconcileStudents(): void {
-    this.showReconcileStudents = !this.showReconcileStudents;
-  }
-
-  exportReconcileStudentsCsv(): void {
-    const rows = Array.isArray(this.reconcileStudents) ? this.reconcileStudents : [];
-    if (rows.length === 0) return;
-    const esc = (v: any) => {
-      const s = String(v ?? '');
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const header = [
-      'Student Number',
-      'Student Name',
-      'Earlier Outstanding Total',
-      'Earlier Invoices Count',
-      'Latest Invoice Number',
-      'Latest Invoice Term',
-      'Latest Balance'
-    ];
-    const lines = [header.join(',')];
-    for (const r of rows) {
-      lines.push([
-        esc(r.studentNumber),
-        esc(r.studentName),
-        esc((r.earlierOutstandingTotal ?? 0).toFixed(2)),
-        esc(r.earlierInvoicesCount ?? 0),
-        esc(r.latestInvoiceNumber ?? ''),
-        esc(r.latestInvoiceTerm ?? ''),
-        esc(((r.latestBalance ?? 0) as number).toFixed(2))
-      ].join(','));
-    }
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Reconciliation_Students_${(this.term || 'Term').replace(/\s+/g, '_')}.csv`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
-  }
-
   /** Sort by invoice balance descending (largest amounts first). */
-  private sortByBalanceDesc(balances: any[]): any[] {
+  private sortByBalance(balances: any[]): any[] {
+    const dir = this.sortDirection === 'desc' ? -1 : 1;
     return [...balances].sort((a, b) => {
       const balA = parseFloat(String(a.invoiceBalance ?? 0));
       const balB = parseFloat(String(b.invoiceBalance ?? 0));
-      return balB - balA;
+      return (balA - balB) * dir;
     });
   }
 
@@ -222,49 +109,33 @@ outstandingBalances: any[] = [];
       .subscribe({
         next: (data: any) => {
           const balancesArray = Array.isArray(data) ? data : [];
-          const sorted = this.sortByBalanceDesc(balancesArray);
+          const sorted = this.sortByBalance(balancesArray);
           this.outstandingBalances = sorted;
-          this.filteredBalances = sorted;
-          this.groupedBalances = this.buildGroups(sorted);
-          this.updateCachedTotal();
+          this.availableClasses = this.extractClasses(sorted);
+          this.lastLoadedAt = new Date();
+          this.applyFiltersAndGrouping();
         },
         error: (error: any) => {
           this.error = error.error?.message || 'Failed to load outstanding balances';
           this.outstandingBalances = [];
           this.filteredBalances = [];
           this.groupedBalances = [];
+          this.availableClasses = [];
           this.updateCachedTotal();
         }
       });
-}
+  }
 
   filterBalances(): void {
-    let list: any[];
-    if (!this.searchQuery || this.searchQuery.trim() === '') {
-      list = this.outstandingBalances;
-    } else {
-      const query = this.searchQuery.toLowerCase().trim();
-      list = this.outstandingBalances.filter(balance => {
-        return (
-          balance.studentNumber?.toLowerCase().includes(query) ||
-          balance.firstName?.toLowerCase().includes(query) ||
-          balance.lastName?.toLowerCase().includes(query) ||
-          balance.studentId?.toLowerCase().includes(query) ||
-          balance.phoneNumber?.toLowerCase().includes(query)
-        );
-      });
-    }
-    this.filteredBalances = this.sortByBalanceDesc(list);
-    this.groupedBalances = this.buildGroups(this.filteredBalances);
-    this.updateCachedTotal();
+    this.applyFiltersAndGrouping();
   }
-  
+
   private getClassName(balance: any): string {
     const cls = balance?.class || balance?.classEntity || {};
     const name = (cls?.name || balance?.className || '').toString().trim();
     return name || 'Unassigned';
   }
-  
+
   private buildGroups(list: any[]): Array<{ className: string; items: any[] }> {
     const map = new Map<string, any[]>();
     list.forEach(item => {
@@ -274,12 +145,39 @@ outstandingBalances: any[] = [];
     });
     const groups = Array.from(map.entries()).map(([className, items]) => ({
       className,
-      items: this.sortByBalanceDesc(items)
+      items: this.sortByBalance(items)
     }));
-    // Sort groups alphabetically by class name for consistency
     return groups.sort((a, b) => a.className.localeCompare(b.className));
   }
-  
+
+  private extractClasses(list: any[]): string[] {
+    const classes = new Set<string>();
+    list.forEach((item) => classes.add(this.getClassName(item)));
+    return Array.from(classes).sort((a, b) => a.localeCompare(b));
+  }
+
+  private applyFiltersAndGrouping(): void {
+    const query = (this.searchQuery || '').toLowerCase().trim();
+    let list = this.outstandingBalances.filter((balance) => {
+      if (this.selectedClass !== 'all' && this.getClassName(balance) !== this.selectedClass) {
+        return false;
+      }
+      if (!query) return true;
+      return (
+        balance.studentNumber?.toLowerCase().includes(query) ||
+        balance.firstName?.toLowerCase().includes(query) ||
+        balance.lastName?.toLowerCase().includes(query) ||
+        balance.studentId?.toLowerCase().includes(query) ||
+        balance.phoneNumber?.toLowerCase().includes(query)
+      );
+    });
+
+    list = this.sortByBalance(list);
+    this.filteredBalances = list;
+    this.groupedBalances = this.buildGroups(list);
+    this.updateCachedTotal();
+  }
+
   private updateCachedTotal(): void {
     const balancesArray = Array.isArray(this.filteredBalances) ? this.filteredBalances : [];
     this._cachedTotalOutstanding = balancesArray.reduce((sum, balance) => {
@@ -343,8 +241,8 @@ outstandingBalances: any[] = [];
   }
 
   canManageFinance(): boolean {
-    return this.authService.hasRole('admin') || 
-           this.authService.hasRole('superadmin') || 
+    return this.authService.hasRole('admin') ||
+           this.authService.hasRole('superadmin') ||
            this.authService.hasRole('accountant');
   }
 
@@ -354,7 +252,6 @@ outstandingBalances: any[] = [];
       return;
     }
 
-    // Navigate to payments/record page with student ID as query parameter
     this.router.navigate(['/payments/record'], {
       queryParams: {
         studentId: balance.studentNumber || balance.studentId,
@@ -365,26 +262,65 @@ outstandingBalances: any[] = [];
     });
   }
 
-  getAverageBalance(): string {
-    if (this.filteredBalances.length === 0) {
-      return this.currencySymbol + ' 0.00';
-    }
-    const average = this.getTotalOutstanding() / this.filteredBalances.length;
-    return this.currencySymbol + ' ' + this.formatCurrency(average);
-  }
-
   clearSearch(): void {
     this.searchQuery = '';
-    this.filterBalances();
+    this.searchInput$.next('');
+    this.applyFiltersAndGrouping();
   }
 
   clearFilters(): void {
     this.searchQuery = '';
-    this.filterBalances();
+    this.selectedClass = 'all';
+    this.sortDirection = 'desc';
+    this.searchInput$.next('');
+    this.applyFiltersAndGrouping();
   }
 
   hasActiveFilters(): boolean {
-    return !!(this.searchQuery && this.searchQuery.trim() !== '');
+    return !!(this.searchQuery && this.searchQuery.trim() !== '') || this.selectedClass !== 'all' || this.sortDirection !== 'desc';
+  }
+
+  onSearchInput(value: string): void {
+    this.searchInput$.next(value || '');
+  }
+
+  onClassChange(value: string): void {
+    this.selectedClass = value || 'all';
+    this.applyFiltersAndGrouping();
+  }
+
+  onSortDirectionChange(value: string): void {
+    this.sortDirection = value === 'asc' ? 'asc' : 'desc';
+    this.applyFiltersAndGrouping();
+  }
+
+  exportCsv(): void {
+    const items = Array.isArray(this.filteredBalances) ? this.filteredBalances : [];
+    if (!items.length) return;
+    const esc = (v: unknown) => {
+      const s = String(v ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ['Student ID', 'Last Name', 'First Name', 'Sex', 'Class', 'Phone Number', 'Student Type', 'Invoice Balance'];
+    const lines = [header.join(',')];
+    for (const r of items) {
+      lines.push([
+        esc(r.studentNumber || r.studentId),
+        esc(r.lastName || ''),
+        esc(r.firstName || ''),
+        esc(r.gender || ''),
+        esc(this.getClassName(r)),
+        esc(r.phoneNumber || ''),
+        esc(r.studentType || 'Day Scholar'),
+        esc((parseFloat(String(r.invoiceBalance || 0)) || 0).toFixed(2))
+      ].join(','));
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Outstanding_Fees_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
 }
-

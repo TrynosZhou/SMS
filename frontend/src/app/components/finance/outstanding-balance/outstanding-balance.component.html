@@ -9,6 +9,9 @@
         <div>
           <h1>Unpaid Invoices</h1>
           <p class="header-subtitle">Students with outstanding invoice balances</p>
+          <p class="header-meta" *ngIf="lastLoadedAt && !loading">
+            Last updated {{ lastLoadedAt | date:'medium' }}
+          </p>
         </div>
       </div>
     </div>
@@ -21,121 +24,6 @@
     <button class="alert-close" (click)="error = ''" title="Close">&times;</button>
   </div>
 
-  <!-- Statistics Cards -->
-  <div class="stats-grid" *ngIf="!loading && outstandingBalances.length > 0">
-    <div class="stat-card stat-info">
-      <div class="stat-icon-wrapper">
-        <div class="stat-icon">💵</div>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(totalPaymentsForTerm) }}</div>
-        <div class="stat-label">Total Collected — {{ term || 'Term' }}</div>
-        <div class="stat-breakdown">{{ transactionsForTerm }} transaction(s)</div>
-        <div *ngIf="availableTerms.length > 0" style="margin-top:8px;">
-          <label for="ob-term" style="font-size:12px;color:#64748b;margin-right:6px;">Term</label>
-          <select id="ob-term" [ngModel]="term" (ngModelChange)="onTermSelect($event)" [ngModelOptions]="{standalone:true}" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;">
-            <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
-          </select>
-          <span *ngIf="activeTerm && term === activeTerm" style="font-size:12px;color:#94a3b8;margin-left:6px;">Current</span>
-        </div>
-      </div>
-    </div>
-    <div class="stat-card stat-primary">
-      <div class="stat-icon-wrapper">
-        <div class="stat-icon">👥</div>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ filteredBalances.length }}</div>
-        <div class="stat-label">Students with Balances</div>
-      </div>
-    </div>
-    <div class="stat-card stat-danger">
-      <div class="stat-icon-wrapper">
-        <div class="stat-icon">💵</div>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(term ? totalOutstandingForTerm : getTotalOutstanding()) }}</div>
-        <div class="stat-label">{{ term ? 'Total Outstanding (Term)' : 'Total Outstanding (latest invoice per student)' }}</div>
-      </div>
-    </div>
-    <div class="stat-card stat-warning">
-      <div class="stat-icon-wrapper">
-        <div class="stat-icon">📊</div>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ getAverageBalance() }}</div>
-        <div class="stat-label">Average Balance</div>
-      </div>
-    </div>
-    <div class="stat-card stat-info">
-      <div class="stat-icon-wrapper">
-        <div class="stat-icon">📋</div>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ outstandingBalances.length }}</div>
-        <div class="stat-label">Total Records</div>
-      </div>
-    </div>
-    <div class="stat-card stat-warning" title="Difference represents balances on earlier invoices that are not each student's latest invoice.">
-      <div class="stat-icon-wrapper">
-        <div class="stat-icon">🧮</div>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ currencySymbol }} {{ formatCurrency(reconcileDifference) }}</div>
-        <div class="stat-label">Reconciliation Difference</div>
-        <div class="stat-breakdown">Term Outstanding {{ currencySymbol }} {{ formatCurrency(reconcileOutstandingTerm) }} vs Current Student Balances {{ currencySymbol }} {{ formatCurrency(reconcileOutstandingLatest) }}</div>
-        <div class="stat-breakdown">Difference represents earlier unpaid invoices where newer invoices already exist.</div>
-        <button class="btn btn-modern btn-export" style="margin-top:8px;" (click)="toggleReconcileStudents()">
-          {{ showReconcileStudents ? 'Hide Students' : 'View Students' }}
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <div class="table-section modern-table-section" *ngIf="!loading && showReconcileStudents">
-    <div class="table-header modern-table-header">
-      <div class="table-info">
-        <span class="table-count-badge">{{ reconcileStudents.length }}</span>
-        <span class="table-info-text">student(s) with earlier unpaid invoices</span>
-      </div>
-      <div class="table-summary modern-summary">
-        <button class="btn btn-modern btn-export" (click)="exportReconcileStudentsCsv()" [disabled]="reconcileStudents.length === 0">
-          <span class="btn-icon">⬇️</span>
-          Export CSV
-        </button>
-      </div>
-    </div>
-    <div class="table-wrapper modern-wrapper" *ngIf="reconcileStudents.length > 0; else noReconStudentsOB">
-      <div class="table-responsive">
-        <table class="data-table modern-table">
-          <thead>
-            <tr>
-              <th>Student #</th>
-              <th>Student</th>
-              <th>Earlier Outstanding</th>
-              <th>Earlier Invoices</th>
-              <th>Latest Invoice</th>
-              <th>Latest Balance</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let s of reconcileStudents">
-              <td>{{ s.studentNumber || '—' }}</td>
-              <td>{{ s.studentName || '—' }}</td>
-              <td>{{ currencySymbol }} {{ formatCurrency(s.earlierOutstandingTotal || 0) }}</td>
-              <td>{{ s.earlierInvoicesCount || 0 }}</td>
-              <td>{{ s.latestInvoiceNumber || '—' }} ({{ s.latestInvoiceTerm || '—' }})</td>
-              <td>{{ currencySymbol }} {{ formatCurrency(s.latestBalance || 0) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <ng-template #noReconStudentsOB>
-      <div class="table-wrapper modern-wrapper" style="padding:16px;color:#64748b;">No students found for this reconciliation condition.</div>
-    </ng-template>
-  </div>
-  
   <!-- Search and Filter Section -->
   <div class="filters-section modern-filters" *ngIf="!loading && outstandingBalances.length > 0">
     <div class="filters-header">
@@ -147,24 +35,52 @@
         🗑️ Clear Filters
       </button>
     </div>
-    <div class="search-input-wrapper modern-search">
-      <span class="search-icon">🔍</span>
-      <input 
-        type="text" 
-        [(ngModel)]="searchQuery" 
-        (input)="filterBalances()"
-        (keyup.enter)="filterBalances()"
-        placeholder="Search by Student ID, First Name, Last Name, or Phone Number" 
-        class="form-control search-input modern-input">
-      <button *ngIf="searchQuery" class="clear-search" (click)="clearSearch()" title="Clear search">
-        <span>&times;</span>
-      </button>
+    <div class="filters-grid">
+      <div class="search-input-wrapper modern-search">
+        <span class="search-icon">🔍</span>
+        <input
+          #obSearch
+          type="text"
+          [value]="searchQuery"
+          (input)="onSearchInput(obSearch.value)"
+          placeholder="Search by Student ID, name, student ID, or phone"
+          class="form-control search-input modern-input">
+        <button *ngIf="searchQuery" class="clear-search" (click)="obSearch.value=''; clearSearch()" title="Clear search">
+          <span>&times;</span>
+        </button>
+      </div>
+
+      <div class="filter-select-group">
+        <label for="ob-class">Class</label>
+        <select id="ob-class" [ngModel]="selectedClass" (ngModelChange)="onClassChange($event)" [ngModelOptions]="{standalone:true}">
+          <option value="all">All classes</option>
+          <option *ngFor="let cls of availableClasses" [value]="cls">{{ cls }}</option>
+        </select>
+      </div>
+
+      <div class="filter-select-group">
+        <label for="ob-sort">Sort by balance</label>
+        <select id="ob-sort" [ngModel]="sortDirection" (ngModelChange)="onSortDirectionChange($event)" [ngModelOptions]="{standalone:true}">
+          <option value="desc">Highest first</option>
+          <option value="asc">Lowest first</option>
+        </select>
+      </div>
     </div>
   </div>
 
   <!-- Loading State -->
   <div *ngIf="loading" class="loading-container">
-    <div class="spinner"></div>
+    <div class="skeleton-list">
+      <div class="skeleton-row" *ngFor="let _ of skeletonRows">
+        <div class="skeleton-cell sm"></div>
+        <div class="skeleton-cell"></div>
+        <div class="skeleton-cell"></div>
+        <div class="skeleton-cell sm"></div>
+        <div class="skeleton-cell md"></div>
+        <div class="skeleton-cell md"></div>
+        <div class="skeleton-cell amount"></div>
+      </div>
+    </div>
     <p>Loading outstanding balances...</p>
   </div>
 
@@ -192,6 +108,14 @@
       <div class="table-summary modern-summary">
         <span class="summary-label">Total Outstanding:</span>
         <span class="summary-value">{{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</span>
+        <button
+          class="btn btn-modern btn-export"
+          (click)="exportCsv()"
+          [disabled]="filteredBalances.length === 0"
+          title="Export filtered results to CSV">
+          <span class="btn-icon">🧾</span>
+          <span>Export CSV</span>
+        </button>
         <button 
           class="btn btn-modern btn-export"
           (click)="previewPdf()"
@@ -275,4 +199,3 @@
     </div>
   </div>
 </div>
-

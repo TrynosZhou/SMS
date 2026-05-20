@@ -288,17 +288,9 @@
             <span class="sidebar-icon">🔎</span>
             <span class="sidebar-text">Balance Enquiry</span>
           </a>
-          <a routerLink="/outstanding-balance" routerLinkActive="active" class="sidebar-subitem">
-            <span class="sidebar-icon">⚠️</span>
-            <span class="sidebar-text">Unpaid Invoices</span>
-          </a>
           <a routerLink="/finance/exemptions" routerLinkActive="active" class="sidebar-subitem">
             <span class="sidebar-icon">🛡️</span>
             <span class="sidebar-text">Exemptions</span>
-          </a>
-<a routerLink="/finance/cash-logistics" routerLinkActive="active" class="sidebar-subitem">
-            <span class="sidebar-icon">🚌</span>
-            <span class="sidebar-text">Logistics Receipts</span>
           </a>
           <a routerLink="/finance/audit" routerLinkActive="active" class="sidebar-subitem">
             <span class="sidebar-icon">🛡️</span>
@@ -307,7 +299,70 @@
         </div>
       </div>
 
-      <!-- Payroll Manager (after Finance Manager) -->
+      <!-- Financial Reports (after Finance Manager) -->
+      <div class="sidebar-menu" *ngIf="!isTeacher() && (isAdmin() || isSuperAdmin() || canAccessModule('finance') || canAccessModule('logistics'))">
+        <div class="sidebar-menu-header" (click)="toggleMenu('financialReports')">
+          <span class="sidebar-icon">📊</span>
+          <span class="sidebar-text">Financial Reports</span>
+          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('financialReports')">▼</span>
+        </div>
+        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('financialReports')">
+          <a routerLink="/financial-reports/student-ledgers" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">📒</span>
+            <span class="sidebar-text">Student Ledgers</span>
+          </a>
+          <a routerLink="/financial-reports/fees-collection" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">💵</span>
+            <span class="sidebar-text">Fees Collection</span>
+          </a>
+          <a routerLink="/financial-reports/outstanding-fees" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">⚠️</span>
+            <span class="sidebar-text">Unpaid Invoices</span>
+          </a>
+          <a routerLink="/financial-reports/exemption-report" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">🪪</span>
+            <span class="sidebar-text">Exemption Report</span>
+          </a>
+          <a routerLink="/financial-reports/logistics-receipts" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">🚌</span>
+            <span class="sidebar-text">Logistics Receipts</span>
+          </a>
+          <a routerLink="/financial-reports/aged-debtors" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">⏳</span>
+            <span class="sidebar-text">Aged Debtors</span>
+          </a>
+          <a routerLink="/financial-reports/enrolment-vs-billing" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">📈</span>
+            <span class="sidebar-text">Enrolment vs Billing</span>
+          </a>
+          <a routerLink="/financial-reports/revenue-recognition" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">📊</span>
+            <span class="sidebar-text">Revenue Recognition</span>
+          </a>
+          <a routerLink="/financial-reports/student-reconciliation" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">⚖️</span>
+            <span class="sidebar-text">Student Reconciliation</span>
+          </a>
+          <a routerLink="/financial-reports/analytics-forecasts" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">🔮</span>
+            <span class="sidebar-text">Analytics &amp; Forecasts</span>
+          </a>
+          <a routerLink="/financial-reports/class-reconciliation" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">🏫</span>
+            <span class="sidebar-text">Class Reconciliation</span>
+          </a>
+          <a routerLink="/financial-reports/dining-hall" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('logistics') || isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">🍽️</span>
+            <span class="sidebar-text">Dining Hall</span>
+          </a>
+          <a routerLink="/financial-reports/transport" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('logistics') || isAdmin() || isSuperAdmin()">
+            <span class="sidebar-icon">🚌</span>
+            <span class="sidebar-text">Transport</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Payroll Manager -->
       <div class="sidebar-menu" *ngIf="canAccessModule('payroll')">
         <div class="sidebar-menu-header" (click)="toggleMenu('payrollManagement')">
           <span class="sidebar-icon">💵</span>
@@ -396,25 +451,6 @@
           <a routerLink="/news-feed" routerLinkActive="active" class="sidebar-subitem">
             <span class="sidebar-icon">📖</span>
             <span class="sidebar-text">News Feed</span>
-          </a>
-        </div>
-      </div>
-
-      <!-- Logistics Mgt — not shown on teacher dashboard -->
-      <div class="sidebar-menu" *ngIf="!isTeacher() && (isAdmin() || isSuperAdmin() || canAccessModule('logistics'))">
-        <div class="sidebar-menu-header" (click)="toggleMenu('logisticsManagement')">
-          <span class="sidebar-icon">🚌</span>
-          <span class="sidebar-text">Logistics Manager</span>
-          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('logisticsManagement')">▼</span>
-        </div>
-        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('logisticsManagement')">
-          <a routerLink="/logistics/transport" routerLinkActive="active" class="sidebar-subitem">
-            <span class="sidebar-icon">🚌</span>
-            <span class="sidebar-text">Transport</span>
-          </a>
-          <a routerLink="/logistics/dining-hall" routerLinkActive="active" class="sidebar-subitem">
-            <span class="sidebar-icon">🍽️</span>
-            <span class="sidebar-text">Dining Hall</span>
           </a>
         </div>
       </div>

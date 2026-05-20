@@ -526,15 +526,6 @@ font-size: 13px;
   to { transform: rotate(360deg); }
 }
 
-.inventory-section {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e8eaed;
-  padding: 24px 32px;
-  margin-top: 20px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-}
-
 /* Responsive */
 @media (max-width: 900px) {
   .admission-grid {

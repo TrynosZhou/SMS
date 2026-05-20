@@ -31,7 +31,7 @@ export function createReceiptPDF(
       doc.on('error', reject);
 
       const { invoice, student, settings, paymentAmount, paymentDate, paymentMethod, notes, receiptNumber, isPrepayment } = data;
-      const currencySymbol = settings?.currencySymbol || 'KES';
+      const currencySymbol = settings?.currencySymbol || '';
 
       // School Header
       const schoolName = settings?.schoolName || 'School Management System';
@@ -550,7 +550,7 @@ export function createUniformReceiptPDF(data: UniformReceiptPDFData): Promise<Bu
       doc.on('error', reject);
 
       const { student, settings, receiptNumber, paymentAmount, paymentDate, paymentMethod, notes, uniformBalanceAfter, chargeItems = [] } = data;
-      const currencySymbol = settings?.currencySymbol || 'KES';
+      const currencySymbol = settings?.currencySymbol || '';
 
       let yPos = 50;
       const textStartX = 50;

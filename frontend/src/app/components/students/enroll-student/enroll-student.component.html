@@ -146,7 +146,7 @@
           <th>Phone</th>
           <th>Grade</th>
           <th *ngIf="canEnroll()">Assign Class</th>
-          <th *ngIf="canEnroll()">Action</th>
+          <th *ngIf="canEnroll()" class="action-col">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -163,7 +163,7 @@
               <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
             </select>
           </td>
-          <td *ngIf="canEnroll()">
+          <td *ngIf="canEnroll()" class="action-cell">
             <div class="action-buttons-row">
               <button 
                 type="button"

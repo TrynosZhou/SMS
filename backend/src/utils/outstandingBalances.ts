@@ -26,11 +26,8 @@ function invoiceOwedAmount(
   configuredDeskFee: number
 ): number {
   const fromColumn = parseAmount(invoice.balance);
-  if (fromColumn > 0.005) {
-    return parseFloat(fromColumn.toFixed(2));
-  }
   const computed = computeInvoiceFeesOutstanding(invoice, student, configuredDeskFee);
-  return parseFloat(computed.toFixed(2));
+  return parseFloat(Math.max(fromColumn, computed).toFixed(2));
 }
 
 /**

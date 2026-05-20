@@ -1,0 +1,454 @@
+<div class="fr-page container modern-container">
+  <div class="page-header modern-header-section">
+    <div class="header-title-section">
+      <span class="header-main-icon">{{ meta.icon }}</span>
+      <div>
+        <h1>{{ meta.title }}</h1>
+        <p class="header-subtitle">{{ meta.subtitle }}</p>
+        <p class="fr-meta" *ngIf="lastLoadedAt && !loading">
+          Last updated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <div class="fr-toolbar" *ngIf="reportId !== 'aged-debtors' && reportId !== 'class-reconciliation'">
+    <label for="fr-term" *ngIf="availableTerms.length || term">Term</label>
+    <input
+      *ngIf="!availableTerms.length"
+      id="fr-term"
+      type="text"
+      class="form-control"
+      style="max-width:220px;display:inline-block;"
+      [(ngModel)]="term"
+      (keyup.enter)="loadReport()"
+      [ngModelOptions]="{standalone:true}"
+      placeholder="e.g. Term 2 2026" />
+    <select
+      *ngIf="availableTerms.length"
+      id="fr-term"
+      [ngModel]="term"
+      (ngModelChange)="onTermChange($event)"
+      [ngModelOptions]="{standalone:true}">
+      <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
+    </select>
+    <button type="button" class="btn btn-secondary" (click)="loadReport()" [disabled]="loading">Refresh</button>
+    <button
+      type="button"
+      class="btn btn-primary"
+      (click)="exportCsv()"
+      [disabled]="
+        loading ||
+        (reportId === 'revenue-recognition' && !revenueDisplayedItems.length) ||
+        (reportId === 'aged-debtors' && !agedDisplayedRows.length)
+      "
+      *ngIf="
+        reportId === 'aged-debtors' ||
+        reportId === 'enrolment-vs-billing' ||
+        reportId === 'class-reconciliation' ||
+        reportId === 'student-reconciliation' ||
+        reportId === 'revenue-recognition'
+      ">
+      Export CSV
+    </button>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <ng-container *ngIf="reportId === 'revenue-recognition'">
+      <div class="fr-skeleton-row" *ngFor="let _ of revenueSkeletonRows">
+        <div class="fr-skel fr-skel-sm"></div>
+        <div class="fr-skel fr-skel-sm"></div>
+        <div class="fr-skel"></div>
+        <div class="fr-skel"></div>
+        <div class="fr-skel fr-skel-md"></div>
+        <div class="fr-skel fr-skel-sm"></div>
+      </div>
+      <p class="fr-skeleton-caption">Loading revenue recognition…</p>
+    </ng-container>
+    <ng-container *ngIf="reportId !== 'revenue-recognition'">
+      <div class="spinner"></div>
+      <p>Loading report…</p>
+    </ng-container>
+  </div>
+
+  <!-- Aged debtors -->
+  <ng-container *ngIf="!loading && reportId === 'aged-debtors'">
+    <div class="fr-toolbar">
+      <div class="fr-search-wrap">
+        <span class="fr-search-icon" aria-hidden="true">🔍</span>
+        <input
+          #agedSearch
+          type="search"
+          class="fr-search-input"
+          placeholder="Search student, invoice, bucket..."
+          [value]="agedSearchQuery"
+          (input)="onAgedSearchInput(agedSearch.value)" />
+        <button type="button" class="fr-search-clear" *ngIf="agedSearchQuery" (click)="agedSearch.value=''; clearAgedFilters()">Clear</button>
+      </div>
+
+      <label for="aged-bucket">Bucket</label>
+      <select id="aged-bucket" [ngModel]="agedSelectedBucket" (ngModelChange)="onAgedBucketChange($event)" [ngModelOptions]="{standalone:true}">
+        <option value="all">All buckets</option>
+        <option *ngFor="let b of agedBuckets" [value]="b.label">{{ b.label }}</option>
+      </select>
+
+      <label for="aged-sort">Sort</label>
+      <select id="aged-sort" [ngModel]="agedSortBy" (ngModelChange)="onAgedSortChange($event)" [ngModelOptions]="{standalone:true}">
+        <option value="daysOverdue">Days overdue</option>
+        <option value="balance">Balance</option>
+        <option value="dueDate">Due date</option>
+      </select>
+
+      <select [ngModel]="agedSortDir" (ngModelChange)="onAgedSortDirChange($event)" [ngModelOptions]="{standalone:true}">
+        <option value="desc">Descending</option>
+        <option value="asc">Ascending</option>
+      </select>
+
+      <button type="button" class="btn fr-btn" (click)="clearAgedFilters()">Reset</button>
+      <button type="button" class="btn fr-btn" (click)="exportCsv()" [disabled]="!agedDisplayedRows.length">Export CSV</button>
+    </div>
+
+    <div class="fr-kpi-grid">
+      <div class="fr-kpi fr-kpi-accent">
+        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(getAgedTotalOutstanding()) }}</div>
+        <div class="fr-kpi-label">Displayed outstanding</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ getAgedStudentsCount() }}</div>
+        <div class="fr-kpi-label">Students owing</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ getOldestAgedDays() }}</div>
+        <div class="fr-kpi-label">Oldest days overdue</div>
+      </div>
+      <div class="fr-kpi" *ngFor="let b of agedBuckets">
+        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(b.total) }}</div>
+        <div class="fr-kpi-label">{{ b.label }} ({{ b.count }})</div>
+      </div>
+    </div>
+    <div class="table-section">
+      <div class="table-wrapper">
+        <table class="data-table modern-table">
+          <thead>
+            <tr>
+              <th>Student ID</th>
+              <th>Last name</th>
+              <th>First name</th>
+              <th>Invoice</th>
+              <th>Due</th>
+              <th>Days</th>
+              <th>Bucket</th>
+              <th class="text-right">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of agedDisplayedRows">
+              <td>{{ r.studentNumber }}</td>
+              <td>{{ r.lastName }}</td>
+              <td>{{ r.firstName }}</td>
+              <td>{{ r.invoiceNumber }}</td>
+              <td>{{ r.dueDate }}</td>
+              <td>{{ r.daysOverdue }}</td>
+              <td><span class="fr-method-pill">{{ r.bucket }}</span></td>
+              <td class="text-right">{{ currencySymbol }} {{ formatAmount(r.balance) }}</td>
+            </tr>
+            <tr *ngIf="!agedDisplayedRows.length">
+              <td colspan="8" style="text-align:center;padding:20px;color:#64748b;">No outstanding invoices for the selected filters.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- Enrolment vs billing -->
+  <ng-container *ngIf="!loading && reportId === 'enrolment-vs-billing'">
+    <div class="fr-kpi-grid">
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ enrolmentStats.enrolledActive }}</div>
+        <div class="fr-kpi-label">Enrolled (active)</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ enrolmentStats.withInvoice }}</div>
+        <div class="fr-kpi-label">Enrolled &amp; billed</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ enrolmentStats.enrolledNotBilled }}</div>
+        <div class="fr-kpi-label">Enrolled — not billed</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ enrolmentStats.billedNotEnrolled }}</div>
+        <div class="fr-kpi-label">Billed — not in class</div>
+      </div>
+    </div>
+    <div class="table-section">
+      <div class="table-wrapper">
+        <table class="data-table modern-table">
+          <thead>
+            <tr><th>Student #</th><th>Name</th><th>Class</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of enrolmentRows">
+              <td>{{ r.studentNumber }}</td>
+              <td>{{ r.name }}</td>
+              <td>{{ r.className }}</td>
+              <td>{{ r.status }}</td>
+            </tr>
+            <tr *ngIf="!enrolmentRows.length">
+              <td colspan="4" style="text-align:center;padding:20px;color:#64748b;">All enrolled students are billed for this term.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- Revenue recognition -->
+  <ng-container *ngIf="!loading && reportId === 'revenue-recognition'">
+    <div class="fr-toolbar fr-toolbar-wrap">
+      <div class="fr-search-wrap">
+        <span class="fr-search-icon" aria-hidden="true">🔍</span>
+        <input
+          #revSearch
+          type="search"
+          class="fr-search-input"
+          placeholder="Search receipts, students, invoices…"
+          [value]="revenueSearchQuery"
+          (input)="onRevenueSearchInput(revSearch.value)" />
+        <button type="button" class="fr-search-clear" *ngIf="revenueSearchQuery" (click)="revSearch.value = ''; clearRevenueFilters()">
+          Clear
+        </button>
+      </div>
+      <label for="rev-method">Method</label>
+      <select
+        id="rev-method"
+        [ngModel]="revenueSelectedMethod"
+        (ngModelChange)="onRevenueMethodChange($event)"
+        [ngModelOptions]="{ standalone: true }">
+        <option value="all">All methods</option>
+        <option *ngFor="let m of revenueAvailableMethods" [value]="m">{{ m }}</option>
+      </select>
+      <button type="button" class="btn fr-btn-outline" (click)="revSearch.value = ''; clearRevenueFilters()">Reset filters</button>
+    </div>
+
+    <div class="fr-kpi-grid">
+      <div class="fr-kpi fr-kpi-accent">
+        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(revenue.totalInvoiced) }}</div>
+        <div class="fr-kpi-label">Total invoiced</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(revenue.totalCollected) }}</div>
+        <div class="fr-kpi-label">Collected</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(revenue.totalOutstanding) }}</div>
+        <div class="fr-kpi-label">Outstanding</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ revenue.collectionRate }}%</div>
+        <div class="fr-kpi-label">Collection rate</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ revenue.invoicesCount }}</div>
+        <div class="fr-kpi-label">Invoices (term)</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ revenue.studentsWithInvoices }}</div>
+        <div class="fr-kpi-label">Students with invoices</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ revenue.studentsFullyPaid }} / {{ revenue.studentsPartiallyPaid }} / {{ revenue.studentsUnpaid }}</div>
+        <div class="fr-kpi-label">Paid / partial / unpaid</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ getRevenueCollectedSharePct() }}%</div>
+        <div class="fr-kpi-label">Collected share of invoiced</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ getRevenueOutstandingSharePct() }}%</div>
+        <div class="fr-kpi-label">Outstanding share of invoiced</div>
+      </div>
+    </div>
+
+    <div class="fr-rev-progress-wrap" *ngIf="revenue.totalInvoiced > 0">
+      <div class="fr-rev-progress-label">
+        <span>Collected</span>
+        <span>Outstanding</span>
+      </div>
+      <div class="fr-rev-progress" role="img" [attr.aria-label]="'Collected ' + getRevenueCollectedSharePct() + ' percent'">
+        <div class="fr-rev-progress-collected" [style.width.%]="getRevenueCollectedSharePct()"></div>
+      </div>
+    </div>
+
+    <p class="fr-note">
+      Revenue for <strong>{{ term || 'selected term' }}</strong> from invoice totals and cash receipts. Table shows
+      <strong>{{ revenueDisplayedItems.length }}</strong> receipt line(s){{ revenueSearchQuery || revenueSelectedMethod !== 'all' ? ' (filtered)' : '' }}.
+    </p>
+
+    <div class="table-section">
+      <div class="table-wrapper fr-table-scroll">
+        <table class="data-table modern-table fr-table" *ngIf="revenueDisplayedItems.length > 0">
+          <thead>
+            <tr>
+              <th>
+                <button type="button" class="fr-th-btn" (click)="setRevenueSort('receiptNumber')">
+                  Receipt <span class="fr-sort">{{ revenueSortIndicator('receiptNumber') }}</span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="fr-th-btn" (click)="setRevenueSort('paymentDate')">
+                  Date <span class="fr-sort">{{ revenueSortIndicator('paymentDate') }}</span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="fr-th-btn" (click)="setRevenueSort('studentName')">
+                  Student <span class="fr-sort">{{ revenueSortIndicator('studentName') }}</span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="fr-th-btn" (click)="setRevenueSort('invoiceNumber')">
+                  Invoice <span class="fr-sort">{{ revenueSortIndicator('invoiceNumber') }}</span>
+                </button>
+              </th>
+              <th>Term</th>
+              <th>
+                <button type="button" class="fr-th-btn fr-th-btn-right" (click)="setRevenueSort('amountPaid')">
+                  Amount <span class="fr-sort">{{ revenueSortIndicator('amountPaid') }}</span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="fr-th-btn" (click)="setRevenueSort('paymentMethod')">
+                  Method <span class="fr-sort">{{ revenueSortIndicator('paymentMethod') }}</span>
+                </button>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of revenueDisplayedItems">
+              <td class="fr-cell-mono">{{ r.receiptNumber || '—' }}</td>
+              <td>{{ r.paymentDate | date : 'mediumDate' }}</td>
+              <td>{{ r.studentNumber || '—' }} — {{ r.studentName || '—' }}</td>
+              <td>{{ r.invoiceNumber || '—' }}</td>
+              <td>{{ r.invoiceTerm || '—' }}</td>
+              <td class="fr-cell-amount text-right">{{ currencySymbol }} {{ formatAmount(r.amountPaid) }}</td>
+              <td><span class="fr-method-pill">{{ r.paymentMethod || '—' }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div *ngIf="revenueReceiptItems.length > 0 && revenueDisplayedItems.length === 0" class="fr-empty">
+          <p class="fr-empty-title">No matching receipts</p>
+          <p class="fr-empty-text">Adjust search or payment method, or reset filters.</p>
+          <button type="button" class="btn fr-btn" (click)="clearRevenueFilters()">Reset filters</button>
+        </div>
+
+        <div *ngIf="revenueReceiptItems.length === 0" class="fr-empty">
+          <p class="fr-empty-title">No cash receipts for this term</p>
+          <p class="fr-empty-text">Recorded payments will appear here once they exist for the selected term.</p>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- Student reconciliation -->
+  <ng-container *ngIf="!loading && reportId === 'student-reconciliation' && reconcile">
+    <div class="fr-kpi-grid">
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(reconcile.totalOutstandingTerm) }}</div>
+        <div class="fr-kpi-label">Term outstanding</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(reconcile.totalOutstandingLatest) }}</div>
+        <div class="fr-kpi-label">Latest-invoice outstanding</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(reconcile.difference) }}</div>
+        <div class="fr-kpi-label">Difference</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ reconcile.counts?.discrepancies ?? 0 }}</div>
+        <div class="fr-kpi-label">Students with discrepancies</div>
+      </div>
+    </div>
+    <div class="table-section">
+      <div class="table-wrapper">
+        <table class="data-table modern-table">
+          <thead>
+            <tr>
+              <th>Student #</th>
+              <th>Name</th>
+              <th>Earlier outstanding</th>
+              <th># Earlier inv.</th>
+              <th>Latest invoice</th>
+              <th class="text-right">Latest balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of reconcile.discrepancyStudents">
+              <td>{{ s.studentNumber }}</td>
+              <td>{{ s.studentName }}</td>
+              <td>{{ currencySymbol }} {{ formatAmount(s.earlierOutstandingTotal) }}</td>
+              <td>{{ s.earlierInvoicesCount }}</td>
+              <td>{{ s.latestInvoiceNumber }} ({{ s.latestInvoiceTerm }})</td>
+              <td class="text-right">{{ currencySymbol }} {{ formatAmount(s.latestBalance || 0) }}</td>
+            </tr>
+            <tr *ngIf="!reconcile.discrepancyStudents?.length">
+              <td colspan="6" style="text-align:center;padding:20px;color:#64748b;">No discrepancies for this term.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- Analytics -->
+  <ng-container *ngIf="!loading && reportId === 'analytics-forecasts'">
+    <div class="fr-kpi-grid">
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ analytics.totalStudentsOwing }}</div>
+        <div class="fr-kpi-label">Students owing</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(analytics.totalOutstanding) }}</div>
+        <div class="fr-kpi-label">Total outstanding</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(analytics.averageBalance) }}</div>
+        <div class="fr-kpi-label">Average balance</div>
+      </div>
+      <div class="fr-kpi">
+        <div class="fr-kpi-value">{{ analytics.collectionRate }}%</div>
+        <div class="fr-kpi-label">Term collection rate</div>
+      </div>
+    </div>
+    <p class="fr-note">
+      At the current collection rate, roughly <strong>{{ currencySymbol }} {{ formatAmount(analytics.projectedCollection) }}</strong>
+      of outstanding balances may be collected (simple projection).
+    </p>
+  </ng-container>
+
+  <!-- Class reconciliation -->
+  <ng-container *ngIf="!loading && reportId === 'class-reconciliation'">
+    <div class="table-section">
+      <div class="table-wrapper">
+        <table class="data-table modern-table">
+          <thead>
+            <tr><th>Class</th><th>Students owing</th><th class="text-right">Outstanding</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of classRows">
+              <td>{{ r.className }}</td>
+              <td>{{ r.studentCount }}</td>
+              <td class="text-right">{{ currencySymbol }} {{ formatAmount(r.totalOutstanding) }}</td>
+            </tr>
+            <tr *ngIf="!classRows.length">
+              <td colspan="3" style="text-align:center;padding:20px;color:#64748b;">No outstanding balances by class.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </ng-container>
+</div>

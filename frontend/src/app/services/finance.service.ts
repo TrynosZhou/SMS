@@ -202,6 +202,25 @@ getStudentBalance(studentId: string): Observable<any> {
     });
   }
 
+  getExemptionReport(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/finance/exemption-report`).pipe(
+      map((response) => (Array.isArray(response) ? response : [])),
+      catchError((error: any) => {
+        console.error('Error loading exemption report:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  getExemptionReportPDF(download = false): Observable<Blob> {
+    const params: any = {};
+    if (download) params.download = '1';
+    return this.http.get(`${this.apiUrl}/finance/exemption-report/pdf`, {
+      params,
+      responseType: 'blob'
+    });
+  }
+
   getOutstandingBalances(): Observable<any[]> {
     return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/finance/outstanding-balances`).pipe(
       map(response => {

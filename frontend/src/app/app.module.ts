@@ -63,6 +63,9 @@ import { BalanceEnquiryComponent } from './components/finance/balance-enquiry/ba
 import { CashLogisticsComponent } from './components/finance/cash-logistics/cash-logistics.component';
 import { AuditComponent } from './components/finance/audit/audit.component';
 import { ExemptionsManagementComponent } from './components/finance/exemptions-management/exemptions-management.component';
+import { ExemptionReportComponent } from './components/finance/exemption-report/exemption-report.component';
+import { FinancialReportComponent } from './components/finance/financial-reports/financial-report.component';
+import { FeesCollectionReportComponent } from './components/finance/financial-reports/fees-collection-report.component';
 import { SendMessageComponent } from './components/messages/send-message/send-message.component';
 import { AccountantInboxComponent } from './components/messages/accountant-inbox/accountant-inbox.component';
 import { ParentSendMessageComponent } from './components/parent/parent-send-message/parent-send-message.component';
@@ -160,6 +163,9 @@ import { StudentInventoryPanelComponent } from './components/inventory/student-i
     CashLogisticsComponent,
     AuditComponent,
     ExemptionsManagementComponent,
+    ExemptionReportComponent,
+    FinancialReportComponent,
+    FeesCollectionReportComponent,
 SendMessageComponent,
     AccountantInboxComponent,
     ParentSendMessageComponent,

@@ -23,6 +23,9 @@ import { BalanceEnquiryComponent } from './components/finance/balance-enquiry/ba
 import { CashLogisticsComponent } from './components/finance/cash-logistics/cash-logistics.component';
 import { AuditComponent } from './components/finance/audit/audit.component';
 import { ExemptionsManagementComponent } from './components/finance/exemptions-management/exemptions-management.component';
+import { ExemptionReportComponent } from './components/finance/exemption-report/exemption-report.component';
+import { FinancialReportComponent } from './components/finance/financial-reports/financial-report.component';
+import { FeesCollectionReportComponent } from './components/finance/financial-reports/fees-collection-report.component';
 import { ClassListComponent } from './components/classes/class-list/class-list.component';
 import { ClassFormComponent } from './components/classes/class-form/class-form.component';
 import { ClassListsComponent } from './components/classes/class-lists/class-lists.component';
@@ -154,6 +157,20 @@ const routes: Routes = [
 { path: 'finance/balance-enquiry', component: BalanceEnquiryComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'finance/cash-logistics', component: CashLogisticsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'finance/audit', component: AuditComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
+  { path: 'financial-reports/student-ledgers', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', hideInvoiceActions: true, pageTitle: 'Student Ledgers' } },
+  { path: 'financial-reports/fees-collection', component: FeesCollectionReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
+  { path: 'financial-reports/outstanding-fees', component: OutstandingBalanceComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
+  { path: 'financial-reports/exemption-report', component: ExemptionReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
+  { path: 'financial-reports/exemptions', redirectTo: 'financial-reports/exemption-report', pathMatch: 'full' },
+  { path: 'financial-reports/logistics-receipts', component: CashLogisticsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
+  { path: 'financial-reports/aged-debtors', component: FinancialReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', report: 'aged-debtors' } },
+  { path: 'financial-reports/enrolment-vs-billing', component: FinancialReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', report: 'enrolment-vs-billing' } },
+  { path: 'financial-reports/revenue-recognition', component: FinancialReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', report: 'revenue-recognition' } },
+  { path: 'financial-reports/student-reconciliation', component: FinancialReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', report: 'student-reconciliation' } },
+  { path: 'financial-reports/analytics-forecasts', component: FinancialReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', report: 'analytics-forecasts' } },
+  { path: 'financial-reports/class-reconciliation', component: FinancialReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', report: 'class-reconciliation' } },
+  { path: 'financial-reports/dining-hall', component: StudentListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { logisticsMode: 'diningHall', module: 'logistics' } },
+  { path: 'financial-reports/transport', component: StudentListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { logisticsMode: 'transport', module: 'logistics' } },
   // Payroll routes
   { path: 'payroll', component: PayrollDashboardComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'payroll' } },
   { path: 'payroll/employees', component: AncillaryStaffListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'payroll' } },

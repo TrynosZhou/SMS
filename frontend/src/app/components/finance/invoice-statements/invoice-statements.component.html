@@ -5,13 +5,13 @@
       <div class="page-header-content">
         <h1 class="page-title">
           <span class="page-title-icon">📋</span>
-          Invoice Statements
+          {{ pageTitle }}
         </h1>
-        <p class="page-subtitle">View and manage invoice statements by student and status</p>
+        <p class="page-subtitle">{{ pageSubtitle }}</p>
       </div>
-      <button type="button" class="btn-back" (click)="router.navigate(['/invoices'])">
+      <button type="button" class="btn-back" (click)="router.navigate(hideInvoiceActions ? ['/dashboard'] : ['/invoices'])">
         <span class="btn-back-icon">←</span>
-        Back to Invoices
+        {{ hideInvoiceActions ? 'Back' : 'Back to Invoices' }}
       </button>
     </header>
 
@@ -110,7 +110,7 @@
           <th>Status</th>
           <th>Due Date</th>
           <th>Term</th>
-          <th style="text-align: center;">Actions</th>
+          <th style="text-align: center;" *ngIf="!hideInvoiceActions">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -138,7 +138,7 @@
           </td>
           <td>{{ invoice.dueDate | date }}</td>
           <td>{{ invoice.term }}</td>
-          <td class="actions-cell">
+          <td class="actions-cell" *ngIf="!hideInvoiceActions">
             <div class="action-buttons">
               <button class="btn btn-primary action-btn" 
                       type="button"

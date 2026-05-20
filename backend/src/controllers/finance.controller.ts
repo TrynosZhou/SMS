@@ -13,6 +13,9 @@ import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
 import { fetchOutstandingBalanceRows } from '../utils/outstandingBalances';
+import { fetchExemptionReportRows } from '../utils/exemptionReport';
+import { syncExemptionInvoicesForStudent } from '../utils/exemptionInvoice';
+import { createExemptionReportPDF } from '../utils/exemptionReportPdfGenerator';
 import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
 import { UserRole } from '../entities/User';
 import { PaymentLog } from '../entities/PaymentLog';
@@ -1485,6 +1488,86 @@ export const getOutstandingBalances = async (req: AuthRequest, res: Response) =>
   }
 };
 
+export const getExemptionReport = async (req: AuthRequest, res: Response) => {
+  try {
+    const rows = await fetchExemptionReportRows();
+    res.json(rows);
+  } catch (error: any) {
+    console.error('Error fetching exemption report:', error);
+    res.status(500).json({
+      message: 'Server error',
+      error: error.message || 'Unknown error'
+    });
+  }
+};
+
+export const syncStudentExemptionInvoices = async (req: AuthRequest, res: Response) => {
+  try {
+    const { studentId } = req.params;
+    if (!studentId) {
+      return res.status(400).json({ message: 'Student ID is required' });
+    }
+    const result = await syncExemptionInvoicesForStudent(studentId);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error syncing exemption invoices:', error);
+    const msg = error?.message || 'Unknown error';
+    if (msg === 'Student not found') {
+      return res.status(404).json({ message: msg });
+    }
+    if (msg.includes('Fee settings not configured')) {
+      return res.status(400).json({ message: msg });
+    }
+    res.status(500).json({ message: 'Server error', error: msg });
+  }
+};
+
+export const getExemptionReportPDF = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const rows = await fetchExemptionReportRows();
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
+    });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+    const schoolName =
+      settings?.schoolName != null && String(settings.schoolName).trim() !== ''
+        ? String(settings.schoolName).trim()
+        : 'School';
+    const currencySymbol =
+      settings?.currencySymbol != null && String(settings.currencySymbol).trim() !== ''
+        ? String(settings.currencySymbol).trim()
+        : '';
+    const schoolLogo2 = (settings as any)?.schoolLogo2 ?? null;
+
+    const pdfBuffer = await createExemptionReportPDF({
+      schoolName,
+      currencySymbol,
+      reportDate: new Date(),
+      rows,
+      schoolLogo2: schoolLogo2 != null ? String(schoolLogo2).trim() : null
+    });
+
+    const download = String(req.query.download || '') === '1';
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      download
+        ? 'attachment; filename="exemption-report.pdf"'
+        : 'inline; filename="exemption-report.pdf"'
+    );
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error('Error generating exemption report PDF:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
 export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response) => {
   try {
     if (!AppDataSource.isInitialized) {
@@ -1505,7 +1588,7 @@ export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response)
     // Currency symbol must always come from Settings (same as settings page)
     const currencySymbol = (settings?.currencySymbol != null && String(settings.currencySymbol).trim() !== '')
       ? String(settings.currencySymbol).trim()
-      : 'KES';
+      : '';
 
     const schoolLogo2 = (settings as any)?.schoolLogo2 ?? null;
     const pdfBuffer = await createOutstandingBalancePDF({
@@ -2991,7 +3074,7 @@ export const getCashReceiptsPDF = async (req: AuthRequest, res: Response) => {
     // Total cash received = direct sum of payment log entries (actual payments recorded).
     const totalCashReceived = rows.reduce((s, r) => s + r.amountPaid, 0);
     const schoolName = (settings?.schoolName != null && String(settings.schoolName).trim() !== '') ? String(settings.schoolName).trim() : 'School';
-    const currencySymbol = (settings?.currencySymbol != null && String(settings.currencySymbol).trim() !== '') ? String(settings.currencySymbol).trim() : 'KES';
+    const currencySymbol = (settings?.currencySymbol != null && String(settings.currencySymbol).trim() !== '') ? String(settings.currencySymbol).trim() : '';
     const schoolLogo2 = (settings as any)?.schoolLogo2 ?? null;
 
     const pdfBuffer = await createCashReceiptsPDF({

@@ -27,7 +27,7 @@ export function createInvoicePDF(
       doc.on('error', reject);
 
       const { invoice, student, settings, isFirstInvoice } = data;
-      const currencySymbol = settings?.currencySymbol || 'KES';
+      const currencySymbol = settings?.currencySymbol || '';
 
       // School Header
       const schoolName = settings?.schoolName || 'School Management System';

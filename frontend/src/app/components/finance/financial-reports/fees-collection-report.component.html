@@ -1,0 +1,137 @@
+<div class="fr-page container modern-container">
+  <div class="page-header modern-header-section">
+    <div class="header-title-section">
+      <span class="header-main-icon">💵</span>
+      <div>
+        <h1>Fees Collection</h1>
+        <p class="header-subtitle">Payments recorded for {{ term || 'selected term' }}</p>
+        <p class="fr-meta" *ngIf="lastLoadedAt && !loading">
+          Last updated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <div class="fr-toolbar" *ngIf="availableTerms.length">
+    <label for="fc-term">Term</label>
+    <select id="fc-term" [ngModel]="term" (ngModelChange)="onTermChange($event)" [ngModelOptions]="{standalone:true}">
+      <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
+    </select>
+    <label for="fc-method">Method</label>
+    <select
+      id="fc-method"
+      [ngModel]="selectedMethod"
+      (ngModelChange)="onMethodChange($event)"
+      [ngModelOptions]="{standalone:true}">
+      <option value="all">All methods</option>
+      <option *ngFor="let m of availableMethods" [value]="m">{{ m }}</option>
+    </select>
+    <button type="button" class="btn fr-btn" (click)="load()" [disabled]="loading">Refresh</button>
+    <button type="button" class="btn fr-btn" (click)="exportCsv()" [disabled]="!displayedItems.length">Export CSV</button>
+  </div>
+
+  <div class="fr-search-row" *ngIf="!loading || displayedItems.length > 0 || !!searchQuery">
+    <div class="fr-search-wrap">
+      <span class="fr-search-icon" aria-hidden="true">🔍</span>
+      <input
+        #fcSearch
+        type="search"
+        class="fr-search-input"
+        placeholder="Search student, receipt, invoice, method..."
+        [disabled]="loading && !data"
+        (input)="onSearchInput(fcSearch.value)" />
+      <button type="button" class="fr-search-clear" *ngIf="searchQuery" (click)="fcSearch.value=''; clearSearch()">Clear</button>
+    </div>
+  </div>
+
+  <div class="fr-kpi-grid" *ngIf="data && !loading">
+    <div class="fr-kpi">
+      <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(getDisplayedTotalPaid()) }}</div>
+      <div class="fr-kpi-label">Displayed collected</div>
+    </div>
+    <div class="fr-kpi">
+      <div class="fr-kpi-value">{{ displayedItems.length }}</div>
+      <div class="fr-kpi-label">Displayed transactions</div>
+    </div>
+    <div class="fr-kpi">
+      <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(getAverageTransaction()) }}</div>
+      <div class="fr-kpi-label">Average transaction</div>
+    </div>
+    <div class="fr-kpi">
+      <div class="fr-kpi-value">{{ data.studentsFullyPaid ?? 0 }} / {{ data.studentsWithInvoices ?? 0 }}</div>
+      <div class="fr-kpi-label">Students fully paid</div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="fr-skeleton" aria-busy="true">
+    <div class="fr-skeleton-row" *ngFor="let _ of skeletonRows">
+      <div class="fr-skel fr-skel-sm"></div>
+      <div class="fr-skel fr-skel-sm"></div>
+      <div class="fr-skel"></div>
+      <div class="fr-skel"></div>
+      <div class="fr-skel fr-skel-md"></div>
+      <div class="fr-skel fr-skel-sm"></div>
+    </div>
+    <p class="fr-skeleton-caption">Loading fees collection...</p>
+  </div>
+
+  <div class="table-section" *ngIf="!loading && data">
+    <div class="table-wrapper">
+      <table class="data-table modern-table fr-table" *ngIf="displayedItems.length > 0">
+        <thead>
+          <tr>
+            <th>Receipt</th>
+            <th>
+              <button type="button" class="fr-th-btn" (click)="setSort('paymentDate')">
+                Date <span class="fr-sort">{{ sortIndicator('paymentDate') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="fr-th-btn" (click)="setSort('studentName')">
+                Student <span class="fr-sort">{{ sortIndicator('studentName') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="fr-th-btn" (click)="setSort('invoiceNumber')">
+                Invoice <span class="fr-sort">{{ sortIndicator('invoiceNumber') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="fr-th-btn" (click)="setSort('amountPaid')">
+                Amount <span class="fr-sort">{{ sortIndicator('amountPaid') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="fr-th-btn" (click)="setSort('paymentMethod')">
+                Method <span class="fr-sort">{{ sortIndicator('paymentMethod') }}</span>
+              </button>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of displayedItems">
+            <td>{{ r.receiptNumber || '—' }}</td>
+            <td>{{ r.paymentDate | date:'mediumDate' }}</td>
+            <td>{{ r.studentName }} ({{ r.studentNumber }})</td>
+            <td>{{ r.invoiceNumber }} — {{ r.invoiceTerm }}</td>
+            <td class="fr-cell-amount">{{ currencySymbol }} {{ formatAmount(r.amountPaid) }}</td>
+            <td><span class="fr-method-pill">{{ r.paymentMethod || '—' }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div *ngIf="(data?.items?.length || 0) > 0 && displayedItems.length === 0" class="fr-empty">
+        <p class="fr-empty-title">No matching transactions</p>
+        <p class="fr-empty-text">Try another search term or choose a different payment method.</p>
+        <button type="button" class="btn fr-btn" (click)="clearSearch(); onMethodChange('all')">Reset filters</button>
+      </div>
+
+      <div *ngIf="(data?.items?.length || 0) === 0" class="fr-empty">
+        <p class="fr-empty-title">No payments for this term</p>
+        <p class="fr-empty-text">Transactions will appear here as soon as receipts are recorded.</p>
+      </div>
+    </div>
+  </div>
+</div>

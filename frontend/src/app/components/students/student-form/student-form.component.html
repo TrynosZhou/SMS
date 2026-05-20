@@ -309,13 +309,4 @@
       </button>
     </footer>
   </form>
-
-  <section class="admission-section inventory-section" *ngIf="isEdit && student?.id && moduleAccess.canAccessModule('inventory')">
-    <h2 class="section-title">
-      <span class="section-num">4</span>
-      Inventory &amp; Library
-    </h2>
-    <div class="section-rule"></div>
-<app-student-inventory-panel [studentId]="student.id"></app-student-inventory-panel>
-  </section>
 </div>
