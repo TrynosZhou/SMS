@@ -735,7 +735,8 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       search,
       studentType,
       usesTransport,
-      usesDiningHall
+      usesDiningHall,
+      unenrolled
     } = req.query;
     const { page, limit, skip } = resolvePaginationParams(
       pageParam as string,
@@ -747,13 +748,21 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     const trimmedSearch = search ? String(search).trim() : null;
     const normalizedStudentType = studentType ? String(studentType).trim() : null;
     const normalizedSearch = trimmedSearch ? trimmedSearch.toLowerCase() : null;
-
+    const wantsUnenrolled = ['true', '1', 'yes', 'y'].includes(
+      String(unenrolled ?? '').trim().toLowerCase()
+    );
 
     let queryBuilder = studentRepository
       .createQueryBuilder('student')
       .leftJoinAndSelect('student.classEntity', 'classEntity');
 
-    if (trimmedClassId) {
+    if (wantsUnenrolled) {
+      queryBuilder = queryBuilder
+        .andWhere('(student.isActive IS NULL OR student.isActive = :active)', { active: true })
+        .andWhere('student.classId IS NULL');
+    }
+
+    if (trimmedClassId && !wantsUnenrolled) {
       queryBuilder = queryBuilder.andWhere(
         '(student.classId = :classId OR classEntity.id = :classId)',
         { classId: trimmedClassId }

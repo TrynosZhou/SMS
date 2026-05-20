@@ -202,7 +202,8 @@ constructor(
             this.recomputeStats();
             return;
           }
-          this.students = Array.isArray(response?.data) ? response.data : [];
+          const rows = Array.isArray(response?.data) ? response.data : [];
+          this.students = rows.filter((s) => this.isUnenrolledStudent(s));
           this.recomputeOptions();
           this.applyFilters();
         },
@@ -230,8 +231,20 @@ constructor(
   }
 
   applyFilters(): void {
-    this.filtered = [...this.students];
-this.recomputeStats();
+    this.filtered = this.students.filter((s) => this.isUnenrolledStudent(s));
+    this.recomputeStats();
+  }
+
+  /** Student has no class assignment (not yet enrolled). */
+  private isUnenrolledStudent(student: any): boolean {
+    if (!student) {
+      return false;
+    }
+    const classId = student.classId ?? student.class?.id ?? student.classEntity?.id;
+    if (classId === null || classId === undefined) {
+      return true;
+    }
+    return String(classId).trim() === '';
   }
 
   private recomputeOptions(): void {

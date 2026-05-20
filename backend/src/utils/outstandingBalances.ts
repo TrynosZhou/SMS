@@ -1,7 +1,9 @@
+import { In } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { Invoice } from '../entities/Invoice';
 import { Settings } from '../entities/Settings';
 import { computeInvoiceFeesOutstanding, getConfiguredDeskFee } from './invoiceFeesBalance';
+import { parseAmount } from './numberUtils';
 
 export type OutstandingBalanceRow = {
   studentId: string;
@@ -15,42 +17,93 @@ export type OutstandingBalanceRow = {
   invoiceBalance: number;
 };
 
+const NOT_VOIDED = 'COALESCE(invoice.isVoided, false) = false';
+
 /**
- * Latest non-voided invoice per student with positive computed balance.
- * Uses two queries (settings + grouped invoices) instead of N+1 per student.
+ * Balance shown on finance screens — persisted invoice.balance first (updated on payment),
+ * then formula fallback when the column is zero but line items still imply amount owed.
+ */
+function resolveOutstandingBalance(
+  invoice: Invoice,
+  student: NonNullable<Invoice['student']>,
+  configuredDeskFee: number
+): number {
+  const fromColumn = parseAmount(invoice.balance);
+  if (fromColumn > 0.005) {
+    return parseFloat(fromColumn.toFixed(2));
+  }
+  const computed = computeInvoiceFeesOutstanding(invoice, student, configuredDeskFee);
+  return parseFloat(computed.toFixed(2));
+}
+
+/** Latest non-voided invoice per student (PostgreSQL DISTINCT ON; safe fallback otherwise). */
+async function fetchLatestInvoicesPerStudent(): Promise<Invoice[]> {
+  const invoiceRepository = AppDataSource.getRepository(Invoice);
+  const driverType = String((AppDataSource.options as { type?: string }).type || '');
+
+  if (driverType === 'postgres') {
+    const idRows: Array<{ id: string }> = await invoiceRepository.query(`
+      SELECT DISTINCT ON ("studentId") id
+      FROM invoices
+      WHERE COALESCE("isVoided", false) = false
+      ORDER BY "studentId", "createdAt" DESC
+    `);
+    const ids = idRows.map((r) => r.id).filter(Boolean);
+    if (ids.length === 0) {
+      return [];
+    }
+    return invoiceRepository.find({
+      where: { id: In(ids) },
+      relations: ['student', 'student.classEntity']
+    });
+  }
+
+  // Fallback: one lookup per student (correct; used for non-Postgres dev DBs)
+  const rows: Array<{ studentId: string; id: string }> = await invoiceRepository
+    .createQueryBuilder('invoice')
+    .select('invoice.studentId', 'studentId')
+    .addSelect('MAX(invoice.createdAt)', 'maxCreated')
+    .where(NOT_VOIDED)
+    .groupBy('invoice.studentId')
+    .getRawMany();
+
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const invoices: Invoice[] = [];
+  for (const row of rows) {
+    const inv = await invoiceRepository
+      .createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.student', 'student')
+      .leftJoinAndSelect('student.classEntity', 'classEntity')
+      .where('invoice.studentId = :studentId', { studentId: row.studentId })
+      .andWhere(NOT_VOIDED)
+      .orderBy('invoice.createdAt', 'DESC')
+      .getOne();
+    if (inv) {
+      invoices.push(inv);
+    }
+  }
+  return invoices;
+}
+
+/**
+ * Latest non-voided invoice per student with positive outstanding balance.
  */
 export async function fetchOutstandingBalanceRows(): Promise<OutstandingBalanceRow[]> {
   if (!AppDataSource.isInitialized) {
     await AppDataSource.initialize();
   }
 
-  const invoiceRepository = AppDataSource.getRepository(Invoice);
   const settingsRepository = AppDataSource.getRepository(Settings);
-
   const settingsList = await settingsRepository.find({
     order: { createdAt: 'DESC' },
     take: 1
   });
   const configuredDeskFee = getConfiguredDeskFee(settingsList[0] ?? null);
 
-  const latestInvoices = await invoiceRepository
-    .createQueryBuilder('invoice')
-    .innerJoin(
-      (qb) =>
-        qb
-          .select('sub.studentId', 'studentId')
-          .addSelect('MAX(sub.createdAt)', 'maxCreatedAt')
-          .from(Invoice, 'sub')
-          .where('sub.isVoided = :voided', { voided: false })
-          .groupBy('sub.studentId'),
-      'latest',
-      'invoice.studentId = latest.studentId AND invoice.createdAt = latest.maxCreatedAt'
-    )
-    .leftJoinAndSelect('invoice.student', 'student')
-    .leftJoinAndSelect('student.classEntity', 'classEntity')
-    .where('invoice.isVoided = :voided', { voided: false })
-    .getMany();
-
+  const latestInvoices = await fetchLatestInvoicesPerStudent();
   const rows: OutstandingBalanceRow[] = [];
 
   for (const invoice of latestInvoices) {
@@ -59,7 +112,7 @@ export async function fetchOutstandingBalanceRows(): Promise<OutstandingBalanceR
       continue;
     }
 
-    const balance = computeInvoiceFeesOutstanding(invoice, student, configuredDeskFee);
+    const balance = resolveOutstandingBalance(invoice, student, configuredDeskFee);
     if (balance <= 0.005) {
       continue;
     }
@@ -73,7 +126,7 @@ export async function fetchOutstandingBalanceRows(): Promise<OutstandingBalanceR
       studentType: student.studentType,
       className: student.classEntity?.name ?? null,
       phoneNumber: student.phoneNumber || '',
-      invoiceBalance: parseFloat(balance.toFixed(2))
+      invoiceBalance: balance
     });
   }
 
