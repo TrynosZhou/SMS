@@ -1,5 +1,7 @@
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { activatePageLoad } from '../../../utils/route-activation';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { TeacherService } from '../../../services/teacher.service';
@@ -11,7 +13,8 @@ import { ClassService } from '../../../services/class.service';
 templateUrl: './allocate-classes.component.html',
   styleUrls: ['./allocate-classes.component.css']
 })
-export class AllocateClassesComponent implements OnInit {
+export class AllocateClassesComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
   loading = false;
   saving = false;
   error = '';
@@ -58,10 +61,22 @@ export class AllocateClassesComponent implements OnInit {
     private teacherService: TeacherService,
     private subjectService: SubjectService,
     private classService: ClassService,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
+    const bootstrap = () => this.bootstrapPage();
+    activatePageLoad(this.router, this.destroy$, '/teachers/allocate_class', bootstrap);
+    activatePageLoad(this.router, this.destroy$, '/class_allocation', bootstrap);
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private bootstrapPage(): void {
     this.loadTeachers();
     this.loadSubjects();
     this.loadClasses();

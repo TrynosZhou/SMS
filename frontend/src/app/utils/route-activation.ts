@@ -6,23 +6,46 @@ export interface RouteActivationOptions {
   /** When true (default), only match the path exactly (no child routes). */
   exact?: boolean;
   /**
-   * When true (default), run reload immediately if the router is already on this path.
-   * Use when the component is created after NavigationEnd (e.g. login redirect to dashboard).
+   * When true (default), run reload when the component is first attached.
+   * Uses multiple timing strategies so production navigations still load on first click.
    */
   fireOnAttach?: boolean;
 }
 
 export interface PageLoadOptions extends RouteActivationOptions {
-  /** Delay before load (ms). Reduces contention with settings/auth requests. Default 80. */
+  /** Delay before load (ms). Default 0 — immediate load after route is active. */
   deferMs?: number;
 }
 
+function normalizePath(url: string): string {
+  const path = (url || '').split('?')[0].split('#')[0];
+  if (!path || path === '/') return '/';
+  return path.endsWith('/') && path.length > 1 ? path.slice(0, -1) : path;
+}
+
 function pathMatches(urlPath: string, path: string, exact: boolean): boolean {
-  return exact ? urlPath === path : urlPath === path || urlPath.startsWith(path + '/');
+  const current = normalizePath(urlPath);
+  const target = normalizePath(path);
+  return exact ? current === target : current === target || current.startsWith(target + '/');
+}
+
+function scheduleLoad(load: () => void, deferMs: number): void {
+  const run = () => {
+    try {
+      load();
+    } catch (e) {
+      console.error('Page load handler failed:', e);
+    }
+  };
+  if (deferMs > 0) {
+    setTimeout(run, deferMs);
+    return;
+  }
+  queueMicrotask(run);
 }
 
 /**
- * Re-run a load function when the user navigates to a route, and optionally when the
+ * Re-run a load function when the user navigates to a route, and when the
  * component is first attached while already on that route.
  */
 export function onRouteActivated(
@@ -42,8 +65,11 @@ export function onRouteActivated(
   };
 
   if (fireOnAttach) {
-    const current = (router.url || '').split('?')[0];
+    const current = normalizePath(router.url || '');
     tryReload(current);
+    // Production: router.url can lag behind NavigationEnd on first paint
+    queueMicrotask(() => tryReload(normalizePath(router.url || '')));
+    setTimeout(() => tryReload(normalizePath(router.url || '')), 0);
   }
 
   router.events
@@ -52,7 +78,7 @@ export function onRouteActivated(
       takeUntil(destroy$)
     )
     .subscribe((e) => {
-      const urlPath = (e.urlAfterRedirects || e.url || '').split('?')[0];
+      const urlPath = normalizePath(e.urlAfterRedirects || e.url || '');
       tryReload(urlPath);
     });
 }
@@ -68,9 +94,20 @@ export function activatePageLoad(
   load: () => void,
   options?: PageLoadOptions
 ): void {
-  const deferMs = options?.deferMs ?? 80;
-  const scheduled = () => setTimeout(() => load(), deferMs);
-  onRouteActivated(router, destroy$, path, scheduled, {
+  const deferMs = options?.deferMs ?? 0;
+  let lastFireAt = 0;
+  const minGapMs = 50;
+
+  const guardedLoad = () => {
+    const now = Date.now();
+    if (now - lastFireAt < minGapMs) {
+      return;
+    }
+    lastFireAt = now;
+    scheduleLoad(load, deferMs);
+  };
+
+  onRouteActivated(router, destroy$, path, guardedLoad, {
     exact: options?.exact,
     fireOnAttach: options?.fireOnAttach ?? true
   });

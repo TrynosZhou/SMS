@@ -12,6 +12,7 @@ import { UniformItem } from '../entities/UniformItem';
 import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
+import { fetchOutstandingBalanceRows } from '../utils/outstandingBalances';
 import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
 import { UserRole } from '../entities/User';
 import { PaymentLog } from '../entities/PaymentLog';
@@ -1473,84 +1474,7 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
 
 export const getOutstandingBalances = async (req: AuthRequest, res: Response) => {
   try {
-    if (!AppDataSource.isInitialized) {
-      await AppDataSource.initialize();
-    }
-
-    const invoiceRepository = AppDataSource.getRepository(Invoice);
-    const studentRepository = AppDataSource.getRepository(Student);
-    const settingsRepository = AppDataSource.getRepository(Settings);
-
-    // Load settings once to get desk fee (used for returning-student adjustment logic)
-    const settings = await settingsRepository.findOne({
-      where: {},
-      order: { createdAt: 'DESC' }
-    });
-    const configuredDeskFee = settings && (settings as any).feesSettings
-      ? Number((settings as any).feesSettings.deskFee || 0)
-      : 0;
-
-    // Get all students
-    const allStudents = await studentRepository.find({
-      order: { studentNumber: 'ASC' },
-      relations: ['classEntity']
-    });
-
-    // Get latest invoice for each student in a single query
-    const outstandingBalances = [];
-
-    for (const student of allStudents) {
-      // Get the latest non-voided invoice for this student
-      const latestInvoice = await invoiceRepository.findOne({
-        where: { studentId: student.id, isVoided: false },
-        order: { createdAt: 'DESC' }
-      });
-
-      if (latestInvoice) {
-        const tryNum = (v: any) => (isFinite(Number(v)) ? Number(v) : 0);
-
-        const invoiceAmount = tryNum(latestInvoice.amount);
-        let previousBalance = tryNum(latestInvoice.previousBalance);
-        const paidAmount = tryNum(latestInvoice.paidAmount);
-        const prepaidAmount = tryNum(latestInvoice.prepaidAmount);
-
-        // Match the same desk-fee / returning-student adjustment logic
-        // used by the invoice-statement preview and receipt PDFs.
-        const normalizedStatus = String((student as any).studentStatus || '').trim().toLowerCase();
-        const isNewStudent = normalizedStatus === 'new';
-
-        if (!isNewStudent && configuredDeskFee > 0) {
-          const prev = Number(previousBalance.toFixed(2));
-          const desk = Number(configuredDeskFee.toFixed(2));
-          if (prev === desk) {
-            previousBalance = 0;
-          }
-        }
-
-        const computedBalance = Math.max(
-          0,
-          (invoiceAmount + previousBalance) - paidAmount - prepaidAmount
-        );
-
-        const balance = computedBalance;
-        
-        // Only include students with balance > 0
-        if (balance > 0) {
-          outstandingBalances.push({
-            studentId: student.id,
-            studentNumber: student.studentNumber,
-            firstName: student.firstName,
-            lastName: student.lastName,
-            gender: student.gender,
-            studentType: student.studentType,
-            className: student.classEntity?.name || null,
-            phoneNumber: student.phoneNumber || '',
-            invoiceBalance: balance
-          });
-        }
-      }
-    }
-
+    const outstandingBalances = await fetchOutstandingBalanceRows();
     res.json(outstandingBalances);
   } catch (error: any) {
     console.error('Error fetching outstanding balances:', error);
@@ -1567,55 +1491,9 @@ export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response)
       await AppDataSource.initialize();
     }
 
-    const invoiceRepository = AppDataSource.getRepository(Invoice);
-    const studentRepository = AppDataSource.getRepository(Student);
+    const outstandingBalances = await fetchOutstandingBalanceRows();
+
     const settingsRepository = AppDataSource.getRepository(Settings);
-
-    const allStudents = await studentRepository.find({
-      order: { studentNumber: 'ASC' },
-      relations: ['classEntity']
-    });
-
-    const outstandingBalances: {
-      studentNumber?: string;
-      studentId?: string;
-      firstName?: string;
-      lastName?: string;
-      gender?: string;
-      studentType?: string;
-      className?: string | null;
-      phoneNumber?: string | null;
-      invoiceBalance: number;
-    }[] = [];
-
-    for (const student of allStudents) {
-      const latestInvoice = await invoiceRepository.findOne({
-        where: { studentId: student.id, isVoided: false },
-        order: { createdAt: 'DESC' }
-      });
-
-      if (latestInvoice) {
-        const balance = parseAmount(latestInvoice.balance);
-        if (balance > 0) {
-          outstandingBalances.push({
-            studentNumber: student.studentNumber,
-            studentId: student.id,
-            firstName: student.firstName,
-            lastName: student.lastName,
-            gender: student.gender,
-            studentType: student.studentType,
-            className: student.classEntity?.name || null,
-            phoneNumber: student.phoneNumber || null,
-            invoiceBalance: balance
-          });
-        }
-      }
-    }
-
-    // Display records in descending order of invoice balance (highest first)
-    outstandingBalances.sort((a, b) => (b.invoiceBalance ?? 0) - (a.invoiceBalance ?? 0));
-
-    // Fetch settings the same way as the settings page (canonical record)
     const settingsList = await settingsRepository.find({
       order: { createdAt: 'DESC' },
       take: 1

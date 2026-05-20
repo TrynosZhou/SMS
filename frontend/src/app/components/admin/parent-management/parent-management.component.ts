@@ -1,7 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ParentService } from '../../../services/parent.service';
 import { AuthService } from '../../../services/auth.service';
 import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { activatePageLoad } from '../../../utils/route-activation';
 import { validatePhoneNumber } from '../../../utils/phone-validator';
 
 @Component({
@@ -9,7 +11,8 @@ import { validatePhoneNumber } from '../../../utils/phone-validator';
 templateUrl: './parent-management.component.html',
   styleUrls: ['./parent-management.component.css']
 })
-export class ParentManagementComponent implements OnInit {
+export class ParentManagementComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
   parents: any[] = [];
   filteredParents: any[] = [];
   selectedParent: any = null;
@@ -73,7 +76,12 @@ export class ParentManagementComponent implements OnInit {
       this.router.navigate(['/dashboard']);
       return;
     }
-    this.loadParents();
+    activatePageLoad(this.router, this.destroy$, '/admin/parents', () => this.loadParents());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   loadParents() {

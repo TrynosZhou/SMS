@@ -1,4 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { activatePageLoad } from '../../../utils/route-activation';
 import { SubjectService } from '../../../services/subject.service';
 import { TimetableService } from '../../../services/timetable.service';
 import { ClassService } from '../../../services/class.service';
@@ -9,7 +12,8 @@ import { AuthService } from '../../../services/auth.service';
 templateUrl: './teaching-load.component.html',
   styleUrls: ['./teaching-load.component.css']
 })
-export class TeachingLoadComponent implements OnInit {
+export class TeachingLoadComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
   subjects: any[] = [];
   teachingLoads: any[] = [];
   filteredTeachingLoads: any[] = [];
@@ -26,7 +30,8 @@ export class TeachingLoadComponent implements OnInit {
     private subjectService: SubjectService,
     private timetableService: TimetableService,
     private classService: ClassService,
-    private authService: AuthService
+    private authService: AuthService,
+    private router: Router
   ) {
     const user = this.authService.getCurrentUser();
     this.isAdmin = user ? (user.role === 'admin') : false;
@@ -34,7 +39,12 @@ export class TeachingLoadComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.loadTeachingLoads();
+    activatePageLoad(this.router, this.destroy$, '/subjects/teaching-load', () => this.loadTeachingLoads());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   loadTeachingLoads() {

@@ -56,11 +56,13 @@ outstandingBalances: any[] = [];
 ) { }
 
   ngOnInit(): void {
+    activatePageLoad(this.router, this.destroy$, '/outstanding-balance', () => this.bootstrapPage());
+  }
+
+  private bootstrapPage(): void {
     this.loadSettings();
     this.loadActiveTermAndStats();
-    activatePageLoad(this.router, this.destroy$, '/outstanding-balance', () => {
-      this.loadOutstandingBalances();
-    });
+    this.loadOutstandingBalances();
   }
 
   ngOnDestroy(): void {

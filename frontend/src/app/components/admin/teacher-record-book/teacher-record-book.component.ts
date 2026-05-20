@@ -1,4 +1,7 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import { Component, OnDestroy, OnInit, HostListener } from '@angular/core';
+import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { activatePageLoad } from '../../../utils/route-activation';
 import { TeacherService } from '../../../services/teacher.service';
 import { RecordBookService } from '../../../services/record-book.service';
 import { SettingsService } from '../../../services/settings.service';
@@ -11,7 +14,8 @@ import { safeArray } from '../../../utils/array-utils';
 templateUrl: './teacher-record-book.component.html',
   styleUrls: ['./teacher-record-book.component.css']
 })
-export class TeacherRecordBookComponent implements OnInit {
+export class TeacherRecordBookComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
   searchTerm: string = '';
   studentSearchTerm: string = '';
   teachers: any[] = [];
@@ -66,10 +70,20 @@ export class TeacherRecordBookComponent implements OnInit {
     private teacherService: TeacherService,
     private recordBookService: RecordBookService,
     private settingsService: SettingsService,
-    private http: HttpClient
+    private http: HttpClient,
+    private router: Router
   ) { }
 
   ngOnInit() {
+    activatePageLoad(this.router, this.destroy$, '/admin/teacher-record-book', () => this.bootstrapPage());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private bootstrapPage(): void {
     this.loadSettings();
     this.loadTeachers();
   }

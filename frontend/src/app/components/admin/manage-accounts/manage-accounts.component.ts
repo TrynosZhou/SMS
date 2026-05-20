@@ -1,4 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { activatePageLoad } from '../../../utils/route-activation';
 import { TeacherService } from '../../../services/teacher.service';
 import { AccountService } from '../../../services/account.service';
 import { AuthService } from '../../../services/auth.service';
@@ -35,6 +38,7 @@ templateUrl: './manage-accounts.component.html',
   ]
 })
 export class ManageAccountsComponent implements OnInit, OnDestroy {
+  private readonly routeDestroy$ = new Subject<void>();
   teachers: any[] = [];
   filteredTeachers: any[] = [];
   loading = false;
@@ -144,15 +148,12 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     private teacherService: TeacherService,
     private accountService: AccountService,
     private authService: AuthService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private router: Router
   ) { }
 
   ngOnInit() {
-    this.loadTeachers();
-    this.loadUniversalTeacherStatus();
-    if (this.canCreateManualAccounts()) {
-      this.loadStaffUsers();
-    }
+    activatePageLoad(this.router, this.routeDestroy$, '/admin/manage-accounts', () => this.bootstrapPage());
     const params = new URLSearchParams(window.location.search);
     if (params.get('changePassword') === '1') {
       this.showPasswordChangeSection = true;
@@ -184,8 +185,18 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.routeDestroy$.next();
+    this.routeDestroy$.complete();
     if (this.userSubscription) {
       this.userSubscription.unsubscribe();
+    }
+  }
+
+  private bootstrapPage(): void {
+    this.loadTeachers();
+    this.loadUniversalTeacherStatus();
+    if (this.canCreateManualAccounts()) {
+      this.loadStaffUsers();
     }
   }
 

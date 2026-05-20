@@ -1,5 +1,7 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { activatePageLoad } from '../../utils/route-activation';
 import { SettingsService } from '../../services/settings.service';
 import { AuthService } from '../../services/auth.service';
 import { PromotionRuleService } from '../../services/promotion-rule.service';
@@ -11,7 +13,8 @@ import { validatePhoneNumber } from '../../utils/phone-validator';
 templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.css']
 })
-export class SettingsComponent implements OnInit {
+export class SettingsComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
   settings: any = {
     studentIdPrefix: 'JPS',
     classLevels: [],
@@ -208,6 +211,15 @@ export class SettingsComponent implements OnInit {
   }
 
   ngOnInit() {
+    activatePageLoad(this.router, this.destroy$, '/settings', () => this.bootstrapPage());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private bootstrapPage(): void {
     this.loadSettings();
     this.loadReminders();
     this.loadUniformItems();

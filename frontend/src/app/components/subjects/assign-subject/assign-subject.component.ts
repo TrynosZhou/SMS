@@ -1,5 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { activatePageLoad } from '../../../utils/route-activation';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { ClassService } from '../../../services/class.service';
 import { SubjectService } from '../../../services/subject.service';
@@ -20,7 +22,8 @@ templateUrl: './assign-subject.component.html',
     ])
   ]
 })
-export class AssignSubjectComponent implements OnInit {
+export class AssignSubjectComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
   classes: any[] = [];
   subjects: any[] = [];
   filteredSubjects: any[] = [];
@@ -44,6 +47,15 @@ export class AssignSubjectComponent implements OnInit {
   ) { }
 
   ngOnInit() {
+    activatePageLoad(this.router, this.destroy$, '/subjects/assign', () => this.bootstrapPage());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private bootstrapPage(): void {
     this.loadClasses();
     this.loadSubjects();
   }

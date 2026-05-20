@@ -1,5 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
 import { forkJoin, of } from 'rxjs';
+import { activatePageLoad } from '../../../utils/route-activation';
 import { catchError } from 'rxjs/operators';
 import { ClassService } from '../../../services/class.service';
 import { ExamService } from '../../../services/exam.service';
@@ -26,7 +29,8 @@ export interface ElearningActivityRow {
 templateUrl: './elearning.component.html',
   styleUrls: ['./elearning.component.css']
 })
-export class ElearningComponent implements OnInit {
+export class ElearningComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
   classes: any[] = [];
   filteredClasses: any[] = [];
   classSearch = '';
@@ -47,11 +51,17 @@ export class ElearningComponent implements OnInit {
     private classService: ClassService,
     private examService: ExamService,
     private elearningService: ElearningService,
-    public themeService: ThemeService
+    public themeService: ThemeService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
-    this.loadClasses();
+    activatePageLoad(this.router, this.destroy$, '/admin/elearning', () => this.loadClasses());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   get examCount(): number {
