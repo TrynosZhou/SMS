@@ -4,12 +4,8 @@ import { MessageService } from '../../../services/message.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-incoming-from-parents',
-=======
-  selector: 'app-incoming-from-parents',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './incoming-from-parents.component.html',
+templateUrl: './incoming-from-parents.component.html',
   styleUrls: ['./incoming-from-parents.component.css']
 })
 export class IncomingFromParentsComponent implements OnInit, OnDestroy {

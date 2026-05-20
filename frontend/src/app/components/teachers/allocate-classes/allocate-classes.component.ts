@@ -7,12 +7,8 @@ import { SubjectService } from '../../../services/subject.service';
 import { ClassService } from '../../../services/class.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-allocate-classes',
-=======
-  selector: 'app-allocate-classes',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './allocate-classes.component.html',
+templateUrl: './allocate-classes.component.html',
   styleUrls: ['./allocate-classes.component.css']
 })
 export class AllocateClassesComponent implements OnInit {

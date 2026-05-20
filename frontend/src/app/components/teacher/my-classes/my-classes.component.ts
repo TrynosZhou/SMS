@@ -3,12 +3,8 @@ import { AuthService } from '../../../services/auth.service';
 import { TeacherService } from '../../../services/teacher.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-my-classes',
-=======
-  selector: 'app-my-classes',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './my-classes.component.html',
+templateUrl: './my-classes.component.html',
   styleUrls: ['./my-classes.component.css']
 })
 export class MyClassesComponent implements OnInit {

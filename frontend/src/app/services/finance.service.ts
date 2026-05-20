@@ -58,7 +58,6 @@ export class FinanceService {
     };
     if (options.studentId) params.studentId = options.studentId;
     if (options.status) params.status = options.status;
-<<<<<<< HEAD
     return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/finance`, { params }).pipe(
       catchError((error: any) => {
         if (error?.status !== 0) {
@@ -78,10 +77,7 @@ export class FinanceService {
         });
       })
     );
-=======
-    return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/finance`, { params });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   createInvoice(invoice: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/finance`, invoice);
@@ -130,14 +126,11 @@ export class FinanceService {
     return this.http.post(`${this.apiUrl}/finance/void/tuition-exempt`, {});
   }
 
-<<<<<<< HEAD
   syncStudentExemptionInvoices(studentId: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/finance/students/${studentId}/sync-exemption-invoices`, {});
   }
 
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  getStudentBalance(studentId: string): Observable<any> {
+getStudentBalance(studentId: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/finance/balance`, { params: { studentId } });
   }
 

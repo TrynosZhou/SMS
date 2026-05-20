@@ -4,12 +4,8 @@ import { StudentService } from '../../../services/student.service';
 import { ElearningService } from '../../../services/elearning.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-eservices',
-=======
-  selector: 'app-eservices',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './eservices.component.html',
+templateUrl: './eservices.component.html',
   styleUrls: ['./eservices.component.css']
 })
 export class EservicesComponent implements OnInit {

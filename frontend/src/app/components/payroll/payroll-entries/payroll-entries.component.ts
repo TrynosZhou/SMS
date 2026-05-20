@@ -1,32 +1,19 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
-=======
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { PayrollService } from '../../../services/payroll.service';
 import { SettingsService } from '../../../services/settings.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-payroll-entries',
   templateUrl: './payroll-entries.component.html',
   styleUrls: ['./payroll-entries.component.css']
 })
 export class PayrollEntriesComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-  selector: 'app-payroll-entries',
-  templateUrl: './payroll-entries.component.html',
-  styleUrls: ['./payroll-entries.component.css']
-})
-export class PayrollEntriesComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  runId: string | null = null;
+runId: string | null = null;
   run: any = null;
   entries: any[] = [];
   loading = false;
@@ -45,7 +32,6 @@ export class PayrollEntriesComponent implements OnInit {
     private payrollService: PayrollService,
     private settingsService: SettingsService,
     private route: ActivatedRoute,
-<<<<<<< HEAD
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -61,13 +47,7 @@ export class PayrollEntriesComponent implements OnInit {
   }
 
   private bootstrapPage(): void {
-=======
-    private router: Router
-  ) {}
-
-  ngOnInit() {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    this.runId = this.route.snapshot.paramMap.get('runId');
+this.runId = this.route.snapshot.paramMap.get('runId');
     if (!this.runId) {
       this.router.navigate(['/payroll/process']);
       return;
@@ -76,11 +56,8 @@ export class PayrollEntriesComponent implements OnInit {
       next: (s: any) => {
         this.currencySymbol = s?.currencySymbol || 'KES';
         this.banks = Array.isArray(s?.payrollSettings?.banks) ? s.payrollSettings.banks : [];
-<<<<<<< HEAD
         this.cdr.markForCheck();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      },
+},
       error: () => {}
     });
     this.loadEntries();
@@ -89,7 +66,6 @@ export class PayrollEntriesComponent implements OnInit {
   loadEntries() {
     if (!this.runId) return;
     this.loading = true;
-<<<<<<< HEAD
     this.error = '';
     this.cdr.markForCheck();
     this.payrollService.getPayrollRuns().subscribe({
@@ -115,25 +91,7 @@ export class PayrollEntriesComponent implements OnInit {
           this.error = err?.error?.message || 'Failed to load entries';
         }
       });
-=======
-    this.payrollService.getPayrollRuns().subscribe({
-      next: (runs: any[]) => {
-        this.run = (runs || []).find((r: any) => r.id === this.runId);
-      },
-      error: () => {}
-    });
-    this.payrollService.getPayrollEntries(this.runId!).subscribe({
-      next: (data: any[]) => {
-        this.entries = data || [];
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = err?.error?.message || 'Failed to load entries';
-        this.loading = false;
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   getEmployeeName(entry: any) {
     if (entry.teacher) return `${entry.teacher.firstName || ''} ${entry.teacher.lastName || ''}`.trim();

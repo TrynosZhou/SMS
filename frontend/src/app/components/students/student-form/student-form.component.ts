@@ -1,41 +1,26 @@
-<<<<<<< HEAD
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { StudentService } from '../../../services/student.service';
 import { StudentRefreshService } from '../../../services/student-refresh.service';
-=======
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { StudentService } from '../../../services/student.service';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { ClassService } from '../../../services/class.service';
 import { SettingsService } from '../../../services/settings.service';
 import { validatePhoneNumber } from '../../../utils/phone-validator';
 import { AuthService } from '../../../services/auth.service';
 import { ModuleAccessService } from '../../../services/module-access.service';
-<<<<<<< HEAD
 import { activatePageLoad } from '../../../utils/route-activation';
 
 @Component({
   standalone: false,
-=======
-
-@Component({
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  selector: 'app-student-form',
+selector: 'app-student-form',
   templateUrl: './student-form.component.html',
   styleUrls: ['./student-form.component.css']
 })
-<<<<<<< HEAD
 export class StudentFormComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
   private lastLoadedStudentId: string | null = null;
-=======
-export class StudentFormComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  student: any = {
+student: any = {
     firstName: '',
     lastName: '',
     dateOfBirth: '',
@@ -61,11 +46,8 @@ export class StudentFormComponent implements OnInit {
   filteredClasses: any[] = [];
   classSearchQuery = '';
   isEdit = false;
-<<<<<<< HEAD
   loadingStudent = false;
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  error = '';
+error = '';
   success = '';
   submitting = false;
   maxDate = '';
@@ -97,20 +79,15 @@ export class StudentFormComponent implements OnInit {
     private route: ActivatedRoute,
     public router: Router,
     private authService: AuthService,
-<<<<<<< HEAD
     public moduleAccess: ModuleAccessService,
     private studentRefresh: StudentRefreshService,
     private cdr: ChangeDetectorRef
-=======
-    public moduleAccess: ModuleAccessService
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  ) {
+) {
     // Set max date to today (for date of birth)
     const today = new Date();
     this.maxDate = today.toISOString().split('T')[0];
   }
 
-<<<<<<< HEAD
   private navigateToStudentsList(delayMs = 800): void {
     this.studentRefresh.requestRefresh();
     setTimeout(() => this.router.navigate(['/students']), delayMs);
@@ -125,15 +102,12 @@ export class StudentFormComponent implements OnInit {
     return message;
   }
 
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  goBack() {
+goBack() {
     const target = this.returnUrl || '/students';
     this.router.navigate([target]);
   }
 
   ngOnInit() {
-<<<<<<< HEAD
     this.readQueryParams();
     this.loadClasses();
     this.loadStudentIdPrefix();
@@ -156,16 +130,11 @@ export class StudentFormComponent implements OnInit {
   }
 
   private readQueryParams(): void {
-=======
-    this.loadClasses();
-    this.loadStudentIdPrefix();
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    const qp = this.route.snapshot.queryParamMap;
+const qp = this.route.snapshot.queryParamMap;
     const mode = qp.get('mode') || '';
     const limited = qp.get('limited') || '';
     this.limitedEditMode = mode.toLowerCase() === 'limited' || ['1', 'true', 'yes'].includes(limited.toLowerCase());
     this.returnUrl = qp.get('returnUrl');
-<<<<<<< HEAD
   }
 
   /** Load student for edit when route is active (handles first visit and route reuse). */
@@ -186,21 +155,7 @@ export class StudentFormComponent implements OnInit {
 
     this.isEdit = true;
     this.loadStudent(id);
-=======
-
-    // Teachers cannot add students
-    const user = this.authService.getCurrentUser();
-    if (!this.route.snapshot.params['id'] && user && String(user.role).toLowerCase() === 'teacher') {
-      this.router.navigate([this.returnUrl || '/dashboard']);
-      return;
-    }
-    const id = this.route.snapshot.params['id'];
-    if (id) {
-      this.isEdit = true;
-      this.loadStudent(id);
-    }
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   private isValidDDMMYYYY(input: string): boolean {
     const m = input.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -333,7 +288,6 @@ export class StudentFormComponent implements OnInit {
       this.student.usesTransport = false;
     }
     this.recalculateEstimatedFees();
-<<<<<<< HEAD
     this.persistLogisticsFlags();
   }
   
@@ -348,32 +302,15 @@ export class StudentFormComponent implements OnInit {
     }
     this.recalculateEstimatedFees();
     this.persistLogisticsFlags();
-=======
-  }
-  
-  onExemptedChange() {
-    if (this.student.isExempted) {
-      this.student.usesTransport = false;
-    }
-    this.recalculateEstimatedFees();
-  }
-
-  onStudentTypeChange() {
-    this.recalculateEstimatedFees();
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   onUsesTransportChange() {
     this.recalculateEstimatedFees();
-<<<<<<< HEAD
     this.persistLogisticsFlags();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   onUsesDiningHallChange() {
     this.recalculateEstimatedFees();
-<<<<<<< HEAD
     this.persistLogisticsFlags();
   }
 
@@ -415,9 +352,7 @@ export class StudentFormComponent implements OnInit {
         setTimeout(() => (this.error = ''), 5000);
       }
     });
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
   
   onStudentStatusChange() {
     this.recalculateEstimatedFees();
@@ -450,7 +385,6 @@ export class StudentFormComponent implements OnInit {
     return isNaN(n) ? 0 : n;
   }
 
-<<<<<<< HEAD
   /** Normalize API/DB boolean values (0/1, "true"/"false", etc.) for checkbox binding. */
   private toBool(value: any): boolean {
     if (value === true || value === 1) {
@@ -466,9 +400,7 @@ export class StudentFormComponent implements OnInit {
     return Boolean(value);
   }
 
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  private recalculateEstimatedFees() {
+private recalculateEstimatedFees() {
     if (!this.feesSettings) {
       this.estimatedFees = {
         registration: 0,
@@ -482,13 +414,8 @@ export class StudentFormComponent implements OnInit {
     }
 
     const isDayScholar = this.student.studentType === 'Day Scholar';
-<<<<<<< HEAD
     const isStaffSibling = !!this.student.isStaffChild;
-=======
-    const isStaffChild = !!this.student.isStaffChild;
-    const isExempted = !!this.student.isExempted;
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    const normalizedStatusText = (this.student.studentStatus || 'New Student').toString().trim().toLowerCase();
+const normalizedStatusText = (this.student.studentStatus || 'New Student').toString().trim().toLowerCase();
     const status = (normalizedStatusText.includes('return') || normalizedStatusText.includes('existing')) ? 'Existing' : 'New';
 
     const registrationFee = this.toNumber((this.feesSettings as any).registrationFee);
@@ -507,12 +434,8 @@ export class StudentFormComponent implements OnInit {
     let transport = 0;
     let diningHall = 0;
 
-<<<<<<< HEAD
     if (!isStaffSibling) {
-=======
-    if (!isStaffChild && !isExempted) {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      if (status === 'New') {
+if (status === 'New') {
         if (registrationFee > 0) {
           registration = registrationFee;
         }
@@ -549,7 +472,6 @@ export class StudentFormComponent implements OnInit {
   }
 
   loadStudent(id: string) {
-<<<<<<< HEAD
     if (this.loadingStudent && this.lastLoadedStudentId === id) {
       return;
     }
@@ -615,52 +537,7 @@ export class StudentFormComponent implements OnInit {
           this.cdr.markForCheck();
         }
       });
-=======
-    this.studentService.getStudentById(id).subscribe({
-      next: (data: any) => {
-        console.log('Loaded student data:', data);
-        
-        // Format dateOfBirth for display input (dd/mm/yyyy)
-        let formattedDate = '';
-        if (data.dateOfBirth) {
-          formattedDate = this.toDDMMYYYYFromDate(data.dateOfBirth);
-        }
-        
-        // Get classId - prefer direct classId, then class.id, then empty string
-        const studentClassId = data.classId || data.class?.id || '';
-        console.log('Setting classId to:', studentClassId);
-        
-        this.loadedStudentStatus = data.studentStatus || null;
-        this.student = {
-          ...data,
-          dateOfBirth: formattedDate,
-          classId: studentClassId,
-          contactNumber: data.contactNumber || data.phoneNumber || '',
-          usesTransport: data.usesTransport || false,
-          usesDiningHall: data.usesDiningHall || false,
-          isStaffChild: data.isStaffChild || false,
-          isExempted: data.isExempted || false,
-          studentStatus: this.apiStatusToLabel(data.studentStatus),
-          photo: data.photo || null
-        };
-        this.selectedGradeLevel = (data as any).grade || (data as any).classLevel || (data as any).gradeLevel || '';
-        
-        // Set photo preview if photo exists
-        if (data.photo) {
-          this.photoPreview = `http://localhost:3001${data.photo}`;
-          this.student.photo = data.photo;
-        }
-        console.log('Formatted student data:', this.student);
-        this.recalculateEstimatedFees();
-      },
-      error: (err: any) => {
-        console.error('Error loading student:', err);
-        this.error = err.error?.message || 'Failed to load student';
-        setTimeout(() => this.error = '', 5000);
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   onPhotoSelected(event: any) {
     const file = event.target.files[0];
@@ -839,18 +716,11 @@ export class StudentFormComponent implements OnInit {
         address: this.student.address || null,
         contactNumber: this.student.contactNumber,
         studentType: this.student.studentType,
-<<<<<<< HEAD
         usesTransport: this.toBool(this.student.usesTransport),
         usesDiningHall: this.toBool(this.student.usesDiningHall),
         isStaffChild: this.toBool(this.student.isStaffChild),
         isExempted: this.toBool(this.student.isExempted)
-=======
-        usesTransport: this.student.usesTransport || false,
-        usesDiningHall: this.student.usesDiningHall || false,
-        isStaffChild: this.student.isStaffChild || false,
-        isExempted: this.student.isExempted || false
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      };
+};
       if (this.selectedGradeLevel && this.selectedGradeLevel.trim()) {
         const g = this.selectedGradeLevel.trim();
         (updateData as any).grade = g;
@@ -886,16 +756,10 @@ export class StudentFormComponent implements OnInit {
             this.studentService.correctStudentStatus(this.student.id, newApiStatus).subscribe({
               next: (corr: any) => {
                 this.loadedStudentStatus = newApiStatus;
-<<<<<<< HEAD
                 this.success = corr?.message || this.buildUpdateSuccessMessage(response);
                 this.submitting = false;
                 this.navigateToStudentsList();
-=======
-                this.success = corr?.message || response.message || 'Student updated successfully';
-                this.submitting = false;
-                setTimeout(() => this.router.navigate(['/students']), 1500);
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-              },
+},
               error: (err2: any) => {
                 this.error = err2?.error?.message || err2?.message || 'Failed to correct student status';
                 this.submitting = false;
@@ -903,16 +767,10 @@ export class StudentFormComponent implements OnInit {
               }
             });
           } else {
-<<<<<<< HEAD
             this.success = this.buildUpdateSuccessMessage(response);
             this.submitting = false;
             this.navigateToStudentsList();
-=======
-            this.success = response.message || 'Student updated successfully';
-            this.submitting = false;
-            setTimeout(() => this.router.navigate(['/students']), 1500);
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          }
+}
         },
         error: (err: any) => {
           console.error('Error updating student:', err);
@@ -963,12 +821,8 @@ export class StudentFormComponent implements OnInit {
         next: (response: any) => {
           this.setSuccess('Record saved successfully');
           this.submitting = false;
-<<<<<<< HEAD
           this.navigateToStudentsList();
-=======
-          setTimeout(() => this.router.navigate(['/students']), 1500);
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-        },
+},
         error: (err: any) => {
           const msg = err?.error?.message || err?.message || '';
           if (String(msg).toLowerCase().includes('class id') && String(msg).toLowerCase().includes('enroll')) {

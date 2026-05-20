@@ -1,35 +1,20 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { map } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
-=======
-import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
-import { map } from 'rxjs/operators';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { PayrollService } from '../../../services/payroll.service';
 import { TeacherService } from '../../../services/teacher.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-ancillary-staff-list',
   templateUrl: './ancillary-staff-list.component.html',
   styleUrls: ['./ancillary-staff-list.component.css']
 })
 export class AncillaryStaffListComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-  selector: 'app-ancillary-staff-list',
-  templateUrl: './ancillary-staff-list.component.html',
-  styleUrls: ['./ancillary-staff-list.component.css']
-})
-export class AncillaryStaffListComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  activeTab: 'teachers' | 'ancillary' = 'teachers';
+activeTab: 'teachers' | 'ancillary' = 'teachers';
   teachers: any[] = [];
   staff: any[] = [];
   salaryAssignments: any[] = [];
@@ -94,7 +79,6 @@ export class AncillaryStaffListComponent implements OnInit {
   constructor(
     private payrollService: PayrollService,
     private teacherService: TeacherService,
-<<<<<<< HEAD
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -106,19 +90,11 @@ export class AncillaryStaffListComponent implements OnInit {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-=======
-    private router: Router
-  ) {}
-
-  ngOnInit() {
-    this.loadAll();
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   loadAll() {
     this.loading = true;
     this.error = '';
-<<<<<<< HEAD
     this.cdr.markForCheck();
     this.teacherService
       .getTeachersPaginated(1, 5000)
@@ -155,25 +131,7 @@ export class AncillaryStaffListComponent implements OnInit {
           this.error = err?.error?.message || 'Failed to load';
         }
       });
-=======
-    forkJoin({
-      teachers: this.teacherService.getTeachersPaginated(1, 5000).pipe(map((r: any) => Array.isArray(r) ? r : (r?.data || []))),
-      staff: this.payrollService.getAncillaryStaff(),
-      assignments: this.payrollService.getSalaryAssignments()
-    }).subscribe({
-      next: ({ teachers, staff, assignments }) => {
-        this.teachers = (teachers || []).filter((t: any) => t.isActive !== false);
-        this.staff = (staff || []).filter((s: any) => s.employmentStatus === 'active');
-        this.salaryAssignments = assignments || [];
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = err?.error?.message || 'Failed to load';
-        this.loading = false;
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   hasSalaryAssigned(teacherId: string): boolean {
     return this.salaryAssignments.some((a: any) => a.teacherId === teacherId);

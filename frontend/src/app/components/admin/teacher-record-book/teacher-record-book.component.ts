@@ -7,12 +7,8 @@ import { environment } from '../../../../environments/environment';
 import { safeArray } from '../../../utils/array-utils';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-teacher-record-book',
-=======
-  selector: 'app-teacher-record-book',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './teacher-record-book.component.html',
+templateUrl: './teacher-record-book.component.html',
   styleUrls: ['./teacher-record-book.component.css']
 })
 export class TeacherRecordBookComponent implements OnInit {

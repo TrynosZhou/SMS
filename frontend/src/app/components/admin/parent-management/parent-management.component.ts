@@ -5,12 +5,8 @@ import { Router } from '@angular/router';
 import { validatePhoneNumber } from '../../../utils/phone-validator';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-parent-management',
-=======
-  selector: 'app-parent-management',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './parent-management.component.html',
+templateUrl: './parent-management.component.html',
   styleUrls: ['./parent-management.component.css']
 })
 export class ParentManagementComponent implements OnInit {

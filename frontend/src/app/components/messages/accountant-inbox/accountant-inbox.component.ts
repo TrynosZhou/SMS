@@ -6,12 +6,8 @@ import { ThemeService } from '../../../services/theme.service';
 export type InboxFilterTab = 'all' | 'unread' | 'read';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-accountant-inbox',
-=======
-  selector: 'app-accountant-inbox',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './accountant-inbox.component.html',
+templateUrl: './accountant-inbox.component.html',
   styleUrls: ['./accountant-inbox.component.css']
 })
 export class AccountantInboxComponent implements OnInit {

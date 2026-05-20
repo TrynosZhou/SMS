@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -13,19 +12,7 @@ import { PayrollService } from '../../../services/payroll.service';
 })
 export class SalaryStructureFormComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { PayrollService } from '../../../services/payroll.service';
-
-@Component({
-  selector: 'app-salary-structure-form',
-  templateUrl: './salary-structure-form.component.html',
-  styleUrls: ['./salary-structure-form.component.css']
-})
-export class SalaryStructureFormComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  id: string | null = null;
+id: string | null = null;
   isEdit = false;
   name = '';
   category = 'teacher';
@@ -38,7 +25,6 @@ export class SalaryStructureFormComponent implements OnInit {
   constructor(
     private payrollService: PayrollService,
     private route: ActivatedRoute,
-<<<<<<< HEAD
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -54,13 +40,7 @@ export class SalaryStructureFormComponent implements OnInit {
   }
 
   private bootstrapPage(): void {
-=======
-    private router: Router
-  ) {}
-
-  ngOnInit() {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    this.id = this.route.snapshot.paramMap.get('id');
+this.id = this.route.snapshot.paramMap.get('id');
     this.isEdit = !!this.id;
     if (this.isEdit && this.id) {
       this.loadStructure();
@@ -72,7 +52,6 @@ export class SalaryStructureFormComponent implements OnInit {
   loadStructure() {
     if (!this.id) return;
     this.loading = true;
-<<<<<<< HEAD
     this.error = '';
     this.cdr.markForCheck();
     this.payrollService
@@ -103,26 +82,7 @@ export class SalaryStructureFormComponent implements OnInit {
           this.error = err?.error?.message || 'Failed to load';
         }
       });
-=======
-    this.payrollService.getSalaryStructures().subscribe({
-      next: (list: any[]) => {
-        const s = (list || []).find((x: any) => x.id === this.id);
-        if (s) {
-          this.name = s.name || '';
-          this.category = s.employeeCategory || 'teacher';
-          this.components = Array.isArray(s.components) && s.components.length > 0
-            ? s.components.map((c: any) => ({ name: c.name || '', type: c.type || 'allowance', amount: parseFloat(String(c.amount)) || 0 }))
-            : [{ name: '', type: 'basic', amount: 0 }];
-        }
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = err?.error?.message || 'Failed to load';
-        this.loading = false;
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   addComponent() {
     this.components.push({ name: '', type: 'allowance', amount: 0 });

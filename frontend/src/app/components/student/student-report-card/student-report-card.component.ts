@@ -6,12 +6,8 @@ import { DomSanitizer, SafeResourceUrl, SafeUrl } from '@angular/platform-browse
 import { trigger, state, style, transition, animate } from '@angular/animations';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-student-report-card',
-=======
-  selector: 'app-student-report-card',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './student-report-card.component.html',
+templateUrl: './student-report-card.component.html',
   styleUrls: ['./student-report-card.component.css'],
   animations: [
     trigger('fadeIn', [

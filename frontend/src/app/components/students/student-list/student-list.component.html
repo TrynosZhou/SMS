@@ -331,7 +331,6 @@
   <!-- Empty State -->
   <div class="empty-state" *ngIf="!loading && filteredStudents.length === 0">
     <div class="empty-icon">👨‍🎓</div>
-<<<<<<< HEAD
     <h3 *ngIf="loadFailed">Could Not Load Students</h3>
     <h3 *ngIf="!loadFailed">{{ searchQuery || selectedClass || selectedType || selectedGender ? 'No Students Found' : 'No Students Yet' }}</h3>
     <p *ngIf="loadFailed">
@@ -345,17 +344,7 @@
     </p>
     <button type="button" class="btn btn-primary" *ngIf="loadFailed" (click)="loadStudents(1)">Retry</button>
     <button class="btn btn-primary" routerLink="/students/new" *ngIf="!isTeacher && !loadFailed && !searchQuery && !selectedClass && !selectedType && !selectedGender">
-=======
-    <h3>{{ searchQuery || selectedClass || selectedType || selectedGender ? 'No Students Found' : 'No Students Yet' }}</h3>
-    <p *ngIf="searchQuery || selectedClass || selectedType || selectedGender">
-      Try adjusting your search or filters to find students.
-    </p>
-    <p *ngIf="!searchQuery && !selectedClass && !selectedType && !selectedGender">
-      Get started by adding your first student to the system.
-    </p>
-    <button class="btn btn-primary" routerLink="/students/new" *ngIf="!isTeacher && !searchQuery && !selectedClass && !selectedType && !selectedGender">
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      ➕ Add First Student
+➕ Add First Student
     </button>
   </div>
 

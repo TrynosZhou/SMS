@@ -14,11 +14,7 @@
     "declaration": false,
     "downlevelIteration": true,
     "experimentalDecorators": true,
-<<<<<<< HEAD
     "moduleResolution": "bundler",
-=======
-    "moduleResolution": "node",
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
     "importHelpers": true,
     "target": "ES2022",
     "module": "ES2022",

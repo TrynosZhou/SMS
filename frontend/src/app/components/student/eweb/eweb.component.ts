@@ -3,12 +3,8 @@ import { ElearningService } from '../../../services/elearning.service';
 import { Router } from '@angular/router';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-eweb',
-=======
-  selector: 'app-eweb',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './eweb.component.html',
+templateUrl: './eweb.component.html',
   styleUrls: ['./eweb.component.css']
 })
 export class EwebComponent implements OnInit {

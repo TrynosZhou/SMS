@@ -1,13 +1,8 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../utils/route-activation';
-=======
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { Router } from '@angular/router';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { AuthService } from '../../services/auth.service';
 import { SettingsService } from '../../services/settings.service';
 import { StudentService } from '../../services/student.service';
@@ -54,12 +49,8 @@ export interface DashboardModuleShortcut {
 }
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-dashboard',
-=======
-  selector: 'app-dashboard',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './dashboard.component.html',
+templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
 export class DashboardComponent implements OnInit, OnDestroy {
@@ -98,12 +89,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   loadingStats = true;
   statsLastUpdated: Date | null = null;
-<<<<<<< HEAD
   private readonly destroy$ = new Subject<void>();
-=======
-  private statsPendingRequests = 0;
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  recentStudents: any[] = [];
+recentStudents: any[] = [];
   recentInvoices: any[] = [];
 
   adminHubSearch = '';
@@ -117,12 +104,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { route: '/attendance/mark', label: 'Attendance', icon: '📋', pastel: 'amber', module: 'attendance' },
     { route: '/report-cards', label: 'Reports', icon: '📊', pastel: 'violet', module: 'reportCards' },
     { route: '/inventory', label: 'Inventory Manager', icon: '📦', pastel: 'emerald', module: 'inventory' },
-<<<<<<< HEAD
     { route: '/timetable/view', label: 'View Timetable', icon: '📅', pastel: 'sky' },
-=======
-    { route: '/timetable/generate', label: 'Timetable', icon: '📅', pastel: 'sky' },
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    { route: '/messages/inbox', label: 'Messages', icon: '💬', pastel: 'pink' },
+{ route: '/messages/inbox', label: 'Messages', icon: '💬', pastel: 'pink' },
     { route: '/settings', label: 'Settings', icon: '⚙️', pastel: 'slate', module: 'settings' },
     { route: '/admin/elearning', label: 'E-Learning', icon: '💻', pastel: 'violet', adminOnly: true }
   ];
@@ -179,7 +162,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ],
     },
     {
-<<<<<<< HEAD
       id: 'timetable',
       label: 'Timetable manager',
       subtitle: 'Configure periods, generate schedules, and view timetables',
@@ -190,9 +172,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ],
     },
     {
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      id: 'inventory',
+id: 'inventory',
       label: 'Inventory & library',
       subtitle: 'Textbooks, furniture, loans, fines, and stock',
       tiles: [
@@ -246,12 +226,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   currencySymbol: string = '$';
   private studentDataRetryCount = 0;
   private readonly MAX_STUDENT_DATA_RETRIES = 3;
-<<<<<<< HEAD
   private statsLoadGeneration = 0;
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-
-  constructor(
+constructor(
     private authService: AuthService,
     private router: Router,
     private settingsService: SettingsService,
@@ -261,55 +237,40 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private financeService: FinanceService,
     private subjectService: SubjectService,
     private moduleAccessService: ModuleAccessService,
-<<<<<<< HEAD
     public themeService: ThemeService,
     private cdr: ChangeDetectorRef
-=======
-    public themeService: ThemeService
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  ) {}
+) {}
 
   ngOnInit() {
     this.user = this.authService.getCurrentUser();
 
     if (this.isTeacher()) {
-<<<<<<< HEAD
       this.loadingStats = false;
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      this.router.navigate(['/teacher/dashboard']);
+this.router.navigate(['/teacher/dashboard']);
       return;
     }
 
     this.moduleAccessService.loadModuleAccess();
     this.loadSettings();
     if (this.isAdmin() || this.isAccountant()) {
-<<<<<<< HEAD
       activatePageLoad(this.router, this.destroy$, '/dashboard', () => this.loadStatistics());
     } else {
       this.loadingStats = false;
-=======
-      this.loadStatistics();
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    }
+}
     if (this.isStudent()) {
       this.loadStudentData();
     }
   }
 
   ngOnDestroy() {
-<<<<<<< HEAD
     this.destroy$.next();
     this.destroy$.complete();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    if (this.textToggleInterval) {
+if (this.textToggleInterval) {
       clearInterval(this.textToggleInterval);
     }
   }
 
   loadStatistics() {
-<<<<<<< HEAD
     if (!this.isAdmin() && !this.isAccountant()) {
       this.loadingStats = false;
       this.cdr.markForCheck();
@@ -432,100 +393,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.recentInvoices = [];
         }
       });
-=======
-    this.loadingStats = true;
-    this.statsPendingRequests = 5;
-
-    const markStatsSliceDone = () => {
-      this.statsPendingRequests = Math.max(0, this.statsPendingRequests - 1);
-      if (this.statsPendingRequests === 0) {
-        this.loadingStats = false;
-        this.statsLastUpdated = new Date();
-      }
-    };
-
-    this.studentService.getStudentsPaginated({ page: 1, limit: 5 }).subscribe({
-      next: (response: any) => {
-        const studentsArray = Array.isArray(response?.data) ? response.data : [];
-        const statsObj = response?.stats || {};
-        const totalFromStats = Number(statsObj?.totalStudents || 0);
-        this.stats.totalStudents = totalFromStats || Number(response?.total || studentsArray.length || 0);
-        this.stats.dayScholars = Number(statsObj?.totalDayScholars || 0);
-        this.stats.boarders = Number(statsObj?.totalBoarders || 0);
-        this.stats.staffChildren = Number(statsObj?.staffChildren || 0);
-        this.recentStudents = studentsArray
-          .sort((a: any, b: any) => new Date(b.enrollmentDate || b.createdAt || 0).getTime() - new Date(a.enrollmentDate || a.createdAt || 0).getTime())
-          .slice(0, 5);
-        markStatsSliceDone();
-      },
-      error: () => {
-        this.stats.totalStudents = 0;
-        this.stats.dayScholars = 0;
-        this.stats.boarders = 0;
-        this.stats.staffChildren = 0;
-        this.recentStudents = [];
-        markStatsSliceDone();
-      }
-    });
-
-    this.teacherService.getTeachersPaginated(1, 1).subscribe({
-      next: (response: any) => {
-        this.stats.totalTeachers = Number(response?.total || 0);
-        markStatsSliceDone();
-      },
-      error: () => {
-        this.stats.totalTeachers = 0;
-        markStatsSliceDone();
-      }
-    });
-
-    this.classService.getClasses().subscribe({
-      next: (classes: any[]) => {
-        const classesArray = Array.isArray(classes) ? classes : [];
-        this.stats.totalClasses = classesArray.filter(c => c.isActive).length;
-        markStatsSliceDone();
-      },
-      error: () => {
-        this.stats.totalClasses = 0;
-        markStatsSliceDone();
-      }
-    });
-
-    this.subjectService.getSubjects().subscribe({
-      next: (subjects: any[]) => {
-        const subjectsArray = Array.isArray(subjects) ? subjects : [];
-        this.stats.totalSubjects = subjectsArray.length;
-        markStatsSliceDone();
-      },
-      error: () => {
-        this.stats.totalSubjects = 0;
-        markStatsSliceDone();
-      }
-    });
-
-    this.financeService.getInvoicesPaginated({ page: 1, limit: 5 }).subscribe({
-      next: (response: any) => {
-        const invoicesArray = Array.isArray(response?.data) ? response.data : [];
-        this.stats.totalInvoices = Number(response?.total || invoicesArray.length || 0);
-        this.stats.totalBalance = Number(response?.totalBalance || 0);
-        this.stats.totalInvoicedAmount = Number(response?.totalInvoicedAmount ?? 0);
-        this.stats.totalPaidAmount = Number(response?.totalPaidAmount ?? 0);
-        this.recentInvoices = invoicesArray
-          .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-          .slice(0, 5);
-        markStatsSliceDone();
-      },
-      error: () => {
-        this.stats.totalInvoices = 0;
-        this.stats.totalBalance = 0;
-        this.stats.totalInvoicedAmount = 0;
-        this.stats.totalPaidAmount = 0;
-        this.recentInvoices = [];
-        markStatsSliceDone();
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   refreshDashboardStats(): void {
     if (!this.isAdmin() && !this.isAccountant()) {

@@ -10,12 +10,8 @@ import { News } from '../../../types/news';
 import { environment } from '../../../../environments/environment';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-parent-dashboard',
-=======
-  selector: 'app-parent-dashboard',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './parent-dashboard.component.html',
+templateUrl: './parent-dashboard.component.html',
   styleUrls: ['./parent-dashboard.component.css']
 })
 export class ParentDashboardComponent implements OnInit, OnDestroy {

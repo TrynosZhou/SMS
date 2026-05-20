@@ -4,12 +4,8 @@ import { ParentService } from '../../../services/parent.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-link-students',
-=======
-  selector: 'app-link-students',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './link-students.component.html',
+templateUrl: './link-students.component.html',
   styleUrls: ['./link-students.component.css']
 })
 export class LinkStudentsComponent implements OnInit {

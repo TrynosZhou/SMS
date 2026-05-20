@@ -4,12 +4,8 @@ import { StudentService } from '../../../services/student.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-parent-portal',
-=======
-  selector: 'app-parent-portal',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './parent-portal.component.html',
+templateUrl: './parent-portal.component.html',
   styleUrls: ['./parent-portal.component.css']
 })
 export class ParentPortalComponent implements OnInit {

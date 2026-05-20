@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
-=======
-import { Component, OnInit } from '@angular/core';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ExamService } from '../../../services/exam.service';
@@ -13,20 +9,13 @@ import { ParentService } from '../../../services/parent.service';
 import { SettingsService } from '../../../services/settings.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 import { forkJoin, of } from 'rxjs';
-<<<<<<< HEAD
 import { catchError, finalize, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { activatePageLoad } from '../../../utils/route-activation';
 
 @Component({
   standalone: false,  selector: 'app-report-card',
-=======
-import { catchError } from 'rxjs/operators';
-
-@Component({
-  selector: 'app-report-card',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './report-card.component.html',
+templateUrl: './report-card.component.html',
   styleUrls: ['./report-card.component.css'],
   animations: [
     trigger('fadeInOut', [
@@ -46,13 +35,9 @@ import { catchError } from 'rxjs/operators';
     ])
   ]
 })
-<<<<<<< HEAD
 export class ReportCardComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-export class ReportCardComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  classes: any[] = [];
+classes: any[] = [];
   selectedClass = '';
   selectedExamType = '';
   selectedTerm = '';
@@ -64,11 +49,8 @@ export class ReportCardComponent implements OnInit {
     { value: 'end_term', label: 'End-Term' }
   ];
   loading = false;
-<<<<<<< HEAD
   loadingClasses = false;
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  error = '';
+error = '';
   success = '';
   canEditRemarks = false;
   savingRemarks = false;
@@ -129,13 +111,9 @@ export class ReportCardComponent implements OnInit {
     private router: Router,
     private parentService: ParentService,
     private settingsService: SettingsService,
-<<<<<<< HEAD
     private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef
-=======
-    private sanitizer: DomSanitizer
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  ) {
+) {
     // Check if user can edit remarks (teacher or admin)
     this.canEditRemarks =
       this.authService.hasRole('teacher') ||
@@ -179,7 +157,6 @@ export class ReportCardComponent implements OnInit {
   }
 
   ngOnInit() {
-<<<<<<< HEAD
     activatePageLoad(this.router, this.destroy$, '/report-cards', () => this.bootstrapPage());
 
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe((params) => {
@@ -200,13 +177,10 @@ export class ReportCardComponent implements OnInit {
     this.isAdmin = user ? user.role === 'admin' || user.role === 'superadmin' : false;
     this.isParent = this.authService.hasRole('parent');
 
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    this.loadCustomPhrases();
+this.loadCustomPhrases();
     this.loadSettings();
     this.loadTermOptions();
 
-<<<<<<< HEAD
     const params = this.route.snapshot.queryParams;
     if (params['studentId'] && this.isParent) {
       this.parentStudentId = params['studentId'];
@@ -222,27 +196,7 @@ export class ReportCardComponent implements OnInit {
     } else {
       this.loadClasses();
     }
-=======
-    // Check if parent is accessing via studentId query param
-    this.route.queryParams.subscribe(params => {
-      if (params['studentId'] && this.isParent) {
-        this.parentStudentId = params['studentId'];
-        this.checkStudentBalance();
-      } else {
-        const user = this.authService.getCurrentUser();
-        const isUniversalTeacher = user?.role === 'teacher' && (user as any).isUniversalTeacher;
-        // Universal teacher or Admin/SuperAdmin: load all classes
-        if (this.isAdmin || isUniversalTeacher) {
-          this.loadClasses();
-        } else if (user && user.role === 'teacher' && !this.isParent) {
-          this.loadTeacherInfo();
-        } else {
-          this.loadClasses();
-        }
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   getSchoolLogoSrc(logoOverride?: string | null): SafeUrl | null {
     const normalized = this.normalizeImageSrc(logoOverride || this.schoolLogo || null);
@@ -377,41 +331,26 @@ export class ReportCardComponent implements OnInit {
   }
 
   loadTeacherInfo() {
-<<<<<<< HEAD
     this.teacherService.getCurrentTeacher().subscribe({
       next: (teacher: any) => {
         this.teacher = teacher;
-=======
-    // Load teacher profile to get teacher ID and subjects
-    this.teacherService.getCurrentTeacher().subscribe({
-      next: (teacher: any) => {
-        this.teacher = teacher;
-        // Load classes assigned to this teacher
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-        if (teacher.id) {
+if (teacher.id) {
           this.loadTeacherClasses(teacher.id);
         } else {
           this.classes = [];
           this.error = 'Teacher ID not found. Please contact administrator.';
         }
-<<<<<<< HEAD
         this.cdr.markForCheck();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      },
+},
       error: (err: any) => {
         console.error('Error loading teacher info:', err);
         this.error = 'Failed to load teacher information. Please try again.';
-<<<<<<< HEAD
         this.cdr.markForCheck();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      }
+}
     });
   }
 
   loadTeacherClasses(teacherId: string) {
-<<<<<<< HEAD
     this.loadingClasses = true;
     this.cdr.markForCheck();
     this.teacherService
@@ -433,28 +372,12 @@ export class ReportCardComponent implements OnInit {
           this.error = 'Failed to load assigned classes. Please try again.';
         }
       });
-=======
-    this.teacherService.getTeacherClasses(teacherId).subscribe({
-      next: (response: any) => {
-        this.classes = response.classes || [];
-        console.log('Loaded teacher classes:', this.classes.length);
-      },
-      error: (err: any) => {
-        console.error('Error loading teacher classes:', err);
-        this.classes = [];
-        this.error = 'Failed to load assigned classes. Please try again.';
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   loadTermOptions() {
     this.loadingTerms = true;
-<<<<<<< HEAD
     this.cdr.markForCheck();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    const currentYear = new Date().getFullYear();
+const currentYear = new Date().getFullYear();
     this.availableTerms = []; // Reset terms
     const nextYear = currentYear + 1;
 
@@ -467,7 +390,6 @@ export class ReportCardComponent implements OnInit {
       `Term 3 ${nextYear}`
     ];
 
-<<<<<<< HEAD
     this.settingsService
       .getActiveTerm()
       .pipe(
@@ -499,39 +421,7 @@ export class ReportCardComponent implements OnInit {
           }
         }
       });
-=======
-    this.settingsService.getActiveTerm().subscribe({
-      next: (data: any) => {
-        const activeTerm = data?.activeTerm || data?.currentTerm;
-        if (activeTerm) {
-          if (!this.availableTerms.includes(activeTerm)) {
-            this.availableTerms.unshift(activeTerm);
-          }
-          // Auto-select the active term
-          this.selectedTerm = activeTerm;
-        } else if (!this.selectedTerm && this.availableTerms.length > 0) {
-          this.selectedTerm = this.availableTerms[0];
-        }
-        this.loadingTerms = false;
-        // Check if we can auto-generate after term is loaded
-        this.checkAndAutoGenerate();
-      },
-      error: (err: any) => {
-        // Use default terms if active term fails to load
-        if (!this.selectedTerm && this.availableTerms.length > 0) {
-          this.selectedTerm = this.availableTerms[0];
-        }
-        this.loadingTerms = false;
-        // Check if we can auto-generate after term is loaded
-        this.checkAndAutoGenerate();
-        // Only log error if it's not a connection error (backend might not be running)
-        if (err.status !== 0) {
-          console.error('Error loading active term:', err);
-        }
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   loadSettings() {
     this.settingsService.getSettings().subscribe({
@@ -575,11 +465,8 @@ export class ReportCardComponent implements OnInit {
           fail: 'UNCLASSIFIED'
         };
         this.refreshAllSuggestionLists();
-<<<<<<< HEAD
         this.cdr.markForCheck();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      },
+},
       error: (err: any) => {
         // Use default values if settings fail to load
         this.currencySymbol = '$';
@@ -606,11 +493,8 @@ export class ReportCardComponent implements OnInit {
         if (err.status !== 0) {
           console.error('Error loading settings:', err);
         }
-<<<<<<< HEAD
         this.cdr.markForCheck();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      }
+}
     });
   }
 
@@ -619,12 +503,8 @@ export class ReportCardComponent implements OnInit {
 
     this.loading = true;
     this.error = '';
-<<<<<<< HEAD
     this.cdr.markForCheck();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    
-    // Get parent's students to find balance
+// Get parent's students to find balance
     this.parentService.getLinkedStudents(this.selectedTerm).subscribe({
       next: (response: any) => {
         const student = (response.students || []).find((s: any) => s.id === this.parentStudentId);
@@ -633,11 +513,8 @@ export class ReportCardComponent implements OnInit {
           this.loading = false;
           this.error = 'Student not found or not linked to your account';
           this.accessDenied = true;
-<<<<<<< HEAD
           this.cdr.markForCheck();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          return;
+return;
         }
 
         // Report card access is based on fees (tuition) balance only. Uniform item balance does not affect access.
@@ -648,11 +525,8 @@ export class ReportCardComponent implements OnInit {
           this.loading = false;
           this.accessDenied = true;
           this.error = `Report card access is restricted. Please clear the outstanding fees (tuition) balance of ${this.currencySymbol} ${termBalance.toFixed(2)} to view the report card.`;
-<<<<<<< HEAD
           this.cdr.markForCheck();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          return;
+return;
         }
 
         // Balance is OK, load student's class and generate report card
@@ -669,35 +543,22 @@ export class ReportCardComponent implements OnInit {
           this.error = 'Student class information not available';
           this.loading = false;
         }
-<<<<<<< HEAD
         this.cdr.markForCheck();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      },
+},
       error: (err: any) => {
         this.loading = false;
         this.error = err.error?.message || 'Failed to check student balance';
         this.accessDenied = true;
-<<<<<<< HEAD
         this.cdr.markForCheck();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      }
+}
     });
   }
 
   loadClasses() {
-<<<<<<< HEAD
     this.loadingClasses = true;
     this.classes = [];
     this.cdr.markForCheck();
-=======
-    this.loading = true;
-    this.classes = [];
-    
-    // Fetch all classes by making paginated requests
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    this.loadAllClasses(1, []);
+this.loadAllClasses(1, []);
   }
 
   loadAllClasses(page: number, accumulatedClasses: any[]) {
@@ -705,7 +566,6 @@ export class ReportCardComponent implements OnInit {
       next: (response: any) => {
         const data = response?.data || response || [];
         const allClasses = [...accumulatedClasses, ...data];
-<<<<<<< HEAD
         const totalPages = response?.totalPages || 1;
         const currentPage = response?.page || page;
 
@@ -715,51 +575,22 @@ export class ReportCardComponent implements OnInit {
           this.classes = allClasses;
           this.loadingClasses = false;
           this.cdr.markForCheck();
-=======
-        
-        // Check if there are more pages to fetch
-        const totalPages = response?.totalPages || 1;
-        const currentPage = response?.page || page;
-        
-        if (currentPage < totalPages) {
-          // Fetch next page
-          this.loadAllClasses(currentPage + 1, allClasses);
-        } else {
-          // All classes loaded
-          this.classes = allClasses;
-          this.loading = false;
-          console.log(`Loaded ${this.classes.length} classes for report cards`);
-          // Check if we can auto-generate after classes are loaded
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          setTimeout(() => this.checkAndAutoGenerate(), 300);
+setTimeout(() => this.checkAndAutoGenerate(), 300);
         }
       },
       error: (err: any) => {
-<<<<<<< HEAD
-=======
-        this.loading = false;
-        // Only show error message if it's not a connection error
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-        if (err.status === 0) {
+if (err.status === 0) {
           this.error = 'Unable to connect to server. Please ensure the backend server is running.';
         } else {
           this.error = err.error?.message || 'Failed to load classes';
           console.error('Error loading classes:', err);
         }
-<<<<<<< HEAD
         if (accumulatedClasses.length > 0) {
           this.classes = accumulatedClasses;
         }
         this.loadingClasses = false;
         this.cdr.markForCheck();
-=======
-        // Use accumulated classes if we got some before the error
-        if (accumulatedClasses.length > 0) {
-          this.classes = accumulatedClasses;
-          console.warn(`Loaded partial class list (${accumulatedClasses.length} classes) due to error`);
-        }
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      }
+}
     });
   }
 
@@ -868,13 +699,9 @@ export class ReportCardComponent implements OnInit {
         this.classInfo = { name: data.class, examType: data.examType, term: data.term || this.selectedTerm };
         this.success = `Generated ${this.reportCards.length} report card(s) for ${data.class} - ${this.selectedTerm}`;
         this.loading = false;
-<<<<<<< HEAD
         this.autoGenerationInProgress = false;
         this.cdr.markForCheck();
-=======
-        this.autoGenerationInProgress = false; // Reset flag after successful generation
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      },
+},
       error: (err: any) => {
         console.error('Error generating report cards:', err);
         console.error('Error status:', err.status);
@@ -918,13 +745,9 @@ export class ReportCardComponent implements OnInit {
           this.error = err.error?.message || 'Failed to generate report cards';
         }
         this.loading = false;
-<<<<<<< HEAD
         this.autoGenerationInProgress = false;
         this.cdr.markForCheck();
-=======
-        this.autoGenerationInProgress = false; // Reset flag after error
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      }
+}
     });
   }
 

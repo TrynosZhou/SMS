@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -13,19 +12,7 @@ import { ClassService } from '../../../services/class.service';
 })
 export class ClassListComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { Router, ActivatedRoute } from '@angular/router';
-import { ClassService } from '../../../services/class.service';
-
-@Component({
-  selector: 'app-class-list',
-  templateUrl: './class-list.component.html',
-  styleUrls: ['./class-list.component.css']
-})
-export class ClassListComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  classes: any[] = [];
+classes: any[] = [];
   filteredClasses: any[] = [];
   loading = false;
   error = '';
@@ -69,7 +56,6 @@ export class ClassListComponent implements OnInit {
         }, 5000);
       }
     });
-<<<<<<< HEAD
     activatePageLoad(this.router, this.destroy$, '/classes', () => {
       this.loadClasses(this.pagination.page);
     });
@@ -78,17 +64,12 @@ export class ClassListComponent implements OnInit {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-=======
-    // Load classes on component initialization
-    this.loadClasses();
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   loadClasses(page = this.pagination.page) {
     this.loading = true;
     this.error = '';
     // Note: success message is preserved if set from query params
-<<<<<<< HEAD
     this.classService
       .getClassesPaginated(page, this.pagination.limit)
       .pipe(
@@ -98,10 +79,7 @@ export class ClassListComponent implements OnInit {
         })
       )
       .subscribe({
-=======
-    this.classService.getClassesPaginated(page, this.pagination.limit).subscribe({
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      next: (response: any) => {
+next: (response: any) => {
         const data = response?.data || response || [];
         // Clean IDs in case they have any trailing characters
         let cleanedData = data.map((classItem: any) => {
@@ -173,11 +151,7 @@ export class ClassListComponent implements OnInit {
         }
         const classesArray = Array.isArray(this.classes) ? this.classes : [];
         this.filteredClasses = [...classesArray];
-<<<<<<< HEAD
-=======
-        this.loading = false;
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-        // Use setTimeout to avoid NG0900 error - filter after change detection completes
+// Use setTimeout to avoid NG0900 error - filter after change detection completes
         setTimeout(() => {
           this.filterClasses();
           this.cdr.detectChanges();
@@ -203,11 +177,7 @@ export class ClassListComponent implements OnInit {
         }
         
         this.error = errorMessage;
-<<<<<<< HEAD
-=======
-        this.loading = false;
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-        this.classes = []; // Clear classes array on error
+this.classes = []; // Clear classes array on error
         this.filteredClasses = [];
       }
     });

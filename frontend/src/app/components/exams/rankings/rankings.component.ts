@@ -1,31 +1,19 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { activatePageLoad } from '../../../utils/route-activation';
-=======
-import { Component, OnInit } from '@angular/core';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { ExamService } from '../../../services/exam.service';
 import { ClassService } from '../../../services/class.service';
 import { SubjectService } from '../../../services/subject.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-rankings',
   templateUrl: './rankings.component.html',
   styleUrls: ['./rankings.component.css']
 })
 export class RankingsComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-  selector: 'app-rankings',
-  templateUrl: './rankings.component.html',
-  styleUrls: ['./rankings.component.css']
-})
-export class RankingsComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  exams: any[] = [];
+exams: any[] = [];
   classes: any[] = [];
   subjects: any[] = [];
   selectedExam = '';
@@ -50,7 +38,6 @@ export class RankingsComponent implements OnInit {
   constructor(
     private examService: ExamService,
     private classService: ClassService,
-<<<<<<< HEAD
     private subjectService: SubjectService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -70,16 +57,7 @@ export class RankingsComponent implements OnInit {
     if (this.selectionDebounce) {
       clearTimeout(this.selectionDebounce);
     }
-=======
-    private subjectService: SubjectService
-  ) { }
-
-  ngOnInit() {
-    this.loadExams();
-    this.loadClasses();
-    this.loadSubjects();
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   loadExams() {
     this.examService.getExams().subscribe({

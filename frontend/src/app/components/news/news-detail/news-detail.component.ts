@@ -6,12 +6,8 @@ import { AuthService } from '../../../services/auth.service';
 import { environment } from '../../../../environments/environment';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-news-detail',
-=======
-  selector: 'app-news-detail',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './news-detail.component.html',
+templateUrl: './news-detail.component.html',
   styleUrls: ['./news-detail.component.css']
 })
 export class NewsDetailComponent implements OnInit {

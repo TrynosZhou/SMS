@@ -7,12 +7,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-teacher-inventory-record',
-=======
-  selector: 'app-teacher-inventory-record',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './teacher-inventory-record.component.html',
+templateUrl: './teacher-inventory-record.component.html',
   styleUrls: ['./teacher-inventory-record.component.css']
 })
 export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {

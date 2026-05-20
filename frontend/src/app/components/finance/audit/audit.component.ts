@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { Component, OnDestroy, OnInit, HostListener, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject, interval, Subscription, forkJoin, of } from 'rxjs';
@@ -9,26 +8,14 @@ import { AuthService } from '../../../services/auth.service';
 
 @Component({
   standalone: false,  selector: 'app-finance-audit',
-=======
-import { Component, OnDestroy, OnInit, HostListener } from '@angular/core';
-import { FinanceService } from '../../../services/finance.service';
-import { AuthService } from '../../../services/auth.service';
-import { interval, Subscription } from 'rxjs';
-
-@Component({
-  selector: 'app-finance-audit',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './audit.component.html',
+templateUrl: './audit.component.html',
   styleUrls: ['./audit.component.css']
 })
 export class AuditComponent implements OnInit, OnDestroy {
-<<<<<<< HEAD
   private readonly destroy$ = new Subject<void>();
   private loadSeq = 0;
   private initialLoadDone = false;
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  loading = false;
+loading = false;
   error = '';
   lastRefresh: Date | null = null;
   autoRefreshEnabled = true;
@@ -60,14 +47,10 @@ export class AuditComponent implements OnInit, OnDestroy {
 
   constructor(
     private financeService: FinanceService,
-<<<<<<< HEAD
     public authService: AuthService,
     private router: Router,
     private cdr: ChangeDetectorRef
-=======
-    public authService: AuthService
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  ) {}
+) {}
 
   canDeletePayment(tx: any): boolean {
     if (!tx) return false;
@@ -89,7 +72,6 @@ export class AuditComponent implements OnInit, OnDestroy {
       return;
     }
     this.deletingId = tx.id;
-<<<<<<< HEAD
     this.financeService
       .deletePaymentLog(tx.id)
       .pipe(takeUntil(this.destroy$))
@@ -122,35 +104,13 @@ export class AuditComponent implements OnInit, OnDestroy {
       this.autoRefreshSub = interval(this.refreshPeriodMs)
         .pipe(takeUntil(this.destroy$))
         .subscribe(() => this.load(false));
-=======
-    this.financeService.deletePaymentLog(tx.id).subscribe({
-      next: (resp: any) => {
-        this.deletingId = null;
-        this.load();
-      },
-      error: (err: any) => {
-        this.deletingId = null;
-        this.error = err?.error?.message || 'Failed to delete payment log';
-        setTimeout(() => (this.error = ''), 6000);
-      }
-    });
-  }
-
-  ngOnInit() {
-    this.load();
-    if (this.autoRefreshEnabled) {
-      this.autoRefreshSub = interval(this.refreshPeriodMs).subscribe(() => this.load(false));
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    }
+}
   }
 
   ngOnDestroy() {
-<<<<<<< HEAD
     this.destroy$.next();
     this.destroy$.complete();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    if (this.autoRefreshSub) {
+if (this.autoRefreshSub) {
       this.autoRefreshSub.unsubscribe();
       this.autoRefreshSub = null;
     }
@@ -159,19 +119,14 @@ export class AuditComponent implements OnInit, OnDestroy {
   toggleAutoRefresh() {
     this.autoRefreshEnabled = !this.autoRefreshEnabled;
     if (this.autoRefreshEnabled && !this.autoRefreshSub) {
-<<<<<<< HEAD
       this.startAutoRefresh();
-=======
-      this.autoRefreshSub = interval(this.refreshPeriodMs).subscribe(() => this.load(false));
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    } else if (!this.autoRefreshEnabled && this.autoRefreshSub) {
+} else if (!this.autoRefreshEnabled && this.autoRefreshSub) {
       this.autoRefreshSub.unsubscribe();
       this.autoRefreshSub = null;
     }
   }
 
   load(showSpinner: boolean = true) {
-<<<<<<< HEAD
     const seq = ++this.loadSeq;
     if (showSpinner) {
       this.loading = true;
@@ -227,24 +182,7 @@ export class AuditComponent implements OnInit, OnDestroy {
           }
           const resp = logs as any;
           const list = Array.isArray(resp?.data) ? resp.data : Array.isArray(resp) ? resp : [];
-=======
-    if (showSpinner) {
-      this.loading = true;
-      this.error = '';
-    }
-    if (this.mode === 'payments') {
-      this.financeService.getPaymentLogs({
-        page: this.page,
-        limit: this.limit,
-        search: this.paymentSearch || undefined,
-        startDate: this.paymentStartDate || undefined,
-        endDate: this.paymentEndDate || undefined,
-        paymentMethod: this.paymentMethod || undefined
-      }).subscribe({
-        next: (resp: any) => {
-          const list = Array.isArray(resp?.data) ? resp.data : (Array.isArray(resp) ? resp : []);
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          const dupReceipts = Array.isArray(resp?.duplicates) ? resp.duplicates : [];
+const dupReceipts = Array.isArray(resp?.duplicates) ? resp.duplicates : [];
           (this as any).duplicateReceipts = dupReceipts;
           this.transactions = list.map((log: any) => {
             const student = log.student || {};
@@ -275,7 +213,6 @@ export class AuditComponent implements OnInit, OnDestroy {
           this.total = this.serverTotal;
           this.filtered = this.transactions.slice();
           this.paged = this.filtered.slice(0, this.filtered.length);
-<<<<<<< HEAD
           this.pageTotals.paid = (this.paged || []).reduce((sum, t) => sum + (t.paidAmount || 0), 0);
           this.pageTotals.balance = 0;
           this.fullTotals = {
@@ -288,27 +225,10 @@ export class AuditComponent implements OnInit, OnDestroy {
           if (seq !== this.loadSeq) {
             return;
           }
-=======
-          this.computePageTotals();
-          this.financeService.getPaymentLogsSummary({
-            search: this.paymentSearch || undefined,
-            startDate: this.paymentStartDate || undefined,
-            endDate: this.paymentEndDate || undefined,
-            paymentMethod: this.paymentMethod || undefined
-          }).subscribe((sumResp) => {
-            this.fullTotals = { paid: sumResp.sumPaid || 0, balance: 0, count: sumResp.count || 0 };
-          });
-          this.lastRefresh = new Date();
-          this.loading = false;
-        },
-        error: (err: any) => {
-          this.loading = false;
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          this.error = err?.error?.message || 'Failed to load payment logs';
+this.error = err?.error?.message || 'Failed to load payment logs';
           setTimeout(() => (this.error = ''), 5000);
         }
       });
-<<<<<<< HEAD
   }
 
   private loadInvoices(seq: number, showSpinner: boolean) {
@@ -369,47 +289,7 @@ export class AuditComponent implements OnInit, OnDestroy {
           setTimeout(() => (this.error = ''), 5000);
         }
       });
-=======
-      return;
-    }
-    this.financeService.getInvoices(undefined, undefined).subscribe({
-      next: (data: any[]) => {
-        const list = Array.isArray(data) ? data : [];
-        this.transactions = list.map((inv: any) => {
-          const student = inv.student || {};
-          return {
-            id: inv.id,
-            invoiceNumber: inv.invoiceNumber,
-            status: inv.status || '',
-            amount: Number(inv.amount || 0),
-            paidAmount: Number(inv.paidAmount || 0),
-            balance: Number(inv.balance || 0),
-            previousBalance: Number(inv.previousBalance || 0),
-            prepaidAmount: Number(inv.prepaidAmount || 0),
-            term: inv.term || '',
-            dueDate: inv.dueDate ? new Date(inv.dueDate) : null,
-            createdAt: inv.createdAt ? new Date(inv.createdAt) : null,
-            updatedAt: inv.updatedAt ? new Date(inv.updatedAt) : null,
-            recipientName: `${student.firstName || ''} ${student.lastName || ''}`.trim(),
-            recipientId: student.id || inv.studentId || '',
-            studentNumber: student.studentNumber || '',
-            // Payment method/reference are not persisted on invoice; default display
-            paymentMethod: 'Unknown',
-            referenceNumber: inv.invoiceNumber
-          };
-        });
-        this.applyFilters();
-        this.lastRefresh = new Date();
-        this.loading = false;
-      },
-      error: (err: any) => {
-        this.loading = false;
-        this.error = err?.error?.message || 'Failed to load audit data';
-        setTimeout(() => (this.error = ''), 5000);
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   applyFilters() {
     let arr = Array.isArray(this.transactions) ? this.transactions.slice() : [];
@@ -568,7 +448,6 @@ export class AuditComponent implements OnInit, OnDestroy {
     this.pageTotals.paid = (this.paged || []).reduce((sum, t) => sum + (t.paidAmount || 0), 0);
     this.pageTotals.balance = (this.paged || []).reduce((sum, t) => sum + (t.balance || 0), 0);
     // Fetch full totals for invoices
-<<<<<<< HEAD
     this.financeService
       .getInvoicesSummary({ status: this.statusFilter || undefined, search: this.search || undefined })
       .pipe(takeUntil(this.destroy$))
@@ -583,12 +462,7 @@ export class AuditComponent implements OnInit, OnDestroy {
         },
         error: () => {}
       });
-=======
-    this.financeService.getInvoicesSummary({ status: this.statusFilter || undefined, search: this.search || undefined }).subscribe((sumResp) => {
-      this.fullTotals = { paid: sumResp.sumPaid || 0, balance: sumResp.sumBalance || 0, count: sumResp.count || 0 };
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   viewInvoicePDF(invoiceId: string) {
     this.financeService.getInvoicePDF(invoiceId).subscribe(({ blob, filename }) => {

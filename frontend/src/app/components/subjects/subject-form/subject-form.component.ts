@@ -4,12 +4,8 @@ import { SubjectService } from '../../../services/subject.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-subject-form',
-=======
-  selector: 'app-subject-form',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './subject-form.component.html',
+templateUrl: './subject-form.component.html',
   styleUrls: ['./subject-form.component.css'],
   animations: [
     trigger('fadeInOut', [

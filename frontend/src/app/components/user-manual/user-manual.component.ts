@@ -3,12 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-user-manual',
-=======
-  selector: 'app-user-manual',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './user-manual.component.html',
+templateUrl: './user-manual.component.html',
   styleUrls: ['./user-manual.component.css']
 })
 export class UserManualComponent implements OnInit {

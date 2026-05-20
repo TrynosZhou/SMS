@@ -1,7 +1,4 @@
-<<<<<<< HEAD
 <div class="login-page-bg" aria-hidden="true"></div>
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 <div class="login-container" [class.landscape-mode]="activeTab === 'signup'">
   <div class="login-card" [class.signup-card]="activeTab === 'signup'">
     <div class="login-header">
@@ -11,7 +8,6 @@
 
     <!-- Tab Navigation -->
     <div class="tab-navigation">
-<<<<<<< HEAD
       <button
         type="button"
         class="tab-btn"
@@ -35,26 +31,7 @@
         (click)="setTab('reset')">
         <span class="tab-icon tab-icon-key" aria-hidden="true"></span>
         Reset Password
-=======
-      <button 
-        class="tab-btn" 
-        [class.active]="activeTab === 'signin'"
-        (click)="setTab('signin')">
-        🔐 Sign In
-      </button>
-      <button 
-        class="tab-btn" 
-        [class.active]="activeTab === 'signup'"
-        (click)="setTab('signup')">
-        ➕ Sign Up
-      </button>
-      <button 
-        class="tab-btn" 
-        [class.active]="activeTab === 'reset'"
-        (click)="setTab('reset')">
-        🔑 Reset Password
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      </button>
+</button>
     </div>
 
     <!-- Messages -->
@@ -103,7 +80,6 @@
               placeholder="Enter password" 
               required
               autocomplete="current-password">
-<<<<<<< HEAD
             <button
               type="button"
               class="password-toggle"
@@ -111,21 +87,12 @@
               [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'">
               <span class="eye-icon" [class.eye-open]="showPassword"></span>
             </button>
-=======
-            <span class="password-toggle" (click)="togglePasswordVisibility()">
-              {{ showPassword ? '👁️' : '👁️‍🗨️' }}
-            </span>
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          </div>
+</div>
           <small class="form-text">Students: use the password you created during sign up</small>
         </div>
         <button type="submit" class="btn btn-primary btn-block" [disabled]="loading">
-<<<<<<< HEAD
           {{ loading ? 'Signing in...' : 'Sign In' }}
-=======
-          {{ loading ? 'Signing in...' : '🔐 Sign In' }}
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-        </button>
+</button>
         <div class="form-footer">
           <a href="#" (click)="openForgotPasswordModal(); $event.preventDefault()" class="link">Forgot password?</a>
         </div>

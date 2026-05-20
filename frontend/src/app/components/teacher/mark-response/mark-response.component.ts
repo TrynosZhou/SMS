@@ -19,12 +19,8 @@ type StampKey =
   | 'omission';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-mark-response',
-=======
-  selector: 'app-mark-response',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './mark-response.component.html',
+templateUrl: './mark-response.component.html',
   styleUrls: ['./mark-response.component.css'],
 })
 export class MarkResponseComponent implements OnInit {

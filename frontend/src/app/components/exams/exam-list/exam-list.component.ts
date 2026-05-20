@@ -1,13 +1,8 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
-=======
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { Router } from '@angular/router';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { ExamService } from '../../../services/exam.service';
 import { ClassService } from '../../../services/class.service';
 import { SubjectService } from '../../../services/subject.service';
@@ -18,12 +13,8 @@ import { TeacherService } from '../../../services/teacher.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-exam-list',
-=======
-  selector: 'app-exam-list',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './exam-list.component.html',
+templateUrl: './exam-list.component.html',
   styleUrls: ['./exam-list.component.css'],
   animations: [
     trigger('fadeInOut', [
@@ -38,11 +29,8 @@ import { trigger, state, style, transition, animate } from '@angular/animations'
   ]
 })
 export class ExamListComponent implements OnInit, OnDestroy {
-<<<<<<< HEAD
   private readonly destroy$ = new Subject<void>();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  // Selection form
+// Selection form
   selectedClassId = '';
   selectedTerm = '';
   selectedExamType = '';
@@ -67,12 +55,9 @@ export class ExamListComponent implements OnInit, OnDestroy {
   
   // UI state
   loading = false;
-<<<<<<< HEAD
   loadingClasses = false;
   loadingSubjectsList = false;
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  loadingStudents = false;
+loadingStudents = false;
   error = '';
   success = '';
   showMarksEntry = false;
@@ -110,20 +95,15 @@ export class ExamListComponent implements OnInit, OnDestroy {
     private settingsService: SettingsService,
     private authService: AuthService,
     private teacherService: TeacherService,
-<<<<<<< HEAD
     private router: Router,
     private cdr: ChangeDetectorRef
-=======
-    private router: Router
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  ) {
+) {
     const user = this.authService.getCurrentUser();
     this.isAdmin = user ? (user.role === 'admin' || user.role === 'superadmin') : false;
     console.log('ExamListComponent - User role check:', { user, isAdmin: this.isAdmin });
   }
 
   ngOnInit() {
-<<<<<<< HEAD
     activatePageLoad(this.router, this.destroy$, '/exams', () => this.bootstrapPage());
     window.addEventListener('beforeunload', this.handleBeforeUnload.bind(this));
   }
@@ -138,39 +118,17 @@ export class ExamListComponent implements OnInit, OnDestroy {
 
     if (this.isAdmin || isUniversalTeacher) {
       this.loadClasses();
-=======
-    const user = this.authService.getCurrentUser();
-    const isUniversalTeacher = user?.role === 'teacher' && (user as any).isUniversalTeacher;
-
-    // Universal teacher or Admin/SuperAdmin: load all classes and subjects
-    if (this.isAdmin || isUniversalTeacher) {
-      this.loadClasses();
-      this.loadSubjects();
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    } else if (user && user.role === 'teacher') {
+} else if (user && user.role === 'teacher') {
       this.loadTeacherInfo();
     } else {
       this.loadClasses();
-<<<<<<< HEAD
     }
   }
 
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
-=======
-      this.loadSubjects();
-    }
-    
-    this.loadActiveTerm();
-    
-    // Save pending marks when page is about to unload
-    window.addEventListener('beforeunload', this.handleBeforeUnload.bind(this));
-  }
-
-  ngOnDestroy() {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    // Clean up auto-save timeout
+// Clean up auto-save timeout
     if (this.autoSaveTimeout) {
       clearTimeout(this.autoSaveTimeout);
     }
@@ -194,7 +152,6 @@ export class ExamListComponent implements OnInit, OnDestroy {
 
   loadActiveTerm() {
     this.loadingTerm = true;
-<<<<<<< HEAD
     this.cdr.markForCheck();
     this.settingsService
       .getActiveTerm()
@@ -220,69 +177,28 @@ export class ExamListComponent implements OnInit, OnDestroy {
   }
 
   loadTeacherInfo() {
-=======
-    this.settingsService.getActiveTerm().subscribe({
-      next: (data: any) => {
-        if (data.activeTerm) {
-          this.selectedTerm = data.activeTerm;
-        } else if (data.currentTerm) {
-          this.selectedTerm = data.currentTerm;
-        }
-        this.loadingTerm = false;
-        
-        // After term is loaded, check if we can auto-load students
-        setTimeout(() => {
-          this.checkAndAutoLoadStudents();
-        }, 100);
-      },
-      error: (err: any) => {
-        console.error('Error loading active term:', err);
-        this.loadingTerm = false;
-        // Don't show error to user, just log it
-      }
-    });
-  }
-
-  loadTeacherInfo() {
-    // Load teacher profile to get teacher ID and subjects
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    this.teacherService.getCurrentTeacher().subscribe({
+this.teacherService.getCurrentTeacher().subscribe({
       next: (teacher: any) => {
         this.teacher = teacher;
         this.teacherSubjects = teacher.subjects || [];
-<<<<<<< HEAD
-=======
-        
-        // Load classes assigned to this teacher
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-        if (teacher.id) {
+if (teacher.id) {
           this.loadTeacherClasses(teacher.id);
         } else {
           this.classes = [];
           this.error = 'Teacher ID not found. Please contact administrator.';
         }
-<<<<<<< HEAD
         this.refreshSubjectDropdown();
         this.cdr.markForCheck();
-=======
-        
-        // Load all subjects (we'll filter them later based on selected class)
-        this.loadAllSubjects();
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      },
+},
       error: (err: any) => {
         console.error('Error loading teacher info:', err);
         this.error = 'Failed to load teacher information. Please try again.';
-<<<<<<< HEAD
         this.cdr.markForCheck();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      }
+}
     });
   }
 
   loadTeacherClasses(teacherId: string) {
-<<<<<<< HEAD
     this.loadingClasses = true;
     this.cdr.markForCheck();
     this.teacherService
@@ -309,25 +225,7 @@ export class ExamListComponent implements OnInit, OnDestroy {
     this.loadingClasses = true;
     this.classes = [];
     this.cdr.markForCheck();
-=======
-    this.teacherService.getTeacherClasses(teacherId).subscribe({
-      next: (response: any) => {
-        this.classes = response.classes || [];
-        console.log('Loaded teacher classes:', this.classes.length);
-      },
-      error: (err: any) => {
-        console.error('Error loading teacher classes:', err);
-        this.classes = [];
-        this.error = 'Failed to load assigned classes. Please try again.';
-      }
-    });
-  }
-
-  loadClasses() {
-    // For admin/superadmin - load all classes using pagination
-    this.classes = [];
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    this.loadAllClasses(1, []);
+this.loadAllClasses(1, []);
   }
 
   loadAllClasses(page: number, accumulatedClasses: any[]) {
@@ -335,26 +233,13 @@ export class ExamListComponent implements OnInit, OnDestroy {
       next: (response: any) => {
         const data = response?.data || response || [];
         const allClasses = [...accumulatedClasses, ...data];
-<<<<<<< HEAD
         const totalPages = response?.totalPages || 1;
         const currentPage = response?.page || page;
 
         if (currentPage < totalPages) {
           this.loadAllClasses(currentPage + 1, allClasses);
         } else {
-=======
-        
-        // Check if there are more pages to fetch
-        const totalPages = response?.totalPages || 1;
-        const currentPage = response?.page || page;
-        
-        if (currentPage < totalPages) {
-          // Fetch next page
-          this.loadAllClasses(currentPage + 1, allClasses);
-        } else {
-          // All classes loaded - clean IDs and remove duplicates
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          const cleanedClasses = allClasses.map((classItem: any) => {
+const cleanedClasses = allClasses.map((classItem: any) => {
             if (classItem.id) {
               let cleanId = String(classItem.id).trim();
               if (cleanId.includes(':')) {
@@ -364,34 +249,20 @@ export class ExamListComponent implements OnInit, OnDestroy {
             }
             return classItem;
           });
-<<<<<<< HEAD
-
-=======
-          
-          // Remove duplicates by ID
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          const uniqueClassesMap = new Map<string, any>();
+const uniqueClassesMap = new Map<string, any>();
           cleanedClasses.forEach((classItem: any) => {
             const id = classItem.id || '';
             if (id && !uniqueClassesMap.has(id)) {
               uniqueClassesMap.set(id, classItem);
             }
           });
-<<<<<<< HEAD
-
           this.classes = Array.from(uniqueClassesMap.values());
           this.loadingClasses = false;
           this.cdr.markForCheck();
-=======
-          
-          this.classes = Array.from(uniqueClassesMap.values());
-          console.log(`Loaded ${this.classes.length} classes for exams page`);
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-        }
+}
       },
       error: (err: any) => {
         console.error('Error loading classes:', err);
-<<<<<<< HEAD
         if (accumulatedClasses.length > 0) {
           this.classes = accumulatedClasses;
         } else {
@@ -399,20 +270,10 @@ export class ExamListComponent implements OnInit, OnDestroy {
         }
         this.loadingClasses = false;
         this.cdr.markForCheck();
-=======
-        // Use accumulated classes if we got some before the error
-        if (accumulatedClasses.length > 0) {
-          this.classes = accumulatedClasses;
-          console.warn(`Loaded partial class list (${accumulatedClasses.length} classes) due to error`);
-        } else {
-          this.classes = [];
-        }
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      }
+}
     });
   }
 
-<<<<<<< HEAD
   /** Always load the full subject catalog when the exams page opens. */
   loadSubjectsCatalog() {
     this.loadingSubjectsList = true;
@@ -454,38 +315,7 @@ export class ExamListComponent implements OnInit, OnDestroy {
       return;
     }
     this.updateSubjectsForSelectedClass();
-=======
-  loadAllSubjects() {
-    // Load all subjects (we'll filter based on teacher and class)
-    this.subjectService.getSubjects().subscribe({
-      next: (data: any) => {
-        this.allSubjects = data || [];
-        // Update subjects list when class is selected
-        this.updateSubjectsForSelectedClass();
-      },
-      error: (err: any) => {
-        console.error('Error loading subjects:', err);
-        this.allSubjects = [];
-      }
-    });
-  }
-
-  loadSubjects() {
-    // For admin/superadmin - load all subjects (class filter applied separately)
-    this.subjectService.getSubjects().subscribe({
-      next: (data: any) => {
-        this.allSubjects = data || [];
-        // Apply class-based filtering so only subjects allocated to the class appear
-        this.updateSubjectsForSelectedClass();
-      },
-      error: (err: any) => {
-        console.error('Error loading subjects:', err);
-        this.allSubjects = [];
-        this.subjects = [];
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   updateSubjectsForSelectedClass() {
     if (!this.selectedClassId) {
@@ -501,7 +331,6 @@ export class ExamListComponent implements OnInit, OnDestroy {
         const classSubjects: any[] = Array.isArray(classData.subjects) ? classData.subjects : [];
 
         if (!classSubjects.length) {
-<<<<<<< HEAD
           if (this.teacher && this.teacherSubjects.length > 0 && !this.isAdmin) {
             this.subjects = this.sortSubjects(this.teacherSubjects);
           } else {
@@ -512,14 +341,7 @@ export class ExamListComponent implements OnInit, OnDestroy {
           }
           this.checkAndAutoLoadStudents();
           this.cdr.markForCheck();
-=======
-          this.subjects = [];
-          // Clear selected subject if it no longer belongs to this class
-          if (this.selectedSubjectId) {
-            this.selectedSubjectId = '';
-          }
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          return;
+return;
         }
 
         const classSubjectIds = classSubjects.map((s: any) => s.id);
@@ -563,7 +385,6 @@ export class ExamListComponent implements OnInit, OnDestroy {
           this.subjects = Array.from(unique.values());
         }
 
-<<<<<<< HEAD
         this.subjects = this.sortSubjects(this.subjects);
 
         if (this.selectedSubjectId && !this.subjects.find((s) => s.id === this.selectedSubjectId)) {
@@ -580,31 +401,7 @@ export class ExamListComponent implements OnInit, OnDestroy {
           this.selectedSubjectId = '';
         }
         this.cdr.markForCheck();
-=======
-        // Sort by name for consistent display
-        this.subjects.sort((a: any, b: any) => {
-          const an = String(a.name || '').toLowerCase();
-          const bn = String(b.name || '').toLowerCase();
-          return an.localeCompare(bn);
-        });
-
-        // If the currently selected subject is not in the filtered list, clear it
-        if (this.selectedSubjectId && !this.subjects.find(s => s.id === this.selectedSubjectId)) {
-          this.selectedSubjectId = '';
-        }
-
-        // After updating subjects based on class, re-check if we can auto-load students
-        this.checkAndAutoLoadStudents();
-      },
-      error: (err: any) => {
-        console.error('Error loading class details for subject filtering:', err);
-        // On error, fall back to empty list to avoid exposing subjects not linked to the class
-        this.subjects = [];
-        if (this.selectedSubjectId) {
-          this.selectedSubjectId = '';
-        }
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      }
+}
     });
   }
 
@@ -624,24 +421,11 @@ export class ExamListComponent implements OnInit, OnDestroy {
     // Reset subject selection if class changed
     if (!this.selectedClassId) {
       this.selectedSubjectId = '';
-<<<<<<< HEAD
     }
 
     this.refreshSubjectDropdown();
     if (!this.selectedClassId) {
-=======
-      this.subjects = [];
-    }
-    
-    // Whenever class/term/exam type/subject selection changes, we re-derive
-    // the subjects from the class allocation. After that, checkAndAutoLoadStudents()
-    // will be called from updateSubjectsForSelectedClass().
-    if (this.selectedClassId) {
-      this.updateSubjectsForSelectedClass();
-    } else {
-      this.subjects = [];
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      this.checkAndAutoLoadStudents();
+this.checkAndAutoLoadStudents();
     }
   }
 

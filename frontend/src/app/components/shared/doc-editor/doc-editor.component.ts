@@ -12,12 +12,8 @@ import {
 type DocShape = 'circle' | 'square' | 'rectangle' | 'triangle' | 'polygon' | 'arrow';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-doc-editor',
-=======
-  selector: 'app-doc-editor',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './doc-editor.component.html',
+templateUrl: './doc-editor.component.html',
   styleUrls: ['./doc-editor.component.css'],
 })
 export class DocEditorComponent implements OnChanges {

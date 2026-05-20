@@ -4,12 +4,8 @@ import { News, NewsQueryOptions, NewsCategory, NewsStatus } from '../../../types
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-news-list',
-=======
-  selector: 'app-news-list',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './news-list.component.html',
+templateUrl: './news-list.component.html',
   styleUrls: ['./news-list.component.css']
 })
 export class NewsListComponent implements OnInit {

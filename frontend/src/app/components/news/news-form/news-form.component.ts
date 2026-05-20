@@ -6,12 +6,8 @@ import { News, CreateNewsData, UpdateNewsData, NewsCategory, NewsStatus } from '
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-news-form',
-=======
-  selector: 'app-news-form',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './news-form.component.html',
+templateUrl: './news-form.component.html',
   styleUrls: ['./news-form.component.css']
 })
 export class NewsFormComponent implements OnInit {

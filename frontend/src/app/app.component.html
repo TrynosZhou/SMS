@@ -292,14 +292,11 @@
             <span class="sidebar-icon">⚠️</span>
             <span class="sidebar-text">Unpaid Invoices</span>
           </a>
-<<<<<<< HEAD
           <a routerLink="/finance/exemptions" routerLinkActive="active" class="sidebar-subitem">
             <span class="sidebar-icon">🛡️</span>
             <span class="sidebar-text">Exemptions</span>
           </a>
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          <a routerLink="/finance/cash-logistics" routerLinkActive="active" class="sidebar-subitem">
+<a routerLink="/finance/cash-logistics" routerLinkActive="active" class="sidebar-subitem">
             <span class="sidebar-icon">🚌</span>
             <span class="sidebar-text">Logistics Receipts</span>
           </a>
@@ -473,7 +470,6 @@
         </div>
       </div>
 
-<<<<<<< HEAD
       <!-- Timetable Manager -->
       <div class="sidebar-menu" *ngIf="isAdmin() || isSuperAdmin() || isTeacher() || canAccessModule('settings')">
         <div class="sidebar-menu-header" (click)="toggleMenu('timetableManagement')">
@@ -497,9 +493,7 @@
         </div>
       </div>
 
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      <!-- General Settings -->
+<!-- General Settings -->
       <div class="sidebar-menu" *ngIf="canAccessModule('settings') || isAdmin() || isSuperAdmin()">
         <div class="sidebar-menu-header" (click)="toggleMenu('settings')">
           <span class="sidebar-icon">⚙️</span>
@@ -523,18 +517,7 @@
             <span class="sidebar-icon">📜</span>
             <span class="sidebar-text">User Log</span>
           </a>
-<<<<<<< HEAD
-=======
-          <a routerLink="/timetable/generate" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('settings') || isAdmin() || isSuperAdmin() || isTeacher()">
-            <span class="sidebar-icon">📅</span>
-            <span class="sidebar-text">Timetable</span>
-          </a>
-          <a routerLink="/timetable/config" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
-            <span class="sidebar-icon">⚙️</span>
-            <span class="sidebar-text">Timetable Config</span>
-          </a>
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          <a routerLink="/teacher/manage-account" routerLinkActive="active" class="sidebar-subitem" *ngIf="isTeacher()">
+<a routerLink="/teacher/manage-account" routerLinkActive="active" class="sidebar-subitem" *ngIf="isTeacher()">
             <span class="sidebar-icon">👤</span>
             <span class="sidebar-text">My Account</span>
           </a>

@@ -100,29 +100,19 @@
           <span class="label-icon">📅</span>
           Term
         </label>
-<<<<<<< HEAD
         <input type="text" [(ngModel)]="selectedTerm" (change)="fetchProgress()"
                [placeholder]="loadingTerm ? 'Loading term...' : 'e.g., Term 1 2026'"
                [disabled]="loadingTerm" class="filter-input">
-=======
-        <input type="text" [(ngModel)]="selectedTerm" (change)="fetchProgress()" 
-               placeholder="e.g., Term 1 2026" class="filter-input">
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      </div>
+</div>
 
       <div class="filter-group">
         <label>
           <span class="label-icon">🏫</span>
           Class
         </label>
-<<<<<<< HEAD
         <select [(ngModel)]="selectedClassId" (change)="fetchProgress()" [disabled]="loadingClasses" class="filter-select">
           <option value="">{{ loadingClasses ? 'Loading classes...' : 'All Classes' }}</option>
-=======
-        <select [(ngModel)]="selectedClassId" (change)="fetchProgress()" class="filter-select">
-          <option value="">All Classes</option>
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
+<option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
         </select>
       </div>
 

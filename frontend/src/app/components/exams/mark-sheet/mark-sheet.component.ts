@@ -1,13 +1,8 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
-=======
-import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { trigger, transition, style, animate } from '@angular/animations';
 import { ExamService } from '../../../services/exam.service';
 import { ClassService } from '../../../services/class.service';
@@ -15,12 +10,8 @@ import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-mark-sheet',
-=======
-  selector: 'app-mark-sheet',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './mark-sheet.component.html',
+templateUrl: './mark-sheet.component.html',
   styleUrls: ['./mark-sheet.component.css'],
   animations: [
     trigger('fadeIn', [
@@ -37,13 +28,9 @@ import { AuthService } from '../../../services/auth.service';
     ])
   ]
 })
-<<<<<<< HEAD
 export class MarkSheetComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-export class MarkSheetComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  classes: any[] = [];
+classes: any[] = [];
   selectedClassId = '';
   selectedExamType = '';
   selectedTerm = '';
@@ -59,11 +46,8 @@ export class MarkSheetComponent implements OnInit {
   markSheetData: any = null;
   filteredMarkSheet: any[] = [];
   loading = false;
-<<<<<<< HEAD
   loadingClasses = false;
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  error = '';
+error = '';
   success = '';
   
   // Modern features
@@ -94,19 +78,14 @@ export class MarkSheetComponent implements OnInit {
     private classService: ClassService,
     private settingsService: SettingsService,
     public authService: AuthService,
-<<<<<<< HEAD
     public router: Router,
     private cdr: ChangeDetectorRef
-=======
-    public router: Router
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  ) {
+) {
     const user = this.authService.getCurrentUser();
     this.isAdmin = user ? (user.role === 'admin' || user.role === 'superadmin') : false;
   }
 
   ngOnInit() {
-<<<<<<< HEAD
     activatePageLoad(this.router, this.destroy$, '/mark-sheet', () => this.bootstrapPage());
   }
 
@@ -123,24 +102,14 @@ export class MarkSheetComponent implements OnInit {
     if (this.autoGenerationTimeout) {
       clearTimeout(this.autoGenerationTimeout);
     }
-=======
-    this.loadClasses();
-    this.loadActiveTerm();
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
 
   loadClasses() {
-<<<<<<< HEAD
     this.loadingClasses = true;
     this.classes = [];
     this.cdr.markForCheck();
-=======
-    // For admin/superadmin - load all classes using pagination
-    this.loading = true;
-    this.classes = [];
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    this.loadAllClasses(1, []);
+this.loadAllClasses(1, []);
   }
 
   loadAllClasses(page: number, accumulatedClasses: any[]) {
@@ -148,26 +117,13 @@ export class MarkSheetComponent implements OnInit {
       next: (response: any) => {
         const data = response?.data || response || [];
         const allClasses = [...accumulatedClasses, ...data];
-<<<<<<< HEAD
         const totalPages = response?.totalPages || 1;
         const currentPage = response?.page || page;
 
         if (currentPage < totalPages) {
           this.loadAllClasses(currentPage + 1, allClasses);
         } else {
-=======
-        
-        // Check if there are more pages to fetch
-        const totalPages = response?.totalPages || 1;
-        const currentPage = response?.page || page;
-        
-        if (currentPage < totalPages) {
-          // Fetch next page
-          this.loadAllClasses(currentPage + 1, allClasses);
-        } else {
-          // All classes loaded - clean IDs, remove duplicates, and filter active
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          const cleanedClasses = allClasses.map((classItem: any) => {
+const cleanedClasses = allClasses.map((classItem: any) => {
             if (classItem.id) {
               let cleanId = String(classItem.id).trim();
               if (cleanId.includes(':')) {
@@ -177,38 +133,21 @@ export class MarkSheetComponent implements OnInit {
             }
             return classItem;
           });
-<<<<<<< HEAD
-
-=======
-          
-          // Remove duplicates by ID
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          const uniqueClassesMap = new Map<string, any>();
+const uniqueClassesMap = new Map<string, any>();
           cleanedClasses.forEach((classItem: any) => {
             const id = classItem.id || '';
             if (id && !uniqueClassesMap.has(id)) {
               uniqueClassesMap.set(id, classItem);
             }
           });
-<<<<<<< HEAD
-
           this.classes = Array.from(uniqueClassesMap.values()).filter((c) => c.isActive !== false);
           this.loadingClasses = false;
           this.cdr.markForCheck();
-=======
-          
-          // Filter to only active classes
-          this.classes = Array.from(uniqueClassesMap.values()).filter(c => c.isActive);
-          this.loading = false;
-          console.log(`Loaded ${this.classes.length} active classes for mark sheet`);
-          // Check if we can auto-generate after classes are loaded
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          setTimeout(() => this.checkAndAutoGenerate(), 300);
+setTimeout(() => this.checkAndAutoGenerate(), 300);
         }
       },
       error: (err: any) => {
         console.error('Error loading classes:', err);
-<<<<<<< HEAD
         if (err.status === 401) {
           this.error = 'Your session has expired. Please log in again.';
           setTimeout(() => this.router.navigate(['/login']), 2000);
@@ -221,32 +160,10 @@ export class MarkSheetComponent implements OnInit {
         this.loadingClasses = false;
         this.cdr.markForCheck();
         setTimeout(() => (this.error = ''), 5000);
-=======
-        
-        // Handle authentication errors specifically
-        if (err.status === 401) {
-          this.error = 'Your session has expired. Please log in again.';
-          // Redirect to login after a short delay
-          setTimeout(() => {
-            this.router.navigate(['/login']);
-          }, 2000);
-        } else {
-          this.error = 'Failed to load classes';
-          // Use accumulated classes if we got some before the error
-          if (accumulatedClasses.length > 0) {
-            this.classes = accumulatedClasses.filter(c => c.isActive);
-            console.warn(`Loaded partial class list (${this.classes.length} classes) due to error`);
-          }
-        }
-        
-        this.loading = false;
-        setTimeout(() => this.error = '', 5000);
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      }
+}
     });
   }
 
-<<<<<<< HEAD
   loadActiveTerm() {
     this.loadingTerm = true;
     this.cdr.markForCheck();
@@ -272,30 +189,7 @@ export class MarkSheetComponent implements OnInit {
           this.checkAndAutoGenerate();
         }
       });
-=======
-
-  loadActiveTerm() {
-    this.loadingTerm = true;
-    this.settingsService.getActiveTerm().subscribe({
-      next: (data: any) => {
-        if (data.activeTerm) {
-          this.selectedTerm = data.activeTerm;
-        } else if (data.currentTerm) {
-          this.selectedTerm = data.currentTerm;
-        }
-        this.loadingTerm = false;
-        // Check if we can auto-generate after term is loaded
-        this.checkAndAutoGenerate();
-      },
-      error: (err: any) => {
-        console.error('Error loading active term:', err);
-        this.loadingTerm = false;
-        // Check if we can auto-generate after term load attempt
-        this.checkAndAutoGenerate();
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   onClassChange() {
     this.markSheetData = null;
@@ -377,15 +271,10 @@ export class MarkSheetComponent implements OnInit {
         this.filteredMarkSheet = [...data.markSheet];
         this.calculateStatistics();
         this.loading = false;
-<<<<<<< HEAD
         this.autoGenerationInProgress = false;
         this.success = 'Mark sheet generated successfully';
         this.cdr.markForCheck();
-=======
-        this.autoGenerationInProgress = false; // Reset flag after successful generation
-        this.success = 'Mark sheet generated successfully';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-        setTimeout(() => this.success = '', 5000);
+setTimeout(() => this.success = '', 5000);
       },
       error: (err: any) => {
         console.error('Error generating mark sheet:', err);
@@ -406,13 +295,9 @@ export class MarkSheetComponent implements OnInit {
         }
         
         this.loading = false;
-<<<<<<< HEAD
         this.autoGenerationInProgress = false;
         this.cdr.markForCheck();
-=======
-        this.autoGenerationInProgress = false; // Reset flag after error
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-        setTimeout(() => this.error = '', 5000);
+setTimeout(() => this.error = '', 5000);
       }
     });
   }

@@ -45,12 +45,9 @@ export class StudentService {
     usesDiningHall?: boolean;
     studentType?: string;
     grade?: string;
-<<<<<<< HEAD
     hasExemption?: boolean;
     unenrolled?: boolean;
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  } = {}): Observable<PaginatedResponse<any>> {
+} = {}): Observable<PaginatedResponse<any>> {
     const queryParams: any = {
       page: params.page ?? 1,
       limit: params.limit ?? 20
@@ -73,16 +70,13 @@ export class StudentService {
     if (params.usesDiningHall === true) {
       queryParams.usesDiningHall = 'true';
     }
-<<<<<<< HEAD
     if (params.hasExemption === true) {
       queryParams.hasExemption = 'true';
     }
     if (params.unenrolled === true) {
       queryParams.unenrolled = 'true';
     }
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/students`, { params: queryParams }).pipe(
+return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/students`, { params: queryParams }).pipe(
       map(response => {
         // Ensure response is valid and has data array
         if (!response) {
@@ -114,7 +108,6 @@ export class StudentService {
         return { data: [], total: 0, page: queryParams.page, limit: queryParams.limit, totalPages: 0 };
       }),
       catchError((error: any) => {
-<<<<<<< HEAD
         if (error.status !== 0) {
           console.error('Error loading students (paginated):', error);
         }
@@ -127,15 +120,7 @@ export class StudentService {
           loadFailed: true,
           errorMessage: error?.error?.message || error?.message || 'Failed to load students'
         });
-=======
-        // Always return empty paginated response on any error
-        // Only log if it's not a connection error (backend not running)
-        if (error.status !== 0) {
-          console.error('Error loading students (paginated):', error);
-        }
-        return of({ data: [], total: 0, page: queryParams.page, limit: queryParams.limit, totalPages: 0 });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      })
+})
     );
   }
 
@@ -151,7 +136,6 @@ export class StudentService {
     if (photo) {
       const formData = new FormData();
       Object.keys(student).forEach(key => {
-<<<<<<< HEAD
         const val = student[key];
         if (val === null || val === undefined) {
           return;
@@ -160,11 +144,7 @@ export class StudentService {
           formData.append(key, val ? 'true' : 'false');
         } else {
           formData.append(key, val);
-=======
-        if (student[key] !== null && student[key] !== undefined) {
-          formData.append(key, student[key]);
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-        }
+}
       });
       formData.append('photo', photo);
       return this.http.post(`${this.apiUrl}/students`, formData);
@@ -176,7 +156,6 @@ export class StudentService {
     if (photo) {
       const formData = new FormData();
       Object.keys(student).forEach(key => {
-<<<<<<< HEAD
         const val = student[key];
         if (val === null || val === undefined) {
           return;
@@ -185,11 +164,7 @@ export class StudentService {
           formData.append(key, val ? 'true' : 'false');
         } else {
           formData.append(key, val);
-=======
-        if (student[key] !== null && student[key] !== undefined) {
-          formData.append(key, student[key]);
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-        }
+}
       });
       formData.append('photo', photo);
       return this.http.put(`${this.apiUrl}/students/${id}`, formData);

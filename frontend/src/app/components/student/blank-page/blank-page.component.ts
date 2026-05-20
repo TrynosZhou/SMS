@@ -4,12 +4,8 @@ import { ElearningService } from '../../../services/elearning.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-blank-page',
-=======
-  selector: 'app-blank-page',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './blank-page.component.html',
+templateUrl: './blank-page.component.html',
   styleUrls: ['./blank-page.component.css'],
 })
 export class BlankPageComponent implements OnInit {

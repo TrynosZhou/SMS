@@ -1,31 +1,19 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
-=======
-import { Component, OnInit } from '@angular/core';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { PayrollService } from '../../../services/payroll.service';
 import { SettingsService } from '../../../services/settings.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-payroll-reports',
   templateUrl: './payroll-reports.component.html',
   styleUrls: ['./payroll-reports.component.css']
 })
 export class PayrollReportsComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-  selector: 'app-payroll-reports',
-  templateUrl: './payroll-reports.component.html',
-  styleUrls: ['./payroll-reports.component.css']
-})
-export class PayrollReportsComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  reportType: 'monthly_summary' | 'deduction_summary' | 'department_summary' = 'monthly_summary';
+reportType: 'monthly_summary' | 'deduction_summary' | 'department_summary' = 'monthly_summary';
   month = new Date().getMonth() + 1;
   year = new Date().getFullYear();
   loading = false;
@@ -36,7 +24,6 @@ export class PayrollReportsComponent implements OnInit {
 
   constructor(
     private payrollService: PayrollService,
-<<<<<<< HEAD
     private settingsService: SettingsService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -61,22 +48,13 @@ export class PayrollReportsComponent implements OnInit {
       error: () => {
         this.loadReport();
       }
-=======
-    private settingsService: SettingsService
-  ) {}
-
-  ngOnInit() {
-    this.settingsService.getSettings().subscribe({
-      next: (s: any) => { this.currencySymbol = s?.currencySymbol || 'KES'; }
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    });
+});
   }
 
   loadReport() {
     this.loading = true;
     this.error = '';
     this.report = null;
-<<<<<<< HEAD
     this.cdr.markForCheck();
     this.payrollService
       .getReports(this.reportType, this.month, this.year)
@@ -94,19 +72,7 @@ export class PayrollReportsComponent implements OnInit {
           this.error = err?.error?.message || 'Failed to load report';
         }
       });
-=======
-    this.payrollService.getReports(this.reportType, this.month, this.year).subscribe({
-      next: (data) => {
-        this.report = data;
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = err?.error?.message || 'Failed to load report';
-        this.loading = false;
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   getDepartmentKeys(): string[] {
     if (!this.report?.byDepartment) return [];

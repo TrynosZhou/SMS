@@ -4,16 +4,10 @@
     <div class="header-content">
       <h1>
         <span class="header-icon">📅</span>
-<<<<<<< HEAD
         {{ isViewMode ? 'View Timetable' : 'Generate Timetable' }}
       </h1>
       <p class="subtitle">{{ isViewMode ? 'Browse and download published timetables for teachers, classes, and summary' : 'Generate, preview, and download timetables for teachers, classes, and summary' }}</p>
-=======
-        Timetable Generation
-      </h1>
-      <p class="subtitle">Generate, preview, and download timetables for teachers, classes, and summary</p>
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    </div>
+</div>
   </div>
 
   <!-- Alert Messages -->
@@ -57,14 +51,9 @@
       <div class="form-row">
         <div class="form-group">
           <label for="timetableSelect">Select Timetable *</label>
-<<<<<<< HEAD
           <select id="timetableSelect" [(ngModel)]="selectedTimetable" (change)="onTimetableChange()" [disabled]="loading && timetables.length === 0" class="form-select">
             <option [ngValue]="null">{{ loading && timetables.length === 0 ? 'Loading timetables...' : '-- Select Timetable --' }}</option>
-=======
-          <select id="timetableSelect" [(ngModel)]="selectedTimetable" (change)="onTimetableChange()" class="form-select">
-            <option [ngValue]="null">-- Select Timetable --</option>
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-            <option *ngFor="let timetable of timetables" [ngValue]="timetable">
+<option *ngFor="let timetable of timetables" [ngValue]="timetable">
               {{ timetable.name }} ({{ timetable.term }} - {{ timetable.academicYear }})
             </option>
           </select>
@@ -91,14 +80,9 @@
 
         <div class="form-group" *ngIf="viewType === 'teacher'">
           <label for="teacherSelect">Select Teacher</label>
-<<<<<<< HEAD
           <select id="teacherSelect" [(ngModel)]="selectedTeacherId" [disabled]="loading && teachers.length === 0" class="form-select">
             <option value="">{{ loading && teachers.length === 0 ? 'Loading teachers...' : '-- All Teachers --' }}</option>
-=======
-          <select id="teacherSelect" [(ngModel)]="selectedTeacherId" class="form-select">
-            <option value="">-- All Teachers --</option>
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-            <option *ngFor="let teacher of teachers" [value]="teacher.id">
+<option *ngFor="let teacher of teachers" [value]="teacher.id">
               {{ teacher.firstName }} {{ teacher.lastName }}
             </option>
           </select>
@@ -106,14 +90,9 @@
 
         <div class="form-group" *ngIf="viewType === 'class'">
           <label for="classSelect">Select Class</label>
-<<<<<<< HEAD
           <select id="classSelect" [(ngModel)]="selectedClassId" [disabled]="loading && classes.length === 0" class="form-select">
             <option value="">{{ loading && classes.length === 0 ? 'Loading classes...' : '-- All Classes --' }}</option>
-=======
-          <select id="classSelect" [(ngModel)]="selectedClassId" class="form-select">
-            <option value="">-- All Classes --</option>
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-            <option *ngFor="let classItem of classes" [value]="classItem.id">
+<option *ngFor="let classItem of classes" [value]="classItem.id">
               {{ classItem.name }}
             </option>
           </select>
@@ -121,12 +100,8 @@
       </div>
 
       <div class="action-buttons">
-<<<<<<< HEAD
         <button *ngIf="!isViewMode" class="btn btn-generate" (click)="generateTimetable()" [disabled]="!selectedTimetable || generating || (!isAdmin && !isSuperAdmin)">
-=======
-        <button class="btn btn-generate" (click)="generateTimetable()" [disabled]="!selectedTimetable || generating || (!isAdmin && !isSuperAdmin)">
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-          <span class="btn-icon">⚡</span>
+<span class="btn-icon">⚡</span>
           {{ generating ? 'Generating...' : 'Generate Timetable' }}
         </button>
         <button class="btn btn-primary" (click)="previewPDF()" [disabled]="!selectedTimetable || loading || timetableEntries.length === 0">
@@ -191,12 +166,8 @@
                     <div class="subject-name">{{ getSubjectName(entry.subjectId) }}</div>
                     <div class="class-name">{{ getClassName(entry.classId) }}</div>
                     <div class="room" *ngIf="entry.room">{{ entry.room }}</div>
-<<<<<<< HEAD
                     <div class="entry-actions" *ngIf="!isViewMode && (isAdmin || isSuperAdmin)">
-=======
-                    <div class="entry-actions" *ngIf="isAdmin || isSuperAdmin">
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-                      <button class="btn-lock" (click)="toggleLock(entry)" [title]="entry.isLocked ? 'Unlock' : 'Lock'">
+<button class="btn-lock" (click)="toggleLock(entry)" [title]="entry.isLocked ? 'Unlock' : 'Lock'">
                         {{ entry.isLocked ? '🔒' : '🔓' }}
                       </button>
                       <button class="btn-edit" (click)="editEntry(entry)" title="Edit">✏️</button>
@@ -204,12 +175,8 @@
                     </div>
                     <div class="locked-indicator" *ngIf="entry.isLocked">🔒 Locked</div>
                   </div>
-<<<<<<< HEAD
                   <div class="empty-cell" *ngIf="!isViewMode && !period.isBreak && !getEntryForCell(day, period.id, selectedTeacherId) && (isAdmin || isSuperAdmin)">
-=======
-                  <div class="empty-cell" *ngIf="!period.isBreak && !getEntryForCell(day, period.id, selectedTeacherId) && (isAdmin || isSuperAdmin)">
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-                    <button class="btn-add" (click)="addEntry(day, period.id, selectedTeacherId)" title="Add Entry">+</button>
+<button class="btn-add" (click)="addEntry(day, period.id, selectedTeacherId)" title="Add Entry">+</button>
                   </div>
                 </td>
               </tr>
@@ -248,12 +215,8 @@
                     <div class="subject-name">{{ getSubjectName(entry.subjectId) }}</div>
                     <div class="class-name">{{ getClassName(entry.classId) }}</div>
                     <div class="room" *ngIf="entry.room">{{ entry.room }}</div>
-<<<<<<< HEAD
                     <div class="entry-actions" *ngIf="!isViewMode && (isAdmin || isSuperAdmin)">
-=======
-                    <div class="entry-actions" *ngIf="isAdmin || isSuperAdmin">
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-                      <button class="btn-lock" (click)="toggleLock(entry)" [title]="entry.isLocked ? 'Unlock' : 'Lock'">
+<button class="btn-lock" (click)="toggleLock(entry)" [title]="entry.isLocked ? 'Unlock' : 'Lock'">
                         {{ entry.isLocked ? '🔒' : '🔓' }}
                       </button>
                       <button class="btn-edit" (click)="editEntry(entry)" title="Edit">✏️</button>
@@ -307,12 +270,8 @@
                     <div class="subject-name">{{ getSubjectName(entry.subjectId) }}</div>
                     <div class="teacher-name">{{ getTeacherName(entry.teacherId) }}</div>
                     <div class="room" *ngIf="entry.room">{{ entry.room }}</div>
-<<<<<<< HEAD
                     <div class="entry-actions" *ngIf="!isViewMode && (isAdmin || isSuperAdmin)">
-=======
-                    <div class="entry-actions" *ngIf="isAdmin || isSuperAdmin">
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-                      <button class="btn-lock" (click)="toggleLock(entry)" [title]="entry.isLocked ? 'Unlock' : 'Lock'">
+<button class="btn-lock" (click)="toggleLock(entry)" [title]="entry.isLocked ? 'Unlock' : 'Lock'">
                         {{ entry.isLocked ? '🔒' : '🔓' }}
                       </button>
                       <button class="btn-edit" (click)="editEntry(entry)" title="Edit">✏️</button>
@@ -320,12 +279,8 @@
                     </div>
                     <div class="locked-indicator" *ngIf="entry.isLocked">🔒 Locked</div>
                   </div>
-<<<<<<< HEAD
                   <div class="empty-cell" *ngIf="!isViewMode && !period.isBreak && !getEntryForCell(day, period.id, null, selectedClassId) && (isAdmin || isSuperAdmin)">
-=======
-                  <div class="empty-cell" *ngIf="!getEntryForCell(day, period.id, null, selectedClassId) && (isAdmin || isSuperAdmin)">
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-                    <button class="btn-add" (click)="addEntry(day, period.id, null, selectedClassId)" title="Add Entry">+</button>
+<button class="btn-add" (click)="addEntry(day, period.id, null, selectedClassId)" title="Add Entry">+</button>
                   </div>
                 </td>
               </tr>
@@ -364,12 +319,8 @@
                     <div class="subject-name">{{ getSubjectName(entry.subjectId) }}</div>
                     <div class="teacher-name">{{ getTeacherName(entry.teacherId) }}</div>
                     <div class="room" *ngIf="entry.room">{{ entry.room }}</div>
-<<<<<<< HEAD
                     <div class="entry-actions" *ngIf="!isViewMode && (isAdmin || isSuperAdmin)">
-=======
-                    <div class="entry-actions" *ngIf="isAdmin || isSuperAdmin">
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-                      <button class="btn-lock" (click)="toggleLock(entry)" [title]="entry.isLocked ? 'Unlock' : 'Lock'">
+<button class="btn-lock" (click)="toggleLock(entry)" [title]="entry.isLocked ? 'Unlock' : 'Lock'">
                         {{ entry.isLocked ? '🔒' : '🔓' }}
                       </button>
                       <button class="btn-edit" (click)="editEntry(entry)" title="Edit">✏️</button>
@@ -421,12 +372,8 @@
   </div>
 
   <!-- Edit Entry Modal -->
-<<<<<<< HEAD
   <div class="modal-overlay" *ngIf="!isViewMode && editMode" (click)="cancelEdit()">
-=======
-  <div class="modal-overlay" *ngIf="editMode" (click)="cancelEdit()">
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-    <div class="modal-content" (click)="$event.stopPropagation()">
+<div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h3>Edit Timetable Entry</h3>
         <button class="modal-close" (click)="cancelEdit()">&times;</button>
@@ -490,12 +437,8 @@
     <h3 *ngIf="timetables.length > 0">No Timetable Selected</h3>
     <p *ngIf="timetables.length === 0">No timetables exist in the system. Create one to get started.</p>
     <p *ngIf="timetables.length > 0">Please select a timetable from the dropdown above to generate and view timetables.</p>
-<<<<<<< HEAD
     <button *ngIf="!isViewMode && timetables.length === 0 && (isAdmin || isSuperAdmin)" class="btn btn-primary" (click)="createNewTimetable()" [disabled]="loading">
-=======
-    <button *ngIf="timetables.length === 0 && (isAdmin || isSuperAdmin)" class="btn btn-primary" (click)="createNewTimetable()" [disabled]="loading">
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      <span class="btn-icon">➕</span>
+<span class="btn-icon">➕</span>
       Create New Timetable
     </button>
   </div>

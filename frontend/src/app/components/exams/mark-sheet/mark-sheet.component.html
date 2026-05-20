@@ -47,15 +47,10 @@
             [ngModelOptions]="{standalone: true}"
             (change)="onClassChange()"
             (ngModelChange)="onSelectionChange()"
-<<<<<<< HEAD
             [disabled]="loadingClasses"
             class="form-control">
             <option value="">{{ loadingClasses ? 'Loading classes...' : '-- Select Class --' }}</option>
-=======
-            class="form-control">
-            <option value="">-- Select Class --</option>
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-            <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">
+<option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">
               {{ cls.name }} ({{ cls.form }})
             </option>
           </select>

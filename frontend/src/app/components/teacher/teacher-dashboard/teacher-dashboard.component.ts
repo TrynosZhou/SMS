@@ -6,12 +6,8 @@ import { SettingsService } from '../../../services/settings.service';
 import { ModuleAccessService } from '../../../services/module-access.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-teacher-dashboard',
-=======
-  selector: 'app-teacher-dashboard',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './teacher-dashboard.component.html',
+templateUrl: './teacher-dashboard.component.html',
   styleUrls: ['./teacher-dashboard.component.css']
 })
 export class TeacherDashboardComponent implements OnInit {

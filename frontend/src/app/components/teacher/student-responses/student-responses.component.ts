@@ -2,12 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { ElearningService } from '../../../services/elearning.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-student-responses',
-=======
-  selector: 'app-student-responses',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './student-responses.component.html',
+templateUrl: './student-responses.component.html',
   styleUrls: ['./student-responses.component.css']
 })
 export class StudentResponsesComponent implements OnInit {

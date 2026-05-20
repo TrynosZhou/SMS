@@ -3,12 +3,8 @@ import { Router } from '@angular/router';
 import { ExamService } from '../../../services/exam.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-recompute-grades',
-=======
-  selector: 'app-recompute-grades',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './recompute-grades.component.html',
+templateUrl: './recompute-grades.component.html',
   styleUrls: ['./recompute-grades.component.css']
 })
 export class RecomputeGradesComponent {

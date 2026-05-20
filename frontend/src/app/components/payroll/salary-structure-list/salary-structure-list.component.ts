@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -13,19 +12,7 @@ import { PayrollService } from '../../../services/payroll.service';
 })
 export class SalaryStructureListComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
-import { PayrollService } from '../../../services/payroll.service';
-
-@Component({
-  selector: 'app-salary-structure-list',
-  templateUrl: './salary-structure-list.component.html',
-  styleUrls: ['./salary-structure-list.component.css']
-})
-export class SalaryStructureListComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  structures: any[] = [];
+structures: any[] = [];
   loading = false;
   error = '';
   success = '';
@@ -62,7 +49,6 @@ export class SalaryStructureListComponent implements OnInit {
 
   constructor(
     private payrollService: PayrollService,
-<<<<<<< HEAD
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -74,18 +60,10 @@ export class SalaryStructureListComponent implements OnInit {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-=======
-    private router: Router
-  ) {}
-
-  ngOnInit() {
-    this.loadStructures();
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   loadStructures() {
     this.loading = true;
-<<<<<<< HEAD
     this.error = '';
     this.cdr.markForCheck();
     this.payrollService
@@ -104,19 +82,7 @@ export class SalaryStructureListComponent implements OnInit {
           this.error = err?.error?.message || 'Failed to load structures';
         }
       });
-=======
-    this.payrollService.getSalaryStructures().subscribe({
-      next: (data: any[]) => {
-        this.structures = data || [];
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = err?.error?.message || 'Failed to load structures';
-        this.loading = false;
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   addNew() {
     this.router.navigate(['/payroll/salary-structures/new']);

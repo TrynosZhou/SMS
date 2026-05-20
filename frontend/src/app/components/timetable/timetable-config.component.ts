@@ -1,32 +1,20 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../utils/route-activation';
-=======
-import { Component, OnInit } from '@angular/core';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { TimetableService } from '../../services/timetable.service';
 import { SettingsService } from '../../services/settings.service';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-timetable-config',
   templateUrl: './timetable-config.component.html',
   styleUrls: ['./timetable-config.component.css']
 })
 export class TimetableConfigComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-  selector: 'app-timetable-config',
-  templateUrl: './timetable-config.component.html',
-  styleUrls: ['./timetable-config.component.css']
-})
-export class TimetableConfigComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  config: any = {
+config: any = {
     periodsPerDay: 14,
     schoolStartTime: '07:30:00',
     schoolEndTime: '16:10:00',
@@ -58,7 +46,6 @@ export class TimetableConfigComponent implements OnInit {
   constructor(
     private timetableService: TimetableService,
     private settingsService: SettingsService,
-<<<<<<< HEAD
     private authService: AuthService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -91,24 +78,7 @@ export class TimetableConfigComponent implements OnInit {
       .getSettings()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-=======
-    private authService: AuthService
-  ) {
-    const user = this.authService.getCurrentUser();
-    this.isAdmin = user ? (user.role === 'admin') : false;
-    this.isSuperAdmin = user ? (user.role === 'superadmin') : false;
-  }
-
-  ngOnInit() {
-    this.loadSchoolSettings();
-    this.loadConfig();
-    this.ensureTwoBreaks();
-  }
-
-  loadSchoolSettings() {
-    this.settingsService.getSettings().subscribe({
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      next: (data: any) => {
+next: (data: any) => {
         this.schoolSettings = data;
         // Update config defaults from settings if available
         if (data.schoolStartTime) {
@@ -138,25 +108,18 @@ export class TimetableConfigComponent implements OnInit {
             this.config.breakPeriods = this.config.breakPeriods.slice(0, 2);
           }
         }
-<<<<<<< HEAD
         this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error loading school settings:', err);
         this.cdr.markForCheck();
-=======
-      },
-      error: (err) => {
-        console.error('Error loading school settings:', err);
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      }
+}
     });
   }
 
   loadConfig() {
     this.loading = true;
     this.error = '';
-<<<<<<< HEAD
     this.cdr.markForCheck();
     this.timetableService
       .getTimetableConfig()
@@ -168,10 +131,7 @@ export class TimetableConfigComponent implements OnInit {
         })
       )
       .subscribe({
-=======
-    this.timetableService.getTimetableConfig().subscribe({
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      next: (data: any) => {
+next: (data: any) => {
         if (data) {
           // Ensure exactly 2 breaks
           let breakPeriods = data.breakPeriods || [];
@@ -201,19 +161,11 @@ export class TimetableConfigComponent implements OnInit {
             preferences: data.preferences || this.config.preferences
           };
         }
-<<<<<<< HEAD
-=======
-        this.loading = false;
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      },
+},
       error: (err) => {
         console.error('Error loading config:', err);
         this.error = err.error?.message || 'Failed to load configuration';
-<<<<<<< HEAD
-=======
-        this.loading = false;
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      }
+}
     });
   }
 

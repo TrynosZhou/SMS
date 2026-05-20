@@ -1,42 +1,27 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
-=======
-import { Component, OnInit } from '@angular/core';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { ExamService } from '../../../services/exam.service';
 import { ClassService } from '../../../services/class.service';
 import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-marks-progress',
   templateUrl: './marks-progress.component.html',
   styleUrls: ['./marks-progress.component.css']
 })
 export class MarksProgressComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-  selector: 'app-marks-progress',
-  templateUrl: './marks-progress.component.html',
-  styleUrls: ['./marks-progress.component.css']
-})
-export class MarksProgressComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  classes: any[] = [];
+classes: any[] = [];
   progressData: any[] = [];
   viewData: any[] = []; // Cached view data to prevent flickering
   loading = false;
-<<<<<<< HEAD
   loadingClasses = false;
   loadingTerm = false;
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  error = '';
+error = '';
   selectedExamType = '';
   selectedTerm = '';
   selectedClassId = '';
@@ -63,7 +48,6 @@ export class MarksProgressComponent implements OnInit {
     private examService: ExamService,
     private classService: ClassService,
     private settingsService: SettingsService,
-<<<<<<< HEAD
     private authService: AuthService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -122,33 +106,7 @@ export class MarksProgressComponent implements OnInit {
           this.classes = [];
         }
       });
-=======
-    private authService: AuthService
-  ) {}
-
-  ngOnInit(): void {
-    this.loadDefaults();
-    this.loadClasses();
-  }
-
-  loadDefaults() {
-    this.settingsService.getActiveTerm().subscribe({
-      next: (res: any) => {
-        this.selectedTerm = res?.activeTerm || '';
-      },
-      error: () => {}
-    });
-  }
-
-  loadClasses() {
-    this.classService.getClassesPaginated(1, 200).subscribe({
-      next: (res: any) => {
-        this.classes = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      },
-      error: (err: any) => console.error('Error loading classes:', err)
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   fetchProgress() {
     if (!this.selectedExamType) {
@@ -157,15 +115,11 @@ export class MarksProgressComponent implements OnInit {
       this.computeStats();
       this.updateViewData();
       this.loading = false;
-<<<<<<< HEAD
       this.cdr.markForCheck();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      return;
+return;
     }
     this.loading = true;
     this.error = '';
-<<<<<<< HEAD
     this.cdr.markForCheck();
     this.examService
       .getMarksProgress(this.selectedExamType, this.selectedTerm, this.selectedClassId)
@@ -187,23 +141,7 @@ export class MarksProgressComponent implements OnInit {
           this.error = 'Failed to load marks entry progress';
         }
       });
-=======
-    this.examService.getMarksProgress(this.selectedExamType, this.selectedTerm, this.selectedClassId).subscribe({
-      next: (data: any) => {
-        this.progressData = Array.isArray(data?.classes) ? data.classes : [];
-        this.collapsed = {};
-        this.progressData.forEach((c: any) => this.collapsed[c.classId] = false);
-        this.computeStats();
-        this.updateViewData();
-        this.loading = false;
-      },
-      error: (err: any) => {
-        this.error = 'Failed to load marks entry progress';
-        this.loading = false;
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   computeStats() {
     const allSubjects = this.progressData.flatMap((c: any) => c.subjects || []);

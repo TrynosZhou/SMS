@@ -4,12 +4,8 @@ import { AuthService } from '../../../services/auth.service';
 import { AccountService } from '../../../services/account.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-manage-account',
-=======
-  selector: 'app-manage-account',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './manage-account.component.html',
+templateUrl: './manage-account.component.html',
   styleUrls: ['./manage-account.component.css']
 })
 export class ManageAccountComponent implements OnInit {

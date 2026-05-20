@@ -5,12 +5,8 @@ import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-student-portal',
-=======
-  selector: 'app-student-portal',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './student-portal.component.html',
+templateUrl: './student-portal.component.html',
   styleUrls: ['./student-portal.component.css']
 })
 export class StudentPortalComponent implements OnInit {

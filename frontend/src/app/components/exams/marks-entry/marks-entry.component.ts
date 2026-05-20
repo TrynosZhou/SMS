@@ -1,33 +1,20 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
-=======
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { ExamService } from '../../../services/exam.service';
 import { StudentService } from '../../../services/student.service';
 import { SubjectService } from '../../../services/subject.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-marks-entry',
   templateUrl: './marks-entry.component.html',
   styleUrls: ['./marks-entry.component.css']
 })
 export class MarksEntryComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-  selector: 'app-marks-entry',
-  templateUrl: './marks-entry.component.html',
-  styleUrls: ['./marks-entry.component.css']
-})
-export class MarksEntryComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  examId: string = '';
+examId: string = '';
   exam: any = null;
   students: any[] = [];
   subjects: any[] = [];
@@ -41,7 +28,6 @@ export class MarksEntryComponent implements OnInit {
     private studentService: StudentService,
     private subjectService: SubjectService,
     private route: ActivatedRoute,
-<<<<<<< HEAD
     public router: Router,
     private cdr: ChangeDetectorRef
   ) { }
@@ -57,19 +43,10 @@ export class MarksEntryComponent implements OnInit {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-=======
-    public router: Router
-  ) { }
-
-  ngOnInit() {
-    this.examId = this.route.snapshot.params['id'];
-    this.loadExam();
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   loadExam() {
     this.loading = true;
-<<<<<<< HEAD
     this.cdr.markForCheck();
     this.examService
       .getExamById(this.examId)
@@ -94,34 +71,7 @@ export class MarksEntryComponent implements OnInit {
           this.error = 'Failed to load exam details';
         }
       });
-=======
-    this.examService.getExamById(this.examId).subscribe({
-      next: (exam: any) => {
-        this.exam = exam;
-        if (this.exam) {
-          // Use subjects from the exam, not all subjects
-          this.subjects = this.exam.subjects || [];
-          // Load students from the exam's class - use classId or class.id
-          const classId = this.exam.classId || this.exam.class?.id;
-          console.log('Exam loaded:', {
-              classId: this.exam.classId,
-              class: this.exam.class,
-              classIdFromClass: this.exam.class?.id,
-              finalClassId: classId
-          });
-          this.loadStudents(classId);
-          this.loadExistingMarks();
-        }
-        this.loading = false;
-      },
-      error: (err: any) => {
-        console.error('Error loading exam:', err);
-        this.error = 'Failed to load exam details';
-        this.loading = false;
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   loadStudents(classId: string) {
     if (!classId) {

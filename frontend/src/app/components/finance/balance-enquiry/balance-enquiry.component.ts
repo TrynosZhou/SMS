@@ -1,12 +1,8 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
-=======
-import { Component, HostListener } from '@angular/core';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { FinanceService } from '../../../services/finance.service';
 import { SettingsService } from '../../../services/settings.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -14,21 +10,13 @@ import { firstValueFrom } from 'rxjs';
 import jsPDF from 'jspdf';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-balance-enquiry',
   templateUrl: './balance-enquiry.component.html',
   styleUrls: ['./balance-enquiry.component.css']
 })
 export class BalanceEnquiryComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-  selector: 'app-balance-enquiry',
-  templateUrl: './balance-enquiry.component.html',
-  styleUrls: ['./balance-enquiry.component.css']
-})
-export class BalanceEnquiryComponent {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  query = '';
+query = '';
   loading = false;
   error = '';
   success = '';
@@ -52,7 +40,6 @@ export class BalanceEnquiryComponent {
   constructor(
     private financeService: FinanceService,
     private settingsService: SettingsService,
-<<<<<<< HEAD
     private sanitizer: DomSanitizer,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -68,12 +55,7 @@ export class BalanceEnquiryComponent {
     if (this.previewBlobUrl) {
       window.URL.revokeObjectURL(this.previewBlobUrl);
     }
-=======
-    private sanitizer: DomSanitizer
-  ) {
-    this.loadSettings();
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   @HostListener('document:keydown.escape')
   onEscapeKey() {
@@ -85,7 +67,6 @@ export class BalanceEnquiryComponent {
   }
 
   loadSettings(): void {
-<<<<<<< HEAD
     this.settingsService
       .getSettings()
       .pipe(finalize(() => this.cdr.markForCheck()))
@@ -102,22 +83,7 @@ export class BalanceEnquiryComponent {
           this.currencySymbol = 'USD';
         }
       });
-=======
-    this.settingsService.getSettings().subscribe({
-      next: (s: any) => {
-        this.currencySymbol = s?.currencySymbol || 'USD';
-        this.schoolName = s?.schoolName || '';
-        this.schoolAddress = s?.schoolAddress || '';
-        this.schoolMotto = s?.schoolMotto || '';
-        this.schoolLogo2 = s?.schoolLogo2 || null;
-        this.deskFee = isFinite(Number(s?.feesSettings?.deskFee)) ? Number(s.feesSettings.deskFee) : 0;
-      },
-      error: () => {
-        this.currencySymbol = 'USD';
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   getInitials(name: string): string {
     if (!name) return '?';
@@ -154,7 +120,6 @@ export class BalanceEnquiryComponent {
     this.latestInvoice = null;
     this.clearPreview();
     
-<<<<<<< HEAD
     this.cdr.markForCheck();
     this.financeService
       .getStudentBalance(this.query.trim())
@@ -178,24 +143,7 @@ export class BalanceEnquiryComponent {
           this.error = err?.error?.message || 'Student not found. Please check the details and try again.';
         }
       });
-=======
-    this.financeService.getStudentBalance(this.query.trim()).subscribe({
-      next: async (data: any) => {
-        this.loading = false;
-        if (data && data.multipleMatches && Array.isArray(data.matches) && data.matches.length > 0) {
-          this.matchingStudents = data.matches;
-          return;
-        }
-        this.studentData = data;
-        await this.loadLatestInvoice();
-      },
-      error: (err: any) => {
-        this.loading = false;
-        this.error = err?.error?.message || 'Student not found. Please check the details and try again.';
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   selectStudent(studentId: string): void {
     this.selectedMatchId = studentId;

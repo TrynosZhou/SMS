@@ -1,33 +1,20 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
-=======
-import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { FinanceService } from '../../../services/finance.service';
 import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-outstanding-balance',
   templateUrl: './outstanding-balance.component.html',
   styleUrls: ['./outstanding-balance.component.css']
 })
 export class OutstandingBalanceComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-  selector: 'app-outstanding-balance',
-  templateUrl: './outstanding-balance.component.html',
-  styleUrls: ['./outstanding-balance.component.css']
-})
-export class OutstandingBalanceComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  outstandingBalances: any[] = [];
+outstandingBalances: any[] = [];
   filteredBalances: any[] = [];
   groupedBalances: Array<{ className: string; items: any[] }> = [];
   loading = false;
@@ -64,17 +51,12 @@ export class OutstandingBalanceComponent implements OnInit {
     private financeService: FinanceService,
     private settingsService: SettingsService,
     private router: Router,
-<<<<<<< HEAD
     private authService: AuthService,
     private cdr: ChangeDetectorRef
-=======
-    private authService: AuthService
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  ) { }
+) { }
 
   ngOnInit(): void {
     this.loadSettings();
-<<<<<<< HEAD
     this.loadActiveTermAndStats();
     activatePageLoad(this.router, this.destroy$, '/outstanding-balance', () => {
       this.loadOutstandingBalances();
@@ -84,11 +66,7 @@ export class OutstandingBalanceComponent implements OnInit {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-=======
-    this.loadOutstandingBalances();
-    this.loadActiveTermAndStats();
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   loadSettings(): void {
     this.settingsService.getSettings().subscribe({
@@ -229,7 +207,6 @@ export class OutstandingBalanceComponent implements OnInit {
   loadOutstandingBalances(): void {
     this.loading = true;
     this.error = '';
-<<<<<<< HEAD
     this.cdr.markForCheck();
 
     this.financeService
@@ -257,29 +234,7 @@ export class OutstandingBalanceComponent implements OnInit {
           this.updateCachedTotal();
         }
       });
-=======
-    
-    this.financeService.getOutstandingBalances().subscribe({
-      next: (data: any) => {
-        const balancesArray = Array.isArray(data) ? data : [];
-        const sorted = this.sortByBalanceDesc(balancesArray);
-        this.outstandingBalances = sorted;
-        this.filteredBalances = sorted;
-        this.groupedBalances = this.buildGroups(sorted);
-        this.updateCachedTotal();
-        this.loading = false;
-      },
-      error: (error: any) => {
-        this.error = error.error?.message || 'Failed to load outstanding balances';
-        this.loading = false;
-        this.outstandingBalances = [];
-        this.filteredBalances = [];
-        this.groupedBalances = [];
-        this.updateCachedTotal();
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   filterBalances(): void {
     let list: any[];

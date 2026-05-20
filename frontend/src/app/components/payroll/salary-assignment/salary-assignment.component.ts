@@ -1,32 +1,19 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
-=======
-import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { PayrollService } from '../../../services/payroll.service';
 import { TeacherService } from '../../../services/teacher.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-salary-assignment',
   templateUrl: './salary-assignment.component.html',
   styleUrls: ['./salary-assignment.component.css']
 })
 export class SalaryAssignmentComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-  selector: 'app-salary-assignment',
-  templateUrl: './salary-assignment.component.html',
-  styleUrls: ['./salary-assignment.component.css']
-})
-export class SalaryAssignmentComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  staff: any[] = [];
+staff: any[] = [];
   teachers: any[] = [];
   structures: any[] = [];
   assignments: any[] = [];
@@ -74,59 +61,42 @@ export class SalaryAssignmentComponent implements OnInit {
   constructor(
     private payrollService: PayrollService,
     private teacherService: TeacherService,
-<<<<<<< HEAD
     private router: Router,
     private cdr: ChangeDetectorRef
-=======
-    private router: Router
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  ) {}
+) {}
 
   ngOnInit() {
     this.effectiveFrom = new Date().toISOString().slice(0, 10);
-<<<<<<< HEAD
     activatePageLoad(this.router, this.destroy$, '/payroll/assignments', () => this.loadData());
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-=======
-    this.loadData();
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   loadData() {
     this.loading = true;
     this.error = '';
-<<<<<<< HEAD
     this.cdr.markForCheck();
     this.payrollService.getAncillaryStaff().subscribe({
       next: (data) => {
         this.staff = (data || []).filter((s: any) => s.employmentStatus === 'active');
         this.cdr.markForCheck();
       },
-=======
-    this.payrollService.getAncillaryStaff().subscribe({
-      next: (data) => { this.staff = (data || []).filter((s: any) => s.employmentStatus === 'active'); },
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      error: () => {}
+error: () => {}
     });
     this.teacherService.getTeachersPaginated(1, 500).subscribe({
       next: (res: any) => {
         const arr = Array.isArray(res) ? res : (res?.data || []);
         this.teachers = arr;
-<<<<<<< HEAD
         this.cdr.markForCheck();
-=======
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      },
+},
       error: () => {}
     });
     this.payrollService.getSalaryStructures().subscribe({
       next: (data) => {
         this.structures = data || [];
-<<<<<<< HEAD
         this.cdr.markForCheck();
       },
       error: (err) => {
@@ -155,24 +125,7 @@ export class SalaryAssignmentComponent implements OnInit {
         },
         error: () => {}
       });
-=======
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = err?.error?.message || 'Failed to load';
-        this.loading = false;
-      }
-    });
-    this.payrollService.getSalaryAssignments().subscribe({
-      next: (data) => { this.assignments = data || []; },
-      error: () => {}
-    });
-    this.payrollService.getLoanBalances().subscribe({
-      next: (data) => { this.loanAccounts = data || []; },
-      error: () => {}
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   onEmployeeTypeChange() {
     this.selectedEmployeeId = '';

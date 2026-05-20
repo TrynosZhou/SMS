@@ -4,12 +4,8 @@ import { AuthService } from '../../../services/auth.service';
 import { SettingsService } from '../../../services/settings.service';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-bulk-message',
-=======
-  selector: 'app-bulk-message',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './bulk-message.component.html',
+templateUrl: './bulk-message.component.html',
   styleUrls: ['./bulk-message.component.css']
 })
 export class BulkMessageComponent implements OnInit {

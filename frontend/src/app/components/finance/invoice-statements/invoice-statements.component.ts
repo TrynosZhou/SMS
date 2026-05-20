@@ -1,13 +1,8 @@
-<<<<<<< HEAD
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
-=======
-import { Component, OnInit } from '@angular/core';
-import { Router, ActivatedRoute } from '@angular/router';
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FinanceService } from '../../../services/finance.service';
 import { StudentService } from '../../../services/student.service';
@@ -16,12 +11,8 @@ import { SettingsService } from '../../../services/settings.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 
 @Component({
-<<<<<<< HEAD
   standalone: false,  selector: 'app-invoice-statements',
-=======
-  selector: 'app-invoice-statements',
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  templateUrl: './invoice-statements.component.html',
+templateUrl: './invoice-statements.component.html',
   styleUrls: ['./invoice-statements.component.css'],
   animations: [
     trigger('fadeInOut', [
@@ -41,13 +32,9 @@ import { trigger, state, style, transition, animate } from '@angular/animations'
     ])
   ]
 })
-<<<<<<< HEAD
 export class InvoiceStatementsComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-=======
-export class InvoiceStatementsComponent implements OnInit {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  invoices: any[] = [];
+invoices: any[] = [];
   students: any[] = [];
   selectedStudent = '';
   selectedStatus = '';
@@ -85,28 +72,18 @@ export class InvoiceStatementsComponent implements OnInit {
     public router: Router,
     private route: ActivatedRoute,
     private sanitizer: DomSanitizer,
-<<<<<<< HEAD
     private settingsService: SettingsService,
     private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit() {
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe((params) => {
-=======
-    private settingsService: SettingsService
-  ) { }
-
-  ngOnInit() {
-    // Get query parameters for filters
-    this.route.queryParams.subscribe(params => {
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-      if (params['studentId']) {
+if (params['studentId']) {
         this.selectedStudent = params['studentId'];
       }
       if (params['status']) {
         this.selectedStatus = params['status'];
       }
-<<<<<<< HEAD
       this.loadInvoices();
     });
 
@@ -137,24 +114,7 @@ export class InvoiceStatementsComponent implements OnInit {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-=======
-    });
-
-    if (this.authService.hasRole('parent')) {
-      const user = this.authService.getCurrentUser();
-      if (user?.parent?.students) {
-        this.students = user.parent.students;
-        if (this.students.length === 1) {
-          this.selectedStudent = this.students[0].id;
-        }
-      }
-    } else {
-      this.loadStudents();
-    }
-    this.loadInvoices();
-    this.loadSettings();
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   loadSettings() {
     this.settingsService.getSettings().subscribe({
@@ -177,7 +137,6 @@ export class InvoiceStatementsComponent implements OnInit {
 
   loadInvoices() {
     this.loading = true;
-<<<<<<< HEAD
     this.cdr.markForCheck();
     this.financeService
       .getInvoices(this.selectedStudent || undefined, this.selectedStatus || undefined)
@@ -196,22 +155,7 @@ export class InvoiceStatementsComponent implements OnInit {
           this.invoices = [];
         }
       });
-=======
-    this.financeService.getInvoices(
-      this.selectedStudent || undefined,
-      this.selectedStatus || undefined
-    ).subscribe({
-      next: (data: any) => {
-        this.invoices = data;
-        this.loading = false;
-      },
-      error: (err: any) => {
-        console.error(err);
-        this.loading = false;
-      }
-    });
->>>>>>> 0f0f1e8c884c64ff417aea43b8858de320e9afe7
-  }
+}
 
   onFilterChange() {
     // Update URL with query parameters
