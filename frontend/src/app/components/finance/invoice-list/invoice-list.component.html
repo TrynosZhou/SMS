@@ -9,6 +9,17 @@
     </div>
   </div>
 
+  <div *ngIf="success && !showNoteForm" class="alert alert-success page-feedback-alert" role="status">
+    <span class="alert-icon" aria-hidden="true">✅</span>
+    <span>{{ success }}</span>
+    <button type="button" class="alert-close" (click)="success = ''" aria-label="Dismiss">✕</button>
+  </div>
+  <div *ngIf="error && !showNoteForm" class="alert alert-error page-feedback-alert" role="alert">
+    <span class="alert-icon" aria-hidden="true">⚠️</span>
+    <span>{{ error }}</span>
+    <button type="button" class="alert-close" (click)="error = ''" aria-label="Dismiss">✕</button>
+  </div>
+
   <div class="invoice-actions-card">
     <div class="actions-row actions-row-primary">
       <button 
@@ -1418,7 +1429,7 @@
             type="button"
             class="btn btn-icon-refresh"
             (click)="refreshNoteData()"
-            [disabled]="loading || !selectedInvoice"
+            [disabled]="noteRefreshing || noteSubmitting || !selectedInvoice"
             title="Refresh invoice data">
             <span class="btn-icon" aria-hidden="true">🔄</span>
             <span>Refresh</span>
@@ -1476,6 +1487,21 @@
               </div>
           </div>
         </div>
+      </div>
+
+      <div *ngIf="noteSuccess" class="alert alert-success note-result-alert" role="status">
+        <span class="alert-icon" aria-hidden="true">✅</span>
+        <div class="note-result-text">
+          <strong>{{ noteForm.type === 'credit' ? 'Credit note confirmed' : 'Debit note confirmed' }}</strong>
+          <p>{{ noteSuccess }}</p>
+        </div>
+        <button type="button" class="alert-close" (click)="noteSuccess = ''" aria-label="Dismiss">✕</button>
+      </div>
+
+      <div *ngIf="noteError" class="alert alert-error note-result-alert" role="alert">
+        <span class="alert-icon" aria-hidden="true">⚠️</span>
+        <span class="note-result-text">{{ noteError }}</span>
+        <button type="button" class="alert-close" (click)="noteError = ''" aria-label="Dismiss">✕</button>
       </div>
 
       <div *ngIf="selectedInvoice" class="invoice-summary-card">
@@ -1542,12 +1568,16 @@
           </div>
         </div>
         <div class="form-actions">
-          <button type="button" class="btn btn-secondary" (click)="closeNoteForm()" [disabled]="loading">
-            Cancel
+          <button type="button" class="btn btn-secondary" (click)="closeNoteForm()" [disabled]="noteSubmitting">
+            {{ noteSuccess ? 'Close' : 'Cancel' }}
           </button>
-          <button type="submit" class="btn btn-primary" [disabled]="loading || !selectedInvoice">
-            <span *ngIf="!loading">{{ noteForm.type === 'credit' ? 'Apply Credit Note' : 'Apply Debit Note' }}</span>
-            <span *ngIf="loading" class="spinner-small"></span>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="noteSubmitting || !selectedInvoice || !noteForm.item"
+            *ngIf="!noteSuccess">
+            <span *ngIf="!noteSubmitting">{{ noteForm.type === 'credit' ? 'Apply Credit Note' : 'Apply Debit Note' }}</span>
+            <span *ngIf="noteSubmitting" class="spinner-small"></span>
           </button>
         </div>
       </form>

@@ -852,14 +852,17 @@ export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
     if (!item || !['tuition', 'transport', 'diningHall'].includes(item)) {
       return res.status(400).json({ message: 'Invalid cost item. Must be tuition, transport, or diningHall.' });
     }
-    if (!amount || amount <= 0) {
+    const amt = parseAmount(amount);
+    if (!amt || amt <= 0) {
       return res.status(400).json({ message: 'Amount is required and must be greater than 0' });
     }
 
     const invoiceRepository = AppDataSource.getRepository(Invoice);
+    const logRepo = AppDataSource.getRepository(PaymentLog);
 
     const invoice = await invoiceRepository.findOne({
-      where: { id }
+      where: { id },
+      relations: ['student', 'student.classEntity']
     });
 
     if (!invoice) {
@@ -867,18 +870,42 @@ export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
     }
 
     const currentAmount = parseAmount(invoice.amount);
-    const currentBalance = parseAmount(invoice.balance);
-    const delta = type === 'credit' ? -parseAmount(amount) : parseAmount(amount);
+    const paid = parseAmount(invoice.paidAmount);
+    const prev = parseAmount(invoice.previousBalance);
+    const prepaid = parseAmount(invoice.prepaidAmount);
+    const balanceBefore = Math.max(
+      0,
+      parseFloat((currentAmount + prev - paid - prepaid).toFixed(2))
+    );
 
-    const newAmount = currentAmount + delta;
-    const newBalance = currentBalance + delta;
+    if (type === 'credit' && amt > balanceBefore + 0.005) {
+      return res.status(400).json({
+        message: `Credit note cannot exceed the current balance (${balanceBefore.toFixed(2)}).`
+      });
+    }
 
-    invoice.amount = newAmount;
-    invoice.balance = newBalance;
+    const delta = type === 'credit' ? -amt : amt;
+
+    if (item === 'tuition') {
+      invoice.tuitionAmount = Math.max(0, parseFloat((parseAmount(invoice.tuitionAmount) + delta).toFixed(2)));
+    } else if (item === 'transport') {
+      (invoice as any).transportAmount = Math.max(
+        0,
+        parseFloat((parseAmount((invoice as any).transportAmount) + delta).toFixed(2))
+      );
+    } else {
+      invoice.diningHallAmount = Math.max(
+        0,
+        parseFloat((parseAmount(invoice.diningHallAmount) + delta).toFixed(2))
+      );
+    }
+
+    invoice.amount = Math.max(0, parseFloat((currentAmount + delta).toFixed(2)));
+    invoice.balance = Math.max(0, parseFloat((invoice.amount + prev - paid - prepaid).toFixed(2)));
 
     if (invoice.balance <= 0) {
       invoice.status = InvoiceStatus.PAID;
-    } else if (invoice.paidAmount && parseAmount(invoice.paidAmount) > 0) {
+    } else if (paid > 0) {
       invoice.status = InvoiceStatus.PARTIAL;
     } else {
       invoice.status = InvoiceStatus.PENDING;
@@ -895,7 +922,7 @@ export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
         ? 'Transport Fee'
         : 'Dining Hall Fee';
 
-    const signedAmount = parseAmount(amount).toFixed(2);
+    const signedAmount = amt.toFixed(2);
     const noteText =
       type === 'credit'
         ? `Credit Note (${itemLabel} -${signedAmount})`
@@ -909,9 +936,29 @@ export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
 
     const savedInvoice = await invoiceRepository.save(invoice);
 
+    const payer = req.user;
+    const payerName = payer ? `${payer.firstName || ''} ${payer.lastName || ''}`.trim() : null;
+    const adjustmentLog = logRepo.create({
+      invoiceId: invoice.id,
+      studentId: invoice.studentId,
+      amountPaid: delta,
+      paymentDate: new Date(),
+      paymentMethod: 'ADJUSTMENT',
+      receiptNumber: null,
+      payerUserId: payer?.id || null,
+      payerName: payerName || null,
+      notes: noteText
+    });
+    await logRepo.save(adjustmentLog);
+
+    const invoiceForClient = await invoiceRepository.findOne({
+      where: { id: savedInvoice.id },
+      relations: ['student', 'student.classEntity']
+    });
+
     res.json({
       message: type === 'credit' ? 'Credit Note applied successfully' : 'Debit Note applied successfully',
-      invoice: savedInvoice
+      invoice: invoiceForClient ?? savedInvoice
     });
   } catch (error: any) {
     console.error('Error applying invoice note:', error);
@@ -1627,7 +1674,6 @@ export const getStudentBalance = async (req: Request, res: Response) => {
 
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
-    const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
     const settingsRepository = AppDataSource.getRepository(Settings);
 
     // Try to find student by ID (UUID), by studentNumber, or by lastName/firstName
@@ -1653,7 +1699,16 @@ export const getStudentBalance = async (req: Request, res: Response) => {
     }
 
     if (!student) {
-      console.log(`[getStudentBalance] Not found by ID or studentNumber, trying lastName search for: ${trimmedStudentId}`);
+      const mapStudentMatches = (rows: Student[]) =>
+        rows.map((s) => ({
+          studentId: s.id,
+          studentNumber: s.studentNumber,
+          firstName: s.firstName,
+          lastName: s.lastName,
+          fullName: `${s.firstName} ${s.lastName}`,
+          className: s.classEntity ? s.classEntity.name : null
+        }));
+
       const studentsByLastName = await studentRepository
         .createQueryBuilder('student')
         .leftJoinAndSelect('student.classEntity', 'classEntity')
@@ -1662,23 +1717,9 @@ export const getStudentBalance = async (req: Request, res: Response) => {
 
       if (studentsByLastName.length === 1) {
         student = studentsByLastName[0];
-        console.log(`[getStudentBalance] Student found by lastName: ${student.studentNumber} (ID: ${student.id})`);
       } else if (studentsByLastName.length > 1) {
-        console.log(`[getStudentBalance] Multiple students found with lastName "${trimmedStudentId}"`);
-        const matches = studentsByLastName.map(s => ({
-          studentId: s.id,
-          studentNumber: s.studentNumber,
-          firstName: s.firstName,
-          lastName: s.lastName,
-          fullName: `${s.firstName} ${s.lastName}`,
-          className: s.classEntity ? s.classEntity.name : null
-        }));
-        return res.json({
-          multipleMatches: true,
-          matches
-        });
+        return res.json({ multipleMatches: true, matches: mapStudentMatches(studentsByLastName) });
       } else {
-        console.log(`[getStudentBalance] Not found by lastName, trying firstName search for: ${trimmedStudentId}`);
         const studentsByFirstName = await studentRepository
           .createQueryBuilder('student')
           .leftJoinAndSelect('student.classEntity', 'classEntity')
@@ -1687,45 +1728,46 @@ export const getStudentBalance = async (req: Request, res: Response) => {
 
         if (studentsByFirstName.length === 1) {
           student = studentsByFirstName[0];
-          console.log(`[getStudentBalance] Student found by firstName: ${student.studentNumber} (ID: ${student.id})`);
         } else if (studentsByFirstName.length > 1) {
-          console.log(`[getStudentBalance] Multiple students found with firstName "${trimmedStudentId}"`);
-          const matches = studentsByFirstName.map(s => ({
-            studentId: s.id,
-            studentNumber: s.studentNumber,
-            firstName: s.firstName,
-            lastName: s.lastName,
-            fullName: `${s.firstName} ${s.lastName}`,
-            className: s.classEntity ? s.classEntity.name : null
-          }));
-          return res.json({
-            multipleMatches: true,
-            matches
-          });
+          return res.json({ multipleMatches: true, matches: mapStudentMatches(studentsByFirstName) });
         } else {
-          console.log(`[getStudentBalance] Student not found for: ${trimmedStudentId}`);
-          return res.status(404).json({
-            message: 'Student not found. Please check the Student ID, Student Number, Last Name, or First Name.'
-          });
+          const likeTerm = `%${trimmedStudentId}%`;
+          const partialMatches = await studentRepository
+            .createQueryBuilder('student')
+            .leftJoinAndSelect('student.classEntity', 'classEntity')
+            .where('LOWER(student.lastName) LIKE LOWER(:term)', { term: likeTerm })
+            .orWhere('LOWER(student.firstName) LIKE LOWER(:term)', { term: likeTerm })
+            .orWhere('LOWER(student.studentNumber) LIKE LOWER(:term)', { term: likeTerm })
+            .orWhere(
+              "LOWER(CONCAT(COALESCE(student.firstName, ''), ' ', COALESCE(student.lastName, ''))) LIKE LOWER(:term)",
+              { term: likeTerm }
+            )
+            .orWhere(
+              "LOWER(CONCAT(COALESCE(student.lastName, ''), ' ', COALESCE(student.firstName, ''))) LIKE LOWER(:term)",
+              { term: likeTerm }
+            )
+            .take(25)
+            .getMany();
+
+          if (partialMatches.length === 1) {
+            student = partialMatches[0];
+          } else if (partialMatches.length > 1) {
+            return res.json({ multipleMatches: true, matches: mapStudentMatches(partialMatches) });
+          } else {
+            return res.status(404).json({
+              message: 'Student not found. Try student number, full name, or a more specific search.'
+            });
+          }
         }
       }
     }
     
     console.log(`[getStudentBalance] Student found: ${student.studentNumber} (ID: ${student.id}, userId: ${student.userId || 'null'})`);
 
-    // Query invoices using multiple criteria to handle reference mismatches
-    const invoiceQueryBuilder = invoiceRepository
-      .createQueryBuilder('invoice')
-      .leftJoinAndSelect('invoice.student', 'student')
-      .where('invoice.studentId = :studentId', { studentId: student.id })
-      .orWhere('student.studentNumber = :studentNumber', { studentNumber: student.studentNumber })
-      .orderBy('invoice.createdAt', 'DESC');
-
-    const allInvoicesRaw = await invoiceQueryBuilder.getMany();
-    const allInvoices = allInvoicesRaw.filter(inv => 
-      inv.studentId === student.id || 
-      (inv.student && inv.student.studentNumber === student.studentNumber)
-    );
+    const allInvoices = await invoiceRepository.find({
+      where: { studentId: student.id },
+      order: { createdAt: 'DESC' }
+    });
 
     const nonVoidInvoices = allInvoices.filter((inv) => !inv.isVoided);
     const lastInvoice = nonVoidInvoices.length > 0 ? nonVoidInvoices[0] : null;
@@ -1739,8 +1781,6 @@ export const getStudentBalance = async (req: Request, res: Response) => {
     let currentBalance = 0;
     let totalPrepaidAmount = 0;
 
-    console.log(`[getStudentBalance] Found ${allInvoices.length} invoice(s) for student ${student.studentNumber} (${student.id})`);
-
     for (const invoice of nonVoidInvoices) {
       const owed = computeInvoiceOwedAmount(invoice, student, configuredDeskFee);
       if (owed > 0.005) {
@@ -1748,20 +1788,6 @@ export const getStudentBalance = async (req: Request, res: Response) => {
       }
       totalPrepaidAmount = parseFloat(
         (totalPrepaidAmount + parseAmount(invoice.prepaidAmount)).toFixed(2)
-      );
-      console.log(
-        `[getStudentBalance] Invoice ${invoice.invoiceNumber} (${invoice.term}): ` +
-        `storedBalance=${parseAmount(invoice.balance)}, amount=${parseAmount(invoice.amount)}, ` +
-        `diningHall=${parseAmount(invoice.diningHallAmount)}, owed=${owed}`
-      );
-    }
-
-    if (!lastInvoice) {
-      console.log(`[getStudentBalance] No invoices found, balance = 0`);
-    } else {
-      const lastOwed = computeInvoiceOwedAmount(lastInvoice, student, configuredDeskFee);
-      console.log(
-        `[getStudentBalance] Latest invoice ${lastInvoice.invoiceNumber}: owed=${lastOwed}, totalOutstanding=${currentBalance}`
       );
     }
 

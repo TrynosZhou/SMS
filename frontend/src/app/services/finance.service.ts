@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, throwError, from } from 'rxjs';
-import { map, catchError, switchMap } from 'rxjs/operators';
+import { map, catchError, switchMap, timeout } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { PaginatedResponse } from '../types/pagination';
 
@@ -131,7 +131,18 @@ export class FinanceService {
   }
 
 getStudentBalance(studentId: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/finance/balance`, { params: { studentId } });
+    return this.http.get(`${this.apiUrl}/finance/balance`, { params: { studentId } }).pipe(
+      timeout(45000),
+      catchError((error: any) => {
+        if (error?.name === 'TimeoutError') {
+          return throwError(() => ({
+            status: 408,
+            error: { message: 'Balance lookup timed out. Try the student number or ID.' }
+          }));
+        }
+        return throwError(() => error);
+      })
+    );
   }
 
   createUniformCharge(studentId: string, items: { itemId: string; quantity: number }[], description?: string): Observable<any> {
@@ -160,11 +171,32 @@ getStudentBalance(studentId: string): Observable<any> {
   }
 
   applyInvoiceNote(invoiceId: string, payload: { type: 'credit' | 'debit'; item: string; amount: number }): Observable<any> {
-    return this.http.put(`${this.apiUrl}/finance/${invoiceId}/note`, payload);
+    const id = String(invoiceId || '').trim();
+    return this.http.put(`${this.apiUrl}/finance/${id}/note`, payload).pipe(
+      timeout(45000),
+      catchError((error: any) => {
+        if (error?.name === 'TimeoutError') {
+          return throwError(() => ({
+            status: 408,
+            error: { message: 'Applying note timed out. Please try again.' }
+          }));
+        }
+        return throwError(() => error);
+      })
+    );
   }
 
   getInvoice(invoiceId: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/finance`, { params: { invoiceId } });
+    return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/finance`, {
+      params: { invoiceId, page: 1, limit: 1 }
+    }).pipe(
+      map((response) => {
+        if (!response) return null;
+        if (Array.isArray(response)) return response[0] ?? null;
+        if (Array.isArray(response.data)) return response.data[0] ?? null;
+        return null;
+      })
+    );
   }
 
   getInvoicePDF(invoiceId: string): Observable<{ blob: Blob; filename: string }> {

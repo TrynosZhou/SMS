@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { firstValueFrom, Subject } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { finalize, takeUntil } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
@@ -79,6 +79,10 @@ invoices: any[] = [];
   noteLastName = '';
   noteSearchQuery = '';
   noteCandidates: any[] = [];
+  noteSubmitting = false;
+  noteRefreshing = false;
+  noteSuccess = '';
+  noteError = '';
 
   showCorrectTransactionModal = false;
   correctingInvoice: any = null;
@@ -1525,6 +1529,8 @@ invoices: any[] = [];
     this.showNoteForm = true;
     this.error = '';
     this.success = '';
+    this.noteSuccess = '';
+    this.noteError = '';
   }
 
   openDebitNoteForm() {
@@ -1540,10 +1546,16 @@ invoices: any[] = [];
     this.showNoteForm = true;
     this.error = '';
     this.success = '';
+    this.noteSuccess = '';
+    this.noteError = '';
   }
 
   closeNoteForm() {
     this.showNoteForm = false;
+    this.noteSubmitting = false;
+    this.noteRefreshing = false;
+    this.noteSuccess = '';
+    this.noteError = '';
     this.selectedInvoice = null;
     this.noteStudentId = '';
     this.noteLookupError = '';
@@ -1556,81 +1568,147 @@ invoices: any[] = [];
   }
 
   refreshNoteData() {
-    if (!this.selectedInvoice?.id) return;
-    this.loading = true;
+    const invoiceId = this.normalizeInvoiceId(this.selectedInvoice?.id);
+    if (!invoiceId) return;
+
+    this.noteRefreshing = true;
     this.error = '';
-    this.financeService.getInvoice(this.selectedInvoice.id).subscribe({
-      next: (invoice: any) => {
-        this.selectedInvoice = invoice;
-        this.loading = false;
-      },
-      error: (err) => {
-        this.loading = false;
-        this.error = err?.error?.message || 'Failed to refresh invoice data.';
-        setTimeout(() => (this.error = ''), 5000);
-      }
-    });
+    this.cdr.detectChanges();
+
+    this.financeService
+      .getInvoice(invoiceId)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.noteRefreshing = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (invoice: any) => {
+          this.selectedInvoice = invoice;
+        },
+        error: (err) => {
+          this.error = err?.error?.message || 'Failed to refresh invoice data.';
+          setTimeout(() => (this.error = ''), 5000);
+        }
+      });
+  }
+
+  private normalizeInvoiceId(id: unknown): string {
+    const raw = String(id ?? '').trim();
+    if (!raw) return '';
+    return raw.replace(/:.*$/, '');
+  }
+
+  private noteItemLabel(item: string): string {
+    if (item === 'tuition') return 'Tuition';
+    if (item === 'transport') return 'Transport Fee';
+    if (item === 'diningHall') return 'Dining Hall Fee';
+    return 'Fees';
   }
 
   submitNote() {
+    this.noteSuccess = '';
+    this.noteError = '';
+
     if (!this.selectedInvoice) {
-      this.error = 'Please select an invoice first.';
+      this.noteError = 'Please select an invoice first.';
       return;
     }
     if (!this.noteForm.item) {
-      this.error = 'Please select a cost item to adjust.';
+      this.noteError = 'Please select a cost item to adjust.';
       return;
     }
-    if (!this.noteForm.amount || this.noteForm.amount <= 0) {
-      this.error = 'Please enter a valid amount greater than 0.';
-      return;
-    }
-    if (this.noteForm.type === 'credit' && this.selectedInvoice && this.noteForm.amount > this.selectedInvoice.balance) {
-      this.error = 'Credit note amount cannot be greater than the current balance.';
+    const noteAmount = parseFloat(String(this.noteForm.amount ?? 0));
+    if (!Number.isFinite(noteAmount) || noteAmount <= 0) {
+      this.noteError = 'Please enter a valid amount greater than 0.';
       return;
     }
 
-    this.loading = true;
-    this.error = '';
-    this.success = '';
+    const invoiceBalance = parseFloat(String(this.selectedInvoice.balance ?? 0));
+    if (this.noteForm.type === 'credit' && noteAmount > invoiceBalance + 0.005) {
+      this.noteError = 'Credit note amount cannot be greater than the current balance.';
+      return;
+    }
+
+    const invoiceId = this.normalizeInvoiceId(this.selectedInvoice.id);
+    if (!invoiceId) {
+      this.noteError = 'Invalid invoice. Please search for the student again.';
+      return;
+    }
+
+    this.noteSubmitting = true;
+    this.cdr.detectChanges();
 
     const payload = {
       type: this.noteForm.type,
       item: this.noteForm.item,
-      amount: this.noteForm.amount
+      amount: noteAmount
     };
 
-    this.financeService.applyInvoiceNote(this.selectedInvoice.id, payload).subscribe({
-      next: (response: any) => {
-        const updatedInvoice = response.invoice || response;
-        const index = this.invoices.findIndex(inv => inv.id === updatedInvoice.id);
-        if (index !== -1) {
-          this.invoices[index] = updatedInvoice;
-        }
-        const filteredIndex = this.filteredInvoices.findIndex(inv => inv.id === updatedInvoice.id);
-        if (filteredIndex !== -1) {
-          this.filteredInvoices[filteredIndex] = updatedInvoice;
-        }
-        if (this.selectedInvoice && this.selectedInvoice.id === updatedInvoice.id) {
-          this.selectedInvoice = updatedInvoice;
-        }
+    this.financeService
+      .applyInvoiceNote(invoiceId, payload)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.noteSubmitting = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (response: any) => {
+          try {
+            const updatedInvoice = response?.invoice ?? response;
+            if (!updatedInvoice?.id) {
+              this.noteError = 'Unexpected response from server. Please refresh and try again.';
+              return;
+            }
 
-        this.loading = false;
-        this.success = this.noteForm.type === 'credit'
-          ? 'Credit Note applied successfully.'
-          : 'Debit Note applied successfully.';
-        setTimeout(() => this.success = '', 5000);
-      },
-      error: (err: any) => {
-        this.loading = false;
-        if (err.status === 401) {
-          this.error = 'Authentication required. Please log in again.';
-        } else {
-          this.error = err.error?.message || 'Failed to apply note';
+            const index = this.invoices.findIndex((inv) => inv.id === updatedInvoice.id);
+            if (index !== -1) {
+              this.invoices[index] = updatedInvoice;
+            }
+            const filteredIndex = this.filteredInvoices.findIndex((inv) => inv.id === updatedInvoice.id);
+            if (filteredIndex !== -1) {
+              this.filteredInvoices[filteredIndex] = updatedInvoice;
+            }
+            this.selectedInvoice = updatedInvoice;
+
+            const itemLabel = this.noteItemLabel(this.noteForm.item);
+            const student = updatedInvoice.student;
+            const studentName = student
+              ? `${student.firstName || ''} ${student.lastName || ''}`.trim()
+              : 'Student';
+            const invNum = updatedInvoice.invoiceNumber || updatedInvoice.id;
+            const newBal = parseFloat(String(updatedInvoice.balance ?? 0)).toFixed(2);
+            const amtStr = noteAmount.toFixed(2);
+
+            if (this.noteForm.type === 'credit') {
+              this.noteSuccess =
+                `${this.currencySymbol} ${amtStr} was deducted from ${itemLabel} for ${studentName} ` +
+                `(Invoice ${invNum}). Updated balance: ${this.currencySymbol} ${newBal}.`;
+            } else {
+              this.noteSuccess =
+                `${this.currencySymbol} ${amtStr} was added to ${itemLabel} for ${studentName} ` +
+                `(Invoice ${invNum}). Updated balance: ${this.currencySymbol} ${newBal}.`;
+            }
+            this.noteError = '';
+            this.success = this.noteSuccess;
+            this.cdr.markForCheck();
+          } catch {
+            this.noteError = 'Note was saved but the screen could not refresh. Click Refresh to update.';
+          }
+        },
+        error: (err: any) => {
+          this.noteSuccess = '';
+          if (err.status === 401) {
+            this.noteError = 'Authentication required. Please log in again.';
+          } else {
+            this.noteError = err?.error?.message || 'Failed to apply note';
+          }
         }
-        setTimeout(() => this.error = '', 5000);
-      }
-    });
+      });
   }
 
   private base64ToBlob(base64: string, mimeType: string): Blob {

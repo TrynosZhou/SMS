@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
 import { FinanceService } from '../../../services/finance.service';
@@ -47,7 +47,7 @@ query = '';
   ) {}
 
   ngOnInit(): void {
-    activatePageLoad(this.router, this.destroy$, '/finance/balance-enquiry', () => this.loadSettings());
+    activatePageLoad(this.router, this.destroy$, '/balance-enquiry', () => this.loadSettings());
   }
 
   ngOnDestroy(): void {
@@ -111,7 +111,7 @@ query = '';
       this.error = 'Please enter a Student ID, Name, or Student Number';
       return;
     }
-    
+
     this.loading = true;
     this.error = '';
     this.success = '';
@@ -120,31 +120,32 @@ query = '';
     this.selectedMatchId = '';
     this.latestInvoice = null;
     this.clearPreview();
-    
-    this.cdr.markForCheck();
+
+    this.cdr.detectChanges();
     this.financeService
       .getStudentBalance(this.query.trim())
       .pipe(
+        takeUntil(this.destroy$),
         finalize(() => {
           this.loading = false;
-          this.cdr.markForCheck();
+          this.cdr.detectChanges();
         })
       )
       .subscribe({
-        next: async (data: any) => {
-          if (data && data.multipleMatches && Array.isArray(data.matches) && data.matches.length > 0) {
+        next: (data: any) => {
+          if (data?.multipleMatches && Array.isArray(data.matches) && data.matches.length > 0) {
             this.matchingStudents = data.matches;
             return;
           }
           this.studentData = data;
-          await this.loadLatestInvoice();
-          this.cdr.markForCheck();
+          this.loadLatestInvoiceInBackground();
         },
         error: (err: any) => {
-          this.error = err?.error?.message || 'Student not found. Please check the details and try again.';
+          this.error =
+            err?.error?.message || 'Student not found. Please check the details and try again.';
         }
       });
-}
+  }
 
   selectStudent(studentId: string): void {
     this.selectedMatchId = studentId;
@@ -153,38 +154,71 @@ query = '';
 
   onSelectMatch(): void {
     if (!this.selectedMatchId) return;
-    
+
     this.loading = true;
     this.error = '';
     this.success = '';
     this.studentData = null;
     this.latestInvoice = null;
     this.clearPreview();
-    
-    this.financeService.getStudentBalance(this.selectedMatchId).subscribe({
-      next: async (data: any) => {
-        this.loading = false;
-        this.studentData = data;
-        this.matchingStudents = [];
-        await this.loadLatestInvoice();
-      },
-      error: (err: any) => {
-        this.loading = false;
-        this.error = err?.error?.message || 'Failed to get balance';
-      }
-    });
+
+    this.cdr.detectChanges();
+    this.financeService
+      .getStudentBalance(this.selectedMatchId)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.loading = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (data: any) => {
+          this.studentData = data;
+          this.matchingStudents = [];
+          this.loadLatestInvoiceInBackground();
+        },
+        error: (err: any) => {
+          this.error = err?.error?.message || 'Failed to get balance';
+        }
+      });
+  }
+
+  /** Load only the latest invoice (by id from balance API), not the full invoice list. */
+  private loadLatestInvoiceInBackground(): void {
+    const invoiceId = this.studentData?.lastInvoiceId;
+    if (!invoiceId) {
+      this.latestInvoice = null;
+      return;
+    }
+
+    this.financeService
+      .getInvoice(invoiceId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (invoice: any) => {
+          this.latestInvoice = invoice || null;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.latestInvoice = null;
+        }
+      });
   }
 
   async loadLatestInvoice(): Promise<void> {
-    if (!this.studentData?.studentId) return;
-    
+    const invoiceId = this.studentData?.lastInvoiceId;
+    if (!invoiceId) {
+      this.latestInvoice = null;
+      return;
+    }
     try {
-      const invoices = await firstValueFrom(this.financeService.getInvoices(this.studentData.studentId, undefined));
-      if (Array.isArray(invoices) && invoices.length > 0) {
-        this.latestInvoice = invoices[0];
-      }
-    } catch (e) {
-      console.error('Error loading invoice:', e);
+      const invoice = await firstValueFrom(
+        this.financeService.getInvoice(invoiceId).pipe(takeUntil(this.destroy$))
+      );
+      this.latestInvoice = invoice || null;
+    } catch {
+      this.latestInvoice = null;
     }
   }
 
