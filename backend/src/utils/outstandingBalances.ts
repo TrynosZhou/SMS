@@ -3,7 +3,7 @@ import { AppDataSource } from '../config/database';
 import { Invoice } from '../entities/Invoice';
 import { Student } from '../entities/Student';
 import { Settings } from '../entities/Settings';
-import { computeInvoiceFeesOutstanding, getConfiguredDeskFee } from './invoiceFeesBalance';
+import { computeInvoiceOwedAmount, getConfiguredDeskFee } from './invoiceFeesBalance';
 import { parseAmount } from './numberUtils';
 
 export type OutstandingBalanceRow = {
@@ -19,16 +19,6 @@ export type OutstandingBalanceRow = {
 };
 
 const NOT_VOIDED = 'COALESCE(invoice.isVoided, false) = false';
-
-function invoiceOwedAmount(
-  invoice: Invoice,
-  student: Student,
-  configuredDeskFee: number
-): number {
-  const fromColumn = parseAmount(invoice.balance);
-  const computed = computeInvoiceFeesOutstanding(invoice, student, configuredDeskFee);
-  return parseFloat(Math.max(fromColumn, computed).toFixed(2));
-}
 
 /**
  * Students who owe money on any non-voided invoice.
@@ -64,7 +54,7 @@ export async function fetchOutstandingBalanceRows(): Promise<OutstandingBalanceR
 
   for (const invoice of openInvoices) {
     const owed = invoice.student
-      ? invoiceOwedAmount(invoice, invoice.student, configuredDeskFee)
+      ? computeInvoiceOwedAmount(invoice, invoice.student, configuredDeskFee)
       : parseAmount(invoice.balance);
 
     if (owed <= 0.005) {

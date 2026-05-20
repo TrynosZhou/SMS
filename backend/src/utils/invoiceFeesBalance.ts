@@ -21,6 +21,19 @@ export type LogisticsFeesForOutstanding = {
   diningHallCost: number;
 };
 
+const tryNum = (v: unknown): number => (isFinite(Number(v)) ? Number(v) : 0);
+
+/** Term fee lines on the invoice (tuition, transport, DH, registration, desk). */
+export function canonicalInvoiceTermFees(invoice: Invoice | null | undefined): number {
+  if (!invoice) return 0;
+  const tuition = tryNum(invoice.tuitionAmount);
+  const transport = tryNum(invoice.transportAmount);
+  const dining = tryNum(invoice.diningHallAmount);
+  const registration = tryNum(invoice.registrationAmount);
+  const desk = tryNum(invoice.deskFeeAmount);
+  return parseFloat((tuition + transport + dining + registration + desk).toFixed(2));
+}
+
 /**
  * Outstanding tuition/fees for one invoice — aligned with getOutstandingBalances (JSON)
  * and getStudentBalance: uses amount + previousBalance − paid − prepaid,
@@ -37,8 +50,8 @@ export function computeInvoiceFeesOutstanding(
 ): number {
   if (!invoice || invoice.isVoided) return 0;
 
-  const tryNum = (v: any) => (isFinite(Number(v)) ? Number(v) : 0);
-  const invoiceAmount = tryNum(invoice.amount);
+  const lineItemTotal = canonicalInvoiceTermFees(invoice);
+  const invoiceAmount = Math.max(tryNum(invoice.amount), lineItemTotal);
   let previousBalance = tryNum(invoice.previousBalance);
   const paidAmount = tryNum(invoice.paidAmount);
   const prepaidAmount = tryNum(invoice.prepaidAmount);
@@ -69,6 +82,21 @@ export function computeInvoiceFeesOutstanding(
   snap.previousBalance = previousBalance;
   const remaining = remainingBucketsAfterAppliedTotals(snap, tr, dh);
   return Math.max(0, outstandingExcludingTransportBucket(remaining));
+}
+
+/**
+ * Amount owed on one invoice — same rules as outstanding-fees report:
+ * max(persisted balance, computed from line items / amount).
+ */
+export function computeInvoiceOwedAmount(
+  invoice: Invoice | null | undefined,
+  student: Student | null | undefined,
+  configuredDeskFee: number
+): number {
+  if (!invoice || invoice.isVoided) return 0;
+  const fromColumn = tryNum(invoice.balance);
+  const computed = computeInvoiceFeesOutstanding(invoice, student, configuredDeskFee);
+  return parseFloat(Math.max(fromColumn, computed).toFixed(2));
 }
 
 /**

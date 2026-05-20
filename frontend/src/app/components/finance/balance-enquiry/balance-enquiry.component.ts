@@ -309,14 +309,8 @@ query = '';
     pdf.text(`Generated: ${new Date().toLocaleString()}`, 14, startY + 16);
 
     const tryNum = (v: any) => isFinite(Number(v)) ? Number(v) : 0;
-    const totalAmountForBal = invoice ? tryNum(invoice.amount) : 0;
-    const previousBalanceForBal = invoice ? tryNum((invoice as any).previousBalance) : 0;
-    const paidAmountForBal = invoice ? tryNum((invoice as any).paidAmount) : 0;
-    const prepaidAmountForBal = invoice ? tryNum((invoice as any).prepaidAmount) : 0;
-    const computedBalanceForStatement = invoice
-      ? Math.max(0, (totalAmountForBal + previousBalanceForBal) - paidAmountForBal - prepaidAmountForBal)
-      : Math.max(0, tryNum(student.balance));
-    const bal = computedBalanceForStatement;
+    // Use API balance (same rules as outstanding-fees / record payment)
+    const bal = Math.max(0, tryNum(student.balance));
     
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(bal > 1000 ? 220 : 37, bal > 1000 ? 38 : 99, bal > 1000 ? 38 : 235);
@@ -419,7 +413,17 @@ query = '';
         }
       }
 
-      const invBalance = Math.max(0, (totalAmount + previousBalance) - paidAmount - prepaidAmount);
+      const lineItemSubtotal =
+        tryNum(invoice.tuitionAmount) +
+        tryNum(invoice.diningHallAmount) +
+        tryNum((invoice as any).transportAmount) +
+        tryNum((invoice as any).registrationAmount) +
+        tryNum((invoice as any).deskFeeAmount);
+      const effectiveAmount = Math.max(totalAmount, lineItemSubtotal);
+      const invBalance = Math.max(
+        0,
+        Math.max(bal, parseFloat((effectiveAmount + previousBalance - paidAmount - prepaidAmount).toFixed(2)))
+      );
       const computedSubtotal = items.reduce((sum, row) => sum + tryNum(row.amount), 0);
       const subtotalToShow = computedSubtotal > 0 ? computedSubtotal : totalAmount;
       

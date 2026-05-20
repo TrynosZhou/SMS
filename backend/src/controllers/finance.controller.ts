@@ -13,6 +13,7 @@ import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
 import { fetchOutstandingBalanceRows } from '../utils/outstandingBalances';
+import { computeInvoiceOwedAmount, getConfiguredDeskFee } from '../utils/invoiceFeesBalance';
 import { fetchExemptionReportRows } from '../utils/exemptionReport';
 import { syncExemptionInvoicesForStudent } from '../utils/exemptionInvoice';
 import { createExemptionReportPDF } from '../utils/exemptionReportPdfGenerator';
@@ -1730,60 +1731,60 @@ export const getStudentBalance = async (req: Request, res: Response) => {
       (inv.student && inv.student.studentNumber === student.studentNumber)
     );
 
-    const lastInvoice = allInvoices.length > 0 ? allInvoices[0] : null;
+    const nonVoidInvoices = allInvoices.filter((inv) => !inv.isVoided);
+    const lastInvoice = nonVoidInvoices.length > 0 ? nonVoidInvoices[0] : null;
+
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
+    });
+    const configuredDeskFee = getConfiguredDeskFee(settingsList[0] ?? null);
 
     let currentBalance = 0;
     let totalPrepaidAmount = 0;
-    
+
     console.log(`[getStudentBalance] Found ${allInvoices.length} invoice(s) for student ${student.studentNumber} (${student.id})`);
-    
+
+    for (const invoice of nonVoidInvoices) {
+      const owed = computeInvoiceOwedAmount(invoice, student, configuredDeskFee);
+      if (owed > 0.005) {
+        currentBalance = parseFloat((currentBalance + owed).toFixed(2));
+      }
+      totalPrepaidAmount = parseFloat(
+        (totalPrepaidAmount + parseAmount(invoice.prepaidAmount)).toFixed(2)
+      );
+      console.log(
+        `[getStudentBalance] Invoice ${invoice.invoiceNumber} (${invoice.term}): ` +
+        `storedBalance=${parseAmount(invoice.balance)}, amount=${parseAmount(invoice.amount)}, ` +
+        `diningHall=${parseAmount(invoice.diningHallAmount)}, owed=${owed}`
+      );
+    }
+
     if (!lastInvoice) {
-      currentBalance = 0;
       console.log(`[getStudentBalance] No invoices found, balance = 0`);
     } else {
-      // Derive balance from the same invoice components used by statements/receipts,
-      // instead of trusting the persisted balance field, which may include legacy
-      // desk-fee or adjustment artefacts.
-      const invAmount = parseAmount(lastInvoice.amount);
-      const invPrevBalance = parseAmount(lastInvoice.previousBalance);
-      const invPaid = parseAmount(lastInvoice.paidAmount);
-      const invPrepaid = parseAmount(lastInvoice.prepaidAmount);
-
-      currentBalance = Math.max(
-        0,
-        parseFloat((invAmount + invPrevBalance - invPaid - invPrepaid).toFixed(2))
-      );
-      totalPrepaidAmount = Math.max(0, parseFloat(invPrepaid.toFixed(2)));
-
+      const lastOwed = computeInvoiceOwedAmount(lastInvoice, student, configuredDeskFee);
       console.log(
-        `[getStudentBalance] Latest invoice ${lastInvoice.invoiceNumber}: ` +
-        `amount=${invAmount}, previousBalance=${invPrevBalance}, paid=${invPaid}, ` +
-        `prepaid=${invPrepaid}, derivedBalance=${currentBalance}`
+        `[getStudentBalance] Latest invoice ${lastInvoice.invoiceNumber}: owed=${lastOwed}, totalOutstanding=${currentBalance}`
       );
-      for (const invoice of allInvoices) {
-        const invBalStored = parseAmount(invoice.balance);
-        const invPrev = parseAmount(invoice.previousBalance);
-        console.log(
-          `[getStudentBalance] Invoice ${invoice.invoiceNumber} (${invoice.term}): ` +
-          `storedBalance=${invBalStored}, previousBalance=${invPrev}, amount=${parseAmount(invoice.amount)}`
-        );
-      }
     }
 
     const lastInvoiceAmount = lastInvoice ? parseAmount(lastInvoice.amount) : 0;
-    const lastInvoiceBalance = currentBalance;
+    const lastInvoiceBalance = lastInvoice
+      ? computeInvoiceOwedAmount(lastInvoice, student, configuredDeskFee)
+      : 0;
     let previousBalance = lastInvoice ? parseAmount(lastInvoice.previousBalance) : 0;
     let paidAmount = lastInvoice ? parseAmount(lastInvoice.paidAmount) : 0;
     if (lastInvoice) {
-      // Ensure response fields reflect the same corrected values used to compute currentBalance.
       previousBalance = Math.max(
         0,
         parseFloat(parseAmount((lastInvoice as any).previousBalance ?? 0).toFixed(2))
       );
+      const invPrepaid = parseAmount(lastInvoice.prepaidAmount);
       paidAmount = Math.max(
         0,
         parseFloat(
-          (Number(lastInvoiceAmount) + Number(previousBalance) - Number(currentBalance) - Number(totalPrepaidAmount)).toFixed(2)
+          (Number(lastInvoiceAmount) + Number(previousBalance) - Number(lastInvoiceBalance) - Number(invPrepaid)).toFixed(2)
         )
       );
     }
