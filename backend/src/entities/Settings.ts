@@ -21,6 +21,14 @@ export class Settings {
     transportCost?: number; // School transport cost for day scholars
     diningHallCost?: number; // Dining hall (DH) cost for day scholars
     otherFees?: { name: string; amount: number }[];
+    /** Shown on invoice statement & payment receipt PDFs for bank transfer guidance */
+    paymentBanking?: {
+      accountName?: string;
+      bankName?: string;
+      branch?: string;
+      accountNumber?: string;
+      paymentReferenceHint?: string;
+    };
   } | null;
 
   // Grade Thresholds (JSON)

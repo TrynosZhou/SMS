@@ -1,0 +1,16 @@
+<ng-container *ngIf="!loading && allowed">
+  <ng-content></ng-content>
+</ng-container>
+
+<div class="feature-gate-locked" *ngIf="!loading && !allowed" role="region" [attr.aria-label]="label + ' locked'">
+  <div class="feature-gate-icon" aria-hidden="true">🔒</div>
+  <h3 class="feature-gate-title">{{ label }}</h3>
+  <p class="feature-gate-message">Available on a higher plan</p>
+  <p class="feature-gate-tier" *ngIf="licenseService.getTierDisplayName() as tier">
+    Current plan: <strong>{{ tier }}</strong>
+  </p>
+  <button type="button" class="btn btn-primary feature-gate-upgrade" (click)="onUpgrade()">
+    Upgrade
+  </button>
+</div>
+

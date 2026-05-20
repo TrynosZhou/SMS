@@ -106,6 +106,8 @@ import { InventoryHubComponent } from './components/inventory/inventory-hub/inve
 import { StudentInventoryComponent } from './components/inventory/student-inventory/student-inventory.component';
 import { TeacherInventoryRecordComponent } from './components/teacher/teacher-inventory-record/teacher-inventory-record.component';
 import { StudentInventoryPanelComponent } from './components/inventory/student-inventory-panel/student-inventory-panel.component';
+import { FeatureGateComponent } from './components/shared/feature-gate/feature-gate.component';
+import { LicenseConfigComponent } from './components/admin/license-config/license-config.component';
 
 @NgModule({
   declarations: [
@@ -206,6 +208,8 @@ SendMessageComponent,
     StudentInventoryComponent,
     TeacherInventoryRecordComponent,
     StudentInventoryPanelComponent,
+    FeatureGateComponent,
+    LicenseConfigComponent,
   ],
   imports: [
     BrowserModule,

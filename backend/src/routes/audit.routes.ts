@@ -7,9 +7,12 @@ import { getLoginAttempts } from '../controllers/login-attempts.controller';
 const router = Router();
 
 router.post('/activity', authenticate, logActivity);
-router.get('/user-sessions', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), getUserSessions);
-router.get('/login-attempts', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), getLoginAttempts);
-router.get('/user-sessions/export.csv', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), exportUserSessionsCsv);
-router.get('/user-sessions/export.pdf', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), exportUserSessionsPdf);
+
+const auditAdminGuard = [authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN)];
+
+router.get('/user-sessions', ...auditAdminGuard, getUserSessions);
+router.get('/login-attempts', ...auditAdminGuard, getLoginAttempts);
+router.get('/user-sessions/export.csv', ...auditAdminGuard, exportUserSessionsCsv);
+router.get('/user-sessions/export.pdf', ...auditAdminGuard, exportUserSessionsPdf);
 
 export default router;

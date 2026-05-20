@@ -19,6 +19,8 @@ import timetableRoutes from './timetable.routes';
 import newsRoutes from './news.routes';
 import payrollRoutes from './payroll.routes';
 import inventoryRoutes from './inventory.routes';
+import licenseAdminRoutes from './licenseAdmin.routes';
+import licenseRoutes from './license.routes';
 
 const router = Router();
 
@@ -41,6 +43,8 @@ router.use('/timetables', timetableRoutes);
 router.use('/news', newsRoutes);
 router.use('/payroll', payrollRoutes);
 router.use('/inventory', inventoryRoutes);
+router.use('/admin', licenseAdminRoutes);
+router.use('/license', licenseRoutes);
 
 router.use('/elearning', elearningRoutes);
 

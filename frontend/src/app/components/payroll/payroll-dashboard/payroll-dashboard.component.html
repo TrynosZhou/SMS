@@ -9,6 +9,7 @@
     </div>
   </header>
 
+  <app-feature-gate featureKey="payroll_management" displayName="Payroll Management">
   <div class="alert alert-error" *ngIf="error">{{ error }}</div>
 
   <!-- Skeleton loading -->
@@ -110,4 +111,5 @@
       </div>
     </section>
   </div>
+  </app-feature-gate>
 </div>

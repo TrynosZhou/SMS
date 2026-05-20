@@ -794,17 +794,21 @@
 }
 
 .modal-close {
-  background: none;
+  background: #2563eb;
   border: none;
-  font-size: 1.25rem;
-  color: #64748b;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
   cursor: pointer;
-  padding: 0.25rem;
-  transition: color 0.2s;
+  padding: 0.5rem 0.75rem;
+  line-height: 1;
+  transition: background 0.2s ease, transform 0.2s ease;
 }
 
 .modal-close:hover {
-  color: #334155;
+  background: #1d4ed8;
+  color: #ffffff;
 }
 
 .preview-content {

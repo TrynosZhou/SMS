@@ -67,6 +67,54 @@
           <input type="number" [(ngModel)]="settings.feesSettings.diningHallCost" name="diningHallCost" min="0" step="0.01" required>
           <small>Cost for dining hall meals (applies to day scholars who use dining hall)</small>
         </div>
+
+        <div class="form-section payment-banking-settings">
+          <h3>Payment / Banking Details (PDFs)</h3>
+          <p class="section-hint">
+            Shown on invoice statement and payment receipt PDFs to guide parents and students when paying fees by bank transfer.
+          </p>
+          <div class="form-group">
+            <label>Account name</label>
+            <input
+              type="text"
+              [(ngModel)]="settings.feesSettings.paymentBanking.accountName"
+              name="paymentBankingAccountName"
+              placeholder="e.g. Junior Primary School" />
+          </div>
+          <div class="form-group">
+            <label>Bank</label>
+            <input
+              type="text"
+              [(ngModel)]="settings.feesSettings.paymentBanking.bankName"
+              name="paymentBankingBankName"
+              placeholder="e.g. CBZ Bank" />
+          </div>
+          <div class="form-group">
+            <label>Branch</label>
+            <input
+              type="text"
+              [(ngModel)]="settings.feesSettings.paymentBanking.branch"
+              name="paymentBankingBranch"
+              placeholder="e.g. Masvingo" />
+          </div>
+          <div class="form-group">
+            <label>Account number</label>
+            <input
+              type="text"
+              [(ngModel)]="settings.feesSettings.paymentBanking.accountNumber"
+              name="paymentBankingAccountNumber"
+              placeholder="e.g. 02526786630010" />
+          </div>
+          <div class="form-group">
+            <label>Payment reference note</label>
+            <input
+              type="text"
+              [(ngModel)]="settings.feesSettings.paymentBanking.paymentReferenceHint"
+              name="paymentBankingReferenceHint"
+              placeholder="Please use the account number as your payment reference." />
+          </div>
+        </div>
+
         <div class="form-group">
           <label>Other Fees</label>
           <div style="display: flex; gap: 10px; margin-bottom: 10px;">

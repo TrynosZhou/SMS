@@ -24,24 +24,25 @@ import { upload } from '../utils/upload';
 
 const router = Router();
 
-router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), upload.single('photo'), registerStudent);
-router.get('/', authenticate, getStudents);
-router.put('/:id/status', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), correctStudentStatus);
-router.post('/status-corrections/bulk', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), bulkCorrectStudentStatus);
-router.post('/enroll', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.TEACHER, UserRole.DEMO_USER), enrollStudent);
-router.post('/promote', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), promoteStudents);
-router.post('/transfer', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), transferStudent);
-router.get('/logistics/transport/bus-id-cards', authenticate, generateTransportBusIdCards);
-router.get('/logistics/transport/report', authenticate, generateTransportStudentsReport);
-router.get('/logistics/dining-hall/report', authenticate, generateDiningHallStudentsReport);
-router.get('/:id/id-card', authenticate, generateStudentIdCard);
-router.get('/:id/bus-id-card', authenticate, generateStudentTransportIdCard);
-router.get('/:id/transfers', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.TEACHER, UserRole.DEMO_USER), getStudentTransfers);
-router.get('/linked-parents', authenticate, authorize(UserRole.STUDENT, UserRole.DEMO_USER, UserRole.ADMIN, UserRole.SUPERADMIN), getLinkedParentsForStudent);
-router.get('/:id', authenticate, getStudentById);
+router.use(authenticate);
+
+router.post('/', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), upload.single('photo'), registerStudent);
+router.get('/', getStudents);
+router.put('/:id/status', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), correctStudentStatus);
+router.post('/status-corrections/bulk', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), bulkCorrectStudentStatus);
+router.post('/enroll', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.TEACHER, UserRole.DEMO_USER), enrollStudent);
+router.post('/promote', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), promoteStudents);
+router.post('/transfer', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), transferStudent);
+router.get('/logistics/transport/bus-id-cards', generateTransportBusIdCards);
+router.get('/logistics/transport/report', generateTransportStudentsReport);
+router.get('/logistics/dining-hall/report', generateDiningHallStudentsReport);
+router.get('/:id/id-card', generateStudentIdCard);
+router.get('/:id/bus-id-card', generateStudentTransportIdCard);
+router.get('/:id/transfers', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.TEACHER, UserRole.DEMO_USER), getStudentTransfers);
+router.get('/linked-parents', authorize(UserRole.STUDENT, UserRole.DEMO_USER, UserRole.ADMIN, UserRole.SUPERADMIN), getLinkedParentsForStudent);
+router.get('/:id', getStudentById);
 router.put(
   '/:id',
-  authenticate,
   authorize(
     UserRole.SUPERADMIN,
     UserRole.ADMIN,
@@ -52,7 +53,7 @@ router.put(
   upload.single('photo'),
   updateStudent
 );
-router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), deleteStudent);
+router.delete('/:id', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), deleteStudent);
 
 export default router;
 

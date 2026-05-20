@@ -4,6 +4,7 @@ import { Meta, Title } from '@angular/platform-browser';
 import { AuthService } from './services/auth.service';
 import { SettingsService } from './services/settings.service';
 import { ModuleAccessService } from './services/module-access.service';
+import { LicenseService } from './services/license.service';
 import { ThemeService } from './services/theme.service';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
@@ -36,6 +37,7 @@ export class AppComponent implements OnInit, OnDestroy {
     public authService: AuthService, 
     private settingsService: SettingsService,
     public moduleAccessService: ModuleAccessService,
+    private licenseService: LicenseService,
     public themeService: ThemeService,
     private router: Router,
     private auditService: AuditService,
@@ -59,6 +61,7 @@ export class AppComponent implements OnInit, OnDestroy {
       
       // Load module access settings
       this.moduleAccessService.loadModuleAccess();
+      this.licenseService.load().subscribe();
     }
 
     // Log module access and update meta tags on navigation

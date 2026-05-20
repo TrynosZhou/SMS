@@ -10,7 +10,9 @@ import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
 
 const router = Router();
 
-router.get('/', authenticate, async (req: AuthRequest, res) => {
+router.use(authenticate);
+
+router.get('/', async (req: AuthRequest, res) => {
   try {
     const subjectRepository = AppDataSource.getRepository(Subject);
     
@@ -31,7 +33,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const subjectRepository = AppDataSource.getRepository(Subject);
@@ -50,7 +52,7 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), async (req, res) => {
+router.post('/', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), async (req, res) => {
   try {
     const { name, code, description } = req.body;
     const subjectRepository = AppDataSource.getRepository(Subject);
@@ -81,7 +83,7 @@ router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, Us
   }
 });
 
-router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), async (req, res) => {
+router.put('/:id', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, code, description, isActive, teachingPeriods } = req.body;
@@ -124,7 +126,7 @@ router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, 
   }
 });
 
-router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), async (req, res) => {
+router.delete('/:id', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), async (req, res) => {
   try {
     const { id } = req.params;
     const subjectRepository = AppDataSource.getRepository(Subject);

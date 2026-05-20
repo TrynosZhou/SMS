@@ -1,0 +1,68 @@
+.feature-gate-locked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.5rem;
+  padding: 2rem 1.5rem;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%);
+  min-height: 160px;
+}
+
+.feature-gate-icon {
+  font-size: 2rem;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.feature-gate-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.feature-gate-message {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.feature-gate-tier {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.feature-gate-upgrade {
+  margin-top: 0.5rem;
+  min-width: 120px;
+}
+
+.feature-gate-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.feature-gate-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: feature-gate-spin 0.7s linear infinite;
+}
+
+@keyframes feature-gate-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

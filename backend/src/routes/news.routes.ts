@@ -16,16 +16,18 @@ import {
 
 const router = Router();
 
+const newsAdminGuard = [authenticate, requireAdmin];
+
 // Admin-only routes (require authentication + admin role)
-router.post('/', authenticate, requireAdmin, createNews);
-router.put('/:id', authenticate, requireAdmin, updateNews);
-router.delete('/:id', authenticate, requireAdmin, deleteNews);
-router.get('/admin/statistics', authenticate, requireAdmin, getNewsStatistics);
-router.post('/admin/archive-expired', authenticate, requireAdmin, archiveExpiredNews);
+router.post('/', ...newsAdminGuard, createNews);
+router.put('/:id', ...newsAdminGuard, updateNews);
+router.delete('/:id', ...newsAdminGuard, deleteNews);
+router.get('/admin/statistics', ...newsAdminGuard, getNewsStatistics);
+router.post('/admin/archive-expired', ...newsAdminGuard, archiveExpiredNews);
 
 // Admin/Authenticated routes
-router.get('/admin', authenticate, requireAdmin, getNewsList);
-router.get('/admin/:id', authenticate, requireAdmin, getNewsById);
+router.get('/admin', ...newsAdminGuard, getNewsList);
+router.get('/admin/:id', ...newsAdminGuard, getNewsById);
 
 // Public routes (no authentication required)
 router.get('/public', optionalAuthenticate, getPublishedNews);

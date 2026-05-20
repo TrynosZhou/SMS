@@ -74,6 +74,7 @@ import { NewsFormComponent } from './components/news/news-form/news-form.compone
 import { NewsDetailComponent } from './components/news/news-detail/news-detail.component';
 import { PaymentReceiptManagerComponent } from './components/settings/payment-receipt-manager/payment-receipt-manager.component';
 import { ElearningComponent } from './components/admin/elearning/elearning.component';
+import { LicenseConfigComponent } from './components/admin/license-config/license-config.component';
 import { EservicesComponent } from './components/teacher/eservices/eservices.component';
 import { StudentResponsesComponent } from './components/teacher/student-responses/student-responses.component';
 import { MarkResponseComponent } from './components/teacher/mark-response/mark-response.component';
@@ -187,6 +188,7 @@ const routes: Routes = [
   { path: 'payroll/loan-overview', component: LoanOverviewComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'payroll' } },
   { path: 'settings/payment-receipt-manager', component: PaymentReceiptManagerComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'admin/elearning', component: ElearningComponent, canActivate: [AuthGuard, AdminGuard] },
+  { path: 'admin/license-config', component: LicenseConfigComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'classes', component: ClassListComponent, canActivate: [AuthGuard] },
   { path: 'classes/lists', component: ClassListsComponent, canActivate: [AuthGuard] },
   { path: 'classes/new', component: ClassFormComponent, canActivate: [AuthGuard] },

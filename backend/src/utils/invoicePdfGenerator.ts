@@ -3,6 +3,7 @@ import { Invoice } from '../entities/Invoice';
 import { Student } from '../entities/Student';
 import { Settings } from '../entities/Settings';
 import { parseAmount } from './numberUtils';
+import { drawPaymentBankingDetailsPdf } from './paymentBankingPdfBlock';
 
 interface InvoicePDFData {
   invoice: Invoice;
@@ -421,9 +422,11 @@ export function createInvoicePDF(
       doc.text(statusText, 120, statusBoxY + 10);
       yPos = statusBoxY + 50;
 
+      yPos = drawPaymentBankingDetailsPdf(doc, settings, yPos);
+
       // Footer with divider line
       const pageHeight = doc.page.height;
-      const footerY = pageHeight - 50;
+      const footerY = Math.max(pageHeight - 50, yPos + 20);
       
       // Horizontal divider line before footer
       doc.strokeColor('#CCCCCC').lineWidth(0.5);

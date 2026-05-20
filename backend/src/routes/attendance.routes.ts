@@ -11,20 +11,22 @@ import {
 
 const router = Router();
 
+router.use(authenticate);
+
 // Mark attendance (bulk for a class on a date)
-router.post('/', authenticate, authorize(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), markAttendance);
+router.post('/', authorize(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), markAttendance);
 
 // Get attendance records
-router.get('/', authenticate, authorize(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), getAttendance);
+router.get('/', authorize(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), getAttendance);
 
 // Delete attendance records for a class on a date
-router.delete('/', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERADMIN), deleteAttendance);
+router.delete('/', authorize(UserRole.ADMIN, UserRole.SUPERADMIN), deleteAttendance);
 
 // Get attendance report for a class
-router.get('/report', authenticate, authorize(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), getAttendanceReport);
+router.get('/report', authorize(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), getAttendanceReport);
 
 // Get total attendance for a student (for report cards)
-router.get('/student/total', authenticate, getStudentTotalAttendance);
+router.get('/student/total', getStudentTotalAttendance);
 
 export default router;
 

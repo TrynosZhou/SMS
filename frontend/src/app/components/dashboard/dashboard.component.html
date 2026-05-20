@@ -329,6 +329,20 @@
               <span class="action-text">E-Learning Services</span>
               <span class="action-arrow">→</span>
             </a>
+            <a
+              routerLink="/settings/payment-receipt-manager"
+              class="action-btn modern-action-btn secondary-action"
+              *ngIf="isAdmin() || isSuperAdmin()">
+              <span class="action-icon">🧾</span>
+              <span class="action-text">Payment / Receipt Manager</span>
+              <span class="action-arrow">→</span>
+            </a>
+            <p class="quick-actions-section-label" *ngIf="canAccessModule('finance')">Finance</p>
+            <a routerLink="/balance-enquiry" class="action-btn modern-action-btn info-action" *ngIf="canAccessModule('finance')">
+              <span class="action-icon">🔎</span>
+              <span class="action-text">Balance Enquiry</span>
+              <span class="action-arrow">→</span>
+            </a>
             <a routerLink="/invoices/new" class="action-btn modern-action-btn danger-action" *ngIf="isSuperAdmin() && canAccessModule('finance')">
               <span class="action-icon">📝</span>
               <span class="action-text">Create Invoice</span>
@@ -393,6 +407,11 @@
             <a routerLink="/payments/record" class="action-btn modern-action-btn success-action" *ngIf="canAccessModule('finance')">
               <span class="action-icon">💵</span>
               <span class="action-text">Record Payment</span>
+              <span class="action-arrow">→</span>
+            </a>
+            <a routerLink="/balance-enquiry" class="action-btn modern-action-btn info-action" *ngIf="canAccessModule('finance')">
+              <span class="action-icon">🔎</span>
+              <span class="action-text">Balance Enquiry</span>
               <span class="action-arrow">→</span>
             </a>
             <p class="quick-actions-section-label">Operations</p>

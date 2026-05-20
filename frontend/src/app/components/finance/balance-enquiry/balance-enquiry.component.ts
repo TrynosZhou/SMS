@@ -9,6 +9,11 @@ import { SettingsService } from '../../../services/settings.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { firstValueFrom } from 'rxjs';
 import jsPDF from 'jspdf';
+import {
+  drawPaymentBankingDetailsJsPdf,
+  PaymentBankingDetails,
+  resolvePaymentBankingDetails
+} from '../../../utils/payment-banking-pdf.util';
 
 @Component({
   standalone: false,  selector: 'app-balance-enquiry',
@@ -27,6 +32,7 @@ query = '';
   schoolMotto = '';
   schoolLogo2: string | null = null;
   deskFee = 0;
+  paymentBanking: PaymentBankingDetails | null = null;
   
   studentData: any = null;
   matchingStudents: any[] = [];
@@ -79,6 +85,10 @@ query = '';
           this.schoolMotto = s?.schoolMotto || '';
           this.schoolLogo2 = s?.schoolLogo2 || null;
           this.deskFee = isFinite(Number(s?.feesSettings?.deskFee)) ? Number(s.feesSettings.deskFee) : 0;
+          this.paymentBanking = resolvePaymentBankingDetails(
+            s?.feesSettings?.paymentBanking,
+            s?.schoolName
+          );
         },
         error: () => {
           this.currencySymbol = 'USD';
@@ -409,6 +419,8 @@ query = '';
     pdf.text(`Current Balance: ${this.currencySymbol} ${bal.toFixed(2)}`, 14, startY + 28);
     pdf.setTextColor(0, 0, 0);
 
+    let contentEndY = startY + 28;
+
     if (invoice) {
       let y = startY + 42;
       pdf.setFont('helvetica', 'bold');
@@ -522,10 +534,20 @@ query = '';
       drawTotalRow('Subtotal', subtotalToShow);
       drawTotalRow('Paid', paidAmount);
       drawTotalRow('Invoice Balance', invBalance, true, invBalance > 1000 ? [220, 38, 38] : [37, 99, 235]);
+      contentEndY = currentY;
     }
 
+    const afterBankingY = drawPaymentBankingDetailsJsPdf(
+      pdf,
+      this.paymentBanking,
+      contentEndY + 10
+    );
+
+    pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9);
-    pdf.text('This is a system-generated statement.', 105, 290, { align: 'center' });
+    pdf.setTextColor(100, 116, 139);
+    const footerY = Math.min(afterBankingY + 6, 285);
+    pdf.text('This is a system-generated statement.', 105, footerY, { align: 'center' });
     return pdf.output('blob');
   }
 }

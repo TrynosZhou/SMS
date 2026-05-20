@@ -25,7 +25,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
       deskFee: 0,
       transportCost: 0,
       diningHallCost: 0,
-      otherFees: []
+      otherFees: [],
+      paymentBanking: {
+        accountName: '',
+        bankName: '',
+        branch: '',
+        accountNumber: '',
+        paymentReferenceHint: 'Please use the account number as your payment reference.'
+      }
     },
     payrollSettings: {
       loanInterestRate1Month: 0,
@@ -368,9 +375,17 @@ export class SettingsComponent implements OnInit, OnDestroy {
             deskFee: 0,
             transportCost: 0,
             diningHallCost: 0,
-            otherFees: []
+            otherFees: [],
+            paymentBanking: {
+              accountName: '',
+              bankName: '',
+              branch: '',
+              accountNumber: '',
+              paymentReferenceHint: 'Please use the account number as your payment reference.'
+            }
           };
         }
+        this.ensurePaymentBankingSettings();
         if (this.settings.feesSettings.registrationFee === undefined) {
           this.settings.feesSettings.registrationFee = 0;
         }
@@ -709,6 +724,28 @@ export class SettingsComponent implements OnInit, OnDestroy {
         img.src = e.target.result;
       };
       reader.readAsDataURL(file);
+    }
+  }
+
+  private ensurePaymentBankingSettings(): void {
+    if (!this.settings?.feesSettings) {
+      return;
+    }
+    if (!this.settings.feesSettings.paymentBanking) {
+      this.settings.feesSettings.paymentBanking = {
+        accountName: '',
+        bankName: '',
+        branch: '',
+        accountNumber: '',
+        paymentReferenceHint: 'Please use the account number as your payment reference.'
+      };
+    }
+    const pb = this.settings.feesSettings.paymentBanking;
+    if (!pb.accountName?.trim()) {
+      pb.accountName = this.settings.schoolName || '';
+    }
+    if (!pb.paymentReferenceHint?.trim()) {
+      pb.paymentReferenceHint = 'Please use the account number as your payment reference.';
     }
   }
 

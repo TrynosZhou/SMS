@@ -1,9 +1,52 @@
 <div class="login-page-bg" aria-hidden="true"></div>
-<div class="login-container" [class.landscape-mode]="activeTab === 'signup'">
-  <div class="login-card" [class.signup-card]="activeTab === 'signup'">
+
+<div class="login-shell" [class.landscape-mode]="activeTab === 'signup'">
+  <aside class="login-hero" aria-label="About this system">
+    <div class="login-brand">
+      <div class="login-brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82Z"
+            fill="currentColor" />
+        </svg>
+      </div>
+      <div class="login-brand-text">
+        <span class="login-brand-name">School Management</span>
+        <span class="login-brand-tag">School Management System</span>
+      </div>
+    </div>
+
+    <h1 class="login-hero-title">
+      Learning made <em>seamless</em> for everyone.
+    </h1>
+    <p class="login-hero-desc">
+      A unified platform for administrators, teachers, parents, and students — manage academics,
+      finance, attendance, and communication in one place.
+    </p>
+
+    <div class="login-hero-stats">
+      <div class="login-stat">
+        <span class="login-stat-value">All-in-one</span>
+        <span class="login-stat-label">Platform</span>
+      </div>
+      <div class="login-stat-divider" aria-hidden="true"></div>
+      <div class="login-stat">
+        <span class="login-stat-value">Secure</span>
+        <span class="login-stat-label">Access</span>
+      </div>
+      <div class="login-stat-divider" aria-hidden="true"></div>
+      <div class="login-stat">
+        <span class="login-stat-value">24/7</span>
+        <span class="login-stat-label">Available</span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="login-panel">
+    <div class="login-card" [class.signup-card]="activeTab === 'signup'">
     <div class="login-header">
-      <h2>School Management System</h2>
-      <p class="subtitle">Welcome! Please sign in to continue</p>
+      <h2>Welcome back 👋</h2>
+      <p class="subtitle">Please sign in to your account</p>
     </div>
 
     <!-- Tab Navigation -->
@@ -400,6 +443,7 @@
           <a href="#" (click)="setTab('signin'); $event.preventDefault()" class="link">Back to Sign In</a>
         </div>
       </form>
+    </div>
     </div>
   </div>
 </div>

@@ -38,24 +38,26 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+router.use(authenticate);
+
 // Admin: tasks by class (must be before /tasks/:taskId routes)
-router.get('/admin/class/:classId/tasks', authenticate, getAdminClassTasks);
+router.get('/admin/class/:classId/tasks', getAdminClassTasks);
 
 // Teacher endpoints
-router.post('/tasks', authenticate, upload.single('file'), createTask);
-router.get('/tasks/my', authenticate, getMyTasks);
-router.delete('/tasks/:taskId', authenticate, deleteTask);
-router.get('/tasks/:taskId/responses', authenticate, getTaskResponses);
+router.post('/tasks', upload.single('file'), createTask);
+router.get('/tasks/my', getMyTasks);
+router.delete('/tasks/:taskId', deleteTask);
+router.get('/tasks/:taskId/responses', getTaskResponses);
 
 // Student endpoints
-router.get('/tasks/student', authenticate, getStudentTasks);
-router.get('/tasks/student/:taskId', authenticate, getStudentTaskById);
-router.post('/tasks/:taskId/responses', authenticate, upload.single('file'), submitResponse);
-router.get('/responses/student', authenticate, getStudentResponses);
+router.get('/tasks/student', getStudentTasks);
+router.get('/tasks/student/:taskId', getStudentTaskById);
+router.post('/tasks/:taskId/responses', upload.single('file'), submitResponse);
+router.get('/responses/student', getStudentResponses);
 
 // Teacher marking endpoints (must be AFTER /responses/student so it doesn't match :responseId="student")
-router.get('/responses/:responseId', authenticate, getResponseByIdForTeacher);
-router.put('/responses/:responseId/mark', authenticate, upload.single('file'), markResponse);
+router.get('/responses/:responseId', getResponseByIdForTeacher);
+router.put('/responses/:responseId/mark', upload.single('file'), markResponse);
 
 export default router;
 

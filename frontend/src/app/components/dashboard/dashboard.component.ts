@@ -107,6 +107,13 @@ recentStudents: any[] = [];
     { route: '/timetable/view', label: 'View Timetable', icon: '📅', pastel: 'sky' },
 { route: '/messages/inbox', label: 'Messages', icon: '💬', pastel: 'pink' },
     { route: '/settings', label: 'Settings', icon: '⚙️', pastel: 'slate', module: 'settings' },
+    {
+      route: '/settings/payment-receipt-manager',
+      label: 'Payment / Receipt',
+      icon: '🧾',
+      pastel: 'slate',
+      adminOnly: true
+    },
     { route: '/admin/elearning', label: 'E-Learning', icon: '💻', pastel: 'violet', adminOnly: true }
   ];
 
@@ -115,6 +122,7 @@ recentStudents: any[] = [];
     { route: '/invoices', label: 'Billing', icon: '💳', pastel: 'rose', module: 'finance' },
     { route: '/outstanding-balance', label: 'Outstanding', icon: '⚠️', pastel: 'amber', module: 'finance' },
     { route: '/payments/record', label: 'Record payment', icon: '💵', pastel: 'emerald', module: 'finance' },
+    { route: '/balance-enquiry', label: 'Balance enquiry', icon: '🔎', pastel: 'sky', module: 'finance' },
     { route: '/attendance/reports', label: 'Attendance', icon: '📋', pastel: 'amber', module: 'attendance' },
     { route: '/report-cards', label: 'Reports', icon: '📊', pastel: 'violet', module: 'reportCards' },
     { route: '/classes', label: 'Classes', icon: '🏫', pastel: 'emerald', module: 'classes' },
@@ -195,6 +203,8 @@ id: 'inventory',
         { route: '/invoices', icon: '💰', title: 'Finance hub', desc: 'Invoices, payments, balances', search: 'invoice payment fees balance billing money', accent: 'rose' },
         { route: '/payroll', icon: '💵', title: 'Payroll', desc: 'Salaries and payroll runs', search: 'payroll salary pay slip wages', module: 'payroll', accent: 'rose' },
         { route: '/outstanding-balance', icon: '⚠️', title: 'Outstanding balances', desc: 'Who owes what', search: 'outstanding debt arrears balance', accent: 'rose' },
+        { route: '/balance-enquiry', icon: '🔎', title: 'Balance enquiry', desc: 'Look up balances and invoice statements', search: 'balance enquiry statement invoice preview', accent: 'sky', module: 'finance' },
+        { route: '/payments/record', icon: '💳', title: 'Record payment', desc: 'Post fee payments and receipts', search: 'record payment receipt cash', accent: 'emerald', module: 'finance' },
       ],
     },
     {
@@ -215,7 +225,16 @@ id: 'inventory',
         { route: '/admin/parents', icon: '👨‍👩‍👧', title: 'Parent management', desc: 'Guardian linking and outreach', search: 'parent guardian family portal', accent: 'slate' },
         { route: '/admin/class-promotion', icon: '⬆️', title: 'Class promotion', desc: 'Move cohorts to next level', search: 'promotion graduate advance year', accent: 'sky' },
         { route: '/admin/elearning', icon: '💻', title: 'E-learning', desc: 'Digital content and services', search: 'elearning online learning lms', accent: 'sky' },
+        { route: '/admin/license-config', icon: '🔑', title: 'License configuration', desc: 'Plans, features, and tier access', search: 'license tier gold bronze platinum feature', accent: 'amber' },
         { route: '/settings', icon: '⚙️', title: 'School settings', desc: 'Branding, fees, terms, modules', search: 'settings configuration logo fees term', accent: 'slate' },
+        {
+          route: '/settings/payment-receipt-manager',
+          icon: '🧾',
+          title: 'Payment / Receipt Manager',
+          desc: 'Payment logs, receipt numbers, and exports',
+          search: 'payment receipt manager log sequence number',
+          accent: 'slate'
+        },
       ],
     },
   ];

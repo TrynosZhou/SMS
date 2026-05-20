@@ -17,7 +17,9 @@ import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagin
 
 const router = Router();
 
-router.get('/', authenticate, async (req: AuthRequest, res) => {
+router.use(authenticate);
+
+router.get('/', async (req: AuthRequest, res) => {
   try {
     if (!AppDataSource.isInitialized) {
       await AppDataSource.initialize();
@@ -161,7 +163,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     if (!AppDataSource.isInitialized) {
       await AppDataSource.initialize();
@@ -226,7 +228,7 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), async (req, res) => {
+router.post('/', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), async (req, res) => {
   try {
     const { name, form, description, teacherIds, subjectIds, classTeacher1Id, classTeacher2Id } = req.body;
     const classRepository = AppDataSource.getRepository(Class);
@@ -294,7 +296,7 @@ router.post('/', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, Us
   }
 });
 
-router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), async (req, res) => {
+router.put('/:id', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, form, description, isActive, teacherIds, subjectIds, classTeacher1Id, classTeacher2Id } = req.body;
@@ -390,7 +392,7 @@ router.put('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, 
   }
 });
 
-router.delete('/:id', authenticate, authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), async (req, res) => {
+router.delete('/:id', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), async (req, res) => {
   try {
     // Ensure database is initialized
     if (!AppDataSource.isInitialized) {
