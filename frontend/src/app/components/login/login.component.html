@@ -98,15 +98,14 @@
               ?
             </span>
           </label>
-          <p class="form-hint-signin">You may sign in with Username OR Email Address OR Student ID or Employee ID (see below).</p>
           <input 
             type="text" 
             [(ngModel)]="email" 
             name="email" 
-            placeholder="Enter your username" 
+            placeholder="Username, email, student or employee ID" 
             required
             autocomplete="username">
-          <small class="form-text">Teachers: Employee ID. Students: Student ID. Parents: Email Address.</small>
+          <small class="form-text">Teachers: Employee ID · Students: Student ID · Parents: Email</small>
         </div>
         <div class="form-group">
           <label>
@@ -134,7 +133,6 @@
               <span class="eye-icon" [class.eye-open]="showPassword"></span>
             </button>
 </div>
-          <small class="form-text">Students: use the password you created during sign up</small>
         </div>
         <button type="submit" class="btn btn-primary btn-block" [disabled]="loading">
           {{ loading ? 'Signing in...' : 'Sign In' }}

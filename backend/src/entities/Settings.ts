@@ -74,6 +74,9 @@ export class Settings {
   schoolEmail: string | null;
 
   @Column({ type: 'varchar', nullable: true })
+  schoolWebsite: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
   headmasterName: string | null;
 
   @Column({ type: 'text', nullable: true })
@@ -101,6 +104,18 @@ export class Settings {
 
   @Column({ type: 'date', nullable: true })
   termEndDate: Date | null; // Closing day of the term
+
+  /** Managed academic terms (Terms tab in Academic Settings) */
+  @Column({ type: 'json', nullable: true })
+  academicTerms: Array<{
+    id: string;
+    type: string;
+    label: string;
+    term: string;
+    year: string;
+    startDate: string;
+    endDate: string;
+  }> | null;
 
   // Currency Symbol
   @Column({ type: 'varchar', default: '$' })
@@ -220,6 +235,42 @@ export class Settings {
     overdueFinePerDay?: number;
     /** After due date + grace, item may be flagged lost / accountability */
     lossGraceDaysAfterDue?: number;
+  } | null;
+
+  /** SMS and push notification toggles (System Settings → Notifications) */
+  @Column({ type: 'json', nullable: true })
+  notificationSettings: {
+    sms?: {
+      feePaymentReceived?: boolean;
+      studentAbsence?: boolean;
+      reportCardReady?: boolean;
+    };
+    push?: {
+      enabled?: boolean;
+    };
+  } | null;
+
+  /** Password policy and login limits (System Settings → Security) */
+  @Column({ type: 'json', nullable: true })
+  securitySettings: {
+    minPasswordLength?: number;
+    maxLoginAttempts?: number;
+    requireUppercase?: boolean;
+    requireNumber?: boolean;
+    requireSpecialChar?: boolean;
+    sessionTimeoutMinutes?: number;
+    enableTwoFactorAuth?: boolean;
+  } | null;
+
+  /** SMTP / outbound email (System Settings → Email Settings) */
+  @Column({ type: 'json', nullable: true })
+  emailSettings: {
+    smtpHost?: string;
+    smtpPort?: number;
+    smtpUsername?: string;
+    smtpPassword?: string;
+    fromName?: string;
+    fromAddress?: string;
   } | null;
 
   @Column({ type: 'json', nullable: true })

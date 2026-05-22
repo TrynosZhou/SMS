@@ -1,366 +1,323 @@
-<div class="audit-container">
-  <!-- Modern Header -->
-  <div class="page-header">
-    <div class="header-content">
-      <div class="header-title-section">
-        <div class="header-icon">
-          <span>🛡️</span>
-        </div>
-        <div class="header-text">
+<div class="fa-page">
+  <div class="fa-toast-stack" *ngIf="success || error">
+    <div class="fa-toast fa-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="fa-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="fa-toast fa-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="fa-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="fa-hero">
+    <div class="fa-hero__main">
+      <div class="fa-hero-left">
+        <span class="fa-hero-icon" aria-hidden="true">🛡️</span>
+        <div>
+          <span class="fa-hero-eyebrow">Finance</span>
           <h1>System Auditor</h1>
-          <p>Real-time monitoring and validation of fee transactions</p>
+          <p class="fa-hero-sub">Monitor payment events and invoices — detect anomalies and validate fee transactions in real time.</p>
+          <p class="fa-hero-meta" *ngIf="lastLoadedAt">
+            Last refresh <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
+            <span class="fa-live" *ngIf="autoRefreshEnabled"> · Auto-refresh {{ refreshPeriodMs / 1000 }}s</span>
+          </p>
         </div>
       </div>
-      <div class="header-actions">
-        <div class="auto-refresh-toggle">
-          <label class="toggle-switch">
-            <input type="checkbox" [(ngModel)]="autoRefreshEnabled" (change)="toggleAutoRefresh()">
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="toggle-label">Auto-refresh ({{ (refreshPeriodMs/1000) | number:'1.0-0' }}s)</span>
-        </div>
-        <button class="btn btn-header" (click)="load()" [disabled]="loading" title="Refresh data">
-          <span class="btn-icon" [class.spinning]="loading">🔄</span>
-          Refresh
+      <div class="fa-hero__actions">
+        <label class="fa-toggle" title="Auto-refresh">
+          <input type="checkbox" [(ngModel)]="autoRefreshEnabled" (change)="toggleAutoRefresh()" />
+          <span class="fa-toggle__track"></span>
+          <span class="fa-toggle__label">Live</span>
+        </label>
+        <button type="button" class="fa-hero-refresh" (click)="load()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
         </button>
-        <button class="btn btn-header" (click)="exportCSV()" title="Export current page to CSV">
-          <span class="btn-icon">📥</span>
-          Export Page
+        <button type="button" class="fa-hero-btn fa-hero-btn--white" (click)="exportCSV()" [disabled]="loading || !paged.length">CSV page</button>
+        <button type="button" class="fa-hero-btn fa-hero-btn--white" (click)="printReport()" [disabled]="loading || !paged.length">Print</button>
+        <button
+          type="button"
+          class="fa-hero-btn fa-hero-btn--white"
+          *ngIf="mode === 'payments'"
+          (click)="exportPaymentsFullCSV()"
+          [disabled]="loading">
+          Full export
         </button>
+        <button
+          type="button"
+          class="fa-hero-btn fa-hero-btn--white"
+          *ngIf="mode === 'invoices'"
+          (click)="exportInvoicesFullCSV()"
+          [disabled]="loading">
+          Full export
+        </button>
+        <a routerLink="/invoices" class="fa-hero-btn fa-hero-btn--accent">Invoices</a>
       </div>
     </div>
-    <div class="last-refresh-info" *ngIf="lastRefresh">
-      <span class="refresh-icon">⏱️</span>
-      Last refresh: {{ lastRefresh | date:'short' }}
-    </div>
-  </div>
 
-  <!-- Quick Stats -->
-  <div class="quick-stats">
-    <div class="stat-card primary">
-      <div class="stat-icon">📊</div>
-      <div class="stat-info">
-        <span class="stat-value">{{ mode === 'payments' ? serverTotal : total }}</span>
-        <span class="stat-label">Total Records</span>
-      </div>
+    <div class="fa-hero-stats" *ngIf="!loading">
+      <article class="fa-stat">
+        <span class="fa-stat__value">{{ mode === 'payments' ? serverTotal : total }}</span>
+        <span class="fa-stat__label">Records</span>
+      </article>
+      <article class="fa-stat fa-stat--mint">
+        <span class="fa-stat__value">{{ currencySymbol }}{{ fullTotals.paid | number : '1.2-2' }}</span>
+        <span class="fa-stat__label">Total paid</span>
+      </article>
+      <article class="fa-stat" *ngIf="mode === 'invoices'">
+        <span class="fa-stat__value">{{ currencySymbol }}{{ fullTotals.balance | number : '1.2-2' }}</span>
+        <span class="fa-stat__label">Total balance</span>
+      </article>
+      <article class="fa-stat fa-stat--rose">
+        <span class="fa-stat__value">{{ getAnomalyCount() }}</span>
+        <span class="fa-stat__label">Anomalies (page)</span>
+      </article>
+      <article class="fa-stat fa-stat--accent" *ngIf="mode === 'payments' && duplicateReceiptCount">
+        <span class="fa-stat__value">{{ duplicateReceiptCount }}</span>
+        <span class="fa-stat__label">Dup receipts</span>
+      </article>
     </div>
-    <div class="stat-card success">
-      <div class="stat-icon">💰</div>
-      <div class="stat-info">
-        <span class="stat-value">${{ fullTotals.paid | number:'1.2-2' }}</span>
-        <span class="stat-label">Total Paid</span>
-      </div>
+    <div class="fa-hero-stats fa-hero-stats--skeleton" *ngIf="loading">
+      <div class="fa-skeleton" *ngFor="let i of skeletonRows"></div>
     </div>
-    <div class="stat-card info" *ngIf="mode === 'invoices'">
-      <div class="stat-icon">📋</div>
-      <div class="stat-info">
-        <span class="stat-value">${{ fullTotals.balance | number:'1.2-2' }}</span>
-        <span class="stat-label">Total Balance</span>
-      </div>
-    </div>
-    <div class="stat-card warning">
-      <div class="stat-icon">⚠️</div>
-      <div class="stat-info">
-        <span class="stat-value">{{ getAnomalyCount() }}</span>
-        <span class="stat-label">Anomalies</span>
-      </div>
-    </div>
-  </div>
+  </header>
 
-  <!-- Mode Tabs -->
-  <div class="mode-tabs">
-    <button class="mode-tab" [class.active]="mode === 'payments'" (click)="setMode('payments')">
-      <span class="tab-icon">💳</span>
-      <span class="tab-text">Payment Events</span>
-      <span class="tab-count" *ngIf="mode === 'payments'">{{ serverTotal }}</span>
+  <div class="fa-mode-tabs">
+    <button type="button" class="fa-mode-tab" [class.fa-mode-tab--active]="mode === 'payments'" (click)="setMode('payments')">
+      <span class="fa-mode-tab__icon">💳</span>
+      Payment events
+      <span class="fa-mode-tab__count" *ngIf="mode === 'payments'">{{ serverTotal }}</span>
     </button>
-    <button class="mode-tab" [class.active]="mode === 'invoices'" (click)="setMode('invoices')">
-      <span class="tab-icon">📄</span>
-      <span class="tab-text">Invoices</span>
-      <span class="tab-count" *ngIf="mode === 'invoices'">{{ total }}</span>
+    <button type="button" class="fa-mode-tab" [class.fa-mode-tab--active]="mode === 'invoices'" (click)="setMode('invoices')">
+      <span class="fa-mode-tab__icon">📄</span>
+      Invoices
+      <span class="fa-mode-tab__count" *ngIf="mode === 'invoices'">{{ total }}</span>
     </button>
   </div>
 
-  <!-- Filters Card -->
-  <div class="filters-card">
-    <div class="filters-header">
-      <div class="filters-title">
-        <span class="filters-icon">🔍</span>
-        <h3>Filters</h3>
+  <div class="fa-banner fa-banner--warn" *ngIf="mode === 'payments' && duplicateReceiptCount">
+    <span aria-hidden="true">⚠️</span>
+    <span><strong>{{ duplicateReceiptCount }}</strong> duplicate receipt number(s) detected on this page. Review flagged rows.</span>
+  </div>
+
+  <section class="fa-panel">
+    <div class="fa-panel__head-row">
+      <div>
+        <h2 class="fa-panel__title">Filters</h2>
+        <p class="fa-panel__intro">Refine audit data. Search is debounced; payment filters reload from the server.</p>
       </div>
-      <button class="btn btn-text" (click)="clearFilters()">Clear All</button>
+      <button type="button" class="fa-btn-clear" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
     </div>
-    
-    <div class="filters-grid">
-      <!-- Search for Invoices -->
-      <div class="filter-group" *ngIf="mode === 'invoices'">
-        <label>
-          <span class="label-icon">🔎</span>
-          Search
-        </label>
-        <div class="search-box">
-          <span class="search-icon">🔍</span>
-          <input type="text" class="filter-input" [(ngModel)]="search" (input)="applyFilters()" 
-                 placeholder="Student name, ID, Invoice number">
-          <button class="clear-search" *ngIf="search" (click)="search = ''; applyFilters()">×</button>
-        </div>
-      </div>
 
-      <!-- Search for Payments -->
-      <div class="filter-group" *ngIf="mode === 'payments'">
-        <label>
-          <span class="label-icon">🔎</span>
-          Search
-        </label>
-        <div class="search-box">
-          <span class="search-icon">🔍</span>
-          <input type="text" class="filter-input" [(ngModel)]="paymentSearch" (input)="applyPaymentFilters()" 
-                 placeholder="Receipt number, payer name, method">
-          <button class="clear-search" *ngIf="paymentSearch" (click)="paymentSearch = ''; applyPaymentFilters()">×</button>
-        </div>
-      </div>
+    <div class="fa-search-wrap" *ngIf="mode === 'invoices'">
+      <span class="fa-search-icon" aria-hidden="true">🔍</span>
+      <input
+        #invSearch
+        type="search"
+        class="fa-search-input"
+        [value]="search"
+        placeholder="Student name, ID, or invoice number…"
+        (input)="onInvoiceSearchInput(invSearch.value)" />
+      <button type="button" class="fa-search-clear" *ngIf="search" (click)="invSearch.value = ''; onInvoiceSearchInput('')">Clear</button>
+    </div>
 
-      <!-- Status Filter (Invoices) -->
-      <div class="filter-group" *ngIf="mode === 'invoices'">
-        <label>
-          <span class="label-icon">📊</span>
-          Status
-        </label>
-        <select class="filter-select" [(ngModel)]="statusFilter" (change)="applyFilters()">
-          <option value="">All Statuses</option>
-          <option value="paid">Paid</option>
-          <option value="partial">Partial</option>
-          <option value="pending">Pending</option>
-          <option value="overdue">Overdue</option>
-          <option value="void">Void</option>
-        </select>
-      </div>
+    <div class="fa-search-wrap" *ngIf="mode === 'payments'">
+      <span class="fa-search-icon" aria-hidden="true">🔍</span>
+      <input
+        #paySearch
+        type="search"
+        class="fa-search-input"
+        [value]="paymentSearch"
+        placeholder="Receipt number, payer name, or method…"
+        (input)="onPaymentSearchInput(paySearch.value)" />
+      <button type="button" class="fa-search-clear" *ngIf="paymentSearch" (click)="paySearch.value = ''; onPaymentSearchInput('')">Clear</button>
+    </div>
 
-      <!-- Method Filter (Payments) -->
-      <div class="filter-group" *ngIf="mode === 'payments'">
-        <label>
-          <span class="label-icon">💳</span>
-          Payment Method
-        </label>
-        <select class="filter-select" [(ngModel)]="paymentMethod" (change)="applyPaymentFilters()">
-          <option value="">All Methods</option>
+    <div class="fa-chips" *ngIf="mode === 'invoices'">
+      <span class="fa-chips-label">Status</span>
+      <button
+        type="button"
+        class="fa-chip"
+        *ngFor="let s of statusOptions"
+        [class.fa-chip--active]="statusFilter === s.value"
+        (click)="selectStatus(s.value)">
+        {{ s.label }}
+      </button>
+    </div>
+
+    <div class="fa-filters-row" *ngIf="mode === 'payments'">
+      <div class="fa-field">
+        <label for="fa-method">Payment method</label>
+        <select id="fa-method" class="fa-select" [(ngModel)]="paymentMethod" (ngModelChange)="applyPaymentFilters()">
+          <option value="">All methods</option>
           <option value="CASH(USD)">Cash (USD)</option>
           <option value="ECOCASH(USD)">EcoCash (USD)</option>
           <option value="BANK TRANSFER(USD)">Bank Transfer (USD)</option>
         </select>
       </div>
-
-      <!-- Date Range (Payments) -->
-      <div class="filter-group date-range" *ngIf="mode === 'payments'">
-        <label>
-          <span class="label-icon">📅</span>
-          Date Range
-        </label>
-        <div class="date-inputs">
-          <input type="date" class="filter-input date" [(ngModel)]="paymentStartDate" (change)="applyPaymentFilters()" placeholder="Start">
-          <span class="date-separator">to</span>
-          <input type="date" class="filter-input date" [(ngModel)]="paymentEndDate" (change)="applyPaymentFilters()" placeholder="End">
-        </div>
+      <div class="fa-field">
+        <label for="fa-start">From</label>
+        <input id="fa-start" type="date" class="fa-input" [(ngModel)]="paymentStartDate" (change)="applyPaymentFilters()" />
       </div>
+      <div class="fa-field">
+        <label for="fa-end">To</label>
+        <input id="fa-end" type="date" class="fa-input" [(ngModel)]="paymentEndDate" (change)="applyPaymentFilters()" />
+      </div>
+    </div>
 
-      <!-- Rows per page -->
-      <div class="filter-group">
-        <label>
-          <span class="label-icon">📋</span>
-          Rows per page
-        </label>
-        <select class="filter-select" [ngModel]="limit" (ngModelChange)="onChangeLimit($event)">
+    <div class="fa-filters-row fa-filters-row--inline">
+      <div class="fa-field">
+        <label for="fa-limit">Rows per page</label>
+        <select id="fa-limit" class="fa-select" [ngModel]="limit" (ngModelChange)="onChangeLimit($event)">
           <option [ngValue]="10">10</option>
           <option [ngValue]="20">20</option>
           <option [ngValue]="50">50</option>
           <option [ngValue]="100">100</option>
         </select>
       </div>
+      <button
+        type="button"
+        class="fa-chip"
+        [class.fa-chip--active]="showAnomaliesOnly"
+        (click)="toggleAnomaliesOnly()">
+        Anomalies only
+        <span class="fa-chip__count" *ngIf="getAnomalyCount()">({{ getAnomalyCount() }})</span>
+      </button>
     </div>
-  </div>
 
-  <!-- Error Alert -->
-  <div class="alert alert-error" *ngIf="error">
-    <span class="alert-icon">⚠️</span>
-    <span class="alert-text">{{ error }}</span>
-    <button class="alert-close" (click)="error = ''">×</button>
-  </div>
+    <div class="fa-summary" *ngIf="filterSummary">
+      <span class="fa-summary-pill">{{ filterSummary }}</span>
+    </div>
+  </section>
 
-  <!-- Loading State -->
-  <div class="loading-state" *ngIf="loading">
-    <div class="loading-spinner"></div>
-    <p>Loading transactions...</p>
-  </div>
-
-  <!-- Data Table -->
-  <div class="table-card" *ngIf="!loading">
-    <div class="table-header">
-      <div class="table-title">
-        <span class="table-icon">{{ mode === 'payments' ? '💳' : '📄' }}</span>
-        <h3>{{ mode === 'payments' ? 'Payment Events' : 'Invoice Records' }}</h3>
-      </div>
-      <div class="table-actions">
-        <button class="btn btn-outline" *ngIf="mode === 'payments'" (click)="exportPaymentsFullCSV()">
-          <span class="btn-icon">📥</span>
-          Export Full CSV
-        </button>
-        <button class="btn btn-outline" *ngIf="mode === 'invoices'" (click)="exportInvoicesFullCSV()">
-          <span class="btn-icon">📥</span>
-          Export Full CSV
-        </button>
+  <section class="fa-panel fa-table-panel">
+    <div class="fa-panel__head-row">
+      <div>
+        <h2 class="fa-panel__title">{{ mode === 'payments' ? 'Payment events' : 'Invoice records' }}</h2>
+        <p class="fa-panel__intro" *ngIf="showAnomaliesOnly && mode === 'payments'">Showing anomalies on the current page only (server-paginated).</p>
       </div>
     </div>
 
-    <div class="table-container">
-      <table class="audit-table">
+    <div class="fa-loading" *ngIf="loading">
+      <div class="fa-spinner fa-spinner--lg" aria-hidden="true"></div>
+      <p>Loading audit data…</p>
+    </div>
+
+    <div class="fa-table-scroll" *ngIf="!loading">
+      <table class="fa-table">
         <thead>
           <tr>
-            <th *ngIf="mode === 'invoices'" class="col-invoice">Invoice No</th>
-            <th class="col-recipient">Recipient</th>
-            <th class="col-student">Student ID</th>
-            <th *ngIf="mode === 'invoices'" class="col-status">Status</th>
-            <th *ngIf="mode === 'invoices'" class="col-amount">Amount</th>
-            <th class="col-paid">Paid</th>
-            <th *ngIf="mode === 'invoices'" class="col-balance">Balance</th>
-            <th *ngIf="mode === 'invoices'" class="col-prev">Prev Balance</th>
-            <th *ngIf="mode === 'invoices'" class="col-prepaid">Prepaid</th>
-            <th *ngIf="mode === 'invoices'" class="col-term">Term</th>
-            <th class="col-date">Payment Date</th>
-            <th class="col-method">Method</th>
-            <th class="col-ref">Reference</th>
-            <th class="col-updated">Updated</th>
-            <th class="col-anomaly">Anomaly</th>
-            <th class="col-pdf">PDF</th>
-            <th *ngIf="mode === 'payments'" class="col-actions">Actions</th>
+            <th *ngIf="mode === 'invoices'">Invoice</th>
+            <th>Recipient</th>
+            <th>Student ID</th>
+            <th *ngIf="mode === 'invoices'">Status</th>
+            <th *ngIf="mode === 'invoices'">Amount</th>
+            <th>Paid</th>
+            <th *ngIf="mode === 'invoices'">Balance</th>
+            <th *ngIf="mode === 'invoices'">Prev bal.</th>
+            <th *ngIf="mode === 'invoices'">Prepaid</th>
+            <th *ngIf="mode === 'invoices'">Term</th>
+            <th>Date</th>
+            <th>Method</th>
+            <th>Reference</th>
+            <th>Updated</th>
+            <th>Anomaly</th>
+            <th>PDF</th>
+            <th *ngIf="mode === 'payments'">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let tx of paged; trackBy: trackByTransaction" 
-              [class.row-anomaly]="hasAnomaly(tx)">
-            <td *ngIf="mode === 'invoices'" class="col-invoice">
-              <span class="invoice-number">{{ tx.invoiceNumber }}</span>
-            </td>
-            <td class="col-recipient">
-              <div class="recipient-info">
-                <div class="recipient-avatar">{{ getInitials(tx.recipientName) }}</div>
-                <span class="recipient-name">{{ tx.recipientName || '—' }}</span>
+          <tr *ngFor="let tx of displayPaged; trackBy: trackByTransaction" [class.fa-row--anomaly]="hasAnomaly(tx)">
+            <td *ngIf="mode === 'invoices'"><strong>{{ tx.invoiceNumber }}</strong></td>
+            <td>
+              <div class="fa-recipient">
+                <span class="fa-avatar">{{ getInitials(tx.recipientName) }}</span>
+                <span>{{ tx.recipientName || '—' }}</span>
               </div>
             </td>
-            <td class="col-student">
-              <span class="student-id">{{ tx.studentNumber }}</span>
+            <td><span class="fa-mono">{{ tx.studentNumber || '—' }}</span></td>
+            <td *ngIf="mode === 'invoices'">
+              <span class="fa-badge" [class]="'fa-badge--' + (tx.status || 'pending')">{{ tx.status || '—' }}</span>
             </td>
-            <td *ngIf="mode === 'invoices'" class="col-status">
-              <span class="status-badge" 
-                    [class.status-paid]="tx.status === 'paid'"
-                    [class.status-pending]="tx.status === 'pending'"
-                    [class.status-partial]="tx.status === 'partial'"
-                    [class.status-overdue]="tx.status === 'overdue'"
-                    [class.status-void]="tx.status === 'void'">
-                {{ tx.status }}
+            <td *ngIf="mode === 'invoices'" class="fa-num">{{ currencySymbol }}{{ tx.amount | number : '1.2-2' }}</td>
+            <td class="fa-num fa-num--paid">{{ currencySymbol }}{{ tx.paidAmount | number : '1.2-2' }}</td>
+            <td *ngIf="mode === 'invoices'" class="fa-num">{{ currencySymbol }}{{ tx.balance | number : '1.2-2' }}</td>
+            <td *ngIf="mode === 'invoices'" class="fa-num">{{ currencySymbol }}{{ tx.previousBalance | number : '1.2-2' }}</td>
+            <td *ngIf="mode === 'invoices'" class="fa-num">{{ currencySymbol }}{{ tx.prepaidAmount | number : '1.2-2' }}</td>
+            <td *ngIf="mode === 'invoices'">{{ tx.term || '—' }}</td>
+            <td>{{ tx.updatedAt ? (tx.updatedAt | date : 'shortDate') : '—' }}</td>
+            <td>
+              <span
+                class="fa-method"
+                [class.fa-method--cash]="isMethodCash(tx.paymentMethod)"
+                [class.fa-method--eco]="isMethodEcocash(tx.paymentMethod)"
+                [class.fa-method--bank]="isMethodBank(tx.paymentMethod)">
+                {{ tx.paymentMethod || '—' }}
               </span>
             </td>
-            <td *ngIf="mode === 'invoices'" class="col-amount amount-cell">
-              ${{ tx.amount | number:'1.2-2' }}
-            </td>
-            <td class="col-paid amount-cell paid">
-              ${{ tx.paidAmount | number:'1.2-2' }}
-            </td>
-            <td *ngIf="mode === 'invoices'" class="col-balance amount-cell" [class.negative]="tx.balance > 0">
-              ${{ tx.balance | number:'1.2-2' }}
-            </td>
-            <td *ngIf="mode === 'invoices'" class="col-prev amount-cell">
-              ${{ tx.previousBalance | number:'1.2-2' }}
-            </td>
-            <td *ngIf="mode === 'invoices'" class="col-prepaid amount-cell">
-              ${{ tx.prepaidAmount | number:'1.2-2' }}
-            </td>
-            <td *ngIf="mode === 'invoices'" class="col-term">
-              <span class="term-badge">{{ tx.term || '—' }}</span>
-            </td>
-            <td class="col-date">
-              {{ tx.updatedAt ? (tx.updatedAt | date:'shortDate') : '—' }}
-            </td>
-            <td class="col-method">
-              <span class="method-badge" 
-                    [class.cash]="isMethodCash(tx.paymentMethod)"
-                    [class.ecocash]="isMethodEcocash(tx.paymentMethod)"
-                    [class.bank]="isMethodBank(tx.paymentMethod)">
-                {{ tx.paymentMethod || 'Unknown' }}
+            <td><span class="fa-mono fa-mono--sm">{{ tx.referenceNumber || '—' }}</span></td>
+            <td>{{ tx.updatedAt ? (tx.updatedAt | date : 'short') : '—' }}</td>
+            <td>
+              <span class="fa-anomaly" [class.fa-anomaly--yes]="hasAnomaly(tx)" [class.fa-anomaly--no]="!hasAnomaly(tx)">
+                {{ hasAnomaly(tx) ? 'Check' : 'OK' }}
               </span>
             </td>
-            <td class="col-ref">
-              <span class="reference-text">{{ tx.referenceNumber || '—' }}</span>
-            </td>
-            <td class="col-updated">
-              {{ tx.updatedAt ? (tx.updatedAt | date:'short') : '—' }}
-            </td>
-            <td class="col-anomaly">
-              <span class="anomaly-badge" [class.danger]="hasAnomaly(tx)" [class.ok]="!hasAnomaly(tx)">
-                {{ hasAnomaly(tx) ? '⚠️ Check' : '✓ OK' }}
-              </span>
-            </td>
-            <td class="col-pdf">
-              <div class="pdf-buttons">
-                <button class="btn btn-pdf" *ngIf="mode === 'invoices' && tx.id" (click)="viewInvoicePDF(tx.id)" title="Download Invoice">
-                  📄
-                </button>
-                <button class="btn btn-pdf" *ngIf="tx.id" (click)="viewReceiptPDF(tx.id)" title="Download Receipt">
-                  🧾
-                </button>
+            <td>
+              <div class="fa-pdf-btns">
+                <button type="button" class="fa-icon-btn" *ngIf="mode === 'invoices' && tx.id" (click)="viewInvoicePDF(tx.id)" title="Invoice PDF">📄</button>
+                <button type="button" class="fa-icon-btn" *ngIf="tx.id" (click)="viewReceiptPDF(tx.id)" title="Receipt PDF">🧾</button>
               </div>
             </td>
-            <td *ngIf="mode === 'payments'" class="col-actions">
-              <button class="btn btn-danger-sm" 
-                      (click)="deletePayment(tx)" 
-                      [disabled]="!canDeletePayment(tx) || deletingId === tx.id"
-                      title="Delete payment">
+            <td *ngIf="mode === 'payments'">
+              <button
+                type="button"
+                class="fa-icon-btn fa-icon-btn--danger"
+                (click)="openDeleteConfirm(tx)"
+                [disabled]="!canDeletePayment(tx) || deletingId === tx.id"
+                title="Delete payment">
                 <span *ngIf="deletingId !== tx.id">🗑️</span>
-                <span *ngIf="deletingId === tx.id" class="btn-spinner"></span>
+                <span class="fa-spinner" *ngIf="deletingId === tx.id"></span>
               </button>
             </td>
           </tr>
-          <tr *ngIf="paged.length === 0">
-            <td [attr.colspan]="mode === 'invoices' ? 16 : 11" class="empty-row">
-              <div class="empty-message">
-                <span class="empty-icon">📭</span>
-                <p>No transactions match the filters</p>
-              </div>
+          <tr *ngIf="displayPaged.length === 0">
+            <td [attr.colspan]="mode === 'invoices' ? 16 : 12" class="fa-empty-cell">
+              <span class="fa-empty-inline">📭 No records match your filters</span>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Pagination Bar -->
-    <div class="pagination-bar">
-      <div class="page-summary">
-        <span class="page-info">Page {{ page }} of {{ getTotalPages() }}</span>
-        <span class="record-info">• {{ mode === 'payments' ? serverTotal : total }} records</span>
-      </div>
-      <div class="page-totals">
-        <span class="total-item">
-          <span class="total-label">Page Total:</span>
-          <span class="total-value">${{ pageTotals.paid | number:'1.2-2' }}</span>
-        </span>
-        <span class="total-item" *ngIf="mode === 'invoices'">
-          <span class="total-label">Balance:</span>
-          <span class="total-value">${{ pageTotals.balance | number:'1.2-2' }}</span>
+    <div class="fa-pagination" *ngIf="!loading">
+      <div class="fa-pagination__info">
+        <span>Page <strong>{{ page }}</strong> of <strong>{{ getTotalPages() }}</strong></span>
+        <span class="fa-pagination__totals">
+          Page paid: <strong>{{ currencySymbol }}{{ pageTotals.paid | number : '1.2-2' }}</strong>
+          <span *ngIf="mode === 'invoices'"> · Balance: <strong>{{ currencySymbol }}{{ pageTotals.balance | number : '1.2-2' }}</strong></span>
         </span>
       </div>
-      <div class="page-controls">
-        <button class="btn btn-page" (click)="goToPage(1)" [disabled]="page <= 1" title="First page">
-          ⏮️
-        </button>
-        <button class="btn btn-page" (click)="prevPage()" [disabled]="page <= 1" title="Previous page">
-          ◀️ Prev
-        </button>
-        <span class="page-number">{{ page }}</span>
-        <button class="btn btn-page" (click)="nextPage()" [disabled]="page >= getTotalPages()" title="Next page">
-          Next ▶️
-        </button>
-        <button class="btn btn-page" (click)="goToPage(getTotalPages())" [disabled]="page >= getTotalPages()" title="Last page">
-          ⏭️
-        </button>
+      <div class="fa-pagination__controls">
+        <button type="button" class="fa-page-btn" (click)="goToPage(1)" [disabled]="page <= 1" title="First">⏮</button>
+        <button type="button" class="fa-page-btn" (click)="prevPage()" [disabled]="page <= 1">Prev</button>
+        <span class="fa-page-num">{{ page }}</span>
+        <button type="button" class="fa-page-btn" (click)="nextPage()" [disabled]="page >= getTotalPages()">Next</button>
+        <button type="button" class="fa-page-btn" (click)="goToPage(getTotalPages())" [disabled]="page >= getTotalPages()" title="Last">⏭</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="fa-confirm-overlay" *ngIf="confirmDeleteTx" role="dialog" aria-labelledby="fa-delete-title">
+    <div class="fa-confirm">
+      <h3 id="fa-delete-title">Delete payment entry?</h3>
+      <p>
+        Remove payment <strong>{{ confirmDeleteTx.referenceNumber || confirmDeleteTx.invoiceNumber }}</strong>
+        for <strong>{{ confirmDeleteTx.recipientName }}</strong> ({{ currencySymbol }}{{ confirmDeleteTx.paidAmount | number : '1.2-2' }})?
+        This cannot be undone.
+      </p>
+      <div class="fa-confirm__actions">
+        <button type="button" class="fa-btn fa-btn--ghost" (click)="cancelDeleteConfirm()" [disabled]="!!deletingId">Cancel</button>
+        <button type="button" class="fa-btn fa-btn--danger" (click)="confirmDeletePayment()" [disabled]="!!deletingId">Delete</button>
       </div>
     </div>
   </div>

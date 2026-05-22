@@ -1,4 +1,157 @@
-<div class="page-container">
+<!-- Student Ledgers (financial-reports/student-ledgers) -->
+<div class="sl-page" *ngIf="hideInvoiceActions">
+  <div class="sl-toast-stack" *ngIf="success || error">
+    <div class="sl-toast sl-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="sl-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="sl-toast sl-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="sl-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="sl-hero">
+    <div class="sl-hero__main">
+      <div class="sl-hero-left">
+        <span class="sl-hero-icon" aria-hidden="true">📒</span>
+        <div>
+          <span class="sl-hero-eyebrow">Financial Reports</span>
+          <h1>Student Ledgers</h1>
+          <p class="sl-hero-sub">{{ pageSubtitle }}</p>
+          <p class="sl-hero-meta" *ngIf="lastLoadedAt && !loading">
+            Last updated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
+          </p>
+        </div>
+      </div>
+      <div class="sl-hero__actions">
+        <button type="button" class="sl-hero-refresh" (click)="loadInvoices()" [disabled]="loading" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <ng-container *ngIf="ledgerHasData">
+          <a routerLink="/financial-reports/fees-collection" class="sl-hero-btn sl-hero-btn--white">Fees collection</a>
+          <button type="button" class="sl-hero-btn sl-hero-btn--white" (click)="exportLedgerCsv()" [disabled]="!invoices.length || loading">CSV</button>
+          <button type="button" class="sl-hero-btn sl-hero-btn--white" (click)="printLedgerReport()" [disabled]="!displayedInvoices.length || loading">Print</button>
+          <a routerLink="/balance-enquiry" class="sl-hero-btn sl-hero-btn--accent">Balance enquiry</a>
+        </ng-container>
+      </div>
+    </div>
+
+    <div class="sl-hero-stats" *ngIf="ledgerHasData && !loading">
+      <article class="sl-stat">
+        <span class="sl-stat__value">{{ invoices.length }}</span>
+        <span class="sl-stat__label">Ledger entries</span>
+      </article>
+      <article class="sl-stat sl-stat--rose">
+        <span class="sl-stat__value">{{ currencySymbol }}{{ totalBalance | number:'1.2-2' }}</span>
+        <span class="sl-stat__label">Total balance</span>
+      </article>
+      <article class="sl-stat sl-stat--mint">
+        <span class="sl-stat__value">{{ currencySymbol }}{{ totalPaid | number:'1.2-2' }}</span>
+        <span class="sl-stat__label">Total paid</span>
+      </article>
+      <article class="sl-stat">
+        <span class="sl-stat__value">{{ currencySymbol }}{{ totalInvoiced | number:'1.2-2' }}</span>
+        <span class="sl-stat__label">Total invoiced</span>
+      </article>
+      <article class="sl-stat sl-stat--mint">
+        <span class="sl-stat__value">{{ paidCount }}</span>
+        <span class="sl-stat__label">Fully paid</span>
+      </article>
+      <article class="sl-stat sl-stat--amber">
+        <span class="sl-stat__value">{{ overdueCount }}</span>
+        <span class="sl-stat__label">Overdue</span>
+      </article>
+    </div>
+    <div class="sl-hero-stats sl-hero-stats--skeleton" *ngIf="loading">
+      <div class="sl-skeleton" *ngFor="let i of ledgerSkeletonRows"></div>
+    </div>
+  </header>
+
+  <section class="sl-panel">
+    <h2 class="sl-panel__title">Filters &amp; search</h2>
+    <p class="sl-panel__intro">Filter by student and status, then search invoice numbers, names, or terms.</p>
+    <div class="sl-filters-row">
+      <div class="sl-field">
+        <label for="sl-student">Student</label>
+        <select id="sl-student" class="sl-select" [(ngModel)]="selectedStudent" [ngModelOptions]="{standalone: true}" (change)="onFilterChange()" [disabled]="loading">
+          <option value="">All students</option>
+          <option *ngFor="let student of students" [value]="student.id">{{ student.firstName }} {{ student.lastName }}</option>
+        </select>
+      </div>
+      <div class="sl-search-wrap">
+        <span class="sl-search-icon" aria-hidden="true">🔍</span>
+        <input #slSearch type="search" class="sl-search-input" placeholder="Search invoice #, student, term…" [disabled]="loading && !invoices.length" (input)="onLedgerSearchInput(slSearch.value)" />
+        <button type="button" class="sl-search-clear" *ngIf="ledgerSearchQuery" (click)="slSearch.value = ''; clearLedgerSearch()">Clear</button>
+      </div>
+      <button type="button" class="sl-hero-btn sl-hero-btn--white" style="background:#6d28d9;color:#fff;border:none;height:42px" (click)="loadInvoices()" [disabled]="loading">{{ loading ? 'Loading…' : 'Refresh' }}</button>
+    </div>
+    <div class="sl-chips">
+      <button type="button" class="sl-chip" [class.sl-chip--active]="ledgerStatusChip === 'all'" (click)="onLedgerStatusChip('all')">All<span class="sl-chip__count">({{ ledgerStatusCounts['all'] }})</span></button>
+      <button type="button" class="sl-chip" [class.sl-chip--active]="ledgerStatusChip === 'pending'" (click)="onLedgerStatusChip('pending')">Pending<span class="sl-chip__count">({{ ledgerStatusCounts['pending'] }})</span></button>
+      <button type="button" class="sl-chip" [class.sl-chip--active]="ledgerStatusChip === 'partial'" (click)="onLedgerStatusChip('partial')">Partial<span class="sl-chip__count">({{ ledgerStatusCounts['partial'] }})</span></button>
+      <button type="button" class="sl-chip" [class.sl-chip--active]="ledgerStatusChip === 'paid'" (click)="onLedgerStatusChip('paid')">Paid<span class="sl-chip__count">({{ ledgerStatusCounts['paid'] }})</span></button>
+      <button type="button" class="sl-chip" [class.sl-chip--active]="ledgerStatusChip === 'overdue'" (click)="onLedgerStatusChip('overdue')">Overdue<span class="sl-chip__count">({{ ledgerStatusCounts['overdue'] }})</span></button>
+    </div>
+    <span class="sl-summary-pill" *ngIf="ledgerFilterSummary && !loading">{{ ledgerFilterSummary }}</span>
+  </section>
+
+  <section class="sl-panel" *ngIf="loading">
+    <div class="sl-skeleton-row" *ngFor="let _ of ledgerSkeletonRows"><div class="sl-skel sl-skel-sm"></div><div class="sl-skel"></div><div class="sl-skel"></div></div>
+    <p style="text-align:center;color:#64748b;margin:0">Loading student ledgers…</p>
+  </section>
+
+  <section class="sl-panel" *ngIf="!loading">
+    <div class="sl-table-scroll" *ngIf="displayedInvoices.length">
+      <table class="sl-table">
+        <thead>
+          <tr>
+            <th><button type="button" class="sl-th-btn" (click)="toggleLedgerSort('invoiceNumber')">Invoice # <span class="sl-sort">{{ ledgerSortIcon('invoiceNumber') }}</span></button></th>
+            <th><button type="button" class="sl-th-btn" (click)="toggleLedgerSort('studentName')">Student <span class="sl-sort">{{ ledgerSortIcon('studentName') }}</span></button></th>
+            <th><button type="button" class="sl-th-btn" (click)="toggleLedgerSort('term')">Term <span class="sl-sort">{{ ledgerSortIcon('term') }}</span></button></th>
+            <th class="text-right"><button type="button" class="sl-th-btn sl-th-btn-right" (click)="toggleLedgerSort('amount')">Grand total <span class="sl-sort">{{ ledgerSortIcon('amount') }}</span></button></th>
+            <th class="text-right">Paid</th>
+            <th class="text-right"><button type="button" class="sl-th-btn sl-th-btn-right" (click)="toggleLedgerSort('balance')">Balance <span class="sl-sort">{{ ledgerSortIcon('balance') }}</span></button></th>
+            <th class="text-right">Prev. balance</th>
+            <th><button type="button" class="sl-th-btn" (click)="toggleLedgerSort('status')">Status <span class="sl-sort">{{ ledgerSortIcon('status') }}</span></button></th>
+            <th><button type="button" class="sl-th-btn" (click)="toggleLedgerSort('dueDate')">Due <span class="sl-sort">{{ ledgerSortIcon('dueDate') }}</span></button></th>
+            <th style="text-align:center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let invoice of displayedInvoices; trackBy: trackByInvoiceId">
+            <td>{{ invoice.invoiceNumber }}</td>
+            <td>{{ studentDisplayName(invoice) }}</td>
+            <td>{{ invoice.term || '—' }}</td>
+            <td class="text-right sl-cell-amount">{{ currencySymbol }} {{ invoice.amount | number:'1.2-2' }}</td>
+            <td class="text-right sl-cell-amount">{{ currencySymbol }} {{ invoice.paidAmount | number:'1.2-2' }}</td>
+            <td class="text-right sl-cell-amount" [style.color]="(invoice.balance || 0) > 0 ? '#dc2626' : '#16a34a'">{{ currencySymbol }} {{ invoice.balance | number:'1.2-2' }}</td>
+            <td class="text-right">{{ currencySymbol }} {{ invoice.previousBalance | number:'1.2-2' }}</td>
+            <td><span [class]="getStatusClass(invoice.status)">{{ invoice.status }}</span></td>
+            <td>{{ invoice.dueDate | date:'mediumDate' }}</td>
+            <td>
+              <div class="sl-actions">
+                <button type="button" class="sl-btn-sm" (click)="viewInvoicePDF(invoice.id, $event)">PDF</button>
+                <button type="button" class="sl-btn-sm" (click)="openBalanceEnquiry(invoice)">Balance</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="sl-empty" *ngIf="!displayedInvoices.length && !invoices.length">
+      <p class="sl-empty-title">No ledger entries</p>
+      <p>Try adjusting filters or create invoices from the billing module.</p>
+    </div>
+    <div class="sl-empty" *ngIf="!displayedInvoices.length && invoices.length">
+      <p class="sl-empty-title">No rows match your filters</p>
+      <button type="button" class="sl-hero-btn sl-hero-btn--white" style="margin-top:8px" (click)="clearLedgerSearch(); onLedgerStatusChip('all')">Reset filters</button>
+    </div>
+  </section>
+</div>
+
+<!-- Invoice Statements (legacy route) -->
+<div class="page-container" *ngIf="!hideInvoiceActions">
   <div class="page-card">
     <!-- Page header -->
     <header class="page-header">
@@ -393,8 +546,11 @@
       </div>
     </div>
 
-    <!-- PDF Viewer Modal -->
-  <div *ngIf="showPdfViewer" class="pdf-viewer-overlay pdf-preview-maximized-overlay" (click)="closePdfViewer()" [@fadeInOut]>
+  </div>
+</div>
+
+<!-- PDF Viewer Modal (shared) -->
+<div *ngIf="showPdfViewer" class="pdf-viewer-overlay pdf-preview-maximized-overlay" (click)="closePdfViewer()" [@fadeInOut]>
     <div class="pdf-viewer-modal pdf-preview-maximized-modal" (click)="$event.stopPropagation()" [@slideInUp]>
       <div class="pdf-viewer-header">
         <h3>
@@ -436,6 +592,4 @@
       </div>
     </div>
   </div>
-  </div>
-</div>
 

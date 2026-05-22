@@ -1,97 +1,148 @@
-<div class="teaching-load-container">
-  <div class="page-header">
-    <div class="header-content">
-      <h1>
-        <span class="header-icon">📊</span>
-        Teaching Load
-      </h1>
-      <p class="subtitle">View all subjects and their teaching periods</p>
+<div class="tl-page">
+  <div class="tl-toast-stack" *ngIf="success || error">
+    <div class="tl-toast tl-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="tl-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="tl-toast tl-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="tl-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
   </div>
 
-  <div class="alert alert-error" *ngIf="error">
-    <span class="alert-icon">⚠️</span>
-    <span>{{ error }}</span>
-    <button class="alert-close" (click)="error = ''" title="Close">&times;</button>
-  </div>
-
-  <div class="alert alert-success" *ngIf="success">
-    <span class="alert-icon">✅</span>
-    <span>{{ success }}</span>
-    <button class="alert-close" (click)="success = ''" title="Close">&times;</button>
-  </div>
-
-  <div class="toolbar">
-    <div class="search-box">
-      <span class="search-icon">🔍</span>
-      <input
-        type="text"
-        [(ngModel)]="searchQuery"
-        (input)="applyFilters()"
-        placeholder="Search subjects..."
-        class="search-input">
-      <button *ngIf="searchQuery" class="clear-btn" (click)="clearSearch()">✕</button>
+  <header class="tl-hero">
+    <div class="tl-hero__main">
+      <div class="tl-hero-left">
+        <span class="tl-hero-icon" aria-hidden="true">⏱️</span>
+        <div>
+          <span class="tl-hero-eyebrow">Subject Manager</span>
+          <h1>Teaching Load</h1>
+          <p class="tl-hero-sub">
+            Set how many periods each subject requires. Values sync with timetables when not manually saved.
+          </p>
+          <p class="tl-hero-meta" *ngIf="lastLoadedAt && !loading">
+            Updated <time>{{ formatLoadedAt() }}</time>
+            <span class="tl-unsaved" *ngIf="hasUnsavedChanges"> · Unsaved changes</span>
+          </p>
+        </div>
+      </div>
+      <div class="tl-hero__actions">
+        <a routerLink="/subjects" class="tl-hero-btn tl-hero-btn--white">← Subject list</a>
+        <a routerLink="/subjects/new" class="tl-hero-btn tl-hero-btn--white" *ngIf="canEdit">Add subject</a>
+        <a routerLink="/subjects/assign" class="tl-hero-btn tl-hero-btn--white">Assign subjects</a>
+        <button type="button" class="tl-hero-btn" (click)="loadTeachingLoads()" [disabled]="loading">
+          <span [class.tl-spin]="loading">↻</span> Refresh
+        </button>
+        <button
+          type="button"
+          class="tl-hero-btn tl-hero-btn--accent"
+          *ngIf="canEdit"
+          (click)="saveTeachingLoads()"
+          [disabled]="saving || !hasUnsavedChanges || loading">
+          {{ saving ? 'Saving…' : 'Save changes' }}
+        </button>
+      </div>
     </div>
-    <div class="toolbar-actions" *ngIf="isAdmin || isSuperAdmin">
-      <button 
-        class="btn btn-primary btn-save" 
-        (click)="saveTeachingLoads()" 
-        [disabled]="saving || !hasUnsavedChanges || loading">
-        <span *ngIf="!saving">💾 Save</span>
-        <span *ngIf="saving">⏳ Saving...</span>
-      </button>
+
+    <div class="tl-hero-stats" *ngIf="!loading">
+      <article class="tl-stat">
+        <span class="tl-stat__value">{{ heroStats.subjects }}</span>
+        <span class="tl-stat__label">Subjects</span>
+      </article>
+      <article class="tl-stat tl-stat--accent">
+        <span class="tl-stat__value">{{ heroStats.totalPeriods }}</span>
+        <span class="tl-stat__label">Total periods</span>
+      </article>
+      <article class="tl-stat tl-stat--mint">
+        <span class="tl-stat__value">{{ heroStats.withClasses }}</span>
+        <span class="tl-stat__label">In timetables</span>
+      </article>
+      <article class="tl-stat tl-stat--amber" *ngIf="canEdit">
+        <span class="tl-stat__value">{{ heroStats.pending }}</span>
+        <span class="tl-stat__label">Pending save</span>
+      </article>
     </div>
-  </div>
+    <div class="tl-hero-stats tl-hero-stats--skeleton" *ngIf="loading">
+      <div class="tl-skeleton" *ngFor="let _ of skeletonRows | slice:0:4"></div>
+    </div>
+  </header>
 
-  <div *ngIf="loading" class="loading-container">
-    <div class="spinner"></div>
-    <p>Loading teaching loads...</p>
-  </div>
+  <section class="tl-panel">
+    <div class="tl-toolbar">
+      <div class="tl-search-wrap">
+        <span class="tl-search-icon" aria-hidden="true">🔍</span>
+        <input
+          type="search"
+          class="tl-search-input"
+          [ngModel]="searchQuery"
+          (ngModelChange)="onSearchInput($event)"
+          placeholder="Search by name or code…"
+          autocomplete="off"
+          aria-label="Search subjects" />
+        <button type="button" class="tl-search-clear" *ngIf="searchQuery" (click)="clearSearch()">Clear</button>
+      </div>
+      <p class="tl-result-count" *ngIf="!loading">
+        <strong>{{ filteredTeachingLoads.length }}</strong>
+        {{ filteredTeachingLoads.length === 1 ? 'subject' : 'subjects' }}
+      </p>
+    </div>
 
-  <div *ngIf="!loading && filteredTeachingLoads.length > 0" class="teaching-load-section">
-    <div class="table-wrapper">
-      <table class="modern-table">
+    <div class="tl-loading" *ngIf="loading" aria-busy="true">
+      <span class="tl-spinner"></span>
+      <span>Loading teaching loads from database…</span>
+    </div>
+
+    <div class="tl-empty" *ngIf="!loading && filteredTeachingLoads.length === 0 && !error">
+      <span class="tl-empty__icon" aria-hidden="true">📚</span>
+      <h3>No subjects found</h3>
+      <p *ngIf="searchQuery">Try a different search or clear the filter.</p>
+      <p *ngIf="!searchQuery">Add subjects or create timetables to allocate periods.</p>
+      <div class="tl-empty__actions">
+        <button type="button" class="tl-btn-secondary" *ngIf="searchQuery" (click)="clearSearch()">Clear search</button>
+        <a routerLink="/subjects/new" class="tl-btn-primary" *ngIf="canEdit && !searchQuery">Add subject</a>
+      </div>
+    </div>
+
+    <div class="tl-table-wrap" *ngIf="!loading && filteredTeachingLoads.length > 0">
+      <table class="tl-table">
         <thead>
           <tr>
             <th>#</th>
-            <th>Subject Name</th>
-            <th>Subject Code</th>
-            <th>Allocate Load</th>
-            <th>Teaching Periods</th>
+            <th>Subject</th>
+            <th>Code</th>
+            <th>Classes (timetable)</th>
+            <th *ngIf="canEdit">Adjust load</th>
+            <th>Periods</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let item of filteredTeachingLoads; let i = index">
-            <td>{{ i + 1 }}</td>
+          <tr
+            *ngFor="let item of filteredTeachingLoads; let i = index"
+            [class.tl-row--changed]="itemHasChanges(item)">
+            <td class="tl-num">{{ i + 1 }}</td>
             <td>
               <strong>{{ item.subject.name }}</strong>
             </td>
-            <td>{{ item.subject.code || '-' }}</td>
+            <td><span class="tl-code">{{ item.subject.code || '—' }}</span></td>
             <td>
-              <div class="period-controls" *ngIf="item.isEditable">
-                <button class="period-btn period-btn-minus" (click)="decreasePeriods(item)" title="Decrease">
-                  <span>−</span>
-                </button>
-                <span class="period-value">{{ item.periods }}</span>
-                <button class="period-btn period-btn-plus" (click)="increasePeriods(item)" title="Increase">
-                  <span>+</span>
-                </button>
+              <div class="tl-tags" *ngIf="item.classes?.length">
+                <span class="tl-tag" *ngFor="let c of item.classes">{{ c }}</span>
               </div>
-              <span class="period-badge" *ngIf="!item.isEditable">{{ item.periods }}</span>
+              <span class="tl-muted" *ngIf="!item.classes?.length">Not in timetable yet</span>
+            </td>
+            <td *ngIf="canEdit">
+              <div class="tl-stepper">
+                <button type="button" class="tl-stepper__btn tl-stepper__btn--minus" (click)="decreasePeriods(item)" [disabled]="item.periods <= 0" aria-label="Decrease periods">−</button>
+                <span class="tl-stepper__value">{{ item.periods }}</span>
+                <button type="button" class="tl-stepper__btn tl-stepper__btn--plus" (click)="increasePeriods(item)" aria-label="Increase periods">+</button>
+              </div>
             </td>
             <td>
-              <span class="period-badge total-periods">{{ item.periods }}</span>
+              <span class="tl-period-pill">{{ item.periods }}</span>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-  </div>
-
-  <div *ngIf="!loading && filteredTeachingLoads.length === 0 && !error" class="empty-state">
-    <div class="empty-icon">📚</div>
-    <h3>No Teaching Loads Found</h3>
-    <p>No subjects with teaching periods found. Create timetables to assign periods to subjects.</p>
-  </div>
+  </section>
 </div>
-

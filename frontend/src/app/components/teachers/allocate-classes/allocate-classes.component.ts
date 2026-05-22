@@ -1,9 +1,9 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, finalize } from 'rxjs/operators';
 import { TeacherService } from '../../../services/teacher.service';
 import { SubjectService } from '../../../services/subject.service';
 import { ClassService } from '../../../services/class.service';
@@ -62,7 +62,8 @@ export class AllocateClassesComponent implements OnInit, OnDestroy {
     private subjectService: SubjectService,
     private classService: ClassService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -107,22 +108,73 @@ export class AllocateClassesComponent implements OnInit, OnDestroy {
     check();
   }
 
-  loadTeachers() {
+  loadTeachers(): void {
     this.loading = true;
-    this.teacherService.getTeachers(1, 1000).subscribe({
-      next: (data: any[]) => {
-        this.teachers = Array.isArray(data) ? data : [];
-        this.filteredTeachers = this.teachers;
-        this.unallocatedTeachers = this.teachers.filter(t => !t.classes || t.classes.length === 0);
-        this.loading = false;
-        this.refreshUnallocatedView();
-      },
-      error: () => {
-        this.error = 'Failed to load teachers';
-        this.loading = false;
-        setTimeout(() => this.error = '', 5000);
-      }
-    });
+    this.error = '';
+    this.teacherService
+      .getTeachersForAllocate(500)
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (response) => {
+          const data = Array.isArray(response?.data) ? response.data : [];
+          this.teachers = data;
+          this.filteredTeachers = [...this.teachers];
+          this.unallocatedTeachers = this.teachers.filter(
+            (t) => !t.classes || t.classes.length === 0
+          );
+          if (this.teacherSearch.trim()) {
+            this.filterTeachers();
+          } else {
+            this.refreshUnallocatedView();
+          }
+        },
+        error: (err: any) => {
+          this.teachers = [];
+          this.filteredTeachers = [];
+          this.unallocatedTeachers = [];
+          this.unallocPaged = [];
+          const msg =
+            err?.error?.message ||
+            err?.message ||
+            (err?.status === 0
+              ? 'Cannot reach the server. Ensure the backend is running.'
+              : 'Failed to load teachers from the database');
+          this.error = msg;
+        }
+      });
+  }
+
+  getTitle(teacher: any): string {
+    const sex = (teacher?.sex || '').toString().trim().toLowerCase();
+    if (sex === 'male' || sex === 'm') return 'Mr';
+    if (sex === 'female' || sex === 'f') return 'Ms';
+    return '—';
+  }
+
+  getRole(teacher: any): string {
+    const subjectCount = teacher?.subjects?.length || 0;
+    const classCount = teacher?.classes?.length || 0;
+    if (subjectCount >= 2 && classCount >= 1) return 'HOD';
+    return 'Teacher';
+  }
+
+  getEmail(teacher: any): string {
+    const email = teacher?.email || teacher?.user?.email;
+    return email && String(email).trim() ? String(email).trim() : '—';
+  }
+
+  getCell(teacher: any): string {
+    const phone = (teacher?.phoneNumber || '').toString().trim();
+    return phone || '—';
+  }
+
+  getTeacherDisplayName(teacher: any): string {
+    return `${teacher?.firstName || ''} ${teacher?.lastName || ''}`.trim() || '—';
   }
 
   loadSubjects() {
@@ -190,10 +242,13 @@ export class AllocateClassesComponent implements OnInit, OnDestroy {
       this.refreshUnallocatedView();
       return;
     }
-    const allFiltered = this.teachers.filter(t =>
-      (`${t.firstName || ''} ${t.lastName || ''}`.toLowerCase().includes(q)) ||
-      (String(t.teacherId || '').toLowerCase().includes(q))
-    );
+    const allFiltered = this.teachers.filter((t) => {
+      const name = `${t.firstName || ''} ${t.lastName || ''}`.toLowerCase();
+      const empId = String(t.teacherId || t.id || '').toLowerCase();
+      const phone = String(t.phoneNumber || '').toLowerCase();
+      const email = String(t.email || t.user?.email || '').toLowerCase();
+      return name.includes(q) || empId.includes(q) || phone.includes(q) || email.includes(q);
+    });
     this.filteredTeachers = allFiltered;
     this.unallocatedTeachers = allFiltered.filter(t => !t.classes || t.classes.length === 0);
     this.refreshUnallocatedView();

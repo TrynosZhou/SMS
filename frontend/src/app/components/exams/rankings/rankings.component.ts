@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { ExamService } from '../../../services/exam.service';
 import { ClassService } from '../../../services/class.service';
@@ -13,7 +14,7 @@ import { SubjectService } from '../../../services/subject.service';
 })
 export class RankingsComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-exams: any[] = [];
+  exams: any[] = [];
   classes: any[] = [];
   subjects: any[] = [];
   selectedExam = '';
@@ -26,7 +27,14 @@ exams: any[] = [];
   filteredRankings: any[] = [];
   searchQuery = '';
   loading = false;
+  loadingClasses = true;
+  loadingSubjects = true;
   hasSearched = false;
+  success = '';
+  error = '';
+  lastLoadedAt: Date | null = null;
+  sortField: 'position' | 'name' | 'score' = 'position';
+  sortDir: 'asc' | 'desc' = 'asc';
   availableGrades: string[] = [];
   private selectionDebounce: any;
   
@@ -57,7 +65,7 @@ exams: any[] = [];
     if (this.selectionDebounce) {
       clearTimeout(this.selectionDebounce);
     }
-}
+  }
 
   loadExams() {
     this.examService.getExams().subscribe({
@@ -72,7 +80,90 @@ exams: any[] = [];
     this.loadAllClasses(1, []);
   }
 
+  get dashboardStats() {
+    const excellent = this.rankings.filter(r => this.getPerformanceLevel(r) === 'excellent').length;
+    return {
+      total: this.rankings.length,
+      average: this.getAverageScore(),
+      top: this.getTopScore(),
+      passRate: this.getPassRate(),
+      excellent
+    };
+  }
+
+  get filterSummary(): { type: string; exam: string; extra?: string } | null {
+    if (!this.hasSearched || !this.selectedExamType) return null;
+    const examLabel = this.examTypes.find(e => e.value === this.selectedExamType)?.label || this.selectedExamType;
+    if (this.rankingType === 'class') {
+      return { type: 'Class position', exam: examLabel, extra: this.getSelectedClassName() };
+    }
+    if (this.rankingType === 'subject') {
+      return {
+        type: 'Subject position',
+        exam: examLabel,
+        extra: `${this.getSelectedSubjectName()} · ${this.getSelectedClassName()}`
+      };
+    }
+    return { type: 'Grade position', exam: examLabel, extra: this.selectedForm };
+  }
+
+  clearAlert(type: 'success' | 'error'): void {
+    if (type === 'success') this.success = '';
+    else this.error = '';
+    this.cdr.markForCheck();
+  }
+
+  canLoadRankings(): boolean {
+    if (!this.selectedExamType?.trim()) return false;
+    if (this.rankingType === 'class' || this.rankingType === 'subject') {
+      return !!this.selectedClass?.trim() && (this.rankingType !== 'subject' || !!this.selectedSubject?.trim());
+    }
+    return !!this.selectedForm?.trim();
+  }
+
+  refreshRankings(): void {
+    if (this.canLoadRankings() && this.hasSearched) {
+      this.loadRankings();
+    }
+  }
+
+  getSelectedClassName(): string {
+    const cls = this.classes.find(c => c.id === this.selectedClass);
+    return cls?.name || '—';
+  }
+
+  getSelectedSubjectName(): string {
+    const sub = this.subjects.find(s => s.id === this.selectedSubject);
+    return sub?.name || '—';
+  }
+
+  setSort(field: 'position' | 'name' | 'score'): void {
+    if (this.sortField === field) {
+      this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortField = field;
+      this.sortDir = field === 'name' ? 'asc' : 'desc';
+    }
+    this.applySort();
+  }
+
+  applySort(): void {
+    const dir = this.sortDir === 'asc' ? 1 : -1;
+    this.filteredRankings = [...this.filteredRankings].sort((a, b) => {
+      if (this.sortField === 'position') {
+        return (this.getPosition(a) - this.getPosition(b)) * dir;
+      }
+      if (this.sortField === 'name') {
+        return (a.studentName || '').localeCompare(b.studentName || '') * dir;
+      }
+      const scoreA = this.rankingType === 'subject' ? (a.percentage || 0) : (a.average || 0);
+      const scoreB = this.rankingType === 'subject' ? (b.percentage || 0) : (b.average || 0);
+      return (scoreA - scoreB) * dir;
+    });
+  }
+
   loadAllClasses(page: number, accumulatedClasses: any[]) {
+    this.loadingClasses = page === 1 && accumulatedClasses.length === 0;
     this.classService.getClassesPaginated(page, 100).subscribe({
       next: (response: any) => {
         const data = response?.data || response || [];
@@ -117,12 +208,13 @@ exams: any[] = [];
             }
           });
           this.availableGrades = Array.from(gradesSet).sort();
-          
-          console.log(`Loaded ${this.classes.length} classes for rankings`);
+          this.loadingClasses = false;
+          this.cdr.markForCheck();
         }
       },
       error: (err: any) => {
         console.error('Error loading classes:', err);
+        this.loadingClasses = false;
         // Use accumulated classes if we got some before the error
         if (accumulatedClasses.length > 0) {
           this.classes = accumulatedClasses;
@@ -144,14 +236,50 @@ exams: any[] = [];
   }
 
   loadSubjects() {
-    this.subjectService.getSubjects().subscribe({
-      next: (data: any) => {
-        const allowed = new Set(['Mathematics', 'Science', 'English']);
-        const arr = Array.isArray(data) ? data : (Array.isArray((data || {}).subjects) ? (data as any).subjects : []);
-        this.subjects = arr.filter((s: any) => allowed.has(String(s?.name || '').trim()));
-      },
-      error: (err: any) => console.error(err)
-    });
+    this.loadingSubjects = true;
+    this.subjectService
+      .getSubjects()
+      .pipe(
+        finalize(() => {
+          this.loadingSubjects = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (data: any) => {
+          const arr = Array.isArray(data) ? data : [];
+          this.subjects = this.sortSubjects(
+            arr.map((s: any) => {
+              const item = { ...s };
+              if (item.id) {
+                let cleanId = String(item.id).trim();
+                if (cleanId.includes(':')) {
+                  cleanId = cleanId.split(':')[0].trim();
+                }
+                item.id = cleanId;
+              }
+              return item;
+            })
+          );
+          this.cdr.markForCheck();
+        },
+        error: (err: any) => {
+          console.error('Error loading subjects:', err);
+          this.subjects = [];
+          this.error = err.error?.message || 'Failed to load subjects from database.';
+          this.cdr.markForCheck();
+          setTimeout(() => {
+            this.error = '';
+            this.cdr.markForCheck();
+          }, 7000);
+        }
+      });
+  }
+
+  private sortSubjects(list: any[]): any[] {
+    return [...list].sort((a, b) =>
+      String(a?.name || '').localeCompare(String(b?.name || ''), undefined, { sensitivity: 'base' })
+    );
   }
 
   onRankingTypeChange() {
@@ -163,7 +291,6 @@ exams: any[] = [];
       this.selectedSubject = '';
       this.selectedForm = '';
     } else if (rt === 'subject') {
-      this.selectedClass = '';
       this.selectedForm = '';
     } else if (rt === 'overall-performance') {
       this.selectedClass = '';
@@ -171,6 +298,12 @@ exams: any[] = [];
     }
     // Attempt auto-load if requirements are already satisfied
     this.onSelectionChange();
+  }
+
+  onClassFilterChange(): void {
+    if (this.rankingType === 'class') {
+      this.onSelectionChange();
+    }
   }
 
   onSelectionChange() {
@@ -185,9 +318,7 @@ exams: any[] = [];
           this.loadRankings();
         }
       } else if (rt === 'subject') {
-        if (hasExamType && this.selectedSubject && String(this.selectedSubject).trim()) {
-          this.loadRankings();
-        }
+        // Subject rankings load only when user clicks "Load Rankings"
       } else if (rt === 'overall-performance') {
         if (hasExamType && this.selectedForm && String(this.selectedForm).trim()) {
           this.loadRankings();
@@ -201,14 +332,27 @@ exams: any[] = [];
     this.filteredRankings = [];
     this.searchQuery = '';
     this.hasSearched = false;
+    this.success = '';
+    this.error = '';
+    this.lastLoadedAt = null;
     this.selectedExam = '';
     this.selectedClass = '';
     this.selectedSubject = '';
     this.selectedForm = '';
     this.selectedExamType = '';
+    this.sortField = 'position';
+    this.sortDir = 'asc';
   }
 
   loadRankings() {
+    this.error = '';
+    this.success = '';
+    if (!this.canLoadRankings()) {
+      this.error = 'Please complete all required filters before loading rankings.';
+      setTimeout(() => { this.error = ''; this.cdr.markForCheck(); }, 5000);
+      return;
+    }
+
     this.loading = true;
     this.hasSearched = true;
     let request;
@@ -221,12 +365,15 @@ exams: any[] = [];
       // For class rankings, we need to get exams by type and class, then aggregate
       request = this.examService.getClassRankingsByType(this.selectedExamType, this.selectedClass);
     } else if (this.rankingType === 'subject') {
-      if (!this.selectedExamType || !this.selectedSubject) {
+      if (!this.selectedExamType || !this.selectedSubject || !this.selectedClass) {
         this.loading = false;
         return;
       }
-      // For subject rankings, we need to get exams by type and subject, then aggregate
-      request = this.examService.getSubjectRankingsByType(this.selectedExamType, this.selectedSubject);
+      request = this.examService.getSubjectRankingsByType(
+        this.selectedExamType,
+        this.selectedSubject,
+        this.selectedClass
+      );
     } else if (this.rankingType === 'overall-performance') {
       if (!this.selectedForm || !this.selectedExamType) {
         this.loading = false;
@@ -242,13 +389,27 @@ exams: any[] = [];
       next: (data: any) => {
         this.rankings = data || [];
         this.filteredRankings = [...this.rankings];
+        this.sortField = 'position';
+        this.sortDir = 'asc';
+        this.applySort();
+        this.lastLoadedAt = new Date();
         this.loading = false;
+        if (this.rankings.length === 0) {
+          this.error = 'No ranking data found for the selected criteria.';
+        } else {
+          this.success = `Loaded ${this.rankings.length} student ranking${this.rankings.length === 1 ? '' : 's'}.`;
+        }
+        this.cdr.markForCheck();
+        setTimeout(() => { this.success = ''; this.cdr.markForCheck(); }, 5000);
       },
       error: (err: any) => {
         console.error(err);
         this.loading = false;
         this.rankings = [];
         this.filteredRankings = [];
+        this.error = err.error?.message || 'Failed to load rankings. Check filters and try again.';
+        this.cdr.markForCheck();
+        setTimeout(() => { this.error = ''; this.cdr.markForCheck(); }, 7000);
       }
     });
   }
@@ -256,13 +417,14 @@ exams: any[] = [];
   filterRankings() {
     if (!this.searchQuery.trim()) {
       this.filteredRankings = [...this.rankings];
-      return;
+    } else {
+      const query = this.searchQuery.toLowerCase().trim();
+      this.filteredRankings = this.rankings.filter(r =>
+        r.studentName?.toLowerCase().includes(query) ||
+        r.class?.toLowerCase().includes(query)
+      );
     }
-    const query = this.searchQuery.toLowerCase().trim();
-    this.filteredRankings = this.rankings.filter(r => 
-      r.studentName?.toLowerCase().includes(query) ||
-      r.class?.toLowerCase().includes(query)
-    );
+    this.applySort();
   }
 
   getInitials(name: string): string {

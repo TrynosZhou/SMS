@@ -81,7 +81,11 @@ import { NewsListComponent } from './components/news/news-list/news-list.compone
 import { NewsFeedComponent } from './components/news/news-feed/news-feed.component';
 import { NewsFormComponent } from './components/news/news-form/news-form.component';
 import { NewsDetailComponent } from './components/news/news-detail/news-detail.component';
-import { PaymentReceiptManagerComponent } from './components/settings/payment-receipt-manager/payment-receipt-manager.component';
+import { AgedDebtorsReportComponent } from './components/finance/financial-reports/aged-debtors-report.component';
+import { RevenueRecognitionReportComponent } from './components/finance/financial-reports/revenue-recognition-report.component';
+import { AcademicSettingsComponent } from './components/academic-settings/academic-settings.component';
+import { UserManagementComponent } from './components/admin/user-management/user-management.component';
+import { IntegrationsComponent } from './components/admin/integrations/integrations.component';
 import { PayrollDashboardComponent } from './components/payroll/payroll-dashboard/payroll-dashboard.component';
 import { AncillaryStaffListComponent } from './components/payroll/ancillary-staff-list/ancillary-staff-list.component';
 import { AncillaryStaffFormComponent } from './components/payroll/ancillary-staff-form/ancillary-staff-form.component';
@@ -183,7 +187,11 @@ SendMessageComponent,
     NewsFeedComponent,
     NewsFormComponent,
     NewsDetailComponent,
-    PaymentReceiptManagerComponent,
+    AgedDebtorsReportComponent,
+    RevenueRecognitionReportComponent,
+    AcademicSettingsComponent,
+    UserManagementComponent,
+    IntegrationsComponent,
     PayrollDashboardComponent,
     AncillaryStaffListComponent,
     AncillaryStaffFormComponent,

@@ -40,6 +40,10 @@ export class AccountService {
     return this.http.post(`${this.apiUrl}/account/reset-password`, body);
   }
 
+  getAllUsers(): Observable<{ users: any[] }> {
+    return this.http.get<{ users: any[] }>(`${this.apiUrl}/account/all-users`);
+  }
+
   getStaffUsers(): Observable<{ users: any[] }> {
     return this.http.get<{ users: any[] }>(`${this.apiUrl}/account/staff-users`);
   }

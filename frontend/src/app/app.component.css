@@ -160,6 +160,55 @@
   padding: 0 0.5rem;
 }
 
+/* Sidebar filter (top of menu) */
+.sidebar-filter-wrap {
+  padding: 0 0.5rem 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.sidebar.collapsed .sidebar-filter-wrap {
+  display: none;
+}
+
+.sidebar-filter-field {
+  position: relative;
+  display: block;
+}
+
+.sidebar-filter-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.875rem;
+  line-height: 1;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.sidebar-filter {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.625rem 0.75rem 0.625rem 2.25rem;
+  border-radius: 8px;
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  background: rgba(15, 23, 42, 0.35);
+  color: #f1f5f9;
+  font-size: 0.875rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.sidebar-filter::placeholder {
+  color: #94a3b8;
+}
+
+.sidebar-filter:focus {
+  border-color: rgba(147, 197, 253, 0.75);
+  background: rgba(15, 23, 42, 0.5);
+}
+
 /* Sidebar Items */
 .sidebar-item {
   display: flex;
@@ -268,6 +317,19 @@
 
 .sidebar-submenu.expanded {
   max-height: 500px;
+}
+
+/* Nested branch (e.g. Registration → Teachers / Students / Parents) */
+.sidebar-submenu--branch {
+  margin-left: 0.75rem;
+  padding-left: 0.5rem;
+  border-left: 2px solid rgba(148, 163, 184, 0.35);
+}
+
+.sidebar-submenu--branch .sidebar-subitem {
+  padding-left: 1.25rem;
+  color: #f8fafc;
+  font-weight: 600;
 }
 
 .sidebar-subitem {

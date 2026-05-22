@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
-import { updateAccount, getAccountInfo, createUserAccount, resetUserPassword, updateUserRole, updateStaffProfile, getUniversalTeacherStatus, createUniversalTeacherAccount, getStaffUsers, unlockUser, deleteUserAccount } from '../controllers/account.controller';
+import { updateAccount, getAccountInfo, createUserAccount, resetUserPassword, updateUserRole, updateStaffProfile, getUniversalTeacherStatus, createUniversalTeacherAccount, getStaffUsers, getAllUsers, unlockUser, deleteUserAccount } from '../controllers/account.controller';
 import { UserRole } from '../entities/User';
 
 const router = Router();
@@ -26,6 +26,13 @@ router.post(
   '/reset-password',
   authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
   resetUserPassword
+);
+
+// Admin/SuperAdmin: list all user accounts (User Management page)
+router.get(
+  '/all-users',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  getAllUsers
 );
 
 // Admin/SuperAdmin: list staff users (admin, superadmin, accountant)

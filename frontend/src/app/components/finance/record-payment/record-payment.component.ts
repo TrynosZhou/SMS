@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { finalize, takeUntil, timeout } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, finalize, takeUntil, timeout } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
 import { FinanceService } from '../../../services/finance.service';
@@ -12,7 +12,7 @@ import { trigger, transition, style, animate } from '@angular/animations';
 @Component({
   standalone: false,  selector: 'app-record-payment',
 templateUrl: './record-payment.component.html',
-  styleUrls: ['./record-payment.component.css'],
+  styleUrls: ['./record-payment.component.css', './record-payment-modern.css'],
   animations: [
     trigger('fadeSlide', [
       transition(':enter', [
@@ -33,7 +33,9 @@ templateUrl: './record-payment.component.html',
 })
 export class RecordPaymentComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-studentId: string = '';
+  private readonly studentSearchInput$ = new Subject<string>();
+
+  studentId: string = '';
   studentData: any = null;
   loading = false;
   error = '';
@@ -66,7 +68,7 @@ studentId: string = '';
   matchingStudents: any[] = [];
   selectedMatchId: string = '';
   recentPayments: any[] = [];
-  searchTimeout: any;
+  lastLoadedAt: Date | null = null;
   Math = Math;
 
   constructor(
@@ -90,6 +92,14 @@ studentId: string = '';
   }
 
   ngOnInit(): void {
+    this.studentSearchInput$
+      .pipe(debounceTime(400), distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((q) => {
+        if (q.length >= 3) {
+          this.getBalance();
+        }
+      });
+
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe((params) => {
       this.applyQueryParams(params);
     });
@@ -103,9 +113,6 @@ studentId: string = '';
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-    if (this.searchTimeout) {
-      clearTimeout(this.searchTimeout);
-    }
     if (this.receiptBlobUrl) {
       window.URL.revokeObjectURL(this.receiptBlobUrl);
     }
@@ -170,16 +177,25 @@ const currentYear = new Date().getFullYear();
       });
 }
 
+  clearAlert(kind: 'success' | 'error'): void {
+    if (kind === 'success') this.success = '';
+    else this.error = '';
+  }
+
   onSearchInput(): void {
-    if (this.searchTimeout) {
-      clearTimeout(this.searchTimeout);
-    }
-    
-    if (this.studentId && this.studentId.length >= 3) {
-      this.searchTimeout = setTimeout(() => {
-        // Auto-search after typing stops
-      }, 500);
-    }
+    this.studentSearchInput$.next((this.studentId || '').trim());
+  }
+
+  selectPaymentMethod(value: string): void {
+    this.paymentForm.paymentMethod = value;
+  }
+
+  trackByStudentId(_index: number, s: any): string {
+    return s.studentId || String(_index);
+  }
+
+  trackByPaymentIndex(index: number): number {
+    return index;
   }
 
   getBalance(preservePaymentFlag: boolean = false): void {
@@ -248,6 +264,7 @@ if (data && data.multipleMatches && Array.isArray(data.matches) && data.matches.
             this.success = preservedSuccessMessage;
           }
         }
+        this.lastLoadedAt = new Date();
       },
         error: (error: any) => {
 this.error = error.error?.message || 'Student not found. Please check the details and try again.';

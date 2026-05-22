@@ -5,6 +5,35 @@ import { UserRole } from '../entities/User';
 import { UserSessionLog } from '../entities/UserSessionLog';
 import { ModuleAccessLog } from '../entities/ModuleAccessLog';
 import PDFDocument from 'pdfkit';
+import { SelectQueryBuilder } from 'typeorm';
+
+function applyUserSessionFilters(
+  qb: SelectQueryBuilder<UserSessionLog>,
+  query: Record<string, any>
+): void {
+  const { startDate, endDate, role, search, action, entityId, performedBy } = query;
+  const isValidDate = (v: any) => typeof v === 'string' && v !== 'undefined' && !isNaN(Date.parse(v));
+  if (isValidDate(startDate)) qb.andWhere('s.loginAt >= :start', { start: new Date(startDate) });
+  if (isValidDate(endDate)) qb.andWhere('s.loginAt <= :end', { end: new Date(endDate) });
+  if (role && role !== 'all' && role !== 'undefined') {
+    qb.andWhere('LOWER(s.role) = :role', { role: String(role).toLowerCase() });
+  }
+  const status = String(action || 'all').toLowerCase();
+  if (status === 'active') qb.andWhere('s.logoutAt IS NULL');
+  if (status === 'logged_out') qb.andWhere('s.logoutAt IS NOT NULL');
+  const uid = entityId && String(entityId).trim();
+  const uname = performedBy && String(performedBy).trim();
+  if (uid) {
+    qb.andWhere('LOWER(s.userId) LIKE :uid', { uid: `%${uid.toLowerCase()}%` });
+  }
+  if (uname) {
+    qb.andWhere('LOWER(s.username) LIKE :uname', { uname: `%${uname.toLowerCase()}%` });
+  }
+  if (!uid && !uname && search && search !== 'undefined' && String(search).trim()) {
+    const q = `%${String(search).trim().toLowerCase()}%`;
+    qb.andWhere('(LOWER(s.username) LIKE :q OR LOWER(s.userId) LIKE :q)', { q });
+  }
+}
 
 export const logActivity = async (req: AuthRequest, res: Response) => {
   try {
@@ -77,20 +106,11 @@ export const getUserSessions = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: 'Forbidden' });
     }
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
-    const { startDate, endDate, role, search, page = '1', limit = '20', sortKey = 'loginAt', sortDir = 'DESC' } = req.query as any;
+    const { page = '1', limit = '20', sortKey = 'loginAt', sortDir = 'DESC' } = req.query as any;
     const repo = AppDataSource.getRepository(UserSessionLog);
     const qb = repo.createQueryBuilder('s')
       .where('LOWER(s.role) IN (:...roles)', { roles: ['admin', 'superadmin', 'accountant'] });
-    const isValidDate = (v: any) => typeof v === 'string' && v !== 'undefined' && !isNaN(Date.parse(v));
-    if (isValidDate(startDate)) qb.andWhere('s.loginAt >= :start', { start: new Date(startDate) });
-    if (isValidDate(endDate)) qb.andWhere('s.loginAt <= :end', { end: new Date(endDate) });
-    if (role && role !== 'all' && role !== 'undefined') {
-      qb.andWhere('LOWER(s.role) = :role', { role: String(role).toLowerCase() });
-    }
-    if (search && search !== 'undefined' && String(search).trim()) {
-      const q = `%${String(search).trim().toLowerCase()}%`;
-      qb.andWhere('(LOWER(s.username) LIKE :q OR LOWER(s.userId) LIKE :q)', { q });
-    }
+    applyUserSessionFilters(qb, req.query as any);
     // Sorting
     const allowedSort = new Set(['loginAt', 'lastActivityAt', 'logoutAt', 'timeSpentSeconds', 'role', 'username', 'ipAddress', 'sessionId']);
     const key = allowedSort.has(String(sortKey)) ? String(sortKey) : 'loginAt';
@@ -113,17 +133,10 @@ export const exportUserSessionsCsv = async (req: AuthRequest, res: Response) => 
       return res.status(403).json({ message: 'Forbidden' });
     }
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
-    const { startDate, endDate, role, search, sortKey = 'loginAt', sortDir = 'DESC' } = req.query as any;
+    const { sortKey = 'loginAt', sortDir = 'DESC' } = req.query as any;
     const repo = AppDataSource.getRepository(UserSessionLog);
     const qb = repo.createQueryBuilder('s').where('LOWER(s.role) IN (:...roles)', { roles: ['admin', 'superadmin', 'accountant'] });
-    const isValidDate = (v: any) => typeof v === 'string' && v !== 'undefined' && !isNaN(Date.parse(v));
-    if (isValidDate(startDate)) qb.andWhere('s.loginAt >= :start', { start: new Date(startDate) });
-    if (isValidDate(endDate)) qb.andWhere('s.loginAt <= :end', { end: new Date(endDate) });
-    if (role && role !== 'all' && role !== 'undefined') qb.andWhere('LOWER(s.role) = :role', { role: String(role).toLowerCase() });
-    if (search && search !== 'undefined' && String(search).trim()) {
-      const q = `%${String(search).trim().toLowerCase()}%`;
-      qb.andWhere('(LOWER(s.username) LIKE :q OR LOWER(s.userId) LIKE :q)', { q });
-    }
+    applyUserSessionFilters(qb, req.query as any);
     const allowedSort = new Set(['loginAt', 'lastActivityAt', 'logoutAt', 'timeSpentSeconds', 'role', 'username', 'ipAddress', 'sessionId']);
     const key = allowedSort.has(String(sortKey)) ? String(sortKey) : 'loginAt';
     const dir = String(sortDir).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
@@ -162,17 +175,10 @@ export const exportUserSessionsPdf = async (req: AuthRequest, res: Response) => 
       return res.status(403).json({ message: 'Forbidden' });
     }
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
-    const { startDate, endDate, role, search, sortKey = 'loginAt', sortDir = 'DESC' } = req.query as any;
+    const { sortKey = 'loginAt', sortDir = 'DESC' } = req.query as any;
     const repo = AppDataSource.getRepository(UserSessionLog);
     const qb = repo.createQueryBuilder('s').where('LOWER(s.role) IN (:...roles)', { roles: ['admin', 'superadmin', 'accountant'] });
-    const isValidDate = (v: any) => typeof v === 'string' && v !== 'undefined' && !isNaN(Date.parse(v));
-    if (isValidDate(startDate)) qb.andWhere('s.loginAt >= :start', { start: new Date(startDate) });
-    if (isValidDate(endDate)) qb.andWhere('s.loginAt <= :end', { end: new Date(endDate) });
-    if (role && role !== 'all' && role !== 'undefined') qb.andWhere('LOWER(s.role) = :role', { role: String(role).toLowerCase() });
-    if (search && search !== 'undefined' && String(search).trim()) {
-      const q = `%${String(search).trim().toLowerCase()}%`;
-      qb.andWhere('(LOWER(s.username) LIKE :q OR LOWER(s.userId) LIKE :q)', { q });
-    }
+    applyUserSessionFilters(qb, req.query as any);
     const allowedSort = new Set(['loginAt', 'lastActivityAt', 'logoutAt', 'timeSpentSeconds', 'role', 'username', 'ipAddress', 'sessionId']);
     const key = allowedSort.has(String(sortKey)) ? String(sortKey) : 'loginAt';
     const dir = String(sortDir).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';

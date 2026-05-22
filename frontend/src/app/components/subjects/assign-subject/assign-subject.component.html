@@ -102,7 +102,7 @@
             *ngFor="let cls of classes"
             class="class-card"
             [class.selected]="selectedClassId === cls.id"
-            (click)="selectedClassId = cls.id; onClassChange()">
+            (click)="selectClass(cls.id)">
             <div class="class-icon">🎓</div>
             <div class="class-info">
               <h4>{{ cls.name }}</h4>
@@ -113,7 +113,7 @@
         </div>
 
         <!-- Selected Class Details -->
-        <div class="selected-class-details" *ngIf="selectedClass && !loading" @fadeSlide>
+        <div class="selected-class-details" *ngIf="selectedClass && !loadingClassDetails" @fadeSlide>
           <div class="details-header">
             <h3>{{ selectedClass.name }}</h3>
             <span class="form-badge" *ngIf="selectedClass.form">{{ selectedClass.form }}</span>
@@ -131,7 +131,7 @@
         </div>
 
         <!-- Loading Class Details -->
-        <div *ngIf="loading && selectedClassId" class="loading-state small">
+        <div *ngIf="loadingClassDetails && selectedClassId" class="loading-state small">
           <div class="spinner-modern small"></div>
           <p>Loading class details...</p>
         </div>
@@ -236,7 +236,7 @@
       </div>
 
       <!-- Action Footer -->
-      <div class="panel-footer" *ngIf="selectedClassId && !loading">
+      <div class="panel-footer" *ngIf="selectedClassId && !loadingClassDetails">
         <button
           class="btn btn-secondary"
           (click)="router.navigate(['/subjects'])"

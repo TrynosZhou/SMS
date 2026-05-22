@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
-import { finalize, takeUntil } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -14,7 +14,7 @@ import { trigger, state, style, transition, animate } from '@angular/animations'
 @Component({
   standalone: false,  selector: 'app-invoice-statements',
 templateUrl: './invoice-statements.component.html',
-  styleUrls: ['./invoice-statements.component.css'],
+  styleUrls: ['./invoice-statements.component.css', './invoice-statements-ledger-modern.css'],
   animations: [
     trigger('fadeInOut', [
       state('void', style({ opacity: 0 })),
@@ -35,7 +35,11 @@ templateUrl: './invoice-statements.component.html',
 })
 export class InvoiceStatementsComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-invoices: any[] = [];
+  private readonly ledgerSearchInput$ = new Subject<string>();
+  readonly ledgerSkeletonRows = [0, 1, 2, 3, 4, 5];
+
+  invoices: any[] = [];
+  displayedInvoices: any[] = [];
   students: any[] = [];
   selectedStudent = '';
   selectedStatus = '';
@@ -69,6 +73,19 @@ invoices: any[] = [];
   pageTitle = 'Invoice Statements';
   pageSubtitle = 'View and manage invoice statements by student and status';
 
+  lastLoadedAt: Date | null = null;
+  ledgerSearchQuery = '';
+  ledgerStatusChip = 'all';
+  ledgerSortColumn:
+    | 'invoiceNumber'
+    | 'studentName'
+    | 'amount'
+    | 'balance'
+    | 'dueDate'
+    | 'term'
+    | 'status' = 'dueDate';
+  ledgerSortDir: 'asc' | 'desc' = 'desc';
+
   constructor(
     public financeService: FinanceService,
     private studentService: StudentService,
@@ -81,6 +98,14 @@ invoices: any[] = [];
   ) { }
 
   ngOnInit() {
+    this.ledgerSearchInput$
+      .pipe(debounceTime(200), distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((q) => {
+        this.ledgerSearchQuery = q;
+        if (this.hideInvoiceActions) this.applyLedgerView();
+        this.cdr.markForCheck();
+      });
+
     const routeData = this.route.snapshot.data || {};
     this.hideInvoiceActions = !!routeData['hideInvoiceActions'];
     if (routeData['pageTitle']) {
@@ -164,7 +189,9 @@ if (params['studentId']) {
       )
       .subscribe({
         next: (data: any) => {
-          this.invoices = data;
+          this.invoices = Array.isArray(data) ? data : [];
+          this.lastLoadedAt = new Date();
+          if (this.hideInvoiceActions) this.applyLedgerView();
         },
         error: (err: any) => {
           console.error(err);
@@ -174,6 +201,7 @@ if (params['studentId']) {
 }
 
   onFilterChange() {
+    this.ledgerStatusChip = this.selectedStatus || 'all';
     // Update URL with query parameters
     const queryParams: any = {};
     if (this.selectedStudent) {
@@ -456,13 +484,15 @@ if (params['studentId']) {
   }
 
   getStatusClass(status: string): string {
-    const statusMap: any = {
-      'paid': 'status-pill status-paid',
-      'pending': 'status-pill status-pending',
-      'partial': 'status-pill status-partial',
-      'overdue': 'status-pill status-overdue'
+    const key = (status || '').toLowerCase();
+    const prefix = this.hideInvoiceActions ? 'sl-status-pill' : 'status-pill';
+    const statusMap: Record<string, string> = {
+      paid: `${prefix} status-paid`,
+      pending: `${prefix} status-pending`,
+      partial: `${prefix} status-partial`,
+      overdue: `${prefix} status-overdue`
     };
-    return statusMap[status] || 'status-pill status-default';
+    return statusMap[key] || `${prefix} status-default`;
   }
 
   /** Total balance across filtered invoices */
@@ -483,6 +513,239 @@ if (params['studentId']) {
   /** Count of overdue invoices */
   get overdueCount(): number {
     return (this.invoices || []).filter(inv => (inv.status || '').toLowerCase() === 'overdue').length;
+  }
+
+  get ledgerHasData(): boolean {
+    return this.lastLoadedAt != null;
+  }
+
+  get totalInvoiced(): number {
+    return (this.invoices || []).reduce((s, inv) => s + parseFloat(String(inv.amount || 0)), 0);
+  }
+
+  get ledgerStudentCount(): number {
+    const ids = new Set(
+      (this.displayedInvoices || [])
+        .map((inv) => inv.studentId || inv.student?.id)
+        .filter(Boolean)
+    );
+    return ids.size;
+  }
+
+  get ledgerFilterSummary(): string {
+    const parts: string[] = [];
+    if (this.selectedStudent) {
+      const st = this.students.find((s) => s.id === this.selectedStudent);
+      if (st) parts.push(`Student: ${st.firstName} ${st.lastName}`);
+    }
+    if (this.ledgerStatusChip !== 'all') parts.push(`Status: ${this.ledgerStatusChip}`);
+    if (this.ledgerSearchQuery) parts.push(`Search: "${this.ledgerSearchQuery}"`);
+    parts.push(`${this.displayedInvoices.length} of ${this.invoices.length} entries`);
+    return parts.join(' · ');
+  }
+
+  get ledgerStatusCounts(): Record<string, number> {
+    const counts: Record<string, number> = {
+      all: this.invoices.length,
+      paid: 0,
+      pending: 0,
+      partial: 0,
+      overdue: 0
+    };
+    for (const inv of this.invoices) {
+      const s = (inv.status || '').toLowerCase();
+      if (counts[s] !== undefined) counts[s] += 1;
+    }
+    return counts;
+  }
+
+  clearAlert(kind: 'success' | 'error'): void {
+    if (kind === 'success') this.success = '';
+    else this.error = '';
+  }
+
+  onLedgerSearchInput(value: string): void {
+    this.ledgerSearchInput$.next((value || '').trim());
+  }
+
+  clearLedgerSearch(): void {
+    this.ledgerSearchQuery = '';
+    this.ledgerSearchInput$.next('');
+    this.applyLedgerView();
+    this.cdr.markForCheck();
+  }
+
+  onLedgerStatusChip(status: string): void {
+    this.ledgerStatusChip = status;
+    this.selectedStatus = status === 'all' ? '' : status;
+    this.onFilterChange();
+  }
+
+  toggleLedgerSort(column: typeof this.ledgerSortColumn): void {
+    if (this.ledgerSortColumn === column) {
+      this.ledgerSortDir = this.ledgerSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.ledgerSortColumn = column;
+      this.ledgerSortDir = column === 'studentName' || column === 'invoiceNumber' ? 'asc' : 'desc';
+    }
+    this.applyLedgerView();
+    this.cdr.markForCheck();
+  }
+
+  ledgerSortIcon(column: string): string {
+    if (this.ledgerSortColumn !== column) return '↕';
+    return this.ledgerSortDir === 'asc' ? '↑' : '↓';
+  }
+
+  trackByInvoiceId(_index: number, inv: { id?: string }): string {
+    return inv.id || String(_index);
+  }
+
+  studentDisplayName(inv: any): string {
+    const s = inv?.student;
+    if (!s) return '—';
+    return [s.firstName, s.lastName].filter(Boolean).join(' ') || '—';
+  }
+
+  openBalanceEnquiry(inv: any): void {
+    const num = inv?.student?.studentNumber || inv?.studentId;
+    if (!num) return;
+    this.router.navigate(['/balance-enquiry'], { queryParams: { studentId: num } });
+  }
+
+  exportLedgerCsv(): void {
+    const rows = this.displayedInvoices.length ? this.displayedInvoices : this.invoices;
+    if (!rows.length) return;
+    const esc = (v: unknown) => {
+      const s = String(v ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = [
+      'Invoice #',
+      'Student',
+      'Term',
+      'Grand Total',
+      'Paid',
+      'Balance',
+      'Previous Balance',
+      'Status',
+      'Due Date'
+    ];
+    const lines = [header.join(',')];
+    for (const inv of rows) {
+      lines.push(
+        [
+          inv.invoiceNumber,
+          this.studentDisplayName(inv),
+          inv.term,
+          (parseFloat(String(inv.amount || 0)) || 0).toFixed(2),
+          (parseFloat(String(inv.paidAmount || 0)) || 0).toFixed(2),
+          (parseFloat(String(inv.balance || 0)) || 0).toFixed(2),
+          (parseFloat(String(inv.previousBalance || 0)) || 0).toFixed(2),
+          inv.status,
+          inv.dueDate ? new Date(inv.dueDate).toISOString().slice(0, 10) : ''
+        ]
+          .map(esc)
+          .join(',')
+      );
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Student_Ledgers_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    this.success = `Exported ${rows.length} ledger row(s)`;
+    setTimeout(() => {
+      this.success = '';
+      this.cdr.markForCheck();
+    }, 3000);
+  }
+
+  printLedgerReport(): void {
+    const rows = this.displayedInvoices.length ? this.displayedInvoices : this.invoices;
+    if (!rows.length) return;
+    const body = rows
+      .map(
+        (inv) => `
+      <tr>
+        <td>${this.escapeHtml(inv.invoiceNumber)}</td>
+        <td>${this.escapeHtml(this.studentDisplayName(inv))}</td>
+        <td>${this.escapeHtml(inv.term)}</td>
+        <td style="text-align:right">${this.escapeHtml(this.currencySymbol)} ${(parseFloat(String(inv.amount || 0)) || 0).toFixed(2)}</td>
+        <td style="text-align:right">${this.escapeHtml(this.currencySymbol)} ${(parseFloat(String(inv.paidAmount || 0)) || 0).toFixed(2)}</td>
+        <td style="text-align:right">${this.escapeHtml(this.currencySymbol)} ${(parseFloat(String(inv.balance || 0)) || 0).toFixed(2)}</td>
+        <td>${this.escapeHtml(inv.status)}</td>
+        <td>${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : '—'}</td>
+      </tr>`
+      )
+      .join('');
+    const html = `<!DOCTYPE html><html><head><title>Student Ledgers</title>
+      <style>body{font-family:system-ui,sans-serif;padding:24px}table{width:100%;border-collapse:collapse;font-size:12px}
+      th,td{border:1px solid #e2e8f0;padding:8px}th{background:#f8fafc;font-size:10px;text-transform:uppercase}</style></head><body>
+      <h1>Student Ledgers</h1><p>Total balance: ${this.escapeHtml(this.currencySymbol)} ${this.totalBalance.toFixed(2)} · ${rows.length} rows</p>
+      <table><thead><tr><th>Invoice</th><th>Student</th><th>Term</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Due</th></tr></thead>
+      <tbody>${body}</tbody></table></body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  }
+
+  private applyLedgerView(): void {
+    if (!this.hideInvoiceActions) return;
+    let rows = [...this.invoices];
+    const q = (this.ledgerSearchQuery || '').trim().toLowerCase();
+    if (q) {
+      rows = rows.filter((inv) => {
+        const name = this.studentDisplayName(inv).toLowerCase();
+        return (
+          (inv.invoiceNumber || '').toLowerCase().includes(q) ||
+          name.includes(q) ||
+          (inv.term || '').toLowerCase().includes(q) ||
+          (inv.status || '').toLowerCase().includes(q)
+        );
+      });
+    }
+    const col = this.ledgerSortColumn;
+    const dir = this.ledgerSortDir === 'asc' ? 1 : -1;
+    rows.sort((a, b) => {
+      let av: string | number = '';
+      let bv: string | number = '';
+      switch (col) {
+        case 'studentName':
+          av = this.studentDisplayName(a).toLowerCase();
+          bv = this.studentDisplayName(b).toLowerCase();
+          break;
+        case 'amount':
+        case 'balance':
+          av = parseFloat(String(a[col] || 0)) || 0;
+          bv = parseFloat(String(b[col] || 0)) || 0;
+          return (av < bv ? -1 : av > bv ? 1 : 0) * dir;
+        case 'dueDate':
+          av = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+          bv = b.dueDate ? new Date(b.dueDate).getTime() : 0;
+          return (av < bv ? -1 : av > bv ? 1 : 0) * dir;
+        default:
+          av = String((a as any)[col] ?? '').toLowerCase();
+          bv = String((b as any)[col] ?? '').toLowerCase();
+      }
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    });
+    this.displayedInvoices = rows;
+  }
+
+  private escapeHtml(s: unknown): string {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   private base64ToBlob(base64: string, mimeType: string): Blob {

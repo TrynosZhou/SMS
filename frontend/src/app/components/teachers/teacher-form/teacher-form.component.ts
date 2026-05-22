@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TeacherService } from '../../../services/teacher.service';
 import { SubjectService } from '../../../services/subject.service';
@@ -38,6 +38,7 @@ export class TeacherFormComponent implements OnInit {
   subjectSearchQuery = '';
   classSearchQuery = '';
   isEdit = false;
+  loadingTeacher = false;
   error = '';
   success = '';
   submitting = false;
@@ -53,7 +54,8 @@ export class TeacherFormComponent implements OnInit {
     private classService: ClassService,
     private settingsService: SettingsService,
     private route: ActivatedRoute,
-    public router: Router
+    public router: Router,
+    private cdr: ChangeDetectorRef
   ) {
     // Set max date to today (for date of birth)
     const today = new Date();
@@ -71,6 +73,19 @@ export class TeacherFormComponent implements OnInit {
       this.isEdit = true;
       this.loadTeacher(id);
     }
+  }
+
+  goBack(): void {
+    this.router.navigate(['/teachers']);
+  }
+
+  clearAlert(type: 'success' | 'error'): void {
+    if (type === 'success') {
+      this.success = '';
+    } else {
+      this.error = '';
+    }
+    this.cdr.markForCheck();
   }
 
   loadSubjects() {
@@ -102,6 +117,7 @@ export class TeacherFormComponent implements OnInit {
   }
 
   loadTeacher(id: string) {
+    this.loadingTeacher = true;
     this.teacherService.getTeacherById(id).subscribe({
       next: (data: any) => {
         this.teacher = {
@@ -118,10 +134,14 @@ export class TeacherFormComponent implements OnInit {
           bankAccountNumber: data.bankAccountNumber || '',
           bankBranch: data.bankBranch || ''
         };
+        this.loadingTeacher = false;
+        this.cdr.markForCheck();
       },
       error: (err: any) => {
+        this.loadingTeacher = false;
         this.error = 'Failed to load teacher';
         setTimeout(() => this.error = '', 5000);
+        this.cdr.markForCheck();
       }
     });
   }

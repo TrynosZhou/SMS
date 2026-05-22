@@ -23,7 +23,12 @@ teachers: any[] = [];
   allSubjects: any[] = [];
   allClasses: any[] = [];
   loading = false;
+  loadFailed = false;
   searchQuery = '';
+  filterMales = true;
+  filterFemales = true;
+  filterActive = true;
+  filterInactive = true;
   selectedSubjectFilter = '';
   selectedClassFilter = '';
   viewMode: 'grid' | 'list' = 'list';
@@ -81,8 +86,78 @@ teachers: any[] = [];
     this.destroy$.complete();
 }
 
+  refreshTeachers(): void {
+    this.loadTeachers(this.pagination.page);
+  }
+
+  clearAlert(type: 'success' | 'error'): void {
+    if (type === 'success') {
+      this.success = '';
+    } else {
+      this.error = '';
+    }
+    this.cdr.markForCheck();
+  }
+
+  get dashboardStats() {
+    const list = this.teachers;
+    let male = 0;
+    let female = 0;
+    let active = 0;
+    list.forEach(t => {
+      const sex = (t.sex || t.gender || '').toString().trim().toLowerCase();
+      if (sex === 'male' || sex === 'm') male++;
+      if (sex === 'female' || sex === 'f') female++;
+      if (t.isActive !== false) active++;
+    });
+    return {
+      total: this.pagination.total,
+      showing: this.filteredTeachers.length,
+      active,
+      male,
+      female,
+      subjects: this.getTotalSubjects(),
+      classes: this.getTotalClasses()
+    };
+  }
+
+  get activeFilterCount(): number {
+    let n = 0;
+    if (this.searchQuery.trim()) n++;
+    if (this.selectedSubjectFilter) n++;
+    if (this.selectedClassFilter) n++;
+    if (!this.filterMales || !this.filterFemales) n++;
+    if (!this.filterActive || !this.filterInactive) n++;
+    return n;
+  }
+
+  sortIndicator(key: 'teacherId' | 'lastName' | 'firstName' | 'sex'): string {
+    if (this.sortKey !== key) return '↕';
+    return this.sortDir === 'asc' ? '↑' : '↓';
+  }
+
+  toggleViewMode(): void {
+    this.viewMode = this.viewMode === 'list' ? 'grid' : 'list';
+  }
+
+  clearAllFilters(): void {
+    this.searchQuery = '';
+    this.selectedSubjectFilter = '';
+    this.selectedClassFilter = '';
+    this.filterMales = true;
+    this.filterFemales = true;
+    this.filterActive = true;
+    this.filterInactive = true;
+    this.filterTeachers();
+  }
+
+  isTeacherActive(teacher: any): boolean {
+    return teacher?.isActive !== false;
+  }
+
   loadTeachers(page = this.pagination.page) {
     this.loading = true;
+    this.loadFailed = false;
     this.teacherService
       .getTeachersPaginated(page, this.pagination.limit)
       .pipe(
@@ -115,13 +190,15 @@ next: (response: any) => {
       },
       error: (err: any) => {
         console.error('Error loading teachers:', err);
-this.teachers = [];
+        this.teachers = [];
         this.filteredTeachers = [];
-        
-        // Show user-friendly error message
+        this.loadFailed = true;
         if (err.status === 0 || err.status === undefined) {
-          console.error('Backend server is not running or not accessible. Please ensure the backend server is running on port 3001.');
+          this.error = 'Cannot connect to server. Check that the backend is running.';
+        } else {
+          this.error = err?.error?.message || 'Failed to load teachers.';
         }
+        setTimeout(() => this.error = '', 8000);
       }
     });
   }
@@ -182,19 +259,41 @@ this.teachers = [];
       });
     }
 
+    if (!this.filterMales || !this.filterFemales) {
+      filtered = filtered.filter(teacher => {
+        const sex = (teacher.sex || teacher.gender || '').toString().trim().toLowerCase();
+        const isMale = sex === 'male' || sex === 'm';
+        const isFemale = sex === 'female' || sex === 'f';
+        if (!sex) {
+          return this.filterMales || this.filterFemales;
+        }
+        if (isMale) {
+          return this.filterMales;
+        }
+        if (isFemale) {
+          return this.filterFemales;
+        }
+        return this.filterMales || this.filterFemales;
+      });
+    }
+
+    if (!this.filterActive || !this.filterInactive) {
+      filtered = filtered.filter(teacher => {
+        const active = teacher.isActive !== false;
+        return active ? this.filterActive : this.filterInactive;
+      });
+    }
+
     this.filteredTeachers = filtered;
     this.applySort();
   }
 
   clearFilters() {
-    this.searchQuery = '';
-    this.selectedSubjectFilter = '';
-    this.selectedClassFilter = '';
-    this.filterTeachers();
+    this.clearAllFilters();
   }
 
   hasActiveFilters(): boolean {
-    return !!(this.searchQuery || this.selectedSubjectFilter || this.selectedClassFilter);
+    return this.activeFilterCount > 0;
   }
 
   getLastName(teacher: any): string {
@@ -209,7 +308,55 @@ this.teachers = [];
 
   getGender(teacher: any): string {
     const v = (teacher?.sex || teacher?.gender || '').toString().trim();
-    return v || 'N/A';
+    if (!v) return '—';
+    const lower = v.toLowerCase();
+    if (lower === 'm' || lower === 'male') return 'Male';
+    if (lower === 'f' || lower === 'female') return 'Female';
+    return v;
+  }
+
+  isMale(teacher: any): boolean {
+    const s = (teacher?.sex || teacher?.gender || '').toString().trim().toLowerCase();
+    return s === 'male' || s === 'm';
+  }
+
+  isFemale(teacher: any): boolean {
+    const s = (teacher?.sex || teacher?.gender || '').toString().trim().toLowerCase();
+    return s === 'female' || s === 'f';
+  }
+
+  getTitle(teacher: any): string {
+    const sex = (teacher?.sex || teacher?.gender || '').toString().trim().toLowerCase();
+    if (sex === 'male' || sex === 'm') {
+      return 'Mr';
+    }
+    if (sex === 'female' || sex === 'f') {
+      return 'Ms';
+    }
+    return '—';
+  }
+
+  getRole(teacher: any): string {
+    const subjectCount = teacher?.subjects?.length || 0;
+    const classCount = teacher?.classes?.length || 0;
+    if (subjectCount >= 2 && classCount >= 1) {
+      return 'HOD';
+    }
+    return 'Teacher';
+  }
+
+  getEmail(teacher: any): string {
+    const email = teacher?.user?.email || teacher?.email;
+    return email && String(email).trim() ? String(email).trim() : '—';
+  }
+
+  getCell(teacher: any): string {
+    const phone = (teacher?.phoneNumber || '').toString().trim();
+    return phone || '—';
+  }
+
+  allGenderStatusFiltersOn(): boolean {
+    return this.filterMales && this.filterFemales && this.filterActive && this.filterInactive;
   }
 
   setSort(key: 'teacherId' | 'lastName' | 'firstName' | 'sex') {

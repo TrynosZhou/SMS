@@ -95,19 +95,7 @@ export function activatePageLoad(
   options?: PageLoadOptions
 ): void {
   const deferMs = options?.deferMs ?? 0;
-  let lastFireAt = 0;
-  const minGapMs = 50;
-
-  const guardedLoad = () => {
-    const now = Date.now();
-    if (now - lastFireAt < minGapMs) {
-      return;
-    }
-    lastFireAt = now;
-    scheduleLoad(load, deferMs);
-  };
-
-  onRouteActivated(router, destroy$, path, guardedLoad, {
+  onRouteActivated(router, destroy$, path, () => scheduleLoad(load, deferMs), {
     exact: options?.exact,
     fireOnAttach: options?.fireOnAttach ?? true
   });

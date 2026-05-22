@@ -1,40 +1,79 @@
-<div class="balance-enquiry-container">
-  <!-- Page Header -->
+<div class="be-page balance-enquiry-container">
+  <div class="be-toast-stack" *ngIf="error || success">
+    <div class="be-toast be-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="be-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="be-toast be-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="be-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="be-hero">
+    <div class="be-hero__main">
+      <div class="be-hero-left">
+        <span class="be-hero-icon" aria-hidden="true">💰</span>
+        <div>
+          <span class="be-hero-eyebrow">Finance</span>
+          <h1>Balance Enquiry</h1>
+          <p class="be-hero-sub">Look up a student's tuition and uniform balances, preview statements, and jump to payment or invoices.</p>
+          <p class="be-hero-meta" *ngIf="lastLoadedAt && studentData">
+            Balance loaded <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
+          </p>
+        </div>
+      </div>
+      <div class="be-hero__actions">
+        <a routerLink="/payments/record" class="be-hero-btn be-hero-btn--white">Record payment</a>
+        <a routerLink="/outstanding-balance" class="be-hero-btn be-hero-btn--white">Outstanding balances</a>
+        <a routerLink="/invoices" class="be-hero-btn be-hero-btn--accent">Invoices</a>
+      </div>
+    </div>
+
+    <div class="be-hero-stats" *ngIf="studentData">
+      <article class="be-stat" [class.be-stat--mint]="studentData.balance <= 0" [class.be-stat--rose]="studentData.balance > 0">
+        <span class="be-stat__value">{{ currencySymbol }}{{ formatCurrency(studentData.balance) }}</span>
+        <span class="be-stat__label">Tuition balance</span>
+      </article>
+      <article class="be-stat be-stat--rose" *ngIf="studentData.uniformBalance != null && studentData.uniformBalance > 0">
+        <span class="be-stat__value">{{ currencySymbol }}{{ formatCurrency(studentData.uniformBalance || 0) }}</span>
+        <span class="be-stat__label">Uniform</span>
+      </article>
+      <article class="be-stat" *ngIf="latestInvoice">
+        <span class="be-stat__value">#{{ latestInvoice.invoiceNumber || latestInvoice.id }}</span>
+        <span class="be-stat__label">Latest invoice</span>
+      </article>
+      <article class="be-stat be-stat--mint" *ngIf="latestInvoice">
+        <span class="be-stat__value">{{ currencySymbol }}{{ formatCurrency(latestInvoice.paidAmount || 0) }}</span>
+        <span class="be-stat__label">Paid on invoice</span>
+      </article>
+    </div>
+  </header>
+
+  <!-- Legacy header hidden via CSS -->
   <div class="page-header">
     <div class="header-content">
       <div class="header-left">
-        <h1>
-          <span class="header-icon">💰</span>
-          Balance Enquiry
-        </h1>
+        <h1><span class="header-icon">💰</span> Balance Enquiry</h1>
         <p class="header-subtitle">Check student balance and generate statements</p>
-      </div>
-      <div class="header-actions">
-        <button type="button" class="btn btn-primary" [routerLink]="['/payments/record']">
-          <span class="icon">💳</span> Record Payment
-        </button>
-        <button type="button" class="btn btn-primary" [routerLink]="['/outstanding-balance']">
-          <span class="icon">📊</span> Outstanding Balances
-        </button>
       </div>
     </div>
   </div>
 
-  <!-- Search Section -->
-  <div class="search-section" [class.searching]="loading">
-    <div class="search-header">
-      <span class="search-icon">🔍</span>
-      <h2>Find Student</h2>
-    </div>
-    <div class="search-form">
-      <div class="search-input-wrapper">
+  <section class="search-section be-panel" [class.searching]="loading">
+    <h2 class="be-panel-title"><span aria-hidden="true">🔍</span> Find student</h2>
+    <p class="be-panel-intro">Search by student number, name, or ID. Auto-search runs after 3 characters; press Enter to search immediately.</p>
+    <div class="be-search-row search-form">
+      <div class="be-search-wrap search-input-wrapper">
+        <span class="be-search-prefix" aria-hidden="true">🔍</span>
         <input
-          type="text"
+          type="search"
           id="query"
           [(ngModel)]="query"
-          placeholder="Enter Student ID, Name, or Student Number..."
+          placeholder="Student ID, name, or number…"
           class="search-input"
           (keyup.enter)="search()"
+          (input)="onSearchInput()"
           [class.has-value]="query"
           autocomplete="off"
         />
@@ -44,9 +83,8 @@
           class="clear-input-btn"
           (click)="clearSearch()"
           title="Clear search"
-        >
-          ✕
-        </button>
+          aria-label="Clear"
+        >✕</button>
       </div>
       <button
         type="button"
@@ -56,36 +94,24 @@
       >
         <span *ngIf="loading" class="spinner"></span>
         <span *ngIf="!loading" class="icon">🔍</span>
-        {{ loading ? 'Searching...' : 'Search' }}
+        {{ loading ? 'Searching…' : 'Search' }}
       </button>
     </div>
-    <div class="search-hints">
-      <span class="hint-item"><kbd>Enter</kbd> to search</span>
-      <span class="hint-item"><kbd>Esc</kbd> to clear</span>
+    <div class="be-hints search-hints">
+      <span class="hint-item"><kbd>Enter</kbd> search now</span>
+      <span class="hint-item"><kbd>Esc</kbd> clear</span>
     </div>
-  </div>
-
-  <!-- Error and Success Messages -->
-  <div *ngIf="error" class="alert alert-error">
-    <span class="alert-icon">⚠️</span>
-    <span class="alert-text">{{ error }}</span>
-    <button class="alert-close" (click)="error = ''">✕</button>
-  </div>
-  <div *ngIf="success" class="alert alert-success">
-    <span class="alert-icon">✅</span>
-    <span class="alert-text">{{ success }}</span>
-    <button class="alert-close" (click)="success = ''">✕</button>
-  </div>
+  </section>
 
   <!-- Matching Students Section -->
-  <div class="matching-students-section" *ngIf="matchingStudents && matchingStudents.length > 0">
+  <div class="matching-students-section be-matches" *ngIf="matchingStudents && matchingStudents.length > 0">
     <div class="matching-header">
       <span class="icon">👥</span>
-      <span>{{ matchingStudents.length }} students found - Please select one:</span>
+      <span>{{ matchingStudents.length }} students found — select one:</span>
     </div>
     <div class="student-cards">
-      <div 
-        *ngFor="let s of matchingStudents" 
+      <div
+        *ngFor="let s of matchingStudents; trackBy: trackByStudentId"
         class="student-card"
         (click)="selectStudent(s.studentId)"
         [class.selected]="selectedMatchId === s.studentId"
@@ -188,21 +214,21 @@
     <!-- Actions Card -->
     <div class="actions-card">
       <div class="card-header">
-        <h2><span class="header-icon">📄</span> Statement & Actions</h2>
+        <h2><span class="header-icon">📄</span> Statement &amp; Actions</h2>
       </div>
       <div class="actions-content">
         <p class="actions-description">Generate and download the student's invoice statement with complete payment history.</p>
-        
+
         <div class="action-buttons">
           <button class="btn btn-primary btn-action" (click)="previewStatement()" [disabled]="loadingPdf">
             <span *ngIf="loadingPdf && previewMode" class="spinner"></span>
             <span *ngIf="!loadingPdf || !previewMode" class="icon">👁️</span>
-            {{ loadingPdf && previewMode ? 'Loading...' : 'Preview Statement' }}
+            {{ loadingPdf && previewMode ? 'Loading…' : 'Preview Statement' }}
           </button>
           <button class="btn btn-primary btn-action" (click)="downloadStatement()" [disabled]="loadingPdf">
             <span *ngIf="loadingPdf && !previewMode" class="spinner"></span>
             <span *ngIf="!loadingPdf || previewMode" class="icon">⬇️</span>
-            {{ loadingPdf && !previewMode ? 'Generating...' : 'Download PDF' }}
+            {{ loadingPdf && !previewMode ? 'Generating…' : 'Download PDF' }}
           </button>
           <button class="btn btn-primary btn-action" (click)="printStatement()" [disabled]="loadingPdf">
             <span class="icon">🖨️</span>
@@ -210,12 +236,12 @@
           </button>
         </div>
 
-        <div class="quick-links">
-          <a [routerLink]="['/payments/record']" [queryParams]="{studentId: studentData.studentNumber, firstName: studentData.firstName, lastName: studentData.lastName, balance: studentData.balance}" class="quick-link">
+        <div class="quick-links be-quick-links">
+          <a [routerLink]="['/payments/record']" [queryParams]="recordPaymentQueryParams" class="quick-link be-quick-link">
             <span class="link-icon">💳</span>
             <span class="link-text">Record Payment</span>
           </a>
-          <a [routerLink]="['/invoices']" [queryParams]="{studentId: studentData.studentId}" class="quick-link">
+          <a [routerLink]="['/invoices']" [queryParams]="{ studentId: studentData.studentId }" class="quick-link be-quick-link">
             <span class="link-icon">📋</span>
             <span class="link-text">View Invoices</span>
           </a>

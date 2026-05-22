@@ -1,33 +1,74 @@
-<div class="container">
-  <div class="report-card-wrapper">
-    <!-- Header Section -->
-    <div class="form-header">
-      <div class="header-content">
-        <span class="icon">📊</span>
+<div class="rc-page">
+  <div class="rc-toast-stack" *ngIf="success || error || autoSavingRemarks">
+    <div class="rc-toast rc-toast--success" *ngIf="success" role="status" [@fadeInOut]>
+      <span>{{ success }}</span>
+      <button type="button" class="rc-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="rc-toast rc-toast--error" *ngIf="error && !validationError" role="alert" [@fadeInOut] [class.rc-toast--warn]="accessDenied">
+      <span>{{ error }}</span>
+      <button type="button" class="rc-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="rc-toast rc-toast--info" *ngIf="autoSavingRemarks" [@fadeInOut]>
+      <span>Auto-saving remarks…</span>
+    </div>
+  </div>
+
+  <header class="rc-hero">
+    <div class="rc-hero__main">
+      <div class="rc-hero-left">
+        <span class="rc-hero-icon" aria-hidden="true">📊</span>
         <div>
+          <span class="rc-hero-eyebrow">Exams</span>
           <h1>Report Cards</h1>
-          <span class="subtitle">Generate, view and download student academic report cards</span>
+          <p class="rc-hero-sub">Generate, review, and download student academic report cards by class, term, and exam type.</p>
+          <p class="rc-hero-meta" *ngIf="lastLoadedAt && reportCards.length">
+            Last generated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
+          </p>
         </div>
       </div>
-      <div class="header-meta" *ngIf="reportCards.length > 0">
-        <span class="header-chip">{{ reportCards.length }} card{{ reportCards.length !== 1 ? 's' : '' }}</span>
-        <span class="header-chip accent">Avg {{ getOverallAverage() | number:'1.0-0' }}%</span>
+      <div class="rc-hero__actions" *ngIf="reportCards.length > 0">
+        <button type="button" class="rc-hero-refresh" (click)="generateReportCards()" [disabled]="loading" title="Regenerate" aria-label="Regenerate">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <button type="button" class="rc-hero-btn" (click)="toggleListView()" title="Toggle layout">{{ listViewLabel() }}</button>
+        <button type="button" class="rc-hero-btn rc-hero-btn--white" (click)="exportSummaryCsv()" [disabled]="!filteredReportCards.length || loading">CSV</button>
+        <button type="button" class="rc-hero-btn rc-hero-btn--white" (click)="printSummary()" [disabled]="!filteredReportCards.length || loading">Print</button>
+        <button
+          type="button"
+          class="rc-hero-btn rc-hero-btn--white"
+          *ngIf="canDownloadReportCard"
+          (click)="downloadAllPDFs()"
+          [disabled]="loading || !filteredReportCards.length">
+          PDF all
+        </button>
       </div>
     </div>
-
-    <!-- Alert Messages -->
-    <div class="alert alert-success" *ngIf="success" [@fadeInOut]>
-      <span class="alert-icon">✓</span>
-      <span>{{ success }}</span>
+    <div class="rc-hero-stats" *ngIf="reportCards.length > 0 && !loading">
+      <article class="rc-stat">
+        <span class="rc-stat__value">{{ dashboardStats.showing }}</span>
+        <span class="rc-stat__label">Showing</span>
+      </article>
+      <article class="rc-stat">
+        <span class="rc-stat__value">{{ dashboardStats.total }}</span>
+        <span class="rc-stat__label">Total students</span>
+      </article>
+      <article class="rc-stat rc-stat--mint">
+        <span class="rc-stat__value">{{ dashboardStats.classAverage | number : '1.1-1' }}%</span>
+        <span class="rc-stat__label">Class average</span>
+      </article>
+      <article class="rc-stat rc-stat--amber">
+        <span class="rc-stat__value">{{ dashboardStats.topAverage | number : '1.0-0' }}%</span>
+        <span class="rc-stat__label">Top: {{ dashboardStats.topStudent }}</span>
+      </article>
+      <article class="rc-stat rc-stat--rose">
+        <span class="rc-stat__value">{{ dashboardStats.needsSupport }}</span>
+        <span class="rc-stat__label">Below 50%</span>
+      </article>
     </div>
-    <div class="alert alert-error" *ngIf="error && !validationError" [@fadeInOut] [class.access-denied]="accessDenied">
-      <span class="alert-icon">✕</span>
-      <span>{{ error }}</span>
+    <div class="rc-hero-stats rc-hero-stats--skeleton" *ngIf="loading && isSelectionValid()">
+      <div class="rc-skeleton" *ngFor="let i of [1,2,3,4,5]"></div>
     </div>
-    <div class="alert alert-info" *ngIf="autoSavingRemarks" [@fadeInOut] style="background-color: #d1ecf1; color: #0c5460; border-color: #bee5eb;">
-      <span class="alert-icon">💾</span>
-      <span>Auto-saving remarks...</span>
-    </div>
+  </header>
 
     <!-- Validation Error Card - Missing Marks -->
     <div *ngIf="validationError" class="validation-error-card" [@fadeInOut]>
@@ -133,18 +174,14 @@
       </p>
     </div>
     
-    <!-- Selection Form Card -->
-    <div class="card selection-card">
-      <div class="card-header">
-        <h2>
-          <span class="section-icon">🎯</span>
-          Generate Report Cards
-        </h2>
-        <p class="section-description">Select class, term, and exam type to generate report cards. Subject selection is not required.</p>
+    <section class="rc-panel rc-panel--generate">
+      <div class="rc-panel__head">
+        <h2 class="rc-panel__title">Generate report cards</h2>
+        <p class="rc-panel__intro">Select class, term, and exam type. Subject selection is not required.</p>
       </div>
 
-      <form (ngSubmit)="generateReportCards()">
-        <div class="form-grid">
+      <form (ngSubmit)="generateReportCards()" class="rc-generate-form">
+        <div class="form-grid rc-form-grid">
           <div class="form-group" *ngIf="!isParent; else parentClassDisplay" [class.has-error]="isFieldInvalid('class')">
             <label>
               Class <span class="required">*</span>
@@ -235,93 +272,113 @@
 
         </div>
 
-        <div class="form-actions-inline">
-          <button 
-            type="submit" 
-            class="btn btn-primary btn-generate" 
+        <div class="form-actions-inline rc-form-actions">
+          <button
+            type="submit"
+            class="btn btn-primary btn-generate rc-btn-generate"
             [disabled]="loading || loadingTerms || !isSelectionValid()">
-            <span *ngIf="!loading">
-              📄 Generate Report Cards
-            </span>
+            <span *ngIf="!loading">📄 Generate report cards</span>
             <span *ngIf="loading" class="loading-content">
               <span class="spinner-small"></span>
-              Generating...
+              Generating…
             </span>
           </button>
-          <button 
-            type="button" 
-            class="btn btn-secondary" 
-            (click)="resetSelection()"
-            [disabled]="loading">
-            🔄 Reset
-          </button>
+          <button type="button" class="btn btn-secondary" (click)="resetSelection()" [disabled]="loading">Reset</button>
         </div>
       </form>
-    </div>
+    </section>
 
-    <!-- Report Cards Section -->
     <div *ngIf="reportCards.length > 0" class="report-cards-section">
-      <!-- Summary Statistics -->
-      <div class="summary-card">
-        <div class="summary-header">
-          <h3>
-            <span class="summary-icon">📈</span>
-            Report Cards Summary
-          </h3>
+      <section class="rc-panel rc-panel--filters" *ngIf="listView !== 'detailed'">
+        <div class="rc-panel__head-row">
+          <div>
+            <h2 class="rc-panel__title">Find students</h2>
+            <p class="rc-panel__intro">Search, filter by performance band, or jump to a report card.</p>
+          </div>
+          <button type="button" class="rc-btn-clear" *ngIf="hasActiveFilters()" (click)="resetListFilters()">Clear filters</button>
         </div>
-        <div class="summary-content">
-          <div class="summary-item">
-            <span class="summary-label">Class</span>
-            <span class="summary-value">{{ classInfo?.name || 'N/A' }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="summary-label">Term</span>
-            <span class="summary-value">{{ classInfo?.term || selectedTerm || 'N/A' }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="summary-label">Exam Type</span>
-            <span class="summary-value">{{ classInfo?.examType ? (classInfo.examType | titlecase) : 'N/A' }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="summary-label">Showing</span>
-            <span class="summary-value">{{ filteredReportCards.length }} / {{ reportCards.length }}</span>
-          </div>
-          <div class="summary-item highlight">
-            <span class="summary-label">Total Students</span>
-            <span class="summary-value">{{ reportCards.length }}</span>
-          </div>
-          <div class="summary-item highlight">
-            <span class="summary-label">Class Average</span>
-            <span class="summary-value">{{ getOverallAverage() | number:'1.1-1' }}%</span>
-          </div>
-        </div>
-      </div>
 
-      <!-- Search and Filter Controls -->
-      <div class="table-controls">
-        <div class="search-box">
-          <input 
-            type="text" 
-            [(ngModel)]="studentSearchQuery"
-            [ngModelOptions]="{standalone: true}"
-            placeholder="🔍 Search students by name or ID..."
-            class="search-input"
-            (input)="filterReportCards()">
+        <div class="rc-filters-row">
+          <div class="rc-search-wrap">
+            <span class="rc-search-icon" aria-hidden="true">🔍</span>
+            <input
+              #rcSearch
+              type="search"
+              class="rc-search-input"
+              placeholder="Search name or student ID…"
+              (input)="onSearchInput(rcSearch.value)" />
+            <button type="button" class="rc-search-clear" *ngIf="studentSearchQuery" (click)="rcSearch.value = ''; clearSearch()">Clear</button>
+          </div>
         </div>
-        <div class="view-options" *ngIf="canDownloadReportCard">
-          <button 
-            class="btn btn-sm btn-secondary btn-download-all" 
-            (click)="downloadAllPDFs()"
-            [disabled]="loading || filteredReportCards.length === 0">
-            <span class="download-arrow">📥</span> Download All PDFs
+
+        <div class="rc-chips">
+          <button
+            type="button"
+            class="rc-chip"
+            *ngFor="let chip of gradeBandChips"
+            [class.rc-chip--active]="selectedGradeBand === chip.id"
+            [class.rc-chip--rose]="chip.id === 'needs-support'"
+            (click)="onGradeBandChange(chip.id)">
+            {{ chip.label }}<span class="rc-chip__count">({{ chip.count }})</span>
           </button>
         </div>
-      </div>
 
-      <!-- Report Cards List -->
-      <div class="report-cards-list">
-        <div 
-          *ngFor="let reportCard of (filteredReportCards | safeArray); let i = index" 
+        <div class="rc-summary" *ngIf="filterSummary">
+          <span class="rc-summary-pill">{{ filterSummary }}</span>
+        </div>
+
+        <div class="rc-index-scroll" *ngIf="filteredReportCards.length > 0">
+          <table class="rc-index-table">
+            <thead>
+              <tr>
+                <th>
+                  <button type="button" class="rc-th-btn" (click)="setIndexSort('position')">
+                    Pos <span class="rc-sort">{{ indexSortIndicator('position') }}</span>
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="rc-th-btn" (click)="setIndexSort('name')">
+                    Student <span class="rc-sort">{{ indexSortIndicator('name') }}</span>
+                  </button>
+                </th>
+                <th>ID</th>
+                <th>
+                  <button type="button" class="rc-th-btn" (click)="setIndexSort('average')">
+                    Average <span class="rc-sort">{{ indexSortIndicator('average') }}</span>
+                  </button>
+                </th>
+                <th>Grade</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let card of filteredReportCards; trackBy: trackByCard" [class.rc-index-row--low]="(card.overallAverage || 0) < 50">
+                <td>{{ card.classPosition || '—' }}</td>
+                <td>{{ card.student?.name }}</td>
+                <td class="rc-cell-mono">{{ card.student?.studentNumber }}</td>
+                <td class="rc-cell-avg">{{ card.overallAverage | number : '1.1-1' }}%</td>
+                <td><span class="grade-badge grade-{{ card.overallGrade?.toLowerCase().replace(' ', '-') }}">{{ card.overallGrade }}</span></td>
+                <td>
+                  <button type="button" class="rc-link-btn" (click)="scrollToCard(card.student?.id)">View ↓</button>
+                  <button
+                    type="button"
+                    class="rc-link-btn"
+                    *ngIf="canDownloadReportCard"
+                    (click)="downloadPDF(card)"
+                    [disabled]="loading">
+                    PDF
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="report-cards-list" *ngIf="listView !== 'index'">
+        <div
+          *ngFor="let reportCard of (filteredReportCards | safeArray); let i = index; trackBy: trackByCard"
+          [id]="'rc-card-' + reportCard.student?.id"
           class="report-card-preview"
           [@fadeInUp]>
           <!-- Report Card Header -->
@@ -566,9 +623,7 @@
         <span class="empty-icon">🔍</span>
         <h3>No report cards found</h3>
         <p>No report cards match your search criteria. Try adjusting your search.</p>
-        <button class="btn btn-secondary" (click)="studentSearchQuery = ''; filterReportCards()">
-          Clear Search
-        </button>
+        <button class="btn btn-secondary" (click)="resetListFilters()">Clear filters</button>
       </div>
 
       <!-- Grade Scale Footer -->
@@ -610,11 +665,10 @@
     </div>
 
     <!-- Empty State -->
-    <div *ngIf="!loading && reportCards.length === 0 && !error" class="empty-state-card info">
+    <div *ngIf="!loading && reportCards.length === 0 && !error" class="empty-state-card info rc-empty-ready">
       <span class="empty-icon">📊</span>
-      <h3>Ready to Generate Report Cards</h3>
-      <p>Select a class and exam type above, then click "Generate Report Cards" to view student report cards.</p>
+      <h3>Ready to generate report cards</h3>
+      <p>Select a class, term, and exam type above, then click Generate report cards.</p>
     </div>
-  </div>
 </div>
 

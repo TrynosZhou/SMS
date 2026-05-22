@@ -1,32 +1,98 @@
-<div class="container">
-  <div class="card">
-    <h1>System Settings</h1>
-    <div class="alert alert-success" *ngIf="success" style="display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; padding: 16px 20px; margin-bottom: 20px; background-color: #d4edda; border: 2px solid #28a745; color: #155724; border-radius: 8px; animation: slideIn 0.3s ease-out; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <span style="font-size: 24px;">✓</span>
-      <span style="flex: 1;">{{ success }}</span>
+<div class="settings-page" [class.settings-page--system]="showSchoolSections()" [class.settings-page--academic]="showAcademicSections()">
+  <div class="settings-toast-stack" *ngIf="success || error">
+    <div class="settings-toast settings-toast--success" *ngIf="success" role="status">
+      <span class="settings-toast__icon">✓</span>
+      <span class="settings-toast__text">{{ success }}</span>
+      <button type="button" class="settings-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
     </div>
-    <div class="alert alert-error" *ngIf="error" style="display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; padding: 16px 20px; margin-bottom: 20px;">
-      <span style="font-size: 20px;">✗</span>
-      <span>{{ error }}</span>
+    <div class="settings-toast settings-toast--error" *ngIf="error" role="alert">
+      <span class="settings-toast__icon">✗</span>
+      <span class="settings-toast__text">{{ error }}</span>
+      <button type="button" class="settings-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
+  </div>
 
-    <div *ngIf="loading && !settings.studentIdPrefix">Loading settings...</div>
+  <div *ngIf="loading && !settings.studentIdPrefix" class="settings-skeleton" aria-busy="true" aria-label="Loading settings">
+    <div class="settings-skeleton__hero"></div>
+    <div class="settings-skeleton__tabs"></div>
+    <div class="settings-skeleton__panel">
+      <div class="settings-skeleton__line settings-skeleton__line--wide"></div>
+      <div class="settings-skeleton__line"></div>
+      <div class="settings-skeleton__line"></div>
+      <div class="settings-skeleton__line settings-skeleton__line--short"></div>
+    </div>
+  </div>
 
-    <div class="demo-settings-banner" *ngIf="isDemoUser()">
-      <div class="demo-settings-icon">🧪</div>
-      <div>
-        <h3>Demo Mode — Read Only</h3>
-        <p>Settings are locked for the shared demo account. Switch to your own admin account to make permanent changes.</p>
+  <div class="demo-settings-banner" *ngIf="isDemoUser()">
+    <div class="demo-settings-icon">🧪</div>
+    <div>
+      <h3>Demo Mode — Read Only</h3>
+      <p>Settings are locked for the shared demo account. Switch to your own admin account to make permanent changes.</p>
+    </div>
+  </div>
+
+  <div class="system-settings-page system-settings-page--modern" *ngIf="settings.studentIdPrefix">
+    <header class="system-settings-hero" *ngIf="showSchoolSections()">
+      <div class="system-settings-hero__main">
+        <span class="system-settings-hero__eyebrow">Administration</span>
+        <h1>System Settings</h1>
+        <p class="system-settings-subtitle">Configure school profile, fees, email, notifications, access control, and security in one place.</p>
+      </div>
+      <div class="system-settings-hero__aside">
+        <span class="system-settings-meta-pill" *ngIf="settingsLastSaved">
+          <span class="system-settings-meta-pill__label">Last saved</span>
+          {{ formatSettingsSavedAt() }}
+        </span>
+        <span class="system-settings-meta-pill system-settings-meta-pill--status" [class.is-saving]="loading || savingNotifications || savingSecurity">
+          <span class="system-settings-meta-pill__dot"></span>
+          {{ (loading || savingNotifications || savingSecurity) ? 'Saving…' : 'Ready' }}
+        </span>
+      </div>
+    </header>
+
+    <header class="system-settings-hero system-settings-hero--compact" *ngIf="showAcademicSections()">
+      <div class="system-settings-hero__main">
+        <span class="system-settings-hero__eyebrow">Academic</span>
+        <h1>{{ pageTitle }}</h1>
+        <p class="system-settings-subtitle">Manage grades, terms, thresholds, and class promotion.</p>
+      </div>
+    </header>
+
+    <div class="system-settings-shell" *ngIf="showSchoolSections()">
+      <nav class="system-settings-tabs-wrap" aria-label="System settings sections">
+        <div class="system-settings-tabs">
+          <button
+            type="button"
+            class="system-settings-tab"
+            *ngFor="let tab of systemSettingsTabs"
+            [class.active]="activeTab === tab.id"
+            [attr.aria-current]="activeTab === tab.id ? 'page' : null"
+            (click)="setActiveTab(tab.id)">
+            <span class="system-settings-tab__icon" aria-hidden="true">{{ tab.icon }}</span>
+            <span class="system-settings-tab__label">{{ tab.label }}</span>
+          </button>
+        </div>
+      </nav>
+
+      <div class="system-settings-tab-intro" *ngIf="getActiveTabConfig() as activeTabCfg">
+        <span class="system-settings-tab-intro__icon" aria-hidden="true">{{ activeTabCfg.icon }}</span>
+        <div class="system-settings-tab-intro__text">
+          <strong>{{ activeTabCfg.label }}</strong>
+          <p>{{ activeTabCfg.description }}</p>
+        </div>
+        <span class="system-settings-tab-intro__badge" *ngIf="activeTabCfg.dedicatedSave">Own save action</span>
       </div>
     </div>
 
-    <form (ngSubmit)="onSubmit()" *ngIf="settings.studentIdPrefix">
+    <div class="system-settings-panel card">
+    <form (ngSubmit)="onSubmit()">
       <fieldset
         [attr.disabled]="isDemoUser() ? true : null"
         [class.demo-readonly]="isDemoUser()">
       <!-- Student ID Prefix -->
-      <div class="form-section">
-        <h2>Student ID Settings</h2>
+      <div class="form-section tab-panel" *ngIf="isTab('student-id-prefix')">
+        <h2 class="tab-panel-title">Student ID Prefix</h2>
+        <p class="tab-panel-desc">Configure how student identification numbers are generated.</p>
         <div class="form-group">
           <label>Student ID Prefix *</label>
           <input type="text" [(ngModel)]="settings.studentIdPrefix" name="studentIdPrefix" required maxlength="10">
@@ -35,8 +101,9 @@
       </div>
 
       <!-- Fees Settings -->
-      <div class="form-section">
-        <h2>Fees Settings</h2>
+      <div class="form-section tab-panel" *ngIf="isTab('school-settings')">
+        <h2 class="tab-panel-title">Fees Settings</h2>
+        <p class="tab-panel-desc">Fees, payroll, uniforms, and payment details.</p>
         <div class="form-group">
           <label>Day Scholar Tuition Fee *</label>
           <input type="number" [(ngModel)]="settings.feesSettings.dayScholarTuitionFee" name="dayScholarTuitionFee" min="0" step="0.01" required>
@@ -130,7 +197,7 @@
       </div>
 
       <!-- Payroll: Loan interest & Banks (admin/superadmin only) -->
-      <div class="form-section" *ngIf="authService.hasRole('admin') || authService.hasRole('superadmin')">
+      <div class="form-section" *ngIf="isTab('school-settings') && (authService.hasRole('admin') || authService.hasRole('superadmin'))">
         <h2>💰 Payroll — Loan Interest & Banks</h2>
         <p class="section-description" style="color: #6c757d; margin-bottom: 16px;">
           Configure interest rates for staff loans (repayable in 1, 2, or 3 months) and the list of banks used for salary deposits.
@@ -167,7 +234,7 @@
       </div>
 
       <!-- Uniform Items -->
-      <div class="form-section">
+      <div class="form-section" *ngIf="isTab('school-settings')">
         <h2>Uniform Items</h2>
         <p class="section-description">Manage uniform items and pricing. Items listed here will be available when creating student invoices.</p>
         <div style="margin-bottom: 15px;">
@@ -209,390 +276,64 @@
         </div>
       </div>
 
-      <!-- Grades -->
-      <div class="form-section">
-        <h2>Grades</h2>
-        <p class="section-description">Define grades such as Stage 2, Stage 3. These appear on the student registration form.</p>
-        <div class="form-group">
-          <label>Add Grade</label>
-          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-            <input type="text" [(ngModel)]="newClassLevel" name="newClassLevel" placeholder="e.g., Stage 2" style="flex: 1;">
-            <button type="button" class="btn btn-secondary" (click)="addClassLevel()">Add</button>
+      <!-- School Information tab -->
+      <div class="tab-panel" *ngIf="isTab('school-information')">
+        <h2 class="tab-panel-title">School Details</h2>
+        <p class="tab-panel-desc">Configure your school's basic information.</p>
+        <div class="outlined-field outlined-field--full">
+          <label for="schoolName">School Name</label>
+          <input id="schoolName" type="text" [(ngModel)]="settings.schoolName" name="schoolName" [disabled]="isDemoUser()" required placeholder="Enter the official school name" />
+          <small *ngIf="isDemoUser()" class="demo-disabled-text">School name is locked for demo accounts.</small>
+        </div>
+        <div class="outlined-field outlined-field--full">
+          <label for="schoolAddress">School Address</label>
+          <textarea id="schoolAddress" [(ngModel)]="settings.schoolAddress" name="schoolAddress" rows="3"></textarea>
+        </div>
+        <div class="outlined-field-row">
+          <div class="outlined-field">
+            <label for="schoolPhone">Phone Number</label>
+            <input id="schoolPhone" type="text" [(ngModel)]="settings.schoolPhone" name="schoolPhone" [class.error]="schoolPhoneError" (blur)="validateSchoolPhone()" (input)="schoolPhoneError = ''" placeholder="+263 772 707 394" />
+            <small class="form-error" *ngIf="schoolPhoneError">{{ schoolPhoneError }}</small>
+          </div>
+          <div class="outlined-field">
+            <label for="schoolEmailInfo">Email Address</label>
+            <input id="schoolEmailInfo" type="email" [(ngModel)]="settings.schoolEmail" name="schoolEmailInfo" placeholder="school@example.com" />
           </div>
         </div>
-        <div *ngIf="(!settings.classLevels || settings.classLevels.length === 0)" class="alert alert-info" style="margin-bottom: 10px;">
-          No grades defined yet.
-        </div>
-        <div *ngIf="settings.classLevels?.length > 0" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;">
-          <div *ngFor="let lvl of settings.classLevels; let i = index" style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
-            <span>{{ lvl }}</span>
-            <button type="button" class="btn btn-danger btn-sm" (click)="removeClassLevel(i)">Remove</button>
+        <div class="outlined-field-row">
+          <div class="outlined-field">
+            <label for="schoolWebsite">Website</label>
+            <input id="schoolWebsite" type="url" [(ngModel)]="settings.schoolWebsite" name="schoolWebsite" placeholder="https://www.example.com" />
+          </div>
+          <div class="outlined-field">
+            <label for="schoolLogoUrl">Logo URL</label>
+            <input id="schoolLogoUrl" type="text" [ngModel]="settings.schoolLogo || ''" (ngModelChange)="onLogoUrlChange($event)" name="schoolLogoUrl" placeholder="data:image/... or https://..." />
           </div>
         </div>
-      </div>
-
-      <!-- Grade Thresholds and Labels -->
-      <div class="form-section" *ngIf="authService.hasRole('admin') || authService.hasRole('superadmin')">
-        <h2>📊 Grade Thresholds and Labels for Student Performance</h2>
-        <p class="section-description" style="color: #6c757d; margin-bottom: 20px;">
-          Configure both the mark range (percentage thresholds) and grade labels/remarks for each performance level. These settings determine how student performance is graded and displayed on report cards.
-          <strong>Only Administrators and SuperAdmins can modify these settings.</strong>
-        </p>
-        
-        <div class="grade-settings-container" style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6;">
-          <!-- Grade 1: Excellent -->
-          <div class="grade-item" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #28a745;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start;">
-              <div class="form-group">
-                <label>
-                  Mark Range (Minimum %)
-                  <span style="color: #28a745; font-weight: 600;">★</span>
-                </label>
-                <input 
-                  type="number" 
-                  [(ngModel)]="settings.gradeThresholds.excellent" 
-                  name="excellent" 
-                  min="0" 
-                  max="100" 
-                  required
-                  (blur)="validateGradeThresholds()"
-                  style="width: 100%;">
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                  Range: {{ settings.gradeThresholds.excellent }}% - 100%
-                </small>
-              </div>
-              <div class="form-group">
-                <label>
-                  Grade Label/Remark
-                  <span style="color: #28a745; font-weight: 600;">★</span>
-                </label>
-                <input 
-                  type="text" 
-                  [(ngModel)]="settings.gradeLabels.excellent" 
-                  name="gradeLabelExcellent" 
-                  maxlength="50"
-                  required
-                  placeholder="e.g., Outstanding"
-                  style="width: 100%; padding: 10px; border: 2px solid #28a745; border-radius: 4px; font-size: 14px;"
-                  class="editable-grade-label">
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                  This label will appear on report cards (Editable)
-                </small>
-              </div>
-            </div>
+        <div class="logo-upload-row">
+          <div class="outlined-field">
+            <label>Upload logo (primary)</label>
+            <input type="file" accept="image/*" (change)="onLogoChange($event, 1)" />
           </div>
-
-          <!-- Grade 2: Very Good -->
-          <div class="grade-item" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #17a2b8;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start;">
-              <div class="form-group">
-                <label>
-                  Mark Range (Minimum %)
-                  <span style="color: #17a2b8; font-weight: 600;">★</span>
-                </label>
-                <input 
-                  type="number" 
-                  [(ngModel)]="settings.gradeThresholds.veryGood" 
-                  name="veryGood" 
-                  min="0" 
-                  max="100" 
-                  required
-                  (blur)="validateGradeThresholds()"
-                  style="width: 100%;">
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                  Range: {{ settings.gradeThresholds.veryGood }}% - {{ settings.gradeThresholds.excellent - 1 }}%
-                </small>
-              </div>
-              <div class="form-group">
-                <label>
-                  Grade Label/Remark
-                  <span style="color: #17a2b8; font-weight: 600;">★</span>
-                </label>
-                <input 
-                  type="text" 
-                  [(ngModel)]="settings.gradeLabels.veryGood" 
-                  name="gradeLabelVeryGood" 
-                  maxlength="50"
-                  required
-                  placeholder="e.g., Very High"
-                  style="width: 100%; padding: 10px; border: 2px solid #17a2b8; border-radius: 4px; font-size: 14px;"
-                  class="editable-grade-label">
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                  This label will appear on report cards (Editable)
-                </small>
-              </div>
-            </div>
+          <div class="outlined-field">
+            <label>Upload logo (secondary)</label>
+            <input type="file" accept="image/*" (change)="onLogoChange($event, 2)" />
           </div>
-
-          <!-- Grade 3: Good -->
-          <div class="grade-item" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #007bff;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start;">
-              <div class="form-group">
-                <label>
-                  Mark Range (Minimum %)
-                  <span style="color: #007bff; font-weight: 600;">★</span>
-                </label>
-                <input 
-                  type="number" 
-                  [(ngModel)]="settings.gradeThresholds.good" 
-                  name="good" 
-                  min="0" 
-                  max="100" 
-                  required
-                  (blur)="validateGradeThresholds()"
-                  style="width: 100%;">
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                  Range: {{ settings.gradeThresholds.good }}% - {{ settings.gradeThresholds.veryGood - 1 }}%
-                </small>
-              </div>
-              <div class="form-group">
-                <label>
-                  Grade Label/Remark
-                  <span style="color: #007bff; font-weight: 600;">★</span>
-                </label>
-                <input 
-                  type="text" 
-                  [(ngModel)]="settings.gradeLabels.good" 
-                  name="gradeLabelGood" 
-                  maxlength="50"
-                  required
-                  placeholder="e.g., Good"
-                  style="width: 100%; padding: 10px; border: 2px solid #007bff; border-radius: 4px; font-size: 14px;"
-                  class="editable-grade-label">
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                  This label will appear on report cards (Editable)
-                </small>
-              </div>
-            </div>
-          </div>
-
-          <!-- Grade 4: Satisfactory -->
-          <div class="grade-item" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ffc107;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start;">
-              <div class="form-group">
-                <label>
-                  Mark Range (Minimum %)
-                  <span style="color: #ffc107; font-weight: 600;">★</span>
-                </label>
-                <input 
-                  type="number" 
-                  [(ngModel)]="settings.gradeThresholds.satisfactory" 
-                  name="satisfactory" 
-                  min="0" 
-                  max="100" 
-                  required
-                  (blur)="validateGradeThresholds()"
-                  style="width: 100%;">
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                  Range: {{ settings.gradeThresholds.satisfactory }}% - {{ settings.gradeThresholds.good - 1 }}%
-                </small>
-              </div>
-              <div class="form-group">
-                <label>
-                  Grade Label/Remark
-                  <span style="color: #ffc107; font-weight: 600;">★</span>
-                </label>
-                <input 
-                  type="text" 
-                  [(ngModel)]="settings.gradeLabels.satisfactory" 
-                  name="gradeLabelSatisfactory" 
-                  maxlength="50"
-                  required
-                  placeholder="e.g., Satisfactory"
-                  style="width: 100%; padding: 10px; border: 2px solid #ffc107; border-radius: 4px; font-size: 14px;"
-                  class="editable-grade-label">
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                  This label will appear on report cards (Editable)
-                </small>
-              </div>
-            </div>
-          </div>
-
-          <!-- Grade 5: Needs Improvement -->
-          <div class="grade-item" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #fd7e14;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start;">
-              <div class="form-group">
-                <label>
-                  Mark Range (Minimum %)
-                  <span style="color: #fd7e14; font-weight: 600;">★</span>
-                </label>
-                <input 
-                  type="number" 
-                  [(ngModel)]="settings.gradeThresholds.needsImprovement" 
-                  name="needsImprovement" 
-                  min="0" 
-                  max="100" 
-                  required
-                  (blur)="validateGradeThresholds()"
-                  style="width: 100%;">
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                  Range: {{ settings.gradeThresholds.needsImprovement }}% - {{ settings.gradeThresholds.satisfactory - 1 }}%
-                </small>
-              </div>
-              <div class="form-group">
-                <label>
-                  Grade Label/Remark
-                  <span style="color: #fd7e14; font-weight: 600;">★</span>
-                </label>
-                <input 
-                  type="text" 
-                  [(ngModel)]="settings.gradeLabels.needsImprovement" 
-                  name="gradeLabelNeedsImprovement" 
-                  maxlength="50"
-                  required
-                  placeholder="e.g., ASPIRING"
-                  style="width: 100%; padding: 10px; border: 2px solid #fd7e14; border-radius: 4px; font-size: 14px;"
-                  class="editable-grade-label">
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                  This label will appear on report cards (Editable)
-                </small>
-              </div>
-            </div>
-          </div>
-
-          <!-- Grade 6: Basic -->
-          <div class="grade-item" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #6c757d;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start;">
-              <div class="form-group">
-                <label>
-                  Mark Range (Minimum %)
-                  <span style="color: #6c757d; font-weight: 600;">★</span>
-                </label>
-                <input 
-                  type="number" 
-                  [(ngModel)]="settings.gradeThresholds.basic" 
-                  name="basic" 
-                  min="0" 
-                  max="100" 
-                  required
-                  (blur)="validateGradeThresholds()"
-                  style="width: 100%;">
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                  Range: {{ settings.gradeThresholds.basic || 1 }}% - {{ (settings.gradeThresholds.needsImprovement || 20) - 1 }}%
-                </small>
-              </div>
-              <div class="form-group">
-                <label>
-                  Grade Label/Remark
-                  <span style="color: #6c757d; font-weight: 600;">★</span>
-                </label>
-                <input 
-                  type="text" 
-                  [(ngModel)]="settings.gradeLabels.basic" 
-                  name="gradeLabelBasic" 
-                  maxlength="50"
-                  required
-                  placeholder="e.g., Basic"
-                  style="width: 100%; padding: 10px; border: 2px solid #6c757d; border-radius: 4px; font-size: 14px;"
-                  class="editable-grade-label">
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                  This label will appear on report cards (Editable)
-                </small>
-              </div>
-            </div>
-          </div>
-
-          <!-- Grade 7: Fail/Unclassified -->
-          <div class="grade-item" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #dc3545;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start;">
-              <div class="form-group">
-                <label style="color: #dc3545; font-weight: 600;">
-                  Mark Range
-                </label>
-                <input 
-                  type="text" 
-                  value="0%" 
-                  disabled
-                  style="background: #e9ecef; cursor: not-allowed; width: 100%;">
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                  Range: 0% only
-                </small>
-              </div>
-              <div class="form-group">
-                <label style="color: #dc3545; font-weight: 600;">
-                  Grade Label/Remark
-                </label>
-                <input 
-                  type="text" 
-                  [(ngModel)]="settings.gradeLabels.fail" 
-                  name="gradeLabelFail" 
-                  maxlength="50"
-                  required
-                  placeholder="e.g., Unclassified"
-                  style="width: 100%; padding: 10px; border: 2px solid #dc3545; border-radius: 4px; font-size: 14px;"
-                  class="editable-grade-label">
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                  This label will appear on report cards (Editable)
-                </small>
-              </div>
-            </div>
-          </div>
-          
-          <div class="alert alert-info" style="margin-top: 15px; padding: 12px; background: #e3f2fd; border-left: 4px solid #2196f3; color: #1565c0;">
-            <strong>ℹ️ Important:</strong>
-            <ul style="margin: 8px 0 0 20px; padding: 0;">
-              <li>Mark ranges must be in descending order (Excellent ≥ Very Good ≥ Good ≥ Satisfactory ≥ Needs Improvement ≥ Basic)</li>
-              <li>Grade labels can be customized to match your school's grading system</li>
-              <li>Changes will apply to all new report cards generated after saving</li>
-              <li>Existing report cards will not be affected</li>
-              <li>Grade labels should be clear and concise (max 50 characters)</li>
-              <li>The "Fail/Unclassified" grade applies only to scores of exactly 0%</li>
-            </ul>
-          </div>
+        </div>
+        <div class="logo-preview-block" *ngIf="logoPreviewUrl">
+          <span class="logo-preview-label">Logo Preview</span>
+          <img [src]="logoPreviewUrl" alt="School logo preview" class="logo-preview-img" />
         </div>
       </div>
 
-      <!-- School Information -->
-      <div class="form-section">
-        <h2>School Information</h2>
+      <!-- General tab -->
+      <div class="tab-panel" *ngIf="isTab('general')">
+        <h2 class="tab-panel-title">General</h2>
+        <p class="tab-panel-desc">Currency, leadership, and school identity details.</p>
         <div class="form-group">
-          <label>School Name *</label>
-            <input 
-              type="text" 
-              [(ngModel)]="settings.schoolName" 
-              name="schoolName"
-              [disabled]="isDemoUser()"
-              required
-              placeholder="Enter the official school name">
-            <small *ngIf="isDemoUser()" class="demo-disabled-text">
-              School name is locked to "Demo School" for demo accounts.
-            </small>
-        </div>
-        <div class="form-group">
-          <label>School Address</label>
-          <textarea [(ngModel)]="settings.schoolAddress" name="schoolAddress" rows="3"></textarea>
-        </div>
-        <div class="form-group">
-          <label>School Phone</label>
-          <textarea 
-            [(ngModel)]="settings.schoolPhone" 
-            name="schoolPhone"
-            placeholder="e.g., Telephones: Landline-+263 392 263 293, Headmistress-+263 786 044 502"
-            rows="3"
-            [class.error]="schoolPhoneError"
-            (blur)="validateSchoolPhone()"
-            (input)="schoolPhoneError = ''"
-            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical;"></textarea>
-          <small class="form-hint" *ngIf="!schoolPhoneError">Enter phone numbers with labels (e.g., Landline-+263 392 263 293, Headmistress-+263 786 044 502)</small>
-          <small class="form-error" *ngIf="schoolPhoneError">{{ schoolPhoneError }}</small>
-        </div>
-        <div class="form-group">
-          <label>School Email</label>
-          <input type="email" [(ngModel)]="settings.schoolEmail" name="schoolEmail">
-        </div>
-        <div class="form-group">
-          <label>School Logo 1 (Left Side)</label>
-          <input type="file" accept="image/*" (change)="onLogoChange($event, 1)">
-          <div *ngIf="settings.schoolLogo" style="margin-top: 10px;">
-            <img [src]="settings.schoolLogo" alt="School Logo 1" style="max-width: 200px; max-height: 200px;">
-          </div>
-        </div>
-        <div class="form-group">
-          <label>School Logo 2 (Right Side)</label>
-          <input type="file" accept="image/*" (change)="onLogoChange($event, 2)">
-          <div *ngIf="settings.schoolLogo2" style="margin-top: 10px;">
-            <img [src]="settings.schoolLogo2" alt="School Logo 2" style="max-width: 200px; max-height: 200px;">
-          </div>
+          <label>Currency Symbol *</label>
+          <input type="text" [(ngModel)]="settings.currencySymbol" name="currencySymbol" required maxlength="10">
+          <small>Currency symbol to display with amounts (e.g., KES, $, €, £, ₹)</small>
         </div>
         <div class="form-group">
           <label>Headmaster Name</label>
@@ -601,12 +342,108 @@
         <div class="form-group">
           <label>School Motto</label>
           <input type="text" [(ngModel)]="settings.schoolMotto" name="schoolMotto" placeholder="Enter the school motto or tagline">
-          <small>School motto or tagline (e.g., "After instruction we soar")</small>
+        </div>
+      </div>
+
+      <!-- Email Settings tab -->
+      <div class="tab-panel" *ngIf="isTab('email-settings')">
+        <h2 class="tab-panel-title">Email Configuration</h2>
+        <p class="tab-panel-desc">Configure SMTP settings for outgoing emails.</p>
+        <div class="outlined-field-row">
+          <div class="outlined-field">
+            <label for="smtpHost">SMTP Host</label>
+            <input id="smtpHost" type="text" [(ngModel)]="settings.emailSettings.smtpHost" name="smtpHost" placeholder="smtp.example.com" />
+          </div>
+          <div class="outlined-field">
+            <label for="smtpPort">SMTP Port</label>
+            <input id="smtpPort" type="number" [(ngModel)]="settings.emailSettings.smtpPort" name="smtpPort" min="1" max="65535" placeholder="587" />
+          </div>
+        </div>
+        <div class="outlined-field-row">
+          <div class="outlined-field">
+            <label for="smtpUsername">SMTP Username</label>
+            <input id="smtpUsername" type="text" [(ngModel)]="settings.emailSettings.smtpUsername" name="smtpUsername" placeholder="headmaster" autocomplete="username" />
+          </div>
+          <div class="outlined-field">
+            <label for="smtpPassword">SMTP Password</label>
+            <input id="smtpPassword" type="password" [(ngModel)]="settings.emailSettings.smtpPassword" name="smtpPassword" placeholder="••••••••" autocomplete="current-password" />
+          </div>
+        </div>
+        <div class="outlined-field-row">
+          <div class="outlined-field">
+            <label for="emailFromName">From Name</label>
+            <input id="emailFromName" type="text" [(ngModel)]="settings.emailSettings.fromName" name="emailFromName" placeholder="School Name" />
+          </div>
+          <div class="outlined-field">
+            <label for="emailFromAddress">From Address</label>
+            <input id="emailFromAddress" type="email" [(ngModel)]="settings.emailSettings.fromAddress" name="emailFromAddress" placeholder="noreply@school.com" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Notifications tab -->
+      <div class="tab-panel notification-settings-panel" *ngIf="isTab('notifications')">
+        <div class="notification-card">
+          <h3 class="notification-card-title">SMS Notification</h3>
+          <div class="notification-row">
+            <div class="notification-row-text">
+              <span class="notification-row-label">Fee Payment Received</span>
+              <span class="notification-row-desc">Send SMS receipt to parent on payment</span>
+            </div>
+            <label class="toggle-switch notification-toggle">
+              <input type="checkbox" [(ngModel)]="settings.notificationSettings.sms.feePaymentReceived" name="smsFeePayment" [disabled]="isDemoUser()" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="notification-row">
+            <div class="notification-row-text">
+              <span class="notification-row-label">Student Absence</span>
+              <span class="notification-row-desc">SMS parent on same-day absence</span>
+            </div>
+            <label class="toggle-switch notification-toggle">
+              <input type="checkbox" [(ngModel)]="settings.notificationSettings.sms.studentAbsence" name="smsStudentAbsence" [disabled]="isDemoUser()" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="notification-row">
+            <div class="notification-row-text">
+              <span class="notification-row-label">Report Card Ready</span>
+              <span class="notification-row-desc">SMS parent when reports are published</span>
+            </div>
+            <label class="toggle-switch notification-toggle">
+              <input type="checkbox" [(ngModel)]="settings.notificationSettings.sms.reportCardReady" name="smsReportCardReady" [disabled]="isDemoUser()" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="notification-card">
+          <h3 class="notification-card-title">Push Notifications</h3>
+          <div class="notification-row">
+            <div class="notification-row-text">
+              <span class="notification-row-label">Enable Push Notifications</span>
+              <span class="notification-row-desc">Allow in-app browser push notifications</span>
+            </div>
+            <label class="toggle-switch notification-toggle">
+              <input type="checkbox" [(ngModel)]="settings.notificationSettings.push.enabled" name="pushEnabled" [disabled]="isDemoUser()" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="notification-save-row">
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="saveNotificationSettings()"
+            [disabled]="savingNotifications || isDemoUser()">
+            {{ savingNotifications ? 'Saving...' : 'Save Notification Settings' }}
+          </button>
         </div>
       </div>
 
       <!-- Academic Year & Term Management -->
-      <div class="form-section">
+      <div class="form-section" *ngIf="showAcademicSections()">
         <h2>Academic Year & Term Management</h2>
         <div class="form-group">
           <label>Academic Year</label>
@@ -675,18 +512,8 @@
         </div>
       </div>
 
-      <!-- Currency Settings -->
-      <div class="form-section">
-        <h2>Currency Settings</h2>
-        <div class="form-group">
-          <label>Currency Symbol *</label>
-          <input type="text" [(ngModel)]="settings.currencySymbol" name="currencySymbol" required maxlength="10">
-          <small>Currency symbol to display with amounts (e.g., KES, $, €, £, ₹)</small>
-        </div>
-      </div>
-
       <!-- Promotion Rules -->
-      <div class="form-section">
+      <div class="form-section" *ngIf="showAcademicSections()">
         <h2>⬆️ Class Promotion Rules</h2>
         <p class="section-description">Configure how students move from one class to another during promotion. This determines the promotion path for all students.</p>
         
@@ -868,9 +695,137 @@
         </div>
       </div>
 
+      <!-- Security Settings (password policy) -->
+      <div class="tab-panel security-settings-panel" *ngIf="isTab('security')">
+        <h2 class="tab-panel-title">Security Settings</h2>
+        <p class="tab-panel-desc">Manage login policies, password requirements, and session controls.</p>
+
+        <div class="notification-card security-policy-card">
+          <h3 class="notification-card-title">Password Policy</h3>
+
+          <div class="security-field-row">
+            <div class="form-group security-field">
+              <label for="minPasswordLength">Minimum Password Length</label>
+              <input
+                id="minPasswordLength"
+                type="number"
+                [(ngModel)]="settings.securitySettings.minPasswordLength"
+                name="minPasswordLength"
+                min="4"
+                max="128"
+                [disabled]="isDemoUser()" />
+              <small>Recommended: 8 or more characters</small>
+            </div>
+            <div class="form-group security-field">
+              <label for="maxLoginAttempts">Max Login Attempts</label>
+              <input
+                id="maxLoginAttempts"
+                type="number"
+                [(ngModel)]="settings.securitySettings.maxLoginAttempts"
+                name="maxLoginAttempts"
+                min="1"
+                max="50"
+                [disabled]="isDemoUser()" />
+              <small>Account locks after this many failed attempts</small>
+            </div>
+          </div>
+
+          <div class="notification-row">
+            <div class="notification-row-text">
+              <span class="notification-row-label">Require Uppercase Letter</span>
+              <span class="notification-row-desc">Password must contain at least one uppercase letter (A–Z)</span>
+            </div>
+            <label class="toggle-switch notification-toggle">
+              <input
+                type="checkbox"
+                [(ngModel)]="settings.securitySettings.requireUppercase"
+                name="requireUppercase"
+                [disabled]="isDemoUser()" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="notification-row">
+            <div class="notification-row-text">
+              <span class="notification-row-label">Require Number</span>
+              <span class="notification-row-desc">Password must contain at least one digit (0–9)</span>
+            </div>
+            <label class="toggle-switch notification-toggle">
+              <input
+                type="checkbox"
+                [(ngModel)]="settings.securitySettings.requireNumber"
+                name="requireNumber"
+                [disabled]="isDemoUser()" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="notification-row">
+            <div class="notification-row-text">
+              <span class="notification-row-label">Require Special Character</span>
+              <span class="notification-row-desc">Password must include !&#64;#$%^&amp;* etc.</span>
+            </div>
+            <label class="toggle-switch notification-toggle">
+              <input
+                type="checkbox"
+                [(ngModel)]="settings.securitySettings.requireSpecialChar"
+                name="requireSpecialChar"
+                [disabled]="isDemoUser()" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="notification-card security-policy-card">
+          <h3 class="notification-card-title">Session Settings</h3>
+          <div class="form-group security-field security-field--full">
+            <label for="sessionTimeoutMinutes">Session Timeout (minutes)</label>
+            <input
+              id="sessionTimeoutMinutes"
+              type="number"
+              [(ngModel)]="settings.securitySettings.sessionTimeoutMinutes"
+              name="sessionTimeoutMinutes"
+              min="5"
+              max="1440"
+              [disabled]="isDemoUser()" />
+            <small>Users are logged out after this period of inactivity</small>
+          </div>
+        </div>
+
+        <div class="notification-card security-policy-card">
+          <h3 class="notification-card-title">Two-Factor Authentication</h3>
+          <div class="notification-row">
+            <div class="notification-row-text">
+              <span class="notification-row-label">Enable Two-Factor Authentication</span>
+              <span class="notification-row-desc">Require 2FA for admin and superadmin accounts</span>
+            </div>
+            <label class="toggle-switch notification-toggle">
+              <input
+                type="checkbox"
+                [(ngModel)]="settings.securitySettings.enableTwoFactorAuth"
+                name="enableTwoFactorAuth"
+                [disabled]="isDemoUser()" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="notification-save-row">
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="saveSecuritySettings()"
+            [disabled]="savingSecurity || isDemoUser()">
+            {{ savingSecurity ? 'Saving...' : 'Save Security Settings' }}
+          </button>
+        </div>
+      </div>
+
       <!-- Module Access Control -->
-      <div class="form-section">
-        <h2>Module Access Control</h2>
+      <div class="form-section tab-panel" *ngIf="isTab('module-access')">
+        <h2 class="tab-panel-title">Module Access</h2>
+        <p class="tab-panel-desc">Select which modules each role can access and view on the system.</p>
+        <h3>Module Access Control</h3>
         <p class="section-description">Select which modules teachers and parents can access and view on the system.</p>
         
         <!-- Head Teacher (Universal Teacher Account) -->
@@ -1198,7 +1153,7 @@
       </div>
 
       <!-- Danger Zone: Reset System -->
-      <div class="form-section" *ngIf="(authService.hasRole('admin') || authService.hasRole('superadmin')) && !isDemoUser()">
+      <div class="form-section" *ngIf="isTab('module-access') && (authService.hasRole('admin') || authService.hasRole('superadmin')) && !isDemoUser()">
         <h2 style="color: #c53030;">Danger Zone: Reset System / Wipe Database</h2>
         <div class="alert alert-error" style="margin-top: 10px; padding: 12px; background: #fff5f5; border-left: 4px solid #c53030; color: #742a2a;">
           <p style="margin: 0 0 6px 0;">
@@ -1238,13 +1193,17 @@
 
       </fieldset>
 
-      <div style="margin-top: 20px;">
-        <button type="submit" class="btn btn-primary" [disabled]="loading || isDemoUser()">
-          {{ loading ? 'Saving...' : '💾 Save Settings' }}
+      <div class="settings-form-actions" *ngIf="showSchoolSections() && !usesDedicatedSaveButton()">
+        <p class="settings-form-actions__hint">Changes apply after you save this tab’s settings.</p>
+        <button type="submit" class="btn btn-primary settings-save-btn" [disabled]="loading || isDemoUser()">
+          <span class="settings-save-btn__icon" aria-hidden="true">💾</span>
+          {{ loading ? 'Saving…' : 'Save Settings' }}
         </button>
       </div>
     </form>
+    </div>
   </div>
+
 </div>
 
 <!-- Uniform Item Modal -->

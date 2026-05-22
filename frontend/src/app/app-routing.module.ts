@@ -26,6 +26,8 @@ import { ExemptionsManagementComponent } from './components/finance/exemptions-m
 import { ExemptionReportComponent } from './components/finance/exemption-report/exemption-report.component';
 import { FinancialReportComponent } from './components/finance/financial-reports/financial-report.component';
 import { FeesCollectionReportComponent } from './components/finance/financial-reports/fees-collection-report.component';
+import { AgedDebtorsReportComponent } from './components/finance/financial-reports/aged-debtors-report.component';
+import { RevenueRecognitionReportComponent } from './components/finance/financial-reports/revenue-recognition-report.component';
 import { ClassListComponent } from './components/classes/class-list/class-list.component';
 import { ClassFormComponent } from './components/classes/class-form/class-form.component';
 import { ClassListsComponent } from './components/classes/class-lists/class-lists.component';
@@ -34,11 +36,13 @@ import { SubjectFormComponent } from './components/subjects/subject-form/subject
 import { TeachingLoadComponent } from './components/subjects/teaching-load/teaching-load.component';
 import { AssignSubjectComponent } from './components/subjects/assign-subject/assign-subject.component';
 import { SettingsComponent } from './components/settings/settings.component';
+import { AcademicSettingsComponent } from './components/academic-settings/academic-settings.component';
 import { ParentDashboardComponent } from './components/parent/parent-dashboard/parent-dashboard.component';
 import { LinkStudentsComponent } from './components/parent/link-students/link-students.component';
 import { ParentInboxComponent } from './components/parent/parent-inbox/parent-inbox.component';
 import { ManageAccountComponent } from './components/teachers/manage-account/manage-account.component';
 import { ManageAccountsComponent } from './components/admin/manage-accounts/manage-accounts.component';
+import { UserManagementComponent } from './components/admin/user-management/user-management.component';
 import { ParentManagementComponent } from './components/admin/parent-management/parent-management.component';
 import { ClassPromotionComponent } from './components/admin/class-promotion/class-promotion.component';
 import { MarkAttendanceComponent } from './components/attendance/mark-attendance/mark-attendance.component';
@@ -72,8 +76,8 @@ import { NewsListComponent } from './components/news/news-list/news-list.compone
 import { NewsFeedComponent } from './components/news/news-feed/news-feed.component';
 import { NewsFormComponent } from './components/news/news-form/news-form.component';
 import { NewsDetailComponent } from './components/news/news-detail/news-detail.component';
-import { PaymentReceiptManagerComponent } from './components/settings/payment-receipt-manager/payment-receipt-manager.component';
 import { ElearningComponent } from './components/admin/elearning/elearning.component';
+import { IntegrationsComponent } from './components/admin/integrations/integrations.component';
 import { LicenseConfigComponent } from './components/admin/license-config/license-config.component';
 import { EservicesComponent } from './components/teacher/eservices/eservices.component';
 import { StudentResponsesComponent } from './components/teacher/student-responses/student-responses.component';
@@ -127,7 +131,8 @@ const routes: Routes = [
   { path: 'teacher/student-responses', component: StudentResponsesComponent, canActivate: [AuthGuard] },
   { path: 'teacher/mark-response/:responseId', component: MarkResponseComponent, canActivate: [AuthGuard] },
   { path: 'admin/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
-  { path: 'admin/manage-accounts', component: ManageAccountsComponent, canActivate: [AuthGuard] },
+  { path: 'user-management', component: UserManagementComponent, canActivate: [AuthGuard, AdminGuard] },
+  { path: 'admin/manage-accounts', component: ManageAccountsComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'admin/parents', component: ParentManagementComponent, canActivate: [AuthGuard] },
   { path: 'admin/class-promotion', component: ClassPromotionComponent, canActivate: [AuthGuard] },
   { path: 'admin/teacher-record-book', component: TeacherRecordBookComponent, canActivate: [AuthGuard, AdminGuard] },
@@ -165,9 +170,9 @@ const routes: Routes = [
   { path: 'financial-reports/exemption-report', component: ExemptionReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'financial-reports/exemptions', redirectTo: 'financial-reports/exemption-report', pathMatch: 'full' },
   { path: 'financial-reports/logistics-receipts', component: CashLogisticsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
-  { path: 'financial-reports/aged-debtors', component: FinancialReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', report: 'aged-debtors' } },
+  { path: 'financial-reports/aged-debtors', component: AgedDebtorsReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'financial-reports/enrolment-vs-billing', component: FinancialReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', report: 'enrolment-vs-billing' } },
-  { path: 'financial-reports/revenue-recognition', component: FinancialReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', report: 'revenue-recognition' } },
+  { path: 'financial-reports/revenue-recognition', component: RevenueRecognitionReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance' } },
   { path: 'financial-reports/student-reconciliation', component: FinancialReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', report: 'student-reconciliation' } },
   { path: 'financial-reports/analytics-forecasts', component: FinancialReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', report: 'analytics-forecasts' } },
   { path: 'financial-reports/class-reconciliation', component: FinancialReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', report: 'class-reconciliation' } },
@@ -186,8 +191,9 @@ const routes: Routes = [
   { path: 'payroll/runs/:runId/entries', component: PayrollEntriesComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'payroll' } },
   { path: 'payroll/reports', component: PayrollReportsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'payroll' } },
   { path: 'payroll/loan-overview', component: LoanOverviewComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'payroll' } },
-  { path: 'settings/payment-receipt-manager', component: PaymentReceiptManagerComponent, canActivate: [AuthGuard, AdminGuard] },
+  { path: 'settings/payment-receipt-manager', redirectTo: 'system-settings', pathMatch: 'full' },
   { path: 'admin/elearning', component: ElearningComponent, canActivate: [AuthGuard, AdminGuard] },
+  { path: 'system/integrations', component: IntegrationsComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'admin/license-config', component: LicenseConfigComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'classes', component: ClassListComponent, canActivate: [AuthGuard] },
   { path: 'classes/lists', component: ClassListsComponent, canActivate: [AuthGuard] },
@@ -203,7 +209,12 @@ const routes: Routes = [
   { path: 'schools', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: 'attendance/mark', component: MarkAttendanceComponent, canActivate: [AuthGuard] },
   { path: 'attendance/reports', component: AttendanceReportsComponent, canActivate: [AuthGuard] },
-  { path: 'settings', component: SettingsComponent, canActivate: [AuthGuard] },
+  { path: 'academic-settings', redirectTo: 'academic-settings/terms', pathMatch: 'full' },
+  { path: 'academic-settings/grading', redirectTo: 'academic-settings/grading-system', pathMatch: 'full' },
+  { path: 'academic-settings/:tab', component: AcademicSettingsComponent, canActivate: [AuthGuard] },
+  { path: 'settings/academic', redirectTo: 'academic-settings/terms', pathMatch: 'full' },
+  { path: 'system-settings', component: SettingsComponent, canActivate: [AuthGuard], data: { settingsView: 'school', title: 'System Settings' } },
+  { path: 'settings', redirectTo: 'system-settings', pathMatch: 'full' },
   { path: 'timetable/config', component: TimetableConfigComponent, canActivate: [AuthGuard] },
   { path: 'timetable/generate', component: TimetableGenerateComponent, canActivate: [AuthGuard] },
   { path: 'timetable/view', component: TimetableGenerateComponent, canActivate: [AuthGuard], data: { timetableMode: 'view' } },

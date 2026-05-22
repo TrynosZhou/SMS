@@ -271,10 +271,11 @@ export class ExamService {
     );
   }
 
-  getSubjectRankingsByType(examType: string, subjectId: string): Observable<any> {
+  getSubjectRankingsByType(examType: string, subjectId: string, classId: string): Observable<any> {
     let params = new HttpParams()
       .set('examType', this.normalizeExamType(examType, false))
-      .set('subjectId', subjectId);
+      .set('subjectId', subjectId)
+      .set('classId', classId);
     return this.http.get(`${this.apiUrl}/exams/rankings/subject-by-type`, { params }).pipe(
       catchError(err => throwError(() => err))
     );

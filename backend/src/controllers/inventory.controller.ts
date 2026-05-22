@@ -160,10 +160,17 @@ export const putInventorySettings = async (req: AuthRequest, res: Response) => {
 export const listTextbooks = async (req: AuthRequest, res: Response) => {
   try {
     if (!(await requireReports(req, res))) return;
-    const list = await AppDataSource.getRepository(InventoryTextbookCatalog).find({
-      relations: ['subject'],
-      order: { title: 'ASC' }
-    });
+    const repo = AppDataSource.getRepository(InventoryTextbookCatalog);
+    let list: InventoryTextbookCatalog[];
+    try {
+      list = await repo.find({
+        relations: ['subject'],
+        order: { title: 'ASC' }
+      });
+    } catch (relErr: any) {
+      console.warn('[inventory.listTextbooks] subject relation failed, loading without:', relErr?.message);
+      list = await repo.find({ order: { title: 'ASC' } });
+    }
     res.json(list);
   } catch (e: any) {
     res.status(500).json({ message: e.message || 'Error' });
@@ -565,7 +572,9 @@ export const listTextbookIssuances = async (req: AuthRequest, res: Response) => 
       relations: ['catalog', 'student', 'authorizedBy'],
       order: { createdAt: 'DESC' }
     });
-    await refreshOverdueLoans(list);
+    void refreshOverdueLoans(list).catch(err =>
+      console.error('[inventory.listTextbookIssuances] refreshOverdueLoans:', err?.message || err)
+    );
     res.json(list);
   } catch (e: any) {
     res.status(500).json({ message: e.message || 'Error' });

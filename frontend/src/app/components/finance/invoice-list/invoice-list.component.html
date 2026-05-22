@@ -1,26 +1,66 @@
-<div class="container">
-  <div class="page-header">
-    <div class="header-content">
-      <h1>
-        <span class="header-icon">💰</span>
-        Invoice Management
-      </h1>
-      <p class="subtitle">Manage student invoices, payments, and financial records</p>
+<div class="inv-page container">
+  <div class="inv-toast-stack" *ngIf="(success && !showNoteForm) || (error && !showNoteForm)">
+    <div class="inv-toast inv-toast--success" *ngIf="success && !showNoteForm" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="inv-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="inv-toast inv-toast--error" *ngIf="error && !showNoteForm" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="inv-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
   </div>
 
-  <div *ngIf="success && !showNoteForm" class="alert alert-success page-feedback-alert" role="status">
-    <span class="alert-icon" aria-hidden="true">✅</span>
-    <span>{{ success }}</span>
-    <button type="button" class="alert-close" (click)="success = ''" aria-label="Dismiss">✕</button>
-  </div>
-  <div *ngIf="error && !showNoteForm" class="alert alert-error page-feedback-alert" role="alert">
-    <span class="alert-icon" aria-hidden="true">⚠️</span>
-    <span>{{ error }}</span>
-    <button type="button" class="alert-close" (click)="error = ''" aria-label="Dismiss">✕</button>
-  </div>
+  <header class="inv-hero">
+    <div class="inv-hero__main">
+      <div class="inv-hero-left">
+        <span class="inv-hero-icon" aria-hidden="true">💰</span>
+        <div>
+          <span class="inv-hero-eyebrow">Finance</span>
+          <h1>Invoice Management</h1>
+          <p class="inv-hero-sub">Manage student invoices, record payments, and run bulk billing operations.</p>
+          <p class="inv-hero-meta" *ngIf="lastLoadedAt && !loading">
+            Last updated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
+          </p>
+        </div>
+      </div>
+      <div class="inv-hero__actions">
+        <button type="button" class="inv-hero-refresh" (click)="refresh()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <button type="button" class="inv-hero-btn inv-hero-btn--white" (click)="exportFilteredCsv()" [disabled]="!filteredInvoices.length || loading">CSV</button>
+        <button type="button" class="inv-hero-btn inv-hero-btn--white" (click)="onFilterChange()">Statements</button>
+        <a routerLink="/invoices/new" class="inv-hero-btn inv-hero-btn--accent" *ngIf="canCreateInvoice()">+ New invoice</a>
+      </div>
+    </div>
 
-  <div class="invoice-actions-card">
+    <div class="inv-hero-stats" *ngIf="!loading && invoices.length > 0">
+      <article class="inv-stat">
+        <span class="inv-stat__value">{{ filteredInvoices.length }}</span>
+        <span class="inv-stat__label">Showing</span>
+      </article>
+      <article class="inv-stat">
+        <span class="inv-stat__value">{{ currencySymbol }}{{ getPaidAmount() | number : '1.0-0' }}</span>
+        <span class="inv-stat__label">Paid</span>
+      </article>
+      <article class="inv-stat inv-stat--rose">
+        <span class="inv-stat__value">{{ currencySymbol }}{{ getOutstandingAmount() | number : '1.0-0' }}</span>
+        <span class="inv-stat__label">Outstanding</span>
+      </article>
+      <article class="inv-stat inv-stat--accent">
+        <span class="inv-stat__value">{{ getOverdueCount() }}</span>
+        <span class="inv-stat__label">Overdue</span>
+      </article>
+      <article class="inv-stat inv-stat--mint" *ngIf="getTotalPrepaidCredit() > 0">
+        <span class="inv-stat__value">{{ currencySymbol }}{{ getTotalPrepaidCredit() | number : '1.0-0' }}</span>
+        <span class="inv-stat__label">Credits</span>
+      </article>
+    </div>
+    <div class="inv-hero-stats inv-hero-stats--skeleton" *ngIf="loading">
+      <div class="inv-skeleton" *ngFor="let i of skeletonRows"></div>
+    </div>
+  </header>
+
+  <div class="invoice-actions-card inv-toolbar">
     <div class="actions-row actions-row-primary">
       <button 
         class="btn btn-action btn-credit" 
@@ -153,67 +193,6 @@
     </div>
   </div>
   
-  <!-- Statistics Cards -->
-  <div class="stats-grid" *ngIf="!loading && invoices.length > 0">
-    <div class="stat-card primary">
-      <div class="stat-icon">📄</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ filteredInvoices.length }}</div>
-        <div class="stat-label">Total Invoices</div>
-        <div class="stat-sublabel" *ngIf="invoices.length !== filteredInvoices.length">
-          {{ invoices.length }} total
-        </div>
-      </div>
-    </div>
-    
-    <div class="stat-card success">
-      <div class="stat-icon">✅</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ currencySymbol }} {{ getPaidAmount() | number:'1.2-2' }}</div>
-        <div class="stat-label">Total Paid</div>
-        <div class="stat-sublabel" *ngIf="getTotalAmount() > 0">
-          {{ (getPaidAmount() / getTotalAmount() * 100) | number:'1.1-1' }}% collected
-        </div>
-      </div>
-    </div>
-    
-    <div class="stat-card danger">
-      <div class="stat-icon">⚠️</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ currencySymbol }} {{ getOutstandingAmount() | number:'1.2-2' }}</div>
-        <div class="stat-label">Outstanding Balance</div>
-        <div class="stat-sublabel" *ngIf="getOverdueCount() > 0">
-          {{ getOverdueCount() }} overdue
-        </div>
-      </div>
-    </div>
-    
-    <div class="stat-card info">
-      <div class="stat-icon">📊</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ currencySymbol }} {{ getTotalInvoiceAmount() | number:'1.2-2' }}</div>
-        <div class="stat-label">Total Invoice Amount</div>
-        <div class="stat-sublabel" *ngIf="getUniformTotal() > 0">
-          {{ currencySymbol }} {{ getUniformTotal() | number:'1.2-2' }} uniforms
-        </div>
-        <div class="stat-sublabel" style="margin-top: 4px;">
-          (Current: {{ currencySymbol }} {{ getTotalAmount() | number:'1.2-2' }})
-        </div>
-      </div>
-    </div>
-    
-    <div class="stat-card" style="border-left: 4px solid #17a2b8;" *ngIf="getTotalPrepaidCredit() > 0">
-      <div class="stat-icon">💳</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ currencySymbol }} {{ getTotalPrepaidCredit() | number:'1.2-2' }}</div>
-        <div class="stat-label">Available Credits</div>
-        <div class="stat-sublabel">
-          {{ getPrepaidCreditCount() }} student(s) with credit
-        </div>
-      </div>
-    </div>
-  </div>
-    
     <!-- Bulk Invoice Creation Form Modal -->
     <div *ngIf="showBulkInvoiceForm" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
       <div class="card" style="width: 500px; max-width: 90%; max-height: 90vh; overflow-y: auto; position: relative;">
@@ -274,222 +253,136 @@
       </div>
     </div>
     
-    <!-- Invoice Filters and Display Section -->
-    <div class="invoice-section">
-      <div class="section-header">
-        <h2>Invoice List</h2>
-        <div class="section-actions">
-          <button class="btn btn-secondary" 
-                  (click)="clearInvoiceFilters()" 
-                  *ngIf="hasActiveInvoiceFilters()">
-            <span>🗑️</span> Clear Filters
-          </button>
-          <button class="btn btn-primary" 
-                  (click)="onFilterChange()">
-            <span>📊</span> View Statements
-          </button>
+    <section class="inv-panel invoice-section">
+      <div class="inv-panel__head-row">
+        <div>
+          <h2 class="inv-panel__title">Invoice list</h2>
+          <p class="inv-panel__intro">Search and filter invoices. Click a row to select; use actions for PDF and payment.</p>
         </div>
+        <button type="button" class="inv-btn-clear" *ngIf="hasActiveInvoiceFilters()" (click)="clearInvoiceFilters()">Clear filters</button>
       </div>
-      
-      <!-- Filters -->
-      <div class="filters-card">
-        <div class="filters-header">
-          <h3>🔍 Filters & Search</h3>
+
+      <div class="inv-search-wrap">
+        <span class="inv-search-icon" aria-hidden="true">🔍</span>
+        <input
+          #invSearch
+          type="search"
+          class="inv-search-input"
+          [value]="invoiceSearchQuery"
+          (input)="onInvoiceSearchInput(invSearch.value)"
+          placeholder="Student name, number, invoice no., or term…" />
+        <button type="button" class="inv-search-clear" *ngIf="invoiceSearchQuery" (click)="invSearch.value = ''; onInvoiceSearchInput('')">Clear</button>
+      </div>
+
+      <div class="inv-filters-row">
+        <div class="inv-field">
+          <label for="inv-student">Student</label>
+          <select id="inv-student" class="inv-select" [(ngModel)]="selectedStudent" [ngModelOptions]="{standalone: true}" (ngModelChange)="filterInvoices()">
+            <option value="">All students</option>
+            <option *ngFor="let student of students" [value]="student.id">{{ student.firstName }} {{ student.lastName }}</option>
+          </select>
         </div>
-        <div class="filters-grid">
-          <div class="filter-group">
-            <label>Search</label>
-            <div class="search-input-wrapper">
-              <span class="search-icon">🔍</span>
-              <input type="text" 
-                     [(ngModel)]="invoiceSearchQuery" 
-                     [ngModelOptions]="{standalone: true}"
-                     (input)="filterInvoices()"
-                     (keyup.enter)="filterInvoices()"
-                     placeholder="Search by student name, student number, invoice number, or term" 
-                     class="form-control search-input">
-            </div>
-          </div>
-          <div class="filter-group">
-            <label>Student</label>
-            <select [(ngModel)]="selectedStudent" 
-                    [ngModelOptions]="{standalone: true}" 
-                    (change)="filterInvoices()"
-                    class="form-control">
-              <option value="">All Students</option>
-              <option *ngFor="let student of students" [value]="student.id">
-                {{ student.firstName }} {{ student.lastName }}
-              </option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <label>Status</label>
-            <select [(ngModel)]="selectedStatusFilter" 
-                    [ngModelOptions]="{standalone: true}" 
-                    (change)="filterInvoices()"
-                    class="form-control">
-              <option value="">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="paid">Paid</option>
-              <option value="partial">Partial</option>
-              <option value="overdue">Overdue</option>
-              <option value="void">Void</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <label>Term</label>
-            <select [(ngModel)]="selectedTermFilter" 
-                    [ngModelOptions]="{standalone: true}" 
-                    (change)="filterInvoices()"
-                    class="form-control">
-              <option value="">All Terms</option>
-              <option *ngFor="let term of getUniqueTerms()" [value]="term">
-                {{ term }}
-              </option>
-            </select>
-          </div>
+        <div class="inv-field">
+          <label for="inv-term">Term</label>
+          <select id="inv-term" class="inv-select" [(ngModel)]="selectedTermFilter" [ngModelOptions]="{standalone: true}" (ngModelChange)="filterInvoices()">
+            <option value="">All terms</option>
+            <option *ngFor="let term of getUniqueTerms()" [value]="term">{{ term }}</option>
+          </select>
         </div>
       </div>
 
-      <!-- Loading State -->
-      <div class="loading-state" *ngIf="loading">
-        <div class="spinner"></div>
-        <p>Loading invoices...</p>
+      <div class="inv-chips">
+        <span class="inv-chips-label">Status</span>
+        <button
+          type="button"
+          class="inv-chip"
+          *ngFor="let s of statusOptions"
+          [class.inv-chip--active]="selectedStatusFilter === s.value"
+          (click)="selectStatusFilter(s.value)">
+          {{ s.label }}
+        </button>
       </div>
 
-      <!-- Invoice Table -->
+      <div class="inv-summary" *ngIf="filterSummary && !loading">
+        <span class="inv-summary-pill">{{ filterSummary }}</span>
+      </div>
+
+      <div class="inv-loading" *ngIf="loading">
+        <div class="inv-spinner inv-spinner--lg" aria-hidden="true"></div>
+        <p>Loading invoices…</p>
+      </div>
+
       <div *ngIf="!loading">
-        <div *ngIf="filteredInvoices.length === 0" class="empty-state">
-          <div class="empty-icon">📋</div>
+        <div *ngIf="filteredInvoices.length === 0" class="inv-empty">
+          <span class="inv-empty-icon" aria-hidden="true">📋</span>
           <h3>No invoices found</h3>
           <p *ngIf="hasActiveInvoiceFilters()">
-            Try adjusting your filters or 
-            <button class="btn-link" (click)="clearInvoiceFilters()">clear all filters</button>.
+            Try adjusting filters or
+            <button type="button" class="inv-btn-clear" (click)="clearInvoiceFilters()">clear all filters</button>.
           </p>
-          <p *ngIf="!hasActiveInvoiceFilters()">
-            No invoices have been created yet. Start by creating invoices for students.
-          </p>
+          <p *ngIf="!hasActiveInvoiceFilters()">No invoices yet. Use bulk create or add invoices for students.</p>
         </div>
 
-        <div class="table-wrapper" *ngIf="filteredInvoices.length > 0">
-          <table class="invoice-table">
+        <div class="inv-table-scroll table-wrapper" *ngIf="filteredInvoices.length > 0">
+          <table class="invoice-table inv-table">
           <thead>
             <tr>
-              <th>Invoice Number</th>
+              <th>Invoice</th>
               <th>Student</th>
-              <th style="text-align: right;">Base Amount</th>
-              <th style="text-align: right;">Uniform Total</th>
-              <th style="text-align: right;">Grand Total</th>
-              <th style="text-align: right;">Paid</th>
-              <th style="text-align: right;">Balance</th>
-              <th style="text-align: right;">Credit 💳</th>
+              <th class="inv-col-num">Base</th>
+              <th class="inv-col-num">Uniform</th>
+              <th class="inv-col-num">Total</th>
+              <th class="inv-col-num">Paid</th>
+              <th class="inv-col-num">Balance</th>
+              <th class="inv-col-num">Credit</th>
               <th>Status</th>
-              <th>Due Date</th>
+              <th>Due</th>
               <th>Term</th>
-              <th style="text-align: center;">Actions</th>
+              <th class="inv-col-actions" scope="col"><span class="inv-actions-head">Actions</span></th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let invoice of filteredInvoices" (click)="selectInvoice(invoice)" [class.selected-row]="selectedInvoice?.id === invoice.id" [class.void-row]="(invoice.status || '').toLowerCase() === 'void'">
-              <td>{{ invoice.invoiceNumber }}</td>
-              <td>{{ invoice.student?.firstName }} {{ invoice.student?.lastName }}</td>
-              <td style="text-align: right;">{{ currencySymbol }} {{ (invoice.amount - (invoice.uniformTotal || 0)) | number:'1.2-2' }}</td>
-              <td style="text-align: right;">{{ currencySymbol }} {{ invoice.uniformTotal || 0 | number:'1.2-2' }}</td>
-              <td style="text-align: right;">{{ currencySymbol }} {{ invoice.amount | number:'1.2-2' }}</td>
-              <td style="text-align: right;">{{ currencySymbol }} {{ invoice.paidAmount | number:'1.2-2' }}</td>
-              <td style="text-align: right;">{{ currencySymbol }} {{ invoice.balance | number:'1.2-2' }}</td>
-              <td style="text-align: right;">
-                <span *ngIf="invoice.prepaidAmount && invoice.prepaidAmount > 0" 
-                      style="color: #17a2b8; font-weight: bold;" 
-                      title="Available prepaid credit">
-                  {{ currencySymbol }} {{ invoice.prepaidAmount | number:'1.2-2' }}
-                </span>
-                <span *ngIf="!invoice.prepaidAmount || invoice.prepaidAmount <= 0" 
-                      style="color: #999;">—</span>
-              </td>
+            <tr *ngFor="let invoice of filteredInvoices; trackBy: trackByInvoiceId" (click)="selectInvoice(invoice)" [class.selected-row]="selectedInvoice?.id === invoice.id" [class.void-row]="(invoice.status || '').toLowerCase() === 'void'">
+              <td><strong class="inv-mono">{{ invoice.invoiceNumber }}</strong></td>
               <td>
-                <span [class]="getStatusClass(invoice.status)">
-                  {{ invoice.status }}
-                </span>
+                <div class="inv-student-cell">
+                  <span class="inv-avatar">{{ getInitials(invoice) }}</span>
+                  <span>{{ invoice.student?.firstName }} {{ invoice.student?.lastName }}</span>
+                </div>
               </td>
-              <td>{{ invoice.dueDate | date:'dd/MM/yyyy' }}</td>
+              <td class="inv-col-num">{{ currencySymbol }}{{ (invoice.amount - (invoice.uniformTotal || 0)) | number : '1.2-2' }}</td>
+              <td class="inv-col-num">{{ currencySymbol }}{{ invoice.uniformTotal || 0 | number : '1.2-2' }}</td>
+              <td class="inv-col-num inv-col-num--bold">{{ currencySymbol }}{{ invoice.amount | number : '1.2-2' }}</td>
+              <td class="inv-col-num inv-col-num--paid">{{ currencySymbol }}{{ invoice.paidAmount | number : '1.2-2' }}</td>
+              <td class="inv-col-num">{{ currencySymbol }}{{ invoice.balance | number : '1.2-2' }}</td>
+              <td class="inv-col-num">
+                <span class="inv-credit" *ngIf="invoice.prepaidAmount && invoice.prepaidAmount > 0" title="Prepaid credit">
+                  {{ currencySymbol }}{{ invoice.prepaidAmount | number : '1.2-2' }}
+                </span>
+                <span *ngIf="!invoice.prepaidAmount || invoice.prepaidAmount <= 0" class="inv-muted">—</span>
+              </td>
+              <td><span [class]="getStatusClass(invoice.status) + ' inv-status-pill'">{{ invoice.status }}</span></td>
+              <td>{{ invoice.dueDate | date : 'shortDate' }}</td>
               <td>{{ invoice.term }}</td>
-              <td style="text-align: center;">
-                <div style="display: flex; gap: 8px; flex-wrap: nowrap; align-items: center; justify-content: center;">
-                  <button class="btn btn-primary" 
-                          type="button"
-                          (click)="viewInvoicePDF(invoice.id, $event)"
-                          title="View Invoice"
-                          style="font-size: 12px; padding: 5px 10px; white-space: nowrap;">
-                    📄 Invoice
-                  </button>
-                  <button class="btn btn-secondary" 
-                          (click)="openPaymentForm(invoice)"
-                          *ngIf="canManageFinance()"
-                          title="Record Payment"
-                          style="font-size: 12px; padding: 5px 10px; white-space: nowrap;">
-                    💳 Payment
-                  </button>
+              <td class="inv-col-actions" (click)="$event.stopPropagation()">
+                <div class="inv-actions-cell">
+                  <button class="inv-action-btn" type="button" (click)="viewInvoicePDF(invoice.id, $event)" title="Invoice PDF">📄</button>
+                  <button class="inv-action-btn inv-action-btn--pay" type="button" (click)="openPaymentForm(invoice)" *ngIf="canManageFinance()" title="Record payment">💳</button>
                 </div>
               </td>
             </tr>
           </tbody>
         </table>
+        </div>
 
-        <!-- Summary Statistics -->
-        <div class="summary-cards" *ngIf="filteredInvoices.length > 0">
-          <div class="summary-card">
-            <div class="summary-icon">📄</div>
-            <div class="summary-content">
-              <div class="summary-label">Total Invoices</div>
-              <div class="summary-value">{{ filteredInvoices.length }}</div>
-            </div>
-          </div>
-          <div class="summary-card">
-            <div class="summary-icon">💵</div>
-            <div class="summary-content">
-              <div class="summary-label">Total Invoice Amount</div>
-              <div class="summary-value">{{ currencySymbol }} {{ getTotalInvoiceAmount() | number:'1.2-2' }}</div>
-            </div>
-          </div>
-          <div class="summary-card">
-            <div class="summary-icon">📋</div>
-            <div class="summary-content">
-              <div class="summary-label">Current Term Fees</div>
-              <div class="summary-value">{{ currencySymbol }} {{ getTotalAmount() | number:'1.2-2' }}</div>
-            </div>
-          </div>
-          <div class="summary-card">
-            <div class="summary-icon">👕</div>
-            <div class="summary-content">
-              <div class="summary-label">Uniform Total</div>
-              <div class="summary-value">{{ currencySymbol }} {{ getUniformTotal() | number:'1.2-2' }}</div>
-            </div>
-          </div>
-          <div class="summary-card success">
-            <div class="summary-icon">✅</div>
-            <div class="summary-content">
-              <div class="summary-label">Total Paid</div>
-              <div class="summary-value">{{ currencySymbol }} {{ getPaidAmount() | number:'1.2-2' }}</div>
-            </div>
-          </div>
-          <div class="summary-card danger">
-            <div class="summary-icon">⚠️</div>
-            <div class="summary-content">
-              <div class="summary-label">Outstanding</div>
-              <div class="summary-value">{{ currencySymbol }} {{ getOutstandingAmount() | number:'1.2-2' }}</div>
-            </div>
-          </div>
-          <div class="summary-card warning">
-            <div class="summary-icon">⏰</div>
-            <div class="summary-content">
-              <div class="summary-label">Overdue</div>
-              <div class="summary-value">{{ getOverdueCount() }}</div>
-            </div>
-          </div>
+        <div class="inv-table-foot" *ngIf="filteredInvoices.length > 0">
+          <span>Total invoiced: <strong>{{ currencySymbol }}{{ getTotalInvoiceAmount() | number : '1.2-2' }}</strong></span>
+          <span> · Paid: <strong>{{ currencySymbol }}{{ getPaidAmount() | number : '1.2-2' }}</strong></span>
+          <span> · Outstanding: <strong>{{ currencySymbol }}{{ getOutstandingAmount() | number : '1.2-2' }}</strong></span>
+          <span *ngIf="getUniformTotal() > 0"> · Uniforms: <strong>{{ currencySymbol }}{{ getUniformTotal() | number : '1.2-2' }}</strong></span>
         </div>
       </div>
-    </div>
+    </section>
 
     <!-- Correct Transaction Modal (Prepayment Reversal) -->
     <div class="modal-overlay" *ngIf="showCorrectTransactionModal" (click)="closeCorrectTransactionModal()">
@@ -1179,14 +1072,6 @@
         </form>
       </div>
     </div>
-
-    <!-- Link to Invoice Statements -->
-    <div style="margin-top: 20px; margin-bottom: 20px;">
-      <a routerLink="/invoices/statements" class="btn btn-primary" style="text-decoration: none; display: inline-block;">
-        📊 View Invoice Statements
-      </a>
-    </div>
-  </div>
 
   <!-- PDF Viewer Modal -->
   <div *ngIf="showPdfViewer" class="pdf-viewer-overlay pdf-preview-maximized-overlay" (click)="closePdfViewer()">

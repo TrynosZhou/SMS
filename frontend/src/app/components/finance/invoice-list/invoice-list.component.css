@@ -1,34 +1,15 @@
-/* Container */
-.container {
-  max-width: 1400px;
-  margin: 20px auto;
-  padding: 0 20px;
+/* Container — modern invoice page shell */
+.inv-page.container,
+.container.inv-page {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem 2.5rem;
+  box-sizing: border-box;
+  background: transparent;
 }
 
-/* Page Header */
-.page-header {
-  margin-bottom: 20px;
-}
-
-.header-content h1 {
-  margin: 0 0 8px 0;
-  color: #1f2937;
-  font-size: 32px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-icon {
-  font-size: 36px;
-}
-
-.subtitle {
-  margin: 0;
-  color: #6b7280;
-  font-size: 15px;
-}
+/* Legacy header (hidden when inv-hero present) */
+.page-header { display: none; }
 
 /* Invoice Actions Card - modern toolbar */
 .invoice-actions-card {

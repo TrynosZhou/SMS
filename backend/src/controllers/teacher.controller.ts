@@ -291,7 +291,29 @@ export const getTeachers = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    res.json(buildPaginationResponse(teachers, total, page, limit));
+    // Omit large photo blobs from list responses (class form / dropdowns load much faster)
+    const slimTeachers = teachers.map((t: any) => ({
+      id: t.id,
+      firstName: t.firstName,
+      lastName: t.lastName,
+      teacherId: t.teacherId,
+      phoneNumber: t.phoneNumber || null,
+      sex: t.sex || null,
+      email: t.user?.email || null,
+      isActive: t.isActive,
+      subjects: (t.subjects || []).map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        code: s.code
+      })),
+      classes: (t.classes || []).map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        form: c.form
+      }))
+    }));
+
+    res.json(buildPaginationResponse(slimTeachers, total, page, limit));
   } catch (error: any) {
     console.error('[getTeachers] Error:', error);
     console.error('[getTeachers] Error stack:', error.stack);

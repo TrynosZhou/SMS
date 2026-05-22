@@ -286,6 +286,7 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       schoolAddress,
       schoolPhone,
       schoolEmail,
+      schoolWebsite,
       headmasterName,
       schoolMotto,
       academicYear,
@@ -293,6 +294,7 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       activeTerm,
       termStartDate,
       termEndDate,
+      academicTerms,
       currencySymbol,
       moduleAccess,
       universalTeacherEnabled,
@@ -300,7 +302,10 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       schoolEndTime,
       breakTimes,
       classTeacherPhrases,
-      payrollSettings
+      payrollSettings,
+      emailSettings,
+      notificationSettings,
+      securitySettings
     } = req.body;
 
     if (!settings) {
@@ -432,6 +437,10 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
     if (schoolEmail !== undefined) {
       settings.schoolEmail = schoolEmail;
     }
+    if (schoolWebsite !== undefined) {
+      const website = schoolWebsite == null ? null : String(schoolWebsite).trim();
+      settings.schoolWebsite = website || null;
+    }
     if (headmasterName !== undefined) {
       settings.headmasterName = headmasterName;
     }
@@ -452,6 +461,9 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
     }
     if (termEndDate !== undefined) {
       settings.termEndDate = termEndDate ? new Date(termEndDate) : null;
+    }
+    if (academicTerms !== undefined) {
+      settings.academicTerms = Array.isArray(academicTerms) ? academicTerms : [];
     }
     if (currencySymbol !== undefined) {
       settings.currencySymbol = String(currencySymbol).trim() || 'KES';
@@ -484,6 +496,92 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
         loanInterestRate2Months: n2 !== undefined && n2 !== null && n2 !== '' ? Number(n2) : (prev.loanInterestRate2Months ?? 0),
         loanInterestRate3Months: n3 !== undefined && n3 !== null && n3 !== '' ? Number(n3) : (prev.loanInterestRate3Months ?? 0),
         banks: Array.isArray(ps?.banks) ? ps.banks.filter((b: any) => b && (b.name || b.id)) : (prev.banks ?? [])
+      };
+    }
+    if (emailSettings !== undefined) {
+      const es = emailSettings as Record<string, unknown>;
+      const prev = settings.emailSettings || {};
+      const portRaw = es?.smtpPort;
+      settings.emailSettings = {
+        smtpHost: es?.smtpHost !== undefined ? String(es.smtpHost ?? '').trim() : (prev.smtpHost ?? ''),
+        smtpPort:
+          portRaw !== undefined && portRaw !== null && portRaw !== ''
+            ? Number(portRaw)
+            : (prev.smtpPort ?? 587),
+        smtpUsername: es?.smtpUsername !== undefined ? String(es.smtpUsername ?? '').trim() : (prev.smtpUsername ?? ''),
+        smtpPassword: es?.smtpPassword !== undefined ? String(es.smtpPassword ?? '') : (prev.smtpPassword ?? ''),
+        fromName: es?.fromName !== undefined ? String(es.fromName ?? '').trim() : (prev.fromName ?? ''),
+        fromAddress: es?.fromAddress !== undefined ? String(es.fromAddress ?? '').trim() : (prev.fromAddress ?? '')
+      };
+    }
+    if (notificationSettings !== undefined) {
+      const ns = notificationSettings as Record<string, unknown>;
+      const prev = settings.notificationSettings || {};
+      const prevSms = prev.sms || {};
+      const prevPush = prev.push || {};
+      const sms = (ns?.sms && typeof ns.sms === 'object' ? ns.sms : {}) as Record<string, unknown>;
+      const push = (ns?.push && typeof ns.push === 'object' ? ns.push : {}) as Record<string, unknown>;
+      settings.notificationSettings = {
+        sms: {
+          feePaymentReceived:
+            sms.feePaymentReceived !== undefined ? Boolean(sms.feePaymentReceived) : (prevSms.feePaymentReceived ?? false),
+          studentAbsence:
+            sms.studentAbsence !== undefined ? Boolean(sms.studentAbsence) : (prevSms.studentAbsence ?? false),
+          reportCardReady:
+            sms.reportCardReady !== undefined ? Boolean(sms.reportCardReady) : (prevSms.reportCardReady ?? false)
+        },
+        push: {
+          enabled: push.enabled !== undefined ? Boolean(push.enabled) : (prevPush.enabled ?? false)
+        }
+      };
+    }
+    if (securitySettings !== undefined) {
+      const ss = securitySettings as Record<string, unknown>;
+      const prev = settings.securitySettings || {};
+      const minLenRaw = ss?.minPasswordLength;
+      const maxAttemptsRaw = ss?.maxLoginAttempts;
+      let minPasswordLength =
+        minLenRaw !== undefined && minLenRaw !== null && minLenRaw !== ''
+          ? Number(minLenRaw)
+          : (prev.minPasswordLength ?? 8);
+      if (!Number.isFinite(minPasswordLength)) {
+        minPasswordLength = 8;
+      }
+      minPasswordLength = Math.min(128, Math.max(4, Math.round(minPasswordLength)));
+
+      let maxLoginAttempts =
+        maxAttemptsRaw !== undefined && maxAttemptsRaw !== null && maxAttemptsRaw !== ''
+          ? Number(maxAttemptsRaw)
+          : (prev.maxLoginAttempts ?? 5);
+      if (!Number.isFinite(maxLoginAttempts)) {
+        maxLoginAttempts = 5;
+      }
+      maxLoginAttempts = Math.min(50, Math.max(1, Math.round(maxLoginAttempts)));
+
+      const sessionTimeoutRaw = ss?.sessionTimeoutMinutes;
+      let sessionTimeoutMinutes =
+        sessionTimeoutRaw !== undefined && sessionTimeoutRaw !== null && sessionTimeoutRaw !== ''
+          ? Number(sessionTimeoutRaw)
+          : (prev.sessionTimeoutMinutes ?? 60);
+      if (!Number.isFinite(sessionTimeoutMinutes)) {
+        sessionTimeoutMinutes = 60;
+      }
+      sessionTimeoutMinutes = Math.min(1440, Math.max(5, Math.round(sessionTimeoutMinutes)));
+
+      settings.securitySettings = {
+        minPasswordLength,
+        maxLoginAttempts,
+        requireUppercase:
+          ss?.requireUppercase !== undefined ? Boolean(ss.requireUppercase) : (prev.requireUppercase ?? true),
+        requireNumber:
+          ss?.requireNumber !== undefined ? Boolean(ss.requireNumber) : (prev.requireNumber ?? true),
+        requireSpecialChar:
+          ss?.requireSpecialChar !== undefined ? Boolean(ss.requireSpecialChar) : (prev.requireSpecialChar ?? true),
+        sessionTimeoutMinutes,
+        enableTwoFactorAuth:
+          ss?.enableTwoFactorAuth !== undefined
+            ? Boolean(ss.enableTwoFactorAuth)
+            : (prev.enableTwoFactorAuth ?? false)
       };
     }
 

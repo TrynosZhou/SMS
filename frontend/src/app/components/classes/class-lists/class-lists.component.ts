@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
@@ -11,6 +11,10 @@ import { AuthService } from '../../../services/auth.service';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
+type StudentViewMode = 'table' | 'cards';
+type GenderFilter = 'all' | 'male' | 'female';
+type TypeFilter = 'all' | 'day' | 'boarder';
+
 @Component({
   standalone: false,  selector: 'app-class-lists',
   templateUrl: './class-lists.component.html',
@@ -18,7 +22,10 @@ import html2canvas from 'html2canvas';
 })
 export class ClassListsComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-classes: any[] = [];
+  private readonly studentSearchInput$ = new Subject<string>();
+  readonly skeletonRows = [0, 1, 2, 3, 4, 5];
+
+  classes: any[] = [];
   students: any[] = [];
   filteredStudents: any[] = [];
   /** Students sorted by lastName asc and grouped by gender (Female first) for display */
@@ -58,8 +65,12 @@ classes: any[] = [];
   filteredClassesList: any[] = [];
   sortField: 'lastName' | 'firstName' | 'studentNumber' = 'lastName';
   sortDirection: 'asc' | 'desc' = 'asc';
-  /** Search filter for student name or ID */
+  sortBy = 'lastName';
   studentSearchQuery = '';
+  genderFilter: GenderFilter = 'all';
+  typeFilter: TypeFilter = 'all';
+  viewMode: StudentViewMode = 'table';
+  lastLoadedAt: Date | null = null;
   editingStudentId: string | null = null;
   editingField: 'dob' | 'gender' | 'studentType' | 'firstName' | 'lastName' | null = null;
   tempValue: any = null;
@@ -220,7 +231,243 @@ classes: any[] = [];
   }
 
   ngOnInit() {
+    this.studentSearchInput$
+      .pipe(debounceTime(200), distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((q) => {
+        this.studentSearchQuery = q;
+        this.applyFilters();
+        this.cdr.markForCheck();
+      });
+
     activatePageLoad(this.router, this.destroy$, '/classes/lists', () => this.bootstrapPage());
+  }
+
+  get hasStudentData(): boolean {
+    return this.students.length > 0 || (!this.loadingStudents && this.lastLoadedAt !== null);
+  }
+
+  get dashboardStats(): {
+    total: number;
+    showing: number;
+    male: number;
+    female: number;
+    day: number;
+    boarder: number;
+  } {
+    const counts = this.getFilteredGenderCounts();
+    let day = 0;
+    let boarder = 0;
+    this.filteredStudents.forEach((s: any) => {
+      if (s.studentType === 'Boarder') boarder++;
+      else day++;
+    });
+    return {
+      total: this.students.length,
+      showing: this.filteredStudents.length,
+      male: counts.male,
+      female: counts.female,
+      day,
+      boarder
+    };
+  }
+
+  get genderChips(): Array<{ id: GenderFilter; label: string; count: number }> {
+    let male = 0;
+    let female = 0;
+    this.students.forEach((s: any) => {
+      const g = String(s?.gender || s?.sex || '').toLowerCase();
+      if (g === 'male' || g === 'm') male++;
+      else if (g === 'female' || g === 'f') female++;
+    });
+    return [
+      { id: 'all', label: 'All', count: this.students.length },
+      { id: 'female', label: 'Female', count: female },
+      { id: 'male', label: 'Male', count: male }
+    ];
+  }
+
+  get typeChips(): Array<{ id: TypeFilter; label: string; count: number }> {
+    let day = 0;
+    let boarder = 0;
+    this.students.forEach((s: any) => {
+      if (s.studentType === 'Boarder') boarder++;
+      else day++;
+    });
+    return [
+      { id: 'all', label: 'All types', count: this.students.length },
+      { id: 'day', label: 'Day', count: day },
+      { id: 'boarder', label: 'Boarder', count: boarder }
+    ];
+  }
+
+  get filterSummary(): string {
+    const parts: string[] = [];
+    if (this.studentSearchQuery) parts.push(`Search: "${this.studentSearchQuery}"`);
+    if (this.genderFilter !== 'all') parts.push(`Gender: ${this.genderFilter}`);
+    if (this.typeFilter !== 'all') parts.push(`Type: ${this.typeFilter}`);
+    parts.push(`${this.filteredStudents.length} of ${this.students.length} students`);
+    return parts.join(' · ');
+  }
+
+  clearAlert(kind: 'success' | 'error'): void {
+    if (kind === 'success') this.success = '';
+    else this.error = '';
+  }
+
+  onStudentSearchInput(value: string): void {
+    this.studentSearchInput$.next((value || '').trim());
+  }
+
+  clearStudentSearch(): void {
+    this.studentSearchQuery = '';
+    this.studentSearchInput$.next('');
+    this.applyFilters();
+  }
+
+  onGenderFilterChange(value: GenderFilter): void {
+    this.genderFilter = value;
+    this.applyFilters();
+    this.cdr.markForCheck();
+  }
+
+  onTypeFilterChange(value: TypeFilter): void {
+    this.typeFilter = value;
+    this.applyFilters();
+    this.cdr.markForCheck();
+  }
+
+  onSortByChange(value: string): void {
+    const field = value as 'lastName' | 'firstName' | 'studentNumber';
+    if (this.sortField !== field) {
+      this.sortField = field;
+      this.sortDirection = 'asc';
+    }
+    this.sortBy = field;
+    this.applySort();
+    this.buildGroupedByGender();
+    this.cdr.markForCheck();
+  }
+
+  hasActiveFilters(): boolean {
+    return !!this.studentSearchQuery || this.genderFilter !== 'all' || this.typeFilter !== 'all';
+  }
+
+  clearFilters(): void {
+    this.studentSearchQuery = '';
+    this.studentSearchInput$.next('');
+    this.genderFilter = 'all';
+    this.typeFilter = 'all';
+    this.applyFilters();
+    this.cdr.markForCheck();
+  }
+
+  toggleViewMode(): void {
+    this.viewMode = this.viewMode === 'table' ? 'cards' : 'table';
+  }
+
+  sortIndicator(field: string): string {
+    if (this.sortField !== field) return '';
+    return this.sortDirection === 'asc' ? '▲' : '▼';
+  }
+
+  trackByStudent(_index: number, item: any): string {
+    return String(item?.id || item?.studentNumber || _index);
+  }
+
+  refreshAll(): void {
+    this.loadClasses();
+    this.loadTerms();
+    if (this.selectedClassId && this.selectedTerm) {
+      this.loadStudents();
+    }
+  }
+
+  exportCsv(): void {
+    const items = this.filteredStudents;
+    if (!items.length) {
+      this.success = 'Nothing to export';
+      setTimeout(() => {
+        if (this.success === 'Nothing to export') this.success = '';
+        this.cdr.markForCheck();
+      }, 3000);
+      return;
+    }
+    const esc = (v: unknown) => {
+      const s = String(v ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const className = this.getSelectedClassName().replace(/\s+/g, '_');
+    const header = ['Student ID', 'Last Name', 'First Name', 'DOB', 'Gender', 'Type', 'Class'];
+    const lines = [header.join(',')];
+    for (const s of items) {
+      const dob = s.dateOfBirth ? new Date(s.dateOfBirth).toLocaleDateString('en-GB') : '';
+      lines.push(
+        [
+          esc(s.studentNumber),
+          esc(s.lastName),
+          esc(s.firstName),
+          esc(dob),
+          esc(s.gender),
+          esc(s.studentType || 'Day Scholar'),
+          esc(s.class?.name)
+        ].join(',')
+      );
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Class_List_${className}_${(this.selectedTerm || 'Term').replace(/\s+/g, '_')}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    this.success = `Exported ${items.length} student(s) to CSV`;
+    this.cdr.markForCheck();
+  }
+
+  printReport(): void {
+    if (!this.filteredStudents.length) return;
+    const stats = this.dashboardStats;
+    const rows = this.filteredStudents
+      .map(
+        (s) => `
+      <tr>
+        <td>${this.escapeHtml(s.studentNumber || '')}</td>
+        <td>${this.escapeHtml(s.lastName || '')}</td>
+        <td>${this.escapeHtml(s.firstName || '')}</td>
+        <td>${s.dateOfBirth ? new Date(s.dateOfBirth).toLocaleDateString('en-GB') : ''}</td>
+        <td>${this.escapeHtml(s.gender || '')}</td>
+        <td>${this.escapeHtml(s.studentType || 'Day Scholar')}</td>
+      </tr>`
+      )
+      .join('');
+    const html = `
+      <!DOCTYPE html><html><head><title>Class List</title>
+      <style>
+        body { font-family: system-ui, sans-serif; padding: 24px; }
+        h1 { font-size: 1.2rem; }
+        p.meta { color: #64748b; font-size: 0.85rem; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.85rem; }
+        th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
+        th { background: #f8fafc; }
+      </style></head><body>
+      <h1>${this.escapeHtml(this.getSelectedClassName())} — ${this.escapeHtml(this.selectedTerm || '')}</h1>
+      <p class="meta">${this.escapeHtml(this.filterSummary)} · ${stats.male} M · ${stats.female} F · Printed ${new Date().toLocaleString()}</p>
+      <table><thead><tr><th>ID</th><th>Last Name</th><th>First Name</th><th>DOB</th><th>Gender</th><th>Type</th></tr></thead>
+      <tbody>${rows}</tbody></table></body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  }
+
+  private escapeHtml(s: string): string {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   ngOnDestroy(): void {
@@ -409,6 +656,10 @@ next: (settings: any) => {
     this.success = '';
     this.students = [];
     this.filteredStudents = [];
+    this.genderFilter = 'all';
+    this.typeFilter = 'all';
+    this.studentSearchQuery = '';
+    this.studentSearchInput$.next('');
     
     this.studentService.getStudents(this.selectedClassId).subscribe({
       next: (response: any) => {
@@ -422,6 +673,8 @@ next: (settings: any) => {
         this.loadingStudents = false;
         this.lastLoadedClassId = this.selectedClassId;
         this.lastLoadedTerm = this.selectedTerm;
+        this.lastLoadedAt = new Date();
+        this.generatedAt = new Date();
         
         if (this.filteredStudents.length === 0) {
           this.error = 'No students found in the selected class for this term.';
@@ -569,22 +822,34 @@ next: (settings: any) => {
     });
   }
 
-  /** Apply search filter and rebuild grouped list. */
-  applySearchFilter() {
+  /** Apply search and chip filters, then sort and group. */
+  applyFilters(): void {
     const q = (this.studentSearchQuery || '').trim().toLowerCase();
-    if (!q) {
-      this.filteredStudents = [...this.students];
-    } else {
-      this.filteredStudents = this.students.filter((s: any) => {
+    this.filteredStudents = this.students.filter((s: any) => {
+      if (q) {
         const num = String(s.studentNumber || '').toLowerCase();
         const first = String(s.firstName || '').toLowerCase();
         const last = String(s.lastName || '').toLowerCase();
         const full = `${last} ${first}`.trim();
-        return num.includes(q) || first.includes(q) || last.includes(q) || full.includes(q);
-      });
-    }
+        if (!num.includes(q) && !first.includes(q) && !last.includes(q) && !full.includes(q)) {
+          return false;
+        }
+      }
+      if (this.genderFilter !== 'all') {
+        const g = String(s?.gender || s?.sex || '').toLowerCase();
+        if (this.genderFilter === 'male' && g !== 'male' && g !== 'm') return false;
+        if (this.genderFilter === 'female' && g !== 'female' && g !== 'f') return false;
+      }
+      if (this.typeFilter === 'day' && s.studentType === 'Boarder') return false;
+      if (this.typeFilter === 'boarder' && s.studentType !== 'Boarder') return false;
+      return true;
+    });
     this.applySort();
     this.buildGroupedByGender();
+  }
+
+  applySearchFilter(): void {
+    this.applyFilters();
   }
 
   changeSort(field: 'lastName' | 'firstName' | 'studentNumber') {
@@ -594,6 +859,7 @@ next: (settings: any) => {
       this.sortField = field;
       this.sortDirection = 'asc';
     }
+    this.sortBy = field;
     this.applySort();
     this.buildGroupedByGender();
   }

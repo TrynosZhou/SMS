@@ -14,7 +14,7 @@ import { SettingsService } from '../../../services/settings.service';
 })
 export class AttendanceReportsComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-classes: any[] = [];
+  classes: any[] = [];
   selectedClassId: string = '';
   selectedTerm: string = '';
   startDate: string = '';
@@ -23,6 +23,8 @@ classes: any[] = [];
   rawReportRows: any[] = [];
   filteredReport: any[] = [];
   loading = false;
+  loadingClasses = true;
+  success = '';
   error = '';
   availableTerms: string[] = [];
   searchTerm = '';
@@ -72,13 +74,46 @@ classes: any[] = [];
   }
 
   ngOnDestroy(): void {
+    if (this.autoGenerateTimer) {
+      clearTimeout(this.autoGenerateTimer);
+    }
     this.destroy$.next();
     this.destroy$.complete();
   }
 
   private bootstrapPage(): void {
-this.loadClasses();
+    this.loadClasses();
     this.loadAvailableTerms();
+  }
+
+  get dashboardStats() {
+    return {
+      students: this.filteredReport.length,
+      total: this.rawReportRows.length,
+      average: Math.round(this.averageAttendanceRate * 10) / 10,
+      concerns: this.concernCount,
+      excellent: this.attendanceDistribution.excellent,
+      records: this.getTotalRecords()
+    };
+  }
+
+  get filterSummary(): { class: string; term?: string; dates?: string } | null {
+    if (!this.hasReportData && !this.selectedClassId) return null;
+    const cls = this.getClassName(this.selectedClassId) || '—';
+    const summary: { class: string; term?: string; dates?: string } = { class: cls };
+    if (this.selectedTerm) summary.term = this.selectedTerm;
+    if (this.startDate || this.endDate) {
+      summary.dates = `${this.formatISOToDDMMYYYY(this.startDate) || '…'} – ${this.formatISOToDDMMYYYY(this.endDate) || '…'}`;
+    } else if (this.dateRangePreset) {
+      summary.dates = this.dateRangePreset.replace(/([A-Z])/g, ' $1').trim();
+    }
+    return summary;
+  }
+
+  clearAlert(type: 'success' | 'error'): void {
+    if (type === 'success') this.success = '';
+    else this.error = '';
+    this.cdr.markForCheck();
   }
 
   loadAvailableTerms() {
@@ -120,22 +155,26 @@ next: (data: any) => {
   }
 
   loadClasses() {
+    this.loadingClasses = true;
     this.classService
       .getClasses()
-      .pipe(finalize(() => this.cdr.markForCheck()))
+      .pipe(
+        finalize(() => {
+          this.loadingClasses = false;
+          this.cdr.markForCheck();
+        })
+      )
       .subscribe({
-      next: (data: any) => {
-        const classesArray = Array.isArray(data) ? data : [];
-        this.classes = classesArray.filter((c: any) => c.isActive);
-        this.cdr.markForCheck();
-},
-      error: (err: any) => {
-        this.error = 'Failed to load classes';
-        this.classes = [];
-        console.error(err);
-        this.cdr.markForCheck();
-}
-    });
+        next: (data: any) => {
+          const classesArray = Array.isArray(data) ? data : [];
+          this.classes = classesArray.filter((c: any) => c.isActive);
+        },
+        error: (err: any) => {
+          this.error = 'Failed to load classes';
+          this.classes = [];
+          console.error(err);
+        }
+      });
   }
 
   generateReport() {
@@ -168,10 +207,18 @@ next: (data: any) => {
         this.lastGeneratedAt = new Date();
         this.loading = false;
         this.prepareReportData();
+        const count = this.rawReportRows.length;
+        this.success = count
+          ? `Report generated for ${count} student${count === 1 ? '' : 's'}.`
+          : 'Report generated — no student records in range.';
+        this.cdr.markForCheck();
+        setTimeout(() => { this.success = ''; this.cdr.markForCheck(); }, 5000);
       },
       error: (err: any) => {
         this.error = err.error?.message || 'Failed to generate report';
         this.loading = false;
+        this.cdr.markForCheck();
+        setTimeout(() => { this.error = ''; this.cdr.markForCheck(); }, 7000);
       }
     });
   }

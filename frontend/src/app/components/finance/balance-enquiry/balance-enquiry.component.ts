@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { finalize, takeUntil } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
 import { FinanceService } from '../../../services/finance.service';
@@ -18,11 +18,14 @@ import {
 @Component({
   standalone: false,  selector: 'app-balance-enquiry',
   templateUrl: './balance-enquiry.component.html',
-  styleUrls: ['./balance-enquiry.component.css']
+  styleUrls: ['./balance-enquiry.component.css', './balance-enquiry-modern.css']
 })
 export class BalanceEnquiryComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-query = '';
+  private readonly searchInput$ = new Subject<string>();
+
+  query = '';
+  lastLoadedAt: Date | null = null;
   loading = false;
   error = '';
   success = '';
@@ -53,6 +56,14 @@ query = '';
   ) {}
 
   ngOnInit(): void {
+    this.searchInput$
+      .pipe(debounceTime(400), distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((q) => {
+        if (q.length >= 3) {
+          this.search();
+        }
+      });
+
     activatePageLoad(this.router, this.destroy$, '/balance-enquiry', () => this.loadSettings());
   }
 
@@ -105,6 +116,36 @@ query = '';
     return name.substring(0, 2).toUpperCase();
   }
 
+  clearAlert(kind: 'success' | 'error'): void {
+    if (kind === 'success') this.success = '';
+    else this.error = '';
+  }
+
+  onSearchInput(): void {
+    this.searchInput$.next((this.query || '').trim());
+  }
+
+  formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount || 0);
+  }
+
+  trackByStudentId(_index: number, s: any): string {
+    return s.studentId || String(_index);
+  }
+
+  get recordPaymentQueryParams(): Record<string, string | number> {
+    if (!this.studentData) return {};
+    return {
+      studentId: this.studentData.studentNumber || this.studentData.studentId,
+      firstName: this.studentData.firstName || '',
+      lastName: this.studentData.lastName || '',
+      balance: this.studentData.balance ?? 0
+    };
+  }
+
   clearSearch(): void {
     this.query = '';
     this.studentData = null;
@@ -148,6 +189,7 @@ query = '';
             return;
           }
           this.studentData = data;
+          this.lastLoadedAt = new Date();
           this.loadLatestInvoiceInBackground();
         },
         error: (err: any) => {
@@ -186,6 +228,7 @@ query = '';
         next: (data: any) => {
           this.studentData = data;
           this.matchingStudents = [];
+          this.lastLoadedAt = new Date();
           this.loadLatestInvoiceInBackground();
         },
         error: (err: any) => {

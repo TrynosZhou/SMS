@@ -1,0 +1,209 @@
+<div class="um-page">
+  <div class="alert alert-success um-alert" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error um-alert" *ngIf="error">{{ error }}</div>
+
+  <!-- Page header card -->
+  <div class="um-card um-header-card">
+    <div class="um-header-left">
+      <span class="um-header-icon" aria-hidden="true">👥</span>
+      <div>
+        <h1>User Management</h1>
+        <p>Manage user accounts and permissions</p>
+      </div>
+    </div>
+    <div class="um-header-actions">
+      <button type="button" class="btn btn-add-user" (click)="openAddUser()">
+        <span class="btn-icon">+</span> Add User
+      </button>
+      <button type="button" class="btn btn-system-activity" (click)="goToSystemActivity()">
+        <span class="btn-icon">⚡</span> System Activity
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters card -->
+  <div class="um-card um-filters-card">
+    <div class="um-search-wrap">
+      <span class="um-search-icon" aria-hidden="true">🔍</span>
+      <input
+        type="text"
+        [(ngModel)]="searchQuery"
+        (ngModelChange)="applyFilters()"
+        placeholder="Search users"
+        aria-label="Search users" />
+    </div>
+    <div class="um-filter-group">
+      <label for="um-role">ROLE</label>
+      <select id="um-role" [(ngModel)]="roleFilter" (ngModelChange)="applyFilters()">
+        <option *ngFor="let o of roleFilterOptions" [value]="o.value">{{ o.label }}</option>
+      </select>
+    </div>
+    <div class="um-filter-group">
+      <label for="um-status">STATUS</label>
+      <select id="um-status" [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()">
+        <option *ngFor="let o of statusFilterOptions" [value]="o.value">{{ o.label }}</option>
+      </select>
+    </div>
+    <button type="button" class="btn btn-clear-filters" (click)="clearFilters()">
+      <span aria-hidden="true">✕</span> Clear Filters
+    </button>
+  </div>
+
+  <!-- Table card -->
+  <div class="um-card um-table-card">
+    <div *ngIf="loading" class="um-loading">Loading users...</div>
+
+    <div class="um-table-wrap" *ngIf="!loading">
+      <table class="um-table">
+        <thead>
+          <tr>
+            <th class="um-col-check"><input type="checkbox" disabled aria-label="Select all" /></th>
+            <th>USERNAME</th>
+            <th>NAME</th>
+            <th>ROLE</th>
+            <th>STATUS</th>
+            <th>CREATED</th>
+            <th>ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of filteredUsers">
+            <td class="um-col-check"><input type="checkbox" disabled [attr.aria-label]="'Select ' + user.username" /></td>
+            <td><code class="um-username">{{ user.username }}</code></td>
+            <td>{{ user.name }}</td>
+            <td>
+              <span class="um-role-badge">{{ getRoleLabel(user.role) }}</span>
+              <span class="um-demo-tag" *ngIf="user.isDemo">Demo</span>
+            </td>
+            <td>
+              <span class="um-status" [class.um-status--active]="user.status === 'Active'"
+                [class.um-status--locked]="user.status === 'Locked'"
+                [class.um-status--inactive]="user.status === 'Inactive'">
+                {{ user.status }}
+              </span>
+            </td>
+            <td>{{ formatCreated(user.createdAt) }}</td>
+            <td class="um-actions-cell">
+              <button type="button" class="btn btn-action" (click)="openResetModal(user)" title="Reset password">
+                🔑 Reset
+              </button>
+              <button
+                type="button"
+                class="btn btn-action"
+                *ngIf="canUnlockUser(user)"
+                (click)="unlockUser(user)"
+                [disabled]="unlockingUserId === user.id"
+                title="Unlock account">
+                {{ unlockingUserId === user.id ? '…' : '🔓 Unlock' }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-action btn-action--danger"
+                *ngIf="canDeleteUser(user)"
+                (click)="deleteUser(user)"
+                [disabled]="deletingUserId === user.id"
+                title="Delete account">
+                {{ deletingUserId === user.id ? '…' : '🗑️' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="um-empty" *ngIf="filteredUsers.length === 0">No users found.</p>
+    </div>
+  </div>
+
+  <p class="um-footer-link">
+    <button type="button" class="btn-link" (click)="openAdvancedManagement()">
+      Advanced account tools (teacher accounts, head teacher, bulk setup)
+    </button>
+  </p>
+</div>
+
+<!-- Add User modal -->
+<div class="um-modal-overlay" *ngIf="showAddUserModal" (click)="closeAddUser()">
+  <div class="um-modal" (click)="$event.stopPropagation()">
+    <div class="um-modal-header">
+      <h2>Add User</h2>
+      <button type="button" class="um-modal-close" (click)="closeAddUser()" aria-label="Close">×</button>
+    </div>
+    <form class="um-modal-body" (ngSubmit)="createUser()">
+      <div class="um-form-row">
+        <label>Role *</label>
+        <select [(ngModel)]="manualAccount.role" name="addRole" required (change)="onManualRoleChange()" [disabled]="creatingUser">
+          <option *ngFor="let o of manualAccountRoles" [ngValue]="o.value">{{ o.label }}</option>
+        </select>
+      </div>
+      <div class="um-form-row" *ngIf="manualAccount.role === 'teacher'">
+        <label>Teacher ID (Username) *</label>
+        <input type="text" [(ngModel)]="manualAccount.username" name="addUsernameTeacher" required [disabled]="creatingUser" />
+      </div>
+      <div class="um-form-row" *ngIf="manualAccount.role !== 'teacher'">
+        <label>Email *</label>
+        <input type="email" [(ngModel)]="manualAccount.email" name="addEmail" required [disabled]="creatingUser" />
+      </div>
+      <div class="um-form-row" *ngIf="manualAccount.role !== 'teacher'">
+        <label>Username (optional)</label>
+        <input type="text" [(ngModel)]="manualAccount.username" name="addUsername" placeholder="Auto-generated if blank" [disabled]="creatingUser" />
+      </div>
+      <div class="um-form-row um-checkbox-row">
+        <label>
+          <input type="checkbox" [(ngModel)]="manualAccount.generatePassword" name="addGenPass" [disabled]="creatingUser" />
+          Generate secure password automatically
+        </label>
+      </div>
+      <div class="um-form-row" *ngIf="!manualAccount.generatePassword">
+        <label>Temporary password *</label>
+        <input
+          [type]="showManualPassword ? 'text' : 'password'"
+          [(ngModel)]="manualAccount.password"
+          name="addPassword"
+          required
+          [disabled]="creatingUser" />
+        <button type="button" class="btn-link" (click)="showManualPassword = !showManualPassword">Show</button>
+      </div>
+      <div class="um-modal-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeAddUser()" [disabled]="creatingUser">Cancel</button>
+        <button type="submit" class="btn btn-primary" [disabled]="creatingUser">
+          {{ creatingUser ? 'Creating…' : 'Create User' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Reset password modal -->
+<div class="um-modal-overlay" *ngIf="showResetModal && selectedUser" (click)="closeResetModal()">
+  <div class="um-modal" (click)="$event.stopPropagation()">
+    <div class="um-modal-header">
+      <h2>Reset Password</h2>
+      <button type="button" class="um-modal-close" (click)="closeResetModal()" aria-label="Close">×</button>
+    </div>
+    <div class="um-modal-body">
+      <p>Reset password for <strong>{{ selectedUser.username }}</strong> ({{ getRoleLabel(selectedUser.role) }}).</p>
+      <div class="um-checkbox-row">
+        <label>
+          <input type="checkbox" [(ngModel)]="resetGeneratePassword" name="resetGen" [disabled]="resettingPassword" />
+          Generate temporary password
+        </label>
+      </div>
+      <ng-container *ngIf="!resetGeneratePassword">
+        <div class="um-form-row">
+          <label>New password *</label>
+          <input type="password" [(ngModel)]="resetPassword" name="resetNew" minlength="8" [disabled]="resettingPassword" />
+        </div>
+        <div class="um-form-row">
+          <label>Confirm password *</label>
+          <input type="password" [(ngModel)]="resetPasswordConfirm" name="resetConfirm" [disabled]="resettingPassword" />
+        </div>
+      </ng-container>
+      <div class="um-modal-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeResetModal()" [disabled]="resettingPassword">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="confirmResetPassword()" [disabled]="resettingPassword">
+          {{ resettingPassword ? 'Resetting…' : 'Reset Password' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -41,17 +41,41 @@
       <div class="toolbar-left">
         <div class="search-wrap" style="margin-bottom: 0; min-width: 300px;">
           <span class="search-icon" aria-hidden="true">🔍</span>
-          <input type="text" [(ngModel)]="teacherSearch" (input)="filterTeachers()" placeholder="Search teachers..." class="search-input">
+          <input
+            type="search"
+            [(ngModel)]="teacherSearch"
+            (input)="filterTeachers()"
+            placeholder="Search by name, ID, phone, or email..."
+            class="search-input"
+            aria-label="Search teachers" />
         </div>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="loadTeachers()" [disabled]="loading">
+          Refresh
+        </button>
       </div>
     </div>
 
-    <div class="table-scroll">
+    <div class="teachers-loading" *ngIf="loading">
+      <div class="spinner-large"></div>
+      <p>Loading teachers from database…</p>
+    </div>
+
+    <div class="teachers-empty" *ngIf="!loading && filteredTeachers.length === 0">
+      <p *ngIf="teachers.length === 0">No teachers found in the database.</p>
+      <p *ngIf="teachers.length > 0">No teachers match your search.</p>
+      <button type="button" class="btn btn-primary btn-sm" (click)="loadTeachers()">Reload teachers</button>
+    </div>
+
+    <div class="table-scroll" *ngIf="!loading && filteredTeachers.length > 0">
       <table class="modern-table">
         <thead>
           <tr>
-            <th>Teacher Name</th>
-            <th>Employee ID</th>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Surname</th>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Cell</th>
             <th>Current Load</th>
             <th>Status</th>
             <th>Action</th>
@@ -59,13 +83,12 @@
         </thead>
         <tbody>
           <tr *ngFor="let t of filteredTeachers" (click)="openAllocationModal(t)" class="clickable-row">
-            <td>
-              <div class="teacher-cell">
-                <span class="teacher-name">{{ t.firstName }} {{ t.lastName }}</span>
-                <span class="teacher-meta">{{ t.phoneNumber || 'No phone' }}</span>
-              </div>
-            </td>
-            <td><span class="cell-id">{{ t.teacherId || t.id }}</span></td>
+            <td><span class="cell-id">{{ t.teacherId || '—' }}</span></td>
+            <td>{{ getTitle(t) }}</td>
+            <td>{{ t.lastName || '—' }}</td>
+            <td>{{ t.firstName || '—' }}</td>
+            <td>{{ getRole(t) }}</td>
+            <td>{{ getCell(t) }}</td>
             <td>
               <div class="teacher-meta">
                 <div>{{ (t.subjects || []).length }} Subjects</div>
@@ -73,7 +96,10 @@
               </div>
             </td>
             <td>
-              <span class="status-pill" [class.status-allocated]="(t.classes || []).length > 0" [class.status-unallocated]="(t.classes || []).length === 0">
+              <span
+                class="status-pill"
+                [class.status-allocated]="(t.classes || []).length > 0"
+                [class.status-unallocated]="(t.classes || []).length === 0">
                 {{ (t.classes || []).length > 0 ? 'Allocated' : 'Unallocated' }}
               </span>
             </td>

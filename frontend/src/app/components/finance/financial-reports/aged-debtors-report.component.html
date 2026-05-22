@@ -1,0 +1,214 @@
+<div class="ad-page">
+  <div class="ad-toast-stack" *ngIf="success || error">
+    <div class="ad-toast ad-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="ad-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="ad-toast ad-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="ad-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="ad-hero">
+    <div class="ad-hero__main">
+      <div class="ad-hero-left">
+        <span class="ad-hero-icon" aria-hidden="true">⏳</span>
+        <div>
+          <span class="ad-hero-eyebrow">Financial Reports</span>
+          <h1>Aged Debtors</h1>
+          <p class="ad-hero-sub">
+            Outstanding invoice balances grouped by how long fees have been due — filter, search, and export.
+          </p>
+          <p class="ad-hero-meta" *ngIf="lastLoadedAt && !loading">
+            Last updated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
+          </p>
+        </div>
+      </div>
+      <div class="ad-hero__actions" *ngIf="hasData">
+        <button type="button" class="ad-hero-refresh" (click)="load()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <button type="button" class="ad-hero-btn" (click)="toggleViewMode()" title="Toggle view">
+          {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
+        </button>
+        <button type="button" class="ad-hero-btn ad-hero-btn--white" (click)="exportCsv()" [disabled]="!displayedRows.length || loading">CSV</button>
+        <button type="button" class="ad-hero-btn ad-hero-btn--white" (click)="printReport()" [disabled]="!displayedRows.length || loading">Print</button>
+      </div>
+    </div>
+
+    <div class="ad-hero-stats" *ngIf="hasData && !loading">
+      <article class="ad-stat ad-stat--rose">
+        <span class="ad-stat__value">{{ currencySymbol }}{{ formatAmount(dashboardStats.totalOutstanding) }}</span>
+        <span class="ad-stat__label">Total outstanding</span>
+      </article>
+      <article class="ad-stat">
+        <span class="ad-stat__value">{{ currencySymbol }}{{ formatAmount(dashboardStats.displayedOutstanding) }}</span>
+        <span class="ad-stat__label">Filtered total</span>
+      </article>
+      <article class="ad-stat">
+        <span class="ad-stat__value">{{ dashboardStats.invoiceCount }}</span>
+        <span class="ad-stat__label">Invoices shown</span>
+      </article>
+      <article class="ad-stat">
+        <span class="ad-stat__value">{{ dashboardStats.studentCount }}</span>
+        <span class="ad-stat__label">Students owing</span>
+      </article>
+      <article class="ad-stat ad-stat--amber">
+        <span class="ad-stat__value">{{ dashboardStats.oldestDays }}</span>
+        <span class="ad-stat__label">Max days overdue</span>
+      </article>
+      <article class="ad-stat ad-stat--rose">
+        <span class="ad-stat__value">{{ dashboardStats.severeCount }}</span>
+        <span class="ad-stat__label">61+ days ({{ currencySymbol }}{{ formatAmount(dashboardStats.severeTotal) }})</span>
+      </article>
+    </div>
+    <div class="ad-hero-stats ad-hero-stats--skeleton" *ngIf="loading">
+      <div class="ad-skeleton" *ngFor="let i of [1,2,3,4,5,6]"></div>
+    </div>
+  </header>
+
+  <section class="ad-bucket-bar-panel" *ngIf="hasData && !loading && allRows.length">
+    <h3>Aging distribution</h3>
+    <div class="ad-bucket-bars">
+      <div class="ad-bucket-row" *ngFor="let bar of bucketBars">
+        <span class="ad-bucket-row__label">{{ bar.label }}</span>
+        <div class="ad-bucket-row__track">
+          <div class="ad-bucket-row__fill" [ngClass]="barFillClass(bar.label)" [style.width.%]="bar.pct"></div>
+        </div>
+        <span class="ad-bucket-row__amt">{{ currencySymbol }}{{ formatAmount(bar.total) }} ({{ bar.count }})</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="ad-panel" *ngIf="hasData && !loading">
+    <div class="ad-panel__head-row">
+      <div>
+        <h2 class="ad-panel__title">Filters & search</h2>
+        <p class="ad-panel__intro">Find students or invoices by name, ID, or bucket.</p>
+      </div>
+      <button type="button" class="ad-btn-clear" *ngIf="hasActiveFilters()" (click)="resetFilters()">Clear filters</button>
+    </div>
+
+    <div class="ad-filters-row">
+      <div class="ad-search-wrap">
+        <span class="ad-search-icon" aria-hidden="true">🔍</span>
+        <input
+          #adSearch
+          type="search"
+          class="ad-search-input"
+          placeholder="Search student, invoice, bucket…"
+          [disabled]="loading"
+          (input)="onSearchInput(adSearch.value)" />
+        <button type="button" class="ad-search-clear" *ngIf="searchQuery" (click)="adSearch.value = ''; clearSearch()">Clear</button>
+      </div>
+    </div>
+
+    <div class="ad-chips">
+      <button type="button" class="ad-chip" [class.ad-chip--active]="selectedBucket === 'all'" (click)="onBucketChange('all')">
+        All buckets<span class="ad-chip__count">({{ allRows.length }})</span>
+      </button>
+      <button
+        type="button"
+        class="ad-chip"
+        *ngFor="let chip of bucketChips"
+        [class.ad-chip--active]="selectedBucket === chip.label"
+        [class.ad-chip--severe]="chip.label === '61–90 days' || chip.label === '90+ days'"
+        (click)="onBucketChange(chip.label)">
+        {{ chip.label }}<span class="ad-chip__count">({{ chip.count }})</span>
+      </button>
+    </div>
+
+    <div class="ad-summary" *ngIf="filterSummary">
+      <span class="ad-summary-pill">{{ filterSummary }}</span>
+    </div>
+  </section>
+
+  <section class="ad-panel ad-data-panel" *ngIf="hasData">
+    <div class="ad-table-toolbar">
+      <h3>Outstanding invoices</h3>
+    </div>
+
+    <div class="ad-skeleton-table" *ngIf="loading">
+      <div class="ad-skeleton-row" *ngFor="let _ of skeletonRows">
+        <div class="ad-skel ad-skel-sm"></div>
+        <div class="ad-skel"></div>
+        <div class="ad-skel"></div>
+        <div class="ad-skel ad-skel-sm"></div>
+      </div>
+    </div>
+
+    <ng-container *ngIf="!loading">
+      <div class="ad-table-scroll" *ngIf="viewMode === 'table'">
+        <table class="ad-table">
+          <thead>
+            <tr>
+              <th><button type="button" class="ad-th-btn" (click)="setSort('studentName')">Student <span class="ad-sort">{{ sortIndicator('studentName') }}</span></button></th>
+              <th>Student ID</th>
+              <th><button type="button" class="ad-th-btn" (click)="setSort('invoiceNumber')">Invoice <span class="ad-sort">{{ sortIndicator('invoiceNumber') }}</span></button></th>
+              <th><button type="button" class="ad-th-btn" (click)="setSort('dueDate')">Due <span class="ad-sort">{{ sortIndicator('dueDate') }}</span></button></th>
+              <th><button type="button" class="ad-th-btn" (click)="setSort('daysOverdue')">Days <span class="ad-sort">{{ sortIndicator('daysOverdue') }}</span></button></th>
+              <th>Bucket</th>
+              <th class="text-right"><button type="button" class="ad-th-btn" (click)="setSort('balance')">Balance <span class="ad-sort">{{ sortIndicator('balance') }}</span></button></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of displayedRows; trackBy: trackByRow">
+              <td>{{ r.lastName }}, {{ r.firstName }}</td>
+              <td class="ad-cell-mono">{{ r.studentNumber }}</td>
+              <td class="ad-cell-mono">{{ r.invoiceNumber }}</td>
+              <td>{{ r.dueDate }}</td>
+              <td [ngClass]="daysClass(r.daysOverdue)">{{ r.daysOverdue }}</td>
+              <td><span class="ad-bucket-pill" [ngClass]="bucketClass(r.bucket)">{{ r.bucket }}</span></td>
+              <td class="text-right">
+                <span
+                  class="ad-cell-amount"
+                  [class.ad-cell-amount--click]="canManageFinance()"
+                  [title]="canManageFinance() ? 'Record payment' : ''"
+                  (click)="canManageFinance() && recordPayment(r)">
+                  {{ currencySymbol }}{{ formatAmount(r.balance) }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="ad-cards" *ngIf="viewMode === 'cards'">
+        <article class="ad-card" *ngFor="let r of displayedRows; trackBy: trackByRow">
+          <div class="ad-card__top">
+            <span class="ad-bucket-pill" [ngClass]="bucketClass(r.bucket)">{{ r.bucket }}</span>
+            <span
+              class="ad-card__amount"
+              [class.ad-cell-amount--click]="canManageFinance()"
+              (click)="canManageFinance() && recordPayment(r)">
+              {{ currencySymbol }}{{ formatAmount(r.balance) }}
+            </span>
+          </div>
+          <h4 class="ad-card__name">{{ r.firstName }} {{ r.lastName }}</h4>
+          <p class="ad-card__meta">
+            {{ r.studentNumber }} · {{ r.invoiceNumber }}<br />
+            Due {{ r.dueDate }} · <span [ngClass]="daysClass(r.daysOverdue)">{{ r.daysOverdue }} days overdue</span>
+          </p>
+        </article>
+      </div>
+
+      <div class="ad-empty" *ngIf="!displayedRows.length">
+        <span class="ad-empty-icon" aria-hidden="true">✓</span>
+        <h3 class="ad-empty-title">No matching invoices</h3>
+        <p class="ad-empty-text">Try clearing filters or refresh if you expect outstanding balances.</p>
+        <button type="button" class="ad-btn-reset" *ngIf="hasActiveFilters()" (click)="resetFilters()">Reset filters</button>
+      </div>
+
+      <div class="ad-footer-total" *ngIf="displayedRows.length">
+        <strong>Displayed outstanding:</strong> {{ currencySymbol }}{{ formatAmount(dashboardStats.displayedOutstanding) }}
+      </div>
+    </ng-container>
+  </section>
+
+  <div class="ad-empty" *ngIf="!loading && !error && allRows.length === 0 && lastLoadedAt">
+    <span class="ad-empty-icon" aria-hidden="true">✓</span>
+    <h3 class="ad-empty-title">No aged debt</h3>
+    <p class="ad-empty-text">All invoices are paid or not yet due.</p>
+  </div>
+</div>

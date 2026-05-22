@@ -1,0 +1,186 @@
+<div class="integrations-page">
+  <div class="integrations-card">
+    <header class="integrations-header">
+      <span class="integrations-header__icon" aria-hidden="true">🔗</span>
+      <div class="integrations-header__text">
+        <h1>Integrations</h1>
+        <p>Manage external service integrations</p>
+      </div>
+    </header>
+
+    <div class="integrations-stats" *ngIf="!loading">
+      <article class="integrations-stat integrations-stat--total">
+        <span class="integrations-stat__value">{{ stats.total }}</span>
+        <span class="integrations-stat__label">Total Integrations</span>
+      </article>
+      <article class="integrations-stat integrations-stat--active">
+        <span class="integrations-stat__value">{{ stats.active }}</span>
+        <span class="integrations-stat__label">Active</span>
+      </article>
+      <article class="integrations-stat integrations-stat--inactive">
+        <span class="integrations-stat__value">{{ stats.inactive }}</span>
+        <span class="integrations-stat__label">Inactive</span>
+      </article>
+      <article class="integrations-stat integrations-stat--errors">
+        <span class="integrations-stat__value">{{ stats.errors }}</span>
+        <span class="integrations-stat__label">Errors</span>
+      </article>
+    </div>
+
+    <div class="integrations-stats integrations-stats--skeleton" *ngIf="loading" aria-busy="true">
+      <div class="integrations-stat-skel" *ngFor="let _ of [1,2,3,4]"></div>
+    </div>
+
+    <div class="integrations-toolbar">
+      <button type="button" class="integrations-add-btn" (click)="openAddModal()">
+        + Add Integration
+      </button>
+    </div>
+
+    <div class="integrations-empty" *ngIf="!loading && integrations.length === 0">
+      <span class="integrations-empty__icon" aria-hidden="true">⛓️‍💥</span>
+      <h2>No integrations yet</h2>
+      <p>Add an integration to connect external services such as SMS gateways, payment providers, or learning platforms.</p>
+    </div>
+
+    <div class="integrations-list" *ngIf="!loading && integrations.length > 0">
+      <article class="integrations-item" *ngFor="let item of integrations">
+        <div class="integrations-item__main">
+          <h3>{{ item.name }}</h3>
+          <p class="integrations-item__type">{{ item.integrationType }}</p>
+          <p class="integrations-item__desc" *ngIf="item.description">{{ item.description }}</p>
+          <span class="integrations-item__sandbox" *ngIf="item.testSandboxMode">Test / Sandbox</span>
+        </div>
+        <span class="integrations-item__status" [class]="'is-' + item.status">
+          {{ statusLabel(item.status) }}
+        </span>
+        <button
+          type="button"
+          class="integrations-item__remove"
+          (click)="removeIntegration(item.id)"
+          aria-label="Remove integration">
+          Remove
+        </button>
+      </article>
+    </div>
+  </div>
+</div>
+
+<!-- Add Integration modal -->
+<div class="integrations-modal-backdrop" *ngIf="showAddModal" (click)="closeAddModal()"></div>
+<div class="integrations-modal" *ngIf="showAddModal" role="dialog" aria-modal="true" aria-labelledby="add-integration-title">
+  <div class="integrations-modal__content" (click)="$event.stopPropagation()">
+    <header class="integrations-modal__header">
+      <h2 id="add-integration-title">Add Integration</h2>
+      <button type="button" class="integrations-modal__close" (click)="closeAddModal()" aria-label="Close">×</button>
+    </header>
+    <form class="integrations-modal__form" (ngSubmit)="createIntegration()">
+      <div class="integrations-field">
+        <label for="int-type">Integration Type <span class="integrations-required">*</span></label>
+        <select id="int-type" [(ngModel)]="addForm.integrationType" name="intType" required>
+          <option *ngFor="let type of integrationTypes" [value]="type">{{ type }}</option>
+        </select>
+      </div>
+
+      <div class="integrations-field">
+        <label for="int-name">Name <span class="integrations-required">*</span></label>
+        <input
+          id="int-name"
+          type="text"
+          [(ngModel)]="addForm.name"
+          name="intName"
+          placeholder="Integration name"
+          required
+          autocomplete="off" />
+      </div>
+
+      <div class="integrations-field">
+        <label for="int-desc">Description</label>
+        <textarea
+          id="int-desc"
+          [(ngModel)]="addForm.description"
+          name="intDesc"
+          rows="4"
+          placeholder="Optional details about this integration"></textarea>
+      </div>
+
+      <div class="integrations-sandbox-row">
+        <div class="integrations-sandbox-row__text">
+          <span class="integrations-sandbox-row__label">Test/Sandbox Mode</span>
+          <span class="integrations-sandbox-row__hint">When on, credentials use your test environment</span>
+        </div>
+        <label class="integrations-toggle" aria-label="Test/Sandbox Mode">
+          <input type="checkbox" [(ngModel)]="addForm.testSandboxMode" name="intSandbox" />
+          <span class="integrations-toggle__slider"></span>
+        </label>
+      </div>
+
+      <section class="integrations-config-panel">
+        <button
+          type="button"
+          class="integrations-config-panel__header"
+          (click)="toggleConfigSection()"
+          [attr.aria-expanded]="configSectionExpanded"
+          aria-controls="integration-config-fields">
+          <span class="integrations-config-panel__title">Configuration</span>
+          <span class="integrations-config-panel__chevron" [class.is-collapsed]="!configSectionExpanded" aria-hidden="true">⌃</span>
+        </button>
+        <div
+          id="integration-config-fields"
+          class="integrations-config-panel__body"
+          *ngIf="configSectionExpanded">
+          <div class="integrations-field">
+            <label for="int-api-key">API Key</label>
+            <input
+              id="int-api-key"
+              type="text"
+              [(ngModel)]="addForm.configuration.apiKey"
+              name="intApiKey"
+              placeholder="API Key"
+              autocomplete="off" />
+          </div>
+          <div class="integrations-field">
+            <label for="int-api-secret">API Secret</label>
+            <input
+              id="int-api-secret"
+              type="password"
+              [(ngModel)]="addForm.configuration.apiSecret"
+              name="intApiSecret"
+              placeholder="API Secret"
+              autocomplete="off" />
+          </div>
+          <div class="integrations-field">
+            <label for="int-base-url">Base URL</label>
+            <input
+              id="int-base-url"
+              type="url"
+              [(ngModel)]="addForm.configuration.baseUrl"
+              name="intBaseUrl"
+              placeholder="https://api.example.com" />
+          </div>
+          <div class="integrations-field integrations-field--last">
+            <label for="int-webhook-url">Webhook URL</label>
+            <input
+              id="int-webhook-url"
+              type="url"
+              [(ngModel)]="addForm.configuration.webhookUrl"
+              name="intWebhookUrl"
+              placeholder="https://yourschool.example.com/webhooks/incoming" />
+          </div>
+        </div>
+      </section>
+
+      <p class="integrations-form-error" *ngIf="formError">{{ formError }}</p>
+
+      <footer class="integrations-modal__footer">
+        <button type="button" class="integrations-btn integrations-btn--cancel" (click)="closeAddModal()">Cancel</button>
+        <button
+          type="submit"
+          class="integrations-btn integrations-btn--create"
+          [disabled]="!canCreate || saving">
+          {{ saving ? 'Creating…' : 'Create' }}
+        </button>
+      </footer>
+    </form>
+  </div>
+</div>

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, of, switchMap, throwError } from 'rxjs';
+import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -99,32 +99,13 @@ export class MessageService {
     return this.http.post(`${this.apiUrl}/messages/incoming/${id}/reply`, form);
   }
 
-  getStaffMessages(box: 'accountant' | 'admin' | 'teacher' = 'accountant'): Observable<any> {
-    const candidates = environment.messages?.staffInboxCandidates || [
-      '/messages/staff?box=accountant',
-      '/messages/accountant/inbox',
-      '/messages/inbox?role=accountant',
-      '/accountant/messages',
-      '/accountant/inbox',
-      '/messages/staff/accountant'
-    ];
-    const tryUrl = (i: number): Observable<any> => {
-      if (i >= candidates.length) {
-        return of([]);
-      }
-      const path = candidates[i];
-      let url = `${this.apiUrl}${path.startsWith('/') ? '' : '/'}${path}`;
-      url = url.replace('{role}', box);
-      return this.http.get(url).pipe(
-        catchError(err => {
-          if (err?.status === 404) {
-            return tryUrl(i + 1);
-          }
-          return throwError(() => err);
-        })
-      );
-    };
-    return tryUrl(0);
+  /** Staff outbox: messages sent by the signed-in user (optional box filter for admins). */
+  getStaffMessages(box?: 'accountant' | 'admin' | 'teacher'): Observable<any> {
+    const params: Record<string, string> = {};
+    if (box) {
+      params['box'] = box;
+    }
+    return this.http.get(`${this.apiUrl}/messages/staff`, { params });
   }
 
   getDraftMessages(): Observable<any> {

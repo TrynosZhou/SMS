@@ -1,203 +1,253 @@
-<div class="classes-container">
-  <!-- Header Section -->
-  <div class="page-header">
-    <div class="header-content">
-      <div class="header-title">
-        <h1>📚 Class Management</h1>
-        <p class="subtitle">Manage and organize all classes in your school</p>
-      </div>
-      <button class="btn btn-primary btn-add" routerLink="/classes/new">
-        <span class="btn-icon">➕</span>
-        <span>Add New Class</span>
-      </button>
+<div class="cl-page">
+  <div class="cl-toast-stack" *ngIf="success || error">
+    <div class="cl-toast cl-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="cl-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="cl-toast cl-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="cl-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
   </div>
 
-  <!-- Pagination Controls -->
-  <div class="pagination-bar" *ngIf="!loading && pagination.total > 0">
-    <div class="pagination-info">
-      Showing page {{ pagination.page }} of {{ pagination.totalPages }} ({{ pagination.total }} classes)
+  <header class="cl-hero">
+    <div class="cl-hero__main">
+      <div class="cl-hero-left">
+        <span class="cl-hero-icon" aria-hidden="true">🏫</span>
+        <div>
+          <span class="cl-hero-eyebrow">Class Manager</span>
+          <h1>Manage Classes</h1>
+          <p class="cl-hero-sub">Create, organize, and maintain classes — view enrolment counts and status at a glance.</p>
+          <p class="cl-hero-meta" *ngIf="lastLoadedAt && !loading">
+            Last updated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
+          </p>
+        </div>
+      </div>
+      <div class="cl-hero__actions">
+        <button type="button" class="cl-hero-refresh" (click)="loadClasses()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <button type="button" class="cl-hero-btn" (click)="toggleViewMode()" title="Toggle view" *ngIf="hasData && !loading">
+          {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
+        </button>
+        <button type="button" class="cl-hero-btn cl-hero-btn--white" (click)="exportCsv()" [disabled]="!filteredClasses.length || loading">CSV</button>
+        <button type="button" class="cl-hero-btn cl-hero-btn--white" (click)="printReport()" [disabled]="!filteredClasses.length || loading">Print</button>
+        <a routerLink="/classes/lists" class="cl-hero-btn cl-hero-btn--white">Class lists</a>
+        <a routerLink="/classes/new" class="cl-hero-btn cl-hero-btn--accent">+ Add class</a>
+      </div>
     </div>
-    <div class="pagination-actions">
-      <label class="page-size-label">
-        Rows per page
-        <select 
-          [ngModel]="pagination.limit" 
-          (ngModelChange)="onPageSizeChange($event)"
-          class="page-size-select">
+
+    <div class="cl-hero-stats" *ngIf="hasData && !loading">
+      <article class="cl-stat">
+        <span class="cl-stat__value">{{ dashboardStats.showing }}</span>
+        <span class="cl-stat__label">Showing</span>
+      </article>
+      <article class="cl-stat">
+        <span class="cl-stat__value">{{ dashboardStats.total }}</span>
+        <span class="cl-stat__label">Total classes</span>
+      </article>
+      <article class="cl-stat cl-stat--mint">
+        <span class="cl-stat__value">{{ dashboardStats.active }}</span>
+        <span class="cl-stat__label">Active</span>
+      </article>
+      <article class="cl-stat cl-stat--rose">
+        <span class="cl-stat__value">{{ dashboardStats.inactive }}</span>
+        <span class="cl-stat__label">Inactive</span>
+      </article>
+      <article class="cl-stat cl-stat--amber">
+        <span class="cl-stat__value">{{ dashboardStats.totalStudents }}</span>
+        <span class="cl-stat__label">Students</span>
+      </article>
+      <article class="cl-stat">
+        <span class="cl-stat__value">{{ dashboardStats.totalTeachers }}</span>
+        <span class="cl-stat__label">Teachers</span>
+      </article>
+    </div>
+    <div class="cl-hero-stats cl-hero-stats--skeleton" *ngIf="loading">
+      <div class="cl-skeleton" *ngFor="let i of [1,2,3,4,5,6]"></div>
+    </div>
+  </header>
+
+  <section class="cl-panel" *ngIf="!loading || classes.length">
+    <div class="cl-panel__head-row">
+      <div>
+        <h2 class="cl-panel__title">Filters & search</h2>
+        <p class="cl-panel__intro">Find classes by name, grade, or description. Filter by status.</p>
+      </div>
+      <button type="button" class="cl-btn-clear" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
+    </div>
+
+    <div class="cl-filters-row">
+      <div class="cl-search-wrap">
+        <span class="cl-search-icon" aria-hidden="true">🔍</span>
+        <input
+          #clSearch
+          type="search"
+          class="cl-search-input"
+          placeholder="Search class name, grade, description…"
+          [disabled]="loading"
+          (input)="onSearchInput(clSearch.value)" />
+        <button type="button" class="cl-search-clear" *ngIf="searchTerm" (click)="clSearch.value = ''; clearSearch()">Clear</button>
+      </div>
+      <div class="cl-field">
+        <label for="cl-sort">Sort</label>
+        <select id="cl-sort" class="cl-select" [ngModel]="sortBy" (ngModelChange)="sortBy = $event; sortClasses()" [ngModelOptions]="{standalone: true}">
+          <option value="name">Name</option>
+          <option value="form">Grade</option>
+          <option value="students">Students</option>
+          <option value="teachers">Teachers</option>
+          <option value="subjects">Subjects</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="cl-chips">
+      <button
+        type="button"
+        class="cl-chip"
+        *ngFor="let chip of statusChips"
+        [class.cl-chip--active]="statusFilter === chip.id"
+        [class.cl-chip--rose]="chip.id === 'inactive'"
+        (click)="onStatusChange(chip.id)">
+        {{ chip.label }}<span class="cl-chip__count">({{ chip.count }})</span>
+      </button>
+    </div>
+
+    <div class="cl-summary" *ngIf="filterSummary">
+      <span class="cl-summary-pill">{{ filterSummary }}</span>
+    </div>
+  </section>
+
+  <section class="cl-panel cl-pagination-panel" *ngIf="!loading && pagination.total > 0">
+    <div class="cl-pagination-info">
+      Page {{ pagination.page }} of {{ pagination.totalPages }} · {{ pagination.total }} classes
+    </div>
+    <div class="cl-pagination-actions">
+      <label class="cl-page-size-label">
+        Rows
+        <select class="cl-select cl-select--sm" [ngModel]="pagination.limit" (ngModelChange)="onPageSizeChange($event)" [ngModelOptions]="{standalone: true}">
           <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size === 1000 ? 'All' : size }}</option>
         </select>
       </label>
-      <div class="page-buttons">
-        <button class="btn btn-secondary" (click)="onPageChange(pagination.page - 1)" [disabled]="pagination.page === 1">
-          ◀ Previous
-        </button>
-        <button class="btn btn-secondary" (click)="onPageChange(pagination.page + 1)" [disabled]="pagination.page === pagination.totalPages">
-          Next ▶
-        </button>
+      <button type="button" class="cl-btn-secondary" (click)="onPageChange(pagination.page - 1)" [disabled]="pagination.page === 1">◀ Prev</button>
+      <button type="button" class="cl-btn-secondary" (click)="onPageChange(pagination.page + 1)" [disabled]="pagination.page === pagination.totalPages">Next ▶</button>
+    </div>
+  </section>
+
+  <section class="cl-panel cl-data-panel" *ngIf="loading">
+    <div class="cl-skeleton-table" aria-busy="true">
+      <div class="cl-skeleton-row" *ngFor="let _ of skeletonRows">
+        <div class="cl-skel cl-skel-sm"></div>
+        <div class="cl-skel"></div>
+        <div class="cl-skel cl-skel-sm"></div>
+        <div class="cl-skel cl-skel-sm"></div>
+        <div class="cl-skel cl-skel-md"></div>
       </div>
+      <p class="cl-loading-caption">Loading classes…</p>
     </div>
-  </div>
+  </section>
 
-  <!-- Alert Messages -->
-  <div class="alert alert-success" *ngIf="success" (click)="success = ''">
-    <span class="alert-icon">✅</span>
-    <span>{{ success }}</span>
-    <button class="alert-close" aria-label="Close">×</button>
-  </div>
-  <div class="alert alert-error" *ngIf="error" (click)="error = ''">
-    <span class="alert-icon">⚠️</span>
-    <span>{{ error }}</span>
-    <button class="alert-close" aria-label="Close">×</button>
-  </div>
-
-  <!-- Filters and Search Section -->
-  <div class="filters-section">
-    <div class="search-box">
-      <span class="search-icon">🔍</span>
-      <input 
-        type="text" 
-        class="search-input" 
-        placeholder="Search classes by name, grade, or description..."
-        [(ngModel)]="searchTerm"
-        (input)="filterClasses()">
-      <button class="search-clear" *ngIf="searchTerm" (click)="clearSearch()" aria-label="Clear search">×</button>
+  <section class="cl-panel cl-data-panel" *ngIf="!loading">
+    <div class="cl-table-toolbar" *ngIf="filteredClasses.length">
+      <h3>Classes ({{ filteredClasses.length }})</h3>
     </div>
-    <div class="filter-controls">
-      <select class="filter-select" [(ngModel)]="statusFilter" (change)="filterClasses()">
-        <option value="all">All Status</option>
-        <option value="active">Active Only</option>
-        <option value="inactive">Inactive Only</option>
-      </select>
-      <select class="filter-select" [(ngModel)]="sortBy" (change)="sortClasses()">
-        <option value="name">Sort by Name</option>
-        <option value="form">Sort by Grade</option>
-        <option value="students">Sort by Students</option>
-        <option value="teachers">Sort by Teachers</option>
-      </select>
-      <button class="btn btn-secondary btn-refresh" (click)="loadClasses()" [disabled]="loading">
-        <span class="btn-icon">🔄</span>
-        <span>Refresh</span>
-      </button>
-    </div>
-  </div>
 
-  <!-- Loading State -->
-  <div class="loading-container" *ngIf="loading">
-    <div class="skeleton-loader" *ngFor="let i of [1,2,3,4,5]">
-      <div class="skeleton-row">
-        <div class="skeleton-cell skeleton-name"></div>
-        <div class="skeleton-cell skeleton-grade"></div>
-        <div class="skeleton-cell skeleton-count"></div>
-        <div class="skeleton-cell skeleton-count"></div>
-        <div class="skeleton-cell skeleton-status"></div>
-        <div class="skeleton-cell skeleton-actions"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Classes Table -->
-  <div class="table-container" *ngIf="!loading">
-    <table class="modern-table">
-      <thead>
-        <tr>
-          <th (click)="sortByColumn('name')" class="sortable">
-            <span>Class Name</span>
-            <span class="sort-icon" *ngIf="sortColumn === 'name'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-          </th>
-          <th (click)="sortByColumn('form')" class="sortable">
-            <span>Grade/Form</span>
-            <span class="sort-icon" *ngIf="sortColumn === 'form'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-          </th>
-          <th (click)="sortByColumn('students')" class="sortable">
-            <span>Students</span>
-            <span class="sort-icon" *ngIf="sortColumn === 'students'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-          </th>
-          <th (click)="sortByColumn('teachers')" class="sortable">
-            <span>Teachers</span>
-            <span class="sort-icon" *ngIf="sortColumn === 'teachers'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-          </th>
-          <th>Status</th>
-          <th class="actions-header">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let classItem of filteredClasses" class="table-row">
-          <td class="class-name">
-            <span class="name-text">{{ classItem.name }}</span>
-          </td>
-          <td class="class-grade">
-            <span class="grade-badge">{{ classItem.form }}</span>
-          </td>
-          <td class="class-count">
-            <span class="count-badge students">
-              <span class="count-icon">👨‍🎓</span>
-              {{ classItem.students?.length || 0 }}
-            </span>
-          </td>
-          <td class="class-count">
-            <span class="count-badge teachers">
-              <span class="count-icon">👨‍🏫</span>
-              {{ classItem.teachers?.length || 0 }}
-            </span>
-          </td>
-          <td class="status-cell">
-            <span class="status-badge" [class.active]="classItem.isActive" [class.inactive]="!classItem.isActive">
-              <span class="status-dot"></span>
-              {{ classItem.isActive ? 'Active' : 'Inactive' }}
-            </span>
-          </td>
-          <td class="actions-cell">
-            <div class="action-buttons">
-              <span class="actions-label">Actions</span>
-              <div class="action-buttons-row">
-                <button 
-                  class="btn-action btn-edit" 
-                  (click)="editClass(getCleanId(classItem.id))" 
-                  title="Edit Class">
-                  <span class="action-icon">✏️</span>
-                  <span class="action-text">Edit</span>
-                </button>
-                <button 
-                  class="btn-action btn-delete" 
-                  (click)="deleteClass(getCleanId(classItem.id), classItem.name)" 
-                  [disabled]="loading"
-                  title="Delete Class">
-                  <span class="action-icon">🗑️</span>
-                  <span class="action-text">Delete</span>
-                </button>
+    <div class="cl-table-scroll" *ngIf="viewMode === 'table' && filteredClasses.length">
+      <table class="cl-table">
+        <colgroup>
+          <col />
+          <col />
+          <col />
+          <col />
+          <col />
+          <col />
+          <col class="cl-col-actions-col" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>
+              <button type="button" class="cl-th-btn" (click)="sortByColumn('name')">
+                Class <span class="cl-sort">{{ sortIndicator('name') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="cl-th-btn" (click)="sortByColumn('form')">
+                Grade <span class="cl-sort">{{ sortIndicator('form') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="cl-th-btn" (click)="sortByColumn('students')">
+                Students <span class="cl-sort">{{ sortIndicator('students') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="cl-th-btn" (click)="sortByColumn('teachers')">
+                Teachers <span class="cl-sort">{{ sortIndicator('teachers') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="cl-th-btn" (click)="sortByColumn('subjects')">
+                Subjects <span class="cl-sort">{{ sortIndicator('subjects') }}</span>
+              </button>
+            </th>
+            <th>Status</th>
+            <th class="cl-col-actions" scope="col">
+              <span class="cl-actions-head">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let classItem of filteredClasses; trackBy: trackByClass">
+            <td class="cl-cell-name">{{ classItem.name }}</td>
+            <td><span class="cl-form-pill">{{ classItem.form || '—' }}</span></td>
+            <td><span class="cl-count-pill cl-count-pill--students">👨‍🎓 {{ classItem.students?.length || 0 }}</span></td>
+            <td><span class="cl-count-pill cl-count-pill--teachers">👨‍🏫 {{ classItem.teachers?.length || 0 }}</span></td>
+            <td><span class="cl-count-pill cl-count-pill--subjects">📖 {{ getSubjectCount(classItem) }}</span></td>
+            <td>
+              <span class="cl-status-pill" [class.cl-status-pill--active]="classItem.isActive" [class.cl-status-pill--inactive]="!classItem.isActive">
+                {{ classItem.isActive ? 'Active' : 'Inactive' }}
+              </span>
+            </td>
+            <td class="cl-col-actions">
+              <div class="cl-actions-cell">
+                <button type="button" class="cl-action-btn" (click)="editClass(classItem.id)" title="Edit">Edit</button>
+                <button type="button" class="cl-action-btn cl-action-btn--danger" (click)="deleteClass(classItem.id, classItem.name)" [disabled]="loading" title="Delete">Delete</button>
               </div>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-    <!-- Empty State -->
-    <div class="empty-state" *ngIf="filteredClasses.length === 0 && !loading">
-      <div class="empty-icon">📚</div>
-      <h3>{{ searchTerm || statusFilter !== 'all' ? 'No classes found' : 'No classes yet' }}</h3>
-      <p *ngIf="searchTerm || statusFilter !== 'all'">
-        Try adjusting your search or filter criteria.
-      </p>
-      <p *ngIf="!searchTerm && statusFilter === 'all'">
-        Get started by creating your first class.
-      </p>
-      <button class="btn btn-primary" routerLink="/classes/new" *ngIf="!searchTerm && statusFilter === 'all'">
-        <span class="btn-icon">➕</span>
-        <span>Add Your First Class</span>
-      </button>
-      <button class="btn btn-secondary" (click)="clearFilters()" *ngIf="searchTerm || statusFilter !== 'all'">
-        <span>Clear Filters</span>
-      </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
-    <!-- Results Summary -->
-    <div class="results-summary" *ngIf="filteredClasses.length > 0">
-      <span class="summary-text">
-        Showing {{ filteredClasses.length }} of {{ pagination.total }} class{{ pagination.total !== 1 ? 'es' : '' }}
-      </span>
+    <div class="cl-cards" *ngIf="viewMode === 'cards' && filteredClasses.length">
+      <article class="cl-card" *ngFor="let classItem of filteredClasses; trackBy: trackByClass">
+        <div class="cl-card__top">
+          <h4 class="cl-card__name">{{ classItem.name }}</h4>
+          <span class="cl-status-pill" [class.cl-status-pill--active]="classItem.isActive" [class.cl-status-pill--inactive]="!classItem.isActive">
+            {{ classItem.isActive ? 'Active' : 'Inactive' }}
+          </span>
+        </div>
+        <p class="cl-card__form">{{ classItem.form || 'No grade set' }}</p>
+        <p class="cl-card__meta" *ngIf="classItem.description">{{ classItem.description }}</p>
+        <div class="cl-card__counts">
+          <span class="cl-count-pill cl-count-pill--students">👨‍🎓 {{ classItem.students?.length || 0 }} students</span>
+          <span class="cl-count-pill cl-count-pill--teachers">👨‍🏫 {{ classItem.teachers?.length || 0 }} teachers</span>
+          <span class="cl-count-pill cl-count-pill--subjects">📖 {{ getSubjectCount(classItem) }} subjects</span>
+        </div>
+        <div class="cl-card__actions">
+          <button type="button" class="cl-action-btn" (click)="editClass(classItem.id)">Edit</button>
+          <button type="button" class="cl-action-btn cl-action-btn--danger" (click)="deleteClass(classItem.id, classItem.name)" [disabled]="loading">Delete</button>
+        </div>
+      </article>
     </div>
-  </div>
+
+    <div class="cl-empty" *ngIf="!filteredClasses.length">
+      <span class="cl-empty-icon" aria-hidden="true">📚</span>
+      <h3 class="cl-empty-title">{{ hasActiveFilters() ? 'No matching classes' : 'No classes yet' }}</h3>
+      <p class="cl-empty-text" *ngIf="hasActiveFilters()">Try adjusting search or status filters.</p>
+      <p class="cl-empty-text" *ngIf="!hasActiveFilters()">Create your first class to get started.</p>
+      <button type="button" class="cl-btn-primary" *ngIf="hasActiveFilters()" (click)="clearFilters()">Reset filters</button>
+      <a routerLink="/classes/new" class="cl-btn-primary" *ngIf="!hasActiveFilters()">+ Add your first class</a>
+    </div>
+  </section>
 </div>
-

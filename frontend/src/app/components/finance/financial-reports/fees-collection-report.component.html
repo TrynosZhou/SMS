@@ -1,137 +1,233 @@
-<div class="fr-page container modern-container">
-  <div class="page-header modern-header-section">
-    <div class="header-title-section">
-      <span class="header-main-icon">💵</span>
-      <div>
-        <h1>Fees Collection</h1>
-        <p class="header-subtitle">Payments recorded for {{ term || 'selected term' }}</p>
-        <p class="fr-meta" *ngIf="lastLoadedAt && !loading">
-          Last updated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
-        </p>
+<div class="fc-page">
+  <div class="fc-toast-stack" *ngIf="success || error">
+    <div class="fc-toast fc-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="fc-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="fc-toast fc-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="fc-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="fc-hero">
+    <div class="fc-hero__main">
+      <div class="fc-hero-left">
+        <span class="fc-hero-icon" aria-hidden="true">💵</span>
+        <div>
+          <span class="fc-hero-eyebrow">Financial Reports</span>
+          <h1>Fees Collection</h1>
+          <p class="fc-hero-sub">
+            Track payments recorded for {{ term || 'the selected term' }} — filter by method, search receipts, and export.
+          </p>
+          <p class="fc-hero-meta" *ngIf="lastLoadedAt && !loading">
+            Last updated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
+          </p>
+        </div>
+      </div>
+      <div class="fc-hero__actions" *ngIf="hasData">
+        <button type="button" class="fc-hero-refresh" (click)="load()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <button type="button" class="fc-hero-btn" (click)="toggleViewMode()" title="Toggle view">
+          {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
+        </button>
+        <button type="button" class="fc-hero-btn fc-hero-btn--white" (click)="exportCsv()" [disabled]="!displayedItems.length || loading">CSV</button>
+        <button type="button" class="fc-hero-btn fc-hero-btn--white" (click)="downloadPdf()" [disabled]="downloadingPdf || loading">
+          {{ downloadingPdf ? '…' : 'PDF' }}
+        </button>
+        <button type="button" class="fc-hero-btn fc-hero-btn--white" (click)="printReport()" [disabled]="!displayedItems.length || loading">Print</button>
       </div>
     </div>
-  </div>
 
-  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+    <div class="fc-hero-stats" *ngIf="hasData && !loading">
+      <article class="fc-stat fc-stat--mint">
+        <span class="fc-stat__value">{{ currencySymbol }}{{ formatAmount(dashboardStats.totalCollected) }}</span>
+        <span class="fc-stat__label">Term collected</span>
+      </article>
+      <article class="fc-stat">
+        <span class="fc-stat__value">{{ currencySymbol }}{{ formatAmount(dashboardStats.displayedTotal) }}</span>
+        <span class="fc-stat__label">Filtered total</span>
+      </article>
+      <article class="fc-stat">
+        <span class="fc-stat__value">{{ dashboardStats.transactions }}</span>
+        <span class="fc-stat__label">Transactions</span>
+      </article>
+      <article class="fc-stat fc-stat--amber">
+        <span class="fc-stat__value">{{ currencySymbol }}{{ formatAmount(dashboardStats.average) }}</span>
+        <span class="fc-stat__label">Avg payment</span>
+      </article>
+      <article class="fc-stat">
+        <span class="fc-stat__value">{{ dashboardStats.collectionRate }}%</span>
+        <span class="fc-stat__label">Fully paid</span>
+      </article>
+      <article class="fc-stat fc-stat--rose">
+        <span class="fc-stat__value">{{ currencySymbol }}{{ formatAmount(dashboardStats.outstanding) }}</span>
+        <span class="fc-stat__label">Outstanding</span>
+      </article>
+    </div>
+    <div class="fc-hero-stats fc-hero-stats--skeleton" *ngIf="loading">
+      <div class="fc-skeleton" *ngFor="let i of [1,2,3,4,5,6]"></div>
+    </div>
+  </header>
 
-  <div class="fr-toolbar" *ngIf="availableTerms.length">
-    <label for="fc-term">Term</label>
-    <select id="fc-term" [ngModel]="term" (ngModelChange)="onTermChange($event)" [ngModelOptions]="{standalone:true}">
-      <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
-    </select>
-    <label for="fc-method">Method</label>
-    <select
-      id="fc-method"
-      [ngModel]="selectedMethod"
-      (ngModelChange)="onMethodChange($event)"
-      [ngModelOptions]="{standalone:true}">
-      <option value="all">All methods</option>
-      <option *ngFor="let m of availableMethods" [value]="m">{{ m }}</option>
-    </select>
-    <button type="button" class="btn fr-btn" (click)="load()" [disabled]="loading">Refresh</button>
-    <button type="button" class="btn fr-btn" (click)="exportCsv()" [disabled]="!displayedItems.length">Export CSV</button>
-  </div>
+  <section class="fc-progress-panel" *ngIf="hasData && !loading && dashboardStats.studentsWithInvoices > 0">
+    <div class="fc-progress-head">
+      <h3>Collection progress — {{ term }}</h3>
+      <span class="fc-progress-pct">{{ dashboardStats.collectionRate }}%</span>
+    </div>
+    <div class="fc-progress-bar" role="progressbar" [attr.aria-valuenow]="dashboardStats.collectionRate" aria-valuemin="0" aria-valuemax="100">
+      <div class="fc-progress-fill" [style.width.%]="dashboardStats.collectionRate"></div>
+    </div>
+    <div class="fc-progress-meta">
+      <span>{{ dashboardStats.studentsFullyPaid }} of {{ dashboardStats.studentsWithInvoices }} students fully paid</span>
+      <span>{{ dashboardStats.studentsPartiallyPaid }} partial · {{ dashboardStats.studentsUnpaid }} unpaid</span>
+      <span>Invoiced {{ currencySymbol }}{{ formatAmount(dashboardStats.totalInvoiced) }}</span>
+    </div>
+  </section>
 
-  <div class="fr-search-row" *ngIf="!loading || displayedItems.length > 0 || !!searchQuery">
-    <div class="fr-search-wrap">
-      <span class="fr-search-icon" aria-hidden="true">🔍</span>
-      <input
-        #fcSearch
-        type="search"
-        class="fr-search-input"
-        placeholder="Search student, receipt, invoice, method..."
-        [disabled]="loading && !data"
-        (input)="onSearchInput(fcSearch.value)" />
-      <button type="button" class="fr-search-clear" *ngIf="searchQuery" (click)="fcSearch.value=''; clearSearch()">Clear</button>
+  <section class="fc-panel">
+    <div class="fc-panel__head">
+      <h2 class="fc-panel__title">Filters & search</h2>
+      <p class="fc-panel__intro">Choose a term and payment method, then search students, receipts, or invoices.</p>
     </div>
-  </div>
 
-  <div class="fr-kpi-grid" *ngIf="data && !loading">
-    <div class="fr-kpi">
-      <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(getDisplayedTotalPaid()) }}</div>
-      <div class="fr-kpi-label">Displayed collected</div>
-    </div>
-    <div class="fr-kpi">
-      <div class="fr-kpi-value">{{ displayedItems.length }}</div>
-      <div class="fr-kpi-label">Displayed transactions</div>
-    </div>
-    <div class="fr-kpi">
-      <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(getAverageTransaction()) }}</div>
-      <div class="fr-kpi-label">Average transaction</div>
-    </div>
-    <div class="fr-kpi">
-      <div class="fr-kpi-value">{{ data.studentsFullyPaid ?? 0 }} / {{ data.studentsWithInvoices ?? 0 }}</div>
-      <div class="fr-kpi-label">Students fully paid</div>
-    </div>
-  </div>
+    <div class="fc-filters-row">
+      <div class="fc-field" *ngIf="availableTerms.length">
+        <label for="fc-term">Term</label>
+        <select id="fc-term" class="fc-select" [ngModel]="term" (ngModelChange)="onTermChange($event)" [ngModelOptions]="{standalone:true}" [disabled]="loading">
+          <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
+        </select>
+      </div>
 
-  <div *ngIf="loading" class="fr-skeleton" aria-busy="true">
-    <div class="fr-skeleton-row" *ngFor="let _ of skeletonRows">
-      <div class="fr-skel fr-skel-sm"></div>
-      <div class="fr-skel fr-skel-sm"></div>
-      <div class="fr-skel"></div>
-      <div class="fr-skel"></div>
-      <div class="fr-skel fr-skel-md"></div>
-      <div class="fr-skel fr-skel-sm"></div>
+      <div class="fc-search-wrap">
+        <span class="fc-search-icon" aria-hidden="true">🔍</span>
+        <input
+          #fcSearch
+          type="search"
+          class="fc-search-input"
+          placeholder="Search student, receipt, invoice, method…"
+          [disabled]="loading && !data"
+          (input)="onSearchInput(fcSearch.value)" />
+        <button type="button" class="fc-search-clear" *ngIf="searchQuery" (click)="fcSearch.value=''; clearSearch()">Clear</button>
+      </div>
     </div>
-    <p class="fr-skeleton-caption">Loading fees collection...</p>
-  </div>
 
-  <div class="table-section" *ngIf="!loading && data">
-    <div class="table-wrapper">
-      <table class="data-table modern-table fr-table" *ngIf="displayedItems.length > 0">
+    <div class="fc-chips" *ngIf="methodChips.length">
+      <button
+        type="button"
+        class="fc-chip"
+        [class.fc-chip--active]="selectedMethod === 'all'"
+        (click)="onMethodChange('all')">
+        All methods<span class="fc-chip__count">({{ data?.items?.length || 0 }})</span>
+      </button>
+      <button
+        type="button"
+        class="fc-chip"
+        *ngFor="let chip of methodChips"
+        [class.fc-chip--active]="selectedMethod === chip.method"
+        (click)="onMethodChange(chip.method)">
+        {{ chip.method }}<span class="fc-chip__count">({{ chip.count }})</span>
+      </button>
+    </div>
+
+    <div class="fc-summary" *ngIf="filterSummary">
+      <span class="fc-summary-pill">{{ filterSummary }}</span>
+    </div>
+  </section>
+
+  <section class="fc-panel fc-table-panel" *ngIf="loading">
+    <div class="fc-skeleton-table" aria-busy="true">
+      <div class="fc-skeleton-row" *ngFor="let _ of skeletonRows">
+        <div class="fc-skel fc-skel-sm"></div>
+        <div class="fc-skel fc-skel-sm"></div>
+        <div class="fc-skel"></div>
+        <div class="fc-skel"></div>
+        <div class="fc-skel fc-skel-md"></div>
+        <div class="fc-skel fc-skel-sm"></div>
+      </div>
+      <p style="text-align:center;color:#64748b;margin:0">Loading fees collection…</p>
+    </div>
+  </section>
+
+  <section class="fc-panel fc-table-panel" *ngIf="!loading && data">
+    <div class="fc-table-toolbar">
+      <h3>Payment transactions ({{ displayedItems.length }})</h3>
+    </div>
+
+    <div class="fc-table-scroll" *ngIf="viewMode === 'table' && displayedItems.length > 0">
+      <table class="fc-table">
         <thead>
           <tr>
             <th>Receipt</th>
             <th>
-              <button type="button" class="fr-th-btn" (click)="setSort('paymentDate')">
-                Date <span class="fr-sort">{{ sortIndicator('paymentDate') }}</span>
+              <button type="button" class="fc-th-btn" (click)="setSort('paymentDate')">
+                Date <span class="fc-sort">{{ sortIndicator('paymentDate') }}</span>
               </button>
             </th>
             <th>
-              <button type="button" class="fr-th-btn" (click)="setSort('studentName')">
-                Student <span class="fr-sort">{{ sortIndicator('studentName') }}</span>
+              <button type="button" class="fc-th-btn" (click)="setSort('studentName')">
+                Student <span class="fc-sort">{{ sortIndicator('studentName') }}</span>
               </button>
             </th>
             <th>
-              <button type="button" class="fr-th-btn" (click)="setSort('invoiceNumber')">
-                Invoice <span class="fr-sort">{{ sortIndicator('invoiceNumber') }}</span>
+              <button type="button" class="fc-th-btn" (click)="setSort('invoiceNumber')">
+                Invoice <span class="fc-sort">{{ sortIndicator('invoiceNumber') }}</span>
               </button>
             </th>
             <th>
-              <button type="button" class="fr-th-btn" (click)="setSort('amountPaid')">
-                Amount <span class="fr-sort">{{ sortIndicator('amountPaid') }}</span>
+              <button type="button" class="fc-th-btn" (click)="setSort('amountPaid')">
+                Amount <span class="fc-sort">{{ sortIndicator('amountPaid') }}</span>
               </button>
             </th>
             <th>
-              <button type="button" class="fr-th-btn" (click)="setSort('paymentMethod')">
-                Method <span class="fr-sort">{{ sortIndicator('paymentMethod') }}</span>
+              <button type="button" class="fc-th-btn" (click)="setSort('paymentMethod')">
+                Method <span class="fc-sort">{{ sortIndicator('paymentMethod') }}</span>
               </button>
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let r of displayedItems">
+          <tr *ngFor="let r of displayedItems; trackBy: trackByReceipt">
             <td>{{ r.receiptNumber || '—' }}</td>
             <td>{{ r.paymentDate | date:'mediumDate' }}</td>
-            <td>{{ r.studentName }} ({{ r.studentNumber }})</td>
-            <td>{{ r.invoiceNumber }} — {{ r.invoiceTerm }}</td>
-            <td class="fr-cell-amount">{{ currencySymbol }} {{ formatAmount(r.amountPaid) }}</td>
-            <td><span class="fr-method-pill">{{ r.paymentMethod || '—' }}</span></td>
+            <td>
+              <strong>{{ r.studentName }}</strong>
+              <span *ngIf="r.studentNumber" style="color:#64748b;font-size:0.8rem"> · {{ r.studentNumber }}</span>
+            </td>
+            <td>{{ r.invoiceNumber || '—' }}<span *ngIf="r.invoiceTerm"> · {{ r.invoiceTerm }}</span></td>
+            <td class="fc-cell-amount">{{ currencySymbol }} {{ formatAmount(r.amountPaid) }}</td>
+            <td><span class="fc-method-pill">{{ r.paymentMethod || '—' }}</span></td>
           </tr>
         </tbody>
       </table>
-
-      <div *ngIf="(data?.items?.length || 0) > 0 && displayedItems.length === 0" class="fr-empty">
-        <p class="fr-empty-title">No matching transactions</p>
-        <p class="fr-empty-text">Try another search term or choose a different payment method.</p>
-        <button type="button" class="btn fr-btn" (click)="clearSearch(); onMethodChange('all')">Reset filters</button>
-      </div>
-
-      <div *ngIf="(data?.items?.length || 0) === 0" class="fr-empty">
-        <p class="fr-empty-title">No payments for this term</p>
-        <p class="fr-empty-text">Transactions will appear here as soon as receipts are recorded.</p>
-      </div>
     </div>
-  </div>
+
+    <div class="fc-cards" *ngIf="viewMode === 'cards' && displayedItems.length > 0">
+      <article class="fc-card" *ngFor="let r of displayedItems; trackBy: trackByReceipt">
+        <div class="fc-card__top">
+          <span class="fc-method-pill">{{ r.paymentMethod || '—' }}</span>
+          <span class="fc-card__amount">{{ currencySymbol }} {{ formatAmount(r.amountPaid) }}</span>
+        </div>
+        <p class="fc-card__student">{{ r.studentName }}</p>
+        <p class="fc-card__meta">
+          {{ r.receiptNumber || 'No receipt' }} · {{ r.paymentDate | date:'mediumDate' }}<br />
+          Invoice {{ r.invoiceNumber || '—' }}<span *ngIf="r.invoiceTerm"> ({{ r.invoiceTerm }})</span>
+        </p>
+      </article>
+    </div>
+
+    <div class="fc-empty" *ngIf="(data?.items?.length || 0) > 0 && displayedItems.length === 0">
+      <span class="fc-empty-icon" aria-hidden="true">🔎</span>
+      <p class="fc-empty-title">No matching transactions</p>
+      <p class="fc-empty-text">Try another search term or choose a different payment method.</p>
+      <button type="button" class="fc-btn-reset" (click)="resetFilters()">Reset filters</button>
+    </div>
+
+    <div class="fc-empty" *ngIf="(data?.items?.length || 0) === 0">
+      <span class="fc-empty-icon" aria-hidden="true">📭</span>
+      <p class="fc-empty-title">No payments for this term</p>
+      <p class="fc-empty-text">Transactions will appear here as soon as receipts are recorded.</p>
+    </div>
+  </section>
 </div>

@@ -1,5 +1,8 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { finalize } from 'rxjs/operators';
+import { activatePageLoad } from '../../../utils/route-activation';
 import { MessageService } from '../../../services/message.service';
 import { AuthService } from '../../../services/auth.service';
 
@@ -8,7 +11,7 @@ import { AuthService } from '../../../services/auth.service';
 templateUrl: './draft-messages.component.html',
   styleUrls: ['./draft-messages.component.css']
 })
-export class DraftMessagesComponent implements OnInit {
+export class DraftMessagesComponent implements OnInit, OnDestroy {
   messages: any[] = [];
   filtered: any[] = [];
   selected: any | null = null;
@@ -22,11 +25,13 @@ export class DraftMessagesComponent implements OnInit {
   selectedIds = new Set<string>();
   showDeleteConfirm = false;
   draftToDelete: any | null = null;
+  private readonly destroy$ = new Subject<void>();
 
   constructor(
     private messageService: MessageService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   @HostListener('document:keydown.escape')
@@ -40,23 +45,36 @@ export class DraftMessagesComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    activatePageLoad(this.router, this.destroy$, '/messages/drafts', () => this.load());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   load(): void {
     this.loading = true;
     this.error = '';
-    this.messageService.getDraftMessages().subscribe({
-      next: (res: any) => {
-        this.loading = false;
-        this.messages = Array.isArray(res?.messages) ? res.messages : Array.isArray(res) ? res : [];
-        this.applyFilter();
-      },
-      error: (err: any) => {
-        this.loading = false;
-        this.error = err?.error?.message || 'Failed to load drafts';
-        setTimeout(() => this.error = '', 5000);
-      }
-    });
+    this.cdr.markForCheck();
+    this.messageService
+      .getDraftMessages()
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (res: any) => {
+          this.messages = Array.isArray(res?.messages) ? res.messages : Array.isArray(res) ? res : [];
+          this.applyFilter();
+        },
+        error: (err: any) => {
+          this.error = err?.error?.message || 'Failed to load drafts';
+          setTimeout(() => (this.error = ''), 5000);
+        }
+      });
   }
 
   applyFilter(): void {

@@ -1,209 +1,234 @@
-<div class="container">
-  <div class="subject-form-wrapper">
-    <!-- Header Section -->
-    <div class="form-header">
-      <div class="header-content">
-        <h1>
-          <span class="icon">📚</span>
-          {{ isEdit ? 'Edit Subject' : 'Create New Subject' }}
-        </h1>
-        <p class="subtitle">{{ isEdit ? 'Update subject information and settings' : 'Add a new subject to the system' }}</p>
-      </div>
-      <button class="btn btn-icon" (click)="router.navigate(['/subjects'])" title="Back to Subjects">
-        ← Back
-      </button>
-    </div>
-
-    <!-- Alert Messages -->
-    <div class="alert alert-success" *ngIf="success" [@fadeInOut]>
-      <span class="alert-icon">✓</span>
+<div class="sf-page">
+  <div class="sf-toast-stack" *ngIf="success || error || loadError">
+    <div class="sf-toast sf-toast--success" *ngIf="success" [@fadeInOut] role="status">
       <span>{{ success }}</span>
+      <button type="button" class="sf-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
     </div>
-    <div class="alert alert-error" *ngIf="error" [@fadeInOut]>
-      <span class="alert-icon">✕</span>
+    <div class="sf-toast sf-toast--error" *ngIf="error" [@fadeInOut] role="alert">
       <span>{{ error }}</span>
+      <button type="button" class="sf-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
-
-    <!-- Form Container -->
-    <div class="form-container">
-      <form (ngSubmit)="onSubmit()" #subjectForm="ngForm">
-        <!-- Basic Information Section -->
-        <div class="form-section">
-          <div class="section-header">
-            <h2>
-              <span class="section-icon">📋</span>
-              Basic Information
-            </h2>
-            <p class="section-description">Enter the essential details for this subject</p>
-          </div>
-
-          <div class="form-grid">
-            <!-- Subject Name -->
-            <div class="form-group" [class.has-error]="isFieldInvalid('name')">
-              <label for="name">
-                Subject Name <span class="required">*</span>
-                <span class="field-hint">e.g., Mathematics, English, Science</span>
-              </label>
-              <div class="input-wrapper">
-                <input 
-                  type="text" 
-                  id="name"
-                  [(ngModel)]="subject.name" 
-                  name="name" 
-                  required
-                  [class.invalid]="isFieldInvalid('name')"
-                  placeholder="Enter subject name"
-                  (blur)="validateField('name')"
-                  (input)="onFieldChange('name')"
-                  maxlength="100"
-                  autocomplete="off">
-                <span class="char-counter" *ngIf="subject.name">{{ subject.name.length }}/100</span>
-              </div>
-              <div class="field-error" *ngIf="isFieldInvalid('name')">
-                {{ getFieldError('name') }}
-              </div>
-            </div>
-
-            <!-- Subject Code -->
-            <div class="form-group" [class.has-error]="isFieldInvalid('code')">
-              <label for="code">
-                Subject Code <span class="required">*</span>
-                <span class="field-hint">e.g., MATH, ENG, SCI (will be converted to uppercase)</span>
-              </label>
-              <div class="input-wrapper">
-                <input 
-                  type="text" 
-                  id="code"
-                  [(ngModel)]="subject.code" 
-                  name="code" 
-                  required
-                  [class.invalid]="isFieldInvalid('code')"
-                  placeholder="Enter subject code"
-                  (blur)="validateField('code')"
-                  (input)="onCodeChange()"
-                  maxlength="20"
-                  autocomplete="off"
-                  style="text-transform: uppercase;">
-                <span class="char-counter" *ngIf="subject.code">{{ subject.code.length }}/20</span>
-              </div>
-              <div class="field-hint">
-                <span class="hint-icon">💡</span>
-                Unique code for the subject (e.g., MATH, ENG, SCI)
-              </div>
-              <div class="field-error" *ngIf="isFieldInvalid('code')">
-                {{ getFieldError('code') }}
-              </div>
-            </div>
-          </div>
-
-          <!-- Description -->
-          <div class="form-group full-width" [class.has-error]="isFieldInvalid('description')">
-            <label for="description">
-              Description
-              <span class="field-hint">Optional: Add additional information about this subject</span>
-            </label>
-            <div class="textarea-wrapper">
-              <textarea 
-                id="description"
-                [(ngModel)]="subject.description" 
-                name="description" 
-                rows="4"
-                [class.invalid]="isFieldInvalid('description')"
-                placeholder="Enter subject description (optional)"
-                (blur)="validateField('description')"
-                (input)="onFieldChange('description')"
-                maxlength="500"></textarea>
-              <span class="char-counter" *ngIf="subject.description">{{ subject.description.length }}/500</span>
-            </div>
-            <div class="field-error" *ngIf="isFieldInvalid('description')">
-              {{ getFieldError('description') }}
-            </div>
-          </div>
-        </div>
-
-        <!-- Additional Settings Section -->
-        <div class="form-section" *ngIf="isEdit">
-          <div class="section-header">
-            <h2>
-              <span class="section-icon">⚙️</span>
-              Settings
-            </h2>
-            <p class="section-description">Manage subject status and availability</p>
-          </div>
-
-          <div class="form-group full-width">
-            <div class="toggle-switch">
-              <input 
-                type="checkbox" 
-                id="isActive"
-                [(ngModel)]="subject.isActive" 
-                name="isActive"
-                class="toggle-input">
-              <label for="isActive" class="toggle-label">
-                <span class="toggle-slider"></span>
-                <span class="toggle-text">
-                  <strong>Active Subject</strong>
-                  <small>Inactive subjects won't appear in exam and class assignment options</small>
-                </span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <!-- Preview Section -->
-        <div class="form-section preview-section" *ngIf="subject.name || subject.code">
-          <div class="section-header">
-            <h2>
-              <span class="section-icon">👁️</span>
-              Preview
-            </h2>
-            <p class="section-description">Preview of your subject information</p>
-          </div>
-          <div class="preview-card">
-            <div class="preview-item">
-              <span class="preview-label">Subject Name:</span>
-              <span class="preview-value">{{ subject.name || 'Not set' }}</span>
-            </div>
-            <div class="preview-item">
-              <span class="preview-label">Subject Code:</span>
-              <span class="preview-value code-badge">{{ subject.code || 'Not set' }}</span>
-            </div>
-            <div class="preview-item" *ngIf="subject.description">
-              <span class="preview-label">Description:</span>
-              <span class="preview-value">{{ subject.description }}</span>
-            </div>
-            <div class="preview-item" *ngIf="isEdit">
-              <span class="preview-label">Status:</span>
-              <span class="preview-value" [class.active]="subject.isActive" [class.inactive]="!subject.isActive">
-                {{ subject.isActive ? 'Active' : 'Inactive' }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Form Actions -->
-        <div class="form-actions">
-          <button 
-            type="button" 
-            class="btn btn-secondary" 
-            (click)="router.navigate(['/subjects'])"
-            [disabled]="submitting">
-            ❌ Cancel
-          </button>
-          <button 
-            type="submit" 
-            class="btn btn-primary btn-submit"
-            [disabled]="submitting || !isFormValid()">
-            <span *ngIf="!submitting">
-              {{ isEdit ? '💾 Update Subject' : '➕ Create Subject' }}
-            </span>
-            <span *ngIf="submitting" class="submit-loading">
-              <span class="spinner-small"></span>
-              {{ isEdit ? 'Updating...' : 'Creating...' }}
-            </span>
-          </button>
-        </div>
-      </form>
+    <div class="sf-toast sf-toast--error" *ngIf="loadError && !error" [@fadeInOut] role="alert">
+      <span>{{ loadError }}</span>
+      <button type="button" class="sf-btn-secondary sf-btn-sm" (click)="retryLoad()">Retry</button>
+      <button type="button" class="sf-toast__dismiss" (click)="clearAlert('load')" aria-label="Dismiss">×</button>
     </div>
   </div>
+
+  <header class="sf-hero">
+    <div class="sf-hero__main">
+      <div class="sf-hero-left">
+        <span class="sf-hero-icon" aria-hidden="true">{{ isEdit ? '✏️' : '📚' }}</span>
+        <div>
+          <span class="sf-hero-eyebrow">Subject Manager</span>
+          <h1>{{ pageTitle }}</h1>
+          <p class="sf-hero-sub">
+            {{ isEdit ? 'Update subject details used in exams, timetables, and class assignments.' : 'Add a subject to your catalog — name, code, and optional description.' }}
+          </p>
+        </div>
+      </div>
+      <div class="sf-hero__actions">
+        <a routerLink="/subjects" class="sf-hero-btn sf-hero-btn--white">← Subject list</a>
+        <a routerLink="/subjects/assign" class="sf-hero-btn sf-hero-btn--white">Assign subjects</a>
+        <a routerLink="/subjects/teaching-load" class="sf-hero-btn sf-hero-btn--white">Teaching load</a>
+      </div>
+    </div>
+
+    <div class="sf-hero-stats" *ngIf="!loadingSubject">
+      <article class="sf-stat sf-stat--accent">
+        <span class="sf-stat__value">{{ formStats.completion }}%</span>
+        <span class="sf-stat__label">Ready</span>
+      </article>
+      <article class="sf-stat">
+        <span class="sf-stat__value">{{ subject.name ? '✓' : '—' }}</span>
+        <span class="sf-stat__label">Name</span>
+      </article>
+      <article class="sf-stat">
+        <span class="sf-stat__value">{{ subject.code || '—' }}</span>
+        <span class="sf-stat__label">Code</span>
+      </article>
+      <article class="sf-stat sf-stat--mint">
+        <span class="sf-stat__value">{{ (subject.description || '').length }}</span>
+        <span class="sf-stat__label">Description</span>
+      </article>
+      <article class="sf-stat" *ngIf="isEdit">
+        <span class="sf-stat__value">{{ subject.isActive ? 'On' : 'Off' }}</span>
+        <span class="sf-stat__label">Status</span>
+      </article>
+    </div>
+    <div class="sf-hero-stats sf-hero-stats--skeleton" *ngIf="loadingSubject">
+      <div class="sf-skeleton" *ngFor="let _ of skeletonSlots"></div>
+    </div>
+    <div class="sf-progress" aria-hidden="true" *ngIf="!loadingSubject">
+      <div class="sf-progress__bar" [style.width.%]="formStats.completion"></div>
+    </div>
+  </header>
+
+  <div class="sf-loading-page" *ngIf="loadingSubject">
+    <span class="sf-spinner"></span>
+    <span>Loading subject…</span>
+  </div>
+
+  <form (ngSubmit)="onSubmit()" #subjectForm="ngForm" class="sf-layout" *ngIf="!loadingSubject">
+    <div class="sf-main">
+      <section class="sf-panel">
+        <div class="sf-panel__head">
+          <span class="sf-panel__icon" aria-hidden="true">📋</span>
+          <div>
+            <h2>Basic information</h2>
+            <p>Subject name and code are required. Codes are stored in uppercase.</p>
+          </div>
+        </div>
+
+        <div class="sf-grid">
+          <div class="sf-field" [class.sf-field--error]="isFieldInvalid('name')">
+            <label for="name">Subject name <span class="sf-required">*</span></label>
+            <p class="sf-hint">e.g. Mathematics, English Language</p>
+            <div class="sf-input-wrap">
+              <input
+                type="text"
+                id="name"
+                class="sf-input"
+                [(ngModel)]="subject.name"
+                name="name"
+                required
+                [class.sf-input--invalid]="isFieldInvalid('name')"
+                placeholder="Enter subject name"
+                (blur)="validateField('name')"
+                (input)="onFieldChange('name')"
+                maxlength="100"
+                autocomplete="off" />
+              <span class="sf-counter" *ngIf="subject.name">{{ subject.name.length }}/100</span>
+            </div>
+            <p class="sf-error" *ngIf="isFieldInvalid('name')">{{ getFieldError('name') }}</p>
+          </div>
+
+          <div class="sf-field" [class.sf-field--error]="isFieldInvalid('code')">
+            <label for="code">Subject code <span class="sf-required">*</span></label>
+            <p class="sf-hint">2–20 characters, letters and numbers only</p>
+            <div class="sf-input-wrap">
+              <input
+                type="text"
+                id="code"
+                class="sf-input sf-input--code"
+                [(ngModel)]="subject.code"
+                name="code"
+                required
+                [class.sf-input--invalid]="isFieldInvalid('code')"
+                placeholder="e.g. MATH"
+                (blur)="validateField('code')"
+                (input)="onCodeChange()"
+                maxlength="20"
+                autocomplete="off" />
+              <span class="sf-counter" *ngIf="subject.code">{{ subject.code.length }}/20</span>
+            </div>
+            <div class="sf-chips" *ngIf="!isEdit">
+              <span class="sf-chips__label">Quick pick:</span>
+              <button
+                type="button"
+                class="sf-chip"
+                *ngFor="let c of codeSuggestions"
+                (click)="applyCodeSuggestion(c)"
+                [class.sf-chip--on]="subject.code === c">
+                {{ c }}
+              </button>
+            </div>
+            <p class="sf-error" *ngIf="isFieldInvalid('code')">{{ getFieldError('code') }}</p>
+          </div>
+        </div>
+
+        <div class="sf-field sf-field--full" [class.sf-field--error]="isFieldInvalid('description')">
+          <label for="description">Description</label>
+          <p class="sf-hint">Optional notes for staff (syllabus, level, etc.)</p>
+          <div class="sf-input-wrap">
+            <textarea
+              id="description"
+              class="sf-textarea"
+              [(ngModel)]="subject.description"
+              name="description"
+              rows="4"
+              [class.sf-input--invalid]="isFieldInvalid('description')"
+              placeholder="Enter subject description (optional)"
+              (blur)="validateField('description')"
+              (input)="onFieldChange('description')"
+              maxlength="500"></textarea>
+            <span class="sf-counter sf-counter--ta" *ngIf="subject.description">{{ subject.description.length }}/500</span>
+          </div>
+          <p class="sf-error" *ngIf="isFieldInvalid('description')">{{ getFieldError('description') }}</p>
+        </div>
+      </section>
+
+      <section class="sf-panel" *ngIf="isEdit">
+        <div class="sf-panel__head">
+          <span class="sf-panel__icon" aria-hidden="true">⚙️</span>
+          <div>
+            <h2>Availability</h2>
+            <p>Inactive subjects are hidden from exam and assignment pickers.</p>
+          </div>
+        </div>
+        <label class="sf-toggle">
+          <input type="checkbox" class="sf-toggle__input" [(ngModel)]="subject.isActive" name="isActive" />
+          <span class="sf-toggle__track"></span>
+          <span class="sf-toggle__text">
+            <strong>Active subject</strong>
+            <small>Turn off to archive without deleting records</small>
+          </span>
+        </label>
+      </section>
+
+      <section class="sf-panel sf-panel--tips" *ngIf="!isEdit">
+        <div class="sf-panel__head">
+          <span class="sf-panel__icon" aria-hidden="true">💡</span>
+          <div>
+            <h2>Before you save</h2>
+            <p>Subjects link to classes, exams, and timetables after creation.</p>
+          </div>
+        </div>
+        <ul class="sf-tips">
+          <li>Use a short, unique <strong>code</strong> — teachers see it on mark sheets.</li>
+          <li>After saving, use <a routerLink="/subjects/assign">Assign subjects</a> to link classes.</li>
+          <li>Set <a routerLink="/subjects/teaching-load">teaching load</a> for period allocation.</li>
+        </ul>
+      </section>
+    </div>
+
+    <aside class="sf-sidebar">
+      <div class="sf-preview">
+        <h3 class="sf-preview__title">Live preview</h3>
+        <div class="sf-preview-card">
+          <div class="sf-preview-hero">
+            <span class="sf-preview-hero__icon" aria-hidden="true">📖</span>
+            <div>
+              <p class="sf-preview-hero__name">{{ subject.name || 'Subject name' }}</p>
+              <p class="sf-preview-hero__code">{{ subject.code || 'CODE' }}</p>
+            </div>
+          </div>
+          <p class="sf-preview-desc" *ngIf="subject.description">{{ subject.description }}</p>
+          <p class="sf-preview-desc sf-preview-desc--muted" *ngIf="!subject.description">No description yet</p>
+          <div class="sf-preview-row" *ngIf="isEdit">
+            <span>Status</span>
+            <span class="sf-preview-pill" [class.sf-preview-pill--on]="subject.isActive">
+              {{ subject.isActive ? 'Active' : 'Inactive' }}
+            </span>
+          </div>
+          <div class="sf-preview-row">
+            <span>Form valid</span>
+            <span class="sf-preview-pill" [class.sf-preview-pill--on]="isFormValid()">
+              {{ isFormValid() ? 'Yes' : 'Incomplete' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <footer class="sf-actions sf-actions--sidebar">
+        <button type="button" class="sf-btn-secondary" (click)="router.navigate(['/subjects'])" [disabled]="submitting">
+          Cancel
+        </button>
+        <button type="submit" class="sf-btn-primary" [disabled]="submitting || !isFormValid()">
+          <span class="sf-spinner sf-spinner--sm" *ngIf="submitting"></span>
+          {{ submitting ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save changes' : 'Create subject') }}
+        </button>
+      </footer>
+    </aside>
+  </form>
 </div>

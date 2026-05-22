@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ParentService } from '../../../services/parent.service';
 import { AuthService } from '../../../services/auth.service';
 import { Router } from '@angular/router';
@@ -67,8 +67,34 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
   constructor(
     private parentService: ParentService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) { }
+
+  get dashboardStats() {
+    const withStudents = this.parents.filter(p => (p?.parentStudents || []).length > 0).length;
+    return {
+      total: this.parents.length,
+      showing: this.filteredParents.length,
+      unlinked: this.unlinkedParentsCount,
+      linkedStudents: this.linkedStudentsTotalCount,
+      studentAccounts: this.studentsWithAccountLoggedInCount,
+      withStudents
+    };
+  }
+
+  clearAlert(type: 'success' | 'error'): void {
+    if (type === 'success') {
+      this.success = '';
+    } else {
+      this.error = '';
+    }
+    this.cdr.markForCheck();
+  }
+
+  refreshParents(): void {
+    this.loadParents();
+  }
 
   ngOnInit(): void {
     const user = this.authService.getCurrentUser();
@@ -108,6 +134,7 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
         this.studentsWithAccountLoggedInCount = response.studentsWithAccountLoggedInCount ?? 0;
         this.filteredParents = this.parents;
         this.loading = false;
+        this.cdr.markForCheck();
         if (this.selectedParent) {
           const updated = this.parents.find(p => p.id === this.selectedParent.id);
           if (updated) {
@@ -128,6 +155,7 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
       error: (err: any) => {
         this.loading = false;
         this.error = err.error?.message || 'Failed to load parents';
+        this.cdr.markForCheck();
         setTimeout(() => this.error = '', 5000);
       }
     });

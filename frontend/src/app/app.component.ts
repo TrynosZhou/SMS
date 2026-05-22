@@ -22,6 +22,7 @@ export class AppComponent implements OnInit, OnDestroy {
   mobileMenuOpen = false;
   sidebarCollapsed = false;
   expandedMenus: { [key: string]: boolean } = {};
+  sidebarMenuFilter = '';
   private authSubscription?: Subscription;
   private titleRotationTimerId: number | null = null;
   private readonly titleRotationIntervalMs = 4000;
@@ -62,6 +63,14 @@ export class AppComponent implements OnInit, OnDestroy {
       // Load module access settings
       this.moduleAccessService.loadModuleAccess();
       this.licenseService.load().subscribe();
+      if (!this.isStudent()) {
+        this.expandedMenus['registration'] = true;
+        this.expandedMenus['classManagement'] = true;
+        this.expandedMenus['attendance'] = true;
+      }
+      if (this.isAdmin() || this.isSuperAdmin()) {
+        this.expandedMenus['systemAdministration'] = true;
+      }
     }
 
     // Log module access and update meta tags on navigation
@@ -178,6 +187,325 @@ export class AppComponent implements OnInit, OnDestroy {
 
   canAccessModule(moduleName: string): boolean {
     return this.moduleAccessService.canAccessModule(moduleName);
+  }
+
+  matchesSidebarFilter(...labels: string[]): boolean {
+    const q = this.sidebarMenuFilter.trim().toLowerCase();
+    if (!q) {
+      return true;
+    }
+    return labels.some(label => label.toLowerCase().includes(q));
+  }
+
+  sidebarMenuVisible(labels: string[], baseShow = true): boolean {
+    if (!baseShow) {
+      return false;
+    }
+    return this.matchesSidebarFilter(...labels);
+  }
+
+  clearSidebarMenuFilter(): void {
+    this.sidebarMenuFilter = '';
+  }
+
+  showRegistrationMenu(): boolean {
+    return (
+      this.showTeachersRegistrationLink() ||
+      this.showStudentsRegistrationLink() ||
+      this.showParentsRegistrationLink()
+    );
+  }
+
+  showTeachersRegistrationLink(): boolean {
+    return this.isAdmin() || this.isSuperAdmin();
+  }
+
+  showStudentsRegistrationLink(): boolean {
+    return (
+      this.isAdmin() ||
+      this.isSuperAdmin() ||
+      this.isAccountant() ||
+      this.canAccessModule('students')
+    );
+  }
+
+  showParentsRegistrationLink(): boolean {
+    return this.isAdmin() || this.isSuperAdmin();
+  }
+
+  isRegistrationSidebarVisible(): boolean {
+    if (!this.showRegistrationMenu()) {
+      return false;
+    }
+    return this.sidebarMenuVisible(['Registration', 'Teachers', 'Students', 'Parents']);
+  }
+
+  isRegistrationTeachersVisible(): boolean {
+    return (
+      this.showTeachersRegistrationLink() &&
+      this.matchesSidebarFilter('Registration', 'Teachers')
+    );
+  }
+
+  isRegistrationStudentsVisible(): boolean {
+    return (
+      this.showStudentsRegistrationLink() &&
+      this.matchesSidebarFilter('Registration', 'Students')
+    );
+  }
+
+  isRegistrationParentsVisible(): boolean {
+    return (
+      this.showParentsRegistrationLink() &&
+      this.matchesSidebarFilter('Registration', 'Parents')
+    );
+  }
+
+  showClassManagerMenu(): boolean {
+    return (
+      this.isAdmin() ||
+      this.isSuperAdmin() ||
+      this.isTeacher() ||
+      this.canAccessModule('classes') ||
+      this.canAccessEnrolStudent() ||
+      this.authService.hasRole('accountant')
+    );
+  }
+
+  canAccessEnrolStudent(): boolean {
+    return (
+      this.isAdmin() ||
+      this.isSuperAdmin() ||
+      this.isTeacher() ||
+      this.canAccessModule('students')
+    );
+  }
+
+  isClassManagerSidebarVisible(): boolean {
+    if (!this.showClassManagerMenu()) {
+      return false;
+    }
+    return this.sidebarMenuVisible([
+      'Class Manager',
+      'Enroll Student',
+      'Transfer Student',
+      'Manage Classes',
+      'Class Lists',
+      'Promote Class'
+    ]);
+  }
+
+  showAttendanceMenu(): boolean {
+    return (
+      this.isAdmin() ||
+      this.isSuperAdmin() ||
+      this.isTeacher() ||
+      this.canAccessModule('attendance')
+    );
+  }
+
+  canAccessAttendanceMark(): boolean {
+    return (
+      this.canAccessModule('attendance') ||
+      this.isAdmin() ||
+      this.isSuperAdmin() ||
+      this.isTeacher()
+    );
+  }
+
+  canAccessAttendanceReports(): boolean {
+    return this.canAccessAttendanceMark();
+  }
+
+  isAttendanceSidebarVisible(): boolean {
+    if (!this.showAttendanceMenu()) {
+      return false;
+    }
+    return this.sidebarMenuVisible([
+      'Attendance',
+      'Mark Register',
+      'Attendance Reports'
+    ]);
+  }
+
+  isAttendanceMarkVisible(): boolean {
+    return (
+      this.canAccessAttendanceMark() &&
+      this.matchesSidebarFilter('Attendance', 'Mark Register')
+    );
+  }
+
+  isAttendanceReportsVisible(): boolean {
+    return (
+      this.canAccessAttendanceReports() &&
+      this.matchesSidebarFilter('Attendance', 'Attendance Reports')
+    );
+  }
+
+  isClassManagerEnrollVisible(): boolean {
+    return (
+      this.canAccessEnrolStudent() &&
+      this.matchesSidebarFilter('Class Manager', 'Enroll Student')
+    );
+  }
+
+  isClassManagerTransferVisible(): boolean {
+    return (
+      (this.isAdmin() ||
+        this.isSuperAdmin() ||
+        this.authService.hasRole('accountant') ||
+        this.canAccessModule('studentManager')) &&
+      this.matchesSidebarFilter('Class Manager', 'Transfer Student')
+    );
+  }
+
+  showTimetableManagerMenu(): boolean {
+    return (
+      this.isAdmin() ||
+      this.isSuperAdmin() ||
+      this.isTeacher() ||
+      this.canAccessModule('settings')
+    );
+  }
+
+  isTimetableManagerSidebarVisible(): boolean {
+    if (!this.showTimetableManagerMenu()) {
+      return false;
+    }
+    return this.sidebarMenuVisible([
+      'Timetable Manager',
+      'Assign Subject',
+      'Subject Periods',
+      'Configure Timetable',
+      'Generate Timetable',
+      'View Timetable'
+    ]);
+  }
+
+  isTimetableAssignSubjectVisible(): boolean {
+    return (
+      (this.isAdmin() || this.isSuperAdmin()) &&
+      this.matchesSidebarFilter('Timetable Manager', 'Assign Subject')
+    );
+  }
+
+  isTimetableSubjectPeriodsVisible(): boolean {
+    return (
+      (this.isAdmin() || this.isSuperAdmin()) &&
+      this.matchesSidebarFilter('Timetable Manager', 'Subject Periods')
+    );
+  }
+
+  isTimetableConfigureVisible(): boolean {
+    return (
+      (this.isAdmin() || this.isSuperAdmin()) &&
+      this.matchesSidebarFilter('Timetable Manager', 'Configure Timetable')
+    );
+  }
+
+  isTimetableGenerateVisible(): boolean {
+    return (
+      (this.isAdmin() || this.isSuperAdmin()) &&
+      this.matchesSidebarFilter('Timetable Manager', 'Generate Timetable')
+    );
+  }
+
+  isTimetableViewVisible(): boolean {
+    return this.matchesSidebarFilter('Timetable Manager', 'View Timetable');
+  }
+
+  showSystemAdministrationMenu(): boolean {
+    return (
+      this.isAdmin() ||
+      this.isSuperAdmin() ||
+      this.canAccessModule('settings')
+    );
+  }
+
+  isSystemAdministrationSidebarVisible(): boolean {
+    if (!this.showSystemAdministrationMenu()) {
+      return false;
+    }
+    return this.sidebarMenuVisible([
+      'System Administration',
+      'User Management',
+      'Role & Permissions',
+      'Academic Settings',
+      'System Settings',
+      'Audit Logs',
+      'Analytics & Reports',
+      'License Configuration',
+      'Integrations'
+    ]);
+  }
+
+  isSystemAdminUserManagementVisible(): boolean {
+    return (
+      (this.isAdmin() || this.isSuperAdmin()) &&
+      this.matchesSidebarFilter('System Administration', 'User Management')
+    );
+  }
+
+  isSystemAdminRolesVisible(): boolean {
+    return (
+      (this.isAdmin() || this.isSuperAdmin()) &&
+      this.matchesSidebarFilter('System Administration', 'Role & Permissions', 'Role', 'Permissions')
+    );
+  }
+
+  isSystemAdminAcademicSettingsVisible(): boolean {
+    return (
+      (this.isAdmin() || this.isSuperAdmin() || this.canAccessModule('settings')) &&
+      this.matchesSidebarFilter('System Administration', 'Academic Settings')
+    );
+  }
+
+  isSystemAdminSystemSettingsVisible(): boolean {
+    return (
+      (this.canAccessModule('settings') || this.isAdmin() || this.isSuperAdmin()) &&
+      this.matchesSidebarFilter('System Administration', 'System Settings')
+    );
+  }
+
+  isSystemAdminAuditLogsVisible(): boolean {
+    return (
+      (this.isAdmin() || this.isSuperAdmin()) &&
+      this.matchesSidebarFilter('System Administration', 'Audit Logs', 'Audit', 'Log')
+    );
+  }
+
+  isSystemAdminAnalyticsVisible(): boolean {
+    return (
+      (this.isAdmin() ||
+        this.isSuperAdmin() ||
+        this.canAccessModule('finance') ||
+        this.canAccessModule('logistics')) &&
+      this.matchesSidebarFilter(
+        'System Administration',
+        'Analytics & Reports',
+        'Analytics',
+        'Reports'
+      )
+    );
+  }
+
+  isSystemAdminLicenseConfigVisible(): boolean {
+    return (
+      (this.isAdmin() || this.isSuperAdmin()) &&
+      this.matchesSidebarFilter(
+        'System Administration',
+        'License Configuration',
+        'License',
+        'Configuration'
+      )
+    );
+  }
+
+  isSystemAdminIntegrationsVisible(): boolean {
+    return (
+      (this.isAdmin() || this.isSuperAdmin()) &&
+      this.matchesSidebarFilter('System Administration', 'Integrations')
+    );
   }
 
   toggleMobileMenu(): void {

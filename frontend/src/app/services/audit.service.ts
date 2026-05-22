@@ -16,7 +16,19 @@ export class AuditService {
     return this.http.post(`${this.apiUrl}/audit/activity`, { module }, { headers: new HttpHeaders(headers) });
   }
 
-  getUserSessions(params?: { startDate?: string; endDate?: string; role?: string; search?: string; page?: string; limit?: string }): Observable<any[]> {
+  getUserSessions(params?: {
+    startDate?: string;
+    endDate?: string;
+    role?: string;
+    search?: string;
+    action?: string;
+    entityId?: string;
+    performedBy?: string;
+    page?: string;
+    limit?: string;
+    sortKey?: string;
+    sortDir?: string;
+  }): Observable<any> {
     let httpParams = new HttpParams();
     if (params) {
       if (params.startDate && params.startDate !== 'undefined') {
@@ -30,6 +42,15 @@ export class AuditService {
       }
       if (params.search && params.search !== 'undefined') {
         httpParams = httpParams.set('search', params.search);
+      }
+      if (params.action && params.action !== 'all') {
+        httpParams = httpParams.set('action', params.action);
+      }
+      if (params.entityId?.trim()) {
+        httpParams = httpParams.set('entityId', params.entityId.trim());
+      }
+      if (params.performedBy?.trim()) {
+        httpParams = httpParams.set('performedBy', params.performedBy.trim());
       }
       if ((params as any).sortKey) {
         httpParams = httpParams.set('sortKey', (params as any).sortKey);

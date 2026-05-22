@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { Observable, of, throwError, TimeoutError } from 'rxjs';
+import { catchError, tap, timeout } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -40,7 +40,13 @@ export class SettingsService {
 
   getSettings(): Observable<any> {
     return this.http.get(`${this.apiUrl}/settings`).pipe(
-      catchError(this.handleError('getSettings', {}))
+      timeout(60000),
+      catchError((error) => {
+        if (error instanceof TimeoutError || error?.name === 'TimeoutError') {
+          return throwError(() => error);
+        }
+        return this.handleError('getSettings', {})(error);
+      })
     );
   }
 

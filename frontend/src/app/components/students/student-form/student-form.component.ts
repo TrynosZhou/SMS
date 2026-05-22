@@ -107,6 +107,15 @@ goBack() {
     this.router.navigate([target]);
   }
 
+  clearAlert(type: 'success' | 'error'): void {
+    if (type === 'success') {
+      this.success = '';
+    } else {
+      this.error = '';
+    }
+    this.cdr.markForCheck();
+  }
+
   ngOnInit() {
     this.readQueryParams();
     this.loadClasses();

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -18,7 +19,7 @@ export class InventoryService {
   }
 
   listTextbooks(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.base}/textbooks`);
+    return this.http.get<unknown>(`${this.base}/textbooks`).pipe(map(res => this.asArray(res)));
   }
 
   createTextbook(body: any): Observable<any> {
@@ -34,7 +35,7 @@ export class InventoryService {
   }
 
   listFurniture(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.base}/furniture`);
+    return this.http.get<unknown>(`${this.base}/furniture`).pipe(map(res => this.asArray(res)));
   }
 
   createFurniture(body: any): Observable<any> {
@@ -53,14 +54,18 @@ export class InventoryService {
     let p = new HttpParams();
     if (params?.studentId) p = p.set('studentId', params.studentId);
     if (params?.status) p = p.set('status', params.status);
-    return this.http.get<any[]>(`${this.base}/issuances/textbooks`, { params: p });
+    return this.http
+      .get<unknown>(`${this.base}/issuances/textbooks`, { params: p })
+      .pipe(map(res => this.asArray(res)));
   }
 
   listFurnitureIssuances(params?: { studentId?: string; status?: string }): Observable<any[]> {
     let p = new HttpParams();
     if (params?.studentId) p = p.set('studentId', params.studentId);
     if (params?.status) p = p.set('status', params.status);
-    return this.http.get<any[]>(`${this.base}/issuances/furniture`, { params: p });
+    return this.http
+      .get<unknown>(`${this.base}/issuances/furniture`, { params: p })
+      .pipe(map(res => this.asArray(res)));
   }
 
   issuePermanent(catalogId: string, studentId: string, notes?: string): Observable<any> {
@@ -99,7 +104,7 @@ export class InventoryService {
         if (v) p = p.set(k, v);
       });
     }
-    return this.http.get<any[]>(`${this.base}/fines`, { params: p });
+    return this.http.get<unknown>(`${this.base}/fines`, { params: p }).pipe(map(res => this.asArray(res)));
   }
 
   createFine(body: any): Observable<any> {
@@ -233,5 +238,18 @@ export class InventoryService {
       if (v) p = p.set(k, v);
     });
     return p;
+  }
+
+  private asArray(res: unknown): any[] {
+    if (Array.isArray(res)) {
+      return res;
+    }
+    if (res && typeof res === 'object') {
+      const data = (res as { data?: unknown }).data;
+      if (Array.isArray(data)) {
+        return data;
+      }
+    }
+    return [];
   }
 }

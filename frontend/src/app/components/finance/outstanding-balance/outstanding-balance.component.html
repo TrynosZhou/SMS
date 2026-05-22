@@ -1,190 +1,196 @@
-<div class="container modern-container">
-  <!-- Modern Header -->
-  <div class="page-header modern-header-section">
-    <div class="header-content">
-      <div class="header-title-section">
-        <div class="header-icon-wrapper">
-          <span class="header-main-icon">💰</span>
-        </div>
+<div class="ob-page">
+  <div class="ob-toast-stack" *ngIf="success || error">
+    <div class="ob-toast ob-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="ob-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="ob-toast ob-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="ob-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="ob-hero">
+    <div class="ob-hero__main">
+      <div class="ob-hero-left">
+        <span class="ob-hero-icon" aria-hidden="true">⚠️</span>
         <div>
-          <h1>Unpaid Invoices</h1>
-          <p class="header-subtitle">Students with outstanding invoice balances</p>
-          <p class="header-meta" *ngIf="lastLoadedAt && !loading">
-            Last updated {{ lastLoadedAt | date:'medium' }}
+          <span class="ob-hero-eyebrow">Financial Reports</span>
+          <h1>Outstanding Fees</h1>
+          <p class="ob-hero-sub">
+            Students with unpaid invoice balances — filter by class, search, and record payments in one click.
+          </p>
+          <p class="ob-hero-meta" *ngIf="lastLoadedAt && !loading">
+            Last updated {{ lastLoadedAt | date : 'medium' }}
           </p>
         </div>
       </div>
+      <div class="ob-hero__actions" *ngIf="hasData">
+        <button type="button" class="ob-hero-refresh" (click)="loadOutstandingBalances()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <button type="button" class="ob-hero-btn" (click)="toggleViewMode()" title="Toggle view">
+          {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
+        </button>
+        <button type="button" class="ob-hero-btn ob-hero-btn--white" (click)="exportCsv()" [disabled]="!filteredBalances.length || loading">CSV</button>
+        <button type="button" class="ob-hero-btn ob-hero-btn--white" (click)="previewPdf()" [disabled]="loadingPdf || !filteredBalances.length">Preview</button>
+        <button type="button" class="ob-hero-btn ob-hero-btn--white" (click)="downloadPdf()" [disabled]="downloadingPdf || !filteredBalances.length">
+          {{ downloadingPdf ? '…' : 'PDF' }}
+        </button>
+        <button type="button" class="ob-hero-btn ob-hero-btn--white" (click)="printReport()" [disabled]="!filteredBalances.length || loading">Print</button>
+      </div>
     </div>
-  </div>
 
-  <!-- Alert Messages -->
-  <div class="alert alert-error modern-alert" *ngIf="error">
-    <span class="alert-icon">⚠️</span>
-    <span>{{ error }}</span>
-    <button class="alert-close" (click)="error = ''" title="Close">&times;</button>
-  </div>
-
-  <!-- Search and Filter Section -->
-  <div class="filters-section modern-filters" *ngIf="!loading && outstandingBalances.length > 0">
-    <div class="filters-header">
-      <h3>
-        <span class="filter-icon">🔍</span>
-        Search & Filter
-      </h3>
-      <button class="btn-clear-filters" (click)="clearFilters()" *ngIf="hasActiveFilters()">
-        🗑️ Clear Filters
-      </button>
+    <div class="ob-hero-stats" *ngIf="hasData && !loading">
+      <article class="ob-stat ob-stat--rose">
+        <span class="ob-stat__value">{{ currencySymbol }}{{ formatCurrency(dashboardStats.totalOutstanding) }}</span>
+        <span class="ob-stat__label">Filtered total</span>
+      </article>
+      <article class="ob-stat">
+        <span class="ob-stat__value">{{ dashboardStats.students }}</span>
+        <span class="ob-stat__label">Students owing</span>
+      </article>
+      <article class="ob-stat">
+        <span class="ob-stat__value">{{ dashboardStats.classes }}</span>
+        <span class="ob-stat__label">Classes</span>
+      </article>
+      <article class="ob-stat ob-stat--amber">
+        <span class="ob-stat__value">{{ currencySymbol }}{{ formatCurrency(dashboardStats.largest) }}</span>
+        <span class="ob-stat__label">Largest balance</span>
+      </article>
+      <article class="ob-stat">
+        <span class="ob-stat__value">{{ currencySymbol }}{{ formatCurrency(dashboardStats.average) }}</span>
+        <span class="ob-stat__label">Avg balance</span>
+      </article>
     </div>
-    <div class="filters-grid">
-      <div class="search-input-wrapper modern-search">
-        <span class="search-icon">🔍</span>
+    <div class="ob-hero-stats ob-hero-stats--skeleton" *ngIf="loading">
+      <div class="ob-skeleton" *ngFor="let i of [1,2,3,4,5]"></div>
+    </div>
+  </header>
+
+  <section class="ob-panel" *ngIf="hasData && !loading">
+    <div class="ob-panel__head-row">
+      <div>
+        <h2 class="ob-panel__title">Filters & search</h2>
+        <p class="ob-panel__intro">Find students by ID, name, or phone. Filter by class or sort by balance.</p>
+      </div>
+      <button type="button" class="ob-btn-clear" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
+    </div>
+
+    <div class="ob-filters-row">
+      <div class="ob-search-wrap">
+        <span class="ob-search-icon" aria-hidden="true">🔍</span>
         <input
           #obSearch
-          type="text"
-          [value]="searchQuery"
-          (input)="onSearchInput(obSearch.value)"
-          placeholder="Search by Student ID, name, student ID, or phone"
-          class="form-control search-input modern-input">
-        <button *ngIf="searchQuery" class="clear-search" (click)="obSearch.value=''; clearSearch()" title="Clear search">
-          <span>&times;</span>
-        </button>
+          type="search"
+          class="ob-search-input"
+          placeholder="Search student ID, name, or phone…"
+          [disabled]="loading"
+          (input)="onSearchInput(obSearch.value)" />
+        <button type="button" class="ob-search-clear" *ngIf="searchQuery" (click)="obSearch.value=''; clearSearch()">Clear</button>
       </div>
-
-      <div class="filter-select-group">
-        <label for="ob-class">Class</label>
-        <select id="ob-class" [ngModel]="selectedClass" (ngModelChange)="onClassChange($event)" [ngModelOptions]="{standalone:true}">
-          <option value="all">All classes</option>
-          <option *ngFor="let cls of availableClasses" [value]="cls">{{ cls }}</option>
-        </select>
-      </div>
-
-      <div class="filter-select-group">
+      <div class="ob-field">
         <label for="ob-sort">Sort by balance</label>
-        <select id="ob-sort" [ngModel]="sortDirection" (ngModelChange)="onSortDirectionChange($event)" [ngModelOptions]="{standalone:true}">
+        <select id="ob-sort" class="ob-select" [ngModel]="sortDirection" (ngModelChange)="onSortDirectionChange($event)" [ngModelOptions]="{standalone:true}">
           <option value="desc">Highest first</option>
           <option value="asc">Lowest first</option>
         </select>
       </div>
     </div>
-  </div>
 
-  <!-- Loading State -->
-  <div *ngIf="loading" class="loading-container">
-    <div class="skeleton-list">
-      <div class="skeleton-row" *ngFor="let _ of skeletonRows">
-        <div class="skeleton-cell sm"></div>
-        <div class="skeleton-cell"></div>
-        <div class="skeleton-cell"></div>
-        <div class="skeleton-cell sm"></div>
-        <div class="skeleton-cell md"></div>
-        <div class="skeleton-cell md"></div>
-        <div class="skeleton-cell amount"></div>
-      </div>
-    </div>
-    <p>Loading outstanding balances...</p>
-  </div>
-
-  <!-- Empty State -->
-  <div *ngIf="!loading && !error && outstandingBalances.length === 0" class="empty-state modern-empty">
-    <div class="empty-icon-wrapper">
-      <div class="empty-icon">✅</div>
-    </div>
-    <h2>No Outstanding Balances</h2>
-    <p>All students have paid their invoices in full. Great job!</p>
-    <div class="empty-actions">
-      <button class="btn btn-primary" routerLink="/invoices">
-        <span>📋</span> View All Invoices
+    <div class="ob-chips" *ngIf="classChips.length">
+      <button type="button" class="ob-chip" [class.ob-chip--active]="selectedClass === 'all'" (click)="onClassChange('all')">
+        All classes<span class="ob-chip__count">({{ outstandingBalances.length }})</span>
+      </button>
+      <button
+        type="button"
+        class="ob-chip"
+        *ngFor="let chip of classChips"
+        [class.ob-chip--active]="selectedClass === chip.className"
+        (click)="onClassChange(chip.className)">
+        {{ chip.className }}<span class="ob-chip__count">({{ chip.count }})</span>
       </button>
     </div>
-  </div>
 
-  <!-- Table Section -->
-  <div *ngIf="!loading && outstandingBalances.length > 0" class="table-section modern-table-section">
-    <div class="table-header modern-table-header">
-      <div class="table-info">
-        <span class="table-count-badge">{{ filteredBalances.length }}</span>
-        <span class="table-info-text">student(s) with outstanding balances</span>
+    <div class="ob-summary" *ngIf="filterSummary">
+      <span class="ob-summary-pill">{{ filterSummary }}</span>
+    </div>
+  </section>
+
+  <section class="ob-panel ob-data-panel" *ngIf="loading">
+    <div class="ob-skeleton-table" aria-busy="true">
+      <div class="ob-skeleton-row" *ngFor="let _ of skeletonRows">
+        <div class="ob-skel ob-skel-sm"></div>
+        <div class="ob-skel"></div>
+        <div class="ob-skel"></div>
+        <div class="ob-skel ob-skel-sm"></div>
+        <div class="ob-skel ob-skel-md"></div>
+        <div class="ob-skel ob-skel-md"></div>
       </div>
-      <div class="table-summary modern-summary">
-        <span class="summary-label">Total Outstanding:</span>
-        <span class="summary-value">{{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</span>
-        <button
-          class="btn btn-modern btn-export"
-          (click)="exportCsv()"
-          [disabled]="filteredBalances.length === 0"
-          title="Export filtered results to CSV">
-          <span class="btn-icon">🧾</span>
-          <span>Export CSV</span>
-        </button>
-        <button 
-          class="btn btn-modern btn-export"
-          (click)="previewPdf()"
-          [disabled]="loadingPdf || filteredBalances.length === 0"
-          title="Preview Outstanding Balances as PDF">
-          <span class="btn-icon">📄</span>
-          <span *ngIf="!loadingPdf">Preview PDF</span>
-          <span *ngIf="loadingPdf">Loading...</span>
-        </button>
-        <button 
-          class="btn btn-modern btn-export"
-          (click)="downloadPdf()"
-          [disabled]="downloadingPdf || filteredBalances.length === 0"
-          title="Download Outstanding Balances as PDF">
-          <span class="btn-icon">⬇️</span>
-          <span *ngIf="!downloadingPdf">Download PDF</span>
-          <span *ngIf="downloadingPdf">Downloading...</span>
-        </button>
-      </div>
+      <p style="text-align:center;color:#64748b;margin:0">Loading outstanding balances…</p>
+    </div>
+  </section>
+
+  <section class="ob-panel ob-empty" *ngIf="!loading && !error && outstandingBalances.length === 0">
+    <span class="ob-empty-icon" aria-hidden="true">✅</span>
+    <p class="ob-empty-title">No outstanding balances</p>
+    <p class="ob-empty-text">All students have paid their invoices in full.</p>
+    <div class="ob-empty-actions">
+      <a routerLink="/invoices" class="ob-btn-primary">📋 View invoices</a>
+    </div>
+  </section>
+
+  <section class="ob-panel ob-data-panel" *ngIf="!loading && outstandingBalances.length > 0">
+    <div class="ob-empty" *ngIf="filteredBalances.length === 0">
+      <span class="ob-empty-icon" aria-hidden="true">🔎</span>
+      <p class="ob-empty-title">No matching students</p>
+      <p class="ob-empty-text">Try another search or class filter.</p>
+      <button type="button" class="ob-btn-reset" (click)="clearFilters()">Reset filters</button>
     </div>
 
-    <div class="table-wrapper modern-wrapper">
-      <div *ngFor="let group of groupedBalances">
-        <h3 style="margin: 10px 0 6px 0;">Class: {{ group.className }}</h3>
-        <div class="table-responsive">
-          <table class="data-table modern-table table-mobile-cards">
+    <ng-container *ngIf="filteredBalances.length > 0 && viewMode === 'table'">
+      <div class="ob-class-block" *ngFor="let group of groupedBalances; trackBy: trackByClass">
+        <div class="ob-class-head">
+          <h3>{{ group.className }}</h3>
+          <span class="ob-class-subtotal">
+            {{ group.items.length }} student(s) · {{ currencySymbol }}{{ formatCurrency(getGroupSubtotal(group)) }}
+          </span>
+        </div>
+        <div class="ob-table-scroll">
+          <table class="ob-table">
             <thead>
               <tr>
                 <th>Student ID</th>
-                <th>Last Name</th>
-                <th>First Name</th>
+                <th>Last name</th>
+                <th>First name</th>
                 <th>Sex</th>
-                <th>Phone Number</th>
-                <th>Student Type</th>
-                <th class="text-right">Invoice Balance</th>
+                <th>Phone</th>
+                <th>Type</th>
+                <th class="text-right">Balance</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let balance of group.items; let i = index" class="table-row">
-                <td class="student-id-cell" data-label="Student ID">
-                  <span 
-                    class="id-badge clickable-id" 
-                    *ngIf="canManageFinance()"
+              <tr *ngFor="let balance of group.items; trackBy: trackByStudent">
+                <td>
+                  <span
+                    class="ob-id-badge"
+                    [class.ob-id-badge--click]="canManageFinance()"
                     (click)="payInvoice(balance)"
-                    title="Click to record payment">
-                    {{ balance.studentNumber || balance.studentId }}
-                  </span>
-                  <span 
-                    class="id-badge" 
-                    *ngIf="!canManageFinance()">
+                    [title]="canManageFinance() ? 'Record payment' : ''">
                     {{ balance.studentNumber || balance.studentId }}
                   </span>
                 </td>
-                <td class="student-name-cell" data-label="Last Name">{{ balance.lastName }}</td>
-                <td class="student-name-cell" data-label="First Name">{{ balance.firstName }}</td>
-                <td class="student-name-cell" data-label="Sex">{{ balance.gender || '—' }}</td>
-                <td class="phone-cell" data-label="Phone Number">{{ balance.phoneNumber || '—' }}</td>
-                <td class="student-type-cell" data-label="Student Type">{{ balance.studentType || 'Day Scholar' }}</td>
-                <td class="balance-cell text-right" data-label="Invoice Balance">
-                  <span 
-                    class="balance-badge clickable-balance" 
-                    *ngIf="canManageFinance()"
+                <td>{{ balance.lastName }}</td>
+                <td>{{ balance.firstName }}</td>
+                <td>{{ balance.gender || '—' }}</td>
+                <td>{{ balance.phoneNumber || '—' }}</td>
+                <td>{{ balance.studentType || 'Day Scholar' }}</td>
+                <td class="text-right">
+                  <span
+                    class="ob-balance-badge"
+                    [class.ob-balance-badge--click]="canManageFinance()"
                     (click)="payInvoice(balance)"
-                    title="Click to record payment">
-                    {{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}
-                  </span>
-                  <span 
-                    class="balance-badge" 
-                    *ngIf="!canManageFinance()">
+                    [title]="canManageFinance() ? 'Record payment' : ''">
                     {{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}
                   </span>
                 </td>
@@ -193,9 +199,37 @@
           </table>
         </div>
       </div>
-      <div class="table-footer-summary" *ngIf="filteredBalances.length > 0" style="margin-top: 10px; text-align: right;">
-        <strong>Total Outstanding: {{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</strong>
+      <div class="ob-footer-total">
+        <strong>Total outstanding: {{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</strong>
       </div>
-    </div>
-  </div>
+    </ng-container>
+
+    <ng-container *ngIf="filteredBalances.length > 0 && viewMode === 'cards'">
+      <div class="ob-class-block" *ngFor="let group of groupedBalances; trackBy: trackByClass">
+        <div class="ob-class-head">
+          <h3>{{ group.className }}</h3>
+          <span class="ob-class-subtotal">{{ currencySymbol }}{{ formatCurrency(getGroupSubtotal(group)) }}</span>
+        </div>
+        <div class="ob-cards">
+          <article class="ob-card" *ngFor="let balance of group.items; trackBy: trackByStudent">
+            <div class="ob-card__top">
+              <span class="ob-id-badge">{{ balance.studentNumber || balance.studentId }}</span>
+              <span class="ob-balance-badge">{{ currencySymbol }} {{ formatCurrency(balance.invoiceBalance) }}</span>
+            </div>
+            <p class="ob-card__name">{{ balance.firstName }} {{ balance.lastName }}</p>
+            <p class="ob-card__meta">
+              {{ balance.gender || '—' }} · {{ balance.studentType || 'Day Scholar' }}<br />
+              {{ balance.phoneNumber || 'No phone' }}
+            </p>
+            <div class="ob-card__actions" *ngIf="canManageFinance()">
+              <button type="button" class="ob-card__pay" (click)="payInvoice(balance)">Record payment</button>
+            </div>
+          </article>
+        </div>
+      </div>
+      <div class="ob-footer-total">
+        <strong>Total outstanding: {{ currencySymbol }} {{ formatCurrency(getTotalOutstanding()) }}</strong>
+      </div>
+    </ng-container>
+  </section>
 </div>

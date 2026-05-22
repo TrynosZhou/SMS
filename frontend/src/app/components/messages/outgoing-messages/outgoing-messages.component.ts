@@ -1,5 +1,8 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { finalize } from 'rxjs/operators';
+import { activatePageLoad } from '../../../utils/route-activation';
 import { MessageService } from '../../../services/message.service';
 import { AuthService } from '../../../services/auth.service';
 
@@ -8,7 +11,7 @@ import { AuthService } from '../../../services/auth.service';
 templateUrl: './outgoing-messages.component.html',
   styleUrls: ['./outgoing-messages.component.css']
 })
-export class OutgoingMessagesComponent implements OnInit {
+export class OutgoingMessagesComponent implements OnInit, OnDestroy {
   messages: any[] = [];
   filtered: any[] = [];
   displayed: any[] = [];
@@ -29,12 +32,14 @@ export class OutgoingMessagesComponent implements OnInit {
   private pendingSelectId: string | null = null;
   selectedIds = new Set<string>();
   private storageKey = 'outboxFilters';
+  private readonly destroy$ = new Subject<void>();
 
   constructor(
     private messageService: MessageService,
     private authService: AuthService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   @HostListener('document:keydown.escape')
@@ -55,6 +60,12 @@ export class OutgoingMessagesComponent implements OnInit {
     });
     this.loadStoredFilters();
     this.load();
+    activatePageLoad(this.router, this.destroy$, '/messages/outgoing', () => this.load());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   private loadStoredFilters(): void {
@@ -75,26 +86,34 @@ export class OutgoingMessagesComponent implements OnInit {
   load(): void {
     this.loading = true;
     this.error = '';
-    const box = this.authService.hasRole('accountant') ? 'accountant' : 'admin';
-    this.messageService.getStaffMessages(box as any).subscribe({
-      next: (res: any) => {
-        this.loading = false;
-        if (Array.isArray(res?.messages)) this.messages = res.messages;
-        else if (Array.isArray(res)) this.messages = res;
-        else this.messages = [];
-        this.recipients = Array.from(new Set(this.messages.map(m => (m.recipientName || m.recipient || '').trim()).filter(Boolean)));
-        this.applyFilter();
-        if (this.pendingSelectId) {
-          const m = this.messages.find(x => String(x.id || '') === String(this.pendingSelectId));
-          if (m) this.selected = m;
+    this.cdr.markForCheck();
+    this.messageService
+      .getStaffMessages()
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (res: any) => {
+          if (Array.isArray(res?.messages)) this.messages = res.messages;
+          else if (Array.isArray(res)) this.messages = res;
+          else this.messages = [];
+          this.recipients = Array.from(
+            new Set(this.messages.map(m => (m.recipientName || m.recipient || '').trim()).filter(Boolean))
+          );
+          this.applyFilter();
+          if (this.pendingSelectId) {
+            const m = this.messages.find(x => String(x.id || '') === String(this.pendingSelectId));
+            if (m) this.selected = m;
+          }
+        },
+        error: (err: any) => {
+          this.error = err?.error?.message || 'Failed to load outgoing messages';
+          setTimeout(() => (this.error = ''), 5000);
         }
-      },
-      error: (err: any) => {
-        this.loading = false;
-        this.error = err?.error?.message || 'Failed to load outgoing messages';
-        setTimeout(() => this.error = '', 5000);
-      }
-    });
+      });
   }
 
   applyFilter(): void {

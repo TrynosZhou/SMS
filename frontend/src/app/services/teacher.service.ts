@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, timeout } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { PaginatedResponse } from '../types/pagination';
 
@@ -17,6 +17,7 @@ export class TeacherService {
     return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/teachers`, {
       params: { page, limit }
     }).pipe(
+      timeout(60000),
       map(response => {
         // Ensure response is valid before processing
         if (!response) return [];
@@ -45,6 +46,44 @@ export class TeacherService {
         return of([]);
       })
     );
+  }
+
+  /** Loads all teachers for allocation UI; surfaces HTTP errors to the caller. */
+  getTeachersForAllocate(limit = 500): Observable<PaginatedResponse<any>> {
+    return this.http
+      .get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/teachers`, {
+        params: { page: '1', limit: String(limit) }
+      })
+      .pipe(
+        timeout(60000),
+        map((response) => {
+          if (!response) {
+            return { data: [], total: 0, page: 1, limit, totalPages: 0 };
+          }
+          if (Array.isArray(response)) {
+            return {
+              data: response,
+              total: response.length,
+              page: 1,
+              limit,
+              totalPages: Math.max(1, Math.ceil(response.length / limit))
+            };
+          }
+          if (typeof response === 'object' && Array.isArray(response.data)) {
+            return {
+              ...response,
+              data: response.data,
+              total: response.total ?? response.data.length,
+              page: response.page ?? 1,
+              limit: response.limit ?? limit,
+              totalPages:
+                response.totalPages ??
+                Math.max(1, Math.ceil((response.total ?? response.data.length) / limit))
+            };
+          }
+          return { data: [], total: 0, page: 1, limit, totalPages: 0 };
+        })
+      );
   }
 
   getTeachersPaginated(page = 1, limit = 20): Observable<PaginatedResponse<any>> {

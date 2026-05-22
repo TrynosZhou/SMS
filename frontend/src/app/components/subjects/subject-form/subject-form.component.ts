@@ -1,11 +1,15 @@
-import { Component, OnInit, ChangeDetectorRef, AfterViewChecked } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { finalize, takeUntil } from 'rxjs/operators';
 import { SubjectService } from '../../../services/subject.service';
+import { activatePageLoad } from '../../../utils/route-activation';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 
 @Component({
-  standalone: false,  selector: 'app-subject-form',
-templateUrl: './subject-form.component.html',
+  standalone: false,
+  selector: 'app-subject-form',
+  templateUrl: './subject-form.component.html',
   styleUrls: ['./subject-form.component.css'],
   animations: [
     trigger('fadeInOut', [
@@ -19,7 +23,10 @@ templateUrl: './subject-form.component.html',
     ])
   ]
 })
-export class SubjectFormComponent implements OnInit, AfterViewChecked {
+export class SubjectFormComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
+  private editId: string | null = null;
+
   subject: any = {
     name: '',
     code: '',
@@ -29,89 +36,152 @@ export class SubjectFormComponent implements OnInit, AfterViewChecked {
   isEdit = false;
   error = '';
   success = '';
+  loadError = '';
   submitting = false;
-  
-  // Form validation
-  fieldErrors: any = {};
-  touchedFields: Set<string> = new Set();
-  private validationChecked = false;
+  loadingSubject = false;
+
+  readonly skeletonSlots = [1, 2, 3, 4, 5];
+  readonly codeSuggestions = ['MATH', 'ENG', 'SCI', 'BIO', 'CHEM', 'PHY', 'HIST', 'GEO', 'ICT', 'AGR'];
+
+  fieldErrors: Record<string, string> = {};
+  touchedFields = new Set<string>();
 
   constructor(
     private subjectService: SubjectService,
     private route: ActivatedRoute,
     public router: Router,
     private cdr: ChangeDetectorRef
-  ) { }
+  ) {}
 
-  ngOnInit() {
-    const id = this.route.snapshot.params['id'];
-    if (id) {
-      this.isEdit = true;
-      this.loadSubject(id);
-    }
+  get pageTitle(): string {
+    return this.isEdit ? 'Edit subject' : 'Create new subject';
   }
 
-  ngAfterViewChecked() {
-    // Prevent ExpressionChangedAfterItHasBeenCheckedError
-    if (!this.validationChecked) {
-      this.validationChecked = true;
-      setTimeout(() => {
-        this.validationChecked = false;
-      }, 0);
-    }
+  get formCompletion(): number {
+    let score = 0;
+    if (this.subject.name?.trim()) score += 50;
+    if (this.subject.code?.trim() && !this.fieldErrors['code']) score += 40;
+    if (this.subject.description?.trim()) score += 10;
+    return Math.min(100, score);
   }
 
-  loadSubject(id: string) {
-    this.subjectService.getSubjectById(id).subscribe({
-      next: (data: any) => {
-        this.subject = data;
-      },
-      error: (err: any) => {
-        this.error = 'Failed to load subject';
-        setTimeout(() => this.error = '', 5000);
+  get formStats(): { completion: number } {
+    return { completion: this.formCompletion };
+  }
+
+  ngOnInit(): void {
+    this.route.paramMap.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      const id = params.get('id');
+      this.editId = id;
+      this.isEdit = !!id;
+      if (id) {
+        this.loadSubject(id);
+      } else {
+        this.loadingSubject = false;
+        this.subject = { name: '', code: '', description: '', isActive: true };
+        this.cdr.markForCheck();
+      }
+    });
+
+    activatePageLoad(this.router, this.destroy$, '/subjects/', () => {
+      const id = this.route.snapshot.params['id'];
+      if (id && this.isEdit) {
+        this.loadSubject(id);
       }
     });
   }
 
-  onCodeChange() {
-    // Auto-uppercase the code as user types
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  clearAlert(type: 'success' | 'error' | 'load'): void {
+    if (type === 'success') this.success = '';
+    if (type === 'error') this.error = '';
+    if (type === 'load') this.loadError = '';
+    this.cdr.markForCheck();
+  }
+
+  retryLoad(): void {
+    if (this.editId) {
+      this.loadSubject(this.editId);
+    }
+  }
+
+  loadSubject(id: string): void {
+    this.loadingSubject = true;
+    this.loadError = '';
+    this.cdr.markForCheck();
+
+    this.subjectService
+      .getSubjectById(id)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.loadingSubject = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (data: any) => {
+          this.subject = { ...data, isActive: data.isActive !== false };
+          if (this.subject.code) {
+            this.subject.code = String(this.subject.code).toUpperCase();
+          }
+        },
+        error: () => {
+          this.loadError = 'Failed to load subject. Check your connection and try again.';
+        }
+      });
+  }
+
+  applyCodeSuggestion(code: string): void {
+    this.subject.code = code;
+    this.touchedFields.add('code');
+    this.validateField('code');
+    this.cdr.markForCheck();
+  }
+
+  onCodeChange(): void {
     if (this.subject.code) {
       this.subject.code = this.subject.code.toUpperCase().replace(/[^A-Z0-9]/g, '');
     }
     if (this.touchedFields.has('code')) {
       this.validateField('code');
     }
+    this.cdr.markForCheck();
   }
 
-  validateField(fieldName: string) {
+  validateField(fieldName: string): void {
     this.touchedFields.add(fieldName);
     const value = this.subject[fieldName];
-    
+
     switch (fieldName) {
       case 'name':
-        if (!value || value.trim() === '') {
+        if (!value || String(value).trim() === '') {
           this.fieldErrors[fieldName] = 'Subject name is required';
-        } else if (value.length > 100) {
+        } else if (String(value).length > 100) {
           this.fieldErrors[fieldName] = 'Subject name must be 100 characters or less';
         } else {
           delete this.fieldErrors[fieldName];
         }
         break;
       case 'code':
-        if (!value || value.trim() === '') {
+        if (!value || String(value).trim() === '') {
           this.fieldErrors[fieldName] = 'Subject code is required';
-        } else if (value.length > 20) {
+        } else if (String(value).length > 20) {
           this.fieldErrors[fieldName] = 'Subject code must be 20 characters or less';
-        } else if (!/^[A-Z0-9]+$/.test(value)) {
-          this.fieldErrors[fieldName] = 'Subject code must contain only uppercase letters and numbers';
-        } else if (value.length < 2) {
+        } else if (!/^[A-Z0-9]+$/.test(String(value))) {
+          this.fieldErrors[fieldName] = 'Use uppercase letters and numbers only';
+        } else if (String(value).length < 2) {
           this.fieldErrors[fieldName] = 'Subject code must be at least 2 characters';
         } else {
           delete this.fieldErrors[fieldName];
         }
         break;
       case 'description':
-        if (value && value.length > 500) {
+        if (value && String(value).length > 500) {
           this.fieldErrors[fieldName] = 'Description must be 500 characters or less';
         } else {
           delete this.fieldErrors[fieldName];
@@ -121,53 +191,49 @@ export class SubjectFormComponent implements OnInit, AfterViewChecked {
   }
 
   isFieldInvalid(fieldName: string): boolean {
-    // Use a stable check to prevent ExpressionChangedAfterItHasBeenCheckedError
-    if (!this.touchedFields.has(fieldName)) {
-      return false;
-    }
-    return !!this.fieldErrors[fieldName];
+    return this.touchedFields.has(fieldName) && !!this.fieldErrors[fieldName];
   }
 
   getFieldError(fieldName: string): string {
     return this.fieldErrors[fieldName] || '';
   }
 
-  onFieldChange(fieldName: string) {
+  onFieldChange(fieldName: string): void {
     if (this.touchedFields.has(fieldName)) {
       this.validateField(fieldName);
     }
+    this.cdr.markForCheck();
   }
 
   isFormValid(): boolean {
-    // Don't validate during change detection - only check existing errors
-    return !this.fieldErrors['name'] && 
-           !this.fieldErrors['code'] && 
-           !!this.subject.name?.trim() && 
-           !!this.subject.code?.trim();
+    return (
+      !this.fieldErrors['name'] &&
+      !this.fieldErrors['code'] &&
+      !!this.subject.name?.trim() &&
+      !!this.subject.code?.trim() &&
+      /^[A-Z0-9]{2,20}$/.test(String(this.subject.code || ''))
+    );
   }
 
-  onSubmit() {
-    // Mark all fields as touched
+  onSubmit(): void {
     this.touchedFields.add('name');
     this.touchedFields.add('code');
     this.touchedFields.add('description');
-    
-    // Validate all fields
     this.validateField('name');
     this.validateField('code');
     this.validateField('description');
-    
+
     if (!this.isFormValid()) {
-      this.error = 'Please fix the errors in the form';
-      setTimeout(() => this.error = '', 5000);
+      this.error = 'Please fix the errors in the form before saving.';
+      this.cdr.markForCheck();
       return;
     }
 
     this.error = '';
     this.success = '';
     this.submitting = true;
+    this.cdr.markForCheck();
 
-    // Ensure code is uppercase
     const subjectData: any = {
       name: this.subject.name.trim(),
       code: this.subject.code.trim().toUpperCase(),
@@ -175,32 +241,26 @@ export class SubjectFormComponent implements OnInit, AfterViewChecked {
       isActive: this.subject.isActive !== false
     };
 
-    if (this.isEdit) {
-      this.subjectService.updateSubject(this.subject.id, subjectData).subscribe({
-        next: () => {
-          this.success = 'Subject updated successfully';
+    const request$ = this.isEdit
+      ? this.subjectService.updateSubject(this.subject.id, subjectData)
+      : this.subjectService.createSubject(subjectData);
+
+    request$
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
           this.submitting = false;
-          setTimeout(() => this.router.navigate(['/subjects']), 1500);
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.success = this.isEdit ? 'Subject updated successfully' : 'Subject created successfully';
+          setTimeout(() => this.router.navigate(['/subjects']), 1200);
         },
         error: (err: any) => {
-          this.error = err.error?.message || 'Failed to update subject';
-          this.submitting = false;
-          setTimeout(() => this.error = '', 5000);
+          this.error = err.error?.message || (this.isEdit ? 'Failed to update subject' : 'Failed to create subject');
         }
       });
-    } else {
-      this.subjectService.createSubject(subjectData).subscribe({
-        next: () => {
-          this.success = 'Subject created successfully';
-          this.submitting = false;
-          setTimeout(() => this.router.navigate(['/subjects']), 1500);
-        },
-        error: (err: any) => {
-          this.error = err.error?.message || 'Failed to create subject';
-          this.submitting = false;
-          setTimeout(() => this.error = '', 5000);
-        }
-      });
-    }
   }
 }

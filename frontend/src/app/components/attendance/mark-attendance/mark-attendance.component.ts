@@ -23,10 +23,14 @@ classes: any[] = [];
   selectedDate: string = '';
   attendanceData: any[] = [];
   loading = false;
+  loadingClasses = true;
   submitting = false;
   success = '';
   error = '';
   currentTerm: string = '';
+  selectedTerm: string = '';
+  availableTerms: string[] = [];
+  rosterLoaded = false;
   searchQuery: string = '';
   filteredAttendanceData: any[] = [];
   /** Filtered data sorted by last name ascending and grouped by gender for display */
@@ -73,26 +77,83 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
       this.selectedDate = normalized;
     }
     this.loadClasses();
-    this.loadActiveTerm();
+    this.loadAvailableTerms();
   }
 
-  loadActiveTerm() {
+  loadAvailableTerms(): void {
+    const currentYear = new Date().getFullYear();
+    const nextYear = currentYear + 1;
+    this.availableTerms = [
+      `Term 1 ${currentYear}`,
+      `Term 2 ${currentYear}`,
+      `Term 3 ${currentYear}`,
+      `Term 1 ${nextYear}`,
+      `Term 2 ${nextYear}`,
+      `Term 3 ${nextYear}`
+    ];
+
     this.settingsService
       .getActiveTerm()
       .pipe(finalize(() => this.cdr.markForCheck()))
       .subscribe({
-      next: (data: any) => {
-        this.currentTerm = data.activeTerm || data.currentTerm || '';
-        this.cdr.markForCheck();
-      },
-      error: (err: any) => {
-        console.error('Error loading active term:', err);
-        this.cdr.markForCheck();
-}
-    });
+        next: (data: any) => {
+          const active = data.activeTerm || data.currentTerm || '';
+          this.currentTerm = active;
+          if (active) {
+            this.selectedTerm = active;
+            if (!this.availableTerms.includes(active)) {
+              this.availableTerms.unshift(active);
+            }
+          }
+          this.cdr.markForCheck();
+        },
+        error: (err: any) => {
+          console.error('Error loading active term:', err);
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  formatTermLabel(term: string): string {
+    if (!term) {
+      return '';
+    }
+    const match = term.match(/^(Term\s+\d+)\s+(\d{4})$/i);
+    if (match) {
+      return `${match[1]} (${match[2]})`;
+    }
+    return term;
+  }
+
+  get dashboardStats() {
+    return this.getStatistics();
+  }
+
+  clearAlert(type: 'success' | 'error'): void {
+    if (type === 'success') this.success = '';
+    else this.error = '';
+    this.cdr.markForCheck();
+  }
+
+  getSelectedClassName(): string {
+    const cls = this.classes.find(c => c.id === this.selectedClassId);
+    return cls?.name || '—';
+  }
+
+  refreshAttendance(): void {
+    if (this.selectedClassId) {
+      this.onClassChange();
+    }
+  }
+
+  resetForm(): void {
+    if (this.selectedClassId) {
+      this.onClassChange();
+    }
   }
 
   loadClasses() {
+    this.loadingClasses = true;
     const user = this.authService.getCurrentUser();
     const isTeacher = user?.role === 'teacher';
     const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
@@ -103,7 +164,9 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
         next: (teacher: any) => {
           if (!teacher?.id) {
             this.classes = [];
+            this.loadingClasses = false;
             this.error = 'No teacher profile found. Please contact the administrator.';
+            this.cdr.markForCheck();
             return;
           }
           this.teacherService.getTeacherClasses(teacher.id).subscribe({
@@ -116,19 +179,22 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
               } else {
                 this.error = '';
               }
+              this.loadingClasses = false;
               this.cdr.markForCheck();
-},
+            },
             error: (err: any) => {
               this.error = 'Failed to load your assigned classes';
               this.classes = [];
+              this.loadingClasses = false;
               console.error(err);
               this.cdr.markForCheck();
-}
+            }
           });
         },
         error: (err: any) => {
           this.error = 'Failed to load teacher profile';
           this.classes = [];
+          this.loadingClasses = false;
           console.error(err);
           this.cdr.markForCheck();
         }
@@ -136,31 +202,62 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
     } else {
       this.classService
         .getClasses()
-        .pipe(finalize(() => this.cdr.markForCheck()))
+        .pipe(
+          finalize(() => {
+            this.loadingClasses = false;
+            this.cdr.markForCheck();
+          })
+        )
         .subscribe({
           next: (data: any) => {
             this.classes = data.filter((c: any) => c.isActive !== false);
             this.error = '';
-            this.cdr.markForCheck();
           },
           error: (err: any) => {
             this.error = 'Failed to load classes';
             this.classes = [];
             console.error(err);
-            this.cdr.markForCheck();
           }
         });
-}
+    }
+  }
+
+  fetchClassList(): void {
+    if (!this.selectedTerm) {
+      this.error = 'Please choose a term.';
+      this.cdr.markForCheck();
+      return;
+    }
+    if (!this.selectedClassId) {
+      this.error = 'Please choose a class.';
+      this.cdr.markForCheck();
+      return;
+    }
+    if (!this.selectedDate) {
+      this.error = 'Please choose a date.';
+      this.cdr.markForCheck();
+      return;
+    }
+    const normalized = this.normalizeToWeekday(this.selectedDate);
+    if (normalized !== this.selectedDate) {
+      this.selectedDate = normalized;
+      this.error = 'Weekends are not allowed. Date was moved to the nearest school day (Mon–Fri).';
+    } else {
+      this.error = '';
+    }
+    this.onClassChange();
   }
 
   onClassChange() {
     if (!this.selectedClassId) {
       this.students = [];
       this.attendanceData = [];
+      this.rosterLoaded = false;
       return;
     }
 
     this.loading = true;
+    this.rosterLoaded = false;
     this.error = '';
     
     // Load students for the selected class
@@ -170,11 +267,15 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
         this.initializeAttendanceData();
         this.loadExistingAttendance();
         this.loading = false;
+        this.rosterLoaded = true;
+        this.cdr.markForCheck();
       },
       error: (err: any) => {
         this.error = 'Failed to load students';
         this.loading = false;
+        this.rosterLoaded = false;
         console.error(err);
+        this.cdr.markForCheck();
       }
     });
   }
@@ -227,21 +328,34 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
     });
   }
 
-  onDateChange() {
-    if (this.selectedClassId && this.selectedDate) {
-      // Enforce Mon–Fri only: if weekend selected, auto-correct to nearest weekday.
-      const normalized = this.normalizeToWeekday(this.selectedDate);
-      if (normalized !== this.selectedDate) {
-        this.selectedDate = normalized;
-        this.error = 'Weekends are not allowed. Date was moved to the nearest school day (Mon–Fri).';
-      } else if (this.isWeekendSelected()) {
-        // Fallback (should not happen because normalizeToWeekday handles it)
-        this.error = 'You cannot mark attendance on weekends (Saturday or Sunday).';
-      } else {
-        this.error = '';
-      }
-      this.loadExistingAttendance();
+  onDateChange(): void {
+    if (!this.rosterLoaded || !this.selectedClassId || !this.selectedDate) {
+      return;
     }
+    const normalized = this.normalizeToWeekday(this.selectedDate);
+    if (normalized !== this.selectedDate) {
+      this.selectedDate = normalized;
+      this.error = 'Weekends are not allowed. Date was moved to the nearest school day (Mon–Fri).';
+    } else if (this.isWeekendSelected()) {
+      this.error = 'You cannot mark attendance on weekends (Saturday or Sunday).';
+    } else {
+      this.error = '';
+    }
+    this.loadExistingAttendance();
+  }
+
+  onTermChange(): void {
+    this.currentTerm = this.selectedTerm;
+    this.rosterLoaded = false;
+    this.students = [];
+    this.attendanceData = [];
+    this.updateFilteredData();
+    this.cdr.markForCheck();
+  }
+
+  onSelectionFieldChange(): void {
+    this.rosterLoaded = false;
+    this.cdr.markForCheck();
   }
 
   getStudentName(studentId: string): string {
@@ -311,12 +425,14 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
         this.submitting = false;
         this.hasUnsavedChanges = false;
         this.lastSavedDate = new Date();
-        setTimeout(() => this.success = '', 5000);
+        this.cdr.markForCheck();
+        setTimeout(() => { this.success = ''; this.cdr.markForCheck(); }, 5000);
       },
       error: (err: any) => {
         this.error = err.error?.message || 'Failed to mark attendance';
         this.submitting = false;
-        setTimeout(() => this.error = '', 5000);
+        this.cdr.markForCheck();
+        setTimeout(() => { this.error = ''; this.cdr.markForCheck(); }, 5000);
       }
     });
   }
@@ -587,21 +703,25 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
       present: 0,
       absent: 0,
       late: 0,
+      excused: 0,
       total: this.attendanceData.length
     };
-    
+
     this.attendanceData.forEach(item => {
       if (item.status === 'present') stats.present++;
       else if (item.status === 'absent') stats.absent++;
       else if (item.status === 'late') stats.late++;
+      else if (item.status === 'excused') stats.excused++;
     });
-    
+
     return stats;
   }
 
   getAttendanceRate(): number {
     const stats = this.getStatistics();
-    if (stats.total === 0) return 0;
+    if (stats.total === 0) {
+      return 0;
+    }
     return Math.round((stats.present / stats.total) * 100);
   }
 

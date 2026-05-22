@@ -1,4 +1,486 @@
-<div class="fr-page container modern-container">
+<!-- Enrolment vs Billing — modern layout -->
+<div class="evb-page fr-page" *ngIf="isEnrolmentReport">
+  <div class="evb-toast-stack" *ngIf="success || error">
+    <div class="evb-toast evb-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="evb-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="evb-toast evb-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="evb-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="evb-hero">
+    <div class="evb-hero__main">
+      <div class="evb-hero-left">
+        <span class="evb-hero-icon" aria-hidden="true">{{ meta.icon }}</span>
+        <div>
+          <span class="evb-hero-eyebrow">Financial Reports</span>
+          <h1>{{ meta.title }}</h1>
+          <p class="evb-hero-sub">{{ meta.subtitle }}</p>
+          <p class="evb-hero-meta" *ngIf="lastLoadedAt && !loading">
+            Last updated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
+            <span *ngIf="term"> · Term: {{ term }}</span>
+          </p>
+        </div>
+      </div>
+      <div class="evb-hero__actions">
+        <button type="button" class="evb-hero-refresh" (click)="loadReport()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <ng-container *ngIf="hasEnrolmentData">
+          <a routerLink="/invoices" class="evb-hero-btn evb-hero-btn--white">Invoices</a>
+          <button type="button" class="evb-hero-btn evb-hero-btn--white" (click)="exportCsv()" [disabled]="!enrolmentRows.length || loading">CSV</button>
+          <button type="button" class="evb-hero-btn evb-hero-btn--white" (click)="printEnrolmentReport()" [disabled]="!displayedEnrolmentRows.length || loading">Print</button>
+          <a routerLink="/invoices/new" class="evb-hero-btn evb-hero-btn--accent">+ New invoice</a>
+        </ng-container>
+      </div>
+    </div>
+
+    <div class="evb-hero-stats" *ngIf="hasEnrolmentData && !loading">
+      <article class="evb-stat">
+        <span class="evb-stat__value">{{ enrolmentStats.enrolledActive }}</span>
+        <span class="evb-stat__label">Enrolled (active)</span>
+      </article>
+      <article class="evb-stat evb-stat--mint">
+        <span class="evb-stat__value">{{ enrolmentStats.withInvoice }}</span>
+        <span class="evb-stat__label">Enrolled &amp; billed</span>
+      </article>
+      <article class="evb-stat evb-stat--amber">
+        <span class="evb-stat__value">{{ enrolmentStats.enrolledNotBilled }}</span>
+        <span class="evb-stat__label">Not billed</span>
+      </article>
+      <article class="evb-stat evb-stat--rose">
+        <span class="evb-stat__value">{{ enrolmentStats.billedNotEnrolled }}</span>
+        <span class="evb-stat__label">Billed — not in class</span>
+      </article>
+      <article class="evb-stat">
+        <span class="evb-stat__value">{{ billingRate }}%</span>
+        <span class="evb-stat__label">Billing rate</span>
+      </article>
+      <article class="evb-stat">
+        <span class="evb-stat__value">{{ displayedEnrolmentRows.length }}</span>
+        <span class="evb-stat__label">Rows shown</span>
+      </article>
+    </div>
+    <div class="evb-hero-stats evb-hero-stats--skeleton" *ngIf="loading">
+      <div class="evb-skeleton" *ngFor="let i of skeletonRows"></div>
+    </div>
+  </header>
+
+  <section class="evb-progress-panel" *ngIf="hasEnrolmentData && !loading && enrolmentStats.enrolledActive > 0">
+    <div class="evb-progress-head">
+      <h3>Billing coverage — {{ term || 'selected term' }}</h3>
+      <span class="evb-progress-pct">{{ billingRate }}%</span>
+    </div>
+    <div class="evb-progress-bar" role="progressbar" [attr.aria-valuenow]="billingRate" aria-valuemin="0" aria-valuemax="100">
+      <div class="evb-progress-fill" [style.width.%]="billingRate"></div>
+    </div>
+    <div class="evb-progress-meta">
+      <span>{{ enrolmentStats.withInvoice }} of {{ enrolmentStats.enrolledActive }} enrolled students have an invoice</span>
+      <span>{{ enrolmentStats.enrolledNotBilled }} still need billing</span>
+      <span *ngIf="enrolmentStats.billedNotEnrolled">{{ enrolmentStats.billedNotEnrolled }} billed outside active class enrolment</span>
+    </div>
+  </section>
+
+  <section class="evb-panel">
+    <div class="evb-panel__head">
+      <h2 class="evb-panel__title">Filters &amp; search</h2>
+      <p class="evb-panel__intro">Choose a term, filter discrepancy type, and search students in the results table.</p>
+    </div>
+
+    <div class="evb-filters-row">
+      <div class="evb-field" *ngIf="availableTerms.length">
+        <label for="evb-term-select">Term</label>
+        <select
+          id="evb-term-select"
+          class="evb-select"
+          [ngModel]="term"
+          (ngModelChange)="onTermChange($event)"
+          [ngModelOptions]="{ standalone: true }"
+          [disabled]="loading">
+          <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
+        </select>
+      </div>
+      <div class="evb-field" *ngIf="!availableTerms.length">
+        <label for="evb-term-input">Term</label>
+        <input
+          id="evb-term-input"
+          type="text"
+          class="evb-term-input"
+          [(ngModel)]="term"
+          (keyup.enter)="loadReport()"
+          [ngModelOptions]="{ standalone: true }"
+          placeholder="e.g. Term 2 2026"
+          [disabled]="loading" />
+      </div>
+
+      <div class="evb-search-wrap">
+        <span class="evb-search-icon" aria-hidden="true">🔍</span>
+        <input
+          #evbSearch
+          type="search"
+          class="evb-search-input"
+          placeholder="Search student #, name, class, status…"
+          [disabled]="loading && !enrolmentRows.length"
+          (input)="onSearchInput(evbSearch.value)" />
+        <button type="button" class="evb-search-clear" *ngIf="searchQuery" (click)="evbSearch.value = ''; clearSearch()">Clear</button>
+      </div>
+
+      <button type="button" class="evb-hero-btn evb-hero-btn--white" style="background:#6d28d9;color:#fff;border:none;height:42px" (click)="loadReport()" [disabled]="loading">
+        {{ loading ? 'Loading…' : 'Refresh' }}
+      </button>
+    </div>
+
+    <div class="evb-chips">
+      <button
+        type="button"
+        class="evb-chip"
+        [class.evb-chip--active]="statusFilter === 'all'"
+        (click)="onStatusFilterChange('all')">
+        All discrepancies<span class="evb-chip__count">({{ statusChipCounts.all }})</span>
+      </button>
+      <button
+        type="button"
+        class="evb-chip"
+        [class.evb-chip--active]="statusFilter === 'enrolled-not-billed'"
+        (click)="onStatusFilterChange('enrolled-not-billed')">
+        Enrolled — not billed<span class="evb-chip__count">({{ statusChipCounts.enrolledNotBilled }})</span>
+      </button>
+      <button
+        type="button"
+        class="evb-chip"
+        [class.evb-chip--active]="statusFilter === 'billed-not-enrolled'"
+        (click)="onStatusFilterChange('billed-not-enrolled')">
+        Billed — not in class<span class="evb-chip__count">({{ statusChipCounts.billedNotEnrolled }})</span>
+      </button>
+    </div>
+
+    <div class="evb-summary" *ngIf="enrolmentFilterSummary && !loading">
+      <span class="evb-summary-pill">{{ enrolmentFilterSummary }}</span>
+    </div>
+  </section>
+
+  <section class="evb-panel evb-table-panel" *ngIf="loading">
+    <div class="evb-skeleton-table" aria-busy="true">
+      <div class="evb-skeleton-row" *ngFor="let _ of skeletonRows">
+        <div class="evb-skel evb-skel-sm"></div>
+        <div class="evb-skel"></div>
+        <div class="evb-skel evb-skel-md"></div>
+        <div class="evb-skel evb-skel-md"></div>
+      </div>
+      <p style="text-align:center;color:#64748b;margin:0">Loading enrolment vs billing…</p>
+    </div>
+  </section>
+
+  <section class="evb-panel evb-table-panel" *ngIf="!loading">
+    <div class="evb-table-scroll" *ngIf="displayedEnrolmentRows.length">
+      <table class="evb-table">
+        <thead>
+          <tr>
+            <th>
+              <button type="button" class="evb-th-btn" (click)="toggleEnrolmentSort('studentNumber')">
+                Student # <span class="evb-sort">{{ enrolmentSortIcon('studentNumber') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="evb-th-btn" (click)="toggleEnrolmentSort('name')">
+                Name <span class="evb-sort">{{ enrolmentSortIcon('name') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="evb-th-btn" (click)="toggleEnrolmentSort('className')">
+                Class <span class="evb-sort">{{ enrolmentSortIcon('className') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="evb-th-btn" (click)="toggleEnrolmentSort('status')">
+                Status <span class="evb-sort">{{ enrolmentSortIcon('status') }}</span>
+              </button>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of displayedEnrolmentRows; trackBy: trackByEnrolmentRow">
+            <td>{{ r.studentNumber }}</td>
+            <td>{{ r.name }}</td>
+            <td>{{ r.className }}</td>
+            <td>
+              <span
+                class="evb-status-pill"
+                [class.evb-status-pill--warn]="isEnrolledNotBilled(r.status)"
+                [class.evb-status-pill--alert]="!isEnrolledNotBilled(r.status)">
+                {{ r.status }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="evb-empty" *ngIf="!displayedEnrolmentRows.length && !enrolmentRows.length">
+      <p class="evb-empty-title">All enrolled students are billed</p>
+      <p>No discrepancies for {{ term || 'this term' }}.</p>
+    </div>
+    <div class="evb-empty" *ngIf="!displayedEnrolmentRows.length && enrolmentRows.length">
+      <p class="evb-empty-title">No rows match your filters</p>
+      <p>Try clearing search or choosing a different status chip.</p>
+      <button type="button" class="evb-hero-btn evb-hero-btn--white" style="margin-top:8px" (click)="clearSearch(); onStatusFilterChange('all')">Reset filters</button>
+    </div>
+  </section>
+</div>
+
+<!-- Student Reconciliation — modern layout -->
+<div class="sr-page fr-page" *ngIf="isStudentReconcileReport">
+  <div class="sr-toast-stack" *ngIf="success || error">
+    <div class="sr-toast sr-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="sr-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="sr-toast sr-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="sr-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="sr-hero">
+    <div class="sr-hero__main">
+      <div class="sr-hero-left">
+        <span class="sr-hero-icon" aria-hidden="true">{{ meta.icon }}</span>
+        <div>
+          <span class="sr-hero-eyebrow">Financial Reports</span>
+          <h1>{{ meta.title }}</h1>
+          <p class="sr-hero-sub">{{ meta.subtitle }}</p>
+          <p class="sr-hero-meta" *ngIf="lastLoadedAt && !loading">
+            Last updated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
+            <span *ngIf="term"> · Term: {{ term }}</span>
+          </p>
+        </div>
+      </div>
+      <div class="sr-hero__actions">
+        <button type="button" class="sr-hero-refresh" (click)="loadReport()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <ng-container *ngIf="hasReconcileData">
+          <a routerLink="/outstanding-balance" class="sr-hero-btn sr-hero-btn--white">Outstanding</a>
+          <button type="button" class="sr-hero-btn sr-hero-btn--white" (click)="exportCsv()" [disabled]="!reconcileStudents.length || loading">CSV</button>
+          <button type="button" class="sr-hero-btn sr-hero-btn--white" (click)="printStudentReconciliationReport()" [disabled]="!displayedReconcileStudents.length || loading">Print</button>
+          <a routerLink="/finance/audit" class="sr-hero-btn sr-hero-btn--accent">Finance audit</a>
+        </ng-container>
+      </div>
+    </div>
+
+    <div class="sr-hero-stats" *ngIf="hasReconcileData && !loading">
+      <article class="sr-stat sr-stat--rose">
+        <span class="sr-stat__value">{{ currencySymbol }}{{ formatAmount(reconcile.totalOutstandingTerm) }}</span>
+        <span class="sr-stat__label">Term outstanding</span>
+      </article>
+      <article class="sr-stat">
+        <span class="sr-stat__value">{{ currencySymbol }}{{ formatAmount(reconcile.totalOutstandingLatest) }}</span>
+        <span class="sr-stat__label">Latest-invoice outstanding</span>
+      </article>
+      <article class="sr-stat sr-stat--amber">
+        <span class="sr-stat__value">{{ currencySymbol }}{{ formatAmount(reconcile.difference) }}</span>
+        <span class="sr-stat__label">Difference</span>
+      </article>
+      <article class="sr-stat sr-stat--mint">
+        <span class="sr-stat__value">{{ reconcile.counts?.discrepancies ?? 0 }}</span>
+        <span class="sr-stat__label">Discrepancies</span>
+      </article>
+      <article class="sr-stat">
+        <span class="sr-stat__value">{{ currencySymbol }}{{ formatAmount(reconcile.totalPaymentsForInScope) }}</span>
+        <span class="sr-stat__label">Payments (in scope)</span>
+      </article>
+      <article class="sr-stat">
+        <span class="sr-stat__value">{{ displayedReconcileStudents.length }}</span>
+        <span class="sr-stat__label">Rows shown</span>
+      </article>
+    </div>
+    <div class="sr-hero-stats sr-hero-stats--skeleton" *ngIf="loading">
+      <div class="sr-skeleton" *ngFor="let i of skeletonRows"></div>
+    </div>
+  </header>
+
+  <section class="sr-progress-panel" *ngIf="hasReconcileData && !loading && (reconcile.totalOutstandingTerm || 0) > 0">
+    <div class="sr-progress-head">
+      <h3>Outstanding alignment — term vs latest invoice</h3>
+      <span class="sr-progress-pct">{{ reconcileAlignmentPct }}%</span>
+    </div>
+    <div class="sr-progress-bar" role="progressbar" [attr.aria-valuenow]="reconcileAlignmentPct" aria-valuemin="0" aria-valuemax="100">
+      <div class="sr-progress-fill" [style.width.%]="reconcileAlignmentPct"></div>
+    </div>
+    <div class="sr-progress-meta">
+      <span>Latest-invoice outstanding as a share of term-scoped outstanding</span>
+      <span>{{ reconcile.counts?.inScopeInvoices ?? 0 }} in-scope invoices</span>
+      <span>{{ reconcile.counts?.studentsWithInScopeInvoices ?? 0 }} students with term invoices</span>
+    </div>
+  </section>
+
+  <section class="sr-panel">
+    <h2 class="sr-panel__title">Filters &amp; search</h2>
+    <p class="sr-panel__intro">Select a term, filter discrepancy types, and search students with earlier unpaid invoices.</p>
+
+    <div class="sr-filters-row">
+      <div class="sr-field" *ngIf="availableTerms.length">
+        <label for="sr-term-select">Term</label>
+        <select
+          id="sr-term-select"
+          class="sr-select"
+          [ngModel]="term"
+          (ngModelChange)="onTermChange($event)"
+          [ngModelOptions]="{ standalone: true }"
+          [disabled]="loading">
+          <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
+        </select>
+      </div>
+      <div class="sr-field" *ngIf="!availableTerms.length">
+        <label for="sr-term-input">Term</label>
+        <input
+          id="sr-term-input"
+          type="text"
+          class="sr-term-input"
+          [(ngModel)]="term"
+          (keyup.enter)="loadReport()"
+          [ngModelOptions]="{ standalone: true }"
+          placeholder="e.g. Term 2 2026"
+          [disabled]="loading" />
+      </div>
+
+      <div class="sr-search-wrap">
+        <span class="sr-search-icon" aria-hidden="true">🔍</span>
+        <input
+          #srSearch
+          type="search"
+          class="sr-search-input"
+          placeholder="Search student #, name, invoice…"
+          [disabled]="loading && !reconcileStudents.length"
+          (input)="onReconcileSearchInput(srSearch.value)" />
+        <button type="button" class="sr-search-clear" *ngIf="reconcileSearchQuery" (click)="srSearch.value = ''; clearReconcileSearch()">Clear</button>
+      </div>
+
+      <button type="button" class="sr-hero-btn sr-hero-btn--white" style="background:#6d28d9;color:#fff;border:none;height:42px" (click)="loadReport()" [disabled]="loading">
+        {{ loading ? 'Loading…' : 'Refresh' }}
+      </button>
+    </div>
+
+    <div class="sr-chips">
+      <button
+        type="button"
+        class="sr-chip"
+        [class.sr-chip--active]="reconcileFilter === 'all'"
+        (click)="onReconcileFilterChange('all')">
+        All discrepancies<span class="sr-chip__count">({{ reconcileChipCounts.all }})</span>
+      </button>
+      <button
+        type="button"
+        class="sr-chip"
+        [class.sr-chip--active]="reconcileFilter === 'high-balance'"
+        (click)="onReconcileFilterChange('high-balance')">
+        Earlier outstanding &gt; 1,000<span class="sr-chip__count">({{ reconcileChipCounts.highBalance }})</span>
+      </button>
+      <button
+        type="button"
+        class="sr-chip"
+        [class.sr-chip--active]="reconcileFilter === 'multi-invoice'"
+        (click)="onReconcileFilterChange('multi-invoice')">
+        Multiple earlier invoices<span class="sr-chip__count">({{ reconcileChipCounts.multiInvoice }})</span>
+      </button>
+    </div>
+
+    <span class="sr-summary-pill" *ngIf="reconcileFilterSummary && !loading">{{ reconcileFilterSummary }}</span>
+  </section>
+
+  <section class="sr-panel" *ngIf="loading">
+    <div class="sr-skeleton-table" aria-busy="true">
+      <div class="sr-skeleton-row" *ngFor="let _ of skeletonRows">
+        <div class="sr-skel sr-skel-sm"></div>
+        <div class="sr-skel"></div>
+        <div class="sr-skel sr-skel-md"></div>
+        <div class="sr-skel sr-skel-sm"></div>
+        <div class="sr-skel sr-skel-md"></div>
+      </div>
+      <p style="text-align:center;color:#64748b;margin:0">Loading student reconciliation…</p>
+    </div>
+  </section>
+
+  <section class="sr-panel" *ngIf="!loading && reconcile">
+    <div class="sr-table-scroll" *ngIf="displayedReconcileStudents.length">
+      <table class="sr-table">
+        <thead>
+          <tr>
+            <th>
+              <button type="button" class="sr-th-btn" (click)="toggleReconcileSort('studentNumber')">
+                Student # <span class="sr-sort">{{ reconcileSortIcon('studentNumber') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="sr-th-btn" (click)="toggleReconcileSort('studentName')">
+                Name <span class="sr-sort">{{ reconcileSortIcon('studentName') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="sr-th-btn" (click)="toggleReconcileSort('earlierOutstandingTotal')">
+                Earlier outstanding <span class="sr-sort">{{ reconcileSortIcon('earlierOutstandingTotal') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="sr-th-btn" (click)="toggleReconcileSort('earlierInvoicesCount')">
+                # Earlier inv. <span class="sr-sort">{{ reconcileSortIcon('earlierInvoicesCount') }}</span>
+              </button>
+            </th>
+            <th>Latest invoice</th>
+            <th class="text-right">
+              <button type="button" class="sr-th-btn sr-th-btn-right" (click)="toggleReconcileSort('latestBalance')">
+                Latest balance <span class="sr-sort">{{ reconcileSortIcon('latestBalance') }}</span>
+              </button>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of displayedReconcileStudents; trackBy: trackByReconcileStudent">
+            <td>{{ s.studentNumber }}</td>
+            <td>{{ s.studentName }}</td>
+            <td>
+              <span
+                class="sr-cell-amount"
+                [class.sr-cell-amount--high]="isHighEarlierBalance(s.earlierOutstandingTotal)">
+                {{ currencySymbol }} {{ formatAmount(s.earlierOutstandingTotal) }}
+              </span>
+            </td>
+            <td>
+              <span
+                class="sr-badge-count"
+                [class.sr-badge-count--warn]="(s.earlierInvoicesCount || 0) > 1">
+                {{ s.earlierInvoicesCount }}
+              </span>
+            </td>
+            <td>
+              <span>{{ s.latestInvoiceNumber }}</span>
+              <span class="sr-invoice-ref" *ngIf="s.latestInvoiceTerm"> ({{ s.latestInvoiceTerm }})</span>
+            </td>
+            <td class="text-right sr-cell-amount">
+              {{ currencySymbol }} {{ formatAmount(s.latestBalance || 0) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sr-empty" *ngIf="!displayedReconcileStudents.length && !reconcileStudents.length">
+      <p class="sr-empty-title">No discrepancies</p>
+      <p>Term-scoped outstanding matches latest-invoice balances for {{ term || 'this term' }}.</p>
+    </div>
+    <div class="sr-empty" *ngIf="!displayedReconcileStudents.length && reconcileStudents.length">
+      <p class="sr-empty-title">No rows match your filters</p>
+      <p>Try clearing search or choosing a different filter chip.</p>
+      <button type="button" class="sr-hero-btn sr-hero-btn--white" style="margin-top:8px" (click)="clearReconcileSearch(); onReconcileFilterChange('all')">Reset filters</button>
+    </div>
+  </section>
+</div>
+
+<!-- Other financial reports — legacy layout -->
+<div class="fr-page container modern-container" *ngIf="isLegacyReport">
   <div class="page-header modern-header-section">
     <div class="header-title-section">
       <span class="header-main-icon">{{ meta.icon }}</span>
@@ -14,7 +496,7 @@
 
   <div class="alert alert-error" *ngIf="error">{{ error }}</div>
 
-  <div class="fr-toolbar" *ngIf="reportId !== 'aged-debtors' && reportId !== 'class-reconciliation'">
+  <div class="fr-toolbar" *ngIf="reportId !== 'class-reconciliation'">
     <label for="fr-term" *ngIf="availableTerms.length || term">Term</label>
     <input
       *ngIf="!availableTerms.length"
@@ -39,369 +521,16 @@
       type="button"
       class="btn btn-primary"
       (click)="exportCsv()"
-      [disabled]="
-        loading ||
-        (reportId === 'revenue-recognition' && !revenueDisplayedItems.length) ||
-        (reportId === 'aged-debtors' && !agedDisplayedRows.length)
-      "
-      *ngIf="
-        reportId === 'aged-debtors' ||
-        reportId === 'enrolment-vs-billing' ||
-        reportId === 'class-reconciliation' ||
-        reportId === 'student-reconciliation' ||
-        reportId === 'revenue-recognition'
-      ">
+      [disabled]="loading"
+      *ngIf="reportId === 'class-reconciliation'">
       Export CSV
     </button>
   </div>
 
   <div *ngIf="loading" class="loading-container">
-    <ng-container *ngIf="reportId === 'revenue-recognition'">
-      <div class="fr-skeleton-row" *ngFor="let _ of revenueSkeletonRows">
-        <div class="fr-skel fr-skel-sm"></div>
-        <div class="fr-skel fr-skel-sm"></div>
-        <div class="fr-skel"></div>
-        <div class="fr-skel"></div>
-        <div class="fr-skel fr-skel-md"></div>
-        <div class="fr-skel fr-skel-sm"></div>
-      </div>
-      <p class="fr-skeleton-caption">Loading revenue recognition…</p>
-    </ng-container>
-    <ng-container *ngIf="reportId !== 'revenue-recognition'">
-      <div class="spinner"></div>
-      <p>Loading report…</p>
-    </ng-container>
+    <div class="spinner"></div>
+    <p>Loading report…</p>
   </div>
-
-  <!-- Aged debtors -->
-  <ng-container *ngIf="!loading && reportId === 'aged-debtors'">
-    <div class="fr-toolbar">
-      <div class="fr-search-wrap">
-        <span class="fr-search-icon" aria-hidden="true">🔍</span>
-        <input
-          #agedSearch
-          type="search"
-          class="fr-search-input"
-          placeholder="Search student, invoice, bucket..."
-          [value]="agedSearchQuery"
-          (input)="onAgedSearchInput(agedSearch.value)" />
-        <button type="button" class="fr-search-clear" *ngIf="agedSearchQuery" (click)="agedSearch.value=''; clearAgedFilters()">Clear</button>
-      </div>
-
-      <label for="aged-bucket">Bucket</label>
-      <select id="aged-bucket" [ngModel]="agedSelectedBucket" (ngModelChange)="onAgedBucketChange($event)" [ngModelOptions]="{standalone:true}">
-        <option value="all">All buckets</option>
-        <option *ngFor="let b of agedBuckets" [value]="b.label">{{ b.label }}</option>
-      </select>
-
-      <label for="aged-sort">Sort</label>
-      <select id="aged-sort" [ngModel]="agedSortBy" (ngModelChange)="onAgedSortChange($event)" [ngModelOptions]="{standalone:true}">
-        <option value="daysOverdue">Days overdue</option>
-        <option value="balance">Balance</option>
-        <option value="dueDate">Due date</option>
-      </select>
-
-      <select [ngModel]="agedSortDir" (ngModelChange)="onAgedSortDirChange($event)" [ngModelOptions]="{standalone:true}">
-        <option value="desc">Descending</option>
-        <option value="asc">Ascending</option>
-      </select>
-
-      <button type="button" class="btn fr-btn" (click)="clearAgedFilters()">Reset</button>
-      <button type="button" class="btn fr-btn" (click)="exportCsv()" [disabled]="!agedDisplayedRows.length">Export CSV</button>
-    </div>
-
-    <div class="fr-kpi-grid">
-      <div class="fr-kpi fr-kpi-accent">
-        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(getAgedTotalOutstanding()) }}</div>
-        <div class="fr-kpi-label">Displayed outstanding</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ getAgedStudentsCount() }}</div>
-        <div class="fr-kpi-label">Students owing</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ getOldestAgedDays() }}</div>
-        <div class="fr-kpi-label">Oldest days overdue</div>
-      </div>
-      <div class="fr-kpi" *ngFor="let b of agedBuckets">
-        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(b.total) }}</div>
-        <div class="fr-kpi-label">{{ b.label }} ({{ b.count }})</div>
-      </div>
-    </div>
-    <div class="table-section">
-      <div class="table-wrapper">
-        <table class="data-table modern-table">
-          <thead>
-            <tr>
-              <th>Student ID</th>
-              <th>Last name</th>
-              <th>First name</th>
-              <th>Invoice</th>
-              <th>Due</th>
-              <th>Days</th>
-              <th>Bucket</th>
-              <th class="text-right">Balance</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let r of agedDisplayedRows">
-              <td>{{ r.studentNumber }}</td>
-              <td>{{ r.lastName }}</td>
-              <td>{{ r.firstName }}</td>
-              <td>{{ r.invoiceNumber }}</td>
-              <td>{{ r.dueDate }}</td>
-              <td>{{ r.daysOverdue }}</td>
-              <td><span class="fr-method-pill">{{ r.bucket }}</span></td>
-              <td class="text-right">{{ currencySymbol }} {{ formatAmount(r.balance) }}</td>
-            </tr>
-            <tr *ngIf="!agedDisplayedRows.length">
-              <td colspan="8" style="text-align:center;padding:20px;color:#64748b;">No outstanding invoices for the selected filters.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </ng-container>
-
-  <!-- Enrolment vs billing -->
-  <ng-container *ngIf="!loading && reportId === 'enrolment-vs-billing'">
-    <div class="fr-kpi-grid">
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ enrolmentStats.enrolledActive }}</div>
-        <div class="fr-kpi-label">Enrolled (active)</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ enrolmentStats.withInvoice }}</div>
-        <div class="fr-kpi-label">Enrolled &amp; billed</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ enrolmentStats.enrolledNotBilled }}</div>
-        <div class="fr-kpi-label">Enrolled — not billed</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ enrolmentStats.billedNotEnrolled }}</div>
-        <div class="fr-kpi-label">Billed — not in class</div>
-      </div>
-    </div>
-    <div class="table-section">
-      <div class="table-wrapper">
-        <table class="data-table modern-table">
-          <thead>
-            <tr><th>Student #</th><th>Name</th><th>Class</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let r of enrolmentRows">
-              <td>{{ r.studentNumber }}</td>
-              <td>{{ r.name }}</td>
-              <td>{{ r.className }}</td>
-              <td>{{ r.status }}</td>
-            </tr>
-            <tr *ngIf="!enrolmentRows.length">
-              <td colspan="4" style="text-align:center;padding:20px;color:#64748b;">All enrolled students are billed for this term.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </ng-container>
-
-  <!-- Revenue recognition -->
-  <ng-container *ngIf="!loading && reportId === 'revenue-recognition'">
-    <div class="fr-toolbar fr-toolbar-wrap">
-      <div class="fr-search-wrap">
-        <span class="fr-search-icon" aria-hidden="true">🔍</span>
-        <input
-          #revSearch
-          type="search"
-          class="fr-search-input"
-          placeholder="Search receipts, students, invoices…"
-          [value]="revenueSearchQuery"
-          (input)="onRevenueSearchInput(revSearch.value)" />
-        <button type="button" class="fr-search-clear" *ngIf="revenueSearchQuery" (click)="revSearch.value = ''; clearRevenueFilters()">
-          Clear
-        </button>
-      </div>
-      <label for="rev-method">Method</label>
-      <select
-        id="rev-method"
-        [ngModel]="revenueSelectedMethod"
-        (ngModelChange)="onRevenueMethodChange($event)"
-        [ngModelOptions]="{ standalone: true }">
-        <option value="all">All methods</option>
-        <option *ngFor="let m of revenueAvailableMethods" [value]="m">{{ m }}</option>
-      </select>
-      <button type="button" class="btn fr-btn-outline" (click)="revSearch.value = ''; clearRevenueFilters()">Reset filters</button>
-    </div>
-
-    <div class="fr-kpi-grid">
-      <div class="fr-kpi fr-kpi-accent">
-        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(revenue.totalInvoiced) }}</div>
-        <div class="fr-kpi-label">Total invoiced</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(revenue.totalCollected) }}</div>
-        <div class="fr-kpi-label">Collected</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(revenue.totalOutstanding) }}</div>
-        <div class="fr-kpi-label">Outstanding</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ revenue.collectionRate }}%</div>
-        <div class="fr-kpi-label">Collection rate</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ revenue.invoicesCount }}</div>
-        <div class="fr-kpi-label">Invoices (term)</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ revenue.studentsWithInvoices }}</div>
-        <div class="fr-kpi-label">Students with invoices</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ revenue.studentsFullyPaid }} / {{ revenue.studentsPartiallyPaid }} / {{ revenue.studentsUnpaid }}</div>
-        <div class="fr-kpi-label">Paid / partial / unpaid</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ getRevenueCollectedSharePct() }}%</div>
-        <div class="fr-kpi-label">Collected share of invoiced</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ getRevenueOutstandingSharePct() }}%</div>
-        <div class="fr-kpi-label">Outstanding share of invoiced</div>
-      </div>
-    </div>
-
-    <div class="fr-rev-progress-wrap" *ngIf="revenue.totalInvoiced > 0">
-      <div class="fr-rev-progress-label">
-        <span>Collected</span>
-        <span>Outstanding</span>
-      </div>
-      <div class="fr-rev-progress" role="img" [attr.aria-label]="'Collected ' + getRevenueCollectedSharePct() + ' percent'">
-        <div class="fr-rev-progress-collected" [style.width.%]="getRevenueCollectedSharePct()"></div>
-      </div>
-    </div>
-
-    <p class="fr-note">
-      Revenue for <strong>{{ term || 'selected term' }}</strong> from invoice totals and cash receipts. Table shows
-      <strong>{{ revenueDisplayedItems.length }}</strong> receipt line(s){{ revenueSearchQuery || revenueSelectedMethod !== 'all' ? ' (filtered)' : '' }}.
-    </p>
-
-    <div class="table-section">
-      <div class="table-wrapper fr-table-scroll">
-        <table class="data-table modern-table fr-table" *ngIf="revenueDisplayedItems.length > 0">
-          <thead>
-            <tr>
-              <th>
-                <button type="button" class="fr-th-btn" (click)="setRevenueSort('receiptNumber')">
-                  Receipt <span class="fr-sort">{{ revenueSortIndicator('receiptNumber') }}</span>
-                </button>
-              </th>
-              <th>
-                <button type="button" class="fr-th-btn" (click)="setRevenueSort('paymentDate')">
-                  Date <span class="fr-sort">{{ revenueSortIndicator('paymentDate') }}</span>
-                </button>
-              </th>
-              <th>
-                <button type="button" class="fr-th-btn" (click)="setRevenueSort('studentName')">
-                  Student <span class="fr-sort">{{ revenueSortIndicator('studentName') }}</span>
-                </button>
-              </th>
-              <th>
-                <button type="button" class="fr-th-btn" (click)="setRevenueSort('invoiceNumber')">
-                  Invoice <span class="fr-sort">{{ revenueSortIndicator('invoiceNumber') }}</span>
-                </button>
-              </th>
-              <th>Term</th>
-              <th>
-                <button type="button" class="fr-th-btn fr-th-btn-right" (click)="setRevenueSort('amountPaid')">
-                  Amount <span class="fr-sort">{{ revenueSortIndicator('amountPaid') }}</span>
-                </button>
-              </th>
-              <th>
-                <button type="button" class="fr-th-btn" (click)="setRevenueSort('paymentMethod')">
-                  Method <span class="fr-sort">{{ revenueSortIndicator('paymentMethod') }}</span>
-                </button>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let r of revenueDisplayedItems">
-              <td class="fr-cell-mono">{{ r.receiptNumber || '—' }}</td>
-              <td>{{ r.paymentDate | date : 'mediumDate' }}</td>
-              <td>{{ r.studentNumber || '—' }} — {{ r.studentName || '—' }}</td>
-              <td>{{ r.invoiceNumber || '—' }}</td>
-              <td>{{ r.invoiceTerm || '—' }}</td>
-              <td class="fr-cell-amount text-right">{{ currencySymbol }} {{ formatAmount(r.amountPaid) }}</td>
-              <td><span class="fr-method-pill">{{ r.paymentMethod || '—' }}</span></td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div *ngIf="revenueReceiptItems.length > 0 && revenueDisplayedItems.length === 0" class="fr-empty">
-          <p class="fr-empty-title">No matching receipts</p>
-          <p class="fr-empty-text">Adjust search or payment method, or reset filters.</p>
-          <button type="button" class="btn fr-btn" (click)="clearRevenueFilters()">Reset filters</button>
-        </div>
-
-        <div *ngIf="revenueReceiptItems.length === 0" class="fr-empty">
-          <p class="fr-empty-title">No cash receipts for this term</p>
-          <p class="fr-empty-text">Recorded payments will appear here once they exist for the selected term.</p>
-        </div>
-      </div>
-    </div>
-  </ng-container>
-
-  <!-- Student reconciliation -->
-  <ng-container *ngIf="!loading && reportId === 'student-reconciliation' && reconcile">
-    <div class="fr-kpi-grid">
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(reconcile.totalOutstandingTerm) }}</div>
-        <div class="fr-kpi-label">Term outstanding</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(reconcile.totalOutstandingLatest) }}</div>
-        <div class="fr-kpi-label">Latest-invoice outstanding</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ currencySymbol }} {{ formatAmount(reconcile.difference) }}</div>
-        <div class="fr-kpi-label">Difference</div>
-      </div>
-      <div class="fr-kpi">
-        <div class="fr-kpi-value">{{ reconcile.counts?.discrepancies ?? 0 }}</div>
-        <div class="fr-kpi-label">Students with discrepancies</div>
-      </div>
-    </div>
-    <div class="table-section">
-      <div class="table-wrapper">
-        <table class="data-table modern-table">
-          <thead>
-            <tr>
-              <th>Student #</th>
-              <th>Name</th>
-              <th>Earlier outstanding</th>
-              <th># Earlier inv.</th>
-              <th>Latest invoice</th>
-              <th class="text-right">Latest balance</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let s of reconcile.discrepancyStudents">
-              <td>{{ s.studentNumber }}</td>
-              <td>{{ s.studentName }}</td>
-              <td>{{ currencySymbol }} {{ formatAmount(s.earlierOutstandingTotal) }}</td>
-              <td>{{ s.earlierInvoicesCount }}</td>
-              <td>{{ s.latestInvoiceNumber }} ({{ s.latestInvoiceTerm }})</td>
-              <td class="text-right">{{ currencySymbol }} {{ formatAmount(s.latestBalance || 0) }}</td>
-            </tr>
-            <tr *ngIf="!reconcile.discrepancyStudents?.length">
-              <td colspan="6" style="text-align:center;padding:20px;color:#64748b;">No discrepancies for this term.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </ng-container>
 
   <!-- Analytics -->
   <ng-container *ngIf="!loading && reportId === 'analytics-forecasts'">

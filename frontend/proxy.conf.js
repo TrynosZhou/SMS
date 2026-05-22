@@ -7,11 +7,21 @@ const PROXY_CONFIG = {
     timeout: 120000,
     proxyTimeout: 120000,
     onError(err, req, res) {
-      // Suppress ECONNRESET / socket hang up when backend restarts or connection drops
+      if (res.headersSent) return;
+      // Return JSON so the client request completes (avoids infinite "Loading..." in the UI)
       if (err.code === "ECONNRESET" || err.code === "ECONNREFUSED") {
+        res.writeHead(502, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            message:
+              "Backend unavailable. Ensure the API server is running (npm run dev in the backend folder)."
+          })
+        );
         return;
       }
       console.error("[Proxy]", err.message || err);
+      res.writeHead(502, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ message: err.message || "Proxy error" }));
     },
     onProxyReq(proxyReq, req, res) {
       // Optional: add headers if needed

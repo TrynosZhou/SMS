@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { firstValueFrom, Subject } from 'rxjs';
-import { finalize, takeUntil } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, finalize, takeUntil } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
@@ -13,11 +13,22 @@ import { SettingsService } from '../../../services/settings.service';
 @Component({
   standalone: false,  selector: 'app-invoice-list',
   templateUrl: './invoice-list.component.html',
-  styleUrls: ['./invoice-list.component.css']
+  styleUrls: ['./invoice-list.component.css', './invoice-list-modern.css']
 })
 export class InvoiceListComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-invoices: any[] = [];
+  private readonly invoiceSearchInput$ = new Subject<string>();
+  readonly skeletonRows = [0, 1, 2, 3, 4, 5];
+  readonly statusOptions = [
+    { value: '', label: 'All statuses' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'paid', label: 'Paid' },
+    { value: 'partial', label: 'Partial' },
+    { value: 'overdue', label: 'Overdue' },
+    { value: 'void', label: 'Void' }
+  ];
+
+  invoices: any[] = [];
   filteredInvoices: any[] = [];
   students: any[] = [];
   selectedStudent = '';
@@ -40,6 +51,7 @@ invoices: any[] = [];
   };
   success = '';
   error = '';
+  lastLoadedAt: Date | null = null;
   showBulkInvoiceForm = false;
   bulkInvoiceForm: any = {
     currentTerm: '',
@@ -248,6 +260,14 @@ invoices: any[] = [];
 ) { }
 
   ngOnInit() {
+    this.invoiceSearchInput$
+      .pipe(debounceTime(250), distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((q) => {
+        this.invoiceSearchQuery = q;
+        this.filterInvoices();
+        this.cdr.markForCheck();
+      });
+
     if (this.authService.hasRole('parent')) {
       const user = this.authService.getCurrentUser();
       if (user?.parent?.students) {
@@ -372,6 +392,7 @@ invoices: any[] = [];
             this.filterInvoices();
           }
           this.updateCachedStats();
+          this.lastLoadedAt = new Date();
         },
         error: (err: any) => {
           console.error('Error loading invoices:', err);
@@ -379,10 +400,88 @@ invoices: any[] = [];
           this.filteredInvoices = [];
           this.updateCachedStats();
           this.error = 'Failed to load invoices';
-          setTimeout(() => (this.error = ''), 5000);
         }
       });
-}
+  }
+
+  clearAlert(kind: 'success' | 'error'): void {
+    if (kind === 'success') this.success = '';
+    else this.error = '';
+  }
+
+  refresh(): void {
+    this.loadInvoices();
+  }
+
+  onInvoiceSearchInput(value: string): void {
+    this.invoiceSearchInput$.next((value || '').trim());
+  }
+
+  selectStatusFilter(value: string): void {
+    this.selectedStatusFilter = this.selectedStatusFilter === value ? '' : value;
+    this.filterInvoices();
+  }
+
+  get filterSummary(): string {
+    const parts: string[] = [];
+    if (this.invoiceSearchQuery) parts.push(`Search: "${this.invoiceSearchQuery}"`);
+    if (this.selectedStudent) {
+      const st = this.students.find((s) => s.id === this.selectedStudent);
+      parts.push(`Student: ${st ? `${st.firstName} ${st.lastName}` : 'Selected'}`);
+    }
+    if (this.selectedStatusFilter) parts.push(`Status: ${this.selectedStatusFilter}`);
+    if (this.selectedTermFilter) parts.push(`Term: ${this.selectedTermFilter}`);
+    parts.push(`${this.filteredInvoices.length} invoice(s)`);
+    return parts.join(' · ');
+  }
+
+  getInitials(invoice: any): string {
+    const name = `${invoice?.student?.firstName || ''} ${invoice?.student?.lastName || ''}`.trim();
+    if (!name) return '?';
+    const parts = name.split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+  }
+
+  trackByInvoiceId(_index: number, inv: any): string {
+    return inv?.id || String(_index);
+  }
+
+  exportFilteredCsv(): void {
+    const rows = this.filteredInvoices;
+    if (!rows.length) {
+      this.error = 'Nothing to export';
+      return;
+    }
+    const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const headers = ['Invoice', 'Student', 'Amount', 'Paid', 'Balance', 'Status', 'Due', 'Term'];
+    const csv = [
+      headers.join(','),
+      ...rows.map((inv) =>
+        [
+          inv.invoiceNumber,
+          `${inv.student?.firstName || ''} ${inv.student?.lastName || ''}`.trim(),
+          inv.amount,
+          inv.paidAmount,
+          inv.balance,
+          inv.status,
+          inv.dueDate ? new Date(inv.dueDate).toISOString().slice(0, 10) : '',
+          inv.term || ''
+        ]
+          .map(esc)
+          .join(',')
+      )
+    ].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `invoices_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    this.success = `Exported ${rows.length} invoice(s)`;
+    this.cdr.markForCheck();
+  }
 
   onFilterChange() {
     // Navigate to invoice statements with filters

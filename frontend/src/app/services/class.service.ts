@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, throwError, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, timeout } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { PaginatedResponse } from '../types/pagination';
 
@@ -115,8 +115,38 @@ export class ClassService {
     );
   }
 
-  getClassById(id: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/classes/${id}`);
+  /** Strip trailing :suffix from IDs (e.g. UUID:1 from some list views). */
+  cleanClassId(id: string): string {
+    if (!id) return '';
+    let cleanId = String(id).trim();
+    if (cleanId.includes(':')) {
+      cleanId = cleanId.split(':')[0].trim();
+    }
+    const uuidMatch = cleanId.match(
+      /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i
+    );
+    if (uuidMatch) {
+      cleanId = uuidMatch[1];
+    }
+    return cleanId;
+  }
+
+  getClassById(id: string, options?: { slim?: boolean }): Observable<any> {
+    const cleanId = this.cleanClassId(id);
+    if (!cleanId) {
+      return throwError(() => new Error('Invalid class ID'));
+    }
+    const params: Record<string, string> = {};
+    if (options?.slim) {
+      params['slim'] = '1';
+    }
+    return this.http.get(`${this.apiUrl}/classes/${cleanId}`, { params }).pipe(
+      timeout(45000),
+      catchError((error: any) => {
+        console.error('Error loading class by id:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   createClass(classData: any): Observable<any> {

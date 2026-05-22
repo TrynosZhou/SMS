@@ -3,6 +3,9 @@ import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { AppDataSource } from '../config/database';
 import { User, UserRole } from '../entities/User';
+import { Teacher } from '../entities/Teacher';
+import { Student } from '../entities/Student';
+import { Parent } from '../entities/Parent';
 import { Settings } from '../entities/Settings';
 import { AuthRequest } from '../middleware/auth';
 import { IsNull, Not } from 'typeorm';
@@ -713,6 +716,104 @@ export const updateStaffProfile = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error updating staff profile:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+/** Resolve display name for user management list */
+function resolveUserDisplayName(u: User & { teacher?: any; student?: any; parent?: any }): string {
+  const fromUser = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
+  if (fromUser) return fromUser;
+  if (u.teacher) {
+    const t = [u.teacher.firstName, u.teacher.lastName].filter(Boolean).join(' ').trim();
+    if (t) return t;
+  }
+  if (u.student) {
+    const s = [u.student.firstName, u.student.lastName].filter(Boolean).join(' ').trim();
+    if (s) return s;
+  }
+  if (u.parent) {
+    const p = [u.parent.firstName, u.parent.lastName].filter(Boolean).join(' ').trim();
+    if (p) return p;
+  }
+  return u.email || '—';
+}
+
+function resolveUserStatus(u: User): 'Active' | 'Locked' | 'Inactive' {
+  if (u.lockedUntil && new Date(u.lockedUntil) > new Date()) {
+    return 'Locked';
+  }
+  if (u.isActive === false) {
+    return 'Inactive';
+  }
+  return 'Active';
+}
+
+// List all user accounts for User Management page
+export const getAllUsers = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
+      return res.status(403).json({ message: 'Only Administrators can list user accounts' });
+    }
+    if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+
+    const userRepository = AppDataSource.getRepository(User);
+    const users = await userRepository.find({
+      order: { createdAt: 'DESC' }
+    });
+
+    const userIds = users.map((u) => u.id);
+    let teachers: Teacher[] = [];
+    let students: Student[] = [];
+    let parents: Parent[] = [];
+
+    if (userIds.length > 0) {
+      const teacherRepo = AppDataSource.getRepository(Teacher);
+      const studentRepo = AppDataSource.getRepository(Student);
+      const parentRepo = AppDataSource.getRepository(Parent);
+      [teachers, students, parents] = await Promise.all([
+        teacherRepo
+          .createQueryBuilder('t')
+          .where('t.userId IN (:...ids)', { ids: userIds })
+          .getMany(),
+        studentRepo
+          .createQueryBuilder('s')
+          .where('s.userId IN (:...ids)', { ids: userIds })
+          .getMany(),
+        parentRepo
+          .createQueryBuilder('p')
+          .where('p.userId IN (:...ids)', { ids: userIds })
+          .getMany()
+      ]);
+    }
+
+    const teacherByUserId = new Map(teachers.map((t) => [t.userId, t]));
+    const studentByUserId = new Map(students.map((s) => [s.userId, s]));
+    const parentByUserId = new Map(parents.map((p) => [p.userId, p]));
+
+    const list = users.map((u) => {
+      const enriched = {
+        ...u,
+        teacher: teacherByUserId.get(u.id),
+        student: studentByUserId.get(u.id),
+        parent: parentByUserId.get(u.id)
+      };
+      return {
+        id: u.id,
+        username: u.username,
+        email: u.email,
+        name: resolveUserDisplayName(enriched),
+        role: u.role,
+        status: resolveUserStatus(u),
+        isLocked: u.lockedUntil ? new Date(u.lockedUntil) > new Date() : false,
+        isDemo: u.isDemo,
+        createdAt: u.createdAt
+      };
+    });
+
+    res.json({ users: list });
+  } catch (error: any) {
+    console.error('Error listing all users:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

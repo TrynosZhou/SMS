@@ -70,6 +70,9 @@ classes: any[] = [];
   // Modal
   showConfirmModal = false;
 
+  expandedClassIds = new Set<string>();
+  readonly skeletonSlots = [0, 1, 2, 3, 4, 5, 6, 7];
+
   // Promotion rules from database
   promotionRules: any[] = [];
   promotionRulesMap: Map<string, any> = new Map(); // Map fromClassId -> rule
@@ -157,7 +160,8 @@ next: (rules: any) => {
       // Build promotion data
       this.buildPromotionData();
       this.filterStudents();
-      
+      this.filteredPromotionData.forEach(d => this.expandedClassIds.add(d.class.id));
+
       console.log(`Built promotion data for ${this.promotionData.length} classes`);
       this.loading = false;
       this.cdr.markForCheck();
@@ -402,6 +406,62 @@ setTimeout(() => this.error = '', 5000);
 
   getClassesWithStudents(): number {
     return this.promotionData.length;
+  }
+
+  get heroStats() {
+    return {
+      total: this.getTotalStudents(),
+      eligible: this.getEligibleStudents(),
+      classes: this.getClassesWithStudents(),
+      ready: this.getClassesWithPromotionPath(),
+      blocked: this.getClassesWithoutNextPath(),
+      selected: this.getSelectedCount(),
+      rules: this.promotionRules.length
+    };
+  }
+
+  getClassesWithPromotionPath(): number {
+    return safeArray(this.promotionData).filter(d => d.nextClass !== null).length;
+  }
+
+  getClassesWithoutNextPath(): number {
+    return safeArray(this.promotionData).filter(d => !d.nextClass).length;
+  }
+
+  clearAlert(type: 'success' | 'error'): void {
+    if (type === 'success') {
+      this.success = '';
+    } else {
+      this.error = '';
+    }
+    this.cdr.markForCheck();
+  }
+
+  refreshData(): void {
+    this.loadPromotionRules();
+  }
+
+  isClassExpanded(classId: string): boolean {
+    return this.expandedClassIds.has(classId);
+  }
+
+  toggleClassExpand(classId: string): void {
+    if (this.expandedClassIds.has(classId)) {
+      this.expandedClassIds.delete(classId);
+    } else {
+      this.expandedClassIds.add(classId);
+    }
+    this.cdr.markForCheck();
+  }
+
+  expandAllClasses(): void {
+    this.filteredPromotionData.forEach(d => this.expandedClassIds.add(d.class.id));
+    this.cdr.markForCheck();
+  }
+
+  collapseAllClasses(): void {
+    this.expandedClassIds.clear();
+    this.cdr.markForCheck();
   }
 
   getPromotionCount(): number {

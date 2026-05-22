@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, timeout } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { PaginatedResponse } from '../types/pagination';
 
@@ -15,6 +15,7 @@ export class SubjectService {
 
   getSubjects(): Observable<any[]> {
     return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/subjects`).pipe(
+      timeout(60000),
       map(response => {
         // Ensure response is valid before processing
         if (!response) return [];

@@ -1,340 +1,334 @@
-<div class="container">
-  <div class="class-form-wrapper">
-    <!-- Header Section -->
-    <div class="form-header">
-      <div class="header-content">
-        <h1>
-          <span class="icon">📚</span>
-          {{ isEdit ? 'Edit Class' : 'Create New Class' }}
-        </h1>
-        <p class="subtitle">{{ isEdit ? 'Update class information and settings' : 'Add a new class to the system' }}</p>
-      </div>
-      <button class="btn btn-icon" (click)="router.navigate(['/classes'])" title="Back to Classes">
-        ← Back
-      </button>
-    </div>
-
-    <!-- Alert Messages -->
-    <div class="alert alert-success" *ngIf="success" [@fadeInOut]>
-      <span class="alert-icon">✓</span>
+<div class="cf-page">
+  <div class="cf-toast-stack" *ngIf="success || error || loadError">
+    <div class="cf-toast cf-toast--success" *ngIf="success" [@fadeInOut] role="status">
       <span>{{ success }}</span>
+      <button type="button" class="cf-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
     </div>
-    <div class="alert alert-error" *ngIf="error" [@fadeInOut]>
-      <span class="alert-icon">✕</span>
+    <div class="cf-toast cf-toast--error" *ngIf="error" [@fadeInOut] role="alert">
       <span>{{ error }}</span>
+      <button type="button" class="cf-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="cf-toast cf-toast--error" *ngIf="loadError && !error" [@fadeInOut] role="alert">
+      <span>{{ loadError }}</span>
+      <button type="button" class="cf-btn-secondary cf-btn-sm" (click)="loadTeachersAndSubjects()">Retry</button>
+      <button type="button" class="cf-toast__dismiss" (click)="clearAlert('load')" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="cf-hero">
+    <div class="cf-hero__main">
+      <div class="cf-hero-left">
+        <span class="cf-hero-icon" aria-hidden="true">{{ isEdit ? '✏️' : '➕' }}</span>
+        <div>
+          <span class="cf-hero-eyebrow">Class Manager</span>
+          <h1>{{ pageTitle }}</h1>
+          <p class="cf-hero-sub">
+            {{ isEdit ? 'Update class details, teachers, and subjects.' : 'Set up a new class — name, level, and optional staff & subject links.' }}
+          </p>
+        </div>
+      </div>
+      <div class="cf-hero__actions">
+        <a routerLink="/classes" class="cf-hero-btn cf-hero-btn--white">← Manage classes</a>
+        <a routerLink="/classes/lists" class="cf-hero-btn cf-hero-btn--white">Class lists</a>
+        <button
+          type="button"
+          class="cf-hero-btn"
+          (click)="loadTeachersAndSubjects()"
+          [disabled]="assignmentsLoading"
+          title="Reload teachers and subjects">
+          <span [class.spinning]="assignmentsLoading">↻</span> Reload lists
+        </button>
+      </div>
     </div>
 
-    <!-- Form Container -->
-    <div class="form-container">
-      <form (ngSubmit)="onSubmit()" #classForm="ngForm">
-        <!-- Basic Information Section -->
-        <div class="form-section">
-          <div class="section-header">
-            <h2>
-              <span class="section-icon">📋</span>
-              Basic Information
-            </h2>
-            <p class="section-description">Enter the essential details for this class</p>
+    <div class="cf-hero-stats">
+      <article class="cf-stat cf-stat--accent">
+        <span class="cf-stat__value">{{ formStats.completion }}%</span>
+        <span class="cf-stat__label">Ready</span>
+      </article>
+      <article class="cf-stat">
+        <span class="cf-stat__value">{{ classItem.name ? '✓' : '—' }}</span>
+        <span class="cf-stat__label">Name</span>
+      </article>
+      <article class="cf-stat">
+        <span class="cf-stat__value">{{ classItem.form ? '✓' : '—' }}</span>
+        <span class="cf-stat__label">Level</span>
+      </article>
+      <article class="cf-stat cf-stat--mint">
+        <span class="cf-stat__value">{{ formStats.teachers }}</span>
+        <span class="cf-stat__label">Teachers</span>
+      </article>
+      <article class="cf-stat cf-stat--amber">
+        <span class="cf-stat__value">{{ formStats.subjects }}</span>
+        <span class="cf-stat__label">Subjects</span>
+      </article>
+      <article class="cf-stat" *ngIf="isEdit">
+        <span class="cf-stat__value">{{ classItem.isActive ? 'On' : 'Off' }}</span>
+        <span class="cf-stat__label">Status</span>
+      </article>
+    </div>
+    <div class="cf-progress" aria-hidden="true">
+      <div class="cf-progress__bar" [style.width.%]="formStats.completion"></div>
+    </div>
+  </header>
+
+  <form (ngSubmit)="onSubmit()" #classForm="ngForm" class="cf-layout">
+    <div class="cf-main">
+      <section class="cf-panel">
+        <div class="cf-panel__head">
+          <span class="cf-panel__icon" aria-hidden="true">📋</span>
+          <div>
+            <h2>Basic information</h2>
+            <p>Class name and level are required.</p>
+          </div>
+        </div>
+
+        <div class="cf-grid">
+          <div class="cf-field" [class.cf-field--error]="isFieldInvalid('name')">
+            <label for="name">Class name <span class="cf-required">*</span></label>
+            <p class="cf-hint">e.g. Form 1A, Grade 7B</p>
+            <div class="cf-input-wrap">
+              <input
+                type="text"
+                id="name"
+                class="cf-input"
+                [(ngModel)]="classItem.name"
+                name="name"
+                required
+                [class.cf-input--invalid]="isFieldInvalid('name')"
+                placeholder="Enter class name"
+                (blur)="validateField('name')"
+                (input)="onFieldChange('name')"
+                maxlength="50"
+                autocomplete="off" />
+              <span class="cf-counter" *ngIf="classItem.name">{{ classItem.name.length }}/50</span>
+            </div>
+            <p class="cf-error" *ngIf="isFieldInvalid('name')">{{ getFieldError('name') }}</p>
           </div>
 
-          <div class="form-grid">
-            <!-- Class Name -->
-            <div class="form-group" [class.has-error]="isFieldInvalid('name')">
-              <label for="name">
-                Class Name <span class="required">*</span>
-                <span class="field-hint">e.g., Form 1A, Grade 7B</span>
-              </label>
-              <div class="input-wrapper">
-                <input 
-                  type="text" 
-                  id="name"
-                  [(ngModel)]="classItem.name" 
-                  name="name" 
-                  required
-                  [class.invalid]="isFieldInvalid('name')"
-                  placeholder="Enter class name"
-                  (blur)="validateField('name')"
-                  (input)="onFieldChange('name')"
-                  maxlength="50"
-                  autocomplete="off">
-                <span class="char-counter" *ngIf="classItem.name">{{ classItem.name.length }}/50</span>
-              </div>
-              <div class="field-error" *ngIf="isFieldInvalid('name')">
-                {{ getFieldError('name') }}
-              </div>
-            </div>
-
-            <!-- Class level -->
-            <div class="form-group" [class.has-error]="isFieldInvalid('form')">
-              <label for="form">
-                Class level <span class="required">*</span>
-                <span class="field-hint">e.g., Form 1, Form 2, Grade 7</span>
-              </label>
-              <div class="input-wrapper">
-              <input 
-                type="text" 
+          <div class="cf-field" [class.cf-field--error]="isFieldInvalid('form')">
+            <label for="form">Class level <span class="cf-required">*</span></label>
+            <p class="cf-hint">e.g. Form 1, Grade 10</p>
+            <div class="cf-input-wrap">
+              <input
+                type="text"
                 id="form"
-                [(ngModel)]="classItem.form" 
-                name="form" 
+                class="cf-input"
+                [(ngModel)]="classItem.form"
+                name="form"
                 required
-                [class.invalid]="isFieldInvalid('form')"
+                [class.cf-input--invalid]="isFieldInvalid('form')"
                 [attr.list]="formSuggestionsId"
                 placeholder="Enter form level"
                 (blur)="validateField('form')"
                 (input)="onFieldChange('form')"
                 maxlength="30"
-                autocomplete="off">
-                <datalist [id]="formSuggestionsId">
-                  <option *ngFor="let suggestion of formSuggestions" [value]="suggestion">
-                </datalist>
-                <span class="char-counter" *ngIf="classItem.form">{{ classItem.form.length }}/30</span>
-              </div>
-              <div class="field-error" *ngIf="isFieldInvalid('form')">
-                {{ getFieldError('form') }}
-              </div>
+                autocomplete="off" />
+              <datalist [id]="formSuggestionsId">
+                <option *ngFor="let suggestion of formSuggestions" [value]="suggestion"></option>
+              </datalist>
+              <span class="cf-counter" *ngIf="classItem.form">{{ classItem.form.length }}/30</span>
             </div>
+            <div class="cf-chips">
+              <button type="button" class="cf-chip" *ngFor="let s of formSuggestions" (click)="applyFormSuggestion(s)">{{ s }}</button>
+            </div>
+            <p class="cf-error" *ngIf="isFieldInvalid('form')">{{ getFieldError('form') }}</p>
           </div>
+        </div>
 
-          <!-- Description -->
-          <div class="form-group full-width" [class.has-error]="isFieldInvalid('description')">
-            <label for="description">
-              Description
-              <span class="field-hint">Optional: Add additional information about this class</span>
+        <div class="cf-field cf-field--full" [class.cf-field--error]="isFieldInvalid('description')">
+          <label for="description">Description</label>
+          <p class="cf-hint">Optional notes about this class</p>
+          <div class="cf-input-wrap">
+            <textarea
+              id="description"
+              class="cf-textarea"
+              [(ngModel)]="classItem.description"
+              name="description"
+              rows="3"
+              [class.cf-input--invalid]="isFieldInvalid('description')"
+              placeholder="Brief description (optional)"
+              (blur)="validateField('description')"
+              (input)="onFieldChange('description')"
+              maxlength="500"></textarea>
+            <span class="cf-counter" *ngIf="classItem.description">{{ classItem.description.length }}/500</span>
+          </div>
+          <p class="cf-error" *ngIf="isFieldInvalid('description')">{{ getFieldError('description') }}</p>
+        </div>
+
+        <div class="cf-field cf-field--full" *ngIf="isEdit">
+          <div class="cf-toggle">
+            <input type="checkbox" id="isActive" [(ngModel)]="classItem.isActive" name="isActive" class="cf-toggle__input" />
+            <label for="isActive" class="cf-toggle__label">
+              <span class="cf-toggle__slider"></span>
+              <span class="cf-toggle__text">
+                <strong>Active class</strong>
+                <small>Inactive classes are hidden from enrolment options</small>
+              </span>
             </label>
-            <div class="textarea-wrapper">
-              <textarea 
-                id="description"
-                [(ngModel)]="classItem.description" 
-                name="description" 
-                rows="4"
-                [class.invalid]="isFieldInvalid('description')"
-                placeholder="Enter class description (optional)"
-                (blur)="validateField('description')"
-                (input)="onFieldChange('description')"
-                maxlength="500"></textarea>
-              <span class="char-counter" *ngIf="classItem.description">{{ classItem.description.length }}/500</span>
-            </div>
-            <div class="field-error" *ngIf="isFieldInvalid('description')">
-              {{ getFieldError('description') }}
-            </div>
           </div>
         </div>
+      </section>
 
-        <!-- Additional Settings Section -->
-        <div class="form-section" *ngIf="isEdit">
-          <div class="section-header">
-            <h2>
-              <span class="section-icon">⚙️</span>
-              Settings
-            </h2>
-            <p class="section-description">Manage class status and availability</p>
-          </div>
-
-          <div class="form-group full-width">
-            <div class="toggle-switch">
-              <input 
-                type="checkbox" 
-                id="isActive"
-                [(ngModel)]="classItem.isActive" 
-                name="isActive"
-                class="toggle-input">
-              <label for="isActive" class="toggle-label">
-                <span class="toggle-slider"></span>
-                <span class="toggle-text">
-                  <strong>Active Class</strong>
-                  <small>Inactive classes won't appear in student assignment options</small>
-                </span>
-              </label>
+      <div class="cf-assign-grid">
+        <section class="cf-panel cf-panel--assign">
+          <div class="cf-panel__head">
+            <span class="cf-panel__icon" aria-hidden="true">👨‍🏫</span>
+            <div>
+              <h2>Teachers</h2>
+              <p>Optional — assign staff to this class.</p>
             </div>
-          </div>
-        </div>
-
-        <!-- Teachers Assignment Section -->
-        <div class="form-section">
-          <div class="section-header">
-            <h2>
-              <span class="section-icon">👨‍🏫</span>
-              Assign Teachers
-            </h2>
-            <p class="section-description">Select teachers to assign to this class (optional)</p>
+            <span class="cf-badge" *ngIf="selectedTeacherIds.length">{{ selectedTeacherIds.length }}</span>
           </div>
 
-          <div class="form-group full-width" *ngIf="loadingTeachers">
-            <div class="loading-state">
-              <span class="spinner"></span>
-              <span>Loading teachers...</span>
-            </div>
+          <div class="cf-loading" *ngIf="loadingTeachers">
+            <span class="cf-spinner"></span>
+            <span>Loading teachers…</span>
           </div>
 
-          <div class="form-group full-width" *ngIf="!loadingTeachers && teachers.length > 0">
-            <div class="multi-select-wrapper">
-              <div class="search-box">
-                <input 
-                  type="text" 
+          <ng-container *ngIf="!loadingTeachers && teachers.length > 0">
+            <div class="cf-picker-toolbar">
+              <div class="cf-search-wrap">
+                <span class="cf-search-icon" aria-hidden="true">🔍</span>
+                <input
+                  type="search"
+                  class="cf-search-input"
+                  placeholder="Search…"
                   [(ngModel)]="teacherSearchQuery"
                   [ngModelOptions]="{standalone: true}"
-                  placeholder="Search teachers..."
-                  class="search-input"
-                  (input)="filterTeachers()">
+                  (input)="filterTeachers()" />
               </div>
-              <div class="select-list">
-                <div 
-                  *ngFor="let teacher of filteredTeachers" 
-                  class="select-item"
-                  [class.selected]="isTeacherSelected(teacher.id)"
-                  (click)="toggleTeacher(teacher.id)">
-                  <input 
-                    type="checkbox" 
-                    [checked]="isTeacherSelected(teacher.id)"
-                    [id]="'teacher-' + teacher.id"
-                    (change)="toggleTeacher(teacher.id)">
-                  <label [for]="'teacher-' + teacher.id">
-                    <strong>{{ teacher.firstName }} {{ teacher.lastName }}</strong>
-                    <small>{{ teacher.teacherId }}</small>
-                  </label>
-                </div>
-                <div *ngIf="filteredTeachers.length === 0" class="empty-state">
-                  No teachers found matching your search
-                </div>
-              </div>
-              <div class="selected-count" *ngIf="selectedTeacherIds.length > 0">
-                {{ selectedTeacherIds.length }} teacher(s) selected
+              <div class="cf-picker-actions">
+                <button type="button" class="cf-btn-link" (click)="selectAllVisibleTeachers()">All</button>
+                <button type="button" class="cf-btn-link" (click)="clearAllTeachers()" *ngIf="selectedTeacherIds.length">Clear</button>
               </div>
             </div>
-          </div>
-
-          <div class="form-group full-width" *ngIf="!loadingTeachers && teachers.length === 0">
-            <div class="empty-state-card">
-              <span class="empty-icon">👨‍🏫</span>
-              <p>No teachers available. Please add teachers first.</p>
+            <div class="cf-picker-list">
+              <label
+                *ngFor="let teacher of filteredTeachers; trackBy: trackByTeacher"
+                class="cf-picker-item"
+                [class.cf-picker-item--on]="isTeacherSelected(teacher.id)">
+                <input type="checkbox" [checked]="isTeacherSelected(teacher.id)" (change)="toggleTeacher(teacher.id)" />
+                <span class="cf-picker-avatar">{{ getTeacherInitial(teacher) }}</span>
+                <span class="cf-picker-body">
+                  <strong>{{ teacher.firstName }} {{ teacher.lastName }}</strong>
+                  <small>{{ teacher.teacherId || 'No ID' }}</small>
+                </span>
+              </label>
+              <p class="cf-picker-empty" *ngIf="!filteredTeachers.length">No match</p>
             </div>
-          </div>
-        </div>
+          </ng-container>
 
-        <!-- Subjects Assignment Section -->
-        <div class="form-section">
-          <div class="section-header">
-            <h2>
-              <span class="section-icon">📖</span>
-              Assign Subjects
-            </h2>
-            <p class="section-description">Select subjects to assign to this class (optional)</p>
+          <div class="cf-empty" *ngIf="!loadingTeachers && !teachers.length">
+            <span aria-hidden="true">👨‍🏫</span>
+            <p>{{ loadError ? 'Could not load teachers.' : 'No teachers yet.' }}</p>
+            <button type="button" class="cf-btn-secondary cf-btn-sm" (click)="loadTeachersAndSubjects()">Reload</button>
           </div>
+        </section>
 
-          <div class="form-group full-width" *ngIf="loadingSubjects">
-            <div class="loading-state">
-              <span class="spinner"></span>
-              <span>Loading subjects...</span>
+        <section class="cf-panel cf-panel--assign">
+          <div class="cf-panel__head">
+            <span class="cf-panel__icon" aria-hidden="true">📖</span>
+            <div>
+              <h2>Subjects</h2>
+              <p>Optional — link subjects taught here.</p>
             </div>
-      </div>
+            <span class="cf-badge" *ngIf="selectedSubjectIds.length">{{ selectedSubjectIds.length }}</span>
+          </div>
 
-          <div class="form-group full-width" *ngIf="!loadingSubjects && subjects.length > 0">
-            <div class="multi-select-wrapper">
-              <div class="search-box">
-                <input 
-                  type="text" 
+          <div class="cf-loading" *ngIf="loadingSubjects">
+            <span class="cf-spinner"></span>
+            <span>Loading subjects…</span>
+          </div>
+
+          <ng-container *ngIf="!loadingSubjects && subjects.length > 0">
+            <div class="cf-picker-toolbar">
+              <div class="cf-search-wrap">
+                <span class="cf-search-icon" aria-hidden="true">🔍</span>
+                <input
+                  type="search"
+                  class="cf-search-input"
+                  placeholder="Search…"
                   [(ngModel)]="subjectSearchQuery"
                   [ngModelOptions]="{standalone: true}"
-                  placeholder="Search subjects..."
-                  class="search-input"
-                  (input)="filterSubjects()">
-      </div>
-              <div class="select-list">
-                <div 
-                  *ngFor="let subject of filteredSubjects" 
-                  class="select-item"
-                  [class.selected]="isSubjectSelected(subject.id)"
-                  (click)="toggleSubject(subject.id)">
-                  <input 
-                    type="checkbox" 
-                    [checked]="isSubjectSelected(subject.id)"
-                    [id]="'subject-' + subject.id"
-                    (change)="toggleSubject(subject.id)">
-                  <label [for]="'subject-' + subject.id">
-                    <strong>{{ subject.name }}</strong>
-                    <small>{{ subject.code }}</small>
-        </label>
-      </div>
-                <div *ngIf="filteredSubjects.length === 0" class="empty-state">
-                  No subjects found matching your search
-                </div>
+                  (input)="filterSubjects()" />
               </div>
-              <div class="selected-count" *ngIf="selectedSubjectIds.length > 0">
-                {{ selectedSubjectIds.length }} subject(s) selected
+              <div class="cf-picker-actions">
+                <button type="button" class="cf-btn-link" (click)="selectAllVisibleSubjects()">All</button>
+                <button type="button" class="cf-btn-link" (click)="clearAllSubjects()" *ngIf="selectedSubjectIds.length">Clear</button>
               </div>
             </div>
-          </div>
+            <div class="cf-picker-list">
+              <label
+                *ngFor="let subject of filteredSubjects; trackBy: trackBySubject"
+                class="cf-picker-item"
+                [class.cf-picker-item--on]="isSubjectSelected(subject.id)">
+                <input type="checkbox" [checked]="isSubjectSelected(subject.id)" (change)="toggleSubject(subject.id)" />
+                <span class="cf-picker-avatar cf-picker-avatar--subject">📖</span>
+                <span class="cf-picker-body">
+                  <strong>{{ subject.name }}</strong>
+                  <small>{{ subject.code || 'No code' }}</small>
+                </span>
+              </label>
+              <p class="cf-picker-empty" *ngIf="!filteredSubjects.length">No match</p>
+            </div>
+          </ng-container>
 
-          <div class="form-group full-width" *ngIf="!loadingSubjects && subjects.length === 0">
-            <div class="empty-state-card">
-              <span class="empty-icon">📖</span>
-              <p>No subjects available. Please add subjects first.</p>
-            </div>
+          <div class="cf-empty" *ngIf="!loadingSubjects && !subjects.length">
+            <span aria-hidden="true">📖</span>
+            <p>{{ loadError ? 'Could not load subjects.' : 'No subjects yet.' }}</p>
+            <button type="button" class="cf-btn-secondary cf-btn-sm" (click)="loadTeachersAndSubjects()">Reload</button>
           </div>
-        </div>
-
-        <!-- Preview Section -->
-        <div class="form-section preview-section" *ngIf="classItem.name || classItem.form">
-          <div class="section-header">
-            <h2>
-              <span class="section-icon">👁️</span>
-              Preview
-            </h2>
-            <p class="section-description">Preview of your class information</p>
-          </div>
-          <div class="preview-card">
-            <div class="preview-item">
-              <span class="preview-label">Class Name:</span>
-              <span class="preview-value">{{ classItem.name || 'Not set' }}</span>
-            </div>
-            <div class="preview-item">
-              <span class="preview-label">Class level:</span>
-              <span class="preview-value">{{ classItem.form || 'Not set' }}</span>
-            </div>
-            <div class="preview-item" *ngIf="classItem.description">
-              <span class="preview-label">Description:</span>
-              <span class="preview-value">{{ classItem.description }}</span>
-            </div>
-            <div class="preview-item" *ngIf="isEdit">
-              <span class="preview-label">Status:</span>
-              <span class="preview-value" [class.active]="classItem.isActive" [class.inactive]="!classItem.isActive">
-                {{ classItem.isActive ? 'Active' : 'Inactive' }}
-              </span>
-            </div>
-            <div class="preview-item" *ngIf="selectedTeacherIds.length > 0">
-              <span class="preview-label">Teachers:</span>
-              <span class="preview-value">{{ selectedTeacherIds.length }} selected</span>
-            </div>
-            <div class="preview-item" *ngIf="selectedSubjectIds.length > 0">
-              <span class="preview-label">Subjects:</span>
-              <span class="preview-value">{{ selectedSubjectIds.length }} selected</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Form Actions -->
-        <div class="form-actions">
-          <button 
-            type="button" 
-            class="btn btn-secondary" 
-            (click)="router.navigate(['/classes'])"
-            [disabled]="submitting">
-            ❌ Cancel
-          </button>
-          <button 
-            type="submit" 
-            class="btn btn-primary btn-submit"
-            [disabled]="submitting || !isFormValid()">
-            <span *ngIf="!submitting">
-              {{ isEdit ? '💾 Update Class' : '➕ Create Class' }}
-            </span>
-            <span *ngIf="submitting" class="submit-loading">
-              <span class="spinner-small"></span>
-              {{ isEdit ? 'Updating...' : 'Creating...' }}
-            </span>
-          </button>
-        </div>
-    </form>
+        </section>
+      </div>
     </div>
-  </div>
+
+    <aside class="cf-sidebar">
+      <div class="cf-preview">
+        <h3 class="cf-preview__title">Live preview</h3>
+        <div class="cf-preview-card">
+          <div class="cf-preview-hero">
+            <span class="cf-preview-hero__icon" aria-hidden="true">🏫</span>
+            <div>
+              <p class="cf-preview-hero__name">{{ classItem.name || 'Class name' }}</p>
+              <p class="cf-preview-hero__form">{{ classItem.form || 'Level not set' }}</p>
+            </div>
+          </div>
+          <p class="cf-preview-desc" *ngIf="classItem.description">{{ classItem.description }}</p>
+          <p class="cf-preview-desc cf-preview-desc--muted" *ngIf="!classItem.description">No description</p>
+
+          <div class="cf-preview-row" *ngIf="isEdit">
+            <span>Status</span>
+            <span class="cf-preview-pill" [class.cf-preview-pill--on]="classItem.isActive">
+              {{ classItem.isActive ? 'Active' : 'Inactive' }}
+            </span>
+          </div>
+
+          <div class="cf-preview-block" *ngIf="getSelectedTeacherNames().length">
+            <span class="cf-preview-label">Teachers ({{ getSelectedTeacherNames().length }})</span>
+            <ul class="cf-preview-tags">
+              <li *ngFor="let name of getSelectedTeacherNames()">{{ name }}</li>
+            </ul>
+          </div>
+          <div class="cf-preview-block" *ngIf="getSelectedSubjectNames().length">
+            <span class="cf-preview-label">Subjects ({{ getSelectedSubjectNames().length }})</span>
+            <ul class="cf-preview-tags">
+              <li *ngFor="let name of getSelectedSubjectNames()">{{ name }}</li>
+            </ul>
+          </div>
+          <p class="cf-preview-hint" *ngIf="!getSelectedTeacherNames().length && !getSelectedSubjectNames().length && !assignmentsLoading">
+            Teachers and subjects are optional.
+          </p>
+        </div>
+      </div>
+
+      <footer class="cf-actions cf-actions--sidebar">
+        <button type="button" class="cf-btn-secondary" (click)="router.navigate(['/classes'])" [disabled]="submitting">Cancel</button>
+        <button type="submit" class="cf-btn-primary" [disabled]="submitting || !isFormValid()">
+          <span class="cf-spinner cf-spinner--sm" *ngIf="submitting"></span>
+          {{ submitting ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save changes' : 'Create class') }}
+        </button>
+      </footer>
+    </aside>
+  </form>
 </div>

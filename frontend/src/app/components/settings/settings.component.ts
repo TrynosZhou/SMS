@@ -1,12 +1,23 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../utils/route-activation';
 import { SettingsService } from '../../services/settings.service';
 import { AuthService } from '../../services/auth.service';
 import { PromotionRuleService } from '../../services/promotion-rule.service';
 import { ClassService } from '../../services/class.service';
 import { validatePhoneNumber } from '../../utils/phone-validator';
+
+type SystemSettingsTabId =
+  | 'school-information'
+  | 'general'
+  | 'school-settings'
+  | 'student-id-prefix'
+  | 'email-settings'
+  | 'notifications'
+  | 'module-access'
+  | 'security';
 
 @Component({
   standalone: false,  selector: 'app-settings',
@@ -15,6 +26,67 @@ templateUrl: './settings.component.html',
 })
 export class SettingsComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+  settingsView: 'school' | 'academic' = 'school';
+  activeTab: SystemSettingsTabId = 'school-information';
+
+  readonly systemSettingsTabs: {
+    id: SystemSettingsTabId;
+    label: string;
+    icon: string;
+    description: string;
+    dedicatedSave?: boolean;
+  }[] = [
+    {
+      id: 'school-information',
+      label: 'School Information',
+      icon: '🏫',
+      description: 'School name, contact details, logos, and public profile.'
+    },
+    {
+      id: 'general',
+      label: 'General',
+      icon: '⚙️',
+      description: 'Currency, leadership, and school identity defaults.'
+    },
+    {
+      id: 'school-settings',
+      label: 'Fees Settings',
+      icon: '💳',
+      description: 'Tuition, fees, uniforms, payroll rates, and bank payment details.'
+    },
+    {
+      id: 'student-id-prefix',
+      label: 'Student ID Prefix',
+      icon: '🪪',
+      description: 'Prefix used when auto-generating student identification numbers.'
+    },
+    {
+      id: 'email-settings',
+      label: 'Email Settings',
+      icon: '✉️',
+      description: 'SMTP configuration for outgoing system emails.'
+    },
+    {
+      id: 'notifications',
+      label: 'Notifications',
+      icon: '🔔',
+      description: 'SMS and push notification toggles for key school events.',
+      dedicatedSave: true
+    },
+    {
+      id: 'module-access',
+      label: 'Module Access',
+      icon: '🧩',
+      description: 'Control which modules each role can view and use.'
+    },
+    {
+      id: 'security',
+      label: 'Security',
+      icon: '🔒',
+      description: 'Password policy, session timeout, and two-factor authentication.',
+      dedicatedSave: true
+    }
+  ];
   settings: any = {
     studentIdPrefix: 'JPS',
     classLevels: [],
@@ -61,8 +133,36 @@ export class SettingsComponent implements OnInit, OnDestroy {
     schoolAddress: '',
     schoolPhone: '',
     schoolEmail: '',
+    emailSettings: {
+      smtpHost: 'smtp.example.com',
+      smtpPort: 587,
+      smtpUsername: '',
+      smtpPassword: '',
+      fromName: 'School Name',
+      fromAddress: 'noreply@school.com'
+    },
+    notificationSettings: {
+      sms: {
+        feePaymentReceived: false,
+        studentAbsence: false,
+        reportCardReady: false
+      },
+      push: {
+        enabled: false
+      }
+    },
+    securitySettings: {
+      minPasswordLength: 8,
+      maxLoginAttempts: 5,
+      requireUppercase: true,
+      requireNumber: true,
+      requireSpecialChar: true,
+      sessionTimeoutMinutes: 60,
+      enableTwoFactorAuth: false
+    },
     headmasterName: '',
     schoolMotto: '',
+    schoolWebsite: '',
     academicYear: new Date().getFullYear().toString(),
     currentTerm: `Term 1 ${new Date().getFullYear()}`,
     schoolLogo: null,
@@ -154,6 +254,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
   };
 
   loading = false;
+  savingNotifications = false;
+  savingSecurity = false;
+  settingsLastSaved: Date | null = null;
   error = '';
   success = '';
   newFeeName = '';
@@ -206,6 +309,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   constructor(
     private settingsService: SettingsService,
     private router: Router,
+    private route: ActivatedRoute,
     public authService: AuthService,
     private cdr: ChangeDetectorRef,
     private promotionRuleService: PromotionRuleService,
@@ -218,7 +322,87 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    activatePageLoad(this.router, this.destroy$, '/settings', () => this.bootstrapPage());
+    this.syncSettingsView();
+    this.route.data.pipe(takeUntil(this.destroy$)).subscribe(() => this.syncSettingsView());
+    this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      const tab = params['tab'] as SystemSettingsTabId;
+      if (tab && this.systemSettingsTabs.some(t => t.id === tab)) {
+        this.activeTab = tab;
+        this.cdr.markForCheck();
+      }
+    });
+    activatePageLoad(this.router, this.destroy$, '/system-settings', () => this.bootstrapPage(), { exact: false });
+  }
+
+  isTab(tab: SystemSettingsTabId): boolean {
+    return this.activeTab === tab;
+  }
+
+  /** Tabs that use their own save button instead of the form footer. */
+  usesDedicatedSaveButton(): boolean {
+    const tab = this.systemSettingsTabs.find(t => t.id === this.activeTab);
+    return !!tab?.dedicatedSave;
+  }
+
+  getActiveTabConfig() {
+    return this.systemSettingsTabs.find(t => t.id === this.activeTab) ?? this.systemSettingsTabs[0];
+  }
+
+  formatSettingsSavedAt(): string {
+    if (!this.settingsLastSaved) {
+      return '';
+    }
+    return this.settingsLastSaved.toLocaleString(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    });
+  }
+
+  clearAlert(type: 'success' | 'error'): void {
+    if (type === 'success') {
+      this.success = '';
+    } else {
+      this.error = '';
+    }
+    this.cdr.markForCheck();
+  }
+
+  setActiveTab(tab: SystemSettingsTabId): void {
+    this.activeTab = tab;
+    this.error = '';
+  }
+
+  markSettingsSaved(): void {
+    this.settingsLastSaved = new Date();
+  }
+
+  get logoPreviewUrl(): string | null {
+    return this.settings?.schoolLogo || null;
+  }
+
+  onLogoUrlChange(value: string): void {
+    const trimmed = (value || '').trim();
+    if (!trimmed) {
+      return;
+    }
+    this.settings.schoolLogo = trimmed;
+  }
+
+  private syncSettingsView(): void {
+    const view = this.route.snapshot.data['settingsView'];
+    this.settingsView = view === 'academic' ? 'academic' : 'school';
+  }
+
+  showSchoolSections(): boolean {
+    return this.settingsView === 'school';
+  }
+
+  showAcademicSections(): boolean {
+    return this.settingsView === 'academic';
+  }
+
+  get pageTitle(): string {
+    return this.settingsView === 'academic' ? 'Academic Settings' : 'System Settings';
   }
 
   ngOnDestroy(): void {
@@ -346,6 +530,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
         if (data.schoolEmail !== undefined) {
           this.settings.schoolEmail = data.schoolEmail;
         }
+        if (data.schoolWebsite !== undefined) {
+          this.settings.schoolWebsite = data.schoolWebsite;
+        }
         if (data.headmasterName !== undefined) {
           this.settings.headmasterName = data.headmasterName;
         }
@@ -386,6 +573,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
           };
         }
         this.ensurePaymentBankingSettings();
+        this.ensureEmailSettings();
+        this.ensureNotificationSettings();
+        this.ensureSecuritySettings();
         if (this.settings.feesSettings.registrationFee === undefined) {
           this.settings.feesSettings.registrationFee = 0;
         }
@@ -637,6 +827,13 @@ export class SettingsComponent implements OnInit, OnDestroy {
         }
         
         this.restoreClassLevelsFromLocalStorageIfMissing();
+
+        if (data?.updatedAt) {
+          const parsed = new Date(data.updatedAt);
+          if (!isNaN(parsed.getTime())) {
+            this.settingsLastSaved = parsed;
+          }
+        }
         
         // Force change detection to ensure all restored values are displayed
         this.cdr.detectChanges();
@@ -724,6 +921,206 @@ export class SettingsComponent implements OnInit, OnDestroy {
         img.src = e.target.result;
       };
       reader.readAsDataURL(file);
+    }
+  }
+
+  saveNotificationSettings(): void {
+    if (this.savingNotifications) {
+      return;
+    }
+    if (this.isDemoUser()) {
+      this.error = 'Demo accounts cannot modify system settings. This is a demo environment.';
+      setTimeout(() => this.error = '', 5000);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    this.ensureNotificationSettings();
+    this.savingNotifications = true;
+    this.error = '';
+    this.success = '';
+
+    const payload = { notificationSettings: this.settings.notificationSettings };
+    this.settingsService.updateSettings(payload).subscribe({
+      next: (response: any) => {
+        this.success = response?.message || 'Notification settings saved successfully.';
+        this.markSettingsSaved();
+        this.savingNotifications = false;
+        this.cdr.detectChanges();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => { this.success = ''; this.cdr.detectChanges(); }, 5000);
+      },
+      error: (err: any) => {
+        this.error = err?.error?.message || 'Failed to save notification settings.';
+        this.savingNotifications = false;
+        this.cdr.detectChanges();
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  private ensureNotificationSettings(): void {
+    const defaults = {
+      sms: {
+        feePaymentReceived: false,
+        studentAbsence: false,
+        reportCardReady: false
+      },
+      push: {
+        enabled: false
+      }
+    };
+    if (!this.settings.notificationSettings || typeof this.settings.notificationSettings !== 'object') {
+      this.settings.notificationSettings = JSON.parse(JSON.stringify(defaults));
+      return;
+    }
+    if (!this.settings.notificationSettings.sms) {
+      this.settings.notificationSettings.sms = { ...defaults.sms };
+    } else {
+      const sms = this.settings.notificationSettings.sms;
+      if (sms.feePaymentReceived === undefined) sms.feePaymentReceived = false;
+      if (sms.studentAbsence === undefined) sms.studentAbsence = false;
+      if (sms.reportCardReady === undefined) sms.reportCardReady = false;
+    }
+    if (!this.settings.notificationSettings.push) {
+      this.settings.notificationSettings.push = { ...defaults.push };
+    } else if (this.settings.notificationSettings.push.enabled === undefined) {
+      this.settings.notificationSettings.push.enabled = false;
+    }
+  }
+
+  saveSecuritySettings(): void {
+    if (this.savingSecurity) {
+      return;
+    }
+    if (this.isDemoUser()) {
+      this.error = 'Demo accounts cannot modify system settings. This is a demo environment.';
+      setTimeout(() => this.error = '', 5000);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    this.ensureSecuritySettings();
+    const minLen = Number(this.settings.securitySettings.minPasswordLength);
+    if (!Number.isFinite(minLen) || minLen < 4 || minLen > 128) {
+      this.error = 'Minimum password length must be between 4 and 128.';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+    const maxAttempts = Number(this.settings.securitySettings.maxLoginAttempts);
+    if (!Number.isFinite(maxAttempts) || maxAttempts < 1 || maxAttempts > 50) {
+      this.error = 'Max login attempts must be between 1 and 50.';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+    const sessionTimeout = Number(this.settings.securitySettings.sessionTimeoutMinutes);
+    if (!Number.isFinite(sessionTimeout) || sessionTimeout < 5 || sessionTimeout > 1440) {
+      this.error = 'Session timeout must be between 5 and 1440 minutes.';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    this.savingSecurity = true;
+    this.error = '';
+    this.success = '';
+
+    const payload = { securitySettings: this.settings.securitySettings };
+    this.settingsService.updateSettings(payload).subscribe({
+      next: (response: any) => {
+        this.success = response?.message || 'Security settings saved successfully.';
+        this.markSettingsSaved();
+        this.savingSecurity = false;
+        this.cdr.detectChanges();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => {
+          this.success = '';
+          this.cdr.detectChanges();
+        }, 5000);
+      },
+      error: (err: any) => {
+        this.error = err?.error?.message || 'Failed to save security settings.';
+        this.savingSecurity = false;
+        this.cdr.detectChanges();
+        setTimeout(() => this.error = '', 5000);
+      }
+    });
+  }
+
+  private ensureSecuritySettings(): void {
+    const defaults = {
+      minPasswordLength: 8,
+      maxLoginAttempts: 5,
+      requireUppercase: true,
+      requireNumber: true,
+      requireSpecialChar: true,
+      sessionTimeoutMinutes: 60,
+      enableTwoFactorAuth: false
+    };
+    if (!this.settings.securitySettings || typeof this.settings.securitySettings !== 'object') {
+      this.settings.securitySettings = { ...defaults };
+      return;
+    }
+    const s = this.settings.securitySettings;
+    if (s.minPasswordLength === undefined || s.minPasswordLength === null) {
+      s.minPasswordLength = defaults.minPasswordLength;
+    } else {
+      s.minPasswordLength = Number(s.minPasswordLength) || defaults.minPasswordLength;
+    }
+    if (s.maxLoginAttempts === undefined || s.maxLoginAttempts === null) {
+      s.maxLoginAttempts = defaults.maxLoginAttempts;
+    } else {
+      s.maxLoginAttempts = Number(s.maxLoginAttempts) || defaults.maxLoginAttempts;
+    }
+    if (s.requireUppercase === undefined) {
+      s.requireUppercase = defaults.requireUppercase;
+    }
+    if (s.requireNumber === undefined) {
+      s.requireNumber = defaults.requireNumber;
+    }
+    if (s.requireSpecialChar === undefined) {
+      s.requireSpecialChar = defaults.requireSpecialChar;
+    }
+    if (s.sessionTimeoutMinutes === undefined || s.sessionTimeoutMinutes === null) {
+      s.sessionTimeoutMinutes = defaults.sessionTimeoutMinutes;
+    } else {
+      s.sessionTimeoutMinutes = Number(s.sessionTimeoutMinutes) || defaults.sessionTimeoutMinutes;
+    }
+    if (s.enableTwoFactorAuth === undefined) {
+      s.enableTwoFactorAuth = defaults.enableTwoFactorAuth;
+    }
+  }
+
+  private ensureEmailSettings(): void {
+    const defaults = {
+      smtpHost: 'smtp.example.com',
+      smtpPort: 587,
+      smtpUsername: '',
+      smtpPassword: '',
+      fromName: 'School Name',
+      fromAddress: 'noreply@school.com'
+    };
+    if (!this.settings.emailSettings || typeof this.settings.emailSettings !== 'object') {
+      this.settings.emailSettings = { ...defaults };
+      return;
+    }
+    const es = this.settings.emailSettings;
+    if (es.smtpHost === undefined || es.smtpHost === null) {
+      es.smtpHost = defaults.smtpHost;
+    }
+    if (es.smtpPort === undefined || es.smtpPort === null) {
+      es.smtpPort = defaults.smtpPort;
+    }
+    if (es.smtpUsername === undefined || es.smtpUsername === null) {
+      es.smtpUsername = defaults.smtpUsername;
+    }
+    if (es.smtpPassword === undefined || es.smtpPassword === null) {
+      es.smtpPassword = defaults.smtpPassword;
+    }
+    if (es.fromName === undefined || es.fromName === null) {
+      es.fromName = defaults.fromName;
+    }
+    if (es.fromAddress === undefined || es.fromAddress === null) {
+      es.fromAddress = defaults.fromAddress;
     }
   }
 
@@ -1258,6 +1655,13 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this.settings.payrollSettings.loanInterestRate3Months = Number(this.settings.payrollSettings.loanInterestRate3Months) || 0;
     }
 
+    this.ensureEmailSettings();
+    if (this.settings.emailSettings) {
+      this.settings.emailSettings.smtpPort = Number(this.settings.emailSettings.smtpPort) || 587;
+    }
+    this.ensureNotificationSettings();
+    this.ensureSecuritySettings();
+
     console.log('✅ All validations passed, preparing payload...');
     const payload = { ...this.settings, schoolName: normalizedSchoolName };
 
@@ -1276,6 +1680,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         // Set success message - use backend message if available, otherwise use default
         const successMsg = response?.message || '✅ Settings saved successfully! Your changes have been applied.';
         this.success = successMsg;
+        this.markSettingsSaved();
         this.loading = false;
         
         // Force change detection to ensure UI updates immediately

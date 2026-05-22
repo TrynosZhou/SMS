@@ -1,224 +1,221 @@
-<div class="attendance-container modern-container">
-  <!-- Modern Header Section - thin single line -->
-  <div class="page-header modern-header-section">
-    <div class="header-content">
-      <div class="header-title-section">
-        <span class="header-main-icon">✅</span>
-        <h1>Mark Attendance</h1>
-        <span class="header-subtitle">Record daily student attendance with ease</span>
-      </div>
-      <div class="header-actions" *ngIf="isAdmin()">
-      <button class="btn btn-primary bulk-btn" (click)="openBulkModal()">
-        <span>🚀</span> Bulk Marking
-      </button>
-      <button class="btn btn-secondary reverse-bulk-btn" (click)="openReverseBulkModal()">
-        <span>🔄</span> Reverse Bulk
-      </button>
+<div class="mark-attendance-page mark-attendance-page--modern">
+  <div class="mark-att-toast-stack" *ngIf="success || error">
+    <div class="mark-att-toast mark-att-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="mark-att-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
     </div>
-      <div class="header-actions" *ngIf="selectedClassId && students.length > 0">
-        <div class="save-indicator modern-indicator" *ngIf="hasUnsavedChanges">
-          <span class="indicator-dot"></span>
-          <span>Unsaved changes</span>
-        </div>
-        <div class="save-indicator saved modern-indicator" *ngIf="!hasUnsavedChanges && lastSavedDate">
-          <span class="indicator-dot"></span>
-          <span>Saved {{ lastSavedDate | date:'short' }}</span>
-        </div>
-      </div>
+    <div class="mark-att-toast mark-att-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="mark-att-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
   </div>
 
-  <!-- Alert Messages -->
-  <div class="alert alert-success modern-alert" *ngIf="success">
-    <span class="alert-icon">✓</span>
-    <span>{{ success }}</span>
-    <button class="alert-close" (click)="success = ''" title="Close">&times;</button>
-  </div>
-  <div class="alert alert-error modern-alert" *ngIf="error">
-    <span class="alert-icon">✗</span>
-    <span>{{ error }}</span>
-    <button class="alert-close" (click)="error = ''" title="Close">&times;</button>
-  </div>
+  <header class="mark-att-register-hero">
+    <span class="mark-att-register-hero__icon" aria-hidden="true">📝</span>
+    <h1>Mark Attendance Register</h1>
+  </header>
 
-  <!-- Selection Form -->
-  <div class="selection-card modern-card">
-    <div class="card-header-modern">
-      <h3>
-        <span class="card-icon">⚙️</span>
-        Select Criteria
-      </h3>
+  <section class="mark-att-select-card">
+    <div class="mark-att-select-card__head">
+      <span class="mark-att-select-card__icon" aria-hidden="true">📋</span>
+      <div>
+        <h2>Select Class &amp; Date</h2>
+        <p>Choose a class, term, and date to mark attendance</p>
+      </div>
     </div>
-    <form (ngSubmit)="submitAttendance()" #attendanceForm="ngForm">
-      <div class="form-grid modern-grid">
-        <div class="form-group">
-          <label>
-            <span class="label-icon">🏫</span>
-            Class <span class="required">*</span>
-          </label>
-          <select 
-            [(ngModel)]="selectedClassId" 
-            name="classId" 
-            (change)="onClassChange()" 
-            required
-            class="form-select modern-select">
-            <option value="">Select Class</option>
+
+    <div class="mark-att-select-grid">
+      <div class="mark-att-field">
+        <label for="markAttTerm">Choose Term<span class="mark-att-required">*</span></label>
+        <div class="mark-att-input-wrap">
+          <select
+            id="markAttTerm"
+            [(ngModel)]="selectedTerm"
+            name="term"
+            (ngModelChange)="onTermChange()"
+            class="mark-att-control"
+            required>
+            <option value="">Select term</option>
+            <option *ngFor="let term of availableTerms" [value]="term">{{ formatTermLabel(term) }}</option>
+          </select>
+          <span class="mark-att-input-icon mark-att-input-icon--calendar" aria-hidden="true">📅</span>
+        </div>
+        <span class="mark-att-hint">Select the academic term</span>
+      </div>
+
+      <div class="mark-att-field">
+        <label for="markAttClass">Choose Class<span class="mark-att-required">*</span></label>
+        <div class="mark-att-input-wrap">
+          <select
+            id="markAttClass"
+            [(ngModel)]="selectedClassId"
+            name="classId"
+            (ngModelChange)="onSelectionFieldChange()"
+            class="mark-att-control"
+            [disabled]="loadingClasses"
+            required>
+            <option value="">{{ loadingClasses ? 'Loading classes…' : 'Select class' }}</option>
             <option *ngFor="let cls of classes" [value]="cls.id">{{ cls.name }}</option>
           </select>
+          <span class="mark-att-input-icon mark-att-input-icon--class" aria-hidden="true"></span>
         </div>
+        <span class="mark-att-hint">Select the class</span>
+      </div>
 
-        <div class="form-group">
-          <label>
-            <span class="label-icon">📅</span>
-            Date <span class="required">*</span>
-          </label>
-          <div class="date-input-wrapper modern-date-wrapper">
-            <input 
-              type="date" 
-              [(ngModel)]="selectedDate" 
-              name="date" 
-              (change)="onDateChange()" 
-              [attr.lang]="'en-GB'"
-              placeholder="dd/mm/yyyy"
-              required
-              class="form-input modern-input">
-            <div class="date-navigation modern-date-nav">
-              <button type="button" class="date-nav-btn modern-nav-btn" (click)="goToYesterday()" title="Yesterday">
-                ◀
-              </button>
-              <button type="button" class="date-nav-btn today-btn modern-nav-btn" (click)="goToToday()" [class.active]="isToday()" title="Today">
-                Today
-              </button>
-              <button type="button" class="date-nav-btn modern-nav-btn" (click)="goToTomorrow()" title="Tomorrow">
-                ▶
-              </button>
-            </div>
-          </div>
-          <div class="date-display modern-date-display" *ngIf="selectedDate">
-            {{ getFormattedDate() }}
-          </div>
+      <div class="mark-att-field">
+        <label for="markAttDate">Select Date<span class="mark-att-required">*</span></label>
+        <div class="mark-att-input-wrap">
+          <input
+            id="markAttDate"
+            type="date"
+            [(ngModel)]="selectedDate"
+            name="date"
+            (ngModelChange)="onDateChange()"
+            class="mark-att-control mark-att-control--date"
+            required />
+          <span class="mark-att-input-icon mark-att-input-icon--calendar" aria-hidden="true">📅</span>
         </div>
+        <span class="mark-att-hint" *ngIf="selectedDate">
+          {{ getFormattedDate() }}
+          <span class="weekend-badge" *ngIf="isWeekendSelected()">Weekend — cannot save</span>
+        </span>
+        <span class="mark-att-hint" *ngIf="!selectedDate">Choose the date for attendance</span>
       </div>
-    </form>
+    </div>
+
+    <div class="mark-att-fetch-wrap">
+      <button
+        type="button"
+        class="mark-att-fetch-btn"
+        (click)="fetchClassList()"
+        [disabled]="loading || loadingClasses">
+        <span class="mark-att-fetch-btn__icon" aria-hidden="true">☰</span>
+        <span *ngIf="!loading">Fetch Class List</span>
+        <span *ngIf="loading">Loading class list…</span>
+      </button>
+    </div>
+  </section>
+
+  <section class="mark-att-summary-row" aria-label="Attendance summary">
+    <article class="mark-att-summary-card mark-att-summary-card--present">
+      <span class="mark-att-summary-card__icon" aria-hidden="true">✓</span>
+      <div class="mark-att-summary-card__body">
+        <span class="mark-att-summary-card__value">{{ dashboardStats.present }}</span>
+        <span class="mark-att-summary-card__label">Present</span>
+      </div>
+    </article>
+    <article class="mark-att-summary-card mark-att-summary-card--absent">
+      <span class="mark-att-summary-card__icon" aria-hidden="true">✕</span>
+      <div class="mark-att-summary-card__body">
+        <span class="mark-att-summary-card__value">{{ dashboardStats.absent }}</span>
+        <span class="mark-att-summary-card__label">Absent</span>
+      </div>
+    </article>
+    <article class="mark-att-summary-card mark-att-summary-card--late">
+      <span class="mark-att-summary-card__icon" aria-hidden="true">🕐</span>
+      <div class="mark-att-summary-card__body">
+        <span class="mark-att-summary-card__value">{{ dashboardStats.late }}</span>
+        <span class="mark-att-summary-card__label">Late</span>
+      </div>
+    </article>
+    <article class="mark-att-summary-card mark-att-summary-card--excused">
+      <span class="mark-att-summary-card__icon" aria-hidden="true">📄</span>
+      <div class="mark-att-summary-card__body">
+        <span class="mark-att-summary-card__value">{{ dashboardStats.excused }}</span>
+        <span class="mark-att-summary-card__label">Excused</span>
+      </div>
+    </article>
+    <article class="mark-att-summary-card mark-att-summary-card--rate">
+      <span class="mark-att-summary-card__icon" aria-hidden="true">%</span>
+      <div class="mark-att-summary-card__body">
+        <span class="mark-att-summary-card__value">{{ getAttendanceRate() }}%</span>
+        <span class="mark-att-summary-card__label">Attendance rate</span>
+      </div>
+    </article>
+  </section>
+
+  <div class="mark-att-toolbar" *ngIf="rosterLoaded && students.length > 0">
+    <div class="mark-att-toolbar__left">
+      <span class="mark-att-context__chip">{{ getSelectedClassName() }}</span>
+      <span class="mark-att-context__chip" *ngIf="selectedTerm">{{ formatTermLabel(selectedTerm) }}</span>
+      <span class="mark-att-context__chip">{{ getFormattedDate() }}</span>
+      <span class="mark-att-save-pill" *ngIf="hasUnsavedChanges || lastSavedDate">
+        <span class="mark-att-save-pill__dot" [class.saved]="!hasUnsavedChanges && lastSavedDate"></span>
+        <span *ngIf="hasUnsavedChanges">Unsaved changes</span>
+        <span *ngIf="!hasUnsavedChanges && lastSavedDate">Saved {{ lastSavedDate | date:'short' }}</span>
+      </span>
+    </div>
+    <div class="mark-att-toolbar__right">
+      <button
+        type="button"
+        class="mark-att-toolbar-btn"
+        (click)="refreshAttendance()"
+        [disabled]="loading"
+        title="Reload roster">
+        ↻ Refresh
+      </button>
+      <ng-container *ngIf="isAdmin()">
+        <button type="button" class="mark-att-toolbar-btn mark-att-toolbar-btn--success" (click)="openBulkModal()">Bulk mark</button>
+        <button type="button" class="mark-att-toolbar-btn mark-att-toolbar-btn--danger" (click)="openReverseBulkModal()">Reverse bulk</button>
+      </ng-container>
+    </div>
   </div>
 
-  <!-- Statistics Cards -->
-  <div class="stats-grid modern-stats-grid" *ngIf="!loading && students.length > 0">
-    <div class="stat-card present modern-stat-card">
-      <div class="stat-icon-wrapper present-icon">
-        <div class="stat-icon">✓</div>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ getStatistics().present }}</div>
-        <div class="stat-label">Present</div>
-      </div>
-    </div>
-    <div class="stat-card absent modern-stat-card">
-      <div class="stat-icon-wrapper absent-icon">
-        <div class="stat-icon">✗</div>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ getStatistics().absent }}</div>
-        <div class="stat-label">Absent</div>
-      </div>
-    </div>
-    <div class="stat-card late modern-stat-card">
-      <div class="stat-icon-wrapper late-icon">
-        <div class="stat-icon">⏰</div>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ getStatistics().late }}</div>
-        <div class="stat-label">Late</div>
-      </div>
-    </div>
-    <div class="stat-card total modern-stat-card">
-      <div class="stat-icon-wrapper total-icon">
-        <div class="stat-icon">📊</div>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ getStatistics().total }}</div>
-        <div class="stat-label">Total Students</div>
-        <div class="stat-rate">{{ getAttendanceRate() }}% Present</div>
-      </div>
-    </div>
+  <div *ngIf="loading" class="mark-att-skeleton-panel">
+    <div class="mark-att-skeleton mark-att-skeleton--row" *ngFor="let i of [1,2,3,4,5,6,7,8]"></div>
   </div>
 
-  <!-- Loading State -->
-  <div *ngIf="loading" class="loading-state">
-    <div class="skeleton-loader">
-      <div class="skeleton-header"></div>
-      <div class="skeleton-row" *ngFor="let i of [1,2,3,4,5]"></div>
-    </div>
-  </div>
-
-  <!-- Attendance Section -->
-  <div *ngIf="!loading && students.length > 0" class="attendance-section modern-section">
-    <!-- Modern Toolbar -->
+  <section *ngIf="!loading && rosterLoaded && students.length > 0" class="attendance-section modern-section mark-att-panel--table">
     <div class="toolbar modern-toolbar">
       <div class="toolbar-left">
         <div class="search-box modern-search-box">
           <span class="search-icon">🔍</span>
-          <input 
-            type="text" 
-            [(ngModel)]="searchQuery" 
+          <input
+            type="text"
+            [(ngModel)]="searchQuery"
             (input)="onSearchChange()"
-            placeholder="Search by name or student number..."
-            class="search-input modern-search-input">
-          <button 
-            type="button" 
-            class="clear-btn modern-clear" 
-            *ngIf="searchQuery"
-            (click)="clearSearch()"
-            title="Clear search">
-            <span>&times;</span>
-          </button>
+            placeholder="Search name or student ID…"
+            class="search-input modern-search-input"
+            [ngModelOptions]="{standalone: true}"
+            aria-label="Search students">
+          <button type="button" class="clear-btn modern-clear" *ngIf="searchQuery" (click)="clearSearch()" title="Clear">×</button>
         </div>
-        
         <div class="filter-group">
-          <select 
-            [(ngModel)]="statusFilter" 
+          <select
+            [(ngModel)]="statusFilter"
             (change)="onStatusFilterChange()"
-            class="filter-select modern-filter-select">
-            <option value="all">All Status</option>
+            class="filter-select modern-filter-select"
+            [ngModelOptions]="{standalone: true}">
+            <option value="all">All status</option>
             <option value="present">Present</option>
             <option value="absent">Absent</option>
             <option value="late">Late</option>
           </select>
         </div>
       </div>
-
       <div class="toolbar-right">
         <div class="bulk-actions">
-          <button type="button" class="bulk-btn present modern-bulk-btn" (click)="markAll('present')" title="Mark all as Present">
-            <span>✓</span> All Present
-          </button>
-          <button type="button" class="bulk-btn absent modern-bulk-btn" (click)="markAll('absent')" title="Mark all as Absent">
-            <span>✗</span> All Absent
-          </button>
-          <button type="button" class="bulk-btn late modern-bulk-btn" (click)="markAll('late')" title="Mark all as Late">
-            <span>⏰</span> All Late
-          </button>
+          <button type="button" class="bulk-btn present modern-bulk-btn" (click)="markAll('present')">✓ All present</button>
+          <button type="button" class="bulk-btn absent modern-bulk-btn" (click)="markAll('absent')">✗ All absent</button>
+          <button type="button" class="bulk-btn late modern-bulk-btn" (click)="markAll('late')">⏰ All late</button>
         </div>
       </div>
     </div>
 
-    <!-- Results Count -->
     <div class="results-info" *ngIf="searchQuery || statusFilter !== 'all'">
       Showing {{ filteredAttendanceData.length }} of {{ attendanceData.length }} students
-      <button type="button" class="clear-filter-btn" (click)="clearSearch(); clearStatusFilter()">
-        Clear filters
-      </button>
+      <button type="button" class="clear-filter-btn" (click)="clearSearch(); clearStatusFilter()">Clear filters</button>
     </div>
 
-    <!-- Attendance Table: StudentID, Lastname, Firstname, Gender(Sex), Status, Remarks; sorted by Lastname ascending, grouped by Gender -->
     <div class="attendance-table-wrapper modern-table-wrapper">
       <table class="attendance-table modern-table">
         <thead>
           <tr>
             <th class="col-number">#</th>
-            <th class="col-number">StudentID</th>
-            <th class="col-name col-lastname">Lastname</th>
-            <th class="col-name col-firstname">Firstname</th>
-            <th class="col-gender">Gender (Sex)</th>
+            <th class="col-number">Student ID</th>
+            <th class="col-name col-lastname">Last name</th>
+            <th class="col-name col-firstname">First name</th>
+            <th class="col-gender">Gender</th>
             <th class="col-status">Status</th>
             <th class="col-remarks">Remarks</th>
           </tr>
@@ -236,86 +233,56 @@
             <td class="col-gender">{{ getStudentGender(item.studentId) }}</td>
             <td class="col-status">
               <div class="status-buttons">
-                <button 
-                  type="button"
-                  class="status-btn present" 
-                  [class.active]="item.status === 'present'"
-                  (click)="updateStatus(item.studentId, 'present')"
-                  title="Present">
-                  ✓ Present
-                </button>
-                <button 
-                  type="button"
-                  class="status-btn absent" 
-                  [class.active]="item.status === 'absent'"
-                  (click)="updateStatus(item.studentId, 'absent')"
-                  title="Absent">
-                  ✗ Absent
-                </button>
-                <button 
-                  type="button"
-                  class="status-btn late" 
-                  [class.active]="item.status === 'late'"
-                  (click)="updateStatus(item.studentId, 'late')"
-                  title="Late">
-                  ⏰ Late
-                </button>
+                <button type="button" class="status-btn present" [class.active]="item.status === 'present'" (click)="updateStatus(item.studentId, 'present')">✓ Present</button>
+                <button type="button" class="status-btn absent" [class.active]="item.status === 'absent'" (click)="updateStatus(item.studentId, 'absent')">✗ Absent</button>
+                <button type="button" class="status-btn late" [class.active]="item.status === 'late'" (click)="updateStatus(item.studentId, 'late')">⏰ Late</button>
               </div>
             </td>
             <td class="col-remarks">
-              <input 
-                type="text" 
-                [(ngModel)]="item.remarks" 
+              <input
+                type="text"
+                [(ngModel)]="item.remarks"
                 [name]="'remarks_' + i"
-                placeholder="Optional remarks..."
+                placeholder="Optional remarks…"
                 class="remarks-input"
                 (input)="hasUnsavedChanges = true">
             </td>
           </tr>
         </tbody>
       </table>
-      
+
       <div class="empty-filter-state" *ngIf="filteredAttendanceData.length === 0">
         <div class="empty-icon">🔍</div>
-        <p>No students match your search or filter criteria.</p>
-        <button type="button" class="clear-filter-btn" (click)="clearSearch(); clearStatusFilter()">
-          Clear filters
-        </button>
+        <p>No students match your search or filter.</p>
+        <button type="button" class="clear-filter-btn" (click)="clearSearch(); clearStatusFilter()">Clear filters</button>
       </div>
     </div>
 
-    <!-- Submit Button -->
     <div class="submit-section modern-submit-section">
-      <button 
-        type="button" 
-        class="btn btn-secondary modern-btn-secondary" 
-        (click)="attendanceForm.resetForm(); onClassChange()"
-        [disabled]="submitting">
-        <span>🔄</span> Reset
+      <button type="button" class="btn btn-secondary modern-btn-secondary" (click)="resetForm()" [disabled]="submitting">
+        Reset
       </button>
-      <button 
-        type="submit" 
-        class="btn btn-primary submit-btn modern-btn-primary" 
+      <button
+        type="button"
+        class="btn btn-primary submit-btn modern-btn-primary"
         (click)="submitAttendance()"
         [disabled]="submitting || !hasUnsavedChanges || isWeekendSelected()">
-        <span *ngIf="!submitting">💾 Save Attendance</span>
-        <span *ngIf="submitting" class="loading-spinner">⏳ Saving...</span>
+        <span *ngIf="!submitting">💾 Save attendance</span>
+        <span *ngIf="submitting" class="loading-spinner">Saving…</span>
       </button>
     </div>
-  </div>
+  </section>
 
-  <!-- Empty State -->
-  <div *ngIf="!loading && selectedClassId && students.length === 0" class="empty-state">
+  <div *ngIf="!loading && rosterLoaded && selectedClassId && students.length === 0" class="empty-state mark-att-empty">
     <div class="empty-icon">👥</div>
-    <h3>No Active Students</h3>
+    <h3>No active students</h3>
     <p>No active students found in the selected class.</p>
   </div>
 
-  <!-- Initial State -->
-  <div *ngIf="!loading && !selectedClassId" class="initial-state">
-    <div class="initial-icon">✅</div>
-    <h3>Get Started</h3>
-    <p>Select a class and date to begin marking attendance.</p>
+  <div *ngIf="!loading && !rosterLoaded" class="initial-state mark-att-empty">
+    <div class="initial-icon">📋</div>
+    <h3>Get started</h3>
+    <p>Choose term, class, and date, then click <strong>Fetch Class List</strong> to load the roll.</p>
   </div>
 
   <!-- Bulk Marking Modal -->
@@ -323,31 +290,28 @@
     <div class="modal-content bulk-modal" (click)="$event.stopPropagation()">
       <div class="modal-header modern-header">
         <div class="modal-title">
-          <h2>🚀 Bulk Attendance Marking</h2>
-          <p class="subtitle">Mark entire term as present for a selected class</p>
+          <h2>Bulk attendance marking</h2>
+          <p class="subtitle">Mark entire term as present for a class</p>
         </div>
-        <button class="modal-close-circle" (click)="closeBulkModal()" [disabled]="bulkMarkingInProgress">&times;</button>
+        <button type="button" class="modal-close-circle" (click)="closeBulkModal()" [disabled]="bulkMarkingInProgress">&times;</button>
       </div>
-      
       <div class="modal-body">
         <div class="bulk-modal-alert" *ngIf="!bulkMarkingInProgress">
           <span class="alert-icon">ℹ️</span>
           <div class="alert-content">
-            <p>This will mark all students in the selected class as <strong>Present</strong> for every school day from the <strong>Term Start Date</strong> to the <strong>Term End Date</strong>.</p>
-            <p>Days already marked will be <strong>skipped</strong> automatically.</p>
+            <p>Marks all students <strong>Present</strong> for every school day from term start to term end.</p>
+            <p>Days already marked are <strong>skipped</strong>.</p>
           </div>
         </div>
-
         <div class="bulk-form" *ngIf="!bulkMarkingInProgress">
           <div class="modal-form-group">
-            <label for="bulkClass">Select Class to Mark</label>
-            <select id="bulkClass" [(ngModel)]="bulkSelectedClassId" class="form-control">
-              <option value="">-- Select a Class --</option>
+            <label for="bulkClass">Class</label>
+            <select id="bulkClass" [(ngModel)]="bulkSelectedClassId" class="form-control" [ngModelOptions]="{standalone: true}">
+              <option value="">Select class</option>
               <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
             </select>
           </div>
         </div>
-
         <div class="bulk-progress-section" *ngIf="bulkMarkingInProgress">
           <div class="progress-info">
             <div class="progress-text">Processing: {{ bulkProgress.current | date:'dd/MM/yyyy' }}</div>
@@ -358,61 +322,47 @@
             </div>
           </div>
           <div class="progress-bar-container">
-            <div class="progress-bar" [style.width.%]="(bulkProgress.done + bulkProgress.skipped) / bulkProgress.total * 100"></div>
+            <div class="progress-bar" [style.width.%]="bulkProgress.total ? (bulkProgress.done + bulkProgress.skipped) / bulkProgress.total * 100 : 0"></div>
           </div>
-          <p class="loading-text">Please do not close this window while bulk marking is in progress...</p>
-        </div>
-
-        <div class="alert alert-success" *ngIf="success">
-          <span class="alert-icon">✅</span>
-          <span>{{ success }}</span>
-        </div>
-        <div class="alert alert-error" *ngIf="error">
-          <span class="alert-icon">❌</span>
-          <span>{{ error }}</span>
+          <p class="loading-text">Do not close this window while processing…</p>
         </div>
       </div>
-
       <div class="modal-footer modern-footer">
-        <button class="btn btn-close-grey" (click)="closeBulkModal()" [disabled]="bulkMarkingInProgress">Cancel</button>
-        <button class="btn btn-primary bulk-start-btn" (click)="startBulkMarking()" [disabled]="bulkMarkingInProgress || !bulkSelectedClassId">
-          <span *ngIf="!bulkMarkingInProgress">Start Bulk Marking</span>
-          <span *ngIf="bulkMarkingInProgress">Marking...</span>
+        <button type="button" class="btn btn-close-grey" (click)="closeBulkModal()" [disabled]="bulkMarkingInProgress">Cancel</button>
+        <button type="button" class="btn btn-primary bulk-start-btn" (click)="startBulkMarking()" [disabled]="bulkMarkingInProgress || !bulkSelectedClassId">
+          {{ bulkMarkingInProgress ? 'Marking…' : 'Start bulk marking' }}
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Reverse Bulk Marking Modal -->
+  <!-- Reverse Bulk Modal -->
   <div class="modal-overlay" *ngIf="showReverseBulkModal" (click)="closeReverseBulkModal()">
     <div class="modal-content bulk-modal reverse-bulk-modal" (click)="$event.stopPropagation()">
       <div class="modal-header modern-header reverse-header">
         <div class="modal-title">
-          <h2>🔄 Reverse Bulk Marking</h2>
-          <p class="subtitle">Remove attendance records for a class for the entire term</p>
+          <h2>Reverse bulk marking</h2>
+          <p class="subtitle">Remove attendance records for a class (entire term)</p>
         </div>
-        <button class="modal-close-circle" (click)="closeReverseBulkModal()" [disabled]="reverseBulkInProgress">&times;</button>
+        <button type="button" class="modal-close-circle" (click)="closeReverseBulkModal()" [disabled]="reverseBulkInProgress">&times;</button>
       </div>
-
       <div class="modal-body">
         <div class="bulk-modal-alert danger" *ngIf="!reverseBulkInProgress">
           <span class="alert-icon">⚠️</span>
           <div class="alert-content">
-            <p>This will <strong>permanently delete</strong> all attendance records for students in the selected class from the <strong>Term Start Date</strong> to the <strong>Term End Date</strong>.</p>
-            <p>This action cannot be undone.</p>
+            <p><strong>Permanently deletes</strong> attendance for the selected class from term start to end.</p>
+            <p>This cannot be undone.</p>
           </div>
         </div>
-
         <div class="bulk-form" *ngIf="!reverseBulkInProgress">
           <div class="modal-form-group">
-            <label for="reverseBulkClass">Select Class to Reverse</label>
-            <select id="reverseBulkClass" [(ngModel)]="reverseBulkSelectedClassId" class="form-control">
-              <option value="">-- Select a Class --</option>
+            <label for="reverseBulkClass">Class</label>
+            <select id="reverseBulkClass" [(ngModel)]="reverseBulkSelectedClassId" class="form-control" [ngModelOptions]="{standalone: true}">
+              <option value="">Select class</option>
               <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
             </select>
           </div>
         </div>
-
         <div class="bulk-progress-section" *ngIf="reverseBulkInProgress">
           <div class="progress-info">
             <div class="progress-text">Processing: {{ reverseBulkProgress.current | date:'dd/MM/yyyy' }}</div>
@@ -422,26 +372,15 @@
             </div>
           </div>
           <div class="progress-bar-container">
-            <div class="progress-bar danger" [style.width.%]="(reverseBulkProgress.done + reverseBulkProgress.skipped) / reverseBulkProgress.total * 100"></div>
+            <div class="progress-bar danger" [style.width.%]="reverseBulkProgress.total ? (reverseBulkProgress.done + reverseBulkProgress.skipped) / reverseBulkProgress.total * 100 : 0"></div>
           </div>
-          <p class="loading-text">Reversing bulk marking, please wait...</p>
-        </div>
-
-        <div class="alert alert-success" *ngIf="success">
-          <span class="alert-icon">✅</span>
-          <span>{{ success }}</span>
-        </div>
-        <div class="alert alert-error" *ngIf="error">
-          <span class="alert-icon">❌</span>
-          <span>{{ error }}</span>
+          <p class="loading-text">Reversing bulk marking, please wait…</p>
         </div>
       </div>
-
       <div class="modal-footer modern-footer">
-        <button class="btn btn-close-grey" (click)="closeReverseBulkModal()" [disabled]="reverseBulkInProgress">Cancel</button>
-        <button class="btn btn-danger reverse-start-btn" (click)="startReverseBulk()" [disabled]="reverseBulkInProgress || !reverseBulkSelectedClassId">
-          <span *ngIf="!reverseBulkInProgress">Start Reverse Bulk</span>
-          <span *ngIf="reverseBulkInProgress">Reversing...</span>
+        <button type="button" class="btn btn-close-grey" (click)="closeReverseBulkModal()" [disabled]="reverseBulkInProgress">Cancel</button>
+        <button type="button" class="btn btn-danger reverse-start-btn" (click)="startReverseBulk()" [disabled]="reverseBulkInProgress || !reverseBulkSelectedClassId">
+          {{ reverseBulkInProgress ? 'Reversing…' : 'Start reverse bulk' }}
         </button>
       </div>
     </div>

@@ -1,51 +1,38 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuditService } from '../../../services/audit.service';
-import { Subscription, Subject, interval } from 'rxjs';
+import { Subject } from 'rxjs';
 import { debounceTime, finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
 
 @Component({
-  standalone: false,  selector: 'app-user-log',
-templateUrl: './user-log.component.html',
+  standalone: false,
+  selector: 'app-user-log',
+  templateUrl: './user-log.component.html',
   styleUrls: ['./user-log.component.css']
 })
 export class UserLogComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
   private loadSeq = 0;
-loading = false;
+  private entityIdInput$ = new Subject<string>();
+  private performedByInput$ = new Subject<string>();
+
+  loading = false;
   error = '';
   sessions: any[] = [];
-  // Filters and pagination
-  role: string = 'all';
-  search: string = '';
+
+  action = 'all';
+  role = 'all';
+  entityId = '';
+  performedBy = '';
   startDate?: string;
   endDate?: string;
   page = 1;
-  limit = 20;
+  limit = 50;
   total = 0;
-  get totalPages(): number {
-    return Math.max(1, Math.ceil(this.total / this.limit));
-  }
-  autoRefresh = false;
-  refreshMs = 30000;
-  private refreshSub?: Subscription;
-  private searchSub?: Subscription;
-  private searchInput$ = new Subject<string>();
-  sortKey: string = 'loginAt';
+
+  sortKey = 'loginAt';
   sortDir: 'asc' | 'desc' = 'desc';
-  columns = {
-    user: true,
-    role: true,
-    loginAt: true,
-    lastActivityAt: true,
-    logoutAt: true,
-    duration: true,
-    modules: true,
-    sessionId: true,
-    ipAddress: true,
-    userAgent: false
-  };
 
   constructor(
     private auditService: AuditService,
@@ -53,11 +40,21 @@ loading = false;
     private cdr: ChangeDetectorRef
   ) {}
 
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.total / this.limit));
+  }
+
   ngOnInit(): void {
-    this.searchSub = this.searchInput$
+    this.entityIdInput$
       .pipe(debounceTime(300), takeUntil(this.destroy$))
-      .subscribe((v) => {
-        this.search = v || '';
+      .subscribe(() => {
+        this.page = 1;
+        this.load();
+      });
+
+    this.performedByInput$
+      .pipe(debounceTime(300), takeUntil(this.destroy$))
+      .subscribe(() => {
         this.page = 1;
         this.load();
       });
@@ -67,15 +64,27 @@ loading = false;
 
   private bootstrapPage(): void {
     this.restoreState();
-    this.updateAutoRefresh();
     this.load();
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-this.refreshSub?.unsubscribe();
-    this.searchSub?.unsubscribe();
+  }
+
+  onFilterChange(): void {
+    this.page = 1;
+    this.load();
+  }
+
+  onEntityIdChange(value: string): void {
+    this.entityId = value || '';
+    this.entityIdInput$.next(this.entityId);
+  }
+
+  onPerformedByChange(value: string): void {
+    this.performedBy = value || '';
+    this.performedByInput$.next(this.performedBy);
   }
 
   load(): void {
@@ -84,53 +93,66 @@ this.refreshSub?.unsubscribe();
     this.error = '';
     this.cdr.markForCheck();
 
-const params: any = {
-      startDate: this.startDate,
-      endDate: this.endDate,
-      role: this.role !== 'all' ? this.role : undefined,
-      search: this.search || undefined,
+    const params: Record<string, string> = {
       page: String(this.page),
       limit: String(this.limit),
       sortKey: this.sortKey,
       sortDir: this.sortDir.toUpperCase()
     };
+    if (this.startDate) params['startDate'] = this.startDate;
+    if (this.endDate) params['endDate'] = this.endDate;
+    if (this.role !== 'all') params['role'] = this.role;
+    if (this.action !== 'all') params['action'] = this.action;
+    if (this.entityId.trim()) params['entityId'] = this.entityId.trim();
+    if (this.performedBy.trim()) params['performedBy'] = this.performedBy.trim();
+
     this.auditService
       .getUserSessions(params)
       .pipe(
         takeUntil(this.destroy$),
         finalize(() => {
-          if (seq !== this.loadSeq) {
-            return;
-          }
+          if (seq !== this.loadSeq) return;
           this.loading = false;
           this.cdr.markForCheck();
         })
       )
       .subscribe({
         next: (res: any) => {
-          if (seq !== this.loadSeq) {
-            return;
-          }
+          if (seq !== this.loadSeq) return;
           this.sessions = Array.isArray(res) ? res : res?.data || [];
-          this.total = Array.isArray(res) ? this.sessions.length : res?.total || this.sessions.length;
+          this.total = Array.isArray(res) ? this.sessions.length : Number(res?.total ?? this.sessions.length);
           this.saveState();
         },
         error: (err: any) => {
-          if (seq !== this.loadSeq) {
-            return;
-          }
-          this.error = err?.error?.message || 'Failed to load user sessions';
+          if (seq !== this.loadSeq) return;
+          this.error = err?.error?.message || 'Failed to load audit logs';
         }
       });
-}
+  }
 
-  resetFilters(): void {
+  clearFilters(): void {
+    this.action = 'all';
     this.role = 'all';
-    this.search = '';
+    this.entityId = '';
+    this.performedBy = '';
     this.startDate = undefined;
     this.endDate = undefined;
     this.page = 1;
     this.load();
+  }
+
+  private buildExportParams(): Record<string, string> {
+    const params: Record<string, string> = {
+      sortKey: this.sortKey,
+      sortDir: this.sortDir.toUpperCase()
+    };
+    if (this.startDate) params['startDate'] = this.startDate;
+    if (this.endDate) params['endDate'] = this.endDate;
+    if (this.role !== 'all') params['role'] = this.role;
+    if (this.action !== 'all') params['action'] = this.action;
+    if (this.entityId.trim()) params['entityId'] = this.entityId.trim();
+    if (this.performedBy.trim()) params['performedBy'] = this.performedBy.trim();
+    return params;
   }
 
   exportCSV(): void {
@@ -143,45 +165,36 @@ const params: any = {
       timeSpentSeconds: s.timeSpentSeconds,
       modules: s.modules,
       sessionId: s.sessionId,
-      ipAddress: s.ipAddress,
-      userAgent: s.userAgent
+      ipAddress: s.ipAddress
     }));
-    const header = [
-      ...(this.columns.user ? ['User'] : []),
-      ...(this.columns.role ? ['Role'] : []),
-      ...(this.columns.loginAt ? ['Login Time'] : []),
-      ...(this.columns.lastActivityAt ? ['Last Activity'] : []),
-      ...(this.columns.logoutAt ? ['Logout Time'] : []),
-      ...(this.columns.duration ? ['Time Spent (s)'] : []),
-      ...(this.columns.modules ? ['Modules'] : []),
-      ...(this.columns.sessionId ? ['Session ID'] : []),
-      ...(this.columns.ipAddress ? ['IP Address'] : []),
-      ...(this.columns.userAgent ? ['User Agent'] : [])
-    ];
-    const csv = [header.join(','), ...rows.map(r => [
-      ...(this.columns.user ? [`"${(r.user || '').replace(/"/g,'""')}"`] : []),
-      ...(this.columns.role ? [r.role || ''] : []),
-      ...(this.columns.loginAt ? [r.loginAt ? new Date(r.loginAt).toISOString() : ''] : []),
-      ...(this.columns.lastActivityAt ? [r.lastActivityAt ? new Date(r.lastActivityAt).toISOString() : ''] : []),
-      ...(this.columns.logoutAt ? [r.logoutAt ? new Date(r.logoutAt).toISOString() : ''] : []),
-      ...(this.columns.duration ? [String(r.timeSpentSeconds || 0)] : []),
-      ...(this.columns.modules ? [`"${(r.modules || '').replace(/"/g,'""')}"`] : []),
-      ...(this.columns.sessionId ? [r.sessionId || ''] : []),
-      ...(this.columns.ipAddress ? [r.ipAddress || ''] : []),
-      ...(this.columns.userAgent ? [`"${(r.userAgent || '').replace(/"/g,'""')}"`] : [])
-    ].join(','))].join('\n');
+    const header = ['User', 'Role', 'Login Time', 'Last Activity', 'Logout Time', 'Time Spent (s)', 'Modules', 'Session ID', 'IP Address'];
+    const csv = [
+      header.join(','),
+      ...rows.map(r =>
+        [
+          `"${(r.user || '').replace(/"/g, '""')}"`,
+          r.role || '',
+          r.loginAt ? new Date(r.loginAt).toISOString() : '',
+          r.lastActivityAt ? new Date(r.lastActivityAt).toISOString() : '',
+          r.logoutAt ? new Date(r.logoutAt).toISOString() : '',
+          String(r.timeSpentSeconds || 0),
+          `"${(r.modules || '').replace(/"/g, '""')}"`,
+          r.sessionId || '',
+          r.ipAddress || ''
+        ].join(',')
+      )
+    ].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `user_sessions_${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `audit_logs_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
   onPageChange(next: boolean): void {
-    const maxPage = this.totalPages;
-    this.page = next ? Math.min(this.page + 1, maxPage) : Math.max(this.page - 1, 1);
+    this.page = next ? Math.min(this.page + 1, this.totalPages) : Math.max(this.page - 1, 1);
     this.load();
   }
 
@@ -195,39 +208,10 @@ const params: any = {
     this.load();
   }
 
-  setSearch(value: string): void {
-    this.searchInput$.next(value);
-  }
-
-  toggleAutoRefresh(): void {
-    this.autoRefresh = !this.autoRefresh;
-    this.updateAutoRefresh();
-    this.saveState();
-  }
-
-  updateAutoRefresh(): void {
-    this.refreshSub?.unsubscribe();
-    if (this.autoRefresh) {
-      this.refreshSub = interval(this.refreshMs)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe(() => this.load());
-}
-  }
-
-  quickPreset(days: number): void {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - days + 1);
-    this.startDate = start.toISOString().slice(0,10);
-    this.endDate = end.toISOString().slice(0,10);
-    this.page = 1;
-    this.load();
-  }
-
   copy(text: string | null | undefined): void {
     const value = text || '';
-    if ((navigator as any).clipboard && (navigator as any).clipboard.writeText) {
-      (navigator as any).clipboard.writeText(value);
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(value);
     } else {
       const ta = document.createElement('textarea');
       ta.value = value;
@@ -238,26 +222,16 @@ const params: any = {
     }
   }
 
-  get totalActive(): number {
-    return this.sessions.filter(s => !s.logoutAt).length;
-  }
-
-  get averageMinutes(): number {
-    if (!this.sessions.length) return 0;
-    const sum = this.sessions.reduce((acc, s) => acc + (s.timeSpentSeconds || 0), 0);
-    return Math.round(sum / this.sessions.length / 60);
-  }
-
   saveState(): void {
     const state = {
+      action: this.action,
       role: this.role,
-      search: this.search,
+      entityId: this.entityId,
+      performedBy: this.performedBy,
       startDate: this.startDate,
       endDate: this.endDate,
       page: this.page,
-      limit: this.limit,
-      autoRefresh: this.autoRefresh,
-      columns: this.columns
+      limit: this.limit
     };
     localStorage.setItem('userLogState', JSON.stringify(state));
   }
@@ -267,101 +241,32 @@ const params: any = {
     if (!raw) return;
     try {
       const s = JSON.parse(raw || '{}');
+      this.action = s.action || this.action;
       this.role = s.role || this.role;
-      this.search = s.search || this.search;
+      this.entityId = s.entityId || this.entityId;
+      this.performedBy = s.performedBy || s.search || this.performedBy;
       this.startDate = s.startDate || this.startDate;
       this.endDate = s.endDate || this.endDate;
       this.page = s.page || this.page;
       this.limit = s.limit || this.limit;
-      this.autoRefresh = !!s.autoRefresh;
-      this.columns = { ...this.columns, ...(s.columns || {}) };
-    } catch {}
-  }
-
-  // Simple bar chart: sessions by day
-
-  // PDF export
-  exportingPdf = false;
-  async exportPDF(): Promise<void> {
-    try {
-      this.exportingPdf = true;
-      const element = document.getElementById('user-log-export-container');
-      if (!element) {
-        this.error = 'Table element not found for PDF export';
-        this.exportingPdf = false;
-        return;
-      }
-      const { jsPDF } = await import('jspdf');
-      const defaultScale = 2;
-      const canvas = await (await import('html2canvas')).default(element, { scale: defaultScale });
-      const imgData = canvas.toDataURL('image/png');
-      const imgWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      let position = 0;
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-      pdf.save(`user-sessions-${new Date().toISOString().slice(0,10)}.pdf`);
-    } catch (e: any) {
-      this.error = e?.message || 'Failed to export PDF';
-    } finally {
-      this.exportingPdf = false;
-      this.cdr.markForCheck();
-}
-  }
-
-  downloadServerCSV(): void {
-    const params: any = {
-      startDate: this.startDate,
-      endDate: this.endDate,
-      role: this.role !== 'all' ? this.role : undefined,
-      search: this.search || undefined,
-      sortKey: this.sortKey,
-      sortDir: this.sortDir.toUpperCase()
-    };
-    this.auditService.exportSessionsCsv(params).subscribe({
-      next: (blob: Blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `user_sessions_${new Date().toISOString().slice(0,10)}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-      },
-      error: (err: any) => {
-        this.error = err?.error?.message || 'Failed to export CSV';
-      }
-    });
+    } catch {
+      /* ignore */
+    }
   }
 
   downloadServerPDF(): void {
-    const params: any = {
-      startDate: this.startDate,
-      endDate: this.endDate,
-      role: this.role !== 'all' ? this.role : undefined,
-      search: this.search || undefined,
-      sortKey: this.sortKey,
-      sortDir: this.sortDir.toUpperCase()
-    };
-    this.auditService.exportSessionsPdf(params).subscribe({
+    this.auditService.exportSessionsPdf(this.buildExportParams()).subscribe({
       next: (blob: Blob) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `user_sessions_${new Date().toISOString().slice(0,10)}.pdf`;
+        a.download = `audit_logs_${new Date().toISOString().slice(0, 10)}.pdf`;
         a.click();
         URL.revokeObjectURL(url);
       },
       error: (err: any) => {
         this.error = err?.error?.message || 'Failed to export PDF';
+        this.cdr.markForCheck();
       }
     });
   }

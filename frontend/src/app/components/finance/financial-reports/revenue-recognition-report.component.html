@@ -1,0 +1,242 @@
+<div class="rr-page">
+  <div class="rr-toast-stack" *ngIf="success || error">
+    <div class="rr-toast rr-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="rr-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="rr-toast rr-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="rr-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="rr-hero">
+    <div class="rr-hero__main">
+      <div class="rr-hero-left">
+        <span class="rr-hero-icon" aria-hidden="true">📊</span>
+        <div>
+          <span class="rr-hero-eyebrow">Financial Reports</span>
+          <h1>Revenue Recognition</h1>
+          <p class="rr-hero-sub">
+            Invoiced, collected, and outstanding amounts for {{ term || 'the selected term' }} — filter receipts and export.
+          </p>
+          <p class="rr-hero-meta" *ngIf="lastLoadedAt && !loading">
+            Last updated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
+          </p>
+        </div>
+      </div>
+      <div class="rr-hero__actions" *ngIf="hasData">
+        <button type="button" class="rr-hero-refresh" (click)="load()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <button type="button" class="rr-hero-btn" (click)="toggleViewMode()" title="Toggle view">
+          {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
+        </button>
+        <button type="button" class="rr-hero-btn rr-hero-btn--white" (click)="exportCsv()" [disabled]="!displayedItems.length || loading">CSV</button>
+        <button type="button" class="rr-hero-btn rr-hero-btn--white" (click)="downloadPdf()" [disabled]="downloadingPdf || loading">
+          {{ downloadingPdf ? '…' : 'PDF' }}
+        </button>
+        <button type="button" class="rr-hero-btn rr-hero-btn--white" (click)="printReport()" [disabled]="!displayedItems.length || loading">Print</button>
+      </div>
+    </div>
+
+    <div class="rr-hero-stats" *ngIf="hasData && !loading">
+      <article class="rr-stat">
+        <span class="rr-stat__value">{{ currencySymbol }}{{ formatAmount(dashboardStats.totalInvoiced) }}</span>
+        <span class="rr-stat__label">Total invoiced</span>
+      </article>
+      <article class="rr-stat rr-stat--mint">
+        <span class="rr-stat__value">{{ currencySymbol }}{{ formatAmount(dashboardStats.totalCollected) }}</span>
+        <span class="rr-stat__label">Collected</span>
+      </article>
+      <article class="rr-stat rr-stat--rose">
+        <span class="rr-stat__value">{{ currencySymbol }}{{ formatAmount(dashboardStats.totalOutstanding) }}</span>
+        <span class="rr-stat__label">Outstanding</span>
+      </article>
+      <article class="rr-stat rr-stat--amber">
+        <span class="rr-stat__value">{{ dashboardStats.collectionRate }}%</span>
+        <span class="rr-stat__label">Collection rate</span>
+      </article>
+      <article class="rr-stat">
+        <span class="rr-stat__value">{{ dashboardStats.invoicesCount }}</span>
+        <span class="rr-stat__label">Invoices</span>
+      </article>
+      <article class="rr-stat">
+        <span class="rr-stat__value">{{ dashboardStats.studentsFullyPaid }}/{{ dashboardStats.studentsPartiallyPaid }}/{{ dashboardStats.studentsUnpaid }}</span>
+        <span class="rr-stat__label">Paid / partial / unpaid</span>
+      </article>
+    </div>
+    <div class="rr-hero-stats rr-hero-stats--skeleton" *ngIf="loading">
+      <div class="rr-skeleton" *ngFor="let i of [1,2,3,4,5,6]"></div>
+    </div>
+  </header>
+
+  <section class="rr-progress-panel" *ngIf="hasData && !loading && dashboardStats.totalInvoiced > 0">
+    <div class="rr-progress-head">
+      <h3>Revenue mix — {{ term }}</h3>
+      <span class="rr-progress-pct">{{ dashboardStats.collectionRate }}% collected</span>
+    </div>
+    <div class="rr-split-bar" role="img" [attr.aria-label]="'Collected ' + dashboardStats.collectedSharePct + ' percent, outstanding ' + dashboardStats.outstandingSharePct + ' percent'">
+      <div class="rr-split-bar__collected" [style.width.%]="dashboardStats.collectedSharePct"></div>
+      <div class="rr-split-bar__outstanding" [style.width.%]="dashboardStats.outstandingSharePct"></div>
+    </div>
+    <div class="rr-split-legend">
+      <span class="rr-legend-item rr-legend-item--collected">Collected {{ dashboardStats.collectedSharePct }}%</span>
+      <span class="rr-legend-item rr-legend-item--outstanding">Outstanding {{ dashboardStats.outstandingSharePct }}%</span>
+    </div>
+    <div class="rr-progress-meta">
+      <span>{{ dashboardStats.studentsFullyPaid }} of {{ dashboardStats.studentsWithInvoices }} students fully paid</span>
+      <span>Filtered receipts: {{ currencySymbol }}{{ formatAmount(dashboardStats.displayedCollected) }}</span>
+    </div>
+  </section>
+
+  <section class="rr-panel" *ngIf="hasData || loading">
+    <div class="rr-panel__head-row">
+      <div>
+        <h2 class="rr-panel__title">Filters & search</h2>
+        <p class="rr-panel__intro">Choose a term and payment method, then search receipts, students, or invoices.</p>
+      </div>
+      <button type="button" class="rr-btn-clear" *ngIf="hasActiveFilters()" (click)="resetFilters()">Clear filters</button>
+    </div>
+
+    <div class="rr-filters-row">
+      <div class="rr-field" *ngIf="availableTerms.length">
+        <label for="rr-term">Term</label>
+        <select id="rr-term" class="rr-select" [ngModel]="term" (ngModelChange)="onTermChange($event)" [ngModelOptions]="{standalone:true}" [disabled]="loading">
+          <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
+        </select>
+      </div>
+      <div class="rr-search-wrap">
+        <span class="rr-search-icon" aria-hidden="true">🔍</span>
+        <input
+          #rrSearch
+          type="search"
+          class="rr-search-input"
+          placeholder="Search receipts, students, invoices…"
+          [disabled]="loading && !data"
+          (input)="onSearchInput(rrSearch.value)" />
+        <button type="button" class="rr-search-clear" *ngIf="searchQuery" (click)="rrSearch.value = ''; clearSearch()">Clear</button>
+      </div>
+    </div>
+
+    <div class="rr-chips" *ngIf="methodChips.length">
+      <button type="button" class="rr-chip" [class.rr-chip--active]="selectedMethod === 'all'" (click)="onMethodChange('all')">
+        All methods<span class="rr-chip__count">({{ data?.items?.length || 0 }})</span>
+      </button>
+      <button
+        type="button"
+        class="rr-chip"
+        *ngFor="let chip of methodChips"
+        [class.rr-chip--active]="selectedMethod === chip.method"
+        (click)="onMethodChange(chip.method)">
+        {{ chip.method }}<span class="rr-chip__count">({{ chip.count }})</span>
+      </button>
+    </div>
+
+    <div class="rr-summary" *ngIf="filterSummary">
+      <span class="rr-summary-pill">{{ filterSummary }}</span>
+    </div>
+  </section>
+
+  <section class="rr-panel rr-table-panel" *ngIf="loading">
+    <div class="rr-skeleton-table" aria-busy="true">
+      <div class="rr-skeleton-row" *ngFor="let _ of skeletonRows">
+        <div class="rr-skel rr-skel-sm"></div>
+        <div class="rr-skel rr-skel-sm"></div>
+        <div class="rr-skel"></div>
+        <div class="rr-skel"></div>
+        <div class="rr-skel rr-skel-md"></div>
+        <div class="rr-skel rr-skel-sm"></div>
+      </div>
+      <p style="text-align:center;color:#64748b;margin:0">Loading revenue recognition…</p>
+    </div>
+  </section>
+
+  <section class="rr-panel rr-table-panel" *ngIf="!loading && data">
+    <div class="rr-table-toolbar">
+      <h3>Cash receipts ({{ displayedItems.length }})</h3>
+    </div>
+
+    <div class="rr-table-scroll" *ngIf="viewMode === 'table' && displayedItems.length > 0">
+      <table class="rr-table">
+        <thead>
+          <tr>
+            <th>
+              <button type="button" class="rr-th-btn" (click)="setSort('receiptNumber')">
+                Receipt <span class="rr-sort">{{ sortIndicator('receiptNumber') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="rr-th-btn" (click)="setSort('paymentDate')">
+                Date <span class="rr-sort">{{ sortIndicator('paymentDate') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="rr-th-btn" (click)="setSort('studentName')">
+                Student <span class="rr-sort">{{ sortIndicator('studentName') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="rr-th-btn" (click)="setSort('invoiceNumber')">
+                Invoice <span class="rr-sort">{{ sortIndicator('invoiceNumber') }}</span>
+              </button>
+            </th>
+            <th>Term</th>
+            <th class="text-right">
+              <button type="button" class="rr-th-btn" (click)="setSort('amountPaid')">
+                Amount <span class="rr-sort">{{ sortIndicator('amountPaid') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="rr-th-btn" (click)="setSort('paymentMethod')">
+                Method <span class="rr-sort">{{ sortIndicator('paymentMethod') }}</span>
+              </button>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of displayedItems; trackBy: trackByReceipt">
+            <td class="rr-cell-mono">{{ r.receiptNumber || '—' }}</td>
+            <td>{{ r.paymentDate | date : 'mediumDate' }}</td>
+            <td>{{ r.studentNumber || '—' }} — {{ r.studentName || '—' }}</td>
+            <td>{{ r.invoiceNumber || '—' }}</td>
+            <td>{{ r.invoiceTerm || '—' }}</td>
+            <td class="text-right rr-cell-amount">{{ currencySymbol }}{{ formatAmount(r.amountPaid || 0) }}</td>
+            <td><span class="rr-method-pill">{{ r.paymentMethod || '—' }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rr-cards" *ngIf="viewMode === 'cards' && displayedItems.length > 0">
+      <article class="rr-card" *ngFor="let r of displayedItems; trackBy: trackByReceipt">
+        <div class="rr-card__top">
+          <span class="rr-method-pill">{{ r.paymentMethod || '—' }}</span>
+          <span class="rr-card__amount">{{ currencySymbol }}{{ formatAmount(r.amountPaid || 0) }}</span>
+        </div>
+        <p class="rr-card__student">{{ r.studentName || '—' }}</p>
+        <p class="rr-card__meta">
+          {{ r.receiptNumber || '—' }} · {{ r.paymentDate | date : 'mediumDate' }}<br />
+          {{ r.studentNumber || '—' }} · {{ r.invoiceNumber || '—' }} ({{ r.invoiceTerm || '—' }})
+        </p>
+      </article>
+    </div>
+
+    <div class="rr-empty" *ngIf="data?.items?.length > 0 && displayedItems.length === 0">
+      <span class="rr-empty-icon" aria-hidden="true">🔍</span>
+      <h3 class="rr-empty-title">No matching receipts</h3>
+      <p class="rr-empty-text">Adjust search or payment method, or reset filters.</p>
+      <button type="button" class="rr-btn-reset" (click)="resetFilters()">Reset filters</button>
+    </div>
+
+    <div class="rr-empty" *ngIf="!data?.items?.length">
+      <span class="rr-empty-icon" aria-hidden="true">📭</span>
+      <h3 class="rr-empty-title">No cash receipts for this term</h3>
+      <p class="rr-empty-text">Recorded payments will appear here once they exist for the selected term.</p>
+    </div>
+
+    <div class="rr-footer-total" *ngIf="displayedItems.length">
+      <strong>Filtered collected:</strong> {{ currencySymbol }}{{ formatAmount(dashboardStats.displayedCollected) }}
+    </div>
+  </section>
+</div>

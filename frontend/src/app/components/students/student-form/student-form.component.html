@@ -1,312 +1,358 @@
-<div class="admission-page" [class.admission-page-bordered]="!isEdit">
-  <!-- Top bar -->
-  <div class="admission-topbar">
-    <nav class="admission-breadcrumb" aria-label="Breadcrumb">
-      <a routerLink="/students">Students</a>
-      <span class="bc-sep">/</span>
-      <span class="bc-current">{{ isEdit ? 'Edit Student' : 'Admission Form' }}</span>
-    </nav>
-    <div class="admission-topbar-actions">
-      <button type="button" class="btn-top btn-top-outline" (click)="goBack()">
-        ← Back to Students
-</button>
+<div class="admission-page admission-page--modern" [class.admission-page--edit]="isEdit">
+  <div class="admission-toast-stack" *ngIf="success || error">
+    <div class="admission-toast admission-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="admission-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="admission-toast admission-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="admission-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
   </div>
 
-  <!-- Alerts -->
-  <div class="alert alert-success" *ngIf="success">
-    <span class="alert-icon">✓</span> {{ success }}
-  </div>
-  <div class="alert alert-error" *ngIf="error">
-    <span class="alert-icon">⚠</span> {{ error }}
-  </div>
-  <div class="alert alert-info" *ngIf="loadingStudent && isEdit">
-    <span class="alert-icon">⏳</span> Loading student record…
-  </div>
-
-  <form (ngSubmit)="onSubmit()" #studentForm="ngForm" class="admission-form" [class.form-loading]="loadingStudent && isEdit">
-    <!-- Form title -->
-    <header class="admission-form-header">
-      <h1 class="admission-title">{{ isEdit ? 'Edit Student' : 'Admission Form' }}</h1>
-      <div class="admission-legend">
-        <span class="legend-item"><span class="legend-dot legend-required"></span> Required*</span>
-        <span class="legend-item"><span class="legend-dot legend-optional"></span> Optional</span>
+  <header class="admission-hero">
+    <div class="admission-hero__top">
+      <nav class="admission-breadcrumb" aria-label="Breadcrumb">
+        <a routerLink="/students">Students</a>
+        <span class="bc-sep">/</span>
+        <span class="bc-current">{{ isEdit ? 'Edit' : 'New admission' }}</span>
+      </nav>
+      <button type="button" class="btn-top btn-top-ghost" (click)="goBack()">← Back</button>
+    </div>
+    <div class="admission-hero__main">
+      <span class="admission-hero__icon" aria-hidden="true">{{ isEdit ? '✏️' : '🎓' }}</span>
+      <div>
+        <span class="admission-hero__eyebrow">{{ isEdit ? 'Enrolment' : 'New registration' }}</span>
+        <h1 class="admission-hero__title">{{ isEdit ? 'Edit Student' : 'Register New Student' }}</h1>
+        <p class="admission-hero__sub">
+          {{ isEdit ? 'Update learner details, services, and contact information.' : 'Complete the admission form to enrol a learner and generate their student number.' }}
+        </p>
       </div>
-    </header>
+    </div>
+    <nav class="admission-steps" *ngIf="!limitedEditMode" aria-label="Form sections">
+      <span class="admission-step"><span class="admission-step__num">1</span> Student info</span>
+      <span class="admission-step"><span class="admission-step__num">2</span> Other details</span>
+      <span class="admission-step" *ngIf="!isEdit || !limitedEditMode"><span class="admission-step__num">3</span> Type &amp; fees</span>
+    </nav>
+  </header>
 
-    <!-- Section 1: Student Information -->
-    <section class="admission-section">
-      <h2 class="section-title">
-        <span class="section-num">1</span>
-        Student Information
-      </h2>
-      <div class="section-rule"></div>
+  <div class="admission-panel">
+    <div class="admission-loading-banner" *ngIf="loadingStudent && isEdit" role="status">
+      <span class="admission-loading-banner__spinner"></span>
+      Loading student record…
+    </div>
 
-      <div class="admission-grid">
-        <div class="eskooly-field required">
-          <label class="eskooly-label" for="firstName">First Name*</label>
-          <input
-            type="text"
-            id="firstName"
-            class="eskooly-input"
-            [(ngModel)]="student.firstName"
-            name="firstName"
-            required
-            placeholder="First name"
-            [class.input-error]="studentForm.submitted && !student.firstName">
+    <form (ngSubmit)="onSubmit()" #studentForm="ngForm" class="admission-form" [class.form-loading]="loadingStudent && isEdit">
+      <div class="admission-form-intro">
+        <div class="admission-legend">
+          <span class="legend-item"><span class="legend-dot legend-required"></span> Required</span>
+          <span class="legend-item"><span class="legend-dot legend-optional"></span> Optional</span>
         </div>
+        <p class="admission-form-intro__hint" *ngIf="!isEdit && studentIdPrefix">
+          Student number will be auto-generated using prefix <strong>{{ studentIdPrefix }}</strong>
+        </p>
+      </div>
 
-        <div class="eskooly-field required">
-          <label class="eskooly-label" for="lastName">Last Name*</label>
-          <input
-            type="text"
-            id="lastName"
-            class="eskooly-input"
-            [(ngModel)]="student.lastName"
-            name="lastName"
-            required
-            placeholder="Last name"
-            [class.input-error]="studentForm.submitted && !student.lastName">
-        </div>
+      <!-- Section 1: Student Information -->
+      <section class="admission-section admission-section--card">
+        <h2 class="section-title">
+          <span class="section-num">1</span>
+          Student Information
+        </h2>
+        <p class="section-desc">Basic identity and contact details for the learner.</p>
 
-        <div class="eskooly-field required">
-          <label class="eskooly-label" for="gender">Gender*</label>
-          <select
-            id="gender"
-            class="eskooly-input"
-            [(ngModel)]="student.gender"
-            name="gender"
-            required
-            [class.input-error]="studentForm.submitted && !student.gender">
-            <option value="">Gender</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
-        </div>
-
-        <div class="eskooly-field optional">
-          <label class="eskooly-label" for="photo">Picture – Optional</label>
-          <div class="photo-field">
+        <div class="admission-grid">
+          <div class="eskooly-field required">
+            <label class="eskooly-label" for="firstName">First Name*</label>
             <input
-              type="file"
-              id="photo"
-              accept="image/*"
-              class="eskooly-input file-input"
-              (change)="onPhotoSelected($event)">
-            <span class="file-hint-badge">Max size 2MB</span>
+              type="text"
+              id="firstName"
+              class="eskooly-input"
+              [(ngModel)]="student.firstName"
+              name="firstName"
+              required
+              placeholder="First name"
+              [class.input-error]="studentForm.submitted && !student.firstName">
           </div>
-          <div class="photo-preview-inline" *ngIf="photoPreview">
-            <img [src]="photoPreview" alt="Photo preview">
-            <button type="button" class="photo-remove" (click)="removePhoto()" title="Remove">×</button>
+
+          <div class="eskooly-field required">
+            <label class="eskooly-label" for="lastName">Last Name*</label>
+            <input
+              type="text"
+              id="lastName"
+              class="eskooly-input"
+              [(ngModel)]="student.lastName"
+              name="lastName"
+              required
+              placeholder="Last name"
+              [class.input-error]="studentForm.submitted && !student.lastName">
           </div>
-        </div>
 
-        <div class="eskooly-field optional">
-          <label class="eskooly-label" for="gradeLevel">Grade</label>
-          <select
-            id="gradeLevel"
-            class="eskooly-input"
-            [(ngModel)]="selectedGradeLevel"
-            name="gradeLevel">
-            <option value="">Select Grade</option>
-            <option *ngFor="let level of gradeLevels" [value]="level">{{ level }}</option>
-          </select>
-        </div>
-
-        <div class="eskooly-field optional" *ngIf="!limitedEditMode && isEdit">
-          <label class="eskooly-label" for="studentStatus">Student Status</label>
-          <select
-            id="studentStatus"
-            class="eskooly-input"
-            [(ngModel)]="student.studentStatus"
-            name="studentStatus"
-(change)="onStudentStatusChange()">
-            <option value="Select Status">Select Status</option>
-            <option value="Returning Student">Returning Student</option>
-            <option value="New Student">New Student</option>
-          </select>
-        </div>
-
-        <div class="eskooly-field optional student-number-field" *ngIf="!limitedEditMode">
-          <label class="eskooly-label">Student Number</label>
-          <div class="eskooly-readonly">
-            <strong *ngIf="isEdit">{{ student.studentNumber }}</strong>
-            <span *ngIf="!isEdit">Auto-generated ({{ studentIdPrefix }} format)</span>
+          <div class="eskooly-field required">
+            <label class="eskooly-label" for="gender">Gender*</label>
+            <select
+              id="gender"
+              class="eskooly-input"
+              [(ngModel)]="student.gender"
+              name="gender"
+              required
+              [class.input-error]="studentForm.submitted && !student.gender">
+              <option value="">Select gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
           </div>
-          <small class="field-note" *ngIf="!isEdit">e.g. {{ studentIdPrefix }}1234567</small>
-        </div>
 
-        <div class="eskooly-field optional">
-          <label class="eskooly-label" for="contactNumber">Mobile No. for SMS/WhatsApp</label>
-          <input
-            type="tel"
-            id="contactNumber"
-            class="eskooly-input"
-            [(ngModel)]="student.contactNumber"
-            name="contactNumber"
-            placeholder="e.g. 0771234567"
-            [class.input-error]="contactNumberError"
-            (blur)="validateContactNumber()"
-            (input)="contactNumberError = ''">
-          <small class="field-error" *ngIf="contactNumberError">{{ contactNumberError }}</small>
-        </div>
-      </div>
-    </section>
-
-    <!-- Section 2: Other Information -->
-    <section class="admission-section">
-      <h2 class="section-title">
-        <span class="section-num">2</span>
-        Other Information
-      </h2>
-      <div class="section-rule"></div>
-
-      <div class="admission-grid">
-        <div class="eskooly-field optional">
-          <label class="eskooly-label" for="dateOfBirth">Date Of Birth</label>
-          <input
-            type="text"
-            id="dateOfBirth"
-            class="eskooly-input"
-            [(ngModel)]="student.dateOfBirth"
-            name="dateOfBirth"
-            placeholder="dd/mm/yyyy"
-            (input)="onDobInput($event)"
-            (blur)="onDobBlur()"
-            [class.input-error]="dobError">
-          <small class="field-error" *ngIf="dobError">{{ dobError }}</small>
-        </div>
-
-        <div class="eskooly-field optional">
-          <label class="eskooly-label" for="phoneNumber">Phone Number (Optional)</label>
-          <input
-            type="tel"
-            id="phoneNumber"
-            class="eskooly-input"
-            [(ngModel)]="student.phoneNumber"
-            name="phoneNumber"
-            placeholder="e.g. 0771234567"
-            [class.input-error]="phoneNumberError"
-            (blur)="validatePhoneNumber()"
-            (input)="phoneNumberError = ''">
-          <small class="field-error" *ngIf="phoneNumberError">{{ phoneNumberError }}</small>
-        </div>
-
-        <div class="eskooly-field optional full-row">
-          <label class="eskooly-label" for="address">Address</label>
-          <textarea
-            id="address"
-            class="eskooly-input eskooly-textarea"
-            [(ngModel)]="student.address"
-            name="address"
-            placeholder="Residential address"
-            rows="2"></textarea>
-        </div>
-      </div>
-    </section>
-
-    <!-- Section 3: Student Type & Services -->
-    <section class="admission-section" *ngIf="!limitedEditMode">
-      <h2 class="section-title">
-        <span class="section-num">3</span>
-        Student Type &amp; Services
-      </h2>
-      <div class="section-rule"></div>
-
-      <div class="admission-grid">
-        <div class="eskooly-field required">
-          <label class="eskooly-label" for="studentType">Student Type*</label>
-          <select
-            id="studentType"
-            class="eskooly-input"
-            [(ngModel)]="student.studentType"
-            name="studentType"
-            required
-            (change)="onStudentTypeChange()"
-            [class.input-error]="studentForm.submitted && !student.studentType">
-<option value="">Select Type</option>
-            <option value="Day Scholar">Day Scholar</option>
-            <option value="Boarder">Boarder</option>
-          </select>
-        </div>
-
-        <div class="eskooly-field optional" *ngIf="student.studentType">
-          <label class="eskooly-label">Type Summary</label>
-          <div class="type-summary" [class.day]="student.studentType === 'Day Scholar'" [class.boarder]="student.studentType === 'Boarder'">
-            <span>{{ student.studentType === 'Day Scholar' ? '🏠' : '🏫' }}</span>
-            <div>
-              <strong>{{ student.studentType }}</strong>
-              <p>{{ student.studentType === 'Day Scholar' ? 'Attends during the day' : 'Resides at school' }}</p>
-</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="services-block">
-        <label class="eskooly-checkbox-row">
-          <input
-            type="checkbox"
-            [(ngModel)]="student.isStaffChild"
-            name="isStaffChild"
-            (change)="onStaffChildChange()">
-          <span class="checkbox-text">
-            <strong>Staff Child</strong>
-            <small>No tuition; 50% DH meals; no transport cost</small>
-          </span>
-        </label>
-
-        <div *ngIf="student.studentType === 'Day Scholar'" class="day-scholar-services">
-          <p class="services-heading">Additional Services (Day Scholars)</p>
-          <div class="services-checkboxes">
-            <label class="eskooly-checkbox-row">
+          <div class="eskooly-field optional">
+            <label class="eskooly-label" for="photo">Photo</label>
+            <div class="photo-field">
               <input
-                type="checkbox"
-                [(ngModel)]="student.usesTransport"
-                name="usesTransport"
-                [disabled]="student.isStaffChild"
-                (change)="onUsesTransportChange()">
-              <span class="checkbox-text"><strong>School Transport</strong></span>
-            </label>
-            <label class="eskooly-checkbox-row">
-              <input
-                type="checkbox"
-                [(ngModel)]="student.usesDiningHall"
-                name="usesDiningHall"
-                (change)="onUsesDiningHallChange()">
-              <span class="checkbox-text"><strong>Dining Hall (DH) Meals</strong></span>
-            </label>
-            <label class="eskooly-checkbox-row">
-              <input
-                type="checkbox"
-                [(ngModel)]="student.isExempted"
-                name="isExempted"
-                (change)="onExemptedChange()">
-              <span class="checkbox-text"><strong>Exempted</strong></span>
-            </label>
+                type="file"
+                id="photo"
+                accept="image/*"
+                class="eskooly-input file-input"
+                (change)="onPhotoSelected($event)">
+              <span class="file-hint-badge">Max 2MB · JPG or PNG</span>
+            </div>
+            <div class="photo-preview-inline" *ngIf="photoPreview">
+              <img [src]="photoPreview" alt="Photo preview">
+              <button type="button" class="photo-remove" (click)="removePhoto()" title="Remove">×</button>
+            </div>
           </div>
 
-          <div class="estimated-invoice" *ngIf="feesSettings">
-            <div class="estimated-title">Estimated Initial Invoice</div>
-            <div class="estimated-lines">
-              <div *ngIf="estimatedFees.registration">Registration: {{ currencySymbol }} {{ estimatedFees.registration | number:'1.2-2' }}</div>
-              <div *ngIf="estimatedFees.desk">Desk: {{ currencySymbol }} {{ estimatedFees.desk | number:'1.2-2' }}</div>
-              <div *ngIf="estimatedFees.tuition">Tuition: {{ currencySymbol }} {{ estimatedFees.tuition | number:'1.2-2' }}</div>
-              <div *ngIf="estimatedFees.transport">Transport: {{ currencySymbol }} {{ estimatedFees.transport | number:'1.2-2' }}</div>
-              <div *ngIf="estimatedFees.diningHall">Dining Hall: {{ currencySymbol }} {{ estimatedFees.diningHall | number:'1.2-2' }}</div>
-              <div class="estimated-total">Total: {{ currencySymbol }} {{ estimatedFees.total | number:'1.2-2' }}</div>
-</div>
+          <div class="eskooly-field optional">
+            <label class="eskooly-label" for="gradeLevel">Grade</label>
+            <select
+              id="gradeLevel"
+              class="eskooly-input"
+              [(ngModel)]="selectedGradeLevel"
+              name="gradeLevel">
+              <option value="">Select grade</option>
+              <option *ngFor="let level of gradeLevels" [value]="level">{{ level }}</option>
+            </select>
+          </div>
+
+          <div class="eskooly-field optional" *ngIf="!limitedEditMode && isEdit">
+            <label class="eskooly-label" for="studentStatus">Student Status</label>
+            <select
+              id="studentStatus"
+              class="eskooly-input"
+              [(ngModel)]="student.studentStatus"
+              name="studentStatus"
+              (change)="onStudentStatusChange()">
+              <option value="Select Status">Select status</option>
+              <option value="Returning Student">Returning Student</option>
+              <option value="New Student">New Student</option>
+            </select>
+          </div>
+
+          <div class="eskooly-field optional student-number-field" *ngIf="!limitedEditMode">
+            <label class="eskooly-label">Student Number</label>
+            <div class="eskooly-readonly">
+              <strong *ngIf="isEdit">{{ student.studentNumber }}</strong>
+              <span *ngIf="!isEdit">Auto-generated ({{ studentIdPrefix }}…)</span>
+            </div>
+            <small class="field-note" *ngIf="!isEdit">Example: {{ studentIdPrefix }}1234567</small>
+          </div>
+
+          <div class="eskooly-field optional">
+            <label class="eskooly-label" for="contactNumber">Mobile (SMS / WhatsApp)</label>
+            <input
+              type="tel"
+              id="contactNumber"
+              class="eskooly-input"
+              [(ngModel)]="student.contactNumber"
+              name="contactNumber"
+              placeholder="e.g. 0771234567"
+              [class.input-error]="contactNumberError"
+              (blur)="validateContactNumber()"
+              (input)="contactNumberError = ''">
+            <small class="field-error" *ngIf="contactNumberError">{{ contactNumberError }}</small>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Actions -->
-    <footer class="admission-actions">
-      <button type="button" class="btn-action btn-cancel" (click)="goBack()">Cancel</button>
-      <button type="submit" class="btn-action btn-save" [disabled]="submitting">
-        <span *ngIf="submitting" class="spinner"></span>
-        {{ submitting ? 'Processing...' : (isEdit ? 'Update Student' : 'Register Student') }}
-      </button>
-    </footer>
-  </form>
+      <!-- Section 2: Other Information -->
+      <section class="admission-section admission-section--card">
+        <h2 class="section-title">
+          <span class="section-num">2</span>
+          Other Information
+        </h2>
+        <p class="section-desc">Optional biographical and address details.</p>
+
+        <div class="admission-grid">
+          <div class="eskooly-field optional">
+            <label class="eskooly-label" for="dateOfBirth">Date of Birth</label>
+            <input
+              type="text"
+              id="dateOfBirth"
+              class="eskooly-input"
+              [(ngModel)]="student.dateOfBirth"
+              name="dateOfBirth"
+              placeholder="dd/mm/yyyy"
+              (input)="onDobInput($event)"
+              (blur)="onDobBlur()"
+              [class.input-error]="dobError">
+            <small class="field-error" *ngIf="dobError">{{ dobError }}</small>
+          </div>
+
+          <div class="eskooly-field optional">
+            <label class="eskooly-label" for="phoneNumber">Alternate Phone</label>
+            <input
+              type="tel"
+              id="phoneNumber"
+              class="eskooly-input"
+              [(ngModel)]="student.phoneNumber"
+              name="phoneNumber"
+              placeholder="e.g. 0771234567"
+              [class.input-error]="phoneNumberError"
+              (blur)="validatePhoneNumber()"
+              (input)="phoneNumberError = ''">
+            <small class="field-error" *ngIf="phoneNumberError">{{ phoneNumberError }}</small>
+          </div>
+
+          <div class="eskooly-field optional full-row">
+            <label class="eskooly-label" for="address">Address</label>
+            <textarea
+              id="address"
+              class="eskooly-input eskooly-textarea"
+              [(ngModel)]="student.address"
+              name="address"
+              placeholder="Residential address"
+              rows="2"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: Student Type & Services -->
+      <section class="admission-section admission-section--card" *ngIf="!limitedEditMode">
+        <h2 class="section-title">
+          <span class="section-num">3</span>
+          Student Type &amp; Services
+        </h2>
+        <p class="section-desc">Choose day scholar or boarder and any billable services.</p>
+
+        <div class="admission-grid">
+          <div class="eskooly-field required">
+            <label class="eskooly-label" for="studentType">Student Type*</label>
+            <select
+              id="studentType"
+              class="eskooly-input"
+              [(ngModel)]="student.studentType"
+              name="studentType"
+              required
+              (change)="onStudentTypeChange()"
+              [class.input-error]="studentForm.submitted && !student.studentType">
+              <option value="">Select type</option>
+              <option value="Day Scholar">Day Scholar</option>
+              <option value="Boarder">Boarder</option>
+            </select>
+          </div>
+
+          <div class="eskooly-field optional" *ngIf="student.studentType">
+            <label class="eskooly-label">Type Summary</label>
+            <div class="type-summary" [class.day]="student.studentType === 'Day Scholar'" [class.boarder]="student.studentType === 'Boarder'">
+              <span class="type-summary__icon">{{ student.studentType === 'Day Scholar' ? '🏠' : '🏫' }}</span>
+              <div>
+                <strong>{{ student.studentType }}</strong>
+                <p>{{ student.studentType === 'Day Scholar' ? 'Attends during the day' : 'Resides at school' }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="services-block">
+          <label class="eskooly-checkbox-row eskooly-checkbox-row--highlight">
+            <input
+              type="checkbox"
+              [(ngModel)]="student.isStaffChild"
+              name="isStaffChild"
+              (change)="onStaffChildChange()">
+            <span class="checkbox-text">
+              <strong>Staff child</strong>
+              <small>No tuition; 50% dining hall; no transport cost</small>
+            </span>
+          </label>
+
+          <div *ngIf="student.studentType === 'Day Scholar'" class="day-scholar-services">
+            <p class="services-heading">Additional services (day scholars)</p>
+            <div class="services-checkboxes">
+              <label class="eskooly-checkbox-row">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="student.usesTransport"
+                  name="usesTransport"
+                  [disabled]="student.isStaffChild"
+                  (change)="onUsesTransportChange()">
+                <span class="checkbox-text"><strong>School transport</strong></span>
+              </label>
+              <label class="eskooly-checkbox-row">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="student.usesDiningHall"
+                  name="usesDiningHall"
+                  (change)="onUsesDiningHallChange()">
+                <span class="checkbox-text"><strong>Dining hall meals</strong></span>
+              </label>
+              <label class="eskooly-checkbox-row">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="student.isExempted"
+                  name="isExempted"
+                  (change)="onExemptedChange()">
+                <span class="checkbox-text"><strong>Fee exempted</strong></span>
+              </label>
+            </div>
+
+            <div class="estimated-invoice" *ngIf="feesSettings">
+              <div class="estimated-invoice__head">
+                <span class="estimated-invoice__icon" aria-hidden="true">💳</span>
+                <div>
+                  <div class="estimated-title">Estimated initial invoice</div>
+                  <p class="estimated-sub">Based on current fee settings</p>
+                </div>
+              </div>
+              <div class="estimated-lines">
+                <div class="estimated-line" *ngIf="estimatedFees.registration">
+                  <span>Registration</span>
+                  <span>{{ currencySymbol }} {{ estimatedFees.registration | number:'1.2-2' }}</span>
+                </div>
+                <div class="estimated-line" *ngIf="estimatedFees.desk">
+                  <span>Desk</span>
+                  <span>{{ currencySymbol }} {{ estimatedFees.desk | number:'1.2-2' }}</span>
+                </div>
+                <div class="estimated-line" *ngIf="estimatedFees.tuition">
+                  <span>Tuition</span>
+                  <span>{{ currencySymbol }} {{ estimatedFees.tuition | number:'1.2-2' }}</span>
+                </div>
+                <div class="estimated-line" *ngIf="estimatedFees.transport">
+                  <span>Transport</span>
+                  <span>{{ currencySymbol }} {{ estimatedFees.transport | number:'1.2-2' }}</span>
+                </div>
+                <div class="estimated-line" *ngIf="estimatedFees.diningHall">
+                  <span>Dining hall</span>
+                  <span>{{ currencySymbol }} {{ estimatedFees.diningHall | number:'1.2-2' }}</span>
+                </div>
+                <div class="estimated-total">
+                  <span>Total</span>
+                  <span>{{ currencySymbol }} {{ estimatedFees.total | number:'1.2-2' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="admission-actions admission-actions--sticky">
+        <p class="admission-actions__hint">Required fields must be completed before saving.</p>
+        <div class="admission-actions__buttons">
+          <button type="button" class="btn-action btn-cancel" (click)="goBack()">Cancel</button>
+          <button type="submit" class="btn-action btn-save" [disabled]="submitting">
+            <span *ngIf="submitting" class="spinner"></span>
+            {{ submitting ? 'Processing…' : (isEdit ? 'Update Student' : 'Register Student') }}
+          </button>
+        </div>
+      </footer>
+    </form>
+  </div>
 </div>

@@ -1,122 +1,173 @@
-<div class="container">
-  <div class="page-header">
-    <div class="header-content">
-      <h1>
-        <span class="icon">👨‍👩‍👧‍👦</span>
-        Parent Management
-      </h1>
-      <p class="subtitle">
-        View registered parents and manage their linked students and guardianship relationships.
-      </p>
+<div class="parents-page parents-page--modern">
+  <header class="parents-hero">
+    <div class="parents-hero__content">
+      <div class="parents-hero__title-row">
+        <span class="parents-hero__icon" aria-hidden="true">👨‍👩‍👧‍👦</span>
+        <div>
+          <h1 class="parents-hero__title">Parent Management</h1>
+          <p class="parents-hero__subtitle">
+            Register guardians, reset portal access, and link students to family accounts.
+          </p>
+        </div>
+      </div>
+      <div class="parents-hero__actions">
+        <button type="button" class="parents-hero__btn" (click)="refreshParents()" [disabled]="loading" title="Refresh list" aria-label="Refresh list">
+          <span class="parents-hero__btn-icon" [class.spinning]="loading">↻</span>
+        </button>
+      </div>
+    </div>
+    <div class="parents-hero__stats" *ngIf="!loading || parents.length > 0">
+      <div class="parents-stat">
+        <span class="parents-stat__value">{{ dashboardStats.total }}</span>
+        <span class="parents-stat__label">Total parents</span>
+      </div>
+      <div class="parents-stat">
+        <span class="parents-stat__value">{{ dashboardStats.withStudents }}</span>
+        <span class="parents-stat__label">With linked students</span>
+      </div>
+      <div class="parents-stat parents-stat--warn">
+        <span class="parents-stat__value">{{ dashboardStats.unlinked }}</span>
+        <span class="parents-stat__label">Not linked</span>
+      </div>
+      <div class="parents-stat">
+        <span class="parents-stat__value">{{ dashboardStats.linkedStudents }}</span>
+        <span class="parents-stat__label">Linked students</span>
+      </div>
+      <div class="parents-stat">
+        <span class="parents-stat__value">{{ dashboardStats.studentAccounts }}</span>
+        <span class="parents-stat__label">Student accounts</span>
+      </div>
+    </div>
+    <div class="parents-hero__stats parents-hero__stats--skeleton" *ngIf="loading && parents.length === 0">
+      <div class="parents-skeleton parents-skeleton--stat" *ngFor="let i of [1,2,3,4,5]"></div>
+    </div>
+  </header>
+
+  <div class="parents-toasts" aria-live="polite">
+    <div class="parents-toast parents-toast--success" *ngIf="success" role="status">
+      <span class="parents-toast__icon">✓</span>
+      <span class="parents-toast__text">{{ success }}</span>
+      <button type="button" class="parents-toast__close" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="parents-toast parents-toast--error" *ngIf="error" role="alert">
+      <span class="parents-toast__icon">!</span>
+      <span class="parents-toast__text">{{ error }}</span>
+      <button type="button" class="parents-toast__close" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
   </div>
 
-  <div class="alert alert-success" *ngIf="success">
-    <span class="alert-icon">✓</span>
-    <span>{{ success }}</span>
-  </div>
-  <div class="alert alert-error" *ngIf="error">
-    <span class="alert-icon">✕</span>
-    <span>{{ error }}</span>
-  </div>
+  <nav class="parents-tabs" aria-label="Parent admin sections">
+    <button
+      type="button"
+      class="parents-tab"
+      [class.active]="activeAdminTab === 'manage'"
+      (click)="setAdminTab('manage')">
+      <span class="parents-tab__icon">📋</span>
+      Manage &amp; link
+    </button>
+    <button
+      type="button"
+      class="parents-tab"
+      [class.active]="activeAdminTab === 'create'"
+      (click)="setAdminTab('create')">
+      <span class="parents-tab__icon">➕</span>
+      Create account
+    </button>
+    <button
+      type="button"
+      class="parents-tab"
+      [class.active]="activeAdminTab === 'reset'"
+      (click)="setAdminTab('reset')">
+      <span class="parents-tab__icon">🔑</span>
+      Reset password
+    </button>
+  </nav>
 
-  <div class="tab-navigation" style="margin-bottom: 16px;">
-    <button class="tab-btn" [class.active]="activeAdminTab === 'manage'" (click)="setAdminTab('manage')">
-      Manage
-    </button>
-    <button class="tab-btn" [class.active]="activeAdminTab === 'create'" (click)="setAdminTab('create')">
-      Create Parent Account
-    </button>
-    <button class="tab-btn" [class.active]="activeAdminTab === 'reset'" (click)="setAdminTab('reset')">
-      Reset Parent Password
-    </button>
-  </div>
-
-  <div class="card" *ngIf="activeAdminTab === 'create'">
-    <h3 style="margin-top:0;">Create Parent (Admin)</h3>
+  <section class="parents-panel" *ngIf="activeAdminTab === 'create'">
+    <div class="parents-panel__head">
+      <h2 class="parents-panel__title">Create parent (admin)</h2>
+      <p class="parents-panel__intro">Add a guardian record and optionally create portal login credentials.</p>
+    </div>
     <div class="details-grid">
       <div>
         <label>First Name</label>
-        <input type="text" class="form-input" [(ngModel)]="createParentForm.firstName" />
+        <input type="text" class="form-input" [(ngModel)]="createParentForm.firstName" placeholder="First name" />
       </div>
       <div>
         <label>Last Name</label>
-        <input type="text" class="form-input" [(ngModel)]="createParentForm.lastName" />
+        <input type="text" class="form-input" [(ngModel)]="createParentForm.lastName" placeholder="Last name" />
       </div>
       <div>
         <label>Email</label>
-        <input type="email" class="form-input" [(ngModel)]="createParentForm.email" />
+        <input type="email" class="form-input" [(ngModel)]="createParentForm.email" placeholder="parent@email.com" />
       </div>
       <div>
         <label>Phone</label>
-        <input type="text" class="form-input" [(ngModel)]="createParentForm.phoneNumber" />
+        <input type="text" class="form-input" [(ngModel)]="createParentForm.phoneNumber" placeholder="Phone number" />
       </div>
       <div>
         <label>Gender</label>
         <select class="form-input" [(ngModel)]="createParentForm.gender">
-          <option value="">Select Gender...</option>
+          <option value="">Select gender…</option>
           <option value="Male">Male</option>
           <option value="Female">Female</option>
         </select>
       </div>
       <div class="full-width">
         <label>Address</label>
-        <textarea rows="2" class="form-input" [(ngModel)]="createParentForm.address"></textarea>
+        <textarea rows="2" class="form-input" [(ngModel)]="createParentForm.address" placeholder="Residential address"></textarea>
       </div>
     </div>
 
-    <div class="form-row" style="margin-top: 12px;">
-      <label>
+    <div class="parents-options-card">
+      <label class="parents-check">
         <input type="checkbox" [(ngModel)]="createParentForm.createAccount" />
-        Create login account for this parent
+        <span>Create login account for this parent</span>
       </label>
-    </div>
-
-    <div class="form-row" *ngIf="createParentForm.createAccount" style="margin-top: 8px;">
-      <label>
+      <label class="parents-check" *ngIf="createParentForm.createAccount">
         <input type="checkbox" [(ngModel)]="createParentForm.generatePassword" />
-        Generate temporary password automatically
+        <span>Generate temporary password automatically</span>
       </label>
     </div>
 
-    <div class="details-grid" *ngIf="createParentForm.createAccount && !createParentForm.generatePassword" style="margin-top: 12px;">
+    <div class="details-grid" *ngIf="createParentForm.createAccount && !createParentForm.generatePassword">
       <div class="full-width">
-        <label>Temporary Password</label>
+        <label>Temporary password</label>
         <input type="text" class="form-input" [(ngModel)]="createParentForm.password" placeholder="Minimum 8 characters" />
       </div>
     </div>
 
-    <div class="details-grid" *ngIf="createdParentTempPassword" style="margin-top: 12px;">
-      <div class="full-width">
-        <label>Generated Temporary Password</label>
-        <input type="text" class="form-input" [value]="createdParentTempPassword" readonly />
-        <small class="form-text">Share this password securely with the parent. They will be required to change it on first login.</small>
-      </div>
+    <div class="parents-credential-banner" *ngIf="createdParentTempPassword">
+      <span class="parents-credential-banner__label">Generated temporary password</span>
+      <code class="parents-credential-banner__value">{{ createdParentTempPassword }}</code>
+      <p class="parents-credential-banner__hint">Share securely. Parent must change it on first login.</p>
     </div>
 
-    <div class="form-actions" style="margin-top: 12px;">
-      <button class="btn btn-primary" (click)="createParentAccount()" [disabled]="creatingParent">
-        <span *ngIf="!creatingParent">Create Parent</span>
-        <span *ngIf="creatingParent">Creating...</span>
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary" (click)="createParentAccount()" [disabled]="creatingParent">
+        <span *ngIf="!creatingParent">Create parent</span>
+        <span *ngIf="creatingParent">Creating…</span>
       </button>
     </div>
-  </div>
+  </section>
 
-  <div class="card" *ngIf="activeAdminTab === 'reset'">
-    <h3 style="margin-top:0;">Reset Parent Password (Admin)</h3>
+  <section class="parents-panel" *ngIf="activeAdminTab === 'reset'">
+    <div class="parents-panel__head">
+      <h2 class="parents-panel__title">Reset parent password</h2>
+      <p class="parents-panel__intro">Search by email and issue a new temporary password for portal access.</p>
+    </div>
     <div class="details-grid">
-      <div class="full-width" style="position: relative;">
-        <label>Parent Email</label>
+      <div class="full-width parents-email-field">
+        <label>Parent email</label>
         <input
           type="text"
           class="form-input"
           [(ngModel)]="resetParentEmail"
           (ngModelChange)="onResetParentEmailInput()"
-          (blur)="resetParentEmailSuggestions = [];"
-          placeholder="Type to search parent email (min 2 characters)"
-          autocomplete="off"
-        />
-        <span *ngIf="resetParentEmailSearching" class="reset-email-loading">Searching...</span>
+          (blur)="resetParentEmailSuggestions = []"
+          placeholder="Type to search (min 2 characters)"
+          autocomplete="off" />
+        <span *ngIf="resetParentEmailSearching" class="reset-email-loading">Searching…</span>
         <ul *ngIf="resetParentEmailSuggestions.length > 0 && !resetParentEmailSearching" class="reset-email-suggestions">
           <li *ngFor="let p of resetParentEmailSuggestions" (mousedown)="selectResetParentEmail(p)">
             <span class="reset-email-suggestion-email">{{ p.email }}</span>
@@ -126,73 +177,58 @@
       </div>
     </div>
 
-    <div class="form-row" style="margin-top: 8px;">
-      <label>
+    <div class="parents-options-card">
+      <label class="parents-check">
         <input type="checkbox" [(ngModel)]="resetParentGeneratePassword" />
-        Generate temporary password automatically
+        <span>Generate temporary password automatically</span>
       </label>
     </div>
 
-    <div class="details-grid" *ngIf="!resetParentGeneratePassword" style="margin-top: 12px;">
+    <div class="details-grid" *ngIf="!resetParentGeneratePassword">
       <div class="full-width">
-        <label>New Temporary Password</label>
+        <label>New temporary password</label>
         <input type="text" class="form-input" [(ngModel)]="resetParentNewPassword" placeholder="Minimum 8 characters" />
       </div>
     </div>
 
-    <div class="details-grid" *ngIf="resetParentTempPassword" style="margin-top: 12px;">
-      <div class="full-width">
-        <label>Temporary Password</label>
-        <input type="text" class="form-input" [value]="resetParentTempPassword" readonly />
-        <small class="form-text">This password is shown once. The parent will be required to change it on first login.</small>
-      </div>
+    <div class="parents-credential-banner" *ngIf="resetParentTempPassword">
+      <span class="parents-credential-banner__label">Temporary password</span>
+      <code class="parents-credential-banner__value">{{ resetParentTempPassword }}</code>
+      <p class="parents-credential-banner__hint">Shown once. Parent must change it on first login.</p>
     </div>
 
-    <div class="form-actions" style="margin-top: 12px;">
-      <button class="btn btn-primary" (click)="resetParentAccountPassword()" [disabled]="resettingParentPassword">
-        <span *ngIf="!resettingParentPassword">Reset Password</span>
-        <span *ngIf="resettingParentPassword">Resetting...</span>
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary" (click)="resetParentAccountPassword()" [disabled]="resettingParentPassword">
+        <span *ngIf="!resettingParentPassword">Reset password</span>
+        <span *ngIf="resettingParentPassword">Resetting…</span>
       </button>
     </div>
-  </div>
+  </section>
 
   <div class="layout" *ngIf="activeAdminTab === 'manage'">
-    <div class="panel panel-left">
+    <aside class="panel panel-left">
       <div class="panel-header">
-        <h2>Registered Parents</h2>
-        <div class="parent-header-badges">
-          <span class="badge" *ngIf="filteredParents?.length >= 0">
-            {{ filteredParents.length }} found
-          </span>
-          <span class="badge" *ngIf="parents?.length >= 0">
-            {{ unlinkedParentsCount }} not linked
-          </span>
-          <span class="badge" *ngIf="parents?.length >= 0">
-            {{ linkedStudentsTotalCount }} linked students
-          </span>
-          <span class="badge" *ngIf="parents?.length >= 0">
-            {{ studentsWithAccountLoggedInCount }} Student Accounts
-          </span>
+        <div>
+          <h2>Registered parents</h2>
+          <p class="panel-subtitle" *ngIf="parentSearchQuery">{{ dashboardStats.showing }} matching search</p>
         </div>
       </div>
 
       <div class="search-bar">
+        <span class="search-bar__icon" aria-hidden="true">🔍</span>
         <input
           type="text"
           [(ngModel)]="parentSearchQuery"
           (ngModelChange)="filterParents()"
-          placeholder="Search by name, email, or phone..." />
-        <button class="btn btn-secondary" (click)="clearSearch()" *ngIf="parentSearchQuery">
-          ✕
-        </button>
+          placeholder="Search name, email, or phone…" />
+        <button type="button" class="btn btn-ghost" (click)="clearSearch()" *ngIf="parentSearchQuery" title="Clear search">✕</button>
       </div>
 
       <div class="list-container" *ngIf="!loading; else loadingParents">
         <div class="empty-state" *ngIf="filteredParents.length === 0">
-          <p>No parents found.</p>
-          <p class="hint">
-            Parents can be created through self-registration or via Manage Accounts.
-          </p>
+          <span class="empty-state__icon">👨‍👩‍👧</span>
+          <p class="empty-state__title">No parents found</p>
+          <p class="hint">Create an account from the <strong>Create account</strong> tab or wait for self-registration.</p>
         </div>
 
         <div
@@ -201,7 +237,7 @@
           [class.selected]="selectedParent?.id === parent.id"
           (click)="selectParent(parent)">
           <div class="parent-main">
-            <div class="avatar">
+            <div class="avatar" [class.avatar--linked]="(parent.parentStudents || []).length > 0">
               {{ (parent.firstName || parent.lastName || 'P').charAt(0) | uppercase }}
             </div>
             <div class="parent-info">
@@ -209,32 +245,39 @@
                 {{ parent.firstName || 'Unknown' }} {{ parent.lastName || '' }}
               </div>
               <div class="parent-meta">
-                <span *ngIf="parent.email">📧 {{ parent.email }}</span>
-                <span *ngIf="parent.phoneNumber">📞 {{ parent.phoneNumber }}</span>
-                <span *ngIf="parent.address">📍 {{ parent.address }}</span>
+                <span *ngIf="parent.email">{{ parent.email }}</span>
+                <span *ngIf="parent.phoneNumber">{{ parent.phoneNumber }}</span>
               </div>
             </div>
           </div>
           <div class="parent-stats">
-            <span class="badge small">
-              {{ (parent.parentStudents || []).length }} student(s)
+            <span class="badge small" [class.badge--muted]="(parent.parentStudents || []).length === 0">
+              {{ (parent.parentStudents || []).length }} student{{ (parent.parentStudents || []).length === 1 ? '' : 's' }}
             </span>
           </div>
         </div>
       </div>
       <ng-template #loadingParents>
-        <div class="loading-inline">Loading parents...</div>
+        <div class="parents-list-skeleton">
+          <div class="parents-skeleton parents-skeleton--row" *ngFor="let i of [1,2,3,4,5,6]"></div>
+        </div>
       </ng-template>
-    </div>
+    </aside>
 
-    <div class="panel panel-right" *ngIf="selectedParent; else noParentSelected">
-      <div class="panel-header">
-        <div>
-          <h2>Parent Details</h2>
-          <p>{{ selectedParent.firstName || 'Unknown' }} {{ selectedParent.lastName || '' }}</p>
+    <main class="panel panel-right" *ngIf="selectedParent; else noParentSelected">
+      <div class="panel-header panel-header--detail">
+        <div class="detail-header-main">
+          <div class="avatar avatar--large">
+            {{ (selectedParent.firstName || selectedParent.lastName || 'P').charAt(0) | uppercase }}
+          </div>
+          <div>
+            <h2>{{ selectedParent.firstName || 'Unknown' }} {{ selectedParent.lastName || '' }}</h2>
+            <p class="detail-email" *ngIf="selectedParent.email">{{ selectedParent.email }}</p>
+          </div>
         </div>
         <div class="header-actions">
           <button
+            type="button"
             class="btn btn-secondary"
             (click)="startEditParent()"
             *ngIf="!editMode"
@@ -242,124 +285,81 @@
             Edit
           </button>
           <button
+            type="button"
             class="btn btn-secondary"
             (click)="cancelEditParent()"
             *ngIf="editMode"
             [disabled]="savingParent || deletingParent">
-            Cancel Edit
+            Cancel
           </button>
           <button
-            class="btn btn-secondary"
+            type="button"
+            class="btn btn-danger-outline"
             (click)="deleteSelectedParent()"
             [disabled]="deletingParent">
-            Delete
+            {{ deletingParent ? 'Deleting…' : 'Delete' }}
           </button>
-          <button class="btn btn-secondary" (click)="clearSelectedParent()">
-            Close
+          <button type="button" class="btn btn-ghost" (click)="clearSelectedParent()">Close</button>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <h3 class="section-card__title">Contact details</h3>
+        <div class="details-grid">
+          <div>
+            <label>First name</label>
+            <div class="value" *ngIf="!editMode">{{ selectedParent.firstName || '—' }}</div>
+            <input *ngIf="editMode" type="text" [(ngModel)]="editParent.firstName" class="form-input" />
+          </div>
+          <div>
+            <label>Last name</label>
+            <div class="value" *ngIf="!editMode">{{ selectedParent.lastName || '—' }}</div>
+            <input *ngIf="editMode" type="text" [(ngModel)]="editParent.lastName" class="form-input" />
+          </div>
+          <div>
+            <label>Email</label>
+            <div class="value" *ngIf="!editMode">{{ selectedParent.email || '—' }}</div>
+            <input *ngIf="editMode" type="email" [(ngModel)]="editParent.email" class="form-input" />
+            <div class="field-error" *ngIf="emailError">{{ emailError }}</div>
+          </div>
+          <div>
+            <label>Phone</label>
+            <div class="value" *ngIf="!editMode">{{ selectedParent.phoneNumber || '—' }}</div>
+            <input *ngIf="editMode" type="text" [(ngModel)]="editParent.phoneNumber" class="form-input" />
+            <div class="field-error" *ngIf="phoneNumberError">{{ phoneNumberError }}</div>
+          </div>
+          <div>
+            <label>Gender</label>
+            <div class="value" *ngIf="!editMode">{{ selectedParent.gender || '—' }}</div>
+            <select *ngIf="editMode" [(ngModel)]="editParent.gender" class="form-input">
+              <option value="">Select gender…</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+          <div class="full-width">
+            <label>Address</label>
+            <div class="value" *ngIf="!editMode">{{ selectedParent.address || '—' }}</div>
+            <textarea *ngIf="editMode" [(ngModel)]="editParent.address" rows="2" class="form-input"></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions" *ngIf="editMode">
+          <button type="button" class="btn btn-primary" (click)="saveParentChanges()" [disabled]="savingParent">
+            <span *ngIf="!savingParent">Save changes</span>
+            <span *ngIf="savingParent">Saving…</span>
           </button>
+          <button type="button" class="btn btn-secondary" (click)="cancelEditParent()" [disabled]="savingParent">Cancel</button>
         </div>
       </div>
 
-      <div class="details-grid">
-        <div>
-          <label>First Name</label>
-          <div class="value" *ngIf="!editMode">
-            {{ selectedParent.firstName || '—' }}
-          </div>
-          <input
-            *ngIf="editMode"
-            type="text"
-            [(ngModel)]="editParent.firstName"
-            class="form-input" />
-        </div>
-        <div>
-          <label>Last Name</label>
-          <div class="value" *ngIf="!editMode">
-            {{ selectedParent.lastName || '—' }}
-          </div>
-          <input
-            *ngIf="editMode"
-            type="text"
-            [(ngModel)]="editParent.lastName"
-            class="form-input" />
-        </div>
-        <div>
-          <label>Email</label>
-          <div class="value" *ngIf="!editMode">
-            {{ selectedParent.email || '—' }}
-          </div>
-          <input
-            *ngIf="editMode"
-            type="email"
-            [(ngModel)]="editParent.email"
-            class="form-input" />
-          <div class="field-error" *ngIf="emailError">
-            {{ emailError }}
-          </div>
-        </div>
-        <div>
-          <label>Phone</label>
-          <div class="value" *ngIf="!editMode">
-            {{ selectedParent.phoneNumber || '—' }}
-          </div>
-          <input
-            *ngIf="editMode"
-            type="text"
-            [(ngModel)]="editParent.phoneNumber"
-            class="form-input" />
-          <div class="field-error" *ngIf="phoneNumberError">
-            {{ phoneNumberError }}
-          </div>
-        </div>
-        <div>
-          <label>Gender</label>
-          <div class="value" *ngIf="!editMode">
-            {{ selectedParent.gender || '—' }}
-          </div>
-          <select
-            *ngIf="editMode"
-            [(ngModel)]="editParent.gender"
-            class="form-input">
-            <option value="">Select Gender...</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
-        </div>
-        <div class="full-width">
-          <label>Address</label>
-          <div class="value" *ngIf="!editMode">
-            {{ selectedParent.address || '—' }}
-          </div>
-          <textarea
-            *ngIf="editMode"
-            [(ngModel)]="editParent.address"
-            rows="2"
-            class="form-input"></textarea>
-        </div>
-      </div>
-
-      <div class="form-actions" *ngIf="editMode">
-        <button
-          class="btn btn-primary"
-          (click)="saveParentChanges()"
-          [disabled]="savingParent">
-          <span *ngIf="!savingParent">Save Changes</span>
-          <span *ngIf="savingParent">Saving...</span>
-        </button>
-        <button
-          class="btn btn-secondary"
-          (click)="cancelEditParent()"
-          [disabled]="savingParent">
-          Cancel
-        </button>
-      </div>
-
-      <div class="section">
-        <h3>Linked Students</h3>
+      <div class="section-card">
+        <h3 class="section-card__title">
+          Linked students
+          <span class="section-card__count">{{ (selectedParent.parentStudents || []).length }}</span>
+        </h3>
         <div class="linked-students" *ngIf="(selectedParent.parentStudents || []).length > 0; else noLinkedStudents">
-          <div
-            class="linked-student"
-            *ngFor="let link of selectedParent.parentStudents">
+          <div class="linked-student" *ngFor="let link of selectedParent.parentStudents">
             <div class="student-main">
               <div class="avatar student-avatar">
                 {{ (link.student?.firstName || 'S').charAt(0) | uppercase }}
@@ -369,13 +369,14 @@
                   {{ link.student?.firstName }} {{ link.student?.lastName }}
                 </div>
                 <div class="student-meta">
-                  <span *ngIf="link.student?.studentNumber">🆔 {{ link.student.studentNumber }}</span>
-                  <span *ngIf="link.student?.classEntity?.name">🏫 {{ link.student.classEntity.name }}</span>
-                  <span>👤 {{ link.relationshipType || 'guardian' }}</span>
+                  <span *ngIf="link.student?.studentNumber">ID {{ link.student.studentNumber }}</span>
+                  <span *ngIf="link.student?.classEntity?.name">{{ link.student.classEntity.name }}</span>
+                  <span class="relationship-pill">{{ link.relationshipType || 'guardian' }}</span>
                 </div>
               </div>
             </div>
             <button
+              type="button"
               class="btn btn-link btn-danger"
               (click)="unlinkStudent(link)"
               [disabled]="unlinking">
@@ -385,30 +386,27 @@
         </div>
         <ng-template #noLinkedStudents>
           <div class="empty-state small">
-            <p>No students linked to this parent yet.</p>
+            <p>No students linked yet. Use the section below to search and link.</p>
           </div>
         </ng-template>
       </div>
 
-      <div class="section">
-        <h3>Link Students</h3>
+      <div class="section-card">
+        <h3 class="section-card__title">Link students</h3>
         <div class="link-form">
-          <div class="form-row">
+          <div class="form-row form-row--search">
             <input
               type="text"
               [(ngModel)]="studentSearchQuery"
               (keyup.enter)="searchStudents()"
-              placeholder="Enter Student ID or name to search..." />
-            <button
-              class="btn btn-secondary"
-              (click)="searchStudents()"
-              [disabled]="searchingStudents">
+              placeholder="Student ID or name…" />
+            <button type="button" class="btn btn-secondary" (click)="searchStudents()" [disabled]="searchingStudents">
               <span *ngIf="!searchingStudents">Search</span>
-              <span *ngIf="searchingStudents">Searching...</span>
+              <span *ngIf="searchingStudents">Searching…</span>
             </button>
           </div>
-          <div class="form-row">
-            <label>Relationship Type</label>
+          <div class="form-row form-row--relationship">
+            <label>Relationship</label>
             <select [(ngModel)]="relationshipType">
               <option value="father">Father</option>
               <option value="mother">Mother</option>
@@ -451,11 +449,11 @@
                 <div class="student-info">
                   <div class="student-name">
                     {{ student.firstName }} {{ student.lastName }}
-                    <span class="already-linked-badge" *ngIf="isAlreadyLinked(student.id)">Already linked</span>
+                    <span class="already-linked-badge" *ngIf="isAlreadyLinked(student.id)">Linked</span>
                   </div>
                   <div class="student-meta">
-                    <span *ngIf="student.studentNumber">🆔 {{ student.studentNumber }}</span>
-                    <span *ngIf="student.classEntity?.name">🏫 {{ student.classEntity.name }}</span>
+                    <span *ngIf="student.studentNumber">ID {{ student.studentNumber }}</span>
+                    <span *ngIf="student.classEntity?.name">{{ student.classEntity.name }}</span>
                   </div>
                 </div>
               </div>
@@ -464,22 +462,24 @@
 
           <div class="form-actions">
             <button
+              type="button"
               class="btn btn-primary"
               (click)="linkSelectedStudents()"
               [disabled]="linking || selectedStudentIds.size === 0">
               <span *ngIf="!linking">
-                Link {{ selectedStudentIds.size > 1 ? selectedStudentIds.size + ' Students' : 'Selected Student' }}
+                Link {{ selectedStudentIds.size > 1 ? selectedStudentIds.size + ' students' : 'selected student' }}
               </span>
-              <span *ngIf="linking">Linking...</span>
+              <span *ngIf="linking">Linking…</span>
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </main>
 
     <ng-template #noParentSelected>
       <div class="panel panel-right empty-panel">
-        <p>Select a parent from the list to view details and manage their students.</p>
+        <span class="empty-panel__icon">👈</span>
+        <p>Select a parent from the list to view details, edit contact info, and manage student links.</p>
       </div>
     </ng-template>
   </div>

@@ -170,14 +170,29 @@ router.get('/:id', async (req, res) => {
     }
 
     const { id } = req.params;
+    const slim =
+      req.query.slim === 'true' ||
+      req.query.slim === '1' ||
+      req.query.fields === 'subjects';
     const classRepository = AppDataSource.getRepository(Class);
     
     let classEntity;
     try {
+      if (slim) {
+        classEntity = await classRepository.findOne({
+          where: { id },
+          relations: ['subjects', 'classTeacher1', 'classTeacher2']
+        });
+        if (classEntity) {
+          (classEntity as any).students = [];
+          (classEntity as any).teachers = [];
+        }
+      } else {
       classEntity = await classRepository.findOne({
         where: { id },
         relations: ['students', 'teachers', 'subjects', 'classTeacher1', 'classTeacher2']
       });
+      }
     } catch (relationError: any) {
       console.error('[getClassById] Error loading with relations:', relationError.message);
       console.error('[getClassById] Error code:', relationError.code);
@@ -193,7 +208,9 @@ router.get('/:id', async (req, res) => {
         try {
           classEntity = await classRepository.findOne({
             where: { id },
-            relations: ['students', 'subjects', 'classTeacher1', 'classTeacher2']
+            relations: slim
+              ? ['subjects', 'classTeacher1', 'classTeacher2']
+              : ['students', 'subjects', 'classTeacher1', 'classTeacher2']
           });
           if (classEntity) {
             (classEntity as any).teachers = [];

@@ -20,13 +20,12 @@ router.get('/', async (req: AuthRequest, res) => {
       await ensureDemoDataAvailable();
     }
 
-    // For demo users, show all subjects and all teachers (relaxed restriction)
+    // Lightweight list for pickers (class form, dropdowns) — avoid heavy relation graphs
     const subjects = await subjectRepository.find({
-      relations: ['teachers', 'teachers.user', 'classes']
+      select: ['id', 'name', 'code', 'isActive'],
+      order: { name: 'ASC' }
     });
-    
-    // Removed demo filtering - demo users can now see all teachers in subjects
-    
+
     res.json(subjects);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });

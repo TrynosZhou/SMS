@@ -1,364 +1,367 @@
-<div class="students-container">
-  <!-- Header Section -->
-  <div class="page-header">
-    <div class="header-content">
-      <h1>
-        <span class="header-icon">{{ pageIcon }}</span>
-        {{ pageTitle }}
-      </h1>
-      <p class="subtitle">{{ pageSubtitle }}</p>
+<div class="manage-students-page manage-students-page--modern">
+  <div class="students-toast-stack" *ngIf="success || error">
+    <div class="students-toast students-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="students-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
     </div>
-    <div class="header-actions">
-      <button class="btn btn-primary" *ngIf="canBulkCorrectStatus()" (click)="bulkMarkSelectedReturning()" [disabled]="bulkSubmitting || selectedStudentIds.size === 0">
-        ✅ Mark Selected Returning
-      </button>
-      <button class="btn btn-secondary" *ngIf="isLogisticsTransport || isLogisticsDiningHall" (click)="exportToCsv()">
-        ⬇️ Export CSV
-      </button>
-      <button class="btn btn-secondary" *ngIf="isLogisticsTransport || isLogisticsDiningHall" (click)="printList()">
-        🖨️ Print
-      </button>
-      <button class="btn btn-primary" routerLink="/students/new" *ngIf="!isTeacher">
-        <span>➕</span> Add New Student
-      </button>
+    <div class="students-toast students-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="students-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
   </div>
 
-  <!-- Statistics Cards -->
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-icon">👥</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ pagination.total }}</div>
-        <div class="stat-label">Total Students</div>
+  <header class="manage-students-hero">
+    <div class="manage-students-hero__main">
+      <div class="manage-students-hero-left">
+        <span class="manage-students-hero-icon" aria-hidden="true">{{ pageIcon }}</span>
+        <div>
+          <span class="manage-students-hero-eyebrow">{{ isLogisticsView ? 'Logistics' : 'Enrolment' }}</span>
+          <h1>{{ managePageTitle }}</h1>
+          <p class="manage-students-hero-sub">{{ pageSubtitle }}</p>
+        </div>
+      </div>
+      <div class="manage-students-hero__actions">
+        <button
+          type="button"
+          class="manage-students-refresh"
+          (click)="refreshStudents()"
+          [disabled]="loading"
+          title="Refresh list"
+          aria-label="Refresh students">↻</button>
+        <a routerLink="/students/new" class="manage-students-hero-add" *ngIf="!isTeacher" title="Add student">+ Add Student</a>
       </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon">🏫</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ stats.classCount }}</div>
-        <div class="stat-label">Classes</div>
-      </div>
+    <div class="manage-students-stats" *ngIf="!loading || pagination.total > 0">
+      <article class="students-stat-card">
+        <span class="students-stat-card__value">{{ dashboardStats.total }}</span>
+        <span class="students-stat-card__label">Total</span>
+      </article>
+      <article class="students-stat-card students-stat-card--day" *ngIf="!isLogisticsView">
+        <span class="students-stat-card__value">{{ dashboardStats.dayScholars }}</span>
+        <span class="students-stat-card__label">Day scholars</span>
+      </article>
+      <article class="students-stat-card students-stat-card--boarder" *ngIf="!isLogisticsView">
+        <span class="students-stat-card__value">{{ dashboardStats.boarders }}</span>
+        <span class="students-stat-card__label">Boarders</span>
+      </article>
+      <article class="students-stat-card students-stat-card--male">
+        <span class="students-stat-card__value">{{ dashboardStats.male }}</span>
+        <span class="students-stat-card__label">Male (shown)</span>
+      </article>
+      <article class="students-stat-card students-stat-card--female">
+        <span class="students-stat-card__value">{{ dashboardStats.female }}</span>
+        <span class="students-stat-card__label">Female (shown)</span>
+      </article>
+      <article class="students-stat-card students-stat-card--muted">
+        <span class="students-stat-card__value">{{ dashboardStats.classes }}</span>
+        <span class="students-stat-card__label">Classes</span>
+      </article>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon">🏠</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ stats.totalDayScholars }}</div>
-        <div class="stat-label">Day Scholars</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon">🏫</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ stats.totalBoarders }}</div>
-        <div class="stat-label">Boarders</div>
-      </div>
-    </div>
-  </div>
+  </header>
 
-  <!-- Alert Messages -->
-  <div class="alert alert-success" *ngIf="success">
-    <span class="alert-icon">✓</span>
-    {{ success }}
-  </div>
-  <div class="alert alert-error" *ngIf="error">
-    <span class="alert-icon">⚠</span>
-    {{ error }}
-  </div>
-
-  <!-- Search and Filter Section -->
-  <div class="filter-card">
-    <div class="filter-header">
-      <h2>
-        <span class="icon">🔍</span>
-        Search & Filter
-      </h2>
-      <button class="btn-clear" (click)="clearFilters()" *ngIf="hasActiveFilters()">
-        🗑️ Clear Filters
-      </button>
-    </div>
-    <div class="filter-content">
-      <div class="search-box">
-        <input 
-          type="text" 
-          [(ngModel)]="searchQuery" 
+  <div class="manage-students-panel">
+    <div class="manage-students-toolbar manage-students-toolbar--primary">
+      <div class="manage-students-search-wrap">
+        <input
+          type="search"
+          class="manage-students-search"
+          [(ngModel)]="searchQuery"
           [ngModelOptions]="{standalone: true}"
-          placeholder="Search by name, student number, or contact..."
-          class="search-input"
-          (input)="onSearchChange()">
-        <span class="search-icon">🔍</span>
+          placeholder="Search by name, ID, or phone…"
+          (input)="onSearchChange()"
+          aria-label="Search students" />
+        <span class="manage-students-search-icon" aria-hidden="true">🔍</span>
       </div>
-      <div class="filter-options">
-        <div class="filter-group">
-          <label>Filter by Class</label>
-          <select 
-            [(ngModel)]="selectedClass" 
-            [ngModelOptions]="{standalone: true}"
-            (change)="onClassFilterChange()"
-            class="filter-select">
-            <option value="">All Classes</option>
-            <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">
-              {{ cls.name }}
-            </option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label>Filter by Grade</label>
-          <select
-            [(ngModel)]="selectedGrade"
-            [ngModelOptions]="{standalone: true}"
-            (change)="onGradeFilterChange()"
-            class="filter-select">
-            <option value="">All Grades</option>
-            <option *ngFor="let g of gradeOptions" [value]="g">{{ g }}</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label>Filter by Type</label>
-          <select 
-            [(ngModel)]="selectedType" 
-            [ngModelOptions]="{standalone: true}"
-            (change)="applyFilters()"
-            class="filter-select">
-            <option value="">All Types</option>
-            <option value="Day Scholar">Day Scholar</option>
-            <option value="Boarder">Boarder</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label>Filter by Gender</label>
-          <select 
-            [(ngModel)]="selectedGender" 
-            [ngModelOptions]="{standalone: true}"
-            (change)="applyFilters()"
-            class="filter-select">
-            <option value="">All Genders</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label>Logistics Filters</label>
-          <div class="checkbox-group">
-            <label class="checkbox-inline">
-              <input
-                type="checkbox"
-                [(ngModel)]="filterUsesTransport"
-                [ngModelOptions]="{standalone: true}"
-                (change)="onLogisticsFilterChange()"
-                [disabled]="isLogisticsTransport">
-              <span>Uses Transport</span>
-            </label>
-            <label class="checkbox-inline">
-              <input
-                type="checkbox"
-                [(ngModel)]="filterUsesDiningHall"
-                [ngModelOptions]="{standalone: true}"
-                (change)="onLogisticsFilterChange()"
-                [disabled]="isLogisticsDiningHall">
-              <span>Uses Dining Hall</span>
-            </label>
-          </div>
-        </div>
-        <div class="filter-group">
-          <label>View Mode</label>
-          <div class="view-toggle">
-            <button 
-              class="toggle-btn" 
-              [class.active]="viewMode === 'grid'"
-              (click)="viewMode = 'grid'">
-              ⬜ Grid
-            </button>
-            <button 
-              class="toggle-btn" 
-              [class.active]="viewMode === 'list'"
-              (click)="viewMode = 'list'">
-              ☰ List
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Pagination Controls -->
-  <div class="pagination-bar" *ngIf="!loading && pagination.total > 0">
-    <div class="pagination-info">
-      Showing page {{ pagination.page }} of {{ pagination.totalPages }} ({{ pagination.total }} students)
-    </div>
-    <div class="pagination-actions">
-      <label class="page-size-label">
-        Rows per page
-        <select 
-          [ngModel]="pagination.limit" 
-          (ngModelChange)="onPageSizeChange($event)"
-          class="page-size-select">
-          <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size }}</option>
+      <div class="manage-students-filter-wrap" *ngIf="!isLogisticsView">
+        <label for="classFilter">Class</label>
+        <select
+          id="classFilter"
+          class="manage-students-select"
+          [(ngModel)]="selectedClass"
+          [ngModelOptions]="{standalone: true}"
+          (change)="onClassFilterChange()">
+          <option value="">All classes</option>
+          <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">{{ cls.name }}</option>
         </select>
-      </label>
-      <div class="page-buttons">
-        <button class="btn btn-secondary" (click)="onPageChange(pagination.page - 1)" [disabled]="pagination.page === 1">
-          ◀ Previous
+      </div>
+
+      <div class="manage-students-filter-wrap" *ngIf="!isLogisticsView && gradeOptions.length">
+        <label for="gradeFilter">Grade</label>
+        <select
+          id="gradeFilter"
+          class="manage-students-select"
+          [(ngModel)]="selectedGrade"
+          [ngModelOptions]="{standalone: true}"
+          (change)="onGradeFilterChange()">
+          <option value="">All grades</option>
+          <option *ngFor="let g of gradeOptions" [value]="g">{{ g }}</option>
+        </select>
+      </div>
+
+      <div class="manage-students-filter-wrap" *ngIf="!isLogisticsView">
+        <label for="typeFilter">Type</label>
+        <select
+          id="typeFilter"
+          class="manage-students-select"
+          [(ngModel)]="selectedType"
+          [ngModelOptions]="{standalone: true}"
+          (change)="onTypeFilterChange()">
+          <option value="">All types</option>
+          <option value="Day Scholar">Day Scholar</option>
+          <option value="Boarder">Boarder</option>
+        </select>
+      </div>
+
+      <div class="manage-students-filter-wrap" *ngIf="!isLogisticsView">
+        <label for="genderFilter">Gender</label>
+        <select
+          id="genderFilter"
+          class="manage-students-select"
+          [(ngModel)]="selectedGender"
+          [ngModelOptions]="{standalone: true}"
+          (change)="onGenderFilterChange()">
+          <option value="">All genders</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+        </select>
+      </div>
+
+      <div class="manage-students-filter-wrap" *ngIf="isLogisticsView">
+        <label for="classFilterLog">Class</label>
+        <select
+          id="classFilterLog"
+          class="manage-students-select"
+          [(ngModel)]="selectedClass"
+          [ngModelOptions]="{standalone: true}"
+          (change)="onClassFilterChange()">
+          <option value="">All classes</option>
+          <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">{{ cls.name }}</option>
+        </select>
+      </div>
+
+      <a routerLink="/students/new" class="manage-students-add-btn" *ngIf="!isTeacher" title="Add student" aria-label="Add student">+</a>
+    </div>
+
+    <div class="manage-students-toolbar manage-students-toolbar--secondary">
+      <div class="manage-students-filters-row">
+        <label class="filter-chip" *ngIf="!isLogisticsView">
+          <input type="checkbox" [(ngModel)]="filterUsesTransport" [ngModelOptions]="{standalone: true}" (change)="onLogisticsFilterChange()" />
+          <span>🚌 Transport</span>
+        </label>
+        <label class="filter-chip" *ngIf="!isLogisticsView">
+          <input type="checkbox" [(ngModel)]="filterUsesDiningHall" [ngModelOptions]="{standalone: true}" (change)="onLogisticsFilterChange()" />
+          <span>🍽 Dining hall</span>
+        </label>
+        <button type="button" class="students-clear-filters" *ngIf="hasActiveFilters()" (click)="clearAllFilters()">
+          Clear filters ({{ activeFilterCount }})
         </button>
-        <button class="btn btn-secondary" (click)="onPageChange(pagination.page + 1)" [disabled]="pagination.page === pagination.totalPages">
-          Next ▶
+        <span class="students-bulk-hint" *ngIf="canBulkCorrectStatus() && selectedCount > 0">
+          {{ selectedCount }} selected
+        </span>
+        <button
+          type="button"
+          class="students-bulk-btn"
+          *ngIf="canBulkCorrectStatus()"
+          (click)="bulkMarkSelectedReturning()"
+          [disabled]="bulkSubmitting || selectedCount === 0">
+          {{ bulkSubmitting ? 'Updating…' : 'Mark returning' }}
+        </button>
+      </div>
+
+      <div class="manage-students-toolbar-actions">
+        <div class="students-view-toggle" role="group" aria-label="View mode">
+          <button type="button" class="students-view-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'" title="List view">☰</button>
+          <button type="button" class="students-view-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'" title="Card view">▦</button>
+        </div>
+        <button type="button" class="students-action-btn" (click)="exportToCsv()" [disabled]="!filteredStudents.length">CSV</button>
+        <button
+          type="button"
+          class="students-action-btn"
+          (click)="printList()"
+          [disabled]="!filteredStudents.length"
+          title="Print or PDF report">
+          {{ isLogisticsView ? 'PDF' : 'Print' }}
+        </button>
+        <button
+          type="button"
+          class="students-action-btn students-action-btn--primary"
+          *ngIf="isLogisticsTransport"
+          (click)="generateBusIdCards()"
+          [disabled]="!filteredStudents.length || loading">
+          Bus ID cards
         </button>
       </div>
     </div>
-  </div>
 
-  <!-- Loading State -->
-  <div class="loading-state" *ngIf="loading">
-    <div class="spinner-large"></div>
-    <p>Loading students...</p>
-  </div>
+    <p class="students-results-hint" *ngIf="!loading && filteredStudents.length">
+      Showing <strong>{{ dashboardStats.showing }}</strong> of <strong>{{ dashboardStats.total }}</strong> students
+      <span *ngIf="hasActiveFilters()"> · filtered</span>
+    </p>
 
-  <!-- Students Grid View (grouped by gender, sorted by lastname) -->
-  <div class="students-grid-wrapper" *ngIf="!loading && viewMode === 'grid' && filteredStudents.length > 0">
-    <div class="gender-group-grid" *ngFor="let grp of groupedStudents">
-      <div class="group-header group-header-grid">
-        <span class="group-title">{{ grp.gender }}</span>
-        <span class="group-count">({{ grp.students.length }})</span>
-      </div>
-      <div class="students-grid">
-    <div *ngFor="let student of grp.students" class="student-card">
-      <div class="card-header">
-        <div class="student-avatar" [class.male]="student.gender === 'Male'" [class.female]="student.gender === 'Female'">
-          <span class="avatar-icon">{{ student.gender === 'Male' ? '👨' : '👩' }}</span>
-        </div>
-        <div class="student-badge" [class.boarder]="student.studentType === 'Boarder'" [class.day-scholar]="student.studentType === 'Day Scholar'">
-          {{ student.studentType || 'Day Scholar' }}
-        </div>
-      </div>
-      <div class="card-body">
-        <h3 class="student-name">{{ student.firstName }} {{ student.lastName }}</h3>
-        <div class="student-info">
-          <div class="info-item">
-            <span class="info-label">Student #</span>
-            <span class="info-value student-id-link" (click)="viewStudentIdCard(student.id)" title="View Student ID Card">{{ student.studentNumber }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Class</span>
-            <span class="info-value">{{ student.class?.name || student.classEntity?.name || 'N/A' }}</span>
-          </div>
-          <div class="info-item" *ngIf="student.contactNumber || student.phoneNumber">
-            <span class="info-label">Contact</span>
-            <span class="info-value">{{ student.contactNumber || student.phoneNumber }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Gender</span>
-            <span class="info-value">{{ student.gender }}</span>
-          </div>
-        </div>
-      </div>
-      <div class="card-actions">
-        <button class="btn-action btn-view" (click)="viewStudentDetails(student)">
-          👁️ View
-        </button>
-        <button class="btn-action btn-edit" (click)="editStudent(student.id)">
-          ✏️ Edit
-        </button>
-        <button class="btn-action btn-report" (click)="viewReportCard(student.id)">
-          📄 Report
-        </button>
-      </div>
+    <div class="manage-students-skeleton" *ngIf="loading" aria-busy="true">
+      <div class="students-skeleton-row" *ngFor="let _ of [1,2,3,4,5,6]"></div>
     </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Students List View -->
-  <div class="students-list-view" *ngIf="!loading && viewMode === 'list' && filteredStudents.length > 0">
-    <div class="table-responsive">
-      <div class="list-header" [class.has-select]="canBulkCorrectStatus()">
-        <div class="list-col select-col" *ngIf="canBulkCorrectStatus()">
-          <input type="checkbox" [checked]="areAllVisibleSelected()" (change)="toggleSelectAllVisible($event.target.checked)" />
-        </div>
-        <div class="list-col number-col">Student #</div>
-        <div class="list-col last-col">L.Name</div>
-        <div class="list-col first-col">F.Name</div>
-        <div class="list-col dob-col">DOB</div>
-        <div class="list-col gender-col">Gender</div>
-        <div class="list-col class-col">Class</div>
-        <div class="list-col type-col">Type</div>
-        <div class="list-col actions-col">Actions</div>
-      </div>
-      <div class="list-item" [class.has-select]="canBulkCorrectStatus()" *ngFor="let student of filteredStudents">
-        <div class="list-col select-col" *ngIf="canBulkCorrectStatus()">
-          <input type="checkbox" [checked]="isSelected(student.id)" (change)="toggleStudentSelection(student.id, $event.target.checked)" />
-        </div>
-        <div class="list-col number-col">
-          <strong class="student-id-link" (click)="viewStudentIdCard(student.id)" title="View Student ID Card">{{ student.studentNumber }}</strong>
-        </div>
-        <div class="list-col last-col">
-          <div class="name-cell">
-            <span class="name-text">{{ student.lastName || 'N/A' }}</span>
+    <div class="manage-students-table-wrap" *ngIf="!loading && filteredStudents.length > 0 && viewMode === 'list'">
+      <table class="manage-students-table">
+        <thead>
+          <tr>
+            <th class="col-check" *ngIf="canBulkCorrectStatus()">
+              <input
+                type="checkbox"
+                [checked]="areAllVisibleSelected()"
+                (change)="toggleSelectAllVisible($any($event.target).checked)"
+                aria-label="Select all visible" />
+            </th>
+            <th class="sortable" (click)="setSort('studentNumber')">
+              <span class="th-icon" aria-hidden="true">🎓</span> Student ID <span class="sort-icon">{{ sortIndicator('studentNumber') }}</span>
+            </th>
+            <th class="sortable" (click)="setSort('lastName')">
+              <span class="th-icon" aria-hidden="true">👤</span> Surname <span class="sort-icon">{{ sortIndicator('lastName') }}</span>
+            </th>
+            <th class="sortable" (click)="setSort('firstName')">
+              <span class="th-icon" aria-hidden="true">👤</span> Name <span class="sort-icon">{{ sortIndicator('firstName') }}</span>
+            </th>
+            <th *ngIf="!isLogisticsView">Class</th>
+            <th>Type</th>
+            <th class="sortable" (click)="setSort('gender')">
+              <span class="th-icon" aria-hidden="true">⚥</span> Gender <span class="sort-icon">{{ sortIndicator('gender') }}</span>
+            </th>
+            <th><span class="th-icon" aria-hidden="true">📞</span> Phone</th>
+            <th><span class="th-icon" aria-hidden="true">⚙</span> Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let student of filteredStudents">
+            <td class="col-check" *ngIf="canBulkCorrectStatus()">
+              <input
+                type="checkbox"
+                [checked]="isSelected(student.id)"
+                (change)="toggleStudentSelection(student.id, $any($event.target).checked)"
+                [attr.aria-label]="'Select ' + student.firstName" />
+            </td>
+            <td class="col-student-id">
+              <span class="student-id-link" (click)="viewStudentIdCard(student.id)" title="View student ID card">
+                {{ student.studentNumber || '—' }}
+              </span>
+            </td>
+            <td>{{ student.lastName || '—' }}</td>
+            <td>{{ student.firstName || '—' }}</td>
+            <td *ngIf="!isLogisticsView">{{ getStudentClassName(student) }}</td>
+            <td>
+              <span class="type-pill" [class.type-pill--boarder]="getStudentTypeLabel(student) === 'Boarder'">
+                {{ getStudentTypeLabel(student) }}
+              </span>
+            </td>
+            <td>
+              <span
+                class="gender-pill"
+                [class.gender-pill--male]="student.gender === 'Male'"
+                [class.gender-pill--female]="student.gender === 'Female'">
+                {{ student.gender || '—' }}
+              </span>
+            </td>
+            <td>{{ getPhone(student) }}</td>
+            <td class="col-actions">
+              <button type="button" class="action-view" (click)="viewStudentDetails(student)" title="View student">👁</button>
+              <button type="button" class="action-edit" *ngIf="!isTeacher" (click)="editStudent(student.id)" title="Edit student">✏️</button>
+              <button
+                type="button"
+                class="action-delete"
+                *ngIf="!isTeacher"
+                (click)="deleteStudent(student.id, student.firstName + ' ' + student.lastName, student.studentNumber)"
+                title="Delete student"
+                [disabled]="loading">🗑</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="manage-students-grid" *ngIf="!loading && filteredStudents.length > 0 && viewMode === 'grid'">
+      <article class="student-card" *ngFor="let student of filteredStudents">
+        <div class="student-card__head">
+          <span
+            class="student-card__avatar"
+            [class.student-card__avatar--male]="student.gender === 'Male'"
+            [class.student-card__avatar--female]="student.gender === 'Female'">
+            {{ (student.firstName || '?').charAt(0) }}
+          </span>
+          <div class="student-card__title">
+            <h3>{{ student.firstName }} {{ student.lastName }}</h3>
+            <span class="student-card__id student-id-link" (click)="viewStudentIdCard(student.id)">{{ student.studentNumber || '—' }}</span>
           </div>
+          <input
+            type="checkbox"
+            class="student-card__check"
+            *ngIf="canBulkCorrectStatus()"
+            [checked]="isSelected(student.id)"
+            (change)="toggleStudentSelection(student.id, $any($event.target).checked)"
+            [attr.aria-label]="'Select ' + student.firstName" />
         </div>
-        <div class="list-col first-col">
-          {{ student.firstName || 'N/A' }}
-        </div>
-        <div class="list-col dob-col">
-          {{ student.dateOfBirth ? (student.dateOfBirth | date:'dd/MM/yyyy') : 'N/A' }}
-        </div>
-        <div class="list-col gender-col">{{ student.gender || 'N/A' }}</div>
-        <div class="list-col class-col">{{ getStudentClassName(student) }}</div>
-        <div class="list-col type-col">
-          <span class="type-badge" [class.boarder]="student.studentType === 'Boarder'" [class.day-scholar]="student.studentType === 'Day Scholar'">
-            {{ getStudentTypeLabel(student) }}
+        <div class="student-card__meta">
+          <span class="type-pill" [class.type-pill--boarder]="getStudentTypeLabel(student) === 'Boarder'">{{ getStudentTypeLabel(student) }}</span>
+          <span
+            class="gender-pill"
+            [class.gender-pill--male]="student.gender === 'Male'"
+            [class.gender-pill--female]="student.gender === 'Female'">
+            {{ student.gender || '—' }}
           </span>
         </div>
-        <div class="list-col actions-col">
-          <div class="action-buttons">
-            <button class="btn-icon-small" (click)="viewStudentDetails(student)" title="View Details">
-              👁️
-            </button>
-            <button class="btn-icon-small" (click)="editStudent(student.id)" title="Edit">
-              ✏️
-            </button>
-            <button class="btn-icon-small btn-delete" *ngIf="!isTeacher" (click)="deleteStudent(student.id, student.firstName + ' ' + student.lastName, student.studentNumber)" title="Delete" [disabled]="loading">
-              🗑️
-            </button>
-           <button class="btn-icon-small" (click)="viewReportCard(student.id)" title="Report Card">
-             📄
-           </button>
-          </div>
+        <p class="student-card__class" *ngIf="!isLogisticsView">{{ getStudentClassName(student) }}</p>
+        <p class="student-card__phone">{{ getPhone(student) }}</p>
+        <div class="student-card__actions">
+          <button type="button" class="student-card__btn" (click)="viewStudentDetails(student)">View</button>
+          <button type="button" class="student-card__btn student-card__btn--primary" *ngIf="!isTeacher" (click)="editStudent(student.id)">Edit</button>
         </div>
+      </article>
+    </div>
+
+    <div class="manage-students-empty" *ngIf="!loading && filteredStudents.length === 0">
+      <span class="manage-students-empty__icon" aria-hidden="true">{{ pageIcon }}</span>
+      <h2 *ngIf="loadFailed">Could not load students</h2>
+      <h2 *ngIf="!loadFailed">{{ hasActiveFilters() ? 'No matches' : 'No students yet' }}</h2>
+      <p *ngIf="loadFailed">Check your connection and try again.</p>
+      <p *ngIf="!loadFailed && hasActiveFilters()">Try adjusting search or filters.</p>
+      <p *ngIf="!loadFailed && !hasActiveFilters()">Enrol your first student to get started.</p>
+      <button type="button" class="btn-retry" *ngIf="loadFailed" (click)="loadStudents(1)">Retry</button>
+      <button type="button" class="btn-clear-filters" *ngIf="!loadFailed && hasActiveFilters()" (click)="clearAllFilters()">Clear filters</button>
+      <a routerLink="/students/new" class="btn-add-first" *ngIf="!isTeacher && !loadFailed && !hasActiveFilters()">+ Add Student</a>
+    </div>
+
+    <div class="manage-students-pagination" *ngIf="!loading && pagination.total > 0">
+      <div class="pagination-left">
+        <span class="pagination-info">
+          Page {{ pagination.page }} of {{ pagination.totalPages }} · {{ pagination.total }} total
+        </span>
+        <label class="pagination-size">
+          Per page
+          <select [ngModel]="pagination.limit" [ngModelOptions]="{standalone: true}" (ngModelChange)="onPageSizeChange($event)">
+            <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size }}</option>
+          </select>
+        </label>
+      </div>
+      <div class="pagination-actions">
+        <button type="button" class="btn-page" (click)="onPageChange(1)" [disabled]="pagination.page === 1">⏮</button>
+        <button type="button" class="btn-page" (click)="onPageChange(pagination.page - 1)" [disabled]="pagination.page === 1">◀</button>
+        <button type="button" class="btn-page" (click)="onPageChange(pagination.page + 1)" [disabled]="pagination.page === pagination.totalPages">▶</button>
+        <button type="button" class="btn-page" (click)="onPageChange(pagination.totalPages)" [disabled]="pagination.page === pagination.totalPages">⏭</button>
       </div>
     </div>
-  </div>
-
-  <!-- Empty State -->
-  <div class="empty-state" *ngIf="!loading && filteredStudents.length === 0">
-    <div class="empty-icon">👨‍🎓</div>
-    <h3 *ngIf="loadFailed">Could Not Load Students</h3>
-    <h3 *ngIf="!loadFailed">{{ searchQuery || selectedClass || selectedType || selectedGender ? 'No Students Found' : 'No Students Yet' }}</h3>
-    <p *ngIf="loadFailed">
-      {{ error || 'The student list could not be loaded. Check that you are signed in and the server is running, then try again.' }}
-    </p>
-    <p *ngIf="!loadFailed && (searchQuery || selectedClass || selectedType || selectedGender)">
-      Try adjusting your search or filters to find students.
-    </p>
-    <p *ngIf="!loadFailed && !searchQuery && !selectedClass && !selectedType && !selectedGender">
-      Get started by adding your first student to the system.
-    </p>
-    <button type="button" class="btn btn-primary" *ngIf="loadFailed" (click)="loadStudents(1)">Retry</button>
-    <button class="btn btn-primary" routerLink="/students/new" *ngIf="!isTeacher && !loadFailed && !searchQuery && !selectedClass && !selectedType && !selectedGender">
-➕ Add First Student
-    </button>
   </div>
 
   <!-- Student Details Modal -->
   <div class="modal-overlay" *ngIf="selectedStudent" (click)="closeStudentDetails()">
     <div class="modal-content" (click)="$event.stopPropagation()">
-      <button class="modal-close" (click)="closeStudentDetails()">&times;</button>
+      <button type="button" class="modal-close" (click)="closeStudentDetails()">&times;</button>
       <div class="modal-header">
         <div class="modal-avatar" [class.male]="selectedStudent.gender === 'Male'" [class.female]="selectedStudent.gender === 'Female'">
           <span class="avatar-icon-large">{{ selectedStudent.gender === 'Male' ? '👨' : '👩' }}</span>
         </div>
         <div class="modal-title">
           <h2>{{ selectedStudent.firstName }} {{ selectedStudent.lastName }}</h2>
-          <p class="student-number student-id-link" (click)="viewStudentIdCard(selectedStudent.id)" title="Click to view Student ID Card">
+          <p class="student-number student-id-link" (click)="viewStudentIdCard(selectedStudent.id)" title="View student ID card">
             {{ selectedStudent.studentNumber }}
           </p>
         </div>
@@ -383,6 +386,14 @@
               <span class="detail-label">Date of Birth</span>
               <span class="detail-value">{{ selectedStudent.dateOfBirth | date:'dd/MM/yyyy' }}</span>
             </div>
+            <div class="detail-item" *ngIf="selectedStudent.usesTransport">
+              <span class="detail-label">Transport</span>
+              <span class="detail-value">Yes</span>
+            </div>
+            <div class="detail-item" *ngIf="selectedStudent.usesDiningHall">
+              <span class="detail-label">Dining hall</span>
+              <span class="detail-value">Yes</span>
+            </div>
           </div>
         </div>
         <div class="detail-section">
@@ -390,11 +401,7 @@
           <div class="detail-grid">
             <div class="detail-item">
               <span class="detail-label">Contact Number</span>
-              <span class="detail-value">{{ selectedStudent.contactNumber || 'Not provided' }}</span>
-            </div>
-            <div class="detail-item" *ngIf="selectedStudent.phoneNumber">
-              <span class="detail-label">Phone Number</span>
-              <span class="detail-value">{{ selectedStudent.phoneNumber }}</span>
+              <span class="detail-value">{{ getPhone(selectedStudent) }}</span>
             </div>
             <div class="detail-item" *ngIf="selectedStudent.address">
               <span class="detail-label">Address</span>
@@ -404,11 +411,13 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" (click)="closeStudentDetails()">Close</button>
-        <button class="btn btn-danger" (click)="deleteStudent(selectedStudent.id, selectedStudent.firstName + ' ' + selectedStudent.lastName, selectedStudent.studentNumber)">
+        <button type="button" class="btn btn-secondary" (click)="closeStudentDetails()">Close</button>
+        <button type="button" class="btn btn-secondary-outline" (click)="viewStudentIdCard(selectedStudent.id)">ID Card</button>
+        <button type="button" class="btn btn-secondary-outline" (click)="viewReportCard(selectedStudent.id)">Report card</button>
+        <button type="button" class="btn btn-danger" *ngIf="!isTeacher" (click)="deleteStudent(selectedStudent.id, selectedStudent.firstName + ' ' + selectedStudent.lastName, selectedStudent.studentNumber)">
           🗑️ Delete
         </button>
-        <button class="btn btn-primary" (click)="editStudent(selectedStudent.id)">
+        <button type="button" class="btn btn-primary" *ngIf="!isTeacher" (click)="editStudent(selectedStudent.id)">
           ✏️ Edit Student
         </button>
       </div>

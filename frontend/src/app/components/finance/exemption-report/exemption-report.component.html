@@ -1,162 +1,245 @@
-<div class="er-page container modern-container">
-  <div class="page-header modern-header-section">
-    <div class="header-title-section">
-      <span class="header-main-icon" aria-hidden="true">🪪</span>
-      <div>
-        <h1>Exemption Report</h1>
-        <p class="header-subtitle">Students with fee exemptions and amounts deducted from invoices</p>
-        <p class="er-meta" *ngIf="lastLoadedAt && !loading">
-          Last updated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
-        </p>
-      </div>
+<div class="er-page">
+  <div class="er-toast-stack" *ngIf="success || error">
+    <div class="er-toast er-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="er-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="er-toast er-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="er-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
   </div>
 
-  <div class="alert alert-error" *ngIf="error" role="alert">{{ error }}</div>
+  <header class="er-hero">
+    <div class="er-hero__main">
+      <div class="er-hero-left">
+        <span class="er-hero-icon" aria-hidden="true">🪪</span>
+        <div>
+          <span class="er-hero-eyebrow">Financial Reports</span>
+          <h1>Exemption Report</h1>
+          <p class="er-hero-sub">
+            Students with fee exemptions and amounts deducted from invoices — search, filter, and export.
+          </p>
+          <p class="er-hero-meta" *ngIf="lastLoadedAt && !loading">
+            Last updated {{ lastLoadedAt | date : 'medium' }}
+          </p>
+        </div>
+      </div>
+      <div class="er-hero__actions" *ngIf="hasData">
+        <button type="button" class="er-hero-refresh" (click)="loadReport()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <button type="button" class="er-hero-btn" (click)="toggleViewMode()" title="Toggle view">
+          {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
+        </button>
+        <button type="button" class="er-hero-btn er-hero-btn--white" (click)="exportCsv()" [disabled]="!displayedRows.length || loading">CSV</button>
+        <button type="button" class="er-hero-btn er-hero-btn--white" (click)="previewPdf()" [disabled]="loadingPdf || !rows.length">Preview</button>
+        <button type="button" class="er-hero-btn er-hero-btn--white" (click)="downloadPdf()" [disabled]="downloadingPdf || !rows.length">
+          {{ downloadingPdf ? '…' : 'PDF' }}
+        </button>
+        <button type="button" class="er-hero-btn er-hero-btn--white" (click)="printReport()" [disabled]="!displayedRows.length || loading">Print</button>
+      </div>
+    </div>
 
-  <div class="er-toolbar">
-    <button type="button" class="btn er-btn" (click)="loadReport()" [disabled]="loading">Refresh</button>
-    <button
-      type="button"
-      class="btn er-btn"
-      (click)="previewPdf()"
-      [disabled]="loadingPdf || rows.length === 0 || loading">
-      <span *ngIf="!loadingPdf">Preview PDF</span>
-      <span *ngIf="loadingPdf">Loading…</span>
-    </button>
-    <button
-      type="button"
-      class="btn er-btn"
-      (click)="downloadPdf()"
-      [disabled]="downloadingPdf || rows.length === 0 || loading">
-      <span *ngIf="!downloadingPdf">Download PDF</span>
-      <span *ngIf="downloadingPdf">Downloading…</span>
-    </button>
-    <button type="button" class="btn er-btn er-btn-outline" (click)="exportCsv()" [disabled]="displayedRows.length === 0 || loading">
-      Export CSV
-    </button>
-  </div>
+    <div class="er-hero-stats" *ngIf="hasData && !loading">
+      <article class="er-stat">
+        <span class="er-stat__value">{{ dashboardStats.students }}</span>
+        <span class="er-stat__label">Showing</span>
+      </article>
+      <article class="er-stat er-stat--mint">
+        <span class="er-stat__value">{{ currencySymbol }}{{ formatAmount(dashboardStats.totalExempted) }}</span>
+        <span class="er-stat__label">Filtered exempted</span>
+      </article>
+      <article class="er-stat">
+        <span class="er-stat__value">{{ currencySymbol }}{{ formatAmount(dashboardStats.average) }}</span>
+        <span class="er-stat__label">Avg per student</span>
+      </article>
+      <article class="er-stat er-stat--amber">
+        <span class="er-stat__value">{{ dashboardStats.classes }}</span>
+        <span class="er-stat__label">Classes</span>
+      </article>
+      <article class="er-stat">
+        <span class="er-stat__value">{{ dashboardStats.types }}</span>
+        <span class="er-stat__label">Exemption types</span>
+      </article>
+    </div>
+    <div class="er-hero-stats er-hero-stats--skeleton" *ngIf="loading">
+      <div class="er-skeleton" *ngFor="let i of [1,2,3,4,5]"></div>
+    </div>
+  </header>
 
-  <div class="er-search-row" *ngIf="!loading || rows.length > 0">
-    <label class="er-search-label" for="er-search-input">Search</label>
+  <section class="er-panel" *ngIf="hasData && !loading">
+    <div class="er-panel__head-row">
+      <div>
+        <h2 class="er-panel__title">Filters & search</h2>
+        <p class="er-panel__intro">Find students by name, ID, or class. Filter by class or exemption type.</p>
+      </div>
+      <button type="button" class="er-btn-clear" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
+    </div>
+
     <div class="er-search-wrap">
       <span class="er-search-icon" aria-hidden="true">🔍</span>
       <input
-        id="er-search-input"
         #erSearch
         type="search"
         class="er-search-input"
-        placeholder="Name, student ID, class, exemption type…"
-        autocomplete="off"
-        [disabled]="loading && rows.length === 0"
-        (input)="onSearchInput(erSearch.value)"
-      />
-      <button type="button" class="er-search-clear" *ngIf="searchQuery" (click)="erSearch.value = ''; clearSearch()">
-        Clear
+        placeholder="Search name, student ID, class, exemption type…"
+        [disabled]="loading"
+        (input)="onSearchInput(erSearch.value)" />
+      <button type="button" class="er-search-clear" *ngIf="searchQuery" (click)="erSearch.value = ''; clearSearch()">Clear</button>
+    </div>
+
+    <div class="er-chips" *ngIf="classChips.length">
+      <span class="er-chips-label">Class</span>
+      <button type="button" class="er-chip" [class.er-chip--active]="selectedClass === 'all'" (click)="onClassChange('all')">
+        All<span class="er-chip__count">({{ rows.length }})</span>
+      </button>
+      <button
+        type="button"
+        class="er-chip"
+        *ngFor="let chip of classChips"
+        [class.er-chip--active]="selectedClass === chip.className"
+        (click)="onClassChange(chip.className)">
+        {{ chip.className }}<span class="er-chip__count">({{ chip.count }})</span>
       </button>
     </div>
-  </div>
 
-  <div class="er-kpi-grid" *ngIf="!loading && rows.length > 0">
-    <article class="er-kpi-card">
-      <span class="er-kpi-label">Students with exemptions</span>
-      <span class="er-kpi-value">{{ rows.length }}</span>
-      <span class="er-kpi-hint" *ngIf="searchQuery && displayedRows.length !== rows.length">
-        Showing {{ displayedRows.length }} after filter
-      </span>
-    </article>
-    <article class="er-kpi-card er-kpi-accent">
-      <span class="er-kpi-label">Total amount exempted</span>
-      <span class="er-kpi-value">{{ currencySymbol }} {{ formatAmount(getTotalExempted()) }}</span>
-      <span class="er-kpi-hint">Across all listed students</span>
-    </article>
-    <article class="er-kpi-card">
-      <span class="er-kpi-label">Average per student</span>
-      <span class="er-kpi-value">{{ currencySymbol }} {{ formatAmount(getAverageExempted()) }}</span>
-      <span class="er-kpi-hint" *ngIf="searchQuery">Filtered total: {{ currencySymbol }} {{ formatAmount(getDisplayedTotalExempted()) }}</span>
-    </article>
-  </div>
-
-  <div *ngIf="loading" class="er-skeleton" aria-busy="true" aria-label="Loading report">
-    <div class="er-skeleton-row" *ngFor="let _ of skeletonPlaceholders">
-      <div class="er-skel er-skel-sm"></div>
-      <div class="er-skel"></div>
-      <div class="er-skel"></div>
-      <div class="er-skel er-skel-xs"></div>
-      <div class="er-skel"></div>
-      <div class="er-skel er-skel-md"></div>
-      <div class="er-skel er-skel-num"></div>
+    <div class="er-chips" *ngIf="typeChips.length">
+      <span class="er-chips-label">Exemption type</span>
+      <button type="button" class="er-chip" [class.er-chip--active]="selectedType === 'all'" (click)="onTypeChange('all')">
+        All types
+      </button>
+      <button
+        type="button"
+        class="er-chip"
+        *ngFor="let chip of typeChips"
+        [class.er-chip--active]="selectedType === chip.typeKey"
+        (click)="onTypeChange(chip.typeKey)">
+        {{ chip.label }}<span class="er-chip__count">({{ chip.count }})</span>
+      </button>
     </div>
-    <p class="er-skeleton-caption">Loading exemption report…</p>
-  </div>
 
-  <div class="table-section er-table-section" *ngIf="!loading">
-    <div class="table-wrapper er-table-scroll">
-      <table class="data-table modern-table er-table" *ngIf="rows.length > 0 && displayedRows.length > 0">
-        <thead>
-          <tr>
-            <th scope="col">
-              <button type="button" class="er-th-btn" (click)="setSort('studentNumber')">
-                Student ID <span class="er-sort">{{ sortIndicator('studentNumber') }}</span>
-              </button>
-            </th>
-            <th scope="col">
-              <button type="button" class="er-th-btn" (click)="setSort('lastName')">
-                Last name <span class="er-sort">{{ sortIndicator('lastName') }}</span>
-              </button>
-            </th>
-            <th scope="col">
-              <button type="button" class="er-th-btn" (click)="setSort('firstName')">
-                First name <span class="er-sort">{{ sortIndicator('firstName') }}</span>
-              </button>
-            </th>
-            <th scope="col">
-              <button type="button" class="er-th-btn" (click)="setSort('gender')">
-                Sex <span class="er-sort">{{ sortIndicator('gender') }}</span>
-              </button>
-            </th>
-            <th scope="col">
-              <button type="button" class="er-th-btn" (click)="setSort('className')">
-                Class <span class="er-sort">{{ sortIndicator('className') }}</span>
-              </button>
-            </th>
-            <th scope="col">
-              <button type="button" class="er-th-btn" (click)="setSort('exemptionType')">
-                Exemption type <span class="er-sort">{{ sortIndicator('exemptionType') }}</span>
-              </button>
-            </th>
-            <th scope="col">
-              <button type="button" class="er-th-btn" (click)="setSort('amountExempted')">
-                Amount exempted <span class="er-sort">{{ sortIndicator('amountExempted') }}</span>
-              </button>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let r of displayedRows">
-            <td class="er-cell-mono">{{ r.studentNumber || '—' }}</td>
-            <td>{{ r.lastName || '—' }}</td>
-            <td>{{ r.firstName || '—' }}</td>
-            <td>{{ r.gender || '—' }}</td>
-            <td>{{ r.className || 'Unassigned' }}</td>
-            <td>
-              <span class="er-type-pill">{{ formatExemptionType(r.exemptionType) }}</span>
-            </td>
-            <td class="er-cell-amount">{{ currencySymbol }} {{ formatAmount(r.amountExempted) }}</td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="er-summary" *ngIf="filterSummary">
+      <span class="er-summary-pill">{{ filterSummary }}</span>
+    </div>
+  </section>
 
-      <div *ngIf="rows.length > 0 && displayedRows.length === 0" class="er-empty er-empty-filter">
-        <p class="er-empty-title">No matches</p>
-        <p class="er-empty-text">No rows match “{{ searchQuery }}”. Try another search or clear the filter.</p>
-        <button type="button" class="btn er-btn er-btn-outline" (click)="clearSearch()">Clear search</button>
+  <section class="er-panel er-data-panel" *ngIf="loading">
+    <div class="er-skeleton-table" aria-busy="true">
+      <div class="er-skeleton-row" *ngFor="let _ of skeletonPlaceholders">
+        <div class="er-skel er-skel-sm"></div>
+        <div class="er-skel"></div>
+        <div class="er-skel"></div>
+        <div class="er-skel er-skel-sm"></div>
+        <div class="er-skel"></div>
+        <div class="er-skel er-skel-md"></div>
+        <div class="er-skel er-skel-md"></div>
+      </div>
+      <p style="text-align:center;color:#64748b;margin:0">Loading exemption report…</p>
+    </div>
+  </section>
+
+  <section class="er-panel er-empty" *ngIf="!loading && !error && rows.length === 0">
+    <span class="er-empty-icon" aria-hidden="true">📋</span>
+    <p class="er-empty-title">No exemptions on record</p>
+    <p class="er-empty-text">
+      When students have fee exemptions, they will appear here with amounts derived from their latest invoice.
+    </p>
+    <a routerLink="/finance/exemptions" class="er-link-btn">Manage exemptions</a>
+  </section>
+
+  <section class="er-panel er-data-panel" *ngIf="!loading && rows.length > 0">
+    <div class="er-empty" *ngIf="displayedRows.length === 0">
+      <span class="er-empty-icon" aria-hidden="true">🔎</span>
+      <p class="er-empty-title">No matching students</p>
+      <p class="er-empty-text">Try another search or filter.</p>
+      <button type="button" class="er-btn-reset" (click)="clearFilters()">Reset filters</button>
+    </div>
+
+    <ng-container *ngIf="displayedRows.length > 0">
+      <div class="er-table-toolbar">
+        <h3>{{ displayedRows.length }} student(s) · Total {{ currencySymbol }}{{ formatAmount(getDisplayedTotalExempted()) }}</h3>
       </div>
 
-      <div *ngIf="rows.length === 0" class="er-empty">
-        <p class="er-empty-title">No exemptions on record</p>
-        <p class="er-empty-text">When students have fee exemptions, they will appear here with amounts derived from their latest invoice.</p>
+      <div class="er-table-scroll" *ngIf="viewMode === 'table'">
+        <table class="er-table">
+          <thead>
+            <tr>
+              <th>
+                <button type="button" class="er-th-btn" (click)="setSort('studentNumber')">
+                  Student ID <span class="er-sort">{{ sortIndicator('studentNumber') }}</span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="er-th-btn" (click)="setSort('lastName')">
+                  Last name <span class="er-sort">{{ sortIndicator('lastName') }}</span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="er-th-btn" (click)="setSort('firstName')">
+                  First name <span class="er-sort">{{ sortIndicator('firstName') }}</span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="er-th-btn" (click)="setSort('gender')">
+                  Sex <span class="er-sort">{{ sortIndicator('gender') }}</span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="er-th-btn" (click)="setSort('className')">
+                  Class <span class="er-sort">{{ sortIndicator('className') }}</span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="er-th-btn" (click)="setSort('exemptionType')">
+                  Type <span class="er-sort">{{ sortIndicator('exemptionType') }}</span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="er-th-btn" (click)="setSort('amountExempted')">
+                  Amount exempted <span class="er-sort">{{ sortIndicator('amountExempted') }}</span>
+                </button>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of displayedRows; trackBy: trackByStudent">
+              <td class="er-cell-mono">{{ r.studentNumber || '—' }}</td>
+              <td>{{ r.lastName || '—' }}</td>
+              <td>{{ r.firstName || '—' }}</td>
+              <td>{{ r.gender || '—' }}</td>
+              <td>{{ r.className || 'Unassigned' }}</td>
+              <td>
+                <span class="er-type-pill" [ngClass]="getTypePillClass(r.exemptionType)">
+                  {{ formatExemptionType(r.exemptionType) }}
+                </span>
+              </td>
+              <td class="er-cell-amount">{{ currencySymbol }} {{ formatAmount(r.amountExempted) }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </div>
-  </div>
+
+      <div class="er-cards" *ngIf="viewMode === 'cards'">
+        <article class="er-card" *ngFor="let r of displayedRows; trackBy: trackByStudent">
+          <div class="er-card__top">
+            <span class="er-type-pill" [ngClass]="getTypePillClass(r.exemptionType)">{{ formatExemptionType(r.exemptionType) }}</span>
+            <span class="er-card__amount">{{ currencySymbol }} {{ formatAmount(r.amountExempted) }}</span>
+          </div>
+          <p class="er-card__name">{{ r.firstName }} {{ r.lastName }}</p>
+          <p class="er-card__meta">
+            {{ r.studentNumber || '—' }} · {{ r.className || 'Unassigned' }}<br />
+            {{ r.gender || '—' }}
+          </p>
+        </article>
+      </div>
+
+      <div class="er-footer-total">
+        <strong>
+          Filtered total exempted: {{ currencySymbol }} {{ formatAmount(getDisplayedTotalExempted()) }}
+          · All records: {{ currencySymbol }} {{ formatAmount(getTotalExempted()) }}
+        </strong>
+      </div>
+    </ng-container>
+  </section>
 </div>

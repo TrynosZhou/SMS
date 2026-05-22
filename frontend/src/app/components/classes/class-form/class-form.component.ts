@@ -1,5 +1,7 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subject, forkJoin, of } from 'rxjs';
+import { catchError, finalize, takeUntil } from 'rxjs/operators';
 import { ClassService } from '../../../services/class.service';
 import { TeacherService } from '../../../services/teacher.service';
 import { SubjectService } from '../../../services/subject.service';
@@ -21,7 +23,10 @@ templateUrl: './class-form.component.html',
     ])
   ]
 })
-export class ClassFormComponent implements OnInit {
+export class ClassFormComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
+
+  loadError = '';
   classItem: any = {
     name: '',
     form: '',
@@ -55,6 +60,32 @@ export class ClassFormComponent implements OnInit {
   formSuggestions = ['Form 1', 'Form 2', 'Form 3', 'Form 4', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
   formSuggestionsId = 'formSuggestions';
 
+  get pageTitle(): string {
+    return this.isEdit ? 'Edit class' : 'Create new class';
+  }
+
+  get assignmentsLoading(): boolean {
+    return this.loadingTeachers || this.loadingSubjects;
+  }
+
+  get formCompletion(): number {
+    let score = 0;
+    if (this.classItem.name?.trim()) score += 40;
+    if (this.classItem.form?.trim()) score += 40;
+    if (this.classItem.description?.trim()) score += 10;
+    if (this.selectedTeacherIds.length) score += 5;
+    if (this.selectedSubjectIds.length) score += 5;
+    return Math.min(100, score);
+  }
+
+  get formStats(): { teachers: number; subjects: number; completion: number } {
+    return {
+      teachers: this.selectedTeacherIds.length,
+      subjects: this.selectedSubjectIds.length,
+      completion: this.formCompletion
+    };
+  }
+
   constructor(
     private classService: ClassService,
     private teacherService: TeacherService,
@@ -70,62 +101,179 @@ export class ClassFormComponent implements OnInit {
       this.isEdit = true;
       this.loadClass(id);
     } else {
-      // Load teachers and subjects for new class
-      this.loadTeachers();
-      this.loadSubjects();
+      this.loadTeachersAndSubjects();
     }
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  /** Ensure API result is always an array (handles paginated or malformed responses). */
+  private normalizeList(data: unknown): any[] {
+    if (!data) {
+      return [];
+    }
+    if (Array.isArray(data)) {
+      return data;
+    }
+    if (typeof data === 'object' && data !== null && Array.isArray((data as { data?: unknown }).data)) {
+      return (data as { data: any[] }).data;
+    }
+    return [];
+  }
+
   loadClass(id: string) {
-    this.classService.getClassById(id).subscribe({
-      next: (data: any) => {
-        this.classItem = data;
-        // Load selected teachers and subjects
-        if (data.teachers) {
-          this.selectedTeacherIds = data.teachers.map((t: any) => t.id);
+    this.classService
+      .getClassById(id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data: any) => {
+          this.classItem = data;
+          if (data.teachers) {
+            this.selectedTeacherIds = data.teachers.map((t: any) => t.id);
+          }
+          if (data.subjects) {
+            this.selectedSubjectIds = data.subjects.map((s: any) => s.id);
+          }
+          this.loadTeachersAndSubjects();
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.error = 'Failed to load class';
+          setTimeout(() => (this.error = ''), 5000);
+          this.cdr.markForCheck();
         }
-        if (data.subjects) {
-          this.selectedSubjectIds = data.subjects.map((s: any) => s.id);
-        }
-        // Load all teachers and subjects for selection
-        this.loadTeachers();
-        this.loadSubjects();
-      },
-      error: (err: any) => {
-        this.error = 'Failed to load class';
-        setTimeout(() => this.error = '', 5000);
-      }
-    });
+      });
   }
 
-  loadTeachers() {
+  loadTeachersAndSubjects(): void {
     this.loadingTeachers = true;
-    this.teacherService.getTeachers().subscribe({
-      next: (data: any) => {
-        this.teachers = (data || []).filter((t: any) => t.isActive !== false);
-        this.filteredTeachers = [...this.teachers];
-        this.loadingTeachers = false;
-      },
-      error: (err: any) => {
-        console.error('Error loading teachers:', err);
-        this.loadingTeachers = false;
-      }
-    });
+    this.loadingSubjects = true;
+    this.loadError = '';
+    this.cdr.markForCheck();
+
+    forkJoin({
+      teachers: this.teacherService.getTeachers(1, 500).pipe(
+        catchError((err) => {
+          console.error('Error loading teachers:', err);
+          return of([]);
+        })
+      ),
+      subjects: this.subjectService.getSubjects().pipe(
+        catchError((err) => {
+          console.error('Error loading subjects:', err);
+          return of([]);
+        })
+      )
+    })
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.loadingTeachers = false;
+          this.loadingSubjects = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: ({ teachers, subjects }) => {
+          try {
+            this.teachers = this.normalizeList(teachers).filter((t: any) => t.isActive !== false);
+            this.filteredTeachers = [...this.teachers];
+            this.subjects = this.normalizeList(subjects).filter((s: any) => s.isActive !== false);
+            this.filteredSubjects = [...this.subjects];
+          } catch (e) {
+            console.error('Error processing teachers/subjects:', e);
+            this.teachers = [];
+            this.filteredTeachers = [];
+            this.subjects = [];
+            this.filteredSubjects = [];
+            this.loadError = 'Could not display teachers or subjects. Please try again.';
+          }
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.teachers = [];
+          this.filteredTeachers = [];
+          this.subjects = [];
+          this.filteredSubjects = [];
+          this.loadError =
+            err?.name === 'TimeoutError'
+              ? 'Loading timed out. Check that the backend is running and try again.'
+              : 'Failed to load teachers and subjects.';
+          this.cdr.markForCheck();
+        }
+      });
   }
 
-  loadSubjects() {
-    this.loadingSubjects = true;
-    this.subjectService.getSubjects().subscribe({
-      next: (data: any) => {
-        this.subjects = (data || []).filter((s: any) => s.isActive !== false);
-        this.filteredSubjects = [...this.subjects];
-        this.loadingSubjects = false;
-      },
-      error: (err: any) => {
-        console.error('Error loading subjects:', err);
-        this.loadingSubjects = false;
+  clearAlert(kind: 'success' | 'error' | 'load'): void {
+    if (kind === 'success') this.success = '';
+    else if (kind === 'error') this.error = '';
+    else this.loadError = '';
+  }
+
+  applyFormSuggestion(value: string): void {
+    this.classItem.form = value;
+    this.touchedFields.add('form');
+    this.validateField('form');
+  }
+
+  getTeacherInitial(teacher: any): string {
+    const f = (teacher.firstName || '').charAt(0).toUpperCase();
+    const l = (teacher.lastName || '').charAt(0).toUpperCase();
+    return l + f || 'T';
+  }
+
+  trackByTeacher(_index: number, item: any): string {
+    return String(item?.id || _index);
+  }
+
+  trackBySubject(_index: number, item: any): string {
+    return String(item?.id || _index);
+  }
+
+  getSelectedTeacherNames(): string[] {
+    return this.selectedTeacherIds
+      .map((id) => this.teachers.find((t) => t.id === id))
+      .filter(Boolean)
+      .map((t: any) => `${t.firstName || ''} ${t.lastName || ''}`.trim())
+      .filter((n) => n);
+  }
+
+  getSelectedSubjectNames(): string[] {
+    return this.selectedSubjectIds
+      .map((id) => this.subjects.find((s) => s.id === id))
+      .filter(Boolean)
+      .map((s: any) => s.name || s.code || 'Subject');
+  }
+
+  selectAllVisibleTeachers(): void {
+    this.filteredTeachers.forEach((t) => {
+      if (t.id && !this.selectedTeacherIds.includes(t.id)) {
+        this.selectedTeacherIds.push(t.id);
       }
     });
+    this.cdr.markForCheck();
+  }
+
+  clearAllTeachers(): void {
+    this.selectedTeacherIds = [];
+    this.cdr.markForCheck();
+  }
+
+  selectAllVisibleSubjects(): void {
+    this.filteredSubjects.forEach((s) => {
+      if (s.id && !this.selectedSubjectIds.includes(s.id)) {
+        this.selectedSubjectIds.push(s.id);
+      }
+    });
+    this.cdr.markForCheck();
+  }
+
+  clearAllSubjects(): void {
+    this.selectedSubjectIds = [];
+    this.cdr.markForCheck();
   }
 
   filterTeachers() {
@@ -169,6 +317,7 @@ export class ClassFormComponent implements OnInit {
     } else {
       this.selectedTeacherIds.push(teacherId);
     }
+    this.cdr.markForCheck();
   }
 
   toggleSubject(subjectId: string) {
@@ -178,6 +327,7 @@ export class ClassFormComponent implements OnInit {
     } else {
       this.selectedSubjectIds.push(subjectId);
     }
+    this.cdr.markForCheck();
   }
 
   validateField(fieldName: string) {

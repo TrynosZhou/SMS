@@ -1318,11 +1318,6 @@ export const getSubjectRankings = async (req: AuthRequest, res: Response) => {
     if (!subject) {
       return res.status(404).json({ message: 'Subject not found' });
     }
-    const subjectName = String(subject.name || '').trim();
-    if (!ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
-      return res.json([]);
-    }
-
     const where: any = { examId: examId as string, subjectId: subjectId as string };
     let marks = await marksRepository.find({
       where,
@@ -1443,10 +1438,10 @@ export const getClassRankingsByType = async (req: AuthRequest, res: Response) =>
 
 export const getSubjectRankingsByType = async (req: AuthRequest, res: Response) => {
   try {
-    const { examType, subjectId } = req.query;
+    const { examType, subjectId, classId } = req.query;
     
-    if (!examType || !subjectId) {
-      return res.status(400).json({ message: 'Exam type and subject ID are required' });
+    if (!examType || !subjectId || !classId) {
+      return res.status(400).json({ message: 'Exam type, subject ID, and class ID are required' });
     }
 
     const marksRepository = AppDataSource.getRepository(Marks);
@@ -1458,25 +1453,21 @@ export const getSubjectRankingsByType = async (req: AuthRequest, res: Response) 
     if (!subject) {
       return res.status(404).json({ message: 'Subject not found' });
     }
-    const subjectName = String(subject.name || '').trim();
-    if (!ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
-      return res.json([]);
-    }
-
-    // Get all exams of the specified type
+    // Get exams for the selected class and exam type
     const exams = await examRepository.find({
       where: {
+        classId: classId as string,
         type: examType as ExamType,
       }
     });
 
     if (exams.length === 0) {
-      return res.status(404).json({ message: `No exams found with exam type: ${examType}` });
+      return res.status(404).json({ message: `No exams found for this class with exam type: ${examType}` });
     }
 
     const examIds = exams.map(e => e.id);
 
-    // Get all marks for these exams and the specified subject
+    // Get marks for these exams and the specified subject (students in selected class only)
     const marks = await marksRepository.find({
       where: { 
         examId: In(examIds),
@@ -1485,10 +1476,12 @@ export const getSubjectRankingsByType = async (req: AuthRequest, res: Response) 
       relations: ['student', 'subject']
     });
 
+    const filteredMarks = marks.filter(m => m.student?.classId === classId);
+
     // Calculate percentage and aggregate by student (average across all exams)
     const studentMarks: { [key: string]: { scores: number[]; maxScores: number[]; student: Student } } = {};
 
-    marks.forEach(mark => {
+    filteredMarks.forEach(mark => {
       const studentId = mark.studentId;
       if (!studentMarks[studentId]) {
         studentMarks[studentId] = {
@@ -1501,7 +1494,7 @@ export const getSubjectRankingsByType = async (req: AuthRequest, res: Response) 
       studentMarks[studentId].maxScores.push(Math.round(parseFloat(String(mark.maxScore)) || 100));
     });
 
-    // Calculate average percentage per student
+    // Calculate average percentage per student (within class)
     const subjectRankings = Object.values(studentMarks)
       .map(studentData => {
         const totalScore = studentData.scores.reduce((a, b) => a + b, 0);

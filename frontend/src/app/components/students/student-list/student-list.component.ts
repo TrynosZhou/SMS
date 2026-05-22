@@ -42,6 +42,8 @@ selectedStudent: any = null;
     classCount: 0
   };
   pageSizeOptions = [10, 20, 50, 100];
+  sortKey: 'studentNumber' | 'lastName' | 'firstName' | 'gender' = 'lastName';
+  sortDir: 'asc' | 'desc' = 'asc';
   pageTitle = 'Students';
   pageSubtitle = 'Manage and view all enrolled students';
   pageIcon = '👨‍🎓';
@@ -100,8 +102,99 @@ selectedStudent: any = null;
     this.destroy$.complete();
 }
 
+  get isLogisticsView(): boolean {
+    return this.isLogisticsTransport || this.isLogisticsDiningHall;
+  }
+
+  get managePageTitle(): string {
+    return this.isLogisticsView ? this.pageTitle : 'Manage Students';
+  }
+
   canBulkCorrectStatus(): boolean {
     return !this.isTeacher;
+  }
+
+  refreshStudents(): void {
+    this.loadStudents(this.pagination.page);
+  }
+
+  clearAlert(type: 'success' | 'error'): void {
+    if (type === 'success') {
+      this.success = '';
+    } else {
+      this.error = '';
+    }
+    this.cdr.markForCheck();
+  }
+
+  get dashboardStats() {
+    const list = this.filteredStudents;
+    let male = 0;
+    let female = 0;
+    list.forEach(s => {
+      const g = String(s?.gender || '').toLowerCase();
+      if (g === 'male') male++;
+      if (g === 'female') female++;
+    });
+    return {
+      total: this.pagination.total,
+      showing: list.length,
+      dayScholars: this.stats.totalDayScholars,
+      boarders: this.stats.totalBoarders,
+      classes: this.stats.classCount,
+      male,
+      female
+    };
+  }
+
+  get activeFilterCount(): number {
+    let n = 0;
+    if (this.searchQuery.trim()) n++;
+    if (this.selectedClass) n++;
+    if (this.selectedGrade) n++;
+    if (this.selectedType) n++;
+    if (this.selectedGender) n++;
+    if (this.filterUsesTransport) n++;
+    if (this.filterUsesDiningHall) n++;
+    return n;
+  }
+
+  get selectedCount(): number {
+    return this.selectedStudentIds.size;
+  }
+
+  sortIndicator(key: 'studentNumber' | 'lastName' | 'firstName' | 'gender'): string {
+    if (this.sortKey !== key) return '↕';
+    return this.sortDir === 'asc' ? '↑' : '↓';
+  }
+
+  setSort(key: 'studentNumber' | 'lastName' | 'firstName' | 'gender'): void {
+    if (this.sortKey === key) {
+      this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortKey = key;
+      this.sortDir = 'asc';
+    }
+    this.applySort();
+  }
+
+  clearAllFilters(): void {
+    this.clearFilters();
+  }
+
+  onTypeFilterChange(): void {
+    this.pagination.page = 1;
+    this.loadStudents(1);
+  }
+
+  getPhone(student: any): string {
+    const phone = (student?.contactNumber || student?.phoneNumber || '').toString().trim();
+    return phone || '—';
+  }
+
+  onGenderFilterChange(): void {
+    this.applyFilters();
+    this.cdr.markForCheck();
   }
 
   loadClasses() {
@@ -274,21 +367,8 @@ totalPages: response?.totalPages || 1
         return student.gender === this.selectedGender;
       });
     }
-    // Sort by Lastname ascending across all records, then Firstname, then StudentNumber
-    filtered.sort((a: any, b: any) => {
-      const lastA = String(a.lastName || '').toLowerCase();
-      const lastB = String(b.lastName || '').toLowerCase();
-      const lastCompare = lastA.localeCompare(lastB, undefined, { sensitivity: 'base' });
-      if (lastCompare !== 0) return lastCompare;
-      const firstA = String(a.firstName || '').toLowerCase();
-      const firstB = String(b.firstName || '').toLowerCase();
-      const firstCompare = firstA.localeCompare(firstB, undefined, { sensitivity: 'base' });
-      if (firstCompare !== 0) return firstCompare;
-      const numA = String(a.studentNumber || '').toLowerCase();
-      const numB = String(b.studentNumber || '').toLowerCase();
-      return numA.localeCompare(numB);
-    });
     this.filteredStudents = filtered;
+    this.applySort();
 
     const females = filtered.filter(s => String(s?.gender || '').toLowerCase() === 'female');
     const males = filtered.filter(s => String(s?.gender || '').toLowerCase() === 'male');
@@ -303,6 +383,23 @@ totalPages: response?.totalPages || 1
     this.groupedStudents = groups;
   }
 
+  private applySort(): void {
+    const dir = this.sortDir === 'asc' ? 1 : -1;
+    const toVal = (s: any) => {
+      if (this.sortKey === 'studentNumber') return String(s?.studentNumber || '').toLowerCase();
+      if (this.sortKey === 'lastName') return String(s?.lastName || '').toLowerCase();
+      if (this.sortKey === 'firstName') return String(s?.firstName || '').toLowerCase();
+      return String(s?.gender || '').toLowerCase();
+    };
+    this.filteredStudents = [...this.filteredStudents].sort((a, b) => {
+      const av = toVal(a);
+      const bv = toVal(b);
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return String(a?.studentNumber || '').localeCompare(String(b?.studentNumber || ''));
+    });
+  }
+
   onSearchChange() {
     this.pagination.page = 1;
     this.loadStudents(1);
@@ -314,9 +411,9 @@ totalPages: response?.totalPages || 1
     this.searchQuery = '';
     this.selectedClass = '';
     this.selectedGrade = '';
-    this.selectedType = '';
     this.selectedGender = '';
     if (!this.isLogisticsTransport && !this.isLogisticsDiningHall) {
+      this.selectedType = '';
       this.filterUsesTransport = false;
       this.filterUsesDiningHall = false;
     }
@@ -328,15 +425,7 @@ totalPages: response?.totalPages || 1
   }
 
   hasActiveFilters(): boolean {
-    return !!(
-      this.searchQuery ||
-      this.selectedClass ||
-      this.selectedGrade ||
-      this.selectedType ||
-      this.selectedGender ||
-      this.filterUsesTransport ||
-      this.filterUsesDiningHall
-    );
+    return this.activeFilterCount > 0;
   }
 
   onGradeFilterChange() {

@@ -31,6 +31,41 @@
   font-size: 16px;
 }
 
+.teachers-loading,
+.teachers-empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: #64748b;
+}
+
+.teachers-loading .spinner-large,
+.teachers-empty .spinner-large {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 16px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #4f46e5;
+  border-radius: 50%;
+  animation: allocate-spin 0.8s linear infinite;
+}
+
+@keyframes allocate-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.teachers-empty p {
+  margin: 0 0 16px;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 /* Alerts */
 .alert {
   padding: 16px;

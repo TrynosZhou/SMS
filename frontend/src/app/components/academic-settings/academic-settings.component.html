@@ -1,0 +1,455 @@
+<div class="academic-settings-page">
+  <div class="alert alert-success academic-alert" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error academic-alert" *ngIf="error">{{ error }}</div>
+
+  <header class="academic-page-header">
+    <div class="academic-page-title">
+      <span class="academic-page-icon">🎓</span>
+      <div>
+        <h1>Academic Settings</h1>
+        <p>Manage terms, classes, subjects, departments, and grading systems</p>
+      </div>
+    </div>
+  </header>
+
+  <nav class="academic-tabs" aria-label="Academic settings">
+    <button
+      type="button"
+      class="academic-tab"
+      *ngFor="let tab of tabs"
+      [class.active]="activeTab === tab.id"
+      (click)="navigateTab(tab.id)">
+      <span class="academic-tab-icon">{{ tab.icon }}</span>
+      <span>{{ tab.label }}</span>
+    </button>
+  </nav>
+
+  <div *ngIf="loading" class="academic-loading">Loading academic settings...</div>
+
+  <!-- Terms -->
+  <div class="academic-panel" *ngIf="!loading && activeTab === 'terms'">
+    <div class="academic-panel-toolbar">
+      <span class="toolbar-title">🎓 Academic Settings</span>
+      <button type="button" class="btn btn-add-term" (click)="openAddTerm()" [disabled]="isDemoUser()">+ Add Term</button>
+    </div>
+    <div class="academic-panel-filters">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" [(ngModel)]="termSearch" placeholder="Search terms..." />
+      </div>
+      <div class="filter-wrap">
+        <label>Filter by Year</label>
+        <select [(ngModel)]="yearFilter">
+          <option value="all">All Years</option>
+          <option *ngFor="let y of yearFilterOptions" [value]="y">{{ y }}</option>
+        </select>
+      </div>
+    </div>
+    <div class="academic-table-wrap">
+      <table class="academic-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Type</th>
+            <th>Label</th>
+            <th>Term</th>
+            <th>Year</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Duration</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="filteredTerms.length === 0">
+            <td colspan="10" class="empty-row">No terms found. Click "+ Add Term" to create one.</td>
+          </tr>
+          <tr *ngFor="let term of filteredTerms; let i = index">
+            <td>{{ i + 1 }}</td>
+            <td>{{ term.type }}</td>
+            <td>{{ term.label }}</td>
+            <td>{{ term.term }}</td>
+            <td>{{ term.year }}</td>
+            <td>{{ formatDisplayDate(term.startDate) }}</td>
+            <td>{{ formatDisplayDate(term.endDate) }}</td>
+            <td>{{ formatDuration(term) }}</td>
+            <td>
+              <span class="status-badge" [class.status-active]="getTermStatus(term) === 'Active'"
+                [class.status-upcoming]="getTermStatus(term) === 'Upcoming'"
+                [class.status-completed]="getTermStatus(term) === 'Completed'">
+                {{ getTermStatus(term) }}
+              </span>
+            </td>
+            <td>
+              <button type="button" class="btn btn-edit" (click)="openEditTerm(term)" [disabled]="isDemoUser()">Edit</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Classes -->
+  <div class="academic-panel academic-classes-panel" *ngIf="!loading && activeTab === 'classes'">
+    <div class="academic-panel-toolbar">
+      <span class="toolbar-title">🎓 Academic Settings</span>
+      <button type="button" class="btn btn-add-term" (click)="addClass()" [disabled]="isDemoUser()">+ Add Class</button>
+    </div>
+    <div class="academic-panel-filters">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input
+          type="text"
+          [(ngModel)]="classSearch"
+          (ngModelChange)="onClassSearchChange()"
+          placeholder="Search classes..." />
+      </div>
+      <div class="filter-wrap">
+        <label for="class-form-filter">Filter by Form</label>
+        <select id="class-form-filter" [(ngModel)]="classFormFilter" (ngModelChange)="onClassFormFilterChange()">
+          <option value="all">All Forms</option>
+          <option *ngFor="let f of classFormFilterOptions" [value]="f">{{ f }}</option>
+        </select>
+      </div>
+    </div>
+    <div class="academic-table-wrap">
+      <table class="academic-table academic-classes-table">
+        <thead>
+          <tr>
+            <th class="col-num"><span class="th-icon">☰</span> #</th>
+            <th><span class="th-icon">🏫</span> CLASS NAME</th>
+            <th><span class="th-icon">⭐</span> FORM</th>
+            <th><span class="th-icon">👥</span> STUDENTS</th>
+            <th class="col-actions"><span class="th-icon">⚙️</span> ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let cls of paginatedClasses; let i = index">
+            <td class="col-num">{{ (classCurrentPage - 1) * classPageSize + i + 1 }}</td>
+            <td class="class-name-cell">{{ cls.name }}</td>
+            <td>
+              <span class="form-pill" *ngIf="cls.form">{{ cls.form }}</span>
+              <span *ngIf="!cls.form">—</span>
+            </td>
+            <td>
+              <span class="student-count-badge">{{ getStudentCount(cls) }}</span>
+            </td>
+            <td class="col-actions">
+              <button
+                type="button"
+                class="btn-class-delete"
+                (click)="deleteClass(cls)"
+                [disabled]="isDemoUser() || deletingClassId === getCleanClassId(cls.id)"
+                title="Delete class"
+                aria-label="Delete class">
+                🗑️
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="classesAfterFilter.length === 0">
+            <td colspan="5" class="empty-row">No classes found.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="academic-pagination" *ngIf="classesAfterFilter.length > 0">
+      <div class="academic-pagination-left">
+        <label>
+          Items per page
+          <select [ngModel]="classPageSize" (ngModelChange)="onClassPageSizeChange($event)">
+            <option *ngFor="let size of classPageSizeOptions" [value]="size">{{ size }}</option>
+          </select>
+        </label>
+        <span class="academic-pagination-count">{{ classPaginationLabel }}</span>
+      </div>
+      <div class="academic-pagination-nav">
+        <button type="button" class="btn-page-nav" (click)="goToClassPage(1)" [disabled]="classCurrentPage === 1" title="First page">⏮</button>
+        <button type="button" class="btn-page-nav" (click)="goToClassPage(classCurrentPage - 1)" [disabled]="classCurrentPage === 1" title="Previous page">◀</button>
+        <button type="button" class="btn-page-nav" (click)="goToClassPage(classCurrentPage + 1)" [disabled]="classCurrentPage === classTotalPages" title="Next page">▶</button>
+        <button type="button" class="btn-page-nav" (click)="goToClassPage(classTotalPages)" [disabled]="classCurrentPage === classTotalPages" title="Last page">⏭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subjects -->
+  <div class="academic-panel academic-subjects-panel" *ngIf="!loading && activeTab === 'subjects'">
+    <div class="subjects-manage-hero">
+      <h2>Manage Subjects</h2>
+      <p>Create, edit, and manage academic subjects for your school.</p>
+    </div>
+
+    <div class="subjects-directory-bar">
+      <div class="subjects-directory-text">
+        <strong>Subjects Directory</strong>
+        <span>Total: {{ filteredSubjects.length }} subject{{ filteredSubjects.length === 1 ? '' : 's' }}</span>
+      </div>
+      <button type="button" class="btn-subjects-add" (click)="addSubject()" [disabled]="isDemoUser()">+ Add Subject</button>
+    </div>
+
+    <div class="subjects-search-section">
+      <div class="search-wrap subjects-search-wrap">
+        <span class="search-icon">🔍</span>
+        <input
+          type="search"
+          [(ngModel)]="subjectSearch"
+          placeholder="Search subjects..."
+          aria-label="Search subjects" />
+      </div>
+      <p class="subjects-search-hint">Type to filter subjects by name or code</p>
+    </div>
+
+    <div class="subjects-loading" *ngIf="subjectsLoading">Loading subjects...</div>
+
+    <div class="academic-table-wrap subjects-table-wrap" *ngIf="!subjectsLoading && filteredSubjects.length > 0">
+      <table class="academic-table subjects-table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Subject Name</th>
+            <th class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let sub of filteredSubjects">
+            <td>
+              <span class="subject-code-pill">{{ sub.code || '—' }}</span>
+            </td>
+            <td class="subject-name-cell">{{ sub.name }}</td>
+            <td class="col-actions">
+              <button
+                type="button"
+                class="btn-subject-edit"
+                (click)="editSubject(sub.id)"
+                [disabled]="isDemoUser()"
+                title="Edit subject"
+                aria-label="Edit subject">✏️</button>
+              <button
+                type="button"
+                class="btn-subject-delete"
+                (click)="deleteSubject(sub)"
+                [disabled]="isDemoUser() || deletingSubjectId === sub.id"
+                title="Delete subject"
+                aria-label="Delete subject">🗑️</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="subjects-empty" *ngIf="!subjectsLoading && filteredSubjects.length === 0">
+      <p>{{ subjectSearch.trim() ? 'No subjects match your search.' : 'No subjects yet.' }}</p>
+      <button type="button" class="btn-subjects-add btn-subjects-add--inline" (click)="addSubject()" *ngIf="!subjectSearch.trim() && !isDemoUser()">+ Add Subject</button>
+    </div>
+  </div>
+
+  <!-- Departments -->
+  <div class="academic-panel" *ngIf="!loading && activeTab === 'departments'">
+    <div class="academic-panel-toolbar">
+      <span class="toolbar-title">🏛️ Departments</span>
+    </div>
+    <div class="academic-placeholder">
+      <p>Academic departments can be grouped when assigning subjects to faculty.</p>
+      <p class="hint">Department management will be expanded in a future update. Use <strong>Subjects</strong> and <strong>Classes</strong> tabs to organize your curriculum today.</p>
+    </div>
+  </div>
+
+  <!-- Report Releases -->
+  <div class="academic-panel" *ngIf="!loading && activeTab === 'report-releases'">
+    <div class="academic-panel-toolbar">
+      <span class="toolbar-title">📋 Report Releases</span>
+    </div>
+    <div class="academic-placeholder">
+      <p>Publish and release report cards to parents and students when results are ready.</p>
+      <button type="button" class="btn btn-primary" (click)="goToPublishResults()">Open Publish Results</button>
+      <button type="button" class="btn btn-secondary" style="margin-left: 10px;" (click)="goToClassPromotion()">Class Promotion</button>
+    </div>
+  </div>
+
+  <!-- Grading System: Grade Thresholds and Labels only -->
+  <div class="grade-thresholds-page" *ngIf="!loading && activeTab === 'grading-system'">
+    <div class="grade-thresholds-header">
+      <h2>📊 Grade Thresholds and Labels for Student Performance</h2>
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="saveGradingSettings()"
+        [disabled]="saving || isDemoUser() || !canEditGrading()"
+        *ngIf="canEditGrading()">
+        {{ saving ? 'Saving...' : 'Save Settings' }}
+      </button>
+    </div>
+
+    <div *ngIf="!canEditGrading()" class="alert alert-info">
+      Only Administrators and Super Admins can modify grade thresholds and labels.
+    </div>
+
+    <div *ngIf="canEditGrading() && settings.gradeThresholds" class="grade-thresholds-section">
+      <p class="section-description">
+        Configure both the mark range (percentage thresholds) and grade labels/remarks for each performance level.
+        These settings determine how student performance is graded and displayed on report cards.
+      </p>
+
+      <div class="grade-settings-container">
+        <div class="grade-item grade-item--excellent">
+          <div class="grade-item-grid">
+            <div class="form-group">
+              <label>Mark Range (Minimum %) <span class="star star--green">★</span></label>
+              <input type="number" [(ngModel)]="settings.gradeThresholds.excellent" name="excellent" min="0" max="100" required (blur)="validateGradeThresholds()" [disabled]="isDemoUser()" />
+              <small>Range: {{ settings.gradeThresholds.excellent }}% - 100%</small>
+            </div>
+            <div class="form-group">
+              <label>Grade Label/Remark <span class="star star--green">★</span></label>
+              <input type="text" [(ngModel)]="settings.gradeLabels.excellent" name="gradeLabelExcellent" maxlength="50" required class="editable-grade-label grade-input--green" [disabled]="isDemoUser()" />
+              <small>This label will appear on report cards (Editable)</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="grade-item grade-item--very-good">
+          <div class="grade-item-grid">
+            <div class="form-group">
+              <label>Mark Range (Minimum %) <span class="star star--cyan">★</span></label>
+              <input type="number" [(ngModel)]="settings.gradeThresholds.veryGood" name="veryGood" min="0" max="100" required (blur)="validateGradeThresholds()" [disabled]="isDemoUser()" />
+              <small>Range: {{ settings.gradeThresholds.veryGood }}% - {{ settings.gradeThresholds.excellent - 1 }}%</small>
+            </div>
+            <div class="form-group">
+              <label>Grade Label/Remark <span class="star star--cyan">★</span></label>
+              <input type="text" [(ngModel)]="settings.gradeLabels.veryGood" name="gradeLabelVeryGood" maxlength="50" required class="editable-grade-label grade-input--cyan" [disabled]="isDemoUser()" />
+              <small>This label will appear on report cards (Editable)</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="grade-item grade-item--good">
+          <div class="grade-item-grid">
+            <div class="form-group">
+              <label>Mark Range (Minimum %) <span class="star star--blue">★</span></label>
+              <input type="number" [(ngModel)]="settings.gradeThresholds.good" name="good" min="0" max="100" required (blur)="validateGradeThresholds()" [disabled]="isDemoUser()" />
+              <small>Range: {{ settings.gradeThresholds.good }}% - {{ settings.gradeThresholds.veryGood - 1 }}%</small>
+            </div>
+            <div class="form-group">
+              <label>Grade Label/Remark <span class="star star--blue">★</span></label>
+              <input type="text" [(ngModel)]="settings.gradeLabels.good" name="gradeLabelGood" maxlength="50" required class="editable-grade-label grade-input--blue" [disabled]="isDemoUser()" />
+              <small>This label will appear on report cards (Editable)</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="grade-item grade-item--satisfactory">
+          <div class="grade-item-grid">
+            <div class="form-group">
+              <label>Mark Range (Minimum %) <span class="star star--amber">★</span></label>
+              <input type="number" [(ngModel)]="settings.gradeThresholds.satisfactory" name="satisfactory" min="0" max="100" required (blur)="validateGradeThresholds()" [disabled]="isDemoUser()" />
+              <small>Range: {{ settings.gradeThresholds.satisfactory }}% - {{ settings.gradeThresholds.good - 1 }}%</small>
+            </div>
+            <div class="form-group">
+              <label>Grade Label/Remark <span class="star star--amber">★</span></label>
+              <input type="text" [(ngModel)]="settings.gradeLabels.satisfactory" name="gradeLabelSatisfactory" maxlength="50" required class="editable-grade-label grade-input--amber" [disabled]="isDemoUser()" />
+              <small>This label will appear on report cards (Editable)</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="grade-item grade-item--needs-improvement">
+          <div class="grade-item-grid">
+            <div class="form-group">
+              <label>Mark Range (Minimum %) <span class="star star--orange">★</span></label>
+              <input type="number" [(ngModel)]="settings.gradeThresholds.needsImprovement" name="needsImprovement" min="0" max="100" required (blur)="validateGradeThresholds()" [disabled]="isDemoUser()" />
+              <small>Range: {{ settings.gradeThresholds.needsImprovement }}% - {{ settings.gradeThresholds.satisfactory - 1 }}%</small>
+            </div>
+            <div class="form-group">
+              <label>Grade Label/Remark <span class="star star--orange">★</span></label>
+              <input type="text" [(ngModel)]="settings.gradeLabels.needsImprovement" name="gradeLabelNeedsImprovement" maxlength="50" required class="editable-grade-label grade-input--orange" [disabled]="isDemoUser()" />
+              <small>This label will appear on report cards (Editable)</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="grade-item grade-item--basic">
+          <div class="grade-item-grid">
+            <div class="form-group">
+              <label>Mark Range (Minimum %) <span class="star star--gray">★</span></label>
+              <input type="number" [(ngModel)]="settings.gradeThresholds.basic" name="basic" min="0" max="100" required (blur)="validateGradeThresholds()" [disabled]="isDemoUser()" />
+              <small>Range: {{ settings.gradeThresholds.basic || 1 }}% - {{ (settings.gradeThresholds.needsImprovement || 20) - 1 }}%</small>
+            </div>
+            <div class="form-group">
+              <label>Grade Label/Remark <span class="star star--gray">★</span></label>
+              <input type="text" [(ngModel)]="settings.gradeLabels.basic" name="gradeLabelBasic" maxlength="50" required class="editable-grade-label grade-input--gray" [disabled]="isDemoUser()" />
+              <small>This label will appear on report cards (Editable)</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="grade-item grade-item--fail">
+          <div class="grade-item-grid">
+            <div class="form-group">
+              <label class="label-fail">Mark Range</label>
+              <input type="text" value="0%" disabled class="input-disabled" />
+              <small>Range: 0% only</small>
+            </div>
+            <div class="form-group">
+              <label class="label-fail">Grade Label/Remark</label>
+              <input type="text" [(ngModel)]="settings.gradeLabels.fail" name="gradeLabelFail" maxlength="50" required class="editable-grade-label grade-input--red" [disabled]="isDemoUser()" />
+              <small>This label will appear on report cards (Editable)</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="alert alert-info grade-thresholds-info">
+          <strong>ℹ️ Important:</strong>
+          <ul>
+            <li>Mark ranges must be in descending order (Excellent ≥ Very Good ≥ Good ≥ Satisfactory ≥ Needs Improvement ≥ Basic)</li>
+            <li>Grade labels can be customized to match your school's grading system</li>
+            <li>Changes will apply to all new report cards generated after saving</li>
+            <li>Existing report cards will not be affected</li>
+            <li>Grade labels should be clear and concise (max 50 characters)</li>
+            <li>The "Fail/Unclassified" grade applies only to scores of exactly 0%</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Term modal -->
+<div class="modal-backdrop" *ngIf="termModalOpen" (click)="closeTermModal()"></div>
+<div class="academic-modal" *ngIf="termModalOpen">
+  <div class="academic-modal-content" (click)="$event.stopPropagation()">
+    <h3>{{ editingTerm ? 'Edit Term' : 'Add Term' }}</h3>
+    <div class="form-group">
+      <label>Type</label>
+      <select [(ngModel)]="termForm.type">
+        <option value="Regular">Regular</option>
+        <option value="Holiday">Holiday</option>
+        <option value="Special">Special</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Label</label>
+      <input type="text" [(ngModel)]="termForm.label" placeholder="e.g. T2" />
+    </div>
+    <div class="form-group">
+      <label>Term *</label>
+      <input type="text" [(ngModel)]="termForm.term" placeholder="e.g. Term 2 2026" required />
+    </div>
+    <div class="form-group">
+      <label>Year *</label>
+      <input type="text" [(ngModel)]="termForm.year" placeholder="2026" required />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Start Date</label>
+        <input type="date" [(ngModel)]="termForm.startDate" />
+      </div>
+      <div class="form-group">
+        <label>End Date</label>
+        <input type="date" [(ngModel)]="termForm.endDate" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" (click)="closeTermModal()">Cancel</button>
+      <button type="button" class="btn btn-primary" (click)="saveTermModal()" [disabled]="saving">{{ saving ? 'Saving...' : 'Save' }}</button>
+    </div>
+  </div>
+</div>

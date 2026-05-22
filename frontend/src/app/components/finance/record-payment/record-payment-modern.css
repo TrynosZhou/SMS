@@ -1,0 +1,286 @@
+/* Record Payment — purple hero theme */
+.rp-page.record-payment-container {
+  --rp-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
+  --rp-purple: #7c3aed;
+  --rp-border: #e2e8f0;
+  background: #f8fafc;
+  border-radius: 14px;
+}
+
+.rp-page .page-header { display: none; }
+
+.rp-toast-stack {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.rp-toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.rp-toast--success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+.rp-toast--error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+.rp-toast__dismiss { background: none; border: none; font-size: 1.25rem; cursor: pointer; opacity: 0.6; }
+
+.rp-hero {
+  background: var(--rp-gradient);
+  border-radius: 14px;
+  padding: 20px 24px 16px;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 4px 20px rgba(91, 33, 182, 0.25);
+  color: #fff;
+}
+
+.rp-hero__main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.rp-hero-left { display: flex; align-items: flex-start; gap: 14px; }
+
+.rp-hero-icon {
+  width: 48px;
+  height: 48px;
+  background: #facc15;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+.rp-hero-eyebrow {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 4px;
+}
+
+.rp-hero h1 { margin: 0 0 4px; font-size: 1.55rem; font-weight: 700; }
+
+.rp-hero-sub {
+  margin: 0;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 36rem;
+  line-height: 1.45;
+}
+
+.rp-hero-meta { margin: 6px 0 0; font-size: 0.78rem; color: rgba(255, 255, 255, 0.65); }
+
+.rp-hero__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.rp-hero-btn {
+  padding: 0.5rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  border: none;
+}
+
+.rp-hero-btn--white { background: #fff; color: #6d28d9; }
+.rp-hero-btn--accent { background: #facc15; color: #422006; font-weight: 700; }
+
+.rp-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.rp-stat {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: center;
+}
+
+.rp-stat__value {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #facc15;
+}
+
+.rp-stat__label {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 2px;
+}
+
+.rp-stat--mint .rp-stat__value { color: #bbf7d0; }
+.rp-stat--rose .rp-stat__value { color: #fecdd3; }
+
+.rp-panel.search-section {
+  background: #fff;
+  border: 1px solid var(--rp-border);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  margin-bottom: 1.25rem;
+}
+
+.rp-panel.search-section.searching {
+  border-color: #c4b5fd;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+}
+
+.rp-panel-title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rp-panel-intro {
+  margin: 0 0 14px;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.rp-search-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.rp-search-wrap {
+  flex: 1;
+  min-width: 220px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.rp-search-wrap .search-input {
+  width: 100%;
+  padding: 0.65rem 2.5rem 0.65rem 2.25rem;
+  border: 1px solid var(--rp-border);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+.rp-search-wrap .search-input:focus {
+  outline: none;
+  border-color: var(--rp-purple);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+
+.rp-search-prefix {
+  position: absolute;
+  left: 12px;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.rp-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.rp-page .btn-search {
+  background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%) !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 0.65rem 1.25rem !important;
+  font-weight: 700 !important;
+}
+
+.rp-matches {
+  background: #fff;
+  border: 1px solid var(--rp-border);
+  border-radius: 14px;
+  padding: 1rem 1.15rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.rp-page .student-info-card,
+.rp-page .payment-form-card,
+.rp-page .recent-payments-card {
+  border-radius: 14px;
+  border: 1px solid var(--rp-border);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.rp-page .balance-card.primary {
+  border-color: #c4b5fd;
+  background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%);
+}
+
+.rp-method-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rp-method-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--rp-border);
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.rp-method-chip--active {
+  background: #ede9fe;
+  border-color: #c4b5fd;
+  color: #6d28d9;
+}
+
+.rp-page .btn-success.btn-lg {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  border: none !important;
+  border-radius: 10px !important;
+}
+
+@media (max-width: 900px) {
+  .rp-hero-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .rp-page.record-payment-container { padding: 1rem; }
+  .rp-search-row { flex-direction: column; }
+}

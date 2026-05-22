@@ -1,6 +1,7 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
-import { Subject } from 'rxjs';
+import { Subject, of } from 'rxjs';
+import { catchError, finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { ClassService } from '../../../services/class.service';
@@ -36,6 +37,7 @@ export class AssignSubjectComponent implements OnInit, OnDestroy {
   loading = false;
   loadingClasses = false;
   loadingSubjects = false;
+  loadingClassDetails = false;
   error = '';
   success = '';
   successDetails: { class: string; count: number; subjects: string[] } | null = null;
@@ -43,10 +45,12 @@ export class AssignSubjectComponent implements OnInit, OnDestroy {
   constructor(
     private classService: ClassService,
     private subjectService: SubjectService,
-    public router: Router
+    public router: Router,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit() {
+    this.bootstrapPage();
     activatePageLoad(this.router, this.destroy$, '/subjects/assign', () => this.bootstrapPage());
   }
 
@@ -60,89 +64,166 @@ export class AssignSubjectComponent implements OnInit, OnDestroy {
     this.loadSubjects();
   }
 
+  private normalizeList(data: unknown): any[] {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (typeof data === 'object' && data !== null && Array.isArray((data as { data?: unknown }).data)) {
+      return (data as { data: any[] }).data;
+    }
+    return [];
+  }
+
   loadClasses() {
     this.loadingClasses = true;
-    // Only clear error if it's related to classes loading
     if (this.error && (this.error.includes('classes') || this.error.includes('class'))) {
       this.error = '';
     }
     
-    this.classService.getClasses().subscribe({
-      next: (data: any) => {
-        // Handle both array and paginated response
-        if (Array.isArray(data)) {
-          this.classes = data;
-        } else if (data && Array.isArray(data.data)) {
-          this.classes = data.data;
-        } else {
+    this.classService
+      .getClasses()
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.loadingClasses = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (data: any) => {
+          const list = this.normalizeList(data);
+          this.classes = list.map((c: any) => ({
+            ...c,
+            id: this.classService.cleanClassId(c.id) || c.id,
+            subjects: Array.isArray(c.subjects) ? c.subjects : []
+          }));
+        },
+        error: (err: any) => {
+          console.error('Error loading classes:', err);
           this.classes = [];
+          if (!this.error || this.error.includes('classes') || this.error.includes('class')) {
+            this.error = 'Failed to load classes. Please try again or create a class first.';
+          }
         }
-        
-        this.loadingClasses = false;
-        console.log('Classes loaded:', this.classes.length);
-      },
-      error: (err: any) => {
-        console.error('Error loading classes:', err);
-        this.classes = []; // Ensure classes is empty array on error
-        // Only set error if there's no existing error or it's not a critical one
-        if (!this.error || this.error.includes('classes') || this.error.includes('class')) {
-          this.error = 'Failed to load classes. Please try again or create a class first.';
-        }
-        this.loadingClasses = false;
-      }
-    });
+      });
   }
 
   loadSubjects() {
     this.loadingSubjects = true;
-    this.subjectService.getSubjects().subscribe({
-      next: (data: any) => {
-        this.subjects = data || [];
-        this.filteredSubjects = [...this.subjects];
-        this.loadingSubjects = false;
-      },
-      error: (err: any) => {
-        console.error('Error loading subjects:', err);
-        this.error = 'Failed to load subjects';
-        this.loadingSubjects = false;
-      }
-    });
+    this.subjectService
+      .getSubjects()
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.loadingSubjects = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (data: any) => {
+          this.subjects = this.normalizeList(data);
+          this.filteredSubjects = [...this.subjects];
+        },
+        error: (err: any) => {
+          console.error('Error loading subjects:', err);
+          this.error = 'Failed to load subjects';
+        }
+      });
+  }
+
+  selectClass(classId: string): void {
+    const cleanId = this.classService.cleanClassId(classId);
+    if (this.selectedClassId === cleanId && !this.loadingClassDetails) {
+      return;
+    }
+    this.selectedClassId = cleanId;
+    this.onClassChange();
+  }
+
+  private applySubjectsFromClass(cls: any): void {
+    const subjects = cls?.subjects;
+    if (subjects && Array.isArray(subjects)) {
+      this.selectedSubjectIds = subjects
+        .map((s: any) => s?.id)
+        .filter((id: string) => !!id);
+    } else {
+      this.selectedSubjectIds = [];
+    }
   }
 
   onClassChange() {
     this.error = '';
     this.success = '';
-    
+
     if (!this.selectedClassId) {
       this.selectedClass = null;
       this.selectedSubjectIds = [];
+      this.loadingClassDetails = false;
+      this.cdr.markForCheck();
       return;
     }
 
-    // Find the selected class
-    this.selectedClass = this.classes.find(c => c.id === this.selectedClassId);
-    
-    if (this.selectedClass) {
-      // Load class details with subjects
-      this.loading = true;
-      this.classService.getClassById(this.selectedClassId).subscribe({
-        next: (data: any) => {
-          this.selectedClass = data.class || data;
-          // Get currently assigned subjects
-          if (this.selectedClass.subjects && Array.isArray(this.selectedClass.subjects)) {
-            this.selectedSubjectIds = this.selectedClass.subjects.map((s: any) => s.id);
-          } else {
-            this.selectedSubjectIds = [];
-          }
-          this.loading = false;
-        },
-        error: (err: any) => {
+    const cleanId = this.classService.cleanClassId(this.selectedClassId);
+    this.selectedClassId = cleanId;
+
+    const fromList = this.classes.find(
+      (c) => this.classService.cleanClassId(c.id) === cleanId
+    );
+    if (fromList) {
+      this.selectedClass = { ...fromList };
+      this.applySubjectsFromClass(this.selectedClass);
+      this.cdr.markForCheck();
+    }
+
+    this.loadingClassDetails = true;
+    this.cdr.markForCheck();
+
+    this.classService
+      .getClassById(cleanId, { slim: true })
+      .pipe(
+        takeUntil(this.destroy$),
+        catchError((err) => {
           console.error('Error loading class details:', err);
-          this.error = 'Failed to load class details';
-          this.loading = false;
+          if (!fromList) {
+            this.error =
+              err?.status === 0
+                ? 'Cannot reach the server. Ensure the backend is running.'
+                : 'Failed to load class details. You can still assign subjects if the list loaded.';
+          }
+          return of(fromList || null);
+        }),
+        finalize(() => {
+          this.loadingClassDetails = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (data: any) => {
+          try {
+            if (!data) {
+              if (!fromList) {
+                this.error = 'Class not found';
+              }
+              return;
+            }
+            const entity = data?.class || data;
+            this.selectedClass = {
+              ...(fromList || {}),
+              ...entity,
+              subjects: Array.isArray(entity?.subjects) ? entity.subjects : fromList?.subjects || []
+            };
+            this.applySubjectsFromClass(this.selectedClass);
+            this.error = '';
+          } catch (e) {
+            console.error('Error processing class details:', e);
+            if (fromList) {
+              this.applySubjectsFromClass(fromList);
+            } else {
+              this.error = 'Could not read class details.';
+            }
+          }
+          this.cdr.markForCheck();
         }
       });
-    }
   }
 
   filterSubjects() {
@@ -166,6 +247,7 @@ export class AssignSubjectComponent implements OnInit, OnDestroy {
     } else {
       this.selectedSubjectIds.push(subjectId);
     }
+    this.cdr.markForCheck();
   }
 
   isSubjectSelected(subjectId: string): boolean {
@@ -195,10 +277,12 @@ export class AssignSubjectComponent implements OnInit, OnDestroy {
       subjectIds: this.selectedSubjectIds
     };
 
-    this.classService.updateClass(this.selectedClassId, updateData).subscribe({
+    const cleanId = this.classService.cleanClassId(this.selectedClassId);
+    this.classService.updateClass(cleanId, updateData).pipe(takeUntil(this.destroy$)).subscribe({
       next: (data: any) => {
         this.loading = false;
-        
+        this.cdr.markForCheck();
+
         // Get selected subject names for the success message
         const selectedSubjectNames = this.subjects
           .filter(subject => this.selectedSubjectIds.includes(subject.id))
@@ -267,7 +351,8 @@ export class AssignSubjectComponent implements OnInit, OnDestroy {
         
         this.error = errorMessage;
         this.loading = false;
-        
+        this.cdr.markForCheck();
+
         // Clear error message after 8 seconds
         setTimeout(() => {
           this.error = '';

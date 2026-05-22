@@ -1,80 +1,103 @@
-<div class="record-payment-container">
-  <!-- Page Header with Breadcrumb -->
-  <div class="page-header">
-    <div class="header-content">
-      <div class="header-left">
-        <h1>
-          <span class="header-icon">💳</span>
-          Record Payment
-        </h1>
-        <p class="header-subtitle">Search for a student and record their payment</p>
-      </div>
-      <div class="header-actions">
-        <button type="button" class="btn btn-outline" [routerLink]="['/invoices']" title="View All Invoices">
-          <span class="icon">📋</span> View Invoices
-        </button>
-        <button type="button" class="btn btn-primary" [routerLink]="['/invoices/new']" title="Create Invoice">
-          <span class="icon">➕</span> New Invoice
-        </button>
-      </div>
+<div class="rp-page record-payment-container">
+  <div class="rp-toast-stack" *ngIf="error || success">
+    <div class="rp-toast rp-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="rp-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="rp-toast rp-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="rp-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
     </div>
   </div>
 
-  <!-- Search Section with Modern Design -->
-  <div class="search-section" [class.searching]="loading">
-    <div class="search-header">
-      <span class="search-icon">🔍</span>
-      <h2>Find Student</h2>
+  <header class="rp-hero">
+    <div class="rp-hero__main">
+      <div class="rp-hero-left">
+        <span class="rp-hero-icon" aria-hidden="true">💳</span>
+        <div>
+          <span class="rp-hero-eyebrow">Finance</span>
+          <h1>Record Payment</h1>
+          <p class="rp-hero-sub">Find a student, review their balance, and post a payment with an instant receipt.</p>
+          <p class="rp-hero-meta" *ngIf="lastLoadedAt && studentData">
+            Balance loaded <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
+          </p>
+        </div>
+      </div>
+      <div class="rp-hero__actions">
+        <a routerLink="/invoices" class="rp-hero-btn rp-hero-btn--white">Invoices</a>
+        <a routerLink="/finance/balance-enquiry" class="rp-hero-btn rp-hero-btn--white">Balance enquiry</a>
+        <a routerLink="/invoices/new" class="rp-hero-btn rp-hero-btn--accent">+ New invoice</a>
+      </div>
     </div>
-    <div class="search-form">
-      <div class="search-input-wrapper">
+
+    <div class="rp-hero-stats" *ngIf="studentData">
+      <article class="rp-stat">
+        <span class="rp-stat__value">{{ currencySymbol }}{{ formatCurrency(studentData.balance) }}</span>
+        <span class="rp-stat__label">Tuition balance</span>
+      </article>
+      <article class="rp-stat rp-stat--rose" *ngIf="studentData.uniformBalance > 0">
+        <span class="rp-stat__value">{{ currencySymbol }}{{ formatCurrency(studentData.uniformBalance || 0) }}</span>
+        <span class="rp-stat__label">Uniform</span>
+      </article>
+      <article class="rp-stat rp-stat--mint">
+        <span class="rp-stat__value">{{ recentPayments.length }}</span>
+        <span class="rp-stat__label">Recent payments</span>
+      </article>
+      <article class="rp-stat">
+        <span class="rp-stat__value">{{ paymentForm.term || currentTerm }}</span>
+        <span class="rp-stat__label">Term</span>
+      </article>
+    </div>
+  </header>
+
+  <section class="search-section rp-panel" [class.searching]="loading">
+    <h2 class="rp-panel-title"><span aria-hidden="true">🔍</span> Find student</h2>
+    <p class="rp-panel-intro">Search by student number, name, or ID. Auto-search runs after 3 characters; press Enter to search immediately.</p>
+    <div class="rp-search-row">
+      <div class="rp-search-wrap search-input-wrapper">
+        <span class="rp-search-prefix" aria-hidden="true">🔍</span>
         <input
-          type="text"
+          type="search"
           id="studentId"
           [(ngModel)]="studentId"
-          placeholder="Enter Student ID, Name, or Student Number..."
+          placeholder="Student ID, name, or number…"
           class="search-input"
           (keyup.enter)="getBalance()"
           (input)="onSearchInput()"
           [class.has-value]="studentId"
-          autocomplete="off"
-        />
+          autocomplete="off" />
         <button
           *ngIf="studentId"
           type="button"
           class="clear-input-btn"
           (click)="clear()"
           title="Clear search"
-        >
-          ✕
-        </button>
+          aria-label="Clear">✕</button>
       </div>
       <button
         type="button"
         class="btn btn-primary btn-search"
         (click)="getBalance()"
-        [disabled]="loading || !studentId"
-      >
+        [disabled]="loading || !studentId">
         <span *ngIf="loading" class="spinner"></span>
         <span *ngIf="!loading" class="icon">🔍</span>
-        {{ loading ? 'Searching...' : 'Search' }}
+        {{ loading ? 'Searching…' : 'Search' }}
       </button>
     </div>
-    <div class="search-hints">
-      <span class="hint-item"><kbd>Enter</kbd> to search</span>
-      <span class="hint-item"><kbd>Esc</kbd> to clear</span>
+    <div class="rp-hints search-hints">
+      <span class="hint-item"><kbd>Enter</kbd> search now</span>
+      <span class="hint-item"><kbd>Esc</kbd> clear</span>
     </div>
-  </div>
+  </section>
 
-  <!-- Matching Students Dropdown -->
-  <div class="matching-students-section" *ngIf="matchingStudents && matchingStudents.length > 0" [@fadeSlide]>
+  <div class="matching-students-section rp-matches" *ngIf="matchingStudents && matchingStudents.length > 0" [@fadeSlide]>
     <div class="matching-header">
       <span class="icon">👥</span>
       <span>{{ matchingStudents.length }} students found - Please select one:</span>
     </div>
     <div class="student-cards">
       <div 
-        *ngFor="let s of matchingStudents" 
+        *ngFor="let s of matchingStudents; trackBy: trackByStudentId" 
         class="student-card"
         (click)="selectStudent(s.studentId)"
         [class.selected]="selectedMatchId === s.studentId"
@@ -87,18 +110,6 @@
         <span class="select-indicator">→</span>
       </div>
     </div>
-  </div>
-
-  <!-- Error and Success Messages -->
-  <div *ngIf="error" class="alert alert-error" [@fadeSlide]>
-    <span class="alert-icon">⚠️</span>
-    <span class="alert-text">{{ error }}</span>
-    <button class="alert-close" (click)="error = ''">✕</button>
-  </div>
-  <div *ngIf="success" class="alert alert-success" [@fadeSlide]>
-    <span class="alert-icon">✅</span>
-    <span class="alert-text">{{ success }}</span>
-    <button class="alert-close" (click)="success = ''">✕</button>
   </div>
 
   <!-- Student Information and Record Payment Section -->
@@ -255,22 +266,16 @@
         </div>
 
         <div class="form-group">
-          <label for="paymentMethod">Payment Method <span class="required">*</span></label>
-          <div class="payment-method-grid">
-            <label 
-              *ngFor="let method of paymentMethods" 
-              class="method-option"
-              [class.selected]="paymentForm.paymentMethod === method.value"
-            >
-              <input 
-                type="radio" 
-                name="paymentMethod" 
-                [value]="method.value"
-                [(ngModel)]="paymentForm.paymentMethod"
-              />
-              <span class="method-icon">{{ method.icon }}</span>
-              <span class="method-label">{{ method.label }}</span>
-            </label>
+          <label for="paymentMethod">Payment method <span class="required">*</span></label>
+          <div class="rp-method-chips payment-method-grid">
+            <button
+              type="button"
+              class="rp-method-chip"
+              *ngFor="let method of paymentMethods"
+              [class.rp-method-chip--active]="paymentForm.paymentMethod === method.value"
+              (click)="selectPaymentMethod(method.value)">
+              <span>{{ method.icon }}</span> {{ method.label }}
+            </button>
           </div>
         </div>
 
@@ -315,7 +320,7 @@
         <h2><span class="header-icon">📜</span> Recent Payments</h2>
       </div>
       <div class="payments-list">
-        <div *ngFor="let payment of recentPayments" class="payment-item">
+        <div *ngFor="let payment of recentPayments; trackBy: trackByPaymentIndex" class="payment-item">
           <div class="payment-info">
             <div class="payment-amount">{{ currencySymbol }} {{ formatCurrency(payment.amount) }}</div>
             <div class="payment-date">{{ payment.date | date:'mediumDate' }}</div>

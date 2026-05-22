@@ -101,140 +101,149 @@
 
       <!-- Regular sidebar (for non-students) -->
       <div *ngIf="!isStudent()">
+        <!-- Filter menu -->
+        <div class="sidebar-filter-wrap" *ngIf="!sidebarCollapsed">
+          <label class="sidebar-filter-field">
+            <span class="sidebar-filter-icon" aria-hidden="true">🔍</span>
+            <input
+              type="search"
+              class="sidebar-filter"
+              [(ngModel)]="sidebarMenuFilter"
+              placeholder="Filter menu..."
+              name="sidebarMenuFilter"
+              autocomplete="off"
+              aria-label="Filter menu" />
+          </label>
+        </div>
+
         <!-- Dashboard - Teachers go to teacher dashboard, others go to main dashboard -->
-        <a [routerLink]="isTeacher() ? '/teacher/dashboard' : '/dashboard'" routerLinkActive="active" class="sidebar-item">
+        <a
+          [routerLink]="isTeacher() ? '/teacher/dashboard' : '/dashboard'"
+          routerLinkActive="active"
+          class="sidebar-item"
+          *ngIf="matchesSidebarFilter('Dashboard')">
           <span class="sidebar-icon">🏠</span>
           <span class="sidebar-text">Dashboard</span>
         </a>
 
+        <!-- Registration (Teachers, Students, Parents) -->
+        <div class="sidebar-menu" *ngIf="isRegistrationSidebarVisible()">
+          <div class="sidebar-menu-header" (click)="toggleMenu('registration')">
+            <span class="sidebar-icon">📝</span>
+            <span class="sidebar-text">Registration</span>
+            <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('registration')">▼</span>
+          </div>
+          <div class="sidebar-submenu sidebar-submenu--branch" [class.expanded]="isMenuExpanded('registration')">
+            <a
+              routerLink="/teachers"
+              routerLinkActive="active"
+              class="sidebar-subitem"
+              *ngIf="isRegistrationTeachersVisible()">
+              <span class="sidebar-icon">👨‍🏫</span>
+              <span class="sidebar-text">Teachers</span>
+            </a>
+            <a
+              routerLink="/students"
+              routerLinkActive="active"
+              class="sidebar-subitem"
+              *ngIf="isRegistrationStudentsVisible()">
+              <span class="sidebar-icon">🎓</span>
+              <span class="sidebar-text">Students</span>
+            </a>
+            <a
+              routerLink="/admin/parents"
+              routerLinkActive="active"
+              class="sidebar-subitem"
+              *ngIf="isRegistrationParentsVisible()">
+              <span class="sidebar-icon">👨‍👩‍👧</span>
+              <span class="sidebar-text">Parents</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Class Manager (after Registration) -->
+        <div class="sidebar-menu" *ngIf="isClassManagerSidebarVisible()">
+          <div class="sidebar-menu-header" (click)="toggleMenu('classManagement')">
+            <span class="sidebar-icon">🏫</span>
+            <span class="sidebar-text">Class Manager</span>
+            <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('classManagement')">▼</span>
+          </div>
+          <div class="sidebar-submenu sidebar-submenu--branch" [class.expanded]="isMenuExpanded('classManagement')">
+            <a
+              routerLink="/students/enroll_student"
+              routerLinkActive="active"
+              class="sidebar-subitem"
+              *ngIf="isClassManagerEnrollVisible()">
+              <span class="sidebar-icon">🧭</span>
+              <span class="sidebar-text">Enroll Student</span>
+            </a>
+            <a
+              routerLink="/students/transfer"
+              routerLinkActive="active"
+              class="sidebar-subitem"
+              *ngIf="isClassManagerTransferVisible()">
+              <span class="sidebar-icon">🔄</span>
+              <span class="sidebar-text">Transfer Student</span>
+            </a>
+            <a routerLink="/classes" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin() || canAccessModule('classes')">
+              <span class="sidebar-icon">⚙️</span>
+              <span class="sidebar-text">Manage Classes</span>
+            </a>
+            <a routerLink="/classes/lists" routerLinkActive="active" class="sidebar-subitem">
+              <span class="sidebar-icon">📑</span>
+              <span class="sidebar-text">Class Lists</span>
+            </a>
+            <a routerLink="/admin/class-promotion" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
+              <span class="sidebar-icon">⬆️</span>
+              <span class="sidebar-text">Promote Class</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Attendance -->
+        <div class="sidebar-menu" *ngIf="isAttendanceSidebarVisible()">
+          <div class="sidebar-menu-header" (click)="toggleMenu('attendance')">
+            <span class="sidebar-icon">📅</span>
+            <span class="sidebar-text">Attendance</span>
+            <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('attendance')">▼</span>
+          </div>
+          <div class="sidebar-submenu sidebar-submenu--branch" [class.expanded]="isMenuExpanded('attendance')">
+            <a
+              routerLink="/attendance/mark"
+              routerLinkActive="active"
+              class="sidebar-subitem"
+              *ngIf="isAttendanceMarkVisible()">
+              <span class="sidebar-icon">✏️</span>
+              <span class="sidebar-text">Mark Register</span>
+            </a>
+            <a
+              routerLink="/attendance/reports"
+              routerLinkActive="active"
+              class="sidebar-subitem"
+              *ngIf="isAttendanceReportsVisible()">
+              <span class="sidebar-icon">📈</span>
+              <span class="sidebar-text">Attendance Reports</span>
+            </a>
+          </div>
+        </div>
+
         <!-- Accountant: Manage Account (top-level item) -->
-        <a routerLink="/accountant/change_password" routerLinkActive="active" class="sidebar-item" *ngIf="isAccountant()">
+        <a
+          routerLink="/accountant/change_password"
+          routerLinkActive="active"
+          class="sidebar-item"
+          *ngIf="isAccountant() && matchesSidebarFilter('Manage Account')">
           <span class="sidebar-icon">👤</span>
           <span class="sidebar-text">Manage Account</span>
         </a>
 
-        <!-- Student Mgt -->
-      <div class="sidebar-menu" *ngIf="canAccessModule('students') || isAdmin() || isSuperAdmin()">
-        <div class="sidebar-menu-header" (click)="toggleMenu('studentManagement')">
-          <span class="sidebar-icon">👨‍🎓</span>
-          <span class="sidebar-text">Student Manager</span>
-          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('studentManagement')">▼</span>
-        </div>
-        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('studentManagement')">
-          <a routerLink="/students/new" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin() || isAccountant()">
-            <span class="sidebar-icon">📝</span>
-            <span class="sidebar-text">Registration</span>
-          </a>
-          <a routerLink="/students/enroll_student" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin() || isTeacher() || canAccessModule('students')">
-            <span class="sidebar-icon">🧭</span>
-            <span class="sidebar-text">Enroll Student</span>
-          </a>
-          <a routerLink="/students" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('students') || isAdmin() || isSuperAdmin()">
-            <span class="sidebar-icon">📋</span>
-            <span class="sidebar-text">Student List</span>
-          </a>
-          <a
-            routerLink="/students/transfer"
-            routerLinkActive="active"
-            class="sidebar-subitem"
-            *ngIf="isAdmin() || isSuperAdmin() || authService.hasRole('accountant') || canAccessModule('studentManager')">
-            <span class="sidebar-icon">🔄</span>
-            <span class="sidebar-text">Transfer Student</span>
-          </a>
-          <a routerLink="/admin/class-promotion" routerLinkActive="active" class="sidebar-subitem" *ngIf="isSuperAdmin()">
-            <span class="sidebar-icon">⬆️</span>
-            <span class="sidebar-text">Class Promotion</span>
-          </a>
-        </div>
-      </div>
-
-      <!-- Teacher Mgt — admin / superadmin only (not teachers or module-flagged roles) -->
-      <div class="sidebar-menu" *ngIf="isAdmin() || isSuperAdmin()">
-        <div class="sidebar-menu-header" (click)="toggleMenu('teacherManagement')">
-          <span class="sidebar-icon">👨‍🏫</span>
-          <span class="sidebar-text">Teacher Manager</span>
-          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('teacherManagement')">▼</span>
-        </div>
-        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('teacherManagement')">
-          <a routerLink="/teachers/new" routerLinkActive="active" class="sidebar-subitem">
-            <span class="sidebar-icon">📝</span>
-            <span class="sidebar-text">Registration</span>
-          </a>
-          <a routerLink="/teachers/allocate_class" routerLinkActive="active" class="sidebar-subitem">
-            <span class="sidebar-icon">🏫</span>
-            <span class="sidebar-text">Allocate Classes</span>
-          </a>
-          <a routerLink="/teachers" routerLinkActive="active" class="sidebar-subitem">
-            <span class="sidebar-icon">📋</span>
-            <span class="sidebar-text">Teacher List</span>
-          </a>
-          <a routerLink="/admin/teacher-record-book" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
-            <span class="sidebar-icon">📖</span>
-            <span class="sidebar-text">Record Book</span>
-          </a>
-          <a routerLink="/admin/manage-accounts" routerLinkActive="active" class="sidebar-subitem" *ngIf="isSuperAdmin()">
-            <span class="sidebar-icon">👥</span>
-            <span class="sidebar-text">Account Management</span>
-          </a>
-        </div>
-      </div>
-
-      <!-- Class Mgt -->
-      <div class="sidebar-menu" *ngIf="isAdmin() || isSuperAdmin() || isTeacher() || canAccessModule('classes')">
-        <div class="sidebar-menu-header" (click)="toggleMenu('classManagement')">
-          <span class="sidebar-icon">🏫</span>
-          <span class="sidebar-text">Class Manager</span>
-          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('classManagement')">▼</span>
-        </div>
-        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('classManagement')">
-          <a routerLink="/classes" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin() || canAccessModule('classes')">
-            <span class="sidebar-icon">⚙️</span>
-            <span class="sidebar-text">Manage Classes</span>
-          </a>
-          <a routerLink="/classes/lists" routerLinkActive="active" class="sidebar-subitem">
-            <span class="sidebar-icon">📑</span>
-            <span class="sidebar-text">Class Lists</span>
-          </a>
-          <a routerLink="/admin/class-promotion" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
-            <span class="sidebar-icon">⬆️</span>
-            <span class="sidebar-text">Promote Class</span>
-          </a>
-          <a routerLink="/attendance/mark" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('attendance') || isAdmin() || isSuperAdmin()">
-            <span class="sidebar-icon">✅</span>
-            <span class="sidebar-text">Mark Register</span>
-          </a>
-          <a routerLink="/attendance/reports" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('attendance') || isAdmin() || isSuperAdmin()">
-            <span class="sidebar-icon">📈</span>
-            <span class="sidebar-text">Attendance Reports</span>
-          </a>
-        </div>
-      </div>
-
-      <!-- Subject Mgt -->
-      <div class="sidebar-menu" *ngIf="isAdmin() || isSuperAdmin()">
-        <div class="sidebar-menu-header" (click)="toggleMenu('subjectManagement')">
-          <span class="sidebar-icon">📚</span>
-          <span class="sidebar-text">Subject Manager</span>
-          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('subjectManagement')">▼</span>
-        </div>
-        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('subjectManagement')">
-          <a routerLink="/subjects" routerLinkActive="active" class="sidebar-subitem">
-            <span class="sidebar-icon">⚙️</span>
-            <span class="sidebar-text">Manage Subject</span>
-          </a>
-          <a routerLink="/subjects/assign" routerLinkActive="active" class="sidebar-subitem">
-            <span class="sidebar-icon">🔗</span>
-            <span class="sidebar-text">Assign Subject</span>
-          </a>
-          <a routerLink="/subjects/teaching-load" routerLinkActive="active" class="sidebar-subitem">
-            <span class="sidebar-icon">⏱️</span>
-            <span class="sidebar-text">Subject Periods</span>
-          </a>
-        </div>
-      </div>
-
       <!-- Exam Mgt -->
-      <div class="sidebar-menu" *ngIf="canAccessModule('exams') || isAdmin() || isSuperAdmin()">
+      <div
+        class="sidebar-menu"
+        *ngIf="sidebarMenuVisible(
+          ['Exam Manager', 'Marks Capturing', 'Mark Sheets', 'Rankings', 'Report Cards', 'Marks Entry Progress', 'Publish Results'],
+          canAccessModule('exams') || isAdmin() || isSuperAdmin()
+        )">
         <div class="sidebar-menu-header" (click)="toggleMenu('examManagement')">
           <span class="sidebar-icon">📝</span>
           <span class="sidebar-text">Exam Manager</span>
@@ -269,7 +278,12 @@
       </div>
 
       <!-- Fees Mgt -->
-      <div class="sidebar-menu" *ngIf="canAccessModule('finance')">
+      <div
+        class="sidebar-menu"
+        *ngIf="sidebarMenuVisible(
+          ['Finance Manager', 'Billing & Invoicing', 'Record Payment', 'Balance Enquiry', 'Exemptions', 'System Auditor'],
+          canAccessModule('finance')
+        )">
         <div class="sidebar-menu-header" (click)="toggleMenu('financeManagement')">
           <span class="sidebar-icon">💰</span>
           <span class="sidebar-text">Finance Manager</span>
@@ -300,7 +314,12 @@
       </div>
 
       <!-- Financial Reports (after Finance Manager) -->
-      <div class="sidebar-menu" *ngIf="!isTeacher() && (isAdmin() || isSuperAdmin() || canAccessModule('finance') || canAccessModule('logistics'))">
+      <div
+        class="sidebar-menu"
+        *ngIf="sidebarMenuVisible(
+          ['Financial Reports', 'Student Ledgers', 'Fees Collection', 'Unpaid Invoices', 'Exemption Report', 'Logistics Receipts', 'Aged Debtors', 'Enrolment vs Billing', 'Revenue Recognition', 'Student Reconciliation', 'Analytics & Forecasts', 'Class Reconciliation', 'Dining Hall', 'Transport'],
+          !isTeacher() && (isAdmin() || isSuperAdmin() || canAccessModule('finance') || canAccessModule('logistics'))
+        )">
         <div class="sidebar-menu-header" (click)="toggleMenu('financialReports')">
           <span class="sidebar-icon">📊</span>
           <span class="sidebar-text">Financial Reports</span>
@@ -363,7 +382,12 @@
       </div>
 
       <!-- Payroll Manager -->
-      <div class="sidebar-menu" *ngIf="canAccessModule('payroll')">
+      <div
+        class="sidebar-menu"
+        *ngIf="sidebarMenuVisible(
+          ['Payroll Manager', 'Payroll Overview', 'Employees', 'Salary Structures', 'Assignments', 'Process Payroll', 'Reports'],
+          canAccessModule('payroll')
+        )">
         <div class="sidebar-menu-header" (click)="toggleMenu('payrollManagement')">
           <span class="sidebar-icon">💵</span>
           <span class="sidebar-text">Payroll Manager</span>
@@ -398,7 +422,12 @@
       </div>
 
       <!-- Communication Management -->
-      <div class="sidebar-menu" *ngIf="isAccountant() || isAdmin() || isSuperAdmin()">
+      <div
+        class="sidebar-menu"
+        *ngIf="sidebarMenuVisible(
+          ['Communication Manager', 'Send Message', 'Outbox', 'My Inbox', 'Inbox', 'Drafts', 'Outgoing messages'],
+          isAccountant() || isAdmin() || isSuperAdmin()
+        )">
         <div class="sidebar-menu-header" (click)="toggleMenu('messages')">
           <span class="sidebar-icon">✉️</span>
           <span class="sidebar-text">Communication Manager</span>
@@ -433,7 +462,9 @@
       </div>
 
       <!-- News & Announcements -->
-      <div class="sidebar-menu">
+      <div
+        class="sidebar-menu"
+        *ngIf="sidebarMenuVisible(['News & Announcements', 'Manage News', 'Create News', 'News Feed'])">
         <div class="sidebar-menu-header" (click)="toggleMenu('newsManagement')">
           <span class="sidebar-icon">📰</span>
           <span class="sidebar-text">News & Announcements</span>
@@ -456,7 +487,11 @@
       </div>
 
       <!-- Inventory Manager (textbooks, furniture, loans, fines) — hidden from teachers -->
-      <a routerLink="/inventory" routerLinkActive="active" class="sidebar-item" *ngIf="(isAdmin() || isSuperAdmin() || canAccessModule('inventory')) && !isTeacher()">
+      <a
+        routerLink="/inventory"
+        routerLinkActive="active"
+        class="sidebar-item"
+        *ngIf="sidebarMenuVisible(['Inventory Manager'], (isAdmin() || isSuperAdmin() || canAccessModule('inventory')) && !isTeacher())">
         <span class="sidebar-icon">📦</span>
         <span class="sidebar-text">Inventory Manager</span>
       </a>
@@ -464,7 +499,12 @@
       <!-- Reports Management section removed per request -->
 
       <!-- E-Learning (Teachers only, previously Record Keeping) -->
-      <div class="sidebar-menu" *ngIf="isTeacher() && canAccessModule('recordBook')">
+      <div
+        class="sidebar-menu"
+        *ngIf="sidebarMenuVisible(
+          ['E-Learning Manager', 'Create Task/Assign', 'Student Response', 'Record Book', 'My Classes'],
+          isTeacher() && canAccessModule('recordBook')
+        )">
         <div class="sidebar-menu-header" (click)="toggleMenu('recordKeeping')">
           <span class="sidebar-icon">💻</span>
           <span class="sidebar-text">E-Learning Manager</span>
@@ -492,7 +532,7 @@
 
 
       <!-- Inventory Manager (Teachers only — issue to students from their allocation) -->
-      <div class="sidebar-menu" *ngIf="isTeacher()">
+      <div class="sidebar-menu" *ngIf="sidebarMenuVisible(['Inventory Manager', 'Inventory Record'], isTeacher())">
         <div class="sidebar-menu-header" (click)="toggleMenu('teacherInventory')">
           <span class="sidebar-icon">📦</span>
           <span class="sidebar-text">Inventory Manager</span>
@@ -507,62 +547,139 @@
       </div>
 
       <!-- Timetable Manager -->
-      <div class="sidebar-menu" *ngIf="isAdmin() || isSuperAdmin() || isTeacher() || canAccessModule('settings')">
+      <div class="sidebar-menu" *ngIf="isTimetableManagerSidebarVisible()">
         <div class="sidebar-menu-header" (click)="toggleMenu('timetableManagement')">
           <span class="sidebar-icon">📅</span>
           <span class="sidebar-text">Timetable Manager</span>
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('timetableManagement')">▼</span>
         </div>
-        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('timetableManagement')">
-          <a routerLink="/timetable/config" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
+        <div class="sidebar-submenu sidebar-submenu--branch" [class.expanded]="isMenuExpanded('timetableManagement')">
+          <a
+            routerLink="/subjects/assign"
+            routerLinkActive="active"
+            class="sidebar-subitem"
+            *ngIf="isTimetableAssignSubjectVisible()">
+            <span class="sidebar-icon">🔗</span>
+            <span class="sidebar-text">Assign Subject</span>
+          </a>
+          <a
+            routerLink="/subjects/teaching-load"
+            routerLinkActive="active"
+            class="sidebar-subitem"
+            *ngIf="isTimetableSubjectPeriodsVisible()">
+            <span class="sidebar-icon">⏱️</span>
+            <span class="sidebar-text">Subject Periods</span>
+          </a>
+          <a routerLink="/timetable/config" routerLinkActive="active" class="sidebar-subitem" *ngIf="isTimetableConfigureVisible()">
             <span class="sidebar-icon">⚙️</span>
             <span class="sidebar-text">Configure Timetable</span>
           </a>
-          <a routerLink="/timetable/generate" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
+          <a routerLink="/timetable/generate" routerLinkActive="active" class="sidebar-subitem" *ngIf="isTimetableGenerateVisible()">
             <span class="sidebar-icon">⚡</span>
             <span class="sidebar-text">Generate Timetable</span>
           </a>
-          <a routerLink="/timetable/view" routerLinkActive="active" class="sidebar-subitem">
+          <a routerLink="/timetable/view" routerLinkActive="active" class="sidebar-subitem" *ngIf="isTimetableViewVisible()">
             <span class="sidebar-icon">👁️</span>
             <span class="sidebar-text">View Timetable</span>
           </a>
         </div>
       </div>
 
-<!-- General Settings -->
-      <div class="sidebar-menu" *ngIf="canAccessModule('settings') || isAdmin() || isSuperAdmin()">
-        <div class="sidebar-menu-header" (click)="toggleMenu('settings')">
-          <span class="sidebar-icon">⚙️</span>
-          <span class="sidebar-text">General Settings</span>
-          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('settings')">▼</span>
+      <!-- System Administration -->
+      <div class="sidebar-menu" *ngIf="isSystemAdministrationSidebarVisible()">
+        <div class="sidebar-menu-header" (click)="toggleMenu('systemAdministration')">
+          <span class="sidebar-icon">🛠️</span>
+          <span class="sidebar-text">System Administration</span>
+          <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('systemAdministration')">▼</span>
         </div>
-        <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('settings')">
-          <a routerLink="/settings" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('settings') || isAdmin() || isSuperAdmin()">
-            <span class="sidebar-icon">🏛️</span>
-            <span class="sidebar-text">School Settings</span>
-          </a>
-          <a routerLink="/admin/manage-accounts" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
+        <div class="sidebar-submenu sidebar-submenu--branch" [class.expanded]="isMenuExpanded('systemAdministration')">
+          <a
+            routerLink="/user-management"
+            routerLinkActive="active"
+            class="sidebar-subitem"
+            *ngIf="isSystemAdminUserManagementVisible()">
             <span class="sidebar-icon">👥</span>
             <span class="sidebar-text">User Management</span>
           </a>
-          <a routerLink="/user-log" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
-            <span class="sidebar-icon">📜</span>
-            <span class="sidebar-text">User Log</span>
+          <a
+            routerLink="/system-settings"
+            [queryParams]="{ tab: 'module-access' }"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ queryParams: 'exact' }"
+            class="sidebar-subitem"
+            *ngIf="isSystemAdminRolesVisible()">
+            <span class="sidebar-icon">🔒</span>
+            <span class="sidebar-text">Role &amp; Permissions</span>
           </a>
-          <a routerLink="/admin/license-config" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
+          <a
+            routerLink="/academic-settings/terms"
+            routerLinkActive="active"
+            class="sidebar-subitem"
+            *ngIf="isSystemAdminAcademicSettingsVisible()">
+            <span class="sidebar-icon">🎓</span>
+            <span class="sidebar-text">Academic Settings</span>
+          </a>
+          <a
+            routerLink="/system-settings"
+            routerLinkActive="active"
+            class="sidebar-subitem"
+            [routerLinkActiveOptions]="{ queryParams: 'ignored' }"
+            *ngIf="isSystemAdminSystemSettingsVisible()">
+            <span class="sidebar-icon">⚙️</span>
+            <span class="sidebar-text">System Settings</span>
+          </a>
+          <a
+            routerLink="/user-log"
+            routerLinkActive="active"
+            class="sidebar-subitem"
+            *ngIf="isSystemAdminAuditLogsVisible()">
+            <span class="sidebar-icon">📜</span>
+            <span class="sidebar-text">Audit Logs</span>
+          </a>
+          <a
+            routerLink="/financial-reports/analytics-forecasts"
+            routerLinkActive="active"
+            class="sidebar-subitem"
+            *ngIf="isSystemAdminAnalyticsVisible()">
+            <span class="sidebar-icon">📊</span>
+            <span class="sidebar-text">Analytics &amp; Reports</span>
+          </a>
+          <a
+            routerLink="/admin/license-config"
+            routerLinkActive="active"
+            class="sidebar-subitem"
+            *ngIf="isSystemAdminLicenseConfigVisible()">
             <span class="sidebar-icon">🔑</span>
             <span class="sidebar-text">License Configuration</span>
           </a>
-<a routerLink="/teacher/manage-account" routerLinkActive="active" class="sidebar-subitem" *ngIf="isTeacher()">
-            <span class="sidebar-icon">👤</span>
-            <span class="sidebar-text">My Account</span>
-          </a>
-          <a routerLink="/accountant/change_password" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAccountant()">
-            <span class="sidebar-icon">👤</span>
-            <span class="sidebar-text">Manage Account</span>
+          <a
+            routerLink="/system/integrations"
+            routerLinkActive="active"
+            class="sidebar-subitem"
+            *ngIf="isSystemAdminIntegrationsVisible()">
+            <span class="sidebar-icon">🔗</span>
+            <span class="sidebar-text">Integrations</span>
           </a>
         </div>
       </div>
+
+      <!-- Teacher / accountant account (not under System Administration) -->
+      <a
+        routerLink="/teacher/manage-account"
+        routerLinkActive="active"
+        class="sidebar-item"
+        *ngIf="isTeacher() && matchesSidebarFilter('My Account')">
+        <span class="sidebar-icon">👤</span>
+        <span class="sidebar-text">My Account</span>
+      </a>
+      <a
+        routerLink="/accountant/change_password"
+        routerLinkActive="active"
+        class="sidebar-item"
+        *ngIf="isAccountant() && matchesSidebarFilter('Manage Account')">
+        <span class="sidebar-icon">👤</span>
+        <span class="sidebar-text">Manage Account</span>
+      </a>
 
       </div>
     </nav>

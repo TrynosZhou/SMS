@@ -1,5 +1,8 @@
-import { Component, OnDestroy, OnInit, HostListener } from '@angular/core';
+import { Component, OnDestroy, OnInit, HostListener, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { finalize } from 'rxjs/operators';
+import { activatePageLoad } from '../../../utils/route-activation';
 import { MessageService } from '../../../services/message.service';
 import { AuthService } from '../../../services/auth.service';
 
@@ -46,12 +49,14 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
   private pinnedStorageKey = 'incomingPinnedIds';
   private templatesStorageKey = 'incomingReplyTemplates';
   showTemplateManager = false;
+  private readonly destroy$ = new Subject<void>();
 
   constructor(
     private messageService: MessageService,
     private authService: AuthService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {
     const user = this.authService.getCurrentUser();
     const role = (user?.role || '').toLowerCase();
@@ -80,6 +85,7 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
     });
     this.load();
     this.setupAutoRefresh();
+    activatePageLoad(this.router, this.destroy$, '/messages/incoming', () => this.load());
   }
 
   private loadStoredFilters(): void {
@@ -125,6 +131,8 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
     if (this.refreshHandle) {
       clearInterval(this.refreshHandle);
       this.refreshHandle = null;
@@ -134,19 +142,28 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
   load(): void {
     this.loading = true;
     this.error = '';
-    this.messageService.getIncomingFromParents(this.roleBox).subscribe({
-      next: (res: any) => {
-        this.loading = false;
-        this.messages = Array.isArray(res?.messages) ? res.messages : Array.isArray(res) ? res : [];
-        this.senders = Array.from(new Set(this.messages.map(m => (m.senderName || m.parentName || '').trim()).filter(Boolean)));
-        this.applyFilterAndPaginate();
-      },
-      error: (err: any) => {
-        this.loading = false;
-        this.error = err?.error?.message || 'Failed to load incoming messages';
-        setTimeout(() => this.error = '', 5000);
-      }
-    });
+    this.cdr.markForCheck();
+    this.messageService
+      .getIncomingFromParents(this.roleBox)
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (res: any) => {
+          this.messages = Array.isArray(res?.messages) ? res.messages : Array.isArray(res) ? res : [];
+          this.senders = Array.from(
+            new Set(this.messages.map(m => (m.senderName || m.parentName || '').trim()).filter(Boolean))
+          );
+          this.applyFilterAndPaginate();
+        },
+        error: (err: any) => {
+          this.error = err?.error?.message || 'Failed to load incoming messages';
+          setTimeout(() => (this.error = ''), 5000);
+        }
+      });
   }
 
   setupAutoRefresh(): void {

@@ -1,296 +1,266 @@
-<div class="progress-container">
-  <!-- Modern Header -->
-  <div class="page-header">
-    <div class="header-content">
-      <div class="header-title-section">
-        <div class="header-icon">
-          <span>📊</span>
-        </div>
-        <div class="header-text">
+<div class="cmp-page">
+  <div class="cmp-toast-stack" *ngIf="success || error">
+    <div class="cmp-toast cmp-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="cmp-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="cmp-toast cmp-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="cmp-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="cmp-hero">
+    <div class="cmp-hero__main">
+      <div class="cmp-hero-left">
+        <span class="cmp-hero-icon" aria-hidden="true">📊</span>
+        <div>
+          <span class="cmp-hero-eyebrow">Exams</span>
           <h1>Marks Entry Progress</h1>
-          <p>Monitor percentage completion of marks entry per class and subject</p>
+          <p class="cmp-hero-sub">Track how complete marks entry is for each class and subject by exam type and term.</p>
+          <p class="cmp-hero-meta" *ngIf="lastLoadedAt && !loading">
+            Last updated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
+          </p>
         </div>
       </div>
-      <div class="header-actions">
-        <button class="btn btn-header" (click)="exportToCsv()" title="Export to CSV">
-          <span class="btn-icon">📥</span>
-          Export
+      <div class="cmp-hero__actions">
+        <button type="button" class="cmp-hero-refresh" (click)="refresh()" [disabled]="loading || !selectedExamType" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
         </button>
-        <button class="btn btn-header" (click)="refresh()" title="Refresh data">
-          <span class="btn-icon">🔄</span>
-          Refresh
-        </button>
-        <button class="btn btn-header" (click)="expandAll()" title="Expand all classes">
-          <span class="btn-icon">➕</span>
-          Expand
-        </button>
-        <button class="btn btn-header" (click)="collapseAll()" title="Collapse all classes">
-          <span class="btn-icon">➖</span>
-          Collapse
-        </button>
+        <button type="button" class="cmp-hero-btn cmp-hero-btn--white" (click)="exportToCsv()" [disabled]="!viewData.length || loading">CSV</button>
+        <button type="button" class="cmp-hero-btn cmp-hero-btn--white" (click)="printReport()" [disabled]="!viewData.length || loading">Print</button>
+        <button type="button" class="cmp-hero-btn" (click)="expandAll()" [disabled]="!viewData.length">Expand all</button>
+        <button type="button" class="cmp-hero-btn" (click)="collapseAll()" [disabled]="!viewData.length">Collapse all</button>
+        <a routerLink="/mark-sheet" class="cmp-hero-btn cmp-hero-btn--accent">Mark sheet</a>
       </div>
     </div>
-  </div>
 
-  <!-- Quick Stats -->
-  <div class="quick-stats">
-    <div class="stat-card primary">
-      <div class="stat-icon">🏫</div>
-      <div class="stat-info">
-        <span class="stat-value">{{ stats.totalClasses }}</span>
-        <span class="stat-label">Total Classes</span>
-      </div>
+    <div class="cmp-hero-stats" *ngIf="hasData && selectedExamType && !loading">
+      <article class="cmp-stat">
+        <span class="cmp-stat__value">{{ stats.totalClasses }}</span>
+        <span class="cmp-stat__label">Classes</span>
+      </article>
+      <article class="cmp-stat">
+        <span class="cmp-stat__value">{{ stats.totalSubjects }}</span>
+        <span class="cmp-stat__label">Subjects</span>
+      </article>
+      <article class="cmp-stat cmp-stat--mint">
+        <span class="cmp-stat__value">{{ stats.subjectsComplete }}</span>
+        <span class="cmp-stat__label">Complete</span>
+      </article>
+      <article class="cmp-stat cmp-stat--rose">
+        <span class="cmp-stat__value">{{ stats.subjectsIncomplete }}</span>
+        <span class="cmp-stat__label">Incomplete</span>
+      </article>
+      <article class="cmp-stat cmp-stat--accent">
+        <span class="cmp-stat__value">{{ stats.averageProgress }}%</span>
+        <span class="cmp-stat__label">Avg progress</span>
+      </article>
+      <article class="cmp-stat">
+        <span class="cmp-stat__value">{{ completionRate }}%</span>
+        <span class="cmp-stat__label">Completion rate</span>
+      </article>
     </div>
-    <div class="stat-card info">
-      <div class="stat-icon">📚</div>
-      <div class="stat-info">
-        <span class="stat-value">{{ stats.totalSubjects }}</span>
-        <span class="stat-label">Total Subjects</span>
-      </div>
+    <div class="cmp-hero-stats cmp-hero-stats--skeleton" *ngIf="loading">
+      <div class="cmp-skeleton" *ngFor="let i of skeletonRows"></div>
     </div>
-    <div class="stat-card success">
-      <div class="stat-icon">✅</div>
-      <div class="stat-info">
-        <span class="stat-value">{{ stats.subjectsComplete }}</span>
-        <span class="stat-label">Complete</span>
-      </div>
-    </div>
-    <div class="stat-card warning">
-      <div class="stat-icon">⏳</div>
-      <div class="stat-info">
-        <span class="stat-value">{{ stats.subjectsIncomplete }}</span>
-        <span class="stat-label">Incomplete</span>
-      </div>
-    </div>
-    <div class="stat-card accent">
-      <div class="stat-icon">📈</div>
-      <div class="stat-info">
-        <span class="stat-value">{{ stats.averageProgress }}%</span>
-        <span class="stat-label">Avg Progress</span>
-      </div>
-    </div>
-  </div>
+  </header>
 
-  <!-- Filters Card -->
-  <div class="filters-card">
-    <div class="filters-header">
-      <div class="filters-title">
-        <span class="filters-icon">🔍</span>
-        <h3>Filters & Search</h3>
+  <section class="cmp-panel">
+    <div class="cmp-panel__head-row">
+      <div>
+        <h2 class="cmp-panel__title">Filters & search</h2>
+        <p class="cmp-panel__intro">Select exam type (required), then refine by term, class, or progress.</p>
       </div>
-      <button class="btn btn-text" (click)="resetFilters()">
-        Reset Filters
+      <button type="button" class="cmp-btn-clear" *ngIf="hasActiveFilters()" (click)="resetFilters()">Clear filters</button>
+    </div>
+
+    <div class="cmp-chips cmp-chips--exam">
+      <span class="cmp-chips-label">Exam type</span>
+      <button
+        type="button"
+        class="cmp-chip"
+        *ngFor="let t of examTypes"
+        [class.cmp-chip--active]="selectedExamType === t.value"
+        (click)="selectExamType(t.value)">
+        {{ t.label }}
       </button>
     </div>
-    
-    <div class="filters-grid">
-      <div class="filter-group">
-        <label>
-          <span class="label-icon">📋</span>
-          Exam Type
-        </label>
-        <select [(ngModel)]="selectedExamType" (change)="fetchProgress()" class="filter-select">
-          <option value="">Select</option>
-          <option *ngFor="let t of examTypes" [value]="t.value">{{ t.label }}</option>
+
+    <div class="cmp-filters-row">
+      <div class="cmp-field">
+        <label for="cmp-term">Term</label>
+        <input
+          id="cmp-term"
+          type="text"
+          class="cmp-input"
+          [(ngModel)]="selectedTerm"
+          (change)="fetchProgress()"
+          [placeholder]="loadingTerm ? 'Loading term…' : 'e.g. Term 1 2026'"
+          [disabled]="loadingTerm || !selectedExamType" />
+      </div>
+      <div class="cmp-field">
+        <label for="cmp-class">Class</label>
+        <select
+          id="cmp-class"
+          class="cmp-select"
+          [(ngModel)]="selectedClassId"
+          (ngModelChange)="fetchProgress()"
+          [disabled]="loadingClasses || !selectedExamType">
+          <option value="">{{ loadingClasses ? 'Loading…' : 'All classes' }}</option>
+          <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
         </select>
       </div>
-
-      <div class="filter-group">
-        <label>
-          <span class="label-icon">📅</span>
-          Term
-        </label>
-        <input type="text" [(ngModel)]="selectedTerm" (change)="fetchProgress()"
-               [placeholder]="loadingTerm ? 'Loading term...' : 'e.g., Term 1 2026'"
-               [disabled]="loadingTerm" class="filter-input">
-</div>
-
-      <div class="filter-group">
-        <label>
-          <span class="label-icon">🏫</span>
-          Class
-        </label>
-        <select [(ngModel)]="selectedClassId" (change)="fetchProgress()" [disabled]="loadingClasses" class="filter-select">
-          <option value="">{{ loadingClasses ? 'Loading classes...' : 'All Classes' }}</option>
-<option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
+      <div class="cmp-field">
+        <label for="cmp-sort">Sort</label>
+        <select id="cmp-sort" class="cmp-select" [(ngModel)]="sortColumn" (ngModelChange)="updateViewData()" [ngModelOptions]="{standalone: true}">
+          <option value="avgProgress">Avg progress</option>
+          <option value="class">Class name</option>
+          <option value="subjectsComplete">Subjects complete</option>
         </select>
       </div>
-
-      <div class="filter-group search">
-        <label>
-          <span class="label-icon">🔎</span>
-          Search
-        </label>
-        <div class="search-box">
-          <input type="text" [(ngModel)]="searchQuery" (ngModelChange)="updateViewData()"
-                 placeholder="Search class or subject..." class="filter-input">
-          <button class="clear-search" *ngIf="searchQuery" (click)="searchQuery = ''; updateViewData()">×</button>
-        </div>
-      </div>
-
-      <div class="filter-group">
-        <label>
-          <span class="label-icon">📊</span>
-          Sort By
-        </label>
-        <select [(ngModel)]="sortColumn" (ngModelChange)="updateViewData()" class="filter-select">
-          <option value="avgProgress">Avg Progress</option>
-          <option value="class">Class Name</option>
-          <option value="subjectsComplete">Subjects Complete</option>
+      <div class="cmp-field">
+        <label for="cmp-dir">Direction</label>
+        <select id="cmp-dir" class="cmp-select" [(ngModel)]="sortDirection" (ngModelChange)="updateViewData()" [ngModelOptions]="{standalone: true}">
+          <option value="desc">High → low</option>
+          <option value="asc">Low → high</option>
         </select>
       </div>
-
-      <div class="filter-group">
-        <label>
-          <span class="label-icon">↕️</span>
-          Direction
-        </label>
-        <select [(ngModel)]="sortDirection" (ngModelChange)="updateViewData()" class="filter-select">
-          <option value="desc">Descending</option>
-          <option value="asc">Ascending</option>
-        </select>
-      </div>
-
-      <div class="filter-group checkbox">
-        <label class="checkbox-label">
-          <input type="checkbox" [(ngModel)]="showIncompleteOnly" (ngModelChange)="updateViewData()" class="checkbox-input">
-          <span class="checkbox-custom"></span>
-          <span class="checkbox-text">Show Incomplete Only</span>
-        </label>
-      </div>
-
-      <div class="filter-group">
-        <label>
-          <span class="label-icon">%</span>
-          Min Progress
-        </label>
-        <input type="number" [(ngModel)]="minProgress" (ngModelChange)="updateViewData()" min="0" max="100" 
-               placeholder="0" class="filter-input number">
+      <div class="cmp-field">
+        <label for="cmp-min">Min progress %</label>
+        <input
+          id="cmp-min"
+          type="number"
+          class="cmp-input"
+          [(ngModel)]="minProgress"
+          (ngModelChange)="updateViewData()"
+          min="0"
+          max="100"
+          [disabled]="!selectedExamType" />
       </div>
     </div>
-  </div>
 
-  <!-- Alert Messages -->
-  <div class="alert alert-error" *ngIf="error">
-    <span class="alert-icon">⚠️</span>
-    <span class="alert-text">{{ error }}</span>
-    <button class="alert-close" (click)="error = ''">×</button>
-  </div>
+    <div class="cmp-search-wrap">
+      <span class="cmp-search-icon" aria-hidden="true">🔍</span>
+      <input
+        #cmpSearch
+        type="search"
+        class="cmp-search-input"
+        placeholder="Search class or subject…"
+        [disabled]="!selectedExamType || loading"
+        (input)="onSearchInput(cmpSearch.value)" />
+      <button type="button" class="cmp-search-clear" *ngIf="searchQuery" (click)="cmpSearch.value = ''; clearSearch()">Clear</button>
+    </div>
 
-  <!-- Loading State -->
-  <div *ngIf="loading" class="loading-state">
-    <div class="loading-spinner"></div>
-    <p>Loading progress data...</p>
-  </div>
+    <div class="cmp-chips">
+      <button
+        type="button"
+        class="cmp-chip"
+        [class.cmp-chip--active]="showIncompleteOnly"
+        (click)="showIncompleteOnly = !showIncompleteOnly; updateViewData()">
+        Incomplete only<span class="cmp-chip__count" *ngIf="stats.subjectsIncomplete">({{ stats.subjectsIncomplete }})</span>
+      </button>
+    </div>
 
-  <!-- Empty State -->
-  <div *ngIf="!loading && viewData.length === 0" class="empty-state">
-    <div class="empty-icon">📭</div>
-    <h3>No Data Available</h3>
-    <p>No progress data found for the selected filters. Try adjusting your filter criteria.</p>
-    <button class="btn btn-primary" (click)="resetFilters()">Reset Filters</button>
-  </div>
+    <div class="cmp-summary" *ngIf="filterSummary && selectedExamType">
+      <span class="cmp-summary-pill">{{ filterSummary }}</span>
+    </div>
+  </section>
 
-  <!-- Class Cards Grid -->
-  <div class="class-grid" *ngIf="!loading && viewData.length > 0">
-    <div class="class-card" *ngFor="let cls of viewData; trackBy: trackByClassId" 
-         [class.collapsed]="collapsed[cls.classId]"
-         [class.complete]="getAverageProgressForClass(cls) >= 100">
-      
-      <!-- Class Header -->
-      <div class="class-header" (click)="toggleCollapse(cls.classId)">
-        <div class="class-info">
-          <div class="class-avatar">
-            {{ getClassInitial(cls.className) }}
-          </div>
-          <div class="class-details">
-            <h4 class="class-name">{{ cls.className }}</h4>
-            <div class="class-meta">
-              <span class="meta-item">
-                <span class="meta-icon">👥</span>
-                {{ cls.totalStudents }} students
-              </span>
-              <span class="meta-divider">•</span>
-              <span class="meta-item">
-                <span class="meta-icon">📚</span>
-                {{ cls.subjects?.length || 0 }} subjects
-              </span>
-            </div>
+  <section class="cmp-panel cmp-hint-panel" *ngIf="!selectedExamType && !loading">
+    <span class="cmp-hint-icon" aria-hidden="true">👆</span>
+    <div>
+      <h3>Select an exam type</h3>
+      <p>Choose <strong>Mid Term</strong> or <strong>End Term</strong> above to load marks entry progress.</p>
+    </div>
+  </section>
+
+  <section class="cmp-panel cmp-loading-panel" *ngIf="loading">
+    <div class="cmp-spinner" aria-hidden="true"></div>
+    <p>Loading marks entry progress…</p>
+  </section>
+
+  <section class="cmp-panel cmp-empty" *ngIf="!loading && selectedExamType && viewData.length === 0">
+    <span class="cmp-empty-icon" aria-hidden="true">📭</span>
+    <h3>No progress data</h3>
+    <p>No results match your filters. Try another class, term, or reset filters.</p>
+    <button type="button" class="cmp-btn-secondary" (click)="resetFilters()">Reset filters</button>
+  </section>
+
+  <div class="cmp-class-grid" *ngIf="!loading && viewData.length > 0">
+    <article
+      class="cmp-class-card"
+      *ngFor="let cls of viewData; trackBy: trackByClassId"
+      [class.cmp-class-card--complete]="getAverageProgressForClass(cls) >= 100"
+      [class.cmp-class-card--collapsed]="collapsed[cls.classId]">
+      <header class="cmp-class-card__head" (click)="toggleCollapse(cls.classId)">
+        <div class="cmp-class-card__info">
+          <span class="cmp-class-avatar">{{ getClassInitial(cls.className) }}</span>
+          <div>
+            <h3 class="cmp-class-name">{{ cls.className }}</h3>
+            <p class="cmp-class-meta">
+              <span>👥 {{ cls.totalStudents }} students</span>
+              <span>·</span>
+              <span>📚 {{ cls.subjects?.length || 0 }} subjects</span>
+            </p>
           </div>
         </div>
-        
-        <div class="class-progress">
-          <div class="progress-circle" [class.complete]="getAverageProgressForClass(cls) >= 100">
-            <svg viewBox="0 0 36 36">
-              <path class="circle-bg"
-                d="M18 2.0845
-                  a 15.9155 15.9155 0 0 1 0 31.831
-                  a 15.9155 15.9155 0 0 1 0 -31.831"/>
-              <path class="circle-progress"
+        <div class="cmp-class-card__progress">
+          <div class="cmp-ring" [class.cmp-ring--complete]="getAverageProgressForClass(cls) >= 100">
+            <svg viewBox="0 0 36 36" aria-hidden="true">
+              <path
+                class="cmp-ring__bg"
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              <path
+                class="cmp-ring__fill"
                 [attr.stroke-dasharray]="getAverageProgressForClass(cls) + ', 100'"
-                d="M18 2.0845
-                  a 15.9155 15.9155 0 0 1 0 31.831
-                  a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
             </svg>
-            <span class="progress-text">{{ getAverageProgressForClass(cls) }}%</span>
+            <span class="cmp-ring__text">{{ getAverageProgressForClass(cls) }}%</span>
           </div>
-          <div class="progress-label">
-            {{ getSubjectsCompleteCount(cls) }}/{{ cls.subjects?.length || 0 }} complete
-          </div>
+          <span class="cmp-ring-label">{{ getSubjectsCompleteCount(cls) }}/{{ cls.subjects?.length || 0 }} complete</span>
         </div>
+        <span class="cmp-expand" [class.cmp-expand--open]="!collapsed[cls.classId]" aria-hidden="true">▼</span>
+      </header>
 
-        <button class="expand-btn" [class.expanded]="!collapsed[cls.classId]">
-          <span class="expand-icon">▼</span>
-        </button>
-      </div>
-
-      <!-- Subjects Table -->
-      <div class="subjects-section" *ngIf="!collapsed[cls.classId]">
-        <table class="subjects-table">
-          <thead>
-            <tr>
-              <th class="col-subject">Subject</th>
-              <th class="col-progress">Progress</th>
-              <th class="col-count">Entered</th>
-              <th class="col-status">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let s of cls.subjects; trackBy: trackBySubjectId" [class.complete]="s.progressPercent >= 100">
-              <td class="col-subject">
-                <span class="subject-name">{{ s.subjectName }}</span>
-              </td>
-              <td class="col-progress">
-                <div class="progress-bar-wrapper">
-                  <div class="progress-bar" 
-                       [style.width.%]="s.progressPercent" 
-                       [class.low]="s.progressPercent < 50"
-                       [class.medium]="s.progressPercent >= 50 && s.progressPercent < 80"
-                       [class.high]="s.progressPercent >= 80">
+      <div class="cmp-class-card__body" *ngIf="!collapsed[cls.classId]">
+        <div class="cmp-table-scroll">
+          <table class="cmp-table">
+            <thead>
+              <tr>
+                <th>Subject</th>
+                <th>Progress</th>
+                <th class="cmp-col-num">Entered</th>
+                <th class="cmp-col-status">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let s of cls.subjects; trackBy: trackBySubjectId" [class.cmp-row--complete]="s.progressPercent >= 100">
+                <td><strong>{{ s.subjectName }}</strong></td>
+                <td>
+                  <div class="cmp-bar-track">
+                    <div
+                      class="cmp-bar"
+                      [style.width.%]="s.progressPercent"
+                      [class.cmp-bar--low]="s.progressPercent < 50"
+                      [class.cmp-bar--mid]="s.progressPercent >= 50 && s.progressPercent < 80"
+                      [class.cmp-bar--high]="s.progressPercent >= 80"></div>
                   </div>
-                </div>
-                <span class="progress-percent">{{ s.progressPercent }}%</span>
-              </td>
-              <td class="col-count">
-                <span class="count-badge">
-                  {{ s.enteredCount }}/{{ s.expectedCount }}
-                </span>
-              </td>
-              <td class="col-status">
-                <span class="status-badge complete" *ngIf="s.progressPercent >= 100">
-                  ✓ Complete
-                </span>
-                <span class="status-badge in-progress" *ngIf="s.progressPercent > 0 && s.progressPercent < 100">
-                  In Progress
-                </span>
-                <span class="status-badge not-started" *ngIf="s.progressPercent === 0">
-                  Not Started
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                  <span class="cmp-bar-pct">{{ s.progressPercent }}%</span>
+                </td>
+                <td class="cmp-col-num">
+                  <span class="cmp-count-badge">{{ s.enteredCount }}/{{ s.expectedCount }}</span>
+                </td>
+                <td class="cmp-col-status">
+                  <span class="cmp-status cmp-status--done" *ngIf="s.progressPercent >= 100">Complete</span>
+                  <span class="cmp-status cmp-status--prog" *ngIf="s.progressPercent > 0 && s.progressPercent < 100">In progress</span>
+                  <span class="cmp-status cmp-status--none" *ngIf="s.progressPercent === 0">Not started</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </article>
   </div>
 </div>

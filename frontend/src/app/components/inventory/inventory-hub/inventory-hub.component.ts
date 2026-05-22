@@ -1,5 +1,5 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { forkJoin, of } from 'rxjs';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { forkJoin, Observable, of } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
 import { InventoryService } from '../../../services/inventory.service';
 import { StudentService } from '../../../services/student.service';
@@ -84,7 +84,8 @@ export class InventoryHubComponent implements OnInit, OnDestroy {
     private studentService: StudentService,
     public auth: AuthService,
     private moduleAccess: ModuleAccessService,
-    public theme: ThemeService
+    public theme: ThemeService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -124,36 +125,49 @@ export class InventoryHubComponent implements OnInit, OnDestroy {
     });
   }
 
+  private loadInventoryArray(obs: Observable<any[]>, label: string): Observable<any[]> {
+    return obs.pipe(
+      catchError((e: any) => {
+        if (!this.err) {
+          this.err = e?.error?.message || `Failed to load ${label}`;
+        }
+        return of([]);
+      })
+    );
+  }
+
   refresh() {
     this.loading = true;
     this.err = '';
-    this.inventory.listTextbooks().subscribe({
-      next: t => {
-        this.textbooks = t;
-        this.inventory.listFurniture().subscribe({
-          next: f => {
-            this.furniture = f;
-            this.reloadIssuances();
-            this.inventory.getSettings().subscribe({
-              next: s => {
-                this.settings = s;
-                this.loading = false;
-                this.lastRefreshedAt = new Date();
-              },
-              error: () => {
-                this.loading = false;
-                this.lastRefreshedAt = new Date();
-              }
-            });
-          },
-          error: () => (this.loading = false)
-        });
-      },
-      error: e => {
-        this.err = e.error?.message || 'Failed to load inventory';
-        this.loading = false;
-      }
-    });
+
+    forkJoin({
+      textbooks: this.loadInventoryArray(this.inventory.listTextbooks(), 'textbook catalog'),
+      furniture: this.loadInventoryArray(this.inventory.listFurniture(), 'furniture'),
+      settings: this.inventory.getSettings().pipe(
+        catchError((e: any) => {
+          if (!this.err) {
+            this.err = e?.error?.message || 'Failed to load inventory settings';
+          }
+          return of({});
+        })
+      )
+    })
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: ({ textbooks, furniture, settings }) => {
+          this.textbooks = Array.isArray(textbooks) ? textbooks : [];
+          this.furniture = Array.isArray(furniture) ? furniture : [];
+          this.settings = settings && typeof settings === 'object' ? settings : {};
+          this.lastRefreshedAt = new Date();
+          this.reloadIssuances();
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   reloadIssuances() {

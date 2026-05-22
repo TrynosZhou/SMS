@@ -9,9 +9,12 @@ import { ParentService } from '../../../services/parent.service';
 import { SettingsService } from '../../../services/settings.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 import { forkJoin, of } from 'rxjs';
-import { catchError, finalize, takeUntil } from 'rxjs/operators';
+import { catchError, debounceTime, distinctUntilChanged, finalize, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { activatePageLoad } from '../../../utils/route-activation';
+
+type GradeBandFilter = 'all' | 'outstanding' | 'good' | 'needs-support';
+type ReportListView = 'both' | 'index' | 'detailed';
 
 @Component({
   standalone: false,  selector: 'app-report-card',
@@ -37,7 +40,8 @@ templateUrl: './report-card.component.html',
 })
 export class ReportCardComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-classes: any[] = [];
+  private readonly searchInput$ = new Subject<string>();
+  classes: any[] = [];
   selectedClass = '';
   selectedExamType = '';
   selectedTerm = '';
@@ -57,6 +61,11 @@ error = '';
   validationError: any = null; // Store detailed validation error data
   Math = Math; // Make Math available in template
   studentSearchQuery = '';
+  selectedGradeBand: GradeBandFilter = 'all';
+  listView: ReportListView = 'both';
+  lastLoadedAt: Date | null = null;
+  indexSortBy: 'position' | 'name' | 'average' = 'position';
+  indexSortDir: 'asc' | 'desc' = 'asc';
   aiGeneratingMap: Map<string, boolean> = new Map();
   
   // Form validation
@@ -157,6 +166,14 @@ error = '';
   }
 
   ngOnInit() {
+    this.searchInput$
+      .pipe(debounceTime(200), distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((q) => {
+        this.studentSearchQuery = q;
+        this.applyFilters();
+        this.cdr.markForCheck();
+      });
+
     activatePageLoad(this.router, this.destroy$, '/report-cards', () => this.bootstrapPage());
 
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe((params) => {
@@ -698,6 +715,8 @@ if (err.status === 0) {
         this.filteredReportCards = [...reportCardsArray];
         this.classInfo = { name: data.class, examType: data.examType, term: data.term || this.selectedTerm };
         this.success = `Generated ${this.reportCards.length} report card(s) for ${data.class} - ${this.selectedTerm}`;
+        this.lastLoadedAt = new Date();
+        this.applyFilters();
         this.loading = false;
         this.autoGenerationInProgress = false;
         this.cdr.markForCheck();
@@ -1145,18 +1164,255 @@ if (err.status === 0) {
     this.autoSaveRemarks(reportCard);
   }
 
-  // Search and filtering
-  filterReportCards() {
-    if (!this.studentSearchQuery.trim()) {
-      this.filteredReportCards = [...this.reportCards];
+  clearAlert(kind: 'success' | 'error'): void {
+    if (kind === 'success') this.success = '';
+    else this.error = '';
+  }
+
+  onSearchInput(value: string): void {
+    this.searchInput$.next((value || '').trim());
+  }
+
+  clearSearch(): void {
+    this.studentSearchQuery = '';
+    this.searchInput$.next('');
+    this.applyFilters();
+  }
+
+  onGradeBandChange(band: GradeBandFilter): void {
+    this.selectedGradeBand = band;
+    this.applyFilters();
+    this.cdr.markForCheck();
+  }
+
+  hasActiveFilters(): boolean {
+    return !!this.studentSearchQuery.trim() || this.selectedGradeBand !== 'all';
+  }
+
+  resetListFilters(): void {
+    this.selectedGradeBand = 'all';
+    this.clearSearch();
+  }
+
+  toggleListView(): void {
+    const order: ReportListView[] = ['both', 'index', 'detailed'];
+    const idx = order.indexOf(this.listView);
+    this.listView = order[(idx + 1) % order.length];
+  }
+
+  listViewLabel(): string {
+    if (this.listView === 'index') return '▦ Index only';
+    if (this.listView === 'detailed') return '☰ Cards only';
+    return '⊞ Index + cards';
+  }
+
+  get gradeBandChips(): Array<{ id: GradeBandFilter; label: string; count: number }> {
+    const bands: GradeBandFilter[] = ['all', 'outstanding', 'good', 'needs-support'];
+    return bands.map((id) => ({
+      id,
+      label: id === 'all' ? 'All' : id === 'outstanding' ? '80%+' : id === 'good' ? '60–79%' : 'Below 50%',
+      count: this.countByGradeBand(id, this.reportCards)
+    }));
+  }
+
+  get dashboardStats(): {
+    total: number;
+    showing: number;
+    classAverage: number;
+    topStudent: string;
+    topAverage: number;
+    needsSupport: number;
+  } {
+    const showing = this.filteredReportCards;
+    let topName = '—';
+    let topAvg = 0;
+    for (const c of showing) {
+      const avg = Number(c.overallAverage) || 0;
+      if (avg >= topAvg) {
+        topAvg = avg;
+        topName = c.student?.name || '—';
+      }
+    }
+    return {
+      total: this.reportCards.length,
+      showing: showing.length,
+      classAverage: this.getOverallAverage(),
+      topStudent: topName,
+      topAverage: topAvg,
+      needsSupport: this.reportCards.filter((c) => (Number(c.overallAverage) || 0) < 50).length
+    };
+  }
+
+  get filterSummary(): string {
+    const parts: string[] = [];
+    if (this.classInfo?.name) parts.push(this.classInfo.name);
+    if (this.selectedTerm) parts.push(this.selectedTerm);
+    if (this.selectedExamType) {
+      const label = this.examTypes.find((t) => t.value === this.selectedExamType)?.label || this.selectedExamType;
+      parts.push(label);
+    }
+    if (this.selectedGradeBand !== 'all') {
+      parts.push(`Band: ${this.gradeBandChips.find((c) => c.id === this.selectedGradeBand)?.label}`);
+    }
+    if (this.studentSearchQuery) parts.push(`Search: "${this.studentSearchQuery}"`);
+    parts.push(`${this.filteredReportCards.length} of ${this.reportCards.length} students`);
+    return parts.join(' · ');
+  }
+
+  private countByGradeBand(band: GradeBandFilter, cards: any[]): number {
+    if (band === 'all') return cards.length;
+    return cards.filter((c) => this.matchesGradeBand(c, band)).length;
+  }
+
+  private matchesGradeBand(card: any, band: GradeBandFilter): boolean {
+    const avg = Number(card?.overallAverage) || 0;
+    if (band === 'outstanding') return avg >= 80;
+    if (band === 'good') return avg >= 60 && avg < 80;
+    if (band === 'needs-support') return avg < 50;
+    return true;
+  }
+
+  applyFilters(): void {
+    const query = this.studentSearchQuery.toLowerCase().trim();
+    let list = [...this.reportCards];
+    if (this.selectedGradeBand !== 'all') {
+      list = list.filter((c) => this.matchesGradeBand(c, this.selectedGradeBand));
+    }
+    if (query) {
+      list = list.filter((card) => {
+        const studentName = (card.student?.name || '').toLowerCase();
+        const studentNumber = (card.student?.studentNumber || '').toLowerCase();
+        return studentName.includes(query) || studentNumber.includes(query);
+      });
+    }
+    const dir = this.indexSortDir === 'asc' ? 1 : -1;
+    list.sort((a, b) => {
+      if (this.indexSortBy === 'name') {
+        return String(a.student?.name || '').localeCompare(String(b.student?.name || '')) * dir;
+      }
+      if (this.indexSortBy === 'average') {
+        return ((Number(a.overallAverage) || 0) - (Number(b.overallAverage) || 0)) * dir;
+      }
+      const posA = Number(a.classPosition) || 9999;
+      const posB = Number(b.classPosition) || 9999;
+      return (posA - posB) * dir;
+    });
+    this.filteredReportCards = list;
+  }
+
+  filterReportCards(): void {
+    this.applyFilters();
+  }
+
+  setIndexSort(column: 'position' | 'name' | 'average'): void {
+    if (this.indexSortBy === column) {
+      this.indexSortDir = this.indexSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.indexSortBy = column;
+      this.indexSortDir = column === 'average' ? 'desc' : 'asc';
+    }
+    this.applyFilters();
+  }
+
+  indexSortIndicator(column: 'position' | 'name' | 'average'): string {
+    if (this.indexSortBy !== column) return '';
+    return this.indexSortDir === 'asc' ? '▲' : '▼';
+  }
+
+  scrollToCard(studentId: string): void {
+    if (!studentId) return;
+    const el = document.getElementById(`rc-card-${studentId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  trackByCard(_index: number, card: any): string {
+    return String(card?.student?.id || _index);
+  }
+
+  exportSummaryCsv(): void {
+    const items = this.filteredReportCards;
+    if (!items.length) {
+      this.success = 'Nothing to export';
+      setTimeout(() => {
+        if (this.success === 'Nothing to export') this.success = '';
+        this.cdr.markForCheck();
+      }, 3000);
       return;
     }
-    const query = this.studentSearchQuery.toLowerCase().trim();
-    this.filteredReportCards = this.reportCards.filter(card => {
-      const studentName = (card.student?.name || '').toLowerCase();
-      const studentNumber = (card.student?.studentNumber || '').toLowerCase();
-      return studentName.includes(query) || studentNumber.includes(query);
-    });
+    const esc = (v: unknown) => {
+      const s = String(v ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ['Position', 'Student', 'Student #', 'Class', 'Average %', 'Grade'];
+    const lines = [header.join(',')];
+    for (const c of items) {
+      lines.push(
+        [
+          esc(c.classPosition ?? ''),
+          esc(c.student?.name),
+          esc(c.student?.studentNumber),
+          esc(c.student?.class),
+          esc((Number(c.overallAverage) || 0).toFixed(1)),
+          esc(c.overallGrade)
+        ].join(',')
+      );
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safe = (this.classInfo?.name || 'class').replace(/\s+/g, '_');
+    a.download = `Report_Cards_Summary_${safe}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    this.success = `Exported ${items.length} student summary row(s)`;
+    this.cdr.markForCheck();
+  }
+
+  printSummary(): void {
+    if (!this.filteredReportCards.length) return;
+    const rows = this.filteredReportCards
+      .map(
+        (c) => `
+      <tr>
+        <td>${c.classPosition ?? '—'}</td>
+        <td>${this.escapeHtml(c.student?.name || '')}</td>
+        <td>${this.escapeHtml(c.student?.studentNumber || '')}</td>
+        <td>${(Number(c.overallAverage) || 0).toFixed(1)}%</td>
+        <td>${this.escapeHtml(c.overallGrade || '')}</td>
+      </tr>`
+      )
+      .join('');
+    const stats = this.dashboardStats;
+    const html = `
+      <!DOCTYPE html><html><head><title>Report Cards Summary</title>
+      <style>
+        body { font-family: system-ui, sans-serif; padding: 24px; }
+        h1 { font-size: 1.2rem; }
+        p.meta { color: #64748b; font-size: 0.85rem; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.85rem; }
+        th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
+        th { background: #f8fafc; }
+      </style></head><body>
+      <h1>Report Cards Summary</h1>
+      <p class="meta">${this.escapeHtml(this.filterSummary)} · Class avg ${stats.classAverage.toFixed(1)}% · Printed ${new Date().toLocaleString()}</p>
+      <table><thead><tr><th>Pos</th><th>Student</th><th>ID</th><th>Average</th><th>Grade</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  }
+
+  private escapeHtml(s: string): string {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   // Statistics
@@ -1366,6 +1622,8 @@ if (err.status === 0) {
     this.filteredReportCards = [];
     this.classInfo = null;
     this.studentSearchQuery = '';
+    this.selectedGradeBand = 'all';
+    this.lastLoadedAt = null;
     this.onSelectionChange();
   }
 
