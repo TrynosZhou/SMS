@@ -44,9 +44,20 @@ async function resolveParentForMessage(req: AuthRequest): Promise<{ parent: Pare
     return { parent, senderUserId };
   }
 
-  // Normal parent user
-  if (req.user.role !== UserRole.PARENT) return null;
-  const parent = await parentRepository.findOne({ where: { userId: req.user.id } });
+  // Normal parent user (or demo parent)
+  if (req.user.role !== UserRole.PARENT && req.user.role !== UserRole.DEMO_USER) {
+    return null;
+  }
+
+  let parent = req.user.parent || null;
+  if (!parent) {
+    parent = await parentRepository.findOne({ where: { userId: req.user.id } });
+  }
+  if (!parent && req.user.email) {
+    parent = await parentRepository.findOne({
+      where: { email: String(req.user.email).trim().toLowerCase() },
+    });
+  }
   if (!parent) return null;
   return { parent, senderUserId: req.user.id };
 }

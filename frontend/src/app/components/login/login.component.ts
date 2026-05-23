@@ -338,30 +338,19 @@ export class LoginComponent implements OnInit {
             this.error = 'Failed to navigate. Please try again.';
           });
         }
-        // Check if parent needs to link students
-        else if (user.role === 'parent' && user.parent) {
-          // Check if parent has linked students
+        else if (user.role === 'parent') {
           this.authService.getParentStudents().subscribe({
             next: (res: any) => {
               const students = Array.isArray(res) ? res : (res?.students || []);
-              if (students.length === 0) {
-                // Navigate to student linking page
-                this.router.navigate(['/parent/link-students']).catch(err => {
-                  console.error('Navigation error:', err);
-                  this.error = 'Failed to navigate. Please try again.';
-                });
-              } else {
-                // Navigate to parent dashboard
-                this.router.navigate(['/parent/dashboard']).catch(err => {
-                  console.error('Navigation error:', err);
-                  this.error = 'Failed to navigate. Please try again.';
-                });
-              }
+              const target =
+                students.length === 0 ? '/parent/link-students' : '/parent/dashboard';
+              this.router.navigate([target]).catch(err => {
+                console.error('Navigation error:', err);
+                this.error = 'Failed to navigate. Please try again.';
+              });
             },
-            error: (err) => {
-              console.error('Error fetching parent students:', err);
-              // Navigate to student linking page if error
-              this.router.navigate(['/parent/link-students']).catch(navErr => {
+            error: () => {
+              this.router.navigate(['/parent/dashboard']).catch(navErr => {
                 console.error('Navigation error:', navErr);
                 this.error = 'Failed to navigate. Please try again.';
               });

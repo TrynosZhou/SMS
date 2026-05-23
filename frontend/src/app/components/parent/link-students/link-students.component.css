@@ -32,9 +32,9 @@
   margin-bottom: 16px;
 }
 .brand-icon { font-size: 26px; }
-.brand-title { display: block; font-size: 15px; font-weight: 700; }
+.brand-title { display: block; font-size: 14px; font-weight: 700; }
 .brand-sub {
-  display: block; font-size: 11px; opacity: 0.7; margin-top: 2px;
+  display: block; font-size: 11px; font-weight: 700; opacity: 0.85; margin-top: 2px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
 }
 
@@ -44,16 +44,16 @@
   display: flex; align-items: center; gap: 10px;
   padding: 10px 12px; border-radius: 8px;
   color: rgba(255,255,255,0.75); text-decoration: none;
-  font-size: 14px; transition: background 0.2s, color 0.2s;
+  font-size: 13px; font-weight: 700; transition: background 0.2s, color 0.2s;
 }
 .nav-item:hover { background: rgba(255,255,255,0.12); color: #fff; }
-.nav-item.active { background: rgba(255,255,255,0.2); color: #fff; font-weight: 600; }
-.nav-icon { font-size: 16px; width: 22px; text-align: center; }
+.nav-item.active { background: rgba(255,255,255,0.2); color: #fff; font-weight: 700; }
+.nav-icon { font-size: 15px; width: 20px; text-align: center; }
 
 .pls-logout {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 24px; margin-top: 8px;
-  font-size: 14px; color: #fca5a5; cursor: pointer; transition: opacity 0.2s;
+  font-size: 12px; font-weight: 700; color: #fca5a5; cursor: pointer; transition: opacity 0.2s;
 }
 .pls-logout:hover { opacity: 0.8; }
 
@@ -308,7 +308,7 @@
   .pls-sidebar { width: 100%; min-width: unset; height: auto; position: static; padding: 14px 0; }
   .pls-brand { padding: 0 16px 14px; margin-bottom: 8px; }
   .pls-nav { flex-direction: row; flex-wrap: wrap; padding: 0 8px; }
-  .nav-item { padding: 8px 10px; font-size: 13px; }
+  .nav-item { padding: 8px 10px; font-size: 12px; font-weight: 700; }
   .pls-logout { padding: 8px 16px; }
   .pls-main { padding: 16px 14px 36px; gap: 16px; }
   .page-title { font-size: 20px; }

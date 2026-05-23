@@ -1,4 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { Subject, of } from 'rxjs';
+import { catchError, finalize, takeUntil, timeout } from 'rxjs/operators';
 import { MessageService } from '../../../services/message.service';
 import { AuthService } from '../../../services/auth.service';
 import { environment } from '../../../../environments/environment';
@@ -8,7 +10,7 @@ import { environment } from '../../../../environments/environment';
 templateUrl: './parent-outbox.component.html',
   styleUrls: ['./parent-outbox.component.css']
 })
-export class ParentOutboxComponent implements OnInit {
+export class ParentOutboxComponent implements OnInit, OnDestroy {
   allMessages: any[] = [];
   messages: any[] = [];
   loading = false;
@@ -19,7 +21,14 @@ export class ParentOutboxComponent implements OnInit {
   searchQuery = '';
   expandedId: string | null = null;
 
-  constructor(private messageService: MessageService, private authService: AuthService) {
+  private readonly destroy$ = new Subject<void>();
+  private readonly requestTimeoutMs = 60000;
+
+  constructor(
+    private messageService: MessageService,
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
+  ) {
     const user = this.authService.getCurrentUser();
     if (user?.parent) {
       this.parentName = `${user.parent.firstName || ''} ${user.parent.lastName || ''}`.trim() || 'Parent';
@@ -28,28 +37,51 @@ export class ParentOutboxComponent implements OnInit {
     }
   }
 
-  ngOnInit() { this.load(); }
+  ngOnInit() {
+    this.load();
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 
   load() {
     this.loading = true;
     this.error = '';
-    this.messageService.getParentOutbox().subscribe({
-      next: (res: any) => {
-        this.allMessages = res?.messages || [];
-        this.applyFilter();
-        this.loading = false;
-      },
-      error: (err: any) => {
-        this.loading = false;
-        if (err.status === 401) {
-          this.error = 'Session expired. Redirecting to login…';
-          setTimeout(() => this.authService.logout(), 2000);
-        } else {
-          this.error = err?.error?.message || 'Failed to load sent messages';
-        }
-        setTimeout(() => this.error = '', 5000);
-      }
-    });
+    this.messageService
+      .getParentOutbox()
+      .pipe(
+        timeout(this.requestTimeoutMs),
+        takeUntil(this.destroy$),
+        catchError((err: any) => {
+          if (err?.status === 401) {
+            this.error = 'Session expired. Redirecting to login…';
+            setTimeout(() => this.authService.logout(), 2000);
+          } else {
+            this.error =
+              err?.name === 'TimeoutError'
+                ? 'Request timed out while loading messages.'
+                : err?.error?.message || err?.message || 'Failed to load sent messages';
+          }
+          setTimeout(() => {
+            this.error = '';
+            this.cdr.markForCheck();
+          }, 8000);
+          return of({ messages: [] });
+        }),
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (res: any) => {
+          this.allMessages = res?.messages || [];
+          this.applyFilter();
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   applyFilter() {

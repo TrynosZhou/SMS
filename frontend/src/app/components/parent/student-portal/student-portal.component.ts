@@ -1,48 +1,94 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subject, of } from 'rxjs';
+import { catchError, finalize, takeUntil, timeout } from 'rxjs/operators';
 import { ParentService } from '../../../services/parent.service';
 import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
-  standalone: false,  selector: 'app-student-portal',
-templateUrl: './student-portal.component.html',
+  standalone: false,
+  selector: 'app-student-portal',
+  templateUrl: './student-portal.component.html',
   styleUrls: ['./student-portal.component.css']
 })
-export class StudentPortalComponent implements OnInit {
+export class StudentPortalComponent implements OnInit, OnDestroy {
   students: any[] = [];
   loading = false;
   error = '';
   currencySymbol = '$';
 
+  private readonly destroy$ = new Subject<void>();
+  private readonly requestTimeoutMs = 60000;
+
   constructor(
     private parentService: ParentService,
     private settingsService: SettingsService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
-    this.settingsService.getSettings().subscribe({
-      next: (s: any) => (this.currencySymbol = s?.currencySymbol || '$'),
-      error: () => {}
-    });
+    this.bootstrap();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private bootstrap(): void {
+    this.loading = true;
+    this.error = '';
+
+    this.settingsService
+      .getSettings()
+      .pipe(
+        timeout(this.requestTimeoutMs),
+        takeUntil(this.destroy$),
+        catchError(() => of({}))
+      )
+      .subscribe((s: any) => {
+        this.currencySymbol = s?.currencySymbol || '$';
+        this.cdr.markForCheck();
+      });
+
     this.loadStudents();
   }
 
   loadStudents(): void {
     this.loading = true;
     this.error = '';
-    this.parentService.getLinkedStudents().subscribe({
-      next: (res: any) => {
-        this.students = res?.students || [];
-        this.loading = false;
-      },
-      error: (err: any) => {
-        this.loading = false;
-        this.error = err?.error?.message || 'Failed to load linked students.';
-      }
-    });
+
+    this.parentService
+      .getLinkedStudents()
+      .pipe(
+        timeout(this.requestTimeoutMs),
+        takeUntil(this.destroy$),
+        catchError((err: any) => {
+          if (err?.status === 401) {
+            this.error = 'Session expired. Redirecting to login…';
+            setTimeout(() => this.authService.logout(), 2000);
+          } else {
+            this.error =
+              err?.name === 'TimeoutError'
+                ? 'Request timed out while loading students.'
+                : err?.error?.message || err?.message || 'Failed to load linked students.';
+          }
+          return of({ students: [] });
+        }),
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (res: any) => {
+          this.students = res?.students || [];
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   openReportCard(student: any): void {
@@ -57,9 +103,7 @@ export class StudentPortalComponent implements OnInit {
 
   openStudentDashboard(student: any): void {
     if (!student?.id) return;
-    // Parent stays logged in, but we switch the UI + API context to this student.
     this.authService.enterStudentPortal(student);
-    // Student "home" for e-learning is the task list page.
     this.router.navigate(['/eweb']);
   }
 
@@ -77,4 +121,3 @@ export class StudentPortalComponent implements OnInit {
     return [cls, num].filter(Boolean).join(' • ');
   }
 }
-

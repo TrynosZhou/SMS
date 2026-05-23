@@ -42,195 +42,214 @@
   <!-- ── Main Content ──────────────────────────────────────────────────── -->
   <main class="pdb-main">
 
-    <!-- Welcome Header -->
-    <div class="pdb-welcome">
-      <div class="welcome-left">
-        <p class="welcome-greeting">Welcome back</p>
-        <h1 class="welcome-name">{{ greetingWithName }}</h1>
-        <p class="welcome-date">{{ todayDate }}</p>
-      </div>
-      <div class="welcome-actions">
-        <button class="hdr-btn primary" (click)="linkMoreStudents()">➕ Link Students</button>
-        <button class="hdr-btn secondary" (click)="manageAccount()">👤 My Account</button>
-      </div>
-    </div>
-
-    <!-- Alerts -->
-    <div class="pdb-alert error" *ngIf="error">
-      <span>⚠️</span> {{ error }}
-    </div>
-
-    <!-- Loading -->
-    <div class="pdb-loading" *ngIf="loading">
-      <div class="spinner"></div>
-      <span>Loading your dashboard…</span>
-    </div>
-
-    <!-- ── Summary Stats ────────────────────────────────────────────────── -->
-    <div class="stats-row" *ngIf="!loading && students.length > 0">
-      <div class="stat-card">
-        <div class="stat-icon">👨‍👩‍👧‍👦</div>
-        <div class="stat-body">
-          <div class="stat-val">{{ students.length }}</div>
-          <div class="stat-lbl">Linked Students</div>
+    <!-- Hero -->
+    <header class="pdb-hero">
+      <div class="pdb-hero__main">
+        <div class="pdb-hero__badges">
+          <span class="pdb-pill">Parent Portal</span>
+          <span class="pdb-pill pdb-pill--live" *ngIf="!loading">
+            <span class="pdb-live-dot"></span> Live overview
+          </span>
         </div>
+        <p class="pdb-hero__eyebrow">Welcome back</p>
+        <h1 class="pdb-hero__title">{{ greetingWithName }}</h1>
+        <p class="pdb-hero__date">{{ todayDate }}</p>
+        <p class="pdb-hero__updated" *ngIf="lastRefreshedAt && !loading">
+          Updated {{ formatRefreshedAt() }}
+        </p>
       </div>
-      <div class="stat-card" [class.danger]="studentsWithBalance > 0" [class.safe]="studentsWithBalance === 0">
-        <div class="stat-icon">💰</div>
-        <div class="stat-body">
-          <div class="stat-val">{{ currencySymbol }} {{ totalOutstanding | number:'1.2-2' }}</div>
-          <div class="stat-lbl">Total Outstanding Fees</div>
-        </div>
-      </div>
-      <div class="stat-card safe">
-        <div class="stat-icon">✅</div>
-        <div class="stat-body">
-          <div class="stat-val">{{ studentsCleared }}</div>
-          <div class="stat-lbl">Students Cleared</div>
-        </div>
-      </div>
-      <div class="stat-card" [class.warn]="studentsWithBalance > 0">
-        <div class="stat-icon">⚠️</div>
-        <div class="stat-body">
-          <div class="stat-val">{{ studentsWithBalance }}</div>
-          <div class="stat-lbl">Pending Fees</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Quick Actions ────────────────────────────────────────────────── -->
-    <div class="section-card" *ngIf="!loading && students.length > 0">
-      <div class="section-title">⚡ Quick Actions</div>
-      <div class="qa-grid">
-
-        <!-- View Report Card -->
-        <button
-          class="qa-tile"
-          (click)="viewReportCardForFirstStudent()"
-          [class.qa-locked]="(getFirstStudent()?.termBalance || 0) > 0"
-          [disabled]="(getFirstStudent()?.termBalance || 0) > 0">
-          <span class="qa-icon">📄</span>
-          <span class="qa-label">View Report Card</span>
-          <span class="qa-hint" *ngIf="(getFirstStudent()?.termBalance || 0) > 0">Clear balance to unlock</span>
-          <span class="qa-hint success" *ngIf="(getFirstStudent()?.termBalance || 0) === 0">Available</span>
+      <div class="pdb-hero__actions">
+        <button type="button" class="pdb-btn pdb-btn--ghost" (click)="refreshDashboard()" [disabled]="loading">
+          <span [class.pdb-spin]="loading">↻</span> Refresh
         </button>
-
-        <!-- Invoice Preview -->
-        <button class="qa-tile" (click)="previewCurrentInvoice()" [disabled]="invoiceLoading">
-          <span class="qa-icon">👁</span>
-          <span class="qa-label">Preview Invoice</span>
-          <span class="qa-hint">{{ invoiceLoading ? 'Loading…' : 'Open PDF' }}</span>
-          <span class="spinner-sm" *ngIf="invoiceLoading"></span>
-        </button>
-
-        <!-- Invoice Download -->
-        <button class="qa-tile" (click)="downloadCurrentInvoice()" [disabled]="invoiceLoading">
-          <span class="qa-icon">⬇️</span>
-          <span class="qa-label">Download Invoice</span>
-          <span class="qa-hint">{{ invoiceLoading ? 'Loading…' : 'Save PDF' }}</span>
-          <span class="spinner-sm" *ngIf="invoiceLoading"></span>
-        </button>
-
-        <!-- Send Message -->
-        <a class="qa-tile qa-link" routerLink="/parent/send-message">
-          <span class="qa-icon">✉️</span>
-          <span class="qa-label">Send Message</span>
-          <span class="qa-hint">Contact the school</span>
-        </a>
-
+        <button type="button" class="pdb-btn pdb-btn--white" (click)="linkMoreStudents()">➕ Link students</button>
+        <button type="button" class="pdb-btn pdb-btn--outline" (click)="manageAccount()">👤 Account</button>
       </div>
-    </div>
+    </header>
 
-    <!-- ── Empty State ───────────────────────────────────────────────────── -->
-    <div class="pdb-empty" *ngIf="!loading && students.length === 0 && !error">
-      <div class="empty-icon">👨‍👩‍👧‍👦</div>
-      <h3>No Linked Students</h3>
-      <p>Connect your account to your child's student profile to access their information.</p>
-      <button class="hdr-btn primary" (click)="linkMoreStudents()">➕ Link Your Child</button>
-    </div>
+    <div class="pdb-alert error" *ngIf="error"><span>⚠️</span> {{ error }}</div>
 
-    <!-- ── Students Grid ─────────────────────────────────────────────────── -->
-    <div class="section-card" *ngIf="!loading && students.length > 0">
+    <!-- Skeleton -->
+    <div class="pdb-skeleton-grid" *ngIf="loading" aria-busy="true">
+      <div class="pdb-skeleton-card" *ngFor="let _ of [0,1,2,3]"></div>
+    </div>
+    <div class="pdb-skeleton-panel" *ngIf="loading"></div>
+
+    <ng-container *ngIf="!loading">
+      <!-- Stats -->
+      <div class="pdb-stats" *ngIf="students.length > 0">
+        <article class="pdb-stat pdb-stat--violet">
+          <span class="pdb-stat__icon">👨‍👩‍👧‍👦</span>
+          <div>
+            <div class="pdb-stat__val">{{ students.length }}</div>
+            <div class="pdb-stat__lbl">Linked students</div>
+          </div>
+        </article>
+        <article class="pdb-stat pdb-stat--rose" [class.pdb-stat--alert]="totalOutstanding > 0">
+          <span class="pdb-stat__icon">💰</span>
+          <div>
+            <div class="pdb-stat__val">{{ currencySymbol }} {{ totalOutstanding | number:'1.0-0' }}</div>
+            <div class="pdb-stat__lbl">Outstanding fees</div>
+          </div>
+        </article>
+        <article class="pdb-stat pdb-stat--emerald">
+          <span class="pdb-stat__icon">✅</span>
+          <div>
+            <div class="pdb-stat__val">{{ studentsCleared }}</div>
+            <div class="pdb-stat__lbl">Fees cleared</div>
+          </div>
+        </article>
+        <article class="pdb-stat pdb-stat--sky" [class.pdb-stat--alert]="unreadMessageCount > 0">
+          <span class="pdb-stat__icon">📧</span>
+          <div>
+            <div class="pdb-stat__val">{{ unreadMessageCount }}</div>
+            <div class="pdb-stat__lbl">Unread messages</div>
+          </div>
+        </article>
+      </div>
+
+      <!-- Fees progress -->
+      <div class="pdb-progress-card section-card" *ngIf="students.length > 0">
+        <div class="pdb-progress-head">
+          <span class="pdb-progress-title">Fee clearance</span>
+          <span class="pdb-progress-pct">{{ feesClearedPercent }}% of students cleared</span>
+        </div>
+        <div class="pdb-progress-track">
+          <div class="pdb-progress-fill" [style.width.%]="feesClearedPercent"></div>
+        </div>
+      </div>
+
+      <!-- Empty -->
+      <div class="pdb-empty" *ngIf="students.length === 0 && !error">
+        <div class="empty-icon">👨‍👩‍👧‍👦</div>
+        <h3>No linked students yet</h3>
+        <p>Link your child's profile to view fees, report cards, invoices, and school messages.</p>
+        <button type="button" class="pdb-btn pdb-btn--primary" (click)="linkMoreStudents()">➕ Link your child</button>
+      </div>
+
+      <div class="pdb-columns" *ngIf="students.length > 0">
+        <div class="pdb-col-main">
+          <!-- Quick actions -->
+          <section class="section-card">
+            <h2 class="section-title">⚡ Quick actions</h2>
+            <div class="qa-grid">
+              <button type="button" class="qa-tile"
+                (click)="viewReportCardForFirstStudent()"
+                [class.qa-locked]="(getFirstStudent()?.termBalance || 0) > 0"
+                [disabled]="(getFirstStudent()?.termBalance || 0) > 0">
+                <span class="qa-icon">📄</span>
+                <span class="qa-label">Report card</span>
+                <span class="qa-hint" *ngIf="(getFirstStudent()?.termBalance || 0) > 0">Clear balance first</span>
+                <span class="qa-hint success" *ngIf="(getFirstStudent()?.termBalance || 0) === 0">Ready to view</span>
+              </button>
+              <button type="button" class="qa-tile" (click)="previewCurrentInvoice()" [disabled]="invoiceLoading">
+                <span class="qa-icon">👁</span>
+                <span class="qa-label">Preview invoice</span>
+                <span class="qa-hint">{{ invoiceLoading ? 'Loading…' : 'Latest PDF' }}</span>
+              </button>
+              <button type="button" class="qa-tile" (click)="downloadCurrentInvoice()" [disabled]="invoiceLoading">
+                <span class="qa-icon">⬇️</span>
+                <span class="qa-label">Download invoice</span>
+                <span class="qa-hint">Save to device</span>
+              </button>
+              <a class="qa-tile qa-link" routerLink="/parent/send-message">
+                <span class="qa-icon">✉️</span>
+                <span class="qa-label">Send message</span>
+                <span class="qa-hint">Contact school</span>
+              </a>
+            </div>
+          </section>
+
+          <!-- Students -->
+          <section class="section-card">
+            <div class="section-title-row">
+              <h2 class="section-title">🎓 Your children</h2>
+              <button type="button" class="hdr-btn primary sm" (click)="linkMoreStudents()">➕ Link more</button>
+            </div>
+            <div class="students-grid">
+              <article class="student-card" *ngFor="let student of students">
+                <div class="sc-header">
+                  <div class="sc-avatar">{{ studentInitials(student) }}</div>
+                  <div class="sc-name-block">
+                    <div class="sc-name">{{ student.firstName }} {{ student.lastName }}</div>
+                    <div class="sc-number">{{ student.studentNumber }}</div>
+                  </div>
+                  <span class="sc-badge" [class.cleared]="(student.termBalance || 0) === 0" [class.owing]="(student.termBalance || 0) > 0">
+                    {{ (student.termBalance || 0) === 0 ? 'Cleared' : 'Balance due' }}
+                  </span>
+                </div>
+                <div class="sc-details">
+                  <div class="sc-detail-row">
+                    <span class="sc-detail-lbl">Class</span>
+                    <span class="sc-detail-val">{{ (student.class || student.classEntity)?.name || 'N/A' }}</span>
+                  </div>
+                  <div class="sc-detail-row">
+                    <span class="sc-detail-lbl">Type</span>
+                    <span class="sc-detail-val">{{ student.studentType || 'Day Scholar' }}</span>
+                  </div>
+                </div>
+                <div class="sc-fees">
+                  <div class="sc-fee-block">
+                    <div class="sc-fee-lbl">Tuition balance</div>
+                    <div class="sc-fee-amount" [class.owing]="student.currentInvoiceBalance > 0" [class.cleared]="student.currentInvoiceBalance <= 0">
+                      {{ currencySymbol }} {{ student.currentInvoiceBalance | number:'1.2-2' }}
+                    </div>
+                  </div>
+                  <div class="sc-fee-block" *ngIf="student.uniformBalance != null && student.uniformBalance > 0">
+                    <div class="sc-fee-lbl">Uniform</div>
+                    <div class="sc-fee-amount owing">{{ currencySymbol }} {{ student.uniformBalance | number:'1.2-2' }}</div>
+                  </div>
+                </div>
+                <div class="sc-notice warn" *ngIf="(student.termBalance || 0) > 0">Report card locked until tuition is cleared</div>
+                <div class="sc-notice ok" *ngIf="(student.termBalance || 0) === 0">Report card available</div>
+                <div class="sc-actions sc-actions--grid">
+                  <button type="button" class="sc-btn ghost" (click)="openStudentPortal(student)">🚀 Portal</button>
+                  <button type="button" class="sc-btn ghost" (click)="openInvoiceStatement(student)">🧾 Invoice</button>
+                  <button type="button" class="sc-btn primary" (click)="viewReportCard(student)" [disabled]="(student.termBalance || 0) > 0">📄 Report</button>
+                  <button type="button" class="sc-btn danger" (click)="unlinkStudent(student.id)">Unlink</button>
+                </div>
+              </article>
+            </div>
+          </section>
+        </div>
+
+        <aside class="pdb-col-aside">
+          <section class="section-card pdb-inbox-card">
+            <div class="section-title-row">
+              <h2 class="section-title">📬 Recent messages</h2>
+              <a routerLink="/parent/inbox" class="pdb-text-link">View all</a>
+            </div>
+            <div class="pdb-inbox-empty" *ngIf="recentMessages.length === 0">
+              <p>No messages yet.</p>
+              <a routerLink="/parent/send-message" class="pdb-btn pdb-btn--soft">Send a message</a>
+            </div>
+            <ul class="pdb-inbox-list" *ngIf="recentMessages.length > 0">
+              <li *ngFor="let m of recentMessages">
+                <a routerLink="/parent/inbox" class="pdb-inbox-item" [class.unread]="!m.isRead">
+                  <span class="pdb-inbox-subject">{{ m.subject }}</span>
+                  <span class="pdb-inbox-meta">{{ m.senderName || 'School' }} · {{ formatMessageDate(m.createdAt) }}</span>
+                </a>
+              </li>
+            </ul>
+          </section>
+
+          <section class="section-card">
+            <h2 class="section-title">🔗 Quick links</h2>
+            <div class="pdb-quick-grid">
+              <a *ngFor="let q of quickLinks" [routerLink]="q.route" class="pdb-quick-tile" [ngClass]="'pdb-quick-tile--' + q.pastel">
+                <span class="pdb-quick-icon">{{ q.icon }}</span>
+                <span class="pdb-quick-label">{{ q.label }}</span>
+              </a>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </ng-container>
+
+    <!-- News -->
+    <section class="section-card pdb-news-section">
       <div class="section-title-row">
-        <div class="section-title">🎓 Your Students</div>
-        <button class="hdr-btn primary sm" (click)="linkMoreStudents()">➕ Link More</button>
-      </div>
-
-      <div class="students-grid">
-        <div class="student-card" *ngFor="let student of students">
-
-          <!-- Student Header -->
-          <div class="sc-header">
-            <div class="sc-avatar">{{ studentInitials(student) }}</div>
-            <div class="sc-name-block">
-              <div class="sc-name">{{ student.firstName }} {{ student.lastName }}</div>
-              <div class="sc-number">{{ student.studentNumber }}</div>
-            </div>
-            <div class="sc-badge" [class.cleared]="(student.termBalance || 0) === 0" [class.owing]="(student.termBalance || 0) > 0">
-              {{ (student.termBalance || 0) === 0 ? '✅ Cleared' : '⚠️ Balance Due' }}
-            </div>
-          </div>
-
-          <!-- Student Details -->
-          <div class="sc-details">
-            <div class="sc-detail-row">
-              <span class="sc-detail-lbl">Class</span>
-              <span class="sc-detail-val">{{ (student.class || student.classEntity)?.name || 'N/A' }}</span>
-            </div>
-            <div class="sc-detail-row">
-              <span class="sc-detail-lbl">Student Type</span>
-              <span class="sc-detail-val">{{ student.studentType || 'Day Scholar' }}</span>
-            </div>
-          </div>
-
-          <!-- Fees -->
-          <div class="sc-fees">
-            <div class="sc-fee-block">
-              <div class="sc-fee-lbl">Tuition Balance</div>
-              <div class="sc-fee-amount"
-                [class.owing]="student.currentInvoiceBalance > 0"
-                [class.cleared]="student.currentInvoiceBalance <= 0">
-                {{ currencySymbol }} {{ student.currentInvoiceBalance | number:'1.2-2' }}
-              </div>
-            </div>
-            <div class="sc-fee-block" *ngIf="student.uniformBalance != null">
-              <div class="sc-fee-lbl">Uniform Balance</div>
-              <div class="sc-fee-amount owing">
-                {{ currencySymbol }} {{ (student.uniformBalance || 0) | number:'1.2-2' }}
-              </div>
-              <div class="sc-fee-note">Billed separately from tuition</div>
-            </div>
-          </div>
-
-          <!-- Access notice -->
-          <div class="sc-notice warn" *ngIf="(student.termBalance || 0) > 0">
-            ⚠️ Report card locked — clear the tuition balance to gain access
-          </div>
-          <div class="sc-notice ok" *ngIf="(student.termBalance || 0) === 0">
-            ✅ Report card accessible — tuition balance cleared
-          </div>
-
-          <!-- Actions -->
-          <div class="sc-actions">
-            <button
-              class="sc-btn primary"
-              (click)="viewReportCard(student)"
-              [disabled]="(student.termBalance || 0) > 0">
-              📄 Report Card
-            </button>
-            <button class="sc-btn danger" (click)="unlinkStudent(student.id)">
-              🔗 Unlink
-            </button>
-          </div>
-
-        </div>
-      </div>
-    </div>
-
-    <!-- ── News & Updates ────────────────────────────────────────────────── -->
-    <div class="section-card">
-      <div class="section-title-row">
-        <div class="section-title">📰 News &amp; Updates</div>
+        <h2 class="section-title">📰 News &amp; updates</h2>
         <a class="view-all-link" routerLink="/news-feed">View all →</a>
       </div>
 
@@ -295,7 +314,7 @@
         </div>
 
       </div>
-    </div>
+    </section>
 
   </main>
 </div>

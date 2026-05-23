@@ -116,9 +116,9 @@
           </label>
         </div>
 
-        <!-- Dashboard - Teachers go to teacher dashboard, others go to main dashboard -->
+        <!-- Dashboard - role-specific home -->
         <a
-          [routerLink]="isTeacher() ? '/teacher/dashboard' : '/dashboard'"
+          [routerLink]="isTeacher() ? '/teacher/dashboard' : (isParent() ? '/parent/dashboard' : '/dashboard')"
           routerLinkActive="active"
           class="sidebar-item"
           *ngIf="matchesSidebarFilter('Dashboard')">

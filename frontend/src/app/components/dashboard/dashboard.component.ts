@@ -131,15 +131,6 @@ recentStudents: any[] = [];
     { route: '/settings', label: 'Settings', icon: '⚙️', pastel: 'slate', module: 'settings' }
   ];
 
-  readonly parentModuleShortcuts: DashboardModuleShortcut[] = [
-    { route: '/parent/dashboard', label: 'Balances', icon: '💳', pastel: 'rose' },
-    { route: '/parent/link-students', label: 'Link students', icon: '🔗', pastel: 'sky' },
-    { route: '/parent/invoice-statement', label: 'Statement', icon: '📑', pastel: 'violet' },
-    { route: '/student/report-card', label: 'Report cards', icon: '📄', pastel: 'amber' },
-    { route: '/messages/inbox', label: 'Messages', icon: '💬', pastel: 'pink' },
-    { route: '/parent/manage-account', label: 'Account', icon: '⚙️', pastel: 'slate' }
-  ];
-
   readonly studentModuleShortcuts: DashboardModuleShortcut[] = [
     { route: '/student/report-card', label: 'Report card', icon: '📄', pastel: 'violet' },
     { route: '/student/invoice-statement', label: 'Statement', icon: '📑', pastel: 'sky' },
@@ -243,6 +234,7 @@ id: 'inventory',
   loadingBalance = false;
   activeTerm: string = '';
   currencySymbol: string = '$';
+
   private studentDataRetryCount = 0;
   private readonly MAX_STUDENT_DATA_RETRIES = 3;
   private statsLoadGeneration = 0;
@@ -265,7 +257,13 @@ constructor(
 
     if (this.isTeacher()) {
       this.loadingStats = false;
-this.router.navigate(['/teacher/dashboard']);
+      this.router.navigate(['/teacher/dashboard']);
+      return;
+    }
+
+    if (this.isParent()) {
+      this.loadingStats = false;
+      this.router.navigate(['/parent/dashboard']);
       return;
     }
 
@@ -464,8 +462,6 @@ if (this.textToggleInterval) {
       list = this.accountantModuleShortcuts;
     } else if (this.isStudent()) {
       return this.studentModuleShortcuts;
-    } else if (this.isParent()) {
-      return this.parentModuleShortcuts;
     } else {
       list = this.adminModuleShortcuts;
     }
@@ -744,7 +740,7 @@ if (this.textToggleInterval) {
       return [user.student.firstName, user.student.lastName].filter(Boolean).join(' ').trim();
     }
     if (user.parent && (user.parent.firstName || user.parent.lastName)) {
-      return [user.parent.firstName, user.parent.lastName].filter(Boolean).join(' ').trim();
+      return [user.parent.lastName, user.parent.firstName].filter(Boolean).join(' ').trim();
     }
 
     return this.formatFriendlyDisplay(user.email || user.username || '') || 'User';

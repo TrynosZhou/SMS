@@ -1,5 +1,4 @@
 <div class="psm-layout">
-  <!-- Sidebar -->
   <aside class="psm-sidebar">
     <div class="psm-sidebar-brand">
       <span class="brand-icon">🏫</span>
@@ -14,6 +13,7 @@
       </a>
       <a routerLink="/parent/inbox" routerLinkActive="active" class="psm-nav-item">
         <span class="nav-icon">📧</span><span>My Inbox</span>
+        <span class="psm-badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
       </a>
       <a routerLink="/parent/send-message" routerLinkActive="active" class="psm-nav-item">
         <span class="nav-icon">✉️</span><span>Send Message</span>
@@ -28,123 +28,205 @@
         <span class="nav-icon">🎓</span><span>Student Portal</span>
       </a>
     </nav>
-    <button class="psm-logout" (click)="logout()">🚪 Logout</button>
+    <button type="button" class="psm-logout" (click)="logout()">🚪 Logout</button>
   </aside>
 
-  <!-- Main -->
   <main class="psm-main">
-    <div class="psm-page-header">
-      <div>
-        <h1 class="psm-title">✉️ New Message</h1>
-        <p class="psm-subtitle">Send a message to school administration</p>
+    <header class="psm-hero">
+      <div class="psm-hero__main">
+        <div class="psm-hero__badges">
+          <span class="psm-pill">Compose</span>
+          <span class="psm-pill psm-pill--live" *ngIf="draftSavedAt && hasDraftContent">
+            <span class="psm-live-dot"></span> Draft saved {{ formatDraftTime() }}
+          </span>
+        </div>
+        <h1 class="psm-hero__title">✉️ New message</h1>
+        <p class="psm-hero__sub">Reach school administration or the finance office directly</p>
       </div>
-    </div>
+      <div class="psm-hero__stats" *ngIf="!statsLoading">
+        <a routerLink="/parent/inbox" class="psm-stat-chip">
+          <span class="psm-stat-num">{{ unreadCount }}</span>
+          <span class="psm-stat-lbl">Unread</span>
+        </a>
+        <a routerLink="/parent/outbox" class="psm-stat-chip">
+          <span class="psm-stat-num">{{ sentCount }}</span>
+          <span class="psm-stat-lbl">Sent</span>
+        </a>
+      </div>
+      <div class="psm-hero__stats psm-hero__stats--skel" *ngIf="statsLoading">
+        <span class="psm-skel-chip"></span>
+        <span class="psm-skel-chip"></span>
+      </div>
+    </header>
 
-    <!-- Alerts -->
-    <div class="psm-alert psm-alert-success" *ngIf="success">
+    <div class="psm-alert psm-alert-success" *ngIf="success" role="status">
       <span class="alert-icon">✓</span> {{ success }}
     </div>
-    <div class="psm-alert psm-alert-error" *ngIf="error">
+    <div class="psm-alert psm-alert-error" *ngIf="error" role="alert">
       <span class="alert-icon">✕</span> {{ error }}
     </div>
 
-    <div class="psm-card">
-
-      <!-- Quick Templates -->
-      <div class="templates-section">
-        <span class="templates-label">Quick Templates:</span>
-        <button class="tpl-btn" *ngFor="let t of templates" (click)="applyTemplate(t)" type="button">
-          {{ t.label }}
-        </button>
-      </div>
-
-      <!-- Recipient Cards -->
-      <div class="field-group">
-        <label class="field-label">Recipient</label>
-        <div class="recipient-cards">
-          <div class="recipient-card" [class.active]="recipient === 'admin'" (click)="recipient = 'admin'">
-            <span class="rc-icon">🏫</span>
-            <div class="rc-info">
-              <div class="rc-name">Administrator</div>
-              <div class="rc-role">School Administration</div>
-            </div>
-            <span class="rc-check" *ngIf="recipient === 'admin'">✓</span>
+    <div class="psm-columns">
+      <div class="psm-col-form">
+        <div class="psm-card">
+          <div class="psm-progress-head">
+            <span class="psm-progress-label">Message progress</span>
+            <span class="psm-progress-pct">{{ formProgress }}%</span>
           </div>
-          <div class="recipient-card" [class.active]="recipient === 'accountant'" (click)="recipient = 'accountant'">
-            <span class="rc-icon">💼</span>
-            <div class="rc-info">
-              <div class="rc-name">Accountant</div>
-              <div class="rc-role">Finance Office</div>
+          <div class="psm-progress-track">
+            <div class="psm-progress-fill" [style.width.%]="formProgress"></div>
+          </div>
+
+          <section class="psm-section">
+            <h2 class="psm-section-title">Quick templates</h2>
+            <div class="tpl-grid">
+              <button
+                type="button"
+                class="tpl-card"
+                *ngFor="let t of templates"
+                [class.active]="selectedTemplateId === t.id"
+                (click)="applyTemplate(t)">
+                <span class="tpl-icon">{{ t.icon }}</span>
+                <span class="tpl-label">{{ t.label }}</span>
+              </button>
             </div>
-            <span class="rc-check" *ngIf="recipient === 'accountant'">✓</span>
+          </section>
+
+          <section class="psm-section">
+            <h2 class="psm-section-title">Recipient</h2>
+            <div class="recipient-cards">
+              <button
+                type="button"
+                class="recipient-card"
+                [class.active]="recipient === 'admin'"
+                (click)="selectRecipient('admin')">
+                <span class="rc-icon">🏫</span>
+                <div class="rc-info">
+                  <div class="rc-name">Administrator</div>
+                  <div class="rc-role">General &amp; academic matters</div>
+                </div>
+                <span class="rc-check" *ngIf="recipient === 'admin'">✓</span>
+              </button>
+              <button
+                type="button"
+                class="recipient-card"
+                [class.active]="recipient === 'accountant'"
+                (click)="selectRecipient('accountant')">
+                <span class="rc-icon">💼</span>
+                <div class="rc-info">
+                  <div class="rc-name">Accountant</div>
+                  <div class="rc-role">Fees, invoices &amp; payments</div>
+                </div>
+                <span class="rc-check" *ngIf="recipient === 'accountant'">✓</span>
+              </button>
+            </div>
+            <p class="psm-hint">Sending to: <strong>{{ recipientLabel }}</strong></p>
+          </section>
+
+          <section class="psm-section">
+            <label class="field-label" for="psm-subject">Subject</label>
+            <input
+              id="psm-subject"
+              class="psm-input"
+              type="text"
+              [(ngModel)]="subject"
+              (ngModelChange)="onSubjectChange()"
+              placeholder="What is your message about?"
+              maxlength="150" />
+          </section>
+
+          <section class="psm-section">
+            <div class="body-label-row">
+              <label class="field-label" for="psm-body">Message</label>
+              <span class="char-counter" [class]="charClass">{{ charCount }} / {{ charLimit }}</span>
+            </div>
+            <textarea
+              id="psm-body"
+              class="psm-textarea"
+              [(ngModel)]="body"
+              (ngModelChange)="onBodyChange()"
+              placeholder="Type your message here…"
+              [maxlength]="charLimit"></textarea>
+            <div class="char-bar">
+              <div class="char-bar-fill" [class]="charClass" [style.width.%]="(charCount / charLimit) * 100"></div>
+            </div>
+          </section>
+
+          <section class="psm-section">
+            <label class="field-label">
+              Attachments <span class="optional">(optional, max 10 MB each)</span>
+            </label>
+            <div
+              class="drop-zone"
+              [class.dragging]="isDragging"
+              (dragover)="onDragOver($event)"
+              (dragleave)="onDragLeave($event)"
+              (drop)="onDrop($event)"
+              (click)="fileInput.click()"
+              role="button"
+              tabindex="0">
+              <input #fileInput type="file" multiple hidden (change)="onFileChange($event)" />
+              <span class="dz-icon">📎</span>
+              <span class="dz-text">Drop files here or <strong>click to browse</strong></span>
+              <span class="dz-hint">PDF, Word, Excel, images</span>
+            </div>
+            <div class="file-list" *ngIf="attachments.length > 0">
+              <div class="file-item" *ngFor="let f of attachments; let i = index">
+                <span class="file-item-icon">{{ fileIcon(f.name) }}</span>
+                <div class="file-item-info">
+                  <span class="file-name">{{ f.name }}</span>
+                  <span class="file-size">{{ formatBytes(f.size) }}</span>
+                </div>
+                <button type="button" class="file-remove" (click)="removeAttachment(i); $event.stopPropagation()" title="Remove">✕</button>
+              </div>
+            </div>
+          </section>
+
+          <div class="psm-actions">
+            <button type="button" class="psm-btn-clear" (click)="clearForm()" [disabled]="loading">
+              Clear
+            </button>
+            <button type="button" class="psm-btn-send" [disabled]="!canSend()" (click)="send()">
+              <span *ngIf="!loading">✉️ Send to {{ recipientLabel }}</span>
+              <span *ngIf="loading" class="sending-spinner">Sending…</span>
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- Subject -->
-      <div class="field-group">
-        <label class="field-label" for="psm-subject">Subject</label>
-        <input
-          id="psm-subject"
-          class="psm-input"
-          type="text"
-          [(ngModel)]="subject"
-          placeholder="Enter the subject of your message..."
-          maxlength="150" />
-      </div>
+      <aside class="psm-col-aside">
+        <section class="psm-aside-card">
+          <h3 class="psm-aside-title">💡 Tips</h3>
+          <ul class="psm-tips-list">
+            <li *ngFor="let tip of tips">{{ tip }}</li>
+          </ul>
+        </section>
 
-      <!-- Message Body -->
-      <div class="field-group">
-        <div class="body-label-row">
-          <label class="field-label" for="psm-body">Message</label>
-          <span class="char-counter" [class]="charClass">{{ charCount }} / {{ charLimit }}</span>
-        </div>
-        <textarea
-          id="psm-body"
-          class="psm-textarea"
-          [(ngModel)]="body"
-          placeholder="Type your message here..."
-          [maxlength]="charLimit"></textarea>
-        <div class="char-bar">
-          <div class="char-bar-fill" [class]="charClass" [style.width.%]="(charCount / charLimit) * 100"></div>
-        </div>
-      </div>
-
-      <!-- Attachments -->
-      <div class="field-group">
-        <label class="field-label">Attachments <span class="optional">(optional)</span></label>
-        <div
-          class="drop-zone"
-          [class.dragging]="isDragging"
-          (dragover)="onDragOver($event)"
-          (dragleave)="onDragLeave($event)"
-          (drop)="onDrop($event)"
-          (click)="fileInput.click()">
-          <input #fileInput type="file" multiple hidden (change)="onFileChange($event)" />
-          <span class="dz-icon">📎</span>
-          <span class="dz-text">Drop files here or <strong>click to browse</strong></span>
-          <span class="dz-hint">PDF, Word, Excel, Images supported</span>
-        </div>
-        <div class="file-list" *ngIf="attachments.length > 0">
-          <div class="file-item" *ngFor="let f of attachments; let i = index">
-            <span class="file-item-icon">{{ fileIcon(f.name) }}</span>
-            <div class="file-item-info">
-              <span class="file-name">{{ f.name }}</span>
-              <span class="file-size">{{ formatBytes(f.size) }}</span>
-            </div>
-            <button class="file-remove" (click)="removeAttachment(i)" title="Remove" type="button">✕</button>
+        <section class="psm-aside-card">
+          <div class="psm-aside-head">
+            <h3 class="psm-aside-title">📤 Recent sent</h3>
+            <a routerLink="/parent/outbox" class="psm-link">View all</a>
           </div>
-        </div>
-      </div>
+          <div class="psm-aside-empty" *ngIf="!statsLoading && recentSent.length === 0">
+            <p>No sent messages yet.</p>
+          </div>
+          <ul class="psm-recent-list" *ngIf="recentSent.length > 0">
+            <li *ngFor="let m of recentSent">
+              <a routerLink="/parent/outbox" class="psm-recent-item">
+                <span class="psm-recent-subject">{{ m.subject }}</span>
+                <span class="psm-recent-meta">To {{ formatRecipient(m.recipient) }} · {{ formatMessageDate(m.createdAt) }}</span>
+              </a>
+            </li>
+          </ul>
+        </section>
 
-      <!-- Actions -->
-      <div class="psm-actions">
-        <button class="psm-btn-send" [disabled]="!canSend() || loading" (click)="send()">
-          <span *ngIf="!loading">✉️ Send Message</span>
-          <span *ngIf="loading" class="sending-spinner">Sending…</span>
-        </button>
-      </div>
-
+        <section class="psm-aside-card psm-aside-links">
+          <h3 class="psm-aside-title">🔗 Quick links</h3>
+          <a routerLink="/parent/inbox" class="psm-quick-link">📧 Inbox</a>
+          <a routerLink="/parent/outbox" class="psm-quick-link">📤 Outbox</a>
+          <a routerLink="/parent/dashboard" class="psm-quick-link">📊 Dashboard</a>
+        </section>
+      </aside>
     </div>
   </main>
 </div>

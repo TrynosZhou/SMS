@@ -1,11 +1,13 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { forkJoin, of, Subject } from 'rxjs';
+import { catchError, finalize, takeUntil, timeout } from 'rxjs/operators';
 import { ParentService } from '../../../services/parent.service';
 import { AuthService } from '../../../services/auth.service';
-import { ExamService } from '../../../services/exam.service';
 import { SettingsService } from '../../../services/settings.service';
 import { FinanceService } from '../../../services/finance.service';
 import { NewsService } from '../../../services/news.service';
+import { MessageService } from '../../../services/message.service';
 import { News } from '../../../types/news';
 import { environment } from '../../../../environments/environment';
 
@@ -30,11 +32,26 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
   featuredNews: News | null = null;
   latestNews: News[] = [];
 
+  recentMessages: any[] = [];
+  unreadMessageCount = 0;
+  lastRefreshedAt: Date | null = null;
+
+  readonly quickLinks = [
+    { route: '/parent/inbox', icon: '📧', label: 'Inbox', pastel: 'sky' },
+    { route: '/parent/send-message', icon: '✉️', label: 'Send message', pastel: 'violet' },
+    { route: '/parent/invoice-statement', icon: '🧾', label: 'Statements', pastel: 'rose' },
+    { route: '/parent/student-portal', icon: '🎓', label: 'Student portal', pastel: 'emerald' },
+    { route: '/parent/link-students', icon: '🔗', label: 'Link students', pastel: 'amber' },
+    { route: '/parent/manage-account', icon: '👤', label: 'My account', pastel: 'slate' },
+  ];
+
   carouselImages: string[] = [];
   carouselIndex = 0;
   carouselAnimating = true;
   private carouselTimerId: number | null = null;
   private carouselIntervalMs = 5000;
+  private readonly destroy$ = new Subject<void>();
+  private readonly requestTimeoutMs = 60000;
 
   private readonly backendBaseUrl = (() => {
     const apiUrl = String(environment.apiUrl || '').trim();
@@ -47,11 +64,12 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
   constructor(
     private parentService: ParentService,
     private authService: AuthService,
-    private examService: ExamService,
     private settingsService: SettingsService,
     private financeService: FinanceService,
     private newsService: NewsService,
-    private router: Router
+    private messageService: MessageService,
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {
     this.loadParentName();
   }
@@ -70,34 +88,111 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  private fetchParentProfile() {
-    // Fetch fresh parent profile from backend to ensure accurate name display
-    this.parentService.getCurrentProfile().subscribe({
-      next: (profile: any) => {
-        if (profile) {
-          // Format: LastName FirstName (as per user requirement)
-          const lastName = (profile.lastName || '').trim();
-          const firstName = (profile.firstName || '').trim();
-          this.parentName = `${lastName} ${firstName}`.trim() || profile.fullName || 'Parent';
-          this.parentGender = (profile.gender || '').trim();
-        }
-      },
-      error: (err: any) => {
-        console.error('Error fetching parent profile:', err);
-        // Keep the fallback name from loadParentName()
-      }
-    });
-  }
-
   ngOnInit() {
-    this.loadSettings();
-    this.loadStudents();
-    this.loadNews();
-    this.fetchParentProfile();
+    this.bootstrapDashboard();
   }
 
   ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
     this.stopCarousel();
+  }
+
+  private bootstrapDashboard() {
+    this.loading = true;
+    this.newsLoading = true;
+    this.error = '';
+    this.newsError = '';
+
+    forkJoin({
+      settings: this.settingsService.getSettings().pipe(
+        timeout(this.requestTimeoutMs),
+        catchError(() => of({}))
+      ),
+      students: this.parentService.getLinkedStudents().pipe(
+        timeout(this.requestTimeoutMs),
+        catchError((err: any) => {
+          const msg =
+            err?.name === 'TimeoutError'
+              ? 'Request timed out while loading students. Please refresh the page.'
+              : err?.error?.message || err?.message || 'Failed to load students';
+          this.error = msg;
+          if (err?.status === 401) {
+            setTimeout(() => this.authService.logout(), 2000);
+          }
+          return of({ students: [] });
+        })
+      ),
+      news: this.newsService.getPublishedNews({ limit: 6 }).pipe(
+        timeout(this.requestTimeoutMs),
+        catchError((err: any) => {
+          console.error('Error loading news:', err);
+          this.newsError =
+            err?.name === 'TimeoutError'
+              ? 'News request timed out.'
+              : 'Failed to load news & updates.';
+          return of({ data: [], pagination: null });
+        })
+      ),
+      profile: this.parentService.getCurrentProfile().pipe(
+        timeout(this.requestTimeoutMs),
+        catchError(() => of(null))
+      ),
+      messages: this.messageService.getParentMessages().pipe(
+        timeout(this.requestTimeoutMs),
+        catchError(() => of({ messages: [] }))
+      ),
+    })
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.loading = false;
+          this.newsLoading = false;
+          this.lastRefreshedAt = new Date();
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: ({ settings, students, news, profile, messages }) => {
+          this.currencySymbol = settings?.currencySymbol || 'KES';
+          this.schoolLogo = settings?.schoolLogo || null;
+          this.schoolLogo2 = settings?.schoolLogo2 || null;
+
+          this.students = students?.students || [];
+          this.applyNews(news?.data || []);
+
+          const msgs = messages?.messages || [];
+          this.unreadMessageCount = msgs.filter((m: any) => !m.isRead).length;
+          this.recentMessages = msgs.slice(0, 4);
+
+          if (profile) {
+            const lastName = (profile.lastName || '').trim();
+            const firstName = (profile.firstName || '').trim();
+            this.parentName = `${lastName} ${firstName}`.trim() || profile.fullName || 'Parent';
+            this.parentGender = (profile.gender || '').trim();
+          } else {
+            this.loadParentName();
+          }
+
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  private applyNews(items: News[]) {
+    this.featuredNews = items.length > 0 ? items[0] : null;
+    this.latestNews = items.length > 1 ? items.slice(1, 6) : [];
+
+    const urls = items
+      .map((n: any) => String(n?.imageUrl || '').trim())
+      .filter((u: string) => !!u);
+    const normalized = urls
+      .map((u: string) => this.normalizeImageUrl(u))
+      .filter((u: string) => !!u);
+    this.carouselImages = Array.from(new Set(normalized));
+    this.carouselIndex = 0;
+    this.carouselAnimating = true;
+    this.startCarousel();
   }
 
   private stopCarousel() {
@@ -139,34 +234,28 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
     this.newsLoading = true;
     this.newsError = '';
 
-    this.newsService.getPublishedNews({ limit: 6 }).subscribe({
-      next: (response) => {
-        const items = response?.data || [];
-        this.featuredNews = items.length > 0 ? items[0] : null;
-        this.latestNews = items.length > 1 ? items.slice(1, 6) : [];
-
-        const urls = items
-          .map((n: any) => String(n?.imageUrl || '').trim())
-          .filter((u: string) => !!u);
-        const normalized = urls
-          .map((u: string) => this.normalizeImageUrl(u))
-          .filter((u: string) => !!u);
-        this.carouselImages = Array.from(new Set(normalized));
-        this.carouselIndex = 0;
-        this.carouselAnimating = true;
-        this.startCarousel();
-
-        this.newsLoading = false;
-      },
-      error: (err: any) => {
-        console.error('Error loading news:', err);
-        this.newsError = 'Failed to load news & updates.';
-        this.carouselImages = [];
-        this.carouselIndex = 0;
-        this.stopCarousel();
-        this.newsLoading = false;
-      }
-    });
+    this.newsService
+      .getPublishedNews({ limit: 6 })
+      .pipe(
+        timeout(this.requestTimeoutMs),
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.newsLoading = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (response) => {
+          this.applyNews(response?.data || []);
+        },
+        error: (err: any) => {
+          console.error('Error loading news:', err);
+          this.newsError = 'Failed to load news & updates.';
+          this.carouselImages = [];
+          this.carouselIndex = 0;
+          this.stopCarousel();
+        },
+      });
   }
 
   normalizeImageUrl(url?: string | null): string {
@@ -202,41 +291,79 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
     return text.length > maxLen ? `${text.slice(0, maxLen)}...` : text;
   }
 
-  loadSettings() {
-    this.settingsService.getSettings().subscribe({
-      next: (data: any) => {
-        this.currencySymbol = data.currencySymbol || 'KES';
-        this.schoolLogo = data.schoolLogo || null;
-        this.schoolLogo2 = data.schoolLogo2 || null;
-      },
-      error: (err: any) => {
-        console.error('Error loading settings:', err);
-      }
+  refreshDashboard(): void {
+    this.bootstrapDashboard();
+  }
+
+  formatRefreshedAt(): string {
+    if (!this.lastRefreshedAt) return '';
+    return this.lastRefreshedAt.toLocaleString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  formatMessageDate(dateString?: string): string {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
+    if (diffDays === 0) {
+      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    }
+    if (diffDays === 1) return 'Yesterday';
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  get feesClearedPercent(): number {
+    if (!this.students.length) return 0;
+    return Math.round((this.studentsCleared / this.students.length) * 100);
+  }
+
+  openStudentPortal(student: any): void {
+    if (!student?.id) return;
+    this.authService.enterStudentPortal(student);
+    this.router.navigate(['/eweb']);
+  }
+
+  openInvoiceStatement(student: any): void {
+    if (!student?.id) return;
+    this.router.navigate(['/parent/invoice-statement'], {
+      queryParams: { studentId: student.id },
     });
   }
 
   loadStudents() {
     this.loading = true;
     this.error = '';
-    
-    this.parentService.getLinkedStudents().subscribe({
-      next: (response: any) => {
-        this.students = response.students || [];
-        this.loading = false;
-      },
-      error: (err: any) => {
-        this.loading = false;
-        if (err.status === 401) {
-          this.error = 'Authentication required. Please log in again.';
-          setTimeout(() => {
-            this.authService.logout();
-          }, 2000);
-        } else {
-          this.error = err.error?.message || 'Failed to load students';
-        }
-        setTimeout(() => this.error = '', 5000);
-      }
-    });
+
+    this.parentService
+      .getLinkedStudents()
+      .pipe(
+        timeout(this.requestTimeoutMs),
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (response: any) => {
+          this.students = response?.students || [];
+        },
+        error: (err: any) => {
+          if (err?.status === 401) {
+            this.error = 'Authentication required. Please log in again.';
+            setTimeout(() => this.authService.logout(), 2000);
+          } else {
+            this.error =
+              err?.name === 'TimeoutError'
+                ? 'Request timed out while loading students.'
+                : err?.error?.message || 'Failed to load students';
+          }
+          setTimeout(() => (this.error = ''), 8000);
+        },
+      });
   }
 
   viewReportCard(student: any) {

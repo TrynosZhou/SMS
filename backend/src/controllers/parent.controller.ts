@@ -62,12 +62,56 @@ async function resolveParentForRequest(req: AuthRequest): Promise<Parent | null>
     return parent || null;
   }
 
-  // Normal parent flow
+  // Normal parent flow — prefer JWT relation, then Parent.userId, then email match
   let parent = req.user?.parent || null;
   if (!parent) {
     parent = await parentRepository.findOne({ where: { userId: req.user.id } });
   }
+  if (!parent && req.user.email) {
+    parent = await parentRepository.findOne({
+      where: { email: String(req.user.email).trim().toLowerCase() },
+    });
+  }
   return parent || null;
+}
+
+function serializeLinkedStudentForParent(
+  link: ParentStudent,
+  termBalance: number,
+  currentBalance: number
+) {
+  const student = link.student;
+  const cls = student?.classEntity;
+  const classDto = cls
+    ? { id: cls.id, name: cls.name, form: (cls as any).form ?? null }
+    : null;
+
+  return {
+    id: student.id,
+    firstName: student.firstName,
+    lastName: student.lastName,
+    studentNumber: student.studentNumber,
+    dateOfBirth: student.dateOfBirth ?? null,
+    gender: student.gender ?? null,
+    studentStatus: student.studentStatus ?? null,
+    address: student.address ?? null,
+    phoneNumber: student.phoneNumber ?? null,
+    contactNumber: (student as any).contactNumber ?? student.phoneNumber ?? null,
+    studentType: student.studentType ?? null,
+    usesTransport: !!(student as any).usesTransport,
+    usesDiningHall: !!(student as any).usesDiningHall,
+    isActive: student.isActive,
+    classId: student.classId ?? null,
+    classLevel: student.classLevel ?? null,
+    grade: (student as any).grade ?? null,
+    uniformBalance: Math.max(0, parseFloat(parseAmount((student as any).uniformBalance ?? 0).toFixed(2))),
+    class: classDto,
+    classEntity: classDto,
+    termBalance,
+    currentInvoiceBalance: currentBalance,
+    relationshipType: link.relationshipType,
+    parentStudentLinkId: link.id,
+  };
 }
 
 // Get current parent's profile
@@ -163,15 +207,7 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
           currentBalance = termBalance;
         }
 
-        const uniformBalance = Math.max(0, parseFloat(parseAmount((student as any).uniformBalance ?? 0).toFixed(2)));
-        return {
-          ...student,
-          termBalance: termBalance,
-          currentInvoiceBalance: currentBalance,
-          uniformBalance,
-          relationshipType: link.relationshipType,
-          parentStudentLinkId: link.id
-        };
+        return serializeLinkedStudentForParent(link, termBalance, currentBalance);
       })
     );
 
@@ -284,6 +320,11 @@ export const adminCreateParent = async (req: AuthRequest, res: Response) => {
       userId: createdUser ? createdUser.id : null
     });
     await parentRepository.save(parent);
+
+    if (createdUser) {
+      createdUser.parent = parent;
+      await userRepository.save(createdUser);
+    }
 
     res.status(201).json({
       message: 'Parent created successfully',

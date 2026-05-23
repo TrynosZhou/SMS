@@ -598,29 +598,6 @@
         </div>
       </div>
 
-      <div class="card modern-card" *ngIf="isParent()">
-        <div class="card-header-modern">
-          <h2>
-            <span class="card-icon">🧩</span>
-            Modules
-          </h2>
-          <p class="dash-card-subtitle">Navigate to the most-used areas of your family portal.</p>
-        </div>
-        <div class="dash-module-grid dash-module-grid--compact">
-          <a
-            *ngFor="let m of getModuleShortcutsForView(); let mi = index"
-            [routerLink]="m.route"
-            class="dash-module-tile dash-module-tile--enter"
-            [ngClass]="'dash-module-tile--' + m.pastel"
-            [style.animation-delay.ms]="mi * 35"
-          >
-            <span class="dash-module-tile__icon" aria-hidden="true">{{ m.icon }}</span>
-            <span class="dash-module-tile__label">{{ m.label }}</span>
-          </a>
-        </div>
-        <a routerLink="/parent/dashboard" class="dash-cta-link">Open parent dashboard →</a>
-      </div>
-
       <div class="card modern-card" *ngIf="isStudent()">
         <div class="card-header-modern">
           <h2>
