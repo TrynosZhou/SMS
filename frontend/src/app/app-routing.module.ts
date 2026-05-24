@@ -15,6 +15,7 @@ import { RankingsComponent } from './components/exams/rankings/rankings.componen
 import { MarkSheetComponent } from './components/exams/mark-sheet/mark-sheet.component';
 import { PublishResultsComponent } from './components/exams/publish-results/publish-results.component';
 import { InvoiceListComponent } from './components/finance/invoice-list/invoice-list.component';
+import { InvoiceNotePageComponent } from './components/finance/invoice-note-page/invoice-note-page.component';
 import { InvoiceFormComponent } from './components/finance/invoice-form/invoice-form.component';
 import { InvoiceStatementsComponent } from './components/finance/invoice-statements/invoice-statements.component';
 import { RecordPaymentComponent } from './components/finance/record-payment/record-payment.component';
@@ -158,6 +159,8 @@ const routes: Routes = [
   { path: 'check_mark_progess', component: MarksProgressComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
   { path: 'publish-results', component: PublishResultsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
   { path: 'invoices', component: InvoiceListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'billing' } },
+  { path: 'invoices/credit-note', component: InvoiceNotePageComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'creditNotes' } },
+  { path: 'invoices/debit-note', component: InvoiceNotePageComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'debitNotes' } },
   { path: 'invoices/new', component: InvoiceFormComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'billing' } },
   { path: 'invoices/statements', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportStudentLedgers' } },
   { path: 'payments/record', component: RecordPaymentComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'recordPayment' } },

@@ -442,11 +442,15 @@ export async function ensureRbacSeeded(): Promise<void> {
       role.permissions = permissions;
       await roleRepo.save(role);
     } else {
-      let merged = mergeMissingFinancePagePermissions(
+      let       merged = mergeMissingFinancePagePermissions(
         role.permissions,
         legacyKey,
         def.adminLevel
       );
+      if (def.adminLevel) {
+        const fullFinance = buildFinancePagePermissions({ adminLevel: true });
+        merged = { ...merged, ...fullFinance };
+      }
       merged = mergeMissingModulePermissions(merged, legacyKey, def.adminLevel);
       if (def.slug === 'headmaster' || def.slug === 'deputy-headmaster') {
         merged = reconcileSchoolAdminFinancePayrollPermissions(merged, legacyKey);
@@ -531,9 +535,14 @@ export async function resolveUserPermissions(user: User): Promise<Record<string,
     const flags = LEGACY_VIEW_DEFAULTS[legacyKey];
     if (flags) {
       const modulePerms = buildPermissionsFromModuleFlags(flags, {
-        adminLevel: legacyKey === 'admin' || legacyKey === 'superadmin',
+        adminLevel:
+          legacyKey === 'admin' || legacyKey === 'superadmin' || legacyKey === 'director',
       });
-      const financePerms = buildFinancePagePermissions({ legacyRoleKey: legacyKey });
+      const financePerms = buildFinancePagePermissions({
+        legacyRoleKey: legacyKey,
+        adminLevel:
+          legacyKey === 'admin' || legacyKey === 'superadmin' || legacyKey === 'director',
+      });
       const fallback = { ...modulePerms, ...financePerms };
       return user.role === UserRole.TEACHER
         ? reconcileTeacherPeopleRecordsPermissions(fallback, { slug: 'teacher', legacyRoleKey: 'teacher' })

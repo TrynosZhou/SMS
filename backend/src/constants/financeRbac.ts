@@ -151,7 +151,9 @@ export function buildFinancePagePermissions(options?: {
   }
 
   let defaults: Record<string, { view: boolean; edit: boolean }>;
-  if (legacy === 'accountant') {
+  if (legacy === 'director' || legacy === 'superadmin') {
+    defaults = allFinancePagesEnabled(true);
+  } else if (legacy === 'accountant') {
     defaults = { ...ACCOUNTANT_FINANCE_DEFAULTS };
   } else if (legacy === 'headmaster' || legacy === 'deputy_headmaster') {
     /** School Admin leadership: no finance menus unless explicitly granted in RBAC matrix */
@@ -197,7 +199,7 @@ export function mergeMissingFinancePagePermissions(
   const defaults = buildFinancePagePermissions({ legacyRoleKey, adminLevel });
   const merged = { ...existing };
   for (const [key, val] of Object.entries(defaults)) {
-    if (merged[key] === undefined) {
+    if (merged[key] === undefined || adminLevel === true) {
       merged[key] = val;
     }
   }

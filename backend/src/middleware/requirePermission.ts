@@ -16,7 +16,11 @@ export const requirePermission = (module: string, action: RbacAction | string) =
         return res.status(401).json({ message: 'Authentication required' });
       }
 
-      if (isFullAccessRole(req.user.role) || req.user.role === UserRole.ADMIN) {
+      if (
+        isFullAccessRole(req.user.role) ||
+        req.user.role === UserRole.ADMIN ||
+        req.user.role === UserRole.DIRECTOR
+      ) {
         return next();
       }
 

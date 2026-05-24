@@ -24,6 +24,7 @@ import { RankingsComponent } from './components/exams/rankings/rankings.componen
 import { MarkSheetComponent } from './components/exams/mark-sheet/mark-sheet.component';
 import { PublishResultsComponent } from './components/exams/publish-results/publish-results.component';
 import { InvoiceListComponent } from './components/finance/invoice-list/invoice-list.component';
+import { InvoiceNotePageComponent } from './components/finance/invoice-note-page/invoice-note-page.component';
 import { InvoiceFormComponent } from './components/finance/invoice-form/invoice-form.component';
 import { InvoiceStatementsComponent } from './components/finance/invoice-statements/invoice-statements.component';
 import { ClassListComponent } from './components/classes/class-list/class-list.component';
@@ -133,6 +134,7 @@ import { RbacManagementComponent } from './components/settings/rbac-management/r
     RankingsComponent,
     PublishResultsComponent,
     InvoiceListComponent,
+    InvoiceNotePageComponent,
     InvoiceFormComponent,
     InvoiceStatementsComponent,
     ClassListComponent,

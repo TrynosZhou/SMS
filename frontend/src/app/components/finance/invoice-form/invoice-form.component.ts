@@ -72,9 +72,8 @@ export class InvoiceFormComponent implements OnInit {
     this.minDate = today.toISOString().split('T')[0];
     this.isSuperAdmin = this.authService.hasRole('superadmin');
     this.isAccountant = this.authService.hasRole('accountant');
-    this.canManageFinance = this.authService.hasRole('admin') || 
-                           this.authService.hasRole('superadmin') || 
-                           this.authService.hasRole('accountant');
+    this.canManageFinance =
+      this.authService.isAdmin() || this.authService.hasRole('accountant');
   }
 
   ngOnInit() {

@@ -118,6 +118,7 @@ export function expandAuthorizeRoles(roles: UserRole[]): UserRole[] {
     set.add(UserRole.DIRECTOR);
   }
   if (set.has(UserRole.ADMIN)) {
+    set.add(UserRole.DIRECTOR);
     set.add(UserRole.HEADMASTER);
     set.add(UserRole.DEPUTY_HEADMASTER);
   }

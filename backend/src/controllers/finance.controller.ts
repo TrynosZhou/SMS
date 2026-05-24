@@ -1347,7 +1347,12 @@ export const reverseBulkInvoices = async (req: AuthRequest, res: Response) => {
 export const voidTuitionExemptInvoices = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
-    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPERADMIN && user.role !== UserRole.ACCOUNTANT)) {
+    if (
+      !user ||
+      (!isFullAccessRole(user.role) &&
+        user.role !== UserRole.ADMIN &&
+        user.role !== UserRole.ACCOUNTANT)
+    ) {
       return res.status(403).json({ message: 'Access denied' });
     }
 

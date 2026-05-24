@@ -80,23 +80,6 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
   quickPaymentTerm = '';
   quickPaymentReceiptNeeded = false;
   lastQuickPaymentInvoiceId: string | null = null;
-  showNoteForm = false;
-  noteForm: any = {
-    type: 'credit',
-    item: '',
-    amount: 0
-  };
-  noteStudentId = '';
-  noteLookupError = '';
-  noteFirstName = '';
-  noteLastName = '';
-  noteSearchQuery = '';
-  noteCandidates: any[] = [];
-  noteSubmitting = false;
-  noteRefreshing = false;
-  noteSuccess = '';
-  noteError = '';
-
   showCorrectTransactionModal = false;
   correctingInvoice: any = null;
   correctingTransaction = false;
@@ -214,8 +197,6 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
   transportCostFromSettings: number | null = null;
   tuitionFeeFromSettings: any = { dayScholar: 0, boarder: 0 };
   diningHallCostFromSettings: number | null = null;
-  isNoteAmountAuto = false;
-  
   getFollowingTerm(currentTerm: string): string {
     if (!currentTerm) return '';
     
@@ -332,29 +313,6 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
         this.quickPaymentTerm = this.currentTermFromSettings;
       }
     });
-  }
-
-  onNoteItemChange(item: string) {
-    this.isNoteAmountAuto = false;
-    if (item === 'transport') {
-      if (this.transportCostFromSettings != null) {
-        this.noteForm.amount = this.transportCostFromSettings;
-        this.isNoteAmountAuto = true;
-      }
-    } else if (item === 'diningHall') {
-      if (this.diningHallCostFromSettings != null) {
-        let dh = this.diningHallCostFromSettings;
-        const stu = this.selectedInvoice?.student;
-        const isStaffOrExempted = !!(stu?.isStaffChild) || !!(stu?.isExempted);
-        if (isStaffOrExempted) {
-          dh = dh * 0.5;
-        }
-        this.noteForm.amount = dh;
-        this.isNoteAmountAuto = true;
-      }
-    } else {
-      this.isNoteAmountAuto = false;
-    }
   }
 
   loadStudents() {
@@ -749,7 +707,7 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
   }
 
   canCorrectTransaction(): boolean {
-    return this.authService.hasRole('admin') || this.authService.hasRole('superadmin');
+    return this.authService.isAdmin();
   }
 
   openCorrectPrepaidLookupModal() {
@@ -1668,210 +1626,6 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     this.selectedInvoice = invoice;
   }
 
-  openCreditNoteForm() {
-    this.selectedInvoice = null;
-    this.noteStudentId = '';
-    this.noteLookupError = '';
-    this.noteCandidates = [];
-    this.noteForm = {
-      type: 'credit',
-      item: '',
-      amount: 0
-    };
-    this.showNoteForm = true;
-    this.error = '';
-    this.success = '';
-    this.noteSuccess = '';
-    this.noteError = '';
-  }
-
-  openDebitNoteForm() {
-    this.selectedInvoice = null;
-    this.noteStudentId = '';
-    this.noteLookupError = '';
-    this.noteCandidates = [];
-    this.noteForm = {
-      type: 'debit',
-      item: '',
-      amount: 0
-    };
-    this.showNoteForm = true;
-    this.error = '';
-    this.success = '';
-    this.noteSuccess = '';
-    this.noteError = '';
-  }
-
-  closeNoteForm() {
-    this.showNoteForm = false;
-    this.noteSubmitting = false;
-    this.noteRefreshing = false;
-    this.noteSuccess = '';
-    this.noteError = '';
-    this.selectedInvoice = null;
-    this.noteStudentId = '';
-    this.noteLookupError = '';
-    this.noteCandidates = [];
-    this.noteForm = {
-      type: 'credit',
-      item: '',
-      amount: 0
-    };
-  }
-
-  refreshNoteData() {
-    const invoiceId = this.normalizeInvoiceId(this.selectedInvoice?.id);
-    if (!invoiceId) return;
-
-    this.noteRefreshing = true;
-    this.error = '';
-    this.cdr.detectChanges();
-
-    this.financeService
-      .getInvoice(invoiceId)
-      .pipe(
-        takeUntil(this.destroy$),
-        finalize(() => {
-          this.noteRefreshing = false;
-          this.cdr.detectChanges();
-        })
-      )
-      .subscribe({
-        next: (invoice: any) => {
-          this.selectedInvoice = invoice;
-        },
-        error: (err) => {
-          this.error = err?.error?.message || 'Failed to refresh invoice data.';
-          setTimeout(() => (this.error = ''), 5000);
-        }
-      });
-  }
-
-  private normalizeInvoiceId(id: unknown): string {
-    const raw = String(id ?? '').trim();
-    if (!raw) return '';
-    return raw.replace(/:.*$/, '');
-  }
-
-  private noteItemLabel(item: string): string {
-    if (item === 'tuition') return 'Tuition';
-    if (item === 'transport') return 'Transport Fee';
-    if (item === 'diningHall') return 'Dining Hall Fee';
-    return 'Fees';
-  }
-
-  submitNote() {
-    this.noteSuccess = '';
-    this.noteError = '';
-
-    if (this.noteForm.type === 'credit' && !this.canApplyCreditNotes()) {
-      this.noteError = 'You do not have permission to apply credit notes.';
-      return;
-    }
-    if (this.noteForm.type === 'debit' && !this.canApplyDebitNotes()) {
-      this.noteError = 'You do not have permission to apply debit notes.';
-      return;
-    }
-
-    if (!this.selectedInvoice) {
-      this.noteError = 'Please select an invoice first.';
-      return;
-    }
-    if (!this.noteForm.item) {
-      this.noteError = 'Please select a cost item to adjust.';
-      return;
-    }
-    const noteAmount = parseFloat(String(this.noteForm.amount ?? 0));
-    if (!Number.isFinite(noteAmount) || noteAmount <= 0) {
-      this.noteError = 'Please enter a valid amount greater than 0.';
-      return;
-    }
-
-    const invoiceBalance = parseFloat(String(this.selectedInvoice.balance ?? 0));
-    if (this.noteForm.type === 'credit' && noteAmount > invoiceBalance + 0.005) {
-      this.noteError = 'Credit note amount cannot be greater than the current balance.';
-      return;
-    }
-
-    const invoiceId = this.normalizeInvoiceId(this.selectedInvoice.id);
-    if (!invoiceId) {
-      this.noteError = 'Invalid invoice. Please search for the student again.';
-      return;
-    }
-
-    this.noteSubmitting = true;
-    this.cdr.detectChanges();
-
-    const payload = {
-      type: this.noteForm.type,
-      item: this.noteForm.item,
-      amount: noteAmount
-    };
-
-    this.financeService
-      .applyInvoiceNote(invoiceId, payload)
-      .pipe(
-        takeUntil(this.destroy$),
-        finalize(() => {
-          this.noteSubmitting = false;
-          this.cdr.detectChanges();
-        })
-      )
-      .subscribe({
-        next: (response: any) => {
-          try {
-            const updatedInvoice = response?.invoice ?? response;
-            if (!updatedInvoice?.id) {
-              this.noteError = 'Unexpected response from server. Please refresh and try again.';
-              return;
-            }
-
-            const index = this.invoices.findIndex((inv) => inv.id === updatedInvoice.id);
-            if (index !== -1) {
-              this.invoices[index] = updatedInvoice;
-            }
-            const filteredIndex = this.filteredInvoices.findIndex((inv) => inv.id === updatedInvoice.id);
-            if (filteredIndex !== -1) {
-              this.filteredInvoices[filteredIndex] = updatedInvoice;
-            }
-            this.selectedInvoice = updatedInvoice;
-
-            const itemLabel = this.noteItemLabel(this.noteForm.item);
-            const student = updatedInvoice.student;
-            const studentName = student
-              ? `${student.firstName || ''} ${student.lastName || ''}`.trim()
-              : 'Student';
-            const invNum = updatedInvoice.invoiceNumber || updatedInvoice.id;
-            const newBal = parseFloat(String(updatedInvoice.balance ?? 0)).toFixed(2);
-            const amtStr = noteAmount.toFixed(2);
-
-            if (this.noteForm.type === 'credit') {
-              this.noteSuccess =
-                `${this.currencySymbol} ${amtStr} was deducted from ${itemLabel} for ${studentName} ` +
-                `(Invoice ${invNum}). Updated balance: ${this.currencySymbol} ${newBal}.`;
-            } else {
-              this.noteSuccess =
-                `${this.currencySymbol} ${amtStr} was added to ${itemLabel} for ${studentName} ` +
-                `(Invoice ${invNum}). Updated balance: ${this.currencySymbol} ${newBal}.`;
-            }
-            this.noteError = '';
-            this.success = this.noteSuccess;
-            this.cdr.markForCheck();
-          } catch {
-            this.noteError = 'Note was saved but the screen could not refresh. Click Refresh to update.';
-          }
-        },
-        error: (err: any) => {
-          this.noteSuccess = '';
-          if (err.status === 401) {
-            this.noteError = 'Authentication required. Please log in again.';
-          } else {
-            this.noteError = err?.error?.message || 'Failed to apply note';
-          }
-        }
-      });
-  }
-
   private base64ToBlob(base64: string, mimeType: string): Blob {
     const byteCharacters = atob(base64);
     const byteNumbers = new Array(byteCharacters.length);
@@ -2087,229 +1841,6 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
         printWindow.print();
       };
     }
-  }
-
-  lookupNoteStudentById() {
-    this.noteLookupError = '';
-    this.selectedInvoice = null;
-    const rawId = (this.noteStudentId || '').trim();
-    if (!rawId) {
-      this.noteLookupError = 'Please enter a Student ID.';
-      return;
-    }
-    const normalizedId = rawId.toLowerCase();
-    const invoicesArray = Array.isArray(this.invoices) ? this.invoices : [];
-    const matchingInvoices = invoicesArray.filter(inv => {
-      const studentNumber = inv.student?.studentNumber ? String(inv.student.studentNumber).toLowerCase() : '';
-      return studentNumber === normalizedId;
-    });
-    if (matchingInvoices.length === 0) {
-      this.noteLookupError = 'No invoices found for the provided Student ID.';
-      return;
-    }
-    const latestInvoice = matchingInvoices.slice().sort((a, b) => {
-      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return dateB - dateA;
-    })[0];
-    this.selectedInvoice = latestInvoice;
-  }
-
-  lookupNoteStudentByName() {
-    this.noteLookupError = '';
-    this.selectedInvoice = null;
-    const first = (this.noteFirstName || '').trim();
-    const last = (this.noteLastName || '').trim();
-    if (!first && !last) {
-      this.noteLookupError = 'Enter First Name and/or Last Name.';
-      return;
-    }
-    const searchQuery = [first, last].filter(Boolean).join(' ');
-    // Use loaded invoices to avoid extra network calls
-    const invoicesArray = Array.isArray(this.invoices) ? this.invoices : [];
-    const matchingInvoices = invoicesArray.filter(inv => {
-      const fn = String(inv.student?.firstName || '').toLowerCase();
-      const ln = String(inv.student?.lastName || '').toLowerCase();
-      const q = searchQuery.toLowerCase();
-      // Match when query tokens appear in either first or last name
-      const tokens = q.split(/\s+/).filter(Boolean);
-      return tokens.every(t => fn.includes(t) || ln.includes(t));
-    });
-    if (matchingInvoices.length > 0) {
-      const latest = matchingInvoices.slice().sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      })[0];
-      this.selectedInvoice = latest;
-      return;
-    }
-    // Fallback: fetch students by name, then pick latest invoice among them if present locally
-    this.studentService.getStudentsPaginated({ search: searchQuery, page: 1, limit: 50 }).subscribe({
-      next: (resp: any) => {
-        const students = Array.isArray(resp?.data) ? resp.data : (Array.isArray(resp) ? resp : []);
-        if (!students.length) {
-          this.noteLookupError = 'No students found matching the provided name(s).';
-          return;
-        }
-        const studentIds = new Set(students.map((s: any) => s.id));
-        const invoicesForStudents = invoicesArray.filter(inv => studentIds.has(inv.student?.id || inv.studentId));
-        if (invoicesForStudents.length === 0) {
-          this.noteLookupError = 'No invoices found for matching student(s).';
-          return;
-        }
-        const latest = invoicesForStudents.slice().sort((a, b) => {
-          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return dateB - dateA;
-        })[0];
-        this.selectedInvoice = latest;
-      },
-      error: () => {
-        this.noteLookupError = 'Failed to search students by name.';
-      }
-    });
-  }
-
-  lookupNoteStudent() {
-    this.noteLookupError = '';
-    this.selectedInvoice = null;
-    this.noteCandidates = [];
-    const queryRaw = (this.noteSearchQuery || '').trim();
-    if (!queryRaw) {
-      this.noteLookupError = 'Enter a Student ID or Name.';
-      return;
-    }
-    const query = queryRaw.toLowerCase();
-    const invoicesArray = Array.isArray(this.invoices) ? this.invoices : [];
-
-    // 1) Try exact student number match
-    let matches = invoicesArray.filter(inv => {
-      const studentNumber = String(inv.student?.studentNumber || '').toLowerCase();
-      return studentNumber === query;
-    });
-
-    // 2) If none, try name contains (token-based)
-    if (matches.length === 0) {
-      const tokens = query.split(/\s+/).filter(Boolean);
-      matches = invoicesArray.filter(inv => {
-        const fn = String(inv.student?.firstName || '').toLowerCase();
-        const ln = String(inv.student?.lastName || '').toLowerCase();
-        return tokens.every(t => fn.includes(t) || ln.includes(t));
-      });
-      if (tokens.length === 1) {
-        const byToken = invoicesArray
-          .map(inv => inv.student)
-          .filter(stu => !!stu)
-          .filter(stu => {
-            const fn = String(stu.firstName || '').toLowerCase();
-            const ln = String(stu.lastName || '').toLowerCase();
-            const t = tokens[0];
-            return fn.includes(t) || ln.includes(t);
-          });
-        const uniqueMap: Record<string, any> = {};
-        byToken.forEach(stu => {
-          const id = stu.id || stu.studentId || stu.userId || '';
-          if (id && !uniqueMap[id]) {
-            uniqueMap[id] = stu;
-          }
-        });
-        const candidates = Object.values(uniqueMap) as any[];
-        if (candidates.length > 1) {
-          this.noteCandidates = candidates.map(stu => ({
-            id: stu.id,
-            studentNumber: stu.studentNumber,
-            firstName: stu.firstName,
-            lastName: stu.lastName,
-            className: (stu.classEntity && stu.classEntity.name) ? stu.classEntity.name : ''
-          }));
-          return;
-        }
-      }
-    }
-
-    // 3) If still none, query students API and then filter invoices by returned student ids
-    if (matches.length === 0) {
-      this.studentService.getStudentsPaginated({ search: queryRaw, page: 1, limit: 50 }).subscribe({
-        next: (resp: any) => {
-          const students = Array.isArray(resp?.data) ? resp.data : (Array.isArray(resp) ? resp : []);
-          if (!students.length) {
-            this.noteLookupError = 'No students found for provided ID/Name.';
-            return;
-          }
-          const studentIds = new Set(students.map((s: any) => s.id));
-          const invs = invoicesArray.filter(inv => studentIds.has(inv.student?.id || inv.studentId));
-          if (invs.length === 0) {
-            this.noteLookupError = 'No invoices found for matching student(s).';
-            return;
-          }
-          if (students.length > 1) {
-            this.noteCandidates = students.map((s: any) => ({
-              id: s.id,
-              studentNumber: s.studentNumber,
-              firstName: s.firstName,
-              lastName: s.lastName,
-              className: (s.classEntity && s.classEntity.name) ? s.classEntity.name : ''
-            }));
-            return;
-          }
-          // Pick latest by date
-          const latest = invs.slice().sort((a, b) => {
-            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            return dateB - dateA;
-          })[0];
-          this.selectedInvoice = latest;
-        },
-        error: () => {
-          this.noteLookupError = 'Failed to search students. Please try again.';
-        }
-      });
-      return;
-    }
-
-    // Choose the latest when we have matches locally
-    const latest = matches.slice().sort((a, b) => {
-      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return dateB - dateA;
-    })[0];
-    this.selectedInvoice = latest;
-  }
-  
-  chooseNoteCandidate(candidateId: string) {
-    this.noteLookupError = '';
-    this.selectedInvoice = null;
-    const invoicesArray = Array.isArray(this.invoices) ? this.invoices : [];
-    const invs = invoicesArray.filter(inv => (inv.student?.id || inv.studentId) === candidateId);
-    if (invs.length > 0) {
-      const latest = invs.slice().sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      })[0];
-      this.selectedInvoice = latest;
-      this.noteCandidates = [];
-      return;
-    }
-    this.financeService.getInvoices(candidateId, undefined).subscribe({
-      next: (list: any[]) => {
-        if (!list || list.length === 0) {
-          this.noteLookupError = 'No invoices found for selected student.';
-          return;
-        }
-        const latest = list.slice().sort((a: any, b: any) => {
-          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return dateB - dateA;
-        })[0];
-        this.selectedInvoice = latest;
-        this.noteCandidates = [];
-      },
-      error: () => {
-        this.noteLookupError = 'Failed to fetch invoices for selected student.';
-      }
-    });
   }
 
   openReceiptForPrint() {
@@ -2569,8 +2100,8 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
 
   reverseLastBulkCreation() {
     // Restrict to admin/superadmin only
-    if (!(this.authService.hasRole('admin') || this.authService.hasRole('superadmin'))) {
-      this.error = 'Only Administrators or Super Admins can reverse bulk invoices';
+    if (!this.authService.isAdmin()) {
+      this.error = 'Only authorized administrators can reverse bulk invoices';
       setTimeout(() => (this.error = ''), 5000);
       return;
     }
@@ -2903,8 +2434,7 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
 
   canManageFinance(): boolean {
     return (
-      this.authService.hasRole('admin') ||
-      this.authService.hasRole('superadmin') ||
+      this.authService.isAdmin() ||
       this.authService.hasRole('accountant') ||
       this.authService.hasRole('demo_user') ||
       this.permissionService.canAccessFinancePage('billing', 'edit')

@@ -266,11 +266,7 @@ export class AgedDebtorsReportComponent implements OnInit, OnDestroy {
   }
 
   canManageFinance(): boolean {
-    return (
-      this.authService.hasRole('admin') ||
-      this.authService.hasRole('superadmin') ||
-      this.authService.hasRole('accountant')
-    );
+    return this.authService.isAdmin() || this.authService.hasRole('accountant');
   }
 
   recordPayment(row: AgedRow): void {

@@ -1,6 +1,9 @@
+/** Use IPv4 loopback — on Windows, "localhost" can hit ::1 first and ETIMEDOUT before 127.0.0.1 */
+const API_TARGET = "http://127.0.0.1:3000";
+
 const PROXY_CONFIG = {
   "/api": {
-    target: "http://localhost:3000",
+    target: API_TARGET,
     secure: false,
     changeOrigin: true,
     logLevel: "warn",
@@ -9,7 +12,11 @@ const PROXY_CONFIG = {
     onError(err, req, res) {
       if (res.headersSent) return;
       // Return JSON so the client request completes (avoids infinite "Loading..." in the UI)
-      if (err.code === "ECONNRESET" || err.code === "ECONNREFUSED") {
+      if (
+        err.code === "ECONNRESET" ||
+        err.code === "ECONNREFUSED" ||
+        err.code === "ETIMEDOUT"
+      ) {
         res.writeHead(502, { "Content-Type": "application/json" });
         res.end(
           JSON.stringify({
@@ -28,14 +35,18 @@ const PROXY_CONFIG = {
     },
   },
   "/uploads": {
-    target: "http://localhost:3000",
+    target: API_TARGET,
     secure: false,
     changeOrigin: true,
     logLevel: "warn",
     timeout: 120000,
     proxyTimeout: 120000,
     onError(err, req, res) {
-      if (err.code === "ECONNRESET" || err.code === "ECONNREFUSED") {
+      if (
+        err.code === "ECONNRESET" ||
+        err.code === "ECONNREFUSED" ||
+        err.code === "ETIMEDOUT"
+      ) {
         return;
       }
       console.error("[Proxy]", err.message || err);

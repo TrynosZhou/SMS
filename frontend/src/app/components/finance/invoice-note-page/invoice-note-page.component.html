@@ -1,0 +1,178 @@
+<div class="note-page">
+  <header class="note-page-hero">
+    <div class="note-page-hero__main">
+      <div class="note-page-hero__left">
+        <span class="note-page-hero__icon" aria-hidden="true">{{ isCredit ? '📝' : '📗' }}</span>
+        <div>
+          <span class="note-page-hero__eyebrow">Finance</span>
+          <h1>{{ pageTitle }}</h1>
+          <p class="note-page-hero__sub">
+            {{ isCredit ? 'Correct an overcharge on a student invoice.' : 'Correct an undercharge on a student invoice.' }}
+          </p>
+        </div>
+      </div>
+      <div class="note-page-hero__actions">
+        <button type="button" class="note-hero-btn note-hero-btn--ghost" (click)="goBack()">← Back to invoices</button>
+        <button
+          type="button"
+          class="note-hero-btn note-hero-btn--refresh"
+          (click)="refreshNoteData()"
+          [disabled]="noteRefreshing || noteSubmitting || !selectedInvoice"
+          title="Refresh invoice data">
+          🔄 Refresh
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="note-page-card">
+    <div class="note-page-card__header">
+      <h2>{{ pageTitle }}</h2>
+    </div>
+
+    <div class="payment-form">
+      <div class="form-section">
+        <h3 class="section-title">
+          <span class="section-icon">🧑‍🎓</span>
+          Select Student and Latest Invoice
+        </h3>
+
+        <div class="form-group">
+          <label for="noteSearchQuery">
+            Student ID or Name <span class="required">*</span>
+          </label>
+          <div class="note-search-row">
+            <input
+              id="noteSearchQuery"
+              type="text"
+              [(ngModel)]="noteSearchQuery"
+              name="noteSearchQuery"
+              class="form-control"
+              placeholder="Enter Student ID, First Name, or Last Name"
+              (keyup.enter)="lookupNoteStudent()"
+            />
+            <button type="button" class="btn btn-primary" (click)="lookupNoteStudent()" [disabled]="loadingInvoices">
+              Find Latest Invoice
+            </button>
+          </div>
+          <small class="form-hint">
+            Type a student number or part of the first/last name. The latest invoice will be selected automatically.
+          </small>
+          <div *ngIf="loadingInvoices" class="form-hint">Loading invoices…</div>
+          <div *ngIf="noteLookupError" class="alert alert-error note-inline-alert">
+            {{ noteLookupError }}
+          </div>
+          <div *ngIf="noteCandidates.length > 0" class="candidate-list">
+            <div class="alert alert-info">Multiple students found. Select the correct student to proceed.</div>
+            <ul class="candidate-items">
+              <li *ngFor="let c of noteCandidates">
+                <button type="button" class="btn btn-secondary" (click)="chooseNoteCandidate(c.id)">
+                  {{ c.lastName }} {{ c.firstName }} — ID: {{ c.studentNumber }}
+                  <span *ngIf="c.className">— Class: {{ c.className }}</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="noteSuccess" class="alert alert-success note-result-alert" role="status">
+      <span class="alert-icon" aria-hidden="true">✅</span>
+      <div class="note-result-text">
+        <strong>{{ isCredit ? 'Credit note confirmed' : 'Debit note confirmed' }}</strong>
+        <p>{{ noteSuccess }}</p>
+      </div>
+      <button type="button" class="alert-close" (click)="noteSuccess = ''" aria-label="Dismiss">✕</button>
+    </div>
+
+    <div *ngIf="noteError" class="alert alert-error note-result-alert" role="alert">
+      <span class="alert-icon" aria-hidden="true">⚠️</span>
+      <span class="note-result-text">{{ noteError }}</span>
+      <button type="button" class="alert-close" (click)="noteError = ''" aria-label="Dismiss">✕</button>
+    </div>
+
+    <div *ngIf="selectedInvoice" class="invoice-summary-card">
+      <div class="summary-header">
+        <span class="summary-icon">📋</span>
+        <h3>Invoice Summary</h3>
+      </div>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <span class="summary-label">Invoice Number</span>
+          <span class="summary-value">{{ selectedInvoice.invoiceNumber }}</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Student</span>
+          <span class="summary-value">
+            {{ selectedInvoice.student?.firstName }} {{ selectedInvoice.student?.lastName }}
+          </span>
+        </div>
+        <div class="summary-item summary-item-balance-center highlight">
+          <span class="summary-label">Current Balance</span>
+          <span class="summary-value balance">{{ currencySymbol }} {{ selectedInvoice.balance | number:'1.2-2' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <form (ngSubmit)="submitNote()" class="payment-form">
+      <div class="form-section">
+        <h3 class="section-title">
+          <span class="section-icon">🧾</span>
+          {{ sectionTitle }}
+        </h3>
+
+        <div class="form-group">
+          <label>Cost Item *</label>
+          <select
+            [(ngModel)]="noteForm.item"
+            (ngModelChange)="onNoteItemChange($event)"
+            name="noteItem"
+            class="form-control"
+            required>
+            <option [ngValue]="''">-- Select item --</option>
+            <option value="tuition">Tuition</option>
+            <option value="transport">Transport Fee</option>
+            <option value="diningHall">DH Fee</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Amount to {{ isCredit ? 'deduct' : 'add' }} *</label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            [(ngModel)]="noteForm.amount"
+            name="noteAmount"
+            class="form-control"
+            required
+            placeholder="Enter amount"
+          />
+          <small class="form-hint" *ngIf="isNoteAmountAuto">
+            Pre-filled from Settings{{ selectedInvoice?.student?.isStaffChild || selectedInvoice?.student?.isExempted ? ' (50% for staff/exempted)' : '' }}. You can edit the amount.
+          </small>
+          <small class="form-hint" *ngIf="!isNoteAmountAuto && (noteForm.item === 'transport' || noteForm.item === 'diningHall')">
+            Enter the amount manually, or re-select DH Fee / Transport Fee to pre-fill from Settings.
+          </small>
+          <small class="form-hint">
+            {{ isCredit ? 'This amount will be subtracted from the selected cost item.' : 'This amount will be added to the selected cost item.' }}
+          </small>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" (click)="goBack()" [disabled]="noteSubmitting">
+          {{ noteSuccess ? 'Back to invoices' : 'Cancel' }}
+        </button>
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="noteSubmitting || !selectedInvoice || !noteForm.item"
+          *ngIf="!noteSuccess">
+          <span *ngIf="!noteSubmitting">{{ isCredit ? 'Apply Credit Note' : 'Apply Debit Note' }}</span>
+          <span *ngIf="noteSubmitting" class="spinner-small"></span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
