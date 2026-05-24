@@ -1,14 +1,44 @@
 <div class="tir-page">
   <!-- Header -->
-  <div class="tir-header">
-    <div class="tir-header-left">
-      <span class="tir-icon">📦</span>
-      <div>
-        <h1 class="tir-title">Inventory Record</h1>
-        <p class="tir-subtitle">Issue textbooks &amp; furniture to your students</p>
+  <div class="tir-hero">
+    <div class="tir-hero__bg" aria-hidden="true"></div>
+    <div class="tir-hero__content">
+      <div class="tir-header-left">
+        <span class="tir-icon">📦</span>
+        <div>
+          <h1 class="tir-title">Inventory Record</h1>
+          <p class="tir-subtitle">Issue textbooks &amp; furniture to students in your class</p>
+          <p class="tir-meta" *ngIf="lastRefreshedAt && !initialLoad">
+            <span class="tir-live-dot"></span> Updated {{ formatRefreshed() }}
+            <span *ngIf="myClassNames !== '—'"> · {{ myClassNames }}</span>
+          </p>
+        </div>
+      </div>
+      <div class="tir-hero__actions">
+        <button type="button" class="tir-btn tir-btn-secondary" (click)="refreshAll()" [disabled]="loadingTB || loadingFN">
+          <span [class.tir-spin]="loadingTB || loadingFN">↻</span> Refresh
+        </button>
+        <button type="button" class="tir-btn tir-btn-secondary" routerLink="/teacher/dashboard">← Dashboard</button>
       </div>
     </div>
-    <button class="tir-btn tir-btn-secondary" routerLink="/teacher/dashboard">← Dashboard</button>
+    <div class="tir-stats" *ngIf="!initialLoad">
+      <article class="tir-stat">
+        <span class="tir-stat__value">{{ statTbActive }}</span>
+        <span class="tir-stat__label">Active book allocations</span>
+      </article>
+      <article class="tir-stat">
+        <span class="tir-stat__value">{{ statTbCopiesRemaining }}</span>
+        <span class="tir-stat__label">Copies ready to issue</span>
+      </article>
+      <article class="tir-stat">
+        <span class="tir-stat__value">{{ statTbCopiesIssued }}</span>
+        <span class="tir-stat__label">Copies issued to class</span>
+      </article>
+      <article class="tir-stat">
+        <span class="tir-stat__value">{{ statFnOnHand }}</span>
+        <span class="tir-stat__label">Furniture on hand</span>
+      </article>
+    </div>
   </div>
 
   <!-- Mode toggle -->
@@ -35,8 +65,20 @@
       <p class="tir-hint">These textbooks were assigned to you by the administrator. Issue them to your students below.</p>
     </div>
 
-    <div class="tir-loading" *ngIf="loadingTB">Loading textbook allocations…</div>
-    <div class="tir-alert tir-alert-error" *ngIf="errorTB">{{ errorTB }}</div>
+    <div class="tir-toolbar" *ngIf="!loadingTB || !initialLoad">
+      <label class="tir-search">
+        <span aria-hidden="true">🔍</span>
+        <input type="search" [(ngModel)]="tbSearch" placeholder="Search title, grade, J-number…" class="tir-search__input" />
+      </label>
+    </div>
+
+    <div class="tir-skeleton-grid" *ngIf="loadingTB && initialLoad">
+      <div class="tir-skeleton-card" *ngFor="let _ of [1,2]"></div>
+    </div>
+    <div class="tir-alert tir-alert-error" *ngIf="errorTB">
+      {{ errorTB }}
+      <button type="button" class="tir-btn tir-btn-sm tir-btn-secondary" (click)="loadTextbookAllocations()">Retry</button>
+    </div>
 
     <div *ngIf="!loadingTB && textbookAllocations.length === 0 && !errorTB" class="tir-empty">
       <span class="tir-empty-icon">📭</span>
@@ -44,11 +86,16 @@
       <small>Contact the administrator to allocate textbooks to you.</small>
     </div>
 
+    <div class="tir-empty" *ngIf="!loadingTB && activeTextbooks.length && !filteredActiveTextbooks.length && tbSearch">
+      <p>No allocations match your search.</p>
+      <button type="button" class="tir-btn tir-btn-secondary" (click)="tbSearch = ''">Clear search</button>
+    </div>
+
     <!-- Active allocations -->
-    <div *ngIf="!loadingTB && activeTextbooks.length > 0">
-      <h3 class="tir-sub-header">Active Allocations (ready to issue)</h3>
+    <div *ngIf="!loadingTB && filteredActiveTextbooks.length > 0">
+      <h3 class="tir-sub-header">Active allocations (ready to issue)</h3>
       <div class="tir-cards">
-        <div class="tir-card" *ngFor="let alloc of activeTextbooks">
+        <div class="tir-card" *ngFor="let alloc of filteredActiveTextbooks">
           <div class="tir-card-icon">📚</div>
           <div class="tir-card-body">
             <div class="tir-card-title">{{ alloc.catalog?.title || 'Textbook' }}</div>
@@ -88,8 +135,10 @@
 
     <!-- Past allocations -->
     <div *ngIf="!loadingTB && pastTextbooks.length > 0">
-      <h3 class="tir-sub-header tir-sub-muted">Past Allocations</h3>
-      <table class="tir-table">
+      <button type="button" class="tir-collapse-toggle" (click)="showPastTextbooks = !showPastTextbooks">
+        {{ showPastTextbooks ? '▼' : '▶' }} Past allocations ({{ pastTextbooks.length }})
+      </button>
+      <table class="tir-table" *ngIf="showPastTextbooks">
         <thead>
           <tr>
             <th>Title</th>
@@ -259,8 +308,20 @@
       </div>
     </div>
 
-    <div class="tir-loading" *ngIf="loadingFN">Loading furniture allocations…</div>
-    <div class="tir-alert tir-alert-error" *ngIf="errorFN">{{ errorFN }}</div>
+    <div class="tir-toolbar" *ngIf="!loadingFN || !initialLoad">
+      <label class="tir-search">
+        <span aria-hidden="true">🔍</span>
+        <input type="search" [(ngModel)]="fnSearch" placeholder="Search JP code or type…" class="tir-search__input" />
+      </label>
+    </div>
+
+    <div class="tir-skeleton-grid" *ngIf="loadingFN && initialLoad">
+      <div class="tir-skeleton-card" *ngFor="let _ of [1,2]"></div>
+    </div>
+    <div class="tir-alert tir-alert-error" *ngIf="errorFN">
+      {{ errorFN }}
+      <button type="button" class="tir-btn tir-btn-sm tir-btn-secondary" (click)="loadFurnitureAllocations()">Retry</button>
+    </div>
 
     <div *ngIf="!loadingFN && furnitureAllocations.length === 0 && !errorFN" class="tir-empty">
       <span class="tir-empty-icon">📭</span>
@@ -269,10 +330,10 @@
     </div>
 
     <!-- Active furniture allocations -->
-    <div *ngIf="!loadingFN && activeFurniture.length > 0">
-      <h3 class="tir-sub-header">Available to Issue</h3>
+    <div *ngIf="!loadingFN && filteredActiveFurniture.length > 0">
+      <h3 class="tir-sub-header">Available to issue</h3>
       <div class="tir-cards">
-        <div class="tir-card" *ngFor="let alloc of activeFurniture">
+        <div class="tir-card" *ngFor="let alloc of filteredActiveFurniture">
           <div class="tir-card-icon">{{ alloc.furnitureItem?.itemType === 'desk' ? '🖥️' : '🪑' }}</div>
           <div class="tir-card-body">
             <div class="tir-card-title">
@@ -304,8 +365,10 @@
 
     <!-- Past furniture allocations -->
     <div *ngIf="!loadingFN && pastFurniture.length > 0">
-      <h3 class="tir-sub-header tir-sub-muted">Past Allocations</h3>
-      <table class="tir-table">
+      <button type="button" class="tir-collapse-toggle" (click)="showPastFurniture = !showPastFurniture">
+        {{ showPastFurniture ? '▼' : '▶' }} Past allocations ({{ pastFurniture.length }})
+      </button>
+      <table class="tir-table" *ngIf="showPastFurniture">
         <thead>
           <tr>
             <th>Type</th>
@@ -432,10 +495,22 @@
       <p class="tir-hint">Textbooks and furniture issued to students in your class.</p>
     </div>
 
-    <div class="tir-loading" *ngIf="loadingReport">⏳ Loading report data…</div>
-    <div class="tir-alert tir-alert-error" *ngIf="reportError">{{ reportError }}</div>
+    <div class="tir-skeleton-grid tir-skeleton-grid--report" *ngIf="loadingReport">
+      <div class="tir-skeleton-line" *ngFor="let _ of [1,2,3,4,5]"></div>
+    </div>
+    <div class="tir-alert tir-alert-error" *ngIf="reportError">
+      {{ reportError }}
+      <button type="button" class="tir-btn tir-btn-sm tir-btn-secondary" (click)="loadReport()">Retry</button>
+    </div>
 
     <ng-container *ngIf="!loadingReport && !reportError">
+
+      <div class="tir-toolbar">
+        <label class="tir-search">
+          <span aria-hidden="true">🔍</span>
+          <input type="search" [(ngModel)]="reportSearch" placeholder="Search student, book, J-number…" class="tir-search__input" />
+        </label>
+      </div>
 
       <!-- Action bar -->
       <div class="tir-report-actions">
@@ -470,7 +545,7 @@
         <div class="tir-empty" *ngIf="reportTextbooks.length === 0">
           <span class="tir-empty-icon">📭</span><p>No textbooks issued to your class yet.</p>
         </div>
-        <div class="tir-table-wrap" *ngIf="reportTextbooks.length > 0">
+        <div class="tir-table-wrap" *ngIf="filteredReportTextbooks.length > 0">
           <table class="tir-table tir-report-table">
             <thead>
               <tr>
@@ -479,7 +554,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let r of reportTextbooks; let i = index">
+              <tr *ngFor="let r of filteredReportTextbooks; let i = index">
                 <td>{{ i + 1 }}</td>
                 <td><strong>{{ r.student?.firstName }} {{ r.student?.lastName }}</strong></td>
                 <td>{{ r.student?.studentNumber || '—' }}</td>
@@ -511,7 +586,7 @@
         <div class="tir-empty" *ngIf="reportFurniture.length === 0">
           <span class="tir-empty-icon">📭</span><p>No furniture issued to your class yet.</p>
         </div>
-        <div class="tir-table-wrap" *ngIf="reportFurniture.length > 0">
+        <div class="tir-table-wrap" *ngIf="filteredReportFurniture.length > 0">
           <table class="tir-table tir-report-table">
             <thead>
               <tr>
@@ -520,7 +595,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let r of reportFurniture; let i = index">
+              <tr *ngFor="let r of filteredReportFurniture; let i = index">
                 <td>{{ i + 1 }}</td>
                 <td><strong>{{ r.student?.firstName }} {{ r.student?.lastName }}</strong></td>
                 <td>{{ r.student?.studentNumber || '—' }}</td>

@@ -12,7 +12,8 @@ export class AuthInterceptor implements HttpInterceptor {
     '/auth/register',
     '/auth/reset-password',
     '/auth/forgot-password/verify',
-    '/auth/forgot-password/set'
+    '/auth/forgot-password/set',
+    '/news/public',
   ];
 
   constructor(

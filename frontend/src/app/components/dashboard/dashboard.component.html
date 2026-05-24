@@ -8,10 +8,17 @@
               <div class="greeting-section">
                 <div class="dash-hero-badges">
                   <span class="dash-role-pill">{{ getRoleLabel() }}</span>
-                  <span class="dash-live-pill" *ngIf="(isAdmin() || isAccountant()) && !loadingStats">
+                  <span class="dash-live-pill" *ngIf="canViewDashboardStats() && !loadingStats">
                     <span class="dash-live-dot" aria-hidden="true"></span>
                     Stats ready
                   </span>
+                  <a
+                    *ngIf="canChangeOwnPassword()"
+                    class="dash-change-password-link"
+                    [routerLink]="changePasswordRoute"
+                    title="Update your login password">
+                    🔐 Change password
+                  </a>
                 </div>
                 <h1 class="dashboard-title">
                   <span class="title-icon">📊</span>
@@ -19,7 +26,7 @@
                 </h1>
                 <p class="welcome-text">
                   <span class="greeting-icon">👋</span>
-                  {{ getSmartGreeting() }}, <strong>{{ getDisplayName() }}</strong> — here’s your workspace overview.
+                  {{ getSmartGreeting() }}, <strong>{{ getGreetingName() }}</strong> — here’s your workspace overview.
                 </p>
                 <p class="date-time">{{ getCurrentDateTime() }}</p>
               </div>
@@ -29,7 +36,7 @@
                 <span class="school-icon">🏫</span>
                 <span class="school-name" [class.school-motto-text]="displayedText === schoolMotto">{{ displayedText }}</span>
               </div>
-              <div class="quick-stats-badge" *ngIf="(isAdmin() || isAccountant() || isTeacher()) && !loadingStats">
+              <div class="quick-stats-badge" *ngIf="canViewDashboardStats() && !loadingStats">
                 <span class="badge-icon">⚡</span>
                 <span class="badge-text">Live Stats</span>
               </div>
@@ -40,7 +47,7 @@
 
       <section
         class="dash-insights-bar"
-        *ngIf="isAdmin() || isAccountant()"
+        *ngIf="canViewDashboardStats()"
         aria-label="Dashboard statistics status"
       >
         <div class="dash-insights-left">
@@ -63,14 +70,14 @@
         </button>
       </section>
     
-    <div class="stats-skeleton-grid" *ngIf="(isAdmin() || isAccountant()) && loadingStats" aria-busy="true">
+    <div class="stats-skeleton-grid" *ngIf="canViewDashboardStats() && loadingStats" aria-busy="true">
       <div class="stats-skeleton-card" *ngFor="let _ of statSkeletonSlots">
         <div class="stats-skeleton-shimmer"></div>
       </div>
     </div>
 
     <!-- Statistics Cards -->
-    <div class="stats-grid stats-grid--live" *ngIf="(isAdmin() || isAccountant() || isTeacher()) && !loadingStats">
+    <div class="stats-grid stats-grid--live" *ngIf="canViewDashboardStats() && !loadingStats">
       <div class="stat-card primary modern-card">
         <div class="stat-icon-wrapper">
           <div class="stat-icon modern-icon">👥</div>
@@ -137,7 +144,7 @@
         </div>
       </div>
       
-      <div class="stat-card danger modern-card" *ngIf="isAdmin() || isAccountant()">
+      <div class="stat-card danger modern-card" *ngIf="canViewDashboardStats() && canAccessModule('finance')">
         <div class="stat-icon-wrapper">
           <div class="stat-icon modern-icon">💰</div>
         </div>
@@ -153,7 +160,7 @@
         </div>
       </div>
       
-      <div class="stat-card secondary modern-card" *ngIf="isAdmin()">
+      <div class="stat-card secondary modern-card" *ngIf="canViewDashboardStats()">
         <div class="stat-icon-wrapper">
           <div class="stat-icon modern-icon">👶</div>
         </div>
@@ -170,14 +177,14 @@
       </div>
     </div>
     
-    <div class="loading-stats" *ngIf="(isAdmin() || isAccountant() || isTeacher()) && loadingStats">
+    <div class="loading-stats" *ngIf="canViewDashboardStats() && loadingStats">
       <div class="spinner"></div>
       <p>Loading statistics...</p>
     </div>
 
     <section
       class="dash-finance-strip"
-      *ngIf="(isAdmin() || isAccountant()) && !loadingStats"
+      *ngIf="canViewDashboardStats() && canAccessModule('finance') && !loadingStats"
       aria-label="Finance snapshot"
     >
       <div class="dash-finance-strip__col dash-finance-strip__balance">
@@ -254,107 +261,6 @@
             </a>
           </div>
         </div>
-        <div class="card modern-card dash-quick-actions-card">
-          <div class="card-header-modern">
-            <h2>
-              <span class="card-icon">🚀</span>
-              Quick actions
-            </h2>
-            <p class="dash-card-subtitle">
-              Jump to the tasks you use most often. Access still follows your module settings.
-            </p>
-          </div>
-          <div class="quick-actions modern-actions dash-quick-actions--grouped">
-            <p class="quick-actions-section-label">People &amp; structure</p>
-            <a routerLink="/students/new" class="action-btn modern-action-btn primary-action" *ngIf="canAccessModule('students')">
-              <span class="action-icon">👤</span>
-              <span class="action-text">Add Student</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/classes/new" class="action-btn modern-action-btn info-action" *ngIf="canAccessModule('classes')">
-              <span class="action-icon">🏫</span>
-              <span class="action-text">Add Class</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/subjects/new" class="action-btn modern-action-btn warning-action" *ngIf="canAccessModule('subjects')">
-              <span class="action-icon">📚</span>
-              <span class="action-text">Add Subject</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/teachers/new" class="action-btn modern-action-btn success-action" *ngIf="canAccessModule('teachers')">
-              <span class="action-icon">👨‍🏫</span>
-              <span class="action-text">Add Teacher</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <p class="quick-actions-section-label">Inventory &amp; library</p>
-            <a routerLink="/inventory" class="action-btn modern-action-btn success-action" *ngIf="canAccessModule('inventory')">
-              <span class="action-icon">📦</span>
-              <span class="action-text">Inventory Manager</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <p class="quick-actions-section-label">Day-to-day</p>
-            <a routerLink="/attendance/mark" class="action-btn modern-action-btn success-action" *ngIf="canAccessModule('attendance')">
-              <span class="action-icon">✅</span>
-              <span class="action-text">Mark Attendance</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/attendance/reports" class="action-btn modern-action-btn info-action" *ngIf="canAccessModule('attendance')">
-              <span class="action-icon">📊</span>
-              <span class="action-text">Attendance Reports</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a (click)="openBulkMessage()" class="action-btn modern-action-btn secondary-action" style="cursor: pointer;">
-              <span class="action-icon">📧</span>
-              <span class="action-text">Bulk Message</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <p class="quick-actions-section-label">Administration</p>
-            <a routerLink="/admin/manage-accounts" class="action-btn modern-action-btn secondary-action">
-              <span class="action-icon">👥</span>
-              <span class="action-text">Manage Accounts</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/admin/parents" class="action-btn modern-action-btn secondary-action">
-              <span class="action-icon">👨‍👩‍👧‍👦</span>
-              <span class="action-text">Parent Management</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/admin/class-promotion" class="action-btn modern-action-btn warning-action">
-              <span class="action-icon">⬆️</span>
-              <span class="action-text">Class Promotion</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/admin/elearning" class="action-btn modern-action-btn info-action">
-              <span class="action-icon">💻</span>
-              <span class="action-text">E-Learning Services</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a
-              routerLink="/settings/payment-receipt-manager"
-              class="action-btn modern-action-btn secondary-action"
-              *ngIf="isAdmin() || isSuperAdmin()">
-              <span class="action-icon">🧾</span>
-              <span class="action-text">Payment / Receipt Manager</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <p class="quick-actions-section-label" *ngIf="canAccessModule('finance')">Finance</p>
-            <a routerLink="/balance-enquiry" class="action-btn modern-action-btn info-action" *ngIf="canAccessModule('finance')">
-              <span class="action-icon">🔎</span>
-              <span class="action-text">Balance Enquiry</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/invoices/new" class="action-btn modern-action-btn danger-action" *ngIf="isSuperAdmin() && canAccessModule('finance')">
-              <span class="action-icon">📝</span>
-              <span class="action-text">Create Invoice</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/payroll" class="action-btn modern-action-btn secondary-action" *ngIf="canAccessModule('payroll')">
-              <span class="action-icon">💵</span>
-              <span class="action-text">Payroll Manager</span>
-              <span class="action-arrow">→</span>
-            </a>
-          </div>
-        </div>
       </div>
 
       <div class="dash-shortcuts-row" *ngIf="isAccountant()">
@@ -378,131 +284,6 @@
               <span class="dash-module-tile__label">{{ m.label }}</span>
             </a>
           </div>
-        </div>
-        <div class="card modern-card dash-quick-actions-card">
-          <div class="card-header-modern">
-            <h2>
-              <span class="card-icon">🚀</span>
-              Quick actions
-            </h2>
-            <p class="dash-card-subtitle">Jump to billing tasks. Access still follows your module settings.</p>
-          </div>
-          <div class="quick-actions modern-actions dash-quick-actions--grouped">
-            <p class="quick-actions-section-label">Finance</p>
-            <a routerLink="/students" class="action-btn modern-action-btn primary-action" *ngIf="canAccessModule('students')">
-              <span class="action-icon">📋</span>
-              <span class="action-text">View Students</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/invoices" class="action-btn modern-action-btn danger-action" *ngIf="canAccessModule('finance')">
-              <span class="action-icon">💰</span>
-              <span class="action-text">Finance Overview</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/outstanding-balance" class="action-btn modern-action-btn warning-action" *ngIf="canAccessModule('finance')">
-              <span class="action-icon">⚠️</span>
-              <span class="action-text">Outstanding Balances</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/payments/record" class="action-btn modern-action-btn success-action" *ngIf="canAccessModule('finance')">
-              <span class="action-icon">💵</span>
-              <span class="action-text">Record Payment</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/balance-enquiry" class="action-btn modern-action-btn info-action" *ngIf="canAccessModule('finance')">
-              <span class="action-icon">🔎</span>
-              <span class="action-text">Balance Enquiry</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <p class="quick-actions-section-label">Operations</p>
-            <a routerLink="/attendance/reports" class="action-btn modern-action-btn info-action" *ngIf="canAccessModule('attendance')">
-              <span class="action-icon">📊</span>
-              <span class="action-text">Attendance Reports</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/report-cards" class="action-btn modern-action-btn secondary-action" *ngIf="canAccessModule('reportCards')">
-              <span class="action-icon">📄</span>
-              <span class="action-text">Report Cards</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/inventory" class="action-btn modern-action-btn success-action" *ngIf="canAccessModule('inventory')">
-              <span class="action-icon">📦</span>
-              <span class="action-text">Inventory Manager</span>
-              <span class="action-arrow">→</span>
-            </a>
-            <a routerLink="/payroll" class="action-btn modern-action-btn secondary-action" *ngIf="canAccessModule('payroll')">
-              <span class="action-icon">💵</span>
-              <span class="action-text">Payroll Manager</span>
-              <span class="action-arrow">→</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div class="card modern-card dash-admin-hub-card" *ngIf="isAdmin()">
-        <div class="card-header-modern">
-          <h2>
-            <span class="card-icon">🗂️</span>
-            All modules &amp; tasks
-          </h2>
-          <p class="dash-card-subtitle">Search and browse every admin shortcut in one place.</p>
-        </div>
-        <div class="dash-admin-hub">
-          <div class="dash-hub-toolbar">
-            <div class="dash-hub-intro">
-              <h3 class="dash-section-title dash-section-title--hub">Admin hub</h3>
-              <p class="dash-hub-lead">Grouped shortcuts — search by task name or keyword</p>
-            </div>
-            <div class="dash-hub-search-wrap">
-              <span class="dash-hub-search-icon" aria-hidden="true">🔍</span>
-              <input
-                type="search"
-                class="dash-hub-search"
-                [(ngModel)]="adminHubSearch"
-                placeholder="e.g. attendance, invoice, parent…"
-                name="adminHubSearch"
-                autocomplete="off"
-                aria-label="Filter admin hub tasks"
-              />
-              <button
-                type="button"
-                class="dash-hub-search-clear"
-                *ngIf="adminHubSearch"
-                (click)="clearAdminHubSearch()"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-          <p class="dash-hub-empty" *ngIf="getAdminHubGroupsForView().length === 0">
-            No tasks match “{{ adminHubSearch }}”. Try another keyword or <button type="button" class="dash-hub-empty-link" (click)="clearAdminHubSearch()">clear search</button>.
-          </p>
-          <ng-container *ngFor="let group of getAdminHubGroupsForView(); let gi = index">
-            <section class="dash-hub-section" [style.animation-delay.ms]="gi * 40">
-              <div class="dash-hub-section-head">
-                <h4 class="dash-hub-section-title">{{ group.label }}</h4>
-                <p class="dash-hub-section-sub">{{ group.subtitle }}</p>
-              </div>
-              <div class="dash-tile-grid">
-                <ng-container *ngFor="let t of group.tiles; let ti = index">
-                  <a
-                    *ngIf="!t.module || canAccessModule(t.module)"
-                    [routerLink]="t.route"
-                    class="dash-tile dash-tile--enter"
-                    [ngClass]="'dash-tile--accent-' + (t.accent || 'violet')"
-                    [style.animation-delay]="(ti * 28) + 'ms'"
-                  >
-                    <span class="dash-tile-icon" aria-hidden="true">{{ t.icon }}</span>
-                    <span class="dash-tile-body">
-                      <span class="dash-tile-title">{{ t.title }}</span>
-                      <span class="dash-tile-desc">{{ t.desc }}</span>
-                    </span>
-                    <span class="dash-tile-arrow" aria-hidden="true">→</span>
-                  </a>
-                </ng-container>
-              </div>
-            </section>
-          </ng-container>
         </div>
       </div>
 
@@ -638,7 +419,7 @@
       </div>
       
       <!-- Recent Activity Section -->
-      <div class="card recent-activity modern-card" *ngIf="(isAdmin() || isAccountant() || isTeacher()) && !loadingStats">
+      <div class="card recent-activity modern-card" *ngIf="canViewDashboardStats() && !loadingStats">
         <div class="card-header-flex">
           <h2>
             <span class="card-icon">🕒</span>
@@ -680,7 +461,7 @@
             </ng-template>
           </div>
           
-          <div class="tab-content" *ngIf="isAdmin() || isAccountant()">
+          <div class="tab-content" *ngIf="canViewDashboardStats() && canAccessModule('finance')">
             <h3 class="tab-title">Recent Invoices</h3>
             <div class="activity-list" *ngIf="recentInvoices.length > 0; else noRecentInvoices">
               <div class="activity-item modern-activity-item" *ngFor="let invoice of recentInvoices">

@@ -269,7 +269,7 @@ constructor(
 
     this.moduleAccessService.loadModuleAccess();
     this.loadSettings();
-    if (this.isAdmin() || this.isAccountant()) {
+    if (this.canViewDashboardStats()) {
       activatePageLoad(this.router, this.destroy$, '/dashboard', () => this.loadStatistics());
     } else {
       this.loadingStats = false;
@@ -288,7 +288,7 @@ if (this.textToggleInterval) {
   }
 
   loadStatistics() {
-    if (!this.isAdmin() && !this.isAccountant()) {
+    if (!this.canViewDashboardStats()) {
       this.loadingStats = false;
       this.cdr.markForCheck();
       return;
@@ -298,7 +298,8 @@ if (this.textToggleInterval) {
     this.loadingStats = true;
     this.cdr.markForCheck();
 
-    let pending = 5;
+    const includeFinance = this.canAccessModule('finance');
+    let pending = includeFinance ? 5 : 4;
     const finishIfCurrent = () => {
       pending = Math.max(0, pending - 1);
       if (pending === 0 && generation === this.statsLoadGeneration) {
@@ -383,40 +384,59 @@ if (this.textToggleInterval) {
         }
       });
 
-    this.financeService
-      .getInvoicesPaginated({ page: 1, limit: 5 })
-      .pipe(finalize(finishIfCurrent))
-      .subscribe({
-        next: (response: any) => {
-          if (generation !== this.statsLoadGeneration) return;
-          const invoicesArray = Array.isArray(response?.data) ? response.data : [];
-          this.stats.totalInvoices = Number(response?.total || invoicesArray.length || 0);
-          this.stats.totalBalance = Number(response?.totalBalance || 0);
-          this.stats.totalInvoicedAmount = Number(response?.totalInvoicedAmount ?? 0);
-          this.stats.totalPaidAmount = Number(response?.totalPaidAmount ?? 0);
-          this.recentInvoices = [...invoicesArray]
-            .sort(
-              (a: any, b: any) =>
-                new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-            )
-            .slice(0, 5);
-        },
-        error: () => {
-          if (generation !== this.statsLoadGeneration) return;
-          this.stats.totalInvoices = 0;
-          this.stats.totalBalance = 0;
-          this.stats.totalInvoicedAmount = 0;
-          this.stats.totalPaidAmount = 0;
-          this.recentInvoices = [];
-        }
-      });
+    if (includeFinance) {
+      this.financeService
+        .getInvoicesPaginated({ page: 1, limit: 5 })
+        .pipe(finalize(finishIfCurrent))
+        .subscribe({
+          next: (response: any) => {
+            if (generation !== this.statsLoadGeneration) return;
+            const invoicesArray = Array.isArray(response?.data) ? response.data : [];
+            this.stats.totalInvoices = Number(response?.total || invoicesArray.length || 0);
+            this.stats.totalBalance = Number(response?.totalBalance || 0);
+            this.stats.totalInvoicedAmount = Number(response?.totalInvoicedAmount ?? 0);
+            this.stats.totalPaidAmount = Number(response?.totalPaidAmount ?? 0);
+            this.recentInvoices = [...invoicesArray]
+              .sort(
+                (a: any, b: any) =>
+                  new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+              )
+              .slice(0, 5);
+          },
+          error: () => {
+            if (generation !== this.statsLoadGeneration) return;
+            this.stats.totalInvoices = 0;
+            this.stats.totalBalance = 0;
+            this.stats.totalInvoicedAmount = 0;
+            this.stats.totalPaidAmount = 0;
+            this.recentInvoices = [];
+          }
+        });
+    }
 }
 
   refreshDashboardStats(): void {
-    if (!this.isAdmin() && !this.isAccountant()) {
+    if (!this.canViewDashboardStats()) {
       return;
     }
     this.loadStatistics();
+  }
+
+  /** Load and show dashboard stat cards (admin, director, school leadership, accountant). */
+  canViewDashboardStats(): boolean {
+    return (
+      this.authService.isAdmin() ||
+      this.authService.isAccountant() ||
+      this.authService.isSchoolLeadership()
+    );
+  }
+
+  canChangeOwnPassword(): boolean {
+    return this.authService.canChangeOwnPassword();
+  }
+
+  get changePasswordRoute(): string {
+    return this.authService.getChangePasswordRoute();
   }
 
   getRoleLabel(): string {
@@ -424,6 +444,9 @@ if (this.textToggleInterval) {
     if (!u) return 'Guest';
     const r = String(u.role || '').toLowerCase();
     if (r === 'superadmin') return 'Super Admin';
+    if (r === 'director') return 'Director';
+    if (r === 'headmaster') return 'Headmaster';
+    if (r === 'deputy_headmaster') return 'Deputy Headmaster';
     if (r === 'admin') return 'Administrator';
     if (r === 'accountant') return 'Accountant';
     if (r === 'teacher') return 'Teacher';
@@ -446,6 +469,34 @@ if (this.textToggleInterval) {
     if (h < 12) return 'Good morning';
     if (h < 17) return 'Good afternoon';
     return 'Good evening';
+  }
+
+  /** Honorific shown before the user name in the dashboard greeting (e.g. Mr, Mrs). */
+  getNamePrefix(): string {
+    const user = this.authService.getCurrentUser();
+    if (!user) return '';
+
+    const custom = String((user as { namePrefix?: string }).namePrefix || '').trim();
+    if (custom) return custom;
+
+    const role = String(user.role || '').toLowerCase();
+    if (role === 'director') {
+      return 'Mr';
+    }
+    return '';
+  }
+
+  /** Display name with honorific prefix when configured. */
+  getGreetingName(): string {
+    const name = this.getDisplayName();
+    const prefix = this.getNamePrefix();
+    if (!prefix || !name || name === 'User') {
+      return name;
+    }
+    if (/^(Mr|Mrs|Ms|Miss|Dr|Prof)\.?\s/i.test(name)) {
+      return name;
+    }
+    return `${prefix} ${name}`;
   }
 
   getCollectionRatePercent(): number {
@@ -481,11 +532,12 @@ if (this.textToggleInterval) {
   }
 
   getAdminHubGroupsForView(): DashboardAdminHubGroup[] {
+    const base = this.filterAdminHubGroupsForRole(this.adminHubGroups);
     const q = this.adminHubSearch.trim().toLowerCase();
     if (!q) {
-      return this.adminHubGroups;
+      return base;
     }
-    return this.adminHubGroups
+    return base
       .map(group => ({
         ...group,
         tiles: group.tiles.filter(
@@ -496,6 +548,18 @@ if (this.textToggleInterval) {
         ),
       }))
       .filter(g => g.tiles.length > 0);
+  }
+
+  private filterAdminHubGroupsForRole(groups: DashboardAdminHubGroup[]): DashboardAdminHubGroup[] {
+    if (!this.isDirector()) {
+      return groups;
+    }
+    return groups
+      .map(group => ({
+        ...group,
+        tiles: group.tiles.filter(t => !t.route.includes('/admin/parents')),
+      }))
+      .filter(group => group.tiles.length > 0);
   }
 
   isDemoUser(): boolean {
@@ -542,13 +606,19 @@ if (this.textToggleInterval) {
   }
 
   isAdmin(): boolean {
-    const user = this.authService.getCurrentUser();
-    return user ? (user.role === 'admin' || user.role === 'superadmin') : false;
+    return this.authService.isAdmin();
   }
 
   isSuperAdmin(): boolean {
-    const user = this.authService.getCurrentUser();
-    return user ? user.role === 'superadmin' : false;
+    return this.authService.isSuperAdmin();
+  }
+
+  isDirector(): boolean {
+    return this.authService.isDirector();
+  }
+
+  canShowParentManagement(): boolean {
+    return !this.isDirector() && this.canAccessModule('parents');
   }
 
   isAccountant(): boolean {

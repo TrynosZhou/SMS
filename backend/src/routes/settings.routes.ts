@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
+import { requirePermission } from '../middleware/requirePermission';
 import { UserRole } from '../entities/User';
 import { 
   getSettings, 
@@ -20,7 +21,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', getSettings);
-router.put('/', authorize(UserRole.ADMIN, UserRole.SUPERADMIN), updateSettings);
+router.put('/', authorize(UserRole.ADMIN, UserRole.SUPERADMIN), requirePermission('settings', 'edit'), updateSettings);
 router.get('/active-term', getActiveTerm);
 router.get('/reminders', getYearEndReminders);
 router.get('/uniform-items', authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), getUniformItems);

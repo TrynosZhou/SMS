@@ -72,7 +72,7 @@
             <td><code class="um-username">{{ user.username }}</code></td>
             <td>{{ user.name }}</td>
             <td>
-              <span class="um-role-badge">{{ getRoleLabel(user.role) }}</span>
+              <span class="um-role-badge" [ngClass]="getRoleBadgeClass(user.role)">{{ getRoleLabel(user.role) }}</span>
               <span class="um-demo-tag" *ngIf="user.isDemo">Demo</span>
             </td>
             <td>
@@ -123,49 +123,135 @@
 
 <!-- Add User modal -->
 <div class="um-modal-overlay" *ngIf="showAddUserModal" (click)="closeAddUser()">
-  <div class="um-modal" (click)="$event.stopPropagation()">
+  <div class="um-modal um-modal--add-user" (click)="$event.stopPropagation()">
     <div class="um-modal-header">
-      <h2>Add User</h2>
+      <div class="um-modal-header-text">
+        <h2>Add User</h2>
+        <p class="um-modal-subtitle">Create a login for staff or portal users</p>
+      </div>
       <button type="button" class="um-modal-close" (click)="closeAddUser()" aria-label="Close">×</button>
     </div>
-    <form class="um-modal-body" (ngSubmit)="createUser()">
-      <div class="um-form-row">
-        <label>Role *</label>
-        <select [(ngModel)]="manualAccount.role" name="addRole" required (change)="onManualRoleChange()" [disabled]="creatingUser">
-          <option *ngFor="let o of manualAccountRoles" [ngValue]="o.value">{{ o.label }}</option>
-        </select>
-      </div>
-      <div class="um-form-row" *ngIf="manualAccount.role === 'teacher'">
-        <label>Teacher ID (Username) *</label>
-        <input type="text" [(ngModel)]="manualAccount.username" name="addUsernameTeacher" required [disabled]="creatingUser" />
-      </div>
-      <div class="um-form-row" *ngIf="manualAccount.role !== 'teacher'">
-        <label>Email *</label>
-        <input type="email" [(ngModel)]="manualAccount.email" name="addEmail" required [disabled]="creatingUser" />
-      </div>
-      <div class="um-form-row" *ngIf="manualAccount.role !== 'teacher'">
-        <label>Username (optional)</label>
-        <input type="text" [(ngModel)]="manualAccount.username" name="addUsername" placeholder="Auto-generated if blank" [disabled]="creatingUser" />
-      </div>
-      <div class="um-form-row um-checkbox-row">
-        <label>
-          <input type="checkbox" [(ngModel)]="manualAccount.generatePassword" name="addGenPass" [disabled]="creatingUser" />
-          Generate secure password automatically
+    <form class="um-modal-form" (ngSubmit)="createUser()">
+      <div class="um-modal-scroll">
+        <div class="um-form-row">
+          <label for="addRole">Role <span class="um-required">*</span></label>
+          <select
+            id="addRole"
+            [(ngModel)]="manualAccount.role"
+            name="addRole"
+            required
+            (change)="onManualRoleChange()"
+            [disabled]="creatingUser">
+            <ng-container *ngFor="let group of getCreatableRoleGroups()">
+              <optgroup [label]="group">
+                <option *ngFor="let o of getCreatableRolesInGroup(group)" [ngValue]="o.value">{{ o.label }}</option>
+              </optgroup>
+            </ng-container>
+          </select>
+          <div class="um-role-callout" *ngIf="manualAccount.role === 'director'">
+            Full system access, same as Super Administrator.
+          </div>
+          <div class="um-role-callout" *ngIf="manualAccount.role === 'headmaster' || manualAccount.role === 'deputy_headmaster'">
+            Permissions are managed under System Settings → Permissions &amp; Roles.
+          </div>
+        </div>
+
+        <div class="um-form-row um-form-row--split">
+          <div class="um-form-col">
+            <label for="addFirstName">First name<span class="um-required" *ngIf="requiresFullName(manualAccount.role)"> *</span></label>
+            <input
+              id="addFirstName"
+              type="text"
+              [(ngModel)]="manualAccount.firstName"
+              name="addFirstName"
+              autocomplete="given-name"
+              placeholder="First name"
+              [required]="requiresFullName(manualAccount.role)"
+              [disabled]="creatingUser" />
+          </div>
+          <div class="um-form-col">
+            <label for="addLastName">Last name<span class="um-required" *ngIf="requiresFullName(manualAccount.role)"> *</span></label>
+            <input
+              id="addLastName"
+              type="text"
+              [(ngModel)]="manualAccount.lastName"
+              name="addLastName"
+              autocomplete="family-name"
+              placeholder="Last name"
+              [required]="requiresFullName(manualAccount.role)"
+              [disabled]="creatingUser" />
+          </div>
+        </div>
+        <p class="um-form-hint um-form-hint--inline" *ngIf="manualAccount.role === 'teacher'">
+          Name optional — taken from the teacher record when blank.
+        </p>
+
+        <div class="um-form-row">
+          <label for="addUsername">
+            {{ manualAccount.role === 'teacher' ? 'Teacher ID' : 'Username' }}
+            <span class="um-required">*</span>
+          </label>
+          <input
+            id="addUsername"
+            type="text"
+            [(ngModel)]="manualAccount.username"
+            name="addUsername"
+            required
+            autocomplete="username"
+            [placeholder]="manualAccount.role === 'teacher' ? 'Match teacher record ID' : 'Login username'"
+            [disabled]="creatingUser" />
+        </div>
+
+        <div class="um-form-row" [class.um-form-row--muted]="manualAccount.generatePassword">
+          <label for="addPassword">Password <span class="um-required" *ngIf="!manualAccount.generatePassword">*</span></label>
+          <div class="um-input-group">
+            <input
+              id="addPassword"
+              [type]="showManualPassword ? 'text' : 'password'"
+              [(ngModel)]="manualAccount.password"
+              name="addPassword"
+              autocomplete="new-password"
+              placeholder="Min. 8 characters"
+              [required]="!manualAccount.generatePassword"
+              [disabled]="creatingUser || manualAccount.generatePassword" />
+            <button
+              type="button"
+              class="um-input-addon"
+              (click)="showManualPassword = !showManualPassword"
+              [disabled]="creatingUser || manualAccount.generatePassword"
+              tabindex="-1">
+              {{ showManualPassword ? 'Hide' : 'Show' }}
+            </button>
+          </div>
+        </div>
+
+        <label class="um-check-card">
+          <input
+            type="checkbox"
+            [(ngModel)]="manualAccount.generatePassword"
+            name="addGenPass"
+            [disabled]="creatingUser" />
+          <span class="um-check-card-text">
+            <strong>Auto-generate password</strong>
+            <small>System creates a secure password instead of typing one</small>
+          </span>
         </label>
-      </div>
-      <div class="um-form-row" *ngIf="!manualAccount.generatePassword">
-        <label>Temporary password *</label>
-        <input
-          [type]="showManualPassword ? 'text' : 'password'"
-          [(ngModel)]="manualAccount.password"
-          name="addPassword"
-          required
-          [disabled]="creatingUser" />
-        <button type="button" class="btn-link" (click)="showManualPassword = !showManualPassword">Show</button>
+
+        <div class="um-form-row um-form-row--last">
+          <label for="addEmail">Email <span class="um-optional">(optional)</span></label>
+          <input
+            id="addEmail"
+            type="email"
+            [(ngModel)]="manualAccount.email"
+            name="addEmail"
+            autocomplete="email"
+            placeholder="Notifications only"
+            [disabled]="creatingUser" />
+        </div>
       </div>
       <div class="um-modal-actions">
-        <button type="button" class="btn btn-secondary" (click)="closeAddUser()" [disabled]="creatingUser">Cancel</button>
-        <button type="submit" class="btn btn-primary" [disabled]="creatingUser">
+        <button type="button" class="um-btn um-btn--ghost" (click)="closeAddUser()" [disabled]="creatingUser">Cancel</button>
+        <button type="submit" class="um-btn um-btn--primary" [disabled]="creatingUser">
           {{ creatingUser ? 'Creating…' : 'Create User' }}
         </button>
       </div>

@@ -112,8 +112,8 @@ export class NewsService {
     const params = this.buildQueryParams(options);
     return this.http.get<{message: string, data: News[], pagination: any}>(`${this.apiUrl}/news/public`, { params }).pipe(
       map(response => ({
-        data: response.data,
-        pagination: response.pagination
+        data: Array.isArray(response?.data) ? response.data : [],
+        pagination: response?.pagination ?? null
       })),
       catchError(error => {
         console.error('Error getting published news:', error);
@@ -124,7 +124,7 @@ export class NewsService {
 
   getPinnedNews(): Observable<News[]> {
     return this.http.get<{message: string, data: News[]}>(`${this.apiUrl}/news/public/pinned`).pipe(
-      map(response => response.data),
+      map((response) => (Array.isArray(response?.data) ? response.data : [])),
       catchError(error => {
         console.error('Error getting pinned news:', error);
         throw error;

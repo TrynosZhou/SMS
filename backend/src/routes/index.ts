@@ -21,6 +21,7 @@ import payrollRoutes from './payroll.routes';
 import inventoryRoutes from './inventory.routes';
 import licenseAdminRoutes from './licenseAdmin.routes';
 import licenseRoutes from './license.routes';
+import rbacRoutes from './rbac.routes';
 
 const router = Router();
 
@@ -45,6 +46,7 @@ router.use('/payroll', payrollRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/admin', licenseAdminRoutes);
 router.use('/license', licenseRoutes);
+router.use('/rbac', rbacRoutes);
 
 router.use('/elearning', elearningRoutes);
 

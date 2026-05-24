@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
+import { requireModuleView, requirePermission } from '../middleware/requirePermission';
 import { UserRole } from '../entities/User';
 import {
   registerStudent,
@@ -26,8 +27,8 @@ const router = Router();
 
 router.use(authenticate);
 
-router.post('/', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), upload.single('photo'), registerStudent);
-router.get('/', getStudents);
+router.post('/', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), requirePermission('students', 'create'), upload.single('photo'), registerStudent);
+router.get('/', requireModuleView('students'), getStudents);
 router.put('/:id/status', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), correctStudentStatus);
 router.post('/status-corrections/bulk', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), bulkCorrectStudentStatus);
 router.post('/enroll', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.TEACHER, UserRole.DEMO_USER), enrollStudent);

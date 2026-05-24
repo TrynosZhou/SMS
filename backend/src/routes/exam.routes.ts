@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
+import { requireModuleView, requirePermission } from '../middleware/requirePermission';
 import { UserRole } from '../entities/User';
 import {
   createExam,
@@ -35,8 +36,8 @@ const router = Router();
 
 router.use(authenticate);
 
-router.post('/', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), createExam);
-router.get('/', getExams);
+router.post('/', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), requirePermission('exams', 'create'), createExam);
+router.get('/', requireModuleView('exams'), getExams);
 router.put('/:id', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), updateExam);
 router.post('/publish', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), publishExam);
 router.post('/publish-by-type', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DEMO_USER), publishExamByType);

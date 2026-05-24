@@ -32,7 +32,7 @@
       </div>
       <div class="manual-account-meta">
         <span class="meta-item">
-          <strong>Admins & Super Admins</strong> can create all roles, including Super Admin and Demo accounts
+          <strong>Administrators</strong> can create Director and school roles. Super Administrator accounts require Director or Super Admin access.
         </span>
       </div>
     </div>
@@ -41,58 +41,88 @@
         <div class="form-group">
           <label>Role *</label>
           <select [(ngModel)]="manualAccount.role" name="manualRole" required [disabled]="creatingUserAccount" (change)="onRoleChange()">
-            <option *ngFor="let option of manualAccountRoles" [ngValue]="option.value">
-              {{ option.label }}
-            </option>
+            <ng-container *ngFor="let group of getManualAccountRoleGroups()">
+              <optgroup [label]="group">
+                <option *ngFor="let option of getManualAccountRolesInGroup(group)" [ngValue]="option.value">
+                  {{ option.label }}
+                </option>
+              </optgroup>
+            </ng-container>
           </select>
           <small class="form-text" *ngIf="manualAccount.role === 'demo-user'">
             Demo User accounts are flagged as read-only demo logins and automatically receive demo permissions.
           </small>
         </div>
-        <div class="form-group" *ngIf="manualAccount.role === 'teacher'">
-          <label>Teacher ID (Username) *</label>
+        <div class="form-group">
+          <label>First name{{ requiresFullName(manualAccount.role) ? ' *' : '' }}</label>
+          <input
+            type="text"
+            [(ngModel)]="manualAccount.firstName"
+            name="manualFirstName"
+            autocomplete="given-name"
+            placeholder="First name"
+            [required]="requiresFullName(manualAccount.role)"
+            [disabled]="creatingUserAccount" />
+        </div>
+        <div class="form-group">
+          <label>Last name{{ requiresFullName(manualAccount.role) ? ' *' : '' }}</label>
+          <input
+            type="text"
+            [(ngModel)]="manualAccount.lastName"
+            name="manualLastName"
+            autocomplete="family-name"
+            placeholder="Last name"
+            [required]="requiresFullName(manualAccount.role)"
+            [disabled]="creatingUserAccount" />
+          <small class="form-text" *ngIf="manualAccount.role === 'teacher'">
+            For teachers, the name is taken from the teacher record if left blank here.
+          </small>
+        </div>
+        <div class="form-group">
+          <label>{{ manualAccount.role === 'teacher' ? 'Teacher ID (Username)' : 'Username' }} *</label>
           <input
             type="text"
             [(ngModel)]="manualAccount.username"
-            name="manualUsernameTeacher"
-            placeholder="Enter Teacher ID (must match an existing teacher)"
+            name="manualUsername"
+            [placeholder]="manualAccount.role === 'teacher' ? 'Must match teacher record ID' : 'Login username'"
+            autocomplete="username"
             required
-            [disabled]="creatingUserAccount">
-          <small class="form-text">
-            Use the exact <strong>Teacher ID / Employee Number</strong> as on the teacher record. The account will link to that teacher.
+            [disabled]="creatingUserAccount" />
+          <small class="form-text" *ngIf="manualAccount.role === 'teacher'">
+            Use the exact <strong>Teacher ID / Employee Number</strong> as on the teacher record.
           </small>
         </div>
-        <div class="form-group" *ngIf="manualAccount.role !== 'teacher'">
-          <label>Email Address *</label>
-          <input type="email" [(ngModel)]="manualAccount.email" name="manualEmail" placeholder="user@example.com" required [disabled]="creatingUserAccount">
-        </div>
-        <div class="form-group" *ngIf="manualAccount.role !== 'teacher'">
-          <label>Username (optional)</label>
-          <input type="text" [(ngModel)]="manualAccount.username" name="manualUsername" 
-            placeholder="Leave blank to auto-generate" 
-            [disabled]="creatingUserAccount">
-        </div>
-        <div class="form-group checkbox-inline">
-          <label class="checkbox-label">
-            <input type="checkbox" [(ngModel)]="manualAccount.generatePassword" name="manualGeneratePassword" [disabled]="creatingUserAccount">
-            <span>Generate secure password automatically</span>
-          </label>
-        </div>
-        <div class="form-group" *ngIf="!manualAccount.generatePassword">
-          <label>Temporary Password *</label>
+        <div class="form-group">
+          <label>Password *</label>
           <div class="password-input-wrapper">
             <input
               [type]="showManualPassword ? 'text' : 'password'"
               [(ngModel)]="manualAccount.password"
               name="manualPassword"
-              placeholder="Enter temporary password"
+              placeholder="At least 8 characters"
               autocomplete="new-password"
-              [disabled]="creatingUserAccount"
-              required>
+              [disabled]="creatingUserAccount || manualAccount.generatePassword"
+              [required]="!manualAccount.generatePassword" />
             <button type="button" class="password-toggle-btn" (click)="toggleManualPasswordVisibility()" tabindex="-1">
               <span>{{ showManualPassword ? '👁️' : '👁️‍🗨️' }}</span>
             </button>
           </div>
+        </div>
+        <div class="form-group checkbox-inline">
+          <label class="checkbox-label">
+            <input type="checkbox" [(ngModel)]="manualAccount.generatePassword" name="manualGeneratePassword" [disabled]="creatingUserAccount" />
+            <span>Generate secure password automatically (instead of typed password)</span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label>Email (optional)</label>
+          <input
+            type="email"
+            [(ngModel)]="manualAccount.email"
+            name="manualEmail"
+            placeholder="For notifications only — not used to log in"
+            autocomplete="email"
+            [disabled]="creatingUserAccount" />
         </div>
         <div class="form-group checkbox-inline" *ngIf="isSuperAdmin()">
           <label class="checkbox-label">
@@ -304,9 +334,11 @@
             <div class="staff-profile-row-edit" *ngIf="editStaffField === 'role'">
               <label class="form-label">Role</label>
               <select [(ngModel)]="editStaffRoleValue" class="form-input" [disabled]="updatingStaffField">
-                <option value="superadmin">Super Admin</option>
-                <option value="admin">Administrator</option>
-                <option value="accountant">Accountant</option>
+                <ng-container *ngFor="let group of getManualAccountRoleGroups()">
+                  <optgroup [label]="group">
+                    <option *ngFor="let opt of getManualAccountRolesInGroup(group)" [value]="opt.value">{{ opt.label }}</option>
+                  </optgroup>
+                </ng-container>
               </select>
               <div class="staff-profile-edit-actions">
                 <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditStaffField()" [disabled]="updatingStaffField">Cancel</button>
@@ -840,7 +872,11 @@
               <span class="detail-label">Role:</span>
               <span class="detail-value detail-value-role">
                 <select [(ngModel)]="selectedUserRoleForEdit" name="userRole" class="role-select" [disabled]="updatingRole">
-                  <option *ngFor="let opt of getEditableRoleOptions()" [value]="opt.value">{{ opt.label }}</option>
+                  <ng-container *ngFor="let group of getManualAccountRoleGroups()">
+                    <optgroup [label]="group">
+                      <option *ngFor="let opt of getManualAccountRolesInGroup(group)" [value]="opt.value">{{ opt.label }}</option>
+                    </optgroup>
+                  </ng-container>
                 </select>
                 <button type="button" class="btn btn-primary btn-sm btn-update-role" (click)="updateUserRole()" [disabled]="updatingRole || !isRoleChanged()">
                   <span *ngIf="!updatingRole">Update Role</span>

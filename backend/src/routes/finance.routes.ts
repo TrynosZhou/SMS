@@ -1,5 +1,10 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
+import {
+  requireFinancePageEdit,
+  requireModuleView,
+  requirePermission,
+} from '../middleware/requirePermission';
 import { UserRole } from '../entities/User';
 import {
   createInvoice,
@@ -36,11 +41,26 @@ const router = Router();
 router.use(authenticate);
 
 // Allow SuperAdmin, Admin, Accountant, and Demo users to create single invoices
-router.post('/', authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), createInvoice);
-router.post('/bulk', authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), createBulkInvoices);
-router.post('/bulk/reverse', authorize(UserRole.ADMIN, UserRole.SUPERADMIN), reverseBulkInvoices);
-router.post('/void/tuition-exempt', authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT), voidTuitionExemptInvoices);
-router.get('/', getInvoices);
+router.post('/', authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), requirePermission('finance', 'create'), createInvoice);
+router.post(
+  '/bulk',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER),
+  requireFinancePageEdit('bulkInvoices'),
+  createBulkInvoices
+);
+router.post(
+  '/bulk/reverse',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER),
+  requireFinancePageEdit('bulkInvoices'),
+  reverseBulkInvoices
+);
+router.post(
+  '/void/tuition-exempt',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT),
+  requireFinancePageEdit('exemptionCorrection'),
+  voidTuitionExemptInvoices
+);
+router.get('/', requireModuleView('finance'), getInvoices);
 router.get('/balance', getStudentBalance);
 router.get('/next-uniform-receipt', authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), getNextUniformReceiptNumberController);
 router.post('/uniform-charge', authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), createUniformCharge);

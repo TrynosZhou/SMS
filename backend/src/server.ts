@@ -92,6 +92,15 @@ async function initializeDatabase(attempt: number = 1): Promise<void> {
     if (AppDataSource.options.synchronize) {
       console.log('[Server] ✓ Schema synchronization completed - all tables created/updated');
     }
+
+    try {
+      const { ensureRbacSchema, ensureRbacSeeded } = await import('./services/rbac.service');
+      await ensureRbacSchema();
+      await ensureRbacSeeded();
+      console.log('[Server] ✓ RBAC schema ready and roles seeded');
+    } catch (rbacErr: any) {
+      console.warn('[Server] RBAC setup warning:', rbacErr?.message);
+    }
     
     // Set up connection monitoring and error handling
     setupConnectionMonitoring();

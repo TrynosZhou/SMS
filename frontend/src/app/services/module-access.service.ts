@@ -81,6 +81,60 @@ export interface ModuleAccess {
     payroll?: boolean;
     inventory?: boolean;
   };
+  director?: {
+    students?: boolean;
+    teachers?: boolean;
+    classes?: boolean;
+    subjects?: boolean;
+    exams?: boolean;
+    reportCards?: boolean;
+    rankings?: boolean;
+    finance?: boolean;
+    attendance?: boolean;
+    settings?: boolean;
+    dashboard?: boolean;
+    teacherManager?: boolean;
+    payroll?: boolean;
+    inventory?: boolean;
+    parents?: boolean;
+    logistics?: boolean;
+  };
+  headmaster?: {
+    students?: boolean;
+    teachers?: boolean;
+    classes?: boolean;
+    subjects?: boolean;
+    exams?: boolean;
+    reportCards?: boolean;
+    rankings?: boolean;
+    finance?: boolean;
+    attendance?: boolean;
+    settings?: boolean;
+    dashboard?: boolean;
+    teacherManager?: boolean;
+    payroll?: boolean;
+    inventory?: boolean;
+    parents?: boolean;
+    logistics?: boolean;
+  };
+  deputy_headmaster?: {
+    students?: boolean;
+    teachers?: boolean;
+    classes?: boolean;
+    subjects?: boolean;
+    exams?: boolean;
+    reportCards?: boolean;
+    rankings?: boolean;
+    finance?: boolean;
+    attendance?: boolean;
+    settings?: boolean;
+    dashboard?: boolean;
+    teacherManager?: boolean;
+    payroll?: boolean;
+    inventory?: boolean;
+    parents?: boolean;
+    logistics?: boolean;
+  };
   superadmin?: {
     [key: string]: boolean; // Superadmin has access to everything
   };
@@ -183,6 +237,60 @@ export class ModuleAccessService {
       payroll: true,
       inventory: true
     },
+    director: {
+      students: true,
+      teachers: true,
+      classes: true,
+      subjects: true,
+      exams: true,
+      reportCards: true,
+      rankings: true,
+      finance: true,
+      attendance: true,
+      settings: true,
+      dashboard: true,
+      teacherManager: true,
+      payroll: true,
+      inventory: true,
+      parents: true,
+      logistics: true
+    },
+    headmaster: {
+      students: true,
+      teachers: true,
+      classes: true,
+      subjects: true,
+      exams: true,
+      reportCards: true,
+      rankings: true,
+      finance: false,
+      attendance: true,
+      settings: false,
+      dashboard: true,
+      teacherManager: true,
+      payroll: false,
+      inventory: true,
+      parents: true,
+      logistics: true
+    },
+    deputy_headmaster: {
+      students: true,
+      teachers: true,
+      classes: true,
+      subjects: true,
+      exams: true,
+      reportCards: true,
+      rankings: true,
+      finance: false,
+      attendance: true,
+      settings: false,
+      dashboard: true,
+      teacherManager: false,
+      payroll: false,
+      inventory: false,
+      parents: true,
+      logistics: false
+    },
     superadmin: {}, // All access
     demo_user: {
       dashboard: true,
@@ -267,9 +375,25 @@ export class ModuleAccessService {
       return true;
     }
 
-    // Payroll: only admin and superadmin
+    // Payroll: not for School Admin leadership unless RBAC grants it (handled in PermissionService first)
     if (moduleName === 'payroll') {
-      return role === 'admin' || role === 'superadmin';
+      if (role === 'headmaster' || role === 'deputy_headmaster') {
+        return false;
+      }
+      return role === 'admin' || role === 'superadmin' || role === 'director';
+    }
+
+    if (moduleName === 'finance') {
+      if (role === 'headmaster' || role === 'deputy_headmaster') {
+        return false;
+      }
+    }
+
+    // Teachers must not access Teacher Records or Parent Records (registration menus)
+    if (role === 'teacher' && !(user as any).isUniversalTeacher) {
+      if (moduleName === 'teachers' || moduleName === 'parents') {
+        return false;
+      }
     }
 
     // Hard restrictions for accountant role regardless of settings
@@ -280,8 +404,8 @@ export class ModuleAccessService {
       }
     }
 
-    // Superadmin has access to everything
-    if (role === 'superadmin') return true;
+    // Superadmin and Director have access to everything (legacy moduleAccess matrix)
+    if (role === 'superadmin' || role === 'director') return true;
 
     // Map role names to module access keys (handle singular/plural differences)
     const roleMap: { [key: string]: string } = {
@@ -290,6 +414,9 @@ export class ModuleAccessService {
       'student': 'students',
       'accountant': 'accountant',
       'admin': 'admin',
+      'director': 'director',
+      'headmaster': 'headmaster',
+      'deputy_headmaster': 'deputy_headmaster',
       'superadmin': 'superadmin',
       'demo_user': 'demo_user'
     };
@@ -305,7 +432,6 @@ export class ModuleAccessService {
     const roleAccess = (access as any)[accessKey];
 
     if (!roleAccess) {
-      console.warn(`No module access found for role: ${role} (mapped to: ${accessKey})`);
       return false;
     }
 

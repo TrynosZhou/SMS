@@ -8,7 +8,7 @@
       </div>
       <div class="profile-name">{{ currentUsername || 'User' }}</div>
       <div class="profile-role-badge">
-        {{ isTeacher ? '🧑‍🏫 Teacher' : isAccountant ? '🧾 Accountant' : '👤 Parent' }}
+        👤 {{ roleLabel }}
       </div>
 
       <div class="profile-info-block" *ngIf="accountInfo">
@@ -34,8 +34,8 @@
 
       <!-- Header -->
       <div class="ma-form-header">
-        <h1 class="form-title">{{ isAccountant ? '🔒 Change Password' : '⚙️ Manage Account' }}</h1>
-        <p class="form-subtitle">{{ isAccountant ? 'Update your login password securely.' : 'Update your credentials and keep your account secure.' }}</p>
+        <h1 class="form-title">🔒 Change Password</h1>
+        <p class="form-subtitle">Update your login password. Enter your current password, then choose a new one.</p>
       </div>
 
       <!-- Alerts -->
@@ -47,21 +47,30 @@
       </div>
 
       <!-- Loading -->
-      <div class="ma-loading" *ngIf="loading && !accountInfo">
+      <div class="ma-loading" *ngIf="loadingProfile && !accountInfo">
         <div class="spinner"></div>
         <span>Loading account information…</span>
       </div>
 
-      <!-- First-login notice -->
-      <div class="ma-notice" *ngIf="isTeacher && mustChangePassword">
-        <span class="notice-icon">⚠️</span>
+      <div class="ma-notice ma-notice--demo" *ngIf="isDemo">
+        <span class="notice-icon">ℹ️</span>
         <div>
-          <strong>First Login Required</strong>
-          <p>You must change your temporary password. Your username (TeacherID) cannot be changed.</p>
+          <strong>Demo account</strong>
+          <p>Password changes are disabled for demo users.</p>
         </div>
       </div>
 
-      <form *ngIf="accountInfo" (ngSubmit)="updateAccount()" autocomplete="off">
+      <!-- First-login notice -->
+      <div class="ma-notice" *ngIf="!isDemo && mustChangePassword">
+        <span class="notice-icon">⚠️</span>
+        <div>
+          <strong>Password change required</strong>
+          <p *ngIf="isTeacher">You must change your temporary password. Your username (TeacherID) cannot be changed.</p>
+          <p *ngIf="!isTeacher">You must change your temporary password before continuing.</p>
+        </div>
+      </div>
+
+      <form *ngIf="accountInfo && !isDemo" (ngSubmit)="updateAccount()" autocomplete="off">
 
         <!-- Account Info Section -->
         <div class="form-section">
@@ -181,10 +190,10 @@
         <!-- Form Actions -->
         <div class="form-actions">
           <button type="submit" class="btn-save" [disabled]="!canSubmit">
-            <span *ngIf="!loading">💾 Update Account</span>
-            <span *ngIf="loading" class="loading-row"><span class="spinner sm"></span> Updating…</span>
+            <span *ngIf="!saving">💾 Update Account</span>
+            <span *ngIf="saving" class="loading-row"><span class="spinner sm"></span> Updating…</span>
           </button>
-          <button type="button" class="btn-cancel" (click)="goToDashboard()" [disabled]="loading">
+          <button type="button" class="btn-cancel" (click)="goToDashboard()" [disabled]="saving">
             ✕ Cancel
           </button>
         </div>

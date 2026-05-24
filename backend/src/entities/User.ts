@@ -5,7 +5,13 @@ import { Parent } from './Parent';
 
 export enum UserRole {
   SUPERADMIN = 'superadmin',
+  /** Director — executive oversight; same system access as Super Administrator */
+  DIRECTOR = 'director',
   ADMIN = 'admin',
+  /** Headmaster — School Admin leadership; permissions set via RBAC */
+  HEADMASTER = 'headmaster',
+  /** Deputy Headmaster — School Admin leadership; permissions set via RBAC */
+  DEPUTY_HEADMASTER = 'deputy_headmaster',
   ACCOUNTANT = 'accountant',
   TEACHER = 'teacher',
   PARENT = 'parent',

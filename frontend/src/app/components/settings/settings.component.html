@@ -821,14 +821,21 @@
         </div>
       </div>
 
-      <!-- Module Access Control -->
+      </fieldset>
+
+      <!-- Module Access Control (RBAC outside disabled fieldset so Save permissions works) -->
       <div class="form-section tab-panel" *ngIf="isTab('module-access')">
-        <h2 class="tab-panel-title">Module Access</h2>
-        <p class="tab-panel-desc">Select which modules each role can access and view on the system.</p>
-        <h3>Module Access Control</h3>
-        <p class="section-description">Select which modules teachers and parents can access and view on the system.</p>
-        
-        <!-- Head Teacher (Universal Teacher Account) -->
+        <app-rbac-management *ngIf="authService.isAdmin()"></app-rbac-management>
+        <div class="rbac-legacy-note" *ngIf="!authService.isAdmin()">
+          <p>Only administrators can manage permissions and roles.</p>
+        </div>
+
+        <hr class="rbac-divider" *ngIf="authService.isAdmin()" />
+
+        <fieldset
+          [attr.disabled]="isDemoUser() ? true : null"
+          [class.demo-readonly]="isDemoUser()">
+        <!-- Head Teacher (Universal Teacher Account) — legacy quick toggles; save via main Save Settings -->
         <div class="module-access-group universal-teacher-group">
           <h3>👥 Head Teacher</h3>
           <p class="section-description" style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
@@ -905,255 +912,8 @@
           </div>
         </div>
 
-        <!-- Teacher Module Access -->
-        <div class="module-access-group">
-          <h3>👨‍🏫 Teacher Access</h3>
-          <div class="checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.students" name="teacherStudents">
-              <span>Students</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.classes" name="teacherClasses">
-              <span>Classes</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.subjects" name="teacherSubjects">
-              <span>Subjects</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.exams" name="teacherExams">
-              <span>Exams</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.reportCards" name="teacherReportCards">
-              <span>Report Cards</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.rankings" name="teacherRankings">
-              <span>Rankings</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.finance" name="teacherFinance">
-              <span>Finance</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.teachers.settings" name="teacherSettings">
-              <span>Settings</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Parent Module Access -->
-        <div class="module-access-group">
-          <h3>👨‍👩‍👧 Parent Access</h3>
-          <div class="checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.parents.dashboard" name="parentDashboard">
-              <span>Dashboard</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.parents.reportCards" name="parentReportCards">
-              <span>Report Cards</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.parents.invoices" name="parentInvoices">
-              <span>Invoices</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Accountant Module Access -->
-        <div class="module-access-group">
-          <h3>💰 Accountant Access</h3>
-          <p class="section-description" style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
-            Control which modules the Accountant role can access. Accountants typically manage financial operations.
-          </p>
-          <div class="checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.accountant.dashboard" name="accountantDashboard">
-              <span>Dashboard</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.accountant.students" name="accountantStudents">
-              <span>Students</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.accountant.invoices" name="accountantInvoices">
-              <span>Invoices</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.accountant.finance" name="accountantFinance">
-              <span>Finance</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.accountant.settings" name="accountantSettings">
-              <span>Settings</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.accountant.classes" name="accountantClasses">
-              <span>Class Management</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.accountant.logistics" name="accountantLogistics">
-              <span>Logistics Management</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Administrator Module Access -->
-        <div class="module-access-group">
-          <h3>👔 Administrator Access</h3>
-          <p class="section-description" style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
-            Control which modules the Administrator role can access. Administrators typically have broad system access.
-          </p>
-          <div class="checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.dashboard" name="adminDashboard">
-              <span>Dashboard</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.students" name="adminStudents">
-              <span>Students</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.teachers" name="adminTeachers">
-              <span>Teachers</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.classes" name="adminClasses">
-              <span>Classes</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.subjects" name="adminSubjects">
-              <span>Subjects</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.exams" name="adminExams">
-              <span>Exams</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.reportCards" name="adminReportCards">
-              <span>Report Cards</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.rankings" name="adminRankings">
-              <span>Rankings</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.finance" name="adminFinance">
-              <span>Finance</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.attendance" name="adminAttendance">
-              <span>Attendance</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.admin.settings" name="adminSettings">
-              <span>Settings</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Demo Account Module Access -->
-        <div class="module-access-group">
-          <h3>🧪 Demo Account Access</h3>
-          <p class="section-description" style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
-            Limit what the shared demo login can access. Useful when sharing the system publicly.
-          </p>
-          <div class="checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.dashboard" name="demoDashboard">
-              <span>Dashboard</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.students" name="demoStudents">
-              <span>Students</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.teachers" name="demoTeachers">
-              <span>Teachers</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.classes" name="demoClasses">
-              <span>Classes</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.subjects" name="demoSubjects">
-              <span>Subjects</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.exams" name="demoExams">
-              <span>Exams</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.reportCards" name="demoReportCards">
-              <span>Report Cards</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.rankings" name="demoRankings">
-              <span>Rankings</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.finance" name="demoFinance">
-              <span>Finance</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.attendance" name="demoAttendance">
-              <span>Attendance</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.assignments" name="demoAssignments">
-              <span>Assignments</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.messages" name="demoMessages">
-              <span>Messages</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.accounts" name="demoAccounts">
-              <span>Accounts</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.demoAccount.settings" name="demoSettings">
-              <span>Settings</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Student Module Access -->
-        <div class="module-access-group">
-          <h3>🎓 Student Access</h3>
-          <p class="section-description" style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
-            Decide what logged-in students can see when student accounts are enabled.
-          </p>
-          <div class="checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.students.dashboard" name="studentDashboard">
-              <span>Dashboard</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.students.subjects" name="studentSubjects">
-              <span>Subjects</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.students.assignments" name="studentAssignments">
-              <span>Assignments</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.students.reportCards" name="studentReportCards">
-              <span>Report Cards</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.students.finance" name="studentFinance">
-              <span>Finance</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
       <!-- Danger Zone: Reset System -->
-      <div class="form-section" *ngIf="isTab('module-access') && (authService.hasRole('admin') || authService.hasRole('superadmin')) && !isDemoUser()">
+      <div class="form-section" *ngIf="isTab('module-access') && authService.isAdmin() && !isDemoUser()">
         <h2 style="color: #c53030;">Danger Zone: Reset System / Wipe Database</h2>
         <div class="alert alert-error" style="margin-top: 10px; padding: 12px; background: #fff5f5; border-left: 4px solid #c53030; color: #742a2a;">
           <p style="margin: 0 0 6px 0;">
@@ -1190,8 +950,8 @@
           </button>
         </div>
       </div>
-
-      </fieldset>
+        </fieldset>
+      </div>
 
       <div class="settings-form-actions" *ngIf="showSchoolSections() && !usesDedicatedSaveButton()">
         <p class="settings-form-actions__hint">Changes apply after you save this tab’s settings.</p>

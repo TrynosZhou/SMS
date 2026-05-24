@@ -14,6 +14,7 @@ import { InventoryFine } from '../entities/InventoryFine';
 import { InventoryAuditLog } from '../entities/InventoryAuditLog';
 import { InventoryTeacherTextbookAllocation } from '../entities/InventoryTeacherTextbookAllocation';
 import { InventoryTeacherFurnitureAllocation } from '../entities/InventoryTeacherFurnitureAllocation';
+import { isFullAccessRole } from '../constants/userRoles';
 import {
   canUserManageInventory,
   canUserViewInventoryReports,
@@ -132,7 +133,12 @@ export const getInventorySettings = async (req: AuthRequest, res: Response) => {
 
 export const putInventorySettings = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
+    if (
+      !req.user ||
+      (!isFullAccessRole(req.user.role) &&
+        req.user.role !== UserRole.ADMIN &&
+        req.user.role !== UserRole.SUPERADMIN)
+    ) {
       return res.status(403).json({ message: 'Only administrators can update inventory settings' });
     }
     const repo = AppDataSource.getRepository(Settings);
@@ -1095,28 +1101,51 @@ export const bulkAllocateFurnitureToTeacher = async (req: AuthRequest, res: Resp
 /* ---- Admin/Teacher: list teacher textbook allocations ---- */
 export const listTeacherTextbookAllocations = async (req: AuthRequest, res: Response) => {
   try {
-    const role = req.user?.role;
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const role = req.user.role;
     const qb = AppDataSource.getRepository(InventoryTeacherTextbookAllocation)
       .createQueryBuilder('a')
       .leftJoinAndSelect('a.catalog', 'catalog')
       .leftJoinAndSelect('a.teacherUser', 'teacher')
       .orderBy('a.createdAt', 'DESC');
     if (role === UserRole.TEACHER) {
-      qb.where('a.teacherUserId = :uid', { uid: req.user!.id });
+      qb.where('a.teacherUserId = :uid', { uid: req.user.id });
     } else if (req.query.teacherUserId) {
       qb.where('a.teacherUserId = :uid', { uid: String(req.query.teacherUserId) });
     }
-    const allocs = await qb.getMany();
+    let allocs: InventoryTeacherTextbookAllocation[];
+    try {
+      allocs = await qb.getMany();
+    } catch (queryErr: any) {
+      console.error('[listTeacherTextbookAllocations] allocation query failed:', queryErr?.message);
+      return res.status(500).json({
+        message:
+          queryErr?.message?.includes('inventory_teacher_textbook_allocations')
+            ? 'Inventory teacher allocations are not set up. Run database migrations or sync-schema.'
+            : queryErr?.message || 'Failed to load textbook allocations',
+      });
+    }
     if (!allocs.length) {
       return res.json([]);
     }
 
     const issuanceRepo = AppDataSource.getRepository(InventoryTextbookIssuance);
-    const allocIds = allocs.map(a => a.id);
-    const issuances = await issuanceRepo
-      .createQueryBuilder('i')
-      .where('i.teacherAllocationId IN (:...ids)', { ids: allocIds })
-      .getMany();
+    const allocIds = allocs.map((a) => a.id);
+    let issuances: InventoryTextbookIssuance[] = [];
+    try {
+      issuances = await issuanceRepo.find({
+        where: { teacherAllocationId: In(allocIds) },
+      });
+    } catch (issErr: any) {
+      console.warn('[listTeacherTextbookAllocations] issuance lookup failed, using allocation counts only:', issErr?.message);
+      issuances = [];
+    }
 
     const issuanceByAllocCopy = new Map<string, (typeof issuances)[0]>();
     for (const i of issuances) {
@@ -1173,7 +1202,14 @@ export const listTeacherTextbookAllocations = async (req: AuthRequest, res: Resp
 /* ---- Admin/Teacher: list teacher furniture allocations ---- */
 export const listTeacherFurnitureAllocations = async (req: AuthRequest, res: Response) => {
   try {
-    const role = req.user?.role;
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const role = req.user.role;
     const qb = AppDataSource.getRepository(InventoryTeacherFurnitureAllocation)
       .createQueryBuilder('a')
       .leftJoinAndSelect('a.furnitureItem', 'item')
@@ -1485,6 +1521,9 @@ export const patchTeacherFurnitureItemCondition = async (req: AuthRequest, res: 
 /* ---- Teacher: full class issuance report (textbooks + furniture) ---- */
 export const getTeacherClassReport = async (req: AuthRequest, res: Response) => {
   try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
     if (!req.user || req.user.role !== UserRole.TEACHER) {
       return res.status(403).json({ message: 'Teacher only' });
     }
@@ -1578,6 +1617,9 @@ export const getTeacherClassReport = async (req: AuthRequest, res: Response) => 
 /* ---- Teacher: get students enrolled in teacher's OWN class(es) only ---- */
 export const getTeacherClassStudents = async (req: AuthRequest, res: Response) => {
   try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
     if (!req.user || req.user.role !== UserRole.TEACHER) {
       return res.status(403).json({ message: 'Teacher only' });
     }

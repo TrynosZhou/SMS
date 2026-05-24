@@ -9,6 +9,10 @@ import { Parent } from '../entities/Parent';
 import { Settings } from '../entities/Settings';
 import { AuthRequest } from '../middleware/auth';
 import { IsNull, Not } from 'typeorm';
+import { isFullAccessRole } from '../constants/userRoles';
+
+const canManageUserAccounts = (role: UserRole): boolean =>
+  role === UserRole.ADMIN || isFullAccessRole(role);
 
 /** Username for the shared Head Teacher (universal teacher) account */
 export const UNIVERSAL_TEACHER_USERNAME = 'teacher';
@@ -45,7 +49,14 @@ export const updateAccount = async (req: AuthRequest, res: Response) => {
       }
       // Keep stronger policy for admin/superadmin/accountant only
       const role = req.user?.role;
-      if ((role === UserRole.ADMIN || role === UserRole.SUPERADMIN || role === UserRole.ACCOUNTANT) && pwd.length < 8) {
+      if (
+        (role === UserRole.ADMIN ||
+          isFullAccessRole(role) ||
+          role === UserRole.ACCOUNTANT ||
+          role === UserRole.HEADMASTER ||
+          role === UserRole.DEPUTY_HEADMASTER) &&
+        pwd.length < 8
+      ) {
         return res.status(400).json({ message: 'New password must be at least 8 characters long' });
       }
     }
@@ -142,18 +153,19 @@ export const getAccountInfo = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
     const userRepository = AppDataSource.getRepository(User);
-    const user = await userRepository.findOne({ 
-      where: { id: userId },
-      relations: ['teacher', 'parent', 'student']
-    });
+    const user = await userRepository.findOne({ where: { id: userId } });
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || undefined;
-    res.json({
+    const payload: Record<string, unknown> = {
       id: user.id,
       email: user.email,
       username: user.username,
@@ -164,10 +176,30 @@ export const getAccountInfo = async (req: AuthRequest, res: Response) => {
       mustChangePassword: user.mustChangePassword,
       isTemporaryAccount: user.isTemporaryAccount,
       isDemo: user.isDemo,
-      teacher: user.teacher,
-      parent: user.parent,
-      student: user.student
-    });
+    };
+
+    // Only load profile relations when needed (avoids slow/hanging joins for staff logins)
+    if (user.role === UserRole.TEACHER) {
+      const withTeacher = await userRepository.findOne({
+        where: { id: userId },
+        relations: ['teacher'],
+      });
+      payload.teacher = withTeacher?.teacher ?? null;
+    } else if (user.role === UserRole.PARENT) {
+      const withParent = await userRepository.findOne({
+        where: { id: userId },
+        relations: ['parent'],
+      });
+      payload.parent = withParent?.parent ?? null;
+    } else if (user.role === UserRole.STUDENT) {
+      const withStudent = await userRepository.findOne({
+        where: { id: userId },
+        relations: ['student'],
+      });
+      payload.student = withStudent?.student ?? null;
+    }
+
+    res.json(payload);
   } catch (error: any) {
     console.error('Error getting account info:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
@@ -186,8 +218,8 @@ export const createUserAccount = async (req: AuthRequest, res: Response) => {
     }
 
     const actingRole = req.user.role;
-    if (actingRole !== UserRole.ADMIN && actingRole !== UserRole.SUPERADMIN) {
-      return res.status(403).json({ message: 'Only Administrators can create user accounts' });
+    if (!canManageUserAccounts(actingRole)) {
+      return res.status(403).json({ message: 'Only Administrators or Directors can create user accounts' });
     }
 
     if (!AppDataSource.isInitialized) {
@@ -197,6 +229,8 @@ export const createUserAccount = async (req: AuthRequest, res: Response) => {
     const {
       email,
       username,
+      firstName,
+      lastName,
       role,
       password,
       generatePassword = true,
@@ -209,20 +243,38 @@ export const createUserAccount = async (req: AuthRequest, res: Response) => {
 
     const requestedRole = String(role).toLowerCase() as UserRole;
     
-    // For teachers: username is mandatory, email is not required
-    if (requestedRole === UserRole.TEACHER) {
-      if (!username || !username.trim()) {
-        return res.status(400).json({ message: 'Username is mandatory for teacher accounts' });
+    if (!username || !String(username).trim()) {
+      return res.status(400).json({ message: 'Username is required for login' });
+    }
+
+    const trimmedFirstName = firstName ? String(firstName).trim() : '';
+    const trimmedLastName = lastName ? String(lastName).trim() : '';
+    if (requestedRole !== UserRole.TEACHER) {
+      if (!trimmedFirstName) {
+        return res.status(400).json({ message: 'First name is required' });
       }
-    } else {
-      // For other roles: email is required
-      if (!email) {
-        return res.status(400).json({ message: 'Email is required for this role' });
+      if (!trimmedLastName) {
+        return res.status(400).json({ message: 'Last name is required' });
       }
+    }
+
+    const useGeneratedPassword =
+      generatePassword === true || generatePassword === 'true' || generatePassword === 1;
+    if (!useGeneratedPassword && (!password || !String(password).trim())) {
+      return res.status(400).json({ message: 'Password is required' });
     }
     const validRoles = Object.values(UserRole);
     if (!validRoles.includes(requestedRole)) {
       return res.status(400).json({ message: 'Invalid role specified' });
+    }
+
+    if (
+      actingRole === UserRole.ADMIN &&
+      requestedRole === UserRole.SUPERADMIN
+    ) {
+      return res.status(403).json({
+        message: 'Only a Super Administrator or Director can create Super Administrator accounts',
+      });
     }
 
     const userRepository = AppDataSource.getRepository(User);
@@ -234,6 +286,13 @@ export const createUserAccount = async (req: AuthRequest, res: Response) => {
       const superadminCount = await userRepository.count({ where: { role: UserRole.SUPERADMIN } });
       if (superadminCount >= MAX_SUPERADMIN) {
         return res.status(400).json({ message: `Maximum of ${MAX_SUPERADMIN} Super Admin accounts allowed.` });
+      }
+    }
+    const MAX_DIRECTOR = 2;
+    if (requestedRole === UserRole.DIRECTOR) {
+      const directorCount = await userRepository.count({ where: { role: UserRole.DIRECTOR } });
+      if (directorCount >= MAX_DIRECTOR) {
+        return res.status(400).json({ message: `Maximum of ${MAX_DIRECTOR} Director accounts allowed.` });
       }
     }
     if (requestedRole === UserRole.ADMIN) {
@@ -252,20 +311,9 @@ export const createUserAccount = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Generate username from provided username or email (if available)
-    // For teachers, username is mandatory and provided
-    let finalUsername: string;
-    if (requestedRole === UserRole.TEACHER) {
-      // For teachers, use the provided username (already validated as mandatory)
-      finalUsername = String(username).replace(/\s+/g, '').toLowerCase();
-    } else {
-      // For other roles, generate from username or email
-      finalUsername = username 
-        ? String(username).replace(/\s+/g, '').toLowerCase()
-        : (email ? String(email).split('@')[0].replace(/\s+/g, '').toLowerCase() : `user_${Date.now()}`);
-      if (!finalUsername) {
-        finalUsername = `user_${Date.now()}`;
-      }
+    let finalUsername = String(username).replace(/\s+/g, '').toLowerCase();
+    if (!finalUsername) {
+      return res.status(400).json({ message: 'Username is required for login' });
     }
     
     // Ensure username is unique
@@ -277,9 +325,9 @@ export const createUserAccount = async (req: AuthRequest, res: Response) => {
       usernameExists = await userRepository.findOne({ where: { username: finalUsername } });
     }
 
-    let plainPassword = (password ? String(password).trim() : '');
+    let plainPassword = password ? String(password).trim() : '';
     let autoGenerated = false;
-    if (!plainPassword) {
+    if (useGeneratedPassword || !plainPassword) {
       plainPassword = generateTemporaryPassword();
       autoGenerated = true;
     }
@@ -294,13 +342,16 @@ export const createUserAccount = async (req: AuthRequest, res: Response) => {
     const isDemoUser = requestedRole === UserRole.DEMO_USER;
     
     const user = userRepository.create({
-      email: requestedRole === UserRole.TEACHER ? null : (email ? String(email).trim().toLowerCase() : null), // Email is not used for teachers
+      email: email ? String(email).trim().toLowerCase() : null,
       username: finalUsername,
+      firstName: trimmedFirstName || null,
+      lastName: trimmedLastName || null,
       password: hashedPassword,
       role: requestedRole,
-      isDemo: isDemoUser || (actingRole === UserRole.SUPERADMIN && isDemo === true),
-      mustChangePassword: !isDemoUser, // Demo users don't need to change password, others must change temporary password
-      isTemporaryAccount: (requestedRole === UserRole.TEACHER || (autoGenerated && !isDemoUser)), // All teacher passwords are temporary, or auto-generated passwords for other roles
+      isDemo: isDemoUser || (isFullAccessRole(actingRole) && isDemo === true),
+      mustChangePassword: !isDemoUser && autoGenerated,
+      isTemporaryAccount:
+        requestedRole === UserRole.TEACHER || (autoGenerated && !isDemoUser),
       isActive: true
     });
 
@@ -349,6 +400,8 @@ export const createUserAccount = async (req: AuthRequest, res: Response) => {
         id: user.id,
         email: user.email,
         username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
         role: user.role,
         isDemo: user.isDemo
       },
@@ -371,8 +424,8 @@ export const resetUserPassword = async (req: AuthRequest, res: Response) => {
     }
 
     const actingRole = req.user.role;
-    if (actingRole !== UserRole.ADMIN && actingRole !== UserRole.SUPERADMIN) {
-      return res.status(403).json({ message: 'Only Administrators can reset passwords' });
+    if (!canManageUserAccounts(actingRole)) {
+      return res.status(403).json({ message: 'Only Administrators or Directors can reset passwords' });
     }
 
     if (!AppDataSource.isInitialized) {
@@ -397,10 +450,8 @@ export const resetUserPassword = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: 'Cannot reset password for demo accounts' });
     }
 
-    const staffRoles = [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT];
-    const isStaffTarget = staffRoles.includes(user.role);
     let trimmedPassword: string;
-    if (isStaffTarget && generatePassword) {
+    if (generatePassword) {
       trimmedPassword = generateTemporaryPassword();
     } else {
       if (!newPassword || newPassword.trim().length < 8) {
@@ -478,7 +529,7 @@ export const resetUserPassword = async (req: AuthRequest, res: Response) => {
         role: user.role
       }
     };
-    if (isStaffTarget && generatePassword) {
+    if (generatePassword) {
       payload.temporaryPassword = trimmedPassword;
       payload.mustChangeOnFirstLogin = true;
     }
@@ -499,8 +550,8 @@ export const deleteUserAccount = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
     const actingRole = req.user.role;
-    if (actingRole !== UserRole.ADMIN && actingRole !== UserRole.SUPERADMIN) {
-      return res.status(403).json({ message: 'Only Administrators can delete user accounts' });
+    if (!canManageUserAccounts(actingRole)) {
+      return res.status(403).json({ message: 'Only Administrators or Directors can delete user accounts' });
     }
 
     const userId = req.params.id;
@@ -525,7 +576,7 @@ export const deleteUserAccount = async (req: AuthRequest, res: Response) => {
         return res.status(400).json({ message: 'Cannot delete the last Super Admin account' });
       }
     }
-    if (actingRole !== UserRole.SUPERADMIN && user.role === UserRole.SUPERADMIN) {
+    if (!isFullAccessRole(actingRole) && isFullAccessRole(user.role)) {
       return res.status(403).json({ message: 'Only a Super Admin can delete a Super Admin account' });
     }
 
@@ -557,8 +608,8 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
     }
 
     const actingRole = req.user.role;
-    if (actingRole !== UserRole.ADMIN && actingRole !== UserRole.SUPERADMIN) {
-      return res.status(403).json({ message: 'Only Administrators can change user roles' });
+    if (!canManageUserAccounts(actingRole)) {
+      return res.status(403).json({ message: 'Only Administrators or Directors can change user roles' });
     }
 
     const userId = req.params.id;
@@ -578,9 +629,11 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Invalid role specified' });
     }
 
-    // Admin cannot set or change role to superadmin
+    // Admin cannot assign Super Admin; Director may be created/assigned by Administrators
     if (actingRole === UserRole.ADMIN && role === UserRole.SUPERADMIN) {
-      return res.status(403).json({ message: 'Only a Super Admin can assign the Super Admin role' });
+      return res.status(403).json({
+        message: 'Only a Super Administrator or Director can assign the Super Administrator role',
+      });
     }
 
     if (!AppDataSource.isInitialized) {
@@ -597,7 +650,7 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
     const currentRole = user.role as UserRole;
 
     // Non-SuperAdmins cannot modify SuperAdmin accounts
-    if (currentRole === UserRole.SUPERADMIN && actingRole !== UserRole.SUPERADMIN) {
+    if (isFullAccessRole(currentRole) && !isFullAccessRole(actingRole)) {
       return res.status(403).json({ message: 'Only a Super Admin can modify a Super Admin account' });
     }
 
@@ -607,14 +660,18 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
     const superadminCount = await userRepository.count({ where: { role: UserRole.SUPERADMIN } });
     const adminCount = await userRepository.count({ where: { role: UserRole.ADMIN } });
 
-    if (role === UserRole.SUPERADMIN && currentRole !== UserRole.SUPERADMIN && superadminCount >= MAX_SUPERADMIN) {
+    if (
+      role === UserRole.SUPERADMIN &&
+      !isFullAccessRole(currentRole) &&
+      superadminCount >= MAX_SUPERADMIN
+    ) {
       return res.status(400).json({ message: `Maximum of ${MAX_SUPERADMIN} Super Admin accounts allowed.` });
     }
     if (role === UserRole.ADMIN && currentRole !== UserRole.ADMIN && adminCount >= MAX_ADMIN) {
       return res.status(400).json({ message: `Maximum of ${MAX_ADMIN} Administrator accounts allowed.` });
     }
 
-    if (currentRole === UserRole.SUPERADMIN && role !== UserRole.SUPERADMIN && superadminCount <= 1) {
+    if (isFullAccessRole(currentRole) && !isFullAccessRole(role) && superadminCount <= 1) {
       return res.status(400).json({ message: 'Cannot change role of the last Super Admin account' });
     }
 
@@ -648,8 +705,8 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
 // Admin/SuperAdmin: Update another staff user's username and/or email
 export const updateStaffProfile = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
-      return res.status(403).json({ message: 'Only Administrators can update staff profile' });
+    if (!req.user || !canManageUserAccounts(req.user.role)) {
+      return res.status(403).json({ message: 'Only Administrators or Directors can update staff profile' });
     }
     const targetUserId = req.params.id;
     const { username: newUsername, email: newEmail } = req.body;
@@ -664,11 +721,18 @@ export const updateStaffProfile = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const staffRoles = [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT];
+    const staffRoles = [
+      UserRole.ADMIN,
+      UserRole.SUPERADMIN,
+      UserRole.DIRECTOR,
+      UserRole.HEADMASTER,
+      UserRole.DEPUTY_HEADMASTER,
+      UserRole.ACCOUNTANT,
+    ];
     if (!staffRoles.includes(user.role as UserRole)) {
       return res.status(400).json({ message: 'Only staff accounts can be updated here' });
     }
-    if (user.role === UserRole.SUPERADMIN && req.user.role !== UserRole.SUPERADMIN) {
+    if (isFullAccessRole(user.role) && !isFullAccessRole(req.user.role)) {
       return res.status(403).json({ message: 'Only a Super Admin can update a Super Admin profile' });
     }
 
@@ -736,7 +800,7 @@ function resolveUserDisplayName(u: User & { teacher?: any; student?: any; parent
     const p = [u.parent.firstName, u.parent.lastName].filter(Boolean).join(' ').trim();
     if (p) return p;
   }
-  return u.email || '—';
+  return u.username || u.email || '—';
 }
 
 function resolveUserStatus(u: User): 'Active' | 'Locked' | 'Inactive' {
@@ -752,8 +816,8 @@ function resolveUserStatus(u: User): 'Active' | 'Locked' | 'Inactive' {
 // List all user accounts for User Management page
 export const getAllUsers = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
-      return res.status(403).json({ message: 'Only Administrators can list user accounts' });
+    if (!req.user || !canManageUserAccounts(req.user.role)) {
+      return res.status(403).json({ message: 'Only Administrators or Directors can list user accounts' });
     }
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
 
@@ -821,13 +885,20 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
 // List staff users (admin, superadmin, accountant) for manage-accounts page
 export const getStaffUsers = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
-      return res.status(403).json({ message: 'Only Administrators can list staff accounts' });
+    if (!req.user || !canManageUserAccounts(req.user.role)) {
+      return res.status(403).json({ message: 'Only Administrators or Directors can list staff accounts' });
     }
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
 
     const userRepository = AppDataSource.getRepository(User);
-    const staffRoles = [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT];
+    const staffRoles = [
+      UserRole.ADMIN,
+      UserRole.SUPERADMIN,
+      UserRole.DIRECTOR,
+      UserRole.HEADMASTER,
+      UserRole.DEPUTY_HEADMASTER,
+      UserRole.ACCOUNTANT,
+    ];
     const users = await userRepository
       .createQueryBuilder('u')
       .where('u.role IN (:...roles)', { roles: staffRoles })
@@ -855,8 +926,8 @@ export const getStaffUsers = async (req: AuthRequest, res: Response) => {
 // Unlock a staff account (clear failed attempts and lock)
 export const unlockUser = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
-      return res.status(403).json({ message: 'Only Administrators can unlock accounts' });
+    if (!req.user || !canManageUserAccounts(req.user.role)) {
+      return res.status(403).json({ message: 'Only Administrators or Directors can unlock accounts' });
     }
     const userId = req.params.id;
     if (!userId) return res.status(400).json({ message: 'User ID is required' });
@@ -865,11 +936,18 @@ export const unlockUser = async (req: AuthRequest, res: Response) => {
     const user = await userRepository.findOne({ where: { id: userId } });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const staffRoles = [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT];
+    const staffRoles = [
+      UserRole.ADMIN,
+      UserRole.SUPERADMIN,
+      UserRole.DIRECTOR,
+      UserRole.HEADMASTER,
+      UserRole.DEPUTY_HEADMASTER,
+      UserRole.ACCOUNTANT,
+    ];
     if (!staffRoles.includes(user.role)) {
       return res.status(400).json({ message: 'Only staff accounts (administrator, superadmin, accountant) can be unlocked' });
     }
-    if (user.role === UserRole.SUPERADMIN && req.user.role !== UserRole.SUPERADMIN) {
+    if (isFullAccessRole(user.role) && !isFullAccessRole(req.user.role)) {
       return res.status(403).json({ message: 'Only a Super Admin can unlock a Super Admin account' });
     }
 
@@ -887,8 +965,8 @@ export const unlockUser = async (req: AuthRequest, res: Response) => {
 // Get universal teacher account status (admin/superadmin only)
 export const getUniversalTeacherStatus = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
-      return res.status(403).json({ message: 'Only Administrators can view universal teacher status' });
+    if (!req.user || !canManageUserAccounts(req.user.role)) {
+      return res.status(403).json({ message: 'Only Administrators or Directors can view universal teacher status' });
     }
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
 
@@ -918,8 +996,8 @@ export const getUniversalTeacherStatus = async (req: AuthRequest, res: Response)
 // Create universal teacher account (admin/superadmin only)
 export const createUniversalTeacherAccount = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user || (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERADMIN)) {
-      return res.status(403).json({ message: 'Only Administrators can create the Head Teacher account' });
+    if (!req.user || !canManageUserAccounts(req.user.role)) {
+      return res.status(403).json({ message: 'Only Administrators or Directors can create the Head Teacher account' });
     }
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
 

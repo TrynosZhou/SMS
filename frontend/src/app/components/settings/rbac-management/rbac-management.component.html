@@ -1,0 +1,220 @@
+<div class="rbac-wrap">
+  <header class="rbac-header">
+    <div>
+      <h2 class="rbac-title">Permissions &amp; Roles</h2>
+      <p class="rbac-desc">
+        Define roles and granular permissions. Use <strong>Teacher Records</strong> and <strong>Parent Records</strong>
+        (under People &amp; registration records) to control Registration menu access for each role.
+        Director, Headmaster, and Deputy Headmaster have these enabled by default.
+        <strong>Teacher</strong> and <strong>Class Teacher</strong> roles cannot access those records (locked).
+      </p>
+    </div>
+    <button type="button" class="rbac-refresh" (click)="loadAll()" [disabled]="loading">↻ Refresh</button>
+  </header>
+
+  <div class="rbac-alert success" *ngIf="success">{{ success }}</div>
+  <div class="rbac-alert error" *ngIf="error">{{ error }}</div>
+
+  <nav class="rbac-tabs">
+    <button type="button" [class.active]="activePanel === 'matrix'" (click)="setPanel('matrix')">Permission matrix</button>
+    <button type="button" [class.active]="activePanel === 'roles'" (click)="setPanel('roles')">Manage roles</button>
+    <button type="button" [class.active]="activePanel === 'users'" (click)="setPanel('users')">User assignments</button>
+  </nav>
+
+  <div class="rbac-loading" *ngIf="loading">Loading RBAC data…</div>
+
+  <ng-container *ngIf="!loading">
+    <!-- Matrix -->
+    <section class="rbac-panel" *ngIf="activePanel === 'matrix'">
+      <div class="rbac-matrix-toolbar">
+        <label>Role</label>
+        <select [(ngModel)]="selectedRoleId" (ngModelChange)="selectRole($event)">
+          <ng-container *ngFor="let g of roleGroups">
+            <optgroup [label]="g.label">
+              <option *ngFor="let r of rolesInPickerGroup(g)" [value]="r.id">
+                {{ r.name }}{{ r.isSystem ? ' (system)' : '' }}
+              </option>
+            </optgroup>
+          </ng-container>
+          <optgroup label="Other roles" *ngIf="ungroupedPickerRoles().length">
+            <option *ngFor="let r of ungroupedPickerRoles()" [value]="r.id">
+              {{ r.name }}{{ r.isSystem ? ' (system)' : '' }}
+            </option>
+          </optgroup>
+        </select>
+        <button type="button" class="rbac-btn primary" (click)="saveMatrix()" [disabled]="saving || !selectedRoleId">
+          {{ saving ? 'Saving…' : 'Save permissions' }}
+        </button>
+      </div>
+      <p class="rbac-hint" *ngIf="selectedRole">{{ selectedRole.description || 'Toggle permissions for this role.' }}</p>
+      <ng-container *ngFor="let mg of moduleGroups">
+        <h3 class="rbac-module-group-title" *ngIf="modulesInGroup(mg.key).length">{{ moduleGroupLabel(mg.key) }}</h3>
+        <p class="rbac-hint rbac-module-group-hint" *ngIf="mg.key === 'people'">
+          Teacher Records controls the Teachers menu and teacher profiles. Parent Records controls the Parents menu and parent management.
+        </p>
+        <p class="rbac-hint rbac-locked-hint" *ngIf="mg.key === 'people' && isTeacherRoleSelected()">
+          Teacher and Class Teacher roles cannot be granted Teacher Records or Parent Records access.
+        </p>
+        <div class="rbac-table-wrap" *ngIf="modulesInGroup(mg.key).length">
+          <table class="rbac-matrix">
+            <thead>
+              <tr>
+                <th>Module</th>
+                <th *ngFor="let a of actions">{{ a | titlecase }}</th>
+                <th>All</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                *ngFor="let m of modulesInGroup(mg.key)"
+                [class.rbac-records-row]="m.key === 'staff' || m.key === 'parents'"
+                [class.rbac-row-locked]="isTeacherPeopleRecordsLocked(m.key)">
+                <td class="mod-label">
+                  {{ m.label }}
+                  <span class="rbac-locked-tag" *ngIf="isTeacherPeopleRecordsLocked(m.key)">Not for teachers</span>
+                  <span class="rbac-page-desc" *ngIf="m.description">{{ m.description }}</span>
+                </td>
+                <td *ngFor="let a of actions">
+                  <label class="perm-toggle" [class.perm-toggle--disabled]="isTeacherPeopleRecordsLocked(m.key)">
+                    <input
+                      type="checkbox"
+                      [checked]="isPermOn(m.key, a)"
+                      [disabled]="isTeacherPeopleRecordsLocked(m.key)"
+                      (change)="togglePerm(m.key, a)" />
+                  </label>
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    class="row-toggle"
+                    [disabled]="isTeacherPeopleRecordsLocked(m.key)"
+                    (click)="toggleModuleRow(m.key, !moduleRowAllOn(m.key))">
+                    {{ moduleRowAllOn(m.key) ? 'Off' : 'On' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-container>
+
+      <div class="rbac-finance-section" *ngIf="financePages.length">
+        <h3 class="rbac-finance-title">Finance Manager &amp; Reports (per page)</h3>
+        <p class="rbac-hint rbac-finance-hint">
+          Control which finance pages and sensitive actions (credit/debit notes, transport and dining hall adjustments)
+          this role can access. Restrict accountants from high-risk operations while keeping day-to-day billing and payments.
+        </p>
+        <ng-container *ngFor="let fg of financePageGroups">
+          <h4 class="rbac-finance-group">{{ financeGroupLabel(fg.key) }}</h4>
+          <div class="rbac-table-wrap">
+            <table class="rbac-matrix rbac-finance-matrix">
+              <thead>
+                <tr>
+                  <th>Page / action</th>
+                  <th *ngFor="let a of financePageActions">{{ a | titlecase }}</th>
+                  <th>All</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let p of financePagesInGroup(fg.key)" [class.sensitive-row]="p.sensitive">
+                  <td class="mod-label">
+                    {{ p.label }}
+                    <span class="rbac-sensitive-tag" *ngIf="p.sensitive">Restricted</span>
+                    <span class="rbac-page-desc" *ngIf="p.description">{{ p.description }}</span>
+                  </td>
+                  <td *ngFor="let a of financePageActions">
+                    <label class="perm-toggle">
+                      <input
+                        type="checkbox"
+                        [checked]="isFinancePageOn(p.key, a)"
+                        (change)="toggleFinancePage(p.key, a)" />
+                    </label>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      class="row-toggle"
+                      (click)="toggleFinancePageRow(p.key, !financePageRowAllOn(p.key))">
+                      {{ financePageRowAllOn(p.key) ? 'Off' : 'On' }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </ng-container>
+      </div>
+    </section>
+
+    <!-- Roles -->
+    <section class="rbac-panel" *ngIf="activePanel === 'roles'">
+      <div class="rbac-create">
+        <h3>Create custom role</h3>
+        <div class="rbac-create-row">
+          <input type="text" [(ngModel)]="newRoleName" placeholder="Role name (e.g. Class Teacher)" />
+          <input type="text" [(ngModel)]="newRoleDescription" placeholder="Description" />
+          <button type="button" class="rbac-btn primary" (click)="createRole()" [disabled]="saving">Add role</button>
+        </div>
+      </div>
+      <div class="rbac-role-list">
+        <article class="rbac-role-card" *ngFor="let r of roles">
+          <ng-container *ngIf="editingRole?.id !== r.id">
+            <div class="rbac-role-head">
+              <strong>{{ r.name }}</strong>
+              <span class="rbac-tag" *ngIf="r.isSystem">System</span>
+            </div>
+            <p>{{ r.description || '—' }}</p>
+            <div class="rbac-role-actions">
+              <button type="button" class="rbac-btn sm" (click)="selectRole(r.id)">Edit permissions</button>
+              <button type="button" class="rbac-btn sm ghost" (click)="startEditRole(r)">Rename</button>
+              <button type="button" class="rbac-btn sm danger" *ngIf="!r.isSystem" (click)="deleteRole(r)">Delete</button>
+            </div>
+          </ng-container>
+          <ng-container *ngIf="editingRole?.id === r.id">
+            <input type="text" [(ngModel)]="editingRole!.name" />
+            <input type="text" [(ngModel)]="editingRole!.description" placeholder="Description" />
+            <div class="rbac-role-actions">
+              <button type="button" class="rbac-btn sm primary" (click)="saveEditRole()">Save</button>
+              <button type="button" class="rbac-btn sm ghost" (click)="editingRole = null">Cancel</button>
+            </div>
+          </ng-container>
+        </article>
+      </div>
+    </section>
+
+    <!-- Users -->
+    <section class="rbac-panel rbac-users-panel" *ngIf="activePanel === 'users'">
+      <div class="rbac-users-grid">
+        <div class="rbac-user-list">
+          <input type="search" class="rbac-search" [(ngModel)]="userSearch" placeholder="Search users…" />
+          <button
+            type="button"
+            class="rbac-user-row"
+            *ngFor="let u of filteredUsers"
+            [class.active]="selectedUser?.id === u.id"
+            (click)="selectUser(u)">
+            <span class="u-name">{{ u.fullName || u.username }}</span>
+            <span class="u-meta">{{ u.role }} · {{ (u.rbacRoles || []).length }} role(s)</span>
+          </button>
+        </div>
+        <div class="rbac-user-detail" *ngIf="selectedUser">
+          <h3>{{ selectedUser.fullName || selectedUser.username }}</h3>
+          <p class="u-login">Login role: <strong>{{ selectedUser.role }}</strong></p>
+          <p class="rbac-hint">Assign one or more RBAC roles. Effective permissions are combined (OR).</p>
+          <div class="rbac-assign-list">
+            <label class="rbac-assign-item" *ngFor="let r of roles">
+              <input type="checkbox" [checked]="userHasRole(r.id)" (change)="toggleUserRole(r.id)" />
+              <span>{{ r.name }}</span>
+            </label>
+          </div>
+          <button type="button" class="rbac-btn primary" (click)="saveUserRoles()" [disabled]="saving">
+            {{ saving ? 'Saving…' : 'Save user roles' }}
+          </button>
+        </div>
+        <div class="rbac-user-detail empty" *ngIf="!selectedUser">
+          <p>Select a user to assign roles.</p>
+        </div>
+      </div>
+    </section>
+  </ng-container>
+</div>

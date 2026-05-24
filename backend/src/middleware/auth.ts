@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AppDataSource } from '../config/database';
 import { User, UserRole } from '../entities/User';
+import { expandAuthorizeRoles } from '../constants/userRoles';
 
 export interface AuthRequest extends Request {
   user?: User;
@@ -105,10 +106,11 @@ export const authorize = (...roles: UserRole[]) => {
       return next();
     }
 
-    if (!roles.includes(req.user.role)) {
+    const allowed = expandAuthorizeRoles(roles);
+    if (!allowed.includes(req.user.role)) {
       console.log('Authorization failed:', {
         userRole: req.user.role,
-        requiredRoles: roles,
+        requiredRoles: allowed,
         path: req.path,
         method: req.method
       });

@@ -2,6 +2,7 @@ import { AppDataSource } from '../config/database';
 import { Settings } from '../entities/Settings';
 import { User, UserRole } from '../entities/User';
 import { InventoryAuditLog } from '../entities/InventoryAuditLog';
+import { isFullAccessRole } from '../constants/userRoles';
 
 export interface InventoryConfigResolved {
   loanDaysDefault: number;
@@ -20,9 +21,28 @@ export async function resolveInventoryConfig(): Promise<InventoryConfigResolved>
   };
 }
 
+function roleInventoryFlag(settingsRow: Settings | null, roleKey: string): boolean | undefined {
+  const ma = settingsRow?.moduleAccess as Record<string, { inventory?: boolean }> | undefined;
+  return ma?.[roleKey]?.inventory;
+}
+
 export function canUserManageInventory(user: User, settingsRow: Settings | null): boolean {
+  if (isFullAccessRole(user.role)) {
+    return true;
+  }
   if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN) {
     return settingsRow?.moduleAccess?.admin?.inventory !== false;
+  }
+  if (user.role === UserRole.HEADMASTER) {
+    const flag = roleInventoryFlag(settingsRow, 'headmaster');
+    return flag !== false;
+  }
+  if (user.role === UserRole.DEPUTY_HEADMASTER) {
+    const flag = roleInventoryFlag(settingsRow, 'deputy_headmaster');
+    return flag === true;
+  }
+  if (user.role === UserRole.ACCOUNTANT) {
+    return settingsRow?.moduleAccess?.accountant?.inventory !== false;
   }
   if (user.role === UserRole.TEACHER && !(user as any).isUniversalTeacher) {
     return settingsRow?.moduleAccess?.teachers?.inventory === true;
@@ -34,8 +54,19 @@ export function canUserManageInventory(user: User, settingsRow: Settings | null)
 }
 
 export function canUserViewInventoryReports(user: User, settingsRow: Settings | null): boolean {
+  if (isFullAccessRole(user.role)) {
+    return true;
+  }
   if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN) {
     return true;
+  }
+  if (user.role === UserRole.HEADMASTER) {
+    const flag = roleInventoryFlag(settingsRow, 'headmaster');
+    return flag !== false;
+  }
+  if (user.role === UserRole.DEPUTY_HEADMASTER) {
+    const flag = roleInventoryFlag(settingsRow, 'deputy_headmaster');
+    return flag === true;
   }
   if (user.role === UserRole.ACCOUNTANT) {
     return settingsRow?.moduleAccess?.accountant?.inventory !== false;

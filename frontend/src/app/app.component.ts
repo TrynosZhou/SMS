@@ -1,15 +1,34 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { AuthService } from './services/auth.service';
 import { SettingsService } from './services/settings.service';
 import { ModuleAccessService } from './services/module-access.service';
+import { PermissionService } from './services/permission.service';
 import { LicenseService } from './services/license.service';
 import { ThemeService } from './services/theme.service';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { AuditService } from './services/audit.service';
 import { environment } from '../environments/environment';
+
+/** When the current URL matches a prefix, keep that sidebar section expanded (fixes “click twice” on submenus). */
+const SIDEBAR_MENU_ROUTE_PREFIXES: Record<string, string[]> = {
+  studentElearning: ['/eweb', '/student/esubmit', '/blank-page'],
+  registration: ['/teachers', '/students', '/admin/parents'],
+  classManagement: ['/students/enroll', '/students/transfer', '/classes', '/admin/class-promotion'],
+  attendance: ['/attendance'],
+  examManagement: ['/exams', '/mark-sheet', '/rankings', '/report-cards', '/check_mark_progess', '/publish-results'],
+  financeManagement: ['/invoices', '/payments', '/balance-enquiry', '/finance/'],
+  financialReports: ['/financial-reports'],
+  payrollManagement: ['/payroll'],
+  messages: ['/messages'],
+  newsManagement: ['/news', '/news-feed'],
+  recordKeeping: ['/teacher/eservices', '/teacher/student-responses', '/teacher/record-book', '/teacher/my-classes'],
+  teacherInventory: ['/teacher/inventory-record'],
+  timetableManagement: ['/subjects/assign', '/timetable'],
+  systemAdministration: ['/system-settings', '/admin/manage-accounts', '/user-log', '/admin/license-config', '/system/integrations'],
+};
 
 @Component({
   standalone: false,  selector: 'app-root',
@@ -26,6 +45,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private authSubscription?: Subscription;
   private titleRotationTimerId: number | null = null;
   private readonly titleRotationIntervalMs = 4000;
+  private static readonly SCHOOL_NAME_CACHE_KEY = 'sms_schoolDisplayName';
   private readonly dashboardTitleOptions = [
     'After instruction we soar',
     'Kaizen',
@@ -38,22 +58,36 @@ export class AppComponent implements OnInit, OnDestroy {
     public authService: AuthService, 
     private settingsService: SettingsService,
     public moduleAccessService: ModuleAccessService,
+    private permissionService: PermissionService,
     private licenseService: LicenseService,
     public themeService: ThemeService,
     private router: Router,
     private auditService: AuditService,
     private activatedRoute: ActivatedRoute,
     private title: Title,
-    private meta: Meta
-  ) { }
+    private meta: Meta,
+    private cdr: ChangeDetectorRef
+  ) {
+    const cachedName = sessionStorage.getItem(AppComponent.SCHOOL_NAME_CACHE_KEY);
+    if (cachedName) {
+      this.schoolName = cachedName;
+    }
+  }
 
   ngOnInit(): void {
     // Load school name from settings if authenticated
     if (this.authService.isAuthenticated()) {
       this.settingsService.getSettings().subscribe({
         next: (settings: any) => {
-          this.schoolName = settings?.schoolName || 'School Management System';
-          this.schoolLogo = settings?.schoolLogo || null;
+          const name = settings?.schoolName || 'School Management System';
+          sessionStorage.setItem(AppComponent.SCHOOL_NAME_CACHE_KEY, name);
+          const logo = settings?.schoolLogo || null;
+          // Defer binding update to avoid NG0100 when settings load during the same CD cycle
+          setTimeout(() => {
+            this.schoolName = name;
+            this.schoolLogo = logo;
+            this.cdr.markForCheck();
+          }, 0);
         },
         error: () => {
           // ignore settings fetch errors to avoid blocking UI
@@ -68,14 +102,19 @@ export class AppComponent implements OnInit, OnDestroy {
         this.expandedMenus['classManagement'] = true;
         this.expandedMenus['attendance'] = true;
       }
+      if (this.isTeacher()) {
+        this.expandedMenus['recordKeeping'] = true;
+      }
       if (this.isAdmin() || this.isSuperAdmin()) {
         this.expandedMenus['systemAdministration'] = true;
       }
+      this.syncExpandedMenusFromUrl(this.router.url || '');
     }
 
     // Log module access and update meta tags on navigation
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe((e: any) => {
       this.currentUrl = (e.urlAfterRedirects || e.url || '').toString();
+      this.syncExpandedMenusFromUrl(this.currentUrl);
       this.syncDashboardTitleRotation();
       this.updateMetaFromRoute();
       // Close mobile menu/drawer after navigation
@@ -85,7 +124,13 @@ export class AppComponent implements OnInit, OnDestroy {
       if (!this.authService.isAuthenticated()) return;
       const user = this.authService.getCurrentUser();
       const role = (user?.role || '').toLowerCase();
-      if (!['admin', 'superadmin', 'teacher', 'accountant'].includes(role)) return;
+      if (
+        !['admin', 'superadmin', 'director', 'headmaster', 'deputy_headmaster', 'teacher', 'accountant'].includes(
+          role
+        )
+      ) {
+        return;
+      }
       const url = (e.urlAfterRedirects || e.url || '').toString();
       const moduleName = this.resolveModuleName(url);
       if (moduleName) {
@@ -167,8 +212,20 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.authService.hasRole('superadmin');
   }
 
+  isDirector(): boolean {
+    return this.authService.isDirector();
+  }
+
+  isFullAccess(): boolean {
+    return this.authService.isFullAccess();
+  }
+
   isAdmin(): boolean {
-    return this.authService.hasRole('admin') || this.authService.hasRole('superadmin');
+    return this.authService.isAdmin();
+  }
+
+  isSchoolLeadership(): boolean {
+    return this.authService.isSchoolLeadership();
   }
 
   isAccountant(): boolean {
@@ -186,7 +243,45 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   canAccessModule(moduleName: string): boolean {
-    return this.moduleAccessService.canAccessModule(moduleName);
+    return this.permissionService.canAccessModule(moduleName);
+  }
+
+  canAccessFinancePage(pageKey: string, action: 'view' | 'edit' = 'view'): boolean {
+    return this.permissionService.canAccessFinancePage(pageKey, action);
+  }
+
+  canAccessFinanceManagerMenu(): boolean {
+    if (this.authService.isSchoolLeadership() && !this.canAccessModule('finance')) {
+      return false;
+    }
+    return (
+      this.canAccessFinancePage('billing') ||
+      this.canAccessFinancePage('recordPayment') ||
+      this.canAccessFinancePage('balanceEnquiry') ||
+      this.canAccessFinancePage('exemptions') ||
+      this.canAccessFinancePage('audit')
+    );
+  }
+
+  canAccessFinancialReportsMenu(): boolean {
+    if (this.authService.isSchoolLeadership() && !this.canAccessModule('finance')) {
+      return false;
+    }
+    return (
+      this.canAccessFinancePage('reportStudentLedgers') ||
+      this.canAccessFinancePage('reportFeesCollection') ||
+      this.canAccessFinancePage('reportUnpaidInvoices') ||
+      this.canAccessFinancePage('reportExemption') ||
+      this.canAccessFinancePage('reportLogisticsReceipts') ||
+      this.canAccessFinancePage('reportAgedDebtors') ||
+      this.canAccessFinancePage('reportEnrolmentBilling') ||
+      this.canAccessFinancePage('reportRevenueRecognition') ||
+      this.canAccessFinancePage('reportStudentReconciliation') ||
+      this.canAccessFinancePage('reportAnalyticsForecasts') ||
+      this.canAccessFinancePage('reportClassReconciliation') ||
+      this.canAccessFinancePage('reportDiningHall') ||
+      this.canAccessFinancePage('reportTransport')
+    );
   }
 
   matchesSidebarFilter(...labels: string[]): boolean {
@@ -217,7 +312,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   showTeachersRegistrationLink(): boolean {
-    return this.isAdmin() || this.isSuperAdmin();
+    return this.canAccessModule('teachers');
   }
 
   showStudentsRegistrationLink(): boolean {
@@ -230,7 +325,10 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   showParentsRegistrationLink(): boolean {
-    return this.isAdmin() || this.isSuperAdmin();
+    if (this.isDirector()) {
+      return false;
+    }
+    return this.canAccessModule('parents');
   }
 
   isRegistrationSidebarVisible(): boolean {
@@ -565,8 +663,39 @@ export class AppComponent implements OnInit, OnDestroy {
     this.expandedMenus[menuKey] = !this.expandedMenus[menuKey];
   }
 
+  /** Called from submenu links so the section is open before navigation (avoids needing two clicks). */
+  ensureMenuExpanded(menuKey: string): void {
+    if (this.sidebarCollapsed) {
+      return;
+    }
+    this.expandedMenus[menuKey] = true;
+  }
+
+  /** Expand a section when navigating to a child route so submenu links work on first click. */
+  private normalizeSidebarPath(url: string): string {
+    const path = (url || '').split('?')[0].split('#')[0];
+    if (!path || path === '/') return '/';
+    return path.endsWith('/') && path.length > 1 ? path.slice(0, -1) : path;
+  }
+
+  private syncExpandedMenusFromUrl(url: string): void {
+    const path = this.normalizeSidebarPath(url);
+    for (const [menuKey, prefixes] of Object.entries(SIDEBAR_MENU_ROUTE_PREFIXES)) {
+      if (prefixes.some((p) => path === p || path.startsWith(p + '/'))) {
+        this.expandedMenus[menuKey] = true;
+      }
+    }
+  }
+
+  isMenuRouteActive(menuKey: string): boolean {
+    const path = this.normalizeSidebarPath(this.currentUrl || this.router.url || '');
+    const prefixes = SIDEBAR_MENU_ROUTE_PREFIXES[menuKey];
+    if (!prefixes?.length) return false;
+    return prefixes.some((p) => path === p || path.startsWith(p + '/'));
+  }
+
   isMenuExpanded(menuKey: string): boolean {
-    return this.expandedMenus[menuKey] || false;
+    return !!this.expandedMenus[menuKey] || this.isMenuRouteActive(menuKey);
   }
 
   toggleTheme(): void {

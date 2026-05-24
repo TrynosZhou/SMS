@@ -66,8 +66,7 @@
         class="btn btn-action btn-credit" 
         type="button"
         (click)="openCreditNoteForm()"
-        *ngIf="canManageFinance()"
-        [disabled]="authService.hasRole('accountant')"
+        *ngIf="canApplyCreditNotes()"
         title="Credit Note - correct overcharge">
         <span class="btn-icon">📝</span>
         <span>Credit Note</span>
@@ -76,8 +75,7 @@
         class="btn btn-action btn-debit" 
         type="button"
         (click)="openDebitNoteForm()"
-        *ngIf="canManageFinance()"
-        [disabled]="authService.hasRole('accountant')"
+        *ngIf="canApplyDebitNotes()"
         title="Debit Note - correct undercharge">
         <span class="btn-icon">📗</span>
         <span>Debit Note</span>
@@ -86,11 +84,11 @@
         <span class="btn-icon">👕</span>
         <span>Uniform Items</span>
       </button>
-      <button class="btn btn-action btn-bulk" (click)="openBulkInvoiceForm()" *ngIf="canManageFinance()">
+      <button class="btn btn-action btn-bulk" (click)="openBulkInvoiceForm()" *ngIf="canBulkInvoices()">
         <span class="btn-icon">📋</span>
         <span>Bulk Create</span>
       </button>
-      <button class="btn btn-action btn-reverse" (click)="reverseLastBulkCreation()" *ngIf="canManageFinance() || canCorrectTransaction()" [disabled]="reversingBulk || !canCorrectTransaction()" title="Reverse last bulk invoice creation">
+      <button class="btn btn-action btn-reverse" (click)="reverseLastBulkCreation()" *ngIf="canBulkInvoices() || canCorrectTransaction()" [disabled]="reversingBulk || !canCorrectTransaction()" title="Reverse last bulk invoice creation">
         <span class="btn-icon">↩️</span>
         <span>Reverse Bulk</span>
       </button>
@@ -105,7 +103,7 @@
         <input type="date" [(ngModel)]="reverseFilter.endDate" [ngModelOptions]="{standalone:true}" class="form-control form-control-inline" title="End date" />
       </div>
       <div class="actions-secondary-buttons">
-        <button class="btn btn-action btn-exemption" (click)="runTuitionExemptionCorrection()" *ngIf="canManageFinance()" [disabled]="correctingExemptTuition || authService.hasRole('accountant')" title="Void unpaid tuition invoices for exempt students">
+        <button class="btn btn-action btn-exemption" (click)="runTuitionExemptionCorrection()" *ngIf="canExemptionCorrection()" [disabled]="correctingExemptTuition" title="Void unpaid tuition invoices for exempt students">
           <span class="btn-icon">🛡️</span>
           <span>Tuition Exemption</span>
         </button>
@@ -1167,7 +1165,7 @@
             Fee Adjustment Options
           </h3>
 
-          <div class="form-group" *ngIf="isDayScholar(selectedInvoice)">
+          <div class="form-group" *ngIf="isDayScholar(selectedInvoice) && canEditTransportOnInvoice()">
             <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
               <input 
                 type="checkbox" 
@@ -1182,7 +1180,7 @@
             </div>
           </div>
 
-          <div class="form-group">
+          <div class="form-group" *ngIf="canEditDiningOnInvoice()">
             <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
               <input 
                 type="checkbox" 
@@ -1193,7 +1191,7 @@
             </label>
           </div>
 
-          <div class="form-group">
+          <div class="form-group" *ngIf="canEditTuitionOnInvoice()">
             <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
               <input 
                 type="checkbox" 

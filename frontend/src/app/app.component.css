@@ -316,7 +316,7 @@
 }
 
 .sidebar-submenu.expanded {
-  max-height: 500px;
+  max-height: 800px;
 }
 
 /* Nested branch (e.g. Registration → Teachers / Students / Parents) */

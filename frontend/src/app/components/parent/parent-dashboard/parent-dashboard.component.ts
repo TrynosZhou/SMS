@@ -410,6 +410,14 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
     this.router.navigate(['/parent/manage-account']);
   }
 
+  canChangeOwnPassword(): boolean {
+    return this.authService.canChangeOwnPassword();
+  }
+
+  get changePasswordRoute(): string {
+    return this.authService.getChangePasswordRoute();
+  }
+
   get greeting(): string {
     const h = new Date().getHours();
     if (h < 12) return 'Good Morning';

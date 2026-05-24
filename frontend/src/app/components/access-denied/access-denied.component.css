@@ -1,0 +1,28 @@
+.ad-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(160deg, #f0f4f8 0%, #e2e8f0 100%);
+}
+.ad-card {
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  background: #fff;
+  border-radius: 20px;
+  padding: 40px 32px;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.1);
+}
+.ad-icon { font-size: 56px; margin-bottom: 16px; }
+.ad-card h1 { margin: 0 0 12px; font-size: 24px; font-weight: 800; color: #1e3a8a; }
+.ad-card p { margin: 0 0 8px; color: #475569; font-size: 15px; line-height: 1.5; }
+.ad-hint { font-size: 13px; color: #94a3b8; margin-bottom: 24px !important; }
+.ad-actions { display: flex; flex-direction: column; gap: 10px; }
+.ad-btn {
+  padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 700;
+  cursor: pointer; border: none; transition: all 0.15s;
+}
+.ad-btn.primary { background: linear-gradient(135deg, #1d4ed8, #2563eb); color: #fff; }
+.ad-btn.ghost { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }

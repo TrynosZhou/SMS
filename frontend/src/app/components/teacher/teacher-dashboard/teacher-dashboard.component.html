@@ -14,6 +14,13 @@
           </div>
         </div>
         <div class="header-right">
+          <a
+            *ngIf="canChangeOwnPassword()"
+            class="dash-change-password-link"
+            [routerLink]="changePasswordRoute"
+            title="Update your login password">
+            🔐 Change password
+          </a>
           <div class="quick-stats-badge" *ngIf="!loading">
             <span class="badge-icon">⚡</span>
             <span class="badge-text">{{ teacherClasses.length }} Classes Assigned</span>
@@ -164,8 +171,8 @@
             <span class="action-arrow">→</span>
           </a>
           <a routerLink="/teacher/manage-account" class="action-btn modern-action-btn danger-action">
-            <span class="action-icon">👤</span>
-            <span class="action-text">My Account</span>
+            <span class="action-icon">🔐</span>
+            <span class="action-text">Change Password</span>
             <span class="action-arrow">→</span>
           </a>
           <a routerLink="/timetable/generate" class="action-btn modern-action-btn info-action">

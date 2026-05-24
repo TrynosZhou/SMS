@@ -172,23 +172,30 @@ export class NewsService {
     }
 
     // Role-based visibility for targetRoles (stored as JSON array)
-    // - If no role: only show news visible to everyone (NULL or empty array)
-    // - If role: show visible-to-all + role-targeted items
+    const emptyRoles = ['[]', 'null', ''];
     if (userRole) {
       query.andWhere(
-        new Brackets(qb => {
-          qb.where('"news"."targetRoles" IS NULL')
-            .orWhere('"news"."targetRoles"::jsonb = \'[]\'::jsonb')
-            .orWhere('"news"."targetRoles"::jsonb @> (:roleArr)::jsonb', { roleArr: JSON.stringify([userRole]) });
+        new Brackets((qb) => {
+          qb.where('news.targetRoles IS NULL')
+            .orWhere('CAST(news.targetRoles AS TEXT) IN (:...emptyRoles)', { emptyRoles })
+            .orWhere('CAST(news.targetRoles AS TEXT) LIKE :rolePattern', {
+              rolePattern: `%${userRole}%`,
+            });
         })
       );
     } else {
       query.andWhere(
-        new Brackets(qb => {
-          qb.where('"news"."targetRoles" IS NULL')
-            .orWhere('"news"."targetRoles"::jsonb = \'[]\'::jsonb');
+        new Brackets((qb) => {
+          qb.where('news.targetRoles IS NULL').orWhere('CAST(news.targetRoles AS TEXT) IN (:...emptyRoles)', {
+            emptyRoles,
+          });
         })
       );
+    }
+
+    if (status === NewsStatus.PUBLISHED) {
+      const pubNow = new Date();
+      query.andWhere('news.publishedAt IS NOT NULL').andWhere('news.publishedAt <= :pubNow', { pubNow });
     }
 
     // Add sorting

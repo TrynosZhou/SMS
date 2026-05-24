@@ -1,14 +1,18 @@
-import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
 import { ClassService } from '../../../services/class.service';
 import { StudentService } from '../../../services/student.service';
 import { ElearningService } from '../../../services/elearning.service';
+import { activatePageLoad } from '../../../utils/route-activation';
 
 @Component({
   standalone: false,  selector: 'app-eservices',
 templateUrl: './eservices.component.html',
   styleUrls: ['./eservices.component.css']
 })
-export class EservicesComponent implements OnInit {
+export class EservicesComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
   classes: any[] = [];
   students: any[] = [];
 
@@ -36,10 +40,20 @@ export class EservicesComponent implements OnInit {
   constructor(
     private classService: ClassService,
     private studentService: StudentService,
-    private elearningService: ElearningService
+    private elearningService: ElearningService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
+    activatePageLoad(this.router, this.destroy$, '/teacher/eservices', () => this.bootstrapPage());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private bootstrapPage(): void {
     this.loadClasses();
     this.loadMyTasks();
   }

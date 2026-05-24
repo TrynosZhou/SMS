@@ -959,6 +959,9 @@
   margin-bottom: 20px;
 }
 
+.rbac-divider { margin: 28px 0; border: none; border-top: 1px solid #e2e8f0; }
+.rbac-legacy-note { padding: 16px; background: #fef3c7; border-radius: 10px; color: #92400e; font-size: 14px; }
+
 .module-access-group {
   margin-bottom: 1.25rem;
   padding: 1.15rem 1.25rem;

@@ -32,6 +32,13 @@
       <a routerLink="/parent/student-portal" routerLinkActive="active" class="nav-item">
         <span class="nav-icon">🎓</span><span>Student Portal</span>
       </a>
+      <a
+        *ngIf="canChangeOwnPassword()"
+        [routerLink]="changePasswordRoute"
+        routerLinkActive="active"
+        class="nav-item">
+        <span class="nav-icon">🔐</span><span>Change password</span>
+      </a>
     </nav>
 
     <div class="pdb-logout" (click)="logout()">
@@ -63,6 +70,12 @@
           <span [class.pdb-spin]="loading">↻</span> Refresh
         </button>
         <button type="button" class="pdb-btn pdb-btn--white" (click)="linkMoreStudents()">➕ Link students</button>
+        <a
+          *ngIf="canChangeOwnPassword()"
+          class="pdb-btn pdb-btn--outline"
+          [routerLink]="changePasswordRoute">
+          🔐 Change password
+        </a>
         <button type="button" class="pdb-btn pdb-btn--outline" (click)="manageAccount()">👤 Account</button>
       </div>
     </header>

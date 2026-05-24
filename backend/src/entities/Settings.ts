@@ -191,6 +191,51 @@ export class Settings {
       payroll?: boolean;
       inventory?: boolean;
     };
+    director?: {
+      students?: boolean;
+      teachers?: boolean;
+      classes?: boolean;
+      subjects?: boolean;
+      exams?: boolean;
+      reportCards?: boolean;
+      rankings?: boolean;
+      finance?: boolean;
+      attendance?: boolean;
+      settings?: boolean;
+      dashboard?: boolean;
+      payroll?: boolean;
+      inventory?: boolean;
+    };
+    headmaster?: {
+      students?: boolean;
+      teachers?: boolean;
+      classes?: boolean;
+      subjects?: boolean;
+      exams?: boolean;
+      reportCards?: boolean;
+      rankings?: boolean;
+      finance?: boolean;
+      attendance?: boolean;
+      settings?: boolean;
+      dashboard?: boolean;
+      payroll?: boolean;
+      inventory?: boolean;
+    };
+    deputy_headmaster?: {
+      students?: boolean;
+      teachers?: boolean;
+      classes?: boolean;
+      subjects?: boolean;
+      exams?: boolean;
+      reportCards?: boolean;
+      rankings?: boolean;
+      finance?: boolean;
+      attendance?: boolean;
+      settings?: boolean;
+      dashboard?: boolean;
+      payroll?: boolean;
+      inventory?: boolean;
+    };
     students?: {
       dashboard?: boolean;
       subjects?: boolean;

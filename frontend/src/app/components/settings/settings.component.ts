@@ -75,7 +75,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     },
     {
       id: 'module-access',
-      label: 'Module Access',
+      label: 'Permissions & Roles',
       icon: '🧩',
       description: 'Control which modules each role can view and use.'
     },
@@ -835,9 +835,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
           }
         }
         
-        // Force change detection to ensure all restored values are displayed
-        this.cdr.detectChanges();
         this.loading = false;
+        this.cdr.markForCheck();
         
         console.log('✅ Settings loading complete. All saved values restored.');
       },
@@ -845,7 +844,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         console.error('❌ Error loading settings:', err);
         this.error = 'Failed to load settings. Please refresh the page.';
         this.loading = false;
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
       }
     });
   }
@@ -1682,9 +1681,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
         this.success = successMsg;
         this.markSettingsSaved();
         this.loading = false;
-        
-        // Force change detection to ensure UI updates immediately
-        this.cdr.detectChanges();
+        if (normalizedSchoolName) {
+          sessionStorage.setItem('sms_schoolDisplayName', normalizedSchoolName);
+        }
+        this.cdr.markForCheck();
         
         // Double-check success is set
         console.log('Success message after setting:', this.success);

@@ -19,6 +19,8 @@ import { syncExemptionInvoicesForStudent } from '../utils/exemptionInvoice';
 import { createExemptionReportPDF } from '../utils/exemptionReportPdfGenerator';
 import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
 import { UserRole } from '../entities/User';
+import { userHasPermission } from '../services/rbac.service';
+import { isFullAccessRole } from '../constants/userRoles';
 import { PaymentLog } from '../entities/PaymentLog';
 import { UniformCharge } from '../entities/UniformCharge';
 import { UniformChargeItem } from '../entities/UniformChargeItem';
@@ -693,6 +695,36 @@ export const adjustInvoiceLogistics = async (req: AuthRequest, res: Response) =>
       return res.status(400).json({ message: 'Please select Transport, Dining Hall, and/or Tuition to add' });
     }
 
+    if (req.user && !isFullAccessRole(req.user.role) && req.user.role !== UserRole.ADMIN) {
+      if (addTransport) {
+        const ok = await userHasPermission(req.user, 'financePage', 'transportAdjust.edit');
+        if (!ok) {
+          return res.status(403).json({
+            message: 'Access denied. You do not have permission to adjust transport charges.',
+            code: 'RBAC_FORBIDDEN',
+          });
+        }
+      }
+      if (addDiningHall) {
+        const ok = await userHasPermission(req.user, 'financePage', 'diningAdjust.edit');
+        if (!ok) {
+          return res.status(403).json({
+            message: 'Access denied. You do not have permission to adjust dining hall charges.',
+            code: 'RBAC_FORBIDDEN',
+          });
+        }
+      }
+      if (addTuition) {
+        const ok = await userHasPermission(req.user, 'financePage', 'tuitionAdjust.edit');
+        if (!ok) {
+          return res.status(403).json({
+            message: 'Access denied. You do not have permission to adjust tuition on invoices.',
+            code: 'RBAC_FORBIDDEN',
+          });
+        }
+      }
+    }
+
     const invoiceRepository = AppDataSource.getRepository(Invoice);
     const studentRepository = AppDataSource.getRepository(Student);
     const settingsRepository = AppDataSource.getRepository(Settings);
@@ -848,6 +880,17 @@ export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
 
     if (!type || (type !== 'credit' && type !== 'debit')) {
       return res.status(400).json({ message: 'Invalid note type. Must be credit or debit.' });
+    }
+
+    if (req.user && !isFullAccessRole(req.user.role) && req.user.role !== UserRole.ADMIN) {
+      const pageKey = type === 'credit' ? 'creditNotes' : 'debitNotes';
+      const ok = await userHasPermission(req.user, 'financePage', `${pageKey}.edit`);
+      if (!ok) {
+        return res.status(403).json({
+          message: `Access denied. You do not have permission to apply ${type} notes.`,
+          code: 'RBAC_FORBIDDEN',
+        });
+      }
     }
     if (!item || !['tuition', 'transport', 'diningHall'].includes(item)) {
       return res.status(400).json({ message: 'Invalid cost item. Must be tuition, transport, or diningHall.' });

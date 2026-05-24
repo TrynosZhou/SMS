@@ -423,5 +423,13 @@ export class TeacherDashboardComponent implements OnInit {
     };
     return now.toLocaleDateString('en-US', options);
   }
+
+  canChangeOwnPassword(): boolean {
+    return this.authService.canChangeOwnPassword();
+  }
+
+  get changePasswordRoute(): string {
+    return this.authService.getChangePasswordRoute();
+  }
 }
 

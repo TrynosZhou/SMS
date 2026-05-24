@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { timeout, finalize } from 'rxjs/operators';
 import { AuthService } from '../../../services/auth.service';
 import { AccountService } from '../../../services/account.service';
 
@@ -17,13 +18,16 @@ export class ManageAccountComponent implements OnInit {
   currentPassword = '';
   newPassword = '';
   confirmPassword = '';
-  loading = false;
+  loadingProfile = false;
+  saving = false;
   error = '';
   success = '';
   isTeacher = false;
   isAccountant = false;
+  isDemo = false;
   mustChangePassword = false;
   canChangeUsername = true;
+  roleLabel = 'User';
   
   showCurrentPassword = false;
   showNewPassword = false;
@@ -36,49 +40,99 @@ export class ManageAccountComponent implements OnInit {
   ) { }
 
   ngOnInit() {
+    this.hydrateFromSession();
     this.loadAccountInfo();
   }
 
-  loadAccountInfo() {
-    this.loading = true;
-    this.accountService.getAccountInfo().subscribe({
-      next: (data: any) => {
-        this.accountInfo = data;
-        this.currentUsername = data.username || '';
-        this.currentEmail = data.email || '';
-        this.newUsername = this.currentUsername;
-        this.newEmail = this.currentEmail;
-        this.isTeacher = (data.role || '').toLowerCase() === 'teacher';
-        this.isAccountant = (data.role || '').toLowerCase() === 'accountant';
-        this.mustChangePassword = data.mustChangePassword === true;
-        // For teachers, username (TeacherID) cannot be changed, especially on first login
-        this.canChangeUsername = !this.isTeacher || !this.mustChangePassword;
-        this.loading = false;
-      },
-      error: (err: any) => {
-        const currentUser = this.authService.getCurrentUser();
-        this.accountInfo = {
-          username: currentUser?.username || currentUser?.email || '',
-          email: currentUser?.email || '',
-          role: currentUser?.role || ''
-        };
-        this.currentUsername = this.accountInfo.username;
-        this.currentEmail = this.accountInfo.email;
-        this.newUsername = this.currentUsername;
-        this.newEmail = this.currentEmail;
-        this.isTeacher = this.accountInfo.role?.toLowerCase() === 'teacher';
-        this.isAccountant = this.accountInfo.role?.toLowerCase() === 'accountant';
-        this.mustChangePassword = currentUser?.mustChangePassword === true;
-        this.canChangeUsername = !this.isTeacher || !this.mustChangePassword;
-        this.loading = false;
-        this.error = err.error?.message || 'Failed to load account information. You can still change your password below.';
-        setTimeout(() => this.error = '', 5000);
-      }
+  /** Show the form immediately from login session; refresh from API in background. */
+  private hydrateFromSession(): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      return;
+    }
+    this.applyAccountData({
+      username: currentUser.username || currentUser.email || '',
+      email: currentUser.email || '',
+      role: currentUser.role || '',
+      isDemo: currentUser.isDemo === true,
+      mustChangePassword: currentUser.mustChangePassword === true,
     });
   }
 
+  private applyAccountData(data: {
+    username?: string;
+    email?: string;
+    role?: string;
+    isDemo?: boolean;
+    mustChangePassword?: boolean;
+  }): void {
+    this.accountInfo = { ...this.accountInfo, ...data };
+    this.currentUsername = data.username || '';
+    this.currentEmail = data.email || '';
+    this.newUsername = this.currentUsername;
+    this.newEmail = this.currentEmail;
+    const role = (data.role || '').toLowerCase();
+    this.isTeacher = role === 'teacher';
+    this.isAccountant = role === 'accountant';
+    this.isDemo = data.isDemo === true;
+    this.roleLabel = this.formatRoleLabel(role);
+    this.mustChangePassword = data.mustChangePassword === true;
+    this.canChangeUsername = !this.isTeacher || !this.mustChangePassword;
+  }
+
+  loadAccountInfo() {
+    this.loadingProfile = true;
+    this.accountService
+      .getAccountInfo()
+      .pipe(
+        timeout(20000),
+        finalize(() => {
+          this.loadingProfile = false;
+        })
+      )
+      .subscribe({
+        next: (data: any) => {
+          if (!data) {
+            return;
+          }
+          this.applyAccountData({
+            username: data.username || '',
+            email: data.email || '',
+            role: data.role || '',
+            isDemo: data.isDemo === true,
+            mustChangePassword: data.mustChangePassword === true,
+          });
+          this.accountInfo = { ...this.accountInfo, ...data };
+        },
+        error: (err: any) => {
+          if (!this.accountInfo) {
+            this.hydrateFromSession();
+          }
+          const msg =
+            err?.name === 'TimeoutError'
+              ? 'Could not reach the server in time. You can still change your password below.'
+              : err?.error?.message || 'Could not refresh account details. You can still change your password.';
+          this.error = msg;
+          setTimeout(() => (this.error = ''), 8000);
+        },
+      });
+  }
+
+  get requiresMinPasswordLength(): boolean {
+    const role = (this.accountInfo?.role || this.authService.getCurrentUser()?.role || '').toLowerCase();
+    return [
+      'admin',
+      'superadmin',
+      'director',
+      'accountant',
+      'headmaster',
+      'deputy_headmaster',
+    ].includes(role);
+  }
+
   get passwordLengthOk(): boolean {
-    return (this.newPassword || '').length >= 8;
+    const min = this.requiresMinPasswordLength ? 8 : 1;
+    return (this.newPassword || '').length >= min;
   }
 
   get hasUpper(): boolean {
@@ -130,15 +184,29 @@ export class ManageAccountComponent implements OnInit {
   }
 
   get canSubmit(): boolean {
-    // Relaxed policy for teachers/parents: only require non-empty current/new/confirm
-    // and matching passwords. Strength meter remains purely informational.
-    return !!this.currentPassword && !!this.newPassword && !!this.confirmPassword && this.passwordsMatch && !this.loading;
+    if (this.isDemo || this.saving || !this.accountInfo) return false;
+    if (!this.currentPassword || !this.newPassword || !this.confirmPassword || !this.passwordsMatch) {
+      return false;
+    }
+    if (this.requiresMinPasswordLength && this.newPassword.length < 8) {
+      return false;
+    }
+    return true;
   }
 
   updateAccount() {
-    // Validation - password fields are required, username/email are optional
+    if (this.isDemo) {
+      this.error = 'Demo accounts cannot change password.';
+      return;
+    }
+
     if (!this.currentPassword || !this.newPassword || !this.confirmPassword) {
       this.error = 'Please fill in all password fields';
+      return;
+    }
+
+    if (this.requiresMinPasswordLength && this.newPassword.length < 8) {
+      this.error = 'New password must be at least 8 characters long';
       return;
     }
 
@@ -147,7 +215,7 @@ export class ManageAccountComponent implements OnInit {
       return;
     }
 
-    this.loading = true;
+    this.saving = true;
     this.error = '';
     this.success = '';
 
@@ -168,28 +236,22 @@ export class ManageAccountComponent implements OnInit {
 
     this.accountService.updateAccount(updateData).subscribe({
       next: (response: any) => {
-        this.loading = false;
+        this.saving = false;
         this.success = 'Account updated successfully! Redirecting to dashboard...';
         
-        // Update local storage with new user info
         const currentUser = this.authService.getCurrentUser();
         if (currentUser && response.user) {
           currentUser.username = response.user.username || response.user.email;
-          localStorage.setItem('user', JSON.stringify(currentUser));
+          currentUser.mustChangePassword = false;
+          this.authService.setCurrentUser(currentUser);
         }
         
         setTimeout(() => {
-          // Redirect based on user role
-          const currentUser = this.authService.getCurrentUser();
-          if (currentUser?.role === 'PARENT') {
-            this.router.navigate(['/parent/dashboard']);
-          } else {
-            this.router.navigate(['/dashboard']);
-          }
+          this.navigateToDashboard();
         }, 2000);
       },
       error: (err: any) => {
-        this.loading = false;
+        this.saving = false;
         this.error = err.error?.message || 'Failed to update account';
         setTimeout(() => this.error = '', 5000);
       }
@@ -209,12 +271,24 @@ export class ManageAccountComponent implements OnInit {
   }
 
   goToDashboard() {
-    // Redirect based on user role
-    const currentUser = this.authService.getCurrentUser();
-    if (currentUser?.role === 'PARENT') {
-      this.router.navigate(['/parent/dashboard']);
-    } else {
-      this.router.navigate(['/dashboard']);
-    }
+    this.navigateToDashboard();
+  }
+
+  private navigateToDashboard(): void {
+    this.router.navigate([this.authService.getDashboardRoute()]);
+  }
+
+  private formatRoleLabel(role: string): string {
+    const r = (role || '').toLowerCase();
+    if (r === 'superadmin') return 'Super Administrator';
+    if (r === 'director') return 'Director';
+    if (r === 'headmaster') return 'Headmaster';
+    if (r === 'deputy_headmaster') return 'Deputy Headmaster';
+    if (r === 'admin') return 'Administrator';
+    if (r === 'accountant') return 'Accountant';
+    if (r === 'teacher') return 'Teacher';
+    if (r === 'parent') return 'Parent';
+    if (r === 'student') return 'Student';
+    return role || 'User';
   }
 }

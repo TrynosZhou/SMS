@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
+import { requireModuleView, requirePermission } from '../middleware/requirePermission';
 import { UserRole } from '../entities/User';
 import {
   markAttendance,
@@ -14,10 +15,10 @@ const router = Router();
 router.use(authenticate);
 
 // Mark attendance (bulk for a class on a date)
-router.post('/', authorize(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), markAttendance);
+router.post('/', authorize(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), requirePermission('attendance', 'create'), markAttendance);
 
 // Get attendance records
-router.get('/', authorize(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), getAttendance);
+router.get('/', authorize(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), requireModuleView('attendance'), getAttendance);
 
 // Delete attendance records for a class on a date
 router.delete('/', authorize(UserRole.ADMIN, UserRole.SUPERADMIN), deleteAttendance);

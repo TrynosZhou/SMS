@@ -356,9 +356,17 @@ export class LoginComponent implements OnInit {
               });
             }
           });
-        } else if ((user.role === 'admin' || user.role === 'superadmin' || user.role === 'accountant') && user.mustChangePassword) {
-          // Staff must change temporary password on first login
-          this.router.navigate(['/admin/manage-accounts'], { queryParams: { changePassword: '1' } }).catch(err => {
+        } else if (user.mustChangePassword) {
+          const role = String(user.role || '').toLowerCase();
+          const changePasswordRoute =
+            role === 'teacher'
+              ? '/teacher/manage-account'
+              : role === 'parent'
+                ? '/parent/manage-account'
+                : role === 'accountant'
+                  ? '/accountant/manage-account'
+                  : '/account/change-password';
+          this.router.navigate([changePasswordRoute]).catch(err => {
             console.error('Navigation error:', err);
             this.error = 'Failed to navigate. Please try again.';
           });

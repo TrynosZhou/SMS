@@ -1,12 +1,16 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
 import { ElearningService } from '../../../services/elearning.service';
+import { activatePageLoad } from '../../../utils/route-activation';
 
 @Component({
   standalone: false,  selector: 'app-student-responses',
 templateUrl: './student-responses.component.html',
   styleUrls: ['./student-responses.component.css']
 })
-export class StudentResponsesComponent implements OnInit {
+export class StudentResponsesComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
   tasks: any[] = [];
   selectedTaskId = '';
   responses: any[] = [];
@@ -14,10 +18,18 @@ export class StudentResponsesComponent implements OnInit {
   loadingResponses = false;
   error: string | null = null;
 
-  constructor(private elearningService: ElearningService) {}
+  constructor(
+    private elearningService: ElearningService,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
-    this.loadTasks();
+    activatePageLoad(this.router, this.destroy$, '/teacher/student-responses', () => this.loadTasks());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   loadTasks(): void {

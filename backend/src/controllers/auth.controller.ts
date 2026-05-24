@@ -342,7 +342,14 @@ export const login = async (req: Request, res: Response) => {
         return res.status(401).json({ message: 'Account is inactive. Please contact the administrator.' });
       }
 
-      const staffRoles = [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT];
+      const staffRoles = [
+        UserRole.ADMIN,
+        UserRole.SUPERADMIN,
+        UserRole.DIRECTOR,
+        UserRole.HEADMASTER,
+        UserRole.DEPUTY_HEADMASTER,
+        UserRole.ACCOUNTANT,
+      ];
       const isStaffRole = staffRoles.includes(user.role);
       const MAX_LOGIN_ATTEMPTS = 3;
       const LOCK_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -663,6 +670,26 @@ export const login = async (req: Request, res: Response) => {
       { expiresIn }
     );
 
+    // Resolve RBAC permissions for the user
+    let permissions: Record<string, boolean> = {};
+    let rbacRoleNames: string[] = [];
+    try {
+      const { resolveUserPermissions, syncUserRoleAssignment } = require('../services/rbac.service');
+      const { AppDataSource: DS } = require('../config/database');
+      const { UserRbacRole } = require('../entities/UserRbacRole');
+      await syncUserRoleAssignment(user);
+      permissions = await resolveUserPermissions(user);
+      if (DS.isInitialized) {
+        const assignments = await DS.getRepository(UserRbacRole).find({
+          where: { userId: user.id },
+          relations: ['role'],
+        });
+        rbacRoleNames = assignments.map((a: any) => a.role?.name).filter(Boolean);
+      }
+    } catch (rbacErr: any) {
+      console.warn('[Login] RBAC resolution skipped:', rbacErr?.message);
+    }
+
     // Build response based on user role and set fullName from database for dashboard display
     const response: any = {
       token,
@@ -674,7 +701,9 @@ export const login = async (req: Request, res: Response) => {
         mustChangePassword: user.mustChangePassword,
         isTemporaryAccount: user.isTemporaryAccount,
         isDemo: user.isDemo,
-        isUniversalTeacher: user.isUniversalTeacher === true
+        isUniversalTeacher: user.isUniversalTeacher === true,
+        permissions,
+        rbacRoles: rbacRoleNames,
       }
     };
 

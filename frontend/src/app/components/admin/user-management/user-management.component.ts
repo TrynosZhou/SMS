@@ -42,13 +42,16 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   readonly roleFilterOptions = [
     { value: 'all', label: 'All Roles' },
-    { value: 'superadmin', label: 'Super Admin' },
+    { value: 'superadmin', label: 'Super Administrator' },
+    { value: 'director', label: 'Director' },
+    { value: 'headmaster', label: 'Headmaster' },
+    { value: 'deputy_headmaster', label: 'Deputy Headmaster' },
     { value: 'admin', label: 'Administrator' },
     { value: 'accountant', label: 'Accountant' },
     { value: 'teacher', label: 'Teacher' },
     { value: 'parent', label: 'Parent' },
     { value: 'student', label: 'Student' },
-    { value: 'demo_user', label: 'Demo User' }
+    { value: 'demo_user', label: 'Demo User' },
   ];
 
   readonly statusFilterOptions = [
@@ -58,12 +61,17 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     { value: 'Inactive', label: 'Inactive' }
   ];
 
-  manualAccountRoles = [
-    { value: 'superadmin', label: 'Super Admin' },
-    { value: 'admin', label: 'Administrator' },
-    { value: 'accountant', label: 'Accountant' },
-    { value: 'teacher', label: 'Teacher' },
-    { value: 'demo-user', label: 'Demo User' }
+  private readonly allManualAccountRoles: Array<{ value: string; label: string; group: string }> = [
+    { value: 'superadmin', label: 'Super Administrator', group: 'Executive leadership' },
+    { value: 'director', label: 'Director', group: 'Executive leadership' },
+    { value: 'headmaster', label: 'Headmaster', group: 'School Admin' },
+    { value: 'deputy_headmaster', label: 'Deputy Headmaster', group: 'School Admin' },
+    { value: 'admin', label: 'Administrator', group: 'School operations' },
+    { value: 'accountant', label: 'Accountant', group: 'School operations' },
+    { value: 'teacher', label: 'Teacher', group: 'Teaching' },
+    { value: 'parent', label: 'Parent', group: 'Portal users' },
+    { value: 'student', label: 'Student', group: 'Portal users' },
+    { value: 'demo-user', label: 'Demo User', group: 'Other' },
   ];
 
   manualAccount = this.defaultManualAccount();
@@ -94,7 +102,31 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   isSuperAdmin(): boolean {
-    return this.authService.getCurrentUser()?.role === 'superadmin';
+    return this.authService.isSuperAdmin();
+  }
+
+  isFullAccess(): boolean {
+    return this.authService.isFullAccess();
+  }
+
+  getCreatableRoleOptions(): Array<{ value: string; label: string; group: string }> {
+    if (this.isFullAccess()) {
+      return this.allManualAccountRoles;
+    }
+    // Administrators can create Director and school roles; Super Admin stays executive-only
+    return this.allManualAccountRoles.filter((o) => o.value !== 'superadmin');
+  }
+
+  getCreatableRoleGroups(): string[] {
+    const groups = new Set<string>();
+    for (const o of this.getCreatableRoleOptions()) {
+      groups.add(o.group);
+    }
+    return Array.from(groups);
+  }
+
+  getCreatableRolesInGroup(group: string): Array<{ value: string; label: string; group: string }> {
+    return this.getCreatableRoleOptions().filter((o) => o.group === group);
   }
 
   isCurrentUser(userId: string): boolean {
@@ -194,7 +226,10 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   getRoleLabel(role: string): string {
     const r = (role || '').toLowerCase();
-    if (r === 'superadmin') return 'Super Admin';
+    if (r === 'superadmin') return 'Super Administrator';
+    if (r === 'director') return 'Director';
+    if (r === 'headmaster') return 'Headmaster';
+    if (r === 'deputy_headmaster') return 'Deputy Headmaster';
     if (r === 'admin') return 'Administrator';
     if (r === 'accountant') return 'Accountant';
     if (r === 'teacher') return 'Teacher';
@@ -202,6 +237,13 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     if (r === 'student') return 'Student';
     if (r === 'demo_user') return 'Demo User';
     return role || '—';
+  }
+
+  getRoleBadgeClass(role: string): string {
+    const r = (role || '').toLowerCase();
+    if (r === 'director' || r === 'superadmin') return 'um-role-badge--executive';
+    if (r === 'headmaster' || r === 'deputy_headmaster') return 'um-role-badge--school-admin';
+    return '';
   }
 
   formatCreated(dateStr: string): string {
@@ -213,9 +255,6 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   openAddUser(): void {
     this.manualAccount = this.defaultManualAccount();
-    if (!this.isSuperAdmin()) {
-      this.manualAccountRoles = this.manualAccountRoles.filter((o) => o.value !== 'superadmin');
-    }
     this.error = '';
     this.showAddUserModal = true;
   }
@@ -233,17 +272,31 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   createUser(): void {
     const role = (this.manualAccount.role || '').trim();
-    if (role === 'teacher') {
-      if (!this.manualAccount.username?.trim()) {
-        this.error = 'Username (Teacher ID) is required for teacher accounts.';
-        return;
-      }
-    } else if (!this.manualAccount.email?.trim() || !role) {
-      this.error = 'Email and role are required.';
+    if (!role) {
+      this.error = 'Role is required.';
+      return;
+    }
+    if (!this.manualAccount.firstName?.trim() && role !== 'teacher') {
+      this.error = 'First name is required.';
+      return;
+    }
+    if (!this.manualAccount.lastName?.trim() && role !== 'teacher') {
+      this.error = 'Last name is required.';
+      return;
+    }
+    if (!this.manualAccount.username?.trim()) {
+      this.error =
+        role === 'teacher'
+          ? 'Username (Teacher ID) is required for teacher accounts.'
+          : 'Username is required for login.';
       return;
     }
     if (!this.manualAccount.generatePassword && !this.manualAccount.password?.trim()) {
-      this.error = 'Please provide a password or enable auto-generate.';
+      this.error = 'Password is required, or enable auto-generate.';
+      return;
+    }
+    if (this.manualAccount.password?.trim() && this.manualAccount.password.trim().length < 8) {
+      this.error = 'Password must be at least 8 characters.';
       return;
     }
 
@@ -251,16 +304,21 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     const resolvedRole = isDemoRole ? 'admin' : role;
     const payload: any = {
       role: resolvedRole,
-      username: this.manualAccount.username?.trim() || undefined,
-      generatePassword: this.manualAccount.generatePassword
+      username: this.manualAccount.username.trim(),
+      generatePassword: this.manualAccount.generatePassword,
     };
-    if (resolvedRole !== 'teacher') {
-      payload.email = (this.manualAccount.email || '').trim();
+    const firstName = this.manualAccount.firstName?.trim();
+    const lastName = this.manualAccount.lastName?.trim();
+    if (firstName) payload.firstName = firstName;
+    if (lastName) payload.lastName = lastName;
+    const email = (this.manualAccount.email || '').trim();
+    if (email) {
+      payload.email = email;
     }
     if (!this.manualAccount.generatePassword) {
       payload.password = this.manualAccount.password.trim();
     }
-    if (isDemoRole || (this.manualAccount.isDemo && this.isSuperAdmin())) {
+    if (isDemoRole || (this.manualAccount.isDemo && this.isFullAccess())) {
       payload.isDemo = true;
     }
 
@@ -270,9 +328,10 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       next: (response: any) => {
         this.creatingUser = false;
         const password = response.temporaryCredentials?.password;
+        const loginUser = response.user?.username || payload.username;
         this.success = password
-          ? `Account created. Temporary password: ${password}`
-          : 'Account created successfully.';
+          ? `Account created. Username: ${loginUser} · Password: ${password}`
+          : `Account created. Username: ${loginUser}`;
         this.closeAddUser();
         this.loadUsers();
         setTimeout(() => (this.success = ''), 12000);
@@ -363,7 +422,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   canDeleteUser(user: UserManagementRow): boolean {
     if (this.isCurrentUser(user.id)) return false;
     const role = (user.role || '').toLowerCase();
-    if (role === 'superadmin') return this.isSuperAdmin();
+    if (role === 'superadmin' || role === 'director') return this.isFullAccess();
     return true;
   }
 
@@ -390,21 +449,37 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   canUnlockUser(user: UserManagementRow): boolean {
     const role = (user.role || '').toLowerCase();
-    return (
-      user.isLocked &&
-      ['admin', 'superadmin', 'accountant'].includes(role) &&
-      (role !== 'superadmin' || this.isSuperAdmin())
-    );
+    const staffRoles = [
+      'admin',
+      'superadmin',
+      'director',
+      'headmaster',
+      'deputy_headmaster',
+      'accountant',
+    ];
+    if (!user.isLocked || !staffRoles.includes(role)) {
+      return false;
+    }
+    if (role === 'superadmin' || role === 'director') {
+      return this.isFullAccess();
+    }
+    return true;
+  }
+
+  requiresFullName(role: string): boolean {
+    return (role || '').trim() !== 'teacher';
   }
 
   private defaultManualAccount() {
     return {
+      firstName: '',
+      lastName: '',
       email: '',
       username: '',
-      role: 'accountant',
-      generatePassword: true,
+      role: 'headmaster',
+      generatePassword: false,
       password: '',
-      isDemo: false
+      isDemo: false,
     };
   }
 }

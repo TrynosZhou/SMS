@@ -26,6 +26,9 @@
         </div>
       </div>
       <div class="inv-hero__actions">
+        <button type="button" class="inv-btn inv-btn--ghost" (click)="theme.toggleTheme()" title="Toggle theme">
+          {{ theme.darkMode ? '☀' : '🌙' }}
+        </button>
         <button
           type="button"
           class="inv-btn inv-btn--ghost"
@@ -34,9 +37,33 @@
           [attr.aria-busy]="loading"
         >
           <span class="inv-btn__icon" [class.inv-spin]="loading">↻</span>
-          {{ loading ? 'Syncing…' : 'Refresh data' }}
+          {{ loading ? 'Syncing…' : 'Refresh' }}
         </button>
       </div>
+    </div>
+
+    <div class="inv-quick-actions" *ngIf="!loading">
+      <button type="button" class="inv-qa" (click)="setTab('ops')">
+        <span class="inv-qa__icon">🔄</span>
+        <span class="inv-qa__label">Issue items</span>
+      </button>
+      <button type="button" class="inv-qa" (click)="setTab('textbooks')">
+        <span class="inv-qa__icon">📚</span>
+        <span class="inv-qa__label">Catalog</span>
+      </button>
+      <button type="button" class="inv-qa" (click)="setTab('teacherAlloc')" *ngIf="canManageStock">
+        <span class="inv-qa__icon">🧑‍🏫</span>
+        <span class="inv-qa__label">Teachers</span>
+      </button>
+      <button type="button" class="inv-qa" (click)="setTab('fines')">
+        <span class="inv-qa__icon">💳</span>
+        <span class="inv-qa__label">Fines</span>
+        <span class="inv-qa__badge" *ngIf="statPendingFines.count">{{ statPendingFines.count }}</span>
+      </button>
+      <button type="button" class="inv-qa" (click)="setTab('reports')">
+        <span class="inv-qa__icon">📊</span>
+        <span class="inv-qa__label">Reports</span>
+      </button>
     </div>
 
     <div class="inv-stats" *ngIf="!loading || textbooks.length || furniture.length">
@@ -70,6 +97,13 @@
             <span class="inv-stat-card__label">Active loans</span>
           </div>
         </article>
+        <article class="inv-stat-card" [class.inv-stat-card--warn]="statOverdueLoans > 0">
+          <span class="inv-stat-card__icon" aria-hidden="true">⏰</span>
+          <div class="inv-stat-card__body">
+            <span class="inv-stat-card__value">{{ loading ? '—' : statOverdueLoans }}</span>
+            <span class="inv-stat-card__label">Overdue loans</span>
+          </div>
+        </article>
         <article class="inv-stat-card inv-stat-card--accent">
           <span class="inv-stat-card__icon" aria-hidden="true">💳</span>
           <div class="inv-stat-card__body">
@@ -78,6 +112,24 @@
             <span class="inv-stat-card__hint" *ngIf="!loading && statPendingFines.total">{{ statPendingFines.total | number:'1.2-2' }} due</span>
           </div>
         </article>
+        <article class="inv-stat-card">
+          <span class="inv-stat-card__icon" aria-hidden="true">📈</span>
+          <div class="inv-stat-card__body">
+            <span class="inv-stat-card__value">{{ loading ? '—' : statUtilizationPct }}%</span>
+            <span class="inv-stat-card__label">Stock in use</span>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <div class="inv-insights" *ngIf="!loading && (statLowStockCount || statOverdueLoans)">
+      <div class="inv-insight inv-insight--warn" *ngIf="statLowStockCount">
+        <strong>{{ statLowStockCount }}</strong> textbook title(s) low or out of stock —
+        <button type="button" class="inv-link" (click)="setTab('textbooks'); stockFilter = 'low'">Review catalog</button>
+      </div>
+      <div class="inv-insight inv-insight--danger" *ngIf="statOverdueLoans">
+        <strong>{{ statOverdueLoans }}</strong> overdue loan(s) —
+        <button type="button" class="inv-link" (click)="setTab('ops')">View issuances</button>
       </div>
     </div>
   </header>
@@ -97,20 +149,34 @@
       [attr.aria-current]="tab === t.id ? 'page' : null"
     >
       <span class="inv-tab__icon" aria-hidden="true">{{ t.icon }}</span>
-      <span class="inv-tab__label">{{ t.label }}</span>
+      <span class="inv-tab__row">
+        <span class="inv-tab__label">{{ t.label }}</span>
+        <span class="inv-tab-badge" *ngIf="tabBadgeCount(t.id) !== null" [ngClass]="tabBadgeClass(t.id)">{{ tabBadgeCount(t.id) }}</span>
+      </span>
       <span class="inv-tab__hint">{{ t.hint }}</span>
     </button>
   </nav>
 
   <!-- Textbooks -->
-  <section *ngIf="tab === 'textbooks'" class="inv-panel">
+  <section *ngIf="tab === 'textbooks'" class="inv-panel" id="inv-panel-textbooks">
     <div class="inv-toolbar">
       <h2 class="inv-panel-title">Textbook catalog</h2>
-      <div class="inv-toolbar__search">
+      <div class="inv-toolbar__right">
+        <div class="inv-filter-chips">
+          <button type="button" class="inv-chip-filter" [class.active]="stockFilter === 'all'" (click)="stockFilter = 'all'">All</button>
+          <button type="button" class="inv-chip-filter" [class.active]="stockFilter === 'healthy'" (click)="stockFilter = 'healthy'">In stock</button>
+          <button type="button" class="inv-chip-filter inv-chip-filter--warn" [class.active]="stockFilter === 'low'" (click)="stockFilter = 'low'">Low</button>
+          <button type="button" class="inv-chip-filter inv-chip-filter--danger" [class.active]="stockFilter === 'out'" (click)="stockFilter = 'out'">Out</button>
+        </div>
         <label class="inv-search">
           <span class="inv-search__icon" aria-hidden="true">🔍</span>
           <input type="search" [(ngModel)]="tbSearch" placeholder="Search title, ISBN, grade…" class="inv-search__input" />
         </label>
+        <div class="inv-view-toggle">
+          <button type="button" class="inv-view-btn" [class.active]="catalogView === 'cards'" (click)="catalogView = 'cards'" title="Cards">⊞</button>
+          <button type="button" class="inv-view-btn" [class.active]="catalogView === 'table'" (click)="catalogView = 'table'" title="Table">☰</button>
+        </div>
+        <button type="button" class="inv-btn inv-btn--ghost inv-btn--sm" (click)="exportTextbooksCsv()" [disabled]="!filteredTextbooks.length">Export</button>
       </div>
     </div>
 
@@ -139,7 +205,23 @@
       <button type="button" class="inv-btn inv-btn--primary" (click)="addTextbook()">Add to catalog</button>
     </div>
 
-    <div class="inv-table-wrap" *ngIf="filteredTextbooks.length; else noTb">
+    <div class="inv-catalog-grid" *ngIf="catalogView === 'cards' && filteredTextbooks.length">
+      <article class="inv-catalog-card" *ngFor="let t of filteredTextbooks" [class.inv-catalog-card--low]="getStockLevel(t) === 'low'" [class.inv-catalog-card--out]="getStockLevel(t) === 'out'">
+        <div class="inv-catalog-card__top">
+          <span class="inv-catalog-card__grade">{{ t.gradeLevel || 'General' }}</span>
+          <span class="inv-stock-pill" [attr.data-level]="getStockLevel(t)">{{ stockPct(t) }}%</span>
+        </div>
+        <h3 class="inv-catalog-card__title">{{ t.title }}</h3>
+        <p class="inv-catalog-card__meta"><code>{{ t.isbn || 'No ISBN' }}</code></p>
+        <div class="inv-stock-bar inv-stock-bar--lg">
+          <span class="inv-stock-bar__fill" [style.width.%]="stockPct(t)"></span>
+        </div>
+        <p class="inv-catalog-card__stock">{{ t.quantityAvailable }} / {{ t.quantityTotal }} available</p>
+        <span class="inv-badge" [ngClass]="statusClass(getStockLevel(t) === 'healthy' ? 'active' : 'pending')">{{ stockLevelLabel(getStockLevel(t)) }}</span>
+      </article>
+    </div>
+
+    <div class="inv-table-wrap" *ngIf="catalogView === 'table' && filteredTextbooks.length">
       <table class="inv-table">
         <thead>
           <tr>
@@ -166,26 +248,35 @@
         </tbody>
       </table>
     </div>
-    <ng-template #noTb>
-      <div class="inv-empty">
-        <span class="inv-empty__icon" aria-hidden="true">📭</span>
-        <p class="inv-empty__title">
-          {{ loading ? 'Loading catalog…' : (tbSearch ? 'No titles match your search' : 'No textbooks yet') }}
-        </p>
-        <p class="inv-empty__text" *ngIf="!tbSearch && !loading && canManageStock">Add your first title using the form above.</p>
-      </div>
-    </ng-template>
+    <div class="inv-empty" *ngIf="!loading && !filteredTextbooks.length">
+      <span class="inv-empty__icon" aria-hidden="true">📭</span>
+      <p class="inv-empty__title">
+        {{ tbSearch || stockFilter !== 'all' ? 'No titles match filters' : 'No textbooks yet' }}
+      </p>
+      <p class="inv-empty__text" *ngIf="!tbSearch && stockFilter === 'all' && canManageStock">Add your first title using the form above.</p>
+      <button type="button" class="inv-btn inv-btn--primary" *ngIf="tbSearch || stockFilter !== 'all'" (click)="clearCatalogFilters('tb')">Clear filters</button>
+    </div>
   </section>
 
   <!-- Furniture -->
   <section *ngIf="tab === 'furniture'" class="inv-panel">
     <div class="inv-toolbar">
       <h2 class="inv-panel-title">Furniture</h2>
-      <div class="inv-toolbar__search">
+      <div class="inv-toolbar__right">
+        <div class="inv-filter-chips">
+          <button type="button" class="inv-chip-filter" [class.active]="furnStatusFilter === 'all'" (click)="furnStatusFilter = 'all'">All</button>
+          <button type="button" class="inv-chip-filter" [class.active]="furnStatusFilter === 'available'" (click)="furnStatusFilter = 'available'">Available</button>
+          <button type="button" class="inv-chip-filter" [class.active]="furnStatusFilter === 'issued'" (click)="furnStatusFilter = 'issued'">Issued</button>
+        </div>
         <label class="inv-search">
           <span class="inv-search__icon" aria-hidden="true">🔍</span>
           <input type="search" [(ngModel)]="furnSearch" placeholder="Search code, type, location…" class="inv-search__input" />
         </label>
+        <div class="inv-view-toggle">
+          <button type="button" class="inv-view-btn" [class.active]="catalogView === 'cards'" (click)="catalogView = 'cards'">⊞</button>
+          <button type="button" class="inv-view-btn" [class.active]="catalogView === 'table'" (click)="catalogView = 'table'">☰</button>
+        </div>
+        <button type="button" class="inv-btn inv-btn--ghost inv-btn--sm" (click)="exportFurnitureCsv()" [disabled]="!filteredFurniture.length">Export</button>
       </div>
     </div>
 
@@ -214,7 +305,17 @@
       <button type="button" class="inv-btn inv-btn--primary" (click)="addFurniture()">Save item</button>
     </div>
 
-    <div class="inv-table-wrap" *ngIf="filteredFurniture.length; else noFn">
+    <div class="inv-catalog-grid inv-catalog-grid--furn" *ngIf="catalogView === 'cards' && filteredFurniture.length">
+      <article class="inv-catalog-card inv-catalog-card--furn" *ngFor="let f of filteredFurniture">
+        <div class="inv-catalog-card__icon-lg">{{ furnitureIcon(f.itemType) }}</div>
+        <h3 class="inv-catalog-card__title"><code>{{ f.itemCode }}</code></h3>
+        <p class="inv-catalog-card__meta">{{ f.itemType | titlecase }} · {{ f.locationLabel || 'No location' }}</p>
+        <span class="inv-badge" [ngClass]="statusClass(f.status)">{{ f.status }}</span>
+        <span class="inv-muted inv-catalog-card__cond">{{ f.condition }}</span>
+      </article>
+    </div>
+
+    <div class="inv-table-wrap" *ngIf="catalogView === 'table' && filteredFurniture.length">
       <table class="inv-table">
         <thead>
           <tr>
@@ -236,12 +337,11 @@
         </tbody>
       </table>
     </div>
-    <ng-template #noFn>
-      <div class="inv-empty">
-        <span class="inv-empty__icon" aria-hidden="true">🪑</span>
-        <p class="inv-empty__title">{{ furnSearch ? 'No items match' : loading ? 'Loading…' : 'No furniture registered' }}</p>
-      </div>
-    </ng-template>
+    <div class="inv-empty" *ngIf="!loading && !filteredFurniture.length">
+      <span class="inv-empty__icon" aria-hidden="true">🪑</span>
+      <p class="inv-empty__title">{{ furnSearch || furnStatusFilter !== 'all' ? 'No items match filters' : 'No furniture registered' }}</p>
+      <button type="button" class="inv-btn inv-btn--primary" *ngIf="furnSearch || furnStatusFilter !== 'all'" (click)="clearCatalogFilters('furn')">Clear filters</button>
+    </div>
   </section>
 
   <!-- Teacher Allocations -->
@@ -390,18 +490,22 @@
   </section>
 
   <!-- Ops -->
-  <section *ngIf="tab === 'ops'" class="inv-panel">
+  <section *ngIf="tab === 'ops'" class="inv-panel" id="inv-panel-ops">
     <div class="inv-toolbar">
       <h2 class="inv-panel-title">Issuance &amp; returns</h2>
-      <div class="inv-toolbar__search">
+      <div class="inv-toolbar__right">
         <label class="inv-search">
           <span class="inv-search__icon" aria-hidden="true">🔍</span>
-          <input type="search" [(ngModel)]="opsSearch" placeholder="Filter by student or item…" class="inv-search__input" />
+          <input type="search" [(ngModel)]="opsSearch" placeholder="Filter active issuances…" class="inv-search__input" />
         </label>
+        <button type="button" class="inv-btn inv-btn--ghost inv-btn--sm" (click)="exportActiveIssuancesCsv()" [disabled]="!filteredActiveTb.length && !filteredActiveFurn.length">Export active</button>
+        <button type="button" class="inv-btn inv-btn--ghost inv-btn--sm" (click)="showQuickIssue = !showQuickIssue">
+          {{ showQuickIssue ? 'Hide issue forms' : 'Show issue forms' }}
+        </button>
       </div>
     </div>
 
-    <div class="inv-card inv-card--form" *ngIf="canManageStock">
+    <div class="inv-card inv-card--form" *ngIf="canManageStock && showQuickIssue">
       <div class="inv-split">
         <div class="inv-split__col">
           <div class="inv-card__head">
@@ -410,7 +514,7 @@
           </div>
           <div class="inv-grid">
             <label class="inv-field">Mode
-              <select [(ngModel)]="op.mode" class="inv-input">
+              <select [(ngModel)]="op.mode" (ngModelChange)="onIssueModeChange()" class="inv-input">
                 <option value="perm">Permanent</option>
                 <option value="loan">Library loan</option>
               </select>
@@ -421,10 +525,13 @@
                 <option *ngFor="let t of textbooks" [value]="t.id">{{ t.title }} ({{ t.quantityAvailable }} avail)</option>
               </select>
             </label>
+            <label class="inv-field">Find student
+              <input type="search" [(ngModel)]="studentPickerSearch" class="inv-input" placeholder="Type name or number…" />
+            </label>
             <label class="inv-field">Student
               <select [(ngModel)]="op.studentId" class="inv-input">
                 <option value="">Select…</option>
-                <option *ngFor="let s of students" [value]="s.id">{{ studentLabel(s) }}</option>
+                <option *ngFor="let s of filteredStudentsForPicker" [value]="s.id">{{ studentLabel(s) }}</option>
               </select>
             </label>
             <label class="inv-field" *ngIf="op.mode === 'loan'">Due date
@@ -474,7 +581,11 @@
             <td>{{ i.student?.firstName }} {{ i.student?.lastName }}</td>
             <td>{{ i.catalog?.title }}</td>
             <td><span class="inv-badge inv-badge--neutral">{{ i.issuanceType }}</span></td>
-            <td>{{ i.loanDueAt ? (i.loanDueAt | date: 'mediumDate') : '—' }}</td>
+            <td>
+              <span *ngIf="i.loanDueAt">{{ i.loanDueAt | date: 'mediumDate' }}</span>
+              <span *ngIf="!i.loanDueAt">—</span>
+              <span class="inv-due-hint" *ngIf="i.status === 'overdue'">Overdue</span>
+            </td>
             <td><span class="inv-badge" [ngClass]="statusClass(i.status)">{{ i.status }}</span></td>
             <td *ngIf="canManageStock" class="inv-td-actions">
               <button type="button" class="inv-chip inv-chip--primary" (click)="retTb(i.id)">Return</button>

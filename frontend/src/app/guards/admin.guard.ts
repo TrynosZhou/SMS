@@ -13,7 +13,7 @@ export class AdminGuard implements CanActivate {
       this.router.navigate(['/login']);
       return false;
     }
-    if (!(this.authService.hasRole('admin') || this.authService.hasRole('superadmin'))) {
+    if (!this.authService.isAdmin()) {
       this.router.navigate(['/dashboard']);
       return false;
     }

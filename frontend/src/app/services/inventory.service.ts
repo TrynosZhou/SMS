@@ -167,12 +167,16 @@ export class InventoryService {
 
   listTeacherTextbookAllocations(teacherUserId?: string): Observable<any[]> {
     const params = teacherUserId ? { teacherUserId } : undefined;
-    return this.http.get<any[]>(`${this.base}/teacher-allocations/textbooks`, { params: this.toParams(params) });
+    return this.http
+      .get<unknown>(`${this.base}/teacher-allocations/textbooks`, { params: this.toParams(params) })
+      .pipe(map((res) => this.asArray(res)));
   }
 
   listTeacherFurnitureAllocations(teacherUserId?: string): Observable<any[]> {
     const params = teacherUserId ? { teacherUserId } : undefined;
-    return this.http.get<any[]>(`${this.base}/teacher-allocations/furniture`, { params: this.toParams(params) });
+    return this.http
+      .get<unknown>(`${this.base}/teacher-allocations/furniture`, { params: this.toParams(params) })
+      .pipe(map((res) => this.asArray(res)));
   }
 
   issueTextbookFromTeacherAllocation(allocationId: string, studentId: string, issuanceType: string, loanDueAt?: string, notes?: string, specificCopyNumber?: string): Observable<any> {
@@ -192,11 +196,22 @@ export class InventoryService {
   }
 
   getTeacherClassStudents(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.base}/teacher/my-class-students`);
+    return this.http.get<unknown>(`${this.base}/teacher/my-class-students`).pipe(map((res) => this.asArray(res)));
   }
 
   getTeacherClassReport(): Observable<{ textbooks: any[]; furniture: any[]; classNames: string[] }> {
-    return this.http.get<any>(`${this.base}/teacher/my-class-report`);
+    return this.http.get<unknown>(`${this.base}/teacher/my-class-report`).pipe(
+      map((res) => {
+        const data = res && typeof res === 'object' ? (res as Record<string, unknown>) : {};
+        return {
+          textbooks: this.asArray(data['textbooks']),
+          furniture: this.asArray(data['furniture']),
+          classNames: Array.isArray(data['classNames'])
+            ? (data['classNames'] as string[])
+            : [],
+        };
+      })
+    );
   }
 
   patchTeacherTextbookAllocationCopyCondition(

@@ -1,13 +1,19 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { filter, take, takeUntil } from 'rxjs/operators';
 import { AuthService } from '../../../services/auth.service';
 import { TeacherService } from '../../../services/teacher.service';
+import { activatePageLoad } from '../../../utils/route-activation';
 
 @Component({
   standalone: false,  selector: 'app-my-classes',
 templateUrl: './my-classes.component.html',
   styleUrls: ['./my-classes.component.css']
 })
-export class MyClassesComponent implements OnInit {
+export class MyClassesComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
+  private loadSeq = 0;
   teacher: any = null;
   teacherName: string = '';
   classes: any[] = [];
@@ -26,10 +32,28 @@ export class MyClassesComponent implements OnInit {
 
   constructor(
     private authService: AuthService,
-    private teacherService: TeacherService
+    private teacherService: TeacherService,
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit() {
+    activatePageLoad(this.router, this.destroy$, '/teacher/my-classes', () => this.bootstrapPage());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private bootstrapPage(): void {
+    const user = this.authService.getCurrentUser();
+    if (!user) {
+      this.authService.currentUser$
+        .pipe(filter((u) => !!u), take(1), takeUntil(this.destroy$))
+        .subscribe(() => this.loadTeacherInfo());
+      return;
+    }
     this.loadTeacherInfo();
   }
 
@@ -51,11 +75,19 @@ export class MyClassesComponent implements OnInit {
   }
 
   loadTeacherInfo() {
+    const seq = ++this.loadSeq;
     const user = this.authService.getCurrentUser();
-    
-    // Check if user is a teacher
-    if (!user || user.role !== 'teacher') {
+    if (!user) {
+      return;
+    }
+
+    const role = (user.role || '').toLowerCase();
+    const isUniversalTeacher = (user as any).isUniversalTeacher === true;
+    const isTeacher = role === 'teacher' || isUniversalTeacher;
+
+    if (!isTeacher) {
       this.error = 'Only teachers can access this page';
+      this.cdr.markForCheck();
       return;
     }
 
@@ -63,7 +95,7 @@ export class MyClassesComponent implements OnInit {
     this.error = '';
 
     // Universal teacher: show modal to enter EmployeeID and lookup teacher's classes
-    if ((user as any).isUniversalTeacher) {
+    if (isUniversalTeacher) {
       this.isUniversalTeacher = true;
       this.teacher = { id: null, firstName: 'Universal', lastName: 'Teacher' };
       this.teacherName = 'Head Teacher';
@@ -71,12 +103,14 @@ export class MyClassesComponent implements OnInit {
       this.filteredClasses = [];
       this.loading = false;
       this.showEmployeeIdModal = true;
+      this.cdr.markForCheck();
       return;
     }
     
     // First, get the teacher profile to get teacherId and full name
     this.teacherService.getCurrentTeacher().subscribe({
       next: (teacher: any) => {
+        if (seq !== this.loadSeq) return;
         this.teacher = teacher;
         
         // Extract and format full name (LastName + FirstName)
@@ -94,24 +128,28 @@ export class MyClassesComponent implements OnInit {
         // Now fetch classes using the teacherId (from junction table)
         if (teacher.id) {
           console.log('Fetching classes for teacher ID:', teacher.id);
-          this.loadTeacherClasses(teacher.id);
+          this.loadTeacherClasses(teacher.id, seq);
         } else {
           this.error = 'Teacher ID not found';
           this.loading = false;
+          this.cdr.markForCheck();
         }
       },
       error: (err: any) => {
+        if (seq !== this.loadSeq) return;
         console.error('Error loading teacher:', err);
         this.error = 'Failed to load teacher information. Please try again.';
         this.loading = false;
+        this.cdr.markForCheck();
       }
     });
   }
 
-  loadTeacherClasses(teacherId: string) {
+  loadTeacherClasses(teacherId: string, seq = this.loadSeq) {
     // Fetch classes from dedicated endpoint (uses junction table)
     this.teacherService.getTeacherClasses(teacherId).subscribe({
       next: (response: any) => {
+        if (seq !== this.loadSeq) return;
         const classesData = response?.classes || response || [];
         this.classes = Array.isArray(classesData) ? classesData : [];
         const classesArray = Array.isArray(this.classes) ? this.classes : [];
@@ -122,13 +160,16 @@ export class MyClassesComponent implements OnInit {
         if (this.classes.length > 0) {
           console.log('Classes:', this.classes.map(c => c?.name || 'Unknown').join(', '));
         }
+        this.cdr.markForCheck();
       },
       error: (err: any) => {
+        if (seq !== this.loadSeq) return;
         console.error('Error loading classes:', err);
         this.error = 'Failed to load classes. Please try again.';
         this.loading = false;
         this.classes = [];
         this.filteredClasses = [];
+        this.cdr.markForCheck();
       }
     });
   }

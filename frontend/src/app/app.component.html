@@ -282,7 +282,7 @@
         class="sidebar-menu"
         *ngIf="sidebarMenuVisible(
           ['Finance Manager', 'Billing & Invoicing', 'Record Payment', 'Balance Enquiry', 'Exemptions', 'System Auditor'],
-          canAccessModule('finance')
+          canAccessFinanceManagerMenu()
         )">
         <div class="sidebar-menu-header" (click)="toggleMenu('financeManagement')">
           <span class="sidebar-icon">💰</span>
@@ -290,23 +290,23 @@
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('financeManagement')">▼</span>
         </div>
         <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('financeManagement')">
-          <a routerLink="/invoices" routerLinkActive="active" class="sidebar-subitem">
+          <a routerLink="/invoices" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('billing')">
             <span class="sidebar-icon">🧾</span>
             <span class="sidebar-text">Billing & Invoicing</span>
           </a>
-          <a routerLink="/payments/record" routerLinkActive="active" class="sidebar-subitem">
+          <a routerLink="/payments/record" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('recordPayment')">
             <span class="sidebar-icon">💳</span>
             <span class="sidebar-text">Record Payment</span>
           </a>
-          <a routerLink="/balance-enquiry" routerLinkActive="active" class="sidebar-subitem">
+          <a routerLink="/balance-enquiry" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('balanceEnquiry')">
             <span class="sidebar-icon">🔎</span>
             <span class="sidebar-text">Balance Enquiry</span>
           </a>
-          <a routerLink="/finance/exemptions" routerLinkActive="active" class="sidebar-subitem">
+          <a routerLink="/finance/exemptions" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('exemptions')">
             <span class="sidebar-icon">🛡️</span>
             <span class="sidebar-text">Exemptions</span>
           </a>
-          <a routerLink="/finance/audit" routerLinkActive="active" class="sidebar-subitem">
+          <a routerLink="/finance/audit" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('audit')">
             <span class="sidebar-icon">🛡️</span>
             <span class="sidebar-text">System Auditor</span>
           </a>
@@ -318,7 +318,7 @@
         class="sidebar-menu"
         *ngIf="sidebarMenuVisible(
           ['Financial Reports', 'Student Ledgers', 'Fees Collection', 'Unpaid Invoices', 'Exemption Report', 'Logistics Receipts', 'Aged Debtors', 'Enrolment vs Billing', 'Revenue Recognition', 'Student Reconciliation', 'Analytics & Forecasts', 'Class Reconciliation', 'Dining Hall', 'Transport'],
-          !isTeacher() && (isAdmin() || isSuperAdmin() || canAccessModule('finance') || canAccessModule('logistics'))
+          !isTeacher() && canAccessFinancialReportsMenu()
         )">
         <div class="sidebar-menu-header" (click)="toggleMenu('financialReports')">
           <span class="sidebar-icon">📊</span>
@@ -326,55 +326,55 @@
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('financialReports')">▼</span>
         </div>
         <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('financialReports')">
-          <a routerLink="/financial-reports/student-ledgers" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/financial-reports/student-ledgers" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportStudentLedgers')">
             <span class="sidebar-icon">📒</span>
             <span class="sidebar-text">Student Ledgers</span>
           </a>
-          <a routerLink="/financial-reports/fees-collection" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/financial-reports/fees-collection" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportFeesCollection')">
             <span class="sidebar-icon">💵</span>
             <span class="sidebar-text">Fees Collection</span>
           </a>
-          <a routerLink="/financial-reports/outstanding-fees" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/financial-reports/outstanding-fees" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportUnpaidInvoices')">
             <span class="sidebar-icon">⚠️</span>
             <span class="sidebar-text">Unpaid Invoices</span>
           </a>
-          <a routerLink="/financial-reports/exemption-report" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/financial-reports/exemption-report" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportExemption')">
             <span class="sidebar-icon">🪪</span>
             <span class="sidebar-text">Exemption Report</span>
           </a>
-          <a routerLink="/financial-reports/logistics-receipts" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/financial-reports/logistics-receipts" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportLogisticsReceipts')">
             <span class="sidebar-icon">🚌</span>
             <span class="sidebar-text">Logistics Receipts</span>
           </a>
-          <a routerLink="/financial-reports/aged-debtors" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/financial-reports/aged-debtors" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportAgedDebtors')">
             <span class="sidebar-icon">⏳</span>
             <span class="sidebar-text">Aged Debtors</span>
           </a>
-          <a routerLink="/financial-reports/enrolment-vs-billing" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/financial-reports/enrolment-vs-billing" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportEnrolmentBilling')">
             <span class="sidebar-icon">📈</span>
             <span class="sidebar-text">Enrolment vs Billing</span>
           </a>
-          <a routerLink="/financial-reports/revenue-recognition" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/financial-reports/revenue-recognition" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportRevenueRecognition')">
             <span class="sidebar-icon">📊</span>
             <span class="sidebar-text">Revenue Recognition</span>
           </a>
-          <a routerLink="/financial-reports/student-reconciliation" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/financial-reports/student-reconciliation" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportStudentReconciliation')">
             <span class="sidebar-icon">⚖️</span>
             <span class="sidebar-text">Student Reconciliation</span>
           </a>
-          <a routerLink="/financial-reports/analytics-forecasts" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/financial-reports/analytics-forecasts" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportAnalyticsForecasts')">
             <span class="sidebar-icon">🔮</span>
             <span class="sidebar-text">Analytics &amp; Forecasts</span>
           </a>
-          <a routerLink="/financial-reports/class-reconciliation" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('finance') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/financial-reports/class-reconciliation" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportClassReconciliation')">
             <span class="sidebar-icon">🏫</span>
             <span class="sidebar-text">Class Reconciliation</span>
           </a>
-          <a routerLink="/financial-reports/dining-hall" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('logistics') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/financial-reports/dining-hall" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportDiningHall')">
             <span class="sidebar-icon">🍽️</span>
             <span class="sidebar-text">Dining Hall</span>
           </a>
-          <a routerLink="/financial-reports/transport" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('logistics') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/financial-reports/transport" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportTransport')">
             <span class="sidebar-icon">🚌</span>
             <span class="sidebar-text">Transport</span>
           </a>
@@ -511,19 +511,19 @@
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('recordKeeping')">▼</span>
         </div>
         <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('recordKeeping')">
-          <a routerLink="/teacher/eservices" routerLinkActive="active" class="sidebar-subitem">
+          <a routerLink="/teacher/eservices" routerLinkActive="active" class="sidebar-subitem" (click)="ensureMenuExpanded('recordKeeping')">
             <span class="sidebar-icon">🆕</span>
             <span class="sidebar-text">Create Task/Assign</span>
           </a>
-          <a routerLink="/teacher/student-responses" routerLinkActive="active" class="sidebar-subitem">
+          <a routerLink="/teacher/student-responses" routerLinkActive="active" class="sidebar-subitem" (click)="ensureMenuExpanded('recordKeeping')">
             <span class="sidebar-icon">📥</span>
             <span class="sidebar-text">Student Response</span>
           </a>
-          <a routerLink="/teacher/record-book" routerLinkActive="active" class="sidebar-subitem">
+          <a routerLink="/teacher/record-book" routerLinkActive="active" class="sidebar-subitem" (click)="ensureMenuExpanded('recordKeeping')">
             <span class="sidebar-icon">📖</span>
             <span class="sidebar-text">Record Book</span>
           </a>
-          <a routerLink="/teacher/my-classes" routerLinkActive="active" class="sidebar-subitem">
+          <a routerLink="/teacher/my-classes" routerLinkActive="active" class="sidebar-subitem" (click)="ensureMenuExpanded('recordKeeping')">
             <span class="sidebar-icon">🏫</span>
             <span class="sidebar-text">My Classes</span>
           </a>

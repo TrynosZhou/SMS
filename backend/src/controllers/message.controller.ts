@@ -9,6 +9,7 @@ import { Settings } from '../entities/Settings';
 import { Message } from '../entities/Message';
 import { AuthRequest } from '../middleware/auth';
 import { ParentStudent } from '../entities/ParentStudent';
+import { canAccessStaffMessages, canManageAllMessageBoxes } from '../constants/userRoles';
 
 async function resolveStudentForMessage(req: AuthRequest): Promise<Student | null> {
   if (!req.user) return null;
@@ -71,8 +72,7 @@ export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
     const { subject, message, recipients } = req.body;
     const user = req.user;
 
-    // Check if user has permission (admin, superadmin, or accountant)
-    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+    if (!user || !canAccessStaffMessages(user.role)) {
       return res.status(403).json({ message: 'You do not have permission to send bulk messages' });
     }
 
@@ -317,7 +317,7 @@ export const sendMessageToSpecificParents = async (req: AuthRequest, res: Respon
       await AppDataSource.initialize();
     }
     const user = req.user;
-    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+    if (!user || !canAccessStaffMessages(user.role)) {
       return res.status(403).json({ message: 'Access denied. Staff role required.' });
     }
     let { subject, message, parentIds } = req.body as { subject?: string; message?: string; parentIds?: string[] | string };
@@ -412,7 +412,7 @@ export const getDraftMessages = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
     const user = req.user;
-    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+    if (!user || !canAccessStaffMessages(user.role)) {
       return res.status(403).json({ message: 'Access denied. Staff role required.' });
     }
     const repo = AppDataSource.getRepository(Message);
@@ -451,7 +451,7 @@ export const resendDraftMessage = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
     const user = req.user;
-    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+    if (!user || !canAccessStaffMessages(user.role)) {
       return res.status(403).json({ message: 'Access denied. Staff role required.' });
     }
     const { id } = req.params as { id: string };
@@ -527,7 +527,7 @@ export const getStaffMessages = async (req: AuthRequest, res: Response) => {
     }
 
     const user = req.user;
-    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+    if (!user || !canAccessStaffMessages(user.role)) {
       return res.status(403).json({ message: 'Access denied. Staff role required.' });
     }
 
@@ -537,7 +537,7 @@ export const getStaffMessages = async (req: AuthRequest, res: Response) => {
     const box = (req.query.box as string | undefined)?.toLowerCase();
 
     let messages: Message[] = [];
-    if ((user.role === 'admin' || user.role === 'superadmin') && box && ['accountant', 'admin', 'teacher'].includes(box)) {
+    if (canManageAllMessageBoxes(user.role) && box && ['accountant', 'admin', 'teacher'].includes(box)) {
       const userRepo = AppDataSource.getRepository(User);
       const roleMap: Record<string, UserRole> = {
         accountant: UserRole.ACCOUNTANT,
@@ -711,13 +711,13 @@ export const getIncomingFromParents = async (req: AuthRequest, res: Response) =>
       await AppDataSource.initialize();
     }
     const user = req.user;
-    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+    if (!user || !canAccessStaffMessages(user.role)) {
       return res.status(403).json({ message: 'Access denied. Staff role required.' });
     }
     const boxRaw = (req.query.box as string | undefined)?.toLowerCase();
     const box = boxRaw && (boxRaw === 'admin' || boxRaw === 'accountant')
       ? boxRaw
-      : (user.role === 'accountant' ? 'accountant' : 'admin');
+      : String(user.role).toLowerCase() === UserRole.ACCOUNTANT ? 'accountant' : 'admin';
     const messageRepository = AppDataSource.getRepository(Message);
     const parentRepository = AppDataSource.getRepository(Parent);
     const messages = await messageRepository.find({
@@ -758,7 +758,7 @@ export const markIncomingRead = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
     const user = req.user;
-    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+    if (!user || !canAccessStaffMessages(user.role)) {
       return res.status(403).json({ message: 'Access denied. Staff role required.' });
     }
     const { id } = req.params as { id: string };
@@ -781,7 +781,7 @@ export const markIncomingUnread = async (req: AuthRequest, res: Response) => {
       await AppDataSource.initialize();
     }
     const user = req.user;
-    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+    if (!user || !canAccessStaffMessages(user.role)) {
       return res.status(403).json({ message: 'Access denied. Staff role required.' });
     }
     const { id } = req.params as { id: string };
@@ -804,7 +804,7 @@ export const replyToIncomingMessage = async (req: AuthRequest, res: Response) =>
       await AppDataSource.initialize();
     }
     const user = req.user;
-    if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'accountant')) {
+    if (!user || !canAccessStaffMessages(user.role)) {
       return res.status(403).json({ message: 'Access denied. Staff role required.' });
     }
     const { id } = req.params as { id: string };

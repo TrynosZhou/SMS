@@ -12,6 +12,8 @@ export interface User {
   role: string;
   /** Full name from database (teacher/student/parent); set by login for dashboard display */
   fullName?: string;
+  /** Optional honorific for dashboard greeting (e.g. Mr, Mrs); director defaults to Mr in UI */
+  namePrefix?: string;
   mustChangePassword?: boolean;
   isTemporaryAccount?: boolean;
   isDemo?: boolean;
@@ -20,6 +22,8 @@ export interface User {
   teacher?: any;
   parent?: any;
   classes?: any[]; // Classes assigned to teacher (for teacher role)
+  permissions?: Record<string, boolean>;
+  rbacRoles?: string[];
 }
 
 export type LogoutReason = 'manual' | 'session-timeout' | 'unauthorized';
@@ -278,8 +282,30 @@ export class AuthService {
     return this.hasRole('accountant');
   }
 
+  isDirector(): boolean {
+    return this.hasRole('director');
+  }
+
+  /** Director or Super Administrator — unrestricted system access */
+  isFullAccess(): boolean {
+    return this.isSuperAdmin() || this.isDirector();
+  }
+
+  isHeadmaster(): boolean {
+    return this.hasRole('headmaster');
+  }
+
+  isDeputyHeadmaster(): boolean {
+    return this.hasRole('deputy_headmaster');
+  }
+
+  /** School Admin leadership (permissions controlled via RBAC) */
+  isSchoolLeadership(): boolean {
+    return this.isHeadmaster() || this.isDeputyHeadmaster();
+  }
+
   isAdmin(): boolean {
-    return this.hasRole('admin') || this.hasRole('superadmin');
+    return this.hasRole('admin') || this.isFullAccess();
   }
 
   isTeacher(): boolean {
@@ -296,6 +322,35 @@ export class AuthService {
 
   isSuperAdmin(): boolean {
     return this.hasRole('superadmin');
+  }
+
+  /** Demo accounts cannot change password (backend enforces the same). */
+  canChangeOwnPassword(): boolean {
+    const user = this.getCurrentUser();
+    return !!user && !user.isDemo;
+  }
+
+  /** Route to the change-password / manage-account page for the current role. */
+  getChangePasswordRoute(): string {
+    const role = (this.getCurrentUser()?.role || '').toLowerCase();
+    switch (role) {
+      case 'teacher':
+        return '/teacher/manage-account';
+      case 'parent':
+        return '/parent/manage-account';
+      case 'accountant':
+        return '/accountant/manage-account';
+      default:
+        return '/account/change-password';
+    }
+  }
+
+  /** Home dashboard route for the current role. */
+  getDashboardRoute(): string {
+    const role = (this.getCurrentUser()?.role || '').toLowerCase();
+    if (role === 'teacher') return '/teacher/dashboard';
+    if (role === 'parent') return '/parent/dashboard';
+    return '/dashboard';
   }
 
   requestPasswordReset(email: string): Observable<any> {

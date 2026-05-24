@@ -1,0 +1,168 @@
+import { Injectable } from '@angular/core';
+import { AuthService } from './auth.service';
+import { ModuleAccessService } from './module-access.service';
+import { RbacService } from './rbac.service';
+
+/** Maps frontend route module keys to RBAC module keys */
+const ROUTE_TO_RBAC: Record<string, string> = {
+  students: 'students',
+  teachers: 'staff',
+  classes: 'classes',
+  subjects: 'subjects',
+  exams: 'exams',
+  reportCards: 'reportCards',
+  rankings: 'rankings',
+  finance: 'finance',
+  attendance: 'attendance',
+  settings: 'settings',
+  dashboard: 'dashboard',
+  payroll: 'payroll',
+  inventory: 'library',
+  logistics: 'logistics',
+  news: 'notices',
+  messages: 'messages',
+  recordBook: 'recordBook',
+  timetable: 'timetable',
+  elearning: 'elearning',
+  audit: 'audit',
+  accounts: 'accounts',
+  reports: 'reports',
+  parents: 'parents',
+};
+
+@Injectable({ providedIn: 'root' })
+export class PermissionService {
+  private permissions: Record<string, boolean> = {};
+
+  constructor(
+    private authService: AuthService,
+    private moduleAccessService: ModuleAccessService,
+    private rbacService: RbacService
+  ) {
+    const sync = (user: { permissions?: Record<string, boolean> } | null) => {
+      if (user?.permissions && Object.keys(user.permissions).length) {
+        this.permissions = { ...user.permissions };
+      }
+    };
+    sync(this.authService.getCurrentUser());
+    this.authService.currentUser$.subscribe((user) => {
+      sync(user);
+      if (user && (!user.permissions || !Object.keys(user.permissions).length)) {
+        this.loadPermissionsFromApi();
+      }
+    });
+  }
+
+  loadPermissionsFromApi(): void {
+    if (!this.authService.isAuthenticated()) return;
+    this.rbacService.getMyPermissions().subscribe({
+      next: (res) => {
+        this.permissions = res.permissions || {};
+        const user = this.authService.getCurrentUser();
+        if (user) {
+          user.permissions = this.permissions;
+          sessionStorage.setItem('user', JSON.stringify(user));
+        }
+      },
+    });
+  }
+
+  setPermissions(perms: Record<string, boolean>): void {
+    this.permissions = { ...perms };
+  }
+
+  private isAdminBypass(): boolean {
+    return this.authService.isFullAccess();
+  }
+
+  /** Can open system settings / RBAC (Director, Super Admin, Administrator) */
+  canManageRbacSettings(): boolean {
+    const role = this.authService.getCurrentUser()?.role?.toLowerCase();
+    return role === 'admin' || this.authService.isFullAccess();
+  }
+
+  hasPermission(module: string, action: string = 'view'): boolean {
+    if (this.isAdminBypass()) return true;
+    const key = `${module}.${action}`;
+    if (this.permissions[key] === true) return true;
+    return false;
+  }
+
+  /** Module-level view for navigation (RBAC + legacy moduleAccess fallback) */
+  canAccessModule(routeModule: string): boolean {
+    if (this.isAdminBypass()) return true;
+
+    const rbacModule = ROUTE_TO_RBAC[routeModule] || routeModule;
+
+    if (this.authService.getCurrentUser()?.role?.toLowerCase() === 'teacher') {
+      if (rbacModule === 'staff' || rbacModule === 'parents') {
+        return false;
+      }
+    }
+
+    if (this.authService.isSchoolLeadership()) {
+      if (rbacModule === 'finance' || rbacModule === 'payroll') {
+        return this.hasPermission(rbacModule, 'view');
+      }
+    }
+
+    if (this.hasPermission(rbacModule, 'view')) return true;
+
+    // Legacy settings.moduleAccess matrix (not used for School Admin finance/payroll)
+    if (
+      this.authService.isSchoolLeadership() &&
+      (rbacModule === 'finance' || rbacModule === 'payroll')
+    ) {
+      return false;
+    }
+
+    return this.moduleAccessService.canAccessModule(routeModule);
+  }
+
+  permissionKey(module: string, action: string): string {
+    return `${module}.${action}`;
+  }
+
+  private hasFinancePageRbac(): boolean {
+    return Object.keys(this.permissions).some((k) => k.startsWith('financePage.'));
+  }
+
+  financePagePermissionKey(pageKey: string, action: 'view' | 'edit' = 'view'): string {
+    return `financePage.${pageKey}.${action}`;
+  }
+
+  /** Granular Finance Manager / Financial Reports page or sensitive action access */
+  canAccessFinancePage(pageKey: string, action: 'view' | 'edit' = 'view'): boolean {
+    if (this.isAdminBypass()) return true;
+
+    if (this.authService.isSchoolLeadership() && !this.hasPermission('finance', 'view')) {
+      return false;
+    }
+
+    const key = this.financePagePermissionKey(pageKey, action);
+    if (this.hasFinancePageRbac()) {
+      return this.permissions[key] === true;
+    }
+
+    if (action === 'view') {
+      if (pageKey === 'reportDiningHall' || pageKey === 'reportTransport') {
+        return this.canAccessModule('logistics') || this.canAccessModule('finance');
+      }
+      return this.canAccessModule('finance');
+    }
+
+    const sensitivePages = [
+      'creditNotes',
+      'debitNotes',
+      'transportAdjust',
+      'diningAdjust',
+      'tuitionAdjust',
+      'bulkInvoices',
+      'exemptionCorrection',
+    ];
+    if (sensitivePages.includes(pageKey)) {
+      return false;
+    }
+    return this.hasPermission('finance', action);
+  }
+}

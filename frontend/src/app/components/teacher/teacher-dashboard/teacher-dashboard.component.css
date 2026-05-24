@@ -27,6 +27,32 @@
   gap: 16px;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.dash-change-password-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  transition: background 0.2s ease;
+}
+
+.dash-change-password-link:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
 .header-left {
   flex: 1;
 }

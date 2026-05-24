@@ -27,6 +27,7 @@ export class AuthGuard implements CanActivate {
     if (user?.role === 'accountant') {
       const allowedPrefixes = [
         '/dashboard',
+        '/account/change-password',
         '/students',
         '/classes/lists',
         '/invoices',

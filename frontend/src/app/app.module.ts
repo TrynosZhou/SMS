@@ -112,6 +112,8 @@ import { TeacherInventoryRecordComponent } from './components/teacher/teacher-in
 import { StudentInventoryPanelComponent } from './components/inventory/student-inventory-panel/student-inventory-panel.component';
 import { FeatureGateComponent } from './components/shared/feature-gate/feature-gate.component';
 import { LicenseConfigComponent } from './components/admin/license-config/license-config.component';
+import { AccessDeniedComponent } from './components/access-denied/access-denied.component';
+import { RbacManagementComponent } from './components/settings/rbac-management/rbac-management.component';
 
 @NgModule({
   declarations: [
@@ -218,6 +220,8 @@ SendMessageComponent,
     StudentInventoryPanelComponent,
     FeatureGateComponent,
     LicenseConfigComponent,
+    AccessDeniedComponent,
+    RbacManagementComponent,
   ],
   imports: [
     BrowserModule,

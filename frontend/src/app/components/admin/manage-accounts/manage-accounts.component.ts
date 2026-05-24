@@ -49,11 +49,14 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   selectedTeacher: any = null;
   showManualPassword = false;
   manualAccountRoles = [
-    { value: 'superadmin', label: 'Super Admin' },
-    { value: 'admin', label: 'Administrator' },
-    { value: 'accountant', label: 'Accountant' },
-    { value: 'teacher', label: 'Teacher' },
-    { value: 'demo-user', label: 'Demo User' }
+    { value: 'superadmin', label: 'Super Administrator', group: 'Executive leadership' },
+    { value: 'director', label: 'Director', group: 'Executive leadership' },
+    { value: 'headmaster', label: 'Headmaster', group: 'School Admin' },
+    { value: 'deputy_headmaster', label: 'Deputy Headmaster', group: 'School Admin' },
+    { value: 'admin', label: 'Administrator', group: 'School operations' },
+    { value: 'accountant', label: 'Accountant', group: 'School operations' },
+    { value: 'teacher', label: 'Teacher', group: 'Teaching' },
+    { value: 'demo-user', label: 'Demo User', group: 'Other' },
   ];
   manualAccount = this.getDefaultManualAccountForm();
   
@@ -388,12 +391,24 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     this.selectedUserRoleForEdit = '';
   }
 
-  getEditableRoleOptions(): { value: string; label: string }[] {
+  getEditableRoleOptions(): { value: string; label: string; group?: string }[] {
     const all = this.manualAccountRoles;
-    if (!this.isSuperAdmin()) {
-      return all.filter(o => o.value !== 'superadmin');
+    if (this.authService.isFullAccess()) {
+      return all;
     }
-    return all;
+    return all.filter((o) => o.value !== 'superadmin');
+  }
+
+  getManualAccountRoleGroups(): string[] {
+    const groups = new Set<string>();
+    for (const o of this.getEditableRoleOptions()) {
+      if (o.group) groups.add(o.group);
+    }
+    return Array.from(groups);
+  }
+
+  getManualAccountRolesInGroup(group: string): { value: string; label: string; group?: string }[] {
+    return this.getEditableRoleOptions().filter((o) => o.group === group);
   }
 
   updateUserRole() {
@@ -713,7 +728,10 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
 
   getStaffRoleLabel(role: string): string {
     const r = (role || '').toLowerCase();
-    if (r === 'superadmin') return 'Super Admin';
+    if (r === 'superadmin') return 'Super Administrator';
+    if (r === 'director') return 'Director';
+    if (r === 'headmaster') return 'Headmaster';
+    if (r === 'deputy_headmaster') return 'Deputy Headmaster';
     if (r === 'admin') return 'Administrator';
     if (r === 'accountant') return 'Accountant';
     return role || '—';
@@ -728,8 +746,8 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   canDeleteStaffAccount(staff: any): boolean {
     if (!staff?.id || this.isCurrentUser(staff.id)) return false;
     const role = (staff.role || '').toLowerCase();
-    if (role === 'superadmin') return this.isSuperAdmin();
-    return true; // admin or accountant: both admin and superadmin can delete
+    if (role === 'superadmin' || role === 'director') return this.authService.isFullAccess();
+    return true;
   }
 
   deleteStaffAccount(staff: any) {
@@ -759,7 +777,7 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
   canEditStaffField(staff: any): boolean {
     if (!staff?.id || this.isCurrentUser(staff.id)) return false;
     const role = (staff.role || '').toLowerCase();
-    if (role === 'superadmin') return this.isSuperAdmin();
+    if (role === 'superadmin' || role === 'director') return this.authService.isFullAccess();
     return true;
   }
 
@@ -1136,40 +1154,58 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  requiresFullName(role: string): boolean {
+    return (role || '').trim() !== 'teacher';
+  }
+
   private getDefaultManualAccountForm() {
     return {
+      firstName: '',
+      lastName: '',
       email: '',
       username: '',
       role: 'accountant',
-      generatePassword: true,
+      generatePassword: false,
       password: '',
-      isDemo: false
+      isDemo: false,
     };
   }
 
   createManualAccount() {
     const role = (this.manualAccount.role || '').trim();
 
-    // Validation for teacher accounts: username (Employee Number) is mandatory, email optional
-    if (role === 'teacher') {
-      if (!this.manualAccount.username || !this.manualAccount.username.trim()) {
-        this.error = 'Username (Teacher ID) is required for teacher accounts';
-        setTimeout(() => this.error = '', 5000);
-        return;
-      }
-    } else {
-      // For other roles, email and role are required
-      if (!this.manualAccount.email || !role) {
-        this.error = 'Email and role are required to create an account';
-        setTimeout(() => this.error = '', 5000);
-        return;
-      }
+    if (!role) {
+      this.error = 'Role is required to create an account';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
     }
-
+    if (!this.manualAccount.firstName?.trim() && role !== 'teacher') {
+      this.error = 'First name is required';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+    if (!this.manualAccount.lastName?.trim() && role !== 'teacher') {
+      this.error = 'Last name is required';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+    if (!this.manualAccount.username?.trim()) {
+      this.error =
+        role === 'teacher'
+          ? 'Username (Teacher ID) is required for teacher accounts'
+          : 'Username is required for login';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
     if (!this.manualAccount.generatePassword) {
-      if (!this.manualAccount.password || !this.manualAccount.password.trim()) {
-        this.error = 'Please provide a password';
-        setTimeout(() => this.error = '', 5000);
+      if (!this.manualAccount.password?.trim()) {
+        this.error = 'Password is required, or enable auto-generate';
+        setTimeout(() => (this.error = ''), 5000);
+        return;
+      }
+      if (this.manualAccount.password.trim().length < 8) {
+        this.error = 'Password must be at least 8 characters';
+        setTimeout(() => (this.error = ''), 5000);
         return;
       }
     }
@@ -1183,13 +1219,17 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
 
     const payload: any = {
       role: resolvedRole,
-      username: this.manualAccount.username?.trim() || undefined,
-      generatePassword: this.manualAccount.generatePassword
+      username: this.manualAccount.username.trim(),
+      generatePassword: this.manualAccount.generatePassword,
     };
+    const firstName = this.manualAccount.firstName?.trim();
+    const lastName = this.manualAccount.lastName?.trim();
+    if (firstName) payload.firstName = firstName;
+    if (lastName) payload.lastName = lastName;
 
-    // Email is required for non-teacher roles; omit email for teacher so it is username-only
-    if (resolvedRole !== 'teacher') {
-      payload.email = (this.manualAccount.email || '').trim();
+    const email = (this.manualAccount.email || '').trim();
+    if (email) {
+      payload.email = email;
     }
 
     if (!this.manualAccount.generatePassword) {
@@ -1204,7 +1244,8 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
       next: (response: any) => {
         this.creatingUserAccount = false;
         const password = response.temporaryCredentials?.password || payload.password;
-        const displayName = response.user?.email || payload.email || response.user?.username || payload.username || 'N/A';
+        const fullName = [response.user?.firstName, response.user?.lastName].filter(Boolean).join(' ').trim();
+        const displayName = fullName || response.user?.email || payload.email || response.user?.username || payload.username || 'N/A';
         const messageParts = [
           `Account created for <strong>${displayName}</strong>.`,
           `<strong>Role:</strong> ${response.user?.role || payload.role}`

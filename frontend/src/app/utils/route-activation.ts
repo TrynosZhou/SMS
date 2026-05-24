@@ -65,11 +65,10 @@ export function onRouteActivated(
   };
 
   if (fireOnAttach) {
-    const current = normalizePath(router.url || '');
-    tryReload(current);
-    // Production: router.url can lag behind NavigationEnd on first paint
-    queueMicrotask(() => tryReload(normalizePath(router.url || '')));
-    setTimeout(() => tryReload(normalizePath(router.url || '')), 0);
+    const runAttachLoad = () => tryReload(normalizePath(router.url || ''));
+    runAttachLoad();
+    // router.url can lag on first paint — one deferred retry, not multiple concurrent loads
+    setTimeout(runAttachLoad, 0);
   }
 
   router.events

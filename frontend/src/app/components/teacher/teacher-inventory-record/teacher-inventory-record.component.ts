@@ -1,5 +1,7 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { forkJoin, of, Subject } from 'rxjs';
+import { catchError, finalize, takeUntil, timeout } from 'rxjs/operators';
 import { InventoryService } from '../../../services/inventory.service';
 import { AuthService } from '../../../services/auth.service';
 import { SettingsService } from '../../../services/settings.service';
@@ -12,6 +14,9 @@ templateUrl: './teacher-inventory-record.component.html',
   styleUrls: ['./teacher-inventory-record.component.css']
 })
 export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
+  private readonly requestTimeoutMs = 30000;
+
   mode: 'textbooks' | 'furniture' | 'reports' = 'textbooks';
 
   textbookAllocations: any[] = [];
@@ -21,6 +26,13 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
   loadingTB = false;
   loadingFN = false;
   loadingStudents = false;
+  initialLoad = true;
+  lastRefreshedAt: Date | null = null;
+  tbSearch = '';
+  fnSearch = '';
+  reportSearch = '';
+  showPastTextbooks = false;
+  showPastFurniture = false;
   errorTB = '';
   errorFN = '';
 
@@ -88,23 +100,28 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
     private inventory: InventoryService,
     public auth: AuthService,
     private sanitizer: DomSanitizer,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
-    this.loadData();
-    this.loadStudents();
-    this.settingsService.getSettings().subscribe({
-      next: (s: any) => {
-        if (s) {
-          this.schoolName = s.schoolName || '';
-          this.schoolLogo2 = s.schoolLogo2 || null;
-        }
-      }
-    });
+    this.refreshAll();
+    this.settingsService
+      .getSettings()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (s: any) => {
+          if (s) {
+            this.schoolName = s.schoolName || '';
+            this.schoolLogo2 = s.schoolLogo2 || null;
+          }
+        },
+      });
   }
 
   ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
     this._revokeBlobUrl();
   }
 
@@ -121,9 +138,57 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
     this.pdfPreviewSection = '';
   }
 
-  loadData() {
-    this.loadTextbookAllocations();
-    this.loadFurnitureAllocations();
+  refreshAll(): void {
+    this.loadingTB = true;
+    this.loadingFN = true;
+    this.loadingStudents = true;
+    this.errorTB = '';
+    this.errorFN = '';
+
+    forkJoin({
+      textbooks: this.inventory.listTeacherTextbookAllocations().pipe(
+        timeout(this.requestTimeoutMs),
+        catchError((e) => {
+          this.errorTB = e?.error?.message || e?.message || 'Failed to load textbook allocations';
+          return of([]);
+        })
+      ),
+      furniture: this.inventory.listTeacherFurnitureAllocations().pipe(
+        timeout(this.requestTimeoutMs),
+        catchError((e) => {
+          this.errorFN = e?.error?.message || e?.message || 'Failed to load furniture allocations';
+          return of([]);
+        })
+      ),
+      students: this.inventory.getTeacherClassStudents().pipe(
+        timeout(this.requestTimeoutMs),
+        catchError(() => of([]))
+      ),
+    })
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.loadingTB = false;
+          this.loadingFN = false;
+          this.loadingStudents = false;
+          this.initialLoad = false;
+          this.lastRefreshedAt = new Date();
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe(({ textbooks, furniture, students }) => {
+        this.textbookAllocations = Array.isArray(textbooks) ? textbooks : [];
+        this.furnitureAllocations = Array.isArray(furniture) ? furniture : [];
+        this.classStudents = Array.isArray(students) ? students : [];
+      });
+  }
+
+  formatRefreshed(): string {
+    if (!this.lastRefreshedAt) return '';
+    const mins = Math.floor((Date.now() - this.lastRefreshedAt.getTime()) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min ago`;
+    return this.lastRefreshedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
   setMode(m: 'textbooks' | 'furniture' | 'reports') {
@@ -136,30 +201,63 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
   loadTextbookAllocations() {
     this.loadingTB = true;
     this.errorTB = '';
-    this.inventory.listTeacherTextbookAllocations().subscribe({
-      next: list => { this.textbookAllocations = list; this.loadingTB = false; },
-      error: e => { this.errorTB = e.error?.message || 'Failed to load textbook allocations'; this.loadingTB = false; }
-    });
+    this.inventory
+      .listTeacherTextbookAllocations()
+      .pipe(
+        timeout(this.requestTimeoutMs),
+        catchError((e) => {
+          this.errorTB = e?.error?.message || e?.message || 'Failed to load textbook allocations';
+          return of([]);
+        }),
+        finalize(() => {
+          this.loadingTB = false;
+          this.cdr.markForCheck();
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((list) => {
+        this.textbookAllocations = Array.isArray(list) ? list : [];
+      });
   }
 
   loadFurnitureAllocations() {
     this.loadingFN = true;
     this.errorFN = '';
-    this.inventory.listTeacherFurnitureAllocations().subscribe({
-      next: list => { this.furnitureAllocations = list; this.loadingFN = false; },
-      error: e => { this.errorFN = e.error?.message || 'Failed to load furniture allocations'; this.loadingFN = false; }
-    });
+    this.inventory
+      .listTeacherFurnitureAllocations()
+      .pipe(
+        timeout(this.requestTimeoutMs),
+        catchError((e) => {
+          this.errorFN = e?.error?.message || e?.message || 'Failed to load furniture allocations';
+          return of([]);
+        }),
+        finalize(() => {
+          this.loadingFN = false;
+          this.cdr.markForCheck();
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((list) => {
+        this.furnitureAllocations = Array.isArray(list) ? list : [];
+      });
   }
 
   loadStudents() {
     this.loadingStudents = true;
-    this.inventory.getTeacherClassStudents().subscribe({
-      next: students => {
-        this.classStudents = students;
-        this.loadingStudents = false;
-      },
-      error: () => { this.loadingStudents = false; }
-    });
+    this.inventory
+      .getTeacherClassStudents()
+      .pipe(
+        timeout(this.requestTimeoutMs),
+        catchError(() => of([])),
+        finalize(() => {
+          this.loadingStudents = false;
+          this.cdr.markForCheck();
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((students) => {
+        this.classStudents = Array.isArray(students) ? students : [];
+      });
   }
 
   /** Unique class names visible to this teacher (for display in the modal header) */
@@ -292,19 +390,80 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
   }
 
   get activeTextbooks(): any[] {
-    return this.textbookAllocations.filter(a => a.status === 'active');
+    return (this.textbookAllocations || []).filter((a) => a.status === 'active');
   }
 
   get pastTextbooks(): any[] {
-    return this.textbookAllocations.filter(a => a.status !== 'active');
+    return (this.textbookAllocations || []).filter((a) => a.status !== 'active');
   }
 
   get activeFurniture(): any[] {
-    return this.furnitureAllocations.filter(a => a.status === 'active');
+    return (this.furnitureAllocations || []).filter((a) => a.status === 'active');
   }
 
   get pastFurniture(): any[] {
-    return this.furnitureAllocations.filter(a => a.status !== 'active');
+    return (this.furnitureAllocations || []).filter((a) => a.status !== 'active');
+  }
+
+  get filteredActiveTextbooks(): any[] {
+    const q = this.tbSearch.trim().toLowerCase();
+    let list = this.activeTextbooks;
+    if (!q) return list;
+    return list.filter(
+      (a) =>
+        (a.catalog?.title || '').toLowerCase().includes(q) ||
+        (a.catalog?.gradeLevel || '').toLowerCase().includes(q) ||
+        (a.copyNumbers || []).some((cn: string) => String(cn).toLowerCase().includes(q))
+    );
+  }
+
+  get filteredActiveFurniture(): any[] {
+    const q = this.fnSearch.trim().toLowerCase();
+    let list = this.activeFurniture;
+    if (!q) return list;
+    return list.filter(
+      (a) =>
+        (a.furnitureItem?.itemCode || '').toLowerCase().includes(q) ||
+        (a.furnitureItem?.itemType || '').toLowerCase().includes(q)
+    );
+  }
+
+  get statTbActive(): number {
+    return this.activeTextbooks.length;
+  }
+
+  get statTbCopiesRemaining(): number {
+    return this.activeTextbooks.reduce((s, a) => s + this.remaining(a), 0);
+  }
+
+  get statTbCopiesIssued(): number {
+    return this.activeTextbooks.reduce((s, a) => s + (a.quantityDistributed || 0), 0);
+  }
+
+  get statFnOnHand(): number {
+    return this.activeFurniture.length;
+  }
+
+  get filteredReportTextbooks(): any[] {
+    const q = this.reportSearch.trim().toLowerCase();
+    if (!q) return this.reportTextbooks;
+    return this.reportTextbooks.filter(
+      (r) =>
+        `${r.student?.firstName || ''} ${r.student?.lastName || ''}`.toLowerCase().includes(q) ||
+        (r.student?.studentNumber || '').toLowerCase().includes(q) ||
+        (r.catalog?.title || '').toLowerCase().includes(q) ||
+        (r.copyNumber || '').toLowerCase().includes(q)
+    );
+  }
+
+  get filteredReportFurniture(): any[] {
+    const q = this.reportSearch.trim().toLowerCase();
+    if (!q) return this.reportFurniture;
+    return this.reportFurniture.filter(
+      (r) =>
+        `${r.student?.firstName || ''} ${r.student?.lastName || ''}`.toLowerCase().includes(q) ||
+        (r.furnitureItem?.itemCode || '').toLowerCase().includes(q)
+    );
   }
 
   /** Count desk or chair rows in a furniture allocation list */
@@ -411,18 +570,25 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
   loadReport() {
     this.loadingReport = true;
     this.reportError = '';
-    this.inventory.getTeacherClassReport().subscribe({
-      next: (data: any) => {
+    this.inventory
+      .getTeacherClassReport()
+      .pipe(
+        timeout(this.requestTimeoutMs),
+        catchError((e) => {
+          this.reportError = e?.error?.message || e?.message || 'Failed to load report';
+          return of({ textbooks: [], furniture: [], classNames: [] });
+        }),
+        finalize(() => {
+          this.loadingReport = false;
+          this.cdr.markForCheck();
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((data) => {
         this.reportTextbooks = data.textbooks || [];
         this.reportFurniture = data.furniture || [];
         this.reportClassNames = data.classNames || [];
-        this.loadingReport = false;
-      },
-      error: e => {
-        this.reportError = e.error?.message || 'Failed to load report';
-        this.loadingReport = false;
-      }
-    });
+      });
   }
 
   get reportTitle(): string {

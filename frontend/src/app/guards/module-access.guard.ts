@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
-import { ModuleAccessService } from '../services/module-access.service';
+import { PermissionService } from '../services/permission.service';
 import { AuthService } from '../services/auth.service';
 
 @Injectable({
@@ -8,45 +8,46 @@ import { AuthService } from '../services/auth.service';
 })
 export class ModuleAccessGuard implements CanActivate {
   constructor(
-    private moduleAccessService: ModuleAccessService,
+    private permissionService: PermissionService,
     private authService: AuthService,
     private router: Router
   ) {}
 
   canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
     const moduleName = route.data['module'] as string;
-    
+    const financePage = route.data['financePage'] as string;
+
+    if (financePage) {
+      const hasFinancePage = this.permissionService.canAccessFinancePage(financePage, 'view');
+      if (!hasFinancePage) {
+        if (!this.authService.getCurrentUser()) {
+          this.router.navigate(['/login']);
+        } else {
+          this.router.navigate(['/access-denied'], {
+            queryParams: { from: state.url, module: moduleName || 'finance', financePage },
+          });
+        }
+        return false;
+      }
+    }
+
     if (!moduleName) {
-      // If no module specified, allow access
       return true;
     }
 
-    const hasAccess = this.moduleAccessService.canAccessModule(moduleName);
-    
+    const hasAccess = this.permissionService.canAccessModule(moduleName);
+
     if (!hasAccess) {
-      const user = this.authService.getCurrentUser();
-      if (user) {
-        const role = user.role.toLowerCase();
-        switch (role) {
-          case 'teacher':
-            this.router.navigate(['/teacher/dashboard']);
-            break;
-          case 'parent':
-            this.router.navigate(['/parent/dashboard']);
-            break;
-          case 'admin':
-          case 'superadmin':
-            this.router.navigate(['/dashboard']);
-            break;
-          default:
-            this.router.navigate(['/dashboard']);
-        }
-      } else {
+      if (!this.authService.getCurrentUser()) {
         this.router.navigate(['/login']);
+      } else {
+        this.router.navigate(['/access-denied'], {
+          queryParams: { from: state.url, module: moduleName, financePage: financePage || undefined },
+        });
       }
       return false;
     }
-    
+
     return true;
   }
 }

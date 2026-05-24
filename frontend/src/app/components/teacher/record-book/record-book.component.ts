@@ -1,17 +1,26 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { filter, take, takeUntil } from 'rxjs/operators';
 import { AuthService } from '../../../services/auth.service';
 import { TeacherService } from '../../../services/teacher.service';
 import { RecordBookService } from '../../../services/record-book.service';
 import { SettingsService } from '../../../services/settings.service';
 import { ClassService } from '../../../services/class.service';
+import { activatePageLoad } from '../../../utils/route-activation';
 
 @Component({
   standalone: false,  selector: 'app-record-book',
 templateUrl: './record-book.component.html',
   styleUrls: ['./record-book.component.css']
 })
-export class RecordBookComponent implements OnInit {
+export class RecordBookComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
+  private loadSeq = 0;
+  private pendingQueryParams: { classId: string | null; subjectId: string | null } = {
+    classId: null,
+    subjectId: null
+  };
   teacher: any = null;
   teacherClasses: any[] = [];
   isUniversalTeacher = false;
@@ -76,22 +85,37 @@ export class RecordBookComponent implements OnInit {
     private settingsService: SettingsService,
     private classService: ClassService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit() {
+    this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe((params) => {
+      this.pendingQueryParams = {
+        classId: params['classId'] || null,
+        subjectId: params['subjectId'] || null
+      };
+      this.applyQueryParamsIfReady();
+    });
+
+    activatePageLoad(this.router, this.destroy$, '/teacher/record-book', () => this.bootstrapPage());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private bootstrapPage(): void {
     this.loadSettings();
-    this.loadTeacherInfo();
-    // If user wasn't ready (e.g. async restore), retry when currentUser$ emits
     const user = this.authService.getCurrentUser();
     if (!user) {
-      const sub = this.authService.currentUser$.subscribe(u => {
-        if (u && !this.teacherClasses.length && !this.teacher) {
-          this.loadTeacherInfo();
-        }
-        sub.unsubscribe();
-      });
+      this.authService.currentUser$
+        .pipe(filter((u) => !!u), take(1), takeUntil(this.destroy$))
+        .subscribe(() => this.loadTeacherInfo());
+      return;
     }
+    this.loadTeacherInfo();
   }
 
   loadSettings() {
@@ -112,13 +136,19 @@ export class RecordBookComponent implements OnInit {
   }
 
   loadTeacherInfo() {
+    const seq = ++this.loadSeq;
     const user = this.authService.getCurrentUser();
+    if (!user) {
+      return;
+    }
+
     const role = (user?.role || '').toLowerCase();
     const isUniversalTeacher = (user as any)?.isUniversalTeacher === true;
     const isTeacher = role === 'teacher' || isUniversalTeacher;
 
-    if (!user || !isTeacher) {
+    if (!isTeacher) {
       this.error = 'Only teachers can access the record book';
+      this.cdr.markForCheck();
       return;
     }
 
@@ -131,15 +161,19 @@ export class RecordBookComponent implements OnInit {
       this.loading = true;
       this.classService.getClasses().subscribe({
         next: (classes: any[]) => {
+          if (seq !== this.loadSeq) return;
           this.teacherClasses = classes || [];
           this.loading = false;
-          this.handleQueryParams();
+          this.applyQueryParamsIfReady();
+          this.cdr.markForCheck();
         },
         error: (err: any) => {
+          if (seq !== this.loadSeq) return;
           console.error('Error loading classes for universal teacher:', err);
           this.teacherClasses = [];
           this.loading = false;
-          this.handleQueryParams();
+          this.applyQueryParamsIfReady();
+          this.cdr.markForCheck();
         }
       });
       return;
@@ -150,6 +184,7 @@ export class RecordBookComponent implements OnInit {
     // First, get the teacher profile to get teacherId
     this.teacherService.getCurrentTeacher().subscribe({
       next: (teacher: any) => {
+        if (seq !== this.loadSeq) return;
         this.teacher = teacher;
         
         // Log success for debugging
@@ -166,15 +201,17 @@ export class RecordBookComponent implements OnInit {
         
         // Now fetch classes using the new endpoint with teacherId
         if (teacher.id) {
-          this.loadTeacherClasses(teacher.id);
+          this.loadTeacherClasses(teacher.id, seq);
         } else {
           // Fallback to classes from teacher object
           this.teacherClasses = teacher.classes || [];
           this.loading = false;
-          this.handleQueryParams();
+          this.applyQueryParamsIfReady();
+          this.cdr.markForCheck();
         }
       },
       error: (err: any) => {
+        if (seq !== this.loadSeq) return;
         console.error('Error loading teacher:', err);
         
         if (err.status === 404) {
@@ -188,26 +225,29 @@ export class RecordBookComponent implements OnInit {
         }
         
         this.loading = false;
+        this.cdr.markForCheck();
       }
     });
   }
 
-  loadTeacherClasses(teacherId: string) {
+  loadTeacherClasses(teacherId: string, seq = this.loadSeq) {
     console.log('Loading classes for teacherId:', teacherId);
     
     // Use the new endpoint to fetch classes from junction table
     this.teacherService.getTeacherClasses(teacherId).subscribe({
       next: (response: any) => {
+        if (seq !== this.loadSeq) return;
         this.teacherClasses = response.classes || [];
         this.loading = false;
         
         console.log('Assigned classes loaded:', this.teacherClasses.length);
         console.log('Classes:', this.teacherClasses.map((c: any) => c.name).join(', '));
         
-        // Handle query params after classes are loaded
-        this.handleQueryParams();
+        this.applyQueryParamsIfReady();
+        this.cdr.markForCheck();
       },
       error: (err: any) => {
+        if (seq !== this.loadSeq) return;
         console.error('Error loading teacher classes:', err);
         
         // Fallback: try to get classes from teacher object if available
@@ -221,28 +261,35 @@ export class RecordBookComponent implements OnInit {
         }
         
         this.loading = false;
-        this.handleQueryParams();
+        this.applyQueryParamsIfReady();
+        this.cdr.markForCheck();
       }
     });
   }
 
-  handleQueryParams() {
-    // Check for classId (and optionally subjectId) in query params after classes are loaded
-    this.route.queryParams.subscribe(params => {
-      const classId = params['classId'];
-      const subjectId = params['subjectId'] || null;
-      if (classId && this.teacherClasses.length > 0) {
-        const classExists = this.teacherClasses.find((c: any) => c.id === classId);
-        if (classExists) {
-          this.selectedClassId = classId;
-          this.pendingSubjectIdFromParams = subjectId;
-          this.onClassChange();
-        } else {
-          this.error = this.isUniversalTeacher ? 'Class not found.' : 'You are not assigned to this class.';
-          setTimeout(() => this.error = '', 5000);
-        }
-      }
-    });
+  private applyQueryParamsIfReady(): void {
+    const classId = this.pendingQueryParams.classId;
+    const subjectId = this.pendingQueryParams.subjectId;
+    if (!classId || this.teacherClasses.length === 0) {
+      return;
+    }
+
+    const classExists = this.teacherClasses.find((c: any) => c.id === classId);
+    if (!classExists) {
+      this.error = this.isUniversalTeacher ? 'Class not found.' : 'You are not assigned to this class.';
+      setTimeout(() => (this.error = ''), 5000);
+      this.cdr.markForCheck();
+      return;
+    }
+
+    if (this.selectedClassId === classId && (!subjectId || this.selectedSubjectId === subjectId)) {
+      return;
+    }
+
+    this.selectedClassId = classId;
+    this.pendingSubjectIdFromParams = subjectId;
+    this.onClassChange();
+    this.cdr.markForCheck();
   }
 
   onClassChange() {
@@ -453,10 +500,12 @@ export class RecordBookComponent implements OnInit {
         
         this.filteredStudents = [...this.students];
         this.loading = false;
+        this.cdr.markForCheck();
       },
       error: (err: any) => {
         this.error = err.error?.message || 'Failed to load record book';
         this.loading = false;
+        this.cdr.markForCheck();
       }
     });
   }

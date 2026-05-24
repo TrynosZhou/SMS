@@ -8,6 +8,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FinanceService } from '../../../services/finance.service';
 import { StudentService } from '../../../services/student.service';
 import { AuthService } from '../../../services/auth.service';
+import { PermissionService } from '../../../services/permission.service';
 import { SettingsService } from '../../../services/settings.service';
 
 @Component({
@@ -253,6 +254,7 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     public financeService: FinanceService,
     private studentService: StudentService,
     public authService: AuthService,
+    private permissionService: PermissionService,
     private router: Router,
     private settingsService: SettingsService,
     private sanitizer: DomSanitizer,
@@ -1449,6 +1451,13 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     if (!this.canManageFinance()) {
       return false;
     }
+    if (
+      !this.permissionService.canAccessFinancePage('transportAdjust', 'edit') &&
+      !this.permissionService.canAccessFinancePage('diningAdjust', 'edit') &&
+      !this.permissionService.canAccessFinancePage('tuitionAdjust', 'edit')
+    ) {
+      return false;
+    }
     if (!invoice || !invoice.student) {
       return false;
     }
@@ -1456,6 +1465,34 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     const isStaffChild = !!student.isStaffChild;
     // Allow adjustments for both boarders and day scholars, but not staff children
     return !isStaffChild;
+  }
+
+  canApplyCreditNotes(): boolean {
+    return this.canManageFinance() && this.permissionService.canAccessFinancePage('creditNotes', 'edit');
+  }
+
+  canApplyDebitNotes(): boolean {
+    return this.canManageFinance() && this.permissionService.canAccessFinancePage('debitNotes', 'edit');
+  }
+
+  canBulkInvoices(): boolean {
+    return this.canManageFinance() && this.permissionService.canAccessFinancePage('bulkInvoices', 'edit');
+  }
+
+  canExemptionCorrection(): boolean {
+    return this.canManageFinance() && this.permissionService.canAccessFinancePage('exemptionCorrection', 'edit');
+  }
+
+  canEditTransportOnInvoice(): boolean {
+    return this.permissionService.canAccessFinancePage('transportAdjust', 'edit');
+  }
+
+  canEditDiningOnInvoice(): boolean {
+    return this.permissionService.canAccessFinancePage('diningAdjust', 'edit');
+  }
+
+  canEditTuitionOnInvoice(): boolean {
+    return this.permissionService.canAccessFinancePage('tuitionAdjust', 'edit');
   }
 
   isDayScholar(invoice: any): boolean {
@@ -1470,6 +1507,22 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     const addTransport = !!this.logisticsForm.addTransport;
     const addDiningHall = !!this.logisticsForm.addDiningHall;
     const addTuition = !!this.logisticsForm.addTuition;
+
+    if (addTransport && !this.canEditTransportOnInvoice()) {
+      this.error = 'You do not have permission to adjust transport charges.';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+    if (addDiningHall && !this.canEditDiningOnInvoice()) {
+      this.error = 'You do not have permission to adjust dining hall charges.';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+    if (addTuition && !this.canEditTuitionOnInvoice()) {
+      this.error = 'You do not have permission to adjust tuition on invoices.';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
 
     if (!addTransport && !addDiningHall && !addTuition) {
       this.error = 'Please select Transport, Dining Hall, and/or Tuition to add.';
@@ -1710,6 +1763,15 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
   submitNote() {
     this.noteSuccess = '';
     this.noteError = '';
+
+    if (this.noteForm.type === 'credit' && !this.canApplyCreditNotes()) {
+      this.noteError = 'You do not have permission to apply credit notes.';
+      return;
+    }
+    if (this.noteForm.type === 'debit' && !this.canApplyDebitNotes()) {
+      this.noteError = 'You do not have permission to apply debit notes.';
+      return;
+    }
 
     if (!this.selectedInvoice) {
       this.noteError = 'Please select an invoice first.';
@@ -2839,9 +2901,14 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Helper method to check if user has admin or accountant role
   canManageFinance(): boolean {
-    return this.authService.hasRole('admin') || this.authService.hasRole('superadmin') || this.authService.hasRole('accountant');
+    return (
+      this.authService.hasRole('admin') ||
+      this.authService.hasRole('superadmin') ||
+      this.authService.hasRole('accountant') ||
+      this.authService.hasRole('demo_user') ||
+      this.permissionService.canAccessFinancePage('billing', 'edit')
+    );
   }
 
   canCreateInvoice(): boolean {

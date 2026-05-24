@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
 import { UserRole } from '../entities/User';
+import { requireModuleView, requirePermission } from '../middleware/requirePermission';
 import {
   getCurrentParentProfile,
   getParentStudents,
@@ -59,45 +60,21 @@ router.get(
   searchStudents
 );
 
-router.get(
-  '/admin/parents/search-emails',
-  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
-  adminSearchParentEmails
-);
+router.get('/admin/parents/search-emails', requireModuleView('parents'), adminSearchParentEmails);
 
-router.get(
-  '/admin/parents',
-  authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT),
-  adminListParents
-);
+router.get('/admin/parents', requireModuleView('parents'), adminListParents);
 
-router.post(
-  '/admin/parents',
-  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
-  adminCreateParent
-);
+router.post('/admin/parents', requirePermission('parents', 'create'), adminCreateParent);
 
-router.get(
-  '/staff/parents',
-  authorize(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.ACCOUNTANT),
-  adminListParents
-);
+router.get('/staff/parents', requireModuleView('parents'), adminListParents);
 
-router.put(
-  '/admin/parents/:parentId',
-  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
-  adminUpdateParent
-);
+router.put('/admin/parents/:parentId', requirePermission('parents', 'edit'), adminUpdateParent);
 
-router.delete(
-  '/admin/parents/:parentId',
-  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
-  adminDeleteParent
-);
+router.delete('/admin/parents/:parentId', requirePermission('parents', 'delete'), adminDeleteParent);
 
 router.post(
   '/admin/reset-parent-password',
-  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  requirePermission('parents', 'edit'),
   adminResetParentPassword
 );
 
