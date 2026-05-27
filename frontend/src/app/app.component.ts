@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { AuthService } from './services/auth.service';
@@ -11,7 +11,6 @@ import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { AuditService } from './services/audit.service';
 import { environment } from '../environments/environment';
-import { LogoutConfirmService } from './services/logout-confirm.service';
 
 /** When the current URL matches a prefix, keep that sidebar section expanded (fixes “click twice” on submenus). */
 const SIDEBAR_MENU_ROUTE_PREFIXES: Record<string, string[]> = {
@@ -67,8 +66,7 @@ export class AppComponent implements OnInit, OnDestroy {
     private activatedRoute: ActivatedRoute,
     private title: Title,
     private meta: Meta,
-    private cdr: ChangeDetectorRef,
-    public logoutConfirm: LogoutConfirmService
+    private cdr: ChangeDetectorRef
   ) {
     const cachedName = sessionStorage.getItem(AppComponent.SCHOOL_NAME_CACHE_KEY);
     if (cachedName) {
@@ -625,33 +623,12 @@ export class AppComponent implements OnInit, OnDestroy {
 
   logout(): void {
     this.closeMobileMenu();
-    void this.authService.confirmLogout().then((confirmed) => {
-      if (!confirmed) {
-        return;
-      }
-      fetch(`${environment.apiUrl}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${this.authService.getToken() || ''}` },
-      }).finally(() => this.authService.logout('manual', { skipConfirm: true }));
-    });
-  }
-
-  onLogoutConfirmYes(): void {
-    this.logoutConfirm.confirm();
-    this.cdr.markForCheck();
-  }
-
-  onLogoutConfirmNo(): void {
-    this.logoutConfirm.cancel();
-    this.cdr.markForCheck();
-  }
-
-  @HostListener('document:keydown.escape')
-  onEscapeKey(): void {
-    if (this.logoutConfirm.visible) {
-      this.onLogoutConfirmNo();
-    }
+    // Try to inform backend to finalize session log; ignore errors
+    fetch(`${environment.apiUrl}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Authorization': `Bearer ${this.authService.getToken() || ''}` }
+    }).finally(() => this.authService.logout());
   }
 
   exitStudentPortal(): void {

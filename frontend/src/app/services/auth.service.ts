@@ -4,7 +4,6 @@ import { Observable, BehaviorSubject } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
-import { LogoutConfirmService } from './logout-confirm.service';
 
 export interface User {
   id: string;
@@ -29,11 +28,6 @@ export interface User {
 
 export type LogoutReason = 'manual' | 'session-timeout' | 'unauthorized';
 
-export interface LogoutOptions {
-  /** Skip the confirmation dialog (e.g. after user already confirmed, or forced logout). */
-  skipConfirm?: boolean;
-}
-
 @Injectable({
   providedIn: 'root'
 })
@@ -48,11 +42,7 @@ export class AuthService {
   private inactivityTimerId: any = null;
   private lastActivityKey = 'lastActivityTimestamp';
 
-  constructor(
-    private http: HttpClient,
-    private router: Router,
-    private logoutConfirm: LogoutConfirmService
-  ) {
+  constructor(private http: HttpClient, private router: Router) {
     const token = sessionStorage.getItem('token');
     const user = sessionStorage.getItem('user');
     if (token && user) {
@@ -122,25 +112,7 @@ export class AuthService {
     return this.http.post(`${this.apiUrl}/auth/forgot-password/set`, payload);
   }
 
-  /** Show the modern logout confirmation modal (manual logout only). */
-  confirmLogout(): Promise<boolean> {
-    return this.logoutConfirm.open();
-  }
-
-  logout(reason: LogoutReason = 'manual', options?: LogoutOptions): void {
-    if (reason === 'manual' && !options?.skipConfirm) {
-      this.logoutConfirm.open().then((confirmed) => {
-        if (confirmed) {
-          this.completeLogout(reason);
-        }
-      });
-      return;
-    }
-
-    this.completeLogout(reason);
-  }
-
-  private completeLogout(reason: LogoutReason): void {
+  logout(reason: LogoutReason = 'manual'): void {
     if (reason && reason !== 'manual') {
       sessionStorage.setItem(this.logoutReasonKey, reason);
     } else {
