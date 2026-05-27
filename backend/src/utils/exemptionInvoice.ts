@@ -223,6 +223,14 @@ function applyBalanceExemption(student: Student, inv: Invoice): string | null {
     if (pct <= 0 || pct > 100) {
       return null;
     }
+    if (pct >= 100) {
+      inv.balance = 0;
+      const newTotalOwed = parseFloat((appliedPrepaid + paidAmount).toFixed(2));
+      inv.amount = Math.max(0, parseFloat((newTotalOwed - previousBalance).toFixed(2)));
+      inv.prepaidAmount = Math.max(0, parseFloat((prepaid - appliedPrepaid).toFixed(2)));
+      updateInvoiceStatus(inv, paidAmount, 0);
+      return 'Exemption: 100% off — invoice balance cleared to 0.00';
+    }
     const retainFactor = (100 - pct) / 100;
     newBalance = parseFloat((originalBalance * retainFactor).toFixed(2));
     note = `Exemption: ${pct}% off — balance is ${(retainFactor * 100).toFixed(0)}% of original (${newBalance.toFixed(2)})`;

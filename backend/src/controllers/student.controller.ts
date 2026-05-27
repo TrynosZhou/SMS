@@ -1181,6 +1181,13 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     }
 
     const logisticsBefore = snapshotFromStudent(student);
+    const exemptionBefore = {
+      isStaffChild: student.isStaffChild === true,
+      isExempted: student.isExempted === true,
+      exemptionType: student.exemptionType || null,
+      exemptionAmount: student.exemptionAmount ?? null,
+      exemptionPercent: student.exemptionPercent ?? null
+    };
 
     if (!isTeacherEditor) {
       if (usesTransport !== undefined) {
@@ -1426,20 +1433,47 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       console.error('⚠️ Initial invoice creation failed:', initInvoiceError);
     }
 
+    let logisticsInvoiceSync: any = null;
+    let exemptionInvoiceSync: any = null;
+
     try {
       const settingsRepository = AppDataSource.getRepository(Settings);
       const settings = await settingsRepository.findOne({ where: {}, order: { createdAt: 'DESC' } });
       const fees = settings?.feesSettings;
       if (fees && !isTeacherEditor) {
-        await syncStudentLogisticsInvoices({
+        logisticsInvoiceSync = await syncStudentLogisticsInvoices({
           studentId: updatedStudent.id,
           before: logisticsBefore,
           after: snapshotFromStudent(updatedStudent),
           fees: fees as Record<string, unknown>,
           activeTerm: settings?.activeTerm || settings?.currentTerm
         });
-        if (isStaffSiblingExemption(updatedStudent) || isBalanceOnlyExemption(updatedStudent)) {
-          await syncExemptionInvoicesForStudent(updatedStudent.id);
+
+        const exemptionAfter = {
+          isStaffChild: updatedStudent.isStaffChild === true,
+          isExempted: updatedStudent.isExempted === true,
+          exemptionType: updatedStudent.exemptionType || null,
+          exemptionAmount: updatedStudent.exemptionAmount ?? null,
+          exemptionPercent: updatedStudent.exemptionPercent ?? null
+        };
+
+        const exemptionFieldsChanged =
+          exemptionBefore.isStaffChild !== exemptionAfter.isStaffChild ||
+          exemptionBefore.isExempted !== exemptionAfter.isExempted ||
+          exemptionBefore.exemptionType !== exemptionAfter.exemptionType ||
+          Number(exemptionBefore.exemptionAmount ?? 0) !== Number(exemptionAfter.exemptionAmount ?? 0) ||
+          Number(exemptionBefore.exemptionPercent ?? 0) !== Number(exemptionAfter.exemptionPercent ?? 0);
+
+        const exemptionWasActive =
+          exemptionBefore.isStaffChild ||
+          (exemptionBefore.isExempted &&
+            (exemptionBefore.exemptionType === 'fixed' || exemptionBefore.exemptionType === 'percentage'));
+
+        const exemptionIsActive =
+          isStaffSiblingExemption(updatedStudent) || isBalanceOnlyExemption(updatedStudent);
+
+        if (exemptionFieldsChanged || exemptionWasActive || exemptionIsActive) {
+          exemptionInvoiceSync = await syncExemptionInvoicesForStudent(updatedStudent.id);
         }
       }
     } catch (syncErr) {
@@ -1448,7 +1482,9 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
 
     res.json({
       message: 'Student updated successfully',
-      student: updatedStudent
+      student: updatedStudent,
+      logisticsInvoiceSync,
+      exemptionInvoiceSync
     });
   } catch (error: any) {
     console.error('Error updating student:', error);

@@ -51,7 +51,14 @@ export function computeInvoiceFeesOutstanding(
   if (!invoice || invoice.isVoided) return 0;
 
   const lineItemTotal = canonicalInvoiceTermFees(invoice);
-  const invoiceAmount = Math.max(tryNum(invoice.amount), lineItemTotal);
+  const fullPercentageExempt =
+    !!student &&
+    (student as any).isExempted === true &&
+    String((student as any).exemptionType || '').trim().toLowerCase() === 'percentage' &&
+    tryNum((student as any).exemptionPercent) >= 100;
+  const invoiceAmount = fullPercentageExempt
+    ? tryNum(invoice.amount)
+    : Math.max(tryNum(invoice.amount), lineItemTotal);
   let previousBalance = tryNum(invoice.previousBalance);
   const paidAmount = tryNum(invoice.paidAmount);
   const prepaidAmount = tryNum(invoice.prepaidAmount);
@@ -96,6 +103,16 @@ export function computeInvoiceOwedAmount(
   if (!invoice || invoice.isVoided) return 0;
   const fromColumn = tryNum(invoice.balance);
   const computed = computeInvoiceFeesOutstanding(invoice, student, configuredDeskFee);
+  const fullPercentageExempt =
+    !!student &&
+    (student as any).isExempted === true &&
+    String((student as any).exemptionType || '').trim().toLowerCase() === 'percentage' &&
+    tryNum((student as any).exemptionPercent) >= 100;
+
+  // For 100% percentage exemptions, trust recomputed owed amount; stored balance may be stale.
+  if (fullPercentageExempt) {
+    return parseFloat(Math.max(0, computed).toFixed(2));
+  }
   return parseFloat(Math.max(fromColumn, computed).toFixed(2));
 }
 
