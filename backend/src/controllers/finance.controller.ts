@@ -952,8 +952,35 @@ export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
       invoice.diningHallAmount = componentAfter;
     }
 
+    const expectedBalanceAfterNote = Math.max(
+      0,
+      parseFloat((balanceBefore + delta).toFixed(2))
+    );
+
     // Always derive amount/balance/status from canonical fee components.
     recomputeInvoiceTotalsFromLineItems(invoice);
+
+    const recomputedBalance = parseAmount(invoice.balance);
+    if (Math.abs(recomputedBalance - expectedBalanceAfterNote) >= 0.005) {
+      // Keep user-visible note semantics deterministic:
+      // - debit note increases outstanding by note amount
+      // - credit note decreases outstanding by note amount
+      invoice.balance = expectedBalanceAfterNote;
+      invoice.amount = Math.max(
+        0,
+        parseFloat((expectedBalanceAfterNote - prev + paid + prepaid).toFixed(2))
+      );
+
+      if (invoice.balance <= 0.005) {
+        invoice.status = InvoiceStatus.PAID;
+      } else if (paid > 0.005) {
+        invoice.status = InvoiceStatus.PARTIAL;
+      } else if (invoice.dueDate && new Date() > invoice.dueDate) {
+        invoice.status = InvoiceStatus.OVERDUE;
+      } else {
+        invoice.status = InvoiceStatus.PENDING;
+      }
+    }
 
     const itemLabel =
       item === 'tuition'
