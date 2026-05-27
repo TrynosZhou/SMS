@@ -16,6 +16,7 @@ import { fetchOutstandingBalanceRows } from '../utils/outstandingBalances';
 import { computeInvoiceOwedAmount, getConfiguredDeskFee } from '../utils/invoiceFeesBalance';
 import { fetchExemptionReportRows } from '../utils/exemptionReport';
 import { syncExemptionInvoicesForStudent } from '../utils/exemptionInvoice';
+import { recomputeInvoiceTotalsFromLineItems } from '../utils/studentLogisticsInvoice';
 import { createExemptionReportPDF } from '../utils/exemptionReportPdfGenerator';
 import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
 import { UserRole } from '../entities/User';
@@ -927,36 +928,32 @@ export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const componentBefore =
+      item === 'tuition'
+        ? parseAmount(invoice.tuitionAmount)
+        : item === 'transport'
+        ? parseAmount((invoice as any).transportAmount)
+        : parseAmount(invoice.diningHallAmount);
+
+    if (type === 'credit' && amt > componentBefore + 0.005) {
+      return res.status(400).json({
+        message: `Credit note for ${item} cannot exceed its current amount (${componentBefore.toFixed(2)}).`
+      });
+    }
+
     const delta = type === 'credit' ? -amt : amt;
+    const componentAfter = parseFloat((componentBefore + delta).toFixed(2));
 
     if (item === 'tuition') {
-      invoice.tuitionAmount = Math.max(0, parseFloat((parseAmount(invoice.tuitionAmount) + delta).toFixed(2)));
+      invoice.tuitionAmount = componentAfter;
     } else if (item === 'transport') {
-      (invoice as any).transportAmount = Math.max(
-        0,
-        parseFloat((parseAmount((invoice as any).transportAmount) + delta).toFixed(2))
-      );
+      (invoice as any).transportAmount = componentAfter;
     } else {
-      invoice.diningHallAmount = Math.max(
-        0,
-        parseFloat((parseAmount(invoice.diningHallAmount) + delta).toFixed(2))
-      );
+      invoice.diningHallAmount = componentAfter;
     }
 
-    invoice.amount = Math.max(0, parseFloat((currentAmount + delta).toFixed(2)));
-    invoice.balance = Math.max(0, parseFloat((invoice.amount + prev - paid - prepaid).toFixed(2)));
-
-    if (invoice.balance <= 0) {
-      invoice.status = InvoiceStatus.PAID;
-    } else if (paid > 0) {
-      invoice.status = InvoiceStatus.PARTIAL;
-    } else {
-      invoice.status = InvoiceStatus.PENDING;
-    }
-
-    if (new Date() > invoice.dueDate && invoice.balance > 0) {
-      invoice.status = InvoiceStatus.OVERDUE;
-    }
+    // Always derive amount/balance/status from canonical fee components.
+    recomputeInvoiceTotalsFromLineItems(invoice);
 
     const itemLabel =
       item === 'tuition'
