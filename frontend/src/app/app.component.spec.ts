@@ -13,12 +13,13 @@ describe('AppComponent', () => {
   let authService: jasmine.SpyObj<AuthService>;
   let settingsService: jasmine.SpyObj<SettingsService>;
   let moduleAccessService: jasmine.SpyObj<ModuleAccessService>;
-
   beforeEach(async () => {
     const authServiceSpy = jasmine.createSpyObj('AuthService', [
       'isAuthenticated',
       'hasRole',
       'getCurrentUser',
+      'getToken',
+      'confirmLogout',
       'logout'
     ], {
       currentUser$: of(null)
@@ -47,6 +48,8 @@ describe('AppComponent', () => {
     authService.isAuthenticated.and.returnValue(false);
     authService.hasRole.and.returnValue(false);
     authService.getCurrentUser.and.returnValue(null);
+    authService.getToken.and.returnValue(null);
+    authService.confirmLogout.and.returnValue(Promise.resolve(true));
     settingsService.getSettings.and.returnValue(of({}));
     moduleAccessService.canAccessModule.and.returnValue(true);
 
@@ -96,9 +99,20 @@ describe('AppComponent', () => {
     expect(component.isMenuExpanded('test-menu')).toBe(false);
   });
 
-  it('should call logout on auth service', () => {
+  it('should call logout on auth service when user confirms', async () => {
+    authService.confirmLogout.and.returnValue(Promise.resolve(true));
+    spyOn(window, 'fetch').and.returnValue(Promise.resolve(new Response()));
     component.logout();
-    expect(authService.logout).toHaveBeenCalled();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(authService.logout).toHaveBeenCalledWith('manual', { skipConfirm: true });
+  });
+
+  it('should not logout when user declines confirmation', async () => {
+    authService.confirmLogout.and.returnValue(Promise.resolve(false));
+    component.logout();
+    await Promise.resolve();
+    expect(authService.logout).not.toHaveBeenCalled();
   });
 });
 

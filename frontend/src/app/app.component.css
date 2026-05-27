@@ -748,6 +748,212 @@
 }
 
 /* ========================================
+   LOGOUT CONFIRMATION MODAL
+   ======================================== */
+
+.logout-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  animation: logoutOverlayIn 0.2s ease-out;
+}
+
+@keyframes logoutOverlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.logout-confirm-dialog {
+  position: relative;
+  width: min(100%, 420px);
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.18),
+    0 0 0 1px rgba(148, 163, 184, 0.2);
+  overflow: hidden;
+  animation: logoutDialogIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes logoutDialogIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.logout-confirm-dialog__accent {
+  height: 4px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #4a90e2 100%);
+}
+
+.logout-confirm-dialog__body {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1.5rem 1.5rem 0.75rem;
+}
+
+.logout-confirm-dialog__icon-wrap {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ede9fe 0%, #e0f2fe 100%);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.logout-confirm-dialog__icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.logout-confirm-dialog__text {
+  flex: 1;
+  min-width: 0;
+  padding-right: 0.5rem;
+}
+
+.logout-confirm-dialog__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.logout-confirm-dialog__message {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: #64748b;
+}
+
+.logout-confirm-dialog__close {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.logout-confirm-dialog__close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.logout-confirm-dialog__actions {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem 1.5rem;
+  border-top: 1px solid #f1f5f9;
+  background: #fafbfc;
+}
+
+.logout-confirm-btn {
+  min-width: 120px;
+  padding: 0.7rem 1.25rem;
+  border-radius: 12px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.logout-confirm-btn:active {
+  transform: scale(0.98);
+}
+
+.logout-confirm-btn--ghost {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.logout-confirm-btn--ghost:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.logout-confirm-btn--primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35);
+}
+
+.logout-confirm-btn--primary:hover {
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.45);
+}
+
+:host-context(.dark-mode) .logout-confirm-dialog,
+.dark-mode .logout-confirm-dialog {
+  background: #1e293b;
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(148, 163, 184, 0.12);
+}
+
+:host-context(.dark-mode) .logout-confirm-dialog__title,
+.dark-mode .logout-confirm-dialog__title {
+  color: #f1f5f9;
+}
+
+:host-context(.dark-mode) .logout-confirm-dialog__message,
+.dark-mode .logout-confirm-dialog__message {
+  color: #94a3b8;
+}
+
+:host-context(.dark-mode) .logout-confirm-dialog__actions,
+.dark-mode .logout-confirm-dialog__actions {
+  background: #0f172a;
+  border-top-color: #334155;
+}
+
+:host-context(.dark-mode) .logout-confirm-btn--ghost,
+.dark-mode .logout-confirm-btn--ghost {
+  background: #334155;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+
+@media (max-width: 480px) {
+  .logout-confirm-dialog__actions {
+    flex-direction: column-reverse;
+  }
+
+  .logout-confirm-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* ========================================
    ACCESSIBILITY
    ======================================== */
 

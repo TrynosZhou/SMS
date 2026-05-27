@@ -750,6 +750,51 @@
   </svg>
 </button>
 
+<!-- Logout confirmation (replaces browser alert) -->
+<div
+  class="logout-confirm-overlay"
+  *ngIf="logoutConfirm.visible"
+  role="presentation"
+  (click)="onLogoutConfirmNo()"
+>
+  <div
+    class="logout-confirm-dialog"
+    role="alertdialog"
+    aria-labelledby="logout-confirm-title"
+    aria-describedby="logout-confirm-desc"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="logout-confirm-dialog__accent" aria-hidden="true"></div>
+    <div class="logout-confirm-dialog__body">
+      <div class="logout-confirm-dialog__icon-wrap" aria-hidden="true">
+        <span class="logout-confirm-dialog__icon">🚪</span>
+      </div>
+      <div class="logout-confirm-dialog__text">
+        <h2 id="logout-confirm-title" class="logout-confirm-dialog__title">Sign out?</h2>
+        <p id="logout-confirm-desc" class="logout-confirm-dialog__message">
+          You will leave your current session and return to the login page. Any unsaved work may be lost.
+        </p>
+      </div>
+      <button
+        type="button"
+        class="logout-confirm-dialog__close"
+        (click)="onLogoutConfirmNo()"
+        aria-label="Cancel sign out"
+      >
+        ×
+      </button>
+    </div>
+    <div class="logout-confirm-dialog__actions">
+      <button type="button" class="logout-confirm-btn logout-confirm-btn--ghost" (click)="onLogoutConfirmNo()">
+        Stay signed in
+      </button>
+      <button type="button" class="logout-confirm-btn logout-confirm-btn--primary" (click)="onLogoutConfirmYes()">
+        Yes, sign out
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Main Content -->
 <main class="main-content" [class.sidebar-open]="isAuthenticated() && !isParent() && !sidebarCollapsed" [class.menu-open]="isAuthenticated() && mobileMenuOpen">
   <router-outlet></router-outlet>
