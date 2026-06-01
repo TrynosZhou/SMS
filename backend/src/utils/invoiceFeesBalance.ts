@@ -7,7 +7,6 @@ import {
   remainingBucketsAfterAppliedTotals,
   snapshotFromInvoiceAndStudent
 } from './transportDhWaterfall';
-
 /**
  * Desk fee from settings (same shape as finance / outstanding-balance).
  */
@@ -35,49 +34,52 @@ export function canonicalInvoiceTermFees(invoice: Invoice | null | undefined): n
 }
 
 /**
- * Outstanding tuition/fees for one invoice — aligned with getOutstandingBalances (JSON)
- * and getStudentBalance: uses amount + previousBalance − paid − prepaid,
- * not the raw persisted invoice.balance column (which can be stale).
- *
- * When `logisticsFees` is set (parent portal / finance), the returned amount excludes any unpaid **transport**
- * bucket after the same waterfall as cash logistics (previous balance → transport → DH → tuition); DH may still show.
+ * Canonical outstanding balance — same formula as recomputeInvoiceTotalsFromLineItems,
+ * receipts, and the credit/debit note invoice summary:
+ *   (previousBalance + termFees) − appliedPrepaid − paidAmount
+ */
+export function computeCanonicalInvoiceBalance(invoice: Invoice | null | undefined): number {
+  if (!invoice || invoice.isVoided) return 0;
+
+  const termFees = canonicalInvoiceTermFees(invoice);
+  const previousBalance = tryNum(invoice.previousBalance);
+  const paidAmount = tryNum(invoice.paidAmount);
+  const prepaid = tryNum(invoice.prepaidAmount);
+
+  const totalOwed = parseFloat((previousBalance + termFees).toFixed(2));
+  const appliedPrepaid = Math.min(prepaid, totalOwed);
+  return Math.max(
+    0,
+    parseFloat((totalOwed - appliedPrepaid - paidAmount).toFixed(2))
+  );
+}
+
+function isFullPercentageExemption(student: Student | null | undefined): boolean {
+  return (
+    !!student &&
+    (student as any).isExempted === true &&
+    String((student as any).exemptionType || '').trim().toLowerCase() === 'percentage' &&
+    tryNum((student as any).exemptionPercent) >= 100
+  );
+}
+
+/**
+ * Outstanding tuition/fees for one invoice.
+ * When `logisticsFees` is set (parent portal), transport bucket may be excluded via waterfall.
  */
 export function computeInvoiceFeesOutstanding(
   invoice: Invoice | null | undefined,
   student: Student | null | undefined,
-  configuredDeskFee: number,
+  _configuredDeskFee: number,
   logisticsFees?: LogisticsFeesForOutstanding | null
 ): number {
   if (!invoice || invoice.isVoided) return 0;
 
-  const lineItemTotal = canonicalInvoiceTermFees(invoice);
-  const fullPercentageExempt =
-    !!student &&
-    (student as any).isExempted === true &&
-    String((student as any).exemptionType || '').trim().toLowerCase() === 'percentage' &&
-    tryNum((student as any).exemptionPercent) >= 100;
-  const invoiceAmount = fullPercentageExempt
-    ? tryNum(invoice.amount)
-    : Math.max(tryNum(invoice.amount), lineItemTotal);
-  let previousBalance = tryNum(invoice.previousBalance);
-  const paidAmount = tryNum(invoice.paidAmount);
-  const prepaidAmount = tryNum(invoice.prepaidAmount);
-
-  const normalizedStatus = String((student as any)?.studentStatus || '').trim().toLowerCase();
-  const isNewStudent = normalizedStatus === 'new';
-
-  if (student && !isNewStudent && configuredDeskFee > 0) {
-    const prev = Number(previousBalance.toFixed(2));
-    const desk = Number(Number(configuredDeskFee).toFixed(2));
-    if (prev === desk) {
-      previousBalance = 0;
-    }
+  if (isFullPercentageExemption(student)) {
+    return parseFloat(Math.max(0, tryNum(invoice.balance)).toFixed(2));
   }
 
-  const base = Math.max(
-    0,
-    parseFloat((invoiceAmount + previousBalance - paidAmount - prepaidAmount).toFixed(2))
-  );
+  const base = computeCanonicalInvoiceBalance(invoice);
 
   if (!logisticsFees || !student) {
     return base;
@@ -86,34 +88,33 @@ export function computeInvoiceFeesOutstanding(
   const tr = tryNum(logisticsFees.transportCost);
   const dh = tryNum(logisticsFees.diningHallCost);
   const snap = snapshotFromInvoiceAndStudent(invoice, student);
-  snap.previousBalance = previousBalance;
+  snap.previousBalance = tryNum(invoice.previousBalance);
   const remaining = remainingBucketsAfterAppliedTotals(snap, tr, dh);
   return Math.max(0, outstandingExcludingTransportBucket(remaining));
 }
 
 /**
- * Amount owed on one invoice — same rules as outstanding-fees report:
- * max(persisted balance, computed from line items / amount).
+ * Amount owed on one invoice for balance enquiry, outstanding-fees, record payment, etc.
+ * Uses (previousBalance + term line items) − paid − prepaid — same as receipts and credit notes.
+ * The persisted balance column can be stale when amount ≠ sum(line items) after adjustments.
  */
 export function computeInvoiceOwedAmount(
   invoice: Invoice | null | undefined,
   student: Student | null | undefined,
-  configuredDeskFee: number
+  _configuredDeskFee: number
 ): number {
   if (!invoice || invoice.isVoided) return 0;
-  const fromColumn = tryNum(invoice.balance);
-  const computed = computeInvoiceFeesOutstanding(invoice, student, configuredDeskFee);
-  const fullPercentageExempt =
-    !!student &&
-    (student as any).isExempted === true &&
-    String((student as any).exemptionType || '').trim().toLowerCase() === 'percentage' &&
-    tryNum((student as any).exemptionPercent) >= 100;
 
-  // For 100% percentage exemptions, trust recomputed owed amount; stored balance may be stale.
-  if (fullPercentageExempt) {
-    return parseFloat(Math.max(0, computed).toFixed(2));
+  if (isFullPercentageExemption(student)) {
+    const canonical = computeCanonicalInvoiceBalance(invoice);
+    const fromColumn = tryNum(invoice.balance);
+    if (fromColumn <= 0.005) {
+      return parseFloat(Math.max(0, canonical).toFixed(2));
+    }
+    return parseFloat(Math.max(0, Math.min(fromColumn, canonical)).toFixed(2));
   }
-  return parseFloat(Math.max(fromColumn, computed).toFixed(2));
+
+  return parseFloat(Math.max(0, computeCanonicalInvoiceBalance(invoice)).toFixed(2));
 }
 
 /**
@@ -136,4 +137,18 @@ export async function findInvoiceForReportCardAccess(
     where: { studentId, isVoided: false },
     order: { createdAt: 'DESC' }
   });
+}
+
+/** Attach displayBalance on invoice payloads for list/detail APIs. */
+export function withDisplayBalance<T extends Invoice>(
+  invoice: T,
+  student: Student | null | undefined,
+  configuredDeskFee: number
+): T & { displayBalance: number; balance: number } {
+  const owed = computeInvoiceOwedAmount(invoice, student ?? null, configuredDeskFee);
+  return {
+    ...invoice,
+    balance: owed,
+    displayBalance: owed
+  };
 }

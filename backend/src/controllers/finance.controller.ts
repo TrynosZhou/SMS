@@ -13,10 +13,15 @@ import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
 import { fetchOutstandingBalanceRows } from '../utils/outstandingBalances';
-import { computeInvoiceOwedAmount, getConfiguredDeskFee } from '../utils/invoiceFeesBalance';
+import {
+  computeInvoiceOwedAmount,
+  canonicalInvoiceTermFees,
+  getConfiguredDeskFee,
+  withDisplayBalance
+} from '../utils/invoiceFeesBalance';
+import { recomputeInvoiceTotalsFromLineItems } from '../utils/studentLogisticsInvoice';
 import { fetchExemptionReportRows } from '../utils/exemptionReport';
 import { syncExemptionInvoicesForStudent } from '../utils/exemptionInvoice';
-import { recomputeInvoiceTotalsFromLineItems } from '../utils/studentLogisticsInvoice';
 import { createExemptionReportPDF } from '../utils/exemptionReportPdfGenerator';
 import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
 import { UserRole } from '../entities/User';
@@ -524,38 +529,36 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
       queryBuilder.andWhere('invoice.id = :invoiceId', { invoiceId });
     }
 
-    const [invoices, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
+    const allMatching = await queryBuilder.getMany();
+    const total = allMatching.length;
+    const invoices = allMatching.slice(skip, skip + limit);
 
-    // Compute total outstanding balance across all matching invoices (ignoring pagination)
-    const sumQuery = invoiceRepository
-      .createQueryBuilder('invoice')
-      .select('COALESCE(SUM(invoice.balance), 0)', 'totalBalance')
-      .addSelect('COALESCE(SUM(invoice.amount), 0)', 'totalInvoicedAmount')
-      .addSelect('COALESCE(SUM(invoice.paidAmount), 0)', 'totalPaidAmount')
-      .andWhere('COALESCE(invoice.isVoided, false) = false');
+    const settingsList = await AppDataSource.getRepository(Settings).find({
+      order: { createdAt: 'DESC' },
+      take: 1
+    });
+    const configuredDeskFee = getConfiguredDeskFee(settingsList[0] ?? null);
 
-    if (studentId) {
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (uuidRegex.test(studentId)) {
-        sumQuery.andWhere('invoice.studentId = :studentId', { studentId });
-      } else {
-        sumQuery.andWhere('invoice.studentId = :studentId', { studentId });
-      }
-    }
-    if (status) {
-      sumQuery.andWhere('invoice.status = :status', { status });
-    }
-    if (invoiceId) {
-      sumQuery.andWhere('invoice.id = :invoiceId', { invoiceId });
-    }
+    const invoicesForClient = invoices.map((inv) =>
+      withDisplayBalance(inv, inv.student, configuredDeskFee)
+    );
 
-    const sumRaw = await sumQuery.getRawOne();
-    const totalBalance = Number(sumRaw?.totalBalance ?? 0);
-    const totalInvoicedAmount = Number(sumRaw?.totalInvoicedAmount ?? 0);
-    const totalPaidAmount = Number(sumRaw?.totalPaidAmount ?? 0);
+    const allForTotals = allMatching;
+    let totalBalance = 0;
+    let totalInvoicedAmount = 0;
+    let totalPaidAmount = 0;
+    for (const inv of allForTotals) {
+      totalBalance = parseFloat(
+        (totalBalance + computeInvoiceOwedAmount(inv, inv.student, configuredDeskFee)).toFixed(2)
+      );
+      totalInvoicedAmount = parseFloat(
+        (totalInvoicedAmount + parseAmount(inv.amount) + parseAmount(inv.previousBalance)).toFixed(2)
+      );
+      totalPaidAmount = parseFloat((totalPaidAmount + parseAmount(inv.paidAmount)).toFixed(2));
+    }
 
     res.json(
-      buildPaginationResponse(invoices, total, page, limit, {
+      buildPaginationResponse(invoicesForClient, total, page, limit, {
         totalBalance,
         totalInvoicedAmount,
         totalPaidAmount
@@ -590,35 +593,36 @@ export const updateInvoicePayment = async (req: AuthRequest, res: Response) => {
     const oldPaidAmount = parseAmount(invoice.paidAmount);
     const oldPrepaidAmount = parseAmount(invoice.prepaidAmount);
     const paidAmountNum = parseAmount(paidAmount);
-    const currentBalance = parseAmount(invoice.balance);
-    
+
     if (isPrepayment) {
       invoice.prepaidAmount = oldPrepaidAmount + paidAmountNum;
       invoice.paidAmount = oldPaidAmount + paidAmountNum;
+      recomputeInvoiceTotalsFromLineItems(invoice);
     } else {
-      const paymentTowardBalance = Math.min(paidAmountNum, currentBalance);
-      const overPayment = Math.max(0, paidAmountNum - paymentTowardBalance);
+      invoice.paidAmount = oldPaidAmount + paidAmountNum;
+      recomputeInvoiceTotalsFromLineItems(invoice);
 
-      invoice.paidAmount = oldPaidAmount + paymentTowardBalance;
-      invoice.balance = Math.max(0, currentBalance - paymentTowardBalance);
+      const previousBalance = parseAmount(invoice.previousBalance);
+      const termFees = canonicalInvoiceTermFees(invoice);
+      const totalOwed = parseFloat((previousBalance + termFees).toFixed(2));
+      const totalPaid = parseAmount(invoice.paidAmount);
 
-      if (overPayment > 0) {
-        invoice.prepaidAmount = oldPrepaidAmount + overPayment;
+      if (totalPaid > totalOwed + 0.005) {
+        const excess = parseFloat((totalPaid - totalOwed).toFixed(2));
+        invoice.paidAmount = totalOwed;
+        invoice.prepaidAmount = parseFloat((oldPrepaidAmount + excess).toFixed(2));
+        invoice.balance = 0;
+        invoice.status = InvoiceStatus.PAID;
       }
     }
 
-    if (invoice.balance <= 0) {
-      invoice.status = InvoiceStatus.PAID;
-    } else if (invoice.paidAmount > 0) {
-      invoice.status = InvoiceStatus.PARTIAL;
-    }
-
-    // Check if overdue
-    if (new Date() > invoice.dueDate && invoice.balance > 0) {
-      invoice.status = InvoiceStatus.OVERDUE;
-    }
-
     await invoiceRepository.save(invoice);
+
+    const settingsForBalance = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
+    });
+    const deskFeeForBalance = getConfiguredDeskFee(settingsForBalance[0] ?? null);
 
     // Generate receipt PDF
     const student = await studentRepository.findOne({ 
@@ -677,7 +681,7 @@ export const updateInvoicePayment = async (req: AuthRequest, res: Response) => {
 
     res.json({
       message: 'Payment updated successfully',
-      invoice,
+      invoice: withDisplayBalance(invoice, student, deskFeeForBalance),
       receiptPdf: receiptPDF.toString('base64'),
       receiptNumber
     });
