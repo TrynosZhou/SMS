@@ -14,6 +14,7 @@ import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
 import { fetchOutstandingBalanceRows } from '../utils/outstandingBalances';
 import {
+  computeCanonicalInvoiceBalance,
   computeInvoiceOwedAmount,
   canonicalInvoiceTermFees,
   getConfiguredDeskFee,
@@ -821,36 +822,32 @@ export const adjustInvoiceLogistics = async (req: AuthRequest, res: Response) =>
       return res.status(400).json({ message: 'No valid fee amount to add' });
     }
 
-    const currentAmount = parseAmount(invoice.amount);
-    const currentBalance = parseAmount(invoice.balance);
-
-    invoice.amount = currentAmount + increment;
-    invoice.balance = currentBalance + increment;
-
-    if (invoice.balance <= 0) {
-      invoice.status = InvoiceStatus.PAID;
-    } else if (invoice.paidAmount && parseAmount(invoice.paidAmount) > 0) {
-      invoice.status = InvoiceStatus.PARTIAL;
-    } else {
-      invoice.status = InvoiceStatus.PENDING;
+    if (transportAmountToAdd > 0) {
+      invoice.transportAmount = parseFloat(
+        (parseAmount(invoice.transportAmount) + transportAmountToAdd).toFixed(2)
+      );
+      student.usesTransport = true;
+    }
+    if (diningHallAmountToAdd > 0) {
+      invoice.diningHallAmount = parseFloat(
+        (parseAmount(invoice.diningHallAmount) + diningHallAmountToAdd).toFixed(2)
+      );
+      student.usesDiningHall = true;
+    }
+    if (tuitionAmountToAdd > 0) {
+      invoice.tuitionAmount = parseFloat(
+        (parseAmount(invoice.tuitionAmount) + tuitionAmountToAdd).toFixed(2)
+      );
     }
 
-    if (new Date() > invoice.dueDate && invoice.balance > 0) {
-      invoice.status = InvoiceStatus.OVERDUE;
-    }
+    recomputeInvoiceTotalsFromLineItems(invoice);
 
     const adjustments: string[] = [];
     if (transportAmountToAdd > 0) {
       adjustments.push(`Transport: ${transportAmountToAdd.toFixed(2)}`);
-      if (!student.usesTransport) {
-        student.usesTransport = true;
-      }
     }
     if (diningHallAmountToAdd > 0) {
       adjustments.push(`Dining Hall: ${diningHallAmountToAdd.toFixed(2)}`);
-      if (!student.usesDiningHall) {
-        student.usesDiningHall = true;
-      }
     }
     if (tuitionAmountToAdd > 0) {
       adjustments.push(`Tuition (${student.studentType}): ${tuitionAmountToAdd.toFixed(2)}`);
@@ -868,9 +865,12 @@ export const adjustInvoiceLogistics = async (req: AuthRequest, res: Response) =>
     await studentRepository.save(student);
     const savedInvoice = await invoiceRepository.save(invoice);
 
+    const settingsForDisplay = settingsList.length > 0 ? settingsList[0] : null;
+    const deskFee = getConfiguredDeskFee(settingsForDisplay);
+
     res.json({
       message: 'Invoice adjusted successfully',
-      invoice: savedInvoice
+      invoice: withDisplayBalance(savedInvoice, student, deskFee)
     });
   } catch (error: any) {
     console.error('Error adjusting invoice logistics:', error);
@@ -906,6 +906,8 @@ export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
     }
 
     const invoiceRepository = AppDataSource.getRepository(Invoice);
+    const studentRepository = AppDataSource.getRepository(Student);
+    const settingsRepository = AppDataSource.getRepository(Settings);
     const logRepo = AppDataSource.getRepository(PaymentLog);
 
     const invoice = await invoiceRepository.findOne({
@@ -917,14 +919,7 @@ export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Invoice not found' });
     }
 
-    const currentAmount = parseAmount(invoice.amount);
-    const paid = parseAmount(invoice.paidAmount);
-    const prev = parseAmount(invoice.previousBalance);
-    const prepaid = parseAmount(invoice.prepaidAmount);
-    const balanceBefore = Math.max(
-      0,
-      parseFloat((currentAmount + prev - paid - prepaid).toFixed(2))
-    );
+    const balanceBefore = computeCanonicalInvoiceBalance(invoice);
 
     if (type === 'credit' && amt > balanceBefore + 0.005) {
       return res.status(400).json({
@@ -961,28 +956,31 @@ export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
       parseFloat((balanceBefore + delta).toFixed(2))
     );
 
-    // Always derive amount/balance/status from canonical fee components.
     recomputeInvoiceTotalsFromLineItems(invoice);
 
-    const recomputedBalance = parseAmount(invoice.balance);
-    if (Math.abs(recomputedBalance - expectedBalanceAfterNote) >= 0.005) {
-      // Keep user-visible note semantics deterministic:
-      // - debit note increases outstanding by note amount
-      // - credit note decreases outstanding by note amount
-      invoice.balance = expectedBalanceAfterNote;
-      invoice.amount = Math.max(
-        0,
-        parseFloat((expectedBalanceAfterNote - prev + paid + prepaid).toFixed(2))
-      );
-
-      if (invoice.balance <= 0.005) {
-        invoice.status = InvoiceStatus.PAID;
-      } else if (paid > 0.005) {
-        invoice.status = InvoiceStatus.PARTIAL;
-      } else if (invoice.dueDate && new Date() > invoice.dueDate) {
-        invoice.status = InvoiceStatus.OVERDUE;
-      } else {
-        invoice.status = InvoiceStatus.PENDING;
+    // When the account was fully settled, do not let unused prepaid absorb new debit-note charges.
+    if (type === 'debit' && balanceBefore <= 0.005) {
+      let actualAfter = computeCanonicalInvoiceBalance(invoice);
+      if (actualAfter + 0.005 < expectedBalanceAfterNote) {
+        const prepaidReduce = parseFloat((expectedBalanceAfterNote - actualAfter).toFixed(2));
+        invoice.prepaidAmount = Math.max(
+          0,
+          parseFloat((parseAmount(invoice.prepaidAmount) - prepaidReduce).toFixed(2))
+        );
+        recomputeInvoiceTotalsFromLineItems(invoice);
+        actualAfter = computeCanonicalInvoiceBalance(invoice);
+      }
+      if (Math.abs(actualAfter - expectedBalanceAfterNote) >= 0.005) {
+        invoice.balance = expectedBalanceAfterNote;
+        if (invoice.balance <= 0.005) {
+          invoice.status = InvoiceStatus.PAID;
+        } else if (parseAmount(invoice.paidAmount) > 0.005) {
+          invoice.status = InvoiceStatus.PARTIAL;
+        } else if (invoice.dueDate && new Date(invoice.dueDate) < new Date()) {
+          invoice.status = InvoiceStatus.OVERDUE;
+        } else {
+          invoice.status = InvoiceStatus.PENDING;
+        }
       }
     }
 
@@ -1003,6 +1001,30 @@ export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
       invoice.description = `${invoice.description} | ${noteText}`;
     } else {
       invoice.description = noteText;
+    }
+
+    let student = invoice.student;
+    if (!student) {
+      student = await studentRepository.findOne({ where: { id: invoice.studentId } });
+    }
+    if (student) {
+      if (type === 'debit') {
+        if (item === 'transport' && componentAfter > 0.005) {
+          student.usesTransport = true;
+        }
+        if (item === 'diningHall' && componentAfter > 0.005) {
+          student.usesDiningHall = true;
+        }
+      } else {
+        if (item === 'transport' && componentAfter <= 0.005) {
+          student.usesTransport = false;
+        }
+        if (item === 'diningHall' && componentAfter <= 0.005) {
+          student.usesDiningHall = false;
+        }
+      }
+      await studentRepository.save(student);
+      invoice.student = student;
     }
 
     const savedInvoice = await invoiceRepository.save(invoice);
@@ -1027,9 +1049,14 @@ export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
       relations: ['student', 'student.classEntity']
     });
 
+    const settingsRow = await settingsRepository.findOne({ where: {}, order: { createdAt: 'DESC' } });
+    const deskFee = getConfiguredDeskFee(settingsRow);
+    const clientInvoice = invoiceForClient ?? savedInvoice;
+    const studentForBalance = clientInvoice.student ?? student ?? null;
+
     res.json({
       message: type === 'credit' ? 'Credit Note applied successfully' : 'Debit Note applied successfully',
-      invoice: invoiceForClient ?? savedInvoice
+      invoice: withDisplayBalance(clientInvoice, studentForBalance, deskFee)
     });
   } catch (error: any) {
     console.error('Error applying invoice note:', error);

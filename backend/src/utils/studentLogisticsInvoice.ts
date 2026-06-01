@@ -144,8 +144,8 @@ export async function syncStudentLogisticsInvoices(options: {
 
   let targets = invoices.filter((inv) => OPEN_STATUSES.includes(inv.status));
 
-  // If no open invoice but logistics increased, apply to the latest non-void invoice
-  if (targets.length === 0 && invoices.length > 0 && (deltaTransport > 0 || deltaDiningHall > 0)) {
+  // If no open invoice, apply logistics changes to the latest non-void invoice (add or remove fees)
+  if (targets.length === 0 && invoices.length > 0 && (deltaTransport !== 0 || deltaDiningHall !== 0)) {
     targets = [invoices[0]];
   }
 
