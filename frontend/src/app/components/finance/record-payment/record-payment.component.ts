@@ -130,7 +130,8 @@ export class RecordPaymentComponent implements OnInit, OnDestroy {
         firstName: params['firstName'],
         lastName: params['lastName'],
         fullName: `${params['firstName']} ${params['lastName']}`,
-        balance: parseFloat(params['balance']) || 0
+        balance: parseFloat(params['balance']) || 0,
+        paymentInvoiceId: params['paymentInvoiceId'] || null
       };
       this.paymentForm.amount = parseFloat(params['balance']) || 0;
     }
@@ -353,7 +354,9 @@ this.error = error.error?.message || 'Student not found. Please check the detail
   }
 
   confirmPayment(): void {
-    if (!this.studentData || !this.studentData.lastInvoiceId) {
+    const targetInvoiceId =
+      this.studentData?.paymentInvoiceId || this.studentData?.lastInvoiceId;
+    if (!this.studentData || !targetInvoiceId) {
       this.error = 'Please search for a student first';
       return;
     }
@@ -398,7 +401,8 @@ this.error = error.error?.message || 'Student not found. Please check the detail
       isPrepayment: false
     };
 
-    const invoiceIdForPayment = this.studentData.lastInvoiceId;
+    const invoiceIdForPayment =
+      this.studentData.paymentInvoiceId || this.studentData.lastInvoiceId;
     
     this.financeService.updatePayment(invoiceIdForPayment, paymentData).subscribe({
       next: (response: any) => {

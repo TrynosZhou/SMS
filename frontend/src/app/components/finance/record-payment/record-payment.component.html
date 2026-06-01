@@ -160,6 +160,32 @@
         </div>
       </div>
 
+      <div class="rp-outstanding-terms" *ngIf="studentData.outstandingInvoices?.length">
+        <h3 class="rp-outstanding-terms__title">Outstanding by term</h3>
+        <p class="rp-outstanding-terms__hint" *ngIf="studentData.paymentInvoiceId">
+          Payment will be applied to the oldest unpaid invoice first.
+        </p>
+        <table class="rp-outstanding-terms__table">
+          <thead>
+            <tr>
+              <th>Term</th>
+              <th>Invoice</th>
+              <th class="text-right">Owed</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of studentData.outstandingInvoices">
+              <td>
+                {{ row.term || '—' }}
+                <span *ngIf="row.includesPriorTermBalance" class="rp-prior-tag">prior balance</span>
+              </td>
+              <td>{{ row.invoiceNumber }}</td>
+              <td class="text-right">{{ currencySymbol }} {{ formatCurrency(row.owed) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <!-- Fee Policy Notice -->
       <div *ngIf="studentData.isStaffChild || studentData.isExempted" class="policy-notice">
         <span class="notice-icon">ℹ️</span>

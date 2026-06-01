@@ -468,6 +468,17 @@
   background: #6d28d9;
 }
 
+.ob-prior-tag {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #b45309;
+  background: #fffbeb;
+  border-radius: 4px;
+}
+
 .ob-balance-badge {
   display: inline-block;
   padding: 6px 12px;

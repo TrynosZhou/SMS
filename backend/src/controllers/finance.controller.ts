@@ -14,10 +14,15 @@ import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
 import { fetchOutstandingBalanceRows } from '../utils/outstandingBalances';
 import {
+  applyCarryForwardToPriorInvoice,
   computeCanonicalInvoiceBalance,
+  computeCarryForwardBalance,
   computeInvoiceOwedAmount,
+  computeStudentTotalOutstanding,
   canonicalInvoiceTermFees,
   getConfiguredDeskFee,
+  listStudentOutstandingInvoices,
+  pickPaymentTargetInvoiceId,
   withDisplayBalance
 } from '../utils/invoiceFeesBalance';
 import { recomputeInvoiceTotalsFromLineItems } from '../utils/studentLogisticsInvoice';
@@ -176,7 +181,13 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       console.log(`[createInvoice] Fixed invoice reference for ${lastInvoice.invoiceNumber}`);
     }
 
-    const previousBalance = parseAmount(lastInvoice?.balance);
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1
+    });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+    const deskFeeForCreate = getConfiguredDeskFee(settings);
+    const previousBalance = computeCarryForwardBalance(lastInvoice, student, deskFeeForCreate);
     const prepaidAmount = parseAmount(lastInvoice?.prepaidAmount);
     // Base amount for this invoice comes from explicit tuition/dining/other
     // components; we don't trust a combined "amount" from the client.
@@ -184,12 +195,6 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     let transportIncrement = 0;
     let registrationIncrement = 0;
     let deskIncrement = 0;
-
-    const settingsList = await settingsRepository.find({
-      order: { createdAt: 'DESC' },
-      take: 1
-    });
-    const settings = settingsList.length > 0 ? settingsList[0] : null;
 
     if (settings && settings.feesSettings) {
       const fees = settings.feesSettings;
@@ -320,6 +325,12 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
     });
 
     const savedInvoice = await invoiceRepository.save(invoice);
+
+    if (lastInvoice && previousBalance > 0.005) {
+      applyCarryForwardToPriorInvoice(lastInvoice, previousBalance, savedInvoice.invoiceNumber);
+      await invoiceRepository.save(lastInvoice);
+    }
+
     const invoiceWithRelations = await invoiceRepository.findOne({
       where: { id: savedInvoice.id },
       relations: ['student']
@@ -1190,8 +1201,14 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
           order: { createdAt: 'DESC' }
         });
 
-        // Previous balance and prepaid credit from the last invoice
-        const previousBalance = parseAmount(lastInvoice?.balance);
+        const settingsListForBatch = await settingsRepository.find({
+          order: { createdAt: 'DESC' },
+          take: 1
+        });
+        const deskFeeBatch = getConfiguredDeskFee(settingsListForBatch[0] ?? null);
+
+        // Previous balance = canonical owed on last invoice (not stale balance column)
+        const previousBalance = computeCarryForwardBalance(lastInvoice, student, deskFeeBatch);
         const previousPrepaid = parseAmount(lastInvoice?.prepaidAmount);
 
         // Determine tuition fee for the NEXT term (following term)
@@ -1284,6 +1301,12 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
         });
 
         const savedInvoice = await invoiceRepository.save(invoice);
+
+        if (lastInvoice && previousBalance > 0.005) {
+          applyCarryForwardToPriorInvoice(lastInvoice, previousBalance, savedInvoice.invoiceNumber);
+          await invoiceRepository.save(lastInvoice);
+        }
+
         nextSequence += 1;
 
         results.created++;
@@ -1881,14 +1904,24 @@ export const getStudentBalance = async (req: Request, res: Response) => {
     });
     const configuredDeskFee = getConfiguredDeskFee(settingsList[0] ?? null);
 
-    let currentBalance = 0;
-    let totalPrepaidAmount = 0;
+    const outstandingInvoices = listStudentOutstandingInvoices(
+      nonVoidInvoices,
+      student,
+      configuredDeskFee
+    );
+    const currentBalance = computeStudentTotalOutstanding(
+      nonVoidInvoices,
+      student,
+      configuredDeskFee
+    );
+    const paymentInvoiceId = pickPaymentTargetInvoiceId(
+      nonVoidInvoices,
+      student,
+      configuredDeskFee
+    );
 
+    let totalPrepaidAmount = 0;
     for (const invoice of nonVoidInvoices) {
-      const owed = computeInvoiceOwedAmount(invoice, student, configuredDeskFee);
-      if (owed > 0.005) {
-        currentBalance = parseFloat((currentBalance + owed).toFixed(2));
-      }
       totalPrepaidAmount = parseFloat(
         (totalPrepaidAmount + parseAmount(invoice.prepaidAmount)).toFixed(2)
       );
@@ -1932,6 +1965,8 @@ export const getStudentBalance = async (req: Request, res: Response) => {
       balance: currentBalance,
       uniformBalance,
       prepaidAmount: totalPrepaidAmount,
+      outstandingInvoices,
+      paymentInvoiceId: paymentInvoiceId || lastInvoice?.id || null,
       lastInvoiceId: lastInvoice?.id || null,
       lastInvoiceNumber: lastInvoice?.invoiceNumber || null,
       lastInvoiceTerm: lastInvoice?.term || null,

@@ -3,8 +3,11 @@ import { AppDataSource } from '../config/database';
 import { Invoice } from '../entities/Invoice';
 import { Student } from '../entities/Student';
 import { Settings } from '../entities/Settings';
-import { computeInvoiceOwedAmount, getConfiguredDeskFee } from './invoiceFeesBalance';
-import { parseAmount } from './numberUtils';
+import {
+  computeStudentTotalOutstanding,
+  getConfiguredDeskFee,
+  listStudentOutstandingInvoices
+} from './invoiceFeesBalance';
 
 export type OutstandingBalanceRow = {
   studentId: string;
@@ -16,13 +19,18 @@ export type OutstandingBalanceRow = {
   className: string | null;
   phoneNumber: string;
   invoiceBalance: number;
+  /** Per-invoice row when a student owes on a specific term. */
+  invoiceId: string;
+  invoiceNumber: string;
+  term: string | null;
+  includesPriorTermBalance: boolean;
 };
 
 const NOT_VOIDED = 'COALESCE(invoice.isVoided, false) = false';
 
 /**
- * Students who owe money on any non-voided invoice.
- * Sums owed amounts per student (same balance rules as Billing & Invoicing).
+ * One row per invoice that still has money owed (all terms).
+ * Students with prior-term debt appear even when the latest term invoice is paid.
  */
 export async function fetchOutstandingBalanceRows(): Promise<OutstandingBalanceRow[]> {
   if (!AppDataSource.isInitialized) {
@@ -39,7 +47,7 @@ export async function fetchOutstandingBalanceRows(): Promise<OutstandingBalanceR
   });
   const configuredDeskFee = getConfiguredDeskFee(settingsList[0] ?? null);
 
-  const openInvoices = await invoiceRepository
+  const allInvoices = await invoiceRepository
     .createQueryBuilder('invoice')
     .leftJoinAndSelect('invoice.student', 'student')
     .leftJoinAndSelect('student.classEntity', 'classEntity')
@@ -47,36 +55,18 @@ export async function fetchOutstandingBalanceRows(): Promise<OutstandingBalanceR
     .orderBy('invoice.createdAt', 'DESC')
     .getMany();
 
-  const totalsByStudent = new Map<
-    string,
-    { student?: Student; total: number }
-  >();
+  const byStudent = new Map<string, { student?: Student; invoices: Invoice[] }>();
 
-  for (const invoice of openInvoices) {
-    const owed = invoice.student
-      ? computeInvoiceOwedAmount(invoice, invoice.student, configuredDeskFee)
-      : parseAmount(invoice.balance);
-
-    if (owed <= 0.005) {
-      continue;
+  for (const invoice of allInvoices) {
+    const entry = byStudent.get(invoice.studentId) || { invoices: [] };
+    entry.invoices.push(invoice);
+    if (!entry.student && invoice.student) {
+      entry.student = invoice.student;
     }
-
-    const studentId = invoice.studentId;
-    const existing = totalsByStudent.get(studentId);
-    if (existing) {
-      existing.total = parseFloat((existing.total + owed).toFixed(2));
-      if (!existing.student && invoice.student) {
-        existing.student = invoice.student;
-      }
-    } else {
-      totalsByStudent.set(studentId, {
-        student: invoice.student,
-        total: owed
-      });
-    }
+    byStudent.set(invoice.studentId, entry);
   }
 
-  const missingStudentIds = [...totalsByStudent.entries()]
+  const missingStudentIds = [...byStudent.entries()]
     .filter(([, v]) => !v.student)
     .map(([id]) => id);
 
@@ -87,34 +77,54 @@ export async function fetchOutstandingBalanceRows(): Promise<OutstandingBalanceR
     });
     const studentMap = new Map(students.map((s) => [s.id, s]));
     for (const id of missingStudentIds) {
-      const entry = totalsByStudent.get(id);
+      const entry = byStudent.get(id);
       const student = studentMap.get(id);
       if (entry && student) {
         entry.student = student;
       } else if (entry) {
-        totalsByStudent.delete(id);
+        byStudent.delete(id);
       }
     }
   }
 
   const rows: OutstandingBalanceRow[] = [];
-  for (const [studentId, { student, total }] of totalsByStudent) {
-    if (!student || total <= 0.005) {
-      continue;
+
+  for (const [studentId, { student, invoices }] of byStudent) {
+    if (!student) continue;
+
+    const outstanding = listStudentOutstandingInvoices(invoices, student, configuredDeskFee);
+    if (outstanding.length === 0) continue;
+
+    for (const detail of outstanding) {
+      rows.push({
+        studentId,
+        studentNumber: student.studentNumber,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        gender: student.gender,
+        studentType: student.studentType,
+        className: student.classEntity?.name ?? null,
+        phoneNumber: student.phoneNumber || '',
+        invoiceBalance: detail.owed,
+        invoiceId: detail.invoiceId,
+        invoiceNumber: detail.invoiceNumber,
+        term: detail.term,
+        includesPriorTermBalance: detail.includesPriorTermBalance
+      });
     }
-    rows.push({
-      studentId,
-      studentNumber: student.studentNumber,
-      firstName: student.firstName,
-      lastName: student.lastName,
-      gender: student.gender,
-      studentType: student.studentType,
-      className: student.classEntity?.name ?? null,
-      phoneNumber: student.phoneNumber || '',
-      invoiceBalance: total
-    });
   }
 
-  rows.sort((a, b) => b.invoiceBalance - a.invoiceBalance);
+  rows.sort((a, b) => {
+    const bal = b.invoiceBalance - a.invoiceBalance;
+    if (Math.abs(bal) > 0.005) return bal;
+    return String(a.studentNumber).localeCompare(String(b.studentNumber));
+  });
+
   return rows;
+}
+
+/** Total owed school-wide (sum of per-invoice rows, no double-count). */
+export async function fetchTotalOutstandingAmount(): Promise<number> {
+  const rows = await fetchOutstandingBalanceRows();
+  return parseFloat(rows.reduce((sum, r) => sum + r.invoiceBalance, 0).toFixed(2));
 }

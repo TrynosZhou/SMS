@@ -190,6 +190,40 @@
         </div>
       </div>
 
+      <!-- Outstanding by term (prior terms stay visible until cleared) -->
+      <div
+        class="outstanding-by-term"
+        *ngIf="studentData.outstandingInvoices?.length">
+        <h3 class="outstanding-by-term__title">Outstanding by invoice / term</h3>
+        <table class="outstanding-by-term__table">
+          <thead>
+            <tr>
+              <th>Term</th>
+              <th>Invoice</th>
+              <th class="text-right">Amount owed</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of studentData.outstandingInvoices">
+              <td>
+                {{ row.term || '—' }}
+                <span *ngIf="row.includesPriorTermBalance" class="be-prior-tag">includes prior-term balance</span>
+              </td>
+              <td>{{ row.invoiceNumber }}</td>
+              <td class="text-right">{{ currencySymbol }} {{ row.owed | number:'1.2-2' }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2"><strong>Total tuition balance</strong></td>
+              <td class="text-right">
+                <strong>{{ currencySymbol }} {{ studentData.balance | number:'1.2-2' }}</strong>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
       <!-- Quick Stats -->
       <div class="quick-stats" *ngIf="latestInvoice">
         <div class="stat-item">

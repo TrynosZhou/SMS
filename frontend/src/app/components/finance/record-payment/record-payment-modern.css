@@ -1,4 +1,48 @@
 /* Record Payment — purple hero theme */
+.rp-outstanding-terms {
+  margin: 1rem 0 1.25rem;
+  padding: 1rem;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+}
+
+.rp-outstanding-terms__title {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.rp-outstanding-terms__hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  color: #a16207;
+}
+
+.rp-outstanding-terms__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.rp-outstanding-terms__table th,
+.rp-outstanding-terms__table td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid #fde68a;
+}
+
+.rp-outstanding-terms__table .text-right {
+  text-align: right;
+}
+
+.rp-prior-tag {
+  display: inline-block;
+  margin-left: 0.25rem;
+  font-size: 0.7rem;
+  color: #b45309;
+}
+
 .rp-page.record-payment-container {
   --rp-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
   --rp-purple: #7c3aed;

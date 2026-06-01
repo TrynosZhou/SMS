@@ -529,6 +529,44 @@
   color: #dc2626;
 }
 
+.outstanding-by-term {
+  margin: 1.25rem 0;
+  padding: 1rem 1.25rem;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 12px;
+}
+
+.outstanding-by-term__title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.outstanding-by-term__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.outstanding-by-term__table th,
+.outstanding-by-term__table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #fde68a;
+}
+
+.outstanding-by-term__table .text-right {
+  text-align: right;
+}
+
+.be-prior-tag {
+  display: inline-block;
+  margin-left: 0.35rem;
+  font-size: 0.75rem;
+  color: #b45309;
+}
+
 .balance-note {
   font-size: 0.75rem;
   color: #64748b;

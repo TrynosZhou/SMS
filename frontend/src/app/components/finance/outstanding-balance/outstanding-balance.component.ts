@@ -371,14 +371,16 @@ export class OutstandingBalanceComponent implements OnInit, OnDestroy {
       this.error = 'You do not have permission to record payments';
       return;
     }
-    this.router.navigate(['/payments/record'], {
-      queryParams: {
-        studentId: balance.studentNumber || balance.studentId,
-        firstName: balance.firstName,
-        lastName: balance.lastName,
-        balance: balance.invoiceBalance
-      }
-    });
+    const params: Record<string, string> = {
+      studentId: balance.studentNumber || balance.studentId,
+      firstName: balance.firstName,
+      lastName: balance.lastName,
+      balance: String(balance.invoiceBalance ?? 0)
+    };
+    if (balance.invoiceId) {
+      params['paymentInvoiceId'] = balance.invoiceId;
+    }
+    this.router.navigate(['/payments/record'], { queryParams: params });
   }
 
   clearSearch(): void {
@@ -425,7 +427,9 @@ export class OutstandingBalanceComponent implements OnInit, OnDestroy {
   }
 
   trackByStudent(_index: number, balance: any): string {
-    return String(balance?.id || balance?.studentId || balance?.studentNumber || _index);
+    return String(
+      balance?.invoiceId || balance?.id || balance?.studentId || balance?.studentNumber || _index
+    );
   }
 
   exportCsv(): void {
@@ -438,13 +442,26 @@ export class OutstandingBalanceComponent implements OnInit, OnDestroy {
       const s = String(v ?? '');
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ['Student ID', 'Last Name', 'First Name', 'Sex', 'Class', 'Phone Number', 'Student Type', 'Invoice Balance'];
+    const header = [
+      'Student ID',
+      'Last Name',
+      'First Name',
+      'Term',
+      'Invoice #',
+      'Sex',
+      'Class',
+      'Phone Number',
+      'Student Type',
+      'Invoice Balance'
+    ];
     const lines = [header.join(',')];
     for (const r of items) {
       lines.push([
         esc(r.studentNumber || r.studentId),
         esc(r.lastName || ''),
         esc(r.firstName || ''),
+        esc(r.term || ''),
+        esc(r.invoiceNumber || ''),
         esc(r.gender || ''),
         esc(this.getClassName(r)),
         esc(r.phoneNumber || ''),

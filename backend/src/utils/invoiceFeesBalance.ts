@@ -2,6 +2,8 @@ import { Repository } from 'typeorm';
 import { Invoice } from '../entities/Invoice';
 import { Student } from '../entities/Student';
 import { Settings } from '../entities/Settings';
+import { parseAmount } from './numberUtils';
+import { recomputeInvoiceTotalsFromLineItems } from './studentLogisticsInvoice';
 import {
   outstandingExcludingTransportBucket,
   remainingBucketsAfterAppliedTotals,
@@ -137,6 +139,121 @@ export async function findInvoiceForReportCardAccess(
     where: { studentId, isVoided: false },
     order: { createdAt: 'DESC' }
   });
+}
+
+export type StudentOutstandingInvoiceRow = {
+  invoiceId: string;
+  invoiceNumber: string;
+  term: string | null;
+  owed: number;
+  previousBalance: number;
+  termFees: number;
+  paidAmount: number;
+  status: string;
+  createdAt: Date;
+  /** True when this row is the prior-term balance rolled into a newer invoice. */
+  includesPriorTermBalance: boolean;
+};
+
+/**
+ * Non-void invoices with money still owed, oldest first.
+ * Skips older invoices whose balance was carried forward on a newer invoice (previousBalance).
+ */
+export function listStudentOutstandingInvoices(
+  invoices: Invoice[],
+  student: Student | null | undefined,
+  configuredDeskFee: number
+): StudentOutstandingInvoiceRow[] {
+  const nonVoid = invoices
+    .filter((inv) => !inv.isVoided)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  const working = nonVoid.map((inv) => ({
+    inv,
+    owed: computeInvoiceOwedAmount(inv, student ?? null, configuredDeskFee)
+  }));
+
+  for (let i = 0; i < working.length; i++) {
+    if (working[i].owed <= 0.005) continue;
+    for (let j = i + 1; j < working.length; j++) {
+      if (tryNum(working[j].inv.previousBalance) > 0.005) {
+        working[i].owed = 0;
+        break;
+      }
+    }
+  }
+
+  return working
+    .filter((row) => row.owed > 0.005)
+    .map((row) => {
+      const prevBal = tryNum(row.inv.previousBalance);
+      const termFees = canonicalInvoiceTermFees(row.inv);
+      return {
+        invoiceId: row.inv.id,
+        invoiceNumber: row.inv.invoiceNumber,
+        term: row.inv.term ? String(row.inv.term) : null,
+        owed: parseFloat(row.owed.toFixed(2)),
+        previousBalance: prevBal,
+        termFees,
+        paidAmount: tryNum(row.inv.paidAmount),
+        status: String(row.inv.status || ''),
+        createdAt: row.inv.createdAt,
+        includesPriorTermBalance: prevBal > 0.005
+      };
+    });
+}
+
+/** Total tuition/fees owed across all terms (no double-count when balance was carried forward). */
+export function computeStudentTotalOutstanding(
+  invoices: Invoice[],
+  student: Student | null | undefined,
+  configuredDeskFee: number
+): number {
+  const rows = listStudentOutstandingInvoices(invoices, student, configuredDeskFee);
+  return parseFloat(rows.reduce((sum, row) => sum + row.owed, 0).toFixed(2));
+}
+
+/** Oldest invoice with outstanding balance — use for payment allocation (FIFO). */
+export function pickPaymentTargetInvoiceId(
+  invoices: Invoice[],
+  student: Student | null | undefined,
+  configuredDeskFee: number
+): string | null {
+  const rows = listStudentOutstandingInvoices(invoices, student, configuredDeskFee);
+  return rows.length > 0 ? rows[0].invoiceId : null;
+}
+
+/** Canonical amount to roll into the next term's previousBalance field. */
+export function computeCarryForwardBalance(
+  lastInvoice: Invoice | null | undefined,
+  student: Student | null | undefined,
+  configuredDeskFee: number
+): number {
+  if (!lastInvoice || lastInvoice.isVoided) return 0;
+  return computeInvoiceOwedAmount(lastInvoice, student ?? null, configuredDeskFee);
+}
+
+/**
+ * After creating a new invoice with previousBalance, clear the same amount on the prior invoice
+ * so prior + current terms are not double-counted.
+ */
+export function applyCarryForwardToPriorInvoice(
+  priorInvoice: Invoice,
+  amountCarried: number,
+  targetInvoiceNumber: string
+): void {
+  const carried = parseFloat(parseAmount(amountCarried).toFixed(2));
+  if (carried <= 0.005) return;
+
+  const clearAmount = carried;
+  priorInvoice.paidAmount = parseFloat(
+    (parseAmount(priorInvoice.paidAmount) + clearAmount).toFixed(2)
+  );
+  recomputeInvoiceTotalsFromLineItems(priorInvoice);
+
+  const note = `Balance ${clearAmount.toFixed(2)} carried forward to ${targetInvoiceNumber}`;
+  const existing = String(priorInvoice.description || '').trim();
+  priorInvoice.description = existing ? `${existing} | ${note}` : note;
 }
 
 /** Attach displayBalance on invoice payloads for list/detail APIs. */

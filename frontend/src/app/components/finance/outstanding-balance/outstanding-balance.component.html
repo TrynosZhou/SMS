@@ -163,6 +163,8 @@
                 <th>Student ID</th>
                 <th>Last name</th>
                 <th>First name</th>
+                <th>Term</th>
+                <th>Invoice</th>
                 <th>Sex</th>
                 <th>Phone</th>
                 <th>Type</th>
@@ -182,6 +184,11 @@
                 </td>
                 <td>{{ balance.lastName }}</td>
                 <td>{{ balance.firstName }}</td>
+                <td>
+                  {{ balance.term || '—' }}
+                  <span *ngIf="balance.includesPriorTermBalance" class="ob-prior-tag" title="Includes balance brought forward from a prior term">↩ prior</span>
+                </td>
+                <td>{{ balance.invoiceNumber || '—' }}</td>
                 <td>{{ balance.gender || '—' }}</td>
                 <td>{{ balance.phoneNumber || '—' }}</td>
                 <td>{{ balance.studentType || 'Day Scholar' }}</td>
@@ -218,6 +225,8 @@
             </div>
             <p class="ob-card__name">{{ balance.firstName }} {{ balance.lastName }}</p>
             <p class="ob-card__meta">
+              {{ balance.term || 'Term N/A' }} · {{ balance.invoiceNumber || 'Invoice' }}<br />
+              <span *ngIf="balance.includesPriorTermBalance">Includes prior-term balance · </span>
               {{ balance.gender || '—' }} · {{ balance.studentType || 'Day Scholar' }}<br />
               {{ balance.phoneNumber || 'No phone' }}
             </p>
