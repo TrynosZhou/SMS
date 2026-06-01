@@ -517,7 +517,7 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
     const queryBuilder = invoiceRepository
       .createQueryBuilder('invoice')
       .leftJoinAndSelect('invoice.student', 'student')
-      .andWhere('COALESCE(invoice.isVoided, false) = false')
+      .where('COALESCE(invoice.isVoided, false) = false')
       .orderBy('invoice.createdAt', 'DESC');
 
     if (studentId) {
@@ -552,9 +552,14 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
     });
     const configuredDeskFee = getConfiguredDeskFee(settingsList[0] ?? null);
 
-    const invoicesForClient = invoices.map((inv) =>
-      withDisplayBalance(inv, inv.student, configuredDeskFee)
-    );
+    const invoicesForClient = invoices.map((inv) => {
+      try {
+        return withDisplayBalance(inv, inv.student ?? null, configuredDeskFee);
+      } catch (mapErr) {
+        console.error(`[getInvoices] balance map failed for ${inv.invoiceNumber}:`, mapErr);
+        return { ...inv, balance: parseAmount(inv.balance), displayBalance: parseAmount(inv.balance) };
+      }
+    });
 
     const allForTotals = allMatching;
     let totalBalance = 0;
@@ -577,8 +582,9 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
         totalPaidAmount
       })
     );
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
+  } catch (error: any) {
+    console.error('[getInvoices] Error:', error);
+    res.status(500).json({ message: 'Server error', error: error?.message || 'Unknown error' });
   }
 };
 

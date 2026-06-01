@@ -278,14 +278,7 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
         this.academicYear = data.academicYear || new Date().getFullYear().toString();
         this.currentTermFromSettings = data.currentTerm || `Term 1 ${new Date().getFullYear()}`;
         this.quickPaymentTerm = this.currentTermFromSettings;
-        // Default term filter to active term
-        if (!this.selectedTermFilter?.trim() && this.currentTermFromSettings) {
-          this.selectedTermFilter = this.currentTermFromSettings;
-          this.loadTermStats();
-          if (this.invoices.length > 0) {
-            this.filterInvoices();
-          }
-        }
+        // Do not auto-filter by active term — it hid invoices from other terms and showed "No invoices found".
 
         if (data.feesSettings && data.feesSettings.transportCost != null) {
           const rawTransport = data.feesSettings.transportCost;
@@ -345,21 +338,28 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
             const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
             return dateB - dateA;
           });
-          // Initialize filteredInvoices with all invoices if no filters are active
-          if (!this.hasActiveInvoiceFilters()) {
-            this.filteredInvoices = [...this.invoices];
-          } else {
-            this.filterInvoices();
-          }
+          this.filterInvoices();
           this.updateCachedStats();
           this.lastLoadedAt = new Date();
+          if (this.invoices.length > 0 && this.filteredInvoices.length === 0 && this.hasActiveInvoiceFilters()) {
+            this.error =
+              `${this.invoices.length} invoice(s) loaded but none match the current filters. Clear filters to see all.`;
+          } else {
+            this.error = '';
+          }
         },
         error: (err: any) => {
           console.error('Error loading invoices:', err);
           this.invoices = [];
           this.filteredInvoices = [];
           this.updateCachedStats();
-          this.error = 'Failed to load invoices';
+          if (err?.status === 0) {
+            this.error = 'Cannot reach the server. Start the backend (port 3000) and refresh.';
+          } else if (err?.status === 403) {
+            this.error = err?.error?.message || 'You do not have permission to view invoices.';
+          } else {
+            this.error = err?.error?.message || 'Failed to load invoices';
+          }
         }
       });
   }
@@ -496,11 +496,12 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
       });
     }
 
-    // Apply term filter
-    if (this.selectedTermFilter) {
-      filtered = filtered.filter(invoice => {
-        const invoiceTerm = (invoice.term || '').toLowerCase();
-        return invoiceTerm === this.selectedTermFilter.toLowerCase();
+    // Apply term filter (trim so minor formatting differences do not hide rows)
+    if (this.selectedTermFilter?.trim()) {
+      const termNeedle = this.selectedTermFilter.trim().toLowerCase();
+      filtered = filtered.filter((invoice) => {
+        const invoiceTerm = String(invoice.term || '').trim().toLowerCase();
+        return invoiceTerm === termNeedle;
       });
     }
 

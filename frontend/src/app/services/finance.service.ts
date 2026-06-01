@@ -44,9 +44,11 @@ export class FinanceService {
         return data;
       }),
       catchError((error: any) => {
-        // Always return empty array on any error (401, 500, network, etc.)
         console.error('Error loading invoices:', error);
-        return of([]);
+        if (error?.status === 0) {
+          return of([]);
+        }
+        return throwError(() => error);
       })
     );
   }

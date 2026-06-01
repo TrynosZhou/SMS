@@ -33,7 +33,7 @@
       </div>
     </div>
 
-    <div class="inv-hero-stats" *ngIf="!loading && invoices.length > 0">
+    <div class="inv-hero-stats" *ngIf="!loading && filteredInvoices.length > 0">
       <article class="inv-stat">
         <span class="inv-stat__value">{{ filteredInvoices.length }}</span>
         <span class="inv-stat__label">Showing</span>
@@ -312,7 +312,11 @@
         <div *ngIf="filteredInvoices.length === 0" class="inv-empty">
           <span class="inv-empty-icon" aria-hidden="true">📋</span>
           <h3>No invoices found</h3>
-          <p *ngIf="hasActiveInvoiceFilters()">
+          <p *ngIf="hasActiveInvoiceFilters() && invoices.length > 0">
+            {{ invoices.length }} invoice(s) are loaded but hidden by filters.
+            <button type="button" class="inv-btn-clear" (click)="clearInvoiceFilters()">Show all invoices</button>.
+          </p>
+          <p *ngIf="hasActiveInvoiceFilters() && invoices.length === 0">
             Try adjusting filters or
             <button type="button" class="inv-btn-clear" (click)="clearInvoiceFilters()">clear all filters</button>.
           </p>
