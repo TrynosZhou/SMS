@@ -19,6 +19,7 @@ import {
   computeCarryForwardBalance,
   computeInvoiceOwedAmount,
   computeStudentTotalOutstanding,
+  enforceInvoiceBalanceAfterNote,
   canonicalInvoiceTermFees,
   getConfiguredDeskFee,
   listStudentOutstandingInvoices,
@@ -962,38 +963,7 @@ export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
       invoice.diningHallAmount = componentAfter;
     }
 
-    const expectedBalanceAfterNote = Math.max(
-      0,
-      parseFloat((balanceBefore + delta).toFixed(2))
-    );
-
-    recomputeInvoiceTotalsFromLineItems(invoice);
-
-    // When the account was fully settled, do not let unused prepaid absorb new debit-note charges.
-    if (type === 'debit' && balanceBefore <= 0.005) {
-      let actualAfter = computeCanonicalInvoiceBalance(invoice);
-      if (actualAfter + 0.005 < expectedBalanceAfterNote) {
-        const prepaidReduce = parseFloat((expectedBalanceAfterNote - actualAfter).toFixed(2));
-        invoice.prepaidAmount = Math.max(
-          0,
-          parseFloat((parseAmount(invoice.prepaidAmount) - prepaidReduce).toFixed(2))
-        );
-        recomputeInvoiceTotalsFromLineItems(invoice);
-        actualAfter = computeCanonicalInvoiceBalance(invoice);
-      }
-      if (Math.abs(actualAfter - expectedBalanceAfterNote) >= 0.005) {
-        invoice.balance = expectedBalanceAfterNote;
-        if (invoice.balance <= 0.005) {
-          invoice.status = InvoiceStatus.PAID;
-        } else if (parseAmount(invoice.paidAmount) > 0.005) {
-          invoice.status = InvoiceStatus.PARTIAL;
-        } else if (invoice.dueDate && new Date(invoice.dueDate) < new Date()) {
-          invoice.status = InvoiceStatus.OVERDUE;
-        } else {
-          invoice.status = InvoiceStatus.PENDING;
-        }
-      }
-    }
+    enforceInvoiceBalanceAfterNote(invoice, balanceBefore, delta);
 
     const itemLabel =
       item === 'tuition'

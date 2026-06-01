@@ -1,5 +1,5 @@
 import { Repository } from 'typeorm';
-import { Invoice } from '../entities/Invoice';
+import { Invoice, InvoiceStatus } from '../entities/Invoice';
 import { Student } from '../entities/Student';
 import { Settings } from '../entities/Settings';
 import { parseAmount } from './numberUtils';
@@ -254,6 +254,50 @@ export function applyCarryForwardToPriorInvoice(
   const note = `Balance ${clearAmount.toFixed(2)} carried forward to ${targetInvoiceNumber}`;
   const existing = String(priorInvoice.description || '').trim();
   priorInvoice.description = existing ? `${existing} | ${note}` : note;
+}
+
+/**
+ * After a credit/debit note changes line items, outstanding must change by exactly `delta`
+ * from `balanceBefore`. Adjusts the prepaid pool so canonical balance matches (prepaid must
+ * not absorb new debit charges when the account looked settled).
+ */
+export function enforceInvoiceBalanceAfterNote(
+  invoice: Invoice,
+  balanceBefore: number,
+  delta: number
+): void {
+  const expected = Math.max(0, parseFloat((balanceBefore + delta).toFixed(2)));
+
+  recomputeInvoiceTotalsFromLineItems(invoice);
+
+  let actual = computeCanonicalInvoiceBalance(invoice);
+  if (Math.abs(actual - expected) < 0.005) {
+    return;
+  }
+
+  const totalOwed = parseFloat(
+    (tryNum(invoice.previousBalance) + canonicalInvoiceTermFees(invoice)).toFixed(2)
+  );
+  const paid = tryNum(invoice.paidAmount);
+  const requiredPrepaidPool = Math.max(0, parseFloat((totalOwed - paid - expected).toFixed(2)));
+  invoice.prepaidAmount = parseFloat(Math.min(requiredPrepaidPool, totalOwed).toFixed(2));
+
+  recomputeInvoiceTotalsFromLineItems(invoice);
+  actual = computeCanonicalInvoiceBalance(invoice);
+
+  if (Math.abs(actual - expected) >= 0.005) {
+    invoice.balance = expected;
+    const paidAmount = tryNum(invoice.paidAmount);
+    if (expected <= 0.005) {
+      invoice.status = InvoiceStatus.PAID;
+    } else if (paidAmount > 0.005) {
+      invoice.status = InvoiceStatus.PARTIAL;
+    } else if (invoice.dueDate && new Date(invoice.dueDate) < new Date()) {
+      invoice.status = InvoiceStatus.OVERDUE;
+    } else {
+      invoice.status = InvoiceStatus.PENDING;
+    }
+  }
 }
 
 /** Attach displayBalance on invoice payloads for list/detail APIs. */
