@@ -335,9 +335,15 @@ export class InvoiceNotePageComponent implements OnInit, OnDestroy {
             this.noteError = 'Unexpected response from server. Please refresh and try again.';
             return;
           }
-          this.selectedInvoice = updatedInvoice;
+          this.selectedInvoice = {
+            ...updatedInvoice,
+            balance:
+              response?.balanceAfter != null
+                ? response.balanceAfter
+                : updatedInvoice.balance,
+          };
           const idx = this.invoices.findIndex((inv) => inv.id === updatedInvoice.id);
-          if (idx !== -1) this.invoices[idx] = updatedInvoice;
+          if (idx !== -1) this.invoices[idx] = this.selectedInvoice;
 
           const itemLabel = this.noteItemLabel(this.noteForm.item);
           const student = updatedInvoice.student;
@@ -345,17 +351,28 @@ export class InvoiceNotePageComponent implements OnInit, OnDestroy {
             ? `${student.firstName || ''} ${student.lastName || ''}`.trim()
             : 'Student';
           const invNum = updatedInvoice.invoiceNumber || updatedInvoice.id;
-          const newBal = parseFloat(String(updatedInvoice.balance ?? 0)).toFixed(2);
+          const newBal = parseFloat(
+            String(response?.balanceAfter ?? updatedInvoice.balance ?? 0)
+          ).toFixed(2);
+          const prevBal =
+            response?.balanceBefore != null
+              ? parseFloat(String(response.balanceBefore)).toFixed(2)
+              : null;
           const amtStr = noteAmount.toFixed(2);
+
+          const balChange =
+            prevBal != null
+              ? ` Balance changed from ${this.currencySymbol} ${prevBal} to ${this.currencySymbol} ${newBal}.`
+              : ` Updated balance: ${this.currencySymbol} ${newBal}.`;
 
           if (this.isCredit) {
             this.noteSuccess =
               `${this.currencySymbol} ${amtStr} was deducted from ${itemLabel} for ${studentName} ` +
-              `(Invoice ${invNum}). Updated balance: ${this.currencySymbol} ${newBal}.`;
+              `(Invoice ${invNum}).${balChange}`;
           } else {
             this.noteSuccess =
               `${this.currencySymbol} ${amtStr} was added to ${itemLabel} for ${studentName} ` +
-              `(Invoice ${invNum}). Updated balance: ${this.currencySymbol} ${newBal}.`;
+              `(Invoice ${invNum}).${balChange}`;
           }
         },
         error: (err: any) => {

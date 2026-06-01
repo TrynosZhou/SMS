@@ -24,6 +24,21 @@ export type LogisticsFeesForOutstanding = {
 
 const tryNum = (v: unknown): number => (isFinite(Number(v)) ? Number(v) : 0);
 
+/**
+ * Older bulk invoices often have `amount` set but fee line columns empty.
+ * Balance and notes use line items — seed tuition from amount when needed.
+ */
+export function hydrateInvoiceLineItemsFromAmount(invoice: Invoice | null | undefined): boolean {
+  if (!invoice || invoice.isVoided) return false;
+  const termFees = canonicalInvoiceTermFees(invoice);
+  const amountCol = tryNum(invoice.amount);
+  if (termFees > 0.005 || amountCol <= 0.005) return false;
+
+  invoice.tuitionAmount = parseFloat(amountCol.toFixed(2));
+  invoice.amount = invoice.tuitionAmount;
+  return true;
+}
+
 /** Term fee lines on the invoice (tuition, transport, DH, registration, desk). */
 export function canonicalInvoiceTermFees(invoice: Invoice | null | undefined): number {
   if (!invoice) return 0;
@@ -40,20 +55,40 @@ export function canonicalInvoiceTermFees(invoice: Invoice | null | undefined): n
  * receipts, and the credit/debit note invoice summary:
  *   (previousBalance + termFees) − appliedPrepaid − paidAmount
  */
+function effectiveTermFeesForBalance(invoice: Invoice): number {
+  const fromLines = canonicalInvoiceTermFees(invoice);
+  if (fromLines > 0.005) return fromLines;
+  return tryNum(invoice.amount);
+}
+
 export function computeCanonicalInvoiceBalance(invoice: Invoice | null | undefined): number {
   if (!invoice || invoice.isVoided) return 0;
 
-  const termFees = canonicalInvoiceTermFees(invoice);
+  const termFees = effectiveTermFeesForBalance(invoice);
   const previousBalance = tryNum(invoice.previousBalance);
   const paidAmount = tryNum(invoice.paidAmount);
-  const prepaid = tryNum(invoice.prepaidAmount);
+  const prepaidRemaining = tryNum(invoice.prepaidAmount);
 
   const totalOwed = parseFloat((previousBalance + termFees).toFixed(2));
-  const appliedPrepaid = Math.min(prepaid, totalOwed);
-  return Math.max(
+  const balanceCol = tryNum(invoice.balance);
+
+  // Same formula as recomputeInvoiceTotalsFromLineItems (prepaid pool applied up to totalOwed)
+  const appliedPrepaid = Math.min(prepaidRemaining, totalOwed);
+  const fromLineItems = Math.max(
     0,
     parseFloat((totalOwed - appliedPrepaid - paidAmount).toFixed(2))
   );
+
+  if (termFees <= 0.005 && previousBalance <= 0.005) {
+    return Math.max(0, balanceCol);
+  }
+
+  // Stale low balance column: trust line items. After debit notes, column can be ahead of pool math.
+  if (balanceCol > fromLineItems + 0.02) {
+    return parseFloat(balanceCol.toFixed(2));
+  }
+
+  return fromLineItems;
 }
 
 function isFullPercentageExemption(student: Student | null | undefined): boolean {
@@ -266,37 +301,41 @@ export function enforceInvoiceBalanceAfterNote(
   balanceBefore: number,
   delta: number
 ): void {
+  hydrateInvoiceLineItemsFromAmount(invoice);
+
   const expected = Math.max(0, parseFloat((balanceBefore + delta).toFixed(2)));
-
-  recomputeInvoiceTotalsFromLineItems(invoice);
-
-  let actual = computeCanonicalInvoiceBalance(invoice);
-  if (Math.abs(actual - expected) < 0.005) {
-    return;
-  }
+  const termFees = canonicalInvoiceTermFees(invoice);
+  invoice.amount = termFees;
 
   const totalOwed = parseFloat(
-    (tryNum(invoice.previousBalance) + canonicalInvoiceTermFees(invoice)).toFixed(2)
+    (tryNum(invoice.previousBalance) + termFees).toFixed(2)
   );
   const paid = tryNum(invoice.paidAmount);
-  const requiredPrepaidPool = Math.max(0, parseFloat((totalOwed - paid - expected).toFixed(2)));
-  invoice.prepaidAmount = parseFloat(Math.min(requiredPrepaidPool, totalOwed).toFixed(2));
 
-  recomputeInvoiceTotalsFromLineItems(invoice);
-  actual = computeCanonicalInvoiceBalance(invoice);
+  invoice.balance = expected;
+  invoice.prepaidAmount = Math.max(
+    0,
+    parseFloat((totalOwed - paid - expected).toFixed(2))
+  );
 
+  const paidAmount = tryNum(invoice.paidAmount);
+  if (expected <= 0.005) {
+    invoice.status = InvoiceStatus.PAID;
+  } else if (paidAmount > 0.005) {
+    invoice.status = InvoiceStatus.PARTIAL;
+  } else if (invoice.dueDate && new Date(invoice.dueDate) < new Date()) {
+    invoice.status = InvoiceStatus.OVERDUE;
+  } else {
+    invoice.status = InvoiceStatus.PENDING;
+  }
+
+  const actual = computeCanonicalInvoiceBalance(invoice);
   if (Math.abs(actual - expected) >= 0.005) {
     invoice.balance = expected;
-    const paidAmount = tryNum(invoice.paidAmount);
-    if (expected <= 0.005) {
-      invoice.status = InvoiceStatus.PAID;
-    } else if (paidAmount > 0.005) {
-      invoice.status = InvoiceStatus.PARTIAL;
-    } else if (invoice.dueDate && new Date(invoice.dueDate) < new Date()) {
-      invoice.status = InvoiceStatus.OVERDUE;
-    } else {
-      invoice.status = InvoiceStatus.PENDING;
-    }
+    invoice.prepaidAmount = Math.max(
+      0,
+      parseFloat((totalOwed - paid - expected).toFixed(2))
+    );
   }
 }
 

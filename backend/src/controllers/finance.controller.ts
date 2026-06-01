@@ -20,6 +20,7 @@ import {
   computeInvoiceOwedAmount,
   computeStudentTotalOutstanding,
   enforceInvoiceBalanceAfterNote,
+  hydrateInvoiceLineItemsFromAmount,
   canonicalInvoiceTermFees,
   getConfiguredDeskFee,
   listStudentOutstandingInvoices,
@@ -937,6 +938,8 @@ export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Invoice not found' });
     }
 
+    hydrateInvoiceLineItemsFromAmount(invoice);
+
     const balanceBefore = computeCanonicalInvoiceBalance(invoice);
 
     if (type === 'credit' && amt > balanceBefore + 0.005) {
@@ -1041,9 +1044,13 @@ export const applyInvoiceNote = async (req: AuthRequest, res: Response) => {
     const clientInvoice = invoiceForClient ?? savedInvoice;
     const studentForBalance = clientInvoice.student ?? student ?? null;
 
+    const balanceAfter = computeCanonicalInvoiceBalance(clientInvoice ?? savedInvoice);
+
     res.json({
       message: type === 'credit' ? 'Credit Note applied successfully' : 'Debit Note applied successfully',
-      invoice: withDisplayBalance(clientInvoice, studentForBalance, deskFee)
+      invoice: withDisplayBalance(clientInvoice, studentForBalance, deskFee),
+      balanceBefore,
+      balanceAfter
     });
   } catch (error: any) {
     console.error('Error applying invoice note:', error);
@@ -1270,11 +1277,18 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
           balance: finalBalance,
           prepaidAmount: remainingPrepaid,
           paidAmount: appliedPrepaid,
+          tuitionAmount: termFees,
+          transportAmount: 0,
+          diningHallAmount: 0,
+          registrationAmount: 0,
+          deskFeeAmount: 0,
           dueDate: new Date(dueDate),
           term: nextTerm,
           description: description || `Fees for ${nextTerm} - ${student.studentType}${(student.isStaffChild || student.isExempted) ? ' (Staff/Exempted)' : ''}`,
           status: finalBalance <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PENDING
         });
+
+        recomputeInvoiceTotalsFromLineItems(invoice);
 
         const savedInvoice = await invoiceRepository.save(invoice);
 
