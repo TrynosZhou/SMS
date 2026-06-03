@@ -20,6 +20,7 @@ export interface AcademicTermRecord {
 
 export type AcademicSettingsTab =
   | 'terms'
+  | 'grades'
   | 'classes'
   | 'subjects'
   | 'departments'
@@ -37,6 +38,7 @@ export class AcademicSettingsComponent implements OnInit, OnDestroy {
 
   readonly tabs: { id: AcademicSettingsTab; label: string; icon: string }[] = [
     { id: 'terms', label: 'Terms', icon: '📅' },
+    { id: 'grades', label: 'Grades', icon: '📊' },
     { id: 'classes', label: 'Classes', icon: '🏫' },
     { id: 'subjects', label: 'Subjects', icon: '📚' },
     { id: 'departments', label: 'Departments', icon: '🏛️' },
@@ -80,6 +82,7 @@ export class AcademicSettingsComponent implements OnInit, OnDestroy {
   termForm: AcademicTermRecord = this.emptyTermForm();
 
   newClassLevel = '';
+  gradeSearch = '';
   promotionRules: any[] = [];
 
   constructor(
@@ -157,7 +160,8 @@ export class AcademicSettingsComponent implements OnInit, OnDestroy {
             if (this.terms.length === 0) {
               this.terms = this.seedTermsFromLegacySettings(data);
             }
-            this.restoreClassLevelsFromCache();
+            this.ensureClassLevelsArray();
+            this.mergeClassLevelsFromCacheIfEmpty();
             this.ensureGradingDefaults();
           } catch (e) {
             console.error('[AcademicSettings] Failed to process settings:', e);
@@ -534,41 +538,124 @@ export class AcademicSettingsComponent implements OnInit, OnDestroy {
     });
   }
 
-  addClassLevel(): void {
-    const v = (this.newClassLevel || '').trim();
-    if (!v) {
-      return;
+  get filteredClassLevels(): string[] {
+    const levels: string[] = Array.isArray(this.settings.classLevels)
+      ? this.settings.classLevels.map((g: unknown) => String(g ?? '').trim()).filter(Boolean)
+      : [];
+    const q = this.gradeSearch.trim().toLowerCase();
+    if (!q) {
+      return levels;
     }
+    return levels.filter((g: string) => g.toLowerCase().includes(q));
+  }
+
+  private ensureClassLevelsArray(): void {
     if (!Array.isArray(this.settings.classLevels)) {
       this.settings.classLevels = [];
     }
-    if (!this.settings.classLevels.includes(v)) {
-      this.settings.classLevels.push(v);
-    }
-    this.newClassLevel = '';
-    this.persistClassLevelsToCache();
   }
 
-  removeClassLevel(i: number): void {
-    this.settings.classLevels.splice(i, 1);
-    this.persistClassLevelsToCache();
+  private mergeClassLevelsFromCacheIfEmpty(): void {
+    if (this.settings.classLevels.length > 0) {
+      this.persistClassLevelsToCache();
+      return;
+    }
+    try {
+      const cached = localStorage.getItem('settings_classLevels');
+      if (!cached) {
+        return;
+      }
+      const arr = JSON.parse(cached);
+      if (Array.isArray(arr) && arr.length > 0) {
+        this.settings.classLevels = arr
+          .map((g: unknown) => String(g ?? '').trim())
+          .filter((g: string) => g.length > 0);
+      }
+    } catch (_) {}
+  }
+
+  addClassLevel(): void {
+    if (this.isDemoUser()) {
+      this.error = 'Demo accounts cannot modify grades.';
+      return;
+    }
+    const v = (this.newClassLevel || '').trim();
+    if (!v) {
+      this.error = 'Enter a grade name (e.g. ECD, Stage 1A).';
+      setTimeout(() => (this.error = ''), 4000);
+      return;
+    }
+    this.ensureClassLevelsArray();
+    const exists = this.settings.classLevels.some(
+      (g: string) => String(g).trim().toLowerCase() === v.toLowerCase()
+    );
+    if (exists) {
+      this.error = `"${v}" is already in the list.`;
+      setTimeout(() => (this.error = ''), 4000);
+      return;
+    }
+    this.settings.classLevels.push(v);
+    this.settings.classLevels.sort((a: string, b: string) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true })
+    );
+    this.newClassLevel = '';
+    this.error = '';
+    this.saveGradesSettings(false);
+  }
+
+  removeClassLevel(gradeName: string): void {
+    if (this.isDemoUser()) {
+      return;
+    }
+    const name = String(gradeName || '').trim();
+    if (!name) {
+      return;
+    }
+    const levels = Array.isArray(this.settings.classLevels) ? [...this.settings.classLevels] : [];
+    const idx = levels.findIndex((g: string) => g.trim() === name);
+    if (idx < 0) {
+      return;
+    }
+    if (!confirm(`Remove grade "${name}"? Students already assigned this grade are not changed automatically.`)) {
+      return;
+    }
+    levels.splice(idx, 1);
+    this.settings.classLevels = levels;
+    this.saveGradesSettings(false);
+  }
+
+  saveGradesSettings(showSuccess = true): void {
+    if (this.isDemoUser()) {
+      this.error = 'Demo accounts cannot modify grades.';
+      return;
+    }
+    this.ensureClassLevelsArray();
+    this.saving = true;
+    this.error = '';
+    const payload = {
+      classLevels: [...this.settings.classLevels]
+    };
+    this.settingsService.updateSettings(payload).subscribe({
+      next: () => {
+        this.persistClassLevelsToCache();
+        if (showSuccess) {
+          this.success = 'Grades saved successfully.';
+          setTimeout(() => (this.success = ''), 4000);
+        }
+        this.saving = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.error = err?.error?.message || 'Failed to save grades.';
+        this.saving = false;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   private persistClassLevelsToCache(): void {
     try {
       localStorage.setItem('settings_classLevels', JSON.stringify(this.settings.classLevels || []));
-    } catch (_) {}
-  }
-
-  private restoreClassLevelsFromCache(): void {
-    try {
-      const cached = localStorage.getItem('settings_classLevels');
-      if (cached) {
-        const arr = JSON.parse(cached);
-        if (Array.isArray(arr)) {
-          this.settings.classLevels = arr;
-        }
-      }
     } catch (_) {}
   }
 

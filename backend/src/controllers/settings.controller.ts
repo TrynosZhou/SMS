@@ -346,6 +346,7 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       termStartDate,
       termEndDate,
       academicTerms,
+      classLevels,
       currencySymbol,
       moduleAccess,
       universalTeacherEnabled,
@@ -515,6 +516,17 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
     }
     if (academicTerms !== undefined) {
       settings.academicTerms = Array.isArray(academicTerms) ? academicTerms : [];
+    }
+    if (classLevels !== undefined) {
+      const raw = Array.isArray(classLevels) ? classLevels : [];
+      const normalized = Array.from(
+        new Set(
+          raw
+            .map((g: unknown) => (typeof g === 'string' ? g.trim() : String(g ?? '').trim()))
+            .filter((g: string) => g.length > 0)
+        )
+      ).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }));
+      settings.classLevels = normalized;
     }
     if (currencySymbol !== undefined) {
       settings.currencySymbol = String(currencySymbol).trim() || 'KES';

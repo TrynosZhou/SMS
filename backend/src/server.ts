@@ -59,7 +59,7 @@ app.get('/', (req, res) => res.send('<h1>School Management System API</h1><p>Use
 app.use((req, res) => res.status(404).json({ message: 'Route not found', path: req.path, method: req.method }));
 
 // =================== DATABASE & SERVER ===================
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 3000;
 
 process.on('uncaughtException', (err) => {
   console.error('[Server] ✗ UNCAUGHT EXCEPTION:', err);
@@ -328,6 +328,15 @@ async function startServer(): Promise<void> {
       }
     } else {
       console.log('[Server] RUN_MIGRATIONS set to false, skipping migrations');
+    }
+
+    if (missingTables.length === 0 && AppDataSource.isInitialized) {
+      try {
+        const { ensureSettingsClassLevelsColumn } = await import('./utils/ensureSettingsSchema');
+        await ensureSettingsClassLevelsColumn();
+      } catch (schemaPatchErr: any) {
+        console.warn('[Server] ⚠️ settings.classLevels schema check:', schemaPatchErr?.message || schemaPatchErr);
+      }
     }
 
     // Final verification

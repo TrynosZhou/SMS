@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { finalize, takeUntil } from 'rxjs/operators';
+import { filter, finalize, takeUntil } from 'rxjs/operators';
 import { StudentService } from '../../../services/student.service';
 import { StudentRefreshService } from '../../../services/student-refresh.service';
 import { ClassService } from '../../../services/class.service';
@@ -41,6 +41,8 @@ student: any = {
   private loadedStudentStatus: string | null = null;
 
   gradeLevels: string[] = [];
+  gradesLoading = false;
+  gradesLoadFailed = false;
   selectedGradeLevel: string = '';
   classes: any[] = [];
   filteredClasses: any[] = [];
@@ -120,6 +122,19 @@ goBack() {
     this.readQueryParams();
     this.loadClasses();
     this.loadStudentIdPrefix();
+    this.loadGradeLevels();
+
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        const url = (this.router.url || '').split('?')[0];
+        if (url.includes('/students/new') || (url.includes('/students/') && url.includes('/edit'))) {
+          this.loadGradeLevels();
+        }
+      });
 
     const user = this.authService.getCurrentUser();
     const url = (this.router.url || '').split('?')[0];
@@ -234,21 +249,6 @@ const qp = this.route.snapshot.queryParamMap;
         if (prefix) {
           this.studentIdPrefix = prefix.toUpperCase();
         }
-        if (Array.isArray(settings?.classLevels) && settings.classLevels.length > 0) {
-          this.gradeLevels = settings.classLevels;
-        } else {
-          try {
-            const cached = localStorage.getItem('settings_classLevels');
-            if (cached) {
-              const arr = JSON.parse(cached);
-              this.gradeLevels = Array.isArray(arr) ? arr : [];
-            } else {
-              this.gradeLevels = [];
-            }
-          } catch (_) {
-            this.gradeLevels = [];
-          }
-        }
         this.feesSettings = settings?.feesSettings || null;
         this.currencySymbol = typeof settings?.currencySymbol === 'string' ? settings.currencySymbol : '';
         this.recalculateEstimatedFees();
@@ -257,6 +257,42 @@ const qp = this.route.snapshot.queryParamMap;
         console.error('Error loading student ID prefix:', err);
       }
     });
+  }
+
+  private ensureSelectedGradeInList(): void {
+    const g = String(this.selectedGradeLevel || '').trim();
+    if (!g || this.gradeLevels.includes(g)) {
+      return;
+    }
+    this.gradeLevels = [...this.gradeLevels, g].sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true })
+    );
+  }
+
+  /** Grades from Academic Settings → Grades (API: settings.classLevels). */
+  loadGradeLevels(): void {
+    this.gradesLoading = true;
+    this.gradesLoadFailed = false;
+    this.settingsService
+      .getSchoolGrades()
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.gradesLoading = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (grades) => {
+          this.gradeLevels = grades;
+          this.gradesLoadFailed = false;
+          this.ensureSelectedGradeInList();
+        },
+        error: () => {
+          this.gradeLevels = [];
+          this.gradesLoadFailed = true;
+        }
+      });
   }
 
   loadClasses() {
@@ -527,6 +563,7 @@ if (status === 'New') {
             photo: data.photo || null
           };
           this.selectedGradeLevel = (data as any).grade || (data as any).classLevel || (data as any).gradeLevel || '';
+          this.ensureSelectedGradeInList();
 
           if (data.photo) {
             this.photoPreview = `http://localhost:3001${data.photo}`;

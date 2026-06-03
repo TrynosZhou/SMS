@@ -126,10 +126,19 @@
               id="gradeLevel"
               class="eskooly-input"
               [(ngModel)]="selectedGradeLevel"
-              name="gradeLevel">
-              <option value="">Select grade</option>
+              name="gradeLevel"
+              [disabled]="gradesLoading">
+              <option value="">{{ gradesLoading ? 'Loading grades...' : 'Select grade' }}</option>
               <option *ngFor="let level of gradeLevels" [value]="level">{{ level }}</option>
             </select>
+            <small class="form-hint" *ngIf="!gradesLoading && gradeLevels.length === 0 && !gradesLoadFailed">
+              No grades configured.
+              <a routerLink="/academic-settings/grades">Add grades in Academic Settings</a>.
+            </small>
+            <small class="form-hint form-hint--error" *ngIf="gradesLoadFailed">
+              Could not load grades. Check that the backend is running, then
+              <a routerLink="/academic-settings/grades">configure grades</a>.
+            </small>
           </div>
 
           <div class="eskooly-field optional" *ngIf="!limitedEditMode && isEdit">

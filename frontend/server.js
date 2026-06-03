@@ -1,7 +1,8 @@
 const express = require('express');
 const path = require('path');
 const app = express();
-const PORT = process.env.PORT || 3000;
+// Default 8080 — keep 3000 free for the SMS API (ng serve proxies /api → :3000).
+const PORT = process.env.PORT || 8080;
 
 // Serve static files from the Angular app
 app.use(express.static(path.join(__dirname, 'dist/sms-frontend'), {

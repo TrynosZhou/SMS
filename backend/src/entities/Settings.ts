@@ -105,6 +105,10 @@ export class Settings {
   @Column({ type: 'date', nullable: true })
   termEndDate: Date | null; // Closing day of the term
 
+  /** School grade / form levels (e.g. ECD, Stage 1A) — Academic Settings → Grades tab */
+  @Column({ type: 'json', nullable: true })
+  classLevels: string[] | null;
+
   /** Managed academic terms (Terms tab in Academic Settings) */
   @Column({ type: 'json', nullable: true })
   academicTerms: Array<{

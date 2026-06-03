@@ -7,7 +7,7 @@
       <span class="academic-page-icon">🎓</span>
       <div>
         <h1>Academic Settings</h1>
-        <p>Manage terms, classes, subjects, departments, and grading systems</p>
+        <p>Manage terms, grades, classes, subjects, departments, and grading systems</p>
       </div>
     </div>
   </header>
@@ -87,6 +87,81 @@
           </tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Grades (school grade / form levels) -->
+  <div class="academic-panel academic-grades-panel" *ngIf="!loading && activeTab === 'grades'">
+    <div class="grades-manage-hero">
+      <h2>School Grades</h2>
+      <p>
+        Define grade or form levels used when enrolling students and filtering lists
+        (e.g. ECD, Stage 1A, Stage 1B).
+      </p>
+    </div>
+
+    <div class="grades-directory-bar">
+      <div class="grades-directory-text">
+        <strong>Configured grades</strong>
+        <span>Total: {{ filteredClassLevels.length }} grade{{ filteredClassLevels.length === 1 ? '' : 's' }}</span>
+      </div>
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="saveGradesSettings()"
+        [disabled]="saving || isDemoUser()">
+        {{ saving ? 'Saving...' : 'Save grades' }}
+      </button>
+    </div>
+
+    <div class="grades-add-row">
+      <div class="search-wrap grades-add-input-wrap">
+        <input
+          type="text"
+          [(ngModel)]="newClassLevel"
+          (keyup.enter)="addClassLevel()"
+          placeholder="New grade name (e.g. Stage 2A)"
+          [disabled]="isDemoUser()"
+          aria-label="New grade name" />
+      </div>
+      <button
+        type="button"
+        class="btn btn-add-term"
+        (click)="addClassLevel()"
+        [disabled]="isDemoUser() || saving || !newClassLevel.trim()">
+        + Add Grade
+      </button>
+    </div>
+
+    <div class="academic-panel-filters grades-search-row">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" [(ngModel)]="gradeSearch" placeholder="Search grades..." />
+      </div>
+    </div>
+
+    <div class="grades-grid" *ngIf="filteredClassLevels.length > 0">
+      <div class="grade-card" *ngFor="let grade of filteredClassLevels">
+        <span class="grade-card__name">{{ grade }}</span>
+        <button
+          type="button"
+          class="btn-grade-remove"
+          (click)="removeClassLevel(grade)"
+          [disabled]="isDemoUser() || saving"
+          title="Remove grade"
+          aria-label="Remove grade">
+          🗑️
+        </button>
+      </div>
+    </div>
+
+    <div class="grades-empty" *ngIf="filteredClassLevels.length === 0">
+      <p *ngIf="gradeSearch.trim()">No grades match your search.</p>
+      <p *ngIf="!gradeSearch.trim()">No grades configured yet. Add your first grade above.</p>
+    </div>
+
+    <div class="alert alert-info grades-hint">
+      <strong>Tip:</strong> Grades appear in the student enrollment form and student filters after they are saved.
     </div>
   </div>
 

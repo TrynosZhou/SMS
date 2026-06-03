@@ -1,8 +1,22 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, throwError, TimeoutError } from 'rxjs';
-import { catchError, tap, timeout } from 'rxjs/operators';
+import { catchError, map, tap, timeout } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+
+/** Grades configured under Academic Settings → Grades (settings.classLevels). */
+export function normalizeSchoolGrades(raw: unknown): string[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return Array.from(
+    new Set(
+      raw
+        .map((g) => (typeof g === 'string' ? g.trim() : String(g ?? '').trim()))
+        .filter((g) => g.length > 0)
+    )
+  ).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }));
+}
 
 @Injectable({
   providedIn: 'root'
@@ -46,6 +60,20 @@ export class SettingsService {
           return throwError(() => error);
         }
         return this.handleError('getSettings', {})(error);
+      })
+    );
+  }
+
+  /** School grades from Academic Settings → Grades tab (persisted as classLevels). */
+  getSchoolGrades(): Observable<string[]> {
+    return this.getSettings().pipe(
+      map((settings) => normalizeSchoolGrades(settings?.classLevels)),
+      tap((grades) => {
+        try {
+          localStorage.setItem('settings_classLevels', JSON.stringify(grades));
+        } catch {
+          /* ignore quota errors */
+        }
       })
     );
   }

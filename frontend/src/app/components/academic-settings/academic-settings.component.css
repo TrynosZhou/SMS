@@ -79,6 +79,136 @@
   font-size: 1rem;
 }
 
+/* Grades tab */
+.academic-grades-panel .grades-manage-hero {
+  margin-bottom: 1.25rem;
+}
+
+.academic-grades-panel .grades-manage-hero h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.academic-grades-panel .grades-manage-hero p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+  max-width: 52rem;
+}
+
+.grades-directory-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.grades-directory-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.grades-directory-text strong {
+  color: #1e293b;
+}
+
+.grades-directory-text span {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.grades-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: stretch;
+  margin-bottom: 1rem;
+}
+
+.grades-add-input-wrap {
+  flex: 1;
+  min-width: 220px;
+}
+
+.grades-add-input-wrap input {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.grades-search-row {
+  margin-bottom: 1rem;
+}
+
+.grades-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.grade-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.grade-card__name {
+  font-weight: 600;
+  color: #334155;
+  word-break: break-word;
+}
+
+.btn-grade-remove {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 6px;
+  opacity: 0.75;
+}
+
+.btn-grade-remove:hover:not(:disabled) {
+  opacity: 1;
+  background: #fee2e2;
+}
+
+.btn-grade-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.grades-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #64748b;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.grades-hint {
+  margin-top: 0.5rem;
+}
+
 .academic-loading {
   text-align: center;
   padding: 3rem;
