@@ -9,6 +9,9 @@ import {
   remainingBucketsAfterAppliedTotals,
   snapshotFromInvoiceAndStudent
 } from './transportDhWaterfall';
+import { canonicalInvoiceTermFees, effectiveTermFeesForBalance } from './invoiceTermFees';
+
+export { canonicalInvoiceTermFees, effectiveTermFeesForBalance } from './invoiceTermFees';
 /**
  * Desk fee from settings (same shape as finance / outstanding-balance).
  */
@@ -39,28 +42,11 @@ export function hydrateInvoiceLineItemsFromAmount(invoice: Invoice | null | unde
   return true;
 }
 
-/** Term fee lines on the invoice (tuition, transport, DH, registration, desk). */
-export function canonicalInvoiceTermFees(invoice: Invoice | null | undefined): number {
-  if (!invoice) return 0;
-  const tuition = tryNum(invoice.tuitionAmount);
-  const transport = tryNum(invoice.transportAmount);
-  const dining = tryNum(invoice.diningHallAmount);
-  const registration = tryNum(invoice.registrationAmount);
-  const desk = tryNum(invoice.deskFeeAmount);
-  return parseFloat((tuition + transport + dining + registration + desk).toFixed(2));
-}
-
 /**
  * Canonical outstanding balance — same formula as recomputeInvoiceTotalsFromLineItems,
  * receipts, and the credit/debit note invoice summary:
  *   (previousBalance + termFees) − appliedPrepaid − paidAmount
  */
-function effectiveTermFeesForBalance(invoice: Invoice): number {
-  const fromLines = canonicalInvoiceTermFees(invoice);
-  if (fromLines > 0.005) return fromLines;
-  return tryNum(invoice.amount);
-}
-
 export function computeCanonicalInvoiceBalance(invoice: Invoice | null | undefined): number {
   if (!invoice || invoice.isVoided) return 0;
 
@@ -70,25 +56,19 @@ export function computeCanonicalInvoiceBalance(invoice: Invoice | null | undefin
   const prepaidRemaining = tryNum(invoice.prepaidAmount);
 
   const totalOwed = parseFloat((previousBalance + termFees).toFixed(2));
-  const balanceCol = tryNum(invoice.balance);
 
   // Same formula as recomputeInvoiceTotalsFromLineItems (prepaid pool applied up to totalOwed)
   const appliedPrepaid = Math.min(prepaidRemaining, totalOwed);
-  const fromLineItems = Math.max(
+  const canonical = Math.max(
     0,
     parseFloat((totalOwed - appliedPrepaid - paidAmount).toFixed(2))
   );
 
   if (termFees <= 0.005 && previousBalance <= 0.005) {
-    return Math.max(0, balanceCol);
+    return Math.max(0, tryNum(invoice.balance));
   }
 
-  // Stale low balance column: trust line items. After debit notes, column can be ahead of pool math.
-  if (balanceCol > fromLineItems + 0.02) {
-    return parseFloat(balanceCol.toFixed(2));
-  }
-
-  return fromLineItems;
+  return canonical;
 }
 
 function isFullPercentageExemption(student: Student | null | undefined): boolean {
@@ -339,12 +319,26 @@ export function enforceInvoiceBalanceAfterNote(
   }
 }
 
+/**
+ * Recompute balance/amount/status from canonical term fees (mutates invoice).
+ * Returns true when persisted balance would change materially.
+ */
+export function repairInvoiceFinancialsIfStale(invoice: Invoice): boolean {
+  if (!invoice || invoice.isVoided) return false;
+  hydrateInvoiceLineItemsFromAmount(invoice);
+  const before = parseFloat(tryNum(invoice.balance).toFixed(2));
+  recomputeInvoiceTotalsFromLineItems(invoice);
+  const after = parseFloat(tryNum(invoice.balance).toFixed(2));
+  return Math.abs(before - after) > 0.02;
+}
+
 /** Attach displayBalance on invoice payloads for list/detail APIs. */
 export function withDisplayBalance<T extends Invoice>(
   invoice: T,
   student: Student | null | undefined,
   configuredDeskFee: number
 ): T & { displayBalance: number; balance: number } {
+  hydrateInvoiceLineItemsFromAmount(invoice);
   const owed = computeInvoiceOwedAmount(invoice, student ?? null, configuredDeskFee);
   return {
     ...invoice,

@@ -23,6 +23,7 @@ type TypeFilter = 'all' | 'day' | 'boarder';
 export class ClassListsComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
   private readonly studentSearchInput$ = new Subject<string>();
+  private lastBootstrapMs = 0;
   readonly skeletonRows = [0, 1, 2, 3, 4, 5];
 
   classes: any[] = [];
@@ -240,6 +241,7 @@ export class ClassListsComponent implements OnInit, OnDestroy {
       });
 
     activatePageLoad(this.router, this.destroy$, '/classes/lists', () => this.bootstrapPage());
+    queueMicrotask(() => this.bootstrapPage());
   }
 
   get hasStudentData(): boolean {
@@ -476,7 +478,12 @@ export class ClassListsComponent implements OnInit, OnDestroy {
   }
 
   private bootstrapPage(): void {
-this.loadClasses();
+    const now = Date.now();
+    if (now - this.lastBootstrapMs < 400) {
+      return;
+    }
+    this.lastBootstrapMs = now;
+    this.loadClasses();
     this.loadTerms();
   }
 
@@ -661,7 +668,15 @@ next: (settings: any) => {
     this.studentSearchQuery = '';
     this.studentSearchInput$.next('');
     
-    this.studentService.getStudents(this.selectedClassId).subscribe({
+    this.studentService
+      .getStudents(this.selectedClassId)
+      .pipe(
+        finalize(() => {
+          this.loadingStudents = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
       next: (response: any) => {
         const studentsData = Array.isArray(response) ? response : (response?.data || response?.students || []);
         this.students = Array.isArray(studentsData) ? studentsData : [];
@@ -670,12 +685,11 @@ next: (settings: any) => {
         this.applySort();
         this.buildGroupedByGender();
         
-        this.loadingStudents = false;
         this.lastLoadedClassId = this.selectedClassId;
         this.lastLoadedTerm = this.selectedTerm;
         this.lastLoadedAt = new Date();
         this.generatedAt = new Date();
-        
+
         if (this.filteredStudents.length === 0) {
           this.error = 'No students found in the selected class for this term.';
         } else {
@@ -685,7 +699,6 @@ next: (settings: any) => {
       error: (err) => {
         console.error('Error loading students:', err);
         this.error = 'Failed to load students. Please try again.';
-        this.loadingStudents = false;
         this.students = [];
         this.filteredStudents = [];
       }

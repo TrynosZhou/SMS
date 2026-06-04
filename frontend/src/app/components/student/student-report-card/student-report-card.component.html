@@ -176,7 +176,12 @@
                 [class.row-low]="(s.percentage ?? 0) < 50">
               <td data-label="Subject">{{ s.subject || s.name || s.subjectName || '—' }}</td>
               <td data-label="Code">{{ s.subjectCode || s.code || '—' }}</td>
-              <td data-label="Score" class="td-num">{{ s.score ?? '—' }}</td>
+              <td
+                data-label="Score"
+                class="td-num src-mark-score"
+                [style.color]="getMarkScoreColor(s.score, s.grade === 'N/A')">
+                {{ s.grade === 'N/A' ? 'N/A' : (s.score ?? '—') }}
+              </td>
               <td data-label="Max" class="td-num">{{ s.maxScore ?? '—' }}</td>
               <td data-label="Class Avg" class="td-num">{{ s.classAverage ?? '—' }}</td>
               <td data-label="Grade">
@@ -191,7 +196,9 @@
       <div class="src-perf-row">
         <div class="src-perf-chip highlight">
           <span class="pchip-label">Overall Average</span>
-          <span class="pchip-value">{{ reportCard.overallAverage | number:'1.1-1' }}%</span>
+          <span class="pchip-value" [style.color]="getOverallAverageColor()">
+            {{ reportCard.overallAverage | number:'1.1-1' }}%
+          </span>
         </div>
         <div class="src-perf-chip">
           <span class="pchip-label">Overall Grade</span>

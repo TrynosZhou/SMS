@@ -3,6 +3,13 @@ import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
+import {
+  computeCoreMarkSheetTotals,
+  formatMarkSheetAverage,
+  getMarkSheetScoreColor,
+  isCoreSubjectName,
+  sortMarkSheetSubjectsForDisplay
+} from '../../../utils/mark-sheet-subject-order';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { ExamService } from '../../../services/exam.service';
 import { ClassService } from '../../../services/class.service';
@@ -267,7 +274,10 @@ setTimeout(() => this.checkAndAutoGenerate(), 300);
       this.selectedTerm
     ).subscribe({
       next: (data: any) => {
-        this.markSheetData = data;
+        this.markSheetData = {
+          ...data,
+          subjects: sortMarkSheetSubjectsForDisplay(data.subjects || [])
+        };
         this.filteredMarkSheet = [...data.markSheet];
         this.calculateStatistics();
         this.loading = false;
@@ -429,10 +439,35 @@ setTimeout(() => this.error = '', 5000);
     });
   }
 
+  /** Subjects in display order: Mathematics, English, Science, then others. */
+  get orderedSubjects(): any[] {
+    return sortMarkSheetSubjectsForDisplay(this.markSheetData?.subjects || []);
+  }
+
   getSubjectMark(row: any, subjectId: string) {
     const subjectData = row.subjects[subjectId];
     if (!subjectData) return { score: 0, maxScore: 100, percentage: 0 };
     return subjectData;
+  }
+
+  getCoreTotals(row: any): { totalScore: number; totalMaxScore: number; average: number } {
+    return computeCoreMarkSheetTotals(row, this.orderedSubjects);
+  }
+
+  getCoreAverageDisplay(row: any): string {
+    return formatMarkSheetAverage(this.getCoreTotals(row).average);
+  }
+
+  /** Shown in subject columns: percentage mark only (e.g. 90, not 90/100). */
+  getSubjectMarkDisplay(row: any, subjectId: string): number {
+    const m = this.getSubjectMark(row, subjectId);
+    const pct = Number(m.percentage);
+    if (Number.isFinite(pct)) {
+      return Math.round(pct);
+    }
+    const max = Number(m.maxScore) || 100;
+    const score = Number(m.score) || 0;
+    return max > 0 ? Math.round((score / max) * 100) : 0;
   }
 
   // Modern features
@@ -479,12 +514,12 @@ setTimeout(() => this.error = '', 5000);
           bVal = b.studentNumber;
           break;
         case 'average':
-          aVal = a.average;
-          bVal = b.average;
+          aVal = this.getCoreTotals(a).average;
+          bVal = this.getCoreTotals(b).average;
           break;
         case 'totalScore':
-          aVal = a.totalScore;
-          bVal = b.totalScore;
+          aVal = this.getCoreTotals(a).totalScore;
+          bVal = this.getCoreTotals(b).totalScore;
           break;
         default:
           return 0;
@@ -505,7 +540,7 @@ setTimeout(() => this.error = '', 5000);
     if (!this.markSheetData || !this.markSheetData.markSheet.length) return;
 
     const marks = this.markSheetData.markSheet;
-    const averages = marks.map((m: any) => m.average);
+    const averages = marks.map((m: any) => this.getCoreTotals(m).average);
     const total = averages.length || 0;
     
     this.statistics.totalStudents = marks.length;
@@ -519,9 +554,8 @@ setTimeout(() => this.error = '', 5000);
     const coreSubjectIds: string[] = (() => {
       if (!this.markSheetData?.subjects) return [];
       const ids: string[] = [];
-      this.markSheetData.subjects.forEach((s: any) => {
-        const name = String(s.name || '').toLowerCase();
-        if (name.includes('math') || name === 'mathematics' || name === 'science' || name === 'english') {
+      this.orderedSubjects.forEach((s: any) => {
+        if (isCoreSubjectName(s.name || '')) {
           ids.push(s.id);
         }
       });
@@ -532,7 +566,9 @@ setTimeout(() => this.error = '', 5000);
         .map(id => row.subjects?.[id]?.percentage)
         .filter((p: any) => Number.isFinite(p));
       if (corePercentages.length === 0) return { hasCore: false, coreAvg: 0 };
-      const coreAvg = corePercentages.reduce((a, b) => a + b, 0) / corePercentages.length;
+      const coreAvg =
+        corePercentages.reduce((a, b) => a + b, 0) /
+        (coreSubjectIds.length || 1);
       return { hasCore: true, coreAvg };
     });
     const denominator = studentsWithCore.filter((s: { hasCore: boolean; coreAvg: number }) => s.hasCore).length;
@@ -547,9 +583,12 @@ setTimeout(() => this.error = '', 5000);
     this.statistics.midRangePercent = 0; // deprecated in UI
     this.statistics.lowPerformersPercent = denominator ? Math.round((below70Core / denominator) * 100) : 0;
     this.statistics.topPerformers = marks
-      .sort((a: any, b: any) => b.average - a.average)
+      .sort((a: any, b: any) => this.getCoreTotals(b).average - this.getCoreTotals(a).average)
       .slice(0, 3)
-      .map((m: any) => ({ name: m.studentName, average: m.average }));
+      .map((m: any) => ({
+        name: m.studentName,
+        average: formatMarkSheetAverage(this.getCoreTotals(m).average)
+      }));
   }
 
   getPerformanceClass(average: number): string {
@@ -560,12 +599,32 @@ setTimeout(() => this.error = '', 5000);
     return 'needs-improvement';
   }
 
-  getPerformanceColor(average: number): string {
-    if (average >= 80) return '#28a745';
-    if (average >= 70) return '#17a2b8';
-    if (average >= 60) return '#ffc107';
-    if (average >= 50) return '#fd7e14';
-    return '#dc3545';
+  getRankBadgeClass(position: number): string {
+    if (position === 1) return 'rank-gold';
+    if (position === 2) return 'rank-silver';
+    if (position === 3) return 'rank-bronze';
+    return 'rank-default';
+  }
+
+  getScoreColor(score: number): string {
+    return getMarkSheetScoreColor(score);
+  }
+
+  getAverageDotColor(average: number): string {
+    return getMarkSheetScoreColor(average);
+  }
+
+  /** Class pass rate for a subject (% of students scoring ≥ 70). */
+  getSubjectPassRate(subjectId: string): number {
+    if (!this.markSheetData?.markSheet?.length) return 0;
+    const rows = this.markSheetData.markSheet;
+    let passed = 0;
+    for (const row of rows) {
+      if (this.getSubjectMarkDisplay(row, subjectId) >= 70) {
+        passed++;
+      }
+    }
+    return Math.round((passed / rows.length) * 100);
   }
 
   getSubjectAverage(subjectId: string): number {

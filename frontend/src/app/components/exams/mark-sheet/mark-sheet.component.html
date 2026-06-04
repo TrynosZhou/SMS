@@ -131,15 +131,15 @@
         <div class="stat-card">
           <div class="stat-icon">📊</div>
           <div class="stat-content">
-            <div class="stat-value">{{ statistics.averageScore }}%</div>
-            <div class="stat-label">Class Average</div>
+            <div class="stat-value">{{ statistics.averageScore }}</div>
+            <div class="stat-label">Class average (core)</div>
           </div>
         </div>
         <div class="stat-card">
           <div class="stat-icon">🏆</div>
           <div class="stat-content">
-            <div class="stat-value">{{ statistics.highestScore }}%</div>
-            <div class="stat-label">Highest Score</div>
+            <div class="stat-value">{{ statistics.highestScore }}</div>
+            <div class="stat-label">Highest average (core)</div>
           </div>
         </div>
         <div class="stat-card">
@@ -185,40 +185,40 @@
       </div>
     </div>
 
-    <div class="mark-sheet-table-wrapper table-responsive">
-        <table class="mark-sheet-table">
+    <div class="mark-sheet-table-wrapper table-responsive leaderboard-table-wrap">
+        <table class="mark-sheet-table leaderboard-table">
           <thead class="sticky-header">
-            <tr>
-              <th rowspan="2" class="position-col sortable" (click)="sortTable('position')">
+            <tr class="thead-row-navy">
+              <th rowspan="2" class="th-outer position-col sortable" (click)="sortTable('position')">
                 Pos {{ getSortIcon('position') }}
               </th>
-              <th rowspan="2" class="student-number-col sortable" (click)="sortTable('studentNumber')">
+              <th rowspan="2" class="th-outer student-number-col sortable" (click)="sortTable('studentNumber')">
                 Student No. {{ getSortIcon('studentNumber') }}
               </th>
-              <th rowspan="2" class="student-name-col sortable" (click)="sortTable('studentName')">
+              <th rowspan="2" class="th-outer student-name-col sortable" (click)="sortTable('studentName')">
                 Student Name {{ getSortIcon('studentName') }}
               </th>
-              <th [colSpan]="markSheetData.subjects.length" class="subjects-header">Subjects</th>
-              <th rowspan="2" class="total-col sortable" (click)="sortTable('totalScore')">
+              <th [colSpan]="orderedSubjects.length" class="th-outer th-subjects-group">Subjects</th>
+              <th rowspan="2" class="th-outer total-col sortable" (click)="sortTable('totalScore')">
                 Total {{ getSortIcon('totalScore') }}
               </th>
-              <th rowspan="2" class="average-col sortable" (click)="sortTable('average')">
-                Average % {{ getSortIcon('average') }}
+              <th rowspan="2" class="th-outer average-col sortable" (click)="sortTable('average')">
+                Average {{ getSortIcon('average') }}
               </th>
             </tr>
-            <tr>
-              <th *ngFor="let subject of (markSheetData?.subjects | safeArray)" class="subject-col">
+            <tr class="thead-row-blue">
+              <th *ngFor="let subject of (orderedSubjects | safeArray)" class="th-subject subject-col">
                 <div class="subject-header">
-                  <div>{{ subject.name }}</div>
-                  <div class="subject-average">{{ getSubjectAverage(subject.id) }}%</div>
+                  <div class="subject-name">{{ subject.name }}</div>
+                  <div class="subject-pass-rate">{{ getSubjectPassRate(subject.id) }}%</div>
                 </div>
               </th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let row of (filteredMarkSheet | safeArray)" [class]="'performance-' + getPerformanceClass(row.average)">
+            <tr *ngFor="let row of (filteredMarkSheet | safeArray); let i = index" class="leaderboard-row">
               <td class="position-cell">
-                <span class="position-badge" [style.background-color]="row.position <= 3 ? '#ffc107' : 'transparent'">
+                <span class="position-badge" [ngClass]="getRankBadgeClass(row.position)">
                   {{ row.position }}
                 </span>
               </td>
@@ -229,30 +229,26 @@
                   <span *ngIf="row.position <= 3" class="top-badge">🏆</span>
                 </div>
               </td>
-              <td *ngFor="let subject of markSheetData.subjects" class="mark-cell">
-                <div class="mark-display">
-                  <span class="score">{{ getSubjectMark(row, subject.id).score }}</span>
-                  <span class="separator">/</span>
-                  <span class="max-score">{{ getSubjectMark(row, subject.id).maxScore }}</span>
-                  <span 
-                    class="percentage" 
-                    [style.color]="getPerformanceColor(getSubjectMark(row, subject.id).percentage)">
-                    ({{ getSubjectMark(row, subject.id).percentage }}%)
-                  </span>
-                </div>
+              <td *ngFor="let subject of orderedSubjects" class="mark-cell">
+                <span
+                  class="mark-display"
+                  [style.color]="getScoreColor(getSubjectMarkDisplay(row, subject.id))">
+                  {{ getSubjectMarkDisplay(row, subject.id) }}
+                </span>
               </td>
               <td class="total-cell">
-                <strong>{{ row.totalScore }} / {{ row.totalMaxScore }}</strong>
+                <strong class="summary-mark">
+                  {{ getCoreTotals(row).totalScore }} / {{ getCoreTotals(row).totalMaxScore }}
+                </strong>
               </td>
               <td class="average-cell">
-                <div class="average-display" [style.color]="getPerformanceColor(row.average)">
-                  <strong>{{ row.average.toFixed(2) }}%</strong>
-                  <span class="performance-indicator" [style.background-color]="getPerformanceColor(row.average)"></span>
+                <div class="average-display">
+                  <strong class="average-value summary-mark">{{ getCoreAverageDisplay(row) }}</strong>
                 </div>
               </td>
             </tr>
             <tr *ngIf="filteredMarkSheet.length === 0" class="no-results">
-              <td [colSpan]="markSheetData.subjects.length + 6" class="text-center">
+              <td [colSpan]="orderedSubjects.length + 6" class="text-center">
                 No students found matching your search criteria.
               </td>
             </tr>
@@ -260,18 +256,18 @@
         </table>
     </div>
 
-    <div class="mark-sheet-footer">
-        <div class="footer-stats">
-          <p><strong>Total Students:</strong> {{ markSheetData.markSheet.length }}</p>
-          <p><strong>Exams Included:</strong> {{ markSheetData.exams.length }}</p>
-          <p *ngIf="searchQuery"><strong>Filtered Results:</strong> {{ filteredMarkSheet.length }}</p>
-        </div>
-        <div class="footer-top-performers" *ngIf="statistics.topPerformers.length > 0">
-          <strong>Top Performers:</strong>
-          <span *ngFor="let performer of statistics.topPerformers; let i = index" class="top-performer">
-            {{ i + 1 }}. {{ performer.name }} ({{ performer.average }}%)
-          </span>
-        </div>
+    <div class="leaderboard-footer">
+      <div class="footer-summary">
+        <span class="footer-summary-item"><strong>Total Students:</strong> {{ markSheetData.markSheet.length }}</span>
+        <span class="footer-summary-item"><strong>Exams Included:</strong> {{ markSheetData.exams.length }}</span>
+        <span class="footer-summary-item" *ngIf="searchQuery"><strong>Filtered Results:</strong> {{ filteredMarkSheet.length }}</span>
+      </div>
+      <div class="footer-top-performers" *ngIf="statistics.topPerformers.length > 0">
+        <span class="footer-top-label">Top Performers</span>
+        <span *ngFor="let performer of statistics.topPerformers; let i = index" class="top-performer-pill">
+          {{ i + 1 }}. {{ performer.name }} ({{ performer.average }})
+        </span>
+      </div>
     </div>
   </section>
 </div>

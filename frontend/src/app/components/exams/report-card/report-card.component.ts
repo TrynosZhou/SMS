@@ -12,10 +12,9 @@ import { forkJoin, of } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged, finalize, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { activatePageLoad } from '../../../utils/route-activation';
+import { computeCoreAverageFromReportSubjects } from '../../../utils/mark-sheet-subject-order';
 
 type GradeBandFilter = 'all' | 'outstanding' | 'good' | 'needs-support';
-type ReportListView = 'both' | 'index' | 'detailed';
-
 @Component({
   standalone: false,  selector: 'app-report-card',
 templateUrl: './report-card.component.html',
@@ -62,10 +61,7 @@ error = '';
   Math = Math; // Make Math available in template
   studentSearchQuery = '';
   selectedGradeBand: GradeBandFilter = 'all';
-  listView: ReportListView = 'both';
   lastLoadedAt: Date | null = null;
-  indexSortBy: 'position' | 'name' | 'average' = 'position';
-  indexSortDir: 'asc' | 'desc' = 'asc';
   aiGeneratingMap: Map<string, boolean> = new Map();
   
   // Form validation
@@ -88,6 +84,7 @@ error = '';
   schoolMotto = '';
   schoolPhone = '';
   schoolEmail = '';
+  academicYear = '';
   gradeThresholds: any = null;
   gradeLabels: any = null;
   headmasterName: string = '';
@@ -452,6 +449,7 @@ const currentYear = new Date().getFullYear();
         this.schoolMotto = data.schoolMotto || '';
         this.schoolPhone = data.schoolPhone || '';
         this.schoolEmail = data.schoolEmail || '';
+        this.academicYear = data.academicYear || String(new Date().getFullYear());
         try {
           const raw = data?.schoolLogo;
           const rawPreview = typeof raw === 'string' ? raw.trim().slice(0, 40) : String(raw);
@@ -701,9 +699,16 @@ if (err.status === 0) {
           return card;
         });
         
-        // Use backend class/grade positions (same core-subject ranking logic as mark-sheet)
-        // No frontend override - backend now computes correctly using Mathematics, Science, English only
-        
+        // Align summary with visible core marks and rank class position from that average (mark-sheet rule)
+        for (const card of this.reportCards) {
+          if (Array.isArray(card.subjects) && card.subjects.length) {
+            const avg = computeCoreAverageFromReportSubjects(card.subjects);
+            card.overallAverage = avg.toFixed(2);
+            card.overallGrade = this.getOverallGradeFromAverage(avg);
+          }
+        }
+        this.applyCoreSubjectRanking(this.reportCards);
+
         // Sort report cards by class position in ascending order
         this.reportCards.sort((a: any, b: any) => {
           const posA = a.classPosition || 0;
@@ -822,6 +827,34 @@ if (err.status === 0) {
     return isNaN(n) ? 0 : n;
   }
 
+  private getOverallGradeFromAverage(percentage: number): string {
+    const thresholds = this.gradeThresholds || {
+      excellent: 90,
+      veryGood: 80,
+      good: 60,
+      satisfactory: 40,
+      needsImprovement: 20,
+      basic: 1
+    };
+    const labels = this.gradeLabels || {
+      excellent: 'OUTSTANDING',
+      veryGood: 'VERY HIGH',
+      good: 'HIGH',
+      satisfactory: 'GOOD',
+      needsImprovement: 'ASPIRING',
+      basic: 'BASIC',
+      fail: 'UNCLASSIFIED'
+    };
+    if (percentage === 0) return labels.fail || 'UNCLASSIFIED';
+    if (percentage >= (thresholds.excellent ?? 90)) return labels.excellent || 'OUTSTANDING';
+    if (percentage >= (thresholds.veryGood ?? 80)) return labels.veryGood || 'VERY HIGH';
+    if (percentage >= (thresholds.good ?? 60)) return labels.good || 'HIGH';
+    if (percentage >= (thresholds.satisfactory ?? 40)) return labels.satisfactory || 'GOOD';
+    if (percentage >= (thresholds.needsImprovement ?? 20)) return labels.needsImprovement || 'ASPIRING';
+    if (percentage >= (thresholds.basic ?? 1)) return labels.basic || 'BASIC';
+    return labels.fail || 'UNCLASSIFIED';
+  }
+
   private isCoreSubjectName(name: string): boolean {
     const n = (name || '').toString().toLowerCase();
     return n.includes('math') || n.includes('english') || n.includes('science');
@@ -829,26 +862,10 @@ if (err.status === 0) {
 
   private getCoreAverage(card: any): number {
     const subjects = Array.isArray(card?.subjects) ? card.subjects : [];
-    const percentages: number[] = [];
-    for (const s of subjects) {
-      const subjName = s?.subject || s?.name || s?.subjectName || '';
-      if (!this.isCoreSubjectName(subjName)) continue;
-      let p = s?.percentage;
-      if (p === undefined || p === null) {
-        const sc = this.parseNumber(s?.score);
-        const max = this.parseNumber(s?.maxScore || 100);
-        p = max > 0 ? (sc / max) * 100 : 0;
-      }
-      const num = this.parseNumber(p);
-      if (num > 0 || p === 0) {
-        percentages.push(num);
-      }
-    }
-    if (percentages.length === 0) {
+    if (subjects.length === 0) {
       return this.parseNumber(card?.overallAverage || 0);
     }
-    const avg = percentages.reduce((a, b) => a + b, 0) / percentages.length;
-    return Math.round(avg * 100) / 100;
+    return computeCoreAverageFromReportSubjects(subjects);
   }
 
   private getClassNameFromCard(card: any): string {
@@ -1194,18 +1211,6 @@ if (err.status === 0) {
     this.clearSearch();
   }
 
-  toggleListView(): void {
-    const order: ReportListView[] = ['both', 'index', 'detailed'];
-    const idx = order.indexOf(this.listView);
-    this.listView = order[(idx + 1) % order.length];
-  }
-
-  listViewLabel(): string {
-    if (this.listView === 'index') return '▦ Index only';
-    if (this.listView === 'detailed') return '☰ Cards only';
-    return '⊞ Index + cards';
-  }
-
   get gradeBandChips(): Array<{ id: GradeBandFilter; label: string; count: number }> {
     const bands: GradeBandFilter[] = ['all', 'outstanding', 'good', 'needs-support'];
     return bands.map((id) => ({
@@ -1285,46 +1290,16 @@ if (err.status === 0) {
         return studentName.includes(query) || studentNumber.includes(query);
       });
     }
-    const dir = this.indexSortDir === 'asc' ? 1 : -1;
     list.sort((a, b) => {
-      if (this.indexSortBy === 'name') {
-        return String(a.student?.name || '').localeCompare(String(b.student?.name || '')) * dir;
-      }
-      if (this.indexSortBy === 'average') {
-        return ((Number(a.overallAverage) || 0) - (Number(b.overallAverage) || 0)) * dir;
-      }
       const posA = Number(a.classPosition) || 9999;
       const posB = Number(b.classPosition) || 9999;
-      return (posA - posB) * dir;
+      return posA - posB;
     });
     this.filteredReportCards = list;
   }
 
   filterReportCards(): void {
     this.applyFilters();
-  }
-
-  setIndexSort(column: 'position' | 'name' | 'average'): void {
-    if (this.indexSortBy === column) {
-      this.indexSortDir = this.indexSortDir === 'asc' ? 'desc' : 'asc';
-    } else {
-      this.indexSortBy = column;
-      this.indexSortDir = column === 'average' ? 'desc' : 'asc';
-    }
-    this.applyFilters();
-  }
-
-  indexSortIndicator(column: 'position' | 'name' | 'average'): string {
-    if (this.indexSortBy !== column) return '';
-    return this.indexSortDir === 'asc' ? '▲' : '▼';
-  }
-
-  scrollToCard(studentId: string): void {
-    if (!studentId) return;
-    const el = document.getElementById(`rc-card-${studentId}`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
   }
 
   trackByCard(_index: number, card: any): string {
@@ -1674,6 +1649,101 @@ if (err.status === 0) {
     };
 
     downloadNext();
+  }
+
+  getSchoolInitials(name?: string): string {
+    const n = (name || this.schoolName || 'School').trim();
+    const words = n.split(/\s+/).filter(Boolean);
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return (n.slice(0, 3) || 'SCH').toUpperCase();
+  }
+
+  getCardAcademicYear(reportCard?: any): string {
+    return reportCard?.settings?.academicYear || this.academicYear || String(new Date().getFullYear());
+  }
+
+  getReportCardPillLabel(reportCard: any): string {
+    const type = reportCard?.examType || this.selectedExamType || '';
+    return `Report Card — ${this.formatExamTypeLabel(type)}`;
+  }
+
+  formatExamTypeLabel(examType: string): string {
+    if (examType === 'mid_term') return 'Mid Term';
+    if (examType === 'end_term') return 'End of Term';
+    if (!examType) return 'Exam';
+    return examType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  getExamDisplayName(reportCard: any): string {
+    if (reportCard?.exams?.length) {
+      const names = Array.from(new Set(reportCard.exams.map((e: any) => e.name)));
+      return names.join(', ');
+    }
+    return this.formatExamTypeLabel(reportCard?.examType || this.selectedExamType);
+  }
+
+  getPositionDisplay(reportCard: any): string {
+    if (this.isEcdAOrBClass(reportCard?.student?.class)) {
+      return '—';
+    }
+    const pos = reportCard?.classPosition || 0;
+    const total = reportCard?.totalStudents || 0;
+    return total > 0 ? `${pos} / ${total}` : String(pos || '—');
+  }
+
+  getAttendanceDisplay(reportCard: any): string {
+    if (reportCard?.totalAttendance == null) {
+      return '—';
+    }
+    let text = `${reportCard.totalAttendance} day${reportCard.totalAttendance !== 1 ? 's' : ''}`;
+    if (reportCard.presentAttendance != null) {
+      text += ` (${reportCard.presentAttendance} present)`;
+    }
+    return text;
+  }
+
+  getSchoolMetaLine(): string {
+    const parts = [this.schoolAddress, this.schoolPhone ? `Tel: ${this.schoolPhone}` : ''].filter(Boolean);
+    return parts.join('  •  ');
+  }
+
+  /** Grade pill: blue bold only */
+  getGradePillClass(_grade: string | undefined): string {
+    return 'rc-grade-pill rc-grade-pill--blue';
+  }
+
+  getSubjectPercentScore(subject: any): string {
+    if (subject?.grade === 'N/A') {
+      return 'N/A';
+    }
+    const max = Number(subject?.maxScore) || 0;
+    if (max <= 0) {
+      return 'N/A';
+    }
+    const pct = Math.round((Number(subject?.score) || 0) / max * 100);
+    return `${pct}%`;
+  }
+
+  getSubjectPercentValue(subject: any): number {
+    if (subject?.grade === 'N/A') {
+      return 0;
+    }
+    const max = Number(subject?.maxScore) || 0;
+    if (max <= 0) {
+      return 0;
+    }
+    return Math.round((Number(subject?.score) || 0) / max * 100);
+  }
+
+  /** Mark and % score: blue only */
+  getMarkScoreColor(_value: number, _isNa = false): string {
+    return '#2563eb';
+  }
+
+  getOverallAverageColor(_reportCard: any): string {
+    return '#2563eb';
   }
 }
 

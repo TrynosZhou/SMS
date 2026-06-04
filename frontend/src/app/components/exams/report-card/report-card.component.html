@@ -30,7 +30,6 @@
         <button type="button" class="rc-hero-refresh" (click)="generateReportCards()" [disabled]="loading" title="Regenerate" aria-label="Regenerate">
           <span [class.spinning]="loading">↻</span>
         </button>
-        <button type="button" class="rc-hero-btn" (click)="toggleListView()" title="Toggle layout">{{ listViewLabel() }}</button>
         <button type="button" class="rc-hero-btn rc-hero-btn--white" (click)="exportSummaryCsv()" [disabled]="!filteredReportCards.length || loading">CSV</button>
         <button type="button" class="rc-hero-btn rc-hero-btn--white" (click)="printSummary()" [disabled]="!filteredReportCards.length || loading">Print</button>
         <button
@@ -289,11 +288,11 @@
     </section>
 
     <div *ngIf="reportCards.length > 0" class="report-cards-section">
-      <section class="rc-panel rc-panel--filters" *ngIf="listView !== 'detailed'">
+      <section class="rc-panel rc-panel--filters">
         <div class="rc-panel__head-row">
           <div>
             <h2 class="rc-panel__title">Find students</h2>
-            <p class="rc-panel__intro">Search, filter by performance band, or jump to a report card.</p>
+            <p class="rc-panel__intro">Search and filter report cards shown below.</p>
           </div>
           <button type="button" class="rc-btn-clear" *ngIf="hasActiveFilters()" (click)="resetListFilters()">Clear filters</button>
         </div>
@@ -326,56 +325,9 @@
         <div class="rc-summary" *ngIf="filterSummary">
           <span class="rc-summary-pill">{{ filterSummary }}</span>
         </div>
-
-        <div class="rc-index-scroll" *ngIf="filteredReportCards.length > 0">
-          <table class="rc-index-table">
-            <thead>
-              <tr>
-                <th>
-                  <button type="button" class="rc-th-btn" (click)="setIndexSort('position')">
-                    Pos <span class="rc-sort">{{ indexSortIndicator('position') }}</span>
-                  </button>
-                </th>
-                <th>
-                  <button type="button" class="rc-th-btn" (click)="setIndexSort('name')">
-                    Student <span class="rc-sort">{{ indexSortIndicator('name') }}</span>
-                  </button>
-                </th>
-                <th>ID</th>
-                <th>
-                  <button type="button" class="rc-th-btn" (click)="setIndexSort('average')">
-                    Average <span class="rc-sort">{{ indexSortIndicator('average') }}</span>
-                  </button>
-                </th>
-                <th>Grade</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let card of filteredReportCards; trackBy: trackByCard" [class.rc-index-row--low]="(card.overallAverage || 0) < 50">
-                <td>{{ card.classPosition || '—' }}</td>
-                <td>{{ card.student?.name }}</td>
-                <td class="rc-cell-mono">{{ card.student?.studentNumber }}</td>
-                <td class="rc-cell-avg">{{ card.overallAverage | number : '1.1-1' }}%</td>
-                <td><span class="grade-badge grade-{{ card.overallGrade?.toLowerCase().replace(' ', '-') }}">{{ card.overallGrade }}</span></td>
-                <td>
-                  <button type="button" class="rc-link-btn" (click)="scrollToCard(card.student?.id)">View ↓</button>
-                  <button
-                    type="button"
-                    class="rc-link-btn"
-                    *ngIf="canDownloadReportCard"
-                    (click)="downloadPDF(card)"
-                    [disabled]="loading">
-                    PDF
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
       </section>
 
-      <div class="report-cards-list" *ngIf="listView !== 'index'">
+      <div class="report-cards-list">
         <div
           *ngFor="let reportCard of (filteredReportCards | safeArray); let i = index; trackBy: trackByCard"
           [id]="'rc-card-' + reportCard.student?.id"
@@ -402,102 +354,119 @@
             </div>
           </div>
 
-          <!-- Report header: Banner from Settings (Logo 1) -->
-          <div *ngIf="getSchoolLogoSrc(reportCard.settings?.schoolLogo || schoolLogo)" class="school-logo-banner">
-            <img [src]="getSchoolLogoSrc(reportCard.settings?.schoolLogo || schoolLogo)" alt="School Banner" class="school-logo-banner-img" />
-          </div>
+          <div class="rc-document">
+            <header class="rc-banner">
+              <div class="rc-banner-side rc-banner-side--left">
+                <span class="rc-logo-badge">{{ getSchoolInitials(reportCard.settings?.schoolName || schoolName) }}</span>
+              </div>
+              <div class="rc-banner-center">
+                <h3 class="rc-school-name">{{ reportCard.settings?.schoolName || schoolName }}</h3>
+                <p class="rc-school-meta" *ngIf="getSchoolMetaLine()">{{ getSchoolMetaLine() }}</p>
+                <span class="rc-report-pill">{{ getReportCardPillLabel(reportCard) }}</span>
+              </div>
+              <div class="rc-banner-side rc-banner-side--right">
+                <span class="rc-year-label">Academic Year</span>
+                <span class="rc-year-value">{{ getCardAcademicYear(reportCard) }}</span>
+              </div>
+            </header>
 
-          <!-- Student Information -->
-          <div class="student-info-grid">
-            <div class="info-item">
-              <span class="info-label">Student:</span>
-              <span class="info-value">{{ reportCard.student.name }}</span>
+            <div class="rc-info-grid">
+              <div class="rc-info-cell">
+                <span class="rc-info-label">Student Name</span>
+                <span class="rc-info-value">{{ reportCard.student.name }}</span>
+              </div>
+              <div class="rc-info-cell">
+                <span class="rc-info-label">Exam</span>
+                <span class="rc-info-value">{{ getExamDisplayName(reportCard) }}</span>
+              </div>
+              <div class="rc-info-cell">
+                <span class="rc-info-label">Student Number</span>
+                <span class="rc-info-value">{{ reportCard.student.studentNumber }}</span>
+              </div>
+              <div class="rc-info-cell">
+                <span class="rc-info-label">Class Position</span>
+                <span class="rc-info-value">{{ getPositionDisplay(reportCard) }}</span>
+              </div>
+              <div class="rc-info-cell">
+                <span class="rc-info-label">Class</span>
+                <span class="rc-info-value">{{ reportCard.student.class }}</span>
+              </div>
+              <div class="rc-info-cell">
+                <span class="rc-info-label">Attendance</span>
+                <span class="rc-info-value">{{ getAttendanceDisplay(reportCard) }}</span>
+              </div>
             </div>
-            <div class="info-item">
-              <span class="info-label">Student Number:</span>
-              <span class="info-value">{{ reportCard.student.studentNumber }}</span>
+
+            <div class="rc-performance-block">
+            <div class="rc-section-bar">Subject Performance</div>
+
+            <div class="rc-table-wrap">
+              <table class="rc-subjects-table">
+                <colgroup>
+                  <col class="rc-col-subject" />
+                  <col class="rc-col-code" />
+                  <col class="rc-col-mark" />
+                  <col class="rc-col-possible" />
+                  <col class="rc-col-avg" />
+                  <col class="rc-col-pct" />
+                  <col class="rc-col-grade" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Subject</th>
+                    <th>Code</th>
+                    <th>Mark Obtained</th>
+                    <th>Possible Mark</th>
+                    <th>Class Avg</th>
+                    <th>% Score</th>
+                    <th>Grade</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let subject of (reportCard.subjects | safeArray); let si = index" [class.rc-row-alt]="si % 2 === 1">
+                    <td>{{ subject.subject || subject.name || '—' }}</td>
+                    <td>{{ subject.subjectCode || subject.code || '—' }}</td>
+                    <td
+                      class="rc-mark-score"
+                      [style.color]="getMarkScoreColor(subject.score, subject.grade === 'N/A')">
+                      {{ subject.grade === 'N/A' ? 'N/A' : (subject.score | number:'1.0-0') }}
+                    </td>
+                    <td class="rc-num">{{ subject.grade === 'N/A' ? 'N/A' : (subject.maxScore | number:'1.0-0') }}</td>
+                    <td class="rc-num">{{ subject.grade === 'N/A' ? 'N/A' : (subject.classAverage || 0) }}</td>
+                    <td
+                      class="rc-mark-score"
+                      [style.color]="getMarkScoreColor(getSubjectPercentValue(subject), subject.grade === 'N/A')">
+                      {{ getSubjectPercentScore(subject) }}
+                    </td>
+                    <td>
+                      <span [ngClass]="getGradePillClass(subject.grade)">{{ subject.grade }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <div class="info-item">
-              <span class="info-label">Class:</span>
-              <span class="info-value">{{ reportCard.student.class }}</span>
-            </div>
-            <div class="info-item" *ngIf="!isEcdAOrBClass(reportCard.student.class)">
-              <span class="info-label">Class Position:</span>
-              <span class="info-value">
-                {{ reportCard.classPosition ? reportCard.classPosition : 0 }} out of {{ reportCard.totalStudents ? reportCard.totalStudents : 0 }}
-              </span>
-            </div>
-            <div class="info-item" *ngIf="reportCard.totalAttendance !== undefined && reportCard.totalAttendance !== null">
-              <span class="info-label">Total Attendance:</span>
-              <span class="info-value">
-                {{ reportCard.totalAttendance }} day{{ reportCard.totalAttendance !== 1 ? 's' : '' }}
-                <span *ngIf="reportCard.presentAttendance !== undefined && reportCard.presentAttendance !== null">
-                  (Present: {{ reportCard.presentAttendance }})
+
+            <div class="rc-summary-bar">
+              <div class="rc-summary-cell">
+                <span class="rc-summary-label">Overall Average</span>
+                <span class="rc-summary-value rc-summary-value--score">
+                  {{ reportCard.overallAverage | number:'1.2-2' }}%
                 </span>
-              </span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Exam Type:</span>
-              <span class="info-value">{{ reportCard.examType | titlecase }}</span>
-            </div>
-            <div class="info-item full-width">
-              <span class="info-label">Exams Included:</span>
-              <span class="info-value">
-                <span *ngFor="let exam of (reportCard.exams | safeArray); let i = index; let last = last" class="exam-tag">
-                  {{ exam.name }}<span *ngIf="!last">, </span>
+              </div>
+              <div class="rc-summary-cell">
+                <span class="rc-summary-label">Overall Grade</span>
+                <span class="rc-summary-value">
+                  <span [ngClass]="getGradePillClass(reportCard.overallGrade)">{{ reportCard.overallGrade }}</span>
                 </span>
-              </span>
+              </div>
+              <div class="rc-summary-cell">
+                <span class="rc-summary-label">Position</span>
+                <span class="rc-summary-value">{{ getPositionDisplay(reportCard) }}</span>
+              </div>
             </div>
-          </div>
-
-          <!-- Subjects Table -->
-          <div class="table-wrapper table-responsive">
-            <table class="report-table">
-              <thead>
-                <tr>
-                  <th>Subject Name</th>
-                  <th>Subject Code</th>
-                  <th>Mark Obtained</th>
-                  <th>Class Average</th>
-                  <th>Grade</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let subject of (reportCard.subjects | safeArray)" [class.high-score]="subject.percentage >= 80" [class.low-score]="subject.percentage < 50">
-                  <td class="subject-name" data-label="Subject Name">{{ subject.subject || subject.name || '-' }}</td>
-                  <td class="subject-code" data-label="Subject Code">{{ subject.subjectCode || subject.code || '-' }}</td>
-                  <td class="score" data-label="Mark Obtained">{{ subject.score | number:'1.0-0' }}</td>
-                  <td class="class-average" data-label="Class Average">{{ subject.classAverage || 0 }}</td>
-                  <td data-label="Grade">
-                    <span class="grade-badge grade-{{ subject.grade?.toLowerCase().replace(' ', '-') }}">
-                      {{ subject.grade }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Overall Performance -->
-          <div class="performance-summary">
-            <div class="performance-item">
-              <span class="performance-label">Overall Average</span>
-              <span class="performance-value highlight">{{ reportCard.overallAverage | number:'1.2-2' }}%</span>
             </div>
-            <div class="performance-item">
-              <span class="performance-label">Overall Grade</span>
-              <span class="performance-value">
-                <span class="grade-badge grade-{{ reportCard.overallGrade?.toLowerCase().replace(' ', '-') }}">
-                  {{ reportCard.overallGrade }}
-                </span>
-              </span>
-            </div>
-          </div>
 
-          <!-- Remarks Section -->
-          <div class="remarks-section">
-            <h3 class="remarks-title">Remarks</h3>
-            
+            <div class="rc-remarks">
             <div class="remarks-item">
               <label class="remarks-label">
                 Class Teacher Remarks
@@ -608,6 +577,7 @@
                     class="saved-indicator">
                 ✓ Remarks saved
               </span>
+            </div>
             </div>
           </div>
           

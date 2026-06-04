@@ -7,7 +7,7 @@ export interface RouteActivationOptions {
   exact?: boolean;
   /**
    * When true (default), run reload when the component is first attached.
-   * Uses multiple timing strategies so production navigations still load on first click.
+   * Uses deferred retries so production navigations still load on first click.
    */
   fireOnAttach?: boolean;
 }
@@ -57,19 +57,24 @@ export function onRouteActivated(
 ): void {
   const exact = options?.exact !== false;
   const fireOnAttach = options?.fireOnAttach !== false;
+  const attachTimers: ReturnType<typeof setTimeout>[] = [];
+
+  const clearAttachTimers = () => {
+    for (const t of attachTimers) {
+      clearTimeout(t);
+    }
+    attachTimers.length = 0;
+  };
+
+  destroy$.subscribe({
+    complete: clearAttachTimers
+  });
 
   const tryReload = (urlPath: string) => {
     if (pathMatches(urlPath, path, exact)) {
       reload();
     }
   };
-
-  if (fireOnAttach) {
-    const runAttachLoad = () => tryReload(normalizePath(router.url || ''));
-    runAttachLoad();
-    // router.url can lag on first paint — one deferred retry, not multiple concurrent loads
-    setTimeout(runAttachLoad, 0);
-  }
 
   router.events
     .pipe(
@@ -80,6 +85,15 @@ export function onRouteActivated(
       const urlPath = normalizePath(e.urlAfterRedirects || e.url || '');
       tryReload(urlPath);
     });
+
+  if (fireOnAttach) {
+    const runAttachLoad = () => tryReload(normalizePath(router.url || ''));
+    queueMicrotask(runAttachLoad);
+    for (const delay of [0, 50, 150]) {
+      const t = setTimeout(runAttachLoad, delay);
+      attachTimers.push(t);
+    }
+  }
 }
 
 /**

@@ -3,6 +3,7 @@ import { AppDataSource } from '../config/database';
 import { Invoice, InvoiceStatus } from '../entities/Invoice';
 import { Student } from '../entities/Student';
 import { parseAmount } from './numberUtils';
+import { effectiveTermFeesForBalance } from './invoiceTermFees';
 
 export type StudentLogisticsSnapshot = {
   studentType: string;
@@ -52,13 +53,7 @@ export function recomputeInvoiceTotalsFromLineItems(inv: Invoice): void {
   const previousBalance = parseAmount(inv.previousBalance);
   const paidAmount = parseAmount(inv.paidAmount);
   const prepaid = parseAmount(inv.prepaidAmount);
-  const tuition = parseAmount(inv.tuitionAmount);
-  const transport = parseAmount(inv.transportAmount);
-  const dining = parseAmount(inv.diningHallAmount);
-  const registration = parseAmount(inv.registrationAmount);
-  const desk = parseAmount(inv.deskFeeAmount);
-
-  const termFees = parseFloat((tuition + transport + dining + registration + desk).toFixed(2));
+  const termFees = effectiveTermFeesForBalance(inv);
   inv.amount = termFees;
 
   const totalOwed = parseFloat((previousBalance + termFees).toFixed(2));

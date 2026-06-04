@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { Settings } from '../entities/Settings';
+import { formatMarkSheetAverage } from './markSheetSubjectOrder';
 
 interface MarkSheetExcelData {
   class: {
@@ -76,7 +77,7 @@ export function createMarkSheetExcel(
     'Student Name',
     ...data.subjects.map((s) => s.name),
     'Total',
-    'Avg %'
+    'Average'
   ];
   rows.push(headerRow);
 
@@ -91,7 +92,7 @@ export function createMarkSheetExcel(
         return sub ? `${sub.score}/${sub.maxScore}` : '-';
       }),
       `${row.totalScore}/${row.totalMaxScore}`,
-      row.average.toFixed(2) + '%'
+      formatMarkSheetAverage(row.average)
     ];
     rows.push(dataRow);
   }

@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../utils/route-activation';
 import { AuthService } from '../../services/auth.service';
 import { SettingsService } from '../../services/settings.service';
@@ -54,7 +54,6 @@ templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  user: any;
   moduleAccess: any = null;
   schoolName: string = '';
   schoolMotto: string = '';
@@ -253,8 +252,6 @@ constructor(
 ) {}
 
   ngOnInit() {
-    this.user = this.authService.getCurrentUser();
-
     if (this.isTeacher()) {
       this.loadingStats = false;
       this.router.navigate(['/teacher/dashboard']);
@@ -690,11 +687,6 @@ if (this.textToggleInterval) {
       teachers: 'teachers'
     };
     return baseMap[module] || module;
-  }
-
-  logout() {
-    this.authService.logout();
-    this.router.navigate(['/login']);
   }
 
   getCurrentDateTime(): string {

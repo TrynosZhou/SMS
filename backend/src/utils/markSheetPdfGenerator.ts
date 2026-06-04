@@ -1,6 +1,7 @@
 import PDFDocument from 'pdfkit';
 import sizeOf from 'image-size';
 import { Settings } from '../entities/Settings';
+import { formatMarkSheetAverage, getMarkSheetScoreColor } from './markSheetSubjectOrder';
 
 interface MarkSheetData {
   class: {
@@ -215,7 +216,7 @@ export function createMarkSheetPDF(
       xPos += colWidths.total;
       
       // Average
-      doc.text('Avg %', xPos + 5, yPos + 8);
+      doc.text('Average', xPos + 5, yPos + 8);
 
       // Header row 2 - Subject names
       yPos += rowHeight;
@@ -264,26 +265,31 @@ export function createMarkSheetPDF(
         doc.text(row.studentName, xPos + 5, yPos + 6, { width: colWidths.studentName - 10 });
         xPos += colWidths.studentName;
         
-        // Subject marks
+        // Subject marks (percentage, green or blue bold)
         for (const subject of markSheetData.subjects) {
           const subjectData = row.subjects[subject.id];
           if (subjectData) {
-            const markText = `${subjectData.score}/${subjectData.maxScore}`;
+            const pct = Math.round(Number(subjectData.percentage) || 0);
+            const markText = String(pct);
+            doc
+              .fontSize(10)
+              .font('Helvetica-Bold')
+              .fillColor(getMarkSheetScoreColor(pct));
             doc.text(markText, xPos + 2, yPos + 8, { width: subjectColWidth - 4, align: 'center' });
           } else {
+            doc.fontSize(9).font('Helvetica').fillColor('#000000');
             doc.text('-', xPos + 2, yPos + 8, { width: subjectColWidth - 4, align: 'center' });
           }
           xPos += subjectColWidth;
         }
-        
-        // Total
-        doc.font('Helvetica-Bold');
+
+        // Total & average: black bold (subject marks stay blue)
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#000000');
         doc.text(`${row.totalScore}/${row.totalMaxScore}`, xPos + 5, yPos + 8);
         xPos += colWidths.total;
-        
-        // Average
-        doc.text(`${row.average.toFixed(1)}%`, xPos + 5, yPos + 8);
-        doc.font('Helvetica');
+
+        doc.text(formatMarkSheetAverage(row.average), xPos + 5, yPos + 8);
+        doc.fontSize(9).font('Helvetica').fillColor('#000000');
         
         yPos += rowHeight;
 

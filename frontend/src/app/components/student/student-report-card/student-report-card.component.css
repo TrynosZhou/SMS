@@ -459,12 +459,17 @@
   display: inline-block;
 }
 
-.grade-excellent         { background: #16a34a; color: white; }
-.grade-very-good         { background: #0891b2; color: white; }
-.grade-good              { background: #2563eb; color: white; }
-.grade-satisfactory      { background: #d97706; color: white; }
-.grade-needs-improvement { background: #ea580c; color: white; }
-.grade-fail              { background: #dc2626; color: white; }
+.grade-blue {
+  background: #dbeafe;
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.src-mark-score {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #2563eb;
+}
 
 /* ── Performance chips row ───────────────────────────────────── */
 .src-perf-row {

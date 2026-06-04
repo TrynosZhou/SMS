@@ -20,6 +20,12 @@ import { createReportCardPDF } from '../utils/pdfGenerator';
 import { createMarkSheetPDF } from '../utils/markSheetPdfGenerator';
 import { createMarkSheetExcel } from '../utils/markSheetExcelGenerator';
 import {
+  computeCoreAverageFromMarks,
+  computeCoreAverageFromReportSubjects,
+  finalizeMarkSheetCoreTotals,
+  sortMarkSheetSubjects
+} from '../utils/markSheetSubjectOrder';
+import {
   computeInvoiceFeesOutstanding,
   findInvoiceForReportCardAccess,
   getConfiguredDeskFee
@@ -60,44 +66,6 @@ function normalizeExamType(type: string): ExamType {
   
   // If we can't match, throw an error with helpful message
   throw new Error(`Invalid exam type: "${type}". Valid types are: ${validValues.join(', ')}`);
-}
-
-// Compute core-subject average (Mathematics, Science, English) - same logic as mark-sheet for ranking
-function computeCoreAverageFromMarks(
-  marks: Array<{ subject?: { name: string } | null; score: number | string; maxScore: number | string; examId?: string; updatedAt?: Date; createdAt?: Date }>
-): number {
-  let coreTotalScore = 0;
-  let coreTotalMaxScore = 0;
-  for (const subjectName of ALLOWED_RANKING_SUBJECTS) {
-    const subjectMarks = marks.filter(m => {
-      const name = m.subject?.name ? String(m.subject.name).trim() : '';
-      return name === subjectName;
-    });
-    
-    if (subjectMarks.length > 0) {
-      // Group by examId to prevent duplicate marks for the same exam being summed
-      const examMarksMap: { [key: string]: typeof subjectMarks[0] } = {};
-      subjectMarks.forEach(m => {
-        const eid = m.examId || 'unknown';
-        const existing = examMarksMap[eid];
-        const mDate = m.updatedAt || m.createdAt || new Date(0);
-        const eDate = existing ? (existing.updatedAt || existing.createdAt || new Date(0)) : new Date(0);
-        if (!existing || mDate > eDate) {
-          examMarksMap[eid] = m;
-        }
-      });
-
-      const uniqueMarks = Object.values(examMarksMap);
-      const totalScore = uniqueMarks.reduce((s, m) => s + (parseFloat(String(m.score)) || 0), 0);
-      const totalMax = uniqueMarks.reduce((s, m) => s + (parseFloat(String(m.maxScore)) || 100), 0);
-      coreTotalScore += totalScore;
-      coreTotalMaxScore += totalMax;
-    } else {
-      coreTotalMaxScore += 100; // No marks = 0/100 for this core subject
-    }
-  }
-  if (coreTotalMaxScore <= 0) return 0;
-  return (coreTotalScore / coreTotalMaxScore) * 100;
 }
 
 // Helper function to assign positions with proper tie handling
@@ -2552,8 +2520,8 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         }
       });
 
-      // Calculate overall average based on CORE SUBJECTS ONLY (Mathematics, Science, English)
-      const overallAverage = Math.round(computeCoreAverageFromMarks(studentMarks) * 100) / 100;
+      // Overall average = sum of core subject marks (Math, English, Science) ÷ 3 — matches mark sheet
+      const overallAverage = computeCoreAverageFromReportSubjects(subjectData);
 
       // Find class position (only within the current class) - using position from tie-handled rankings
       const classRankEntry = classRankings.find(r => r.studentId === student.id);
@@ -3133,10 +3101,9 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         }
       });
 
-      // Calculate overall average based on CORE SUBJECTS ONLY (Mathematics, Science, English)
-      const overallAverage = computeCoreAverageFromMarks(allMarks);
+      const overallAverage = computeCoreAverageFromReportSubjects(subjectData);
 
-      // Calculate class position using CORE SUBJECTS ONLY (Mathematics, Science, English) - same logic as mark-sheet
+      // Calculate class position using CORE SUBJECTS ONLY — ranked by same core average as mark sheet
       const allClassMarks = await marksRepository.find({
         where: { examId: In(examIds) },
         relations: ['student', 'subject']
@@ -3328,6 +3295,34 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       });
       const settings = settingsList.length > 0 ? settingsList[0] : null;
 
+      const thresholds = settings?.gradeThresholds || {
+        excellent: 90,
+        veryGood: 80,
+        good: 60,
+        satisfactory: 40,
+        needsImprovement: 20,
+        basic: 1
+      };
+      const gradeLabels = settings?.gradeLabels || {
+        excellent: 'OUTSTANDING',
+        veryGood: 'VERY HIGH',
+        good: 'HIGH',
+        satisfactory: 'GOOD',
+        needsImprovement: 'ASPIRING',
+        basic: 'BASIC',
+        fail: 'UNCLASSIFIED'
+      };
+      const getGradeForPdf = (percentage: number): string => {
+        if (percentage === 0) return gradeLabels.fail || 'UNCLASSIFIED';
+        if (percentage >= (thresholds.excellent || 90)) return gradeLabels.excellent || 'OUTSTANDING';
+        if (percentage >= (thresholds.veryGood || 80)) return gradeLabels.veryGood || 'VERY HIGH';
+        if (percentage >= (thresholds.good || 60)) return gradeLabels.good || 'HIGH';
+        if (percentage >= (thresholds.satisfactory || 40)) return gradeLabels.satisfactory || 'GOOD';
+        if (percentage >= (thresholds.needsImprovement || 20)) return gradeLabels.needsImprovement || 'ASPIRING';
+        if (percentage >= (thresholds.basic || 1)) return gradeLabels.basic || 'BASIC';
+        return gradeLabels.fail || 'UNCLASSIFIED';
+      };
+
       // Calculate report card data
       let totalPercentage = 0;
       const subjectData = marks.map(mark => {
@@ -3344,9 +3339,9 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         };
       });
 
-      const overallAverage = computeCoreAverageFromMarks(marks);
+      const overallAverage = computeCoreAverageFromReportSubjects(subjectData);
 
-      // Calculate class position using CORE SUBJECTS ONLY (Mathematics, Science, English) - same logic as mark-sheet
+      // Calculate class position using CORE SUBJECTS ONLY — ranked by same core average as mark sheet
       const allClassMarks = await marksRepository.find({
         where: { examId: examId as string },
         relations: ['student', 'subject']
@@ -3485,6 +3480,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         exam: exam,
         subjects: subjectData,
         overallAverage: overallAverage.toString(),
+        overallGrade: getGradeForPdf(overallAverage),
         classPosition: classPosition || 0,
         totalStudents: totalStudents, // Add total number of students
         remarks: {
@@ -3734,16 +3730,7 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       }
       subjects = [selected];
     }
-    const SUBJECT_ORDER = ['mathematics', 'science', 'english', 'digital literacy', 'french'];
-    subjects.sort((a, b) => {
-      const an = String(a.name || '').trim().toLowerCase();
-      const bn = String(b.name || '').trim().toLowerCase();
-      const ai = SUBJECT_ORDER.indexOf(an);
-      const bi = SUBJECT_ORDER.indexOf(bn);
-      const av = ai >= 0 ? ai : SUBJECT_ORDER.length + an.localeCompare(bn);
-      const bv = bi >= 0 ? bi : SUBJECT_ORDER.length + bn.localeCompare(an);
-      return av - bv;
-    });
+    subjects = sortMarkSheetSubjects(subjects);
     if (subjects.length === 0) {
       return res.status(404).json({ message: 'No subjects found for this class' });
     }
@@ -3781,16 +3768,6 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
             maxScore: Math.round(parseFloat(String(latestMark.maxScore)) || 100),
             percentage: Math.round(((parseFloat(String(latestMark.score)) || 0) / (parseFloat(String(latestMark.maxScore)) || 100)) * 100)
           };
-
-          studentRow.totalScore += parseFloat(String(latestMark.score)) || 0;
-          studentRow.totalMaxScore += parseFloat(String(latestMark.maxScore)) || 100;
-          const subjectName = String(subject.name || '').trim();
-          if (ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
-            if (!studentRow.coreTotalScore) studentRow.coreTotalScore = 0;
-            if (!studentRow.coreTotalMaxScore) studentRow.coreTotalMaxScore = 0;
-            studentRow.coreTotalScore += parseFloat(String(latestMark.score)) || 0;
-            studentRow.coreTotalMaxScore += parseFloat(String(latestMark.maxScore)) || 100;
-          }
         } else {
           studentRow.subjects[subject.id] = {
             subjectName: subject.name,
@@ -3798,25 +3775,13 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
             maxScore: 100,
             percentage: 0
           };
-          studentRow.totalMaxScore += 100;
-          const subjectName = String(subject.name || '').trim();
-          if (ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
-            if (!studentRow.coreTotalMaxScore) studentRow.coreTotalMaxScore = 0;
-            studentRow.coreTotalMaxScore += 100;
-          }
         }
       }
 
-      // Calculate average based on allowed ranking subjects only (Mathematics, English, Science)
-      const coreMax = studentRow.coreTotalMaxScore || 0;
-      const coreTotal = studentRow.coreTotalScore || 0;
-      studentRow.totalScore = Math.round(coreTotal);
-      studentRow.totalMaxScore = coreMax;
-      if (coreMax > 0) {
-        studentRow.average = Number(((coreTotal / coreMax) * 100).toFixed(2));
-      } else {
-        studentRow.average = 0;
-      }
+      const coreTotals = finalizeMarkSheetCoreTotals(studentRow.subjects, subjects);
+      studentRow.totalScore = coreTotals.totalScore;
+      studentRow.totalMaxScore = coreTotals.totalMaxScore;
+      studentRow.average = coreTotals.average;
 
       studentRow.includeInClassPassRate = passRateInclusionMap.get(student.id) !== false;
 
@@ -3983,16 +3948,7 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'No subjects found for this class' });
     }
 
-    const SUBJECT_ORDER = ['mathematics', 'science', 'english', 'digital literacy', 'french'];
-    subjects.sort((a, b) => {
-      const an = String(a.name || '').trim().toLowerCase();
-      const bn = String(b.name || '').trim().toLowerCase();
-      const ai = SUBJECT_ORDER.indexOf(an);
-      const bi = SUBJECT_ORDER.indexOf(bn);
-      const av = ai >= 0 ? ai : SUBJECT_ORDER.length + an.localeCompare(bn);
-      const bv = bi >= 0 ? bi : SUBJECT_ORDER.length + bn.localeCompare(an);
-      return av - bv;
-    });
+    subjects = sortMarkSheetSubjects(subjects);
     // Organize marks by student and subject
     const markSheetData: any[] = [];
 
@@ -4026,16 +3982,6 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
             maxScore: Math.round(parseFloat(String(latestMark.maxScore)) || 100),
             percentage: Math.round(((parseFloat(String(latestMark.score)) || 0) / (parseFloat(String(latestMark.maxScore)) || 100)) * 100)
           };
-
-          studentRow.totalScore += parseFloat(String(latestMark.score)) || 0;
-          studentRow.totalMaxScore += parseFloat(String(latestMark.maxScore)) || 100;
-          const subjectName = String(subject.name || '').trim();
-          if (ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
-            if (!studentRow.coreTotalScore) studentRow.coreTotalScore = 0;
-            if (!studentRow.coreTotalMaxScore) studentRow.coreTotalMaxScore = 0;
-            studentRow.coreTotalScore += parseFloat(String(latestMark.score)) || 0;
-            studentRow.coreTotalMaxScore += parseFloat(String(latestMark.maxScore)) || 100;
-          }
         } else {
           studentRow.subjects[subject.id] = {
             subjectName: subject.name,
@@ -4043,25 +3989,13 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
             maxScore: 100,
             percentage: 0
           };
-          studentRow.totalMaxScore += 100;
-          const subjectName = String(subject.name || '').trim();
-          if (ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
-            if (!studentRow.coreTotalMaxScore) studentRow.coreTotalMaxScore = 0;
-            studentRow.coreTotalMaxScore += 100;
-          }
         }
       }
 
-      // Calculate average based on allowed ranking subjects only (Mathematics, English, Science)
-      const coreMax = studentRow.coreTotalMaxScore || 0;
-      const coreTotal = studentRow.coreTotalScore || 0;
-      studentRow.totalScore = Math.round(coreTotal);
-      studentRow.totalMaxScore = coreMax;
-      if (coreMax > 0) {
-        studentRow.average = Number(((coreTotal / coreMax) * 100).toFixed(2));
-      } else {
-        studentRow.average = 0;
-      }
+      const coreTotalsPdf = finalizeMarkSheetCoreTotals(studentRow.subjects, subjects);
+      studentRow.totalScore = coreTotalsPdf.totalScore;
+      studentRow.totalMaxScore = coreTotalsPdf.totalMaxScore;
+      studentRow.average = coreTotalsPdf.average;
 
       studentRow.includeInClassPassRate = passRateInclusionMapPdf.get(student.id) !== false;
 
@@ -4210,15 +4144,12 @@ export const generateMarkSheetExcel = async (req: AuthRequest, res: Response) =>
       if (!selected) return res.status(404).json({ message: 'Subject not found for this class' });
       subjects = [selected];
     }
+    subjects = sortMarkSheetSubjects(subjects);
 
     const markSheetData: any[] = [];
 
     for (const student of students) {
       const subjectRow: any = {};
-      let studentTotalScore = 0;
-      let studentTotalMaxScore = 0;
-      let coreTotalScore = 0;
-      let coreTotalMaxScore = 0;
 
       for (const sub of subjects) {
         const markRecords = allMarks.filter(
@@ -4228,7 +4159,6 @@ export const generateMarkSheetExcel = async (req: AuthRequest, res: Response) =>
         );
 
         if (markRecords.length > 0) {
-          // Use the most recent mark (latest exam)
           const latestMark = markRecords.sort((a: any, b: any) => 
             new Date(b.exam?.examDate || 0).getTime() - new Date(a.exam?.examDate || 0).getTime()
           )[0];
@@ -4243,12 +4173,6 @@ export const generateMarkSheetExcel = async (req: AuthRequest, res: Response) =>
             maxScore,
             percentage: pct
           };
-
-          const subjectName = String(sub.name || '').trim();
-          if (ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
-            coreTotalScore += score;
-            coreTotalMaxScore += maxScore;
-          }
         } else {
           subjectRow[sub.id] = {
             subjectName: sub.name,
@@ -4256,26 +4180,19 @@ export const generateMarkSheetExcel = async (req: AuthRequest, res: Response) =>
             maxScore: 100,
             percentage: 0
           };
-          const subjectName = String(sub.name || '').trim();
-          if (ALLOWED_RANKING_SUBJECTS.has(subjectName)) {
-            coreTotalMaxScore += 100;
-          }
         }
       }
 
-      // Use core subjects for total/average if applicable, or all subjects if no core ones found
-      const finalTotalScore = coreTotalMaxScore > 0 ? coreTotalScore : Object.values(subjectRow).reduce((a: number, s: any) => a + (s?.score || 0), 0) as number;
-      const finalTotalMaxScore = coreTotalMaxScore > 0 ? coreTotalMaxScore : Object.values(subjectRow).reduce((a: number, s: any) => a + (s?.maxScore || 0), 0) as number;
-      const average = finalTotalMaxScore > 0 ? (finalTotalScore / finalTotalMaxScore) * 100 : 0;
+      const coreTotalsXls = finalizeMarkSheetCoreTotals(subjectRow, subjects);
 
       markSheetData.push({
         studentId: student.id,
         studentNumber: student.studentNumber || student.id,
         studentName: `${student.firstName} ${student.lastName}`.trim(),
         subjects: subjectRow,
-        totalScore: Math.round(finalTotalScore),
-        totalMaxScore: Math.round(finalTotalMaxScore),
-        average,
+        totalScore: coreTotalsXls.totalScore,
+        totalMaxScore: coreTotalsXls.totalMaxScore,
+        average: coreTotalsXls.average,
         includeInClassPassRate: passRateInclusionMapXls.get(student.id) !== false
       });
     }

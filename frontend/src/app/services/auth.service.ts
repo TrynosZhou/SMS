@@ -360,6 +360,11 @@ export class AuthService {
 
   /** Route to the change-password / manage-account page for the current role. */
   getChangePasswordRoute(): string {
+    return this.getManageAccountRoute();
+  }
+
+  /** My Profile / manage account page for the current role. */
+  getManageAccountRoute(): string {
     const role = (this.getCurrentUser()?.role || '').toLowerCase();
     switch (role) {
       case 'teacher':
@@ -368,6 +373,9 @@ export class AuthService {
         return '/parent/manage-account';
       case 'accountant':
         return '/accountant/manage-account';
+      case 'admin':
+      case 'superadmin':
+        return '/admin/manage-account';
       default:
         return '/account/change-password';
     }

@@ -25,7 +25,8 @@ import {
   getConfiguredDeskFee,
   listStudentOutstandingInvoices,
   pickPaymentTargetInvoiceId,
-  withDisplayBalance
+  withDisplayBalance,
+  repairInvoiceFinancialsIfStale
 } from '../utils/invoiceFeesBalance';
 import { recomputeInvoiceTotalsFromLineItems } from '../utils/studentLogisticsInvoice';
 import { fetchExemptionReportRows } from '../utils/exemptionReport';
@@ -552,6 +553,21 @@ export const getInvoices = async (req: AuthRequest, res: Response) => {
       take: 1
     });
     const configuredDeskFee = getConfiguredDeskFee(settingsList[0] ?? null);
+
+    const repairedIds: string[] = [];
+    for (const inv of invoices) {
+      try {
+        if (repairInvoiceFinancialsIfStale(inv)) {
+          await invoiceRepository.save(inv);
+          repairedIds.push(inv.invoiceNumber);
+        }
+      } catch (repairErr) {
+        console.warn(`[getInvoices] balance repair skipped for ${inv.invoiceNumber}:`, repairErr);
+      }
+    }
+    if (repairedIds.length > 0) {
+      console.log(`[getInvoices] Repaired balance for ${repairedIds.length} invoice(s):`, repairedIds.join(', '));
+    }
 
     const invoicesForClient = invoices.map((inv) => {
       try {

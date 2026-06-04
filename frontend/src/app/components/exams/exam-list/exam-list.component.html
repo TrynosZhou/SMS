@@ -66,6 +66,13 @@
         <span class="stat-label">Average Score</span>
       </div>
     </div>
+    <div class="stat-card saved">
+      <div class="stat-icon">💾</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ getSavedMarksCount() }}</span>
+        <span class="stat-label">Saved to server</span>
+      </div>
+    </div>
   </div>
 
   <!-- Selection Form Card -->
@@ -182,6 +189,27 @@
       </div>
     </div>
 
+    <div class="criteria-progress" aria-label="Selection progress">
+      <div class="criteria-progress__track">
+        <div class="criteria-progress__fill" [style.width.%]="(getCriteriaCompleteCount() / 4) * 100"></div>
+      </div>
+      <div class="criteria-pills">
+        <span class="criteria-pill" [class.criteria-pill--done]="selectedClassId">
+          <span class="criteria-pill__dot"></span> Class
+        </span>
+        <span class="criteria-pill" [class.criteria-pill--done]="selectedTerm">
+          <span class="criteria-pill__dot"></span> Term
+        </span>
+        <span class="criteria-pill" [class.criteria-pill--done]="selectedExamType">
+          <span class="criteria-pill__dot"></span> Exam type
+        </span>
+        <span class="criteria-pill" [class.criteria-pill--done]="selectedSubjectId">
+          <span class="criteria-pill__dot"></span> Subject
+        </span>
+      </div>
+      <span class="criteria-progress__label">{{ getCriteriaCompleteCount() }} of 4 ready</span>
+    </div>
+
     <div class="form-actions-inline">
       <button 
         class="btn btn-primary btn-load" 
@@ -206,14 +234,32 @@
 
   <!-- Marks Entry Section -->
   <div *ngIf="showMarksEntry && students.length > 0" class="marks-entry-section">
-    <!-- Progress Bar -->
+    <!-- Progress -->
     <div class="progress-section">
-      <div class="progress-header">
-        <span class="progress-label">Entry Progress</span>
-        <span class="progress-value">{{ getMarksProgress() }}%</span>
+      <div class="progress-ring" [attr.data-progress]="getMarksProgress()">
+        <svg viewBox="0 0 36 36" class="progress-ring__svg" aria-hidden="true">
+          <path class="progress-ring__bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          <path
+            class="progress-ring__fill"
+            [attr.stroke-dasharray]="getMarksProgress() + ', 100'"
+            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+        </svg>
+        <span class="progress-ring__value">{{ getMarksProgress() }}%</span>
       </div>
-      <div class="progress-bar-wrapper">
-        <div class="progress-bar" [style.width.%]="getMarksProgress()"></div>
+      <div class="progress-details">
+        <div class="progress-header">
+          <span class="progress-label">Entry progress</span>
+          <span class="progress-value">{{ getEnteredMarksCount() }} / {{ filteredStudents.length }} marks</span>
+        </div>
+        <div class="progress-bar-wrapper">
+          <div class="progress-bar" [style.width.%]="getMarksProgress()"></div>
+        </div>
+        <p class="progress-hint" *ngIf="lastAutoSaveAt">
+          Last auto-save at {{ formatLastAutoSave() }}
+        </p>
+        <p class="progress-hint progress-hint--muted" *ngIf="!lastAutoSaveAt && !isPublished">
+          Marks auto-save when you leave a cell or press Enter for the next row
+        </p>
       </div>
     </div>
 
@@ -257,8 +303,24 @@
             (input)="filterStudents()">
           <button class="clear-search" *ngIf="studentSearchQuery" (click)="studentSearchQuery = ''; filterStudents()">×</button>
         </div>
+        <div class="status-filters" role="group" aria-label="Filter by mark status">
+          <button type="button" class="status-filter-chip" [class.active]="marksStatusFilter === 'all'" (click)="setMarksStatusFilter('all')">
+            All <span class="chip-count">{{ students.length }}</span>
+          </button>
+          <button type="button" class="status-filter-chip pending" [class.active]="marksStatusFilter === 'pending'" (click)="setMarksStatusFilter('pending')">
+            Pending <span class="chip-count">{{ getPendingMarksCount() }}</span>
+          </button>
+          <button type="button" class="status-filter-chip entered" [class.active]="marksStatusFilter === 'entered'" (click)="setMarksStatusFilter('entered')">
+            Entered <span class="chip-count">{{ getEnteredUnsavedCount() }}</span>
+          </button>
+          <button type="button" class="status-filter-chip saved" [class.active]="marksStatusFilter === 'saved'" (click)="setMarksStatusFilter('saved')">
+            Saved <span class="chip-count">{{ getSavedMarksCount() }}</span>
+          </button>
+        </div>
       </div>
       <div class="quick-actions">
+        <span class="autosave-pill" *ngIf="isAutoSaving">Saving…</span>
+        <span class="autosave-pill autosave-pill--ok" *ngIf="!isAutoSaving && lastAutoSaveAt">Saved {{ formatLastAutoSave() }}</span>
         <button 
           class="btn btn-action" 
           (click)="fillRemainingWithZero()"
@@ -281,6 +343,15 @@
     <!-- Marks Entry Form -->
     <form (ngSubmit)="onSubmit()" class="marks-form">
       <div class="table-card">
+        <div class="table-card-header">
+          <div>
+            <h3 class="table-card-title">Student marks</h3>
+            <p class="table-card-sub">
+              Showing {{ filteredStudents.length }} of {{ students.length }} students
+              <span class="table-card-kbd">Press <kbd>Enter</kbd> in a mark cell to jump to the next row</span>
+            </p>
+          </div>
+        </div>
         <div class="table-wrapper">
           <table class="marks-table">
             <thead>
@@ -333,6 +404,7 @@
                       [disabled]="isPublished"
                       [readonly]="isPublished"
                       (ngModelChange)="onMarkChange(student.id)"
+                      (keydown)="onMarkInputKeydown($event, i)"
                       (blur)="validateMark(student.id); onStudentBlur(student.id)"
                       (focus)="onStudentFocus(student.id)">
                   </div>

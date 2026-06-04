@@ -349,25 +349,35 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
       || this.user?.fullName || '';
   }
 
-  get overallGradeClass(): string {
-    const avg = this.reportCard?.overallAverage || 0;
-    if (avg >= 80) return 'grade-excellent';
-    if (avg >= 70) return 'grade-very-good';
-    if (avg >= 60) return 'grade-good';
-    if (avg >= 50) return 'grade-satisfactory';
-    if (avg >= 40) return 'grade-needs-improvement';
-    return 'grade-fail';
+  getMarkScoreColor(_value: number, _isNa = false): string {
+    return '#2563eb';
   }
 
-  subjectGradeClass(subject: any): string {
-    const pct = subject?.percentage ?? (subject?.score && subject?.maxScore
-      ? Math.round((subject.score / subject.maxScore) * 100) : 0);
-    if (pct >= 80) return 'grade-excellent';
-    if (pct >= 70) return 'grade-very-good';
-    if (pct >= 60) return 'grade-good';
-    if (pct >= 50) return 'grade-satisfactory';
-    if (pct >= 40) return 'grade-needs-improvement';
-    return 'grade-fail';
+  getSubjectPercentValue(subject: any): number {
+    if (subject?.grade === 'N/A') return 0;
+    const max = Number(subject?.maxScore) || 0;
+    if (max <= 0) return 0;
+    return Math.round((Number(subject?.score) || 0) / max * 100);
+  }
+
+  get overallGradeClass(): string {
+    return this.gradeLabelClass(this.reportCard?.overallGrade);
+  }
+
+  subjectGradeClass(_subject: any): string {
+    return 'grade-blue';
+  }
+
+  private gradeLabelClass(_grade: string | undefined): string {
+    return 'grade-blue';
+  }
+
+  getOverallAverageColor(): string {
+    const avg =
+      typeof this.reportCard?.overallAverage === 'number'
+        ? this.reportCard.overallAverage
+        : parseFloat(String(this.reportCard?.overallAverage ?? 0)) || 0;
+    return this.getMarkScoreColor(avg, false);
   }
 
   get canGenerate(): boolean {

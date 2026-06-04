@@ -30,6 +30,9 @@ templateUrl: './exam-list.component.html',
 })
 export class ExamListComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+  /** Ignores stale student-load responses when selection or navigation changes. */
+  private studentsLoadSeq = 0;
+  private lastBootstrapMs = 0;
 // Selection form
   selectedClassId = '';
   selectedTerm = '';
@@ -62,7 +65,9 @@ loadingStudents = false;
   success = '';
   showMarksEntry = false;
   studentSearchQuery = '';
-  
+  marksStatusFilter: 'all' | 'pending' | 'entered' | 'saved' = 'all';
+  lastAutoSaveAt: Date | null = null;
+
   // Auto-save state
   lastSavedStudentId: string | null = null;
   autoSaveTimeout: any = null;
@@ -109,6 +114,12 @@ loadingStudents = false;
   }
 
   private bootstrapPage(): void {
+    const now = Date.now();
+    if (now - this.lastBootstrapMs < 400) {
+      return;
+    }
+    this.lastBootstrapMs = now;
+
     const user = this.authService.getCurrentUser();
     this.isAdmin = user ? user.role === 'admin' || user.role === 'superadmin' : false;
     const isUniversalTeacher = user?.role === 'teacher' && (user as any).isUniversalTeacher;
@@ -168,7 +179,6 @@ loadingStudents = false;
           } else if (data.currentTerm) {
             this.selectedTerm = data.currentTerm;
           }
-          setTimeout(() => this.checkAndAutoLoadStudents(), 100);
         },
         error: (err: any) => {
           console.error('Error loading active term:', err);
@@ -339,7 +349,6 @@ const uniqueClassesMap = new Map<string, any>();
           if (this.selectedSubjectId && !this.subjects.find((s) => s.id === this.selectedSubjectId)) {
             this.selectedSubjectId = '';
           }
-          this.checkAndAutoLoadStudents();
           this.cdr.markForCheck();
 return;
         }
@@ -391,7 +400,6 @@ return;
           this.selectedSubjectId = '';
         }
 
-        this.checkAndAutoLoadStudents();
         this.cdr.markForCheck();
       },
       error: (err: any) => {
@@ -406,8 +414,10 @@ return;
   }
 
   onSelectionChange() {
-    // Reset marks entry when selections change
+    this.studentsLoadSeq++;
+    // Reset marks entry when selections change (user must click Load Students again)
     this.showMarksEntry = false;
+    this.loadingStudents = false;
     this.students = [];
     this.filteredStudents = [];
     this.marks = {};
@@ -424,110 +434,95 @@ return;
     }
 
     this.refreshSubjectDropdown();
-    if (!this.selectedClassId) {
-this.checkAndAutoLoadStudents();
-    }
   }
 
-  checkAndAutoLoadStudents() {
-    // Auto-load students when all 4 criteria are selected and subjects are available
-    if (this.isSelectionValid() && !this.loadingStudents) {
-      // Make sure subjects are loaded (for teachers)
-      if (!this.isAdmin && this.subjects.length === 0) {
-        // Subjects still loading, wait a bit more
-        setTimeout(() => this.checkAndAutoLoadStudents(), 200);
-        return;
-      }
-      
-      console.log('All criteria selected - auto-loading students...');
-      // Use setTimeout to avoid triggering during the same change event cycle
-      setTimeout(() => {
-        if (this.isSelectionValid() && !this.loadingStudents) {
-          this.loadStudents();
-        }
-      }, 100);
+  private finishStudentsLoad(seq: number): void {
+    if (seq === this.studentsLoadSeq) {
+      this.loadingStudents = false;
+      this.cdr.markForCheck();
     }
   }
 
   loadStudents() {
     if (!this.selectedClassId || !this.selectedTerm || !this.selectedExamType || !this.selectedSubjectId) {
       this.error = 'Please select Class, Term, Exam Type, and Subject';
+      this.cdr.markForCheck();
       return;
     }
 
+    const seq = ++this.studentsLoadSeq;
     this.loadingStudents = true;
+    this.showMarksEntry = false;
+    this.students = [];
+    this.filteredStudents = [];
     this.error = '';
     this.success = '';
+    this.cdr.markForCheck();
 
     // First, find or create exam
-    this.findOrCreateExam().then((exam: any) => {
-      if (!exam) {
-        this.error = 'Failed to create or find exam';
-        this.loadingStudents = false;
-        return;
-      }
-      
-      // Ensure exam has an ID
-      if (!exam.id) {
-        console.error('Exam missing ID:', exam);
-        this.error = 'Exam ID is missing. Please try again.';
-        this.loadingStudents = false;
-        return;
-      }
-      
-      console.log('Setting currentExam:', exam);
-      console.log('Current exam ID:', exam.id);
-      this.currentExam = exam;
-      this.isPublished = exam.status === 'published';
-      
-      // Check completeness after exam is loaded
-      setTimeout(() => this.checkCompleteness(), 500);
-      
-      // Load students for the selected class, sorted by LastName
-      this.studentService.getStudents(this.selectedClassId).subscribe({
-        next: (data: any) => {
-          console.log('Received students from API:', data);
-          console.log('Number of students received:', data?.length || 0);
-          
-          // Ensure data is an array
-          const studentsArray = Array.isArray(data) ? data : [];
-          
-          // Sort by LastName ascending, then FirstName
-          this.students = studentsArray.sort((a: any, b: any) => {
-            const lastNameA = (a.lastName || '').toLowerCase();
-            const lastNameB = (b.lastName || '').toLowerCase();
-            if (lastNameA !== lastNameB) {
-              return lastNameA.localeCompare(lastNameB);
-            }
-            const firstNameA = (a.firstName || '').toLowerCase();
-            const firstNameB = (b.firstName || '').toLowerCase();
-            return firstNameA.localeCompare(firstNameB);
-          });
-          
-          console.log('Sorted students count:', this.students.length);
-          if (this.students.length > 0) {
-            console.log('First student:', this.students[0].firstName, this.students[0].lastName);
-            console.log('Last student:', this.students[this.students.length - 1].firstName, this.students[this.students.length - 1].lastName);
-          }
-          
-          this.initializeMarks();
-          this.loadPassRateInclusionsForScope();
-          this.loadExistingMarks();
-          this.filteredStudents = [...this.students];
-          this.showMarksEntry = true;
-          this.loadingStudents = false;
-        },
-        error: (err: any) => {
-          console.error('Error loading students:', err);
-          this.error = err.error?.message || 'Failed to load students';
-          this.loadingStudents = false;
+    this.findOrCreateExam()
+      .then((exam: any) => {
+        if (seq !== this.studentsLoadSeq) {
+          return;
         }
+        if (!exam) {
+          this.error = 'Failed to create or find exam';
+          this.finishStudentsLoad(seq);
+          return;
+        }
+
+        if (!exam.id) {
+          this.error = 'Exam ID is missing. Please try again.';
+          this.finishStudentsLoad(seq);
+          return;
+        }
+
+        this.currentExam = exam;
+        this.isPublished = exam.status === 'published';
+        setTimeout(() => this.checkCompleteness(), 500);
+
+        this.studentService.getStudents(this.selectedClassId).subscribe({
+          next: (data: any) => {
+            if (seq !== this.studentsLoadSeq) {
+              return;
+            }
+            const studentsArray = Array.isArray(data) ? data : [];
+
+            this.students = studentsArray.sort((a: any, b: any) => {
+              const lastNameA = (a.lastName || '').toLowerCase();
+              const lastNameB = (b.lastName || '').toLowerCase();
+              if (lastNameA !== lastNameB) {
+                return lastNameA.localeCompare(lastNameB);
+              }
+              const firstNameA = (a.firstName || '').toLowerCase();
+              const firstNameB = (b.firstName || '').toLowerCase();
+              return firstNameA.localeCompare(firstNameB);
+            });
+
+            this.initializeMarks();
+            this.loadPassRateInclusionsForScope();
+            this.loadExistingMarks();
+            this.marksStatusFilter = 'all';
+            this.applyMarksFilters();
+            this.showMarksEntry = true;
+            this.finishStudentsLoad(seq);
+          },
+          error: (err: any) => {
+            if (seq !== this.studentsLoadSeq) {
+              return;
+            }
+            this.error = err.error?.message || 'Failed to load students';
+            this.finishStudentsLoad(seq);
+          }
+        });
+      })
+      .catch((err: any) => {
+        if (seq !== this.studentsLoadSeq) {
+          return;
+        }
+        this.error = err.error?.message || err.message || 'Failed to initialize exam';
+        this.finishStudentsLoad(seq);
       });
-    }).catch((err: any) => {
-      console.error('Error finding/creating exam:', err);
-      this.error = err.error?.message || 'Failed to initialize exam';
-      this.loadingStudents = false;
-    });
   }
 
   findOrCreateExam(): Promise<any> {
@@ -788,18 +783,93 @@ this.checkAndAutoLoadStudents();
     this.touchedFields.clear();
   }
 
-  // Student filtering
-  filterStudents() {
-    if (!this.studentSearchQuery.trim()) {
-      this.filteredStudents = [...this.students];
+  filterStudents(): void {
+    this.applyMarksFilters();
+  }
+
+  applyMarksFilters(): void {
+    let list = [...this.students];
+    const query = this.studentSearchQuery.toLowerCase().trim();
+    if (query) {
+      list = list.filter((student) => {
+        const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
+        const studentNumber = (student.studentNumber || '').toLowerCase();
+        return fullName.includes(query) || studentNumber.includes(query);
+      });
+    }
+    if (this.marksStatusFilter !== 'all') {
+      list = list.filter((student) => {
+        const saved = this.isRecordSaved(student.id);
+        const entered = this.hasMarks(student.id);
+        if (this.marksStatusFilter === 'saved') {
+          return saved;
+        }
+        if (this.marksStatusFilter === 'entered') {
+          return entered && !saved;
+        }
+        if (this.marksStatusFilter === 'pending') {
+          return !entered;
+        }
+        return true;
+      });
+    }
+    this.filteredStudents = list;
+    this.cdr.markForCheck();
+  }
+
+  setMarksStatusFilter(filter: 'all' | 'pending' | 'entered' | 'saved'): void {
+    this.marksStatusFilter = filter;
+    this.applyMarksFilters();
+  }
+
+  getCriteriaCompleteCount(): number {
+    let count = 0;
+    if (this.selectedClassId) count++;
+    if (this.selectedTerm) count++;
+    if (this.selectedExamType) count++;
+    if (this.selectedSubjectId) count++;
+    return count;
+  }
+
+  getSavedMarksCount(): number {
+    return this.students.filter((s) => this.isRecordSaved(s.id)).length;
+  }
+
+  getPendingMarksCount(): number {
+    return this.students.filter((s) => !this.hasMarks(s.id)).length;
+  }
+
+  getEnteredUnsavedCount(): number {
+    return this.students.filter((s) => this.hasMarks(s.id) && !this.isRecordSaved(s.id)).length;
+  }
+
+  formatLastAutoSave(): string {
+    if (!this.lastAutoSaveAt) {
+      return '';
+    }
+    return this.lastAutoSaveAt.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  }
+
+  onMarkInputKeydown(event: KeyboardEvent, index: number): void {
+    if (event.key !== 'Enter') {
       return;
     }
-    const query = this.studentSearchQuery.toLowerCase().trim();
-    this.filteredStudents = this.students.filter(student => {
-      const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
-      const studentNumber = (student.studentNumber || '').toLowerCase();
-      return fullName.includes(query) || studentNumber.includes(query);
-    });
+    event.preventDefault();
+    const rows = this.filteredStudents;
+    const nextIndex = index + 1;
+    if (nextIndex >= rows.length) {
+      return;
+    }
+    const nextId = rows[nextIndex].id;
+    const el = document.getElementById(`score_${nextId}`) as HTMLInputElement | null;
+    if (el) {
+      el.focus();
+      el.select();
+    }
   }
 
   // Marks statistics
@@ -1047,10 +1117,12 @@ this.checkAndAutoLoadStudents();
 
   showAutoSaveSuccess(message: string) {
     this.success = message;
-    // Auto-hide after 3 seconds
+    this.lastAutoSaveAt = new Date();
+    this.cdr.markForCheck();
     setTimeout(() => {
       if (this.success === message) {
         this.success = '';
+        this.cdr.markForCheck();
       }
     }, 3000);
   }

@@ -54,6 +54,7 @@ export class AppComponent implements OnInit, OnDestroy {
   ];
   private dashboardTitleIndex = 0;
   private currentUrl = '';
+  userMenuOpen = false;
 
   constructor(
     public authService: AuthService, 
@@ -99,11 +100,7 @@ export class AppComponent implements OnInit, OnDestroy {
       // Load module access settings
       this.moduleAccessService.loadModuleAccess();
       this.licenseService.load().subscribe();
-      if (!this.isStudent()) {
-        this.expandedMenus['registration'] = true;
-        this.expandedMenus['classManagement'] = true;
-        this.expandedMenus['attendance'] = true;
-      }
+      // Section expand/collapse is user-controlled; syncExpandedMenusFromUrl opens the active section only.
       if (this.isTeacher()) {
         this.expandedMenus['recordKeeping'] = true;
       }
@@ -623,6 +620,113 @@ export class AppComponent implements OnInit, OnDestroy {
     document.body.style.overflow = '';
   }
 
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    if (this.userMenuOpen) {
+      this.userMenuOpen = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  toggleUserMenu(event: Event): void {
+    event.stopPropagation();
+    this.userMenuOpen = !this.userMenuOpen;
+    this.cdr.markForCheck();
+  }
+
+  closeUserMenu(): void {
+    this.userMenuOpen = false;
+    this.cdr.markForCheck();
+  }
+
+  get profileRoute(): string {
+    return this.authService.getManageAccountRoute();
+  }
+
+  getProfileUsername(): string {
+    const u = this.authService.getCurrentUser();
+    if (!u) {
+      return 'User';
+    }
+    const username = String(u.username || '').trim();
+    if (username) {
+      return username;
+    }
+    const email = String(u.email || '').trim();
+    if (email.includes('@')) {
+      return email.split('@')[0];
+    }
+    return email || 'User';
+  }
+
+  getProfileRoleShort(): string {
+    const u = this.authService.getCurrentUser();
+    if (!u) {
+      return 'User';
+    }
+    const r = String(u.role || '').toLowerCase();
+    if (r === 'superadmin') return 'Super Admin';
+    if (r === 'admin') return 'Admin';
+    if (r === 'director') return 'Director';
+    if (r === 'headmaster') return 'Headmaster';
+    if (r === 'deputy_headmaster') return 'Deputy Head';
+    if (r === 'accountant') return 'Accountant';
+    if (r === 'teacher') return 'Teacher';
+    if (r === 'parent') return 'Parent';
+    if (r === 'student') return 'Student';
+    return 'User';
+  }
+
+  private getProfileDisplayName(): string {
+    const u = this.authService.getCurrentUser();
+    if (!u) {
+      return '';
+    }
+    if (u.fullName && String(u.fullName).trim()) {
+      return String(u.fullName).trim();
+    }
+    const teacher = u.teacher;
+    if (teacher) {
+      if (teacher.fullName && String(teacher.fullName).trim()) {
+        return String(teacher.fullName).trim();
+      }
+      const tf = String(teacher.firstName || '').trim();
+      const tl = String(teacher.lastName || '').trim();
+      if (tf || tl) {
+        return [tf, tl].filter(Boolean).join(' ');
+      }
+    }
+    if (u.student && (u.student.firstName || u.student.lastName)) {
+      return [u.student.firstName, u.student.lastName].filter(Boolean).join(' ').trim();
+    }
+    if (u.parent && (u.parent.firstName || u.parent.lastName)) {
+      return [u.parent.lastName, u.parent.firstName].filter(Boolean).join(' ').trim();
+    }
+    return '';
+  }
+
+  getProfileInitials(): string {
+    const display = this.getProfileDisplayName();
+    if (display) {
+      const parts = display.split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) {
+        return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
+      }
+      return display.slice(0, 2).toUpperCase();
+    }
+    return this.getProfileUsername().slice(0, 2).toUpperCase();
+  }
+
+  onMyProfileClick(): void {
+    this.closeUserMenu();
+    this.closeMobileMenu();
+  }
+
+  signOut(): void {
+    this.closeUserMenu();
+    this.logout();
+  }
+
   logout(): void {
     this.closeMobileMenu();
     void this.authService.confirmLogout().then((confirmed) => {
@@ -651,6 +755,10 @@ export class AppComponent implements OnInit, OnDestroy {
   onEscapeKey(): void {
     if (this.logoutConfirm.visible) {
       this.onLogoutConfirmNo();
+      return;
+    }
+    if (this.userMenuOpen) {
+      this.closeUserMenu();
     }
   }
 
@@ -679,11 +787,11 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   toggleMenu(menuKey: string): void {
-    // Don't expand menus when sidebar is collapsed
     if (this.sidebarCollapsed) {
       return;
     }
-    this.expandedMenus[menuKey] = !this.expandedMenus[menuKey];
+    this.expandedMenus[menuKey] = !this.isMenuExpanded(menuKey);
+    this.cdr.markForCheck();
   }
 
   /** Called from submenu links so the section is open before navigation (avoids needing two clicks). */
@@ -692,6 +800,15 @@ export class AppComponent implements OnInit, OnDestroy {
       return;
     }
     this.expandedMenus[menuKey] = true;
+  }
+
+  /** Expand a sidebar section before following a submenu routerLink (one-click navigation). */
+  prepareSidebarNavigation(menuKey: string): void {
+    if (this.sidebarCollapsed) {
+      return;
+    }
+    this.expandedMenus[menuKey] = true;
+    this.cdr.markForCheck();
   }
 
   /** Expand a section when navigating to a child route so submenu links work on first click. */
@@ -703,10 +820,21 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private syncExpandedMenusFromUrl(url: string): void {
     const path = this.normalizeSidebarPath(url);
+    let matchedKey: string | null = null;
+    let matchedPrefixLen = 0;
+
     for (const [menuKey, prefixes] of Object.entries(SIDEBAR_MENU_ROUTE_PREFIXES)) {
-      if (prefixes.some((p) => path === p || path.startsWith(p + '/'))) {
-        this.expandedMenus[menuKey] = true;
+      for (const prefix of prefixes) {
+        const hit = path === prefix || path.startsWith(prefix + '/');
+        if (hit && prefix.length > matchedPrefixLen) {
+          matchedPrefixLen = prefix.length;
+          matchedKey = menuKey;
+        }
       }
+    }
+
+    if (matchedKey) {
+      this.expandedMenus[matchedKey] = true;
     }
   }
 
@@ -718,7 +846,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   isMenuExpanded(menuKey: string): boolean {
-    return !!this.expandedMenus[menuKey] || this.isMenuRouteActive(menuKey);
+    return !!this.expandedMenus[menuKey];
   }
 
   toggleTheme(): void {
