@@ -2636,7 +2636,9 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
           schoolName: settings?.schoolName,
           schoolAddress: settings?.schoolAddress,
           schoolPhone: settings?.schoolPhone,
-          academicYear: settings?.academicYear
+          academicYear: settings?.academicYear,
+          schoolLogo2: settings?.schoolLogo2 ?? null,
+          schoolLogo: settings?.schoolLogo ?? null
         }
       });
     }

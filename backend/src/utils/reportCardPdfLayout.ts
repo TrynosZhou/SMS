@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit';
 import { Settings } from '../entities/Settings';
+import { decodeSchoolLogoBuffer, getReportCardSecondaryLogo } from './reportCardSchoolLogo';
 
 type PdfDoc = InstanceType<typeof PDFDocument>;
 
@@ -390,6 +391,49 @@ function measureSubjectRowHeight(
   return Math.max(minRowH, Math.ceil(textH) + CELL_PAD * 2);
 }
 
+function drawBannerSchoolLogo(
+  doc: PdfDoc,
+  innerX: number,
+  y: number,
+  bannerH: number,
+  sideW: number,
+  settings: Settings | null,
+  initials: string
+): void {
+  const logoBox = Math.min(sideW - 12, bannerH - 12, 48);
+  const logoX = innerX + (sideW - logoBox) / 2;
+  const logoY = y + (bannerH - logoBox) / 2;
+  const raw = getReportCardSecondaryLogo(settings);
+  const buffer = raw ? decodeSchoolLogoBuffer(raw) : null;
+
+  if (buffer) {
+    try {
+      doc.save();
+      doc.roundedRect(logoX, logoY, logoBox, logoBox, 6).fillColor('#ffffff').fill();
+      doc.image(buffer, logoX + 2, logoY + 2, {
+        fit: [logoBox - 4, logoBox - 4],
+        align: 'center',
+        valign: 'center'
+      });
+      doc.restore();
+      return;
+    } catch {
+      try {
+        doc.restore();
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  const logoR = 26;
+  const logoCx = innerX + sideW / 2;
+  const logoCy = y + bannerH / 2;
+  doc.circle(logoCx, logoCy, logoR).fillColor('#ffffff').fill();
+  doc.fontSize(14).font('Helvetica-Bold').fillColor(NAVY);
+  doc.text(initials, logoCx - logoR, logoCy - 7, { width: logoR * 2, align: 'center' });
+}
+
 function drawGoldPill(doc: PdfDoc, text: string, centerX: number, y: number, maxWidth: number) {
   doc.fontSize(11).font('Helvetica-Bold');
   const tw = Math.min(doc.widthOfString(text) + 20, maxWidth);
@@ -494,12 +538,7 @@ export function renderReportCardLayout(
   doc.rect(innerX + sideW, y, centerW, bannerH).fillColor(NAVY).fill();
   doc.rect(innerX + sideW + centerW, y, sideW, bannerH).fillColor(NAVY_SIDE).fill();
 
-  const logoR = 26;
-  const logoCx = innerX + sideW / 2;
-  const logoCy = y + bannerH / 2;
-  doc.circle(logoCx, logoCy, logoR).fillColor('#ffffff').fill();
-  doc.fontSize(14).font('Helvetica-Bold').fillColor(NAVY);
-  doc.text(initials, logoCx - logoR, logoCy - 7, { width: logoR * 2, align: 'center' });
+  drawBannerSchoolLogo(doc, innerX, y, bannerH, sideW, settings, initials);
 
   const centerX = innerX + sideW;
   doc.fontSize(16).font('Helvetica').fillColor('#ffffff');

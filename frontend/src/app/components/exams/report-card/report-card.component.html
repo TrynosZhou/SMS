@@ -357,7 +357,14 @@
           <div class="rc-document">
             <header class="rc-banner">
               <div class="rc-banner-side rc-banner-side--left">
-                <span class="rc-logo-badge">{{ getSchoolInitials(reportCard.settings?.schoolName || schoolName) }}</span>
+                <img
+                  *ngIf="hasCardSchoolLogo(reportCard)"
+                  [src]="getCardSchoolLogoSrc(reportCard)"
+                  alt="School logo"
+                  class="rc-logo-img" />
+                <span
+                  *ngIf="!hasCardSchoolLogo(reportCard)"
+                  class="rc-logo-badge">{{ getSchoolInitials(reportCard.settings?.schoolName || schoolName) }}</span>
               </div>
               <div class="rc-banner-center">
                 <h3 class="rc-school-name">{{ reportCard.settings?.schoolName || schoolName }}</h3>

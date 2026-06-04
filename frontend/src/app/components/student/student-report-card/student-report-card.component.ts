@@ -112,7 +112,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
         this.headmasterName = data.headmasterName || '';
         this.schoolName     = data.schoolName || '';
         this.currencySymbol = data.currencySymbol || '$';
-        this.schoolLogo = this.normalizeImageSrc(data.schoolLogo || data.schoolLogo2 || null);
+        this.schoolLogo = this.normalizeImageSrc(data.schoolLogo2 || data.schoolLogo || null);
         this.safeSchoolLogoUrl = this.schoolLogo
           ? this.sanitizer.bypassSecurityTrustUrl(this.schoolLogo) : null;
         this.gradeThresholds = data.gradeThresholds || null;

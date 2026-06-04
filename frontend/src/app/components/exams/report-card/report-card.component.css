@@ -968,6 +968,19 @@
   gap: 4px;
 }
 
+.rc-logo-img {
+  display: block;
+  width: 52px;
+  height: 52px;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
 .rc-logo-badge {
   display: inline-flex;
   align-items: center;

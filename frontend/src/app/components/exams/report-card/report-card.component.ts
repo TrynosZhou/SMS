@@ -218,6 +218,16 @@ this.loadCustomPhrases();
     return this.sanitizer.bypassSecurityTrustUrl(normalized);
   }
 
+  /** Logo for a card banner: card settings (secondary) then page-level settings. */
+  getCardSchoolLogoSrc(reportCard: any): SafeUrl | null {
+    const fromCard = reportCard?.settings?.schoolLogo2 || reportCard?.settings?.schoolLogo || null;
+    return this.getSchoolLogoSrc(fromCard);
+  }
+
+  hasCardSchoolLogo(reportCard: any): boolean {
+    return !!this.getCardSchoolLogoSrc(reportCard);
+  }
+
   private normalizeImageSrc(value: string | null): string | null {
     if (!value) return null;
 
@@ -441,8 +451,8 @@ const currentYear = new Date().getFullYear();
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
         this.currencySymbol = data.currencySymbol || '$';
-        // Use Logo 1 (schoolLogo) for report card banner; fallback to Logo 2 if Logo 1 not set
-        this.schoolLogo = this.normalizeImageSrc(data.schoolLogo || data.schoolLogo2 || null);
+        // Secondary logo (School Logo 2) from System Settings; fallback to primary logo
+        this.schoolLogo = this.normalizeImageSrc(data.schoolLogo2 || data.schoolLogo || null);
         this.safeSchoolLogoUrl = this.schoolLogo ? this.sanitizer.bypassSecurityTrustUrl(this.schoolLogo) : null;
         this.schoolName = data.schoolName || '';
         this.schoolAddress = data.schoolAddress || '';
