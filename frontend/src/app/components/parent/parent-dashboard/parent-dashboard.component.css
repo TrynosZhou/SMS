@@ -2,8 +2,7 @@
 :host { display: block; }
 
 .pdb-layout {
-  display: flex;
-  min-height: 100vh;
+  min-height: 100%;
   background: #f0f4f8;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -79,7 +78,6 @@
 
 /* ── Main ────────────────────────────────────────────────────────────────── */
 .pdb-main {
-  flex: 1;
   padding: 28px 28px 40px;
   min-width: 0;
   display: flex;

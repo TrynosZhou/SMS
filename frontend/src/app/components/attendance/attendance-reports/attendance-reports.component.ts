@@ -38,7 +38,12 @@ export class AttendanceReportsComponent implements OnInit, OnDestroy {
   lowestPerformer: any = null;
   averageAttendanceRate = 0;
   concernCount = 0;
-  attendanceDistribution = {
+  attendanceDistribution: { excellent: number; good: number; attention: number; counts?: { excellent: number; good: number; attention: number } } = {
+    excellent: 0,
+    good: 0,
+    attention: 0
+  };
+  distributionCounts = {
     excellent: 0,
     good: 0,
     attention: 0
@@ -47,6 +52,7 @@ export class AttendanceReportsComponent implements OnInit, OnDestroy {
   // Modern features
   dateRangePreset: string = '';
   showCharts = true;
+  filtersExpanded = true;
   isPrintMode = false;
   weeklyTrend: any[] = [];
   monthlyTrend: any[] = [];
@@ -381,6 +387,7 @@ next: (data: any) => {
     this.concernCount = reportRowsArray.filter(row => (row.attendanceRateNumber ?? 0) < this.concernThreshold).length;
 
     this.attendanceDistribution = this.calculateDistribution(reportRowsArray);
+    this.distributionCounts = this.attendanceDistribution.counts ?? { excellent: 0, good: 0, attention: 0 };
 
     // Calculate attendance by status totals
     this.attendanceByStatus = {
@@ -557,6 +564,25 @@ next: (data: any) => {
     this.viewMode = this.viewMode === 'table' ? 'cards' : 'table';
   }
 
+  toggleCharts() {
+    this.showCharts = !this.showCharts;
+  }
+
+  toggleFiltersExpanded() {
+    this.filtersExpanded = !this.filtersExpanded;
+  }
+
+  getDistributionCount(tier: 'excellent' | 'good' | 'attention'): number {
+    return this.distributionCounts[tier] ?? 0;
+  }
+
+  getProgressBarClass(rate: number): string {
+    if (rate >= 95) return 'progress-bar--excellent';
+    if (rate >= 85) return 'progress-bar--good';
+    if (rate >= this.concernThreshold) return 'progress-bar--average';
+    return 'progress-bar--critical';
+  }
+
   // Get trend icon
   getTrendIcon(): string {
     switch (this.trendDirection) {
@@ -643,7 +669,7 @@ next: (data: any) => {
 
   private calculateDistribution(rows: any[]) {
     if (!rows.length) {
-      return { excellent: 0, good: 0, attention: 0 };
+      return { excellent: 0, good: 0, attention: 0, counts: { excellent: 0, good: 0, attention: 0 } };
     }
 
     let excellent = 0;
@@ -665,7 +691,8 @@ next: (data: any) => {
     return {
       excellent: Math.round((excellent / total) * 100),
       good: Math.round((good / total) * 100),
-      attention: Math.round((attention / total) * 100)
+      attention: Math.round((attention / total) * 100),
+      counts: { excellent, good, attention }
     };
   }
 

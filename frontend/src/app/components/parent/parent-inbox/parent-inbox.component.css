@@ -1,35 +1,6 @@
 ﻿:host { display: block; }
-.pib-layout { display: flex; min-height: 100vh; background: #f0f4f8; }
-
-/* Sidebar */
-.pib-sidebar {
-  width: 240px; flex-shrink: 0;
-  background: linear-gradient(160deg, #1e3a8a 0%, #1d4ed8 60%, #2563eb 100%);
-  display: flex; flex-direction: column; position: fixed; height: 100vh; overflow-y: auto;
-}
-.pib-brand { display: flex; align-items: center; gap: 12px; padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,.1); }
-.brand-icon { font-size: 26px; }
-.brand-title { color: #fff; font-weight: 700; font-size: 14px; }
-.brand-sub { color: rgba(255,255,255,.85); font-size: 11px; font-weight: 700; margin-top: 2px; }
-.pib-nav { flex: 1; padding: 16px 0; }
-.pib-nav-item {
-  display: flex; align-items: center; gap: 12px; padding: 11px 20px;
-  color: rgba(255,255,255,.9); text-decoration: none; font-size: 13px; font-weight: 700;
-  border-left: 3px solid transparent; transition: all .2s;
-}
-.pib-nav-item:hover { background: rgba(255,255,255,.08); color: #fff; }
-.pib-nav-item.active { background: rgba(255,255,255,.12); border-left-color: #93c5fd; color: #fff; }
-.nav-icon { font-size: 15px; width: 18px; text-align: center; }
-.unread-badge { margin-left: auto; background: #ef4444; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
-.pib-logout {
-  margin: 16px; padding: 10px; background: rgba(220,53,69,.15); color: #ff6b7a;
-  border: 1px solid rgba(220,53,69,.3); border-radius: 8px; cursor: pointer;
-  font-size: 12px; font-weight: 700; transition: background .2s;
-}
-.pib-logout:hover { background: rgba(220,53,69,.25); }
-
-/* Main */
-.pib-main { flex: 1; margin-left: 240px; padding: 28px 32px 40px; min-width: 0; }
+.pib-layout { min-height: 100%; background: #f0f4f8; }
+.pib-main { padding: 28px 32px 40px; min-width: 0; }
 
 /* Hero */
 .pib-hero {
@@ -319,8 +290,7 @@
 }
 
 @media (max-width: 768px) {
-  .pib-sidebar { position: relative; width: 100%; height: auto; }
-  .pib-main { margin-left: 0; padding: 16px; }
+  .pib-main { padding: 16px; }
   .pib-layout { flex-direction: column; }
   .pib-hero { padding: 18px; }
   .pib-hero__title { font-size: 20px; }

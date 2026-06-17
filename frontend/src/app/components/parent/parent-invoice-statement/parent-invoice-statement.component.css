@@ -4,8 +4,7 @@
 
 /* ── Layout ─────────────────────────────────────────────────── */
 .pis-layout {
-  display: flex;
-  min-height: 100vh;
+  min-height: 100%;
   background: #f0f4f8;
   font-family: inherit;
 }
@@ -91,7 +90,6 @@
 
 /* ── Main ────────────────────────────────────────────────────── */
 .pis-main {
-  flex: 1;
   padding: 24px;
   min-width: 0;
   overflow-y: auto;

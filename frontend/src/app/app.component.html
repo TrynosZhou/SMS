@@ -16,37 +16,90 @@
 <!-- Top Navigation Bar -->
 <nav class="top-navbar" *ngIf="isAuthenticated()">
   <div class="top-navbar-content">
-    <button class="sidebar-toggle" (click)="toggleSidebar()" aria-label="Toggle sidebar">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="3" y1="12" x2="21" y2="12"></line>
-        <line x1="3" y1="6" x2="21" y2="6"></line>
-        <line x1="3" y1="18" x2="21" y2="18"></line>
-      </svg>
-    </button>
-    <div class="top-navbar-title-wrap">
-      <h1 class="top-navbar-title">{{ getTopNavbarTitle() }}</h1>
+    <div class="top-navbar-brand">
+      <button class="sidebar-toggle" (click)="toggleSidebar()" aria-label="Toggle sidebar">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="top-navbar-school">
+        <img
+          *ngIf="schoolLogo"
+          [src]="schoolLogo"
+          alt="School logo"
+          class="top-navbar-logo" />
+        <span *ngIf="!schoolLogo" class="top-navbar-logo-fallback" aria-hidden="true">🏫</span>
+        <span class="top-navbar-school-name" *ngIf="schoolName">{{ schoolName }}</span>
+      </div>
     </div>
+
     <div class="top-navbar-actions">
       <button
         *ngIf="isActingAsStudent()"
         type="button"
-        class="btn btn-secondary"
+        class="top-nav-exit-btn"
         (click)="exitStudentPortal()"
         title="Return to parent dashboard">
-        <span>Exit Student Mode</span>
+        Exit Student Mode
       </button>
       <button
         *ngIf="isActingAsParent()"
         type="button"
-        class="btn btn-secondary"
+        class="top-nav-exit-btn"
         (click)="exitParentPortal()"
         title="Return to student dashboard">
-        <span>Exit Parent Mode</span>
+        Exit Parent Mode
       </button>
-      <button type="button" class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="themeService.darkMode ? 'Switch to light mode' : 'Switch to dark mode'" [title]="themeService.darkMode ? 'Light mode' : 'Dark mode'">
+
+      <button type="button" class="top-nav-icon-btn" (click)="openNavSearch()" title="Search menu" aria-label="Search">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+        </svg>
+      </button>
+
+      <a [routerLink]="getMessagesNavLink()" class="top-nav-icon-btn" title="Messages" aria-label="Messages">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
+        </svg>
+      </a>
+
+      <a [routerLink]="getCalendarNavLink()" class="top-nav-icon-btn" title="Calendar" aria-label="Calendar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+      </a>
+
+      <div class="top-nav-view-as" *ngIf="canShowViewAsRole()">
+        <span class="top-nav-view-as-label" id="view-as-role-label">View as role</span>
+        <select
+          class="top-nav-view-as-select"
+          [(ngModel)]="selectedViewAsRoleId"
+          (change)="onViewAsRoleChange()"
+          [disabled]="loadingViewAsRoles"
+          aria-labelledby="view-as-role-label">
+          <option value="">My access</option>
+          <option *ngFor="let role of viewAsRoles" [value]="role.id">{{ role.name }}</option>
+        </select>
+      </div>
+
+      <button
+        type="button"
+        class="theme-toggle"
+        (click)="toggleTheme()"
+        [attr.aria-label]="themeService.darkMode ? 'Switch to light mode' : 'Switch to dark mode'"
+        [title]="themeService.darkMode ? 'Light mode' : 'Dark mode'">
         <span class="theme-icon" *ngIf="!themeService.darkMode">🌙</span>
         <span class="theme-icon" *ngIf="themeService.darkMode">☀️</span>
       </button>
+
+      <span class="top-navbar-user-name">{{ getNavbarDisplayName() }}</span>
+
       <div class="top-user-menu" *ngIf="authService.getCurrentUser()">
         <button
           type="button"
@@ -56,7 +109,6 @@
           aria-haspopup="true"
           aria-label="Account menu">
           <span class="top-user-trigger-avatar" aria-hidden="true">{{ getProfileInitials() }}</span>
-          <span class="top-user-trigger-chevron" [class.open]="userMenuOpen" aria-hidden="true">▾</span>
         </button>
 
         <div
@@ -67,7 +119,7 @@
           <div class="top-user-dropdown-header">
             <span class="top-user-dropdown-avatar" aria-hidden="true">{{ getProfileInitials() }}</span>
             <div class="top-user-dropdown-identity">
-              <span class="top-user-dropdown-name">{{ getProfileUsername() }}</span>
+              <span class="top-user-dropdown-name">{{ getNavbarDisplayName() }}</span>
               <span class="top-user-dropdown-role">{{ getProfileRoleShort() }}</span>
             </div>
           </div>
@@ -106,18 +158,30 @@
   </div>
 </nav>
 
-<!-- Mobile overlay for staff sidebar drawer (Teachers/Admin/SuperAdmin) -->
+<!-- Mobile overlay for sidebar drawer -->
 <div class="mobile-sidebar-overlay"
-     *ngIf="isAuthenticated() && (!isParent() || isActingAsStudent()) && !isActingAsParent()"
+     *ngIf="isAuthenticated() && showAppSidebar()"
      (click)="closeMobileMenu()"
      [class.show]="mobileMenuOpen"></div>
 
 <!-- Collapsible Sidebar -->
-<aside class="sidebar" [class.collapsed]="sidebarCollapsed" [class.mobile-open]="mobileMenuOpen" *ngIf="isAuthenticated() && (!isParent() || isActingAsStudent()) && !isActingAsParent()">
+<aside class="sidebar" [class.collapsed]="sidebarCollapsed" [class.mobile-open]="mobileMenuOpen" *ngIf="isAuthenticated() && showAppSidebar()">
   <div class="sidebar-content">
     <nav class="sidebar-nav">
-      <!-- Student-specific sidebar (only for students) -->
-      <div *ngIf="isStudent()">
+      <!-- Student portal navigation -->
+      <div *ngIf="isStudent() && !isParentNavVisible()">
+        <div class="sidebar-portal-head" *ngIf="!sidebarCollapsed">
+          <span class="sidebar-portal-head__title">Student Portal</span>
+          <span class="sidebar-portal-head__sub">{{ getNavbarDisplayName() }}</span>
+        </div>
+        <a
+          routerLink="/dashboard"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          class="sidebar-item">
+          <span class="sidebar-icon">🏠</span>
+          <span class="sidebar-text">Dashboard</span>
+        </a>
         <a routerLink="/student/report-card" routerLinkActive="active" class="sidebar-item">
           <span class="sidebar-icon">📄</span>
           <span class="sidebar-text">My Report Card</span>
@@ -133,7 +197,7 @@
 
         <!-- Student E-Learning menu -->
         <div class="sidebar-menu">
-          <div class="sidebar-menu-header" (click)="toggleMenu('studentElearning')">
+          <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('studentElearning')" (click)="toggleMenu('studentElearning')">
             <span class="sidebar-icon">💻</span>
             <span class="sidebar-text">E-Learning Services</span>
             <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('studentElearning')">▼</span>
@@ -156,8 +220,52 @@
         </a>
       </div>
 
-      <!-- Regular sidebar (for non-students) -->
-      <div *ngIf="!isStudent()">
+      <!-- Parent portal navigation -->
+      <div *ngIf="isParentNavVisible()">
+        <div class="sidebar-portal-head" *ngIf="!sidebarCollapsed">
+          <span class="sidebar-portal-head__title">Parent Portal</span>
+          <span class="sidebar-portal-head__sub">{{ getParentPortalLabel() }}</span>
+        </div>
+        <a routerLink="/parent/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="sidebar-item">
+          <span class="sidebar-icon">📊</span>
+          <span class="sidebar-text">Dashboard</span>
+        </a>
+        <a routerLink="/parent/inbox" routerLinkActive="active" class="sidebar-item">
+          <span class="sidebar-icon">📧</span>
+          <span class="sidebar-text">My Inbox</span>
+        </a>
+        <a routerLink="/parent/send-message" routerLinkActive="active" class="sidebar-item">
+          <span class="sidebar-icon">✉️</span>
+          <span class="sidebar-text">Send Message</span>
+        </a>
+        <a routerLink="/parent/outbox" routerLinkActive="active" class="sidebar-item">
+          <span class="sidebar-icon">📤</span>
+          <span class="sidebar-text">Outbox</span>
+        </a>
+        <a routerLink="/parent/invoice-statement" routerLinkActive="active" class="sidebar-item">
+          <span class="sidebar-icon">🧾</span>
+          <span class="sidebar-text">My Invoice Statement</span>
+        </a>
+        <a routerLink="/parent/student-portal" routerLinkActive="active" class="sidebar-item">
+          <span class="sidebar-icon">🎓</span>
+          <span class="sidebar-text">Student Portal</span>
+        </a>
+        <a routerLink="/parent/link-students" routerLinkActive="active" class="sidebar-item">
+          <span class="sidebar-icon">🔗</span>
+          <span class="sidebar-text">Link Students</span>
+        </a>
+        <a
+          routerLink="/parent/manage-account"
+          routerLinkActive="active"
+          class="sidebar-item"
+          *ngIf="authService.canChangeOwnPassword()">
+          <span class="sidebar-icon">👤</span>
+          <span class="sidebar-text">My Account</span>
+        </a>
+      </div>
+
+      <!-- Staff / admin navigation -->
+      <div *ngIf="!isStudent() && !isParentNavVisible()">
         <!-- Filter menu -->
         <div class="sidebar-filter-wrap" *ngIf="!sidebarCollapsed">
           <label class="sidebar-filter-field">
@@ -186,7 +294,7 @@
 
         <!-- Registration (Teachers, Students, Parents) -->
         <div class="sidebar-menu" *ngIf="isRegistrationSidebarVisible()">
-          <div class="sidebar-menu-header" (click)="toggleMenu('registration')">
+          <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('registration')" (click)="toggleMenu('registration')">
             <span class="sidebar-icon">📝</span>
             <span class="sidebar-text">Registration</span>
             <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('registration')">▼</span>
@@ -221,7 +329,7 @@
 
         <!-- Class Manager (after Registration) -->
         <div class="sidebar-menu" *ngIf="isClassManagerSidebarVisible()">
-          <div class="sidebar-menu-header" (click)="toggleMenu('classManagement')">
+          <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('classManagement')" (click)="toggleMenu('classManagement')">
             <span class="sidebar-icon">🏫</span>
             <span class="sidebar-text">Class Manager</span>
             <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('classManagement')">▼</span>
@@ -276,7 +384,7 @@
 
         <!-- Attendance -->
         <div class="sidebar-menu" *ngIf="isAttendanceSidebarVisible()">
-          <div class="sidebar-menu-header" (click)="toggleMenu('attendance')">
+          <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('attendance')" (click)="toggleMenu('attendance')">
             <span class="sidebar-icon">📅</span>
             <span class="sidebar-text">Attendance</span>
             <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('attendance')">▼</span>
@@ -318,7 +426,7 @@
           ['Exam Manager', 'Marks Capturing', 'Mark Sheets', 'Rankings', 'Report Cards', 'Marks Entry Progress', 'Publish Results'],
           canAccessExamsNav() || canAccessReportCardsNav() || canAccessRankingsNav()
         )">
-        <div class="sidebar-menu-header" (click)="toggleMenu('examManagement')">
+        <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('examManagement')" (click)="toggleMenu('examManagement')">
           <span class="sidebar-icon">📝</span>
           <span class="sidebar-text">Exam Manager</span>
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('examManagement')">▼</span>
@@ -358,7 +466,7 @@
           ['Finance Manager', 'Billing & Invoicing', 'Record Payment', 'Balance Enquiry', 'Exemptions', 'System Auditor'],
           canAccessFinanceManagerMenu()
         )">
-        <div class="sidebar-menu-header" (click)="toggleMenu('financeManagement')">
+        <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('financeManagement')" (click)="toggleMenu('financeManagement')">
           <span class="sidebar-icon">💰</span>
           <span class="sidebar-text">Finance Manager</span>
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('financeManagement')">▼</span>
@@ -394,7 +502,7 @@
           ['Financial Reports', 'Student Ledgers', 'Fees Collection', 'Unpaid Invoices', 'Exemption Report', 'Logistics Receipts', 'Aged Debtors', 'Enrolment vs Billing', 'Revenue Recognition', 'Student Reconciliation', 'Analytics & Forecasts', 'Class Reconciliation', 'Dining Hall', 'Transport'],
           !isTeacher() && canAccessFinancialReportsMenu()
         )">
-        <div class="sidebar-menu-header" (click)="toggleMenu('financialReports')">
+        <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('financialReports')" (click)="toggleMenu('financialReports')">
           <span class="sidebar-icon">📊</span>
           <span class="sidebar-text">Financial Reports</span>
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('financialReports')">▼</span>
@@ -462,7 +570,7 @@
           ['Payroll Manager', 'Payroll Overview', 'Employees', 'Salary Structures', 'Assignments', 'Process Payroll', 'Reports'],
           canAccessModule('payroll')
         )">
-        <div class="sidebar-menu-header" (click)="toggleMenu('payrollManagement')">
+        <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('payrollManagement')" (click)="toggleMenu('payrollManagement')">
           <span class="sidebar-icon">💵</span>
           <span class="sidebar-text">Payroll Manager</span>
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('payrollManagement')">▼</span>
@@ -502,7 +610,7 @@
           ['Communication Manager', 'Send Message', 'Outbox', 'My Inbox', 'Inbox', 'Drafts', 'Outgoing messages'],
           isAccountant() || isAdmin() || isSuperAdmin()
         )">
-        <div class="sidebar-menu-header" (click)="toggleMenu('messages')">
+        <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('messages')" (click)="toggleMenu('messages')">
           <span class="sidebar-icon">✉️</span>
           <span class="sidebar-text">Communication Manager</span>
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('messages')">▼</span>
@@ -539,7 +647,7 @@
       <div
         class="sidebar-menu"
         *ngIf="sidebarMenuVisible(['News & Announcements', 'Manage News', 'Create News', 'News Feed'])">
-        <div class="sidebar-menu-header" (click)="toggleMenu('newsManagement')">
+        <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('newsManagement')" (click)="toggleMenu('newsManagement')">
           <span class="sidebar-icon">📰</span>
           <span class="sidebar-text">News & Announcements</span>
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('newsManagement')">▼</span>
@@ -579,7 +687,7 @@
           ['E-Learning Manager', 'Create Task/Assign', 'Student Response', 'Record Book', 'My Classes'],
           isTeacher() && canAccessRecordBookNav()
         )">
-        <div class="sidebar-menu-header" (click)="toggleMenu('recordKeeping')">
+        <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('recordKeeping')" (click)="toggleMenu('recordKeeping')">
           <span class="sidebar-icon">💻</span>
           <span class="sidebar-text">E-Learning Manager</span>
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('recordKeeping')">▼</span>
@@ -607,7 +715,7 @@
 
       <!-- Inventory Manager (Teachers only — issue to students from their allocation) -->
       <div class="sidebar-menu" *ngIf="sidebarMenuVisible(['Inventory Manager', 'Inventory Record'], isTeacher())">
-        <div class="sidebar-menu-header" (click)="toggleMenu('teacherInventory')">
+        <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('teacherInventory')" (click)="toggleMenu('teacherInventory')">
           <span class="sidebar-icon">📦</span>
           <span class="sidebar-text">Inventory Manager</span>
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('teacherInventory')">▼</span>
@@ -622,7 +730,7 @@
 
       <!-- Timetable Manager -->
       <div class="sidebar-menu" *ngIf="isTimetableManagerSidebarVisible()">
-        <div class="sidebar-menu-header" (click)="toggleMenu('timetableManagement')">
+        <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('timetableManagement')" (click)="toggleMenu('timetableManagement')">
           <span class="sidebar-icon">📅</span>
           <span class="sidebar-text">Timetable Manager</span>
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('timetableManagement')">▼</span>
@@ -661,7 +769,7 @@
 
       <!-- System Administration -->
       <div class="sidebar-menu" *ngIf="isSystemAdministrationSidebarVisible()">
-        <div class="sidebar-menu-header" (click)="toggleMenu('systemAdministration')">
+        <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('systemAdministration')" (click)="toggleMenu('systemAdministration')">
           <span class="sidebar-icon">🛠️</span>
           <span class="sidebar-text">System Administration</span>
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('systemAdministration')">▼</span>
@@ -760,70 +868,6 @@
   </div>
 </aside>
 
-<!-- Parent Navigation (Mobile) -->
-<div class="mobile-sidebar" 
-     [class.open]="mobileMenuOpen" 
-     *ngIf="isAuthenticated() && isParent() && !isActingAsStudent()">
-  <!-- Overlay -->
-  <div class="mobile-sidebar-overlay" 
-       (click)="closeMobileMenu()"
-       [class.show]="mobileMenuOpen"></div>
-  
-  <!-- Sidebar Content -->
-  <div class="mobile-sidebar-content" [class.show]="mobileMenuOpen">
-    <div class="mobile-sidebar-header">
-      <h2>{{ schoolName }}</h2>
-      <button class="mobile-sidebar-close" 
-              (click)="closeMobileMenu()" 
-              aria-label="Close menu">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-
-    <nav class="mobile-nav-links">
-      <a routerLink="/parent/dashboard" 
-         routerLinkActive="active" 
-         class="mobile-nav-link"
-         (click)="closeMobileMenu()">
-        <span class="nav-icon">🏠</span>
-        <span>Parent Dashboard</span>
-      </a>
-      <a routerLink="/parent/student-portal"
-         routerLinkActive="active"
-         class="mobile-nav-link"
-         (click)="closeMobileMenu()">
-        <span class="nav-icon">🎓</span>
-        <span>Student Portal</span>
-      </a>
-    </nav>
-
-    <!-- Mobile Logout Button -->
-    <div class="mobile-sidebar-footer">
-      <button class="btn btn-danger btn-block" (click)="logout()">
-        <span>🚪</span>
-        <span>Logout</span>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- Mobile Menu Toggle for Parents -->
-<button class="mobile-menu-toggle" 
-        (click)="toggleMobileMenu()" 
-        aria-label="Toggle menu"
-        *ngIf="isAuthenticated() && isParent() && !isActingAsStudent()">
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <line x1="3" y1="12" x2="21" y2="12" *ngIf="!mobileMenuOpen"></line>
-    <line x1="3" y1="6" x2="21" y2="6" *ngIf="!mobileMenuOpen"></line>
-    <line x1="3" y1="18" x2="21" y2="18" *ngIf="!mobileMenuOpen"></line>
-    <line x1="18" y1="6" x2="6" y2="18" *ngIf="mobileMenuOpen"></line>
-    <line x1="6" y1="6" x2="18" y2="18" *ngIf="mobileMenuOpen"></line>
-  </svg>
-</button>
-
 <!-- Logout confirmation (replaces browser alert) -->
 <div
   class="logout-confirm-overlay"
@@ -870,6 +914,6 @@
 </div>
 
 <!-- Main Content -->
-<main class="main-content" [class.sidebar-open]="isAuthenticated() && !isParent() && !sidebarCollapsed" [class.menu-open]="isAuthenticated() && mobileMenuOpen">
+<main class="main-content" [class.sidebar-open]="isAuthenticated() && showAppSidebar() && !sidebarCollapsed" [class.menu-open]="isAuthenticated() && mobileMenuOpen">
   <router-outlet></router-outlet>
 </main>

@@ -374,7 +374,7 @@ export class ModuleAccessService {
     const user = this.authService.getCurrentUser();
     if (!user) return false;
 
-    const role = user.role.toLowerCase();
+    const role = this.authService.getEffectiveRole();
 
     // Ensure accountant can always access Logistics (Transport & Dining Hall)
     if (role === 'accountant' && moduleName === 'logistics') {

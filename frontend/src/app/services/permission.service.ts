@@ -53,6 +53,9 @@ export class PermissionService {
       this.permissionsReadySubject.next(true);
     }
     this.authService.currentUser$.subscribe((user) => {
+      if (this.authService.isViewAsRoleActive()) {
+        return;
+      }
       sync(user);
       if (user && (!user.permissions || !Object.keys(user.permissions).length)) {
         this.loadPermissionsFromApi();
@@ -66,6 +69,7 @@ export class PermissionService {
 
   loadPermissionsFromApi(): void {
     if (!this.authService.isAuthenticated()) return;
+    if (this.authService.isViewAsRoleActive()) return;
     this.rbacService.getMyPermissions().subscribe({
       next: (res) => {
         this.permissions = res.permissions || {};
@@ -86,14 +90,27 @@ export class PermissionService {
     this.permissions = { ...perms };
   }
 
+  /** Apply RBAC permissions while previewing another role (View as role). */
+  applyViewAsPreview(perms: Record<string, boolean>): void {
+    this.permissions = { ...(perms || {}) };
+    this.permissionsReadySubject.next(true);
+  }
+
   private isAdminBypass(): boolean {
-    return this.authService.isFullAccess();
+    if (this.authService.isViewAsRoleActive()) {
+      return false;
+    }
+    const actual = this.authService.getActualRole();
+    return actual === 'superadmin' || actual === 'director';
   }
 
   /** Can open system settings / RBAC (Director, Super Admin, Administrator) */
   canManageRbacSettings(): boolean {
-    const role = this.authService.getCurrentUser()?.role?.toLowerCase();
-    return role === 'admin' || this.authService.isFullAccess();
+    if (this.authService.isViewAsRoleActive()) {
+      return false;
+    }
+    const role = this.authService.getActualRole();
+    return role === 'admin' || role === 'superadmin' || role === 'director';
   }
 
   hasPermission(module: string, action: string = 'view'): boolean {
@@ -108,8 +125,9 @@ export class PermissionService {
     if (this.isAdminBypass()) return true;
 
     const rbacModule = ROUTE_TO_RBAC[routeModule] || routeModule;
+    const effectiveRole = this.authService.getEffectiveRole();
 
-    if (this.authService.getCurrentUser()?.role?.toLowerCase() === 'teacher') {
+    if (effectiveRole === 'teacher') {
       if (rbacModule === 'staff' || rbacModule === 'parents') {
         return false;
       }
@@ -122,6 +140,11 @@ export class PermissionService {
     }
 
     if (this.hasPermission(rbacModule, 'view')) return true;
+
+    // When previewing a role, rely on RBAC + role matrix only (no admin fallbacks).
+    if (this.authService.isViewAsRoleActive()) {
+      return this.moduleAccessService.canAccessModule(routeModule);
+    }
 
     // Legacy settings.moduleAccess matrix (not used for School Admin finance/payroll)
     if (

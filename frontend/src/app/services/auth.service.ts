@@ -44,6 +44,7 @@ export class AuthService {
   private logoutReasonKey = 'logoutReason';
   private readonly studentPortalKey = 'studentPortalStudent';
   private readonly parentPortalKey = 'parentPortalParent';
+  private readonly viewAsRoleKey = 'viewAsRole';
   private inactivityTimeoutMs = 30 * 60 * 1000;
   private inactivityTimerId: any = null;
   private lastActivityKey = 'lastActivityTimestamp';
@@ -151,6 +152,8 @@ export class AuthService {
     sessionStorage.removeItem('sessionId');
     sessionStorage.removeItem(this.studentPortalKey);
     sessionStorage.removeItem(this.parentPortalKey);
+    sessionStorage.removeItem(this.viewAsRoleKey);
+    sessionStorage.removeItem('viewAsRoleId');
     this.currentUserSubject.next(null);
     this.clearInactivityTimer();
     this.router.navigate(['/login']);
@@ -299,11 +302,61 @@ export class AuthService {
   
     return true;
   }
-  hasRole(role: string): boolean {
+  /** Login role from the database (ignores “View as role” preview). */
+  getActualRole(): string {
+    return String(this.getCurrentUser()?.role || '').toLowerCase();
+  }
+
+  /** Active role for UI checks — preview role when administrator is viewing as another role. */
+  getEffectiveRole(): string {
+    const preview = this.getViewAsRole();
+    if (preview) {
+      return preview.toLowerCase();
+    }
+    return this.getActualRole();
+  }
+
+  getViewAsRole(): string | null {
+    const raw = sessionStorage.getItem(this.viewAsRoleKey);
+    return raw ? String(raw).toLowerCase() : null;
+  }
+
+  setViewAsRole(role: string | null, roleId?: string | null): void {
+    if (role) {
+      sessionStorage.setItem(this.viewAsRoleKey, role.toLowerCase());
+      if (roleId) {
+        sessionStorage.setItem('viewAsRoleId', roleId);
+      } else {
+        sessionStorage.removeItem('viewAsRoleId');
+      }
+    } else {
+      sessionStorage.removeItem(this.viewAsRoleKey);
+      sessionStorage.removeItem('viewAsRoleId');
+    }
     const user = this.getCurrentUser();
-    if (!user || !user.role) return false;
-    // Case-insensitive comparison for role checking
-    return user.role.toLowerCase() === role.toLowerCase();
+    if (user) {
+      this.currentUserSubject.next({ ...user });
+    }
+  }
+
+  getViewAsRoleId(): string | null {
+    return sessionStorage.getItem('viewAsRoleId');
+  }
+
+  isViewAsRoleActive(): boolean {
+    return !!this.getViewAsRole();
+  }
+
+  /** Administrators previewing another role — send role hint to the API. */
+  canSendViewAsRoleHeader(): boolean {
+    const actual = this.getActualRole();
+    return actual === 'admin' || actual === 'superadmin' || actual === 'director';
+  }
+
+  hasRole(role: string): boolean {
+    const effective = this.getEffectiveRole();
+    if (!effective) return false;
+    return effective === role.toLowerCase();
   }
 
   isAccountant(): boolean {
@@ -365,7 +418,9 @@ export class AuthService {
 
   /** My Profile / manage account page for the current role. */
   getManageAccountRoute(): string {
-    const role = (this.getCurrentUser()?.role || '').toLowerCase();
+    const role = (
+      this.isViewAsRoleActive() ? this.getEffectiveRole() : String(this.getCurrentUser()?.role || '')
+    ).toLowerCase();
     switch (role) {
       case 'teacher':
         return '/teacher/manage-account';
@@ -381,11 +436,22 @@ export class AuthService {
     }
   }
 
-  /** Home dashboard route for the current role. */
   getDashboardRoute(): string {
-    const role = (this.getCurrentUser()?.role || '').toLowerCase();
-    if (role === 'teacher') return '/teacher/dashboard';
-    if (role === 'parent') return '/parent/dashboard';
+    return this.getDashboardRouteForRole(this.getEffectiveRole());
+  }
+
+  /** Dashboard home path for a login role (used by “View as role”). */
+  getDashboardRouteForRole(role?: string | null): string {
+    const normalized = String(role || this.getEffectiveRole() || '').toLowerCase();
+    if (normalized === 'teacher') {
+      return '/teacher/dashboard';
+    }
+    if (normalized === 'parent') {
+      return '/parent/dashboard';
+    }
+    if (normalized === 'student') {
+      return '/dashboard';
+    }
     return '/dashboard';
   }
 

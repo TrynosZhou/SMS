@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { AppDataSource } from '../config/database';
 import { User, UserRole } from '../entities/User';
 import { expandAuthorizeRoles } from '../constants/userRoles';
+import { canUseRolePreview, getViewAsRoleHeader } from '../utils/viewAsRole';
 
 export interface AuthRequest extends Request {
   user?: User;
@@ -104,6 +105,14 @@ export const authorize = (...roles: UserRole[]) => {
     const studentContextId = String((req.headers['x-student-id'] as any) || '').trim();
     if (studentContextId && req.user.role === UserRole.PARENT && roles.includes(UserRole.STUDENT)) {
       return next();
+    }
+
+    const viewAsRole = getViewAsRoleHeader(req);
+    if (viewAsRole && canUseRolePreview(req)) {
+      const allowed = expandAuthorizeRoles(roles).map((r) => String(r).toLowerCase());
+      if (allowed.includes(viewAsRole)) {
+        return next();
+      }
     }
 
     const allowed = expandAuthorizeRoles(roles);

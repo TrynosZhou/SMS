@@ -10,6 +10,7 @@ import { Message } from '../entities/Message';
 import { AuthRequest } from '../middleware/auth';
 import { ParentStudent } from '../entities/ParentStudent';
 import { canAccessStaffMessages, canManageAllMessageBoxes } from '../constants/userRoles';
+import { isPreviewingRole } from '../utils/viewAsRole';
 
 async function resolveStudentForMessage(req: AuthRequest): Promise<Student | null> {
   if (!req.user) return null;
@@ -488,6 +489,10 @@ export const getParentMessages = async (req: AuthRequest, res: Response) => {
     if (!AppDataSource.isInitialized) {
       await AppDataSource.initialize();
     }
+
+    if (isPreviewingRole(req, UserRole.PARENT)) {
+      return res.json({ messages: [] });
+    }
     
     const ctx = await resolveParentForMessage(req);
     if (!ctx) {
@@ -653,6 +658,11 @@ export const getParentOutbox = async (req: AuthRequest, res: Response) => {
     if (!AppDataSource.isInitialized) {
       await AppDataSource.initialize();
     }
+
+    if (isPreviewingRole(req, UserRole.PARENT)) {
+      return res.json({ messages: [] });
+    }
+
     const ctx = await resolveParentForMessage(req);
     if (!ctx) {
       return res.status(403).json({ message: 'Access denied. Parent role required.' });

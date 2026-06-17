@@ -61,8 +61,8 @@ describe('AppComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should have default school name', () => {
-    expect(component.schoolName).toBe('School Management System');
+  it('should have empty school name until settings load', () => {
+    expect(component.schoolName).toBe('');
   });
 
   it('should check authentication status', () => {
@@ -91,12 +91,16 @@ describe('AppComponent', () => {
     expect(component.sidebarCollapsed).toBe(false);
   });
 
-  it('should toggle menu expansion', () => {
+  it('should toggle menu expansion (accordion)', () => {
     expect(component.isMenuExpanded('test-menu')).toBe(false);
     component.toggleMenu('test-menu');
     expect(component.isMenuExpanded('test-menu')).toBe(true);
-    component.toggleMenu('test-menu');
+    expect(component.isMenuExpanded('other-menu')).toBe(false);
+    component.toggleMenu('other-menu');
     expect(component.isMenuExpanded('test-menu')).toBe(false);
+    expect(component.isMenuExpanded('other-menu')).toBe(true);
+    component.toggleMenu('other-menu');
+    expect(component.isMenuExpanded('other-menu')).toBe(false);
   });
 
   it('should call logout on auth service when user confirms', async () => {

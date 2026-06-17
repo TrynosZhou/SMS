@@ -13,6 +13,7 @@ import { AuditService } from './services/audit.service';
 import { environment } from '../environments/environment';
 import { LogoutConfirmService } from './services/logout-confirm.service';
 import { ConnectivityService } from './services/connectivity.service';
+import { RbacService, RbacRole } from './services/rbac.service';
 
 /** When the current URL matches a prefix, keep that sidebar section expanded (fixes “click twice” on submenus). */
 const SIDEBAR_MENU_ROUTE_PREFIXES: Record<string, string[]> = {
@@ -39,7 +40,7 @@ templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit, OnDestroy {
-  schoolName = 'School Management System';
+  schoolName = '';
   schoolLogo: string | null = null;
   /** Current page label shown in the top navbar (route title). */
   pageNavbarTitle = 'Dashboard';
@@ -60,6 +61,9 @@ export class AppComponent implements OnInit, OnDestroy {
   private currentUrl = '';
   userMenuOpen = false;
   connectionBanner = '';
+  viewAsRoles: RbacRole[] = [];
+  selectedViewAsRoleId = '';
+  loadingViewAsRoles = false;
 
   constructor(
     public authService: AuthService, 
@@ -75,7 +79,8 @@ export class AppComponent implements OnInit, OnDestroy {
     private meta: Meta,
     private cdr: ChangeDetectorRef,
     public logoutConfirm: LogoutConfirmService,
-    public connectivity: ConnectivityService
+    public connectivity: ConnectivityService,
+    private rbacService: RbacService
   ) {
     const cachedName = sessionStorage.getItem(AppComponent.SCHOOL_NAME_CACHE_KEY);
     if (cachedName) {
@@ -101,8 +106,10 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.authService.isAuthenticated()) {
       this.settingsService.getSettings().subscribe({
         next: (settings: any) => {
-          const name = settings?.schoolName || 'School Management System';
-          sessionStorage.setItem(AppComponent.SCHOOL_NAME_CACHE_KEY, name);
+          const name = String(settings?.schoolName || '').trim();
+          if (name) {
+            sessionStorage.setItem(AppComponent.SCHOOL_NAME_CACHE_KEY, name);
+          }
           const logo = settings?.schoolLogo || null;
           // Defer binding update to avoid NG0100 when settings load during the same CD cycle
           setTimeout(() => {
@@ -120,26 +127,30 @@ export class AppComponent implements OnInit, OnDestroy {
       this.moduleAccessService.loadModuleAccess();
       this.permissionService.loadPermissionsFromApi();
       this.licenseService.load().subscribe();
-      this.expandAllSidebarMenus();
       this.syncExpandedMenusFromUrl(this.router.url || '');
+      this.loadViewAsRoles();
     }
 
     this.authService.currentUser$.subscribe((user) => {
       if (user) {
         this.moduleAccessService.loadModuleAccess();
         this.permissionService.loadPermissionsFromApi();
-        this.expandAllSidebarMenus();
+        this.syncExpandedMenusFromUrl(this.router.url || '');
+        this.loadViewAsRoles();
         this.cdr.markForCheck();
+      } else {
+        this.viewAsRoles = [];
+        this.selectedViewAsRoleId = '';
       }
     });
 
     this.moduleAccessService.ready$.subscribe(() => {
-      this.expandAllSidebarMenus();
+      this.syncExpandedMenusFromUrl(this.router.url || '');
       this.cdr.markForCheck();
     });
 
     this.permissionService.permissionsReady$.subscribe(() => {
-      this.expandAllSidebarMenus();
+      this.syncExpandedMenusFromUrl(this.router.url || '');
       this.cdr.markForCheck();
     });
 
@@ -147,7 +158,6 @@ export class AppComponent implements OnInit, OnDestroy {
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe((e: any) => {
       this.currentUrl = (e.urlAfterRedirects || e.url || '').toString();
       this.syncExpandedMenusFromUrl(this.currentUrl);
-      this.expandAllSidebarMenus();
       this.syncDashboardTitleRotation();
       this.updateMetaFromRoute();
       // Close mobile menu/drawer after navigation
@@ -174,7 +184,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.authSubscription = this.authService.currentUser$.subscribe(user => {
       if (user) {
-        this.expandAllSidebarMenus();
+        this.syncExpandedMenusFromUrl(this.router.url || '');
         this.cdr.markForCheck();
       }
     });
@@ -196,6 +206,140 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.pageNavbarTitle || this.deriveTitleFromUrl(this.currentUrl);
   }
 
+  /** Only system administrators may preview the UI as another role. */
+  canShowViewAsRole(): boolean {
+    const actual = this.authService.getActualRole();
+    return actual === 'admin' || actual === 'superadmin' || actual === 'director';
+  }
+
+  private loadViewAsRoles(): void {
+    if (!this.authService.isAuthenticated() || !this.canShowViewAsRole()) {
+      this.viewAsRoles = [];
+      this.selectedViewAsRoleId = '';
+      return;
+    }
+    this.loadingViewAsRoles = true;
+    this.rbacService.listRoles().subscribe({
+      next: (res) => {
+        this.viewAsRoles = (res?.roles || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+        const savedId = this.authService.getViewAsRoleId();
+        this.selectedViewAsRoleId = savedId && this.viewAsRoles.some((r) => r.id === savedId) ? savedId : '';
+        if (this.selectedViewAsRoleId && this.authService.isViewAsRoleActive()) {
+          const active = this.viewAsRoles.find((r) => r.id === this.selectedViewAsRoleId);
+          if (active) {
+            this.permissionService.applyViewAsPreview(active.permissions || {});
+          }
+        }
+        this.loadingViewAsRoles = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.viewAsRoles = [];
+        this.loadingViewAsRoles = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  onViewAsRoleChange(): void {
+    if (!this.canShowViewAsRole()) {
+      return;
+    }
+    if (!this.selectedViewAsRoleId) {
+      this.authService.setViewAsRole(null);
+      this.permissionService.loadPermissionsFromApi();
+      this.expandedMenus = {};
+      this.syncExpandedMenusFromUrl(this.router.url || '');
+      this.router.navigate([this.authService.getDashboardRouteForRole(this.authService.getActualRole())]).catch(() => {});
+      this.cdr.markForCheck();
+      return;
+    }
+    const role = this.viewAsRoles.find((r) => r.id === this.selectedViewAsRoleId);
+    if (!role) {
+      return;
+    }
+    const legacyKey = (role.legacyRoleKey || role.slug || '').replace(/-/g, '_').toLowerCase();
+    this.authService.setViewAsRole(legacyKey, role.id);
+    this.permissionService.applyViewAsPreview(role.permissions || {});
+    this.expandedMenus = {};
+    this.syncExpandedMenusFromUrl('');
+    const dashboardRoute = this.authService.getDashboardRouteForRole(legacyKey);
+    this.router.navigate([dashboardRoute]).catch(() => {});
+    this.cdr.markForCheck();
+  }
+
+  openNavSearch(): void {
+    if (this.isParent() && !this.isActingAsStudent()) {
+      this.router.navigate(['/parent/inbox']).catch(() => {});
+      return;
+    }
+    if (this.sidebarCollapsed) {
+      this.sidebarCollapsed = false;
+    }
+    if (this.mobileMenuOpen) {
+      this.closeMobileMenu();
+    } else if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches) {
+      this.mobileMenuOpen = true;
+    }
+    setTimeout(() => {
+      const input = document.querySelector<HTMLInputElement>('.sidebar-filter');
+      input?.focus();
+    }, 150);
+  }
+
+  getMessagesNavLink(): string {
+    if (this.isParent() && !this.isActingAsStudent()) {
+      return '/parent/inbox';
+    }
+    if (this.isStudent() || this.isActingAsStudent()) {
+      return '/messages/inbox';
+    }
+    return '/messages/inbox';
+  }
+
+  getCalendarNavLink(): string {
+    if (this.isTeacher()) {
+      return '/teacher/my-classes';
+    }
+    return '/timetable/view';
+  }
+
+  getNavbarDisplayName(): string {
+    const display = this.getProfileDisplayName();
+    if (display) {
+      return display;
+    }
+    return this.getProfileUsername();
+  }
+
+  getProfileDisplayName(): string {
+    const u = this.authService.getCurrentUser();
+    if (!u) {
+      return '';
+    }
+    if (u.fullName && String(u.fullName).trim()) {
+      return String(u.fullName).trim();
+    }
+    const teacher = u.teacher;
+    if (teacher) {
+      if (teacher.fullName && String(teacher.fullName).trim()) {
+        return String(teacher.fullName).trim();
+      }
+      const tf = String(teacher.firstName || '').trim();
+      const tl = String(teacher.lastName || '').trim();
+      if (tf || tl) {
+        return [tf, tl].filter(Boolean).join(' ');
+      }
+    }
+    if (u.student && (u.student.firstName || u.student.lastName)) {
+      return [u.student.firstName, u.student.lastName].filter(Boolean).join(' ').trim();
+    }
+    if (u.parent && (u.parent.firstName || u.parent.lastName)) {
+      return [u.parent.lastName, u.parent.firstName].filter(Boolean).join(' ').trim();
+    }
+    return '';
+  }
+
   /** Teachers always see exam/record nav; RBAC may load after first paint. */
   canAccessExamsNav(): boolean {
     return this.canAccessModule('exams') || this.isAdmin() || this.isSuperAdmin() || this.isTeacher();
@@ -211,15 +355,6 @@ export class AppComponent implements OnInit, OnDestroy {
 
   canAccessRecordBookNav(): boolean {
     return this.canAccessModule('recordBook') || this.isTeacher();
-  }
-
-  private expandAllSidebarMenus(): void {
-    if (!this.authService.isAuthenticated() || this.sidebarCollapsed) {
-      return;
-    }
-    for (const menuKey of Object.keys(SIDEBAR_MENU_ROUTE_PREFIXES)) {
-      this.expandedMenus[menuKey] = true;
-    }
   }
 
   private deriveTitleFromUrl(url: string): string {
@@ -294,6 +429,30 @@ export class AppComponent implements OnInit, OnDestroy {
 
   isAuthenticated(): boolean {
     return this.authService.isAuthenticated();
+  }
+
+  /** Global left navigation (admin, teacher, parent, student). */
+  showAppSidebar(): boolean {
+    return this.isAuthenticated();
+  }
+
+  /** Parent portal menu — real parents and “view as parent”, not while in student portal mode. */
+  isParentNavVisible(): boolean {
+    if (this.isActingAsStudent()) {
+      return false;
+    }
+    return this.authService.hasRole('parent') || this.isActingAsParent();
+  }
+
+  getParentPortalLabel(): string {
+    const u = this.authService.getCurrentUser();
+    if (u?.parent) {
+      const name = [u.parent.firstName, u.parent.lastName].filter(Boolean).join(' ').trim();
+      if (name) {
+        return name;
+      }
+    }
+    return this.getNavbarDisplayName();
   }
 
   isParent(): boolean {
@@ -773,7 +932,7 @@ export class AppComponent implements OnInit, OnDestroy {
     if (!u) {
       return 'User';
     }
-    const r = String(u.role || '').toLowerCase();
+    const r = String(this.authService.getEffectiveRole() || u.role || '').toLowerCase();
     if (r === 'superadmin') return 'Super Admin';
     if (r === 'admin') return 'Admin';
     if (r === 'director') return 'Director';
@@ -784,34 +943,6 @@ export class AppComponent implements OnInit, OnDestroy {
     if (r === 'parent') return 'Parent';
     if (r === 'student') return 'Student';
     return 'User';
-  }
-
-  private getProfileDisplayName(): string {
-    const u = this.authService.getCurrentUser();
-    if (!u) {
-      return '';
-    }
-    if (u.fullName && String(u.fullName).trim()) {
-      return String(u.fullName).trim();
-    }
-    const teacher = u.teacher;
-    if (teacher) {
-      if (teacher.fullName && String(teacher.fullName).trim()) {
-        return String(teacher.fullName).trim();
-      }
-      const tf = String(teacher.firstName || '').trim();
-      const tl = String(teacher.lastName || '').trim();
-      if (tf || tl) {
-        return [tf, tl].filter(Boolean).join(' ');
-      }
-    }
-    if (u.student && (u.student.firstName || u.student.lastName)) {
-      return [u.student.firstName, u.student.lastName].filter(Boolean).join(' ').trim();
-    }
-    if (u.parent && (u.parent.firstName || u.parent.lastName)) {
-      return [u.parent.lastName, u.parent.firstName].filter(Boolean).join(' ').trim();
-    }
-    return '';
   }
 
   getProfileInitials(): string {
@@ -889,17 +1020,23 @@ export class AppComponent implements OnInit, OnDestroy {
     }
 
     this.sidebarCollapsed = !this.sidebarCollapsed;
-    // Collapse all menus when sidebar is collapsed
     if (this.sidebarCollapsed) {
       this.expandedMenus = {};
+    } else {
+      this.syncExpandedMenusFromUrl(this.router.url || '');
     }
+    this.cdr.markForCheck();
   }
 
   toggleMenu(menuKey: string): void {
     if (this.sidebarCollapsed) {
       return;
     }
-    this.expandedMenus[menuKey] = !this.isMenuExpanded(menuKey);
+    if (this.isMenuExpanded(menuKey)) {
+      this.expandedMenus = {};
+    } else {
+      this.expandedMenus = { [menuKey]: true };
+    }
     this.cdr.markForCheck();
   }
 
@@ -908,7 +1045,7 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.sidebarCollapsed) {
       return;
     }
-    this.expandedMenus[menuKey] = true;
+    this.expandedMenus = { [menuKey]: true };
   }
 
   /** Expand a sidebar section before following a submenu routerLink (one-click navigation). */
@@ -916,7 +1053,7 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.sidebarCollapsed) {
       return;
     }
-    this.expandedMenus[menuKey] = true;
+    this.expandedMenus = { [menuKey]: true };
     this.cdr.markForCheck();
   }
 
@@ -942,9 +1079,7 @@ export class AppComponent implements OnInit, OnDestroy {
       }
     }
 
-    if (matchedKey) {
-      this.expandedMenus[matchedKey] = true;
-    }
+    this.expandedMenus = matchedKey ? { [matchedKey]: true } : {};
   }
 
   isMenuRouteActive(menuKey: string): boolean {
@@ -963,15 +1098,16 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   getCurrentUserRole(): string {
-    const user = this.authService.getCurrentUser();
-    if (!user || !user.role) {
+    const role = this.authService.getEffectiveRole();
+    if (!role) {
       return '';
     }
 
-    const role = user.role.toLowerCase();
-
     if (role === 'superadmin') return 'SuperAdmin';
     if (role === 'admin') return 'Admin';
+    if (role === 'director') return 'Director';
+    if (role === 'headmaster') return 'Headmaster';
+    if (role === 'deputy_headmaster') return 'Deputy Headmaster';
     if (role === 'accountant') return 'Accountant';
     if (role === 'teacher') return 'Teacher';
     if (role === 'parent') return 'Parent';

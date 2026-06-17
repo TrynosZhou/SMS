@@ -9,6 +9,7 @@ import { ParentStudent } from '../entities/ParentStudent';
 import { Parent } from '../entities/Parent';
 import path from 'path';
 import fs from 'fs';
+import { isPreviewingRole } from '../utils/viewAsRole';
 
 async function resolveStudentForRequest(req: AuthRequest): Promise<Student | null> {
   if (!req.user) return null;
@@ -114,7 +115,14 @@ export const createTask = async (req: AuthRequest, res: Response) => {
 
 export const getMyTasks = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user || req.user.role !== UserRole.TEACHER) {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    if (req.user.role !== UserRole.TEACHER) {
+      if (isPreviewingRole(req, UserRole.TEACHER)) {
+        return res.json([]);
+      }
       return res.status(403).json({ message: 'Only teachers can view their tasks' });
     }
 

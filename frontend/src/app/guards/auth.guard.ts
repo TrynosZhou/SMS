@@ -14,9 +14,7 @@ export class AuthGuard implements CanActivate {
       return false;
     }
 
-    const user = this.authService.getCurrentUser();
-
-    const role = String(user?.role || '').toLowerCase();
+    const role = this.authService.getEffectiveRole();
     const url = state.url.split('?')[0];
 
     if (role === 'parent') {
@@ -33,7 +31,7 @@ export class AuthGuard implements CanActivate {
       }
     }
 
-    if (user?.role === 'accountant') {
+    if (role === 'accountant') {
       const allowedPrefixes = [
         '/dashboard',
         '/account/change-password',
@@ -48,11 +46,57 @@ export class AuthGuard implements CanActivate {
         '/accountant/manage-account',
         '/messages',
         '/logistics',
-        '/inventory'
+        '/inventory',
+        '/financial-reports',
+        '/finance/',
       ];
-      const isAllowed = allowedPrefixes.some(prefix => state.url.startsWith(prefix));
+      const isAllowed = allowedPrefixes.some((prefix) => url === prefix || url.startsWith(prefix + '/'));
       if (!isAllowed) {
         this.router.navigate(['/dashboard']);
+        return false;
+      }
+    }
+
+    if (role === 'parent') {
+      const allowedPrefixes = [
+        '/parent/',
+        '/account/change-password',
+      ];
+      const isAllowed = allowedPrefixes.some((prefix) => url === prefix || url.startsWith(prefix));
+      if (!isAllowed) {
+        this.router.navigate(['/parent/dashboard']);
+        return false;
+      }
+    }
+
+    if (role === 'student') {
+      const allowedPrefixes = [
+        '/dashboard',
+        '/student/',
+        '/eweb',
+        '/blank-page',
+        '/account/change-password',
+      ];
+      const isAllowed = allowedPrefixes.some((prefix) => url === prefix || url.startsWith(prefix));
+      if (!isAllowed) {
+        this.router.navigate(['/dashboard']);
+        return false;
+      }
+    }
+
+    if (role === 'teacher') {
+      const blockedPrefixes = [
+        '/admin/',
+        '/user-management',
+        '/system-settings',
+        '/settings/payment-receipt-manager',
+        '/admin/manage-accounts',
+        '/user-log',
+        '/admin/license-config',
+        '/system/integrations',
+      ];
+      if (blockedPrefixes.some((prefix) => url === prefix || url.startsWith(prefix))) {
+        this.router.navigate(['/teacher/dashboard']);
         return false;
       }
     }

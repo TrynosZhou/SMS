@@ -13,6 +13,7 @@ import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { User, UserRole } from '../entities/User';
 import { UserSessionLog } from '../entities/UserSessionLog';
+import { isPreviewingRole, previewParentProfile } from '../utils/viewAsRole';
 
 const generateTemporaryPassword = () => {
   return `Temp-${randomBytes(4).toString('hex')}-${Date.now().toString().slice(-4)}`;
@@ -122,6 +123,10 @@ export const getCurrentParentProfile = async (req: AuthRequest, res: Response) =
       return res.status(401).json({ message: 'Authentication required' });
     }
 
+    if (isPreviewingRole(req, UserRole.PARENT)) {
+      return res.json(previewParentProfile());
+    }
+
     const parent = await resolveParentForRequest(req);
 
     if (!parent) {
@@ -151,6 +156,11 @@ export const getParentStudents = async (req: AuthRequest, res: Response) => {
     if (!userId) {
       return res.status(401).json({ message: 'Authentication required' });
     }
+
+    if (isPreviewingRole(req, UserRole.PARENT)) {
+      return res.json({ students: [] });
+    }
+
     const requestedTermRaw = (req.query as any)?.term;
     const requestedTerm = typeof requestedTermRaw === 'string' ? requestedTermRaw.trim() : '';
 

@@ -1,75 +1,40 @@
 <div class="dashboard-container" [class.dark-mode]="themeService.darkMode">
-  <!-- Main Content -->
-    <main class="main-content">
-      <div class="content-header">
-        <div class="dash-hero">
-          <div class="header-top">
-            <div class="header-left">
-              <div class="greeting-section">
-                <div class="dash-hero-badges">
-                  <span class="dash-role-pill">{{ getRoleLabel() }}</span>
-                  <span class="dash-live-pill" *ngIf="canViewDashboardStats() && !loadingStats">
-                    <span class="dash-live-dot" aria-hidden="true"></span>
-                    Stats ready
-                  </span>
-                  <a
-                    *ngIf="canChangeOwnPassword()"
-                    class="dash-change-password-link"
-                    [routerLink]="changePasswordRoute"
-                    title="Update your login password">
-                    🔐 Change password
-                  </a>
-                </div>
-                <h1 class="dashboard-title">
-                  <span class="title-icon">📊</span>
-                  Dashboard
-                </h1>
-                <p class="welcome-text">
-                  <span class="greeting-icon">👋</span>
-                  {{ getSmartGreeting() }}, <strong>{{ getGreetingName() }}</strong> — here’s your workspace overview.
-                </p>
-                <p class="date-time">{{ getCurrentDateTime() }}</p>
-              </div>
-            </div>
-            <div class="header-right">
-              <div class="school-name-container" *ngIf="displayedText">
-                <span class="school-icon">🏫</span>
-                <span class="school-name" [class.school-motto-text]="displayedText === schoolMotto">{{ displayedText }}</span>
-              </div>
-              <div class="quick-stats-badge" *ngIf="canViewDashboardStats() && !loadingStats">
-                <span class="badge-icon">⚡</span>
-                <span class="badge-text">Live Stats</span>
-              </div>
-            </div>
-          </div>
-        </div>
+  <main class="main-content dash-page">
+    <header class="dash-page-header">
+      <div class="dash-page-header__intro">
+        <span class="dash-page-eyebrow">{{ getRoleLabel() }}</span>
+        <h1 class="dash-page-title">{{ getSmartGreeting() }}, {{ getGreetingName() }}</h1>
+        <p class="dash-page-subtitle">Your workspace overview — quick stats, shortcuts, and recent activity.</p>
+        <p class="dash-page-meta">{{ getCurrentDateTime() }}</p>
       </div>
-
-      <section
-        class="dash-insights-bar"
-        *ngIf="canViewDashboardStats()"
-        aria-label="Dashboard statistics status"
-      >
-        <div class="dash-insights-left">
-          <span class="dash-insights-icon" aria-hidden="true">📡</span>
-          <span class="dash-insights-text" *ngIf="!loadingStats">
-            Snapshot updated
-            <strong *ngIf="statsLastUpdated">{{ formatStatsUpdatedAt() }}</strong>
-          </span>
-          <span class="dash-insights-text dash-insights-text--loading" *ngIf="loadingStats">Refreshing snapshot…</span>
-        </div>
+      <div class="dash-page-header__actions">
+        <a
+          *ngIf="canChangeOwnPassword()"
+          class="dash-header-btn dash-header-btn--ghost"
+          [routerLink]="changePasswordRoute"
+          title="Update your login password">
+          Change password
+        </a>
         <button
           type="button"
-          class="dash-refresh-btn"
+          class="dash-header-btn dash-header-btn--primary"
+          *ngIf="canViewDashboardStats()"
           (click)="refreshDashboardStats()"
-          [disabled]="loadingStats"
-          title="Reload numbers and recent activity"
-        >
+          [disabled]="loadingStats">
           <span class="dash-refresh-icon" [class.dash-refresh-spin]="loadingStats">↻</span>
-          Refresh data
+          Refresh
         </button>
-      </section>
-    
+      </div>
+    </header>
+
+    <div class="dash-status-strip" *ngIf="canViewDashboardStats()">
+      <span class="dash-status-strip__dot" [class.dash-status-strip__dot--loading]="loadingStats"></span>
+      <span *ngIf="!loadingStats">
+        Data snapshot
+        <strong *ngIf="statsLastUpdated">· updated {{ formatStatsUpdatedAt() }}</strong>
+      </span>
+      <span *ngIf="loadingStats">Refreshing dashboard data…</span>
+    </div>
     <div class="stats-skeleton-grid" *ngIf="canViewDashboardStats() && loadingStats" aria-busy="true">
       <div class="stats-skeleton-card" *ngFor="let _ of statSkeletonSlots">
         <div class="stats-skeleton-shimmer"></div>
@@ -238,39 +203,15 @@
       </div>
     </section>
     
-    <div class="dashboard-cards">
-      <div class="dash-shortcuts-row" *ngIf="isAdmin()">
+    <div class="dashboard-cards dash-body-grid">
+      <div class="dash-shortcuts-row" *ngIf="isAdmin() || isAccountant()">
         <div class="card modern-card dash-modules-card">
           <div class="card-header-modern">
             <h2>
               <span class="card-icon">🧩</span>
-              Modules
+              Quick modules
             </h2>
-            <p class="dash-card-subtitle">Navigate to the most-used areas of the system.</p>
-          </div>
-          <div class="dash-module-grid">
-            <a
-              *ngFor="let m of getModuleShortcutsForView(); let mi = index"
-              [routerLink]="m.route"
-              class="dash-module-tile dash-module-tile--enter"
-              [ngClass]="'dash-module-tile--' + m.pastel"
-              [style.animation-delay.ms]="mi * 35"
-            >
-              <span class="dash-module-tile__icon" aria-hidden="true">{{ m.icon }}</span>
-              <span class="dash-module-tile__label">{{ m.label }}</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div class="dash-shortcuts-row" *ngIf="isAccountant()">
-        <div class="card modern-card dash-modules-card">
-          <div class="card-header-modern">
-            <h2>
-              <span class="card-icon">🧩</span>
-              Modules
-            </h2>
-            <p class="dash-card-subtitle">Navigate to finance and related areas you use most.</p>
+            <p class="dash-card-subtitle">{{ isAccountant() ? 'Finance and related areas you use most.' : 'Jump to the most-used areas of the system.' }}</p>
           </div>
           <div class="dash-module-grid">
             <a

@@ -1,36 +1,4 @@
 <div class="pib-layout">
-  <aside class="pib-sidebar">
-    <div class="pib-brand">
-      <span class="brand-icon">🏫</span>
-      <div>
-        <div class="brand-title">Parent Portal</div>
-        <div class="brand-sub">{{ parentName }}</div>
-      </div>
-    </div>
-    <nav class="pib-nav">
-      <a routerLink="/parent/dashboard" routerLinkActive="active" class="pib-nav-item">
-        <span class="nav-icon">📊</span><span>Dashboard</span>
-      </a>
-      <a routerLink="/parent/inbox" routerLinkActive="active" class="pib-nav-item">
-        <span class="nav-icon">📧</span><span>My Inbox</span>
-        <span class="unread-badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
-      </a>
-      <a routerLink="/parent/send-message" routerLinkActive="active" class="pib-nav-item">
-        <span class="nav-icon">✉️</span><span>Send Message</span>
-      </a>
-      <a routerLink="/parent/outbox" routerLinkActive="active" class="pib-nav-item">
-        <span class="nav-icon">📤</span><span>Outbox</span>
-      </a>
-      <a routerLink="/parent/invoice-statement" routerLinkActive="active" class="pib-nav-item">
-        <span class="nav-icon">🧾</span><span>My Invoice Statement</span>
-      </a>
-      <a routerLink="/parent/student-portal" routerLinkActive="active" class="pib-nav-item">
-        <span class="nav-icon">🎓</span><span>Student Portal</span>
-      </a>
-    </nav>
-    <button type="button" class="pib-logout" (click)="logout()">🚪 Logout</button>
-  </aside>
-
   <main class="pib-main">
     <header class="pib-hero">
       <div class="pib-hero__main">

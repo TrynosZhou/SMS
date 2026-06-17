@@ -80,6 +80,10 @@ export class AuthInterceptor implements HttpInterceptor {
         if (actingParentId) {
           headers['x-parent-id'] = actingParentId;
         }
+        const viewAsRole = this.authService.getViewAsRole();
+        if (viewAsRole && this.authService.canSendViewAsRoleHeader()) {
+          headers['X-View-As-Role'] = viewAsRole;
+        }
         update.setHeaders = headers;
       }
       authReq = req.clone(update);

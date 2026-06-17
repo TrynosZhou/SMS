@@ -59,7 +59,7 @@ export class TeacherDashboardComponent implements OnInit, OnDestroy {
     this.loadModuleAccess();
 
     const user = this.authService.getCurrentUser();
-    if (!user || user.role?.toLowerCase() !== 'teacher') {
+    if (!this.authService.hasRole('teacher')) {
       this.error = 'Only teachers can access this dashboard';
       this.loading = false;
       this.cdr.markForCheck();

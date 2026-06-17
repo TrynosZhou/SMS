@@ -437,9 +437,8 @@ if (this.textToggleInterval) {
   }
 
   getRoleLabel(): string {
-    const u = this.authService.getCurrentUser();
-    if (!u) return 'Guest';
-    const r = String(u.role || '').toLowerCase();
+    const r = this.authService.getEffectiveRole();
+    if (!r) return 'Guest';
     if (r === 'superadmin') return 'Super Admin';
     if (r === 'director') return 'Director';
     if (r === 'headmaster') return 'Headmaster';

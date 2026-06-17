@@ -417,20 +417,50 @@
   flex-wrap: wrap;
 }
 
+.mark-sheet-scroll-hint {
+  margin: 0 0 8px 0;
+  font-size: 0.8rem;
+  color: #64748b;
+  text-align: right;
+}
+
 .mark-sheet-table-wrapper {
   overflow-x: auto;
+  overflow-y: visible;
   margin-bottom: 20px;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  border-radius: 8px;
+  border: 0.5px solid #e2e8f0;
+}
+
+.mark-sheet-table-wrapper::-webkit-scrollbar {
+  height: 10px;
+}
+
+.mark-sheet-table-wrapper::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 0 0 8px 8px;
+}
+
+.mark-sheet-table-wrapper::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 5px;
+}
+
+.mark-sheet-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }
 
 /* Leaderboard table */
 .leaderboard-table-wrap {
   border-radius: 8px;
-  overflow: hidden;
-  border: 0.5px solid #e2e8f0;
 }
 
 .mark-sheet-table.leaderboard-table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 13px;
   background: #ffffff;
@@ -966,7 +996,8 @@
   .mark-sheet-result .header-actions,
   .btn,
   .toolbar,
-  .statistics-grid {
+  .statistics-grid,
+  .mark-sheet-scroll-hint {
     display: none !important;
   }
 

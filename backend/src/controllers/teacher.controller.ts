@@ -13,6 +13,7 @@ import { linkTeacherToClasses, syncManyToManyToJunctionTable } from '../utils/te
 import { calculateAge } from '../utils/ageUtils';
 import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
 import { validatePhoneNumber } from '../utils/phoneValidator';
+import { isPreviewingRole, previewTeacherProfile } from '../utils/viewAsRole';
 import { createTeacherIdCardPDF } from '../utils/teacherIdCardPdfGenerator';
 import { Settings } from '../entities/Settings';
 import QRCode from 'qrcode';
@@ -348,6 +349,9 @@ export const getCurrentTeacher = async (req: AuthRequest, res: Response) => {
     }
 
     if (userRole !== UserRole.TEACHER) {
+      if (isPreviewingRole(req, UserRole.TEACHER)) {
+        return res.json(previewTeacherProfile());
+      }
       return res.status(403).json({ message: 'Only teachers can access this endpoint' });
     }
 
