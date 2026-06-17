@@ -1,7 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { ExamService } from '../../../services/exam.service';
 import { ClassService } from '../../../services/class.service';
@@ -10,6 +9,9 @@ import { StudentService } from '../../../services/student.service';
 import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
 import { TeacherService } from '../../../services/teacher.service';
+import { ConnectivityService } from '../../../services/connectivity.service';
+import { OfflineSyncService } from '../../../services/offline-sync.service';
+import { takeUntil, finalize } from 'rxjs/operators';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 
 @Component({
@@ -74,6 +76,8 @@ loadingStudents = false;
   isAutoSaving = false;
   pendingSaves: Set<string> = new Set();
   savedRecords: Set<string> = new Set(); // Track which student+subject combinations have been saved
+  failedMarkKeys: Set<string> = new Set();
+  connectionBanner = '';
   
   // Form validation
   fieldErrors: any = {};
@@ -101,7 +105,9 @@ loadingStudents = false;
     private authService: AuthService,
     private teacherService: TeacherService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    public connectivity: ConnectivityService,
+    private offlineSync: OfflineSyncService
 ) {
     const user = this.authService.getCurrentUser();
     this.isAdmin = user ? (user.role === 'admin' || user.role === 'superadmin') : false;
@@ -111,6 +117,20 @@ loadingStudents = false;
   ngOnInit() {
     activatePageLoad(this.router, this.destroy$, '/exams', () => this.bootstrapPage());
     window.addEventListener('beforeunload', this.handleBeforeUnload.bind(this));
+
+    this.connectivity.connectionMessage$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((msg) => {
+        this.connectionBanner = msg;
+        if (msg === 'Connection is restored') {
+          void this.offlineSync.flushQueue().then(() => {
+            this.failedMarkKeys.clear();
+            this.success = 'Offline marks synced to server.';
+            this.cdr.markForCheck();
+          });
+        }
+        this.cdr.markForCheck();
+      });
   }
 
   private bootstrapPage(): void {
@@ -1046,24 +1066,35 @@ return;
       includeInClassPassRate: this.passRateInclusionForStudent(studentId)
     }];
 
+    if (!this.connectivity.isOnline) {
+      this.queueMarksOffline([studentId], marksData);
+      this.failedMarkKeys.add(this.getMarkKey(studentId, this.selectedSubjectId));
+      this.error = 'Connection is lost. Marks saved locally and will sync when connection is restored.';
+      this.cdr.markForCheck();
+      return;
+    }
+
     this.isAutoSaving = true;
     this.examService.captureMarks(this.currentExam.id, marksData).subscribe({
       next: (data: any) => {
         this.isAutoSaving = false;
-        // Mark this record as saved
+        const key = this.getMarkKey(studentId, this.selectedSubjectId);
         this.savedRecords.add(key);
-        
-        // Show brief success message
+        this.failedMarkKeys.delete(key);
         const student = this.students.find(s => s.id === studentId);
         const studentName = student ? `${student.firstName} ${student.lastName}` : 'Student';
         this.showAutoSaveSuccess(`✓ ${studentName}'s marks saved automatically`);
       },
       error: (err: any) => {
         this.isAutoSaving = false;
-        // Remove from saved records if save failed
+        const key = this.getMarkKey(studentId, this.selectedSubjectId);
         this.savedRecords.delete(key);
-        // Don't show error for auto-save failures, just log them
-        console.error('Auto-save failed:', err);
+        this.failedMarkKeys.add(key);
+        this.queueMarksOffline([studentId], marksData);
+        this.error = this.connectivity.isNetworkError(err)
+          ? 'Save failed — marks queued. Click Retry when online.'
+          : 'Failed to save marks. Click Retry.';
+        this.cdr.markForCheck();
       }
     });
   }
@@ -1094,24 +1125,70 @@ return;
       return;
     }
 
+    if (!this.connectivity.isOnline) {
+      this.queueMarksOffline(studentIds, marksData);
+      studentIds.forEach((id) => this.failedMarkKeys.add(this.getMarkKey(id, this.selectedSubjectId)));
+      this.error = 'Connection is lost. Marks saved locally and will sync when connection is restored.';
+      this.cdr.markForCheck();
+      return;
+    }
+
     this.isAutoSaving = true;
     this.examService.captureMarks(this.currentExam.id, marksData).subscribe({
       next: (data: any) => {
         this.isAutoSaving = false;
-        // Mark all saved records
         studentIds.forEach(studentId => {
           const key = this.getMarkKey(studentId, this.selectedSubjectId);
           const mark = this.marks[key];
           if (mark && (mark.score !== null || mark.comments)) {
             this.savedRecords.add(key);
+            this.failedMarkKeys.delete(key);
           }
         });
         this.showAutoSaveSuccess(`✓ Auto-saved marks for ${marksData.length} student(s)`);
       },
       error: (err: any) => {
         this.isAutoSaving = false;
-        console.error('Auto-save failed:', err);
+        studentIds.forEach((studentId) => {
+          const key = this.getMarkKey(studentId, this.selectedSubjectId);
+          this.savedRecords.delete(key);
+          this.failedMarkKeys.add(key);
+        });
+        this.queueMarksOffline(studentIds, marksData);
+        this.error = this.connectivity.isNetworkError(err)
+          ? 'Connection is lost. Marks saved locally — use Retry when connection is restored.'
+          : 'Auto-save failed. Click Retry on the student row.';
+        this.cdr.markForCheck();
       }
+    });
+  }
+
+  private queueMarksOffline(studentIds: string[], marksData: unknown[]): void {
+    if (!this.currentExam?.id) return;
+    const student = this.students.find((s) => s.id === studentIds[0]);
+    const label = student
+      ? `${student.firstName} ${student.lastName} marks`
+      : `Marks (${studentIds.length} student(s))`;
+    this.offlineSync.enqueueMarks({
+      examId: this.currentExam.id,
+      marksData,
+      studentIds,
+      label
+    });
+  }
+
+  markSaveFailed(studentId: string): boolean {
+    const key = this.getMarkKey(studentId, this.selectedSubjectId);
+    return (
+      this.failedMarkKeys.has(key) ||
+      this.offlineSync.hasPendingMarks(this.currentExam?.id, studentId, this.selectedSubjectId)
+    );
+  }
+
+  retryMarkSave(studentId: string): void {
+    this.error = '';
+    void this.offlineSync.flushQueue().then(() => {
+      this.autoSaveStudent(studentId);
     });
   }
 

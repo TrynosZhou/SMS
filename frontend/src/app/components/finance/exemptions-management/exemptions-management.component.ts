@@ -331,36 +331,58 @@ export class ExemptionsManagementComponent implements OnInit, OnDestroy {
       .updateStudent(studentId, this.buildPayload())
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: () => {
-          this.financeService
-            .syncStudentExemptionInvoices(studentId)
-            .pipe(
-              takeUntil(this.destroy$),
-              finalize(() => {
-                this.saving = false;
-                this.cdr.markForCheck();
-              })
-            )
-            .subscribe({
-              next: (syncResp) => {
-                const syncMsg = syncResp?.message ? ` ${syncResp.message}` : '';
-                this.success =
-                  (this.editingId ? 'Exemption updated' : 'Exemption created') + '.' + syncMsg;
-                this.clearForm();
-                this.loadExemptions();
-              },
-              error: (syncErr) => {
-                this.success = this.editingId ? 'Exemption saved' : 'Exemption created';
-                this.error =
-                  syncErr?.error?.message ||
-                  'Exemption saved but open invoices could not be updated. Use Sync open invoices.';
-                this.loadExemptions();
-              }
-            });
+        next: (updateResp: any) => {
+          const exemptionSync = updateResp?.exemptionInvoiceSync;
+          const logisticsSync = updateResp?.logisticsInvoiceSync;
+          let syncMsg = '';
+          if (exemptionSync?.message) {
+            syncMsg = ` ${exemptionSync.message}`;
+          } else if (exemptionSync?.updated > 0) {
+            syncMsg = ` Invoice balance updated for ${exemptionSync.updated} invoice(s).`;
+          }
+          if (logisticsSync?.adjustments?.length) {
+            syncMsg += ` ${logisticsSync.adjustments.join('; ')}.`;
+          }
+          if (!syncMsg) {
+            this.financeService
+              .syncStudentExemptionInvoices(studentId)
+              .pipe(
+                takeUntil(this.destroy$),
+                finalize(() => {
+                  this.saving = false;
+                  this.cdr.markForCheck();
+                })
+              )
+              .subscribe({
+                next: (syncResp) => {
+                  const extra = syncResp?.message ? ` ${syncResp.message}` : '';
+                  this.success =
+                    (this.editingId ? 'Exemption updated' : 'Exemption created') +
+                    '.' +
+                    extra;
+                  this.clearForm();
+                  this.loadExemptions();
+                },
+                error: (syncErr) => {
+                  this.success = this.editingId ? 'Exemption updated' : 'Exemption created';
+                  this.error =
+                    syncErr?.error?.message ||
+                    'Exemption saved but invoice balance could not be updated. Use Sync on the student record.';
+                  this.loadExemptions();
+                }
+              });
+            return;
+          }
+          this.saving = false;
+          this.success =
+            (this.editingId ? 'Exemption updated' : 'Exemption created') + '.' + syncMsg;
+          this.clearForm();
+          this.loadExemptions();
+          this.cdr.markForCheck();
         },
         error: (err) => {
-          this.error = err?.error?.message || 'Failed to save exemption';
           this.saving = false;
+          this.error = err?.error?.message || 'Failed to save exemption';
           this.cdr.markForCheck();
         }
       });

@@ -78,9 +78,11 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   selectedUser: UserManagementRow | null = null;
   showResetModal = false;
-  resetGeneratePassword = true;
+  resetGeneratePassword = false;
   resetPassword = '';
   resetPasswordConfirm = '';
+  showResetPasswordNew = false;
+  showResetPasswordConfirm = false;
   resettingPassword = false;
   unlockingUserId: string | null = null;
   deletingUserId: string | null = null;
@@ -353,9 +355,11 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   openResetModal(user: UserManagementRow): void {
     this.selectedUser = user;
-    this.resetGeneratePassword = true;
+    this.resetGeneratePassword = false;
     this.resetPassword = '';
     this.resetPasswordConfirm = '';
+    this.showResetPasswordNew = false;
+    this.showResetPasswordConfirm = false;
     this.error = '';
     this.showResetModal = true;
   }
@@ -363,6 +367,16 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   closeResetModal(): void {
     this.showResetModal = false;
     this.selectedUser = null;
+    this.showResetPasswordNew = false;
+    this.showResetPasswordConfirm = false;
+  }
+
+  toggleResetPasswordNewVisibility(): void {
+    this.showResetPasswordNew = !this.showResetPasswordNew;
+  }
+
+  toggleResetPasswordConfirmVisibility(): void {
+    this.showResetPasswordConfirm = !this.showResetPasswordConfirm;
   }
 
   confirmResetPassword(): void {
@@ -390,8 +404,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
           this.resettingPassword = false;
           const temp = res?.temporaryPassword;
           this.success = temp
-            ? `Password reset. Temporary password: ${temp}`
-            : 'Password reset successfully.';
+            ? `Password reset. Temporary password: ${temp} — user must change it on first login.`
+            : 'Password set. The user can sign in with this password and change it later from My Account.';
           this.closeResetModal();
           this.loadUsers();
           setTimeout(() => (this.success = ''), 12000);

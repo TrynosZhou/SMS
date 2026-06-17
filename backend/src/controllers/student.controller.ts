@@ -19,6 +19,8 @@ import { parseAmount } from '../utils/numberUtils';
 import { parseBoolean } from '../utils/booleanUtils';
 import {
   computeLogisticsFees,
+  logisticsProfileChanged,
+  repairStaleLogisticsInvoiceBalances,
   recomputeInvoiceTotalsFromLineItems,
   snapshotFromStudent,
   syncStudentLogisticsInvoices
@@ -1303,32 +1305,105 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     console.log('Saving updated student...');
     console.log('Student classId before save:', student.classId);
     console.log('Student classEntity relation before save:', student.classEntity?.name || 'null');
-    
-    // Save the student - this should update both classId and the relation
-    const savedStudent = await studentRepository.save(student);
-    console.log('Student classId after save:', savedStudent.classId);
-    console.log('Student classEntity relation after save:', savedStudent.classEntity?.name || 'null');
 
-    // Use update query to ensure classId is definitely updated in the database
-    if (classId !== undefined) {
-      if (classId === null || classId === '') {
-        await studentRepository.update({ id }, { classId: null });
-        console.log('Explicitly cleared classId via update query');
-      } else {
-        const trimmedClassId = String(classId).trim();
-        await studentRepository.update({ id }, { classId: trimmedClassId });
-        console.log('Explicitly updated classId via update query:', trimmedClassId);
-      }
+    const logisticsAfterPreview = snapshotFromStudent(student);
+    const shouldSyncLogistics =
+      !isTeacherEditor && logisticsProfileChanged(logisticsBefore, logisticsAfterPreview);
+
+    let updatedStudent: Student | null = null;
+    let logisticsInvoiceSync: any = null;
+    let exemptionInvoiceSync: any = null;
+
+    try {
+      await AppDataSource.transaction(async (manager) => {
+        const txStudentRepo = manager.getRepository(Student);
+        const savedStudent = await txStudentRepo.save(student);
+        console.log('Student classId after save:', savedStudent.classId);
+
+        if (classId !== undefined) {
+          if (classId === null || classId === '') {
+            await txStudentRepo.update({ id }, { classId: null });
+            console.log('Explicitly cleared classId via update query');
+          } else {
+            const trimmedClassId = String(classId).trim();
+            await txStudentRepo.update({ id }, { classId: trimmedClassId });
+            console.log('Explicitly updated classId via update query:', trimmedClassId);
+          }
+        }
+
+        updatedStudent = await txStudentRepo.findOne({
+          where: { id },
+          relations: ['classEntity', 'parent']
+        });
+
+        if (!updatedStudent) {
+          throw new Error('Failed to reload student after update');
+        }
+
+        const settingsRepository = manager.getRepository(Settings);
+        const settings = await settingsRepository.findOne({ where: {}, order: { createdAt: 'DESC' } });
+        const fees = settings?.feesSettings;
+
+        if (fees && shouldSyncLogistics) {
+          logisticsInvoiceSync = await syncStudentLogisticsInvoices({
+            studentId: updatedStudent.id,
+            before: logisticsBefore,
+            after: snapshotFromStudent(updatedStudent),
+            fees: fees as Record<string, unknown>,
+            activeTerm: settings?.activeTerm || settings?.currentTerm,
+            manager
+          });
+        }
+
+        if (fees && !isTeacherEditor) {
+          const repaired = await repairStaleLogisticsInvoiceBalances(updatedStudent.id, manager);
+          if (repaired > 0) {
+            logisticsInvoiceSync = logisticsInvoiceSync ?? {
+              updatedInvoices: 0,
+              adjustments: [],
+              deltaTransport: 0,
+              deltaDiningHall: 0
+            };
+            logisticsInvoiceSync.repairedInvoices = repaired;
+          }
+        }
+
+        const exemptionAfter = {
+          isStaffChild: updatedStudent.isStaffChild === true,
+          isExempted: updatedStudent.isExempted === true,
+          exemptionType: updatedStudent.exemptionType || null,
+          exemptionAmount: updatedStudent.exemptionAmount ?? null,
+          exemptionPercent: updatedStudent.exemptionPercent ?? null
+        };
+
+        const exemptionFieldsChanged =
+          exemptionBefore.isStaffChild !== exemptionAfter.isStaffChild ||
+          exemptionBefore.isExempted !== exemptionAfter.isExempted ||
+          exemptionBefore.exemptionType !== exemptionAfter.exemptionType ||
+          Number(exemptionBefore.exemptionAmount ?? 0) !== Number(exemptionAfter.exemptionAmount ?? 0) ||
+          Number(exemptionBefore.exemptionPercent ?? 0) !== Number(exemptionAfter.exemptionPercent ?? 0);
+
+        const exemptionWasActive =
+          exemptionBefore.isStaffChild ||
+          (exemptionBefore.isExempted &&
+            (exemptionBefore.exemptionType === 'fixed' || exemptionBefore.exemptionType === 'percentage'));
+
+        const exemptionIsActive =
+          isStaffSiblingExemption(updatedStudent) || isBalanceOnlyExemption(updatedStudent);
+
+        if (fees && !isTeacherEditor && (exemptionFieldsChanged || exemptionWasActive || exemptionIsActive)) {
+          exemptionInvoiceSync = await syncExemptionInvoicesForStudent(updatedStudent.id, { manager });
+        }
+      });
+    } catch (txError: any) {
+      console.error('Student update transaction failed:', txError);
+      const message =
+        txError?.message ||
+        'Failed to update student record and invoice balances. No changes were saved.';
+      return res.status(500).json({ message, error: message });
     }
 
-    // Reload student with relations to get fresh data from database
-    const updatedStudent = await studentRepository.findOne({
-      where: { id },
-      relations: ['classEntity', 'parent']
-    });
-
     if (!updatedStudent) {
-      console.error('Failed to reload student after update');
       return res.status(500).json({ message: 'Failed to reload student after update' });
     }
 
@@ -1431,53 +1506,6 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       }
     } catch (initInvoiceError) {
       console.error('⚠️ Initial invoice creation failed:', initInvoiceError);
-    }
-
-    let logisticsInvoiceSync: any = null;
-    let exemptionInvoiceSync: any = null;
-
-    try {
-      const settingsRepository = AppDataSource.getRepository(Settings);
-      const settings = await settingsRepository.findOne({ where: {}, order: { createdAt: 'DESC' } });
-      const fees = settings?.feesSettings;
-      if (fees && !isTeacherEditor) {
-        logisticsInvoiceSync = await syncStudentLogisticsInvoices({
-          studentId: updatedStudent.id,
-          before: logisticsBefore,
-          after: snapshotFromStudent(updatedStudent),
-          fees: fees as Record<string, unknown>,
-          activeTerm: settings?.activeTerm || settings?.currentTerm
-        });
-
-        const exemptionAfter = {
-          isStaffChild: updatedStudent.isStaffChild === true,
-          isExempted: updatedStudent.isExempted === true,
-          exemptionType: updatedStudent.exemptionType || null,
-          exemptionAmount: updatedStudent.exemptionAmount ?? null,
-          exemptionPercent: updatedStudent.exemptionPercent ?? null
-        };
-
-        const exemptionFieldsChanged =
-          exemptionBefore.isStaffChild !== exemptionAfter.isStaffChild ||
-          exemptionBefore.isExempted !== exemptionAfter.isExempted ||
-          exemptionBefore.exemptionType !== exemptionAfter.exemptionType ||
-          Number(exemptionBefore.exemptionAmount ?? 0) !== Number(exemptionAfter.exemptionAmount ?? 0) ||
-          Number(exemptionBefore.exemptionPercent ?? 0) !== Number(exemptionAfter.exemptionPercent ?? 0);
-
-        const exemptionWasActive =
-          exemptionBefore.isStaffChild ||
-          (exemptionBefore.isExempted &&
-            (exemptionBefore.exemptionType === 'fixed' || exemptionBefore.exemptionType === 'percentage'));
-
-        const exemptionIsActive =
-          isStaffSiblingExemption(updatedStudent) || isBalanceOnlyExemption(updatedStudent);
-
-        if (exemptionFieldsChanged || exemptionWasActive || exemptionIsActive) {
-          exemptionInvoiceSync = await syncExemptionInvoicesForStudent(updatedStudent.id);
-        }
-      }
-    } catch (syncErr) {
-      console.error('⚠️ Post-update invoice sync failed:', syncErr);
     }
 
     res.json({

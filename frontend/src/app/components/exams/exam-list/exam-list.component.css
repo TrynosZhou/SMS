@@ -1096,6 +1096,22 @@
   color: #6b7280;
 }
 
+.status-badge.failed {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.btn-retry-inline {
+  margin-left: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  border: 1px solid #b91c1c;
+  border-radius: 4px;
+  background: #fff;
+  color: #b91c1c;
+  cursor: pointer;
+}
+
 .status-icon {
   font-size: 12px;
 }

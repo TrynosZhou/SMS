@@ -21,6 +21,10 @@
   </div>
 
   <!-- Alert Messages -->
+  <div class="alert alert-warn" *ngIf="connectionBanner" [@fadeInOut]>
+    <span class="alert-icon">⚠</span>
+    <span class="alert-text">{{ connectionBanner }}</span>
+  </div>
   <div class="alert alert-success" *ngIf="success" [@fadeInOut]>
     <span class="alert-icon">✓</span>
     <span class="alert-text">{{ success }}</span>
@@ -410,10 +414,14 @@
                   </div>
                 </td>
                 <td class="col-status">
-                  <span class="status-badge saved" *ngIf="isRecordSaved(student.id)">
+                  <span class="status-badge failed" *ngIf="markSaveFailed(student.id)">
+                    <span class="status-icon">⚠</span> Not saved
+                    <button type="button" class="btn-retry-inline" (click)="retryMarkSave(student.id)">Retry</button>
+                  </span>
+                  <span class="status-badge saved" *ngIf="!markSaveFailed(student.id) && isRecordSaved(student.id)">
                     <span class="status-icon">✓</span> Saved
                   </span>
-                  <span class="status-badge entered" *ngIf="!isRecordSaved(student.id) && hasMarks(student.id)">
+                  <span class="status-badge entered" *ngIf="!markSaveFailed(student.id) && !isRecordSaved(student.id) && hasMarks(student.id)">
                     <span class="status-icon">○</span> Entered
                   </span>
                   <span class="status-badge pending" *ngIf="!hasMarks(student.id)">

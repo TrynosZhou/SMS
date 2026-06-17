@@ -1,3 +1,8 @@
+<!-- Connection status -->
+<div class="connection-banner" *ngIf="connectionBanner" role="status">
+  {{ connectionBanner }}
+</div>
+
 <!-- Demo Account Banner -->
 <div class="demo-banner" *ngIf="isAuthenticated() && isDemoUser()">
   <div class="demo-banner-content">
@@ -172,6 +177,7 @@
         <a
           [routerLink]="isTeacher() ? '/teacher/dashboard' : (isParent() ? '/parent/dashboard' : '/dashboard')"
           routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
           class="sidebar-item"
           *ngIf="matchesSidebarFilter('Dashboard')">
           <span class="sidebar-icon">🏠</span>
@@ -310,7 +316,7 @@
         class="sidebar-menu"
         *ngIf="sidebarMenuVisible(
           ['Exam Manager', 'Marks Capturing', 'Mark Sheets', 'Rankings', 'Report Cards', 'Marks Entry Progress', 'Publish Results'],
-          canAccessModule('exams') || isAdmin() || isSuperAdmin()
+          canAccessExamsNav() || canAccessReportCardsNav() || canAccessRankingsNav()
         )">
         <div class="sidebar-menu-header" (click)="toggleMenu('examManagement')">
           <span class="sidebar-icon">📝</span>
@@ -318,23 +324,23 @@
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('examManagement')">▼</span>
         </div>
         <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('examManagement')">
-          <a routerLink="/exams" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('exams') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/exams" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessExamsNav()">
             <span class="sidebar-icon">✏️</span>
             <span class="sidebar-text">Marks Capturing</span>
           </a>
-          <a routerLink="/mark-sheet" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('exams') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/mark-sheet" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessExamsNav()">
             <span class="sidebar-icon">📄</span>
             <span class="sidebar-text">Mark Sheets</span>
           </a>
-          <a routerLink="/rankings" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('rankings') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/rankings" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessRankingsNav()">
             <span class="sidebar-icon">🏆</span>
             <span class="sidebar-text">Rankings</span>
           </a>
-          <a routerLink="/report-cards" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('reportCards') || isAdmin() || isSuperAdmin()">
+          <a routerLink="/report-cards" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessReportCardsNav()">
             <span class="sidebar-icon">📊</span>
             <span class="sidebar-text">Report Cards</span>
           </a>
-          <a routerLink="/check_mark_progess" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('exams') || isAdmin() || isSuperAdmin() || isTeacher()">
+          <a routerLink="/check_mark_progess" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessExamsNav()">
             <span class="sidebar-icon">📈</span>
             <span class="sidebar-text">Marks Entry Progress</span>
           </a>
@@ -571,7 +577,7 @@
         class="sidebar-menu"
         *ngIf="sidebarMenuVisible(
           ['E-Learning Manager', 'Create Task/Assign', 'Student Response', 'Record Book', 'My Classes'],
-          isTeacher() && canAccessModule('recordBook')
+          isTeacher() && canAccessRecordBookNav()
         )">
         <div class="sidebar-menu-header" (click)="toggleMenu('recordKeeping')">
           <span class="sidebar-icon">💻</span>

@@ -138,7 +138,13 @@ export class TeacherService {
   }
 
   getCurrentTeacher(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/teachers/me`);
+    return this.http.get(`${this.apiUrl}/teachers/me`).pipe(
+      timeout(60000),
+      catchError((error: any) => {
+        console.error('Error loading current teacher:', error);
+        throw error;
+      })
+    );
   }
 
   getTeacherById(id: string): Observable<any> {
@@ -155,6 +161,7 @@ export class TeacherService {
 
   getTeacherClasses(id: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/teachers/${id}/classes`).pipe(
+      timeout(60000),
       catchError((error: any) => {
         console.error('Error loading teacher classes:', error);
         

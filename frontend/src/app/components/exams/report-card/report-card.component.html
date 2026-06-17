@@ -1,5 +1,8 @@
 <div class="rc-page">
-  <div class="rc-toast-stack" *ngIf="success || error || autoSavingRemarks">
+  <div class="rc-toast-stack" *ngIf="success || error || autoSavingRemarks || connectionBanner">
+    <div class="rc-toast rc-toast--warn" *ngIf="connectionBanner" role="status" [@fadeInOut]>
+      <span>{{ connectionBanner }}</span>
+    </div>
     <div class="rc-toast rc-toast--success" *ngIf="success" role="status" [@fadeInOut]>
       <span>{{ success }}</span>
       <button type="button" class="rc-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
@@ -479,8 +482,14 @@
                 Class Teacher Remarks
                 <span *ngIf="canEditRemarks && isRemarksSaved(reportCard.student.id, 'classTeacher')" 
                       class="saved-badge" title="Saved">✓ Saved</span>
-                <span *ngIf="canEditRemarks && !isRemarksSaved(reportCard.student.id, 'classTeacher') && reportCard.remarks?.classTeacherRemarks" 
+                <span *ngIf="canEditRemarks && remarksSaveFailed(reportCard)" 
+                      class="unsaved-badge unsaved-badge--error" title="Save failed">⚠ Not saved</span>
+                <span *ngIf="canEditRemarks && !remarksSaveFailed(reportCard) && !isRemarksSaved(reportCard.student.id, 'classTeacher') && reportCard.remarks?.classTeacherRemarks" 
                       class="unsaved-badge" title="Not saved yet">○ Entered</span>
+                <button *ngIf="canEditRemarks && remarksSaveFailed(reportCard)" 
+                        type="button" 
+                        class="btn btn-xs btn-retry" 
+                        (click)="retryRemarksSave(reportCard)">Retry</button>
                 <button *ngIf="canEditRemarks" 
                         type="button" 
                         class="btn btn-xs btn-ai-sparkle" 
@@ -517,7 +526,7 @@
                 <div *ngIf="schoolWidePhrases?.length" class="custom-list" style="margin:4px 0 8px 0;">
                   <span style="font-size:12px; color:#6b7280; margin-right:6px;">School phrases:</span>
                   <ng-container *ngFor="let s of schoolWidePhrases">
-                    <span class="suggestion-chip" title="School phrase" (click)="applyClassTeacherSuggestion(reportCard, s)">
+                    <span class="suggestion-chip" role="button" tabindex="0" title="School phrase" (click)="applyClassTeacherSuggestion(reportCard, s)">
                       {{ s }}
                     </span>
                   </ng-container>
@@ -525,7 +534,7 @@
                 <div *ngIf="customClassTeacherPhrases?.length" class="custom-list" style="margin:4px 0 8px 0;">
                   <span style="font-size:12px; color:#6b7280; margin-right:6px;">Your phrases:</span>
                   <ng-container *ngFor="let s of customClassTeacherPhrases; let idx = index">
-                    <span class="suggestion-chip" title="Custom phrase" (click)="applyClassTeacherSuggestion(reportCard, s)">
+                    <span class="suggestion-chip" role="button" tabindex="0" title="Custom phrase" (click)="applyClassTeacherSuggestion(reportCard, s)">
                       {{ s }}
                       <button type="button" class="chip-remove" title="Remove phrase" (click)="$event.stopPropagation(); removeCustomSuggestion(idx)" style="margin-left:6px;">×</button>
                     </span>

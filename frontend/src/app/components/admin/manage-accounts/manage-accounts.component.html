@@ -971,7 +971,7 @@
                 <span>{{ showResetPasswordNew ? '👁️' : '👁️‍🗨️' }}</span>
               </button>
             </div>
-            <small class="form-text">Password must be at least 8 characters long. The teacher will be required to change it on next login.</small>
+            <small class="form-text">Password must be at least 8 characters. The teacher can change it later from My Account.</small>
           </div>
 
           <div class="form-group">
@@ -1002,7 +1002,7 @@
 
           <div class="info-box">
             <span class="info-box-icon">⚠️</span>
-            <p>This will replace the teacher's current password. They will be required to change it on their next login.</p>
+            <p>The teacher can sign in with this password and change it later from My Account.</p>
           </div>
         </form>
       </div>
@@ -1041,7 +1041,7 @@
             <span class="modal-icon">🔑</span>
             Reset Password — {{ getStaffRoleLabel(selectedStaff.role) }}
           </h2>
-          <p class="modal-subtitle">Set a new password. They must change it on first login.</p>
+          <p class="modal-subtitle">Set a manual password or generate a temporary one.</p>
         </div>
         <button type="button" class="modal-close-btn" (click)="closeResetStaffModal()" title="Close" [disabled]="resettingStaffPassword">
           <span>&times;</span>
@@ -1090,6 +1090,10 @@
               </button>
             </div>
           </div>
+        </div>
+        <div class="info-box" *ngIf="!staffResetGeneratePassword">
+          <span class="info-box-icon">ℹ️</span>
+          <p>The user can sign in with this password and change it later from My Account.</p>
         </div>
         <div class="info-box" *ngIf="staffResetGeneratePassword">
           <span class="info-box-icon">💡</span>

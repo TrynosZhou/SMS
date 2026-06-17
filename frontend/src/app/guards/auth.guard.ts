@@ -16,10 +16,19 @@ export class AuthGuard implements CanActivate {
 
     const user = this.authService.getCurrentUser();
 
-    if (user?.role === 'parent') {
-      const url = state.url.split('?')[0];
+    const role = String(user?.role || '').toLowerCase();
+    const url = state.url.split('?')[0];
+
+    if (role === 'parent') {
       if (url === '/dashboard') {
         this.router.navigate(['/parent/dashboard']);
+        return false;
+      }
+    }
+
+    if (role === 'teacher') {
+      if (url === '/dashboard') {
+        this.router.navigate(['/teacher/dashboard']);
         return false;
       }
     }

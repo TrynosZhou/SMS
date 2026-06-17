@@ -1680,6 +1680,15 @@
   font-weight: 600;
 }
 
+.unsaved-badge--error {
+  background-color: #fef2f2;
+  color: #b91c1c;
+}
+
+.btn-retry {
+  margin-left: 6px;
+}
+
 .remarks-readonly {
   padding: 12px;
   background: white;

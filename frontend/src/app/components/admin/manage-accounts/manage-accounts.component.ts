@@ -520,7 +520,7 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
         this.error = '';
         this.success = `<strong>Password has been reset successfully.</strong><br>` +
           `Teacher: ${this.selectedTeacher.firstName} ${this.selectedTeacher.lastName}. ` +
-          `They will be required to change it on next login.`;
+          `They can sign in with this password and change it later from My Account.`;
         this.closeResetPasswordModal();
         this.scrollToSuccessMessage();
         setTimeout(() => this.success = '', 10000);
@@ -623,7 +623,7 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
 
   openResetStaffModal(staff: any) {
     this.selectedStaff = staff;
-    this.staffResetGeneratePassword = true;
+    this.staffResetGeneratePassword = false;
     this.resetStaffPasswordNewPassword = '';
     this.resetStaffPasswordConfirm = '';
     this.error = '';
@@ -694,7 +694,7 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
         this.error = '';
         const roleLabel = this.getStaffRoleLabel(this.selectedStaff.role);
         this.success = `<strong>Password has been reset successfully.</strong><br>` +
-          `Account: ${roleLabel} (${this.selectedStaff.username}). They must change it on first login.`;
+          `Account: ${roleLabel} (${this.selectedStaff.username}). They can sign in with this password and change it later from My Account.`;
         this.closeResetStaffModal();
         this.loadStaffUsers();
         this.scrollToSuccessMessage();

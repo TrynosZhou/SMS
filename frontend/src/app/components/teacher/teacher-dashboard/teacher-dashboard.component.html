@@ -14,19 +14,22 @@
           </div>
         </div>
         <div class="header-right">
-          <a
-            *ngIf="canChangeOwnPassword()"
-            class="dash-change-password-link"
-            [routerLink]="changePasswordRoute"
-            title="Update your login password">
-            🔐 Change password
-          </a>
           <div class="quick-stats-badge" *ngIf="!loading">
             <span class="badge-icon">⚡</span>
             <span class="badge-text">{{ teacherClasses.length }} Classes Assigned</span>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Password change reminder (use My Account from the sidebar) -->
+    <div class="alert alert-warning" *ngIf="mustChangePassword && !loading">
+      <span class="alert-icon">🔐</span>
+      <span class="alert-text">
+        You must change your temporary password. Open
+        <a routerLink="/teacher/manage-account" class="alert-link">My Account</a>
+        from the sidebar to update it.
+      </span>
     </div>
 
     <!-- Alerts -->
@@ -168,11 +171,6 @@
           <a routerLink="/check_mark_progess" class="action-btn modern-action-btn secondary-action" *ngIf="canAccessModule('exams')">
             <span class="action-icon">📈</span>
             <span class="action-text">Marks Progress</span>
-            <span class="action-arrow">→</span>
-          </a>
-          <a routerLink="/teacher/manage-account" class="action-btn modern-action-btn danger-action">
-            <span class="action-icon">🔐</span>
-            <span class="action-text">Change Password</span>
             <span class="action-arrow">→</span>
           </a>
           <a routerLink="/timetable/generate" class="action-btn modern-action-btn info-action">

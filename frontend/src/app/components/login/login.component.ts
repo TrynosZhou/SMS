@@ -322,23 +322,14 @@ export class LoginComponent implements OnInit {
         }
         
         // Navigate immediately - token and user are already stored
-        // Check if teacher must change password
-        if (user.role === 'teacher' && user.mustChangePassword) {
-          // Navigate to manage account page
-          this.router.navigate(['/teacher/manage-account']).catch(err => {
-            console.error('Navigation error:', err);
-            this.error = 'Failed to navigate. Please try again.';
-          });
-        }
-        // Check if teacher login - redirect to teacher dashboard
-        else if (user.role === 'teacher') {
-          // Navigate to teacher dashboard
+        const role = String(user.role || '').toLowerCase();
+
+        if (role === 'teacher') {
           this.router.navigate(['/teacher/dashboard']).catch(err => {
             console.error('Navigation error:', err);
             this.error = 'Failed to navigate. Please try again.';
           });
-        }
-        else if (user.role === 'parent') {
+        } else if (role === 'parent') {
           this.authService.getParentStudents().subscribe({
             next: (res: any) => {
               const students = Array.isArray(res) ? res : (res?.students || []);
@@ -357,15 +348,12 @@ export class LoginComponent implements OnInit {
             }
           });
         } else if (user.mustChangePassword) {
-          const role = String(user.role || '').toLowerCase();
           const changePasswordRoute =
-            role === 'teacher'
-              ? '/teacher/manage-account'
-              : role === 'parent'
-                ? '/parent/manage-account'
-                : role === 'accountant'
-                  ? '/accountant/manage-account'
-                  : '/account/change-password';
+            role === 'parent'
+              ? '/parent/manage-account'
+              : role === 'accountant'
+                ? '/accountant/manage-account'
+                : '/account/change-password';
           this.router.navigate([changePasswordRoute]).catch(err => {
             console.error('Navigation error:', err);
             this.error = 'Failed to navigate. Please try again.';

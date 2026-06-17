@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
 import { AuthService } from './auth.service';
 import { ModuleAccessService } from './module-access.service';
 import { RbacService } from './rbac.service';
@@ -33,6 +34,9 @@ const ROUTE_TO_RBAC: Record<string, string> = {
 @Injectable({ providedIn: 'root' })
 export class PermissionService {
   private permissions: Record<string, boolean> = {};
+  private readonly permissionsReadySubject = new BehaviorSubject<boolean>(false);
+  /** Emits when RBAC permissions have been fetched (or skipped). */
+  readonly permissionsReady$ = this.permissionsReadySubject.asObservable();
 
   constructor(
     private authService: AuthService,
@@ -45,10 +49,17 @@ export class PermissionService {
       }
     };
     sync(this.authService.getCurrentUser());
+    if (this.authService.getCurrentUser()?.permissions && Object.keys(this.authService.getCurrentUser()!.permissions!).length) {
+      this.permissionsReadySubject.next(true);
+    }
     this.authService.currentUser$.subscribe((user) => {
       sync(user);
       if (user && (!user.permissions || !Object.keys(user.permissions).length)) {
         this.loadPermissionsFromApi();
+      } else if (user) {
+        this.permissionsReadySubject.next(true);
+      } else {
+        this.permissionsReadySubject.next(false);
       }
     });
   }
@@ -63,7 +74,11 @@ export class PermissionService {
           user.permissions = this.permissions;
           sessionStorage.setItem('user', JSON.stringify(user));
         }
+        this.permissionsReadySubject.next(true);
       },
+      error: () => {
+        this.permissionsReadySubject.next(true);
+      }
     });
   }
 

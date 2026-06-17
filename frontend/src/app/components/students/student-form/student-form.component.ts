@@ -98,8 +98,12 @@ error = '';
   private buildUpdateSuccessMessage(response: any): string {
     let message = response?.message || 'Student updated successfully';
     const sync = response?.logisticsInvoiceSync;
-    if (sync?.updatedInvoices > 0 && Array.isArray(sync.adjustments) && sync.adjustments.length > 0) {
-      message += ` Invoice balance updated (${sync.adjustments.join('; ')}).`;
+    if (sync?.updatedInvoices > 0) {
+      const detail =
+        Array.isArray(sync.adjustments) && sync.adjustments.length > 0
+          ? sync.adjustments.join('; ')
+          : `Fees adjusted per settings (transport Δ ${sync.deltaTransport ?? 0}, DH Δ ${sync.deltaDiningHall ?? 0}, tuition Δ ${sync.deltaTuition ?? 0})`;
+      message += ` Invoice balance updated (${detail}).`;
     }
     return message;
   }

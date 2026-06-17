@@ -268,20 +268,65 @@
     </div>
     <div class="um-modal-body">
       <p>Reset password for <strong>{{ selectedUser.username }}</strong> ({{ getRoleLabel(selectedUser.role) }}).</p>
+
+      <div class="um-alert um-alert--error" *ngIf="error && showResetModal">{{ error }}</div>
+
       <div class="um-checkbox-row">
         <label>
           <input type="checkbox" [(ngModel)]="resetGeneratePassword" name="resetGen" [disabled]="resettingPassword" />
-          Generate temporary password
+          Generate temporary password automatically
         </label>
       </div>
+      <p class="um-form-hint um-form-hint--inline" *ngIf="!resetGeneratePassword">
+        Enter a password for the user. They can sign in with it and change it later from My Account.
+      </p>
+      <p class="um-form-hint um-form-hint--inline" *ngIf="resetGeneratePassword">
+        A secure temporary password will be generated and shown after reset. The user must change it on first login.
+      </p>
+
       <ng-container *ngIf="!resetGeneratePassword">
         <div class="um-form-row">
           <label>New password *</label>
-          <input type="password" [(ngModel)]="resetPassword" name="resetNew" minlength="8" [disabled]="resettingPassword" />
+          <div class="um-password-field">
+            <input
+              [type]="showResetPasswordNew ? 'text' : 'password'"
+              [(ngModel)]="resetPassword"
+              name="resetNew"
+              minlength="8"
+              placeholder="Min. 8 characters"
+              autocomplete="new-password"
+              [disabled]="resettingPassword" />
+            <button
+              type="button"
+              class="um-password-toggle"
+              (click)="toggleResetPasswordNewVisibility()"
+              [attr.aria-label]="showResetPasswordNew ? 'Hide password' : 'Show password'"
+              [disabled]="resettingPassword"
+              tabindex="-1">
+              <span aria-hidden="true">{{ showResetPasswordNew ? '🙈' : '👁️' }}</span>
+            </button>
+          </div>
         </div>
         <div class="um-form-row">
           <label>Confirm password *</label>
-          <input type="password" [(ngModel)]="resetPasswordConfirm" name="resetConfirm" [disabled]="resettingPassword" />
+          <div class="um-password-field">
+            <input
+              [type]="showResetPasswordConfirm ? 'text' : 'password'"
+              [(ngModel)]="resetPasswordConfirm"
+              name="resetConfirm"
+              placeholder="Re-enter password"
+              autocomplete="new-password"
+              [disabled]="resettingPassword" />
+            <button
+              type="button"
+              class="um-password-toggle"
+              (click)="toggleResetPasswordConfirmVisibility()"
+              [attr.aria-label]="showResetPasswordConfirm ? 'Hide password' : 'Show password'"
+              [disabled]="resettingPassword"
+              tabindex="-1">
+              <span aria-hidden="true">{{ showResetPasswordConfirm ? '🙈' : '👁️' }}</span>
+            </button>
+          </div>
         </div>
       </ng-container>
       <div class="um-modal-actions">

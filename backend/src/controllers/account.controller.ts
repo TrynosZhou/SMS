@@ -475,8 +475,15 @@ export const resetUserPassword = async (req: AuthRequest, res: Response) => {
     
     // Save the new password
     user.password = hashedPassword;
-    user.mustChangePassword = true; // Require password change on next login
-    user.isTemporaryAccount = true; // Mark as temporary so user must change it
+    const isGenerated = generatePassword === true || generatePassword === 'true' || generatePassword === 1;
+    if (isGenerated) {
+      user.mustChangePassword = true;
+      user.isTemporaryAccount = true;
+    } else {
+      // Manual admin-set password: user signs in with it and may change later from My Account
+      user.mustChangePassword = false;
+      user.isTemporaryAccount = false;
+    }
     (user as any).failedLoginAttempts = 0;
     (user as any).lockedUntil = null;
     await userRepository.save(user);
@@ -529,9 +536,12 @@ export const resetUserPassword = async (req: AuthRequest, res: Response) => {
         role: user.role
       }
     };
-    if (generatePassword) {
+    if (isGenerated) {
       payload.temporaryPassword = trimmedPassword;
       payload.mustChangeOnFirstLogin = true;
+    } else {
+      payload.mustChangeOnFirstLogin = false;
+      payload.message = 'Password set successfully. User can change it later from My Account.';
     }
     res.json(payload);
   } catch (error: any) {

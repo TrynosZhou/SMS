@@ -12,9 +12,11 @@ import { filter } from 'rxjs/operators';
 import { AuditService } from './services/audit.service';
 import { environment } from '../environments/environment';
 import { LogoutConfirmService } from './services/logout-confirm.service';
+import { ConnectivityService } from './services/connectivity.service';
 
 /** When the current URL matches a prefix, keep that sidebar section expanded (fixes “click twice” on submenus). */
 const SIDEBAR_MENU_ROUTE_PREFIXES: Record<string, string[]> = {
+  dashboard: ['/dashboard', '/teacher/dashboard', '/parent/dashboard'],
   studentElearning: ['/eweb', '/student/esubmit', '/blank-page'],
   registration: ['/teachers', '/students', '/admin/parents'],
   classManagement: ['/students/enroll', '/students/transfer', '/classes', '/admin/class-promotion'],
@@ -39,6 +41,8 @@ templateUrl: './app.component.html',
 export class AppComponent implements OnInit, OnDestroy {
   schoolName = 'School Management System';
   schoolLogo: string | null = null;
+  /** Current page label shown in the top navbar (route title). */
+  pageNavbarTitle = 'Dashboard';
   mobileMenuOpen = false;
   sidebarCollapsed = false;
   expandedMenus: { [key: string]: boolean } = {};
@@ -55,6 +59,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private dashboardTitleIndex = 0;
   private currentUrl = '';
   userMenuOpen = false;
+  connectionBanner = '';
 
   constructor(
     public authService: AuthService, 
@@ -69,7 +74,8 @@ export class AppComponent implements OnInit, OnDestroy {
     private title: Title,
     private meta: Meta,
     private cdr: ChangeDetectorRef,
-    public logoutConfirm: LogoutConfirmService
+    public logoutConfirm: LogoutConfirmService,
+    public connectivity: ConnectivityService
   ) {
     const cachedName = sessionStorage.getItem(AppComponent.SCHOOL_NAME_CACHE_KEY);
     if (cachedName) {
@@ -78,6 +84,19 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.connectivity.connectionMessage$.subscribe((msg) => {
+      this.connectionBanner = msg;
+      this.cdr.markForCheck();
+      if (msg) {
+        setTimeout(() => {
+          if (this.connectionBanner === msg) {
+            this.connectionBanner = '';
+            this.cdr.markForCheck();
+          }
+        }, 6000);
+      }
+    });
+
     // Load school name from settings if authenticated
     if (this.authService.isAuthenticated()) {
       this.settingsService.getSettings().subscribe({
@@ -99,21 +118,36 @@ export class AppComponent implements OnInit, OnDestroy {
       
       // Load module access settings
       this.moduleAccessService.loadModuleAccess();
+      this.permissionService.loadPermissionsFromApi();
       this.licenseService.load().subscribe();
-      // Section expand/collapse is user-controlled; syncExpandedMenusFromUrl opens the active section only.
-      if (this.isTeacher()) {
-        this.expandedMenus['recordKeeping'] = true;
-      }
-      if (this.isAdmin() || this.isSuperAdmin()) {
-        this.expandedMenus['systemAdministration'] = true;
-      }
+      this.expandAllSidebarMenus();
       this.syncExpandedMenusFromUrl(this.router.url || '');
     }
+
+    this.authService.currentUser$.subscribe((user) => {
+      if (user) {
+        this.moduleAccessService.loadModuleAccess();
+        this.permissionService.loadPermissionsFromApi();
+        this.expandAllSidebarMenus();
+        this.cdr.markForCheck();
+      }
+    });
+
+    this.moduleAccessService.ready$.subscribe(() => {
+      this.expandAllSidebarMenus();
+      this.cdr.markForCheck();
+    });
+
+    this.permissionService.permissionsReady$.subscribe(() => {
+      this.expandAllSidebarMenus();
+      this.cdr.markForCheck();
+    });
 
     // Log module access and update meta tags on navigation
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe((e: any) => {
       this.currentUrl = (e.urlAfterRedirects || e.url || '').toString();
       this.syncExpandedMenusFromUrl(this.currentUrl);
+      this.expandAllSidebarMenus();
       this.syncDashboardTitleRotation();
       this.updateMetaFromRoute();
       // Close mobile menu/drawer after navigation
@@ -139,7 +173,10 @@ export class AppComponent implements OnInit, OnDestroy {
     });
 
     this.authSubscription = this.authService.currentUser$.subscribe(user => {
-      // User state changes handled by auth service
+      if (user) {
+        this.expandAllSidebarMenus();
+        this.cdr.markForCheck();
+      }
     });
 
     // Set initial meta tags
@@ -156,7 +193,79 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   getTopNavbarTitle(): string {
-    return this.schoolName;
+    return this.pageNavbarTitle || this.deriveTitleFromUrl(this.currentUrl);
+  }
+
+  /** Teachers always see exam/record nav; RBAC may load after first paint. */
+  canAccessExamsNav(): boolean {
+    return this.canAccessModule('exams') || this.isAdmin() || this.isSuperAdmin() || this.isTeacher();
+  }
+
+  canAccessReportCardsNav(): boolean {
+    return this.canAccessModule('reportCards') || this.isAdmin() || this.isSuperAdmin() || this.isTeacher();
+  }
+
+  canAccessRankingsNav(): boolean {
+    return this.canAccessModule('rankings') || this.isAdmin() || this.isSuperAdmin() || this.isTeacher();
+  }
+
+  canAccessRecordBookNav(): boolean {
+    return this.canAccessModule('recordBook') || this.isTeacher();
+  }
+
+  private expandAllSidebarMenus(): void {
+    if (!this.authService.isAuthenticated() || this.sidebarCollapsed) {
+      return;
+    }
+    for (const menuKey of Object.keys(SIDEBAR_MENU_ROUTE_PREFIXES)) {
+      this.expandedMenus[menuKey] = true;
+    }
+  }
+
+  private deriveTitleFromUrl(url: string): string {
+    const path = this.normalizeSidebarPath(url);
+    const exactTitles: Record<string, string> = {
+      '/dashboard': 'Dashboard',
+      '/teacher/dashboard': 'Teacher Dashboard',
+      '/teacher/manage-account': 'My Account',
+      '/parent/dashboard': 'Parent Dashboard',
+      '/exams': 'Enter Marks',
+      '/mark-sheet': 'Mark Sheet',
+      '/report-cards': 'Report Cards',
+      '/rankings': 'Rankings',
+      '/check_mark_progess': 'Marks Entry Progress',
+      '/publish-results': 'Publish Results',
+      '/students': 'Students',
+      '/teachers': 'Teachers',
+      '/classes': 'Classes',
+      '/attendance': 'Attendance',
+      '/invoices': 'Billing & Invoicing',
+      '/payments/record': 'Record Payment',
+      '/balance-enquiry': 'Balance Enquiry',
+      '/finance/exemptions': 'Exemptions',
+      '/finance/audit': 'System Auditor',
+      '/system-settings': 'System Settings',
+      '/teacher/record-book': 'Record Book',
+      '/teacher/my-classes': 'My Classes',
+      '/teacher/inventory-record': 'Inventory Record',
+      '/messages/inbox': 'Messages Inbox',
+      '/news-feed': 'News Feed'
+    };
+    if (exactTitles[path]) {
+      return exactTitles[path];
+    }
+    if (path.startsWith('/students/') && path.endsWith('/edit')) {
+      return 'Edit Student';
+    }
+    if (path === '/students/new') {
+      return 'New Student';
+    }
+    const segments = path.split('/').filter(Boolean);
+    const last = segments[segments.length - 1] || 'dashboard';
+    return last
+      .replace(/_/g, ' ')
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   private syncDashboardTitleRotation(): void {
@@ -893,11 +1002,19 @@ if (url.startsWith('/settings')) return 'Settings';
     const deepest = this.getDeepestRoute(this.activatedRoute);
     const data = deepest.snapshot.data || {};
 
-    const pageTitle = data['title'] || 'School Management System';
+    const routeTitle =
+      (data['pageTitle'] as string) ||
+      (data['title'] as string) ||
+      this.deriveTitleFromUrl(this.currentUrl || this.router.url || '');
+    this.pageNavbarTitle = routeTitle;
+
     const description = data['description'] || '';
     const robots = data['robots'] || 'noindex,nofollow';
 
-    this.title.setTitle(pageTitle);
+    const browserTitle = this.schoolName
+      ? `${routeTitle} | ${this.schoolName}`
+      : routeTitle;
+    this.title.setTitle(browserTitle);
 
     if (description) {
       this.meta.updateTag({ name: 'description', content: description });
@@ -906,6 +1023,7 @@ if (url.startsWith('/settings')) return 'Settings';
     }
 
     this.meta.updateTag({ name: 'robots', content: robots });
+    this.cdr.markForCheck();
   }
 
   private getDeepestRoute(route: ActivatedRoute): ActivatedRoute {

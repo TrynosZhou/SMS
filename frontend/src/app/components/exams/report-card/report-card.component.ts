@@ -7,6 +7,8 @@ import { TeacherService } from '../../../services/teacher.service';
 import { AuthService } from '../../../services/auth.service';
 import { ParentService } from '../../../services/parent.service';
 import { SettingsService } from '../../../services/settings.service';
+import { ConnectivityService } from '../../../services/connectivity.service';
+import { OfflineSyncService } from '../../../services/offline-sync.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 import { forkJoin, of } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged, finalize, takeUntil } from 'rxjs/operators';
@@ -104,6 +106,8 @@ error = '';
   savedRemarks: Set<string> = new Set(); // Track saved remarks by key: "studentId_classTeacher" or "studentId_headmaster"
   autoSaveRemarksTimeout: any = null;
   autoSavingRemarks = false;
+  failedRemarksKeys: Set<string> = new Set();
+  connectionBanner = '';
   customClassTeacherPhrases: string[] = [];
   newCustomPhrase = '';
   schoolWidePhrases: string[] = [];
@@ -118,7 +122,9 @@ error = '';
     private parentService: ParentService,
     private settingsService: SettingsService,
     private sanitizer: DomSanitizer,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    public connectivity: ConnectivityService,
+    private offlineSync: OfflineSyncService
 ) {
     // Check if user can edit remarks (teacher or admin)
     this.canEditRemarks =
@@ -156,10 +162,26 @@ error = '';
 
   applyClassTeacherSuggestion(reportCard: any, suggestion: string) {
     if (!this.canEditRemarks || !reportCard) return;
-    if (!reportCard.remarks) reportCard.remarks = {};
-    reportCard.remarks.classTeacherRemarks = suggestion;
-    this.onRemarksChange(reportCard, 'classTeacher');
+    this.ensureRemarksObject(reportCard);
+    reportCard.remarks.classTeacherRemarks = String(suggestion || '').trim();
+    this.savedRemarks.delete(this.getRemarksKey(reportCard.student.id, 'classTeacher'));
+    this.failedRemarksKeys.delete(this.getRemarksKey(reportCard.student.id, 'classTeacher'));
+    if (this.autoSaveRemarksTimeout) {
+      clearTimeout(this.autoSaveRemarksTimeout);
+      this.autoSaveRemarksTimeout = null;
+    }
+    this.cdr.markForCheck();
     this.autoSaveRemarks(reportCard);
+  }
+
+  private ensureRemarksObject(reportCard: any): void {
+    if (!reportCard.remarks) {
+      reportCard.remarks = {
+        id: null,
+        classTeacherRemarks: '',
+        headmasterRemarks: ''
+      };
+    }
   }
 
   ngOnInit() {
@@ -173,6 +195,23 @@ error = '';
 
     activatePageLoad(this.router, this.destroy$, '/report-cards', () => this.bootstrapPage());
 
+    this.connectivity.connectionMessage$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((msg) => {
+        this.connectionBanner = msg;
+        if (msg === 'Connection is restored') {
+          void this.offlineSync.flushQueue().then(() => {
+            this.failedRemarksKeys.clear();
+            this.success = 'Offline remarks synced to server.';
+            setTimeout(() => (this.success = ''), 3000);
+            this.cdr.markForCheck();
+          });
+        }
+        this.cdr.markForCheck();
+      });
+
+    this.offlineSync.onQueueChanged().pipe(takeUntil(this.destroy$)).subscribe(() => this.cdr.markForCheck());
+
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe((params) => {
       if (params['studentId'] && this.isParent) {
         this.parentStudentId = params['studentId'];
@@ -182,6 +221,14 @@ error = '';
   }
 
   ngOnDestroy(): void {
+    if (this.autoSaveRemarksTimeout) {
+      clearTimeout(this.autoSaveRemarksTimeout);
+    }
+    for (const card of this.reportCards || []) {
+      if (card?.student && !this.isRemarksSaved(card.student.id, 'classTeacher')) {
+        this.queueRemarksOffline(card);
+      }
+    }
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -1079,17 +1126,36 @@ if (err.status === 0) {
     if (!reportCard || !reportCard.student || !this.selectedClass || !this.selectedExamType || !this.selectedTerm) {
       return;
     }
-    
+
+    this.ensureRemarksObject(reportCard);
+    const classTeacherRemarks = reportCard.remarks?.classTeacherRemarks || '';
+    const headmasterRemarks = reportCard.remarks?.headmasterRemarks || '';
+    const studentKey = this.getRemarksKey(reportCard.student.id, 'classTeacher');
+    const label = `${reportCard.student.name || 'Student'} remarks`;
+
+    if (!this.connectivity.isOnline) {
+      this.offlineSync.enqueueRemarks({
+        studentId: reportCard.student.id,
+        classId: this.selectedClass,
+        examType: this.selectedExamType,
+        term: this.selectedTerm,
+        classTeacherRemarks,
+        headmasterRemarks,
+        label
+      });
+      this.failedRemarksKeys.add(studentKey);
+      this.error = 'Connection is lost. Remarks saved locally and will sync when connection is restored.';
+      this.cdr.markForCheck();
+      return;
+    }
+
     if (this.autoSavingRemarks) {
-      // If already saving, reschedule
       this.scheduleAutoSaveRemarks(reportCard);
       return;
     }
-    
+
     this.autoSavingRemarks = true;
-    const classTeacherRemarks = reportCard.remarks?.classTeacherRemarks || '';
-    const headmasterRemarks = reportCard.remarks?.headmasterRemarks || '';
-    
+
     this.examService.saveReportCardRemarks(
       reportCard.student.id,
       this.selectedClass,
@@ -1100,19 +1166,17 @@ if (err.status === 0) {
     ).subscribe({
       next: (response: any) => {
         this.autoSavingRemarks = false;
-        // Mark both remarks as saved
+        this.failedRemarksKeys.delete(studentKey);
         this.savedRemarks.add(this.getRemarksKey(reportCard.student.id, 'classTeacher'));
         this.savedRemarks.add(this.getRemarksKey(reportCard.student.id, 'headmaster'));
-        
-        // Update the report card with saved remarks
+
         if (!reportCard.remarks) {
           reportCard.remarks = {};
         }
         reportCard.remarks.id = response.remarks.id;
         reportCard.remarks.classTeacherRemarks = response.remarks.classTeacherRemarks;
         reportCard.remarks.headmasterRemarks = response.remarks.headmasterRemarks;
-        
-        console.log(`✓ Auto-saved remarks for ${reportCard.student.name}`);
+        this.cdr.markForCheck();
       },
       error: (err: any) => {
         this.autoSavingRemarks = false;
@@ -1120,15 +1184,55 @@ if (err.status === 0) {
         if (err?.status === 403) {
           const msg = err?.error?.message || 'Forbidden: you are not allowed to save remarks for this report card.';
           this.error = msg;
-          console.warn('Auto-save remarks forbidden:', msg);
           return;
         }
 
-        // Remove from saved records if save failed
         this.savedRemarks.delete(this.getRemarksKey(reportCard.student.id, 'classTeacher'));
         this.savedRemarks.delete(this.getRemarksKey(reportCard.student.id, 'headmaster'));
-        console.error('Auto-save remarks failed:', err);
+        this.failedRemarksKeys.add(studentKey);
+        this.queueRemarksOffline(reportCard);
+        this.error =
+          this.connectivity.isNetworkError(err)
+            ? 'Save failed — remarks queued. Click Retry when connection is restored.'
+            : err?.error?.message || 'Failed to save remarks. Click Retry.';
+        this.cdr.markForCheck();
       }
+    });
+  }
+
+  private queueRemarksOffline(reportCard: any): void {
+    if (!reportCard?.student) return;
+    this.ensureRemarksObject(reportCard);
+    this.offlineSync.enqueueRemarks({
+      studentId: reportCard.student.id,
+      classId: this.selectedClass,
+      examType: this.selectedExamType,
+      term: this.selectedTerm,
+      classTeacherRemarks: reportCard.remarks?.classTeacherRemarks || '',
+      headmasterRemarks: reportCard.remarks?.headmasterRemarks || '',
+      label: `${reportCard.student.name || 'Student'} remarks`
+    });
+  }
+
+  remarksSaveFailed(reportCard: any): boolean {
+    if (!reportCard?.student) return false;
+    const key = this.getRemarksKey(reportCard.student.id, 'classTeacher');
+    return (
+      this.failedRemarksKeys.has(key) ||
+      this.offlineSync.hasPendingRemarks(
+        reportCard.student.id,
+        this.selectedClass,
+        this.selectedExamType,
+        this.selectedTerm
+      )
+    );
+  }
+
+  retryRemarksSave(reportCard: any): void {
+    if (!reportCard?.student) return;
+    this.error = '';
+    void this.offlineSync.flushQueue().then(() => {
+      this.autoSaveRemarks(reportCard);
     });
   }
   

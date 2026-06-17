@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { SettingsService } from './settings.service';
 import { AuthService } from './auth.service';
-import { Observable, of } from 'rxjs';
+import { Observable, of, BehaviorSubject } from 'rxjs';
 import { map, catchError, filter } from 'rxjs/operators';
 
 export interface ModuleAccess {
@@ -161,6 +161,9 @@ export interface ModuleAccess {
 })
 export class ModuleAccessService {
   private moduleAccess: ModuleAccess | null = null;
+  private readonly readySubject = new BehaviorSubject<boolean>(false);
+  /** Emits when module access has been loaded (or defaults applied). */
+  readonly ready$ = this.readySubject.asObservable();
   private defaultAccess: ModuleAccess = {
     universalTeacher: {
       students: true,
@@ -337,6 +340,7 @@ export class ModuleAccessService {
     // Check if user is authenticated before making API call
     if (!this.authService.isAuthenticated()) {
       this.moduleAccess = this.defaultAccess;
+      this.readySubject.next(true);
       return;
     }
 
@@ -357,9 +361,11 @@ export class ModuleAccessService {
         } else {
           this.moduleAccess = this.defaultAccess;
         }
+        this.readySubject.next(true);
       },
       error: () => {
         this.moduleAccess = this.defaultAccess;
+        this.readySubject.next(true);
       }
     });
   }
