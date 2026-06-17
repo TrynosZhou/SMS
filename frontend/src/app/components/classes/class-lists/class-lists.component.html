@@ -277,7 +277,7 @@
                 <th>GENDER</th>
                 <th>TYPE</th>
                 <th>CLASS</th>
-                <th *ngIf="isAdmin" class="col-action hide-print">ACTION</th>
+                <th *ngIf="canDeleteStudent()" class="col-action hide-print">ACTION</th>
               </tr>
             </thead>
             <tbody>
@@ -324,7 +324,7 @@
                     </a>
                     <span *ngIf="!canMoveStudent()">{{ student.class?.name || 'N/A' }}</span>
                   </td>
-                  <td *ngIf="isAdmin" class="col-action hide-print">
+                  <td *ngIf="canDeleteStudent()" class="col-action hide-print">
                     <button type="button" class="cll-action-btn cll-action-btn--danger" (click)="deleteStudent(student.id, (student.firstName || '') + ' ' + (student.lastName || ''), student.studentNumber || 'N/A')">
                       Delete
                     </button>
@@ -357,7 +357,7 @@
           <div class="cll-card__actions hide-print">
             <button type="button" class="cll-action-btn" (click)="openEditModal(student, 'lastName')">Edit</button>
             <button type="button" class="cll-action-btn" (click)="viewStudentIdCard(student.id)">ID card</button>
-            <button type="button" class="cll-action-btn cll-action-btn--danger" *ngIf="isAdmin" (click)="deleteStudent(student.id, (student.firstName || '') + ' ' + (student.lastName || ''), student.studentNumber || 'N/A')">Delete</button>
+            <button type="button" class="cll-action-btn cll-action-btn--danger" *ngIf="canDeleteStudent()" (click)="deleteStudent(student.id, (student.firstName || '') + ' ' + (student.lastName || ''), student.studentNumber || 'N/A')">Delete</button>
           </div>
         </article>
       </div>

@@ -54,7 +54,19 @@ router.put(
   upload.single('photo'),
   updateStudent
 );
-router.delete('/:id', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.DEMO_USER), deleteStudent);
+router.delete(
+  '/:id',
+  authorize(
+    UserRole.SUPERADMIN,
+    UserRole.DIRECTOR,
+    UserRole.ADMIN,
+    UserRole.HEADMASTER,
+    UserRole.DEPUTY_HEADMASTER,
+    UserRole.ACCOUNTANT,
+    UserRole.DEMO_USER
+  ),
+  deleteStudent
+);
 
 export default router;
 

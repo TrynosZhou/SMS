@@ -37,6 +37,19 @@ import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagin
 import { validatePhoneNumber } from '../utils/phoneValidator';
 import { PaymentLog } from '../entities/PaymentLog';
 import { UserActionLog } from '../entities/UserActionLog';
+import { In, EntityManager } from 'typeorm';
+import { Attendance } from '../entities/Attendance';
+import { RecordBook } from '../entities/RecordBook';
+import { ExamStudentPassRateInclusion } from '../entities/ExamStudentPassRateInclusion';
+import { InventoryFine } from '../entities/InventoryFine';
+import { InventoryTextbookIssuance } from '../entities/InventoryTextbookIssuance';
+import { InventoryFurnitureIssuance } from '../entities/InventoryFurnitureIssuance';
+import { UniformPaymentLog } from '../entities/UniformPaymentLog';
+import { UniformCharge } from '../entities/UniformCharge';
+import { UniformChargeItem } from '../entities/UniformChargeItem';
+import { InvoiceUniformItem } from '../entities/InvoiceUniformItem';
+import { ElearningResponse } from '../entities/ElearningResponse';
+import { ElearningTask } from '../entities/ElearningTask';
 
 export const registerStudent = async (req: AuthRequest, res: Response) => {
   try {
@@ -1588,9 +1601,51 @@ export const promoteStudents = async (req: AuthRequest, res: Response) => {
   }
 };
 
+async function purgeStudentDependencies(manager: EntityManager, studentId: string): Promise<void> {
+  await manager.delete(ReportCardRemarks, { studentId });
+  await manager.delete(Marks, { studentId });
+  await manager.delete(ExamStudentPassRateInclusion, { studentId });
+  await manager.delete(Attendance, { studentId });
+  await manager.delete(RecordBook, { studentId });
+  await manager.delete(ElearningResponse, { studentId });
+  await manager.delete(InventoryFine, { studentId });
+  await manager.delete(InventoryTextbookIssuance, { studentId });
+  await manager.delete(InventoryFurnitureIssuance, { studentId });
+  await manager.delete(UniformPaymentLog, { studentId });
+  await manager.delete(ParentStudent, { studentId });
+  await manager.delete(ElearningTask, { studentId });
+
+  const uniformCharges = await manager.find(UniformCharge, {
+    where: { studentId },
+    select: ['id'],
+  });
+  const uniformChargeIds = uniformCharges.map((c) => c.id);
+  if (uniformChargeIds.length > 0) {
+    await manager.delete(UniformChargeItem, { uniformChargeId: In(uniformChargeIds) });
+    await manager.delete(UniformCharge, { id: In(uniformChargeIds) });
+  }
+
+  const invoices = await manager.find(Invoice, {
+    where: { studentId },
+    select: ['id'],
+  });
+  const invoiceIds = invoices.map((inv) => inv.id);
+  if (invoiceIds.length > 0) {
+    await manager.delete(InvoiceUniformItem, { invoiceId: In(invoiceIds) });
+    await manager
+      .createQueryBuilder()
+      .delete()
+      .from(PaymentLog)
+      .where('invoiceId IN (:...invoiceIds)', { invoiceIds })
+      .execute();
+  }
+  await manager.delete(PaymentLog, { studentId });
+  await manager.delete(Invoice, { studentId });
+  await manager.delete(StudentTransfer, { studentId });
+}
+
 export const deleteStudent = async (req: AuthRequest, res: Response) => {
   try {
-    // Ensure database is initialized
     if (!AppDataSource.isInitialized) {
       await AppDataSource.initialize();
     }
@@ -1598,104 +1653,48 @@ export const deleteStudent = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     console.log('Attempting to delete student with ID:', id);
 
-    const studentRepository = AppDataSource.getRepository(Student);
-    const marksRepository = AppDataSource.getRepository(Marks);
-    const invoiceRepository = AppDataSource.getRepository(Invoice);
-    const remarksRepository = AppDataSource.getRepository(ReportCardRemarks);
-    const userRepository = AppDataSource.getRepository(User);
-    const transferRepository = AppDataSource.getRepository(StudentTransfer);
-    const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
+    const deleted = await AppDataSource.transaction(async (manager) => {
+      const studentRepository = manager.getRepository(Student);
+      const userRepository = manager.getRepository(User);
 
-    const student = await studentRepository.findOne({
-      where: { id },
-      relations: ['marks', 'invoices', 'user', 'classEntity', 'parent']
+      const student = await studentRepository.findOne({
+        where: { id },
+        relations: ['user'],
+      });
+
+      if (!student) {
+        return null;
+      }
+
+      console.log('Found student:', student.firstName, student.lastName, `(${student.studentNumber})`);
+
+      await purgeStudentDependencies(manager, id);
+
+      const userId = student.userId || student.user?.id;
+      if (userId) {
+        console.log('Deleting associated user account:', userId);
+        await userRepository.delete({ id: userId });
+      }
+
+      console.log('Deleting student:', student.firstName, student.lastName);
+      await studentRepository.delete({ id });
+      return student;
     });
 
-    if (!student) {
+    if (!deleted) {
       console.log('Student not found with ID:', id);
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    console.log('Found student:', student.firstName, student.lastName, `(${student.studentNumber})`);
-
-    // Delete all report card remarks associated with this student
-    const remarks = await remarksRepository.find({
-      where: { studentId: id }
-    });
-    
-    if (remarks.length > 0) {
-      console.log(`Deleting ${remarks.length} report card remarks associated with student`);
-      await remarksRepository.remove(remarks);
-    }
-
-    // Delete all marks associated with this student
-    const marks = await marksRepository.find({
-      where: { studentId: id }
-    });
-    
-    if (marks.length > 0) {
-      console.log(`Deleting ${marks.length} marks associated with student`);
-      await marksRepository.remove(marks);
-    }
-
-    // Delete all invoices associated with this student
-    const invoices = await invoiceRepository.find({
-      where: { studentId: id }
-    });
-    
-    if (invoices.length > 0) {
-      // Delete payment logs first to satisfy FK constraints (prod DB has strict FKs)
-      const invoiceIds = invoices.map(inv => inv.id);
-      if (invoiceIds.length > 0) {
-        console.log(`Deleting payment logs for ${invoiceIds.length} invoice(s) and student ${id}`);
-        await paymentLogRepository
-          .createQueryBuilder()
-          .delete()
-          .from(PaymentLog)
-          .where('studentId = :studentId', { studentId: id })
-          .orWhere('invoiceId IN (:...invoiceIds)', { invoiceIds })
-          .execute();
-      } else {
-        // Fallback: delete by studentId only
-        await paymentLogRepository
-          .createQueryBuilder()
-          .delete()
-          .from(PaymentLog)
-          .where('studentId = :studentId', { studentId: id })
-          .execute();
-      }
-      console.log(`Deleting ${invoices.length} invoices associated with student`);
-      await invoiceRepository.remove(invoices);
-    }
-
-    // Delete all transfer records associated with this student
-    const transfers = await transferRepository.find({
-      where: { studentId: id }
-    });
-    if (transfers.length > 0) {
-      console.log(`Deleting ${transfers.length} transfer records associated with student`);
-      await transferRepository.remove(transfers);
-    }
-
-    // Delete associated user account if it exists
-    if (student.userId) {
-      const user = await userRepository.findOne({ where: { id: student.userId } });
-      if (user) {
-        console.log('Deleting associated user account');
-        await userRepository.remove(user);
-      }
-    }
-
-    // Delete the student
-    console.log('Deleting student:', student.firstName, student.lastName);
-    await studentRepository.remove(student);
     console.log('Student deleted successfully');
-
     res.json({ message: 'Student deleted successfully' });
   } catch (error: any) {
     console.error('Error deleting student:', error);
     console.error('Error stack:', error.stack);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({
+      message: error?.message || 'Server error while deleting student',
+      error: error.message,
+    });
   }
 };
 

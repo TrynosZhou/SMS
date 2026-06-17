@@ -1,24 +1,33 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { timeout, finalize } from 'rxjs/operators';
+import { Subject, of } from 'rxjs';
+import { catchError, finalize, takeUntil, timeout } from 'rxjs/operators';
 import { AuthService } from '../../../services/auth.service';
 import { AccountService } from '../../../services/account.service';
+import { TeacherService } from '../../../services/teacher.service';
+import { SettingsService } from '../../../services/settings.service';
+import { activatePageLoad } from '../../../utils/route-activation';
+
+type AccountTab = 'overview' | 'security';
 
 @Component({
-  standalone: false,  selector: 'app-manage-account',
-templateUrl: './manage-account.component.html',
+  standalone: false,
+  selector: 'app-manage-account',
+  templateUrl: './manage-account.component.html',
   styleUrls: ['./manage-account.component.css']
 })
-export class ManageAccountComponent implements OnInit {
+export class ManageAccountComponent implements OnInit, OnDestroy {
   accountInfo: any = null;
   currentUsername = '';
   currentEmail = '';
+  displayName = '';
   newUsername = '';
   newEmail = '';
   currentPassword = '';
   newPassword = '';
   confirmPassword = '';
   loadingProfile = false;
+  loadingTeacher = false;
   saving = false;
   error = '';
   success = '';
@@ -28,23 +37,53 @@ export class ManageAccountComponent implements OnInit {
   mustChangePassword = false;
   canChangeUsername = true;
   roleLabel = 'User';
-  
+  schoolName = '';
+  activeTab: AccountTab = 'overview';
+
+  teacherProfile: any = null;
+  teacherClasses: any[] = [];
+  teacherSubjects: string[] = [];
+  profileLastSynced: Date | null = null;
+
   showCurrentPassword = false;
   showNewPassword = false;
   showConfirmPassword = false;
 
+  private readonly destroy$ = new Subject<void>();
+  private readonly requestTimeoutMs = 25000;
+  private accountRoute = '';
+
   constructor(
     private accountService: AccountService,
     private authService: AuthService,
-    private router: Router
-  ) { }
+    private teacherService: TeacherService,
+    private settingsService: SettingsService,
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) {}
 
-  ngOnInit() {
-    this.hydrateFromSession();
-    this.loadAccountInfo();
+  ngOnInit(): void {
+    this.accountRoute = this.authService.getManageAccountRoute();
+    activatePageLoad(this.router, this.destroy$, this.accountRoute, () => this.bootstrapPage());
   }
 
-  /** Show the form immediately from login session; refresh from API in background. */
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private bootstrapPage(): void {
+    this.hydrateFromSession();
+    this.loadSettings();
+    this.loadAccountInfo();
+    if (this.isTeacher) {
+      this.loadTeacherContext();
+    }
+    if (this.mustChangePassword) {
+      this.activeTab = 'security';
+    }
+  }
+
   private hydrateFromSession(): void {
     const currentUser = this.authService.getCurrentUser();
     if (!currentUser) {
@@ -56,7 +95,18 @@ export class ManageAccountComponent implements OnInit {
       role: currentUser.role || '',
       isDemo: currentUser.isDemo === true,
       mustChangePassword: currentUser.mustChangePassword === true,
+      fullName: currentUser.fullName,
+      teacher: currentUser.teacher,
     });
+
+    const sessionClasses = Array.isArray((currentUser as any).classes) ? (currentUser as any).classes : [];
+    if (sessionClasses.length > 0) {
+      this.teacherClasses = sessionClasses;
+    }
+    if (currentUser.teacher) {
+      this.teacherProfile = currentUser.teacher;
+      this.applyTeacherDisplayName(currentUser.teacher, currentUser.fullName);
+    }
   }
 
   private applyAccountData(data: {
@@ -65,6 +115,8 @@ export class ManageAccountComponent implements OnInit {
     role?: string;
     isDemo?: boolean;
     mustChangePassword?: boolean;
+    fullName?: string;
+    teacher?: any;
   }): void {
     this.accountInfo = { ...this.accountInfo, ...data };
     this.currentUsername = data.username || '';
@@ -78,17 +130,41 @@ export class ManageAccountComponent implements OnInit {
     this.roleLabel = this.formatRoleLabel(role);
     this.mustChangePassword = data.mustChangePassword === true;
     this.canChangeUsername = !this.isTeacher || !this.mustChangePassword;
+
+    if (data.fullName?.trim()) {
+      this.displayName = data.fullName.trim();
+    } else if (!this.displayName) {
+      this.displayName = this.currentUsername || 'User';
+    }
   }
 
-  loadAccountInfo() {
+  loadSettings(): void {
+    this.settingsService
+      .getSettings()
+      .pipe(
+        timeout(this.requestTimeoutMs),
+        catchError(() => of(null)),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((data: any) => {
+        if (data?.schoolName) {
+          this.schoolName = data.schoolName;
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  loadAccountInfo(): void {
     this.loadingProfile = true;
     this.accountService
       .getAccountInfo()
       .pipe(
-        timeout(20000),
+        timeout(this.requestTimeoutMs),
         finalize(() => {
           this.loadingProfile = false;
-        })
+          this.cdr.markForCheck();
+        }),
+        takeUntil(this.destroy$)
       )
       .subscribe({
         next: (data: any) => {
@@ -101,8 +177,20 @@ export class ManageAccountComponent implements OnInit {
             role: data.role || '',
             isDemo: data.isDemo === true,
             mustChangePassword: data.mustChangePassword === true,
+            fullName: data.fullName,
+            teacher: data.teacher,
           });
           this.accountInfo = { ...this.accountInfo, ...data };
+          if (data.teacher) {
+            this.teacherProfile = data.teacher;
+            this.applyTeacherDisplayName(data.teacher, data.fullName);
+            const subjects = Array.isArray(data.teacher.subjects) ? data.teacher.subjects : [];
+            this.teacherSubjects = subjects
+              .map((s: any) => (typeof s === 'string' ? s : s?.name))
+              .filter(Boolean);
+          }
+          this.profileLastSynced = new Date();
+          this.cdr.markForCheck();
         },
         error: (err: any) => {
           if (!this.accountInfo) {
@@ -110,12 +198,73 @@ export class ManageAccountComponent implements OnInit {
           }
           const msg =
             err?.name === 'TimeoutError'
-              ? 'Could not reach the server in time. You can still change your password below.'
+              ? 'Could not reach the server in time. You can still update your password below.'
               : err?.error?.message || 'Could not refresh account details. You can still change your password.';
           this.error = msg;
           setTimeout(() => (this.error = ''), 8000);
         },
       });
+  }
+
+  private loadTeacherContext(): void {
+    this.loadingTeacher = true;
+    this.teacherService
+      .getCurrentTeacher()
+      .pipe(
+        timeout(this.requestTimeoutMs),
+        catchError(() => of(null)),
+        finalize(() => {
+          this.loadingTeacher = false;
+          this.cdr.markForCheck();
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((teacher: any) => {
+        if (!teacher) {
+          return;
+        }
+        this.teacherProfile = teacher;
+        this.applyTeacherDisplayName(teacher);
+        const subjects = Array.isArray(teacher.subjects) ? teacher.subjects : [];
+        this.teacherSubjects = subjects
+          .map((s: any) => (typeof s === 'string' ? s : s?.name))
+          .filter(Boolean);
+
+        if (teacher.id) {
+          this.teacherService
+            .getTeacherClasses(teacher.id)
+            .pipe(
+              timeout(this.requestTimeoutMs),
+              catchError(() => of({ classes: teacher.classes || this.teacherClasses })),
+              takeUntil(this.destroy$)
+            )
+            .subscribe((res: any) => {
+              const classes = res?.classes;
+              if (Array.isArray(classes) && classes.length > 0) {
+                this.teacherClasses = classes;
+              } else if (Array.isArray(teacher.classes) && teacher.classes.length > 0) {
+                this.teacherClasses = teacher.classes;
+              }
+              this.cdr.markForCheck();
+            });
+        } else if (Array.isArray(teacher.classes) && teacher.classes.length > 0) {
+          this.teacherClasses = teacher.classes;
+        }
+        this.cdr.markForCheck();
+      });
+  }
+
+  private applyTeacherDisplayName(teacher: any, fullNameOverride?: string): void {
+    if (fullNameOverride?.trim()) {
+      this.displayName = fullNameOverride.trim();
+      return;
+    }
+    const built = [teacher?.lastName, teacher?.firstName].filter(Boolean).join(' ').trim();
+    if (built) {
+      this.displayName = built;
+    } else if (teacher?.fullName?.trim()) {
+      this.displayName = teacher.fullName.trim();
+    }
   }
 
   get requiresMinPasswordLength(): boolean {
@@ -130,9 +279,12 @@ export class ManageAccountComponent implements OnInit {
     ].includes(role);
   }
 
+  get minPasswordLength(): number {
+    return this.requiresMinPasswordLength ? 8 : 1;
+  }
+
   get passwordLengthOk(): boolean {
-    const min = this.requiresMinPasswordLength ? 8 : 1;
-    return (this.newPassword || '').length >= min;
+    return (this.newPassword || '').length >= this.minPasswordLength;
   }
 
   get hasUpper(): boolean {
@@ -194,7 +346,86 @@ export class ManageAccountComponent implements OnInit {
     return true;
   }
 
-  updateAccount() {
+  get accountStatusLabel(): string {
+    if (this.isDemo) return 'Demo account';
+    if (this.mustChangePassword) return 'Password update required';
+    return 'Active';
+  }
+
+  get accountStatusClass(): string {
+    if (this.isDemo) return 'status-demo';
+    if (this.mustChangePassword) return 'status-warn';
+    return 'status-ok';
+  }
+
+  get pageSubtitle(): string {
+    if (this.isTeacher) {
+      return 'Manage your profile, teaching assignments, and account security.';
+    }
+    if (this.isAccountant) {
+      return 'Review your account details and update your login password.';
+    }
+    return 'Review your profile and keep your login credentials secure.';
+  }
+
+  get quickLinks(): Array<{ route: string; icon: string; label: string }> {
+    if (this.isTeacher) {
+      return [
+        { route: '/teacher/dashboard', icon: '🏠', label: 'Dashboard' },
+        { route: '/teacher/record-book', icon: '📖', label: 'Record Book' },
+        { route: '/teacher/my-classes', icon: '🏫', label: 'My Classes' },
+        { route: '/exams', icon: '📝', label: 'Enter Marks' },
+      ];
+    }
+    if (this.authService.hasRole('parent')) {
+      return [
+        { route: '/parent/dashboard', icon: '🏠', label: 'Dashboard' },
+        { route: '/parent/inbox', icon: '📧', label: 'Inbox' },
+      ];
+    }
+    return [{ route: this.authService.getDashboardRoute(), icon: '🏠', label: 'Dashboard' }];
+  }
+
+  setTab(tab: AccountTab): void {
+    this.activeTab = tab;
+  }
+
+  getProfileInitials(): string {
+    const source = this.displayName || this.currentUsername || '?';
+    const parts = source.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
+    }
+    return source.slice(0, 2).toUpperCase();
+  }
+
+  getCurrentDate(): string {
+    return new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  }
+
+  formatSyncedAt(): string {
+    if (!this.profileLastSynced) return '';
+    return this.profileLastSynced.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  clearPasswordFields(): void {
+    this.currentPassword = '';
+    this.newPassword = '';
+    this.confirmPassword = '';
+    this.showCurrentPassword = false;
+    this.showNewPassword = false;
+    this.showConfirmPassword = false;
+  }
+
+  updateAccount(): void {
     if (this.isDemo) {
       this.error = 'Demo accounts cannot change password.';
       return;
@@ -221,15 +452,13 @@ export class ManageAccountComponent implements OnInit {
 
     const updateData: any = {
       currentPassword: this.currentPassword,
-      newPassword: this.newPassword
+      newPassword: this.newPassword,
     };
-    
-    // For teachers, username (TeacherID) cannot be changed
+
     if (this.canChangeUsername && this.newUsername && this.newUsername !== this.currentUsername) {
       updateData.newUsername = this.newUsername;
     }
-    
-    // Email is not used for teachers
+
     if (!this.isTeacher && !this.isAccountant && this.newEmail && this.newEmail !== this.currentEmail) {
       updateData.newEmail = this.newEmail;
     }
@@ -237,44 +466,45 @@ export class ManageAccountComponent implements OnInit {
     this.accountService.updateAccount(updateData).subscribe({
       next: (response: any) => {
         this.saving = false;
-        this.success = 'Account updated successfully! Redirecting to dashboard...';
-        
+        this.success = 'Password updated successfully.';
+        this.clearPasswordFields();
+        this.mustChangePassword = false;
+
         const currentUser = this.authService.getCurrentUser();
         if (currentUser && response.user) {
           currentUser.username = response.user.username || response.user.email;
           currentUser.mustChangePassword = false;
           this.authService.setCurrentUser(currentUser);
         }
-        
+
+        this.activeTab = 'overview';
+        this.cdr.markForCheck();
         setTimeout(() => {
-          this.navigateToDashboard();
-        }, 2000);
+          this.success = '';
+          this.cdr.markForCheck();
+        }, 6000);
       },
       error: (err: any) => {
         this.saving = false;
         this.error = err.error?.message || 'Failed to update account';
-        setTimeout(() => this.error = '', 5000);
-      }
+        setTimeout(() => (this.error = ''), 5000);
+      },
     });
   }
 
-  toggleCurrentPasswordVisibility() {
+  toggleCurrentPasswordVisibility(): void {
     this.showCurrentPassword = !this.showCurrentPassword;
   }
 
-  toggleNewPasswordVisibility() {
+  toggleNewPasswordVisibility(): void {
     this.showNewPassword = !this.showNewPassword;
   }
 
-  toggleConfirmPasswordVisibility() {
+  toggleConfirmPasswordVisibility(): void {
     this.showConfirmPassword = !this.showConfirmPassword;
   }
 
-  goToDashboard() {
-    this.navigateToDashboard();
-  }
-
-  private navigateToDashboard(): void {
+  goToDashboard(): void {
     this.router.navigate([this.authService.getDashboardRoute()]);
   }
 

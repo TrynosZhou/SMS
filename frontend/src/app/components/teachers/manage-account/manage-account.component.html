@@ -1,205 +1,383 @@
-<div class="ma-page">
-  <div class="ma-wrapper">
-
-    <!-- ── Left Panel: Profile Card ─────────────────────────────────────── -->
-    <aside class="ma-profile">
-      <div class="profile-avatar">
-        <span class="avatar-initials">{{ (currentUsername || '?').charAt(0).toUpperCase() }}</span>
+<div class="ma-shell">
+  <!-- Page hero -->
+  <header class="ma-hero">
+    <div class="ma-hero-top">
+      <div class="ma-hero-copy">
+        <p class="ma-eyebrow">
+          <span class="ma-eyebrow-icon">👤</span>
+          {{ schoolName || 'School Management System' }}
+        </p>
+        <h1>My Account</h1>
+        <p class="ma-hero-subtitle">{{ pageSubtitle }}</p>
+        <p class="ma-hero-date">{{ getCurrentDate() }}</p>
       </div>
-      <div class="profile-name">{{ currentUsername || 'User' }}</div>
-      <div class="profile-role-badge">
-        👤 {{ roleLabel }}
+      <div class="ma-hero-aside">
+        <span class="ma-status-pill" [ngClass]="accountStatusClass">{{ accountStatusLabel }}</span>
+        <button type="button" class="ma-btn ma-btn--ghost" (click)="goToDashboard()">
+          ← Back to Dashboard
+        </button>
       </div>
+    </div>
+  </header>
 
-      <div class="profile-info-block" *ngIf="accountInfo">
-        <div class="profile-info-row">
-          <span class="pi-label">Username</span>
-          <span class="pi-value">{{ currentUsername || '—' }}</span>
-        </div>
-        <div class="profile-info-row" *ngIf="!isTeacher && !isAccountant">
-          <span class="pi-label">Email</span>
-          <span class="pi-value">{{ currentEmail || '—' }}</span>
-        </div>
-        <div class="profile-info-row">
-          <span class="pi-label">Role</span>
-          <span class="pi-value">{{ accountInfo?.role || '—' }}</span>
-        </div>
+  <main class="ma-main">
+    <!-- Global alerts -->
+    <div class="ma-alert ma-alert--success" *ngIf="success" role="status">
+      <span class="ma-alert-icon">✅</span>
+      <span>{{ success }}</span>
+    </div>
+    <div class="ma-alert ma-alert--error" *ngIf="error" role="alert">
+      <span class="ma-alert-icon">⚠️</span>
+      <span>{{ error }}</span>
+      <button type="button" class="ma-alert-close" (click)="error = ''" aria-label="Dismiss">×</button>
+    </div>
+
+    <!-- Must-change banner -->
+    <div class="ma-banner ma-banner--warn" *ngIf="!isDemo && mustChangePassword">
+      <span class="ma-banner-icon">🔐</span>
+      <div>
+        <strong>Password change required</strong>
+        <p *ngIf="isTeacher">
+          Update your temporary password below. Your Teacher ID cannot be changed.
+        </p>
+        <p *ngIf="!isTeacher">Update your temporary password in the Security tab before continuing.</p>
       </div>
+      <button type="button" class="ma-btn ma-btn--sm" (click)="setTab('security')">Update now</button>
+    </div>
 
-      <button class="back-btn" (click)="goToDashboard()">← Back to Dashboard</button>
-    </aside>
-
-    <!-- ── Right Panel: Form ─────────────────────────────────────────────── -->
-    <main class="ma-form-panel">
-
-      <!-- Header -->
-      <div class="ma-form-header">
-        <h1 class="form-title">🔒 Change Password</h1>
-        <p class="form-subtitle">Update your login password. Enter your current password, then choose a new one.</p>
+  <div class="ma-banner ma-banner--info" *ngIf="isDemo">
+      <span class="ma-banner-icon">ℹ️</span>
+      <div>
+        <strong>Demo account</strong>
+        <p>Password and profile changes are disabled for demo users.</p>
       </div>
+    </div>
 
-      <!-- Alerts -->
-      <div class="ma-alert success" *ngIf="success">
-        <span>✅</span> {{ success }}
-      </div>
-      <div class="ma-alert error" *ngIf="error">
-        <span>⚠️</span> {{ error }}
-      </div>
+    <!-- Tabs -->
+    <nav class="ma-tabs" aria-label="Account sections">
+      <button
+        type="button"
+        class="ma-tab"
+        [class.ma-tab--active]="activeTab === 'overview'"
+        (click)="setTab('overview')">
+        <span class="ma-tab-icon">📋</span>
+        Overview
+      </button>
+      <button
+        type="button"
+        class="ma-tab"
+        [class.ma-tab--active]="activeTab === 'security'"
+        (click)="setTab('security')">
+        <span class="ma-tab-icon">🔒</span>
+        Security
+        <span class="ma-tab-badge" *ngIf="mustChangePassword && !isDemo">!</span>
+      </button>
+    </nav>
 
-      <!-- Loading -->
-      <div class="ma-loading" *ngIf="loadingProfile && !accountInfo">
-        <div class="spinner"></div>
-        <span>Loading account information…</span>
-      </div>
+    <div class="ma-layout">
+      <!-- Sidebar -->
+      <aside class="ma-sidebar">
+        <div class="ma-profile-card">
+          <div class="ma-avatar" aria-hidden="true">{{ getProfileInitials() }}</div>
+          <h2 class="ma-profile-name">{{ displayName || currentUsername || 'User' }}</h2>
+          <span class="ma-role-chip">{{ roleLabel }}</span>
 
-      <div class="ma-notice ma-notice--demo" *ngIf="isDemo">
-        <span class="notice-icon">ℹ️</span>
-        <div>
-          <strong>Demo account</strong>
-          <p>Password changes are disabled for demo users.</p>
-        </div>
-      </div>
-
-      <!-- First-login notice -->
-      <div class="ma-notice" *ngIf="!isDemo && mustChangePassword">
-        <span class="notice-icon">⚠️</span>
-        <div>
-          <strong>Password change required</strong>
-          <p *ngIf="isTeacher">You must change your temporary password. Your username (TeacherID) cannot be changed.</p>
-          <p *ngIf="!isTeacher">You must change your temporary password before continuing.</p>
-        </div>
-      </div>
-
-      <form *ngIf="accountInfo && !isDemo" (ngSubmit)="updateAccount()" autocomplete="off">
-
-        <!-- Account Info Section -->
-        <div class="form-section">
-          <div class="section-label">Account Information</div>
-
-          <div class="field-group">
-            <label class="field-label">{{ isTeacher ? 'Username (TeacherID)' : 'Username' }}</label>
-            <div class="field-readonly">
-              <span class="field-icon">👤</span>
-              <span>{{ currentUsername || 'N/A' }}</span>
-              <span class="readonly-badge">Read only</span>
+          <div class="ma-profile-meta" *ngIf="accountInfo">
+            <div class="ma-meta-row">
+              <span class="ma-meta-label">{{ isTeacher ? 'Teacher ID' : 'Username' }}</span>
+              <span class="ma-meta-value">{{ currentUsername || '—' }}</span>
             </div>
-            <small class="field-hint" *ngIf="isTeacher">Your TeacherID cannot be changed.</small>
-            <small class="field-hint" *ngIf="!isTeacher">Your current username.</small>
-          </div>
-
-          <div class="field-group" *ngIf="!isTeacher && !isAccountant">
-            <label class="field-label">Current Email</label>
-            <div class="field-readonly">
-              <span class="field-icon">📧</span>
-              <span>{{ currentEmail || 'N/A' }}</span>
-              <span class="readonly-badge">Read only</span>
+            <div class="ma-meta-row" *ngIf="!isTeacher && !isAccountant">
+              <span class="ma-meta-label">Email</span>
+              <span class="ma-meta-value">{{ currentEmail || '—' }}</span>
             </div>
-          </div>
-
-          <div class="field-group" *ngIf="!isTeacher && !isAccountant">
-            <label class="field-label">New Email <span class="optional">(optional)</span></label>
-            <div class="field-input-wrap">
-              <span class="field-icon">📧</span>
-              <input
-                type="email"
-                [(ngModel)]="newEmail"
-                name="newEmail"
-                placeholder="Enter new email address"
-                autocomplete="off"
-                class="field-input" />
-            </div>
-            <small class="field-hint">Leave blank to keep your current email.</small>
-          </div>
-        </div>
-
-        <!-- Password Section -->
-        <div class="form-section">
-          <div class="section-label">Change Password</div>
-
-          <!-- Current Password -->
-          <div class="field-group">
-            <label class="field-label">Current Password <span class="required">*</span></label>
-            <div class="field-input-wrap">
-              <span class="field-icon">🔑</span>
-              <input
-                [type]="showCurrentPassword ? 'text' : 'password'"
-                [(ngModel)]="currentPassword"
-                name="currentPassword"
-                placeholder="Enter your current password"
-                required
-                autocomplete="current-password"
-                class="field-input" />
-              <button type="button" class="eye-btn" (click)="toggleCurrentPasswordVisibility()">
-                {{ showCurrentPassword ? '🙈' : '👁️' }}
-              </button>
+            <div class="ma-meta-row">
+              <span class="ma-meta-label">Account type</span>
+              <span class="ma-meta-value">{{ roleLabel }}</span>
             </div>
           </div>
 
-          <!-- New Password -->
-          <div class="field-group">
-            <label class="field-label">New Password <span class="required">*</span></label>
-            <div class="field-input-wrap">
-              <span class="field-icon">🔒</span>
-              <input
-                [type]="showNewPassword ? 'text' : 'password'"
-                [(ngModel)]="newPassword"
-                name="newPassword"
-                placeholder="Enter new password"
-                required
-                autocomplete="new-password"
-                class="field-input" />
-              <button type="button" class="eye-btn" (click)="toggleNewPasswordVisibility()">
-                {{ showNewPassword ? '🙈' : '👁️' }}
-              </button>
+          <p class="ma-sync-note" *ngIf="profileLastSynced">
+            Synced at {{ formatSyncedAt() }}
+          </p>
+        </div>
+
+        <!-- Teacher stats -->
+        <div class="ma-stat-grid" *ngIf="isTeacher">
+          <div class="ma-stat-card">
+            <span class="ma-stat-value">{{ teacherClasses.length }}</span>
+            <span class="ma-stat-label">Classes</span>
+          </div>
+          <div class="ma-stat-card">
+            <span class="ma-stat-value">{{ teacherSubjects.length }}</span>
+            <span class="ma-stat-label">Subjects</span>
+          </div>
+        </div>
+
+        <!-- Quick links -->
+        <div class="ma-quick-links">
+          <h3 class="ma-quick-title">Quick links</h3>
+          <a
+            *ngFor="let link of quickLinks"
+            [routerLink]="link.route"
+            class="ma-quick-link">
+            <span>{{ link.icon }}</span>
+            {{ link.label }}
+          </a>
+        </div>
+      </aside>
+
+      <!-- Main panel -->
+      <section class="ma-panel">
+        <!-- Overview tab -->
+        <div class="ma-panel-body" *ngIf="activeTab === 'overview'">
+          <div class="ma-panel-head">
+            <h2>Account overview</h2>
+            <p>Your profile details and teaching assignments from the school database.</p>
+          </div>
+
+          <div class="ma-loading" *ngIf="loadingProfile && !accountInfo">
+            <div class="spinner"></div>
+            <span>Loading account information…</span>
+          </div>
+
+          <div class="ma-detail-grid" *ngIf="accountInfo">
+            <div class="ma-detail-card">
+              <h3>Login details</h3>
+              <dl>
+                <div class="ma-dl-row">
+                  <dt>{{ isTeacher ? 'Teacher ID' : 'Username' }}</dt>
+                  <dd>
+                    {{ currentUsername || '—' }}
+                    <span class="ma-lock-tag" *ngIf="isTeacher">Locked</span>
+                  </dd>
+                </div>
+                <div class="ma-dl-row" *ngIf="!isTeacher && !isAccountant">
+                  <dt>Email</dt>
+                  <dd>{{ currentEmail || 'Not set' }}</dd>
+                </div>
+                <div class="ma-dl-row">
+                  <dt>Role</dt>
+                  <dd>{{ roleLabel }}</dd>
+                </div>
+                <div class="ma-dl-row">
+                  <dt>Status</dt>
+                  <dd>
+                    <span class="ma-inline-status" [ngClass]="accountStatusClass">{{ accountStatusLabel }}</span>
+                  </dd>
+                </div>
+              </dl>
             </div>
 
-            <!-- Strength Meter -->
-            <div class="strength-wrap" *ngIf="newPassword">
-              <div class="strength-track">
-                <div class="strength-fill" [ngClass]="strengthClass"></div>
+            <div class="ma-detail-card" *ngIf="isTeacher">
+              <h3>Teaching profile</h3>
+              <div class="ma-loading ma-loading--inline" *ngIf="loadingTeacher && !teacherProfile">
+                <div class="spinner sm"></div>
+                <span>Loading teaching data…</span>
               </div>
-              <span class="strength-text" [ngClass]="strengthClass">{{ strengthLabel }}</span>
+              <dl *ngIf="teacherProfile || !loadingTeacher">
+                <div class="ma-dl-row">
+                  <dt>Display name</dt>
+                  <dd>{{ displayName || '—' }}</dd>
+                </div>
+                <div class="ma-dl-row" *ngIf="teacherProfile?.teacherId">
+                  <dt>Employee number</dt>
+                  <dd>{{ teacherProfile.teacherId }}</dd>
+                </div>
+                <div class="ma-dl-row" *ngIf="teacherProfile?.sex">
+                  <dt>Gender</dt>
+                  <dd>{{ teacherProfile.sex }}</dd>
+                </div>
+              </dl>
             </div>
-
-            <!-- Requirements Checklist -->
-            <!-- Strength checklist kept for information only; no hard requirements enforced -->
           </div>
 
-          <!-- Confirm Password -->
-          <div class="field-group">
-            <label class="field-label">Confirm New Password <span class="required">*</span></label>
-            <div class="field-input-wrap" [class.match]="passwordsMatch" [class.mismatch]="confirmPassword && !passwordsMatch">
-              <span class="field-icon">🔒</span>
-              <input
-                [type]="showConfirmPassword ? 'text' : 'password'"
-                [(ngModel)]="confirmPassword"
-                name="confirmPassword"
-                placeholder="Re-enter new password"
-                required
-                autocomplete="new-password"
-                class="field-input" />
-              <button type="button" class="eye-btn" (click)="toggleConfirmPasswordVisibility()">
-                {{ showConfirmPassword ? '🙈' : '👁️' }}
+          <!-- Assigned classes -->
+          <div class="ma-section" *ngIf="isTeacher">
+            <div class="ma-section-head">
+              <h3>Assigned classes</h3>
+              <span class="ma-count-badge">{{ teacherClasses.length }}</span>
+            </div>
+            <div class="ma-chip-list" *ngIf="teacherClasses.length > 0">
+              <span class="ma-class-chip" *ngFor="let c of teacherClasses">
+                🏫 {{ c.name }}<ng-container *ngIf="c.form"> ({{ c.form }})</ng-container>
+              </span>
+            </div>
+            <p class="ma-empty" *ngIf="!loadingTeacher && teacherClasses.length === 0">
+              No classes assigned yet. Contact your administrator if this looks incorrect.
+            </p>
+          </div>
+
+          <!-- Subjects -->
+          <div class="ma-section" *ngIf="isTeacher && teacherSubjects.length > 0">
+            <div class="ma-section-head">
+              <h3>Subjects</h3>
+              <span class="ma-count-badge">{{ teacherSubjects.length }}</span>
+            </div>
+            <div class="ma-chip-list">
+              <span class="ma-subject-chip" *ngFor="let s of teacherSubjects">📚 {{ s }}</span>
+            </div>
+          </div>
+
+          <div class="ma-tip-card" *ngIf="!isDemo">
+            <span class="ma-tip-icon">💡</span>
+            <div>
+              <strong>Keep your account secure</strong>
+              <p>Use a strong, unique password and update it regularly from the Security tab.</p>
+              <button type="button" class="ma-link-btn" (click)="setTab('security')">Go to Security →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Security tab -->
+        <div class="ma-panel-body" *ngIf="activeTab === 'security'">
+          <div class="ma-panel-head">
+            <h2>Security &amp; password</h2>
+            <p>Enter your current password, then choose a new one. Use show/hide toggles to verify what you typed.</p>
+          </div>
+
+          <form *ngIf="accountInfo && !isDemo" (ngSubmit)="updateAccount()" class="ma-form" autocomplete="off">
+            <!-- Non-teacher email (optional) -->
+            <div class="ma-form-section" *ngIf="!isTeacher && !isAccountant">
+              <h3 class="ma-form-section-title">Contact email</h3>
+              <div class="field-group">
+                <label class="field-label">New email <span class="optional">(optional)</span></label>
+                <div class="field-input-wrap">
+                  <span class="field-icon">📧</span>
+                  <input
+                    type="email"
+                    [(ngModel)]="newEmail"
+                    name="newEmail"
+                    placeholder="Enter new email address"
+                    autocomplete="off"
+                    class="field-input" />
+                </div>
+                <small class="field-hint">Leave blank to keep your current email.</small>
+              </div>
+            </div>
+
+            <div class="ma-form-section">
+              <h3 class="ma-form-section-title">Change password</h3>
+
+              <div class="field-group">
+                <label class="field-label">Current password <span class="required">*</span></label>
+                <div class="field-input-wrap">
+                  <span class="field-icon">🔑</span>
+                  <input
+                    [type]="showCurrentPassword ? 'text' : 'password'"
+                    [(ngModel)]="currentPassword"
+                    name="currentPassword"
+                    placeholder="Enter your current password"
+                    required
+                    autocomplete="current-password"
+                    class="field-input" />
+                  <button
+                    type="button"
+                    class="eye-btn"
+                    (click)="toggleCurrentPasswordVisibility()"
+                    [attr.aria-label]="showCurrentPassword ? 'Hide password' : 'Show password'">
+                    {{ showCurrentPassword ? '🙈' : '👁️' }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <label class="field-label">New password <span class="required">*</span></label>
+                <div class="field-input-wrap">
+                  <span class="field-icon">🔒</span>
+                  <input
+                    [type]="showNewPassword ? 'text' : 'password'"
+                    [(ngModel)]="newPassword"
+                    name="newPassword"
+                    placeholder="Enter new password"
+                    required
+                    autocomplete="new-password"
+                    class="field-input" />
+                  <button
+                    type="button"
+                    class="eye-btn"
+                    (click)="toggleNewPasswordVisibility()"
+                    [attr.aria-label]="showNewPassword ? 'Hide password' : 'Show password'">
+                    {{ showNewPassword ? '🙈' : '👁️' }}
+                  </button>
+                </div>
+
+                <div class="strength-wrap" *ngIf="newPassword">
+                  <div class="strength-track">
+                    <div class="strength-fill" [ngClass]="strengthClass"></div>
+                  </div>
+                  <span class="strength-text" [ngClass]="strengthClass">{{ strengthLabel }}</span>
+                </div>
+
+                <div class="requirements-grid" *ngIf="newPassword">
+                  <span class="req-item" [class.met]="passwordLengthOk">
+                    <span class="req-icon">{{ passwordLengthOk ? '✓' : '○' }}</span>
+                    At least {{ minPasswordLength }} characters
+                  </span>
+                  <span class="req-item" [class.met]="hasUpper">
+                    <span class="req-icon">{{ hasUpper ? '✓' : '○' }}</span>
+                    Uppercase letter
+                  </span>
+                  <span class="req-item" [class.met]="hasLower">
+                    <span class="req-icon">{{ hasLower ? '✓' : '○' }}</span>
+                    Lowercase letter
+                  </span>
+                  <span class="req-item" [class.met]="hasNumber">
+                    <span class="req-icon">{{ hasNumber ? '✓' : '○' }}</span>
+                    Number
+                  </span>
+                  <span class="req-item" [class.met]="hasSpecial">
+                    <span class="req-icon">{{ hasSpecial ? '✓' : '○' }}</span>
+                    Special character
+                  </span>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <label class="field-label">Confirm new password <span class="required">*</span></label>
+                <div
+                  class="field-input-wrap"
+                  [class.match]="passwordsMatch"
+                  [class.mismatch]="confirmPassword && !passwordsMatch">
+                  <span class="field-icon">🔒</span>
+                  <input
+                    [type]="showConfirmPassword ? 'text' : 'password'"
+                    [(ngModel)]="confirmPassword"
+                    name="confirmPassword"
+                    placeholder="Re-enter new password"
+                    required
+                    autocomplete="new-password"
+                    class="field-input" />
+                  <button
+                    type="button"
+                    class="eye-btn"
+                    (click)="toggleConfirmPasswordVisibility()"
+                    [attr.aria-label]="showConfirmPassword ? 'Hide password' : 'Show password'">
+                    {{ showConfirmPassword ? '🙈' : '👁️' }}
+                  </button>
+                </div>
+                <small class="field-hint match-hint" *ngIf="passwordsMatch">Passwords match</small>
+                <small class="field-hint mismatch-hint" *ngIf="confirmPassword && !passwordsMatch">Passwords do not match</small>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-save" [disabled]="!canSubmit">
+                <span *ngIf="!saving">💾 Update password</span>
+                <span *ngIf="saving" class="loading-row"><span class="spinner sm"></span> Updating…</span>
+              </button>
+              <button type="button" class="btn-cancel" (click)="clearPasswordFields()" [disabled]="saving">
+                Clear fields
               </button>
             </div>
-            <small class="field-hint match-hint" *ngIf="passwordsMatch">✅ Passwords match</small>
-            <small class="field-hint mismatch-hint" *ngIf="confirmPassword && !passwordsMatch">❌ Passwords do not match</small>
+          </form>
+
+          <div class="ma-empty-panel" *ngIf="isDemo">
+            <span>🔒</span>
+            <p>Password changes are not available on demo accounts.</p>
           </div>
         </div>
-
-        <!-- Form Actions -->
-        <div class="form-actions">
-          <button type="submit" class="btn-save" [disabled]="!canSubmit">
-            <span *ngIf="!saving">💾 Update Account</span>
-            <span *ngIf="saving" class="loading-row"><span class="spinner sm"></span> Updating…</span>
-          </button>
-          <button type="button" class="btn-cancel" (click)="goToDashboard()" [disabled]="saving">
-            ✕ Cancel
-          </button>
-        </div>
-
-      </form>
-
-    </main>
-  </div>
+      </section>
+    </div>
+  </main>
 </div>

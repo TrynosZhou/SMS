@@ -104,10 +104,23 @@ export class ClassListsComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef
 ) {
     const user = this.authService.getCurrentUser();
-    this.isAdmin = user ? (user.role === 'admin') : false;
-    this.isSuperAdmin = user ? (user.role === 'superadmin') : false;
-    this.isTeacher = user ? (user.role === 'teacher') : false;
-    this.isAccountant = user ? (user.role === 'accountant') : false;
+    this.isAdmin = this.authService.isAdmin() || this.authService.hasRole('admin');
+    this.isSuperAdmin = this.authService.isSuperAdmin();
+    this.isTeacher = this.authService.hasRole('teacher');
+    this.isAccountant = this.authService.hasRole('accountant');
+  }
+
+  /** Administrators and finance staff who may remove a student from the database. */
+  canDeleteStudent(): boolean {
+    const role = (this.authService.getCurrentUser()?.role || '').toLowerCase();
+    return [
+      'superadmin',
+      'director',
+      'admin',
+      'headmaster',
+      'deputy_headmaster',
+      'accountant',
+    ].includes(role);
   }
 
   @HostListener('document:keydown.escape')
@@ -1321,7 +1334,14 @@ next: (settings: any) => {
   }
 
   deleteStudent(id: string, studentName: string, studentNumber: string) {
-    if (!this.isAdmin) {
+    if (!this.canDeleteStudent()) {
+      this.error = 'You do not have permission to delete students.';
+      setTimeout(() => (this.error = ''), 5000);
+      return;
+    }
+    if (!id) {
+      this.error = 'Student record is missing an ID. Refresh the list and try again.';
+      setTimeout(() => (this.error = ''), 5000);
       return;
     }
     const displayName = (studentName || '').trim() || 'Student';
@@ -1341,8 +1361,9 @@ next: (settings: any) => {
       next: (data: any) => {
         this.success = data?.message || 'Student deleted successfully';
         this.loading = false;
-        // Reload the list for the current class/term
-        this.loadStudents();
+        this.students = this.students.filter((s) => s.id !== id);
+        this.applyFilters();
+        this.cdr.markForCheck();
         setTimeout(() => {
           if (this.success) this.success = '';
         }, 5000);
