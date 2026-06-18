@@ -189,14 +189,22 @@ getStudentBalance(studentId: string): Observable<any> {
   }
 
   getInvoice(invoiceId: string): Observable<any> {
+    const id = String(invoiceId || '').trim().replace(/:.*$/, '');
+    if (!id) {
+      return of(null);
+    }
     return this.http.get<PaginatedResponse<any> | any[]>(`${this.apiUrl}/finance`, {
-      params: { invoiceId, page: 1, limit: 1 }
+      params: { invoiceId: id, page: 1, limit: 1 }
     }).pipe(
       map((response) => {
         if (!response) return null;
         if (Array.isArray(response)) return response[0] ?? null;
         if (Array.isArray(response.data)) return response.data[0] ?? null;
         return null;
+      }),
+      catchError((error) => {
+        console.error('Error loading invoice:', error);
+        return throwError(() => error);
       })
     );
   }

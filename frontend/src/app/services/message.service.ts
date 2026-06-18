@@ -83,6 +83,19 @@ export class MessageService {
     return this.http.get(`${this.apiUrl}/messages/incoming/parents`, { params: { box } as any });
   }
 
+  getIncomingFromParentsUnreadCount(box: 'admin' | 'accountant'): Observable<{ count: number }> {
+    return this.http.get<{ count: number }>(`${this.apiUrl}/messages/incoming/parents/unread-count`, {
+      params: { box } as any
+    });
+  }
+
+  /** Lightweight parent list for staff compose-message recipient picker */
+  getParentRecipients(): Observable<{ parents: Array<{ id: string; firstName: string; lastName: string; email?: string | null; phoneNumber?: string | null }> }> {
+    return this.http.get<{ parents: Array<{ id: string; firstName: string; lastName: string; email?: string | null; phoneNumber?: string | null }> }>(
+      `${this.apiUrl}/messages/parents/recipients`
+    );
+  }
+
   markIncomingRead(id: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/messages/incoming/${id}/read`, {});
   }

@@ -1,9 +1,19 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { MessageService } from '../../../services/message.service';
 import { AuthService } from '../../../services/auth.service';
 import { ThemeService } from '../../../services/theme.service';
 
 export type InboxFilterTab = 'all' | 'unread' | 'read';
+
+const STAFF_INCOMING_INBOX_ROLES = new Set([
+  'admin',
+  'superadmin',
+  'director',
+  'accountant',
+  'headmaster',
+  'deputy_headmaster',
+]);
 
 @Component({
   standalone: false,  selector: 'app-accountant-inbox',
@@ -23,13 +33,19 @@ export class AccountantInboxComponent implements OnInit {
   constructor(
     private messageService: MessageService,
     private authService: AuthService,
-    public themeService: ThemeService
+    public themeService: ThemeService,
+    private router: Router
   ) {
     const user = this.authService.getCurrentUser();
     this.userName = user?.username || user?.email || 'Account';
   }
 
   ngOnInit(): void {
+    const role = (this.authService.getEffectiveRole() || '').toLowerCase();
+    if (STAFF_INCOMING_INBOX_ROLES.has(role)) {
+      this.router.navigate(['/messages/incoming'], { replaceUrl: true });
+      return;
+    }
     this.loadMessages();
   }
 

@@ -5,6 +5,7 @@ import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { MessageService } from '../../../services/message.service';
 import { AuthService } from '../../../services/auth.service';
+import { IncomingMessageNotificationService } from '../../../services/incoming-message-notification.service';
 
 @Component({
   standalone: false,  selector: 'app-incoming-from-parents',
@@ -18,6 +19,8 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
   selected: any | null = null;
   loading = false;
   error = '';
+  success = '';
+  sendingReply = false;
   query = '';
   roleBox: 'admin' | 'accountant' = 'admin';
   replying = false;
@@ -56,10 +59,10 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private route: ActivatedRoute,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private incomingMessageNotifications: IncomingMessageNotificationService
   ) {
-    const user = this.authService.getCurrentUser();
-    const role = (user?.role || '').toLowerCase();
+    const role = (this.authService.getEffectiveRole() || '').toLowerCase();
     this.roleBox = role === 'accountant' ? 'accountant' as const : 'admin';
   }
 
@@ -158,6 +161,7 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
             new Set(this.messages.map(m => (m.senderName || m.parentName || '').trim()).filter(Boolean))
           );
           this.applyFilterAndPaginate();
+          this.incomingMessageNotifications.setCount(this.messages.filter((m) => !m.isRead).length);
         },
         error: (err: any) => {
           this.error = err?.error?.message || 'Failed to load incoming messages';
@@ -327,6 +331,7 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
         const idx = this.messages.findIndex(m => m.id === this.selected!.id);
         if (idx >= 0) this.messages[idx].isRead = true;
         this.applyFilterAndPaginate();
+        this.incomingMessageNotifications.refresh().subscribe();
       },
       error: () => {}
     });
@@ -340,6 +345,7 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
         const idx = this.messages.findIndex(m => m.id === this.selected!.id);
         if (idx >= 0) this.messages[idx].isRead = false;
         this.applyFilterAndPaginate();
+        this.incomingMessageNotifications.refresh().subscribe();
       },
       error: () => {}
     });
@@ -373,24 +379,48 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
   }
 
   sendReply(): void {
-    if (!this.selected || !this.canSendReply()) return;
-    
+    if (!this.selected || !this.canSendReply() || this.sendingReply) return;
+
     const id = this.selected.id;
     const subject = this.replySubject.trim();
     const body = this.replyBody.trim();
     const files = this.replyFiles || [];
-    
+    const recipientName =
+      (this.selected.parentName || this.selected.senderName || 'the parent').trim() || 'the parent';
+
+    this.sendingReply = true;
+    this.error = '';
+    this.success = '';
+    this.cdr.markForCheck();
+
     this.messageService.replyToIncoming(id, subject, body, files).subscribe({
-      next: () => {
+      next: (res: any) => {
+        this.sendingReply = false;
         this.replying = false;
         this.replySubject = '';
         this.replyBody = '';
         this.replyFiles = [];
         this.selectedReplyTemplate = '';
+        this.success =
+          res?.message ||
+          `Your reply was sent successfully to ${recipientName}. It will appear in their inbox.`;
+        const sentMsg = this.success;
+        this.cdr.markForCheck();
+        setTimeout(() => {
+          if (this.success === sentMsg) {
+            this.success = '';
+            this.cdr.markForCheck();
+          }
+        }, 6000);
       },
-      error: () => {
-        this.error = 'Failed to send reply. Please try again.';
-        setTimeout(() => this.error = '', 5000);
+      error: (err: any) => {
+        this.sendingReply = false;
+        this.error = err?.error?.message || 'Failed to send reply. Please try again.';
+        this.cdr.markForCheck();
+        setTimeout(() => {
+          this.error = '';
+          this.cdr.markForCheck();
+        }, 5000);
       }
     });
   }

@@ -188,6 +188,12 @@
   color: #dc2626;
 }
 
+.alert-success {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857;
+}
+
 .alert-icon {
   font-size: 20px;
 }

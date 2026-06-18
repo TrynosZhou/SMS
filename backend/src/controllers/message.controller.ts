@@ -64,6 +64,35 @@ async function resolveParentForMessage(req: AuthRequest): Promise<{ parent: Pare
   return { parent, senderUserId: req.user.id };
 }
 
+/** Lightweight parent list for compose-message recipient picker (staff with message access). */
+export const listParentRecipients = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const user = req.user;
+    if (!user || !canAccessStaffMessages(user.role)) {
+      return res.status(403).json({ message: 'Access denied. Staff role required.' });
+    }
+    const parentRepository = AppDataSource.getRepository(Parent);
+    const parents = await parentRepository.find({
+      order: { lastName: 'ASC', firstName: 'ASC' },
+    });
+    res.json({
+      parents: parents.map((p) => ({
+        id: p.id,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        email: p.email || null,
+        phoneNumber: p.phoneNumber || null,
+      })),
+    });
+  } catch (error: any) {
+    console.error('Error listing parent recipients:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
 export const sendBulkMessage = async (req: AuthRequest, res: Response) => {
   try {
     if (!AppDataSource.isInitialized) {
@@ -397,9 +426,14 @@ export const sendMessageToSpecificParents = async (req: AuthRequest, res: Respon
     }
     res.json({
       success: true,
+      message:
+        failed > 0
+          ? `Message sent to ${sent} parent(s). ${failed} failed.`
+          : `Message sent successfully to ${sent} parent(s).`,
       sent,
       failed,
-      parentCount: parents.length
+      parentCount: parents.length,
+      savedMessageCount: sent,
     });
   } catch (error: any) {
     console.error('Error sending message to specific parents:', error);
@@ -753,10 +787,38 @@ export const getIncomingFromParents = async (req: AuthRequest, res: Response) =>
         senderName: m.senderName,
         parentName: parent ? `${parent.firstName} ${parent.lastName}` : 'Parent',
         createdAt: m.createdAt,
+        isRead: !!m.isRead,
         attachments: m.attachments ? JSON.parse(m.attachments) : []
       };
     });
     res.json({ messages: result });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const getIncomingFromParentsUnreadCount = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    const user = req.user;
+    if (!user || !canAccessStaffMessages(user.role)) {
+      return res.status(403).json({ message: 'Access denied. Staff role required.' });
+    }
+    const boxRaw = (req.query.box as string | undefined)?.toLowerCase();
+    const box = boxRaw && (boxRaw === 'admin' || boxRaw === 'accountant')
+      ? boxRaw
+      : String(user.role).toLowerCase() === UserRole.ACCOUNTANT ? 'accountant' : 'admin';
+    const messageRepository = AppDataSource.getRepository(Message);
+    const count = await messageRepository
+      .createQueryBuilder('m')
+      .where('m.recipients = :box', { box })
+      .andWhere('m.isRead = :isRead', { isRead: false })
+      .andWhere('m.parentId IS NOT NULL')
+      .andWhere('m.senderId IS NOT NULL')
+      .getCount();
+    res.json({ count });
   } catch (error: any) {
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
@@ -843,8 +905,14 @@ export const replyToIncomingMessage = async (req: AuthRequest, res: Response) =>
         : null
     });
     const saved = await repo.save(record);
+    const parentRepository = AppDataSource.getRepository(Parent);
+    const parent = await parentRepository.findOne({ where: { id: original.parentId } });
+    const parentName = parent
+      ? `${parent.firstName || ''} ${parent.lastName || ''}`.trim() || 'the parent'
+      : 'the parent';
     res.json({
       success: true,
+      message: `Your reply was sent successfully to ${parentName}. It will appear in their inbox.`,
       id: saved.id,
       createdAt: saved.createdAt
     });

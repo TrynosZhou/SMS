@@ -10,6 +10,8 @@ export interface UserManagementRow {
   username: string;
   email?: string | null;
   name: string;
+  firstName?: string;
+  lastName?: string;
   role: string;
   status: 'Active' | 'Locked' | 'Inactive';
   isLocked: boolean;
@@ -86,6 +88,12 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   resettingPassword = false;
   unlockingUserId: string | null = null;
   deletingUserId: string | null = null;
+
+  showEditNameModal = false;
+  editingNameUser: UserManagementRow | null = null;
+  editFirstName = '';
+  editLastName = '';
+  savingName = false;
 
   constructor(
     private accountService: AccountService,
@@ -351,6 +359,80 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   openAdvancedManagement(): void {
     this.router.navigate(['/admin/manage-accounts']);
+  }
+
+  canEditUserName(user: UserManagementRow): boolean {
+    const role = (user.role || '').toLowerCase();
+    if ((role === 'superadmin' || role === 'director') && !this.isFullAccess()) {
+      return false;
+    }
+    return true;
+  }
+
+  openEditNameModal(user: UserManagementRow): void {
+    if (!this.canEditUserName(user)) return;
+    this.editingNameUser = user;
+    this.editFirstName = user.firstName || '';
+    this.editLastName = user.lastName || '';
+    if (!this.editFirstName && !this.editLastName && user.name && user.name !== '—') {
+      const parts = user.name.trim().split(/\s+/);
+      if (parts.length === 1) {
+        this.editFirstName = parts[0];
+      } else if (parts.length >= 2) {
+        this.editFirstName = parts[0];
+        this.editLastName = parts.slice(1).join(' ');
+      }
+    }
+    this.error = '';
+    this.showEditNameModal = true;
+  }
+
+  closeEditNameModal(): void {
+    this.showEditNameModal = false;
+    this.editingNameUser = null;
+    this.editFirstName = '';
+    this.editLastName = '';
+    this.savingName = false;
+  }
+
+  saveUserName(): void {
+    if (!this.editingNameUser) return;
+    const firstName = this.editFirstName.trim();
+    const lastName = this.editLastName.trim();
+    if (!firstName && !lastName) {
+      this.error = 'Enter at least a first name or last name.';
+      return;
+    }
+    this.savingName = true;
+    this.error = '';
+    this.accountService
+      .updateUserDisplayName(this.editingNameUser.id, { firstName, lastName })
+      .subscribe({
+        next: (res: any) => {
+          this.savingName = false;
+          const updatedName = res?.user?.name || [firstName, lastName].filter(Boolean).join(' ');
+          this.success = `Name updated for ${this.editingNameUser!.username}.`;
+          const editedId = this.editingNameUser!.id;
+          this.closeEditNameModal();
+          const idx = this.users.findIndex((u) => u.id === editedId);
+          if (idx >= 0) {
+            this.users[idx] = {
+              ...this.users[idx],
+              name: updatedName,
+              firstName: res?.user?.firstName ?? firstName,
+              lastName: res?.user?.lastName ?? lastName
+            };
+            this.applyFilters();
+          } else {
+            this.loadUsers();
+          }
+          setTimeout(() => (this.success = ''), 6000);
+        },
+        error: (err) => {
+          this.savingName = false;
+          this.error = err?.error?.message || 'Failed to update name.';
+        }
+      });
   }
 
   openResetModal(user: UserManagementRow): void {

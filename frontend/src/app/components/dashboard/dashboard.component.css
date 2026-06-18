@@ -2005,6 +2005,35 @@
   text-align: center;
 }
 
+.dash-module-tile__icon-wrap {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dash-module-tile__badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  z-index: 2;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  line-height: 1.35rem;
+  letter-spacing: -0.02em;
+  text-align: center;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
 .dash-module-tile__label {
   flex: 1;
   min-width: 0;
@@ -2263,6 +2292,11 @@
 }
 .dark-mode .dash-module-tile--slate {
   background: linear-gradient(180deg, rgba(100, 116, 139, 0.35) 0%, rgba(15, 23, 42, 0.85) 100%);
+}
+
+.dark-mode .dash-module-tile__badge {
+  border-color: rgba(15, 23, 42, 0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
 }
 
 .dark-mode .theme-toggle {

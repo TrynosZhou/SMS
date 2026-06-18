@@ -12,6 +12,7 @@ import { FinanceService } from '../../services/finance.service';
 import { SubjectService } from '../../services/subject.service';
 import { ModuleAccessService } from '../../services/module-access.service';
 import { ThemeService } from '../../services/theme.service';
+import { IncomingMessageNotificationService } from '../../services/incoming-message-notification.service';
 
 export interface DashboardAdminHubTile {
   route: string;
@@ -94,6 +95,7 @@ recentStudents: any[] = [];
 
   adminHubSearch = '';
   readonly statSkeletonSlots = [0, 1, 2, 3, 4, 5];
+  unreadParentMessageCount = 0;
 
   readonly adminModuleShortcuts: DashboardModuleShortcut[] = [
     { route: '/students', label: 'Students', icon: '👥', pastel: 'violet', module: 'students' },
@@ -104,7 +106,7 @@ recentStudents: any[] = [];
     { route: '/report-cards', label: 'Reports', icon: '📊', pastel: 'violet', module: 'reportCards' },
     { route: '/inventory', label: 'Inventory Manager', icon: '📦', pastel: 'emerald', module: 'inventory' },
     { route: '/timetable/view', label: 'View Timetable', icon: '📅', pastel: 'sky' },
-{ route: '/messages/inbox', label: 'Messages', icon: '💬', pastel: 'pink' },
+{ route: '/messages/incoming', label: 'Messages', icon: '💬', pastel: 'pink' },
     { route: '/settings', label: 'Settings', icon: '⚙️', pastel: 'slate', module: 'settings' },
     {
       route: '/settings/payment-receipt-manager',
@@ -125,7 +127,7 @@ recentStudents: any[] = [];
     { route: '/attendance/reports', label: 'Attendance', icon: '📋', pastel: 'amber', module: 'attendance' },
     { route: '/report-cards', label: 'Reports', icon: '📊', pastel: 'violet', module: 'reportCards' },
     { route: '/classes', label: 'Classes', icon: '🏫', pastel: 'emerald', module: 'classes' },
-    { route: '/messages/inbox', label: 'Messages', icon: '💬', pastel: 'pink' },
+    { route: '/messages/incoming', label: 'Messages', icon: '💬', pastel: 'pink' },
     { route: '/inventory', label: 'Inventory Manager', icon: '📦', pastel: 'emerald', module: 'inventory' },
     { route: '/settings', label: 'Settings', icon: '⚙️', pastel: 'slate', module: 'settings' }
   ];
@@ -237,6 +239,7 @@ id: 'inventory',
   private studentDataRetryCount = 0;
   private readonly MAX_STUDENT_DATA_RETRIES = 3;
   private statsLoadGeneration = 0;
+  private unreadMessagesPollHandle: ReturnType<typeof setInterval> | null = null;
 constructor(
     private authService: AuthService,
     private router: Router,
@@ -248,6 +251,7 @@ constructor(
     private subjectService: SubjectService,
     private moduleAccessService: ModuleAccessService,
     public themeService: ThemeService,
+    private incomingMessageNotifications: IncomingMessageNotificationService,
     private cdr: ChangeDetectorRef
 ) {}
 
@@ -267,7 +271,12 @@ constructor(
     this.moduleAccessService.loadModuleAccess();
     this.loadSettings();
     if (this.canViewDashboardStats()) {
-      activatePageLoad(this.router, this.destroy$, '/dashboard', () => this.loadStatistics());
+      activatePageLoad(this.router, this.destroy$, '/dashboard', () => {
+        this.loadStatistics();
+        this.loadUnreadParentMessageCount();
+      });
+      this.loadUnreadParentMessageCount();
+      this.startUnreadMessagesPolling();
     } else {
       this.loadingStats = false;
 }
@@ -279,6 +288,7 @@ constructor(
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+    this.stopUnreadMessagesPolling();
 if (this.textToggleInterval) {
       clearInterval(this.textToggleInterval);
     }
@@ -417,6 +427,49 @@ if (this.textToggleInterval) {
       return;
     }
     this.loadStatistics();
+    this.loadUnreadParentMessageCount();
+  }
+
+  loadUnreadParentMessageCount(): void {
+    if (!this.incomingMessageNotifications.canShowIncomingBadge()) {
+      this.unreadParentMessageCount = 0;
+      return;
+    }
+    this.incomingMessageNotifications.refresh().pipe(takeUntil(this.destroy$)).subscribe((count) => {
+      this.unreadParentMessageCount = count;
+      this.cdr.markForCheck();
+    });
+  }
+
+  isMessagesShortcut(route: string): boolean {
+    return route === '/messages/incoming';
+  }
+
+  getMessagesBadgeLabel(): string {
+    const n = this.unreadParentMessageCount;
+    if (n <= 0) {
+      return '';
+    }
+    return n > 99 ? '99+' : String(n);
+  }
+
+  private startUnreadMessagesPolling(): void {
+    this.stopUnreadMessagesPolling();
+    if (!this.incomingMessageNotifications.canShowIncomingBadge()) {
+      return;
+    }
+    this.incomingMessageNotifications.unreadCount$.pipe(takeUntil(this.destroy$)).subscribe((count) => {
+      this.unreadParentMessageCount = count;
+      this.cdr.markForCheck();
+    });
+    this.unreadMessagesPollHandle = setInterval(() => this.loadUnreadParentMessageCount(), 60000);
+  }
+
+  private stopUnreadMessagesPolling(): void {
+    if (this.unreadMessagesPollHandle) {
+      clearInterval(this.unreadMessagesPollHandle);
+      this.unreadMessagesPollHandle = null;
+    }
   }
 
   /** Load and show dashboard stat cards (admin, director, school leadership, accountant). */

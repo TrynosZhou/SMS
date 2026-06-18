@@ -794,6 +794,85 @@ export const updateStaffProfile = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Admin/SuperAdmin: Update a user's display name (first/last name — not username)
+export const updateUserDisplayName = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || !canManageUserAccounts(req.user.role)) {
+      return res.status(403).json({ message: 'Only Administrators or Directors can update user names' });
+    }
+
+    const targetUserId = req.params.id;
+    const { firstName, lastName } = req.body;
+
+    if (!targetUserId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    const trimmedFirst = firstName !== undefined && firstName !== null ? String(firstName).trim() : '';
+    const trimmedLast = lastName !== undefined && lastName !== null ? String(lastName).trim() : '';
+
+    if (!trimmedFirst && !trimmedLast) {
+      return res.status(400).json({ message: 'First name or last name is required' });
+    }
+
+    const userRepository = AppDataSource.getRepository(User);
+    const user = await userRepository.findOne({ where: { id: targetUserId } });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (isFullAccessRole(user.role) && !isFullAccessRole(req.user.role)) {
+      return res.status(403).json({ message: 'Only a Super Administrator or Director can update this account' });
+    }
+
+    user.firstName = trimmedFirst || null;
+    user.lastName = trimmedLast || null;
+    await userRepository.save(user);
+
+    if (user.role === UserRole.TEACHER) {
+      const teacherRepo = AppDataSource.getRepository(Teacher);
+      const teacher = await teacherRepo.findOne({ where: { userId: user.id } });
+      if (teacher) {
+        if (trimmedFirst) teacher.firstName = trimmedFirst;
+        if (trimmedLast) teacher.lastName = trimmedLast;
+        await teacherRepo.save(teacher);
+      }
+    } else if (user.role === UserRole.STUDENT) {
+      const studentRepo = AppDataSource.getRepository(Student);
+      const student = await studentRepo.findOne({ where: { userId: user.id } });
+      if (student) {
+        if (trimmedFirst) student.firstName = trimmedFirst;
+        if (trimmedLast) student.lastName = trimmedLast;
+        await studentRepo.save(student);
+      }
+    } else if (user.role === UserRole.PARENT) {
+      const parentRepo = AppDataSource.getRepository(Parent);
+      const parent = await parentRepo.findOne({ where: { userId: user.id } });
+      if (parent) {
+        if (trimmedFirst) parent.firstName = trimmedFirst;
+        if (trimmedLast) parent.lastName = trimmedLast;
+        await parentRepo.save(parent);
+      }
+    }
+
+    const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.username;
+    res.json({
+      message: 'Name updated successfully',
+      user: {
+        id: user.id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        name: displayName,
+        role: user.role
+      }
+    });
+  } catch (error: any) {
+    console.error('Error updating user display name:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
 /** Resolve display name for user management list */
 function resolveUserDisplayName(u: User & { teacher?: any; student?: any; parent?: any }): string {
   const fromUser = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
@@ -811,6 +890,23 @@ function resolveUserDisplayName(u: User & { teacher?: any; student?: any; parent
     if (p) return p;
   }
   return u.username || u.email || '—';
+}
+
+function resolveUserNameFields(u: User & { teacher?: any; student?: any; parent?: any }): { firstName: string; lastName: string } {
+  if (u.firstName || u.lastName) {
+    return {
+      firstName: (u.firstName || '').trim(),
+      lastName: (u.lastName || '').trim()
+    };
+  }
+  const linked = u.teacher || u.student || u.parent;
+  if (linked) {
+    return {
+      firstName: (linked.firstName || '').trim(),
+      lastName: (linked.lastName || '').trim()
+    };
+  }
+  return { firstName: '', lastName: '' };
 }
 
 function resolveUserStatus(u: User): 'Active' | 'Locked' | 'Inactive' {
@@ -877,6 +973,8 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
         username: u.username,
         email: u.email,
         name: resolveUserDisplayName(enriched),
+        firstName: resolveUserNameFields(enriched).firstName,
+        lastName: resolveUserNameFields(enriched).lastName,
         role: u.role,
         status: resolveUserStatus(u),
         isLocked: u.lockedUntil ? new Date(u.lockedUntil) > new Date() : false,

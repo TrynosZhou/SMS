@@ -1,6 +1,6 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subject } from 'rxjs';
+import { Subject, forkJoin } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { AuthService } from '../../../services/auth.service';
 import { FinanceService } from '../../../services/finance.service';
@@ -18,6 +18,8 @@ export type InvoiceNoteType = 'credit' | 'debit';
 })
 export class InvoiceNotePageComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+
+  @ViewChild('noteSearchInput') noteSearchInput?: ElementRef<HTMLInputElement>;
 
   noteType: InvoiceNoteType = 'credit';
   invoices: any[] = [];
@@ -90,20 +92,20 @@ export class InvoiceNotePageComponent implements OnInit, OnDestroy {
       .getSettings()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (data: any) => {
-          this.currencySymbol = data?.currencySymbol || '';
-          const rawTransport = data?.feesSettings?.transportCost;
-          const parsedTransport = parseFloat(String(rawTransport));
-          if (!isNaN(parsedTransport) && parsedTransport > 0) {
-            this.transportCostFromSettings = parsedTransport;
-          }
-          const rawDh = data?.feesSettings?.diningHallCost;
-          const parsedDh = parseFloat(String(rawDh));
-          if (!isNaN(parsedDh) && parsedDh > 0) {
-            this.diningHallCostFromSettings = parsedDh;
-          }
-        },
+        next: (data: any) => this.applySettings(data),
       });
+  }
+
+  private applySettings(data: any): void {
+    this.currencySymbol = data?.currencySymbol || '';
+    const rawTransport = data?.feesSettings?.transportCost;
+    const parsedTransport = parseFloat(String(rawTransport));
+    this.transportCostFromSettings =
+      !isNaN(parsedTransport) && parsedTransport > 0 ? parsedTransport : null;
+    const rawDh = data?.feesSettings?.diningHallCost;
+    const parsedDh = parseFloat(String(rawDh));
+    this.diningHallCostFromSettings =
+      !isNaN(parsedDh) && parsedDh > 0 ? parsedDh : null;
   }
 
   loadInvoices(): void {
@@ -257,27 +259,58 @@ export class InvoiceNotePageComponent implements OnInit, OnDestroy {
   }
 
   refreshNoteData(): void {
-    const invoiceId = this.normalizeInvoiceId(this.selectedInvoice?.id);
-    if (!invoiceId) return;
+    if (this.noteRefreshing || this.noteSubmitting) {
+      return;
+    }
 
+    this.resetPageState();
     this.noteRefreshing = true;
-    this.financeService
-      .getInvoice(invoiceId)
+
+    forkJoin({
+      settings: this.settingsService.getSettings(),
+      invoices: this.financeService.getInvoices(),
+    })
       .pipe(
         takeUntil(this.destroy$),
         finalize(() => {
           this.noteRefreshing = false;
+          this.focusSearchInput();
           this.cdr.markForCheck();
         })
       )
       .subscribe({
-        next: (invoice: any) => {
-          this.selectedInvoice = invoice;
+        next: ({ settings, invoices }) => {
+          this.applySettings(settings);
+          this.invoices = invoices || [];
         },
-        error: (err) => {
-          this.noteError = err?.error?.message || 'Failed to refresh invoice data.';
+        error: () => {
+          this.invoices = [];
+          this.noteError = 'Failed to reload page data. Please try again.';
         },
       });
+  }
+
+  /** Clear all user-entered and fetched note-page data (fresh start). */
+  private resetPageState(): void {
+    this.noteSearchQuery = '';
+    this.selectedInvoice = null;
+    this.noteCandidates = [];
+    this.noteLookupError = '';
+    this.noteSuccess = '';
+    this.noteError = '';
+    this.noteForm = { item: '', amount: 0 };
+    this.isNoteAmountAuto = false;
+    this.invoices = [];
+    this.cdr.markForCheck();
+  }
+
+  private focusSearchInput(): void {
+    setTimeout(() => {
+      const el = this.noteSearchInput?.nativeElement;
+      if (el) {
+        el.focus();
+      }
+    }, 0);
   }
 
   submitNote(): void {

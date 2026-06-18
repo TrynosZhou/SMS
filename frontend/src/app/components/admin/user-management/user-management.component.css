@@ -238,6 +238,43 @@
   border-radius: 4px;
 }
 
+.um-name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: 100%;
+}
+
+.um-name-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.um-edit-name-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  opacity: 0.75;
+  transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.um-edit-name-btn:hover {
+  opacity: 1;
+  background: #ede9fe;
+  border-color: #c4b5fd;
+}
+
+.um-modal--edit-name {
+  max-width: 480px;
+}
+
 .um-role-badge {
   font-weight: 500;
 }

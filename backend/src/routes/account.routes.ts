@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
-import { updateAccount, getAccountInfo, createUserAccount, resetUserPassword, updateUserRole, updateStaffProfile, getUniversalTeacherStatus, createUniversalTeacherAccount, getStaffUsers, getAllUsers, unlockUser, deleteUserAccount } from '../controllers/account.controller';
+import { updateAccount, getAccountInfo, createUserAccount, resetUserPassword, updateUserRole, updateStaffProfile, updateUserDisplayName, getUniversalTeacherStatus, createUniversalTeacherAccount, getStaffUsers, getAllUsers, unlockUser, deleteUserAccount } from '../controllers/account.controller';
 import { UserRole } from '../entities/User';
 
 const router = Router();
@@ -68,6 +68,13 @@ router.patch(
   '/users/:id/profile',
   authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
   updateStaffProfile
+);
+
+// Admin/SuperAdmin: update a user's display name (not username)
+router.patch(
+  '/users/:id/name',
+  authorize(UserRole.ADMIN, UserRole.SUPERADMIN),
+  updateUserDisplayName
 );
 
 // Universal teacher account (admin/superadmin only)

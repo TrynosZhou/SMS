@@ -70,7 +70,20 @@
           <tr *ngFor="let user of filteredUsers">
             <td class="um-col-check"><input type="checkbox" disabled [attr.aria-label]="'Select ' + user.username" /></td>
             <td><code class="um-username">{{ user.username }}</code></td>
-            <td>{{ user.name }}</td>
+            <td>
+              <span class="um-name-cell">
+                <span class="um-name-text">{{ user.name }}</span>
+                <button
+                  type="button"
+                  class="um-edit-name-btn"
+                  *ngIf="canEditUserName(user)"
+                  (click)="openEditNameModal(user)"
+                  title="Edit name"
+                  aria-label="Edit name for {{ user.username }}">
+                  ✏️
+                </button>
+              </span>
+            </td>
             <td>
               <span class="um-role-badge" [ngClass]="getRoleBadgeClass(user.role)">{{ getRoleLabel(user.role) }}</span>
               <span class="um-demo-tag" *ngIf="user.isDemo">Demo</span>
@@ -253,6 +266,55 @@
         <button type="button" class="um-btn um-btn--ghost" (click)="closeAddUser()" [disabled]="creatingUser">Cancel</button>
         <button type="submit" class="um-btn um-btn--primary" [disabled]="creatingUser">
           {{ creatingUser ? 'Creating…' : 'Create User' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit name modal -->
+<div class="um-modal-overlay" *ngIf="showEditNameModal && editingNameUser" (click)="closeEditNameModal()">
+  <div class="um-modal um-modal--edit-name" (click)="$event.stopPropagation()">
+    <div class="um-modal-header">
+      <div class="um-modal-header-text">
+        <h2>Edit name</h2>
+        <p class="um-modal-subtitle">Update display name for <strong>{{ editingNameUser.username }}</strong></p>
+      </div>
+      <button type="button" class="um-modal-close" (click)="closeEditNameModal()" aria-label="Close">×</button>
+    </div>
+    <form class="um-modal-form" (ngSubmit)="saveUserName()">
+      <div class="um-modal-body">
+        <div class="um-alert um-alert--error" *ngIf="error && showEditNameModal">{{ error }}</div>
+        <p class="um-form-hint um-form-hint--inline">Username cannot be changed here — only the person's name.</p>
+        <div class="um-form-row um-form-row--split">
+          <div class="um-form-col">
+            <label for="editFirstName">First name</label>
+            <input
+              id="editFirstName"
+              type="text"
+              [(ngModel)]="editFirstName"
+              name="editFirstName"
+              autocomplete="given-name"
+              placeholder="First name"
+              [disabled]="savingName" />
+          </div>
+          <div class="um-form-col">
+            <label for="editLastName">Last name</label>
+            <input
+              id="editLastName"
+              type="text"
+              [(ngModel)]="editLastName"
+              name="editLastName"
+              autocomplete="family-name"
+              placeholder="Last name"
+              [disabled]="savingName" />
+          </div>
+        </div>
+      </div>
+      <div class="um-modal-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeEditNameModal()" [disabled]="savingName">Cancel</button>
+        <button type="submit" class="btn btn-primary" [disabled]="savingName">
+          {{ savingName ? 'Saving…' : 'Save name' }}
         </button>
       </div>
     </form>

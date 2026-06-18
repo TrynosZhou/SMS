@@ -60,10 +60,16 @@
         </svg>
       </button>
 
-      <a [routerLink]="getMessagesNavLink()" class="top-nav-icon-btn" title="Messages" aria-label="Messages">
+      <a
+        [routerLink]="getMessagesNavLink()"
+        class="top-nav-icon-btn top-nav-icon-btn--messages"
+        [attr.title]="showMessagesNavBadge() ? 'Messages (' + unreadIncomingMessageCount + ' unread)' : 'Messages'"
+        [attr.aria-label]="showMessagesNavBadge() ? 'Messages, ' + unreadIncomingMessageCount + ' unread' : 'Messages'"
+      >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
         </svg>
+        <span class="top-nav-icon-badge" *ngIf="showMessagesNavBadge()">{{ getMessagesNavBadgeLabel() }}</span>
       </a>
 
       <a [routerLink]="getCalendarNavLink()" class="top-nav-icon-btn" title="Calendar" aria-label="Calendar">
@@ -499,7 +505,7 @@
       <div
         class="sidebar-menu"
         *ngIf="sidebarMenuVisible(
-          ['Financial Reports', 'Student Ledgers', 'Fees Collection', 'Unpaid Invoices', 'Exemption Report', 'Logistics Receipts', 'Aged Debtors', 'Enrolment vs Billing', 'Revenue Recognition', 'Student Reconciliation', 'Analytics & Forecasts', 'Class Reconciliation', 'Dining Hall', 'Transport'],
+          ['Financial Reports', 'Student Ledgers', 'Fees Collection', 'Unpaid Invoices', 'Exemption Report', 'Aged Debtors', 'Enrolment vs Billing', 'Revenue Recognition', 'Student Reconciliation', 'Analytics & Forecasts', 'Class Reconciliation', 'Dining Hall', 'Transport'],
           !isTeacher() && canAccessFinancialReportsMenu()
         )">
         <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('financialReports')" (click)="toggleMenu('financialReports')">
@@ -523,10 +529,6 @@
           <a routerLink="/financial-reports/exemption-report" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportExemption')">
             <span class="sidebar-icon">🪪</span>
             <span class="sidebar-text">Exemption Report</span>
-          </a>
-          <a routerLink="/financial-reports/logistics-receipts" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportLogisticsReceipts')">
-            <span class="sidebar-icon">🚌</span>
-            <span class="sidebar-text">Logistics Receipts</span>
           </a>
           <a routerLink="/financial-reports/aged-debtors" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportAgedDebtors')">
             <span class="sidebar-icon">⏳</span>

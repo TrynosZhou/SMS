@@ -17,9 +17,10 @@
           type="button"
           class="note-hero-btn note-hero-btn--refresh"
           (click)="refreshNoteData()"
-          [disabled]="noteRefreshing || noteSubmitting || !selectedInvoice"
-          title="Refresh invoice data">
-          🔄 Refresh
+          [disabled]="noteRefreshing || noteSubmitting"
+          title="Clear form and reload page data">
+          <span [class.spinning]="noteRefreshing">🔄</span>
+          {{ noteRefreshing ? 'Refreshing…' : 'Refresh' }}
         </button>
       </div>
     </div>
@@ -43,6 +44,7 @@
           </label>
           <div class="note-search-row">
             <input
+              #noteSearchInput
               id="noteSearchQuery"
               type="text"
               [(ngModel)]="noteSearchQuery"

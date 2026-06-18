@@ -134,8 +134,8 @@
             
             <div class="empty-state" *ngIf="parents.length === 0 && !loadingParents">
               <span class="empty-icon">👥</span>
-              <p>No parents available</p>
-              <button class="btn btn-primary btn-sm" (click)="loadParentsIfNeeded()">
+              <p>{{ parentsLoadError || 'No parents available' }}</p>
+              <button class="btn btn-primary btn-sm" (click)="loadParentsIfNeeded(true)">
                 Reload Parents
               </button>
             </div>

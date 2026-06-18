@@ -829,6 +829,44 @@ export const adminSearchParentEmails = async (req: AuthRequest, res: Response) =
   }
 };
 
+function serializeParentStudentLinkForList(link: ParentStudent) {
+  const student = link.student;
+  const cls = student?.classEntity;
+  const classDto = cls
+    ? { id: cls.id, name: cls.name, form: (cls as any).form ?? null }
+    : null;
+  return {
+    id: link.id,
+    parentId: link.parentId,
+    studentId: link.studentId,
+    relationshipType: link.relationshipType,
+    student: student
+      ? {
+          id: student.id,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          studentNumber: student.studentNumber,
+          classEntity: classDto,
+          class: classDto,
+        }
+      : null,
+  };
+}
+
+function serializeParentForAdminList(parent: Parent) {
+  return {
+    id: parent.id,
+    firstName: parent.firstName,
+    lastName: parent.lastName,
+    email: parent.email,
+    phoneNumber: parent.phoneNumber,
+    address: parent.address,
+    gender: parent.gender || null,
+    userId: parent.userId || null,
+    parentStudents: (parent.parentStudents || []).map(serializeParentStudentLinkForList),
+  };
+}
+
 export const adminListParents = async (req: AuthRequest, res: Response) => {
   try {
     const parentRepository = AppDataSource.getRepository(Parent);
@@ -850,7 +888,10 @@ export const adminListParents = async (req: AuthRequest, res: Response) => {
       console.warn('Could not compute studentsWithAccountLoggedInCount:', e);
     }
 
-    res.json({ parents, studentsWithAccountLoggedInCount });
+    res.json({
+      parents: parents.map(serializeParentForAdminList),
+      studentsWithAccountLoggedInCount,
+    });
   } catch (error: any) {
     console.error('Error listing parents:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });

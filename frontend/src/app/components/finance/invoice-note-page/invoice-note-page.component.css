@@ -80,8 +80,17 @@
 }
 
 .note-hero-btn--refresh:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
+}
+
+.note-hero-btn--refresh .spinning {
+  display: inline-block;
+  animation: note-refresh-spin 0.8s linear infinite;
+}
+
+@keyframes note-refresh-spin {
+  to { transform: rotate(360deg); }
 }
 
 .note-page-card {

@@ -26,6 +26,12 @@
   </div>
 
   <!-- Alert -->
+  <div *ngIf="success" class="alert alert-success" role="status">
+    <span class="alert-icon">✓</span>
+    <span class="alert-text">{{ success }}</span>
+    <button class="alert-close" (click)="success = ''" aria-label="Dismiss">✕</button>
+  </div>
+
   <div *ngIf="error" class="alert alert-error">
     <span class="alert-icon">⚠️</span>
     <span class="alert-text">{{ error }}</span>
@@ -313,8 +319,8 @@
           </div>
           <div class="reply-actions">
             <button class="btn btn-outline" (click)="toggleReply()">Cancel</button>
-            <button class="btn btn-primary" [disabled]="!canSendReply()" (click)="sendReply()">
-              <span>📤</span> Send Reply
+            <button class="btn btn-primary" [disabled]="!canSendReply() || sendingReply" (click)="sendReply()">
+              <span>📤</span> {{ sendingReply ? 'Sending…' : 'Send Reply' }}
             </button>
           </div>
         </div>

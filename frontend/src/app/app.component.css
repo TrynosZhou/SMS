@@ -163,6 +163,7 @@
   gap: 0.65rem;
   margin-left: auto;
   flex-shrink: 0;
+  overflow: visible;
 }
 
 .top-nav-icon-btn {
@@ -182,6 +183,32 @@
 
 .top-nav-icon-btn:hover {
   background: rgba(255, 255, 255, 0.14);
+}
+
+.top-nav-icon-btn--messages {
+  position: relative;
+  overflow: visible;
+}
+
+.top-nav-icon-badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  z-index: 2;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  line-height: 1.35rem;
+  letter-spacing: -0.02em;
+  text-align: center;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
 }
 
 .top-nav-exit-btn {

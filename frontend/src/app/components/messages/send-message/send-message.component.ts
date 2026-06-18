@@ -1,7 +1,8 @@
-import { Component, OnInit, HostListener, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { Subject } from 'rxjs';
+import { finalize, takeUntil, timeout } from 'rxjs/operators';
 import { MessageService } from '../../../services/message.service';
-import { ParentService } from '../../../services/parent.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
@@ -9,7 +10,7 @@ import { AuthService } from '../../../services/auth.service';
 templateUrl: './send-message.component.html',
   styleUrls: ['./send-message.component.css']
 })
-export class SendMessageComponent implements OnInit {
+export class SendMessageComponent implements OnInit, OnDestroy {
   subject = '';
   message = '';
   recipientsType: 'all' | 'selected' = 'all';
@@ -59,18 +60,22 @@ export class SendMessageComponent implements OnInit {
   selectedTemplate = '';
   loading = false;
   loadingParents = false;
+  parentsLoadError = '';
   error = '';
   success = '';
   showPreview = false;
   isDragOver = false;
 
+  private readonly destroy$ = new Subject<void>();
+  private parentsLoadRequestId = 0;
+
   @ViewChild('fileInput') fileInput!: ElementRef;
 
   constructor(
     private route: ActivatedRoute, 
-    private messageService: MessageService, 
-    private parentService: ParentService, 
-    private authService: AuthService
+    private messageService: MessageService,
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   @HostListener('document:keydown.escape')
@@ -81,7 +86,7 @@ export class SendMessageComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.route.queryParamMap.subscribe(p => {
+    this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe(p => {
       const subj = p.get('subject') || '';
       const body = p.get('message') || '';
       if (subj) this.subject = subj;
@@ -89,32 +94,54 @@ export class SendMessageComponent implements OnInit {
     });
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   isAllowed(): boolean {
     const user = this.authService.getCurrentUser();
     if (!user) return false;
     const role = (user.role || '').toLowerCase();
-    return role === 'accountant' || role === 'admin' || role === 'superadmin';
+    return ['accountant', 'admin', 'superadmin', 'director', 'headmaster', 'deputy_headmaster'].includes(role);
   }
 
-  loadParentsIfNeeded(): void {
-    if (this.parents.length === 0) {
-      this.loadingParents = true;
-      const user = this.authService.getCurrentUser();
-      const role = (user?.role || '').toLowerCase();
-      const obs = role === 'accountant'
-        ? this.parentService.getAllParentsStaff()
-        : this.parentService.getAllParentsAdmin();
-      obs.subscribe({
-        next: (res: any) => {
-          this.parents = res.parents || [];
-          this.loadingParents = false;
-        },
-        error: () => {
-          this.parents = [];
-          this.loadingParents = false;
-        }
-      });
+  loadParentsIfNeeded(force = false): void {
+    if (!force && (this.loadingParents || this.parents.length > 0)) {
+      return;
     }
+
+    const requestId = ++this.parentsLoadRequestId;
+    this.loadingParents = true;
+    this.parentsLoadError = '';
+    this.cdr.markForCheck();
+
+    this.messageService.getParentRecipients().pipe(
+      timeout(60000),
+      takeUntil(this.destroy$),
+      finalize(() => {
+        if (requestId === this.parentsLoadRequestId) {
+          this.loadingParents = false;
+          this.cdr.markForCheck();
+        }
+      })
+    ).subscribe({
+      next: (res: any) => {
+        if (requestId !== this.parentsLoadRequestId) return;
+        const list = Array.isArray(res?.parents) ? res.parents : Array.isArray(res) ? res : [];
+        this.parents = list;
+        if (list.length === 0) {
+          this.parentsLoadError = 'No parents found in the system.';
+        }
+        this.cdr.markForCheck();
+      },
+      error: (err: any) => {
+        if (requestId !== this.parentsLoadRequestId) return;
+        this.parents = [];
+        this.parentsLoadError = err?.error?.message || 'Failed to load parents. Please try again.';
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   setRecipientsType(type: 'all' | 'selected'): void {
@@ -176,7 +203,6 @@ export class SendMessageComponent implements OnInit {
     );
   }
 
-  // File handling
   onDragOver(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
@@ -283,7 +309,7 @@ export class SendMessageComponent implements OnInit {
   }
 
   send(): void {
-    if (!this.canSend()) {
+    if (!this.canSend() || this.loading) {
       this.error = 'Please complete all required fields before sending.';
       return;
     }
@@ -291,51 +317,41 @@ export class SendMessageComponent implements OnInit {
     this.loading = true;
     this.error = '';
     this.success = '';
+    this.cdr.markForCheck();
+
+    const subject = this.subject.trim();
+    const body = this.message.trim();
+    const sendTimeout = 120000;
+
+    const onDone = {
+      next: (res: any) => this.handleSuccess(res, this.recipientsType === 'selected' ? this.selectedParentIds.size : undefined),
+      error: (err: any) => this.handleError(err),
+    };
+
+    const pipeSend = <T>(obs: import('rxjs').Observable<T>) =>
+      obs.pipe(timeout(sendTimeout), takeUntil(this.destroy$), finalize(() => {
+        this.loading = false;
+        this.cdr.markForCheck();
+      }));
 
     if (this.recipientsType === 'all') {
-      const subject = this.subject.trim();
-      const body = this.message.trim();
-      
       if (this.attachments.length > 0) {
-        this.messageService
-          .sendBulkMessageWithAttachments(subject, body, 'parents', this.attachments)
-          .subscribe({
-            next: (res: any) => this.handleSuccess(res),
-            error: (err: any) => this.handleError(err)
-          });
+        pipeSend(this.messageService.sendBulkMessageWithAttachments(subject, body, 'parents', this.attachments)).subscribe(onDone);
       } else {
-        this.messageService
-          .sendBulkMessage({ subject, message: body, recipients: 'parents' })
-          .subscribe({
-            next: (res: any) => this.handleSuccess(res),
-            error: (err: any) => this.handleError(err)
-          });
+        pipeSend(this.messageService.sendBulkMessage({ subject, message: body, recipients: 'parents' })).subscribe(onDone);
       }
+      return;
+    }
+
+    const ids = Array.from(this.selectedParentIds);
+    if (this.attachments.length > 0) {
+      pipeSend(this.messageService.sendMessageToSpecificParents(subject, body, ids, this.attachments)).subscribe(onDone);
     } else {
-      const ids = Array.from(this.selectedParentIds);
-      const subject = this.subject.trim();
-      const body = this.message.trim();
-      
-      if (this.attachments.length > 0) {
-        this.messageService
-          .sendMessageToSpecificParents(subject, body, ids, this.attachments)
-          .subscribe({
-            next: (res: any) => this.handleSuccess(res, ids.length),
-            error: (err: any) => this.handleError(err)
-          });
-      } else {
-        this.messageService
-          .sendMessageToSpecificParentsJSON(subject, body, ids)
-          .subscribe({
-            next: (res: any) => this.handleSuccess(res, ids.length),
-            error: (err: any) => this.handleError(err)
-          });
-      }
+      pipeSend(this.messageService.sendMessageToSpecificParentsJSON(subject, body, ids)).subscribe(onDone);
     }
   }
 
   private handleSuccess(res: any, selectedCount?: number): void {
-    this.loading = false;
     const count = res?.savedMessageCount ?? res?.parentCount ?? res?.recipientCount ?? res?.sent ?? selectedCount ?? '';
     this.success = res?.message || (count ? `Message sent successfully to ${count} recipient(s)! 🎉` : 'Message sent successfully!');
     this.resetForm();
@@ -343,13 +359,17 @@ export class SendMessageComponent implements OnInit {
     setTimeout(() => {
       if (this.success.includes('successfully')) {
         this.success = '';
+        this.cdr.markForCheck();
       }
     }, 5000);
   }
 
   private handleError(err: any): void {
-    this.loading = false;
     const msg = this.extractError(err);
+    if (err?.name === 'TimeoutError' || String(msg).toLowerCase().includes('timeout')) {
+      this.error = 'The request timed out. Please check your connection and try again.';
+      return;
+    }
     this.error = msg || 'Failed to send message. Please try again.';
   }
 

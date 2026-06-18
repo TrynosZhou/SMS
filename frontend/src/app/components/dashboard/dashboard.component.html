@@ -220,8 +220,16 @@
               class="dash-module-tile dash-module-tile--enter"
               [ngClass]="'dash-module-tile--' + m.pastel"
               [style.animation-delay.ms]="mi * 35"
+              [attr.aria-label]="isMessagesShortcut(m.route) && unreadParentMessageCount > 0 ? m.label + ', ' + unreadParentMessageCount + ' unread' : m.label"
             >
-              <span class="dash-module-tile__icon" aria-hidden="true">{{ m.icon }}</span>
+              <span class="dash-module-tile__icon-wrap">
+                <span class="dash-module-tile__icon" aria-hidden="true">{{ m.icon }}</span>
+                <span
+                  class="dash-module-tile__badge"
+                  *ngIf="isMessagesShortcut(m.route) && unreadParentMessageCount > 0"
+                  [attr.aria-label]="unreadParentMessageCount + ' unread messages'"
+                >{{ getMessagesBadgeLabel() }}</span>
+              </span>
               <span class="dash-module-tile__label">{{ m.label }}</span>
             </a>
           </div>

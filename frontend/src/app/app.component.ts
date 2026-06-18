@@ -13,6 +13,7 @@ import { AuditService } from './services/audit.service';
 import { environment } from '../environments/environment';
 import { LogoutConfirmService } from './services/logout-confirm.service';
 import { ConnectivityService } from './services/connectivity.service';
+import { IncomingMessageNotificationService } from './services/incoming-message-notification.service';
 import { RbacService, RbacRole } from './services/rbac.service';
 
 /** When the current URL matches a prefix, keep that sidebar section expanded (fixes “click twice” on submenus). */
@@ -64,6 +65,9 @@ export class AppComponent implements OnInit, OnDestroy {
   viewAsRoles: RbacRole[] = [];
   selectedViewAsRoleId = '';
   loadingViewAsRoles = false;
+  unreadIncomingMessageCount = 0;
+  private unreadPollHandle: ReturnType<typeof setInterval> | null = null;
+  private unreadCountSub?: Subscription;
 
   constructor(
     public authService: AuthService, 
@@ -80,7 +84,8 @@ export class AppComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     public logoutConfirm: LogoutConfirmService,
     public connectivity: ConnectivityService,
-    private rbacService: RbacService
+    private rbacService: RbacService,
+    private incomingMessageNotifications: IncomingMessageNotificationService
   ) {
     const cachedName = sessionStorage.getItem(AppComponent.SCHOOL_NAME_CACHE_KEY);
     if (cachedName) {
@@ -129,6 +134,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.licenseService.load().subscribe();
       this.syncExpandedMenusFromUrl(this.router.url || '');
       this.loadViewAsRoles();
+      this.startIncomingMessageBadge();
     }
 
     this.authService.currentUser$.subscribe((user) => {
@@ -137,10 +143,12 @@ export class AppComponent implements OnInit, OnDestroy {
         this.permissionService.loadPermissionsFromApi();
         this.syncExpandedMenusFromUrl(this.router.url || '');
         this.loadViewAsRoles();
+        this.startIncomingMessageBadge();
         this.cdr.markForCheck();
       } else {
         this.viewAsRoles = [];
         this.selectedViewAsRoleId = '';
+        this.stopIncomingMessageBadge();
       }
     });
 
@@ -165,6 +173,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.closeMobileMenu();
       }
       if (!this.authService.isAuthenticated()) return;
+      this.refreshIncomingMessageBadge();
       const user = this.authService.getCurrentUser();
       const role = (user?.role || '').toLowerCase();
       if (
@@ -200,6 +209,7 @@ export class AppComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.authSubscription?.unsubscribe();
     this.stopDashboardTitleRotation();
+    this.stopIncomingMessageBadge();
   }
 
   getTopNavbarTitle(): string {
@@ -294,7 +304,55 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.isStudent() || this.isActingAsStudent()) {
       return '/messages/inbox';
     }
+    if (this.incomingMessageNotifications.canShowIncomingBadge()) {
+      return '/messages/incoming';
+    }
     return '/messages/inbox';
+  }
+
+  getMessagesNavBadgeLabel(): string {
+    const n = this.unreadIncomingMessageCount;
+    if (n <= 0) {
+      return '';
+    }
+    return n > 99 ? '99+' : String(n);
+  }
+
+  showMessagesNavBadge(): boolean {
+    return this.incomingMessageNotifications.canShowIncomingBadge() && this.unreadIncomingMessageCount > 0;
+  }
+
+  private startIncomingMessageBadge(): void {
+    this.stopIncomingMessageBadge();
+    if (!this.authService.isAuthenticated() || !this.incomingMessageNotifications.canShowIncomingBadge()) {
+      this.unreadIncomingMessageCount = 0;
+      return;
+    }
+    this.unreadCountSub = this.incomingMessageNotifications.unreadCount$.subscribe((count) => {
+      this.unreadIncomingMessageCount = count;
+      this.cdr.markForCheck();
+    });
+    this.refreshIncomingMessageBadge();
+    this.unreadPollHandle = setInterval(() => this.refreshIncomingMessageBadge(), 60000);
+  }
+
+  private stopIncomingMessageBadge(): void {
+    if (this.unreadPollHandle) {
+      clearInterval(this.unreadPollHandle);
+      this.unreadPollHandle = null;
+    }
+    if (this.unreadCountSub) {
+      this.unreadCountSub.unsubscribe();
+      this.unreadCountSub = undefined;
+    }
+    this.unreadIncomingMessageCount = 0;
+  }
+
+  private refreshIncomingMessageBadge(): void {
+    if (!this.authService.isAuthenticated() || !this.incomingMessageNotifications.canShowIncomingBadge()) {
+      return;
+    }
+    this.incomingMessageNotifications.refresh().subscribe(() => this.cdr.markForCheck());
   }
 
   getCalendarNavLink(): string {
@@ -539,7 +597,6 @@ export class AppComponent implements OnInit, OnDestroy {
       this.canAccessFinancePage('reportFeesCollection') ||
       this.canAccessFinancePage('reportUnpaidInvoices') ||
       this.canAccessFinancePage('reportExemption') ||
-      this.canAccessFinancePage('reportLogisticsReceipts') ||
       this.canAccessFinancePage('reportAgedDebtors') ||
       this.canAccessFinancePage('reportEnrolmentBilling') ||
       this.canAccessFinancePage('reportRevenueRecognition') ||

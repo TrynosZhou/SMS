@@ -175,7 +175,6 @@ const routes: Routes = [
   { path: 'financial-reports/outstanding-fees', component: OutstandingBalanceComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportUnpaidInvoices' } },
   { path: 'financial-reports/exemption-report', component: ExemptionReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportExemption' } },
   { path: 'financial-reports/exemptions', redirectTo: 'financial-reports/exemption-report', pathMatch: 'full' },
-  { path: 'financial-reports/logistics-receipts', component: CashLogisticsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportLogisticsReceipts' } },
   { path: 'financial-reports/aged-debtors', component: AgedDebtorsReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportAgedDebtors' } },
   { path: 'financial-reports/enrolment-vs-billing', component: FinancialReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportEnrolmentBilling', report: 'enrolment-vs-billing' } },
   { path: 'financial-reports/revenue-recognition', component: RevenueRecognitionReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportRevenueRecognition' } },
