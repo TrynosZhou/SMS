@@ -77,16 +77,9 @@ import { NewsListComponent } from './components/news/news-list/news-list.compone
 import { NewsFeedComponent } from './components/news/news-feed/news-feed.component';
 import { NewsFormComponent } from './components/news/news-form/news-form.component';
 import { NewsDetailComponent } from './components/news/news-detail/news-detail.component';
-import { ElearningComponent } from './components/admin/elearning/elearning.component';
 import { IntegrationsComponent } from './components/admin/integrations/integrations.component';
 import { LicenseConfigComponent } from './components/admin/license-config/license-config.component';
 import { AccessDeniedComponent } from './components/access-denied/access-denied.component';
-import { EservicesComponent } from './components/teacher/eservices/eservices.component';
-import { StudentResponsesComponent } from './components/teacher/student-responses/student-responses.component';
-import { MarkResponseComponent } from './components/teacher/mark-response/mark-response.component';
-import { EwebComponent } from './components/student/eweb/eweb.component';
-import { EsubmitComponent } from './components/student/esubmit/esubmit.component';
-import { BlankPageComponent } from './components/student/blank-page/blank-page.component';
 import { ParentInvoiceStatementComponent } from './components/parent/parent-invoice-statement/parent-invoice-statement.component';
 import { PayrollDashboardComponent } from './components/payroll/payroll-dashboard/payroll-dashboard.component';
 import { AncillaryStaffListComponent } from './components/payroll/ancillary-staff-list/ancillary-staff-list.component';
@@ -131,9 +124,9 @@ const routes: Routes = [
   { path: 'messages/drafts', component: DraftMessagesComponent, canActivate: [AuthGuard] },
   { path: 'teacher/record-book', component: RecordBookComponent, canActivate: [AuthGuard] },
   { path: 'teacher/my-classes', component: MyClassesComponent, canActivate: [AuthGuard] },
-  { path: 'teacher/eservices', component: EservicesComponent, canActivate: [AuthGuard] },
-  { path: 'teacher/student-responses', component: StudentResponsesComponent, canActivate: [AuthGuard] },
-  { path: 'teacher/mark-response/:responseId', component: MarkResponseComponent, canActivate: [AuthGuard] },
+  { path: 'teacher/eservices', redirectTo: '/teacher/dashboard', pathMatch: 'full' },
+  { path: 'teacher/student-responses', redirectTo: '/teacher/dashboard', pathMatch: 'full' },
+  { path: 'teacher/mark-response/:responseId', redirectTo: '/teacher/dashboard', pathMatch: 'full' },
   { path: 'admin/manage-account', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'user-management', component: UserManagementComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'admin/manage-accounts', component: ManageAccountsComponent, canActivate: [AuthGuard, AdminGuard] },
@@ -197,7 +190,7 @@ const routes: Routes = [
   { path: 'payroll/reports', component: PayrollReportsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'payroll' } },
   { path: 'payroll/loan-overview', component: LoanOverviewComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'payroll' } },
   { path: 'settings/payment-receipt-manager', redirectTo: 'system-settings', pathMatch: 'full' },
-  { path: 'admin/elearning', component: ElearningComponent, canActivate: [AuthGuard, AdminGuard] },
+  { path: 'admin/elearning', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: 'system/integrations', component: IntegrationsComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'admin/license-config', component: LicenseConfigComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'classes', component: ClassListComponent, canActivate: [AuthGuard] },
@@ -229,9 +222,9 @@ const routes: Routes = [
   { path: 'inventory', component: InventoryHubComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'inventory' } },
   { path: 'teacher/inventory-record', component: TeacherInventoryRecordComponent, canActivate: [AuthGuard] },
   { path: 'student/parent-portal', component: ParentPortalComponent, canActivate: [AuthGuard] },
-  { path: 'eweb', component: EwebComponent, canActivate: [AuthGuard] },
-  { path: 'student/esubmit', component: EsubmitComponent, canActivate: [AuthGuard] },
-  { path: 'student/blank_page/:taskId', component: BlankPageComponent, canActivate: [AuthGuard] },
+  { path: 'eweb', redirectTo: '/dashboard', pathMatch: 'full' },
+  { path: 'student/esubmit', redirectTo: '/dashboard', pathMatch: 'full' },
+  { path: 'student/blank_page/:taskId', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: 'user-manual', component: UserManualComponent, canActivate: [AuthGuard] },
   { path: 'user-log', component: UserLogComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'help', redirectTo: '/user-manual', pathMatch: 'full' },

@@ -33,6 +33,19 @@
 .cll-toast--error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
 .cll-toast__dismiss { background: none; border: none; font-size: 1.25rem; cursor: pointer; opacity: 0.6; }
 
+.cll-alert {
+  margin-bottom: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.cll-alert--error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
 .cll-hero {
   background: var(--cll-gradient);
   border-radius: 14px;

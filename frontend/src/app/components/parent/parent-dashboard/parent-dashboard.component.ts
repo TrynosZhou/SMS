@@ -323,7 +323,7 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
   openStudentPortal(student: any): void {
     if (!student?.id) return;
     this.authService.enterStudentPortal(student);
-    this.router.navigate(['/eweb']);
+    this.router.navigate(['/dashboard']);
   }
 
   openInvoiceStatement(student: any): void {

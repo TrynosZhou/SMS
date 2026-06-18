@@ -21,7 +21,7 @@ import {
   generateTransportStudentsReport,
   generateDiningHallStudentsReport
 } from '../controllers/student.controller';
-import { upload } from '../utils/upload';
+import { upload, optionalUploadSingle } from '../utils/upload';
 
 const router = Router();
 
@@ -51,7 +51,7 @@ router.put(
     UserRole.TEACHER,
     UserRole.DEMO_USER
   ),
-  upload.single('photo'),
+  optionalUploadSingle('photo'),
   updateStudent
 );
 router.delete(

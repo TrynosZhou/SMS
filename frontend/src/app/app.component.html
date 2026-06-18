@@ -117,7 +117,7 @@
           (change)="onViewAsRoleChange()"
           [disabled]="loadingViewAsRoles"
           aria-labelledby="view-as-role-label">
-          <option value="">My access</option>
+          <option value="">{{ getActualRoleLabel() }}</option>
           <option *ngFor="let role of viewAsRoles" [value]="role.id">{{ role.name }}</option>
         </select>
       </div>
@@ -200,6 +200,20 @@
 
 <!-- Collapsible Sidebar -->
 <aside class="sidebar" [class.collapsed]="sidebarCollapsed" [class.mobile-open]="mobileMenuOpen" *ngIf="isAuthenticated() && showAppSidebar()">
+  <!-- Mobile drawer header — only visible on tablet/mobile -->
+  <div class="sidebar-mobile-header">
+    <div class="sidebar-mobile-header__brand">
+      <img *ngIf="schoolLogo" [src]="schoolLogo" alt="School logo" class="sidebar-mobile-header__logo" />
+      <span *ngIf="!schoolLogo" class="sidebar-mobile-header__logo-fallback">🏫</span>
+      <span class="sidebar-mobile-header__name" *ngIf="schoolName">{{ schoolName }}</span>
+    </div>
+    <button class="sidebar-mobile-close" (click)="closeMobileMenu()" aria-label="Close menu">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+  </div>
   <div class="sidebar-content">
     <nav class="sidebar-nav">
       <!-- Student portal navigation -->
@@ -228,25 +242,6 @@
           <span class="sidebar-icon">📚</span>
           <span class="sidebar-text">My Books &amp; Fines</span>
         </a>
-
-        <!-- Student E-Learning menu -->
-        <div class="sidebar-menu">
-          <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('studentElearning')" (click)="toggleMenu('studentElearning')">
-            <span class="sidebar-icon">💻</span>
-            <span class="sidebar-text">E-Learning Services</span>
-            <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('studentElearning')">▼</span>
-          </div>
-          <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('studentElearning')">
-            <a routerLink="/eweb" routerLinkActive="active" class="sidebar-subitem">
-              <span class="sidebar-icon">📂</span>
-              <span class="sidebar-text">View Task/Assign</span>
-            </a>
-            <a routerLink="/student/esubmit" routerLinkActive="active" class="sidebar-subitem">
-              <span class="sidebar-icon">📤</span>
-              <span class="sidebar-text">Submit Task/Assign</span>
-            </a>
-          </div>
-        </div>
 
         <a routerLink="/student/parent-portal" routerLinkActive="active" class="sidebar-item">
           <span class="sidebar-icon">👨‍👩‍👧‍👦</span>
@@ -710,27 +705,19 @@
 
       <!-- Reports Management section removed per request -->
 
-      <!-- E-Learning (Teachers only, previously Record Keeping) -->
+      <!-- Record Keeping (Teachers only) -->
       <div
         class="sidebar-menu"
         *ngIf="sidebarMenuVisible(
-          ['E-Learning Manager', 'Create Task/Assign', 'Student Response', 'Record Book', 'My Classes'],
+          ['Record Keeping', 'Record Book', 'My Classes'],
           isTeacher() && canAccessRecordBookNav()
         )">
         <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('recordKeeping')" (click)="toggleMenu('recordKeeping')">
-          <span class="sidebar-icon">💻</span>
-          <span class="sidebar-text">E-Learning Manager</span>
+          <span class="sidebar-icon">📖</span>
+          <span class="sidebar-text">Record Keeping</span>
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('recordKeeping')">▼</span>
         </div>
         <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('recordKeeping')">
-          <a routerLink="/teacher/eservices" routerLinkActive="active" class="sidebar-subitem" (click)="ensureMenuExpanded('recordKeeping')">
-            <span class="sidebar-icon">🆕</span>
-            <span class="sidebar-text">Create Task/Assign</span>
-          </a>
-          <a routerLink="/teacher/student-responses" routerLinkActive="active" class="sidebar-subitem" (click)="ensureMenuExpanded('recordKeeping')">
-            <span class="sidebar-icon">📥</span>
-            <span class="sidebar-text">Student Response</span>
-          </a>
           <a routerLink="/teacher/record-book" routerLinkActive="active" class="sidebar-subitem" (click)="ensureMenuExpanded('recordKeeping')">
             <span class="sidebar-icon">📖</span>
             <span class="sidebar-text">Record Book</span>

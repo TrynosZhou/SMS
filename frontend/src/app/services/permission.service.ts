@@ -24,7 +24,6 @@ const ROUTE_TO_RBAC: Record<string, string> = {
   messages: 'messages',
   recordBook: 'recordBook',
   timetable: 'timetable',
-  elearning: 'elearning',
   audit: 'audit',
   accounts: 'accounts',
   reports: 'reports',

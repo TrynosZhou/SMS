@@ -106,7 +106,7 @@ recentStudents: any[] = [];
     { route: '/report-cards', label: 'Reports', icon: '📊', pastel: 'violet', module: 'reportCards' },
     { route: '/inventory', label: 'Inventory Manager', icon: '📦', pastel: 'emerald', module: 'inventory' },
     { route: '/timetable/view', label: 'View Timetable', icon: '📅', pastel: 'sky' },
-{ route: '/messages/incoming', label: 'Messages', icon: '💬', pastel: 'pink' },
+    { route: '/messages/incoming', label: 'Messages', icon: '💬', pastel: 'pink' },
     { route: '/settings', label: 'Settings', icon: '⚙️', pastel: 'slate', module: 'settings' },
     {
       route: '/settings/payment-receipt-manager',
@@ -114,8 +114,7 @@ recentStudents: any[] = [];
       icon: '🧾',
       pastel: 'slate',
       adminOnly: true
-    },
-    { route: '/admin/elearning', label: 'E-Learning', icon: '💻', pastel: 'violet', adminOnly: true }
+    }
   ];
 
   readonly accountantModuleShortcuts: DashboardModuleShortcut[] = [
@@ -216,7 +215,6 @@ id: 'inventory',
         { route: '/admin/manage-accounts', icon: '👤', title: 'Manage accounts', desc: 'Users, roles, and access', search: 'user account role login admin', accent: 'slate' },
         { route: '/admin/parents', icon: '👨‍👩‍👧', title: 'Parent management', desc: 'Guardian linking and outreach', search: 'parent guardian family portal', accent: 'slate' },
         { route: '/admin/class-promotion', icon: '⬆️', title: 'Class promotion', desc: 'Move cohorts to next level', search: 'promotion graduate advance year', accent: 'sky' },
-        { route: '/admin/elearning', icon: '💻', title: 'E-learning', desc: 'Digital content and services', search: 'elearning online learning lms', accent: 'sky' },
         { route: '/admin/license-config', icon: '🔑', title: 'License configuration', desc: 'Plans, features, and tier access', search: 'license tier gold bronze platinum feature', accent: 'amber' },
         { route: '/settings', icon: '⚙️', title: 'School settings', desc: 'Branding, fees, terms, modules', search: 'settings configuration logo fees term', accent: 'slate' },
         {

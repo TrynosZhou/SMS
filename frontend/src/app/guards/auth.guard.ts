@@ -73,8 +73,6 @@ export class AuthGuard implements CanActivate {
       const allowedPrefixes = [
         '/dashboard',
         '/student/',
-        '/eweb',
-        '/blank-page',
         '/account/change-password',
       ];
       const isAllowed = allowedPrefixes.some((prefix) => url === prefix || url.startsWith(prefix));

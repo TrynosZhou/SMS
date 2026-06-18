@@ -1,7 +1,7 @@
 import multer from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
-import { Request } from 'express';
+import { NextFunction, Request, Response } from 'express';
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, '../../uploads/students');
@@ -39,4 +39,15 @@ export const upload = multer({
     fileSize: 2 * 1024 * 1024 // 2MB limit
   }
 });
+
+/** Only run multer when the client sends multipart/form-data (avoids hanging JSON requests). */
+export function optionalUploadSingle(fieldName: string) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const contentType = String(req.headers['content-type'] || '');
+    if (contentType.includes('multipart/form-data')) {
+      return upload.single(fieldName)(req, res, next);
+    }
+    return next();
+  };
+}
 

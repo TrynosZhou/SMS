@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, finalize, takeUntil } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, finalize, takeUntil, timeout } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { StudentService } from '../../../services/student.service';
 import { ClassService } from '../../../services/class.service';
@@ -14,6 +14,14 @@ import html2canvas from 'html2canvas';
 type StudentViewMode = 'table' | 'cards';
 type GenderFilter = 'all' | 'male' | 'female';
 type TypeFilter = 'all' | 'day' | 'boarder';
+type StudentEditableField = 'dob' | 'gender' | 'studentType' | 'firstName' | 'lastName';
+type StudentFieldPayload = Partial<{
+  dateOfBirth: string;
+  gender: string;
+  studentType: string;
+  firstName: string;
+  lastName: string;
+}>;
 
 @Component({
   standalone: false,  selector: 'app-class-lists',
@@ -73,12 +81,13 @@ export class ClassListsComponent implements OnInit, OnDestroy {
   viewMode: StudentViewMode = 'table';
   lastLoadedAt: Date | null = null;
   editingStudentId: string | null = null;
-  editingField: 'dob' | 'gender' | 'studentType' | 'firstName' | 'lastName' | null = null;
+  editingField: StudentEditableField | null = null;
   tempValue: any = null;
   showEditModal = false;
-  editModalField: 'dob' | 'gender' | 'studentType' | 'firstName' | 'lastName' | null = null;
+  editModalField: StudentEditableField | null = null;
   editModalStudent: any | null = null;
   editModalValue: any = null;
+  editModalError = '';
   savingEdit = false;
   classTeacher1FullName: string = '';
   classTeacher2FullName: string = '';
@@ -1010,53 +1019,12 @@ next: (settings: any) => {
       this.cancelEdit();
       return;
     }
-    const payload: any = {};
-    if (activeField === 'dob') {
-      payload.dateOfBirth = this.tempValue || '';
-    } else if (activeField === 'gender') {
-      payload.gender = this.tempValue || '';
-    } else if (activeField === 'studentType') {
-      payload.studentType = this.tempValue || 'Day Scholar';
-    } else if (activeField === 'firstName') {
-      payload.firstName = String(this.tempValue || '').trim();
-    } else if (activeField === 'lastName') {
-      payload.lastName = String(this.tempValue || '').trim();
-    }
+    const payload = this.buildStudentFieldPayload(activeField, this.tempValue);
     this.error = '';
     this.success = '';
-    this.studentService.updateStudent(student.id, payload).subscribe({
-      next: (updated: any) => {
-        if (activeField === 'dob') {
-          student.dateOfBirth = payload.dateOfBirth ? new Date(payload.dateOfBirth) : null;
-        } else if (activeField === 'gender') {
-          student.gender = payload.gender;
-        } else if (activeField === 'studentType') {
-          student.studentType = payload.studentType;
-        } else if (activeField === 'firstName') {
-          student.firstName = payload.firstName;
-        } else if (activeField === 'lastName') {
-          student.lastName = payload.lastName;
-        }
-        if (activeField === 'gender' || activeField === 'firstName' || activeField === 'lastName') {
-          this.applySort();
-          this.buildGroupedByGender();
-        }
-        this.success = 'Saved successfully.';
-        this.cancelEdit();
-        setTimeout(() => {
-          if (this.success) this.success = '';
-        }, 4000);
-      },
-      error: (err: any) => {
-        let msg = 'Failed to save.';
-        if (err?.error?.message) msg = err.error.message;
-        else if (typeof err?.error === 'string') msg = err.error;
-        this.error = msg;
-        this.cancelEdit();
-        setTimeout(() => {
-          if (this.error) this.error = '';
-        }, 6000);
-      }
+    this.submitStudentFieldEdit(student, activeField, payload, {
+      onSuccess: () => this.cancelEdit(),
+      onError: () => this.cancelEdit()
     });
   }
 
@@ -1064,6 +1032,7 @@ next: (settings: any) => {
     if (!this.canEditField(field)) return;
     this.editModalStudent = student;
     this.editModalField = field;
+    this.editModalError = '';
     if (field === 'dob') {
       this.editModalValue = this.formatDateForInput(student.dateOfBirth || null);
     } else if (field === 'gender') {
@@ -1076,6 +1045,7 @@ next: (settings: any) => {
       this.editModalValue = student.lastName || '';
     }
     this.showEditModal = true;
+    this.cdr.detectChanges();
   }
 
   cancelEditModal() {
@@ -1083,70 +1053,145 @@ next: (settings: any) => {
     this.editModalField = null;
     this.editModalStudent = null;
     this.editModalValue = null;
+    this.editModalError = '';
     this.savingEdit = false;
+    this.cdr.detectChanges();
   }
 
   saveEditModal() {
-    if (!this.editModalStudent || !this.editModalField) {
-      this.cancelEditModal();
+    if (!this.editModalStudent || !this.editModalField || this.savingEdit) {
       return;
     }
     if (!this.canEditField(this.editModalField)) {
-      this.error = 'You do not have permission to edit this field.';
-      this.cancelEditModal();
+      this.editModalError = 'You do not have permission to edit this field.';
+      this.cdr.detectChanges();
       return;
     }
-    const payload: any = {};
-    if (this.editModalField === 'dob') {
-      payload.dateOfBirth = this.editModalValue || '';
-    } else if (this.editModalField === 'gender') {
-      payload.gender = this.editModalValue || '';
-    } else if (this.editModalField === 'studentType') {
-      payload.studentType = this.editModalValue || 'Day Scholar';
-    } else if (this.editModalField === 'firstName') {
-      payload.firstName = String(this.editModalValue || '').trim();
-    } else if (this.editModalField === 'lastName') {
-      payload.lastName = String(this.editModalValue || '').trim();
+    const field = this.editModalField;
+    const payload = this.buildStudentFieldPayload(field, this.editModalValue);
+    if (field === 'firstName' && !payload.firstName) {
+      this.editModalError = 'First name is required.';
+      this.cdr.detectChanges();
+      return;
     }
-    this.savingEdit = true;
+    if (field === 'lastName' && !payload.lastName) {
+      this.editModalError = 'Last name is required.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.editModalError = '';
     this.error = '';
     this.success = '';
-    this.studentService.updateStudent(this.editModalStudent.id, payload).subscribe({
-      next: () => {
-        if (this.editModalField === 'dob') {
-          this.editModalStudent.dateOfBirth = payload.dateOfBirth ? new Date(payload.dateOfBirth) : null;
-        } else if (this.editModalField === 'gender') {
-          this.editModalStudent.gender = payload.gender;
-        } else if (this.editModalField === 'studentType') {
-          this.editModalStudent.studentType = payload.studentType;
-        } else if (this.editModalField === 'firstName') {
-          this.editModalStudent.firstName = payload.firstName;
-        } else if (this.editModalField === 'lastName') {
-          this.editModalStudent.lastName = payload.lastName;
-        }
-        if (this.editModalField === 'gender' || this.editModalField === 'firstName' || this.editModalField === 'lastName') {
-          this.applySort();
-          this.buildGroupedByGender();
-        }
-        this.success = 'Saved successfully.';
-        this.savingEdit = false;
-        this.cancelEditModal();
-        setTimeout(() => {
-          if (this.success) this.success = '';
-        }, 4000);
-      },
-      error: (err: any) => {
-        let msg = 'Failed to save.';
-        if (err?.error?.message) msg = err.error.message;
-        else if (typeof err?.error === 'string') msg = err.error;
-        this.error = msg;
-        this.savingEdit = false;
-        this.cancelEditModal();
-        setTimeout(() => {
-          if (this.error) this.error = '';
-        }, 6000);
+    this.submitStudentFieldEdit(this.editModalStudent, field, payload, {
+      onSuccess: () => this.cancelEditModal(),
+      onError: () => {
+        /* keep modal open; error shown in editModalError */
       }
     });
+  }
+
+  private buildStudentFieldPayload(
+    field: StudentEditableField,
+    value: any
+  ): StudentFieldPayload {
+    const payload: StudentFieldPayload = {};
+    if (field === 'dob') {
+      payload.dateOfBirth = value || '';
+    } else if (field === 'gender') {
+      payload.gender = value || '';
+    } else if (field === 'studentType') {
+      payload.studentType = value || 'Day Scholar';
+    } else if (field === 'firstName') {
+      payload.firstName = String(value || '').trim();
+    } else if (field === 'lastName') {
+      payload.lastName = String(value || '').trim();
+    }
+    return payload;
+  }
+
+  private applyStudentFieldUpdate(
+    student: any,
+    field: StudentEditableField,
+    payload: StudentFieldPayload
+  ): void {
+    if (field === 'dob') {
+      student.dateOfBirth = payload.dateOfBirth ? new Date(payload.dateOfBirth) : null;
+    } else if (field === 'gender') {
+      student.gender = payload.gender;
+    } else if (field === 'studentType') {
+      student.studentType = payload.studentType;
+    } else if (field === 'firstName') {
+      student.firstName = payload.firstName;
+    } else if (field === 'lastName') {
+      student.lastName = payload.lastName;
+    }
+    if (field === 'gender' || field === 'firstName' || field === 'lastName') {
+      this.applySort();
+      this.buildGroupedByGender();
+    }
+  }
+
+  private submitStudentFieldEdit(
+    student: any,
+    field: StudentEditableField,
+    payload: StudentFieldPayload,
+    hooks: { onSuccess: () => void; onError: () => void }
+  ): void {
+    if (!student?.id) {
+      this.editModalError = 'Student record is missing. Refresh the page and try again.';
+      this.error = this.editModalError;
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.savingEdit = true;
+    this.cdr.detectChanges();
+
+    this.studentService
+      .updateStudent(student.id, payload)
+      .pipe(
+        timeout(60000),
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.savingEdit = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.applyStudentFieldUpdate(student, field, payload);
+          this.success = 'Saved successfully.';
+          hooks.onSuccess();
+          setTimeout(() => {
+            if (this.success) {
+              this.success = '';
+              this.cdr.detectChanges();
+            }
+          }, 4000);
+        },
+        error: (err: any) => {
+          let msg = 'Failed to save.';
+          if (err?.name === 'TimeoutError') {
+            msg = 'Request timed out. Check that the backend is running and try again.';
+          } else if (err?.error?.message) {
+            msg = err.error.message;
+          } else if (typeof err?.error === 'string') {
+            msg = err.error;
+          } else if (err?.message) {
+            msg = err.message;
+          }
+          this.editModalError = msg;
+          this.error = msg;
+          hooks.onError();
+          setTimeout(() => {
+            if (this.error) {
+              this.error = '';
+              this.cdr.detectChanges();
+            }
+          }, 6000);
+        }
+      });
   }
 
   viewStudentIdCard(studentId: string) {

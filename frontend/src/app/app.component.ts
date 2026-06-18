@@ -19,7 +19,6 @@ import { RbacService, RbacRole } from './services/rbac.service';
 /** When the current URL matches a prefix, keep that sidebar section expanded (fixes “click twice” on submenus). */
 const SIDEBAR_MENU_ROUTE_PREFIXES: Record<string, string[]> = {
   dashboard: ['/dashboard', '/teacher/dashboard', '/parent/dashboard'],
-  studentElearning: ['/eweb', '/student/esubmit', '/blank-page'],
   registration: ['/teachers', '/students', '/admin/parents'],
   classManagement: ['/students/enroll', '/students/transfer', '/classes', '/admin/class-promotion'],
   attendance: ['/attendance'],
@@ -29,7 +28,7 @@ const SIDEBAR_MENU_ROUTE_PREFIXES: Record<string, string[]> = {
   payrollManagement: ['/payroll'],
   messages: ['/messages'],
   newsManagement: ['/news', '/news-feed'],
-  recordKeeping: ['/teacher/eservices', '/teacher/student-responses', '/teacher/record-book', '/teacher/my-classes'],
+  recordKeeping: ['/teacher/record-book', '/teacher/my-classes'],
   teacherInventory: ['/teacher/inventory-record'],
   timetableManagement: ['/subjects/assign', '/timetable'],
   systemAdministration: ['/system-settings', '/admin/manage-accounts', '/user-log', '/admin/license-config', '/system/integrations'],
@@ -248,6 +247,23 @@ export class AppComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** Human-readable label for the signed-in user's real role (default “View as role” option). */
+  getActualRoleLabel(): string {
+    const r = this.authService.getActualRole();
+    if (!r) return 'User';
+    if (r === 'superadmin') return 'Super Administrator';
+    if (r === 'director') return 'Director';
+    if (r === 'headmaster') return 'Headmaster';
+    if (r === 'deputy_headmaster') return 'Deputy Headmaster';
+    if (r === 'admin') return 'Administrator';
+    if (r === 'accountant') return 'Accountant';
+    if (r === 'teacher') return 'Teacher';
+    if (r === 'parent') return 'Parent';
+    if (r === 'student') return 'Student';
+    if (r === 'demo_user') return 'Demo User';
+    return r;
+  }
+
   onViewAsRoleChange(): void {
     if (!this.canShowViewAsRole()) {
       return;
@@ -379,7 +395,7 @@ export class AppComponent implements OnInit, OnDestroy {
     }
     if (this.mobileMenuOpen) {
       this.closeMobileMenu();
-    } else if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches) {
+    } else if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 992px)').matches) {
       this.mobileMenuOpen = true;
     }
     setTimeout(() => {
@@ -1157,12 +1173,12 @@ export class AppComponent implements OnInit, OnDestroy {
 
   exitParentPortal(): void {
     this.authService.exitParentPortal();
-    this.router.navigate(['/eweb']).catch(() => {});
+    this.router.navigate(['/dashboard']).catch(() => {});
   }
 
   toggleSidebar(): void {
-    // On mobile, use the sidebar toggle button as a drawer open/close control
-    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+    // On tablet/mobile, use the sidebar toggle button as a drawer open/close control
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 992px)').matches) {
       this.toggleMobileMenu();
       return;
     }

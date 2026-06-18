@@ -905,16 +905,89 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 997;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 999;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s;
+  transition: opacity 0.3s ease;
+  backdrop-filter: blur(2px);
 }
 
 .mobile-sidebar-overlay.show {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* ========================================
+   SIDEBAR MOBILE DRAWER HEADER
+   ======================================== */
+
+.sidebar-mobile-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.sidebar-mobile-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.sidebar-mobile-header__logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  object-fit: contain;
+  background: #fff;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.sidebar-mobile-header__logo-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.sidebar-mobile-header__name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-mobile-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.sidebar-mobile-close:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .mobile-sidebar-content {
@@ -1021,33 +1094,59 @@
    RESPONSIVE BREAKPOINTS
    ======================================== */
 
-/* Tablet */
+/* Tablet & Mobile — sidebar becomes a slide-in drawer */
 @media (max-width: 992px) {
   .sidebar {
+    top: 0;
+    width: 280px;
+    max-width: 88vw;
     transform: translateX(-100%);
+    z-index: 1000;
+    box-shadow: none;
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .sidebar.mobile-open {
     transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Show mobile header inside the drawer */
+  .sidebar-mobile-header {
+    display: flex;
+  }
+
+  /* Stack layout: header + scrollable nav */
+  .sidebar-content {
+    height: calc(100% - 60px);
   }
 
   .main-content {
-    margin-left: 0;
+    margin-left: 0 !important;
     padding: 1.25rem;
   }
 
-  .sidebar ~ .main-content.sidebar-open {
+  .sidebar ~ .main-content,
+  .sidebar.collapsed ~ .main-content {
     margin-left: 0;
   }
 
-  .sidebar.collapsed ~ .main-content {
-    margin-left: 0;
+  /* Larger tap targets on tablet */
+  .sidebar-item,
+  .sidebar-menu-header {
+    min-height: 48px;
+    padding: 0.75rem 1rem;
+  }
+
+  .sidebar-subitem {
+    min-height: 44px;
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
   }
 }
 
 /* Mobile */
 @media (max-width: 768px) {
-
   .top-navbar-content {
     padding: 0 0.75rem;
     min-height: 56px;
@@ -1056,7 +1155,7 @@
 
   .top-navbar-school-name {
     font-size: 0.95rem;
-    max-width: 140px;
+    max-width: 130px;
   }
 
   .top-navbar-user-name {
@@ -1078,25 +1177,13 @@
   }
 
   .sidebar {
-    display: block;
-    top: 56px;
-    transform: translateX(-100%);
-    width: 280px;
-    max-width: 85vw;
-    z-index: 1000;
-  }
-
-  .sidebar.mobile-open {
-    transform: translateX(0);
+    width: 82vw;
+    max-width: 300px;
   }
 
   .main-content {
     margin-left: 0;
     padding: 1rem;
-  }
-
-  .sidebar ~ .main-content.sidebar-open {
-    margin-left: 0;
   }
 
   .mobile-menu-toggle {
@@ -1118,6 +1205,26 @@
   .demo-icon {
     font-size: 1.25rem;
   }
+
+  /* Larger tap targets on mobile */
+  .sidebar-item,
+  .sidebar-menu-header {
+    min-height: 50px;
+    font-size: 0.95rem;
+  }
+
+  .sidebar-subitem {
+    min-height: 46px;
+    font-size: 0.9rem;
+    padding-left: 1rem;
+    padding-top: 0.7rem;
+    padding-bottom: 0.7rem;
+  }
+
+  .sidebar-icon {
+    font-size: 1.3rem;
+    width: 26px;
+  }
 }
 
 /* Small Mobile */
@@ -1135,13 +1242,18 @@
   }
 
   .top-nav-view-as-select {
-    min-width: 100px;
-    max-width: 110px;
+    min-width: 96px;
+    max-width: 108px;
     font-size: 0.75rem;
   }
 
   .main-content {
     padding: 0.75rem;
+  }
+
+  .sidebar {
+    width: 88vw;
+    max-width: 280px;
   }
 
   .mobile-sidebar-content {

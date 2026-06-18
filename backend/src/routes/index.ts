@@ -10,7 +10,6 @@ import settingsRoutes from './settings.routes';
 import parentRoutes from './parent.routes';
 import accountRoutes from './account.routes';
 import messageRoutes from './message.routes';
-import elearningRoutes from './elearning.routes';
 import attendanceRoutes from './attendance.routes';
 import auditRoutes from './audit.routes';
 import promotionRuleRoutes from './promotion-rule.routes';
@@ -46,9 +45,8 @@ router.use('/payroll', payrollRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/admin', licenseAdminRoutes);
 router.use('/license', licenseRoutes);
-router.use('/rbac', rbacRoutes);
 
-router.use('/elearning', elearningRoutes);
+router.use('/rbac', rbacRoutes);
 
 
 

@@ -104,7 +104,7 @@ export class StudentPortalComponent implements OnInit, OnDestroy {
   openStudentDashboard(student: any): void {
     if (!student?.id) return;
     this.authService.enterStudentPortal(student);
-    this.router.navigate(['/eweb']);
+    this.router.navigate(['/dashboard']);
   }
 
   linkStudents(): void {

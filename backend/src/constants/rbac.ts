@@ -45,7 +45,6 @@ export const RBAC_MODULES: RbacModuleDef[] = [
   { key: 'rankings', label: 'Rankings', routeModule: 'rankings', group: 'academic' },
   { key: 'classes', label: 'Classes', routeModule: 'classes', group: 'academic' },
   { key: 'subjects', label: 'Subjects', routeModule: 'subjects', group: 'academic' },
-  { key: 'elearning', label: 'E-Learning', routeModule: 'elearning', group: 'academic' },
   { key: 'recordBook', label: 'Record Book', routeModule: 'recordBook', group: 'academic' },
   { key: 'finance', label: 'Finance / Fees', routeModule: 'finance', group: 'financeOps' },
   { key: 'payroll', label: 'Payroll', routeModule: 'payroll', group: 'financeOps' },

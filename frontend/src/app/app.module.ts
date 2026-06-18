@@ -97,13 +97,6 @@ import { PayrollProcessComponent } from './components/payroll/payroll-process/pa
 import { PayrollEntriesComponent } from './components/payroll/payroll-entries/payroll-entries.component';
 import { PayrollReportsComponent } from './components/payroll/payroll-reports/payroll-reports.component';
 import { LoanOverviewComponent } from './components/payroll/loan-overview/loan-overview.component';
-import { ElearningComponent } from './components/admin/elearning/elearning.component';
-import { EservicesComponent } from './components/teacher/eservices/eservices.component';
-import { StudentResponsesComponent } from './components/teacher/student-responses/student-responses.component';
-import { MarkResponseComponent } from './components/teacher/mark-response/mark-response.component';
-import { EwebComponent } from './components/student/eweb/eweb.component';
-import { EsubmitComponent } from './components/student/esubmit/esubmit.component';
-import { BlankPageComponent } from './components/student/blank-page/blank-page.component';
 import { StudentPortalComponent } from './components/parent/student-portal/student-portal.component';
 import { ParentPortalComponent } from './components/student/parent-portal/parent-portal.component';
 import { DocEditorComponent } from './components/shared/doc-editor/doc-editor.component';
@@ -206,13 +199,6 @@ SendMessageComponent,
     PayrollEntriesComponent,
     PayrollReportsComponent,
     LoanOverviewComponent,
-    ElearningComponent,
-    EservicesComponent,
-    StudentResponsesComponent,
-    MarkResponseComponent,
-    EwebComponent,
-    EsubmitComponent,
-    BlankPageComponent,
     StudentPortalComponent,
     ParentPortalComponent,
     DocEditorComponent,

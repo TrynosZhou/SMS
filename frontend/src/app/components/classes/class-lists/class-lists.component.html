@@ -142,103 +142,9 @@
   </section>
 
   <section class="cll-panel" *ngIf="filteredStudents.length > 0 && !loadingStudents">
-    <div class="cll-roster-head">
-      <div>
-        <h2 class="cll-panel__title">{{ getSelectedClassName() }} — {{ selectedTerm }}</h2>
-        <div class="cll-teachers">
-          <span>Home class teacher:
-            <a *ngIf="canEditClassTeacher()" href="javascript:void(0)" class="cll-teacher-link" (click)="openClassTeacherModal(1); $event.preventDefault()">
-              {{ classTeacher1FullName || 'Not assigned' }}
-            </a>
-            <span *ngIf="!canEditClassTeacher()">{{ classTeacher1FullName || 'Not assigned' }}</span>
-          </span>
-          <span class="cll-teachers-sep">|</span>
-          <span>Class teacher:
-            <a *ngIf="canEditClassTeacher()" href="javascript:void(0)" class="cll-teacher-link" (click)="openClassTeacherModal(2); $event.preventDefault()">
-              {{ classTeacher2FullName || 'Not assigned' }}
-            </a>
-            <span *ngIf="!canEditClassTeacher()">{{ classTeacher2FullName || 'Not assigned' }}</span>
-          </span>
-        </div>
-      </div>
-    </div>
-
-    <div class="cll-panel__head-row">
-      <div>
-        <h3 class="cll-subtitle">Filters & search</h3>
-        <p class="cll-panel__intro">Find students by name or ID. Filter by gender or boarding type.</p>
-      </div>
-      <button type="button" class="cll-btn-clear" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
-    </div>
-
-    <div class="cll-filters-row">
-      <div class="cll-search-wrap">
-        <span class="cll-search-icon" aria-hidden="true">🔍</span>
-        <input
-          #cllSearch
-          type="search"
-          class="cll-search-input"
-          placeholder="Search name or student ID…"
-          [disabled]="loadingStudents"
-          (input)="onStudentSearchInput(cllSearch.value)" />
-        <button type="button" class="cll-search-clear" *ngIf="studentSearchQuery" (click)="cllSearch.value = ''; clearStudentSearch()">Clear</button>
-      </div>
-      <div class="cll-field">
-        <label for="cll-sort">Sort</label>
-        <select id="cll-sort" class="cll-select" [ngModel]="sortBy" (ngModelChange)="onSortByChange($event)" [ngModelOptions]="{standalone: true}">
-          <option value="lastName">Last name</option>
-          <option value="firstName">First name</option>
-          <option value="studentNumber">Student ID</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="cll-chips">
-      <button
-        type="button"
-        class="cll-chip"
-        *ngFor="let chip of genderChips"
-        [class.cll-chip--active]="genderFilter === chip.id"
-        [class.cll-chip--rose]="chip.id === 'female'"
-        [class.cll-chip--mint]="chip.id === 'male'"
-        (click)="onGenderFilterChange(chip.id)">
-        {{ chip.label }}<span class="cll-chip__count">({{ chip.count }})</span>
-      </button>
-    </div>
-
-    <div class="cll-chips">
-      <button
-        type="button"
-        class="cll-chip"
-        *ngFor="let chip of typeChips"
-        [class.cll-chip--active]="typeFilter === chip.id"
-        [class.cll-chip--amber]="chip.id === 'day'"
-        (click)="onTypeFilterChange(chip.id)">
-        {{ chip.label }}<span class="cll-chip__count">({{ chip.count }})</span>
-      </button>
-    </div>
-
-    <div class="cll-summary" *ngIf="filterSummary">
-      <span class="cll-summary-pill">{{ filterSummary }}</span>
-    </div>
-
     <div class="cll-data-panel">
-      <div class="cll-table-scroll hide-print-ui" *ngIf="viewMode === 'table'">
+        <div class="cll-table-scroll hide-print-ui" *ngIf="viewMode === 'table'">
         <div class="table-container" id="class-list-pdf">
-          <div class="school-header" *ngIf="schoolName || schoolLogo">
-            <div class="school-logo-box" *ngIf="schoolLogo">
-              <img [src]="schoolLogo" alt="School Logo" class="school-logo" />
-            </div>
-            <div class="school-info">
-              <h3 *ngIf="schoolName">{{ schoolName }}</h3>
-              <p *ngIf="schoolMotto" class="motto">{{ schoolMotto }}</p>
-              <p *ngIf="schoolAddress" class="address">{{ schoolAddress }}</p>
-              <p *ngIf="schoolPhone || schoolEmail" class="contact">
-                {{ schoolPhone }} {{ schoolPhone && schoolEmail ? '•' : '' }} {{ schoolEmail }}
-              </p>
-            </div>
-          </div>
-
           <div class="meta-bar">
             <div class="meta-item">
               <span class="meta-label">Class:</span>
@@ -430,6 +336,7 @@
       </div>
 
       <div class="cll-modal__body">
+        <div class="cll-alert cll-alert--error" *ngIf="editModalError">{{ editModalError }}</div>
         <div class="cll-current" *ngIf="editModalStudent">
           <span class="cll-current__label">Current:</span>
           <span *ngIf="editModalField === 'dob'">{{ editModalStudent.dateOfBirth ? (editModalStudent.dateOfBirth | date : 'dd MMM yyyy') : 'Not set' }}</span>
