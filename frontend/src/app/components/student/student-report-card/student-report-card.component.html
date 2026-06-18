@@ -53,13 +53,17 @@
         <span class="src-chip-value">{{ className || student?.class?.name || '—' }}</span>
       </div>
 
-      <!-- Term (read-only from settings) -->
-      <div class="src-info-chip src-chip-accent">
-        <span class="src-chip-label">Active Term</span>
-        <span class="src-chip-value" *ngIf="!loadingTerms">
-          {{ activeTerm || 'Not configured' }}
-        </span>
+      <!-- Term selector -->
+      <div class="src-info-chip src-chip-accent src-chip-select">
+        <span class="src-chip-label">Academic Term</span>
         <span class="src-chip-value" *ngIf="loadingTerms">Loading…</span>
+        <div class="src-chip-select-wrap" *ngIf="!loadingTerms">
+          <select class="src-chip-select"
+                  [(ngModel)]="selectedTerm"
+                  (ngModelChange)="onTermChange()">
+            <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
+          </select>
+        </div>
       </div>
 
     </div>

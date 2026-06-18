@@ -164,14 +164,14 @@ export const getAccountInfo = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || undefined;
+    let fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
     const payload: Record<string, unknown> = {
       id: user.id,
       email: user.email,
       username: user.username,
       role: user.role,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      firstName: (user.firstName || '').trim() || null,
+      lastName: (user.lastName || '').trim() || null,
       fullName: fullName || undefined,
       mustChangePassword: user.mustChangePassword,
       isTemporaryAccount: user.isTemporaryAccount,
@@ -185,18 +185,41 @@ export const getAccountInfo = async (req: AuthRequest, res: Response) => {
         relations: ['teacher'],
       });
       payload.teacher = withTeacher?.teacher ?? null;
+      if (!fullName && withTeacher?.teacher) {
+        const t = withTeacher.teacher;
+        const derived = ([t.lastName, t.firstName].filter(Boolean).join(' ') || '').trim();
+        if (derived) { payload.fullName = derived; fullName = derived; }
+      }
     } else if (user.role === UserRole.PARENT) {
       const withParent = await userRepository.findOne({
         where: { id: userId },
         relations: ['parent'],
       });
       payload.parent = withParent?.parent ?? null;
+      if (!fullName && withParent?.parent) {
+        const p = withParent.parent;
+        const derived = [p.firstName, p.lastName].filter(Boolean).join(' ').trim();
+        if (derived) { payload.fullName = derived; fullName = derived; }
+      }
     } else if (user.role === UserRole.STUDENT) {
       const withStudent = await userRepository.findOne({
         where: { id: userId },
         relations: ['student'],
       });
       payload.student = withStudent?.student ?? null;
+      if (!fullName && withStudent?.student) {
+        const s = withStudent.student;
+        const derived = [s.firstName, s.lastName].filter(Boolean).join(' ').trim();
+        if (derived) { payload.fullName = derived; fullName = derived; }
+      }
+    }
+
+    // Last resort: strip @domain from username/email so the UI never shows a raw email
+    if (!payload.fullName) {
+      const raw = (user.username || user.email || '').trim();
+      if (raw) {
+        payload.fullName = raw.includes('@') ? raw.split('@')[0] : raw;
+      }
     }
 
     res.json(payload);

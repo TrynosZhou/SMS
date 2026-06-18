@@ -13,6 +13,10 @@ export interface User {
   role: string;
   /** Full name from database (teacher/student/parent); set by login for dashboard display */
   fullName?: string;
+  /** First name on the User account itself (admin, accountant, etc.) */
+  firstName?: string | null;
+  /** Last name on the User account itself (admin, accountant, etc.) */
+  lastName?: string | null;
   /** Optional honorific for dashboard greeting (e.g. Mr, Mrs); director defaults to Mr in UI */
   namePrefix?: string;
   mustChangePassword?: boolean;

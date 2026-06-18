@@ -704,6 +704,9 @@ export const login = async (req: Request, res: Response) => {
         isUniversalTeacher: user.isUniversalTeacher === true,
         permissions,
         rbacRoles: rbacRoleNames,
+        // Always include user-level firstName/lastName so the frontend can build a display name
+        firstName: (user.firstName || '').trim() || null,
+        lastName: (user.lastName || '').trim() || null,
       }
     };
 
@@ -745,9 +748,24 @@ export const login = async (req: Request, res: Response) => {
       }
     }
 
-    // For admin/accountant/superadmin (or any user without fullName yet): use User.firstName/lastName if set
-    if (!response.user.fullName && (user.firstName || user.lastName)) {
-      response.user.fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+    // Final fallback: use User-level firstName/lastName (admin, accountant, director, headmaster, etc.)
+    if (!response.user.fullName) {
+      const fn = (user.firstName || '').trim();
+      const ln = (user.lastName || '').trim();
+      if (fn || ln) {
+        response.user.fullName = [fn, ln].filter(Boolean).join(' ');
+      }
+    }
+
+    // Last resort: derive a readable display name from the username/email so the navbar
+    // never shows a raw email address even when no profile name data exists
+    if (!response.user.fullName) {
+      const raw = (user.username || user.email || '').trim();
+      if (raw.includes('@')) {
+        response.user.fullName = raw.split('@')[0];
+      } else if (raw) {
+        response.user.fullName = raw;
+      }
     }
 
     // Start a user session log

@@ -215,6 +215,13 @@ error = '';
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe((params) => {
       if (params['studentId'] && this.isParent) {
         this.parentStudentId = params['studentId'];
+        // Pre-apply term and exam type chosen in the parent dashboard picker
+        if (params['term']) {
+          this.selectedTerm = params['term'];
+        }
+        if (params['examType']) {
+          this.selectedExamType = params['examType'];
+        }
         this.checkStudentBalance();
       }
     });
@@ -245,6 +252,17 @@ this.loadCustomPhrases();
     const params = this.route.snapshot.queryParams;
     if (params['studentId'] && this.isParent) {
       this.parentStudentId = params['studentId'];
+      // Pre-select term and exam type from the picker if provided
+      if (params['term']) {
+        this.selectedTerm = params['term'];
+        // Ensure the term exists in the availableTerms list
+        if (!this.availableTerms.includes(params['term'])) {
+          this.availableTerms.unshift(params['term']);
+        }
+      }
+      if (params['examType']) {
+        this.selectedExamType = params['examType'];
+      }
       this.checkStudentBalance();
       return;
     }
@@ -476,7 +494,10 @@ const currentYear = new Date().getFullYear();
             if (!this.availableTerms.includes(activeTerm)) {
               this.availableTerms.unshift(activeTerm);
             }
-            this.selectedTerm = activeTerm;
+            // Only auto-apply active term if no term was pre-selected (e.g. from query params)
+            if (!this.selectedTerm) {
+              this.selectedTerm = activeTerm;
+            }
           } else if (!this.selectedTerm && this.availableTerms.length > 0) {
             this.selectedTerm = this.availableTerms[0];
           }
@@ -575,21 +596,24 @@ const currentYear = new Date().getFullYear();
 
     this.loading = true;
     this.error = '';
+    this.accessDenied = false;
     this.cdr.markForCheck();
-// Get parent's students to find balance
-    this.parentService.getLinkedStudents(this.selectedTerm).subscribe({
+
+    // Pass the pre-selected term so the balance check is for the correct term
+    const termForBalance = this.selectedTerm || '';
+    this.parentService.getLinkedStudents(termForBalance).subscribe({
       next: (response: any) => {
         const student = (response.students || []).find((s: any) => s.id === this.parentStudentId);
-        
+
         if (!student) {
           this.loading = false;
           this.error = 'Student not found or not linked to your account';
           this.accessDenied = true;
           this.cdr.markForCheck();
-return;
+          return;
         }
 
-        // Report card access is based on fees (tuition) balance only. Uniform item balance does not affect access.
+        // Report card access is based on fees (tuition) balance only.
         const termBalance = parseFloat(String(student.termBalance || 0));
         this.studentBalance = termBalance;
 
@@ -598,31 +622,47 @@ return;
           this.accessDenied = true;
           this.error = `Report card access is restricted. Please clear the outstanding fees (tuition) balance of ${this.currencySymbol} ${termBalance.toFixed(2)} to view the report card.`;
           this.cdr.markForCheck();
-return;
+          return;
         }
 
-        // Balance is OK, load student's class and generate report card
-        // Check both 'class' and 'classEntity' properties (backend may use either)
+        // Balance cleared — resolve the student's class
         const studentClass = student.class || student.classEntity;
-        if (studentClass?.id) {
-          this.selectedClass = studentClass.id;
-          this.parentStudentClassName = studentClass.name || '';
-          // Load available exam types and let parent select
-          this.loadClasses();
-          // Check if we can auto-generate after class is set (for parents)
-          setTimeout(() => this.checkAndAutoGenerate(), 500);
-        } else {
-          this.error = 'Student class information not available';
+        if (!studentClass?.id) {
           this.loading = false;
+          this.error = 'Student class information not available';
+          this.cdr.markForCheck();
+          return;
         }
+
+        this.selectedClass = studentClass.id;
+        this.parentStudentClassName = studentClass.name || '';
+
+        // ── KEY FIX: clear loading before triggering generation ──────────
+        // If term + examType were pre-selected from the picker, generate directly.
+        // This avoids checkAndAutoGenerate() being blocked by loading === true.
+        this.loading = false;
         this.cdr.markForCheck();
-},
+
+        if (this.selectedTerm && this.selectedExamType) {
+          // All three parameters are ready — generate immediately
+          setTimeout(() => {
+            if (!this.autoGenerationInProgress) {
+              this.autoGenerationInProgress = true;
+              this.generateReportCards();
+            }
+          }, 200);
+        } else {
+          // Term/examType not yet set — load classes so user can pick them
+          this.loadClasses();
+          setTimeout(() => this.checkAndAutoGenerate(), 500);
+        }
+      },
       error: (err: any) => {
         this.loading = false;
         this.error = err.error?.message || 'Failed to check student balance';
         this.accessDenied = true;
         this.cdr.markForCheck();
-}
+      }
     });
   }
 
@@ -1668,23 +1708,22 @@ if (err.status === 0) {
       clearTimeout(this.autoGenerationTimeout);
       this.autoGenerationTimeout = null;
     }
-    
-    // Don't auto-generate if:
-    // - Already generating
-    // - Auto-generation is in progress
-    // - Still loading terms
-    // - Selection is not valid
-    if (this.loading || this.autoGenerationInProgress || this.loadingTerms || !this.isSelectionValid()) {
+
+    if (this.loading || this.autoGenerationInProgress || !this.isSelectionValid()) {
       return;
     }
-    
-    // Small delay to prevent multiple triggers within the same change event cycle
+
+    // For parents/students with pre-selected params, skip the loadingTerms guard
+    // (the term was already chosen in the picker; we don't need loadTermOptions to finish)
+    const skipTermsGuard = this.isParent && !!this.parentStudentId && !!this.selectedTerm && !!this.selectedExamType;
+    if (!skipTermsGuard && this.loadingTerms) {
+      return;
+    }
+
     this.autoGenerationTimeout = setTimeout(() => {
-      if (this.isSelectionValid() && !this.loading && !this.autoGenerationInProgress && !this.loadingTerms) {
-        console.log('All criteria selected - auto-generating report cards...');
+      if (this.isSelectionValid() && !this.loading && !this.autoGenerationInProgress) {
         this.autoGenerationInProgress = true;
         this.generateReportCards();
-        // Reset flag after generation completes (handled in generateReportCards)
       }
     }, 300);
   }

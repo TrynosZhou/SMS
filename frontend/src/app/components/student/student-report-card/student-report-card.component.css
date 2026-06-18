@@ -189,6 +189,36 @@
   text-overflow: ellipsis;
 }
 
+.src-chip-select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.src-chip-select {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e3a8a;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 0;
+  max-width: 160px;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 18px;
+}
+
+.src-chip-select-wrap::after {
+  content: '▾';
+  position: absolute;
+  right: 0;
+  pointer-events: none;
+  font-size: 10px;
+  color: #1e3a8a;
+}
+
 /* Exam-type field */
 .src-exam-selector { display: flex; flex-direction: column; gap: 12px; }
 

@@ -11,6 +11,15 @@ import { MessageService } from '../../../services/message.service';
 import { News } from '../../../types/news';
 import { environment } from '../../../../environments/environment';
 
+export interface ReportPickerState {
+  open: boolean;
+  student: any;
+  selectedTerm: string;
+  selectedExamType: string;
+  availableTerms: string[];
+  loadingTerms: boolean;
+}
+
 @Component({
   standalone: false,  selector: 'app-parent-dashboard',
 templateUrl: './parent-dashboard.component.html',
@@ -35,6 +44,21 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
   recentMessages: any[] = [];
   unreadMessageCount = 0;
   lastRefreshedAt: Date | null = null;
+
+  /** Report card term/type picker modal state */
+  reportPicker: ReportPickerState = {
+    open: false,
+    student: null,
+    selectedTerm: '',
+    selectedExamType: 'end_term',
+    availableTerms: [],
+    loadingTerms: false,
+  };
+
+  readonly examTypes = [
+    { value: 'mid_term', label: 'Mid-Term Examination' },
+    { value: 'end_term', label: 'End of Term Examination' },
+  ];
 
   readonly quickLinks = [
     { route: '/parent/inbox', icon: '📧', label: 'Inbox', pastel: 'sky' },
@@ -369,16 +393,72 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
   viewReportCard(student: any) {
     // Only fees (tuition) balance affects report card access; uniform balance does not.
     const termBalance = parseFloat(String(student.termBalance || 0));
-    
+
     if (termBalance > 0) {
       this.error = `Report card access is restricted. Please clear the outstanding fees (tuition) balance of ${this.currencySymbol} ${termBalance.toFixed(2)} to view the report card.`;
       setTimeout(() => this.error = '', 8000);
       return;
     }
 
-    // Navigate to report card page with student ID
+    // Open term/exam-type picker instead of navigating straight away
+    this.openReportPicker(student);
+  }
+
+  openReportPicker(student: any) {
+    const currentYear = new Date().getFullYear();
+    const nextYear = currentYear + 1;
+    const defaultTerms = [
+      `Term 1 ${currentYear}`,
+      `Term 2 ${currentYear}`,
+      `Term 3 ${currentYear}`,
+      `Term 1 ${nextYear}`,
+      `Term 2 ${nextYear}`,
+      `Term 3 ${nextYear}`,
+    ];
+
+    this.reportPicker = {
+      open: true,
+      student,
+      selectedTerm: '',
+      selectedExamType: 'end_term',
+      availableTerms: defaultTerms,
+      loadingTerms: true,
+    };
+    this.cdr.markForCheck();
+
+    // Load active term from settings
+    this.settingsService.getActiveTerm().pipe(
+      takeUntil(this.destroy$),
+      catchError(() => of(null))
+    ).subscribe(data => {
+      const active = data?.activeTerm || data?.currentTerm || '';
+      const terms = [...defaultTerms];
+      if (active && !terms.includes(active)) {
+        terms.unshift(active);
+      }
+      this.reportPicker.availableTerms = terms;
+      this.reportPicker.selectedTerm = active || terms[0] || '';
+      this.reportPicker.loadingTerms = false;
+      this.cdr.markForCheck();
+    });
+  }
+
+  closeReportPicker() {
+    this.reportPicker.open = false;
+    this.cdr.markForCheck();
+  }
+
+  navigateToReportCard() {
+    const { student, selectedTerm, selectedExamType } = this.reportPicker;
+    if (!student?.id || !selectedTerm || !selectedExamType) return;
+
+    this.closeReportPicker();
     this.router.navigate(['/report-cards'], {
-      queryParams: { studentId: student.id }
+      queryParams: {
+        studentId: student.id,
+        term: selectedTerm,
+        examType: selectedExamType,
+      }
     });
   }
 
@@ -472,6 +552,12 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
     if (firstStudent) {
       this.viewReportCard(firstStudent);
     }
+  }
+
+  formatExamTypeLabel(value: string): string {
+    if (value === 'mid_term') return 'Mid-Term';
+    if (value === 'end_term') return 'End of Term';
+    return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
 
   private fetchLatestInvoicePdf(action: 'preview' | 'download') {

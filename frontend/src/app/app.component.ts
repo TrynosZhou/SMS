@@ -479,12 +479,14 @@ export class AppComponent implements OnInit, OnDestroy {
 
   getProfileDisplayName(): string {
     const u = this.authService.getCurrentUser();
-    if (!u) {
-      return '';
-    }
+    if (!u) return '';
+
+    // 1. Backend-supplied fullName (set for all roles at login)
     if (u.fullName && String(u.fullName).trim()) {
       return String(u.fullName).trim();
     }
+
+    // 2. Teacher profile
     const teacher = u.teacher;
     if (teacher) {
       if (teacher.fullName && String(teacher.fullName).trim()) {
@@ -492,16 +494,24 @@ export class AppComponent implements OnInit, OnDestroy {
       }
       const tf = String(teacher.firstName || '').trim();
       const tl = String(teacher.lastName || '').trim();
-      if (tf || tl) {
-        return [tf, tl].filter(Boolean).join(' ');
-      }
+      if (tf || tl) return [tl, tf].filter(Boolean).join(' ');
     }
+
+    // 3. Student profile
     if (u.student && (u.student.firstName || u.student.lastName)) {
       return [u.student.firstName, u.student.lastName].filter(Boolean).join(' ').trim();
     }
+
+    // 4. Parent profile
     if (u.parent && (u.parent.firstName || u.parent.lastName)) {
-      return [u.parent.lastName, u.parent.firstName].filter(Boolean).join(' ').trim();
+      return [u.parent.firstName, u.parent.lastName].filter(Boolean).join(' ').trim();
     }
+
+    // 5. User-level firstName / lastName (admin, accountant, director, etc.)
+    const uf = String(u.firstName || '').trim();
+    const ul = String(u.lastName || '').trim();
+    if (uf || ul) return [uf, ul].filter(Boolean).join(' ');
+
     return '';
   }
 
@@ -1077,17 +1087,17 @@ export class AppComponent implements OnInit, OnDestroy {
 
   getProfileUsername(): string {
     const u = this.authService.getCurrentUser();
-    if (!u) {
-      return 'User';
+    if (!u) return 'User';
+
+    // Strip @domain from usernames that happen to be formatted as email addresses
+    let username = String(u.username || '').trim();
+    if (username.includes('@')) {
+      username = username.split('@')[0];
     }
-    const username = String(u.username || '').trim();
-    if (username) {
-      return username;
-    }
+    if (username) return username;
+
     const email = String(u.email || '').trim();
-    if (email.includes('@')) {
-      return email.split('@')[0];
-    }
+    if (email.includes('@')) return email.split('@')[0];
     return email || 'User';
   }
 

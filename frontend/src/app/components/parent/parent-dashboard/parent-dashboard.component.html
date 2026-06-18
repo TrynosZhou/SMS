@@ -282,3 +282,86 @@
 
   </main>
 </div>
+
+<!-- ── Report Card Picker Modal ───────────────────────────────────── -->
+<div class="rcp-overlay" *ngIf="reportPicker.open" (click)="closeReportPicker()" role="dialog" aria-modal="true" aria-labelledby="rcp-title">
+  <div class="rcp-dialog" (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="rcp-header">
+      <div class="rcp-header__icon">📄</div>
+      <div class="rcp-header__text">
+        <h2 class="rcp-title" id="rcp-title">Generate Report Card</h2>
+        <p class="rcp-subtitle" *ngIf="reportPicker.student">
+          {{ reportPicker.student.firstName }} {{ reportPicker.student.lastName }}
+          <span class="rcp-sub-meta" *ngIf="(reportPicker.student.class || reportPicker.student.classEntity)?.name">
+            · {{ (reportPicker.student.class || reportPicker.student.classEntity)?.name }}
+          </span>
+        </p>
+      </div>
+      <button class="rcp-close" (click)="closeReportPicker()" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="rcp-body">
+
+      <!-- Term selector -->
+      <div class="rcp-field">
+        <label class="rcp-label" for="rcp-term">
+          <span class="rcp-label-icon">📅</span> Academic Term
+        </label>
+        <div class="rcp-select-wrap">
+          <select id="rcp-term" class="rcp-select"
+                  [(ngModel)]="reportPicker.selectedTerm"
+                  [disabled]="reportPicker.loadingTerms">
+            <option value="" disabled *ngIf="reportPicker.loadingTerms">Loading terms…</option>
+            <option *ngFor="let t of reportPicker.availableTerms" [value]="t">{{ t }}</option>
+          </select>
+          <span class="rcp-select-icon">▾</span>
+        </div>
+      </div>
+
+      <!-- Exam type selector -->
+      <div class="rcp-field">
+        <label class="rcp-label" for="rcp-exam-type">
+          <span class="rcp-label-icon">📝</span> Examination Type
+        </label>
+        <div class="rcp-exam-types">
+          <button
+            *ngFor="let et of examTypes"
+            type="button"
+            class="rcp-exam-btn"
+            [class.rcp-exam-btn--active]="reportPicker.selectedExamType === et.value"
+            (click)="reportPicker.selectedExamType = et.value">
+            <span class="rcp-exam-icon">{{ et.value === 'mid_term' ? '📋' : '🏁' }}</span>
+            <span class="rcp-exam-name">{{ et.label }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Selection summary -->
+      <div class="rcp-summary" *ngIf="reportPicker.selectedTerm && reportPicker.selectedExamType">
+        <span class="rcp-summary-icon">✅</span>
+        <span>{{ reportPicker.selectedTerm }} &nbsp;·&nbsp; {{ formatExamTypeLabel(reportPicker.selectedExamType) }}</span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="rcp-footer">
+      <button type="button" class="rcp-btn rcp-btn--ghost" (click)="closeReportPicker()">Cancel</button>
+      <button
+        type="button"
+        class="rcp-btn rcp-btn--primary"
+        [disabled]="!reportPicker.selectedTerm || !reportPicker.selectedExamType || reportPicker.loadingTerms"
+        (click)="navigateToReportCard()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        View Report Card
+      </button>
+    </div>
+
+  </div>
+</div>

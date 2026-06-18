@@ -29,6 +29,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
 
   // Term & exam type
   activeTerm = '';
+  selectedTerm = '';        // user-selected term (defaults to activeTerm)
   availableTerms: string[] = [];
   loadingTerms = false;
   selectedExamType = '';
@@ -140,11 +141,16 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
         } else if (this.availableTerms.length) {
           this.activeTerm = this.availableTerms[0];
         }
+        // Default selected term to active term only if not already set
+        if (!this.selectedTerm) {
+          this.selectedTerm = this.activeTerm;
+        }
         this.loadingTerms = false;
         this.autoGenerate();
       },
       error: () => {
         if (!this.activeTerm && this.availableTerms.length) this.activeTerm = this.availableTerms[0];
+        if (!this.selectedTerm) this.selectedTerm = this.activeTerm;
         this.loadingTerms = false;
         this.autoGenerate();
       }
@@ -181,7 +187,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
 
   // ── Auto-generate when both term + examType are ready ─────────
   private autoGenerate() {
-    if (this.activeTerm && this.selectedExamType) {
+    if (this.selectedTerm && this.selectedExamType) {
       this.generateAndPreview();
     }
     // If no exam type yet, wait for user to pick one
@@ -192,7 +198,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
     this.inlinePdf  = null;
     this.revokePdfUrl();
     this.error = '';
-    if (this.activeTerm && this.selectedExamType) {
+    if (this.selectedTerm && this.selectedExamType) {
       this.generateAndPreview();
     }
   }
@@ -202,14 +208,14 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
     this.inlinePdf  = null;
     this.revokePdfUrl();
     this.error = '';
-    if (this.activeTerm && this.selectedExamType) {
+    if (this.selectedTerm && this.selectedExamType) {
       this.generateAndPreview();
     }
   }
 
   // ── Core: fetch report-card data then load PDF inline ─────────
   generateAndPreview() {
-    if (!this.classId || !this.activeTerm || !this.selectedExamType || !this.student?.id) return;
+    if (!this.classId || !this.selectedTerm || !this.selectedExamType || !this.student?.id) return;
 
     this.loading = true;
     this.loadingPdf = false;
@@ -222,7 +228,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
     this.examService.getReportCard(
       this.classId,
       this.selectedExamType,
-      this.activeTerm,
+      this.selectedTerm,
       this.student.id
     ).subscribe({
       next: (data: any) => {
@@ -268,7 +274,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
 
   // ── Load PDF into the inline iframe ──────────────────────────
   loadInlinePdf() {
-    if (!this.classId || !this.selectedExamType || !this.activeTerm || !this.student?.id) return;
+    if (!this.classId || !this.selectedExamType || !this.selectedTerm || !this.student?.id) return;
 
     this.loadingPdf = true;
     this.pdfLoadError = false;
@@ -276,7 +282,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
     this.examService.downloadAllReportCardsPDF(
       this.classId,
       this.selectedExamType,
-      this.activeTerm,
+      this.selectedTerm,
       this.student.id
     ).subscribe({
       next: (blob: Blob) => {
@@ -312,7 +318,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
     // Fallback: fetch again
     this.loading = true;
     this.examService.downloadAllReportCardsPDF(
-      this.classId, this.selectedExamType, this.activeTerm, this.student.id
+      this.classId, this.selectedExamType, this.selectedTerm, this.student.id
     ).subscribe({
       next: (blob: Blob) => {
         this.loading = false;
@@ -338,7 +344,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
   private buildFilename(): string {
     const name = `${this.student?.lastName || ''} ${this.student?.firstName || ''}`.trim()
       .replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-') || 'report-card';
-    const term = (this.activeTerm || '').replace(/\s+/g, '-');
+    const term = (this.selectedTerm || '').replace(/\s+/g, '-');
     return `${name}-${this.selectedExamType}-${term}.pdf`;
   }
 
@@ -381,7 +387,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
   }
 
   get canGenerate(): boolean {
-    return !!(this.selectedExamType && this.activeTerm && this.classId);
+    return !!(this.selectedExamType && this.selectedTerm && this.classId);
   }
 
   generateHeadmasterRemark(card: any): string {
