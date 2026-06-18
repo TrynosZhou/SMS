@@ -819,7 +819,8 @@ if (err.status === 0) {
           return card;
         });
         
-        // Align summary with visible core marks and rank class position from that average (mark-sheet rule)
+        // Align summary with visible core marks (mark-sheet rule).
+        // Class position/totalStudents come from the server for parent/student single-card views.
         for (const card of this.reportCards) {
           if (Array.isArray(card.subjects) && card.subjects.length) {
             const avg = computeCoreAverageFromReportSubjects(card.subjects);
@@ -827,7 +828,12 @@ if (err.status === 0) {
             card.overallGrade = this.getOverallGradeFromAverage(avg);
           }
         }
-        this.applyCoreSubjectRanking(this.reportCards);
+
+        // Only recalculate rankings when viewing the full class roster (admin/teacher).
+        // Parents receive one card from the API; re-ranking that lone card would show 1/1.
+        if (!this.isParent) {
+          this.applyCoreSubjectRanking(this.reportCards);
+        }
 
         // Sort report cards by class position in ascending order
         this.reportCards.sort((a: any, b: any) => {
