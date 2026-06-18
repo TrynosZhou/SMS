@@ -11,15 +11,6 @@ import { MessageService } from '../../../services/message.service';
 import { News } from '../../../types/news';
 import { environment } from '../../../../environments/environment';
 
-export interface ReportPickerState {
-  open: boolean;
-  student: any;
-  selectedTerm: string;
-  selectedExamType: string;
-  availableTerms: string[];
-  loadingTerms: boolean;
-}
-
 @Component({
   standalone: false,  selector: 'app-parent-dashboard',
 templateUrl: './parent-dashboard.component.html',
@@ -45,25 +36,10 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
   unreadMessageCount = 0;
   lastRefreshedAt: Date | null = null;
 
-  /** Report card term/type picker modal state */
-  reportPicker: ReportPickerState = {
-    open: false,
-    student: null,
-    selectedTerm: '',
-    selectedExamType: 'end_term',
-    availableTerms: [],
-    loadingTerms: false,
-  };
-
-  readonly examTypes = [
-    { value: 'mid_term', label: 'Mid-Term Examination' },
-    { value: 'end_term', label: 'End of Term Examination' },
-  ];
-
   readonly quickLinks = [
     { route: '/parent/inbox', icon: '📧', label: 'Inbox', pastel: 'sky' },
     { route: '/parent/send-message', icon: '✉️', label: 'Send message', pastel: 'violet' },
-    { route: '/parent/invoice-statement', icon: '🧾', label: 'Statements', pastel: 'rose' },
+    { route: '/parent/invoice-statement', icon: '🧾', label: 'Invoice', pastel: 'rose' },
     { route: '/parent/student-portal', icon: '🎓', label: 'Student portal', pastel: 'emerald' },
     { route: '/parent/link-students', icon: '🔗', label: 'Link students', pastel: 'amber' },
     { route: '/parent/manage-account', icon: '👤', label: 'My account', pastel: 'slate' },
@@ -124,9 +100,7 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
 
   private bootstrapDashboard() {
     this.loading = true;
-    this.newsLoading = true;
     this.error = '';
-    this.newsError = '';
 
     forkJoin({
       settings: this.settingsService.getSettings().pipe(
@@ -147,17 +121,6 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
           return of({ students: [] });
         })
       ),
-      news: this.newsService.getPublishedNews({ limit: 6 }).pipe(
-        timeout(this.requestTimeoutMs),
-        catchError((err: any) => {
-          console.error('Error loading news:', err);
-          this.newsError =
-            err?.name === 'TimeoutError'
-              ? 'News request timed out.'
-              : 'Failed to load news & updates.';
-          return of({ data: [], pagination: null });
-        })
-      ),
       profile: this.parentService.getCurrentProfile().pipe(
         timeout(this.requestTimeoutMs),
         catchError(() => of(null))
@@ -171,19 +134,17 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$),
         finalize(() => {
           this.loading = false;
-          this.newsLoading = false;
           this.lastRefreshedAt = new Date();
           this.cdr.markForCheck();
         })
       )
       .subscribe({
-        next: ({ settings, students, news, profile, messages }) => {
+        next: ({ settings, students, profile, messages }) => {
           this.currencySymbol = settings?.currencySymbol || 'KES';
           this.schoolLogo = settings?.schoolLogo || null;
           this.schoolLogo2 = settings?.schoolLogo2 || null;
 
           this.students = students?.students || [];
-          this.applyNews(news?.data || []);
 
           const msgs = messages?.messages || [];
           this.unreadMessageCount = msgs.filter((m: any) => !m.isRead).length;
@@ -400,66 +361,7 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Open term/exam-type picker instead of navigating straight away
-    this.openReportPicker(student);
-  }
-
-  openReportPicker(student: any) {
-    const currentYear = new Date().getFullYear();
-    const nextYear = currentYear + 1;
-    const defaultTerms = [
-      `Term 1 ${currentYear}`,
-      `Term 2 ${currentYear}`,
-      `Term 3 ${currentYear}`,
-      `Term 1 ${nextYear}`,
-      `Term 2 ${nextYear}`,
-      `Term 3 ${nextYear}`,
-    ];
-
-    this.reportPicker = {
-      open: true,
-      student,
-      selectedTerm: '',
-      selectedExamType: 'end_term',
-      availableTerms: defaultTerms,
-      loadingTerms: true,
-    };
-    this.cdr.markForCheck();
-
-    // Load active term from settings
-    this.settingsService.getActiveTerm().pipe(
-      takeUntil(this.destroy$),
-      catchError(() => of(null))
-    ).subscribe(data => {
-      const active = data?.activeTerm || data?.currentTerm || '';
-      const terms = [...defaultTerms];
-      if (active && !terms.includes(active)) {
-        terms.unshift(active);
-      }
-      this.reportPicker.availableTerms = terms;
-      this.reportPicker.selectedTerm = active || terms[0] || '';
-      this.reportPicker.loadingTerms = false;
-      this.cdr.markForCheck();
-    });
-  }
-
-  closeReportPicker() {
-    this.reportPicker.open = false;
-    this.cdr.markForCheck();
-  }
-
-  navigateToReportCard() {
-    const { student, selectedTerm, selectedExamType } = this.reportPicker;
-    if (!student?.id || !selectedTerm || !selectedExamType) return;
-
-    this.closeReportPicker();
-    this.router.navigate(['/report-cards'], {
-      queryParams: {
-        studentId: student.id,
-        term: selectedTerm,
-        examType: selectedExamType,
-      }
-    });
+    this.router.navigate(['/report-cards'], { queryParams: { studentId: student.id } });
   }
 
   unlinkStudent(studentId: string) {
@@ -552,12 +454,6 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
     if (firstStudent) {
       this.viewReportCard(firstStudent);
     }
-  }
-
-  formatExamTypeLabel(value: string): string {
-    if (value === 'mid_term') return 'Mid-Term';
-    if (value === 'end_term') return 'End of Term';
-    return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
 
   private fetchLatestInvoicePdf(action: 'preview' | 'download') {

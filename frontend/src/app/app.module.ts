@@ -22,6 +22,7 @@ import { MarksEntryComponent } from './components/exams/marks-entry/marks-entry.
 import { ReportCardComponent } from './components/exams/report-card/report-card.component';
 import { RankingsComponent } from './components/exams/rankings/rankings.component';
 import { MarkSheetComponent } from './components/exams/mark-sheet/mark-sheet.component';
+import { ResultsAnalysisComponent } from './components/exams/results-analysis/results-analysis.component';
 import { PublishResultsComponent } from './components/exams/publish-results/publish-results.component';
 import { InvoiceListComponent } from './components/finance/invoice-list/invoice-list.component';
 import { InvoiceNotePageComponent } from './components/finance/invoice-note-page/invoice-note-page.component';
@@ -83,7 +84,6 @@ import { NewsFeedComponent } from './components/news/news-feed/news-feed.compone
 import { NewsFormComponent } from './components/news/news-form/news-form.component';
 import { NewsDetailComponent } from './components/news/news-detail/news-detail.component';
 import { AgedDebtorsReportComponent } from './components/finance/financial-reports/aged-debtors-report.component';
-import { RevenueRecognitionReportComponent } from './components/finance/financial-reports/revenue-recognition-report.component';
 import { AcademicSettingsComponent } from './components/academic-settings/academic-settings.component';
 import { UserManagementComponent } from './components/admin/user-management/user-management.component';
 import { IntegrationsComponent } from './components/admin/integrations/integrations.component';
@@ -124,6 +124,7 @@ import { RbacManagementComponent } from './components/settings/rbac-management/r
     MarksEntryComponent,
     ReportCardComponent,
     MarkSheetComponent,
+    ResultsAnalysisComponent,
     RankingsComponent,
     PublishResultsComponent,
     InvoiceListComponent,
@@ -185,7 +186,6 @@ SendMessageComponent,
     NewsFormComponent,
     NewsDetailComponent,
     AgedDebtorsReportComponent,
-    RevenueRecognitionReportComponent,
     AcademicSettingsComponent,
     UserManagementComponent,
     IntegrationsComponent,

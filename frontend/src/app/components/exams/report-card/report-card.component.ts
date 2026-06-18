@@ -15,6 +15,7 @@ import { catchError, debounceTime, distinctUntilChanged, finalize, takeUntil } f
 import { Subject } from 'rxjs';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { computeCoreAverageFromReportSubjects } from '../../../utils/mark-sheet-subject-order';
+import { buildHeadmasterRemarkFromCard } from '../../../utils/headmaster-remarks.util';
 
 type GradeBandFilter = 'all' | 'outstanding' | 'good' | 'needs-support';
 @Component({
@@ -73,6 +74,8 @@ error = '';
   // Parent-specific fields
   isParent = false;
   parentStudentId: string | null = null;
+  parentStudentName = '';
+  parentReportMaximized = false;
   studentBalance: number | null = null;
   currencySymbol = '$';
   accessDenied = false;
@@ -255,18 +258,23 @@ this.loadCustomPhrases();
     const params = this.route.snapshot.queryParams;
     if (params['studentId'] && this.isParent) {
       this.parentStudentId = params['studentId'];
-      // Pre-select term and exam type from the picker (only if not already in progress)
       if (params['term'] && !this.selectedTerm) {
         this.selectedTerm = params['term'];
         if (!this.availableTerms.includes(params['term'])) {
           this.availableTerms.unshift(params['term']);
         }
       }
-      if (params['examType'] && !this.selectedExamType) {
+      if (params['examType']) {
         this.selectedExamType = params['examType'];
+      } else if (!this.selectedExamType) {
+        this.selectedExamType = 'mid_term';
       }
-      // checkStudentBalance() has its own guard against duplicate calls
       this.checkStudentBalance();
+      return;
+    }
+
+    if (this.isParent) {
+      this.error = 'Please open a report card from your parent dashboard.';
       return;
     }
 
@@ -504,13 +512,23 @@ const currentYear = new Date().getFullYear();
           } else if (!this.selectedTerm && this.availableTerms.length > 0) {
             this.selectedTerm = this.availableTerms[0];
           }
-          this.checkAndAutoGenerate();
+          if (this.isParent && !this.selectedExamType) {
+            this.selectedExamType = 'mid_term';
+          }
+          if (!this.isParent) {
+            this.checkAndAutoGenerate();
+          }
         },
         error: (err: any) => {
           if (!this.selectedTerm && this.availableTerms.length > 0) {
             this.selectedTerm = this.availableTerms[0];
           }
-          this.checkAndAutoGenerate();
+          if (this.isParent && !this.selectedExamType) {
+            this.selectedExamType = 'mid_term';
+          }
+          if (!this.isParent) {
+            this.checkAndAutoGenerate();
+          }
           if (err.status !== 0) {
             console.error('Error loading active term:', err);
           }
@@ -649,24 +667,19 @@ const currentYear = new Date().getFullYear();
 
         this.selectedClass = studentClass.id;
         this.parentStudentClassName = studentClass.name || '';
+        this.parentStudentName = `${student.firstName || ''} ${student.lastName || ''}`.trim();
 
         // Restore the pre-selected term/examType (loadTermOptions running concurrently
         // might have overwritten selectedTerm before we get here)
         if (preselectedTerm) this.selectedTerm = preselectedTerm;
-        if (preselectedExamType) this.selectedExamType = preselectedExamType;
+        if (preselectedExamType) {
+          this.selectedExamType = preselectedExamType;
+        } else if (!this.selectedExamType) {
+          this.selectedExamType = 'mid_term';
+        }
 
         this.loading = false;
         this.cdr.markForCheck();
-
-        if (this.selectedTerm && this.selectedExamType) {
-          // All parameters ready — generate directly, no need for checkAndAutoGenerate
-          this.autoGenerationInProgress = true;
-          this.generateReportCards();
-        } else {
-          // No pre-selected values — load class list so the parent can pick
-          this.loadClasses();
-          setTimeout(() => this.checkAndAutoGenerate(), 500);
-        }
       },
       error: (err: any) => {
         this.loading = false;
@@ -791,25 +804,18 @@ if (err.status === 0) {
             };
           }
           if (card.remarks.id) {
-            this.savedRemarks.add(this.getRemarksKey(card.student.id, 'classTeacher'));
-            this.savedRemarks.add(this.getRemarksKey(card.student.id, 'headmaster'));
+            if (String(card.remarks.classTeacherRemarks || '').trim()) {
+              this.savedRemarks.add(this.getRemarksKey(card.student.id, 'classTeacher'));
+            }
+            if (String(card.remarks.headmasterRemarks || '').trim()) {
+              this.savedRemarks.add(this.getRemarksKey(card.student.id, 'headmaster'));
+            }
           }
           if (!Array.isArray(card.subjects)) {
             card.subjects = [];
           }
           if (!Array.isArray(card.exams)) {
             card.exams = [];
-          }
-
-          const autoHeadRemark = this.generateHeadmasterRemark(card);
-          card.headmasterAutoRemarks = autoHeadRemark;
-
-          const existingHeadRemark = card.remarks.headmasterRemarks;
-          const hasExistingHeadRemark = !!(existingHeadRemark && String(existingHeadRemark).trim().length > 0);
-
-          if (!hasExistingHeadRemark && this.isAdmin && autoHeadRemark) {
-            card.remarks.headmasterRemarks = autoHeadRemark;
-            this.onRemarksChange(card, 'headmaster');
           }
 
           if (this.canEditRemarks) {
@@ -830,10 +836,12 @@ if (err.status === 0) {
         }
 
         // Only recalculate rankings when viewing the full class roster (admin/teacher).
-        // Parents receive one card from the API; re-ranking that lone card would show 1/1.
         if (!this.isParent) {
           this.applyCoreSubjectRanking(this.reportCards);
         }
+
+        // Generate head's remarks after averages are final.
+        this.applyHeadmasterRemarksToCards(this.reportCards);
 
         // Sort report cards by class position in ascending order
         this.reportCards.sort((a: any, b: any) => {
@@ -851,6 +859,10 @@ if (err.status === 0) {
         this.loading = false;
         this.autoGenerationInProgress = false;
         this.parentBalanceCheckInProgress = false;
+        if (this.isParent && this.reportCards.length > 0) {
+          this.parentReportMaximized = true;
+          setTimeout(() => this.scrollToParentReportCard(), 100);
+        }
         this.cdr.markForCheck();
 },
       error: (err: any) => {
@@ -1582,83 +1594,34 @@ if (err.status === 0) {
     return sum / this.filteredReportCards.length;
   }
 
+  private applyHeadmasterRemarksToCards(cards: any[]): void {
+    for (const card of cards) {
+      if (!card) continue;
+      const autoHeadRemark = this.generateHeadmasterRemark(card);
+      card.headmasterAutoRemarks = autoHeadRemark;
+
+      const existing = String(card.remarks?.headmasterRemarks || '').trim();
+      const headSaved = this.isRemarksSaved(card.student?.id, 'headmaster');
+
+      if (!autoHeadRemark) continue;
+
+      if (this.isAdmin && !headSaved) {
+        if (!card.remarks) {
+          card.remarks = { classTeacherRemarks: null, headmasterRemarks: null };
+        }
+        card.remarks.headmasterRemarks = autoHeadRemark;
+        this.onRemarksChange(card, 'headmaster');
+      } else if (!existing) {
+        if (!card.remarks) {
+          card.remarks = { classTeacherRemarks: null, headmasterRemarks: null };
+        }
+        card.remarks.headmasterRemarks = autoHeadRemark;
+      }
+    }
+  }
+
   generateHeadmasterRemark(card: any): string {
-    if (!card) {
-      return '';
-    }
-    const headName = (this.headmasterName || '').trim();
-    const studentName = card.student && card.student.name
-      ? String(card.student.name).trim()
-      : '';
-    const namePart = studentName ? ` by ${studentName}` : '';
-    const signature = headName ? `. ${headName}` : '';
-    
-    // Condition: Check if student scored less than 50% in ALL subjects
-    const subjects = card.subjects || [];
-    const hasSubjects = subjects.length > 0;
-    const failedSubjects = subjects.filter((sub: any) => {
-      const pct = parseFloat(String(sub.percentage || 0));
-      return pct < 50;
-    });
-
-    const allSubjectsUnder50 = hasSubjects && failedSubjects.length === subjects.length;
-    const someSubjectsUnder50 = hasSubjects && failedSubjects.length > 0 && failedSubjects.length < subjects.length;
-
-    if (allSubjectsUnder50) {
-      return `The learner requires urgent and sustained support${namePart}. Close follow-up and serious commitment are essential for improvement${signature}`;
-    }
-
-    if (someSubjectsUnder50) {
-      const criticallyLowSubjects = failedSubjects.filter((s: any) => parseFloat(String(s.percentage || 0)) < 30);
-      const subjectNames = failedSubjects.map((s: any) => s.subject || s.name).join(', ');
-      
-      const rawAverage = card.overallAverage;
-      let average = 0;
-      if (typeof rawAverage === 'number') {
-        average = rawAverage;
-      } else if (typeof rawAverage === 'string') {
-        const parsed = parseFloat(rawAverage);
-        average = isNaN(parsed) ? 0 : parsed;
-      }
-
-      let performancePrefix = '';
-      if (average >= 75) performancePrefix = `A commendable overall performance${namePart}, however, serious attention is needed in ${subjectNames} where results are below expectation`;
-      else if (average >= 65) performancePrefix = `Good overall performance${namePart}, but targeted support in ${subjectNames} is essential for a balanced academic profile`;
-      else if (average >= 50) performancePrefix = `Satisfactory overall performance${namePart}, yet improvement is required in ${subjectNames}`;
-      else performancePrefix = `Overall performance is below expected level${namePart}. Immediate intervention is required in ${subjectNames}`;
-
-      if (criticallyLowSubjects.length > 0) {
-        const criticalNames = criticallyLowSubjects.map((s: any) => s.subject || s.name).join(', ');
-        return `${performancePrefix}. Note that performance in ${criticalNames} is critically low${signature}`;
-      }
-      
-      return `${performancePrefix}${signature}`;
-    }
-
-    const rawAverage = card.overallAverage;
-    let average = 0;
-    if (typeof rawAverage === 'number') {
-      average = rawAverage;
-    } else if (typeof rawAverage === 'string') {
-      const parsed = parseFloat(rawAverage);
-      average = isNaN(parsed) ? 0 : parsed;
-    }
-    if (average >= 80) {
-      return `Excellent performance${namePart}. Keep up the outstanding performance${signature}`;
-    }
-    if (average >= 70) {
-      return `Very good performance${namePart}. Maintain this strong level of effort${signature}`;
-    }
-    if (average >= 60) {
-      return `Good results${namePart}. Continued hard work will yield even better outcomes${signature}`;
-    }
-    if (average >= 50) {
-      return `Satisfactory performance${namePart}. Greater consistency and focus are encouraged${signature}`;
-    }
-    if (average >= 40) {
-      return `Performance is below expected level${namePart}. Increased effort and support at home and school are needed${signature}`;
-    }
-    return `The learner requires urgent and sustained support${namePart}. Close follow-up and serious commitment are essential for improvement${signature}`;
+    return buildHeadmasterRemarkFromCard(card, this.headmasterName);
   }
 
   generateAIRemark(reportCard: any, remarkType: 'classTeacher' | 'headmaster') {
@@ -1729,11 +1692,20 @@ if (err.status === 0) {
   onSelectionChange() {
     this.fieldErrors = {};
     this.touchedFields.clear();
-    // Check if we can auto-generate report cards
+    if (this.isParent) {
+      this.reportCards = [];
+      this.filteredReportCards = [];
+      this.parentReportMaximized = false;
+      this.success = '';
+      return;
+    }
     this.checkAndAutoGenerate();
   }
   
   checkAndAutoGenerate() {
+    if (this.isParent) {
+      return;
+    }
     // Clear any pending timeout
     if (this.autoGenerationTimeout) {
       clearTimeout(this.autoGenerationTimeout);
@@ -1775,7 +1747,7 @@ if (err.status === 0) {
     if (!this.isParent) {
       this.selectedClass = '';
     }
-    this.selectedExamType = '';
+    this.selectedExamType = this.isParent ? 'mid_term' : '';
     this.selectedTerm = this.availableTerms.length > 0 ? this.availableTerms[0] : '';
     this.reportCards = [];
     this.filteredReportCards = [];
@@ -1783,7 +1755,17 @@ if (err.status === 0) {
     this.studentSearchQuery = '';
     this.selectedGradeBand = 'all';
     this.lastLoadedAt = null;
-    this.onSelectionChange();
+    this.parentReportMaximized = false;
+    if (!this.isParent) {
+      this.onSelectionChange();
+    }
+  }
+
+  scrollToParentReportCard() {
+    const el = document.querySelector('.report-card-preview');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   // Download all PDFs

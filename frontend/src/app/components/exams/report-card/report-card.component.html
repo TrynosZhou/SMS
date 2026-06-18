@@ -1,4 +1,4 @@
-<div class="rc-page">
+<div class="rc-page" [class.rc-page--parent]="isParent" [class.rc-page--parent-maximized]="isParent && parentReportMaximized">
   <div class="rc-toast-stack" *ngIf="success || error || autoSavingRemarks || connectionBanner">
     <div class="rc-toast rc-toast--warn" *ngIf="connectionBanner" role="status" [@fadeInOut]>
       <span>{{ connectionBanner }}</span>
@@ -22,14 +22,18 @@
         <span class="rc-hero-icon" aria-hidden="true">📊</span>
         <div>
           <span class="rc-hero-eyebrow">Exams</span>
-          <h1>Report Cards</h1>
-          <p class="rc-hero-sub">Generate, review, and download student academic report cards by class, term, and exam type.</p>
+          <h1>{{ isParent ? 'Report Card' : 'Report Cards' }}</h1>
+          <p class="rc-hero-sub" *ngIf="!isParent">Generate, review, and download student academic report cards by class, term, and exam type.</p>
+          <p class="rc-hero-sub" *ngIf="isParent && parentStudentName">
+            View the academic report card for <strong>{{ parentStudentName }}</strong>. Select a term and exam type, then click Generate Report Card.
+          </p>
+          <p class="rc-hero-sub" *ngIf="isParent && !parentStudentName">Select a term and exam type, then click Generate Report Card.</p>
           <p class="rc-hero-meta" *ngIf="lastLoadedAt && reportCards.length">
             Last generated <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
           </p>
         </div>
       </div>
-      <div class="rc-hero__actions" *ngIf="reportCards.length > 0">
+      <div class="rc-hero__actions" *ngIf="reportCards.length > 0 && !isParent">
         <button type="button" class="rc-hero-refresh" (click)="generateReportCards()" [disabled]="loading" title="Regenerate" aria-label="Regenerate">
           <span [class.spinning]="loading">↻</span>
         </button>
@@ -45,7 +49,7 @@
         </button>
       </div>
     </div>
-    <div class="rc-hero-stats" *ngIf="reportCards.length > 0 && !loading">
+    <div class="rc-hero-stats" *ngIf="reportCards.length > 0 && !loading && !isParent">
       <article class="rc-stat">
         <span class="rc-stat__value">{{ dashboardStats.showing }}</span>
         <span class="rc-stat__label">Showing</span>
@@ -176,10 +180,11 @@
       </p>
     </div>
     
-    <section class="rc-panel rc-panel--generate">
+    <section class="rc-panel rc-panel--generate" [class.rc-panel--generate-compact]="isParent && parentReportMaximized">
       <div class="rc-panel__head">
-        <h2 class="rc-panel__title">Generate report cards</h2>
-        <p class="rc-panel__intro">Select class, term, and exam type. Subject selection is not required.</p>
+        <h2 class="rc-panel__title">{{ isParent ? 'Generate Report Card' : 'Generate report cards' }}</h2>
+        <p class="rc-panel__intro" *ngIf="!isParent">Select class, term, and exam type. Subject selection is not required.</p>
+        <p class="rc-panel__intro" *ngIf="isParent">Select term and exam type for the linked student, then click Generate Report Card.</p>
       </div>
 
       <form (ngSubmit)="generateReportCards()" class="rc-generate-form">
@@ -279,7 +284,7 @@
             type="submit"
             class="btn btn-primary btn-generate rc-btn-generate"
             [disabled]="loading || loadingTerms || !isSelectionValid()">
-            <span *ngIf="!loading">📄 Generate report cards</span>
+            <span *ngIf="!loading">{{ isParent ? '📄 Generate Report Card' : '📄 Generate report cards' }}</span>
             <span *ngIf="loading" class="loading-content">
               <span class="spinner-small"></span>
               Generating…
@@ -290,8 +295,8 @@
       </form>
     </section>
 
-    <div *ngIf="reportCards.length > 0" class="report-cards-section">
-      <section class="rc-panel rc-panel--filters">
+    <div *ngIf="reportCards.length > 0" class="report-cards-section" [class.report-cards-section--parent-max]="isParent && parentReportMaximized">
+      <section class="rc-panel rc-panel--filters" *ngIf="!isParent">
         <div class="rc-panel__head-row">
           <div>
             <h2 class="rc-panel__title">Find students</h2>
@@ -330,11 +335,12 @@
         </div>
       </section>
 
-      <div class="report-cards-list">
+      <div class="report-cards-list" [class.report-cards-list--parent-max]="isParent && parentReportMaximized">
         <div
           *ngFor="let reportCard of (filteredReportCards | safeArray); let i = index; trackBy: trackByCard"
           [id]="'rc-card-' + reportCard.student?.id"
           class="report-card-preview"
+          [class.report-card-preview--parent-max]="isParent && parentReportMaximized"
           [@fadeInUp]>
           <!-- Report Card Header -->
           <div class="report-card-header">
@@ -663,11 +669,10 @@
     <!-- Empty State -->
     <div *ngIf="!loading && reportCards.length === 0 && !error" class="empty-state-card info rc-empty-ready">
       <span class="empty-icon">📊</span>
-      <h3>{{ isParent ? 'Loading report card…' : 'Ready to generate report cards' }}</h3>
+      <h3>{{ isParent ? 'Ready to generate report card' : 'Ready to generate report cards' }}</h3>
       <p *ngIf="!isParent">Select a class, term, and exam type above, then click Generate report cards.</p>
       <p *ngIf="isParent && loadingTerms">Please wait while term options are loaded.</p>
-      <p *ngIf="isParent && !loadingTerms && isSelectionValid()">Generating report card for your linked student…</p>
-      <p *ngIf="isParent && !loadingTerms && !isSelectionValid()">Select a term and exam type above to view the report card.</p>
+      <p *ngIf="isParent && !loadingTerms && isSelectionValid()">Select term and exam type above, then click Generate Report Card.</p>
     </div>
 </div>
 

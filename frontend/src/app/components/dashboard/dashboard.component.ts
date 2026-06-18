@@ -104,8 +104,6 @@ recentStudents: any[] = [];
     { route: '/invoices', label: 'Billing', icon: '💳', pastel: 'rose', module: 'finance' },
     { route: '/attendance/mark', label: 'Attendance', icon: '📋', pastel: 'amber', module: 'attendance' },
     { route: '/report-cards', label: 'Reports', icon: '📊', pastel: 'violet', module: 'reportCards' },
-    { route: '/inventory', label: 'Inventory Manager', icon: '📦', pastel: 'emerald', module: 'inventory' },
-    { route: '/timetable/view', label: 'View Timetable', icon: '📅', pastel: 'sky' },
     { route: '/messages/incoming', label: 'Messages', icon: '💬', pastel: 'pink' },
     { route: '/settings', label: 'Settings', icon: '⚙️', pastel: 'slate', module: 'settings' },
     {
@@ -127,14 +125,12 @@ recentStudents: any[] = [];
     { route: '/report-cards', label: 'Reports', icon: '📊', pastel: 'violet', module: 'reportCards' },
     { route: '/classes', label: 'Classes', icon: '🏫', pastel: 'emerald', module: 'classes' },
     { route: '/messages/incoming', label: 'Messages', icon: '💬', pastel: 'pink' },
-    { route: '/inventory', label: 'Inventory Manager', icon: '📦', pastel: 'emerald', module: 'inventory' },
     { route: '/settings', label: 'Settings', icon: '⚙️', pastel: 'slate', module: 'settings' }
   ];
 
   readonly studentModuleShortcuts: DashboardModuleShortcut[] = [
     { route: '/student/report-card', label: 'Report card', icon: '📄', pastel: 'violet' },
-    { route: '/student/invoice-statement', label: 'Statement', icon: '📑', pastel: 'sky' },
-    { route: '/student/inventory', label: 'Books & fines', icon: '📚', pastel: 'emerald', module: 'inventory' }
+    { route: '/student/invoice-statement', label: 'Statement', icon: '📑', pastel: 'sky' }
   ];
 
   readonly adminHubGroups: DashboardAdminHubGroup[] = [
@@ -161,38 +157,11 @@ recentStudents: any[] = [];
       ],
     },
     {
-      id: 'timetable',
-      label: 'Timetable manager',
-      subtitle: 'Configure periods, generate schedules, and view timetables',
-      tiles: [
-        { route: '/timetable/config', icon: '⚙️', title: 'Configure timetable', desc: 'School hours, periods, and breaks', search: 'timetable config periods breaks settings', accent: 'sky' },
-        { route: '/timetable/generate', icon: '⚡', title: 'Generate timetable', desc: 'Auto-build class and teacher schedules', search: 'timetable generate build schedule', accent: 'sky' },
-        { route: '/timetable/view', icon: '👁️', title: 'View timetable', desc: 'Browse and download published timetables', search: 'timetable view preview pdf teacher class', accent: 'sky' },
-      ],
-    },
-    {
-id: 'inventory',
-      label: 'Inventory & library',
-      subtitle: 'Textbooks, furniture, loans, fines, and stock',
-      tiles: [
-        {
-          route: '/inventory',
-          icon: '📦',
-          title: 'Inventory Manager',
-          desc: 'Stock, issuance, returns, and reports',
-          search: 'inventory textbook library furniture loan fine asset catalog issue return isbn desk chair',
-          module: 'inventory',
-          accent: 'emerald',
-        },
-      ],
-    },
-    {
       id: 'finance',
-      label: 'Finance & payroll',
-      subtitle: 'Fees, billing, and staff compensation',
+      label: 'Finance',
+      subtitle: 'Fees, billing, and balances',
       tiles: [
         { route: '/invoices', icon: '💰', title: 'Finance hub', desc: 'Invoices, payments, balances', search: 'invoice payment fees balance billing money', accent: 'rose' },
-        { route: '/payroll', icon: '💵', title: 'Payroll', desc: 'Salaries and payroll runs', search: 'payroll salary pay slip wages', module: 'payroll', accent: 'rose' },
         { route: '/outstanding-balance', icon: '⚠️', title: 'Outstanding balances', desc: 'Who owes what', search: 'outstanding debt arrears balance', accent: 'rose' },
         { route: '/balance-enquiry', icon: '🔎', title: 'Balance enquiry', desc: 'Look up balances and invoice statements', search: 'balance enquiry statement invoice preview', accent: 'sky', module: 'finance' },
         { route: '/payments/record', icon: '💳', title: 'Record payment', desc: 'Post fee payments and receipts', search: 'record payment receipt cash', accent: 'emerald', module: 'finance' },
@@ -265,6 +234,10 @@ constructor(
       this.router.navigate(['/parent/dashboard']);
       return;
     }
+
+    this.themeService.darkMode$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.cdr.markForCheck();
+    });
 
     this.moduleAccessService.loadModuleAccess();
     this.loadSettings();

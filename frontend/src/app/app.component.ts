@@ -22,15 +22,11 @@ const SIDEBAR_MENU_ROUTE_PREFIXES: Record<string, string[]> = {
   registration: ['/teachers', '/students', '/admin/parents'],
   classManagement: ['/students/enroll', '/students/transfer', '/classes', '/admin/class-promotion'],
   attendance: ['/attendance'],
-  examManagement: ['/exams', '/mark-sheet', '/rankings', '/report-cards', '/check_mark_progess', '/publish-results'],
+  examManagement: ['/exams', '/mark-sheet', '/rankings', '/report-cards', '/results-analysis', '/check_mark_progess', '/publish-results'],
   financeManagement: ['/invoices', '/payments', '/balance-enquiry', '/finance/'],
   financialReports: ['/financial-reports'],
-  payrollManagement: ['/payroll'],
   messages: ['/messages'],
-  newsManagement: ['/news', '/news-feed'],
   recordKeeping: ['/teacher/record-book', '/teacher/my-classes'],
-  teacherInventory: ['/teacher/inventory-record'],
-  timetableManagement: ['/subjects/assign', '/timetable'],
   systemAdministration: ['/system-settings', '/admin/manage-accounts', '/user-log', '/admin/license-config', '/system/integrations'],
 };
 
@@ -47,10 +43,13 @@ export class AppComponent implements OnInit, OnDestroy {
   /** Current page label shown in the top navbar (route title). */
   pageNavbarTitle = 'Dashboard';
   mobileMenuOpen = false;
+  /** True when viewport is tablet/mobile (sidebar is a slide-in drawer). */
+  mobileViewport = false;
   sidebarCollapsed = false;
   expandedMenus: { [key: string]: boolean } = {};
   sidebarMenuFilter = '';
   private authSubscription?: Subscription;
+  private themeSubscription?: Subscription;
   private titleRotationTimerId: number | null = null;
   private readonly titleRotationIntervalMs = 4000;
   private static readonly SCHOOL_NAME_CACHE_KEY = 'sms_schoolDisplayName';
@@ -187,6 +186,10 @@ export class AppComponent implements OnInit, OnDestroy {
       }
     });
 
+    this.themeSubscription = this.themeService.darkMode$.subscribe(() => {
+      this.cdr.markForCheck();
+    });
+
     this.authSubscription = this.authService.currentUser$.subscribe(user => {
       if (user) {
         this.syncExpandedMenusFromUrl(this.router.url || '');
@@ -200,10 +203,60 @@ export class AppComponent implements OnInit, OnDestroy {
     // Initialize dashboard title rotation state
     this.currentUrl = this.router.url || '';
     this.syncDashboardTitleRotation();
+    this.syncMobileViewport();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.syncMobileViewport();
+  }
+
+  /** Collapsed icon-only mode applies on desktop only; mobile drawer always shows full labels. */
+  isSidebarVisuallyCollapsed(): boolean {
+    return this.sidebarCollapsed && !this.mobileViewport;
+  }
+
+  private syncMobileViewport(): void {
+    const wasMobile = this.mobileViewport;
+    this.mobileViewport =
+      typeof window !== 'undefined' && !!window.matchMedia?.('(max-width: 992px)').matches;
+
+    if (this.mobileViewport && !wasMobile) {
+      this.sidebarCollapsed = false;
+      this.expandAllSidebarMenus();
+    }
+    if (!this.mobileViewport && wasMobile) {
+      this.closeMobileMenu();
+    }
+    this.cdr.markForCheck();
+  }
+
+  private expandAllSidebarMenus(): void {
+    const next: { [key: string]: boolean } = {};
+    for (const menuKey of Object.keys(SIDEBAR_MENU_ROUTE_PREFIXES)) {
+      next[menuKey] = true;
+    }
+    this.expandedMenus = next;
+  }
+
+  private prepareMobileDrawer(): void {
+    this.sidebarCollapsed = false;
+    this.expandAllSidebarMenus();
+  }
+
+  onSidebarContentClick(event: MouseEvent): void {
+    if (!this.mobileViewport) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('a.sidebar-item, a.sidebar-subitem')) {
+      this.closeMobileMenu();
+    }
   }
 
   ngOnDestroy(): void {
     this.authSubscription?.unsubscribe();
+    this.themeSubscription?.unsubscribe();
     this.stopDashboardTitleRotation();
     this.stopIncomingMessageBadge();
   }
@@ -390,13 +443,14 @@ export class AppComponent implements OnInit, OnDestroy {
       this.router.navigate(['/parent/inbox']).catch(() => {});
       return;
     }
-    if (this.sidebarCollapsed) {
+    if (this.isSidebarVisuallyCollapsed()) {
       this.sidebarCollapsed = false;
     }
     if (this.mobileMenuOpen) {
       this.closeMobileMenu();
-    } else if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 992px)').matches) {
+    } else if (this.mobileViewport) {
       this.mobileMenuOpen = true;
+      this.prepareMobileDrawer();
     }
     setTimeout(() => {
       const input = document.querySelector<HTMLInputElement>('.sidebar-filter');
@@ -466,7 +520,7 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.isTeacher()) {
       return '/teacher/my-classes';
     }
-    return '/timetable/view';
+    return '/dashboard';
   }
 
   getNavbarDisplayName(): string {
@@ -539,11 +593,12 @@ export class AppComponent implements OnInit, OnDestroy {
       '/teacher/dashboard': 'Teacher Dashboard',
       '/teacher/manage-account': 'My Account',
       '/parent/dashboard': 'Parent Dashboard',
-      '/exams': 'Enter Marks',
+      '/exams': 'Marks Input',
       '/mark-sheet': 'Mark Sheet',
       '/report-cards': 'Report Cards',
+      '/results-analysis': 'Results Analysis',
       '/rankings': 'Rankings',
-      '/check_mark_progess': 'Marks Entry Progress',
+      '/check_mark_progess': 'Marks Progress',
       '/publish-results': 'Publish Results',
       '/students': 'Students',
       '/teachers': 'Teachers',
@@ -557,9 +612,7 @@ export class AppComponent implements OnInit, OnDestroy {
       '/system-settings': 'System Settings',
       '/teacher/record-book': 'Record Book',
       '/teacher/my-classes': 'My Classes',
-      '/teacher/inventory-record': 'Inventory Record',
       '/messages/inbox': 'Messages Inbox',
-      '/news-feed': 'News Feed'
     };
     if (exactTitles[path]) {
       return exactTitles[path];
@@ -716,10 +769,6 @@ export class AppComponent implements OnInit, OnDestroy {
       this.canAccessFinancePage('reportExemption') ||
       this.canAccessFinancePage('reportAgedDebtors') ||
       this.canAccessFinancePage('reportEnrolmentBilling') ||
-      this.canAccessFinancePage('reportRevenueRecognition') ||
-      this.canAccessFinancePage('reportStudentReconciliation') ||
-      this.canAccessFinancePage('reportAnalyticsForecasts') ||
-      this.canAccessFinancePage('reportClassReconciliation') ||
       this.canAccessFinancePage('reportDiningHall') ||
       this.canAccessFinancePage('reportTransport')
     );
@@ -972,7 +1021,6 @@ export class AppComponent implements OnInit, OnDestroy {
       'Academic Settings',
       'System Settings',
       'Audit Logs',
-      'Analytics & Reports',
       'License Configuration',
       'Integrations'
     ]);
@@ -1013,21 +1061,6 @@ export class AppComponent implements OnInit, OnDestroy {
     );
   }
 
-  isSystemAdminAnalyticsVisible(): boolean {
-    return (
-      (this.isAdmin() ||
-        this.isSuperAdmin() ||
-        this.canAccessModule('finance') ||
-        this.canAccessModule('logistics')) &&
-      this.matchesSidebarFilter(
-        'System Administration',
-        'Analytics & Reports',
-        'Analytics',
-        'Reports'
-      )
-    );
-  }
-
   isSystemAdminLicenseConfigVisible(): boolean {
     return (
       (this.isAdmin() || this.isSuperAdmin()) &&
@@ -1049,12 +1082,13 @@ export class AppComponent implements OnInit, OnDestroy {
 
   toggleMobileMenu(): void {
     this.mobileMenuOpen = !this.mobileMenuOpen;
-    // Prevent body scroll when menu is open
     if (this.mobileMenuOpen) {
+      this.prepareMobileDrawer();
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
+    this.cdr.markForCheck();
   }
 
   closeMobileMenu(): void {
@@ -1188,7 +1222,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   toggleSidebar(): void {
     // On tablet/mobile, use the sidebar toggle button as a drawer open/close control
-    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 992px)').matches) {
+    if (this.mobileViewport) {
       this.toggleMobileMenu();
       return;
     }
@@ -1203,7 +1237,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   toggleMenu(menuKey: string): void {
-    if (this.sidebarCollapsed) {
+    if (this.isSidebarVisuallyCollapsed()) {
       return;
     }
     if (this.isMenuExpanded(menuKey)) {
@@ -1216,7 +1250,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   /** Called from submenu links so the section is open before navigation (avoids needing two clicks). */
   ensureMenuExpanded(menuKey: string): void {
-    if (this.sidebarCollapsed) {
+    if (this.isSidebarVisuallyCollapsed()) {
       return;
     }
     this.expandedMenus = { [menuKey]: true };
@@ -1224,7 +1258,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   /** Expand a sidebar section before following a submenu routerLink (one-click navigation). */
   prepareSidebarNavigation(menuKey: string): void {
-    if (this.sidebarCollapsed) {
+    if (this.isSidebarVisuallyCollapsed()) {
       return;
     }
     this.expandedMenus = { [menuKey]: true };
@@ -1269,6 +1303,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   toggleTheme(): void {
     this.themeService.toggleTheme();
+    this.cdr.markForCheck();
   }
 
   getCurrentUserRole(): string {
@@ -1297,8 +1332,7 @@ export class AppComponent implements OnInit, OnDestroy {
     if (url.startsWith('/teachers')) return 'Teachers';
     if (url.startsWith('/classes')) return 'Classes';
     if (url.startsWith('/subjects')) return 'Subjects';
-    if (url.startsWith('/exams') || url.startsWith('/mark-sheet') || url.startsWith('/report-cards') || url.startsWith('/publish-results') || url.startsWith('/check_mark_progess') || url.startsWith('/rankings')) return 'Exams';
-    if (url.startsWith('/timetable')) return 'Timetable';
+    if (url.startsWith('/exams') || url.startsWith('/mark-sheet') || url.startsWith('/report-cards') || url.startsWith('/results-analysis') || url.startsWith('/publish-results') || url.startsWith('/check_mark_progess') || url.startsWith('/rankings')) return 'Exams';
 if (url.startsWith('/settings')) return 'Settings';
     if (url.startsWith('/attendance')) return 'Attendance';
     if (url.startsWith('/invoices') || url.startsWith('/payments') || url.startsWith('/finance')) return 'Finance';

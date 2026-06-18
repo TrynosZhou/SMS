@@ -1990,3 +1990,79 @@
     margin-top: 30px;
   }
 }
+
+/* Parent report card — full-width maximized view */
+.rc-page--parent {
+  max-width: 1200px;
+}
+
+.rc-page--parent-maximized {
+  max-width: none;
+  width: 100%;
+  padding: 0.5rem 0.75rem 1.5rem;
+}
+
+.rc-page--parent-maximized .rc-hero {
+  margin-bottom: 0.75rem;
+  padding: 14px 18px 12px;
+}
+
+.rc-page--parent-maximized .rc-hero-stats {
+  display: none;
+}
+
+.rc-panel--generate-compact {
+  margin-bottom: 0.75rem;
+  padding: 14px 16px;
+}
+
+.rc-panel--generate-compact .rc-panel__head {
+  margin-bottom: 0.75rem;
+}
+
+.rc-panel--generate-compact .rc-panel__intro {
+  margin-bottom: 0;
+}
+
+.report-cards-section--parent-max {
+  margin-top: 0;
+}
+
+.report-cards-list--parent-max {
+  display: block;
+}
+
+.report-card-preview--parent-max {
+  max-width: none;
+  width: 100%;
+  padding: 12px;
+  margin: 0;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
+}
+
+.report-card-preview--parent-max > .report-card-header {
+  margin-bottom: 12px;
+}
+
+.report-card-preview--parent-max .rc-document {
+  font-size: 13px;
+}
+
+.report-card-preview--parent-max .rc-banner {
+  min-height: 96px;
+}
+
+.report-card-preview--parent-max .rc-school-name {
+  font-size: 1.15rem;
+}
+
+@media (min-width: 900px) {
+  .rc-page--parent-maximized {
+    padding: 0.75rem 1.25rem 2rem;
+  }
+
+  .report-card-preview--parent-max .rc-document {
+    font-size: 14px;
+  }
+}

@@ -317,14 +317,6 @@
               </span>
               <span class="dash-tile-arrow" aria-hidden="true">→</span>
             </a>
-            <a routerLink="/inventory" class="dash-tile" *ngIf="canAccessModule('inventory')">
-              <span class="dash-tile-icon" aria-hidden="true">📦</span>
-              <span class="dash-tile-body">
-                <span class="dash-tile-title">Inventory Manager</span>
-                <span class="dash-tile-desc">Stock &amp; loans</span>
-              </span>
-              <span class="dash-tile-arrow" aria-hidden="true">→</span>
-            </a>
         </div>
       </div>
 
@@ -357,11 +349,6 @@
           <a (click)="viewInvoiceStatement()" class="action-btn modern-action-btn danger-action" style="cursor: pointer;">
             <span class="action-icon">💰</span>
             <span class="action-text">View Invoice Statement</span>
-            <span class="action-arrow">→</span>
-          </a>
-          <a routerLink="/student/inventory" class="action-btn modern-action-btn success-action" *ngIf="canAccessModule('inventory')">
-            <span class="action-icon">📚</span>
-            <span class="action-text">My Books &amp; Fines</span>
             <span class="action-arrow">→</span>
           </a>
         </div>

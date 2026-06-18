@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { resolveHeadmasterRemark } from '../utils/headmasterRemarks';
 import { In, IsNull } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { Exam, ExamType, ExamStatus } from '../entities/Exam';
@@ -2629,7 +2630,12 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
         remarks: {
           id: remarks?.id || null,
           classTeacherRemarks: remarks?.classTeacherRemarks || null,
-          headmasterRemarks: remarks?.headmasterRemarks || null
+          headmasterRemarks: resolveHeadmasterRemark(remarks?.headmasterRemarks, {
+            studentName: `${student.firstName} ${student.lastName}`,
+            headmasterName: settings?.headmasterName || '',
+            overallAverage,
+            subjects: subjectData,
+          }),
         },
         generatedAt: new Date(),
         settings: {
@@ -2825,6 +2831,8 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
     const settingsRepository = AppDataSource.getRepository(Settings);
     const examRepository = AppDataSource.getRepository(Exam);
     const classRepository = AppDataSource.getRepository(Class);
+    const settingsListEarly = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
+    const pdfSettings = settingsListEarly.length > 0 ? settingsListEarly[0] : null;
 
     // Support both old format (studentId + examId) and new format (classId + examType + studentId)
     let reportCardData: any;
@@ -3256,7 +3264,12 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         presentAttendance: presentAttendance, // Present/excused attendance days
         remarks: {
           classTeacherRemarks: remarks?.classTeacherRemarks || null,
-          headmasterRemarks: remarks?.headmasterRemarks || null
+          headmasterRemarks: resolveHeadmasterRemark(remarks?.headmasterRemarks, {
+            studentName: `${student.firstName} ${student.lastName}`,
+            headmasterName: settings?.headmasterName || '',
+            overallAverage,
+            subjects: subjectData,
+          }),
         },
         generatedAt: new Date()
       };
@@ -3487,7 +3500,12 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
         totalStudents: totalStudents, // Add total number of students
         remarks: {
           classTeacherRemarks: remarks?.classTeacherRemarks || null,
-          headmasterRemarks: remarks?.headmasterRemarks || null
+          headmasterRemarks: resolveHeadmasterRemark(remarks?.headmasterRemarks, {
+            studentName: `${student.firstName} ${student.lastName}`,
+            headmasterName: pdfSettings?.headmasterName || '',
+            overallAverage,
+            subjects: subjectData,
+          }),
         },
         generatedAt: new Date()
       };
@@ -3688,18 +3706,25 @@ export const generateMarkSheet = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'No students found in this class' });
     }
 
-    // Get all exams of the specified type for this class
+    // Get exams of the specified type for this class (and term when provided)
+    const examWhere: any = {
+      classId: classId as string,
+      type: examType as ExamType,
+    };
+    if (term) {
+      examWhere.term = String(term).trim();
+    }
+
     const exams = await examRepository.find({
-      where: {
-        classId: classId as string,
-        type: examType as ExamType,
-      },
+      where: examWhere,
       relations: ['subjects'],
       order: { examDate: 'DESC' }
     });
 
     if (exams.length === 0) {
-      return res.status(404).json({ message: `No ${examType} exams found for this class` });
+      return res.status(404).json({
+        message: `No ${examType} exams found for this class${term ? ` in ${term}` : ''}`
+      });
     }
 
     // Get all marks for these exams

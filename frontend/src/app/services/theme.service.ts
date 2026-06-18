@@ -4,7 +4,7 @@ import { BehaviorSubject } from 'rxjs';
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   private readonly STORAGE_KEY = 'dashboard-theme';
-  private darkModeSubject = new BehaviorSubject<boolean>(this.loadStored());
+  private readonly darkModeSubject = new BehaviorSubject<boolean>(false);
 
   darkMode$ = this.darkModeSubject.asObservable();
 
@@ -13,7 +13,9 @@ export class ThemeService {
   }
 
   constructor() {
-    this.darkModeSubject.next(this.loadStored());
+    const stored = this.loadStored();
+    this.darkModeSubject.next(stored);
+    this.applyDocumentTheme(stored);
   }
 
   private loadStored(): boolean {
@@ -24,11 +26,24 @@ export class ThemeService {
     }
   }
 
-  toggleTheme(): void {
-    const next = !this.darkModeSubject.value;
+  private applyDocumentTheme(isDark: boolean): void {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    document.body.classList.toggle('dark-mode', isDark);
+    document.body.classList.toggle('light-mode', !isDark);
+    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+  }
+
+  setDarkMode(isDark: boolean): void {
     try {
-      localStorage.setItem(this.STORAGE_KEY, next ? 'dark' : 'light');
+      localStorage.setItem(this.STORAGE_KEY, isDark ? 'dark' : 'light');
     } catch {}
-    this.darkModeSubject.next(next);
+    this.applyDocumentTheme(isDark);
+    this.darkModeSubject.next(isDark);
+  }
+
+  toggleTheme(): void {
+    this.setDarkMode(!this.darkModeSubject.value);
   }
 }

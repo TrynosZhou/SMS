@@ -94,6 +94,12 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-text-size-adjust: 100%;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+body.dark-mode {
+  background-color: #0f172a;
+  color: #e2e8f0;
 }
 
 app-root {

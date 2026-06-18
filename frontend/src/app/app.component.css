@@ -846,8 +846,14 @@
 .main-content {
   margin-left: 0;
   min-height: calc(100dvh - 64px);
-  transition: margin-left 0.3s ease;
+  transition: margin-left 0.3s ease, background-color 0.25s ease;
   padding: 2rem;
+  background: #f8fafc;
+}
+
+.main-content.dark-mode {
+  background: #0f172a;
+  color: #e2e8f0;
 }
 
 /* Login route: full viewport, no padding (blue border frame on login component) */
@@ -1142,6 +1148,38 @@
     min-height: 44px;
     padding-top: 0.65rem;
     padding-bottom: 0.65rem;
+  }
+
+  /* Mobile drawer: show full navigation (same experience as parent portal) */
+  .sidebar.collapsed {
+    width: 280px;
+    max-width: 88vw;
+  }
+
+  .sidebar.collapsed .sidebar-text {
+    display: block;
+  }
+
+  .sidebar.collapsed .sidebar-item,
+  .sidebar.collapsed .sidebar-menu-header {
+    justify-content: flex-start;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .sidebar.collapsed .sidebar-filter-wrap,
+  .sidebar.collapsed .sidebar-portal-head {
+    display: block;
+  }
+
+  .sidebar-submenu,
+  .sidebar-submenu.expanded,
+  .sidebar.collapsed .sidebar-submenu {
+    display: block;
+    max-height: none;
+    opacity: 1;
+    visibility: visible;
+    overflow: visible;
   }
 }
 

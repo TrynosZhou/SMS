@@ -46,7 +46,6 @@ export class AuthGuard implements CanActivate {
         '/accountant/manage-account',
         '/messages',
         '/logistics',
-        '/inventory',
         '/financial-reports',
         '/finance/',
       ];

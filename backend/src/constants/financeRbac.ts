@@ -79,10 +79,6 @@ export const FINANCE_PAGES: FinancePageDef[] = [
   { key: 'reportExemption', label: 'Exemption Report', group: 'financialReports' },
   { key: 'reportAgedDebtors', label: 'Aged Debtors', group: 'financialReports' },
   { key: 'reportEnrolmentBilling', label: 'Enrolment vs Billing', group: 'financialReports' },
-  { key: 'reportRevenueRecognition', label: 'Revenue Recognition', group: 'financialReports' },
-  { key: 'reportStudentReconciliation', label: 'Student Reconciliation', group: 'financialReports' },
-  { key: 'reportAnalyticsForecasts', label: 'Analytics & Forecasts', group: 'financialReports' },
-  { key: 'reportClassReconciliation', label: 'Class Reconciliation', group: 'financialReports' },
   { key: 'reportDiningHall', label: 'Dining Hall Report', group: 'financialReports' },
   { key: 'reportTransport', label: 'Transport Report', group: 'financialReports' },
 ];
@@ -113,10 +109,6 @@ const ACCOUNTANT_FINANCE_DEFAULTS: Record<string, { view: boolean; edit: boolean
   reportExemption: { view: true, edit: false },
   reportAgedDebtors: { view: true, edit: false },
   reportEnrolmentBilling: { view: true, edit: false },
-  reportRevenueRecognition: { view: true, edit: false },
-  reportStudentReconciliation: { view: true, edit: false },
-  reportAnalyticsForecasts: { view: false, edit: false },
-  reportClassReconciliation: { view: false, edit: false },
   reportDiningHall: { view: true, edit: false },
   reportTransport: { view: true, edit: false },
 };

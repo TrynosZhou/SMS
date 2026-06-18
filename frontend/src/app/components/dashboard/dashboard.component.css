@@ -2092,7 +2092,7 @@
 
 /* ========== Dark mode ========== */
 .dashboard-container.dark-mode {
-  background-color: #1a1a2e;
+  background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 45%, #0f172a 100%);
 }
 
 .dark-mode .main-content {
@@ -2114,6 +2114,23 @@
 
 .dark-mode .date-time {
   color: #6b7280;
+}
+
+.dark-mode .dash-page-eyebrow {
+  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(129, 140, 248, 0.35);
+}
+
+.dark-mode .dash-header-btn--ghost {
+  color: #cbd5e1;
+  border-color: #475569;
+  background: transparent;
+}
+
+.dark-mode .dash-header-btn--ghost:hover {
+  background: rgba(148, 163, 184, 0.12);
+  color: #f1f5f9;
 }
 
 .dark-mode .dash-page-header {
@@ -2437,12 +2454,6 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .sidebar {
-    width: 100%;
-    height: auto;
-    position: relative;
-  }
-
   .main-content {
     margin-left: 0;
     padding: 20px;
