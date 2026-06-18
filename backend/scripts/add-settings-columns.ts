@@ -13,6 +13,12 @@ async function main() {
 
     await runner.query(`
       ALTER TABLE "settings"
+      ADD COLUMN IF NOT EXISTS "schoolFacebookUrl" character varying
+    `);
+    console.log('✓ schoolFacebookUrl column ready');
+
+    await runner.query(`
+      ALTER TABLE "settings"
       ADD COLUMN IF NOT EXISTS "academicTerms" json
     `);
     console.log('✓ academicTerms column ready');

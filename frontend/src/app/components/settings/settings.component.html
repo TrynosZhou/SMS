@@ -304,7 +304,15 @@
           <div class="outlined-field">
             <label for="schoolWebsite">Website</label>
             <input id="schoolWebsite" type="url" [(ngModel)]="settings.schoolWebsite" name="schoolWebsite" placeholder="https://www.example.com" />
+            <small class="form-hint">Shown in the top bar as a website link for all users.</small>
           </div>
+          <div class="outlined-field">
+            <label for="schoolFacebookUrl">Facebook page</label>
+            <input id="schoolFacebookUrl" type="url" [(ngModel)]="settings.schoolFacebookUrl" name="schoolFacebookUrl" placeholder="https://www.facebook.com/yourschool" />
+            <small class="form-hint">Shown in the top bar as “Find us on Facebook” for all users.</small>
+          </div>
+        </div>
+        <div class="outlined-field-row">
           <div class="outlined-field">
             <label for="schoolLogoUrl">Logo URL</label>
             <input id="schoolLogoUrl" type="text" [ngModel]="settings.schoolLogo || ''" (ngModelChange)="onLogoUrlChange($event)" name="schoolLogoUrl" placeholder="data:image/... or https://..." />

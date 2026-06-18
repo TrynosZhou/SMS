@@ -77,6 +77,9 @@ export class Settings {
   schoolWebsite: string | null;
 
   @Column({ type: 'varchar', nullable: true })
+  schoolFacebookUrl: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
   headmasterName: string | null;
 
   @Column({ type: 'text', nullable: true })

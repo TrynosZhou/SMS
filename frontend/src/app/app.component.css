@@ -190,6 +190,11 @@
   overflow: visible;
 }
 
+.top-nav-icon-btn--facebook svg {
+  width: 18px;
+  height: 18px;
+}
+
 .top-nav-icon-badge {
   position: absolute;
   top: -4px;

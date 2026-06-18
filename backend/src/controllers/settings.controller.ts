@@ -338,6 +338,7 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       schoolPhone,
       schoolEmail,
       schoolWebsite,
+      schoolFacebookUrl,
       headmasterName,
       schoolMotto,
       academicYear,
@@ -492,6 +493,10 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
     if (schoolWebsite !== undefined) {
       const website = schoolWebsite == null ? null : String(schoolWebsite).trim();
       settings.schoolWebsite = website || null;
+    }
+    if (schoolFacebookUrl !== undefined) {
+      const facebook = schoolFacebookUrl == null ? null : String(schoolFacebookUrl).trim();
+      settings.schoolFacebookUrl = facebook || null;
     }
     if (headmasterName !== undefined) {
       settings.headmasterName = headmasterName;

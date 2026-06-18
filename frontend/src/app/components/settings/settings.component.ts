@@ -163,6 +163,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     headmasterName: '',
     schoolMotto: '',
     schoolWebsite: '',
+    schoolFacebookUrl: '',
     academicYear: new Date().getFullYear().toString(),
     currentTerm: `Term 1 ${new Date().getFullYear()}`,
     schoolLogo: null,
@@ -532,6 +533,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
         }
         if (data.schoolWebsite !== undefined) {
           this.settings.schoolWebsite = data.schoolWebsite;
+        }
+        if (data.schoolFacebookUrl !== undefined) {
+          this.settings.schoolFacebookUrl = data.schoolFacebookUrl;
         }
         if (data.headmasterName !== undefined) {
           this.settings.headmasterName = data.headmasterName;

@@ -43,6 +43,8 @@ templateUrl: './app.component.html',
 export class AppComponent implements OnInit, OnDestroy {
   schoolName = '';
   schoolLogo: string | null = null;
+  schoolWebsite = '';
+  schoolFacebookUrl = '';
   /** Current page label shown in the top navbar (route title). */
   pageNavbarTitle = 'Dashboard';
   mobileMenuOpen = false;
@@ -53,6 +55,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private titleRotationTimerId: number | null = null;
   private readonly titleRotationIntervalMs = 4000;
   private static readonly SCHOOL_NAME_CACHE_KEY = 'sms_schoolDisplayName';
+  private static readonly SCHOOL_LOGO_CACHE_KEY = 'sms_schoolDisplayLogo';
   private readonly dashboardTitleOptions = [
     'After instruction we soar',
     'Kaizen',
@@ -91,6 +94,10 @@ export class AppComponent implements OnInit, OnDestroy {
     if (cachedName) {
       this.schoolName = cachedName;
     }
+    const cachedLogo = sessionStorage.getItem(AppComponent.SCHOOL_LOGO_CACHE_KEY);
+    if (cachedLogo) {
+      this.schoolLogo = this.normalizeSchoolLogoSrc(cachedLogo);
+    }
   }
 
   ngOnInit(): void {
@@ -107,27 +114,8 @@ export class AppComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Load school name from settings if authenticated
+    // Load module access and permissions when already authenticated (e.g. page refresh)
     if (this.authService.isAuthenticated()) {
-      this.settingsService.getSettings().subscribe({
-        next: (settings: any) => {
-          const name = String(settings?.schoolName || '').trim();
-          if (name) {
-            sessionStorage.setItem(AppComponent.SCHOOL_NAME_CACHE_KEY, name);
-          }
-          const logo = settings?.schoolLogo || null;
-          // Defer binding update to avoid NG0100 when settings load during the same CD cycle
-          setTimeout(() => {
-            this.schoolName = name;
-            this.schoolLogo = logo;
-            this.cdr.markForCheck();
-          }, 0);
-        },
-        error: () => {
-          // ignore settings fetch errors to avoid blocking UI
-        }
-      });
-      
       // Load module access settings
       this.moduleAccessService.loadModuleAccess();
       this.permissionService.loadPermissionsFromApi();
@@ -139,6 +127,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.authService.currentUser$.subscribe((user) => {
       if (user) {
+        this.loadSchoolBranding();
         this.moduleAccessService.loadModuleAccess();
         this.permissionService.loadPermissionsFromApi();
         this.syncExpandedMenusFromUrl(this.router.url || '');
@@ -149,6 +138,11 @@ export class AppComponent implements OnInit, OnDestroy {
         this.viewAsRoles = [];
         this.selectedViewAsRoleId = '';
         this.stopIncomingMessageBadge();
+        this.schoolLogo = null;
+        this.schoolWebsite = '';
+        this.schoolFacebookUrl = '';
+        sessionStorage.removeItem(AppComponent.SCHOOL_LOGO_CACHE_KEY);
+        this.cdr.markForCheck();
       }
     });
 
@@ -173,6 +167,9 @@ export class AppComponent implements OnInit, OnDestroy {
         this.closeMobileMenu();
       }
       if (!this.authService.isAuthenticated()) return;
+      if (!this.schoolLogo) {
+        this.loadSchoolBranding();
+      }
       this.refreshIncomingMessageBadge();
       const user = this.authService.getCurrentUser();
       const role = (user?.role || '').toLowerCase();
@@ -276,6 +273,100 @@ export class AppComponent implements OnInit, OnDestroy {
     const dashboardRoute = this.authService.getDashboardRouteForRole(legacyKey);
     this.router.navigate([dashboardRoute]).catch(() => {});
     this.cdr.markForCheck();
+  }
+
+  hasWebsiteLink(): boolean {
+    return !!String(this.schoolWebsite || '').trim();
+  }
+
+  /** Fetch school name, primary logo, and social links for the top navbar. */
+  private loadSchoolBranding(): void {
+    if (!this.authService.isAuthenticated()) return;
+
+    this.settingsService.getSettings().subscribe({
+      next: (settings: any) => {
+        if (!settings || typeof settings !== 'object') return;
+
+        const name = String(settings?.schoolName || '').trim();
+        const logo = this.normalizeSchoolLogoSrc(settings?.schoolLogo || null);
+        const websiteUrl = String(settings?.schoolWebsite || '').trim();
+        const facebookUrl = String(settings?.schoolFacebookUrl || '').trim();
+
+        if (name) {
+          sessionStorage.setItem(AppComponent.SCHOOL_NAME_CACHE_KEY, name);
+        }
+        if (logo) {
+          try {
+            if (logo.length < 500_000) {
+              sessionStorage.setItem(AppComponent.SCHOOL_LOGO_CACHE_KEY, logo);
+            }
+          } catch {
+            // ignore sessionStorage quota errors for large logos
+          }
+        }
+
+        this.schoolName = name || this.schoolName;
+        this.schoolLogo = logo;
+        this.schoolWebsite = websiteUrl;
+        this.schoolFacebookUrl = facebookUrl;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        // keep cached branding if the request fails
+      }
+    });
+  }
+
+  private normalizeSchoolLogoSrc(value: string | null): string | null {
+    if (!value) return null;
+
+    let v = String(value).trim();
+    if (!v) return null;
+
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+      v = v.slice(1, -1).trim();
+    }
+
+    v = v.replace(/\\n/g, '').replace(/\\r/g, '').replace(/\\t/g, '').replace(/\\"/g, '"');
+
+    if (v.startsWith('data:image')) {
+      const commaIndex = v.indexOf(',');
+      if (commaIndex > -1) {
+        const header = v.slice(0, commaIndex + 1);
+        const payload = v.slice(commaIndex + 1).replace(/\s/g, '');
+        return `${header}${payload}`;
+      }
+      return v;
+    }
+
+    if (/^https?:\/\//i.test(v)) {
+      return v;
+    }
+
+    if (/^[A-Za-z0-9+/=\r\n]+$/.test(v) && v.length > 64) {
+      return `data:image/png;base64,${v.replace(/\s/g, '')}`;
+    }
+
+    return v;
+  }
+
+  getWebsiteLink(): string {
+    return this.normalizeExternalUrl(this.schoolWebsite);
+  }
+
+  hasFacebookLink(): boolean {
+    return !!String(this.schoolFacebookUrl || '').trim();
+  }
+
+  getFacebookLink(): string {
+    return this.normalizeExternalUrl(this.schoolFacebookUrl);
+  }
+
+  private normalizeExternalUrl(raw: string): string {
+    const url = String(raw || '').trim();
+    if (!url) return '#';
+    if (/^https?:\/\//i.test(url)) return url;
+    return `https://${url}`;
   }
 
   openNavSearch(): void {

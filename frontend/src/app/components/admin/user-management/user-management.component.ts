@@ -93,6 +93,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   editingNameUser: UserManagementRow | null = null;
   editFirstName = '';
   editLastName = '';
+  editNameError = '';
   savingName = false;
 
   constructor(
@@ -383,8 +384,9 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         this.editLastName = parts.slice(1).join(' ');
       }
     }
-    this.error = '';
+    this.editNameError = '';
     this.showEditNameModal = true;
+    this.cdr.detectChanges();
   }
 
   closeEditNameModal(): void {
@@ -392,27 +394,45 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.editingNameUser = null;
     this.editFirstName = '';
     this.editLastName = '';
+    this.editNameError = '';
     this.savingName = false;
+    this.cdr.detectChanges();
   }
 
   saveUserName(): void {
-    if (!this.editingNameUser) return;
+    if (!this.editingNameUser || this.savingName) return;
     const firstName = this.editFirstName.trim();
     const lastName = this.editLastName.trim();
     if (!firstName && !lastName) {
-      this.error = 'Enter at least a first name or last name.';
+      this.editNameError = 'Enter at least a first name or last name.';
+      this.cdr.detectChanges();
       return;
     }
+    const userId = this.editingNameUser.id;
+    if (!userId) {
+      this.editNameError = 'User account id is missing. Refresh the page and try again.';
+      this.cdr.detectChanges();
+      return;
+    }
+
     this.savingName = true;
-    this.error = '';
+    this.editNameError = '';
     this.accountService
-      .updateUserDisplayName(this.editingNameUser.id, { firstName, lastName })
+      .updateUserDisplayName(userId, { firstName, lastName })
+      .pipe(
+        timeout(60000),
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.savingName = false;
+          this.cdr.detectChanges();
+        })
+      )
       .subscribe({
         next: (res: any) => {
-          this.savingName = false;
           const updatedName = res?.user?.name || [firstName, lastName].filter(Boolean).join(' ');
-          this.success = `Name updated for ${this.editingNameUser!.username}.`;
-          const editedId = this.editingNameUser!.id;
+          const editedUsername = this.editingNameUser?.username || 'user';
+          const editedId = userId;
+          this.success = `Name updated for ${editedUsername}.`;
           this.closeEditNameModal();
           const idx = this.users.findIndex((u) => u.id === editedId);
           if (idx >= 0) {
@@ -426,11 +446,19 @@ export class UserManagementComponent implements OnInit, OnDestroy {
           } else {
             this.loadUsers();
           }
-          setTimeout(() => (this.success = ''), 6000);
+          this.cdr.detectChanges();
+          setTimeout(() => {
+            this.success = '';
+            this.cdr.detectChanges();
+          }, 6000);
         },
         error: (err) => {
-          this.savingName = false;
-          this.error = err?.error?.message || 'Failed to update name.';
+          if (err?.name === 'TimeoutError') {
+            this.editNameError = 'Request timed out. Check that the backend is running and try again.';
+          } else {
+            this.editNameError = err?.error?.message || err?.message || 'Failed to update name.';
+          }
+          this.cdr.detectChanges();
         }
       });
   }

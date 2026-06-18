@@ -284,7 +284,7 @@
     </div>
     <form class="um-modal-form" (ngSubmit)="saveUserName()">
       <div class="um-modal-body">
-        <div class="um-alert um-alert--error" *ngIf="error && showEditNameModal">{{ error }}</div>
+        <div class="um-alert um-alert--error" *ngIf="editNameError">{{ editNameError }}</div>
         <p class="um-form-hint um-form-hint--inline">Username cannot be changed here — only the person's name.</p>
         <div class="um-form-row um-form-row--split">
           <div class="um-form-col">

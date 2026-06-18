@@ -801,10 +801,10 @@ export const updateUserDisplayName = async (req: AuthRequest, res: Response) => 
       return res.status(403).json({ message: 'Only Administrators or Directors can update user names' });
     }
 
-    const targetUserId = req.params.id;
+    const targetUserId = String(req.params.id || '').trim();
     const { firstName, lastName } = req.body;
 
-    if (!targetUserId) {
+    if (!targetUserId || targetUserId === 'undefined' || targetUserId === 'null') {
       return res.status(400).json({ message: 'User ID is required' });
     }
 
@@ -813,6 +813,10 @@ export const updateUserDisplayName = async (req: AuthRequest, res: Response) => 
 
     if (!trimmedFirst && !trimmedLast) {
       return res.status(400).json({ message: 'First name or last name is required' });
+    }
+
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
     }
 
     const userRepository = AppDataSource.getRepository(User);
@@ -825,44 +829,61 @@ export const updateUserDisplayName = async (req: AuthRequest, res: Response) => 
       return res.status(403).json({ message: 'Only a Super Administrator or Director can update this account' });
     }
 
-    user.firstName = trimmedFirst || null;
-    user.lastName = trimmedLast || null;
-    await userRepository.save(user);
+    const nextFirstName = trimmedFirst || null;
+    const nextLastName = trimmedLast || null;
+    await userRepository.update({ id: user.id }, { firstName: nextFirstName, lastName: nextLastName });
 
-    if (user.role === UserRole.TEACHER) {
-      const teacherRepo = AppDataSource.getRepository(Teacher);
-      const teacher = await teacherRepo.findOne({ where: { userId: user.id } });
-      if (teacher) {
-        if (trimmedFirst) teacher.firstName = trimmedFirst;
-        if (trimmedLast) teacher.lastName = trimmedLast;
-        await teacherRepo.save(teacher);
+    const syncLinkedName = async () => {
+      if (user.role === UserRole.TEACHER) {
+        const teacherRepo = AppDataSource.getRepository(Teacher);
+        const teacher = await teacherRepo.findOne({ where: { userId: user.id } });
+        if (teacher) {
+          const patch: Partial<Teacher> = {};
+          if (trimmedFirst) patch.firstName = trimmedFirst;
+          if (trimmedLast) patch.lastName = trimmedLast;
+          if (Object.keys(patch).length > 0) {
+            await teacherRepo.update({ id: teacher.id }, patch);
+          }
+        }
+      } else if (user.role === UserRole.STUDENT) {
+        const studentRepo = AppDataSource.getRepository(Student);
+        const student = await studentRepo.findOne({ where: { userId: user.id } });
+        if (student) {
+          const patch: Partial<Student> = {};
+          if (trimmedFirst) patch.firstName = trimmedFirst;
+          if (trimmedLast) patch.lastName = trimmedLast;
+          if (Object.keys(patch).length > 0) {
+            await studentRepo.update({ id: student.id }, patch);
+          }
+        }
+      } else if (user.role === UserRole.PARENT) {
+        const parentRepo = AppDataSource.getRepository(Parent);
+        const parent = await parentRepo.findOne({ where: { userId: user.id } });
+        if (parent) {
+          const patch: Partial<Parent> = {};
+          if (trimmedFirst) patch.firstName = trimmedFirst;
+          if (trimmedLast) patch.lastName = trimmedLast;
+          if (Object.keys(patch).length > 0) {
+            await parentRepo.update({ id: parent.id }, patch);
+          }
+        }
       }
-    } else if (user.role === UserRole.STUDENT) {
-      const studentRepo = AppDataSource.getRepository(Student);
-      const student = await studentRepo.findOne({ where: { userId: user.id } });
-      if (student) {
-        if (trimmedFirst) student.firstName = trimmedFirst;
-        if (trimmedLast) student.lastName = trimmedLast;
-        await studentRepo.save(student);
-      }
-    } else if (user.role === UserRole.PARENT) {
-      const parentRepo = AppDataSource.getRepository(Parent);
-      const parent = await parentRepo.findOne({ where: { userId: user.id } });
-      if (parent) {
-        if (trimmedFirst) parent.firstName = trimmedFirst;
-        if (trimmedLast) parent.lastName = trimmedLast;
-        await parentRepo.save(parent);
-      }
+    };
+
+    try {
+      await syncLinkedName();
+    } catch (syncErr) {
+      console.warn('Linked profile name sync failed (user name still updated):', syncErr);
     }
 
-    const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.username;
+    const displayName = [nextFirstName, nextLastName].filter(Boolean).join(' ').trim() || user.username;
     res.json({
       message: 'Name updated successfully',
       user: {
         id: user.id,
         username: user.username,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: nextFirstName,
+        lastName: nextLastName,
         name: displayName,
         role: user.role
       }
