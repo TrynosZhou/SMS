@@ -60,9 +60,12 @@ export class AuthGuard implements CanActivate {
     if (role === 'parent') {
       const allowedPrefixes = [
         '/parent/',
+        '/report-cards',
         '/account/change-password',
       ];
-      const isAllowed = allowedPrefixes.some((prefix) => url === prefix || url.startsWith(prefix));
+      const isAllowed = allowedPrefixes.some(
+        (prefix) => url === prefix || url.startsWith(prefix + '/') || url.startsWith(prefix)
+      );
       if (!isAllowed) {
         this.router.navigate(['/parent/dashboard']);
         return false;

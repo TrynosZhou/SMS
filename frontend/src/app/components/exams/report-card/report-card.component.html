@@ -650,11 +650,24 @@
       </div>
     </div>
 
+    <!-- Parent / student: no report card found -->
+    <div *ngIf="!loading && reportCards.length === 0 && error && isParent" class="empty-state-card error rc-empty-error" [@fadeInOut]>
+      <span class="empty-icon">📄</span>
+      <h3>Report Card Not Available</h3>
+      <p>{{ error }}</p>
+      <p class="rc-empty-hint" *ngIf="selectedTerm && selectedExamType">
+        Selected: <strong>{{ selectedTerm }}</strong> · <strong>{{ selectedExamType === 'mid_term' ? 'Mid-Term' : selectedExamType === 'end_term' ? 'End of Term' : selectedExamType }}</strong>
+      </p>
+    </div>
+
     <!-- Empty State -->
     <div *ngIf="!loading && reportCards.length === 0 && !error" class="empty-state-card info rc-empty-ready">
       <span class="empty-icon">📊</span>
-      <h3>Ready to generate report cards</h3>
-      <p>Select a class, term, and exam type above, then click Generate report cards.</p>
+      <h3>{{ isParent ? 'Loading report card…' : 'Ready to generate report cards' }}</h3>
+      <p *ngIf="!isParent">Select a class, term, and exam type above, then click Generate report cards.</p>
+      <p *ngIf="isParent && loadingTerms">Please wait while term options are loaded.</p>
+      <p *ngIf="isParent && !loadingTerms && isSelectionValid()">Generating report card for your linked student…</p>
+      <p *ngIf="isParent && !loadingTerms && !isSelectionValid()">Select a term and exam type above to view the report card.</p>
     </div>
 </div>
 

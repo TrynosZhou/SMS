@@ -14,13 +14,8 @@
       <button class="src-btn src-btn-outline"
               (click)="generateAndPreview()"
               [disabled]="!canGenerate || loading || loadingPdf">
-        <span *ngIf="!loading && !loadingPdf">🔄 Refresh</span>
-        <span *ngIf="loading || loadingPdf" class="src-spinner-inline"></span>
-      </button>
-      <button class="src-btn src-btn-primary"
-              (click)="downloadPDF()"
-              [disabled]="!inlinePdf || loading">
-        ⬇️ Download PDF
+        <span *ngIf="!loading">🔄 Refresh</span>
+        <span *ngIf="loading" class="src-spinner-inline"></span>
       </button>
     </div>
   </div>
@@ -113,27 +108,8 @@
       <p>Fetching your report card…</p>
     </div>
 
-    <!-- PDF inline viewer (primary display) -->
-    <div class="src-pdf-container" *ngIf="!loading && !pdfLoadError" [@fadeIn]>
-
-      <!-- PDF loading overlay -->
-      <div class="src-pdf-loading" *ngIf="loadingPdf">
-        <div class="src-spinner src-spinner-dark"></div>
-        <p>Rendering report card PDF…</p>
-      </div>
-
-      <!-- The PDF iframe -->
-      <iframe
-        *ngIf="inlinePdf && !loadingPdf"
-        [src]="inlinePdf"
-        class="src-pdf-frame"
-        frameborder="0"
-        title="Report Card PDF">
-      </iframe>
-    </div>
-
-    <!-- ── HTML Fallback view (shown if PDF render failed or as supplement) -->
-    <div class="src-card" *ngIf="!loading && reportCard && pdfLoadError" [@fadeIn]>
+    <!-- ── HTML Report Card view — shown as soon as data arrives ── -->
+    <div class="src-card" *ngIf="!loading && reportCard" [@fadeIn]>
 
       <!-- Report card info grid -->
       <div class="src-rc-info">
@@ -237,11 +213,43 @@
         </div>
       </div>
 
-      <!-- Retry PDF button -->
+      <!-- PDF download / retry row -->
       <div class="src-retry-row">
-        <button class="src-btn src-btn-outline" (click)="loadInlinePdf()">
-          🔄 Retry PDF Render
+        <button class="src-btn src-btn-outline" (click)="downloadPDF()" [disabled]="loading || loadingPdf">
+          ⬇️ Download PDF
         </button>
+        <button class="src-btn src-btn-outline" (click)="loadInlinePdf()" [disabled]="loadingPdf">
+          🔄 Reload PDF Preview
+        </button>
+      </div>
+    </div>
+
+    <!-- ── PDF inline viewer (shown after HTML card, as a bonus preview) ── -->
+    <div class="src-pdf-section" *ngIf="!loading && reportCard" [@fadeIn]>
+      <div class="src-pdf-section-header">
+        <span>📄 PDF Preview</span>
+        <span class="src-pdf-status" *ngIf="loadingPdf">Rendering…</span>
+        <span class="src-pdf-status src-pdf-status--error" *ngIf="pdfLoadError">PDF unavailable</span>
+      </div>
+
+      <!-- PDF loading spinner -->
+      <div class="src-pdf-loading" *ngIf="loadingPdf">
+        <div class="src-spinner src-spinner-dark"></div>
+        <p>Rendering PDF…</p>
+      </div>
+
+      <!-- The PDF iframe -->
+      <iframe
+        *ngIf="inlinePdf && !loadingPdf"
+        [src]="inlinePdf"
+        class="src-pdf-frame"
+        frameborder="0"
+        title="Report Card PDF">
+      </iframe>
+
+      <!-- PDF error notice -->
+      <div class="src-pdf-error-notice" *ngIf="pdfLoadError && !loadingPdf">
+        <p>The PDF preview could not be rendered. Use the Download PDF button above to get a printable copy.</p>
       </div>
     </div>
 

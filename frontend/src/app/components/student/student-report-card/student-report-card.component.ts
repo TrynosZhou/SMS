@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, OnDestroy } from '@angular/core';
 import { AuthService } from '../../../services/auth.service';
 import { ExamService } from '../../../services/exam.service';
 import { SettingsService } from '../../../services/settings.service';
@@ -59,7 +59,8 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private examService: ExamService,
     private settingsService: SettingsService,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -141,17 +142,18 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
         } else if (this.availableTerms.length) {
           this.activeTerm = this.availableTerms[0];
         }
-        // Default selected term to active term only if not already set
         if (!this.selectedTerm) {
           this.selectedTerm = this.activeTerm;
         }
         this.loadingTerms = false;
+        this.cdr.markForCheck();
         this.autoGenerate();
       },
       error: () => {
         if (!this.activeTerm && this.availableTerms.length) this.activeTerm = this.availableTerms[0];
         if (!this.selectedTerm) this.selectedTerm = this.activeTerm;
         this.loadingTerms = false;
+        this.cdr.markForCheck();
         this.autoGenerate();
       }
     });
@@ -223,7 +225,9 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
     this.success = '';
     this.pdfLoadError = false;
     this.inlinePdf = null;
+    this.reportCard = null;
     this.revokePdfUrl();
+    this.cdr.markForCheck();
 
     this.examService.getReportCard(
       this.classId,
@@ -232,12 +236,14 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
       this.student.id
     ).subscribe({
       next: (data: any) => {
-        this.loading = false;
         let cards = Array.isArray(data?.reportCards) ? data.reportCards : [];
         if (!cards.length && data?.student) cards = [data];
 
         if (!cards.length) {
-          this.error = 'No report card found for the selected term and exam type.'; return;
+          this.loading = false;
+          this.error = 'No report card found for the selected term and exam type.';
+          this.cdr.markForCheck();
+          return;
         }
 
         this.reportCard = cards[0];
@@ -249,14 +255,16 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
           this.reportCard.remarks.headmasterRemarks = this.generateHeadmasterRemark(this.reportCard);
         }
 
-        // Now auto-load the PDF preview
+        // Show the HTML card immediately
+        this.loading = false;
+        this.cdr.markForCheck();
+
+        // Load PDF in the background — non-blocking
         this.loadInlinePdf();
       },
       error: (err: any) => {
         this.loading = false;
         const msg = err.error?.message || '';
-
-        // Clear any stale data so we never show Mid-Term when End-Term fails.
         this.reportCard = null;
         this.inlinePdf = null;
         this.revokePdfUrl();
@@ -268,16 +276,27 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
         } else {
           this.error = msg || 'Failed to load report card. Please try again.';
         }
+        this.cdr.markForCheck();
       }
     });
   }
 
-  // ── Load PDF into the inline iframe ──────────────────────────
+  // ── Load PDF into the inline iframe (background, non-blocking) ──
   loadInlinePdf() {
     if (!this.classId || !this.selectedExamType || !this.selectedTerm || !this.student?.id) return;
 
     this.loadingPdf = true;
     this.pdfLoadError = false;
+    this.cdr.markForCheck();
+
+    // Safety timeout: if PDF takes more than 20 s, show error notice rather than spinning forever
+    const pdfTimeout = setTimeout(() => {
+      if (this.loadingPdf) {
+        this.loadingPdf = false;
+        this.pdfLoadError = true;
+        this.cdr.markForCheck();
+      }
+    }, 20000);
 
     this.examService.downloadAllReportCardsPDF(
       this.classId,
@@ -286,14 +305,22 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
       this.student.id
     ).subscribe({
       next: (blob: Blob) => {
+        clearTimeout(pdfTimeout);
         this.loadingPdf = false;
-        if (!blob || blob.size === 0) { this.pdfLoadError = true; return; }
+        if (!blob || blob.size === 0) {
+          this.pdfLoadError = true;
+          this.cdr.markForCheck();
+          return;
+        }
         this.pdfBlobUrl = window.URL.createObjectURL(blob);
         this.inlinePdf  = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfBlobUrl);
+        this.cdr.markForCheck();
       },
       error: () => {
+        clearTimeout(pdfTimeout);
         this.loadingPdf = false;
         this.pdfLoadError = true;
+        this.cdr.markForCheck();
       }
     });
   }
