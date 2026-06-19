@@ -392,6 +392,36 @@
       <!-- Notifications tab -->
       <div class="tab-panel notification-settings-panel" *ngIf="isTab('notifications')">
         <div class="notification-card">
+          <h3 class="notification-card-title">WhatsApp Notifications</h3>
+          <p class="notification-card-intro">
+            Requires Meta WhatsApp Cloud API credentials in server environment (<code>WHATSAPP_ACCESS_TOKEN</code>, <code>WHATSAPP_PHONE_NUMBER_ID</code>).
+          </p>
+          <div class="notification-row">
+            <div class="notification-row-text">
+              <span class="notification-row-label">Results Published</span>
+              <span class="notification-row-desc">WhatsApp parents, students, teachers, and administrators when results are published</span>
+            </div>
+            <label class="toggle-switch notification-toggle">
+              <input type="checkbox" [(ngModel)]="settings.notificationSettings.sms.reportCardReady" name="smsReportCardReady" [disabled]="isDemoUser()" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="notification-field">
+            <label class="notification-row-label" for="adminWhatsAppPhones">Administrator WhatsApp numbers</label>
+            <span class="notification-row-desc">Comma-separated numbers for leadership alerts (also uses School Phone from School Information)</span>
+            <input
+              id="adminWhatsAppPhones"
+              type="text"
+              class="form-control notification-phone-input"
+              [(ngModel)]="adminWhatsAppPhonesText"
+              name="adminWhatsAppPhones"
+              placeholder="07XXXXXXXX, +2637XXXXXXXX"
+              [disabled]="isDemoUser()"
+            />
+          </div>
+        </div>
+
+        <div class="notification-card">
           <h3 class="notification-card-title">SMS Notification</h3>
           <div class="notification-row">
             <div class="notification-row-text">
@@ -410,16 +440,6 @@
             </div>
             <label class="toggle-switch notification-toggle">
               <input type="checkbox" [(ngModel)]="settings.notificationSettings.sms.studentAbsence" name="smsStudentAbsence" [disabled]="isDemoUser()" />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="notification-row">
-            <div class="notification-row-text">
-              <span class="notification-row-label">Report Card Ready</span>
-              <span class="notification-row-desc">SMS parent when reports are published</span>
-            </div>
-            <label class="toggle-switch notification-toggle">
-              <input type="checkbox" [(ngModel)]="settings.notificationSettings.sms.reportCardReady" name="smsReportCardReady" [disabled]="isDemoUser()" />
               <span class="toggle-slider"></span>
             </label>
           </div>

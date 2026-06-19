@@ -451,6 +451,25 @@
   color: #1e293b;
 }
 
+.notification-card-intro {
+  margin: -0.35rem 0 1rem;
+  font-size: 0.85rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.notification-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.85rem 0 0;
+  border-top: 1px solid #f1f5f9;
+}
+
+.notification-phone-input {
+  max-width: 420px;
+}
+
 .notification-row {
   display: flex;
   align-items: center;

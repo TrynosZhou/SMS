@@ -2453,7 +2453,59 @@
 }
 
 /* Responsive Design */
+@media (max-width: 992px) {
+  .dash-page {
+    padding: 1rem 1rem 2rem;
+  }
+
+  .dash-page-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1.15rem 1.25rem;
+  }
+
+  .dash-page-header__actions {
+    width: 100%;
+  }
+
+  .dash-page-header__actions .dash-header-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .stats-grid,
+  .stats-grid--live {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 768px) {
+  .dash-page {
+    padding: 0.75rem 0.75rem 1.5rem;
+  }
+
+  .dash-page-header {
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .dash-page-title {
+    font-size: 1.35rem;
+  }
+
+  .dash-page-subtitle {
+    font-size: 0.875rem;
+  }
+
+  .dash-header-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .dash-page-header__actions {
+    flex-direction: column;
+  }
+
   .main-content {
     margin-left: 0;
     padding: 20px;

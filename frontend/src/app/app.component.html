@@ -17,8 +17,14 @@
 <nav class="top-navbar" *ngIf="isAuthenticated()">
   <div class="top-navbar-content">
     <div class="top-navbar-brand">
-      <button class="sidebar-toggle" (click)="toggleSidebar()" aria-label="Toggle sidebar">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button
+        class="sidebar-toggle"
+        *ngIf="showAppSidebar()"
+        type="button"
+        (click)="toggleSidebar()"
+        [attr.aria-expanded]="mobileViewport ? mobileMenuOpen : !sidebarCollapsed"
+        [attr.aria-label]="mobileViewport ? (mobileMenuOpen ? 'Close menu' : 'Open menu') : 'Toggle sidebar'">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
           <line x1="3" y1="12" x2="21" y2="12"></line>
           <line x1="3" y1="6" x2="21" y2="6"></line>
           <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -29,8 +35,8 @@
           *ngIf="schoolLogo"
           [src]="schoolLogo"
           alt="School logo"
-          class="top-navbar-logo" />
-        <span *ngIf="!schoolLogo" class="top-navbar-logo-fallback" aria-hidden="true">🏫</span>
+          class="top-navbar-logo top-navbar-logo--mobile-hide" />
+        <span *ngIf="!schoolLogo" class="top-navbar-logo-fallback top-navbar-logo--mobile-hide" aria-hidden="true">🏫</span>
         <span class="top-navbar-school-name" *ngIf="schoolName">{{ schoolName }}</span>
       </div>
     </div>
@@ -58,7 +64,7 @@
         [href]="getWebsiteLink()"
         target="_blank"
         rel="noopener noreferrer"
-        class="top-nav-icon-btn top-nav-icon-btn--website"
+        class="top-nav-icon-btn top-nav-icon-btn--website top-nav-hide-mobile"
         title="Visit our website"
         aria-label="Visit our website">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -73,7 +79,7 @@
         [href]="getFacebookLink()"
         target="_blank"
         rel="noopener noreferrer"
-        class="top-nav-icon-btn top-nav-icon-btn--facebook"
+        class="top-nav-icon-btn top-nav-icon-btn--facebook top-nav-hide-mobile"
         title="Find us on Facebook"
         aria-label="Find us on Facebook">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -81,7 +87,7 @@
         </svg>
       </a>
 
-      <button type="button" class="top-nav-icon-btn" (click)="openNavSearch()" title="Search menu" aria-label="Search">
+      <button type="button" class="top-nav-icon-btn top-nav-hide-mobile" (click)="openNavSearch()" title="Search menu" aria-label="Search">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="7"></circle>
           <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
@@ -100,7 +106,7 @@
         <span class="top-nav-icon-badge" *ngIf="showMessagesNavBadge()">{{ getMessagesNavBadgeLabel() }}</span>
       </a>
 
-      <a [routerLink]="getCalendarNavLink()" class="top-nav-icon-btn" title="Calendar" aria-label="Calendar">
+      <a [routerLink]="getCalendarNavLink()" class="top-nav-icon-btn top-nav-hide-mobile" title="Calendar" aria-label="Calendar">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="4" width="18" height="18" rx="2"></rect>
           <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -109,7 +115,7 @@
         </svg>
       </a>
 
-      <div class="top-nav-view-as" *ngIf="canShowViewAsRole()">
+      <div class="top-nav-view-as top-nav-hide-mobile-sm" *ngIf="canShowViewAsRole()">
         <span class="top-nav-view-as-label" id="view-as-role-label">View as role</span>
         <select
           class="top-nav-view-as-select"
@@ -124,7 +130,7 @@
 
       <button
         type="button"
-        class="theme-toggle"
+        class="theme-toggle top-nav-hide-mobile"
         (click)="toggleTheme()"
         [attr.aria-label]="themeService.darkMode ? 'Switch to light mode' : 'Switch to dark mode'"
         [title]="themeService.darkMode ? 'Light mode' : 'Dark mode'">

@@ -289,13 +289,17 @@ export class Settings {
     lossGraceDaysAfterDue?: number;
   } | null;
 
-  /** SMS and push notification toggles (System Settings → Notifications) */
+  /** SMS / WhatsApp and push notification toggles (System Settings → Notifications) */
   @Column({ type: 'json', nullable: true })
   notificationSettings: {
     sms?: {
       feePaymentReceived?: boolean;
       studentAbsence?: boolean;
       reportCardReady?: boolean;
+    };
+    whatsapp?: {
+      /** Admin / leadership WhatsApp numbers for results-published alerts */
+      adminPhones?: string[];
     };
     push?: {
       enabled?: boolean;

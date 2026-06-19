@@ -31,6 +31,7 @@ import {
   findInvoiceForReportCardAccess,
   getConfiguredDeskFee
 } from '../utils/invoiceFeesBalance';
+import { queueResultsPublishedNotifications } from '../utils/resultsPublishedNotification';
 
 const ALLOWED_RANKING_SUBJECTS = new Set<string>(['Mathematics', 'Science', 'English']);
 
@@ -857,10 +858,13 @@ export const publishExam = async (req: AuthRequest, res: Response) => {
       await examRepository.save(relatedExam);
     }
 
+    queueResultsPublishedNotifications(relatedExams);
+
     res.json({ 
       message: `Exam results published successfully. Results for all students in ${relatedExams.length} exam(s) are now visible to all users.`,
       exam: exam,
-      publishedCount: relatedExams.length
+      publishedCount: relatedExams.length,
+      notificationsQueued: true
     });
   } catch (error: any) {
     console.error('Error publishing exam:', error);
@@ -907,18 +911,25 @@ export const publishExamByType = async (req: AuthRequest, res: Response) => {
 
     // Update all exams to published status
     let publishedCount = 0;
+    const newlyPublished: Exam[] = [];
     for (const exam of exams) {
       if (exam.status !== ExamStatus.PUBLISHED) {
         exam.status = ExamStatus.PUBLISHED;
         await examRepository.save(exam);
         publishedCount++;
+        newlyPublished.push(exam);
       }
+    }
+
+    if (newlyPublished.length > 0) {
+      queueResultsPublishedNotifications(newlyPublished);
     }
 
     res.json({ 
       message: `Exam results published successfully. ${publishedCount} exam(s) published across all classes. Results are now visible to all users.`,
       publishedCount: publishedCount,
-      totalExams: exams.length
+      totalExams: exams.length,
+      notificationsQueued: newlyPublished.length > 0
     });
   } catch (error: any) {
     console.error('Error publishing exams by type:', error);

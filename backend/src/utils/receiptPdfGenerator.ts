@@ -17,6 +17,23 @@ interface ReceiptPDFData {
   isPrepayment?: boolean;
 }
 
+/** Primary logo from settings (`schoolLogo`), then secondary (`schoolLogo2`). */
+function decodeLogoBuffer(settings: Settings | null): Buffer | null {
+  const raw = String(settings?.schoolLogo || settings?.schoolLogo2 || '').trim();
+  if (!raw.startsWith('data:image')) {
+    return null;
+  }
+  const base64Data = raw.split(',')[1];
+  if (!base64Data) {
+    return null;
+  }
+  try {
+    return Buffer.from(base64Data, 'base64');
+  } catch {
+    return null;
+  }
+}
+
 export function createReceiptPDF(
   data: ReceiptPDFData
 ): Promise<Buffer> {
@@ -44,25 +61,20 @@ export function createReceiptPDF(
       let yPos = 50;
       const schoolNameFontSize = 18;
 
-      // School Logo (if available)
-      if ((settings as any)?.schoolLogo2) {
+      // School Logo (primary from settings, fallback to secondary)
+      const logoBuffer = decodeLogoBuffer(settings);
+      const logoSize = 80;
+      if (logoBuffer) {
         try {
-          const rawLogo2 = String((settings as any).schoolLogo2 || '').trim();
-          if (rawLogo2.startsWith('data:image')) {
-            const base64Data = rawLogo2.split(',')[1];
-            if (base64Data) {
-              const imageBuffer = Buffer.from(base64Data, 'base64');
-              const logoY = yPos - schoolNameFontSize * 0.7;
-              doc.image(imageBuffer, 50, logoY, { width: 80, height: 80 });
-            }
-          }
+          const logoY = yPos - schoolNameFontSize * 0.7;
+          doc.image(logoBuffer, 50, logoY, { width: logoSize, height: logoSize });
         } catch (error) {
           console.error('Could not add school logo to receipt:', error);
         }
       }
 
       // School Information
-      const textStartX = (settings as any)?.schoolLogo2 ? 150 : 50;
+      const textStartX = logoBuffer ? 150 : 50;
       doc.fontSize(schoolNameFontSize).font('Helvetica-Bold').text(schoolName, textStartX, yPos);
       yPos += 25;
 
@@ -559,18 +571,14 @@ export function createUniformReceiptPDF(data: UniformReceiptPDFData): Promise<Bu
       const textStartX = 50;
       const logoSize = 80;
 
-      // Logo: use Logo 2 from settings for uniform items receipt
-      const rawLogo = String((settings as any)?.schoolLogo2 || '').trim();
-      if (rawLogo.startsWith('data:image')) {
+      // Logo: primary from settings, fallback to secondary
+      const logoBuffer = decodeLogoBuffer(settings);
+      if (logoBuffer) {
         try {
-          const base64Data = rawLogo.split(',')[1];
-          if (base64Data) {
-            const imageBuffer = Buffer.from(base64Data, 'base64');
-            doc.image(imageBuffer, 50, yPos, { width: logoSize, height: logoSize });
-          }
+          doc.image(logoBuffer, 50, yPos, { width: logoSize, height: logoSize });
         } catch (_) {}
       }
-      yPos += logoSize + 12;
+      yPos += logoBuffer ? logoSize + 12 : 0;
       if (settings?.schoolAddress) {
         doc.fontSize(10).font('Helvetica').text(String(settings.schoolAddress).trim(), textStartX, yPos);
         yPos += 14;

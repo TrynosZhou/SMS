@@ -147,6 +147,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
         studentAbsence: false,
         reportCardReady: false
       },
+      whatsapp: {
+        adminPhones: [] as string[]
+      },
       push: {
         enabled: false
       }
@@ -257,6 +260,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
   loading = false;
   savingNotifications = false;
   savingSecurity = false;
+  /** Comma-separated admin WhatsApp numbers (UI binding for notificationSettings.whatsapp.adminPhones) */
+  adminWhatsAppPhonesText = '';
   settingsLastSaved: Date | null = null;
   error = '';
   success = '';
@@ -939,6 +944,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
 
     this.ensureNotificationSettings();
+    this.settings.notificationSettings.whatsapp.adminPhones = this.adminWhatsAppPhonesText
+      .split(/[,;\n]/)
+      .map((p) => p.trim())
+      .filter(Boolean);
     this.savingNotifications = true;
     this.error = '';
     this.success = '';
@@ -969,6 +978,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
         studentAbsence: false,
         reportCardReady: false
       },
+      whatsapp: {
+        adminPhones: [] as string[]
+      },
       push: {
         enabled: false
       }
@@ -990,6 +1002,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
     } else if (this.settings.notificationSettings.push.enabled === undefined) {
       this.settings.notificationSettings.push.enabled = false;
     }
+    if (!this.settings.notificationSettings.whatsapp) {
+      this.settings.notificationSettings.whatsapp = { adminPhones: [] };
+    } else if (!Array.isArray(this.settings.notificationSettings.whatsapp.adminPhones)) {
+      this.settings.notificationSettings.whatsapp.adminPhones = [];
+    }
+    this.adminWhatsAppPhonesText = (this.settings.notificationSettings.whatsapp.adminPhones || []).join(', ');
   }
 
   saveSecuritySettings(): void {

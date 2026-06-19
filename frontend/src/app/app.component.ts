@@ -255,6 +255,8 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    document.body.classList.remove('mobile-nav-open');
+    document.body.style.overflow = '';
     this.authSubscription?.unsubscribe();
     this.themeSubscription?.unsubscribe();
     this.stopDashboardTitleRotation();
@@ -1084,8 +1086,10 @@ export class AppComponent implements OnInit, OnDestroy {
     this.mobileMenuOpen = !this.mobileMenuOpen;
     if (this.mobileMenuOpen) {
       this.prepareMobileDrawer();
+      document.body.classList.add('mobile-nav-open');
       document.body.style.overflow = 'hidden';
     } else {
+      document.body.classList.remove('mobile-nav-open');
       document.body.style.overflow = '';
     }
     this.cdr.markForCheck();
@@ -1093,7 +1097,24 @@ export class AppComponent implements OnInit, OnDestroy {
 
   closeMobileMenu(): void {
     this.mobileMenuOpen = false;
+    document.body.classList.remove('mobile-nav-open');
     document.body.style.overflow = '';
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey(): void {
+    if (this.mobileMenuOpen) {
+      this.closeMobileMenu();
+      this.cdr.markForCheck();
+      return;
+    }
+    if (this.logoutConfirm.visible) {
+      this.onLogoutConfirmNo();
+      return;
+    }
+    if (this.userMenuOpen) {
+      this.closeUserMenu();
+    }
   }
 
   @HostListener('document:click')
@@ -1197,17 +1218,6 @@ export class AppComponent implements OnInit, OnDestroy {
   onLogoutConfirmNo(): void {
     this.logoutConfirm.cancel();
     this.cdr.markForCheck();
-  }
-
-  @HostListener('document:keydown.escape')
-  onEscapeKey(): void {
-    if (this.logoutConfirm.visible) {
-      this.onLogoutConfirmNo();
-      return;
-    }
-    if (this.userMenuOpen) {
-      this.closeUserMenu();
-    }
   }
 
   exitStudentPortal(): void {

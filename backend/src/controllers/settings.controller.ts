@@ -587,8 +587,14 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       const prev = settings.notificationSettings || {};
       const prevSms = prev.sms || {};
       const prevPush = prev.push || {};
+      const prevWhatsapp = prev.whatsapp || {};
       const sms = (ns?.sms && typeof ns.sms === 'object' ? ns.sms : {}) as Record<string, unknown>;
       const push = (ns?.push && typeof ns.push === 'object' ? ns.push : {}) as Record<string, unknown>;
+      const whatsapp = (ns?.whatsapp && typeof ns.whatsapp === 'object' ? ns.whatsapp : {}) as Record<string, unknown>;
+      const adminPhonesRaw = whatsapp.adminPhones;
+      const adminPhones = Array.isArray(adminPhonesRaw)
+        ? adminPhonesRaw.map((p) => String(p || '').trim()).filter(Boolean)
+        : (prevWhatsapp.adminPhones ?? []);
       settings.notificationSettings = {
         sms: {
           feePaymentReceived:
@@ -597,6 +603,9 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
             sms.studentAbsence !== undefined ? Boolean(sms.studentAbsence) : (prevSms.studentAbsence ?? false),
           reportCardReady:
             sms.reportCardReady !== undefined ? Boolean(sms.reportCardReady) : (prevSms.reportCardReady ?? false)
+        },
+        whatsapp: {
+          adminPhones
         },
         push: {
           enabled: push.enabled !== undefined ? Boolean(push.enabled) : (prevPush.enabled ?? false)

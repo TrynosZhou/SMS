@@ -292,7 +292,7 @@ export class PublishResultsComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response: any) => {
           const count = response?.publishedCount ?? 0;
-          this.success = `Published ${count} exam(s). Results are now visible to students, parents, and teachers.`;
+          this.success = `Published ${count} exam(s). Results are now visible and WhatsApp notifications are being sent (if enabled in Settings).`;
           this.lastActionAt = new Date();
           this.loadPreview();
         },
