@@ -8,12 +8,17 @@ export function getReportCardPrimaryLogo(settings: Settings | null | undefined):
   return trimmed || null;
 }
 
-/** Secondary logo from System Settings (Logo 2). */
+/** Secondary logo from System Settings (Logo 2) — report cards only. */
 export function getReportCardSecondaryLogo(settings: Settings | null | undefined): string | null {
   const raw = settings?.schoolLogo2 ?? null;
   if (raw == null) return null;
   const trimmed = String(raw).trim();
   return trimmed || null;
+}
+
+/** Primary logo for all documents except report-card secondary banner. */
+export function getPrimarySchoolLogo(settings: Settings | null | undefined): string | null {
+  return getReportCardPrimaryLogo(settings);
 }
 
 /** Decode a data:image/*;base64,... URL to a buffer for PDFKit. */

@@ -1245,16 +1245,6 @@
   .sidebar.collapsed .sidebar-portal-head {
     display: block;
   }
-
-  .sidebar-submenu,
-  .sidebar-submenu.expanded,
-  .sidebar.collapsed .sidebar-submenu {
-    display: block;
-    max-height: none;
-    opacity: 1;
-    visibility: visible;
-    overflow: visible;
-  }
 }
 
 /* Mobile */

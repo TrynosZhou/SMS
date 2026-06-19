@@ -6,7 +6,7 @@ export interface ExemptionReportPDFData {
   currencySymbol: string;
   reportDate: Date;
   rows: ExemptionReportRow[];
-  schoolLogo2?: string | null;
+  schoolLogo?: string | null;
 }
 
 export function createExemptionReportPDF(data: ExemptionReportPDFData): Promise<Buffer> {
@@ -19,11 +19,11 @@ export function createExemptionReportPDF(data: ExemptionReportPDFData): Promise<
       doc.on('end', () => resolve(Buffer.concat(buffers)));
       doc.on('error', reject);
 
-      const { schoolName, currencySymbol, reportDate, rows, schoolLogo2 } = data;
+      const { schoolName, currencySymbol, reportDate, rows, schoolLogo } = data;
       let yPos = 50;
       const logoSize = 70;
 
-      const rawLogo = String(schoolLogo2 ?? '').trim();
+      const rawLogo = String(schoolLogo ?? '').trim();
       if (rawLogo.startsWith('data:image')) {
         try {
           const base64Data = rawLogo.split(',')[1];

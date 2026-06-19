@@ -15,8 +15,8 @@ export interface OutstandingBalancePDFData {
   currencySymbol: string;
   reportDate: Date;
   balances: OutstandingBalanceRow[];
-  /** Logo 2 from settings (base64 data URL, e.g. data:image/...) */
-  schoolLogo2?: string | null;
+  /** Primary school logo from settings (base64 data URL, e.g. data:image/...) */
+  schoolLogo?: string | null;
 }
 
 export function createOutstandingBalancePDF(
@@ -33,12 +33,11 @@ export function createOutstandingBalancePDF(
       });
       doc.on('error', reject);
 
-      const { schoolName, currencySymbol, reportDate, balances, schoolLogo2 } = data;
+      const { schoolName, currencySymbol, reportDate, balances, schoolLogo } = data;
       let yPos = 50;
       const logoSize = 70;
 
-      // School logo (Logo 2 from settings)
-      const rawLogo = String(schoolLogo2 ?? '').trim();
+      const rawLogo = String(schoolLogo ?? '').trim();
       if (rawLogo.startsWith('data:image')) {
         try {
           const base64Data = rawLogo.split(',')[1];

@@ -619,9 +619,7 @@ next: (settings: any) => {
         this.schoolEmail = settings.schoolEmail || '';
         this.schoolMotto = settings.schoolMotto || '';
         this.academicYear = settings.academicYear || '';
-        // Prefer secondary logo (schoolLogo2) for printable reports such as class lists.
-        // Fallback to primary logo if logo2 is not configured.
-        this.schoolLogo = settings.schoolLogo2 || settings.schoolLogo || null;
+        this.schoolLogo = settings.schoolLogo || null;
 
         const terms: string[] = [];
         

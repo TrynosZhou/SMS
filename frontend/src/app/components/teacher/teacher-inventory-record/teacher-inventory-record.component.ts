@@ -1,5 +1,6 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
 import { forkJoin, of, Subject } from 'rxjs';
 import { catchError, finalize, takeUntil, timeout } from 'rxjs/operators';
 import { InventoryService } from '../../../services/inventory.service';
@@ -94,7 +95,7 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
   furnitureConditionSaveError = '';
 
   schoolName = '';
-  schoolLogo2: string | null = null;
+  schoolLogo: string | null = null;
 
   constructor(
     private inventory: InventoryService,
@@ -113,7 +114,7 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
         next: (s: any) => {
           if (s) {
             this.schoolName = s.schoolName || '';
-            this.schoolLogo2 = s.schoolLogo2 || null;
+            this.schoolLogo = s.schoolLogo || null;
           }
         },
       });
@@ -649,22 +650,22 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
       doc.setFillColor(30, 58, 95);
       doc.rect(0, 0, pageW, HEADER_H, 'F');
 
-      // School logo 2 at top-left inside the banner
-      if (this.schoolLogo2) {
+      // Primary school logo at top-left inside the banner
+      if (this.schoolLogo) {
         try {
           const logoX = 5;
           const logoY = (HEADER_H - LOGO_H) / 2;
           // Determine image format from data URI prefix
           let fmt: string = 'PNG';
-          const m = this.schoolLogo2.match(/^data:image\/(\w+);base64,/);
+          const m = this.schoolLogo.match(/^data:image\/(\w+);base64,/);
           if (m) { fmt = m[1].toUpperCase(); }
-          doc.addImage(this.schoolLogo2, fmt, logoX, logoY, LOGO_W, LOGO_H);
+          doc.addImage(this.schoolLogo, fmt, logoX, logoY, LOGO_W, LOGO_H);
         } catch (_) { /* logo failed – skip silently */ }
       }
 
       // School name and sub-title (offset right of logo)
-      const textX = this.schoolLogo2 ? 5 + LOGO_W + 4 : pageW / 2;
-      const textAlign = this.schoolLogo2 ? 'left' : 'center';
+      const textX = this.schoolLogo ? 5 + LOGO_W + 4 : pageW / 2;
+      const textAlign = this.schoolLogo ? 'left' : 'center';
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
@@ -812,7 +813,7 @@ export class TeacherInventoryRecordComponent implements OnInit, OnDestroy {
     const doc = this.buildPDF(section);
     const blob = doc.output('blob');
     this._blobUrl = URL.createObjectURL(blob);
-    this.pdfPreviewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this._blobUrl);
+    this.pdfPreviewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlobViewerUrl(this._blobUrl));
     this.pdfPreviewSection = section;
   }
 

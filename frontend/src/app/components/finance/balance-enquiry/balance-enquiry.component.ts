@@ -33,7 +33,7 @@ export class BalanceEnquiryComponent implements OnInit, OnDestroy {
   schoolName = '';
   schoolAddress = '';
   schoolMotto = '';
-  schoolLogo2: string | null = null;
+  schoolLogo: string | null = null;
   deskFee = 0;
   paymentBanking: PaymentBankingDetails | null = null;
   
@@ -94,7 +94,7 @@ export class BalanceEnquiryComponent implements OnInit, OnDestroy {
           this.schoolName = s?.schoolName || '';
           this.schoolAddress = s?.schoolAddress || '';
           this.schoolMotto = s?.schoolMotto || '';
-          this.schoolLogo2 = s?.schoolLogo2 || null;
+          this.schoolLogo = s?.schoolLogo || null;
           this.deskFee = isFinite(Number(s?.feesSettings?.deskFee)) ? Number(s.feesSettings.deskFee) : 0;
           this.paymentBanking = resolvePaymentBankingDetails(
             s?.feesSettings?.paymentBanking,
@@ -281,6 +281,16 @@ export class BalanceEnquiryComponent implements OnInit, OnDestroy {
     return bal > 1000 ? '#dc2626' : '#2563eb';
   }
 
+  /** Crest Ledger invoice PDF from API when an invoice exists; legacy jsPDF fallback otherwise. */
+  private async fetchStatementPdfBlob(student: any, invoice: any | null): Promise<Blob> {
+    const invoiceId = invoice?.id != null ? String(invoice.id) : '';
+    if (invoiceId) {
+      const response = await firstValueFrom(this.financeService.getInvoicePDF(invoiceId));
+      return response.blob;
+    }
+    return this.buildStatementPDFBlob(student, invoice);
+  }
+
   async previewStatement(): Promise<void> {
     if (!this.studentData) return;
 
@@ -294,7 +304,7 @@ export class BalanceEnquiryComponent implements OnInit, OnDestroy {
       this.cdr.detectChanges();
 
       const latestInvoice = await this.getInvoiceForStatement();
-      const blob = this.buildStatementPDFBlob(this.studentData, latestInvoice);
+      const blob = await this.fetchStatementPdfBlob(this.studentData, latestInvoice);
       const url = URL.createObjectURL(blob);
       this.previewBlobUrl = url;
       this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlobViewerUrl(url));
@@ -318,7 +328,7 @@ export class BalanceEnquiryComponent implements OnInit, OnDestroy {
       await this.yieldToBrowser();
 
       const latestInvoice = await this.getInvoiceForStatement();
-      const blob = this.buildStatementPDFBlob(this.studentData, latestInvoice);
+      const blob = await this.fetchStatementPdfBlob(this.studentData, latestInvoice);
       objectUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = objectUrl;
@@ -363,7 +373,7 @@ export class BalanceEnquiryComponent implements OnInit, OnDestroy {
       await this.yieldToBrowser();
 
       const latestInvoice = await this.getInvoiceForStatement();
-      const blob = this.buildStatementPDFBlob(this.studentData, latestInvoice);
+      const blob = await this.fetchStatementPdfBlob(this.studentData, latestInvoice);
       const url = URL.createObjectURL(blob);
       const printWindow = window.open(url, '_blank');
       if (printWindow) {
@@ -427,8 +437,8 @@ export class BalanceEnquiryComponent implements OnInit, OnDestroy {
     const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
     
     try {
-      if (this.schoolLogo2) {
-        pdf.addImage(this.schoolLogo2, 'PNG', 10, 10, 20, 20);
+      if (this.schoolLogo) {
+        pdf.addImage(this.schoolLogo, 'PNG', 10, 10, 20, 20);
       }
     } catch {}
     

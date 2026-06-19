@@ -109,9 +109,8 @@ export function createPayslipPDF(data: PayslipPDFData): Promise<Buffer> {
         .lineWidth(0.5)
         .stroke();
 
-      // School logo (Logo 2) from settings – top left of header
-      const schoolLogo2 = (settings as any)?.schoolLogo2;
-      const rawLogo = schoolLogo2 ? String(schoolLogo2).trim() : '';
+      // Primary school logo from settings – top left of header
+      const rawLogo = settings?.schoolLogo ? String(settings.schoolLogo).trim() : '';
       const logoSize = 44;
       const logoY = 14;
       if (rawLogo.startsWith('data:image')) {

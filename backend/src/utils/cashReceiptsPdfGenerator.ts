@@ -16,7 +16,7 @@ export interface CashReceiptsPDFData {
   reportDate: Date;
   totalCashReceived: number;
   rows: CashReceiptsPDFRow[];
-  schoolLogo2?: string | null;
+  schoolLogo?: string | null;
 }
 
 export function createCashReceiptsPDF(data: CashReceiptsPDFData): Promise<Buffer> {
@@ -29,11 +29,11 @@ export function createCashReceiptsPDF(data: CashReceiptsPDFData): Promise<Buffer
       doc.on('end', () => resolve(Buffer.concat(buffers)));
       doc.on('error', reject);
 
-      const { schoolName, currencySymbol, term, reportDate, totalCashReceived, rows, schoolLogo2 } = data;
+      const { schoolName, currencySymbol, term, reportDate, totalCashReceived, rows, schoolLogo } = data;
       let yPos = 50;
       const logoSize = 70;
 
-      const rawLogo = String(schoolLogo2 ?? '').trim();
+      const rawLogo = String(schoolLogo ?? '').trim();
       if (rawLogo.startsWith('data:image')) {
         try {
           const base64Data = rawLogo.split(',')[1];

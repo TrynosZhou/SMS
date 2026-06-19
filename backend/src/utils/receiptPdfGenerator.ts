@@ -2,16 +2,14 @@ import PDFDocument from 'pdfkit';
 import { Invoice } from '../entities/Invoice';
 import { Student } from '../entities/Student';
 import { Settings } from '../entities/Settings';
-import { RECEIPT_THEME as T } from './receiptPdfTheme';
+import { CREST_LEDGER as T } from './invoicePdfTheme';
 import {
   collectReceiptLineItems,
   computeReceiptTotals,
-  drawReceiptPageLogo,
   renderModernReceiptBody
 } from './receiptPdfLayout';
 import {
   drawPaymentBankingDetailsPdf,
-  getPaymentBankingAnchorY,
   getPaymentBankingBlockHeight
 } from './paymentBankingPdfBlock';
 
@@ -30,11 +28,8 @@ interface ReceiptPDFData {
 export function createReceiptPDF(data: ReceiptPDFData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
-      const PAGE_MARGIN = 36;
-      const CARD_PAD = 30;
-      const CARD_RADIUS = 10;
-
-      const doc = new PDFDocument({ margin: PAGE_MARGIN, size: 'A4', autoFirstPage: true });
+      const MARGIN = 40;
+      const doc = new PDFDocument({ margin: MARGIN, size: 'A4', autoFirstPage: true });
       const buffers: Buffer[] = [];
 
       doc.on('data', buffers.push.bind(buffers));
@@ -45,51 +40,35 @@ export function createReceiptPDF(data: ReceiptPDFData): Promise<Buffer> {
         data;
       const currencySymbol = settings?.currencySymbol || '';
 
-      const pageW = doc.page.width;
-      const pageH = doc.page.height;
-      doc.rect(0, 0, pageW, pageH).fill(T.pageBg);
-
-      const cardX = PAGE_MARGIN;
-      const cardW = pageW - PAGE_MARGIN * 2;
-
+      const pageWidth = doc.page.width;
+      const pageHeight = doc.page.height;
+      const footerReserve = 14;
       const bankingCompact = true;
       const bankingBlockHeight = getPaymentBankingBlockHeight(settings, bankingCompact);
-      const footerReserve = 14;
-      const bankingAnchorY = getPaymentBankingAnchorY(
-        pageH,
-        PAGE_MARGIN,
-        footerReserve,
-        settings,
-        bankingCompact
-      );
+      const pageBottomLimit =
+        bankingBlockHeight > 0
+          ? pageHeight - MARGIN - footerReserve - bankingBlockHeight
+          : pageHeight - MARGIN - footerReserve;
+      const maxContentY = pageBottomLimit - 8;
 
-      const logoRowH = drawReceiptPageLogo(doc, settings, PAGE_MARGIN, PAGE_MARGIN);
-      const cardY = PAGE_MARGIN + logoRowH;
+      const tableStartX = MARGIN;
+      const tableEndX = pageWidth - MARGIN;
+      const tableWidth = tableEndX - tableStartX;
+
+      doc.rect(0, 0, pageWidth, pageHeight).fill(T.ivory);
 
       const lineItems = collectReceiptLineItems(invoice, student, settings);
       const totals = computeReceiptTotals(invoice, student, settings);
       const paymentAmountToday = parseFloat(String(paymentAmount || 0));
 
-      const schoolName = settings?.schoolName || 'School Management System';
-      const schoolAddress = settings?.schoolAddress ? String(settings.schoolAddress).trim() : '';
-
-      const maxCardHeight =
-        (bankingAnchorY ?? pageH - PAGE_MARGIN - footerReserve) - cardY - 12;
-      const estimatedHeight = Math.min(
-        maxCardHeight,
-        460 + lineItems.length * 20 + (notes ? 24 : 0)
-      );
-
-      doc.roundedRect(cardX, cardY, cardW, estimatedHeight, CARD_RADIUS).fill(T.cardBg);
-
-      renderModernReceiptBody({
+      let yPos = renderModernReceiptBody({
         doc,
-        cardX,
-        cardY,
-        cardW,
-        pad: CARD_PAD,
-        schoolName,
-        schoolAddress,
+        tableStartX,
+        tableEndX,
+        tableWidth,
+        yStart: MARGIN,
+        maxContentY,
+        settings,
         receiptNumber,
         invoiceNumber: invoice.invoiceNumber,
         paymentDate,
@@ -106,23 +85,26 @@ export function createReceiptPDF(data: ReceiptPDFData): Promise<Buffer> {
         totals
       });
 
-      if (bankingAnchorY !== null) {
-        drawPaymentBankingDetailsPdf(doc, settings, bankingAnchorY, {
+      if (bankingBlockHeight > 0) {
+        const gapBeforeBanking = 12;
+        const bankingY = Math.min(yPos + gapBeforeBanking, pageBottomLimit);
+
+        drawPaymentBankingDetailsPdf(doc, settings, bankingY, {
           fixedPosition: true,
           pageIndex: 0,
           compact: true,
-          receiptFlat: true,
-          boxX: cardX,
-          boxW: cardW
+          crestLedger: true,
+          boxX: tableStartX,
+          boxW: tableWidth
         });
 
         const firstPage = doc.bufferedPageRange().start;
         doc.switchToPage(firstPage);
-        const footerY = bankingAnchorY + bankingBlockHeight + 4;
-        doc.fontSize(7.5).font(T.sans).fillColor(T.muted);
-        doc.text(`Generated on ${new Date().toLocaleString()}`, cardX, footerY, {
+        const footerY = bankingY + bankingBlockHeight + 4;
+        doc.fontSize(6.5).font(T.sans).fillColor(T.slateMuted);
+        doc.text(`Generated on: ${new Date().toLocaleString()}`, tableStartX, footerY, {
           align: 'center',
-          width: cardW
+          width: tableWidth
         });
       }
 
@@ -135,7 +117,7 @@ export function createReceiptPDF(data: ReceiptPDFData): Promise<Buffer> {
 
 /** @deprecated Use decodeReceiptLogoBuffer from receiptPdfLayout */
 function decodeLogoBuffer(settings: Settings | null): Buffer | null {
-  const raw = String(settings?.schoolLogo || settings?.schoolLogo2 || '').trim();
+  const raw = String(settings?.schoolLogo ?? '').trim();
   if (!raw.startsWith('data:image')) {
     return null;
   }

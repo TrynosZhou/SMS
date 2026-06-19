@@ -39,7 +39,7 @@ export class ParentInvoiceStatementComponent implements OnInit, OnDestroy {
   pdfError = false;
 
   currencySymbol = 'KES';
-  schoolLogo2: string | null = null;
+  schoolLogo: string | null = null;
 
   error = '';
   success = '';
@@ -102,7 +102,7 @@ export class ParentInvoiceStatementComponent implements OnInit, OnDestroy {
       )
       .subscribe((data: any) => {
         this.currencySymbol = data?.currencySymbol || 'KES';
-        this.schoolLogo2 = data?.schoolLogo2 || null;
+        this.schoolLogo = data?.schoolLogo || null;
         this.cdr.markForCheck();
       });
   }

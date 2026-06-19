@@ -2192,14 +2192,14 @@ async function generateLogisticsReportPdf(
   const nameFontSize = 16;
   const textAscender = nameFontSize * 0.7;
 
-  const logo2 = (settings as any)?.schoolLogo2;
-  if (logo2 && String(logo2).trim().startsWith('data:image')) {
+  const primaryLogo = (settings as any)?.schoolLogo;
+  if (primaryLogo && String(primaryLogo).trim().startsWith('data:image')) {
     try {
-      const base64Data = String(logo2).split(',')[1] || '';
+      const base64Data = String(primaryLogo).split(',')[1] || '';
       const logoBuffer = Buffer.from(base64Data, 'base64');
       doc.image(logoBuffer, 40, headerTopY, { width: 70, height: 50 });
     } catch (error) {
-      console.error('Failed to render school logo 2 in logistics report:', error);
+      console.error('Failed to render school logo in logistics report:', error);
     }
   }
 

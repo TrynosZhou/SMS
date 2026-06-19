@@ -16,7 +16,7 @@ import { ConnectivityService } from './services/connectivity.service';
 import { IncomingMessageNotificationService } from './services/incoming-message-notification.service';
 import { RbacService, RbacRole } from './services/rbac.service';
 
-/** When the current URL matches a prefix, keep that sidebar section expanded (fixes “click twice” on submenus). */
+/** Route prefixes per sidebar section (for active-state highlighting only). */
 const SIDEBAR_MENU_ROUTE_PREFIXES: Record<string, string[]> = {
   dashboard: ['/dashboard', '/teacher/dashboard', '/parent/dashboard'],
   registration: ['/teachers', '/students', '/admin/parents'],
@@ -223,7 +223,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     if (this.mobileViewport && !wasMobile) {
       this.sidebarCollapsed = false;
-      this.expandAllSidebarMenus();
+      this.expandedMenus = {};
     }
     if (!this.mobileViewport && wasMobile) {
       this.closeMobileMenu();
@@ -231,17 +231,8 @@ export class AppComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private expandAllSidebarMenus(): void {
-    const next: { [key: string]: boolean } = {};
-    for (const menuKey of Object.keys(SIDEBAR_MENU_ROUTE_PREFIXES)) {
-      next[menuKey] = true;
-    }
-    this.expandedMenus = next;
-  }
-
   private prepareMobileDrawer(): void {
     this.sidebarCollapsed = false;
-    this.expandAllSidebarMenus();
   }
 
   onSidebarContentClick(event: MouseEvent): void {
@@ -1240,16 +1231,11 @@ export class AppComponent implements OnInit, OnDestroy {
     this.sidebarCollapsed = !this.sidebarCollapsed;
     if (this.sidebarCollapsed) {
       this.expandedMenus = {};
-    } else {
-      this.syncExpandedMenusFromUrl(this.router.url || '');
     }
     this.cdr.markForCheck();
   }
 
   toggleMenu(menuKey: string): void {
-    if (this.isSidebarVisuallyCollapsed()) {
-      return;
-    }
     if (this.isMenuExpanded(menuKey)) {
       this.expandedMenus = {};
     } else {
@@ -1260,17 +1246,12 @@ export class AppComponent implements OnInit, OnDestroy {
 
   /** Called from submenu links so the section is open before navigation (avoids needing two clicks). */
   ensureMenuExpanded(menuKey: string): void {
-    if (this.isSidebarVisuallyCollapsed()) {
-      return;
-    }
     this.expandedMenus = { [menuKey]: true };
+    this.cdr.markForCheck();
   }
 
   /** Expand a sidebar section before following a submenu routerLink (one-click navigation). */
   prepareSidebarNavigation(menuKey: string): void {
-    if (this.isSidebarVisuallyCollapsed()) {
-      return;
-    }
     this.expandedMenus = { [menuKey]: true };
     this.cdr.markForCheck();
   }
@@ -1282,22 +1263,9 @@ export class AppComponent implements OnInit, OnDestroy {
     return path.endsWith('/') && path.length > 1 ? path.slice(0, -1) : path;
   }
 
-  private syncExpandedMenusFromUrl(url: string): void {
-    const path = this.normalizeSidebarPath(url);
-    let matchedKey: string | null = null;
-    let matchedPrefixLen = 0;
-
-    for (const [menuKey, prefixes] of Object.entries(SIDEBAR_MENU_ROUTE_PREFIXES)) {
-      for (const prefix of prefixes) {
-        const hit = path === prefix || path.startsWith(prefix + '/');
-        if (hit && prefix.length > matchedPrefixLen) {
-          matchedPrefixLen = prefix.length;
-          matchedKey = menuKey;
-        }
-      }
-    }
-
-    this.expandedMenus = matchedKey ? { [matchedKey]: true } : {};
+  /** @deprecated Menus are collapsed by default; kept for call-site compatibility. */
+  private syncExpandedMenusFromUrl(_url: string): void {
+    // Intentionally no-op: sections expand only when the user toggles them (accordion).
   }
 
   isMenuRouteActive(menuKey: string): boolean {

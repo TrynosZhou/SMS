@@ -3,6 +3,7 @@ import { AuthService } from '../../../services/auth.service';
 import { ExamService } from '../../../services/exam.service';
 import { SettingsService } from '../../../services/settings.service';
 import { DomSanitizer, SafeResourceUrl, SafeUrl } from '@angular/platform-browser';
+import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
 import { buildHeadmasterRemarkFromCard } from '../../../utils/headmaster-remarks.util';
 import { computeCoreAverageFromReportSubjects } from '../../../utils/mark-sheet-subject-order';
 import { trigger, state, style, transition, animate } from '@angular/animations';
@@ -116,7 +117,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
         this.headmasterName = data.headmasterName || '';
         this.schoolName     = data.schoolName || '';
         this.currencySymbol = data.currencySymbol || '$';
-        this.schoolLogo = this.normalizeImageSrc(data.schoolLogo2 || data.schoolLogo || null);
+        this.schoolLogo = this.normalizeImageSrc(data.schoolLogo || null);
         this.safeSchoolLogoUrl = this.schoolLogo
           ? this.sanitizer.bypassSecurityTrustUrl(this.schoolLogo) : null;
         this.gradeThresholds = data.gradeThresholds || null;
@@ -319,7 +320,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
           return;
         }
         this.pdfBlobUrl = window.URL.createObjectURL(blob);
-        this.inlinePdf  = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfBlobUrl);
+        this.inlinePdf = this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlobViewerUrl(this.pdfBlobUrl));
         this.cdr.markForCheck();
       },
       error: () => {

@@ -1719,14 +1719,14 @@ export const getExemptionReportPDF = async (req: AuthRequest, res: Response) => 
       settings?.currencySymbol != null && String(settings.currencySymbol).trim() !== ''
         ? String(settings.currencySymbol).trim()
         : '';
-    const schoolLogo2 = (settings as any)?.schoolLogo2 ?? null;
+    const schoolLogo = (settings as any)?.schoolLogo ?? null;
 
     const pdfBuffer = await createExemptionReportPDF({
       schoolName,
       currencySymbol,
       reportDate: new Date(),
       rows,
-      schoolLogo2: schoolLogo2 != null ? String(schoolLogo2).trim() : null
+      schoolLogo: schoolLogo != null ? String(schoolLogo).trim() : null
     });
 
     const download = String(req.query.download || '') === '1';
@@ -1766,13 +1766,13 @@ export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response)
       ? String(settings.currencySymbol).trim()
       : '';
 
-    const schoolLogo2 = (settings as any)?.schoolLogo2 ?? null;
+    const schoolLogo = (settings as any)?.schoolLogo ?? null;
     const pdfBuffer = await createOutstandingBalancePDF({
       schoolName,
       currencySymbol,
       reportDate: new Date(),
       balances: outstandingBalances,
-      schoolLogo2: schoolLogo2 != null ? String(schoolLogo2).trim() : null
+      schoolLogo: schoolLogo != null ? String(schoolLogo).trim() : null
     });
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -3242,7 +3242,7 @@ export const getCashReceiptsPDF = async (req: AuthRequest, res: Response) => {
     const totalCashReceived = rows.reduce((s, r) => s + r.amountPaid, 0);
     const schoolName = (settings?.schoolName != null && String(settings.schoolName).trim() !== '') ? String(settings.schoolName).trim() : 'School';
     const currencySymbol = (settings?.currencySymbol != null && String(settings.currencySymbol).trim() !== '') ? String(settings.currencySymbol).trim() : '';
-    const schoolLogo2 = (settings as any)?.schoolLogo2 ?? null;
+    const schoolLogo = (settings as any)?.schoolLogo ?? null;
 
     const pdfBuffer = await createCashReceiptsPDF({
       schoolName,
@@ -3251,7 +3251,7 @@ export const getCashReceiptsPDF = async (req: AuthRequest, res: Response) => {
       reportDate: new Date(),
       totalCashReceived: Math.round(totalCashReceived * 100) / 100,
       rows,
-      schoolLogo2: schoolLogo2 != null ? String(schoolLogo2).trim() : null
+      schoolLogo: schoolLogo != null ? String(schoolLogo).trim() : null
     });
 
     const filename = `Cash_Receipts_${termToUse.replace(/\s+/g, '_')}.pdf`;

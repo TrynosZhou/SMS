@@ -2,8 +2,8 @@ import PDFDocument from 'pdfkit';
 import { Invoice } from '../entities/Invoice';
 import { Student } from '../entities/Student';
 import { Settings } from '../entities/Settings';
-import { parseAmount } from './numberUtils';
-import { RECEIPT_THEME as T } from './receiptPdfTheme';
+import { CREST_LEDGER as T } from './invoicePdfTheme';
+import { drawCrestLetterhead, drawCrestMetaBlock, formatCrestMoney } from './crestLedgerPdfLayout';
 
 export interface ReceiptLineItem {
   description: string;
@@ -143,19 +143,9 @@ export function computeReceiptTotals(
 
 type Doc = InstanceType<typeof PDFDocument>;
 
-export function formatReceiptMoney(currencySymbol: string, amount: number): string {
-  const sym = currencySymbol || '';
-  return `${sym} ${amount.toFixed(2)}`.trim();
-}
-
-export function drawThinRule(doc: Doc, x: number, y: number, width: number): void {
-  doc.strokeColor(T.divider).lineWidth(0.5);
-  doc.moveTo(x, y).lineTo(x + width, y).stroke();
-}
-
-/** Primary logo from settings (`schoolLogo`), then secondary (`schoolLogo2`). */
+/** @deprecated Use decodeCrestLogoBuffer from crestLedgerPdfLayout */
 export function decodeReceiptLogoBuffer(settings: Settings | null): Buffer | null {
-  const raw = String(settings?.schoolLogo || settings?.schoolLogo2 || '').trim();
+  const raw = String(settings?.schoolLogo ?? '').trim();
   if (!raw.startsWith('data:image')) {
     return null;
   }
@@ -170,35 +160,15 @@ export function decodeReceiptLogoBuffer(settings: Settings | null): Buffer | nul
   }
 }
 
-export function drawReceiptPageLogo(
-  doc: Doc,
-  settings: Settings | null,
-  pageX: number,
-  pageY: number,
-  size = 52
-): number {
-  const logoBuffer = decodeReceiptLogoBuffer(settings);
-  if (!logoBuffer) {
-    return 0;
-  }
-  try {
-    doc.image(logoBuffer, pageX, pageY, { width: size, height: size });
-    return size + 10;
-  } catch (error) {
-    console.error('Could not add school logo to receipt:', error);
-    return 0;
-  }
-}
-
-/** Render the modern flat receipt body inside a pre-sized card area. */
+/** Crest Ledger receipt body — same receipt data, invoice-matching appearance. */
 export function renderModernReceiptBody(options: {
   doc: Doc;
-  cardX: number;
-  cardY: number;
-  cardW: number;
-  pad: number;
-  schoolName: string;
-  schoolAddress: string;
+  tableStartX: number;
+  tableEndX: number;
+  tableWidth: number;
+  yStart: number;
+  maxContentY: number;
+  settings: Settings | null;
   receiptNumber: string;
   invoiceNumber: string;
   paymentDate: Date;
@@ -216,12 +186,12 @@ export function renderModernReceiptBody(options: {
 }): number {
   const {
     doc,
-    cardX,
-    cardY,
-    cardW,
-    pad,
-    schoolName,
-    schoolAddress,
+    tableStartX,
+    tableEndX,
+    tableWidth,
+    yStart,
+    maxContentY,
+    settings,
     receiptNumber,
     invoiceNumber,
     paymentDate,
@@ -238,175 +208,139 @@ export function renderModernReceiptBody(options: {
     totals
   } = options;
 
-  const innerW = cardW - pad * 2;
-  let y = cardY + pad;
-
-  const drawDivider = () => {
-    drawThinRule(doc, cardX + pad, y, innerW);
-    y += 14;
-  };
-
-  // ── 1. Centered header ─────────────────────────────────────────────
-  doc.fontSize(18).font(T.sansBold).fillColor(T.text);
-  doc.text(schoolName, cardX + pad, y, { width: innerW, align: 'center' });
-  y += 22;
-
-  if (schoolAddress) {
-    doc.fontSize(12).font(T.sans).fillColor(T.muted);
-    doc.text(schoolAddress, cardX + pad, y, { width: innerW, align: 'center' });
-    y += 16;
-  }
-
-  doc.fontSize(9).font(T.sans).fillColor(T.muted);
-  doc.text('Payment receipt', cardX + pad, y, { width: innerW, align: 'center', characterSpacing: 0.8 });
-  y += 18;
-
-  drawDivider();
-
-  // ── 2. Two-column meta (inline label / value pairs) ────────────────
-  const halfW = innerW / 2;
-  const metaRowH = 16;
-
-  const drawMetaRow = (leftLabel: string, leftVal: string, rightLabel: string, rightVal: string) => {
-    const leftX = cardX + pad;
-    const rightX = cardX + pad + halfW;
-    const labelW = 58;
-
-    doc.fontSize(8.5).font(T.sans).fillColor(T.muted);
-    doc.text(leftLabel, leftX, y, { width: labelW, lineBreak: false });
-    doc.fontSize(9).font(T.monoBold).fillColor(T.text);
-    doc.text(leftVal, leftX + labelW, y, { width: halfW - labelW - 8, align: 'left', lineBreak: false });
-
-    doc.fontSize(8.5).font(T.sans).fillColor(T.muted);
-    doc.text(rightLabel, rightX, y, { width: labelW - 6, lineBreak: false });
-    doc.fontSize(9).font(T.monoBold).fillColor(T.text);
-    doc.text(rightVal, rightX + labelW - 6, y, { width: halfW - labelW, align: 'right', lineBreak: false });
-
-    y += metaRowH;
-  };
-
-  drawMetaRow('Receipt no.', receiptNumber, 'Date', paymentDate.toLocaleDateString());
-  drawMetaRow('Invoice no.', invoiceNumber, 'Term', term || '—');
-  y += 4;
-  drawDivider();
-
-  // ── 3. Received from ───────────────────────────────────────────────
-  doc.fontSize(8.5).font(T.sans).fillColor(T.muted);
-  doc.text('Received from', cardX + pad, y);
-  y += 12;
-
-  doc.fontSize(11).font(T.sansBold).fillColor(T.text);
-  doc.text(payerName, cardX + pad, y);
-  y += 14;
-
-  const studentMeta = [studentNumber ? `Student no. ${studentNumber}` : '', className ? className : '']
-    .filter(Boolean)
-    .join('  ·  ');
-  if (studentMeta) {
-    doc.fontSize(9).font(T.sans).fillColor(T.muted);
-    doc.text(studentMeta, cardX + pad, y);
-    y += 16;
-  }
-
-  drawDivider();
-
-  // ── 4. Itemized table ──────────────────────────────────────────────
-  const colDesc = innerW * 0.46;
-  const colQty = 36;
-  const colRate = 72;
-  const colAmt = innerW - colDesc - colQty - colRate;
-  const tableX = cardX + pad;
-  const headerH = 18;
-  const rowH = 20;
-
-  doc.fontSize(8).font(T.sans).fillColor(T.muted);
-  doc.text('Description', tableX, y + 4, { width: colDesc });
-  doc.text('Qty', tableX + colDesc, y + 4, { width: colQty, align: 'right' });
-  doc.text('Rate', tableX + colDesc + colQty, y + 4, { width: colRate, align: 'right' });
-  doc.text('Amount', tableX + colDesc + colQty + colRate, y + 4, { width: colAmt, align: 'right' });
-  y += headerH;
-  drawThinRule(doc, tableX, y, innerW);
-  y += 6;
-
-  lineItems.forEach((row) => {
-    doc.fontSize(9).font(T.sans).fillColor(T.text);
-    doc.text(row.description, tableX, y + 3, { width: colDesc - 4, ellipsis: true });
-    doc.font(T.mono).fillColor(T.text);
-    doc.text(String(row.quantity), tableX + colDesc, y + 3, { width: colQty, align: 'right' });
-    doc.text(formatReceiptMoney(currencySymbol, row.rate), tableX + colDesc + colQty, y + 3, {
-      width: colRate,
-      align: 'right'
-    });
-    doc.font(T.monoBold);
-    doc.text(formatReceiptMoney(currencySymbol, row.amount), tableX + colDesc + colQty + colRate, y + 3, {
-      width: colAmt,
-      align: 'right'
-    });
-    y += rowH;
+  let yPos = drawCrestLetterhead(doc, settings, {
+    tableStartX,
+    tableEndX,
+    yStart,
+    documentSubtitle: 'PAYMENT RECEIPT',
+    documentTitle: 'Receipt'
   });
 
-  drawThinRule(doc, tableX, y, innerW);
-  y += 14;
+  yPos = drawCrestMetaBlock(doc, {
+    tableStartX,
+    tableWidth,
+    tableEndX,
+    yStart: yPos,
+    leftTitle: 'RECEIPT DETAILS',
+    rightTitle: 'RECEIVED FROM',
+    leftRows: [
+      { label: 'Receipt Number', value: receiptNumber },
+      { label: 'Invoice Number', value: invoiceNumber },
+      { label: 'Payment Date', value: paymentDate.toLocaleDateString() },
+      { label: 'Term', value: term || '—' }
+    ],
+    rightRows: [
+      { label: 'Student Name', value: payerName },
+      { label: 'Student No.', value: studentNumber || '—' },
+      { label: 'Class', value: className || '—' }
+    ]
+  });
 
-  // ── 5. Totals block ────────────────────────────────────────────────
-  const totalsLabelW = innerW * 0.62;
-  const totalsValW = innerW - totalsLabelW;
-  const totalsX = cardX + pad;
+  const rowHeight = 17;
+  const amountColumnWidth = 72;
+  const qtyColumnWidth = 36;
+  const rateColumnWidth = 72;
+  const amountColumnStartX = tableEndX - amountColumnWidth;
+  const rateColumnStartX = amountColumnStartX - rateColumnWidth;
+  const qtyColumnStartX = rateColumnStartX - qtyColumnWidth;
+  const descWidth = qtyColumnStartX - tableStartX - 8;
 
-  const drawTotalLine = (label: string, amount: number, bold = false) => {
-    doc.fontSize(9).font(bold ? T.sansBold : T.sans).fillColor(T.text);
-    doc.text(label, totalsX, y, { width: totalsLabelW, lineBreak: false });
-    doc.font(bold ? T.monoBold : T.mono).fillColor(T.text);
-    doc.text(formatReceiptMoney(currencySymbol, amount), totalsX + totalsLabelW, y, {
-      width: totalsValW,
-      align: 'right',
-      lineBreak: false
+  doc.rect(tableStartX, yPos, tableWidth, rowHeight).fill(T.navy);
+  doc.fontSize(7).font(T.sansBold).fillColor(T.white);
+  doc.text('DESCRIPTION', tableStartX + 8, yPos + 5);
+  doc.text('QTY', qtyColumnStartX, yPos + 5, { width: qtyColumnWidth, align: 'right' });
+  doc.text('RATE', rateColumnStartX, yPos + 5, { width: rateColumnWidth, align: 'right' });
+  doc.text('AMOUNT', amountColumnStartX, yPos + 5, { align: 'right', width: amountColumnWidth - 8 });
+  yPos += rowHeight;
+
+  let stripe = 0;
+  lineItems.forEach((row) => {
+    if (yPos + rowHeight > maxContentY - 120) {
+      return;
+    }
+    const fill = stripe % 2 === 0 ? T.ivory : T.navyTint;
+    doc.rect(tableStartX, yPos, tableWidth, rowHeight).fill(fill);
+    doc.rect(tableStartX, yPos, tableWidth, rowHeight).lineWidth(0.25).strokeColor('#D8DCE8').stroke();
+    doc.fontSize(7.5).font(T.sans).fillColor(T.slate);
+    doc.text(row.description, tableStartX + 8, yPos + 5, { width: descWidth, ellipsis: true });
+    doc.text(String(row.quantity), qtyColumnStartX, yPos + 5, { width: qtyColumnWidth, align: 'right' });
+    doc.text(formatCrestMoney(currencySymbol, row.rate), rateColumnStartX, yPos + 5, {
+      width: rateColumnWidth,
+      align: 'right'
     });
-    y += 14;
+    doc.text(formatCrestMoney(currencySymbol, row.amount), amountColumnStartX, yPos + 5, {
+      align: 'right',
+      width: amountColumnWidth - 8
+    });
+    yPos += rowHeight;
+    stripe += 1;
+  });
+
+  yPos += 6;
+
+  const summaryWidth = 210;
+  const summaryX = tableEndX - summaryWidth;
+  const summaryRowH = 16;
+
+  const drawSummaryRow = (label: string, amount: number, bold = false, total = false) => {
+    if (yPos + summaryRowH > maxContentY - 48) {
+      return;
+    }
+    if (total) {
+      doc.rect(summaryX, yPos, summaryWidth, summaryRowH + 2).fill(T.navy);
+      doc.fontSize(8).font(T.sansBold).fillColor(T.white);
+      doc.text(label, summaryX + 8, yPos + 5);
+      doc.fillColor(T.gold);
+      doc.text(formatCrestMoney(currencySymbol, amount), summaryX, yPos + 5, {
+        align: 'right',
+        width: summaryWidth - 10
+      });
+      yPos += summaryRowH + 4;
+      return;
+    }
+    doc.rect(summaryX, yPos, summaryWidth, summaryRowH).fill(T.navyTint);
+    doc.rect(summaryX, yPos, summaryWidth, summaryRowH).lineWidth(0.25).strokeColor('#D8DCE8').stroke();
+    doc.fontSize(7.5).font(bold ? T.sansBold : T.sans).fillColor(T.slate);
+    doc.text(label, summaryX + 8, yPos + 4);
+    doc.text(formatCrestMoney(currencySymbol, amount), summaryX, yPos + 4, {
+      align: 'right',
+      width: summaryWidth - 10
+    });
+    yPos += summaryRowH;
   };
 
-  drawTotalLine('Total invoice amount', totals.totalInvoiceAmount);
-  drawTotalLine('Balance brought forward', totals.previousBalance);
-  y += 2;
-  drawThinRule(doc, totalsX, y, innerW);
-  y += 10;
-  drawTotalLine('Total paid to date', totals.totalPaid, true);
-  drawTotalLine('Balance carried forward', totals.remainingBalance, true);
-
+  drawSummaryRow('Total invoice amount', totals.totalInvoiceAmount);
+  drawSummaryRow('Balance brought forward', totals.previousBalance);
+  drawSummaryRow('Total paid to date', totals.totalPaid, true);
+  drawSummaryRow('Balance carried forward', totals.remainingBalance, true);
   if (totals.prepaidAmount > 0) {
-    drawTotalLine('Prepaid amount', totals.prepaidAmount);
+    drawSummaryRow('Prepaid amount', totals.prepaidAmount);
   }
-
-  y += 8;
-
-  // ── 6. Amount paid bar (green accent) ──────────────────────────────
-  const paidBarH = 44;
-  const paidBarR = 10;
-  doc.roundedRect(cardX + pad, y, innerW, paidBarH, paidBarR).fill(T.greenBg);
 
   const methodLabel = paymentMethod || 'Payment';
   const todayLabel = isPrepayment ? 'Prepaid' : 'Today';
-  doc.fontSize(9).font(T.sans).fillColor(T.greenText);
-  doc.text(`${methodLabel}  ·  ${todayLabel}`, cardX + pad + 14, y + 10, { width: innerW * 0.55 });
+  drawSummaryRow(`${methodLabel} · ${todayLabel}`, paymentAmountToday, true, true);
 
-  doc.fontSize(16).font(T.monoBold).fillColor(T.greenDark);
-  doc.text(formatReceiptMoney(currencySymbol, paymentAmountToday), cardX + pad, y + 8, {
-    width: innerW - 14,
-    align: 'right'
-  });
-  y += paidBarH + 16;
+  yPos += 6;
 
-  // Optional notes
-  if (notes && String(notes).trim()) {
-    doc.fontSize(8.5).font(T.sans).fillColor(T.muted);
-    doc.text(`Note: ${String(notes).trim()}`, cardX + pad, y, { width: innerW });
-    y += 14;
+  if (yPos + 22 <= maxContentY - 28) {
+    const sealR = 9;
+    const sealCx = tableStartX + sealR + 2;
+    const sealCy = yPos + sealR;
+    doc.circle(sealCx, sealCy, sealR).fill(T.ivory);
+    doc.circle(sealCx, sealCy, sealR).lineWidth(1.2).strokeColor(T.gold).stroke();
+    doc.fontSize(11).font(T.sansBold).fillColor(T.gold);
+    doc.text('✓', sealCx - 4.5, sealCy - 5.5);
+    doc.fontSize(8).font(T.sansBold).fillColor(T.slate);
+    doc.text('Thank you for your payment.', sealCx + sealR + 8, sealCy - 4);
+    yPos += sealR * 2 + 6;
   }
 
-  // ── 7. Footer ──────────────────────────────────────────────────────
-  doc.fontSize(9).font(T.sans).fillColor(T.muted);
-  doc.text('Thank you for your payment.', cardX + pad, y, { width: innerW, align: 'center' });
-  y += 14;
+  if (notes && String(notes).trim()) {
+    doc.fontSize(7.5).font(T.sans).fillColor(T.slateMuted);
+    doc.text(`Note: ${String(notes).trim()}`, tableStartX, yPos, { width: tableWidth });
+    yPos += 14;
+  }
 
-  return y - cardY + pad;
+  return yPos;
 }

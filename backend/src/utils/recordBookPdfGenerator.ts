@@ -91,10 +91,11 @@ export function createRecordBookPDF(
       const logoCenterY = logoAreaY + logoSize / 2;
       const logoRadius = logoSize / 2;
       
-      if (settings?.schoolLogo2) {
+      if (settings?.schoolLogo) {
         try {
-          if (settings.schoolLogo2.startsWith('data:image')) {
-            const base64Data = settings.schoolLogo2.split(',')[1];
+          const primaryLogo = String(settings.schoolLogo).trim();
+          if (primaryLogo.startsWith('data:image')) {
+            const base64Data = primaryLogo.split(',')[1];
             if (base64Data) {
               const imageBuffer = Buffer.from(base64Data, 'base64');
               
@@ -106,7 +107,7 @@ export function createRecordBookPDF(
             }
           }
         } catch (error) {
-          console.error('Could not add school logo 2 to record book PDF:', error);
+          console.error('Could not add school logo to record book PDF:', error);
         }
       }
 

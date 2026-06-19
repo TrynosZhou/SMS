@@ -5,6 +5,7 @@ import { Settings } from '../entities/Settings';
 import { parseAmount } from './numberUtils';
 import { drawPaymentBankingDetailsPdf, getPaymentBankingBlockHeight } from './paymentBankingPdfBlock';
 import { CREST_LEDGER as T } from './invoicePdfTheme';
+import { drawCrestLetterhead, drawCrestMetaBlock } from './crestLedgerPdfLayout';
 
 interface InvoicePDFData {
   invoice: Invoice;
@@ -18,22 +19,6 @@ interface TableRowSpec {
   amount: number;
   fill?: string;
   textColor?: string;
-}
-
-function decodeLogoBuffer(settings: Settings | null): Buffer | null {
-  const raw = String(settings?.schoolLogo || settings?.schoolLogo2 || '').trim();
-  if (!raw.startsWith('data:image')) {
-    return null;
-  }
-  const base64Data = raw.split(',')[1];
-  if (!base64Data) {
-    return null;
-  }
-  try {
-    return Buffer.from(base64Data, 'base64');
-  } catch {
-    return null;
-  }
 }
 
 function parseFeePairsFromText(text: string): Array<{ label: string; amount: number }> {
@@ -231,134 +216,34 @@ export function createInvoicePDF(data: InvoicePDFData): Promise<Buffer> {
       doc.rect(0, 0, pageWidth, pageHeight).fill(T.ivory);
 
       // ── Letterhead ───────────────────────────────────────────────────
-      let yPos = MARGIN;
-      const logoBuffer = decodeLogoBuffer(settings);
-      const badgeRadius = 28;
-      const badgeCx = tableStartX + badgeRadius;
-      const badgeCy = yPos + badgeRadius;
-      const logoInner = 40;
-
-      doc.circle(badgeCx, badgeCy, badgeRadius).fill(T.navy);
-      if (logoBuffer) {
-        try {
-          doc.save();
-          doc.circle(badgeCx, badgeCy, badgeRadius - 2).clip();
-          doc.image(logoBuffer, badgeCx - logoInner / 2, badgeCy - logoInner / 2, {
-            width: logoInner,
-            height: logoInner
-          });
-          doc.restore();
-        } catch (error) {
-          console.error('Could not add school logo to invoice:', error);
-        }
-      }
-      doc.circle(badgeCx, badgeCy, badgeRadius).lineWidth(1.25).strokeColor(T.gold).stroke();
-
-      const schoolName = settings?.schoolName || 'School Management System';
-      const schoolAddress = settings?.schoolAddress ? String(settings.schoolAddress).trim() : '';
-      const schoolPhone = settings?.schoolPhone || '';
-      const schoolEmail = settings?.schoolEmail || '';
-      const nameX = tableStartX + badgeRadius * 2 + 12;
-
-      doc.fontSize(13).font(T.serifBold).fillColor(T.navy);
-      doc.text(schoolName, nameX, yPos + 4, { width: tableEndX - nameX - 120 });
-
-      const contactParts = [
-        schoolAddress,
-        schoolPhone ? `Tel: ${schoolPhone}` : '',
-        schoolEmail ? `Email: ${schoolEmail}` : ''
-      ].filter(Boolean);
-      if (contactParts.length) {
-        doc.fontSize(7).font(T.sans).fillColor(T.slateMuted);
-        doc.text(contactParts.join('  ·  '), nameX, yPos + 20, { width: tableEndX - nameX - 120 });
-      }
-
-      // Document title — right side
-      const titleBlockW = 115;
-      const titleX = tableEndX - titleBlockW;
-      doc.fontSize(6.5).font(T.sansBold).fillColor(T.slateMuted);
-      doc.text('STATEMENT OF ACCOUNT', titleX, yPos + 6, { width: titleBlockW, align: 'right' });
-      doc.fontSize(22).font(T.serifBold).fillColor(T.navy);
-      doc.text('Invoice', titleX, yPos + 16, { width: titleBlockW, align: 'right' });
-
-      yPos += badgeRadius * 2 + 8;
-
-      // Navy + gold divider
-      doc.strokeColor(T.navy).lineWidth(2.5);
-      doc.moveTo(tableStartX, yPos).lineTo(tableEndX, yPos).stroke();
-      doc.strokeColor(T.gold).lineWidth(0.75);
-      doc.moveTo(tableStartX, yPos + 3).lineTo(tableEndX, yPos + 3).stroke();
-      yPos += 14;
+      let yPos = drawCrestLetterhead(doc, settings, {
+        tableStartX,
+        tableEndX,
+        yStart: MARGIN,
+        documentSubtitle: 'STATEMENT OF ACCOUNT',
+        documentTitle: 'Invoice'
+      });
 
       // ── Meta block (Invoice Details / Billed To) ───────────────────
-      const metaPadX = 14;
-      const metaPadTop = 10;
-      const metaPadBottom = 10;
-      const sectionHeaderH = 16;
-      const detailRowStep = 15;
-      const leftDetailCount = 4;
-      const rightDetailCount = 3;
-      const detailsBoxHeight =
-        metaPadTop +
-        sectionHeaderH +
-        6 +
-        Math.max(leftDetailCount, rightDetailCount) * detailRowStep +
-        metaPadBottom;
-
-      doc.rect(tableStartX, yPos, tableWidth, detailsBoxHeight).fill(T.navyTint);
-      doc.rect(tableStartX, yPos, tableWidth, detailsBoxHeight).lineWidth(0.5).strokeColor(T.navy).stroke();
-
-      const dividerX = tableStartX + tableWidth * 0.5;
-      doc.strokeColor(T.navy).lineWidth(0.35).opacity(0.25);
-      doc.moveTo(dividerX, yPos + metaPadTop).lineTo(dividerX, yPos + detailsBoxHeight - metaPadBottom).stroke();
-      doc.opacity(1);
-
-      const leftX = tableStartX + metaPadX;
-      const rightX = dividerX + metaPadX;
-      const sectionLabelY = yPos + metaPadTop;
-
-      const drawSectionLabel = (label: string, x: number) => {
-        doc.fontSize(6.5).font(T.sansBold).fillColor(T.slateMuted);
-        doc.text(label, x, sectionLabelY);
-        doc.strokeColor(T.gold).lineWidth(0.8);
-        doc.moveTo(x, sectionLabelY + 10).lineTo(x + 78, sectionLabelY + 10).stroke();
-      };
-
-      drawSectionLabel('INVOICE DETAILS', leftX);
-      drawSectionLabel('BILLED TO', rightX);
-
-      /** Label left, value right — same row (matches reference layout). */
-      const drawDetailPair = (label: string, value: string, x: number, y: number, colW: number) => {
-        doc.fontSize(8).font(T.sans).fillColor(T.slateMuted);
-        doc.text(label, x, y + 1, { width: colW * 0.52, lineBreak: false });
-        doc.fontSize(8.5).font(T.sansBold).fillColor(T.navy);
-        doc.text(value, x, y, { width: colW, align: 'right', lineBreak: false });
-      };
-
-      const leftColW = dividerX - leftX - metaPadX;
-      const rightColW = tableEndX - rightX - metaPadX;
-      const detailStartY = yPos + metaPadTop + sectionHeaderH + 6;
-
-      let leftY = detailStartY;
-      let rightY = detailStartY;
-
-      drawDetailPair('Invoice Number', invoice.invoiceNumber, leftX, leftY, leftColW);
-      drawDetailPair('Student Name', `${student.firstName} ${student.lastName}`, rightX, rightY, rightColW);
-      leftY += detailRowStep;
-      rightY += detailRowStep;
-
-      drawDetailPair('Invoice Date', new Date(invoice.createdAt).toLocaleDateString(), leftX, leftY, leftColW);
-      drawDetailPair('Student No.', student.studentNumber || '—', rightX, rightY, rightColW);
-      leftY += detailRowStep;
-      rightY += detailRowStep;
-
-      drawDetailPair('Due Date', new Date(invoice.dueDate).toLocaleDateString(), leftX, leftY, leftColW);
-      drawDetailPair('Class', student.classEntity?.name || '—', rightX, rightY, rightColW);
-      leftY += detailRowStep;
-
-      drawDetailPair('Term', invoice.term || '—', leftX, leftY, leftColW);
-
-      yPos += detailsBoxHeight + 10;
+      yPos = drawCrestMetaBlock(doc, {
+        tableStartX,
+        tableWidth,
+        tableEndX,
+        yStart: yPos,
+        leftTitle: 'INVOICE DETAILS',
+        rightTitle: 'BILLED TO',
+        leftRows: [
+          { label: 'Invoice Number', value: invoice.invoiceNumber },
+          { label: 'Invoice Date', value: new Date(invoice.createdAt).toLocaleDateString() },
+          { label: 'Due Date', value: new Date(invoice.dueDate).toLocaleDateString() },
+          { label: 'Term', value: invoice.term || '—' }
+        ],
+        rightRows: [
+          { label: 'Student Name', value: `${student.firstName} ${student.lastName}` },
+          { label: 'Student No.', value: student.studentNumber || '—' },
+          { label: 'Class', value: student.classEntity?.name || '—' }
+        ]
+      });
 
       // ── Amount calculations (unchanged logic) ───────────────────────
       const invoiceAmount = parseAmount(invoice.amount);
