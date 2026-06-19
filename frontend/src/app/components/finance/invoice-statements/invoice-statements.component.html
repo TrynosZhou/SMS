@@ -110,12 +110,12 @@
             <th><button type="button" class="sl-th-btn" (click)="toggleLedgerSort('studentName')">Student <span class="sl-sort">{{ ledgerSortIcon('studentName') }}</span></button></th>
             <th><button type="button" class="sl-th-btn" (click)="toggleLedgerSort('term')">Term <span class="sl-sort">{{ ledgerSortIcon('term') }}</span></button></th>
             <th class="text-right"><button type="button" class="sl-th-btn sl-th-btn-right" (click)="toggleLedgerSort('amount')">Grand total <span class="sl-sort">{{ ledgerSortIcon('amount') }}</span></button></th>
-            <th class="text-right">Paid</th>
+            <th class="sl-col-paid">Paid</th>
             <th class="text-right"><button type="button" class="sl-th-btn sl-th-btn-right" (click)="toggleLedgerSort('balance')">Balance <span class="sl-sort">{{ ledgerSortIcon('balance') }}</span></button></th>
-            <th class="text-right">Prev. balance</th>
+            <th class="sl-col-prev-balance">Prev. balance</th>
             <th><button type="button" class="sl-th-btn" (click)="toggleLedgerSort('status')">Status <span class="sl-sort">{{ ledgerSortIcon('status') }}</span></button></th>
             <th><button type="button" class="sl-th-btn" (click)="toggleLedgerSort('dueDate')">Due <span class="sl-sort">{{ ledgerSortIcon('dueDate') }}</span></button></th>
-            <th style="text-align:center">Actions</th>
+            <th class="sl-col-actions"><span class="sl-actions-label">Actions</span></th>
           </tr>
         </thead>
         <tbody>
@@ -124,15 +124,17 @@
             <td>{{ studentDisplayName(invoice) }}</td>
             <td>{{ invoice.term || '—' }}</td>
             <td class="text-right sl-cell-amount">{{ currencySymbol }} {{ invoice.amount | number:'1.2-2' }}</td>
-            <td class="text-right sl-cell-amount">{{ currencySymbol }} {{ invoice.paidAmount | number:'1.2-2' }}</td>
+            <td class="sl-col-paid sl-cell-amount">{{ currencySymbol }} {{ invoice.paidAmount | number:'1.2-2' }}</td>
             <td class="text-right sl-cell-amount" [style.color]="(invoice.balance || 0) > 0 ? '#dc2626' : '#16a34a'">{{ currencySymbol }} {{ invoice.balance | number:'1.2-2' }}</td>
-            <td class="text-right">{{ currencySymbol }} {{ invoice.previousBalance | number:'1.2-2' }}</td>
+            <td class="sl-col-prev-balance">{{ currencySymbol }} {{ invoice.previousBalance | number:'1.2-2' }}</td>
             <td><span [class]="getStatusClass(invoice.status)">{{ invoice.status }}</span></td>
             <td>{{ invoice.dueDate | date:'mediumDate' }}</td>
-            <td>
-              <div class="sl-actions">
-                <button type="button" class="sl-btn-sm" (click)="viewInvoicePDF(invoice.id, $event)">PDF</button>
-                <button type="button" class="sl-btn-sm" (click)="openBalanceEnquiry(invoice)">Balance</button>
+            <td class="sl-col-actions">
+              <div class="sl-actions-stack">
+                <div class="sl-actions-buttons">
+                  <button type="button" class="sl-btn-sm" (click)="viewInvoicePDF(invoice.id, $event)">PDF</button>
+                  <button type="button" class="sl-btn-sm" (click)="openBalanceEnquiry(invoice)">Balance</button>
+                </div>
               </div>
             </td>
           </tr>
