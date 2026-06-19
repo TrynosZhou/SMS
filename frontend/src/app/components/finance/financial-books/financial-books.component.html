@@ -1,0 +1,447 @@
+<div class="fb-page">
+  <div class="fb-toast-stack" *ngIf="success || error">
+    <div class="fb-toast fb-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="fb-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="fb-toast fb-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="fb-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="fb-hero" *ngIf="activeTab() === 'overview'">
+    <div class="fb-hero__main">
+      <div class="fb-hero-left">
+        <span class="fb-hero-icon" aria-hidden="true">📚</span>
+        <div>
+          <span class="fb-hero-eyebrow">Finance</span>
+          <h1>Financial Management</h1>
+          <p class="fb-hero-sub">Cashbook, debtors, collections, and student statements in one dashboard.</p>
+          <p class="fb-hero-meta" *ngIf="lastLoadedAt && !loadingKpis">
+            Last updated {{ lastLoadedAt | date : 'medium' }}
+          </p>
+        </div>
+      </div>
+      <div class="fb-hero__actions">
+        <button type="button" class="fb-hero-btn fb-hero-btn--primary" (click)="goRecordPayment()">Record Payment</button>
+        <button type="button" class="fb-hero-refresh" (click)="refreshAll()" [disabled]="loadingKpis" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loadingKpis">↻</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="fb-hero-stats">
+      <article class="fb-stat fb-stat--mint">
+        <span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(balanceSheet.cashBalance) }}</span>
+        <span class="fb-stat__label">Cash balance</span>
+      </article>
+      <article class="fb-stat fb-stat--rose">
+        <span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(balanceSheet.totalDebtors) }}</span>
+        <span class="fb-stat__label">Total outstanding</span>
+      </article>
+      <article class="fb-stat fb-stat--accent">
+        <span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(balanceSheet.monthlyCollections) }}</span>
+        <span class="fb-stat__label">Monthly collections</span>
+      </article>
+      <article class="fb-stat">
+        <span class="fb-stat__value">{{ balanceSheet.debtorCount }}</span>
+        <span class="fb-stat__label">Debtors</span>
+      </article>
+    </div>
+  </header>
+
+  <div class="fb-debtor-banner" *ngIf="showDebtorAlert() && !loadingKpis">
+    <span class="fb-debtor-banner__text">
+      <strong>{{ balanceSheet.debtorCount }}</strong> students owe
+      <strong>{{ currencySymbol }}{{ formatMoney(balanceSheet.totalDebtors) }}</strong> in total.
+    </span>
+    <span class="fb-debtor-banner__actions">
+      <button type="button" class="fb-banner-link" (click)="setTab('debtors')">View debtors</button>
+      <button type="button" class="fb-banner-link" (click)="sendRemindersToAllDebtors()" [disabled]="sendingReminders || !canEditCashbook()">
+        {{ sendingReminders ? 'Sending…' : 'Send reminders' }}
+      </button>
+    </span>
+  </div>
+
+  <div class="fb-main-card">
+    <div class="fb-tabs-row">
+      <nav class="fb-tabs" aria-label="Financial books sections">
+        <button type="button" class="fb-tab" [class.active]="activeTab() === 'overview'" (click)="setTab('overview')">Overview</button>
+        <button type="button" class="fb-tab" [class.active]="activeTab() === 'cashbook'" (click)="setTab('cashbook')">Cashbook</button>
+        <button type="button" class="fb-tab fb-tab--debtors" [class.active]="activeTab() === 'debtors'" (click)="setTab('debtors')">
+          Debtors
+          <span class="fb-tab-count" *ngIf="debtorTabBadge()">{{ debtorTabBadge() }}</span>
+        </button>
+        <button type="button" class="fb-tab" [class.active]="activeTab() === 'statements'" (click)="setTab('statements')">Statements</button>
+      </nav>
+      <button type="button" class="fb-manage-fees" (click)="goManageFees()">Manage fees</button>
+    </div>
+
+    <div class="fb-links" *ngIf="activeTab() === 'overview'">
+      <a routerLink="/invoices">Billing</a>
+      <a routerLink="/financial-reports/fees-collection">Fee Collection</a>
+      <a routerLink="/financial-reports/student-ledgers">Student Ledger</a>
+      <a routerLink="/financial-reports/aged-debtors">Debtor Aging</a>
+    </div>
+
+  <!-- Overview -->
+  <section class="fb-panel" *ngIf="activeTab() === 'overview'">
+    <div class="fb-panel__loading" *ngIf="loadingOverview">Loading overview…</div>
+
+    <div class="fb-grid-2" *ngIf="!loadingOverview">
+      <article class="fb-card">
+        <h2>Debtors aging</h2>
+        <div class="fb-aging-list">
+          <div class="fb-aging-row" *ngFor="let bucket of agingBuckets">
+            <div class="fb-aging-row__head">
+              <span>{{ bucket.bucket }}</span>
+              <span>{{ bucket.count }} inv · {{ currencySymbol }}{{ formatMoney(bucket.amount) }}</span>
+            </div>
+            <div class="fb-aging-bar"><span [style.width.%]="agingBarPct(bucket.amount)"></span></div>
+          </div>
+          <p class="fb-empty" *ngIf="!agingBuckets.length">No outstanding invoices.</p>
+        </div>
+      </article>
+
+      <article class="fb-card">
+        <h2>Debt by class</h2>
+        <div class="fb-class-list">
+          <div class="fb-class-row" *ngFor="let row of classDebtRows">
+            <div>
+              <strong>{{ row.name }}</strong>
+              <span class="fb-muted" *ngIf="row.formName"> · {{ row.formName }}</span>
+            </div>
+            <div class="fb-class-row__amt">
+              {{ currencySymbol }}{{ formatMoney(row.owed) }}
+              <span class="fb-muted"> · {{ row.studentsOwing }} owing</span>
+            </div>
+          </div>
+          <p class="fb-empty" *ngIf="!classDebtRows.length">No class debt data.</p>
+        </div>
+      </article>
+    </div>
+
+    <article class="fb-card fb-card--wide" *ngIf="!loadingOverview">
+      <div class="fb-card__head">
+        <h2>Recent payments</h2>
+        <button type="button" class="fb-link-btn" (click)="setTab('cashbook')">Open cashbook →</button>
+      </div>
+      <div class="fb-table-wrap fb-overview-table">
+        <table class="fb-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Student</th>
+              <th>Class</th>
+              <th>Fee</th>
+              <th>Method</th>
+              <th class="num">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of recentPayments">
+              <td>{{ p.date | date : 'mediumDate' }}</td>
+              <td>{{ p.studentName }} <span class="fb-muted">({{ p.studentNumber }})</span></td>
+              <td>{{ p.className || '—' }}</td>
+              <td class="fb-one-line fb-overview-fee" [title]="p.feeLabel">{{ shortDescription(p.feeLabel) }}</td>
+              <td>{{ p.paymentMethod || '—' }}</td>
+              <td class="num">{{ currencySymbol }}{{ formatMoney(p.amount) }}</td>
+            </tr>
+            <tr *ngIf="!recentPayments.length">
+              <td colspan="6" class="fb-empty">No recent payments.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </section>
+
+  <!-- Cashbook -->
+  <section class="fb-panel fb-panel--cashbook" *ngIf="activeTab() === 'cashbook'">
+    <div class="fb-cb-toolbar">
+      <div class="fb-cb-dates">
+        <label class="fb-cb-field">
+          <span class="fb-cb-label">FROM</span>
+          <input type="date" [(ngModel)]="cashbookFromDraft" name="cbFrom" />
+        </label>
+        <label class="fb-cb-field">
+          <span class="fb-cb-label">TO</span>
+          <input type="date" [(ngModel)]="cashbookToDraft" name="cbTo" />
+        </label>
+        <button type="button" class="fb-cb-apply" (click)="applyCashbookDates()">Apply dates</button>
+        <button type="button" class="fb-cb-clear" (click)="clearCashbookDates()">Clear</button>
+      </div>
+      <div class="fb-cb-search-row">
+        <label class="fb-cb-search-wrap">
+          <span class="fb-cb-search-icon" aria-hidden="true">🔍</span>
+          <input
+            type="search"
+            class="fb-cb-search"
+            placeholder="Search cashbook entries..."
+            (input)="onCashbookSearchInput($any($event.target).value)"
+          />
+        </label>
+        <button
+          type="button"
+          class="fb-cb-add"
+          *ngIf="canEditCashbook()"
+          (click)="openAddEntryModal()"
+        >
+          + Add entry
+        </button>
+      </div>
+    </div>
+
+    <div class="fb-cb-summary-row">
+      <div class="fb-cb-summary">
+        <span>{{ cashbookSummary.count }} entries</span>
+        <span class="fb-in">In <strong>{{ moneyCell(cashbookSummary.totalIn) }}</strong></span>
+        <span class="fb-out">Out <strong>{{ moneyCell(cashbookSummary.totalOut) }}</strong></span>
+      </div>
+      <div class="fb-cb-view-toggle" role="group" aria-label="View mode">
+        <button
+          type="button"
+          class="fb-cb-view-btn"
+          [class.active]="cashbookViewMode() === 'table'"
+          (click)="setCashbookViewMode('table')"
+          title="Table view"
+          aria-label="Table view"
+        >
+          ☰
+        </button>
+        <button
+          type="button"
+          class="fb-cb-view-btn"
+          [class.active]="cashbookViewMode() === 'cards'"
+          (click)="setCashbookViewMode('cards')"
+          title="Card view"
+          aria-label="Card view"
+        >
+          ▦
+        </button>
+      </div>
+    </div>
+
+    <div class="fb-panel__loading" *ngIf="loadingCashbook">Loading cashbook…</div>
+
+    <div class="fb-table-wrap fb-cb-table-wrap" *ngIf="!loadingCashbook && cashbookViewMode() === 'table'">
+      <table class="fb-table fb-cb-table">
+        <thead>
+          <tr>
+            <th>DATE</th>
+            <th>DESCRIPTION</th>
+            <th>REFERENCE</th>
+            <th>METHOD</th>
+            <th class="num">IN</th>
+            <th class="num">OUT</th>
+            <th class="num">BALANCE</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let e of cashbookEntries">
+            <td class="fb-cb-date">{{ formatCashbookDate(e.entryDate) }}</td>
+            <td class="fb-cb-desc" [title]="e.description">{{ shortDescription(e.description) }}</td>
+            <td class="fb-cb-ref">{{ e.reference || '—' }}</td>
+            <td>{{ e.paymentMethod || '—' }}</td>
+            <td class="num fb-in">{{ moneyCell(e.moneyIn || 0) }}</td>
+            <td class="num fb-out">{{ moneyCell(e.moneyOut || 0) }}</td>
+            <td class="num fb-cb-balance"><strong>{{ moneyCell(e.balance) }}</strong></td>
+          </tr>
+          <tr *ngIf="!cashbookEntries.length">
+            <td colspan="7" class="fb-empty">No cashbook entries for this period.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="fb-cards fb-cb-cards" *ngIf="!loadingCashbook && cashbookViewMode() === 'cards'">
+      <article class="fb-mini-card" *ngFor="let e of cashbookEntries">
+        <div class="fb-mini-card__date">{{ formatCashbookDate(e.entryDate) }}</div>
+        <div class="fb-mini-card__desc" [title]="e.description">{{ shortDescription(e.description) }}</div>
+        <div class="fb-mini-card__meta">{{ e.reference || '—' }} · {{ e.paymentMethod || '—' }}</div>
+        <div class="fb-mini-card__row">
+          <span class="fb-in">In {{ moneyCell(e.moneyIn || 0) }}</span>
+          <span class="fb-out">Out {{ moneyCell(e.moneyOut || 0) }}</span>
+          <span class="fb-cb-balance">Bal <strong>{{ moneyCell(e.balance) }}</strong></span>
+        </div>
+      </article>
+      <p class="fb-empty" *ngIf="!cashbookEntries.length">No cashbook entries.</p>
+    </div>
+  </section>
+
+  <!-- Debtors -->
+  <section class="fb-panel" *ngIf="activeTab() === 'debtors'">
+    <div class="fb-filters">
+      <label class="fb-grow">Search debtors
+        <input type="search" placeholder="Name, ID, or class" (input)="onDebtorSearchInput($any($event.target).value)" />
+      </label>
+    </div>
+    <div class="fb-panel__loading" *ngIf="loadingDebtors">Loading debtors…</div>
+    <div class="fb-table-wrap" *ngIf="!loadingDebtors">
+      <table class="fb-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>ID</th>
+            <th>Class</th>
+            <th class="num">Owed</th>
+            <th>Oldest due</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let d of filteredDebtors">
+            <td>{{ d.firstName }} {{ d.lastName }}</td>
+            <td>{{ d.studentNumber }}</td>
+            <td>{{ d.className || '—' }}</td>
+            <td class="num">{{ currencySymbol }}{{ formatMoney(d.amountOwed) }}</td>
+            <td>{{ d.oldestDueDate ? (d.oldestDueDate | date : 'mediumDate') : '—' }}</td>
+            <td><button type="button" class="fb-link-btn" (click)="viewDebtorStatement(d)">View statement</button></td>
+          </tr>
+          <tr *ngIf="!filteredDebtors.length"><td colspan="6" class="fb-empty">No debtors found.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Statements -->
+  <section class="fb-panel" *ngIf="activeTab() === 'statements'">
+    <div class="fb-grid-2">
+      <article class="fb-card">
+        <h2>Select student</h2>
+        <input type="search" class="fb-search" placeholder="Search students…" (input)="onStudentSearchInput($any($event.target).value)" />
+        <div class="fb-student-list">
+          <button type="button" class="fb-student-pick" *ngFor="let s of filteredStudents" [class.active]="selectedStudentId() === s.id" (click)="selectStudentForStatement(s.id)">
+            <strong>{{ s.firstName }} {{ s.lastName }}</strong>
+            <span class="fb-muted">{{ s.studentNumber }} · {{ s.classEntity?.name || s.className || '—' }}</span>
+          </button>
+          <p class="fb-empty" *ngIf="!filteredStudents.length">No students match.</p>
+        </div>
+      </article>
+
+      <article class="fb-card fb-card--wide-col">
+        <div class="fb-panel__loading" *ngIf="loadingStatement">Loading statement…</div>
+        <ng-container *ngIf="statement && !loadingStatement">
+          <div class="fb-statement-head">
+            <div>
+              <h2>{{ statement.student.firstName }} {{ statement.student.lastName }}</h2>
+              <p class="fb-muted">{{ statement.student.studentNumber }} · {{ statement.student.className || '—' }}</p>
+            </div>
+            <div class="fb-statement-actions">
+              <button type="button" class="fb-hero-btn fb-hero-btn--white" (click)="previewStatementPdf()" [disabled]="loadingPdf">Preview PDF</button>
+              <button type="button" class="fb-hero-btn fb-hero-btn--primary" (click)="downloadStatementPdf()" [disabled]="loadingPdf">Download PDF</button>
+            </div>
+          </div>
+
+          <div class="fb-hero-stats fb-hero-stats--compact">
+            <article class="fb-stat"><span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(statement.summary.totalInvoiced) }}</span><span class="fb-stat__label">Invoiced</span></article>
+            <article class="fb-stat fb-stat--mint"><span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(statement.summary.totalPaid) }}</span><span class="fb-stat__label">Paid</span></article>
+            <article class="fb-stat fb-stat--rose"><span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(statement.summary.balance) }}</span><span class="fb-stat__label">Balance</span></article>
+          </div>
+
+          <h3>Ledger</h3>
+          <div class="fb-table-wrap">
+            <table class="fb-table">
+              <thead><tr><th>Date</th><th>Description</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let row of statement.ledger">
+                  <td>{{ row.date | date : 'mediumDate' }}</td>
+                  <td>{{ row.description }}</td>
+                  <td class="num">{{ row.debit ? (currencySymbol + formatMoney(row.debit)) : '—' }}</td>
+                  <td class="num">{{ row.credit ? (currencySymbol + formatMoney(row.credit)) : '—' }}</td>
+                  <td class="num">{{ currencySymbol }}{{ formatMoney(row.balance) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Invoices</h3>
+          <div class="fb-table-wrap">
+            <table class="fb-table">
+              <thead><tr><th>#</th><th>Term</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th><th>Due</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let inv of statement.invoices">
+                  <td>{{ inv.invoiceNumber }}</td>
+                  <td>{{ inv.term }}</td>
+                  <td class="num">{{ currencySymbol }}{{ formatMoney(inv.total) }}</td>
+                  <td class="num">{{ currencySymbol }}{{ formatMoney(inv.paid) }}</td>
+                  <td class="num">{{ currencySymbol }}{{ formatMoney(inv.balance) }}</td>
+                  <td>{{ inv.status }}</td>
+                  <td>{{ inv.dueDate | date : 'mediumDate' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Payments</h3>
+          <div class="fb-table-wrap">
+            <table class="fb-table">
+              <thead><tr><th>Date</th><th>Reference</th><th>Label</th><th>Method</th><th class="num">Amount</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let pay of statement.payments">
+                  <td>{{ pay.date | date : 'mediumDate' }}</td>
+                  <td>{{ pay.reference || '—' }}</td>
+                  <td>{{ pay.label }}</td>
+                  <td>{{ pay.method || '—' }}</td>
+                  <td class="num">{{ currencySymbol }}{{ formatMoney(pay.amount) }}</td>
+                </tr>
+                <tr *ngIf="!statement.payments?.length"><td colspan="5" class="fb-empty">No payments recorded.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </ng-container>
+        <p class="fb-empty" *ngIf="!statement && !loadingStatement">Select a student to view their statement.</p>
+      </article>
+    </div>
+  </section>
+  </div><!-- /.fb-main-card -->
+</div>
+
+<div class="fb-modal-overlay" *ngIf="showAddEntryModal()" (click)="closeAddEntryModal()">
+  <div class="fb-modal" role="dialog" aria-labelledby="addEntryTitle" (click)="$event.stopPropagation()">
+    <header class="fb-modal__head">
+      <h2 id="addEntryTitle">Add cashbook entry</h2>
+      <button type="button" class="fb-modal__close" (click)="closeAddEntryModal()" aria-label="Close">×</button>
+    </header>
+    <form class="fb-form fb-form--modal" (ngSubmit)="submitCashbookEntry()">
+      <label>Date <input type="date" [(ngModel)]="cashbookForm.entryDate" name="entryDate" required /></label>
+      <label>Type
+        <select [(ngModel)]="cashbookForm.type" name="type">
+          <option value="receipt">Receipt (money in)</option>
+          <option value="payment">Payment (money out)</option>
+        </select>
+      </label>
+      <label>Payment method
+        <select [(ngModel)]="cashbookForm.paymentMethod" name="paymentMethod">
+          <option>Cash</option>
+          <option>Bank</option>
+          <option>Mobile Money</option>
+          <option>Cheque</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label class="fb-grow">Description <input type="text" [(ngModel)]="cashbookForm.description" name="description" required /></label>
+      <label>Amount <input type="number" min="0" step="0.01" [(ngModel)]="cashbookForm.amount" name="amount" required /></label>
+      <label>Reference <input type="text" [(ngModel)]="cashbookForm.reference" name="reference" /></label>
+      <footer class="fb-modal__foot">
+        <button type="button" class="fb-hero-btn fb-hero-btn--white fb-modal-cancel" (click)="closeAddEntryModal()">Cancel</button>
+        <button type="submit" class="fb-cb-add" [disabled]="savingCashbookEntry">
+          {{ savingCashbookEntry ? 'Saving…' : 'Save entry' }}
+        </button>
+      </footer>
+    </form>
+  </div>
+</div>
+
+<div class="fb-pdf-overlay" *ngIf="showPdfViewer">
+  <div class="fb-pdf-modal">
+    <header class="fb-pdf-toolbar">
+      <strong>Statement preview</strong>
+      <button type="button" (click)="closePdfViewer()" aria-label="Close">×</button>
+    </header>
+    <div class="fb-pdf-body">
+      <iframe *ngIf="safePdfUrl" [src]="safePdfUrl" title="Statement PDF" class="fb-pdf-frame"></iframe>
+    </div>
+  </div>
+</div>

@@ -64,6 +64,7 @@ import { MarksProgressComponent } from './components/exams/marks-progress/marks-
 import { BalanceEnquiryComponent } from './components/finance/balance-enquiry/balance-enquiry.component';
 import { CashLogisticsComponent } from './components/finance/cash-logistics/cash-logistics.component';
 import { AuditComponent } from './components/finance/audit/audit.component';
+import { FinancialBooksComponent } from './components/finance/financial-books/financial-books.component';
 import { ExemptionsManagementComponent } from './components/finance/exemptions-management/exemptions-management.component';
 import { ExemptionReportComponent } from './components/finance/exemption-report/exemption-report.component';
 import { FinancialReportComponent } from './components/finance/financial-reports/financial-report.component';
@@ -166,6 +167,7 @@ import { RbacManagementComponent } from './components/settings/rbac-management/r
     BalanceEnquiryComponent,
     CashLogisticsComponent,
     AuditComponent,
+    FinancialBooksComponent,
     ExemptionsManagementComponent,
     ExemptionReportComponent,
     FinancialReportComponent,

@@ -746,6 +746,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.canAccessFinancePage('billing') ||
       this.canAccessFinancePage('recordPayment') ||
       this.canAccessFinancePage('balanceEnquiry') ||
+      this.canAccessFinancePage('financialBooks') ||
       this.canAccessFinancePage('exemptions') ||
       this.canAccessFinancePage('audit')
     );
@@ -760,8 +761,6 @@ export class AppComponent implements OnInit, OnDestroy {
       this.canAccessFinancePage('reportFeesCollection') ||
       this.canAccessFinancePage('reportUnpaidInvoices') ||
       this.canAccessFinancePage('reportExemption') ||
-      this.canAccessFinancePage('reportAgedDebtors') ||
-      this.canAccessFinancePage('reportEnrolmentBilling') ||
       this.canAccessFinancePage('reportDiningHall') ||
       this.canAccessFinancePage('reportTransport')
     );

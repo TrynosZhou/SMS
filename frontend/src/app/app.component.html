@@ -498,7 +498,7 @@
       <div
         class="sidebar-menu"
         *ngIf="sidebarMenuVisible(
-          ['Finance Manager', 'Billing & Invoicing', 'Record Payment', 'Balance Enquiry', 'Exemptions', 'System Auditor'],
+          ['Finance Manager', 'Billing & Invoicing', 'Record Payment', 'Balance Enquiry', 'Financial Books', 'Exemptions', 'System Auditor'],
           canAccessFinanceManagerMenu()
         )">
         <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('financeManagement')" (click)="toggleMenu('financeManagement')">
@@ -519,6 +519,10 @@
             <span class="sidebar-icon">🔎</span>
             <span class="sidebar-text">Balance Enquiry</span>
           </a>
+          <a routerLink="/finance/financial-books" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('financialBooks')">
+            <span class="sidebar-icon">📚</span>
+            <span class="sidebar-text">Financial Books</span>
+          </a>
           <a routerLink="/finance/exemptions" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('exemptions')">
             <span class="sidebar-icon">🛡️</span>
             <span class="sidebar-text">Exemptions</span>
@@ -534,7 +538,7 @@
       <div
         class="sidebar-menu"
         *ngIf="sidebarMenuVisible(
-          ['Financial Reports', 'Student Ledgers', 'Fees Collection', 'Unpaid Invoices', 'Exemption Report', 'Aged Debtors', 'Enrolment vs Billing', 'Dining Hall', 'Transport'],
+          ['Financial Reports', 'Student Ledgers', 'Fees Collection', 'Unpaid Invoices', 'Exemption Report', 'Dining Hall', 'Transport'],
           !isTeacher() && canAccessFinancialReportsMenu()
         )">
         <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('financialReports')" (click)="toggleMenu('financialReports')">
@@ -558,14 +562,6 @@
           <a routerLink="/financial-reports/exemption-report" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportExemption')">
             <span class="sidebar-icon">🪪</span>
             <span class="sidebar-text">Exemption Report</span>
-          </a>
-          <a routerLink="/financial-reports/aged-debtors" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportAgedDebtors')">
-            <span class="sidebar-icon">⏳</span>
-            <span class="sidebar-text">Aged Debtors</span>
-          </a>
-          <a routerLink="/financial-reports/enrolment-vs-billing" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportEnrolmentBilling')">
-            <span class="sidebar-icon">📈</span>
-            <span class="sidebar-text">Enrolment vs Billing</span>
           </a>
           <a routerLink="/financial-reports/dining-hall" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportDiningHall')">
             <span class="sidebar-icon">🍽️</span>

@@ -26,6 +26,7 @@ export const FINANCE_PAGES: FinancePageDef[] = [
   { key: 'exemptions', label: 'Fee Exemptions', group: 'financeManager', sensitive: true },
   { key: 'audit', label: 'System Auditor', group: 'financeManager' },
   { key: 'cashLogistics', label: 'Cash / Logistics Receipts', group: 'financeManager' },
+  { key: 'financialBooks', label: 'Financial Books', group: 'financeManager', description: 'Cashbook, debtors, and student statements dashboard' },
   {
     key: 'creditNotes',
     label: 'Credit Notes',
@@ -96,6 +97,7 @@ const ACCOUNTANT_FINANCE_DEFAULTS: Record<string, { view: boolean; edit: boolean
   exemptions: { view: true, edit: false },
   audit: { view: true, edit: false },
   cashLogistics: { view: true, edit: false },
+  financialBooks: { view: true, edit: true },
   creditNotes: { view: true, edit: false },
   debitNotes: { view: true, edit: false },
   transportAdjust: { view: false, edit: false },

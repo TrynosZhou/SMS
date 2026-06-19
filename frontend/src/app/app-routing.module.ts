@@ -24,6 +24,7 @@ import { OutstandingBalanceComponent } from './components/finance/outstanding-ba
 import { BalanceEnquiryComponent } from './components/finance/balance-enquiry/balance-enquiry.component';
 import { CashLogisticsComponent } from './components/finance/cash-logistics/cash-logistics.component';
 import { AuditComponent } from './components/finance/audit/audit.component';
+import { FinancialBooksComponent } from './components/finance/financial-books/financial-books.component';
 import { ExemptionsManagementComponent } from './components/finance/exemptions-management/exemptions-management.component';
 import { ExemptionReportComponent } from './components/finance/exemption-report/exemption-report.component';
 import { FinancialReportComponent } from './components/finance/financial-reports/financial-report.component';
@@ -145,6 +146,8 @@ const routes: Routes = [
   { path: 'finance/balance-enquiry', redirectTo: 'balance-enquiry', pathMatch: 'full' },
   { path: 'finance/cash-logistics', component: CashLogisticsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'cashLogistics' } },
   { path: 'finance/audit', component: AuditComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'audit' } },
+  { path: 'finance/financial-books', component: FinancialBooksComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'financialBooks', pageTitle: 'Financial Management' } },
+  { path: 'admin/finance', redirectTo: 'finance/financial-books', pathMatch: 'full' },
   { path: 'financial-reports/student-ledgers', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportStudentLedgers', hideInvoiceActions: true, pageTitle: 'Student Ledgers' } },
   { path: 'financial-reports/fees-collection', component: FeesCollectionReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportFeesCollection' } },
   { path: 'financial-reports/outstanding-fees', component: OutstandingBalanceComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportUnpaidInvoices' } },

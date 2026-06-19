@@ -501,5 +501,89 @@ getStudentBalance(studentId: string): Observable<any> {
     if (term && term.trim()) params.term = term.trim();
     return this.http.get<any>(`${this.apiUrl}/finance/audit/invoice-reconciliation`, { params });
   }
+
+  // —— Financial Books dashboard ——
+
+  getBalanceSheet(): Observable<{
+    cashBalance: number;
+    totalDebtors: number;
+    monthlyCollections: number;
+    debtorCount: number;
+  }> {
+    return this.http.get<any>(`${this.apiUrl}/finance/balance-sheet`);
+  }
+
+  getDebtorsAging(): Observable<Array<{ bucket: string; count: number; amount: number }>> {
+    return this.http.get<any[]>(`${this.apiUrl}/finance/debtors-aging`).pipe(
+      map((r) => (Array.isArray(r) ? r : [])),
+      catchError(() => of([]))
+    );
+  }
+
+  getClassDebtSummary(): Observable<Array<{ id: string; name: string; formName: string | null; owed: number; studentsOwing: number }>> {
+    return this.http.get<any[]>(`${this.apiUrl}/finance/class-debt-summary`).pipe(
+      map((r) => (Array.isArray(r) ? r : [])),
+      catchError(() => of([]))
+    );
+  }
+
+  getRecentPayments(limit = 12): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/finance/recent-payments`, { params: { limit } }).pipe(
+      map((r) => (Array.isArray(r) ? r : [])),
+      catchError(() => of([]))
+    );
+  }
+
+  getFinanceDebtors(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/finance/debtors`).pipe(
+      map((r) => (Array.isArray(r) ? r : [])),
+      catchError(() => of([]))
+    );
+  }
+
+  getCashbook(params: { from?: string; to?: string; search?: string } = {}): Observable<{
+    entries: any[];
+    summary: { count: number; totalIn: number; totalOut: number };
+  }> {
+    return this.http.get<any>(`${this.apiUrl}/finance/cashbook`, { params: params as any }).pipe(
+      catchError(() => of({ entries: [], summary: { count: 0, totalIn: 0, totalOut: 0 } }))
+    );
+  }
+
+  createCashbookEntry(body: {
+    entryDate: string;
+    type: 'receipt' | 'payment';
+    description: string;
+    amount: number;
+    paymentMethod?: string;
+    reference?: string;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/finance/cashbook`, body);
+  }
+
+  getStudentStatement(studentId: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/finance/statement/${studentId}`);
+  }
+
+  getStudentStatementPDF(studentId: string): Observable<{ blob: Blob; filename: string }> {
+    return this.http
+      .get(`${this.apiUrl}/finance/statement/${studentId}/pdf`, {
+        responseType: 'blob',
+        observe: 'response',
+      })
+      .pipe(
+        map((response) => {
+          const blob = response.body as Blob;
+          const disposition = response.headers.get('Content-Disposition') || '';
+          const match = disposition.match(/filename="?([^"]+)"?/);
+          const filename = match ? match[1] : `statement-${studentId}.pdf`;
+          return { blob, filename };
+        })
+      );
+  }
+
+  sendDebtorReminders(studentIds: string[]): Observable<{ sent: number; skipped?: number }> {
+    return this.http.post<{ sent: number; skipped?: number }>(`${this.apiUrl}/finance/reminders/send`, { studentIds });
+  }
 }
 

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
 import {
   requireFinancePageEdit,
+  requireFinancePageView,
   requireModuleView,
   requirePermission,
 } from '../middleware/requirePermission';
@@ -35,6 +36,18 @@ import {
   getNextUniformReceiptNumberController,
   generateUniformReceiptPDF,
 } from '../controllers/finance.controller';
+import {
+  getBalanceSheet,
+  getDebtorsAging,
+  getClassDebtSummary,
+  getRecentPayments,
+  getDebtorsList,
+  getCashbook,
+  postCashbookEntry,
+  getStudentStatement,
+  getStudentStatementPdf,
+  sendDebtorReminders,
+} from '../controllers/financialBooks.controller';
 
 const router = Router();
 
@@ -55,6 +68,16 @@ const FINANCE_OPERATORS_NO_DEMO = [
 ];
 
 const FINANCE_EXECUTIVE = [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DIRECTOR];
+
+/** Admin, Director, Principal (Headmaster) — finance books dashboard */
+const FINANCIAL_BOOKS_VIEWERS = [
+  UserRole.ADMIN,
+  UserRole.SUPERADMIN,
+  UserRole.DIRECTOR,
+  UserRole.HEADMASTER,
+  UserRole.DEPUTY_HEADMASTER,
+  UserRole.ACCOUNTANT,
+];
 
 router.use(authenticate);
 
@@ -96,6 +119,69 @@ router.post(
 );
 router.get('/cash-receipts', authorize(...FINANCE_OPERATORS_NO_DEMO), getCashReceipts);
 router.get('/cash-receipts/pdf', authorize(...FINANCE_OPERATORS_NO_DEMO), getCashReceiptsPDF);
+
+// Financial Books dashboard
+router.get(
+  '/balance-sheet',
+  authorize(...FINANCIAL_BOOKS_VIEWERS),
+  requireFinancePageView('financialBooks'),
+  getBalanceSheet
+);
+router.get(
+  '/debtors-aging',
+  authorize(...FINANCIAL_BOOKS_VIEWERS),
+  requireFinancePageView('financialBooks'),
+  getDebtorsAging
+);
+router.get(
+  '/class-debt-summary',
+  authorize(...FINANCIAL_BOOKS_VIEWERS),
+  requireFinancePageView('financialBooks'),
+  getClassDebtSummary
+);
+router.get(
+  '/recent-payments',
+  authorize(...FINANCIAL_BOOKS_VIEWERS),
+  requireFinancePageView('financialBooks'),
+  getRecentPayments
+);
+router.get(
+  '/debtors',
+  authorize(...FINANCIAL_BOOKS_VIEWERS),
+  requireFinancePageView('financialBooks'),
+  getDebtorsList
+);
+router.get(
+  '/cashbook',
+  authorize(...FINANCIAL_BOOKS_VIEWERS),
+  requireFinancePageView('financialBooks'),
+  getCashbook
+);
+router.post(
+  '/cashbook',
+  authorize(...FINANCE_EXECUTIVE),
+  requireFinancePageEdit('financialBooks'),
+  postCashbookEntry
+);
+router.get(
+  '/statement/:studentId',
+  authorize(...FINANCIAL_BOOKS_VIEWERS),
+  requireFinancePageView('financialBooks'),
+  getStudentStatement
+);
+router.get(
+  '/statement/:studentId/pdf',
+  authorize(...FINANCIAL_BOOKS_VIEWERS),
+  requireFinancePageView('financialBooks'),
+  getStudentStatementPdf
+);
+router.post(
+  '/reminders/send',
+  authorize(...FINANCIAL_BOOKS_VIEWERS),
+  requireFinancePageEdit('financialBooks'),
+  sendDebtorReminders
+);
+
 router.get('/audit/payment-logs', authorize(...FINANCE_OPERATORS_NO_DEMO), getPaymentLogs);
 router.delete('/audit/payment-logs/:id', authorize(...FINANCE_EXECUTIVE), deletePaymentLog);
 // Audit exports and summaries
