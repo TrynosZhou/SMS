@@ -1,8 +1,10 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ParentService } from '../../../services/parent.service';
 import { AuthService } from '../../../services/auth.service';
+import { PermissionService } from '../../../services/permission.service';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { validatePhoneNumber } from '../../../utils/phone-validator';
 
@@ -63,10 +65,13 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
   resetParentEmailSuggestions: { id: string; email: string; firstName: string; lastName: string }[] = [];
   resetParentEmailSearching = false;
   private resetParentEmailSearchTimeout: any = null;
+  private alertDismissTimer: ReturnType<typeof setTimeout> | null = null;
+  private parentsLoadInFlight = false;
 
   constructor(
     private parentService: ParentService,
     private authService: AuthService,
+    private permissionService: PermissionService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) { }
@@ -89,16 +94,47 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
     } else {
       this.error = '';
     }
+    if (this.alertDismissTimer) {
+      clearTimeout(this.alertDismissTimer);
+      this.alertDismissTimer = null;
+    }
     this.cdr.markForCheck();
   }
 
+  private scheduleAlertDismiss(field: 'error' | 'success', ms: number): void {
+    if (this.alertDismissTimer) {
+      clearTimeout(this.alertDismissTimer);
+    }
+    this.alertDismissTimer = setTimeout(() => {
+      this[field] = '';
+      this.alertDismissTimer = null;
+      this.cdr.markForCheck();
+    }, ms);
+  }
+
+  private showError(message: string, autoDismissMs = 7000): void {
+    this.error = message;
+    this.cdr.markForCheck();
+    if (autoDismissMs > 0) {
+      this.scheduleAlertDismiss('error', autoDismissMs);
+    }
+  }
+
+  private showSuccess(message: string, autoDismissMs = 7000): void {
+    this.success = message;
+    this.cdr.markForCheck();
+    if (autoDismissMs > 0) {
+      this.scheduleAlertDismiss('success', autoDismissMs);
+    }
+  }
+
   refreshParents(): void {
-    this.loadParents();
+    this.loadParents(false, true);
   }
 
   ngOnInit(): void {
     const user = this.authService.getCurrentUser();
-    if (!user || (user.role !== 'admin' && user.role !== 'superadmin')) {
+    if (!user || !this.permissionService.canAccessModule('parents')) {
       this.router.navigate(['/dashboard']);
       return;
     }
@@ -106,15 +142,38 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.alertDismissTimer) {
+      clearTimeout(this.alertDismissTimer);
+    }
+    if (this.resetParentEmailSearchTimeout) {
+      clearTimeout(this.resetParentEmailSearchTimeout);
+    }
     this.destroy$.next();
     this.destroy$.complete();
   }
 
-  loadParents() {
-    this.loading = true;
-    this.error = '';
+  loadParents(silent = false, clearAlerts = false) {
+    if (this.parentsLoadInFlight && !silent) {
+      return;
+    }
+    if (!silent) {
+      this.loading = true;
+      this.parentsLoadInFlight = true;
+      if (clearAlerts) {
+        this.error = '';
+        this.success = '';
+      }
+    }
     const previousParents = this.parents || [];
-    this.parentService.getAllParentsAdmin().subscribe({
+    this.parentService.getAllParentsAdmin().pipe(
+      finalize(() => {
+        if (!silent) {
+          this.loading = false;
+          this.parentsLoadInFlight = false;
+        }
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
       next: (response: any) => {
         const incomingParents = response.parents || [];
 
@@ -132,8 +191,10 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
         this.unlinkedParentsCount = this.parents.filter(p => (p?.parentStudents || []).length === 0).length;
         this.linkedStudentsTotalCount = this.parents.reduce((sum, p) => sum + ((p?.parentStudents || []).length), 0);
         this.studentsWithAccountLoggedInCount = response.studentsWithAccountLoggedInCount ?? 0;
-        this.filteredParents = this.parents;
-        this.loading = false;
+        this.filteredParents = this.parentSearchQuery ? this.filteredParents : this.parents;
+        if (this.parentSearchQuery) {
+          this.filterParents();
+        }
         this.cdr.markForCheck();
         if (this.selectedParent) {
           const updated = this.parents.find(p => p.id === this.selectedParent.id);
@@ -153,10 +214,11 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
         }
       },
       error: (err: any) => {
-        this.loading = false;
-        this.error = err.error?.message || 'Failed to load parents';
-        this.cdr.markForCheck();
-        setTimeout(() => this.error = '', 5000);
+        const status = err?.status ?? 0;
+        const msg = status === 0 || status === 502
+          ? 'Backend unavailable. Run the backend with npm run dev in the backend folder (port 3000).'
+          : (err.error?.message || 'Failed to load parents');
+        this.showError(msg);
       }
     });
   }
@@ -201,50 +263,101 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
     const email = (this.createParentForm.email || '').trim();
     if (!firstName || !lastName || !email) {
       this.error = 'First name, last name, and email are required';
+      this.cdr.markForCheck();
       setTimeout(() => this.error = '', 5000);
       return;
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+      this.error = 'Please enter a valid email address';
+      this.cdr.markForCheck();
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    const phone = (this.createParentForm.phoneNumber || '').trim();
+    if (phone) {
+      const phoneResult = validatePhoneNumber(phone, false);
+      if (!phoneResult.isValid) {
+        this.error = phoneResult.error || 'Please enter a valid phone number';
+        this.cdr.markForCheck();
+        setTimeout(() => this.error = '', 5000);
+        return;
+      }
     }
 
     if (this.createParentForm.createAccount && !this.createParentForm.generatePassword) {
       const pw = (this.createParentForm.password || '').trim();
       if (!pw) {
         this.error = 'Password is required';
+        this.cdr.markForCheck();
+        setTimeout(() => this.error = '', 5000);
+        return;
+      }
+      if (pw.length < 8) {
+        this.error = 'Password must be at least 8 characters long';
+        this.cdr.markForCheck();
         setTimeout(() => this.error = '', 5000);
         return;
       }
     }
 
     this.creatingParent = true;
+    this.cdr.markForCheck();
     this.parentService.adminCreateParent({
       firstName,
       lastName,
       email,
-      phoneNumber: (this.createParentForm.phoneNumber || '').trim() || null,
+      phoneNumber: phone || null,
       address: (this.createParentForm.address || '').trim() || null,
       gender: (this.createParentForm.gender || '').trim() || null,
       createAccount: !!this.createParentForm.createAccount,
       generatePassword: !!this.createParentForm.generatePassword,
       password: (this.createParentForm.password || '').trim() || undefined
-    }).subscribe({
-      next: (res: any) => {
+    }).pipe(
+      finalize(() => {
         this.creatingParent = false;
-        this.success = res?.message || 'Parent created successfully';
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (res: any) => {
+        this.showSuccess(res?.message || 'Parent created successfully');
         const temp = res?.temporaryCredentials?.password;
         this.createdParentTempPassword = (typeof temp === 'string' ? temp : '') || '';
 
         const createdParent = res?.parent;
-        this.loadParents();
         if (createdParent?.id) {
-          this.selectParent(createdParent);
-          this.activeAdminTab = 'manage';
+          const withLinks = { ...createdParent, parentStudents: [] };
+          this.parents = [withLinks, ...this.parents.filter(p => p.id !== withLinks.id)];
+          this.filteredParents = this.parentSearchQuery ? this.filteredParents : this.parents;
+          if (this.parentSearchQuery) {
+            this.filterParents();
+          }
+          this.unlinkedParentsCount = this.parents.filter(p => (p?.parentStudents || []).length === 0).length;
         }
 
-        setTimeout(() => this.success = '', 7000);
+        this.createParentForm = {
+          firstName: '',
+          lastName: '',
+          email: '',
+          phoneNumber: '',
+          address: '',
+          gender: '',
+          createAccount: true,
+          generatePassword: true,
+          password: ''
+        };
+
+        this.loadParents(true);
+        this.cdr.markForCheck();
       },
       error: (err: any) => {
-        this.creatingParent = false;
-        this.error = err.error?.message || 'Failed to create parent';
-        setTimeout(() => this.error = '', 7000);
+        const status = err?.status ?? 0;
+        const msg = status === 0 || status === 502
+          ? 'Backend unavailable. Run the backend with npm run dev in the backend folder (port 3000).'
+          : (err.error?.message || 'Failed to create parent');
+        this.showError(msg);
       }
     });
   }
@@ -298,23 +411,29 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
     }
 
     this.resettingParentPassword = true;
+    this.cdr.markForCheck();
     this.parentService.adminResetParentPassword({
       email,
       generatePassword,
       newPassword: generatePassword ? undefined : newPassword
-    }).subscribe({
-      next: (res: any) => {
+    }).pipe(
+      finalize(() => {
         this.resettingParentPassword = false;
-        this.success = res?.message || 'Password reset successfully';
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (res: any) => {
+        this.showSuccess(res?.message || 'Password reset successfully');
         const temp = res?.temporaryCredentials?.password;
         this.resetParentTempPassword = (typeof temp === 'string' ? temp : '') || '';
-        this.loadParents();
-        setTimeout(() => this.success = '', 7000);
+        this.cdr.markForCheck();
       },
       error: (err: any) => {
-        this.resettingParentPassword = false;
-        this.error = err.error?.message || 'Failed to reset password';
-        setTimeout(() => this.error = '', 7000);
+        const status = err?.status ?? 0;
+        const msg = status === 0 || status === 502
+          ? 'Backend unavailable. Run the backend with npm run dev in the backend folder (port 3000).'
+          : (err.error?.message || 'Failed to reset password');
+        this.showError(msg);
       }
     });
   }

@@ -234,11 +234,6 @@ export const adminCreateParent = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const actingRole = req.user.role;
-    if (actingRole !== UserRole.ADMIN && actingRole !== UserRole.SUPERADMIN) {
-      return res.status(403).json({ message: 'Only Administrators can create parent records' });
-    }
-
     const {
       firstName,
       lastName,
@@ -267,6 +262,15 @@ export const adminCreateParent = async (req: AuthRequest, res: Response) => {
     const existingParent = await parentRepository.findOne({ where: { email: trimmedEmail } });
     if (existingParent) {
       return res.status(400).json({ message: 'A parent record already exists for this email' });
+    }
+
+    let normalizedPhone: string | null = null;
+    if (phoneNumber && String(phoneNumber).trim()) {
+      const phoneValidation = validatePhoneNumber(String(phoneNumber).trim(), false);
+      if (!phoneValidation.isValid) {
+        return res.status(400).json({ message: phoneValidation.error || 'Invalid phone number' });
+      }
+      normalizedPhone = phoneValidation.normalized || String(phoneNumber).trim();
     }
 
     let createdUser: User | null = null;
@@ -316,10 +320,6 @@ export const adminCreateParent = async (req: AuthRequest, res: Response) => {
       await userRepository.save(createdUser);
     }
 
-    const normalizedPhone = phoneNumber && String(phoneNumber).trim()
-      ? validatePhoneNumber(String(phoneNumber).trim(), false).normalized || String(phoneNumber).trim()
-      : null;
-
     const parent = parentRepository.create({
       firstName: String(firstName).trim(),
       lastName: String(lastName).trim(),
@@ -330,11 +330,6 @@ export const adminCreateParent = async (req: AuthRequest, res: Response) => {
       userId: createdUser ? createdUser.id : null
     });
     await parentRepository.save(parent);
-
-    if (createdUser) {
-      createdUser.parent = parent;
-      await userRepository.save(createdUser);
-    }
 
     res.status(201).json({
       message: 'Parent created successfully',
@@ -361,15 +356,9 @@ export const adminResetParentPassword = async (req: AuthRequest, res: Response) 
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const actingRole = req.user.role;
-    if (actingRole !== UserRole.ADMIN && actingRole !== UserRole.SUPERADMIN) {
-      return res.status(403).json({ message: 'Only Administrators can reset passwords' });
-    }
-
     const { email, newPassword, generatePassword = true } = req.body || {};
     const trimmedEmail = String(email || '').trim().toLowerCase();
-    console.log('[ResetParentPassword] Attempting to reset password for email:', trimmedEmail);
-    
+
     if (!trimmedEmail) {
       return res.status(400).json({ message: 'Email is required' });
     }
@@ -377,32 +366,22 @@ export const adminResetParentPassword = async (req: AuthRequest, res: Response) 
     const userRepository = AppDataSource.getRepository(User);
     const parentRepository = AppDataSource.getRepository(Parent);
 
-    // First try to find user by email directly
     let user = await userRepository.findOne({ where: { email: trimmedEmail } });
-    console.log('[ResetParentPassword] User found by email in users table:', user ? user.id : 'NOT FOUND');
-    
+
     if (!user) {
-      // Try to find by username (email might be used as username)
       user = await userRepository.findOne({ where: { username: trimmedEmail } });
-      console.log('[ResetParentPassword] User found by username:', user ? user.id : 'NOT FOUND');
     }
-    
+
     if (!user) {
-      // Try to find parent by email and get linked user
       const parent = await parentRepository.findOne({ where: { email: trimmedEmail } });
-      console.log('[ResetParentPassword] Parent found:', parent ? parent.id : 'NOT FOUND', 'userId:', parent?.userId);
       if (parent?.userId) {
         user = await userRepository.findOne({ where: { id: parent.userId } });
-        console.log('[ResetParentPassword] User found via parent.userId:', user ? user.id : 'NOT FOUND');
       }
     }
 
     if (!user) {
-      console.log('[ResetParentPassword] No user found for email:', trimmedEmail);
       return res.status(404).json({ message: 'No user account found for that email' });
     }
-
-    console.log('[ResetParentPassword] Found user:', user.id, 'username:', user.username, 'role:', user.role);
 
     if (user.role !== UserRole.PARENT) {
       return res.status(400).json({ message: 'This email does not belong to a parent account' });
@@ -426,23 +405,10 @@ export const adminResetParentPassword = async (req: AuthRequest, res: Response) 
       return res.status(400).json({ message: 'New password is required' });
     }
 
-    const hashedPassword = await bcrypt.hash(plainPassword, 10);
-    console.log('[ResetParentPassword] New password hash starts with:', hashedPassword.substring(0, 20));
-    
-    user.password = hashedPassword;
+    user.password = await bcrypt.hash(plainPassword, 10);
     user.mustChangePassword = true;
     user.isTemporaryAccount = true;
-    
-    const savedUser = await userRepository.save(user);
-    console.log('[ResetParentPassword] User saved, password hash starts with:', savedUser.password?.substring(0, 20));
-
-    // Verify the save worked by reloading the user
-    const verifyUser = await userRepository.findOne({ where: { id: user.id } });
-    console.log('[ResetParentPassword] Verify reload - password hash starts with:', verifyUser?.password?.substring(0, 20));
-    
-    // Test that the password actually works
-    const passwordMatches = await bcrypt.compare(plainPassword, verifyUser?.password || '');
-    console.log('[ResetParentPassword] Password verification test:', passwordMatches ? 'PASS' : 'FAIL');
+    await userRepository.save(user);
 
     res.json({
       message: 'Password reset successfully',
