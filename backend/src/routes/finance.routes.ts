@@ -3,6 +3,7 @@ import { authenticate, authorize } from '../middleware/auth';
 import {
   requireFinancePageEdit,
   requireFinancePageView,
+  requireFinanceInvoiceListAccess,
   requireModuleView,
   requirePermission,
 } from '../middleware/requirePermission';
@@ -134,7 +135,7 @@ router.post(
   requireFinancePageEdit('exemptionCorrection'),
   voidTuitionExemptInvoices
 );
-router.get('/', requireModuleView('finance'), getInvoices);
+router.get('/', requireFinanceInvoiceListAccess(), getInvoices);
 router.get('/balance', getStudentBalance);
 router.get('/next-uniform-receipt', authorize(...FINANCE_OPERATORS), getNextUniformReceiptNumberController);
 router.post('/uniform-charge', authorize(...FINANCE_OPERATORS), createUniformCharge);

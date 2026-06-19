@@ -734,10 +734,10 @@ export const adminUpdateParent = async (req: AuthRequest, res: Response) => {
     }
 
     const parentRepository = AppDataSource.getRepository(Parent);
+    const userRepository = AppDataSource.getRepository(User);
 
     const parent = await parentRepository.findOne({
       where: { id: parentId },
-      relations: ['parentStudents', 'parentStudents.student', 'parentStudents.student.classEntity']
     });
 
     if (!parent) {
@@ -746,6 +746,28 @@ export const adminUpdateParent = async (req: AuthRequest, res: Response) => {
 
     if (!firstName || !lastName) {
       return res.status(400).json({ message: 'First name and last name are required' });
+    }
+
+    const trimmedEmail =
+      email && String(email).trim() ? String(email).trim().toLowerCase() : null;
+
+    if (trimmedEmail) {
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(trimmedEmail)) {
+        return res.status(400).json({ message: 'Please provide a valid email address' });
+      }
+
+      const { parent: existingParent, user: existingUserByEmail } =
+        await findParentAndUserByEmail(trimmedEmail);
+      const emailTakenByOther =
+        (existingParent && existingParent.id !== parent.id) ||
+        (existingUserByEmail && existingUserByEmail.id !== parent.userId);
+      if (emailTakenByOther) {
+        return res.status(400).json({
+          message: EMAIL_ALREADY_EXISTS_MESSAGE,
+          code: 'EMAIL_ALREADY_EXISTS',
+        });
+      }
     }
 
     let normalizedPhone: string | null = null;
@@ -761,17 +783,41 @@ export const adminUpdateParent = async (req: AuthRequest, res: Response) => {
     parent.lastName = String(lastName).trim();
     parent.phoneNumber = normalizedPhone;
     parent.address = address && String(address).trim() ? String(address).trim() : null;
-    parent.email = email && String(email).trim() ? String(email).trim() : null;
+    parent.email = trimmedEmail;
     parent.gender = gender && String(gender).trim() ? String(gender).trim() : null;
 
     const savedParent = await parentRepository.save(parent);
 
+    if (parent.userId) {
+      const linkedUser = await userRepository.findOne({ where: { id: parent.userId } });
+      if (linkedUser) {
+        linkedUser.firstName = parent.firstName;
+        linkedUser.lastName = parent.lastName;
+        if (trimmedEmail) {
+          linkedUser.email = trimmedEmail;
+        }
+        await userRepository.save(linkedUser);
+      }
+    }
+
+    const refreshed = await parentRepository.findOne({
+      where: { id: savedParent.id },
+      relations: ['parentStudents', 'parentStudents.student', 'parentStudents.student.classEntity'],
+    });
+
     res.json({
       message: 'Parent updated successfully',
-      parent: savedParent
+      parent: serializeParentForAdminList(refreshed || savedParent),
     });
   } catch (error: any) {
     console.error('Error updating parent (admin):', error);
+    const pgCode = error?.code || error?.driverError?.code;
+    if (pgCode === '23505') {
+      return res.status(400).json({
+        message: EMAIL_ALREADY_EXISTS_MESSAGE,
+        code: 'EMAIL_ALREADY_EXISTS',
+      });
+    }
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

@@ -4,7 +4,12 @@
       <div class="dash-page-header__intro">
         <span class="dash-page-eyebrow">{{ getRoleLabel() }}</span>
         <h1 class="dash-page-title">{{ getSmartGreeting() }}, {{ getGreetingName() }}</h1>
-        <p class="dash-page-subtitle">Your workspace overview — quick stats, shortcuts, and recent activity.</p>
+        <p class="dash-page-subtitle" *ngIf="!isStudent()">Your workspace overview — quick stats, shortcuts, and recent activity.</p>
+        <p class="dash-page-subtitle" *ngIf="isStudent()">{{ getStudentDashboardSubtitle() }}</p>
+        <p class="dash-page-meta dash-student-meta" *ngIf="isStudent() && (getStudentNumber() || getStudentClassName())">
+          <span *ngIf="getStudentNumber()">🆔 {{ getStudentNumber() }}</span>
+          <span *ngIf="getStudentClassName()"> · 🏫 {{ getStudentClassName() }}</span>
+        </p>
         <p class="dash-page-meta">{{ getCurrentDateTime() }}</p>
       </div>
       <div class="dash-page-header__actions">
@@ -188,16 +193,16 @@
       *ngIf="isStudent()"
       aria-label="Your balance"
     >
-      <div class="dash-finance-strip__col dash-finance-strip__balance dash-finance-strip__col--grow">
+      <a routerLink="/student/invoice-statement" class="dash-finance-strip__col dash-finance-strip__balance dash-finance-strip__col--grow dash-finance-strip__link">
         <span class="dash-finance-strip__icon" aria-hidden="true">💰</span>
         <div class="dash-finance-strip__text">
           <p class="dash-finance-strip__value" *ngIf="!loadingBalance">
             {{ currencySymbol }} {{ studentBalance | number:'1.2-2' }}
           </p>
           <p class="dash-finance-strip__value dash-finance-strip__value--muted" *ngIf="loadingBalance">…</p>
-          <p class="dash-finance-strip__label">Current invoice balance</p>
+          <p class="dash-finance-strip__label">Current invoice balance · Open Invoice Statement</p>
         </div>
-      </div>
+      </a>
       <div class="dash-finance-strip__col dash-finance-strip__hint" *ngIf="activeTerm">
         <span class="dash-finance-strip__hint-text">{{ activeTerm }}</span>
       </div>
@@ -320,36 +325,26 @@
         </div>
       </div>
 
-      <div class="card modern-card" *ngIf="isStudent()">
+      <div class="card modern-card dash-student-hub" *ngIf="isStudent()">
         <div class="card-header-modern">
           <h2>
-            <span class="card-icon">🧩</span>
-            Modules
+            <span class="card-icon">🎓</span>
+            Student portal
           </h2>
-          <p class="dash-card-subtitle">Quick links for report card, statements, and more.</p>
+          <p class="dash-card-subtitle">Shortcuts to everything in your student account.</p>
         </div>
-        <div class="dash-module-grid">
+        <div class="dash-tile-grid dash-tile-grid--student">
           <a
-            *ngFor="let m of getModuleShortcutsForView(); let mi = index"
+            *ngFor="let m of getModuleShortcutsForView()"
             [routerLink]="m.route"
-            class="dash-module-tile dash-module-tile--enter"
-            [ngClass]="'dash-module-tile--' + m.pastel"
-            [style.animation-delay.ms]="mi * 35"
+            class="dash-tile dash-tile--student"
           >
-            <span class="dash-module-tile__icon" aria-hidden="true">{{ m.icon }}</span>
-            <span class="dash-module-tile__label">{{ m.label }}</span>
-          </a>
-        </div>
-        <div class="dash-student-quick-actions">
-          <a (click)="viewReportCard()" class="action-btn modern-action-btn info-action" style="cursor: pointer;">
-            <span class="action-icon">📄</span>
-            <span class="action-text">View Report Card</span>
-            <span class="action-arrow">→</span>
-          </a>
-          <a (click)="viewInvoiceStatement()" class="action-btn modern-action-btn danger-action" style="cursor: pointer;">
-            <span class="action-icon">💰</span>
-            <span class="action-text">View Invoice Statement</span>
-            <span class="action-arrow">→</span>
+            <span class="dash-tile-icon" aria-hidden="true">{{ m.icon }}</span>
+            <span class="dash-tile-body">
+              <span class="dash-tile-title">{{ m.label }}</span>
+              <span class="dash-tile-desc" *ngIf="m.desc">{{ m.desc }}</span>
+            </span>
+            <span class="dash-tile-arrow" aria-hidden="true">→</span>
           </a>
         </div>
       </div>

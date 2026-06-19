@@ -4,6 +4,7 @@ import { UserRole } from '../entities/User';
 import { userHasPermission } from '../services/rbac.service';
 import { RbacAction } from '../constants/rbac';
 import { isFullAccessRole } from '../constants/userRoles';
+import { userHasFinanceView } from '../utils/portalFinanceAccess';
 
 /**
  * Enforce granular RBAC permission after authenticate().
@@ -44,6 +45,35 @@ export const requirePermission = (module: string, action: RbacAction | string) =
 
 /** Require at least view access on a module */
 export const requireModuleView = (module: string) => requirePermission(module, 'view');
+
+/** Finance invoice list: staff with finance.view, or student/parent portal (scoped in controller). */
+export const requireFinanceInvoiceListAccess = () => {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      if (await userHasFinanceView(req.user)) {
+        return next();
+      }
+
+      if (req.user.role === UserRole.STUDENT || req.user.role === UserRole.PARENT) {
+        return next();
+      }
+
+      return res.status(403).json({
+        message: 'Access denied. You do not have permission to perform this action.',
+        code: 'RBAC_FORBIDDEN',
+        module: 'finance',
+        action: 'view',
+      });
+    } catch (err: any) {
+      console.error('[requireFinanceInvoiceListAccess]', err?.message);
+      return res.status(500).json({ message: 'Permission check failed' });
+    }
+  };
+};
 
 /** Require edit access on a finance sub-page (e.g. creditNotes, transportAdjust) */
 export const requireFinancePageEdit = (pageKey: string) =>

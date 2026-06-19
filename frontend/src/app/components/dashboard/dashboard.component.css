@@ -1792,6 +1792,37 @@
   background: linear-gradient(135deg, #1a2744 0%, #243e6e 100%);
 }
 
+.dash-finance-strip__link {
+  text-decoration: none;
+  color: inherit;
+  border-radius: 12px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.dash-finance-strip__link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.dash-student-meta {
+  margin-top: 6px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.dash-student-hub {
+  grid-column: 1 / -1;
+}
+
+.dash-tile-grid--student {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.dash-tile--student {
+  min-height: 84px;
+}
+
 .dash-finance-strip__col {
   display: flex;
   align-items: center;

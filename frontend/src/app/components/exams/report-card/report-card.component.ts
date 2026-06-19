@@ -60,6 +60,7 @@ export class ReportCardComponent implements OnInit, OnDestroy {
 error = '';
   success = '';
   canEditRemarks = false;
+  private remarksEditRoleAllowed = false;
   savingRemarks = false;
   validationError: any = null; // Store detailed validation error data
   Math = Math; // Make Math available in template
@@ -132,11 +133,13 @@ error = '';
     public connectivity: ConnectivityService,
     private offlineSync: OfflineSyncService
 ) {
-    // Check if user can edit remarks (teacher or admin)
-    this.canEditRemarks =
-      this.authService.hasRole('teacher') ||
-      this.authService.hasRole('admin') ||
-      this.authService.hasRole('superadmin');
+    // Check if user can edit remarks (teacher, admin, school leadership, demo)
+    this.remarksEditRoleAllowed =
+      this.authService.isAdmin() ||
+      this.authService.isSchoolLeadership() ||
+      this.authService.isTeacher() ||
+      this.authService.hasRole('demo_user');
+    this.canEditRemarks = this.remarksEditRoleAllowed;
     this.isParent = this.authService.hasRole('parent');
     const user = this.authService.getCurrentUser();
     this.isAdmin = user ? (user.role === 'admin' || user.role === 'superadmin') : false;
@@ -559,14 +562,6 @@ const currentYear = new Date().getFullYear();
         this.schoolPhone = data.schoolPhone || '';
         this.schoolEmail = data.schoolEmail || '';
         this.academicYear = data.academicYear || String(new Date().getFullYear());
-        try {
-          const rawPrimary = data?.schoolLogo;
-          const rawSecondary = data?.schoolLogo2;
-          const primaryPreview = typeof rawPrimary === 'string' ? rawPrimary.trim().slice(0, 40) : String(rawPrimary);
-          const secondaryPreview = typeof rawSecondary === 'string' ? rawSecondary.trim().slice(0, 40) : String(rawSecondary);
-          console.log('[ReportCard] settings.schoolLogo preview:', primaryPreview);
-          console.log('[ReportCard] settings.schoolLogo2 preview:', secondaryPreview);
-        } catch {}
         this.headmasterName = data.headmasterName || '';
         const phrases = Array.isArray(data.classTeacherPhrases) ? data.classTeacherPhrases : [];
         this.schoolWidePhrases = phrases
@@ -789,6 +784,14 @@ if (err.status === 0) {
     ).subscribe({
       next: (data: any) => {
         let cards = Array.isArray(data?.reportCards) ? data.reportCards : [];
+        const resultsPublished = !!data?.resultsPublished;
+        this.canEditRemarks =
+          this.remarksEditRoleAllowed &&
+          (!resultsPublished || this.authService.isAdmin());
+        if (resultsPublished && !this.canEditRemarks && this.remarksEditRoleAllowed) {
+          this.error =
+            'Exam results are published — remarks are read-only for your role. Administrators can still edit.';
+        }
         
         // For parents, filter to only their student
         if (this.isParent && this.parentStudentId) {

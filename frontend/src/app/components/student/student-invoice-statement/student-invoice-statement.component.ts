@@ -1,4 +1,6 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { Subject, of } from 'rxjs';
+import { catchError, finalize, takeUntil, timeout } from 'rxjs/operators';
 import { AuthService } from '../../../services/auth.service';
 import { FinanceService } from '../../../services/finance.service';
 import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
@@ -51,11 +53,15 @@ export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
   private pdfBlobUrl: string | null = null;
   pdfError = false;
 
+  private readonly destroy$ = new Subject<void>();
+  private readonly requestTimeoutMs = 60000;
+
   constructor(
     private authService: AuthService,
     private financeService: FinanceService,
     private settingsService: SettingsService,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -64,6 +70,8 @@ export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
     this.revokePdfUrl();
   }
 
@@ -116,32 +124,47 @@ export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.error   = '';
 
-    this.financeService.getInvoices(this.studentId).subscribe({
-      next: (data: any) => {
+    this.financeService.getInvoices(this.studentId).pipe(
+      timeout(this.requestTimeoutMs),
+      takeUntil(this.destroy$),
+      catchError((err: any) => {
+        this.error =
+          err?.name === 'TimeoutError'
+            ? 'Request timed out while loading invoices.'
+            : err?.error?.message || err?.message || 'Failed to load invoices.';
+        return of([]);
+      }),
+      finalize(() => {
         this.loading = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (data: any) => {
         this.allInvoices = (Array.isArray(data) ? data : []).sort((a: any, b: any) => {
           const dA = new Date(a.createdAt || a.dueDate || 0).getTime();
           const dB = new Date(b.createdAt || b.dueDate || 0).getTime();
           return dB - dA;
         });
         this.applyFilter();
-        // Auto-select & preview the most recent invoice
         if (this.allInvoices.length > 0) {
           this.selectInvoice(this.allInvoices[0]);
         }
+        this.cdr.markForCheck();
       },
-      error: (err: any) => {
-        this.loading = false;
-        this.error = err.error?.message || 'Failed to load invoices.';
-      }
     });
   }
 
   loadCurrentBalance() {
     if (!this.studentId) return;
-    this.financeService.getStudentBalance(this.studentId).subscribe({
-      next: (data: any) => { this.currentBalance = parseFloat(String(data.balance || 0)); },
-      error: () => {}
+    this.financeService.getStudentBalance(this.studentId).pipe(
+      timeout(this.requestTimeoutMs),
+      takeUntil(this.destroy$),
+      catchError(() => of({ balance: 0 }))
+    ).subscribe({
+      next: (data: any) => {
+        this.currentBalance = parseFloat(String(data.balance || 0));
+        this.cdr.markForCheck();
+      },
     });
   }
 
@@ -184,19 +207,27 @@ export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
     this.loadingPdf = true;
     this.pdfError   = false;
 
-    this.financeService.getInvoicePDF(invoiceId).subscribe({
-      next: (response: any) => {
+    this.financeService.getInvoicePDF(invoiceId).pipe(
+      timeout(this.requestTimeoutMs),
+      takeUntil(this.destroy$),
+      catchError(() => {
+        this.pdfError = true;
+        return of(null);
+      }),
+      finalize(() => {
         this.loadingPdf = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (response: any) => {
+        if (!response) return;
         const blob: Blob = response.blob || response;
         if (!blob || blob.size === 0) { this.pdfError = true; return; }
         this.revokePdfUrl();
         this.pdfBlobUrl = window.URL.createObjectURL(blob);
         this.inlinePdf = this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlobViewerUrl(this.pdfBlobUrl));
+        this.cdr.markForCheck();
       },
-      error: () => {
-        this.loadingPdf = false;
-        this.pdfError   = true;
-      }
     });
   }
 

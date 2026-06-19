@@ -47,6 +47,7 @@ export interface DashboardModuleShortcut {
   pastel: DashboardModulePastel;
   module?: string;
   adminOnly?: boolean;
+  desc?: string;
 }
 
 @Component({
@@ -129,8 +130,10 @@ recentStudents: any[] = [];
   ];
 
   readonly studentModuleShortcuts: DashboardModuleShortcut[] = [
-    { route: '/student/report-card', label: 'Report card', icon: '📄', pastel: 'violet' },
-    { route: '/student/invoice-statement', label: 'Statement', icon: '📑', pastel: 'sky' }
+    { route: '/student/report-card', label: 'Report Card', icon: '📄', pastel: 'violet', desc: 'Grades, remarks & PDF' },
+    { route: '/student/invoice-statement', label: 'Invoice Statement', icon: '💰', pastel: 'sky', desc: 'Fees & payments' },
+    { route: '/student/parent-portal', label: 'Parent Portal', icon: '👨‍👩‍👧', pastel: 'emerald', desc: 'View as parent' },
+    { route: '/account/change-password', label: 'Change password', icon: '🔐', pastel: 'slate', desc: 'Update login' },
   ];
 
   readonly adminHubGroups: DashboardAdminHubGroup[] = [
@@ -506,7 +509,22 @@ if (this.textToggleInterval) {
     return '';
   }
 
-  /** Display name with honorific prefix when configured. */
+  getStudentDashboardSubtitle(): string {
+    return 'Your report card, invoice statement, and parent portal — all in one place.';
+  }
+
+  getStudentNumber(): string {
+    const user = this.authService.getCurrentUser();
+    return String(user?.student?.studentNumber || '').trim();
+  }
+
+  getStudentClassName(): string {
+    const user = this.authService.getCurrentUser();
+    const cls = user?.student?.classEntity || user?.student?.class;
+    if (!cls) return '';
+    return String(cls.name || cls).trim();
+  }
+
   getGreetingName(): string {
     const name = this.getDisplayName();
     const prefix = this.getNamePrefix();
@@ -902,24 +920,10 @@ if (this.textToggleInterval) {
   }
 
   viewReportCard() {
-    const user = this.authService.getCurrentUser();
-    if (!user || !user.student || !user.student.id) {
-      return;
-    }
-
-    this.router.navigate(['/report-cards'], {
-      queryParams: { studentId: user.student.id }
-    });
+    this.router.navigate(['/student/report-card']);
   }
 
   viewInvoiceStatement() {
-    const user = this.authService.getCurrentUser();
-    if (!user || !user.student || !user.student.id) {
-      return;
-    }
-
-    this.router.navigate(['/invoices/statements'], {
-      queryParams: { studentId: user.student.id }
-    });
+    this.router.navigate(['/student/invoice-statement']);
   }
 }

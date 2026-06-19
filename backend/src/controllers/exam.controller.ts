@@ -2675,7 +2675,17 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    res.json({ reportCards: filteredReportCards, class: classEntity.name, examType, term: termValue, warnings: reportCardWarnings });
+    const resultsPublished =
+      exams.length > 0 && exams.some(exam => exam.status === ExamStatus.PUBLISHED);
+
+    res.json({
+      reportCards: filteredReportCards,
+      class: classEntity.name,
+      examType,
+      term: termValue,
+      warnings: reportCardWarnings,
+      resultsPublished,
+    });
   } catch (error: any) {
     console.error('Error generating report cards:', error);
     console.error('Error stack:', error.stack);
@@ -4295,16 +4305,19 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
     const remarksRepository = AppDataSource.getRepository(ReportCardRemarks);
     const examRepository = AppDataSource.getRepository(Exam);
     
-    // Check if user is admin (headmaster) or teacher
-    const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
-    const isTeacher = user?.role === 'teacher';
+    const role = user?.role;
+    const isStaffAdmin =
+      role === UserRole.ADMIN || role === UserRole.SUPERADMIN || role === UserRole.DIRECTOR;
+    const isSchoolLeadership =
+      role === UserRole.HEADMASTER || role === UserRole.DEPUTY_HEADMASTER;
+    const isTeacher = role === UserRole.TEACHER;
+    const isDemoUser = role === UserRole.DEMO_USER;
 
-    if (!isAdmin && !isTeacher) {
+    if (!isStaffAdmin && !isSchoolLeadership && !isTeacher && !isDemoUser) {
       return res.status(403).json({ message: 'Only teachers and administrators can add remarks' });
     }
 
-    // Check if exam is published - prevent editing remarks
-    // Use normalized exam type for query
+    // Check if exam is published - prevent editing remarks (admins may correct after publish)
     const examWhere: any = { classId: classId as string, type: normalizedExamType as any };
     if (term) {
       examWhere.term = term as string;
@@ -4314,9 +4327,12 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
       where: examWhere
     });
 
-    if (exams.length > 0 && exams.some(exam => exam.status === ExamStatus.PUBLISHED)) {
-      return res.status(403).json({ 
-        message: 'Cannot edit remarks. Exam results have been published and are now read-only.' 
+    const resultsPublished =
+      exams.length > 0 && exams.some(exam => exam.status === ExamStatus.PUBLISHED);
+
+    if (resultsPublished && !isStaffAdmin) {
+      return res.status(403).json({
+        message: 'Cannot edit remarks. Exam results have been published and are now read-only.'
       });
     }
 
@@ -4355,14 +4371,12 @@ export const saveReportCardRemarks = async (req: AuthRequest, res: Response) => 
     }
 
     // Update remarks based on user role
-    if (isAdmin) {
-      // Admin can add headmaster remarks
+    if (isStaffAdmin || isSchoolLeadership) {
       remarks.headmasterRemarks = headmasterRemarks || null;
       remarks.headmasterId = user.id;
     }
 
-    if (isTeacher || isAdmin) {
-      // Teachers and admins can add class teacher remarks
+    if (isTeacher || isStaffAdmin || isDemoUser) {
       remarks.classTeacherRemarks = classTeacherRemarks || null;
       remarks.classTeacherId = user.id;
     }

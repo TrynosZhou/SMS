@@ -48,6 +48,10 @@ import {
   snapshotFromInvoiceAndStudent,
   WATERFALL_EPS as LOGISTICS_WATERFALL_EPS
 } from '../utils/transportDhWaterfall';
+import {
+  assertUserCanAccessStudentFinance,
+  resolvePortalFinanceStudentScope,
+} from '../utils/portalFinanceAccess';
 
 const normalizePaymentMethod = (raw?: string): string | null => {
   const val = String(raw || '').trim().toLowerCase();
@@ -506,13 +510,19 @@ export const deletePaymentLog = async (req: AuthRequest, res: Response) => {
 export const getInvoices = async (req: AuthRequest, res: Response) => {
   try {
     const invoiceRepository = AppDataSource.getRepository(Invoice);
-    const {
+    let {
       studentId,
       status,
       invoiceId,
       page: pageParam,
       limit: limitParam
     } = req.query as { studentId?: string; status?: string; invoiceId?: string; page?: string; limit?: string };
+
+    const scope = await resolvePortalFinanceStudentScope(req, res, studentId);
+    if (!scope) return;
+    if (scope.kind === 'scoped') {
+      studentId = scope.studentId;
+    }
 
     const { page, limit, skip } = resolvePaginationParams(pageParam, limitParam);
 
@@ -1529,6 +1539,9 @@ export const generateInvoicePDF = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Invoice not found' });
     }
 
+    const canAccess = await assertUserCanAccessStudentFinance(req, res, invoice.studentId);
+    if (!canAccess) return;
+
     const student = await studentRepository.findOne({ 
       where: { id: invoice.studentId },
       relations: ['classEntity']
@@ -1784,7 +1797,7 @@ export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response)
   }
 };
 
-export const getStudentBalance = async (req: Request, res: Response) => {
+export const getStudentBalance = async (req: AuthRequest, res: Response) => {
   try {
     const { studentId } = req.query;
     
@@ -1794,8 +1807,16 @@ export const getStudentBalance = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Student ID, Student Number, or Last Name is required' });
     }
 
+    const scope = await resolvePortalFinanceStudentScope(req, res, String(studentId));
+    if (!scope) return;
+
     // Ensure studentId is a string
-    const studentIdString = typeof studentId === 'string' ? studentId : String(studentId);
+    const studentIdString =
+      scope.kind === 'scoped'
+        ? scope.studentId
+        : typeof studentId === 'string'
+          ? studentId
+          : String(studentId);
     const trimmedStudentId = studentIdString.trim();
     
     console.log(`[getStudentBalance] Processing studentId: "${trimmedStudentId}"`);
