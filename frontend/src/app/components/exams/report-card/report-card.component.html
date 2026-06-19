@@ -352,27 +352,18 @@
               <h4>{{ reportCard.student.name }}</h4>
               <p>{{ reportCard.student.studentNumber }}</p>
             </div>
-            <div class="report-card-actions" *ngIf="canDownloadReportCard">
-              <button 
-                type="button" 
-                class="btn btn-primary btn-sm btn-download-pdf" 
-                (click)="downloadPDF(reportCard)" 
-                [disabled]="loading">
-                <span class="download-arrow">📥</span> Download PDF
-              </button>
-            </div>
           </div>
 
           <div class="rc-document">
             <header class="rc-banner">
               <div class="rc-banner-side rc-banner-side--left">
                 <img
-                  *ngIf="hasCardSchoolLogo(reportCard)"
-                  [src]="getCardSchoolLogoSrc(reportCard)"
+                  *ngIf="hasCardPrimarySchoolLogo(reportCard)"
+                  [src]="getCardPrimarySchoolLogoSrc(reportCard)"
                   alt="School logo"
                   class="rc-logo-img" />
                 <span
-                  *ngIf="!hasCardSchoolLogo(reportCard)"
+                  *ngIf="!hasCardPrimarySchoolLogo(reportCard)"
                   class="rc-logo-badge">{{ getSchoolInitials(reportCard.settings?.schoolName || schoolName) }}</span>
               </div>
               <div class="rc-banner-center">
@@ -381,8 +372,26 @@
                 <span class="rc-report-pill">{{ getReportCardPillLabel(reportCard) }}</span>
               </div>
               <div class="rc-banner-side rc-banner-side--right">
-                <span class="rc-year-label">Academic Year</span>
-                <span class="rc-year-value">{{ getCardAcademicYear(reportCard) }}</span>
+                <button
+                  *ngIf="canDownloadReportCard"
+                  type="button"
+                  class="rc-card-download"
+                  (click)="downloadPDF(reportCard); $event.stopPropagation()"
+                  [disabled]="loading"
+                  [attr.aria-label]="'Download report card for ' + reportCard.student.name"
+                  title="Download PDF">
+                  <svg class="rc-card-download-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path fill="currentColor" d="M12 17l-6-6h4V3h4v8h4l-6 6zm-7 4h14v3H5v-3z"/>
+                  </svg>
+                </button>
+                <img
+                  *ngIf="hasCardSecondarySchoolLogo(reportCard)"
+                  [src]="getCardSecondarySchoolLogoSrc(reportCard)"
+                  alt="Secondary school logo"
+                  class="rc-logo-img" />
+                <span
+                  *ngIf="!hasCardSecondarySchoolLogo(reportCard)"
+                  class="rc-logo-badge">{{ getSchoolInitials(reportCard.settings?.schoolName || schoolName) }}</span>
               </div>
             </header>
 

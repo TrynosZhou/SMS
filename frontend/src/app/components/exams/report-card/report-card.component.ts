@@ -82,8 +82,8 @@ error = '';
   availableTerms: string[] = [];
   loadingTerms = false;
   parentStudentClassName = '';
-  schoolLogo: string | null = null;
-  safeSchoolLogoUrl: SafeUrl | null = null;
+  schoolLogoPrimary: string | null = null;
+  schoolLogoSecondary: string | null = null;
   schoolName = '';
   schoolAddress = '';
   schoolMotto = '';
@@ -289,19 +289,29 @@ this.loadCustomPhrases();
 }
 
   getSchoolLogoSrc(logoOverride?: string | null): SafeUrl | null {
-    const normalized = this.normalizeImageSrc(logoOverride || this.schoolLogo || null);
+    const normalized = this.normalizeImageSrc(logoOverride ?? null);
     if (!normalized) return null;
     return this.sanitizer.bypassSecurityTrustUrl(normalized);
   }
 
-  /** Logo for a card banner: card settings (secondary) then page-level settings. */
-  getCardSchoolLogoSrc(reportCard: any): SafeUrl | null {
-    const fromCard = reportCard?.settings?.schoolLogo2 || reportCard?.settings?.schoolLogo || null;
-    return this.getSchoolLogoSrc(fromCard);
+  /** Primary logo for the left banner column. */
+  getCardPrimarySchoolLogoSrc(reportCard: any): SafeUrl | null {
+    const fromCard = reportCard?.settings?.schoolLogo || null;
+    return this.getSchoolLogoSrc(fromCard || this.schoolLogoPrimary);
   }
 
-  hasCardSchoolLogo(reportCard: any): boolean {
-    return !!this.getCardSchoolLogoSrc(reportCard);
+  hasCardPrimarySchoolLogo(reportCard: any): boolean {
+    return !!this.getCardPrimarySchoolLogoSrc(reportCard);
+  }
+
+  /** Secondary logo for the right banner column (System Settings → Logo 2). */
+  getCardSecondarySchoolLogoSrc(reportCard: any): SafeUrl | null {
+    const fromCard = reportCard?.settings?.schoolLogo2 || null;
+    return this.getSchoolLogoSrc(fromCard || this.schoolLogoSecondary);
+  }
+
+  hasCardSecondarySchoolLogo(reportCard: any): boolean {
+    return !!this.getCardSecondarySchoolLogoSrc(reportCard);
   }
 
   private normalizeImageSrc(value: string | null): string | null {
@@ -540,9 +550,8 @@ const currentYear = new Date().getFullYear();
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
         this.currencySymbol = data.currencySymbol || '$';
-        // Secondary logo (School Logo 2) from System Settings; fallback to primary logo
-        this.schoolLogo = this.normalizeImageSrc(data.schoolLogo2 || data.schoolLogo || null);
-        this.safeSchoolLogoUrl = this.schoolLogo ? this.sanitizer.bypassSecurityTrustUrl(this.schoolLogo) : null;
+        this.schoolLogoPrimary = this.normalizeImageSrc(data.schoolLogo || null);
+        this.schoolLogoSecondary = this.normalizeImageSrc(data.schoolLogo2 || null);
         this.schoolName = data.schoolName || '';
         this.schoolAddress = data.schoolAddress || '';
         this.schoolMotto = data.schoolMotto || '';
@@ -550,11 +559,12 @@ const currentYear = new Date().getFullYear();
         this.schoolEmail = data.schoolEmail || '';
         this.academicYear = data.academicYear || String(new Date().getFullYear());
         try {
-          const raw = data?.schoolLogo;
-          const rawPreview = typeof raw === 'string' ? raw.trim().slice(0, 40) : String(raw);
-          const normalizedPreview = this.schoolLogo ? this.schoolLogo.slice(0, 40) : 'null';
-          console.log('[ReportCard] settings.schoolLogo preview:', rawPreview);
-          console.log('[ReportCard] normalized schoolLogo preview:', normalizedPreview);
+          const rawPrimary = data?.schoolLogo;
+          const rawSecondary = data?.schoolLogo2;
+          const primaryPreview = typeof rawPrimary === 'string' ? rawPrimary.trim().slice(0, 40) : String(rawPrimary);
+          const secondaryPreview = typeof rawSecondary === 'string' ? rawSecondary.trim().slice(0, 40) : String(rawSecondary);
+          console.log('[ReportCard] settings.schoolLogo preview:', primaryPreview);
+          console.log('[ReportCard] settings.schoolLogo2 preview:', secondaryPreview);
         } catch {}
         this.headmasterName = data.headmasterName || '';
         const phrases = Array.isArray(data.classTeacherPhrases) ? data.classTeacherPhrases : [];

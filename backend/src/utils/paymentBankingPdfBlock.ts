@@ -1,6 +1,7 @@
 import PDFDocument from 'pdfkit';
 import { Settings } from '../entities/Settings';
 import { CREST_LEDGER as T } from './invoicePdfTheme';
+import { RECEIPT_THEME as RT } from './receiptPdfTheme';
 
 export interface PaymentBankingDetails {
   accountName: string;
@@ -89,6 +90,7 @@ export function drawPaymentBankingDetailsPdf(
     pageIndex?: number;
     compact?: boolean;
     crestLedger?: boolean;
+    receiptFlat?: boolean;
     boxX?: number;
     boxW?: number;
   }
@@ -99,6 +101,7 @@ export function drawPaymentBankingDetailsPdf(
   }
 
   const crest = options?.crestLedger === true;
+  const receiptFlat = options?.receiptFlat === true;
   const boxX = options?.boxX ?? 50;
   const boxW = options?.boxW ?? 500;
   const { headerH, rowH, footerH, padding } = bankingDimensions(options?.compact);
@@ -120,11 +123,18 @@ export function drawPaymentBankingDetailsPdf(
     startY = 50;
   }
 
-  doc.rect(boxX, startY, boxW, headerH).fill(crest ? T.navy : '#4A90E2');
-  doc.fontSize(options?.compact ? 8 : 11)
-    .font(crest ? T.sansBold : 'Helvetica-Bold')
-    .fillColor(T.white);
-  doc.text('PAYMENT / BANKING DETAILS', boxX + 12, startY + (options?.compact ? 6 : 9));
+  if (receiptFlat) {
+    doc.rect(boxX, startY, boxW, headerH).fill('#F3F4F6');
+    doc.rect(boxX, startY, boxW, headerH).strokeColor(RT.divider).lineWidth(0.5).stroke();
+    doc.fontSize(options?.compact ? 8 : 10).font(RT.sansBold).fillColor(RT.text);
+    doc.text('Payment / banking details', boxX + 12, startY + (options?.compact ? 6 : 9));
+  } else {
+    doc.rect(boxX, startY, boxW, headerH).fill(crest ? T.navy : '#4A90E2');
+    doc.fontSize(options?.compact ? 8 : 11)
+      .font(crest ? T.sansBold : 'Helvetica-Bold')
+      .fillColor(T.white);
+    doc.text('PAYMENT / BANKING DETAILS', boxX + 12, startY + (options?.compact ? 6 : 9));
+  }
 
   let rowY = startY + headerH;
   const rows: Array<{ label: string; value: string; alt: boolean }> = [
@@ -140,18 +150,29 @@ export function drawPaymentBankingDetailsPdf(
   const valueY = options?.compact ? 4.5 : 6;
 
   rows.forEach((row) => {
-    const rowFill = crest
+    const rowFill = receiptFlat
       ? row.alt
-        ? T.navyTint
-        : T.ivory
-      : row.alt
-        ? '#E8F4FC'
-        : '#FFFFFF';
+        ? RT.cardBg
+        : '#FAFAFA'
+      : crest
+        ? row.alt
+          ? T.navyTint
+          : T.ivory
+        : row.alt
+          ? '#E8F4FC'
+          : '#FFFFFF';
 
     doc.rect(boxX, rowY, boxW, rowH).fill(rowFill);
-    doc.rect(boxX, rowY, boxW, rowH).strokeColor(crest ? '#D8DCE8' : '#DEE2E6').lineWidth(0.5).stroke();
+    doc.rect(boxX, rowY, boxW, rowH)
+      .strokeColor(receiptFlat ? RT.divider : crest ? '#D8DCE8' : '#DEE2E6')
+      .lineWidth(0.5)
+      .stroke();
 
-    if (crest) {
+    if (receiptFlat) {
+      doc.fontSize(labelSize).font(RT.sans).fillColor(RT.muted);
+      doc.text(row.label, boxX + 12, rowY + labelY);
+      doc.fontSize(valueSize).font(RT.monoBold).fillColor(RT.text);
+    } else if (crest) {
       doc.fontSize(labelSize).font(T.sansBold).fillColor(T.slateMuted);
       doc.text(row.label, boxX + 12, rowY + labelY);
       doc.fontSize(valueSize).font(T.sansBold).fillColor(T.slate);
@@ -165,10 +186,15 @@ export function drawPaymentBankingDetailsPdf(
     rowY += rowH;
   });
 
-  doc.rect(boxX, rowY, boxW, footerH).fill(crest ? T.navyTint : '#E8F4FC');
-  doc.rect(boxX, rowY, boxW, footerH).strokeColor(crest ? '#D8DCE8' : '#BFDBFE').lineWidth(0.5).stroke();
+  doc.rect(boxX, rowY, boxW, footerH).fill(receiptFlat ? '#FAFAFA' : crest ? T.navyTint : '#E8F4FC');
+  doc.rect(boxX, rowY, boxW, footerH)
+    .strokeColor(receiptFlat ? RT.divider : crest ? '#D8DCE8' : '#BFDBFE')
+    .lineWidth(0.5)
+    .stroke();
 
-  if (crest) {
+  if (receiptFlat) {
+    doc.fontSize(options?.compact ? 6.5 : 7.5).font(RT.sans).fillColor(RT.muted);
+  } else if (crest) {
     doc.fontSize(options?.compact ? 6.5 : 8).font(T.serif).fillColor(T.slateMuted);
   } else {
     doc.fontSize(options?.compact ? 7 : 8).font('Helvetica').fillColor('#2563EB');

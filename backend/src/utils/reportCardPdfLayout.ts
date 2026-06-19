@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit';
 import { Settings } from '../entities/Settings';
-import { decodeSchoolLogoBuffer, getReportCardSecondaryLogo } from './reportCardSchoolLogo';
+import { decodeSchoolLogoBuffer, getReportCardPrimaryLogo, getReportCardSecondaryLogo } from './reportCardSchoolLogo';
 
 type PdfDoc = InstanceType<typeof PDFDocument>;
 
@@ -397,14 +397,13 @@ function drawBannerSchoolLogo(
   y: number,
   bannerH: number,
   sideW: number,
-  settings: Settings | null,
+  rawLogo: string | null,
   initials: string
 ): void {
   const logoBox = Math.min(sideW - 12, bannerH - 12, 48);
   const logoX = innerX + (sideW - logoBox) / 2;
   const logoY = y + (bannerH - logoBox) / 2;
-  const raw = getReportCardSecondaryLogo(settings);
-  const buffer = raw ? decodeSchoolLogoBuffer(raw) : null;
+  const buffer = rawLogo ? decodeSchoolLogoBuffer(rawLogo) : null;
 
   if (buffer) {
     try {
@@ -517,7 +516,6 @@ export function renderReportCardLayout(
   const schoolName = settings?.schoolName || 'School Management System';
   const schoolAddress = settings?.schoolAddress ? String(settings.schoolAddress).trim() : '';
   const schoolPhone = settings?.schoolPhone ? String(settings.schoolPhone).trim() : '';
-  const academicYear = settings?.academicYear || new Date().getFullYear().toString();
   const initials = schoolInitials(schoolName);
 
   const margin = 20;
@@ -538,7 +536,7 @@ export function renderReportCardLayout(
   doc.rect(innerX + sideW, y, centerW, bannerH).fillColor(NAVY).fill();
   doc.rect(innerX + sideW + centerW, y, sideW, bannerH).fillColor(NAVY_SIDE).fill();
 
-  drawBannerSchoolLogo(doc, innerX, y, bannerH, sideW, settings, initials);
+  drawBannerSchoolLogo(doc, innerX, y, bannerH, sideW, getReportCardPrimaryLogo(settings), initials);
 
   const centerX = innerX + sideW;
   doc.fontSize(16).font('Helvetica').fillColor('#ffffff');
@@ -552,10 +550,7 @@ export function renderReportCardLayout(
   drawGoldPill(doc, `Report Card — ${examLabel}`, centerX + centerW / 2, y + 42, centerW - 16);
 
   const rightX = innerX + sideW + centerW;
-  doc.fontSize(10).fillColor(META_BLUE);
-  doc.text('Academic Year', rightX, y + 22, { width: sideW, align: 'center' });
-  doc.fontSize(12).font('Helvetica-Bold').fillColor('#ffffff');
-  doc.text(academicYear, rightX, y + 36, { width: sideW, align: 'center' });
+  drawBannerSchoolLogo(doc, rightX, y, bannerH, sideW, getReportCardSecondaryLogo(settings), initials);
 
   y += bannerH;
 

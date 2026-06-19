@@ -56,7 +56,7 @@
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
   position: sticky;
   top: 0;
-  z-index: 1002;
+  z-index: 1003;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   color: #ffffff;
 }
@@ -924,12 +924,12 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.55);
-  z-index: 1001;
+  background: rgba(15, 23, 42, 0.5);
+  z-index: 1000;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
-  backdrop-filter: blur(2px);
+  transition: opacity 0.28s ease;
+  /* No backdrop-filter — it blurs the sidebar on many mobile browsers when stacking contexts overlap */
 }
 
 .mobile-sidebar-overlay.show {
@@ -1162,14 +1162,33 @@
     width: 280px;
     max-width: 88vw;
     transform: translateX(-100%);
-    z-index: 1000;
+    z-index: 1001;
     box-shadow: none;
     transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   .sidebar.mobile-open {
     transform: translateX(0);
+    z-index: 1002;
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
+  }
+
+  .sidebar.mobile-open .sidebar-content,
+  .sidebar.mobile-open .sidebar-mobile-header {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .sidebar .sidebar-text,
+  .sidebar .sidebar-subitem,
+  .sidebar .sidebar-item,
+  .sidebar .sidebar-menu-header,
+  .sidebar .sidebar-filter {
+    opacity: 1;
+    filter: none;
   }
 
   /* Show mobile header inside the drawer */
@@ -1295,6 +1314,10 @@
     display: block;
   }
 
+  .mobile-sidebar-overlay.show {
+    left: min(280px, 88vw);
+  }
+
   /* Prevent page scroll when admin/parent mobile drawer is open */
   body.mobile-nav-open {
     overflow: hidden;
@@ -1330,6 +1353,10 @@
     padding-left: 1rem;
     padding-top: 0.7rem;
     padding-bottom: 0.7rem;
+  }
+
+  .sidebar-filter {
+    font-size: 16px;
   }
 
   .sidebar-icon {

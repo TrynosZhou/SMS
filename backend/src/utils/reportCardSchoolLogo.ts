@@ -1,8 +1,16 @@
 import { Settings } from '../entities/Settings';
 
-/** Secondary logo from System Settings (Logo 2); falls back to primary logo if unset. */
+/** Primary logo from System Settings (Logo 1). */
+export function getReportCardPrimaryLogo(settings: Settings | null | undefined): string | null {
+  const raw = settings?.schoolLogo ?? null;
+  if (raw == null) return null;
+  const trimmed = String(raw).trim();
+  return trimmed || null;
+}
+
+/** Secondary logo from System Settings (Logo 2). */
 export function getReportCardSecondaryLogo(settings: Settings | null | undefined): string | null {
-  const raw = settings?.schoolLogo2 ?? settings?.schoolLogo ?? null;
+  const raw = settings?.schoolLogo2 ?? null;
   if (raw == null) return null;
   const trimmed = String(raw).trim();
   return trimmed || null;
