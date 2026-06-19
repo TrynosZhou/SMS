@@ -375,6 +375,18 @@
                 <button
                   *ngIf="canDownloadReportCard"
                   type="button"
+                  class="rc-card-download rc-card-download--preview"
+                  (click)="previewPDF(reportCard); $event.stopPropagation()"
+                  [disabled]="loading"
+                  [attr.aria-label]="'Preview PDF for ' + reportCard.student.name"
+                  title="Preview PDF">
+                  <svg class="rc-card-download-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                  </svg>
+                </button>
+                <button
+                  *ngIf="canDownloadReportCard"
+                  type="button"
                   class="rc-card-download"
                   (click)="downloadPDF(reportCard); $event.stopPropagation()"
                   [disabled]="loading"
@@ -433,7 +445,6 @@
                   <col class="rc-col-mark" />
                   <col class="rc-col-possible" />
                   <col class="rc-col-avg" />
-                  <col class="rc-col-pct" />
                   <col class="rc-col-grade" />
                 </colgroup>
                 <thead>
@@ -443,7 +454,6 @@
                     <th>Mark Obtained</th>
                     <th>Possible Mark</th>
                     <th>Class Avg</th>
-                    <th>% Score</th>
                     <th>Grade</th>
                   </tr>
                 </thead>
@@ -458,13 +468,8 @@
                     </td>
                     <td class="rc-num">{{ subject.grade === 'N/A' ? 'N/A' : (subject.maxScore | number:'1.0-0') }}</td>
                     <td class="rc-num">{{ subject.grade === 'N/A' ? 'N/A' : (subject.classAverage || 0) }}</td>
-                    <td
-                      class="rc-mark-score"
-                      [style.color]="getMarkScoreColor(getSubjectPercentValue(subject), subject.grade === 'N/A')">
-                      {{ getSubjectPercentScore(subject) }}
-                    </td>
                     <td>
-                      <span [ngClass]="getGradePillClass(subject.grade)">{{ subject.grade }}</span>
+                      <span [ngClass]="getGradePillClass(getSubjectGradeLabel(subject))">{{ getSubjectGradeLabel(subject) }}</span>
                     </td>
                   </tr>
                 </tbody>

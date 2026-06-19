@@ -585,5 +585,27 @@ getStudentBalance(studentId: string): Observable<any> {
   sendDebtorReminders(studentIds: string[]): Observable<{ sent: number; skipped?: number }> {
     return this.http.post<{ sent: number; skipped?: number }>(`${this.apiUrl}/finance/reminders/send`, { studentIds });
   }
+
+  getSchoolTermsForReports(): Observable<{
+    terms: Array<{ id: string; name: string; label: string; term: string; year: string; startDate: string; endDate: string }>;
+    activeTermId: string | null;
+    activeTerm: string | null;
+  }> {
+    return this.http.get<any>(`${this.apiUrl}/finance/reports/school-terms`);
+  }
+
+  getStudentLedgerReport(params: { termId: string; studentId?: string; q?: string }): Observable<any> {
+    const query: any = { termId: params.termId };
+    if (params.studentId) query.studentId = params.studentId;
+    if (params.q) query.q = params.q;
+    return this.http.get(`${this.apiUrl}/finance/reports/student-ledger`, { params: query });
+  }
+
+  getStudentLedgerPdf(termId: string, studentId: string, preview = false): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/finance/reports/student-ledger/pdf`, {
+      params: { termId, studentId, preview: preview ? 'true' : 'false' },
+      responseType: 'blob',
+    });
+  }
 }
 

@@ -99,7 +99,14 @@
       </div>
       <div>
         <label>Email</label>
-        <input type="email" class="form-input" [(ngModel)]="createParentForm.email" placeholder="parent@email.com" />
+        <input
+          type="email"
+          class="form-input"
+          [class.form-input--invalid]="createEmailError"
+          [(ngModel)]="createParentForm.email"
+          (ngModelChange)="onCreateEmailInput()"
+          placeholder="parent@email.com" />
+        <div class="field-error" *ngIf="createEmailError">{{ createEmailError }}</div>
       </div>
       <div>
         <label>Phone</label>
@@ -398,8 +405,9 @@
             <input
               type="text"
               [(ngModel)]="studentSearchQuery"
+              (input)="onStudentSearchInput($any($event.target).value)"
               (keyup.enter)="searchStudents()"
-              placeholder="Student ID or name…" />
+              placeholder="Student ID or name (min 2 characters)…" />
             <button type="button" class="btn btn-secondary" (click)="searchStudents()" [disabled]="searchingStudents">
               <span *ngIf="!searchingStudents">Search</span>
               <span *ngIf="searchingStudents">Searching…</span>

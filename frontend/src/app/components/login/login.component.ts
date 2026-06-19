@@ -50,6 +50,8 @@ export class LoginComponent implements OnInit {
   forgotNewPassword = '';
   forgotConfirmPassword = '';
   forgotSubmitting = false;
+  forgotError = '';
+  forgotSuccess = '';
   showForgotNewPassword = false;
   showForgotConfirmPassword = false;
   
@@ -171,11 +173,13 @@ export class LoginComponent implements OnInit {
     this.error = '';
     this.success = '';
     this.infoMessage = '';
+    this.forgotError = '';
+    this.forgotSuccess = '';
     this.showForgotPasswordModal = true;
     this.forgotStep = 'verify';
     this.forgotRole = '';
     this.forgotUsername = '';
-    this.forgotEmail = '';
+    this.forgotEmail = (this.email || '').includes('@') ? this.email.trim() : '';
     this.forgotPhoneNumber = '';
     this.forgotStudentId = '';
     this.forgotDob = '';
@@ -188,6 +192,8 @@ export class LoginComponent implements OnInit {
   closeForgotPasswordModal() {
     this.showForgotPasswordModal = false;
     this.forgotSubmitting = false;
+    this.forgotError = '';
+    this.forgotSuccess = '';
   }
 
   toggleForgotNewPasswordVisibility() {
@@ -199,16 +205,18 @@ export class LoginComponent implements OnInit {
   }
 
   submitForgotVerify() {
+    this.forgotError = '';
+    this.forgotSuccess = '';
     this.error = '';
     this.success = '';
 
     if (!this.forgotRole) {
-      this.error = 'Please select your role';
+      this.forgotError = 'Please select your role';
       return;
     }
 
     if (this.forgotRole !== 'PARENT' && this.forgotRole !== 'TEACHER' && this.forgotRole !== 'STUDENT') {
-      this.error = 'Only Parents, Teachers, and Students can reset password here.';
+      this.forgotError = 'Only Parents, Teachers, and Students can reset password here.';
       return;
     }
 
@@ -217,21 +225,31 @@ export class LoginComponent implements OnInit {
 
     if (this.forgotRole === 'PARENT') {
       if (!this.forgotEmail || !this.forgotPhoneNumber) {
-        this.error = 'Email and phone number are required';
+        this.forgotError = 'Email and phone number are required';
         return;
       }
-      payload.email = this.forgotEmail.trim();
-      payload.phoneNumber = this.forgotPhoneNumber.trim();
+      const phoneResult = validatePhoneNumber(this.forgotPhoneNumber.trim(), true);
+      if (!phoneResult.isValid) {
+        this.forgotError = phoneResult.error || 'Please enter a valid phone number (e.g. 07XXXXXXXX or +2637XXXXXXXX)';
+        return;
+      }
+      payload.email = this.forgotEmail.trim().toLowerCase();
+      payload.phoneNumber = phoneResult.normalized || this.forgotPhoneNumber.trim();
     } else if (this.forgotRole === 'TEACHER') {
       if (!this.forgotUsername || !this.forgotPhoneNumber) {
-        this.error = 'EmployeeID and phone number are required';
+        this.forgotError = 'EmployeeID and phone number are required';
+        return;
+      }
+      const phoneResult = validatePhoneNumber(this.forgotPhoneNumber.trim(), true);
+      if (!phoneResult.isValid) {
+        this.forgotError = phoneResult.error || 'Please enter a valid phone number';
         return;
       }
       payload.username = this.forgotUsername.trim();
-      payload.phoneNumber = this.forgotPhoneNumber.trim();
+      payload.phoneNumber = phoneResult.normalized || this.forgotPhoneNumber.trim();
     } else if (this.forgotRole === 'STUDENT') {
       if (!this.forgotStudentId || !this.forgotDob) {
-        this.error = 'StudentID and Date of Birth are required';
+        this.forgotError = 'StudentID and Date of Birth are required';
         return;
       }
       payload.studentId = this.forgotStudentId.trim();
@@ -244,35 +262,40 @@ export class LoginComponent implements OnInit {
         this.forgotSubmitting = false;
         this.forgotVerifyToken = res?.token || '';
         this.forgotStep = 'set';
-        this.success = 'Verified. Please set your new password.';
+        this.forgotSuccess = 'Verified. Please set your new password.';
+        this.forgotError = '';
       },
       error: (err: any) => {
         this.forgotSubmitting = false;
-        this.error = err.error?.message || 'Verification failed';
+        this.forgotError = err.error?.message || 'Verification failed. Check your details and try again.';
       }
     });
   }
 
   submitForgotSetPassword() {
-    this.error = '';
-    this.success = '';
+    this.forgotError = '';
+    this.forgotSuccess = '';
 
     const token = (this.forgotVerifyToken || '').trim();
     const pw = (this.forgotNewPassword || '').trim();
     const confirm = (this.forgotConfirmPassword || '').trim();
 
     if (!token) {
-      this.error = 'Verification token missing. Please verify again.';
+      this.forgotError = 'Verification token missing. Please verify again.';
       this.forgotStep = 'verify';
       return;
     }
     if (!pw || !confirm) {
-      this.error = 'New password and confirmation are required';
+      this.forgotError = 'New password and confirmation are required';
+      return;
+    }
+    if (pw.length < 8) {
+      this.forgotError = 'Password must be at least 8 characters long';
       return;
     }
     // Relaxed policy: allow any non-empty string, only check match
     if (pw !== confirm) {
-      this.error = 'Passwords do not match';
+      this.forgotError = 'Passwords do not match';
       return;
     }
 
@@ -284,13 +307,13 @@ export class LoginComponent implements OnInit {
     }).subscribe({
       next: () => {
         this.forgotSubmitting = false;
-        this.success = 'Password updated successfully. Please sign in.';
+        this.success = 'Password updated successfully. Please sign in with your new password.';
         this.closeForgotPasswordModal();
         this.setTab('signin');
       },
       error: (err: any) => {
         this.forgotSubmitting = false;
-        this.error = err.error?.message || 'Failed to update password';
+        this.forgotError = err.error?.message || 'Failed to update password';
       }
     });
   }
@@ -373,15 +396,20 @@ export class LoginComponent implements OnInit {
         
         if (err.status === 0) {
           // Connection error - server not reachable
-          this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+          this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3000.';
         } else if (err.status === 423) {
           // Account locked (too many failed attempts)
           this.error = err.error?.message || 'Your account has been locked. Please contact the administrator or superadmin to unlock it.';
         } else if (err.status === 401) {
-          // Unauthorized - invalid credentials
           const errorMessage = err.error?.message || 'Invalid username or password. Please try again.';
           const hint = err.error?.hint;
-          this.error = hint ? `${errorMessage} ${hint}` : errorMessage;
+          if (hint) {
+            this.error = `${errorMessage} ${hint}`;
+          } else if (err.error?.code === 'INVALID_CREDENTIALS') {
+            this.error = 'Invalid username or password. If your account was created by the school, use the temporary password from the administrator or Reset Password.';
+          } else {
+            this.error = errorMessage;
+          }
         } else if (err.status === 500) {
           // Server error
           this.error = 'Server error. Please try again later.';
@@ -471,10 +499,11 @@ export class LoginComponent implements OnInit {
     
     // Convert role to lowercase for backend enum
     const roleLower = this.signupRole.toLowerCase();
+    const trimmedUsername = this.signupUsername.trim();
     
     // Determine email per role
     const registerData: any = {
-      username: this.signupUsername,
+      username: trimmedUsername,
       password: this.signupPassword,
       role: roleLower,
     };
@@ -482,8 +511,8 @@ export class LoginComponent implements OnInit {
     // Only add parent-specific fields for parents
     if (this.signupRole === 'PARENT') {
       registerData.email = this.signupEmail.trim();
-      registerData.firstName = this.signupFirstName;
-      registerData.lastName = this.signupLastName;
+      registerData.firstName = this.signupFirstName.trim();
+      registerData.lastName = this.signupLastName.trim();
       registerData.gender = this.signupGender;
       registerData.phoneNumber = this.signupContactNumber;
       registerData.contactNumber = this.signupContactNumber;
@@ -499,10 +528,22 @@ export class LoginComponent implements OnInit {
         }, 2000);
       },
       error: (err: any) => {
-        this.error = err.error?.message || 'Registration failed';
+        this.error = this.getRegistrationErrorMessage(err);
         this.loading = false;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     });
+  }
+
+  private getRegistrationErrorMessage(err: any): string {
+    const backendMessage = String(err?.error?.message || '').trim();
+    if (backendMessage) {
+      return backendMessage;
+    }
+    if (err?.status === 0) {
+      return 'Cannot connect to server. Ensure the backend is running on port 3000 and try again.';
+    }
+    return 'Registration failed. Please check your details and try again.';
   }
 
   onResetPassword() {

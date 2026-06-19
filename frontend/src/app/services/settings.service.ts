@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, throwError, TimeoutError } from 'rxjs';
+import { Observable, of, Subject, throwError, TimeoutError } from 'rxjs';
 import { catchError, map, tap, timeout } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
@@ -23,8 +23,16 @@ export function normalizeSchoolGrades(raw: unknown): string[] {
 })
 export class SettingsService {
   private apiUrl = environment.apiUrl;
+  private readonly brandingRefresh$ = new Subject<void>();
+
+  /** Emits when school branding (name, logo, website, Facebook) should reload. */
+  readonly brandingRefreshRequested$ = this.brandingRefresh$.asObservable();
 
   constructor(private http: HttpClient) { }
+
+  requestBrandingRefresh(): void {
+    this.brandingRefresh$.next();
+  }
 
   private handleError<T>(operation: string, fallback: T) {
     return (error: any): Observable<T> => {
@@ -33,7 +41,7 @@ export class SettingsService {
       if (status === 0 || error?.message?.includes('Connection refused')) {
         console.warn(
           `[SettingsService] ${operation} failed: backend not reachable (status 0). ` +
-          'Ensure the backend is running (e.g. npm run start in backend folder) and listening on port 3001.'
+          'Ensure the backend is running (e.g. npm run start in backend folder) and listening on port 3000.'
         );
         return of(fallback);
       }

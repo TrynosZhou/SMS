@@ -120,7 +120,7 @@ export class TeacherRecordBookComponent implements OnInit, OnDestroy {
       error: (err: any) => {
         // Check if it's a connection error
         if (err.status === 0 || err.message?.includes('Connection refused') || err.message?.includes('Failed to fetch')) {
-          this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+          this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3000.';
           console.warn('Backend server connection failed. Please start the backend server.');
         } else {
           console.error('Error loading teachers:', err);
@@ -265,7 +265,7 @@ export class TeacherRecordBookComponent implements OnInit, OnDestroy {
       error: (err: any) => {
         // Check if it's a connection error
         if (err.status === 0 || err.message?.includes('Connection refused') || err.message?.includes('Failed to fetch')) {
-          this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+          this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3000.';
         } else {
           this.error = err.error?.message || 'Failed to load record book. Please try again.';
         }
@@ -475,7 +475,7 @@ export class TeacherRecordBookComponent implements OnInit, OnDestroy {
       error: (err: any) => {
         this.loading = false;
         if (err.status === 0 || err.message?.includes('Connection refused') || err.message?.includes('Failed to fetch')) {
-          this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+          this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3000.';
         } else {
           this.error = err.error?.message || err.message || 'Failed to preview PDF. Please try again.';
         }
@@ -528,7 +528,7 @@ export class TeacherRecordBookComponent implements OnInit, OnDestroy {
       error: (err: any) => {
         // Check if it's a connection error
         if (err.status === 0 || err.message?.includes('Connection refused') || err.message?.includes('Failed to fetch')) {
-          this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+          this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3000.';
         } else {
           console.error('PDF download error:', err);
           this.error = err.error?.message || err.message || 'Failed to download PDF. Please try again.';

@@ -536,11 +536,15 @@ export const getParentMessages = async (req: AuthRequest, res: Response) => {
 
     const parent = ctx.parent;
 
-    // Get all messages for this parent, ordered by most recent first
-    const messages = await messageRepository.find({
-      where: { parentId: parent.id },
-      order: { createdAt: 'DESC' }
-    });
+    // Inbox: messages sent TO the parent (not parent outbox or admin notifications)
+    const messages = await messageRepository
+      .createQueryBuilder('msg')
+      .where('msg.parentId = :parentId', { parentId: parent.id })
+      .andWhere('msg.recipients IN (:...inboxRecipients)', {
+        inboxRecipients: ['parent', 'all', 'parents'],
+      })
+      .orderBy('msg.createdAt', 'DESC')
+      .getMany();
 
     res.json({
       messages: messages.map(msg => ({

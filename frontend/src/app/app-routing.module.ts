@@ -29,6 +29,7 @@ import { ExemptionsManagementComponent } from './components/finance/exemptions-m
 import { ExemptionReportComponent } from './components/finance/exemption-report/exemption-report.component';
 import { FinancialReportComponent } from './components/finance/financial-reports/financial-report.component';
 import { FeesCollectionReportComponent } from './components/finance/financial-reports/fees-collection-report.component';
+import { StudentLedgerReportComponent } from './components/finance/financial-reports/student-ledger-report.component';
 import { AgedDebtorsReportComponent } from './components/finance/financial-reports/aged-debtors-report.component';
 import { ClassListComponent } from './components/classes/class-list/class-list.component';
 import { ClassFormComponent } from './components/classes/class-form/class-form.component';
@@ -148,6 +149,8 @@ const routes: Routes = [
   { path: 'finance/audit', component: AuditComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'audit' } },
   { path: 'finance/financial-books', component: FinancialBooksComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'financialBooks', pageTitle: 'Financial Management' } },
   { path: 'admin/finance', redirectTo: 'finance/financial-books', pathMatch: 'full' },
+  { path: 'financial-reports/student-ledger', component: StudentLedgerReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportStudentLedger', pageTitle: 'Student Ledger' } },
+  { path: 'admin/fin-reports/student-ledger', redirectTo: 'financial-reports/student-ledger', pathMatch: 'full' },
   { path: 'financial-reports/student-ledgers', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportStudentLedgers', hideInvoiceActions: true, pageTitle: 'Student Ledgers' } },
   { path: 'financial-reports/fees-collection', component: FeesCollectionReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportFeesCollection' } },
   { path: 'financial-reports/outstanding-fees', component: OutstandingBalanceComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportUnpaidInvoices' } },
@@ -156,7 +159,9 @@ const routes: Routes = [
   { path: 'financial-reports/aged-debtors', component: AgedDebtorsReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportAgedDebtors' } },
   { path: 'financial-reports/enrolment-vs-billing', component: FinancialReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportEnrolmentBilling', report: 'enrolment-vs-billing' } },
   { path: 'financial-reports/revenue-recognition', redirectTo: '/dashboard', pathMatch: 'full' },
-  { path: 'financial-reports/student-reconciliation', redirectTo: '/dashboard', pathMatch: 'full' },
+  { path: 'financial-reports/student-reconciliation', component: FinancialReportComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportStudentReconciliation', report: 'student-reconciliation', pageTitle: 'Student Reconciliation' } },
+  { path: 'admin/fin-reports/student-reconciliation', redirectTo: 'financial-reports/student-reconciliation', pathMatch: 'full' },
+  { path: 'admin/fin-reports/record-payment/:studentId', component: RecordPaymentComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'recordPayment' } },
   { path: 'financial-reports/analytics-forecasts', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: 'financial-reports/class-reconciliation', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: 'financial-reports/dining-hall', component: StudentListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { logisticsMode: 'diningHall', module: 'logistics', financePage: 'reportDiningHall' } },

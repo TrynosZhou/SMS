@@ -3,7 +3,7 @@ import { AuthService } from '../../../services/auth.service';
 import { ExamService } from '../../../services/exam.service';
 import { SettingsService } from '../../../services/settings.service';
 import { DomSanitizer, SafeResourceUrl, SafeUrl } from '@angular/platform-browser';
-import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
+import { pdfReportCardViewerUrl } from '../../../utils/pdf-preview.util';
 import { buildHeadmasterRemarkFromCard } from '../../../utils/headmaster-remarks.util';
 import { computeCoreAverageFromReportSubjects } from '../../../utils/mark-sheet-subject-order';
 import { trigger, state, style, transition, animate } from '@angular/animations';
@@ -320,7 +320,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
           return;
         }
         this.pdfBlobUrl = window.URL.createObjectURL(blob);
-        this.inlinePdf = this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlobViewerUrl(this.pdfBlobUrl));
+        this.inlinePdf = this.sanitizer.bypassSecurityTrustResourceUrl(pdfReportCardViewerUrl(this.pdfBlobUrl));
         this.cdr.markForCheck();
       },
       error: () => {
@@ -333,6 +333,16 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
   }
 
   // ── Download ─────────────────────────────────────────────────
+  previewPdf(): void {
+    if (!this.pdfBlobUrl && this.reportCard) {
+      this.loadInlinePdf();
+      return;
+    }
+    if (this.pdfBlobUrl) {
+      window.open(pdfReportCardViewerUrl(this.pdfBlobUrl), '_blank', 'noopener,noreferrer');
+    }
+  }
+
   downloadPDF() {
     if (!this.pdfBlobUrl && !this.reportCard) { this.error = 'Generate the report card first.'; return; }
 

@@ -74,7 +74,9 @@ export const FINANCE_PAGES: FinancePageDef[] = [
     group: 'sensitiveActions',
     sensitive: true,
   },
-  { key: 'reportStudentLedgers', label: 'Student Ledgers', group: 'financialReports' },
+  { key: 'reportStudentLedgers', label: 'Student Ledgers (Invoice List)', group: 'financialReports' },
+  { key: 'reportStudentLedger', label: 'Student Ledger', group: 'financialReports' },
+  { key: 'reportStudentReconciliation', label: 'Student Reconciliation', group: 'financialReports' },
   { key: 'reportFeesCollection', label: 'Fees Collection', group: 'financialReports' },
   { key: 'reportUnpaidInvoices', label: 'Unpaid Invoices', group: 'financialReports' },
   { key: 'reportExemption', label: 'Exemption Report', group: 'financialReports' },
@@ -106,6 +108,8 @@ const ACCOUNTANT_FINANCE_DEFAULTS: Record<string, { view: boolean; edit: boolean
   bulkInvoices: { view: false, edit: false },
   exemptionCorrection: { view: false, edit: false },
   reportStudentLedgers: { view: true, edit: false },
+  reportStudentLedger: { view: true, edit: false },
+  reportStudentReconciliation: { view: true, edit: false },
   reportFeesCollection: { view: true, edit: false },
   reportUnpaidInvoices: { view: true, edit: false },
   reportExemption: { view: true, edit: false },
@@ -153,6 +157,8 @@ export function buildFinancePagePermissions(options?: {
     for (const page of FINANCE_PAGES) {
       defaults[page.key] = { view: false, edit: false };
     }
+    defaults.reportStudentLedger = { view: true, edit: false };
+    defaults.reportStudentReconciliation = { view: true, edit: false };
   } else if (legacy === 'demo_user') {
     defaults = allFinancePagesEnabled(true);
   } else {

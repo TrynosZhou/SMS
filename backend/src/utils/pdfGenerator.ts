@@ -1,9 +1,6 @@
 import PDFDocument from 'pdfkit';
 import { Settings } from '../entities/Settings';
-import {
-  estimateReportCardHeight,
-  renderReportCardLayout
-} from './reportCardPdfLayout';
+import { renderReportCardLayout } from './reportCardPdfLayout';
 
 interface ReportCardData {
   student: {
@@ -48,17 +45,61 @@ interface ReportCardData {
   generatedAt: Date;
 }
 
+/** Match typical printed report cards — content fills ~78% of portrait A4 height. */
+const PORTRAIT_TARGET_FILL = 0.78;
+const MIN_PRE_REMARKS_GAP = 56;
+
+function scaleForA4Portrait(contentHeight: number, pageBudget: number): number {
+  if (contentHeight <= 0 || contentHeight <= pageBudget) {
+    return 1;
+  }
+  return (pageBudget * 0.97) / contentHeight;
+}
+
+function computePreRemarksGap(baseHeight: number, pageBudget: number): number {
+  if (baseHeight >= pageBudget) {
+    return 0;
+  }
+  const targetHeight = pageBudget * PORTRAIT_TARGET_FILL;
+  return Math.max(MIN_PRE_REMARKS_GAP, targetHeight - baseHeight);
+}
+
 export function createReportCardPDF(
   reportCard: ReportCardData,
   settings: Settings | null
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
-      const margin = 20;
-      const footerReserve = 16;
+      const margin = 24;
+      const footerReserve = 18;
+      const pageW = 595.28;
+      const pageH = 841.89;
+      const innerW = pageW - margin * 2;
+      const pageBudget = pageH - margin * 2 - footerReserve;
+
+      const measureDoc = new PDFDocument({
+        size: 'A4',
+        layout: 'portrait',
+        margin: 0,
+        autoFirstPage: true
+      });
+      measureDoc.on('data', () => {});
+      measureDoc.on('error', reject);
+      measureDoc.translate(margin, margin);
+      const baseContentHeight = renderReportCardLayout(measureDoc, reportCard, settings, {
+        cardX: 0,
+        cardY: 0,
+        cardW: innerW
+      });
+      measureDoc.end();
+
+      const preRemarksGap = computePreRemarksGap(baseContentHeight, pageBudget);
+      const contentHeight = baseContentHeight + preRemarksGap;
+      const scale = scaleForA4Portrait(contentHeight, pageBudget);
+
       const doc = new PDFDocument({
         size: 'A4',
-        layout: 'landscape',
+        layout: 'portrait',
         margin: 0,
         autoFirstPage: true
       });
@@ -70,15 +111,6 @@ export function createReportCardPDF(
       });
       doc.on('error', reject);
 
-      const pageW = doc.page.width;
-      const pageH = doc.page.height;
-      const innerW = pageW - margin * 2;
-      const pageBudget = pageH - margin * 2 - footerReserve;
-
-      const estimatedH = estimateReportCardHeight(doc, reportCard, innerW);
-      const scale =
-        estimatedH > pageBudget ? (pageBudget * 0.98) / estimatedH : 1;
-
       doc.save();
       doc.translate(margin, margin);
       if (scale < 1) {
@@ -87,7 +119,8 @@ export function createReportCardPDF(
       renderReportCardLayout(doc, reportCard, settings, {
         cardX: 0,
         cardY: 0,
-        cardW: innerW
+        cardW: innerW,
+        preRemarksGap: scale < 1 ? 0 : preRemarksGap
       });
       doc.restore();
 

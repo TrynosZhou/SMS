@@ -386,11 +386,21 @@
   font-size: 14px;
 }
 
+.src-pdf-viewport {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  /* A4 portrait (210 × 297 mm) */
+  aspect-ratio: 210 / 297;
+  height: min(calc((100vw - 3rem) * 297 / 210), 92vh);
+  max-height: 92vh;
+  background: #cbd5e1;
+}
+
 .src-pdf-frame {
   display: block;
   width: 100%;
-  height: 90vh;
-  min-height: 700px;
+  height: 100%;
   border: none;
 }
 
@@ -680,7 +690,7 @@
   .src-selection-grid { grid-template-columns: 1fr 1fr; }
   .src-select-wrapper { max-width: 100%; }
 
-  .src-pdf-frame { height: 75vh; min-height: 480px; }
+  .src-pdf-viewport { height: min(calc((100vw - 2rem) * 297 / 210), 75vh); }
 
   .src-rc-info-header { flex-direction: column; align-items: flex-start; }
   .src-rc-overall { margin-left: 0; }
@@ -691,7 +701,7 @@
 
 @media (max-width: 480px) {
   .src-selection-grid { grid-template-columns: 1fr; }
-  .src-pdf-frame { height: 65vh; min-height: 400px; }
+  .src-pdf-viewport { height: min(calc((100vw - 1.5rem) * 297 / 210), 65vh); }
   .src-quick-types { flex-direction: column; align-items: center; }
   .src-quick-btn { width: 200px; }
   .src-perf-row { grid-template-columns: 1fr; }

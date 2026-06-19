@@ -67,14 +67,12 @@ export class AuthService {
   }
 
   login(identifier: string, password: string, teacherId?: string): Observable<any> {
-    // Use username for login (email is optional for non-teachers)
-    // For teachers, only username is used
-    const loginData: any = { username: identifier, password };
-    
-    // Only add email if it's actually an email (contains @) and not a teacher login
-    // This maintains backward compatibility for non-teacher accounts
-    if (identifier.includes('@')) {
-      loginData.email = identifier;
+    const trimmedIdentifier = String(identifier || '').trim();
+    const trimmedPassword = String(password || '').trim();
+    const loginData: any = { username: trimmedIdentifier, password: trimmedPassword };
+
+    if (trimmedIdentifier.includes('@')) {
+      loginData.email = trimmedIdentifier;
     }
     
     // Note: teacherId is no longer required for teacher login

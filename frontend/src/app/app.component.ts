@@ -49,11 +49,14 @@ export class AppComponent implements OnInit, OnDestroy {
   expandedMenus: { [key: string]: boolean } = {};
   sidebarMenuFilter = '';
   private authSubscription?: Subscription;
+  private brandingRefreshSubscription?: Subscription;
   private themeSubscription?: Subscription;
   private titleRotationTimerId: number | null = null;
   private readonly titleRotationIntervalMs = 4000;
   private static readonly SCHOOL_NAME_CACHE_KEY = 'sms_schoolDisplayName';
   private static readonly SCHOOL_LOGO_CACHE_KEY = 'sms_schoolDisplayLogo';
+  private static readonly SCHOOL_WEBSITE_CACHE_KEY = 'sms_schoolWebsite';
+  private static readonly SCHOOL_FACEBOOK_CACHE_KEY = 'sms_schoolFacebookUrl';
   private readonly dashboardTitleOptions = [
     'After instruction we soar',
     'Kaizen',
@@ -96,6 +99,8 @@ export class AppComponent implements OnInit, OnDestroy {
     if (cachedLogo) {
       this.schoolLogo = this.normalizeSchoolLogoSrc(cachedLogo);
     }
+    this.schoolWebsite = sessionStorage.getItem(AppComponent.SCHOOL_WEBSITE_CACHE_KEY) || '';
+    this.schoolFacebookUrl = sessionStorage.getItem(AppComponent.SCHOOL_FACEBOOK_CACHE_KEY) || '';
   }
 
   ngOnInit(): void {
@@ -114,6 +119,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Load module access and permissions when already authenticated (e.g. page refresh)
     if (this.authService.isAuthenticated()) {
+      this.loadSchoolBranding();
       // Load module access settings
       this.moduleAccessService.loadModuleAccess();
       this.permissionService.loadPermissionsFromApi();
@@ -122,6 +128,10 @@ export class AppComponent implements OnInit, OnDestroy {
       this.loadViewAsRoles();
       this.startIncomingMessageBadge();
     }
+
+    this.brandingRefreshSubscription = this.settingsService.brandingRefreshRequested$.subscribe(() => {
+      this.loadSchoolBranding();
+    });
 
     this.authService.currentUser$.subscribe((user) => {
       if (user) {
@@ -140,6 +150,8 @@ export class AppComponent implements OnInit, OnDestroy {
         this.schoolWebsite = '';
         this.schoolFacebookUrl = '';
         sessionStorage.removeItem(AppComponent.SCHOOL_LOGO_CACHE_KEY);
+        sessionStorage.removeItem(AppComponent.SCHOOL_WEBSITE_CACHE_KEY);
+        sessionStorage.removeItem(AppComponent.SCHOOL_FACEBOOK_CACHE_KEY);
         this.cdr.markForCheck();
       }
     });
@@ -165,9 +177,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.closeMobileMenu();
       }
       if (!this.authService.isAuthenticated()) return;
-      if (!this.schoolLogo) {
-        this.loadSchoolBranding();
-      }
+      this.loadSchoolBranding();
       this.refreshIncomingMessageBadge();
       const user = this.authService.getCurrentUser();
       const role = (user?.role || '').toLowerCase();
@@ -249,6 +259,7 @@ export class AppComponent implements OnInit, OnDestroy {
     document.body.classList.remove('mobile-nav-open');
     document.body.style.overflow = '';
     this.authSubscription?.unsubscribe();
+    this.brandingRefreshSubscription?.unsubscribe();
     this.themeSubscription?.unsubscribe();
     this.stopDashboardTitleRotation();
     this.stopIncomingMessageBadge();
@@ -365,6 +376,16 @@ export class AppComponent implements OnInit, OnDestroy {
           } catch {
             // ignore sessionStorage quota errors for large logos
           }
+        }
+        if (websiteUrl) {
+          sessionStorage.setItem(AppComponent.SCHOOL_WEBSITE_CACHE_KEY, websiteUrl);
+        } else {
+          sessionStorage.removeItem(AppComponent.SCHOOL_WEBSITE_CACHE_KEY);
+        }
+        if (facebookUrl) {
+          sessionStorage.setItem(AppComponent.SCHOOL_FACEBOOK_CACHE_KEY, facebookUrl);
+        } else {
+          sessionStorage.removeItem(AppComponent.SCHOOL_FACEBOOK_CACHE_KEY);
         }
 
         this.schoolName = name || this.schoolName;
@@ -507,13 +528,6 @@ export class AppComponent implements OnInit, OnDestroy {
       return;
     }
     this.incomingMessageNotifications.refresh().subscribe(() => this.cdr.markForCheck());
-  }
-
-  getCalendarNavLink(): string {
-    if (this.isTeacher()) {
-      return '/teacher/my-classes';
-    }
-    return '/dashboard';
   }
 
   getNavbarDisplayName(): string {
@@ -757,7 +771,7 @@ export class AppComponent implements OnInit, OnDestroy {
       return false;
     }
     return (
-      this.canAccessFinancePage('reportStudentLedgers') ||
+      this.canAccessFinancePage('reportStudentLedger') ||
       this.canAccessFinancePage('reportFeesCollection') ||
       this.canAccessFinancePage('reportUnpaidInvoices') ||
       this.canAccessFinancePage('reportExemption') ||

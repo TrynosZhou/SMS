@@ -11,6 +11,34 @@ import { resetDemoDataForLogin } from '../utils/resetDemoData';
 import { ensureDemoDataAvailable } from '../utils/demoDataEnsurer';
 import { validatePhoneNumber } from '../utils/phoneValidator';
 import { parseDOB, compareDates, formatDOB } from '../utils/dateParser';
+import { sendParentRegistrationNotifications } from '../utils/parentRegistrationNotifications';
+
+async function findUserByEmailInsensitive(email: string): Promise<User | null> {
+  const normalized = String(email || '').trim().toLowerCase();
+  if (!normalized) return null;
+  return AppDataSource.getRepository(User)
+    .createQueryBuilder('user')
+    .where('LOWER(TRIM(user.email)) = :email', { email: normalized })
+    .getOne();
+}
+
+async function findUserByUsernameInsensitive(username: string): Promise<User | null> {
+  const normalized = String(username || '').trim().toLowerCase();
+  if (!normalized) return null;
+  return AppDataSource.getRepository(User)
+    .createQueryBuilder('user')
+    .where('LOWER(TRIM(user.username)) = :username', { username: normalized })
+    .getOne();
+}
+
+async function findStudentByNumberInsensitive(studentNumber: string): Promise<Student | null> {
+  const normalized = String(studentNumber || '').trim();
+  if (!normalized) return null;
+  return AppDataSource.getRepository(Student)
+    .createQueryBuilder('student')
+    .where('LOWER(TRIM(student.studentNumber)) = LOWER(:studentNumber)', { studentNumber: normalized })
+    .getOne();
+}
 
 export const login = async (req: Request, res: Response) => {
   try {
@@ -422,9 +450,12 @@ export const login = async (req: Request, res: Response) => {
 
           return res.status(401).json({ 
             message: 'Invalid credentials',
-            hint: user.mustChangePassword 
-              ? 'Password may have been reset. Please use the new password provided by your administrator. Make sure there are no extra spaces and use the exact password.'
-              : 'Username/email or password is incorrect. Please check your credentials and try again.'
+            code: 'INVALID_CREDENTIALS',
+            hint: user.isTemporaryAccount
+              ? 'This account was set up by your school administrator. Use the temporary password they gave you, or click Reset Password to set a new one.'
+              : user.mustChangePassword 
+                ? 'Password may have been reset. Please use the new password provided by your administrator. Make sure there are no extra spaces and use the exact password.'
+                : 'Username/email or password is incorrect. Please check your credentials and try again.'
           });
         }
 
@@ -859,16 +890,25 @@ export const register = async (req: Request, res: Response) => {
 
     // Check if email already exists (only if provided)
     if (trimmedEmail) {
-      const existingUserByEmail = await userRepository.findOne({ where: { email: trimmedEmail } });
+      const existingUserByEmail = await findUserByEmailInsensitive(trimmedEmail);
       if (existingUserByEmail) {
-        return res.status(400).json({ message: 'Email already exists' });
+        const message = existingUserByEmail.isTemporaryAccount
+          ? 'An account for this email was already created by your school. Sign in with the temporary password from the administrator, or use Reset Password on the login page.'
+          : 'This email is already registered. Please sign in or use Reset Password.';
+        return res.status(400).json({
+          message,
+          code: existingUserByEmail.isTemporaryAccount ? 'ADMIN_CREATED_ACCOUNT' : 'EMAIL_ALREADY_EXISTS'
+        });
       }
     }
 
-    // Check if username already exists
-    const existingUserByUsername = await userRepository.findOne({ where: { username: trimmedUsername } });
+    // Check if username already exists (case-insensitive)
+    const existingUserByUsername = await findUserByUsernameInsensitive(trimmedUsername);
     if (existingUserByUsername) {
-      return res.status(400).json({ message: 'Username already exists' });
+      return res.status(400).json({
+        message: 'Username already exists. Please choose a different username or sign in.',
+        code: 'USERNAME_ALREADY_EXISTS'
+      });
     }
 
     // Validate role - only allow PARENT and STUDENT for self-registration
@@ -881,35 +921,97 @@ export const register = async (req: Request, res: Response) => {
 
     // STUDENT self-signup: username is StudentID (studentNumber). Must already exist in students table.
     if (requestedRole === UserRole.STUDENT) {
-      const studentId = trimmedUsername;
-      const studentRepository = AppDataSource.getRepository(Student);
-      const existingStudent = await studentRepository.findOne({ where: { studentNumber: studentId } });
+      const existingStudent = await findStudentByNumberInsensitive(trimmedUsername);
       if (!existingStudent) {
-        return res.status(400).json({ message: 'Invalid Student ID. Please contact the administrator.' });
+        return res.status(400).json({
+          message: 'Invalid Student ID. Use the exact ID from the school (e.g. JPS5072026) or contact the administrator.',
+          code: 'INVALID_STUDENT_ID'
+        });
       }
       if (existingStudent.userId) {
-        return res.status(400).json({ message: 'This Student ID is already linked to an account. Please sign in or reset your password.' });
+        return res.status(400).json({
+          message: 'This Student ID is already linked to an account. Please sign in or reset your password.',
+          code: 'STUDENT_ALREADY_REGISTERED'
+        });
       }
 
+      const canonicalStudentId = String(existingStudent.studentNumber || trimmedUsername).trim();
       const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
-      const studentEmail = trimmedEmail || `${studentId}@student.local`;
+      const studentEmail = trimmedEmail || `${canonicalStudentId.toLowerCase()}@student.local`;
       const user = userRepository.create({
         email: studentEmail,
-        username: studentId,
+        username: canonicalStudentId,
         password: hashedPassword,
         role: requestedRole
       });
       await userRepository.save(user);
 
       existingStudent.userId = user.id;
-      await studentRepository.save(existingStudent);
+      await AppDataSource.getRepository(Student).save(existingStudent);
+
+      return res.status(201).json({ message: 'User registered successfully' });
+    }
+
+    // PARENT self-signup: validate profile fields before creating the user account.
+    if (requestedRole === UserRole.PARENT) {
+      if (!trimmedEmail) {
+        return res.status(400).json({ message: 'Email is required for parent registration' });
+      }
+      const firstName = String(profileData.firstName || '').trim();
+      const lastName = String(profileData.lastName || '').trim();
+      if (!firstName || !lastName) {
+        return res.status(400).json({ message: 'First name and last name are required for parent registration' });
+      }
+
+      const phoneNumber = profileData.phoneNumber || profileData.contactNumber;
+      if (!phoneNumber) {
+        return res.status(400).json({ message: 'Phone number is required for parent registration' });
+      }
+      const phoneValidation = validatePhoneNumber(String(phoneNumber), true);
+      if (!phoneValidation.isValid) {
+        return res.status(400).json({ message: phoneValidation.error || 'Invalid phone number' });
+      }
+      const normalizedPhone = phoneValidation.normalized || String(phoneNumber).trim();
+
+      if (!profileData.address || !String(profileData.address).trim()) {
+        return res.status(400).json({ message: 'Physical address is required for parent registration' });
+      }
+      const normalizedAddress = String(profileData.address).trim();
+
+      const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
+      const user = userRepository.create({
+        email: trimmedEmail,
+        username: trimmedUsername,
+        password: hashedPassword,
+        role: requestedRole
+      });
+      await userRepository.save(user);
+
+      const parentRepository = AppDataSource.getRepository(Parent);
+      const parent = parentRepository.create({
+        firstName,
+        lastName,
+        gender: profileData.gender ? String(profileData.gender).trim() : null,
+        phoneNumber: normalizedPhone,
+        address: normalizedAddress,
+        email: trimmedEmail,
+        userId: user.id
+      });
+      const savedParent = await parentRepository.save(parent);
+      const registeredParent = Array.isArray(savedParent) ? savedParent[0] : savedParent;
+
+      try {
+        await sendParentRegistrationNotifications({ user, parent: registeredParent });
+      } catch (notifyErr: any) {
+        console.error('[Register] Parent registration notifications failed:', notifyErr?.message || notifyErr);
+      }
 
       return res.status(201).json({ message: 'User registered successfully' });
     }
 
     const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
     const user = userRepository.create({
-      email: trimmedEmail || null, // Email is optional
+      email: trimmedEmail || null,
       username: trimmedUsername,
       password: hashedPassword,
       role: requestedRole
@@ -925,36 +1027,7 @@ export const register = async (req: Request, res: Response) => {
         userId: user.id
       });
       await teacherRepository.save(teacher);
-    } else if (requestedRole === UserRole.PARENT) {
-      // Validate phone number for parent registration
-      const phoneNumber = profileData.phoneNumber || profileData.contactNumber;
-      if (phoneNumber) {
-        const phoneValidation = validatePhoneNumber(phoneNumber, true);
-        if (!phoneValidation.isValid) {
-          return res.status(400).json({ message: phoneValidation.error || 'Invalid phone number' });
-        }
-        // Use normalized phone number
-        profileData.phoneNumber = phoneValidation.normalized || phoneNumber;
-        profileData.contactNumber = phoneValidation.normalized || phoneNumber;
-      } else {
-        return res.status(400).json({ message: 'Phone number is required for parent registration' });
-      }
-
-      // Require physical address for parent registration
-      if (!profileData.address || !String(profileData.address).trim()) {
-        return res.status(400).json({ message: 'Physical address is required for parent registration' });
-      }
-      profileData.address = String(profileData.address).trim();
-      
-      const parentRepository = AppDataSource.getRepository(Parent);
-      const parent = parentRepository.create({
-        ...profileData,
-        userId: user.id,
-        email: email
-      });
-      await parentRepository.save(parent);
     }
-    // SUPERADMIN and ADMIN don't need separate profile entities
 
     res.status(201).json({ message: 'User registered successfully' });
   } catch (error: any) {
@@ -1111,11 +1184,6 @@ export const verifyForgotPasswordDetails = async (req: Request, res: Response) =
       if (!trimmedEmail) {
         return res.status(400).json({ message: 'Email is required' });
       }
-      const phoneResult = validatePhoneNumber((phoneNumber || '').toString(), true);
-      if (!phoneResult.isValid) {
-        return res.status(400).json({ message: phoneResult.error || 'Invalid phone number' });
-      }
-      const normalizedPhone = phoneResult.normalized || (phoneNumber || '').toString().trim();
 
       const parentRepository = AppDataSource.getRepository(Parent);
       const parent = await parentRepository
@@ -1124,11 +1192,25 @@ export const verifyForgotPasswordDetails = async (req: Request, res: Response) =
         .getOne();
 
       if (!parent) {
-        return res.status(400).json({ message: 'Invalid details' });
+        return res.status(400).json({ message: 'No parent account found with this email address.' });
       }
 
-      if (!parent.phoneNumber || String(parent.phoneNumber).trim() !== normalizedPhone) {
-        return res.status(400).json({ message: 'Invalid details' });
+      if (!parent.phoneNumber || !String(parent.phoneNumber).trim()) {
+        return res.status(400).json({
+          message: 'No phone number is on file for this account. Please contact the school administrator to reset your password.'
+        });
+      }
+      const storedPhoneResult = validatePhoneNumber(String(parent.phoneNumber), false);
+      const storedPhone = storedPhoneResult.normalized || String(parent.phoneNumber).replace(/[\s\-()]/g, '').trim();
+      const inputPhoneResult = validatePhoneNumber(String(phoneNumber), true);
+      if (!inputPhoneResult.isValid) {
+        return res.status(400).json({ message: inputPhoneResult.error || 'Invalid phone number format' });
+      }
+      const normalizedPhone = inputPhoneResult.normalized || String(phoneNumber).replace(/[\s\-()]/g, '').trim();
+      if (storedPhone !== normalizedPhone) {
+        return res.status(400).json({
+          message: 'Phone number does not match our records. Use the number registered with the school (e.g. 07XXXXXXXX or +2637XXXXXXXX).'
+        });
       }
 
       if (!parent.userId) {
@@ -1157,7 +1239,12 @@ export const verifyForgotPasswordDetails = async (req: Request, res: Response) =
         return res.status(400).json({ message: 'Invalid details' });
       }
 
-      if (!teacher.phoneNumber || String(teacher.phoneNumber).trim() !== normalizedPhone) {
+      if (!teacher.phoneNumber) {
+        return res.status(400).json({ message: 'Invalid details' });
+      }
+      const storedTeacherPhoneResult = validatePhoneNumber(String(teacher.phoneNumber), false);
+      const storedTeacherPhone = storedTeacherPhoneResult.normalized || String(teacher.phoneNumber).trim();
+      if (storedTeacherPhone !== normalizedPhone) {
         return res.status(400).json({ message: 'Invalid details' });
       }
 

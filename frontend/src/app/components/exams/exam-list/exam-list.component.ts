@@ -1230,7 +1230,7 @@ return;
         let errorMessage = 'Failed to delete all exams';
         
         if (err.status === 0 || err.status === undefined) {
-          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3000.';
         } else if (err.error) {
           if (typeof err.error === 'string') {
             errorMessage = err.error;

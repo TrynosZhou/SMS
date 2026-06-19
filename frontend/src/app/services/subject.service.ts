@@ -43,7 +43,7 @@ export class SubjectService {
         const msg = error?.error?.message || error?.message || '';
         if (status === 0) {
           console.warn(
-            'Error loading subjects: backend not reachable (status 0). Start the backend on port 3001.'
+            'Error loading subjects: backend not reachable (status 0). Start the backend on port 3000.'
           );
         } else if (status === 504) {
           console.warn(

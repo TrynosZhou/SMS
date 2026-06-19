@@ -127,7 +127,7 @@ export class TeacherService {
         const msg = error?.error?.message || error?.message || '';
         if (status === 0) {
           console.warn(
-            'Error loading teachers (paginated): backend not reachable (status 0). Start the backend on port 3001.'
+            'Error loading teachers (paginated): backend not reachable (status 0). Start the backend on port 3000.'
           );
         } else {
           console.error(`Error loading teachers (paginated): status ${status} ${msg ? '- ' + msg : ''}`, error);

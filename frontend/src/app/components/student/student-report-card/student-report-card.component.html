@@ -215,6 +215,9 @@
 
       <!-- PDF download / retry row -->
       <div class="src-retry-row">
+        <button class="src-btn src-btn-outline" (click)="previewPdf()" [disabled]="loading || loadingPdf || !inlinePdf">
+          🔍 Full preview
+        </button>
         <button class="src-btn src-btn-outline" (click)="downloadPDF()" [disabled]="loading || loadingPdf">
           ⬇️ Download PDF
         </button>
@@ -239,13 +242,14 @@
       </div>
 
       <!-- The PDF iframe -->
-      <iframe
-        *ngIf="inlinePdf && !loadingPdf"
-        [src]="inlinePdf"
-        class="src-pdf-frame"
-        frameborder="0"
-        title="Report Card PDF">
-      </iframe>
+      <div class="src-pdf-viewport" *ngIf="inlinePdf && !loadingPdf">
+        <iframe
+          [src]="inlinePdf"
+          class="src-pdf-frame"
+          frameborder="0"
+          title="Report Card PDF">
+        </iframe>
+      </div>
 
       <!-- PDF error notice -->
       <div class="src-pdf-error-notice" *ngIf="pdfLoadError && !loadingPdf">

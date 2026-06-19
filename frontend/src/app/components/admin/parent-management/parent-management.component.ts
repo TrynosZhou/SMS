@@ -39,6 +39,7 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
   editParent: any = null;
   phoneNumberError = '';
   emailError = '';
+  createEmailError = '';
 
   activeAdminTab: 'manage' | 'create' | 'reset' = 'manage';
 
@@ -67,6 +68,8 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
   private resetParentEmailSearchTimeout: any = null;
   private alertDismissTimer: ReturnType<typeof setTimeout> | null = null;
   private parentsLoadInFlight = false;
+  private studentSearchDebounce: ReturnType<typeof setTimeout> | null = null;
+  private studentSearchRequestId = 0;
 
   constructor(
     private parentService: ParentService,
@@ -147,6 +150,9 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
     }
     if (this.resetParentEmailSearchTimeout) {
       clearTimeout(this.resetParentEmailSearchTimeout);
+    }
+    if (this.studentSearchDebounce) {
+      clearTimeout(this.studentSearchDebounce);
     }
     this.destroy$.next();
     this.destroy$.complete();
@@ -249,18 +255,35 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
     this.activeAdminTab = tab;
     this.error = '';
     this.success = '';
+    this.createEmailError = '';
     this.createdParentTempPassword = '';
     this.resetParentTempPassword = '';
+  }
+
+  onCreateEmailInput(): void {
+    if (this.createEmailError) {
+      this.createEmailError = '';
+      this.cdr.markForCheck();
+    }
+  }
+
+  private isDuplicateEmailError(err: any): boolean {
+    const code = err?.error?.code;
+    const message = String(err?.error?.message || '').toLowerCase();
+    return code === 'EMAIL_ALREADY_EXISTS'
+      || message.includes('already registered')
+      || message.includes('already exists');
   }
 
   createParentAccount() {
     this.error = '';
     this.success = '';
+    this.createEmailError = '';
     this.createdParentTempPassword = '';
 
     const firstName = (this.createParentForm.firstName || '').trim();
     const lastName = (this.createParentForm.lastName || '').trim();
-    const email = (this.createParentForm.email || '').trim();
+    const email = (this.createParentForm.email || '').trim().toLowerCase();
     if (!firstName || !lastName || !email) {
       this.error = 'First name, last name, and email are required';
       this.cdr.markForCheck();
@@ -354,10 +377,14 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
       },
       error: (err: any) => {
         const status = err?.status ?? 0;
-        const msg = status === 0 || status === 502
+        let msg = status === 0 || status === 502
           ? 'Backend unavailable. Run the backend with npm run dev in the backend folder (port 3000).'
           : (err.error?.message || 'Failed to create parent');
-        this.showError(msg);
+        if (this.isDuplicateEmailError(err)) {
+          msg = err.error?.message || 'This email address is already registered. Please use a different email or reset the existing parent account.';
+          this.createEmailError = msg;
+        }
+        this.showError(msg, this.isDuplicateEmailError(err) ? 0 : 7000);
       }
     });
   }
@@ -571,29 +598,69 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
   }
 
   searchStudents() {
+    const q = (this.studentSearchQuery || '').trim();
     if (!this.selectedParent) {
-      this.error = 'Please select a parent first';
-      setTimeout(() => this.error = '', 5000);
+      this.showError('Please select a parent first');
       return;
     }
-    if (!this.studentSearchQuery || !this.studentSearchQuery.trim()) {
-      this.error = 'Enter a Student ID or name to search';
-      setTimeout(() => this.error = '', 5000);
+    if (q.length < 2) {
+      this.showError('Enter at least 2 characters to search');
+      return;
+    }
+    if (this.studentSearchDebounce) {
+      clearTimeout(this.studentSearchDebounce);
+      this.studentSearchDebounce = null;
+    }
+    this.runStudentSearch(q);
+  }
+
+  onStudentSearchInput(value: string): void {
+    this.studentSearchQuery = value;
+    if (this.studentSearchDebounce) {
+      clearTimeout(this.studentSearchDebounce);
+    }
+    const q = (value || '').trim();
+    if (!this.selectedParent || q.length < 2) {
+      this.studentsSearchResults = [];
+      this.selectedStudentIds = new Set<string>();
+      this.searchingStudents = false;
+      this.cdr.markForCheck();
       return;
     }
     this.searchingStudents = true;
-    this.studentsSearchResults = [];
-    this.selectedStudentIds = new Set<string>();
-    this.parentService.searchStudents(this.studentSearchQuery.trim()).subscribe({
+    this.cdr.markForCheck();
+    this.studentSearchDebounce = setTimeout(() => {
+      this.studentSearchDebounce = null;
+      this.runStudentSearch(q);
+    }, 300);
+  }
+
+  private runStudentSearch(query: string): void {
+    const requestId = ++this.studentSearchRequestId;
+    this.searchingStudents = true;
+    this.cdr.markForCheck();
+    this.parentService.searchStudents(query).pipe(
+      finalize(() => {
+        if (requestId === this.studentSearchRequestId) {
+          this.searchingStudents = false;
+          this.cdr.markForCheck();
+        }
+      })
+    ).subscribe({
       next: (response: any) => {
+        if (requestId !== this.studentSearchRequestId) {
+          return;
+        }
         this.studentsSearchResults = response.students || [];
         this.selectedStudentIds = new Set<string>();
-        this.searchingStudents = false;
+        this.cdr.markForCheck();
       },
       error: (err: any) => {
-        this.searchingStudents = false;
-        this.error = err.error?.message || 'Failed to search students';
-        setTimeout(() => this.error = '', 5000);
+        if (requestId !== this.studentSearchRequestId) {
+          return;
+        }
+        this.studentsSearchResults = [];
+        this.showError(err.error?.message || 'Failed to search students');
       }
     });
   }

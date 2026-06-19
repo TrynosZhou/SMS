@@ -19,6 +19,31 @@ const generateTemporaryPassword = () => {
   return `Temp-${randomBytes(4).toString('hex')}-${Date.now().toString().slice(-4)}`;
 };
 
+const EMAIL_ALREADY_EXISTS_MESSAGE =
+  'This email address is already registered. Please use a different email or reset the existing parent account.';
+
+async function findParentAndUserByEmail(email: string): Promise<{ parent: Parent | null; user: User | null }> {
+  const normalized = String(email || '').trim().toLowerCase();
+  if (!normalized) {
+    return { parent: null, user: null };
+  }
+
+  const parentRepository = AppDataSource.getRepository(Parent);
+  const userRepository = AppDataSource.getRepository(User);
+
+  const parent = await parentRepository
+    .createQueryBuilder('parent')
+    .where('LOWER(TRIM(parent.email)) = :email', { email: normalized })
+    .getOne();
+
+  const user = await userRepository
+    .createQueryBuilder('user')
+    .where('LOWER(TRIM(user.email)) = :email', { email: normalized })
+    .getOne();
+
+  return { parent, user };
+}
+
 async function resolveStudentForParentMode(req: AuthRequest): Promise<Student | null> {
   if (!req.user) return null;
 
@@ -259,9 +284,12 @@ export const adminCreateParent = async (req: AuthRequest, res: Response) => {
     const parentRepository = AppDataSource.getRepository(Parent);
     const userRepository = AppDataSource.getRepository(User);
 
-    const existingParent = await parentRepository.findOne({ where: { email: trimmedEmail } });
-    if (existingParent) {
-      return res.status(400).json({ message: 'A parent record already exists for this email' });
+    const { parent: existingParent, user: existingUserByEmail } = await findParentAndUserByEmail(trimmedEmail);
+    if (existingParent || existingUserByEmail) {
+      return res.status(400).json({
+        message: EMAIL_ALREADY_EXISTS_MESSAGE,
+        code: 'EMAIL_ALREADY_EXISTS',
+      });
     }
 
     let normalizedPhone: string | null = null;
@@ -277,11 +305,6 @@ export const adminCreateParent = async (req: AuthRequest, res: Response) => {
     let plainPassword = '';
 
     if (createAccount) {
-      const existingUser = await userRepository.findOne({ where: { email: trimmedEmail } });
-      if (existingUser) {
-        return res.status(400).json({ message: 'A user account already exists for this email' });
-      }
-
       const passwordFromRequest = String(password || '').trim();
       if (passwordFromRequest) {
         plainPassword = passwordFromRequest;
@@ -346,6 +369,12 @@ export const adminCreateParent = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error creating parent (admin):', error);
+    if (error?.code === '23505') {
+      return res.status(400).json({
+        message: EMAIL_ALREADY_EXISTS_MESSAGE,
+        code: 'EMAIL_ALREADY_EXISTS',
+      });
+    }
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };
@@ -652,17 +681,39 @@ export const searchStudents = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Search query is required' });
     }
 
-    const studentRepository = AppDataSource.getRepository(Student);
-
     const q = String(query).trim();
+    if (q.length < 2) {
+      return res.status(400).json({ message: 'Enter at least 2 characters to search' });
+    }
 
-    const students = await studentRepository
+    const studentRepository = AppDataSource.getRepository(Student);
+    const qb = studentRepository
       .createQueryBuilder('student')
-      .leftJoinAndSelect('student.classEntity', 'classEntity')
-      .where(
-        '(LOWER(student.studentNumber) LIKE LOWER(:query) OR LOWER(student.firstName) LIKE LOWER(:query) OR LOWER(student.lastName) LIKE LOWER(:query) OR LOWER(CONCAT(student.firstName, \' \', student.lastName)) LIKE LOWER(:query))',
-        { query: `%${q}%` }
-      )
+      .leftJoinAndSelect('student.classEntity', 'classEntity');
+
+    const likePattern = `%${q}%`;
+    const nameParts = q.split(/\s+/).filter(Boolean);
+
+    if (nameParts.length >= 2) {
+      qb.where(
+        '(student.firstName ILIKE :firstPart AND student.lastName ILIKE :lastPart)',
+        { firstPart: `%${nameParts[0]}%`, lastPart: `%${nameParts.slice(1).join(' ')}%` }
+      );
+    } else if (/^[a-zA-Z0-9-]+$/.test(q)) {
+      qb.where(
+        '(student.studentNumber ILIKE :prefix OR student.firstName ILIKE :like OR student.lastName ILIKE :like)',
+        { prefix: `${q}%`, like: likePattern }
+      );
+    } else {
+      qb.where(
+        '(student.studentNumber ILIKE :like OR student.firstName ILIKE :like OR student.lastName ILIKE :like)',
+        { like: likePattern }
+      );
+    }
+
+    const students = await qb
+      .orderBy('student.lastName', 'ASC')
+      .addOrderBy('student.firstName', 'ASC')
       .limit(20)
       .getMany();
 

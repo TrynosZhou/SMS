@@ -68,7 +68,7 @@ function examTypeLabel(examType: string): string {
   return examType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** Mark Obtained, % Score, and Grade: blue bold only */
+/** Mark Obtained and Grade: blue bold only */
 const SCORE_BLUE = '#2563eb';
 const GRADE_PILL_BLUE = { bg: '#dbeafe', text: SCORE_BLUE };
 
@@ -85,12 +85,11 @@ function subjectPercentScore(score: number, maxScore: number, isNa: boolean): nu
   return Math.round((score / maxScore) * 100);
 }
 
-/** Fixed column widths (px) — total 670px; do not squeeze below these. */
-const TABLE_COL_WIDTHS_PX = [160, 60, 90, 90, 80, 80, 110] as const;
-const TABLE_TOTAL_WIDTH_PX = TABLE_COL_WIDTHS_PX.reduce((a, b) => a + b, 0);
-const SUBJECT_COL_MIN_PX = 140;
-const CODE_COL_MIN_PX = 55;
-const GRADE_PILL_MIN_PX = 90;
+/** Relative column weights — scaled to full table width (code wide enough for header). */
+const TABLE_COL_WEIGHTS = [108, 72, 84, 84, 70, 128] as const;
+const SUBJECT_COL_MIN_PX = 88;
+const CODE_COL_MIN_PX = 58;
+const GRADE_PILL_MIN_PX = 96;
 
 const TABLE_HEADERS = [
   'Subject',
@@ -98,7 +97,6 @@ const TABLE_HEADERS = [
   'Mark Obtained',
   'Possible Mark',
   'Class Avg',
-  '% Score',
   'Grade'
 ] as const;
 
@@ -128,57 +126,70 @@ export function resolveLayoutMetrics(
   const longRemarks = remarksCharCount > 280;
   if (subjectCount >= 14 || (subjectCount >= 10 && longRemarks)) {
     return {
-      bannerH: 54,
-      tableRowMinH: 24,
-      tableHeaderH: 28,
-      sectionBarH: 18,
-      summaryH: 38,
-      infoRowMaxH: 32,
-      remarkBlockGap: 5,
-      remarkLabelH: 10,
-      remarkMinBoxH: 26,
-      remarkMaxTextH: 28,
-      remarkPadY: 8,
-      cardBottomPad: 4
+      bannerH: 72,
+      tableRowMinH: 28,
+      tableHeaderH: 30,
+      sectionBarH: 20,
+      summaryH: 44,
+      infoRowMaxH: 36,
+      remarkBlockGap: 8,
+      remarkLabelH: 11,
+      remarkMinBoxH: 36,
+      remarkMaxTextH: 36,
+      remarkPadY: 9,
+      cardBottomPad: 6
     };
   }
   if (subjectCount >= 10 || longRemarks) {
     return {
-      bannerH: 60,
-      tableRowMinH: 28,
-      tableHeaderH: 30,
-      sectionBarH: 20,
-      summaryH: 42,
-      infoRowMaxH: 36,
-      remarkBlockGap: 6,
-      remarkLabelH: 11,
-      remarkMinBoxH: 30,
-      remarkMaxTextH: 40,
-      remarkPadY: 8,
-      cardBottomPad: 4
+      bannerH: 88,
+      tableRowMinH: 34,
+      tableHeaderH: 34,
+      sectionBarH: 24,
+      summaryH: 50,
+      infoRowMaxH: 42,
+      remarkBlockGap: 10,
+      remarkLabelH: 12,
+      remarkMinBoxH: 44,
+      remarkMaxTextH: 52,
+      remarkPadY: 10,
+      cardBottomPad: 8
     };
   }
   return {
-    bannerH: 68,
-    tableRowMinH: 36,
-    tableHeaderH: 36,
-    sectionBarH: 22,
-    summaryH: 48,
-    infoRowMaxH: 40,
-    remarkBlockGap: 8,
+    bannerH: 96,
+    tableRowMinH: 38,
+    tableHeaderH: 38,
+    sectionBarH: 26,
+    summaryH: 54,
+    infoRowMaxH: 46,
+    remarkBlockGap: 12,
     remarkLabelH: 12,
-    remarkMinBoxH: 40,
-    remarkMaxTextH: 56,
-    remarkPadY: 10,
-    cardBottomPad: 6
+    remarkMinBoxH: 48,
+    remarkMaxTextH: 64,
+    remarkPadY: 12,
+    cardBottomPad: 10
   };
 }
 
 function getTableColWidths(innerW: number): number[] {
-  const colWidths: number[] = TABLE_COL_WIDTHS_PX.map((w) => w);
-  colWidths[1] = Math.max(CODE_COL_MIN_PX, colWidths[1]);
-  const extraTableW = Math.max(0, innerW - TABLE_TOTAL_WIDTH_PX);
-  colWidths[0] = Math.max(SUBJECT_COL_MIN_PX, colWidths[0] + extraTableW);
+  const weightSum = TABLE_COL_WEIGHTS.reduce((a, b) => a + b, 0);
+  const colWidths = TABLE_COL_WEIGHTS.map((w, i) =>
+    i < TABLE_COL_WEIGHTS.length - 1 ? Math.floor((w / weightSum) * innerW) : 0
+  );
+  colWidths[5] = innerW - colWidths.slice(0, 5).reduce((a, b) => a + b, 0);
+
+  if (colWidths[1] < CODE_COL_MIN_PX) {
+    const deficit = CODE_COL_MIN_PX - colWidths[1];
+    colWidths[1] = CODE_COL_MIN_PX;
+    colWidths[0] = Math.max(SUBJECT_COL_MIN_PX, colWidths[0] - deficit);
+  }
+
+  const sum = colWidths.reduce((a, b) => a + b, 0);
+  if (sum !== innerW) {
+    colWidths[5] = Math.max(GRADE_PILL_MIN_PX, colWidths[5] + (innerW - sum));
+  }
+
   return colWidths;
 }
 
@@ -284,14 +295,16 @@ function drawTableHeaderLabel(
   align: 'left' | 'center' = 'center'
 ) {
   const upper = label.toUpperCase();
-  const textW = Math.max(10, w - CELL_PAD * 2);
-  doc.fontSize(11).font('Helvetica-Bold').fillColor(HEADER_LABEL);
-  const lineH = doc.currentLineHeight(true) || 11;
-  doc.text(upper, x + CELL_PAD, y + (h - lineH) / 2, {
+  const pad = label === 'Code' ? 6 : CELL_PAD;
+  const textW = Math.max(10, w - pad * 2);
+  const fontSize = label === 'Code' && w < 62 ? 10 : 11;
+  doc.fontSize(fontSize).font('Helvetica-Bold').fillColor(HEADER_LABEL);
+  const lineH = doc.currentLineHeight(true) || fontSize;
+  doc.text(upper, x + pad, y + (h - lineH) / 2, {
     width: textW,
     align,
     lineBreak: false,
-    characterSpacing: 0.44
+    characterSpacing: label === 'Code' ? 0.2 : 0.44
   });
 }
 
@@ -365,10 +378,9 @@ function drawSubjectCell(
   colW: number,
   rowH: number
 ) {
-  const effectiveW = Math.max(SUBJECT_COL_MIN_PX, colW);
   doc.fontSize(11).font('Helvetica').fillColor(VALUE_DARK);
   doc.text(text, x + CELL_PAD, y + CELL_PAD, {
-    width: effectiveW - CELL_PAD * 2,
+    width: Math.max(20, colW - CELL_PAD * 2),
     height: Math.max(8, rowH - CELL_PAD * 2),
     align: 'left',
     lineGap: 2,
@@ -382,10 +394,10 @@ function measureSubjectRowHeight(
   subjectColW: number,
   minRowH: number
 ): number {
-  const effectiveW = Math.max(SUBJECT_COL_MIN_PX, subjectColW);
+  const effectiveW = subjectColW;
   doc.fontSize(11).font('Helvetica');
   const textH = doc.heightOfString(subjectName, {
-    width: effectiveW - CELL_PAD * 2,
+    width: Math.max(20, effectiveW - CELL_PAD * 2),
     lineGap: 2
   });
   return Math.max(minRowH, Math.ceil(textH) + CELL_PAD * 2);
@@ -504,6 +516,8 @@ export interface ReportCardLayoutOptions {
   cardX?: number;
   cardY?: number;
   cardW?: number;
+  /** Extra space between the results table and remarks (fills portrait page like print sample). */
+  preRemarksGap?: number;
 }
 
 export function renderReportCardLayout(
@@ -643,7 +657,7 @@ export function renderReportCardLayout(
 
   const colWidths = getTableColWidths(innerW);
   const tableX = innerX;
-  const tableTotalW = colWidths.reduce((a, b) => a + b, 0);
+  const tableTotalW = innerW;
   const tableHeaderH = metrics.tableHeaderH;
 
   doc.rect(tableX, y, tableTotalW, tableHeaderH).fillColor(TABLE_HEADER).fill();
@@ -671,17 +685,16 @@ export function renderReportCardLayout(
   reportCard.subjects.forEach((subject, index) => {
     const pct = parseFloat(String(subject.percentage || 0));
     const isNa = subject.grade === 'N/A';
-    const grade =
-      subject.grade && subject.grade !== 'N/A' ? subject.grade : isNa ? 'N/A' : getGrade(pct);
     const scoreNum = Math.round(subject.score);
     const maxNum = Math.round(subject.maxScore || 100);
+    const pctVal = subjectPercentScore(scoreNum, maxNum, isNa);
+    const gradePct = pctVal ?? (Number.isFinite(pct) ? pct : 0);
+    const grade =
+      subject.grade && subject.grade !== 'N/A' ? subject.grade : isNa ? 'N/A' : getGrade(gradePct);
     const scoreText = isNa ? 'N/A' : String(scoreNum);
     const maxText = isNa ? 'N/A' : String(maxNum);
     const avgText =
       subject.classAverage != null && !isNa ? String(Math.round(subject.classAverage)) : 'N/A';
-    const pctVal = subjectPercentScore(scoreNum, maxNum, isNa);
-    const pctText = pctVal == null ? 'N/A' : `${pctVal}%`;
-    const pctForColor = pctVal ?? 0;
 
     const rowH = measureSubjectRowHeight(doc, subject.subject, colWidths[0], metrics.tableRowMinH);
 
@@ -705,10 +718,7 @@ export function renderReportCardLayout(
     drawNowrapCell(doc, avgText, colX, y, colWidths[4], rowH, 'center');
     colX += colWidths[4];
 
-    drawColoredMark(doc, pctText, pctForColor, colX, y, colWidths[5], rowH, isNa);
-    colX += colWidths[5];
-
-    drawGradePill(doc, grade, colX, y, colWidths[6], rowH);
+    drawGradePill(doc, grade, colX, y, colWidths[5], rowH);
 
     drawHLine(doc, tableX, y + rowH, tableTotalW);
     colX = tableX;
@@ -748,6 +758,11 @@ export function renderReportCardLayout(
   y += summaryH;
   doc.strokeColor(BORDER).lineWidth(0.5);
   doc.roundedRect(innerX, tableBlockStartY, innerW, y - tableBlockStartY, SECTION_RADIUS).stroke();
+
+  const preRemarksGap = Math.max(0, options?.preRemarksGap ?? 0);
+  if (preRemarksGap > 0) {
+    y += preRemarksGap;
+  }
 
   const classTeacherRemarks =
     reportCard.remarks?.classTeacherRemarks?.trim() || 'No remarks provided.';
@@ -792,5 +807,5 @@ export function renderReportCardLayout(
     .stroke();
   doc.restore();
 
-  return y;
+  return cardHeight;
 }

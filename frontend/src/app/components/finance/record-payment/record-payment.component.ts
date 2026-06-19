@@ -104,9 +104,19 @@ export class RecordPaymentComponent implements OnInit, OnDestroy {
       this.applyQueryParams(params);
     });
 
+    this.route.params.pipe(takeUntil(this.destroy$)).subscribe((params) => {
+      if (params['studentId']) {
+        this.applyQueryParams({ studentId: params['studentId'] });
+      }
+    });
+
     activatePageLoad(this.router, this.destroy$, '/payments/record', () => {
       this.loadCurrentTerm();
       this.applyQueryParams(this.route.snapshot.queryParams);
+      const routeStudentId = this.route.snapshot.params['studentId'];
+      if (routeStudentId) {
+        this.applyQueryParams({ studentId: routeStudentId });
+      }
     });
   }
 

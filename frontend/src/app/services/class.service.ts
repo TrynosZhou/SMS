@@ -46,7 +46,7 @@ export class ClassService {
         const msg = error?.error?.message || error?.message || '';
         if (status === 0) {
           console.warn(
-            'Error loading classes: backend not reachable (status 0). Start the backend on port 3001.'
+            'Error loading classes: backend not reachable (status 0). Start the backend on port 3000.'
           );
         } else if (status === 504) {
           console.warn(
@@ -100,7 +100,7 @@ export class ClassService {
         const msg = error?.error?.message || error?.message || '';
         if (status === 0) {
           console.warn(
-            'Error loading classes (paginated): backend not reachable (status 0). Start the backend on port 3001.'
+            'Error loading classes (paginated): backend not reachable (status 0). Start the backend on port 3000.'
           );
         } else if (status === 504) {
           console.warn(

@@ -151,6 +151,9 @@
       </div>
 
       <div class="modal-body">
+        <div class="alert alert-success" *ngIf="forgotSuccess">{{ forgotSuccess }}</div>
+        <div class="alert alert-error" *ngIf="forgotError">{{ forgotError }}</div>
+
         <div class="form-group" *ngIf="forgotStep === 'verify'">
           <label>Role *</label>
           <select [(ngModel)]="forgotRole" name="forgotRole" class="form-control" required>
@@ -168,7 +171,8 @@
           </div>
           <div class="form-group" *ngIf="forgotRole === 'PARENT'">
             <label>Phone Number *</label>
-            <input type="text" [(ngModel)]="forgotPhoneNumber" name="forgotParentPhone" placeholder="Enter your phone number" />
+            <input type="text" [(ngModel)]="forgotPhoneNumber" name="forgotParentPhone" placeholder="07XXXXXXXX or +2637XXXXXXXX" />
+            <small class="form-text">Must match the phone number registered with the school for this parent.</small>
           </div>
 
           <div class="form-group" *ngIf="forgotRole === 'TEACHER'">
@@ -286,7 +290,7 @@
                 [placeholder]="signupRole === 'STUDENT' ? 'Enter your Student ID' : 'Choose a username'" 
                 required
                 autocomplete="username">
-              <small class="form-text" *ngIf="signupRole === 'STUDENT'">Your Student ID must exist in the system</small>
+              <small class="form-text" *ngIf="signupRole === 'STUDENT'">Enter your Student ID exactly as issued (e.g. JPS5072026). It must already exist in the school system.</small>
             </div>
             <div class="form-group" *ngIf="signupRole === 'PARENT'">
               <label>First Name *</label>

@@ -82,7 +82,7 @@ next: (data: any) => {
         
         if (err.status === 0 || err.status === undefined) {
           // Connection error (backend not running)
-          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3000.';
         } else if (err.error) {
           if (typeof err.error === 'string') {
             errorMessage = err.error;
@@ -211,7 +211,7 @@ this.subjects = []; // Clear subjects array on error
         
         if (err.status === 0 || err.status === undefined) {
           // Connection error (backend not running)
-          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3000.';
         } else if (err.status === 400) {
           // Bad Request - usually means subject has associated records
           if (err.error) {

@@ -64,7 +64,7 @@
         [href]="getWebsiteLink()"
         target="_blank"
         rel="noopener noreferrer"
-        class="top-nav-icon-btn top-nav-icon-btn--website top-nav-hide-mobile"
+        class="top-nav-icon-btn top-nav-icon-btn--website"
         title="Visit our website"
         aria-label="Visit our website">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -79,7 +79,7 @@
         [href]="getFacebookLink()"
         target="_blank"
         rel="noopener noreferrer"
-        class="top-nav-icon-btn top-nav-icon-btn--facebook top-nav-hide-mobile"
+        class="top-nav-icon-btn top-nav-icon-btn--facebook"
         title="Find us on Facebook"
         aria-label="Find us on Facebook">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -104,15 +104,6 @@
           <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
         </svg>
         <span class="top-nav-icon-badge" *ngIf="showMessagesNavBadge()">{{ getMessagesNavBadgeLabel() }}</span>
-      </a>
-
-      <a [routerLink]="getCalendarNavLink()" class="top-nav-icon-btn top-nav-hide-mobile" title="Calendar" aria-label="Calendar">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="18" rx="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
       </a>
 
       <div class="top-nav-view-as top-nav-hide-mobile-sm" *ngIf="canShowViewAsRole()">
@@ -538,7 +529,7 @@
       <div
         class="sidebar-menu"
         *ngIf="sidebarMenuVisible(
-          ['Financial Reports', 'Student Ledgers', 'Fees Collection', 'Unpaid Invoices', 'Exemption Report', 'Dining Hall', 'Transport'],
+          ['Financial Reports', 'Student Ledger', 'Fees Collection', 'Unpaid Invoices', 'Exemption Report', 'Dining Hall', 'Transport'],
           !isTeacher() && canAccessFinancialReportsMenu()
         )">
         <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('financialReports')" (click)="toggleMenu('financialReports')">
@@ -547,9 +538,9 @@
           <span class="sidebar-arrow" [class.expanded]="isMenuExpanded('financialReports')">▼</span>
         </div>
         <div class="sidebar-submenu" [class.expanded]="isMenuExpanded('financialReports')">
-          <a routerLink="/financial-reports/student-ledgers" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportStudentLedgers')">
+          <a routerLink="/financial-reports/student-ledger" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportStudentLedger')">
             <span class="sidebar-icon">📒</span>
-            <span class="sidebar-text">Student Ledgers</span>
+            <span class="sidebar-text">Student Ledger</span>
           </a>
           <a routerLink="/financial-reports/fees-collection" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessFinancePage('reportFeesCollection')">
             <span class="sidebar-icon">💵</span>

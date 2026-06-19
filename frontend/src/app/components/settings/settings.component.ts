@@ -1703,6 +1703,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         this.success = successMsg;
         this.markSettingsSaved();
         this.loading = false;
+        this.settingsService.requestBrandingRefresh();
         if (normalizedSchoolName) {
           sessionStorage.setItem('sms_schoolDisplayName', normalizedSchoolName);
         }
@@ -1748,7 +1749,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         let errorMessage = 'Failed to save settings. Please try again.';
         
         if (err.status === 0) {
-          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3000.';
         } else if (err.status === 413 || err.error?.status === 413) {
           errorMessage = 'The data being saved is too large. Please reduce the size of the school logo or other large data and try again.';
         } else if (err.error?.message) {

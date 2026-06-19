@@ -1228,7 +1228,7 @@ next: (settings: any) => {
         } else if (err.status === 401) {
           errorMessage = 'Authentication required. Please log in again.';
         } else if (err.status === 0 || err.status === undefined) {
-          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3000.';
         } else if (err.error) {
           if (typeof err.error === 'object' && err.error.message) {
             errorMessage = err.error.message;
@@ -1415,7 +1415,7 @@ next: (settings: any) => {
         console.error('Error deleting student:', err);
         let errorMessage = 'Failed to delete student';
         if (err?.status === 0 || err?.status === undefined) {
-          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+          errorMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3000.';
         } else if (err?.error) {
           if (typeof err.error === 'string') {
             errorMessage = err.error;

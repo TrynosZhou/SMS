@@ -203,6 +203,7 @@
   overflow: visible;
 }
 
+.top-nav-icon-btn--website svg,
 .top-nav-icon-btn--facebook svg {
   width: 18px;
   height: 18px;

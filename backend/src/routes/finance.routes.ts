@@ -47,6 +47,9 @@ import {
   getStudentStatement,
   getStudentStatementPdf,
   sendDebtorReminders,
+  getStudentLedgerReport,
+  getStudentLedgerReportPdf,
+  getSchoolTermsForReports,
 } from '../controllers/financialBooks.controller';
 
 const router = Router();
@@ -79,7 +82,37 @@ const FINANCIAL_BOOKS_VIEWERS = [
   UserRole.ACCOUNTANT,
 ];
 
+/** Admin, Director, Principal, and finance roles with reportStudentLedger permission */
+const STUDENT_LEDGER_VIEWERS = [
+  UserRole.ADMIN,
+  UserRole.SUPERADMIN,
+  UserRole.DIRECTOR,
+  UserRole.HEADMASTER,
+  UserRole.DEPUTY_HEADMASTER,
+  UserRole.ACCOUNTANT,
+  UserRole.DEMO_USER,
+];
+
 router.use(authenticate);
+
+router.get(
+  '/reports/school-terms',
+  authorize(...STUDENT_LEDGER_VIEWERS),
+  requireFinancePageView('reportStudentLedger'),
+  getSchoolTermsForReports
+);
+router.get(
+  '/reports/student-ledger',
+  authorize(...STUDENT_LEDGER_VIEWERS),
+  requireFinancePageView('reportStudentLedger'),
+  getStudentLedgerReport
+);
+router.get(
+  '/reports/student-ledger/pdf',
+  authorize(...STUDENT_LEDGER_VIEWERS),
+  requireFinancePageView('reportStudentLedger'),
+  getStudentLedgerReportPdf
+);
 
 // Allow SuperAdmin, Admin, Accountant, and Demo users to create single invoices
 router.post('/', authorize(...FINANCE_OPERATORS), requirePermission('finance', 'create'), createInvoice);

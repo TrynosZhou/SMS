@@ -570,7 +570,7 @@ if (status === 'New') {
           this.ensureSelectedGradeInList();
 
           if (data.photo) {
-            this.photoPreview = `http://localhost:3001${data.photo}`;
+            this.photoPreview = `http://localhost:3000${data.photo}`;
             this.student.photo = data.photo;
           } else {
             this.photoPreview = null;

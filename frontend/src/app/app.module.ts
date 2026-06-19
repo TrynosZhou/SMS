@@ -69,6 +69,7 @@ import { ExemptionsManagementComponent } from './components/finance/exemptions-m
 import { ExemptionReportComponent } from './components/finance/exemption-report/exemption-report.component';
 import { FinancialReportComponent } from './components/finance/financial-reports/financial-report.component';
 import { FeesCollectionReportComponent } from './components/finance/financial-reports/fees-collection-report.component';
+import { StudentLedgerReportComponent } from './components/finance/financial-reports/student-ledger-report.component';
 import { SendMessageComponent } from './components/messages/send-message/send-message.component';
 import { AccountantInboxComponent } from './components/messages/accountant-inbox/accountant-inbox.component';
 import { ParentSendMessageComponent } from './components/parent/parent-send-message/parent-send-message.component';
@@ -172,6 +173,7 @@ import { RbacManagementComponent } from './components/settings/rbac-management/r
     ExemptionReportComponent,
     FinancialReportComponent,
     FeesCollectionReportComponent,
+    StudentLedgerReportComponent,
 SendMessageComponent,
     AccountantInboxComponent,
     ParentSendMessageComponent,

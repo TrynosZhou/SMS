@@ -30,3 +30,14 @@ export function pdfBlobViewerUrl(blobUrl: string): string {
   }
   return `${blobUrl}#${pdfViewerFragment()}`;
 }
+
+/** A4 landscape report cards — fit entire page in the preview viewport. */
+export function pdfReportCardViewerUrl(blobUrl: string): string {
+  if (!blobUrl) {
+    return blobUrl;
+  }
+  if (blobUrl.includes('#')) {
+    return blobUrl;
+  }
+  return `${blobUrl}#view=Fit&toolbar=1&navpanes=0`;
+}

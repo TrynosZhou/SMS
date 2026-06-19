@@ -94,7 +94,7 @@ export class StudentTransferComponent implements OnInit, OnDestroy {
         error: (err: any) => {
           console.error('Error loading students:', err);
           if (err.status === 0 || err.message?.includes('Connection refused')) {
-            this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+            this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3000.';
           } else {
             this.error = err.error?.message || 'Failed to load students. Please try again.';
           }

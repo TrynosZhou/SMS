@@ -976,9 +976,13 @@
   transform: scale(0.97);
 }
 
-.rc-card-download:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+.rc-card-download--preview {
+  background: #ffffff;
+  border-color: #172554;
+}
+
+.rc-card-download--preview:hover:not(:disabled) {
+  background: #f8fafc;
 }
 
 .rc-card-download-icon {
@@ -999,9 +1003,9 @@
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 10px 14px 10px 12px;
-  min-width: 88px;
+  gap: 8px;
+  padding: 10px 12px 10px 10px;
+  min-width: 120px;
 }
 
 .rc-banner-center {
@@ -1125,27 +1129,30 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding: 10px 12px;
-  border-radius: 8px 8px 0 0;
+  border-radius: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .rc-table-wrap {
-  overflow-x: auto;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 .rc-subjects-table {
   width: 100%;
+  min-width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 12px;
 }
 
-.rc-col-subject { width: 22%; }
-.rc-col-code { width: 10%; }
-.rc-col-mark { width: 14%; }
-.rc-col-possible { width: 14%; }
+.rc-col-subject { width: 15%; }
+.rc-col-code { width: 12%; }
+.rc-col-mark { width: 15%; }
+.rc-col-possible { width: 15%; }
 .rc-col-avg { width: 13%; }
-.rc-col-pct { width: 14%; }
-.rc-col-grade { width: 13%; }
+.rc-col-grade { width: 30%; }
 
 .rc-subjects-table th {
   background: #1e40af;
@@ -1154,7 +1161,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 10px 12px;
+  padding: 10px 6px;
   border: 0.5px solid #e2e8f0;
   text-align: center;
   white-space: nowrap;
@@ -1163,12 +1170,14 @@
   text-overflow: ellipsis;
 }
 
-.rc-subjects-table th:first-child {
+.rc-subjects-table th:first-child,
+.rc-subjects-table td:first-child {
   text-align: left;
+  padding-left: 10px;
 }
 
 .rc-subjects-table td {
-  padding: 10px 12px;
+  padding: 10px 6px;
   border: 0.5px solid #e2e8f0;
   color: #1e293b;
   font-weight: 500;
@@ -1178,10 +1187,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.rc-subjects-table td:first-child {
-  text-align: left;
 }
 
 .rc-subjects-table tbody tr {

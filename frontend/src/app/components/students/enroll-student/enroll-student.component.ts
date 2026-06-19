@@ -479,7 +479,7 @@ if (!confirmed) return;
       error: (err: any) => {
         let msg = 'Failed to delete student';
         if (err?.status === 0 || err?.status === undefined) {
-          msg = 'Cannot connect to server. Please ensure the backend server is running on port 3001.';
+          msg = 'Cannot connect to server. Please ensure the backend server is running on port 3000.';
         } else if (err?.error) {
           if (typeof err.error === 'string') msg = err.error;
           else if (err.error.message) msg = err.error.message;

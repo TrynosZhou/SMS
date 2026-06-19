@@ -14,6 +14,7 @@ import { forkJoin, of } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged, finalize, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { activatePageLoad } from '../../../utils/route-activation';
+import { pdfReportCardViewerUrl } from '../../../utils/pdf-preview.util';
 import { computeCoreAverageFromReportSubjects } from '../../../utils/mark-sheet-subject-order';
 import { buildHeadmasterRemarkFromCard } from '../../../utils/headmaster-remarks.util';
 
@@ -922,6 +923,34 @@ if (err.status === 0) {
         this.parentBalanceCheckInProgress = false;
         this.cdr.markForCheck();
 }
+    });
+  }
+
+  previewPDF(reportCard: any) {
+    if (!reportCard?.student?.id || !this.selectedClass || !this.selectedExamType || !this.selectedTerm) {
+      this.error = 'Invalid report card data or missing class/term/exam type';
+      return;
+    }
+
+    this.examService.downloadAllReportCardsPDF(
+      this.selectedClass,
+      this.selectedExamType,
+      this.selectedTerm,
+      reportCard.student.id
+    ).subscribe({
+      next: (blob: Blob) => {
+        if (!blob.size) {
+          this.error = 'Received empty PDF file';
+          return;
+        }
+        const url = window.URL.createObjectURL(blob);
+        window.open(pdfReportCardViewerUrl(url), '_blank', 'noopener,noreferrer');
+        setTimeout(() => window.URL.revokeObjectURL(url), 120000);
+      },
+      error: (err: any) => {
+        this.error = err.error?.message || err.message || 'Failed to preview PDF';
+        this.cdr.markForCheck();
+      }
     });
   }
 
@@ -1888,6 +1917,17 @@ if (err.status === 0) {
   /** Grade pill: blue bold only */
   getGradePillClass(_grade: string | undefined): string {
     return 'rc-grade-pill rc-grade-pill--blue';
+  }
+
+  getSubjectGradeLabel(subject: any): string {
+    if (subject?.grade === 'N/A') {
+      return 'N/A';
+    }
+    const existing = String(subject?.grade || '').trim();
+    if (existing) {
+      return existing;
+    }
+    return this.getOverallGradeFromAverage(this.getSubjectPercentValue(subject));
   }
 
   getSubjectPercentScore(subject: any): string {
