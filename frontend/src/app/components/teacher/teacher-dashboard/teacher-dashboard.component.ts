@@ -324,7 +324,6 @@ export class TeacherDashboardComponent implements OnInit, OnDestroy {
       { key: 'subjects', name: 'Subjects', route: '/subjects', icon: '📚', description: 'View subject details' },
       { key: 'exams', name: 'Exams', route: '/exams', icon: '📝', description: 'Manage exams and assessments' },
       { key: 'reportCards', name: 'Report Cards', route: '/report-cards', icon: '📊', description: 'View and generate report cards' },
-      { key: 'rankings', name: 'Rankings', route: '/rankings', icon: '🏆', description: 'View student rankings' },
       { key: 'recordBook', name: 'Record Book', route: '/teacher/record-book', icon: '📖', description: 'Enter and view marks' },
       { key: 'attendance', name: 'Attendance', route: '/attendance', icon: '✅', description: 'Manage student attendance' },
       { key: 'finance', name: 'Finance', route: '/invoices', icon: '💰', description: 'View financial information' },

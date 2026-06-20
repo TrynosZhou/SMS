@@ -39,68 +39,125 @@ function parseAverage(value: string | number | undefined): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
-/** Build a performance-based head's remark with the headmaster's name appended. */
+function hashSeed(text: string): number {
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = (Math.imul(31, hash) + text.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+function pickVariant(seed: string, variants: string[]): string {
+  if (!variants.length) return '';
+  return variants[hashSeed(seed) % variants.length];
+}
+
+function withSignature(text: string, signature: string): string {
+  return signature ? `${text}${signature}` : text;
+}
+
+function subjectLabel(sub: HeadmasterRemarkSubject): string {
+  return String(sub.subject || sub.name || sub.subjectName || '').trim();
+}
+
+/** Build a motivating, performance-based head's remark with the headmaster's name appended. */
 export function generateHeadmasterRemark(input: HeadmasterRemarkInput): string {
   const headName = String(input.headmasterName || '').trim();
   const studentName = String(input.studentName || '').trim();
+  const displayName = studentName || 'The learner';
   const namePart = studentName ? ` by ${studentName}` : '';
   const signature = headName ? `. ${headName}` : '';
+  const seed = `${studentName}|${input.overallAverage}|${(input.subjects || []).length}`;
 
   const assessedSubjects = getAssessedSubjects(input.subjects);
+  const subjectPercentages = assessedSubjects.map((sub) => getSubjectPercentage(sub));
   const failedSubjects = assessedSubjects.filter((sub) => getSubjectPercentage(sub) < 50);
-  const allSubjectsUnder50 = assessedSubjects.length > 0 && failedSubjects.length === assessedSubjects.length;
-  const someSubjectsUnder50 = assessedSubjects.length > 0 && failedSubjects.length > 0 && failedSubjects.length < assessedSubjects.length;
+  const allSubjectsUnder50 =
+    assessedSubjects.length > 0 && subjectPercentages.every((pct) => pct < 50);
+  const someSubjectsUnder50 =
+    assessedSubjects.length > 0 && failedSubjects.length > 0 && !allSubjectsUnder50;
   const average = parseAverage(input.overallAverage);
 
+  // Reserved ONLY when every assessed subject is below 50%.
   if (allSubjectsUnder50) {
-    return `The learner requires urgent and sustained support${namePart}. Close follow-up and serious commitment are essential for improvement${signature}`;
+    const urgentVariants = [
+      `The learner requires urgent and sustained support${namePart}. Close follow-up and serious commitment are essential for improvement`,
+      `Every subject result is below 50%${namePart ? ` for ${studentName}` : ''}. With focused support, regular practice, and close follow-up, meaningful improvement is still achievable`,
+      `Results across all subjects are below 50%${namePart}. Sustained effort, guidance, and a positive learning plan will help build stronger outcomes`
+    ];
+    return withSignature(pickVariant(seed, urgentVariants), signature);
   }
 
   if (someSubjectsUnder50) {
-    const criticallyLowSubjects = failedSubjects.filter((sub) => getSubjectPercentage(sub) < 30);
-    const subjectNames = failedSubjects
-      .map((sub) => sub.subject || sub.name || sub.subjectName)
-      .filter(Boolean)
-      .join(', ');
-
-    let performancePrefix = '';
-    if (average >= 75) {
-      performancePrefix = `A commendable overall performance${namePart}, however, serious attention is needed in ${subjectNames} where results are below expectation`;
-    } else if (average >= 65) {
-      performancePrefix = `Good overall performance${namePart}, but targeted support in ${subjectNames} is essential for a balanced academic profile`;
-    } else if (average >= 50) {
-      performancePrefix = `Satisfactory overall performance${namePart}, yet improvement is required in ${subjectNames}`;
-    } else {
-      performancePrefix = `Overall performance is below expected level${namePart}. Immediate intervention is required in ${subjectNames}`;
-    }
-
-    if (criticallyLowSubjects.length > 0) {
-      const criticalNames = criticallyLowSubjects
-        .map((sub) => sub.subject || sub.name || sub.subjectName)
-        .filter(Boolean)
-        .join(', ');
-      return `${performancePrefix}. Note that performance in ${criticalNames} is critically low${signature}`;
-    }
-
-    return `${performancePrefix}${signature}`;
+    const weakNames = failedSubjects.map(subjectLabel).filter(Boolean).join(', ');
+    const strongCount = assessedSubjects.length - failedSubjects.length;
+    const partialVariants = [
+      `A promising overall effort${namePart}. With extra focus and encouragement in ${weakNames}, ${displayName} can achieve a more balanced and confident profile`,
+      `${displayName} shows real potential${namePart ? '' : ''}${namePart}. Continued dedication in ${weakNames}, alongside strengths in other areas, will lead to stronger results`,
+      `Good progress is visible${namePart}. Targeted revision in ${weakNames} will help ${displayName} turn steady effort into even better achievements`,
+      `${displayName} is capable of excellent work${namePart ? '' : ''}${namePart}. Building consistency in ${weakNames} will complement ${strongCount > 0 ? 'the solid performance already shown elsewhere' : 'a growing work ethic'}`
+    ];
+    return withSignature(pickVariant(`${seed}|partial`, partialVariants), signature);
   }
 
   if (average >= 80) {
-    return `Excellent performance${namePart}. Keep up the outstanding performance${signature}`;
+    const variants = [
+      `Excellent performance${namePart}. Keep up the outstanding work and continue inspiring others with your dedication`,
+      `An exceptional result${namePart}. Your discipline, focus, and commitment are truly commendable—maintain this excellent standard`,
+      `Outstanding achievement${namePart}. You have shown remarkable ability and consistency; keep reaching for even greater heights`,
+      `Superb performance${namePart}. Your hard work is clearly paying off—continue with the same positive attitude and excellence`
+    ];
+    return withSignature(pickVariant(`${seed}|80`, variants), signature);
   }
+
   if (average >= 70) {
-    return `Very good performance${namePart}. Maintain this strong level of effort${signature}`;
+    const variants = [
+      `Very good performance${namePart}. Maintain this strong level of effort and you will continue to excel`,
+      `A commendable performance${namePart}. Your steady application and positive attitude are building a bright academic future`,
+      `Well done${namePart}. You are performing strongly—keep nurturing your talents and aiming higher`,
+      `Impressive results${namePart}. With continued focus and confidence, even greater success is within reach`
+    ];
+    return withSignature(pickVariant(`${seed}|70`, variants), signature);
   }
+
   if (average >= 60) {
-    return `Good results${namePart}. Continued hard work will yield even better outcomes${signature}`;
+    const variants = [
+      `Good results${namePart}. Continued hard work and consistency will yield even better outcomes`,
+      `A solid performance${namePart}. Keep building on this foundation with determination and you will go far`,
+      `Encouraging progress${namePart}. Your effort is showing—stay motivated and keep pushing forward`,
+      `Well-deserved success${namePart}. Maintain your positive habits and your results will continue to improve`
+    ];
+    return withSignature(pickVariant(`${seed}|60`, variants), signature);
   }
+
   if (average >= 50) {
-    return `Satisfactory performance${namePart}. Greater consistency and focus are encouraged${signature}`;
+    const variants = [
+      `Satisfactory performance${namePart}. With greater consistency and focus, you can move confidently to the next level`,
+      `A fair effort${namePart}. Keep working steadily—your potential is clear and improvement is within your reach`,
+      `Promising results${namePart}. Stay committed to your studies and you will see rewarding progress`,
+      `Good foundation${namePart}. Build on this with regular revision and a positive mindset for stronger outcomes`
+    ];
+    return withSignature(pickVariant(`${seed}|50`, variants), signature);
   }
+
   if (average >= 40) {
-    return `Performance is below expected level${namePart}. Increased effort and support at home and school are needed${signature}`;
+    const variants = [
+      `Encouraging signs of progress${namePart}. With sustained effort and support, stronger results are ahead`,
+      `${displayName} has ability and room to grow${namePart ? '' : ''}${namePart}. Keep working positively—improvement is achievable step by step`,
+      `A developing performance${namePart}. Stay focused, ask for help when needed, and believe in your capacity to improve`,
+      `There is clear potential${namePart}. Regular study habits and a can-do attitude will lead to better achievements`
+    ];
+    return withSignature(pickVariant(`${seed}|40`, variants), signature);
   }
-  return `The learner requires urgent and sustained support${namePart}. Close follow-up and serious commitment are essential for improvement${signature}`;
+
+  // Below 40% average but not all subjects under 50% — still motivating, never the urgent-all-failed template.
+  const growthVariants = [
+    `Keep believing in yourself${namePart}. With consistent effort, guidance, and determination, you can make meaningful progress`,
+    `${displayName} can rise to the challenge${namePart ? '' : ''}${namePart}. Focus on small daily improvements and your results will strengthen over time`,
+    `Every step forward counts${namePart}. Stay positive, work steadily, and seek support where needed—success is built gradually`,
+    `Your journey continues${namePart}. With patience, hard work, and encouragement, brighter results are absolutely possible`
+  ];
+  return withSignature(pickVariant(`${seed}|growth`, growthVariants), signature);
 }
 
 export function buildHeadmasterRemarkFromCard(card: any, headmasterName: string): string {
@@ -108,6 +165,6 @@ export function buildHeadmasterRemarkFromCard(card: any, headmasterName: string)
     studentName: card?.student?.name,
     headmasterName,
     overallAverage: card?.overallAverage,
-    subjects: card?.subjects,
+    subjects: card?.subjects
   });
 }

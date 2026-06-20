@@ -1,185 +1,246 @@
-<div class="integrations-page">
-  <div class="integrations-card">
-    <header class="integrations-header">
-      <span class="integrations-header__icon" aria-hidden="true">🔗</span>
-      <div class="integrations-header__text">
-        <h1>Integrations</h1>
-        <p>Manage external service integrations</p>
-      </div>
-    </header>
+<div class="int-page">
+  <div class="int-toast" *ngIf="toastMessage" [class.int-toast--error]="toastType === 'error'" role="status">
+    <span>{{ toastType === 'success' ? '✓' : '⚠' }}</span>
+    {{ toastMessage }}
+  </div>
 
-    <div class="integrations-stats" *ngIf="!loading">
-      <article class="integrations-stat integrations-stat--total">
-        <span class="integrations-stat__value">{{ stats.total }}</span>
-        <span class="integrations-stat__label">Total Integrations</span>
-      </article>
-      <article class="integrations-stat integrations-stat--active">
-        <span class="integrations-stat__value">{{ stats.active }}</span>
-        <span class="integrations-stat__label">Active</span>
-      </article>
-      <article class="integrations-stat integrations-stat--inactive">
-        <span class="integrations-stat__value">{{ stats.inactive }}</span>
-        <span class="integrations-stat__label">Inactive</span>
-      </article>
-      <article class="integrations-stat integrations-stat--errors">
-        <span class="integrations-stat__value">{{ stats.errors }}</span>
-        <span class="integrations-stat__label">Errors</span>
-      </article>
+  <header class="int-hero">
+    <div class="int-hero__main">
+      <span class="int-hero__eyebrow">System Administration</span>
+      <h1>Integrations</h1>
+      <p>Connect payment gateways and mobile money APIs so parents and students can pay school fees online.</p>
     </div>
-
-    <div class="integrations-stats integrations-stats--skeleton" *ngIf="loading" aria-busy="true">
-      <div class="integrations-stat-skel" *ngFor="let _ of [1,2,3,4]"></div>
+    <div class="int-hero__badge" aria-hidden="true">
+      <span class="int-hero__badge-icon">🔗</span>
+      <span class="int-hero__badge-text">API Hub</span>
     </div>
+  </header>
 
-    <div class="integrations-toolbar">
-      <button type="button" class="integrations-add-btn" (click)="openAddModal()">
-        + Add Integration
-      </button>
+  <div class="int-stats" *ngIf="!loading">
+    <article class="int-stat int-stat--total">
+      <span class="int-stat__value">{{ stats.total }}</span>
+      <span class="int-stat__label">Connected</span>
+    </article>
+    <article class="int-stat int-stat--active">
+      <span class="int-stat__value">{{ stats.active }}</span>
+      <span class="int-stat__label">Active</span>
+    </article>
+    <article class="int-stat int-stat--inactive">
+      <span class="int-stat__value">{{ stats.inactive }}</span>
+      <span class="int-stat__label">Inactive</span>
+    </article>
+    <article class="int-stat int-stat--error">
+      <span class="int-stat__value">{{ stats.errors }}</span>
+      <span class="int-stat__label">Errors</span>
+    </article>
+  </div>
+
+  <div class="int-stats int-stats--skel" *ngIf="loading" aria-busy="true">
+    <div class="int-stat-skel" *ngFor="let _ of [1,2,3,4]"></div>
+  </div>
+
+  <section class="int-connected" *ngIf="!loading && connectedIntegrations.length > 0">
+    <div class="int-section-head">
+      <h2>Your connections</h2>
+      <p>Manage credentials, test connectivity, and enable live payments.</p>
     </div>
-
-    <div class="integrations-empty" *ngIf="!loading && integrations.length === 0">
-      <span class="integrations-empty__icon" aria-hidden="true">⛓️‍💥</span>
-      <h2>No integrations yet</h2>
-      <p>Add an integration to connect external services such as SMS gateways, payment providers, or learning platforms.</p>
-    </div>
-
-    <div class="integrations-list" *ngIf="!loading && integrations.length > 0">
-      <article class="integrations-item" *ngFor="let item of integrations">
-        <div class="integrations-item__main">
-          <h3>{{ item.name }}</h3>
-          <p class="integrations-item__type">{{ item.integrationType }}</p>
-          <p class="integrations-item__desc" *ngIf="item.description">{{ item.description }}</p>
-          <span class="integrations-item__sandbox" *ngIf="item.testSandboxMode">Test / Sandbox</span>
+    <div class="int-connected-list">
+      <article class="int-connected-card" *ngFor="let item of connectedIntegrations">
+        <div
+          class="int-connected-card__logo"
+          [style.background]="getProviderAccent(item.providerId)">
+          {{ getProviderIcon(item.providerId) }}
         </div>
-        <span class="integrations-item__status" [class]="'is-' + item.status">
-          {{ statusLabel(item.status) }}
-        </span>
+        <div class="int-connected-card__body">
+          <div class="int-connected-card__top">
+            <h3>{{ item.name }}</h3>
+            <span class="int-pill" [class]="'int-pill--' + item.status">{{ statusLabel(item.status) }}</span>
+            <span class="int-pill int-pill--sandbox" *ngIf="item.testSandboxMode">Sandbox</span>
+          </div>
+          <p class="int-connected-card__meta">
+            {{ categoryLabel(item.integrationType) }}
+            <span *ngIf="item.lastTestedAt"> · Tested {{ item.lastTestedAt | date:'mediumDate' }}</span>
+          </p>
+          <div class="int-connected-card__keys">
+            <span *ngFor="let field of getProviderFieldsPreview(item.providerId)">
+              {{ field.label }}: {{ field.type === 'password' ? maskSecret(item.configuration[field.key]) : (item.configuration[field.key] || '—') }}
+            </span>
+          </div>
+        </div>
+        <div class="int-connected-card__actions">
+          <button type="button" class="int-btn int-btn--ghost" (click)="openEdit(item)">Configure</button>
+          <button type="button" class="int-btn int-btn--ghost" (click)="testConnection(item)" [disabled]="testing">
+            {{ testing ? 'Testing…' : 'Test' }}
+          </button>
+          <button
+            type="button"
+            class="int-btn"
+            [class.int-btn--success]="item.status !== 'active'"
+            [class.int-btn--warn]="item.status === 'active'"
+            (click)="toggleIntegrationStatus(item)">
+            {{ item.status === 'active' ? 'Disable' : 'Enable' }}
+          </button>
+          <button type="button" class="int-btn int-btn--danger-ghost" (click)="removeIntegration(item.id)">Disconnect</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="int-catalog">
+    <div class="int-section-head">
+      <h2>Available integrations</h2>
+      <p>Select a provider to connect PayPal, PayNow, InnBucks, EcoCash, One Money, Visa, and more.</p>
+    </div>
+
+    <div class="int-toolbar">
+      <div class="int-search-wrap">
+        <span class="int-search-icon" aria-hidden="true">🔍</span>
+        <input
+          type="search"
+          class="int-search"
+          [(ngModel)]="searchQuery"
+          placeholder="Search PayPal, EcoCash, Visa…"
+          aria-label="Search integrations" />
+      </div>
+      <div class="int-chips" role="tablist" aria-label="Integration categories">
         <button
           type="button"
-          class="integrations-item__remove"
-          (click)="removeIntegration(item.id)"
-          aria-label="Remove integration">
-          Remove
+          class="int-chip"
+          *ngFor="let cat of categories"
+          [class.int-chip--active]="activeCategory === cat.id"
+          (click)="setCategory(cat.id)"
+          role="tab"
+          [attr.aria-selected]="activeCategory === cat.id">
+          <span aria-hidden="true">{{ cat.icon }}</span>
+          {{ cat.label }}
         </button>
+      </div>
+    </div>
+
+    <div class="int-grid" *ngIf="!loading">
+      <article
+        class="int-provider-card"
+        *ngFor="let provider of filteredProviders"
+        [class.int-provider-card--connected]="isConnected(provider.id)">
+        <div class="int-provider-card__accent" [style.background]="provider.accent"></div>
+        <div class="int-provider-card__logo" [style.color]="provider.accent">{{ provider.icon }}</div>
+        <div class="int-provider-card__body">
+          <div class="int-provider-card__head">
+            <h3>{{ provider.name }}</h3>
+            <span class="int-tag">{{ categoryLabel(provider.category) }}</span>
+          </div>
+          <p>{{ provider.description }}</p>
+        </div>
+        <div class="int-provider-card__footer">
+          <span class="int-connected-badge" *ngIf="isConnected(provider.id)">
+            ✓ Connected
+          </span>
+          <button
+            type="button"
+            class="int-btn int-btn--primary"
+            *ngIf="!isConnected(provider.id)"
+            (click)="openConnect(provider)">
+            Connect
+          </button>
+          <button
+            type="button"
+            class="int-btn int-btn--outline"
+            *ngIf="isConnected(provider.id)"
+            (click)="openEdit(getIntegrationForProvider(provider.id)!)">
+            Configure
+          </button>
+        </div>
       </article>
     </div>
+
+    <div class="int-empty-filter" *ngIf="!loading && filteredProviders.length === 0">
+      <span>🔍</span>
+      <p>No integrations match your search. Try another category or keyword.</p>
+    </div>
+  </section>
+
+  <div class="int-note">
+    <strong>Note:</strong> Credentials are stored locally in this browser for configuration preview.
+    Production deployments should persist integrations securely on the server.
   </div>
 </div>
 
-<!-- Add Integration modal -->
-<div class="integrations-modal-backdrop" *ngIf="showAddModal" (click)="closeAddModal()"></div>
-<div class="integrations-modal" *ngIf="showAddModal" role="dialog" aria-modal="true" aria-labelledby="add-integration-title">
-  <div class="integrations-modal__content" (click)="$event.stopPropagation()">
-    <header class="integrations-modal__header">
-      <h2 id="add-integration-title">Add Integration</h2>
-      <button type="button" class="integrations-modal__close" (click)="closeAddModal()" aria-label="Close">×</button>
-    </header>
-    <form class="integrations-modal__form" (ngSubmit)="createIntegration()">
-      <div class="integrations-field">
-        <label for="int-type">Integration Type <span class="integrations-required">*</span></label>
-        <select id="int-type" [(ngModel)]="addForm.integrationType" name="intType" required>
-          <option *ngFor="let type of integrationTypes" [value]="type">{{ type }}</option>
-        </select>
-      </div>
-
-      <div class="integrations-field">
-        <label for="int-name">Name <span class="integrations-required">*</span></label>
-        <input
-          id="int-name"
-          type="text"
-          [(ngModel)]="addForm.name"
-          name="intName"
-          placeholder="Integration name"
-          required
-          autocomplete="off" />
-      </div>
-
-      <div class="integrations-field">
-        <label for="int-desc">Description</label>
-        <textarea
-          id="int-desc"
-          [(ngModel)]="addForm.description"
-          name="intDesc"
-          rows="4"
-          placeholder="Optional details about this integration"></textarea>
-      </div>
-
-      <div class="integrations-sandbox-row">
-        <div class="integrations-sandbox-row__text">
-          <span class="integrations-sandbox-row__label">Test/Sandbox Mode</span>
-          <span class="integrations-sandbox-row__hint">When on, credentials use your test environment</span>
+<!-- Configure / Connect modal -->
+<div class="int-modal-backdrop" *ngIf="showModal" (click)="closeModal()"></div>
+<div class="int-modal" *ngIf="showModal" role="dialog" aria-modal="true" [attr.aria-labelledby]="'int-modal-title'">
+  <div class="int-modal__panel" (click)="$event.stopPropagation()" *ngIf="selectedProvider">
+    <header class="int-modal__header">
+      <div class="int-modal__provider">
+        <span class="int-modal__logo" [style.background]="selectedProvider.accent">{{ selectedProvider.icon }}</span>
+        <div>
+          <h2 id="int-modal-title">{{ modalMode === 'connect' ? 'Connect' : 'Configure' }} {{ selectedProvider.name }}</h2>
+          <p>{{ selectedProvider.description }}</p>
         </div>
-        <label class="integrations-toggle" aria-label="Test/Sandbox Mode">
-          <input type="checkbox" [(ngModel)]="addForm.testSandboxMode" name="intSandbox" />
-          <span class="integrations-toggle__slider"></span>
+      </div>
+      <button type="button" class="int-modal__close" (click)="closeModal()" aria-label="Close">×</button>
+    </header>
+
+    <form class="int-modal__body" (ngSubmit)="saveIntegration()">
+      <div class="int-toggle-row">
+        <div>
+          <strong>Sandbox / test mode</strong>
+          <p>Use test credentials until you are ready for live payments.</p>
+        </div>
+        <label class="int-switch">
+          <input type="checkbox" [(ngModel)]="sandboxMode" name="sandboxMode" />
+          <span class="int-switch__slider"></span>
         </label>
       </div>
 
-      <section class="integrations-config-panel">
-        <button
-          type="button"
-          class="integrations-config-panel__header"
-          (click)="toggleConfigSection()"
-          [attr.aria-expanded]="configSectionExpanded"
-          aria-controls="integration-config-fields">
-          <span class="integrations-config-panel__title">Configuration</span>
-          <span class="integrations-config-panel__chevron" [class.is-collapsed]="!configSectionExpanded" aria-hidden="true">⌃</span>
-        </button>
-        <div
-          id="integration-config-fields"
-          class="integrations-config-panel__body"
-          *ngIf="configSectionExpanded">
-          <div class="integrations-field">
-            <label for="int-api-key">API Key</label>
-            <input
-              id="int-api-key"
-              type="text"
-              [(ngModel)]="addForm.configuration.apiKey"
-              name="intApiKey"
-              placeholder="API Key"
-              autocomplete="off" />
-          </div>
-          <div class="integrations-field">
-            <label for="int-api-secret">API Secret</label>
-            <input
-              id="int-api-secret"
-              type="password"
-              [(ngModel)]="addForm.configuration.apiSecret"
-              name="intApiSecret"
-              placeholder="API Secret"
-              autocomplete="off" />
-          </div>
-          <div class="integrations-field">
-            <label for="int-base-url">Base URL</label>
-            <input
-              id="int-base-url"
-              type="url"
-              [(ngModel)]="addForm.configuration.baseUrl"
-              name="intBaseUrl"
-              placeholder="https://api.example.com" />
-          </div>
-          <div class="integrations-field integrations-field--last">
-            <label for="int-webhook-url">Webhook URL</label>
-            <input
-              id="int-webhook-url"
-              type="url"
-              [(ngModel)]="addForm.configuration.webhookUrl"
-              name="intWebhookUrl"
-              placeholder="https://yourschool.example.com/webhooks/incoming" />
-          </div>
+      <div class="int-toggle-row">
+        <div>
+          <strong>Enable after saving</strong>
+          <p>Turn on this integration immediately for fee payments.</p>
         </div>
-      </section>
+        <label class="int-switch">
+          <input type="checkbox" [(ngModel)]="enableOnSave" name="enableOnSave" />
+          <span class="int-switch__slider"></span>
+        </label>
+      </div>
 
-      <p class="integrations-form-error" *ngIf="formError">{{ formError }}</p>
+      <fieldset class="int-fields">
+        <legend>API credentials</legend>
+        <div class="int-field" *ngFor="let field of selectedProvider.fields">
+          <label [for]="'field-' + field.key">
+            {{ field.label }}
+            <span class="int-required" *ngIf="field.required">*</span>
+          </label>
+          <p class="int-field-hint" *ngIf="field.hint">{{ field.hint }}</p>
+          <select
+            *ngIf="field.type === 'select'"
+            [id]="'field-' + field.key"
+            [(ngModel)]="configForm[field.key]"
+            [name]="field.key">
+            <option *ngFor="let opt of field.options" [value]="opt">{{ opt }}</option>
+          </select>
+          <input
+            *ngIf="field.type !== 'select'"
+            [id]="'field-' + field.key"
+            [type]="field.type"
+            [(ngModel)]="configForm[field.key]"
+            [name]="field.key"
+            [placeholder]="field.placeholder || ''"
+            autocomplete="off" />
+        </div>
+      </fieldset>
 
-      <footer class="integrations-modal__footer">
-        <button type="button" class="integrations-btn integrations-btn--cancel" (click)="closeAddModal()">Cancel</button>
-        <button
-          type="submit"
-          class="integrations-btn integrations-btn--create"
-          [disabled]="!canCreate || saving">
-          {{ saving ? 'Creating…' : 'Create' }}
+      <p class="int-form-error" *ngIf="formError">{{ formError }}</p>
+
+      <footer class="int-modal__footer">
+        <button type="button" class="int-btn int-btn--ghost" (click)="testConnectionFromModal()" [disabled]="testing || saving">
+          {{ testing ? 'Testing…' : 'Test connection' }}
         </button>
+        <div class="int-modal__footer-right">
+          <button type="button" class="int-btn int-btn--ghost" (click)="closeModal()">Cancel</button>
+          <button type="submit" class="int-btn int-btn--primary" [disabled]="saving">
+            {{ saving ? 'Saving…' : (modalMode === 'connect' ? 'Connect' : 'Save changes') }}
+          </button>
+        </div>
       </footer>
     </form>
   </div>

@@ -17,6 +17,7 @@ import { activatePageLoad } from '../../../utils/route-activation';
 import { pdfReportCardViewerUrl } from '../../../utils/pdf-preview.util';
 import { computeCoreAverageFromReportSubjects } from '../../../utils/mark-sheet-subject-order';
 import { buildHeadmasterRemarkFromCard } from '../../../utils/headmaster-remarks.util';
+import { buildClassTeacherRemarkFromCard } from '../../../utils/class-teacher-remarks.util';
 
 type GradeBandFilter = 'all' | 'outstanding' | 'good' | 'needs-support';
 @Component({
@@ -69,7 +70,6 @@ error = '';
   lastLoadedAt: Date | null = null;
   aiGeneratingMap: Map<string, boolean> = new Map();
   
-  // Form validation
   fieldErrors: any = {};
   touchedFields: Set<string> = new Set();
   
@@ -115,10 +115,7 @@ error = '';
   autoSavingRemarks = false;
   failedRemarksKeys: Set<string> = new Set();
   connectionBanner = '';
-  customClassTeacherPhrases: string[] = [];
-  newCustomPhrase = '';
-  schoolWidePhrases: string[] = [];
-
+  
   constructor(
     private examService: ExamService,
     private classService: ClassService,
@@ -145,42 +142,6 @@ error = '';
     this.isAdmin = user ? (user.role === 'admin' || user.role === 'superadmin') : false;
     // Teachers can view report cards but cannot download PDFs; hide download button for teachers
     this.canDownloadReportCard = !this.authService.hasRole('teacher');
-  }
-
-  buildBehaviorSuggestions(card: any): string[] {
-    const suggestions: string[] = [
-      'Demonstrates exemplary conduct and respect for peers and staff.',
-      'Consistently punctual and well-prepared for lessons; shows responsibility.',
-      'Shows leadership and collaborates effectively in group tasks.',
-      'Polite and courteous; follows school rules diligently.',
-      'Focused and attentive in class; maintains a positive attitude.',
-      'Works independently with minimal supervision; takes initiative.',
-      'Shows resilience and a growth mindset when facing challenges.',
-      'Improving organization and time management; keep practicing routines.',
-      'Needs to participate more actively and ask for help when unsure.',
-      'Friendly and cooperative; contributes to a positive class environment.',
-      'Occasional lapses in attention; would benefit from minimizing distractions.',
-      'Needs more consistency in completing assigned responsibilities on time.',
-      'Behaviour improving; continue to practice self-discipline.',
-      'Respectful but can be talkative; should manage classroom chatter.',
-      'Displays honesty and integrity; a good role model.'
-    ];
-
-    return suggestions.slice(0, 15);
-  }
-
-  applyClassTeacherSuggestion(reportCard: any, suggestion: string) {
-    if (!this.canEditRemarks || !reportCard) return;
-    this.ensureRemarksObject(reportCard);
-    reportCard.remarks.classTeacherRemarks = String(suggestion || '').trim();
-    this.savedRemarks.delete(this.getRemarksKey(reportCard.student.id, 'classTeacher'));
-    this.failedRemarksKeys.delete(this.getRemarksKey(reportCard.student.id, 'classTeacher'));
-    if (this.autoSaveRemarksTimeout) {
-      clearTimeout(this.autoSaveRemarksTimeout);
-      this.autoSaveRemarksTimeout = null;
-    }
-    this.cdr.markForCheck();
-    this.autoSaveRemarks(reportCard);
   }
 
   private ensureRemarksObject(reportCard: any): void {
@@ -255,8 +216,7 @@ error = '';
     this.isAdmin = user ? user.role === 'admin' || user.role === 'superadmin' : false;
     this.isParent = this.authService.hasRole('parent');
 
-this.loadCustomPhrases();
-    this.loadSettings();
+this.loadSettings();
     this.loadTermOptions();
 
     const params = this.route.snapshot.queryParams;
@@ -359,89 +319,6 @@ this.loadCustomPhrases();
 
     // Otherwise treat as URL/path and let the browser try to load it.
     return v;
-  }
-
-  private loadCustomPhrases() {
-    try {
-      const raw = localStorage.getItem('reportCard_customClassTeacherPhrases');
-      const arr = raw ? JSON.parse(raw) : [];
-      this.customClassTeacherPhrases = Array.isArray(arr) ? arr.filter(x => typeof x === 'string' && x.trim()).slice(0, 100) : [];
-    } catch {
-      this.customClassTeacherPhrases = [];
-    }
-  }
-
-  private saveCustomPhrases() {
-    try {
-      const unique = Array.from(new Set(this.customClassTeacherPhrases.map(s => s.trim()).filter(Boolean)));
-      localStorage.setItem('reportCard_customClassTeacherPhrases', JSON.stringify(unique));
-      this.customClassTeacherPhrases = unique;
-    } catch {
-      // ignore storage errors
-    }
-  }
-
-  addCustomSuggestion() {
-    const text = (this.newCustomPhrase || '').trim();
-    if (!text) return;
-    if (!this.customClassTeacherPhrases.includes(text)) {
-      this.customClassTeacherPhrases.unshift(text);
-      this.saveCustomPhrases();
-      this.refreshAllSuggestionLists();
-    }
-    this.newCustomPhrase = '';
-  }
-
-  removeCustomSuggestion(index: number) {
-    if (index >= 0 && index < this.customClassTeacherPhrases.length) {
-      this.customClassTeacherPhrases.splice(index, 1);
-      this.saveCustomPhrases();
-      this.refreshAllSuggestionLists();
-    }
-  }
-
-  addSchoolPhrase(text?: string) {
-    if (!this.canEditRemarks) return;
-    const phrase = (text ?? this.newCustomPhrase ?? '').trim();
-    if (!phrase) return;
-    if (!this.schoolWidePhrases.includes(phrase)) {
-      const updated = [phrase, ...this.schoolWidePhrases].filter(Boolean);
-      // Optimistically update UI
-      this.schoolWidePhrases = Array.from(new Set(updated));
-      this.refreshAllSuggestionLists();
-      // Persist via settings service (partial update)
-      this.settingsService.updateSettings({ classTeacherPhrases: this.schoolWidePhrases }).subscribe({
-        next: () => {},
-        error: () => {
-          // Revert on error
-        }
-      });
-    }
-    this.newCustomPhrase = '';
-  }
-
-  private getCombinedSuggestions(card: any): string[] {
-    const base = this.buildBehaviorSuggestions(card);
-    const merged = [...this.customClassTeacherPhrases, ...this.schoolWidePhrases, ...base];
-    const seen = new Set<string>();
-    const dedup: string[] = [];
-    for (const s of merged) {
-      const t = s.trim();
-      if (t && !seen.has(t.toLowerCase())) {
-        seen.add(t.toLowerCase());
-        dedup.push(t);
-      }
-    }
-    return dedup.slice(0, 50);
-  }
-
-  private refreshAllSuggestionLists() {
-    if (!Array.isArray(this.reportCards)) return;
-    for (const card of this.reportCards) {
-      if (this.canEditRemarks) {
-        card.classTeacherSuggestions = this.getCombinedSuggestions(card);
-      }
-    }
   }
 
   loadTeacherInfo() {
@@ -563,10 +440,6 @@ const currentYear = new Date().getFullYear();
         this.schoolEmail = data.schoolEmail || '';
         this.academicYear = data.academicYear || String(new Date().getFullYear());
         this.headmasterName = data.headmasterName || '';
-        const phrases = Array.isArray(data.classTeacherPhrases) ? data.classTeacherPhrases : [];
-        this.schoolWidePhrases = phrases
-          .map((s: any) => typeof s === 'string' ? s.trim() : '')
-          .filter((s: string) => s.length > 0);
         this.gradeThresholds = data.gradeThresholds || {
           excellent: 90,
           veryGood: 80,
@@ -584,14 +457,12 @@ const currentYear = new Date().getFullYear();
           basic: 'BASIC',
           fail: 'UNCLASSIFIED'
         };
-        this.refreshAllSuggestionLists();
         this.cdr.markForCheck();
 },
       error: (err: any) => {
         // Use default values if settings fail to load
         this.currencySymbol = '$';
         this.headmasterName = '';
-        this.schoolWidePhrases = [];
         this.gradeThresholds = {
           excellent: 90,
           veryGood: 80,
@@ -832,10 +703,6 @@ if (err.status === 0) {
             card.exams = [];
           }
 
-          if (this.canEditRemarks) {
-            card.classTeacherSuggestions = this.getCombinedSuggestions(card);
-          }
-
           return card;
         });
         
@@ -856,6 +723,7 @@ if (err.status === 0) {
 
         // Generate head's remarks after averages are final.
         this.applyHeadmasterRemarksToCards(this.reportCards);
+        this.applyClassTeacherRemarksToCards(this.reportCards);
 
         // Sort report cards by class position in ascending order
         this.reportCards.sort((a: any, b: any) => {
@@ -1420,6 +1288,25 @@ if (err.status === 0) {
     this.autoSaveRemarks(reportCard);
   }
 
+  getCriteriaCompleteCount(): number {
+    let count = 0;
+    if (this.selectedClass) count++;
+    if (this.selectedTerm) count++;
+    if (this.selectedExamType) count++;
+    return count;
+  }
+
+  getSelectedClassName(): string {
+    if (this.isParent && this.parentStudentClassName) return this.parentStudentClassName;
+    const cls = this.classes.find((c) => c.id === this.selectedClass);
+    return cls ? cls.name : '';
+  }
+
+  getExamTypeLabel(): string {
+    const match = this.examTypes.find((t) => t.value === this.selectedExamType);
+    return match ? match.label : '';
+  }
+
   clearAlert(kind: 'success' | 'error'): void {
     if (kind === 'success') this.success = '';
     else this.error = '';
@@ -1662,60 +1549,63 @@ if (err.status === 0) {
     }
   }
 
+  private applyClassTeacherRemarksToCards(cards: any[]): void {
+    if (!this.canEditRemarks) return;
+    for (const card of cards) {
+      if (!card?.student) continue;
+      const existing = String(card.remarks?.classTeacherRemarks || '').trim();
+      const teacherSaved = this.isRemarksSaved(card.student.id, 'classTeacher');
+      if (teacherSaved && existing) continue;
+
+      const autoRemark = buildClassTeacherRemarkFromCard(card);
+      if (!autoRemark) continue;
+
+      if (!card.remarks) {
+        card.remarks = { classTeacherRemarks: null, headmasterRemarks: null };
+      }
+      if (!existing) {
+        card.remarks.classTeacherRemarks = autoRemark;
+        this.onRemarksChange(card, 'classTeacher');
+      }
+    }
+  }
+
   generateHeadmasterRemark(card: any): string {
     return buildHeadmasterRemarkFromCard(card, this.headmasterName);
   }
 
   generateAIRemark(reportCard: any, remarkType: 'classTeacher' | 'headmaster') {
     if (!reportCard || !reportCard.student) return;
-    
+
     const key = reportCard.student.id + '_' + remarkType;
     this.aiGeneratingMap.set(key, true);
-    
-    // Simulate AI processing delay
+    this.cdr.markForCheck();
+
     setTimeout(() => {
       let remark = '';
-      const studentName = reportCard.student.name || 'the student';
-      const avg = parseFloat(reportCard.overallAverage || '0');
-      
+
       if (remarkType === 'classTeacher') {
-        const behaviorOnlyRemarks = [
-          `${studentName} demonstrates good conduct, respect for others, and a positive attitude in class. Continued consistency in discipline and responsibility is encouraged.`,
-          `${studentName} is generally polite and cooperative with peers and teachers. Improving attentiveness and active participation will further strengthen character growth.`,
-          `${studentName} shows responsibility and responds well to guidance. Consistent self-discipline and time management should remain a priority.`,
-          `${studentName} contributes positively to the classroom environment and relates well with others. Keep building confidence, leadership, and good behaviour habits.`,
-          `${studentName} displays respectful behaviour and willingness to learn. Continued focus on punctuality, organization, and classroom conduct is recommended.`
-        ];
-        const randomIndex = Math.floor(Math.random() * behaviorOnlyRemarks.length);
-        remark = behaviorOnlyRemarks[randomIndex];
+        remark = buildClassTeacherRemarkFromCard(reportCard);
       } else {
-        // Headmaster AI remark is strictly marks/performance-based,
-        // and automatically addresses failed subjects (<50%) where present.
         remark = this.generateHeadmasterRemark(reportCard);
-        if (!remark) {
-          if (avg >= 80) remark = `Excellent performance by ${studentName}. Maintain this high standard.`;
-          else if (avg >= 70) remark = `Very good performance by ${studentName}. Keep working consistently.`;
-          else if (avg >= 60) remark = `${studentName} is making good progress. Continue applying effort for stronger outcomes.`;
-          else if (avg >= 50) remark = `${studentName}'s performance is satisfactory. More effort is needed to improve overall results.`;
-          else remark = `${studentName}'s results are below expectation and require urgent academic support.`;
-        }
       }
-      
-      if (!reportCard.remarks) {
-        reportCard.remarks = {};
-      }
-      
+
+      this.ensureRemarksObject(reportCard);
+
       if (remarkType === 'classTeacher') {
         reportCard.remarks.classTeacherRemarks = remark;
       } else {
         reportCard.remarks.headmasterRemarks = remark;
       }
-      
+
       this.onRemarksChange(reportCard, remarkType);
       this.aiGeneratingMap.set(key, false);
-      this.success = `AI ${remarkType === 'classTeacher' ? 'teacher' : 'headmaster'} remark generated!`;
-      setTimeout(() => this.success = '', 3000);
-    }, 1200);
+      this.success = remarkType === 'classTeacher'
+        ? 'Class teacher remark regenerated by AI.'
+        : 'Head\u2019s remark regenerated by AI.';
+      setTimeout(() => (this.success = ''), 3000);
+      this.cdr.markForCheck();
+    }, 400);
   }
 
   // Validation

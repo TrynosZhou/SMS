@@ -103,6 +103,15 @@ export class AttendanceReportsComponent implements OnInit, OnDestroy {
     };
   }
 
+  get statusBreakdown(): { key: 'present' | 'absent' | 'late' | 'excused'; label: string; count: number; cls: string }[] {
+    return [
+      { key: 'present', label: 'Present', count: this.attendanceByStatus.present, cls: 'present' },
+      { key: 'absent', label: 'Absent', count: this.attendanceByStatus.absent, cls: 'absent' },
+      { key: 'late', label: 'Late', count: this.attendanceByStatus.late, cls: 'late' },
+      { key: 'excused', label: 'Excused', count: this.attendanceByStatus.excused, cls: 'excused' },
+    ];
+  }
+
   get filterSummary(): { class: string; term?: string; dates?: string } | null {
     if (!this.hasReportData && !this.selectedClassId) return null;
     const cls = this.getClassName(this.selectedClassId) || '—';

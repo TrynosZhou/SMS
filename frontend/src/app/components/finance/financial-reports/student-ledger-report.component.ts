@@ -134,6 +134,17 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
     return !!this.lineFilter.trim() || this.typeFilter !== 'all';
   }
 
+  get selectedTermName(): string {
+    return this.terms.find((t) => t.id === this.selectedTermId)?.name || '';
+  }
+
+  get studentInitials(): string {
+    if (!this.report?.student) return '?';
+    const f = this.report.student.firstName?.[0] || '';
+    const l = this.report.student.lastName?.[0] || '';
+    return (f + l).toUpperCase() || '?';
+  }
+
   bootstrap(): void {
     this.settingsService.getSettings().subscribe({
       next: (s: any) => {
@@ -376,6 +387,8 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
             a.click();
           }
           setTimeout(() => URL.revokeObjectURL(url), 60000);
+          this.success = preview ? 'PDF opened in a new tab.' : 'Student ledger PDF downloaded.';
+          this.error = '';
         },
         error: () => {
           this.error = 'Failed to generate PDF';
@@ -399,5 +412,11 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
   recordPaymentQuery(): { studentId?: string } {
     const id = this.report?.student?.admissionNumber;
     return id ? { studentId: id } : {};
+  }
+
+  clearLineFilter(): void {
+    this.lineFilter = '';
+    this.typeFilter = 'all';
+    this.applyLineFilters();
   }
 }

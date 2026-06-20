@@ -1,192 +1,241 @@
-<div class="page-container">
-  <div class="page-header">
-    <div class="header-content">
-      <h1>
-        <span class="header-icon">📝</span>
-        Enroll Student
-      </h1>
-      <p class="subtitle">List of registered students not yet allocated to classes</p>
+<div class="es-page">
+  <div class="es-toast-stack" *ngIf="success || error">
+    <div class="es-toast es-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="es-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
     </div>
-    <div class="header-actions">
-      <a class="btn btn-back" routerLink="/students/new">
-        <span class="btn-icon">←</span> Back to Registration
-      </a>
+    <div class="es-toast es-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="es-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
   </div>
 
-  <div class="actions-card">
-    <div class="actions-row">
-      <button type="button" class="btn btn-action btn-preview" (click)="previewPdf()">
-        <span class="btn-icon">👁️</span> Preview
-      </button>
-      <button type="button" class="btn btn-action btn-print" (click)="printList()">
-        <span class="btn-icon">🖨️</span> Print
-      </button>
-      <button type="button" class="btn btn-action btn-export" (click)="exportCsv()">
-        <span class="btn-icon">⬇</span> Export CSV
-      </button>
-    </div>
-  </div>
-
-  <!-- Stats -->
-  <div class="stats-grid" *ngIf="!loading">
-    <div class="stat-card stat-primary">
-      <div class="stat-icon">👥</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ stats.total }}</div>
-        <div class="stat-label">Unenrolled Students</div>
-      </div>
-    </div>
-    <div class="stat-card stat-male">
-      <div class="stat-icon">♂</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ stats.male }}</div>
-        <div class="stat-label">Male</div>
-      </div>
-    </div>
-    <div class="stat-card stat-female">
-      <div class="stat-icon">♀</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ stats.female }}</div>
-        <div class="stat-label">Female</div>
-      </div>
-    </div>
-    <div class="stat-card stat-day">
-      <div class="stat-icon">🏠</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ stats.dayScholar }}</div>
-        <div class="stat-label">Day Scholars</div>
-      </div>
-    </div>
-    <div class="stat-card stat-boarder">
-      <div class="stat-icon">🏫</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ stats.boarder }}</div>
-        <div class="stat-label">Boarders</div>
-      </div>
-    </div>
-    <div class="stat-card stat-wide stat-chart" *ngIf="stats.byGrade.length">
-      <div class="stat-chart-header">
-        <span class="stat-chart-icon">📊</span>
-        <span class="stat-title">Top Grades</span>
-      </div>
-      <div class="bars">
-        <div class="bar-row" *ngFor="let g of stats.byGrade">
-          <div class="bar-label">{{ g.label }}</div>
-          <div class="bar-track">
-            <div class="bar-fill" [style.width.%]="(g.count / (stats.byGrade[0]?.count || 1)) * 100"></div>
-          </div>
-          <div class="bar-value">{{ g.count }}</div>
+  <header class="es-hero">
+    <div class="es-hero__main">
+      <div class="es-hero-left">
+        <span class="es-hero-icon" aria-hidden="true">📝</span>
+        <div>
+          <span class="es-hero-eyebrow">Students</span>
+          <h1>Enroll Student</h1>
+          <p class="es-hero-sub">Registered students not yet allocated to a class — assign a class to complete enrollment.</p>
         </div>
       </div>
+      <aside class="es-hero-aside">
+        <span class="es-hero-badge">{{ stats.total }} unenrolled</span>
+        <span class="es-hero-badge es-hero-badge--muted" *ngIf="hasActiveFilters()">Filtered</span>
+      </aside>
+      <div class="es-hero__actions">
+        <button type="button" class="es-hero-refresh" (click)="refresh()" [disabled]="loading" title="Refresh list" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <a routerLink="/students/new" class="es-hero-btn es-hero-btn--white">+ Register student</a>
+      </div>
     </div>
-  </div>
 
-  <!-- Filters & Search -->
-  <div class="filters-card">
-    <div class="filters-header">
-      <span class="filters-accent"></span>
-      <h3 class="filters-title">🔍 Filters & Search</h3>
+    <nav class="es-cross-links" aria-label="Related student pages">
+      <a routerLink="/students">All students</a>
+      <a routerLink="/students/new">New registration</a>
+      <a routerLink="/students/transfer">Transfer student</a>
+      <a routerLink="/classes">Classes</a>
+    </nav>
+
+    <div class="es-hero-stats" *ngIf="!loading">
+      <article class="es-stat">
+        <span class="es-stat__icon" aria-hidden="true">👥</span>
+        <span class="es-stat__value">{{ stats.total }}</span>
+        <span class="es-stat__label">Unenrolled</span>
+      </article>
+      <article class="es-stat es-stat--sky">
+        <span class="es-stat__icon" aria-hidden="true">♂</span>
+        <span class="es-stat__value">{{ stats.male }}</span>
+        <span class="es-stat__label">Male</span>
+      </article>
+      <article class="es-stat es-stat--rose">
+        <span class="es-stat__icon" aria-hidden="true">♀</span>
+        <span class="es-stat__value">{{ stats.female }}</span>
+        <span class="es-stat__label">Female</span>
+      </article>
+      <article class="es-stat es-stat--amber">
+        <span class="es-stat__icon" aria-hidden="true">🏠</span>
+        <span class="es-stat__value">{{ stats.dayScholar }}</span>
+        <span class="es-stat__label">Day scholars</span>
+      </article>
+      <article class="es-stat es-stat--mint">
+        <span class="es-stat__icon" aria-hidden="true">🏫</span>
+        <span class="es-stat__value">{{ stats.boarder }}</span>
+        <span class="es-stat__label">Boarders</span>
+      </article>
     </div>
-    <div class="filters-row">
-      <div class="filter-item">
-        <label>Grade</label>
-        <select class="form-control form-select" [(ngModel)]="selectedGrade" (change)="loadUnenrolledStudents()">
-<option value="">All</option>
+    <div class="es-hero-stats es-hero-stats--skeleton" *ngIf="loading">
+      <div class="es-skeleton" *ngFor="let i of [1,2,3,4,5]"></div>
+    </div>
+
+    <div class="es-steps" aria-label="Progress">
+      <span class="es-step es-step--active">
+        <strong>1</strong> Filter &amp; search
+      </span>
+      <span class="es-step-arrow">→</span>
+      <span class="es-step" [class.es-step--active]="filtered.length > 0" [class.es-step--done]="filtered.length > 0">
+        <strong>2</strong> Review list
+      </span>
+      <span class="es-step-arrow">→</span>
+      <span class="es-step" [class.es-step--active]="canEnroll() && filtered.length > 0">
+        <strong>3</strong> Assign class
+      </span>
+    </div>
+  </header>
+
+  <section class="es-panel es-panel--filters">
+    <div class="es-panel__head es-panel__head--row">
+      <div>
+        <h2 class="es-panel__title">Filters &amp; search</h2>
+        <p class="es-panel__intro">Narrow by grade or student type, then search by ID, name, or phone.</p>
+      </div>
+      <div class="es-panel__actions" *ngIf="filtered.length > 0">
+        <button type="button" class="es-btn es-btn--outline es-btn--sm" (click)="previewPdf()" [disabled]="loading">
+          Preview PDF
+        </button>
+        <button type="button" class="es-btn es-btn--outline es-btn--sm" (click)="printList()" [disabled]="loading">
+          Print
+        </button>
+        <button type="button" class="es-btn es-btn--primary es-btn--sm" (click)="exportCsv()" [disabled]="loading">
+          Export CSV
+        </button>
+      </div>
+    </div>
+
+    <div class="es-form-grid">
+      <div class="es-field">
+        <label for="esGrade">Grade</label>
+        <select id="esGrade" class="es-select" [(ngModel)]="selectedGrade" (change)="loadUnenrolledStudents()">
+          <option value="">All grades</option>
           <option *ngFor="let g of gradeOptions" [value]="g">{{ g }}</option>
         </select>
       </div>
-      <div class="filter-item">
-        <label>Student Type</label>
-        <select class="form-control form-select" [(ngModel)]="selectedType" (change)="loadUnenrolledStudents()">
-<option value="">All</option>
+      <div class="es-field">
+        <label for="esType">Student type</label>
+        <select id="esType" class="es-select" [(ngModel)]="selectedType" (change)="loadUnenrolledStudents()">
+          <option value="">All types</option>
           <option value="Day Scholar">Day Scholar</option>
           <option value="Boarder">Boarder</option>
         </select>
       </div>
-      <button type="button" class="btn btn-clear-filters" (click)="clearFilters()">Clear Filters</button>
-    </div>
-    <div class="search-section">
-      <div class="search-input-wrapper">
-        <span class="search-icon">🔍</span>
-        <input 
-          type="text" 
-          [(ngModel)]="searchQuery"
-          (input)="filter()"
-          placeholder="Search by Student ID, First Name, Last Name, or Phone Number"
-          class="search-input">
-        <button type="button" *ngIf="searchQuery" class="clear-search" (click)="searchQuery=''; filter()" title="Clear search">×</button>
+      <div class="es-field es-field--search">
+        <label for="esSearch">Search</label>
+        <div class="es-search-wrap">
+          <span class="es-search-icon" aria-hidden="true">🔍</span>
+          <input
+            id="esSearch"
+            type="search"
+            class="es-search-input"
+            [(ngModel)]="searchQuery"
+            (input)="filter()"
+            placeholder="Student ID, name, or phone…" />
+          <button type="button" *ngIf="searchQuery" class="es-search-clear" (click)="searchQuery = ''; filter()" aria-label="Clear search">×</button>
+        </div>
+      </div>
+      <div class="es-field es-field--action">
+        <span class="es-field-label-spacer" aria-hidden="true">&nbsp;</span>
+        <button type="button" class="es-btn es-btn--ghost es-btn--block" (click)="clearFilters()" [disabled]="!hasActiveFilters()">
+          Clear filters
+        </button>
       </div>
     </div>
-  </div>
+  </section>
 
-  <div *ngIf="error && !loading" class="alert alert-error">{{ error }}</div>
-
-<div *ngIf="loading" class="loading-state">
-    <div class="spinner"></div>
-    <p>Loading students...</p>
-  </div>
-
-  <div *ngIf="!loading && !error && filtered.length === 0" class="empty-state">
-<div class="empty-icon">✅</div>
-    <h2>No Unenrolled Students</h2>
-    <p>All registered students are allocated to classes.</p>
-  </div>
-
-  <div id="print-area" class="table-card" *ngIf="!loading && filtered.length > 0">
-    <h2 class="table-section-title">Registered Students Without Classes</h2>
-    <div class="table-wrapper">
-      <table class="data-table" *ngIf="!loading && filtered.length > 0">
-      <thead>
-        <tr>
-          <th>Student Number</th>
-          <th>First Name</th>
-          <th>Last Name</th>
-          <th>Gender</th>
-          <th>Phone</th>
-          <th>Grade</th>
-          <th *ngIf="canEnroll()">Assign Class</th>
-          <th *ngIf="canEnroll()" class="action-col">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let s of filtered">
-          <td class="cell-student-id">{{ s.studentNumber || '—' }}</td>
-          <td>{{ s.firstName || '—' }}</td>
-          <td>{{ s.lastName || '—' }}</td>
-          <td>{{ s.gender || '—' }}</td>
-          <td>{{ s.phoneNumber || '—' }}</td>
-          <td>{{ s.grade || s.classLevel || '—' }}</td>
-          <td *ngIf="canEnroll()">
-            <select class="form-control form-select-inline" [(ngModel)]="s._selectedClassId">
-              <option value="">Select class</option>
-              <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
-            </select>
-          </td>
-          <td *ngIf="canEnroll()" class="action-cell">
-            <div class="action-buttons-row">
-              <button 
-                type="button"
-                class="btn btn-enroll"
-                [disabled]="!s._selectedClassId || enrollingMap[s.id || s.studentId]"
-                (click)="enroll(s, s._selectedClassId)">
-                <span *ngIf="!enrollingMap[s.id || s.studentId]">Enroll</span>
-                <span *ngIf="enrollingMap[s.id || s.studentId]" class="spinner"></span>
-              </button>
-              <button 
-                type="button"
-                class="btn btn-delete-row"
-                *ngIf="isAdmin()"
-                [disabled]="deletingMap[s.id || s.studentId]"
-                (click)="deleteStudentRecord(s)">
-                <span *ngIf="!deletingMap[s.id || s.studentId]">Delete</span>
-                <span *ngIf="deletingMap[s.id || s.studentId]" class="spinner"></span>
-              </button>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <section class="es-panel es-panel--chart" *ngIf="!loading && stats.byGrade.length">
+    <div class="es-panel__head">
+      <h2 class="es-panel__title">Top grades</h2>
+      <p class="es-panel__intro">Unenrolled students by grade level.</p>
     </div>
-  </div>
+    <div class="es-bars">
+      <div class="es-bar-row" *ngFor="let g of stats.byGrade">
+        <span class="es-bar-label">{{ g.label }}</span>
+        <div class="es-bar-track">
+          <div class="es-bar-fill" [style.width.%]="(g.count / (stats.byGrade[0]?.count || 1)) * 100"></div>
+        </div>
+        <span class="es-bar-value">{{ g.count }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="es-loading-panel" *ngIf="loading" aria-live="polite">
+    <span class="es-loading-ring" aria-hidden="true"></span>
+    <p>Loading unenrolled students…</p>
+  </section>
+
+  <section class="es-empty" *ngIf="!loading && !error && filtered.length === 0">
+    <span class="es-empty-icon" aria-hidden="true">✅</span>
+    <h3>No unenrolled students</h3>
+    <p>All registered students are allocated to classes, or no results match your filters.</p>
+    <div class="es-empty-actions" *ngIf="hasActiveFilters()">
+      <button type="button" class="es-btn es-btn--outline" (click)="clearFilters()">Clear filters</button>
+    </div>
+    <div class="es-empty-actions" *ngIf="!hasActiveFilters()">
+      <a routerLink="/students/new" class="es-btn es-btn--primary">Register new student</a>
+    </div>
+  </section>
+
+  <section class="es-panel es-panel--table" id="print-area" *ngIf="!loading && filtered.length > 0">
+    <div class="es-panel__head es-panel__head--row">
+      <div>
+        <h2 class="es-panel__title">Registered students without classes</h2>
+        <p class="es-panel__intro">Showing {{ filtered.length }} student(s) — select a class and click Enroll.</p>
+      </div>
+    </div>
+
+    <div class="es-table-scroll">
+      <table class="es-table">
+        <thead>
+          <tr>
+            <th>Student #</th>
+            <th>First name</th>
+            <th>Last name</th>
+            <th>Gender</th>
+            <th>Phone</th>
+            <th>Grade</th>
+            <th *ngIf="canEnroll()">Assign class</th>
+            <th *ngIf="canEnroll()" class="es-col-actions">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of filtered; trackBy: trackByStudentId">
+            <td class="es-cell-id">{{ s.studentNumber || '—' }}</td>
+            <td>{{ s.firstName || '—' }}</td>
+            <td>{{ s.lastName || '—' }}</td>
+            <td>{{ s.gender || '—' }}</td>
+            <td>{{ s.phoneNumber || '—' }}</td>
+            <td>{{ s.grade || s.classLevel || '—' }}</td>
+            <td *ngIf="canEnroll()">
+              <select class="es-select es-select--inline" [(ngModel)]="s._selectedClassId">
+                <option value="">Select class</option>
+                <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
+              </select>
+            </td>
+            <td *ngIf="canEnroll()" class="es-col-actions">
+              <div class="es-row-actions">
+                <button
+                  type="button"
+                  class="es-btn es-btn--primary es-btn--sm"
+                  [disabled]="!s._selectedClassId || enrollingMap[s.id || s.studentId]"
+                  (click)="enroll(s, s._selectedClassId)">
+                  <span *ngIf="!enrollingMap[s.id || s.studentId]">Enroll</span>
+                  <span *ngIf="enrollingMap[s.id || s.studentId]" class="es-spinner" aria-hidden="true"></span>
+                </button>
+                <button
+                  type="button"
+                  class="es-btn es-btn--danger es-btn--sm"
+                  *ngIf="isAdmin()"
+                  [disabled]="deletingMap[s.id || s.studentId]"
+                  (click)="deleteStudentRecord(s)">
+                  <span *ngIf="!deletingMap[s.id || s.studentId]">Delete</span>
+                  <span *ngIf="deletingMap[s.id || s.studentId]" class="es-spinner es-spinner--danger" aria-hidden="true"></span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 </div>

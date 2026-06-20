@@ -11,7 +11,6 @@ import { ExamListComponent } from './components/exams/exam-list/exam-list.compon
 import { ExamFormComponent } from './components/exams/exam-form/exam-form.component';
 import { MarksEntryComponent } from './components/exams/marks-entry/marks-entry.component';
 import { ReportCardComponent } from './components/exams/report-card/report-card.component';
-import { RankingsComponent } from './components/exams/rankings/rankings.component';
 import { MarkSheetComponent } from './components/exams/mark-sheet/mark-sheet.component';
 import { ResultsAnalysisComponent } from './components/exams/results-analysis/results-analysis.component';
 import { PublishResultsComponent } from './components/exams/publish-results/publish-results.component';
@@ -132,7 +131,6 @@ const routes: Routes = [
   { path: 'report-cards', component: ReportCardComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'reportCards', title: 'Report Cards', pageTitle: 'Report Cards' } },
   { path: 'results-analysis', component: ResultsAnalysisComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams', title: 'Results Analysis', pageTitle: 'Results Analysis' } },
   { path: 'mark-sheet', component: MarkSheetComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams', title: 'Mark Sheet', pageTitle: 'Mark Sheet' } },
-  { path: 'rankings', component: RankingsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams', title: 'Rankings', pageTitle: 'Rankings' } },
   { path: 'check_mark_progess', component: MarksProgressComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
   { path: 'publish-results', component: PublishResultsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
   { path: 'invoices', component: InvoiceListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'billing' } },

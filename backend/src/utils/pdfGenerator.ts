@@ -116,11 +116,13 @@ export function createReportCardPDF(
       if (scale < 1) {
         doc.scale(scale);
       }
+      const frameHeight = scale < 1 ? contentHeight : pageBudget;
       renderReportCardLayout(doc, reportCard, settings, {
         cardX: 0,
         cardY: 0,
         cardW: innerW,
-        preRemarksGap: scale < 1 ? 0 : preRemarksGap
+        preRemarksGap: scale < 1 ? 0 : preRemarksGap,
+        frameHeight
       });
       doc.restore();
 

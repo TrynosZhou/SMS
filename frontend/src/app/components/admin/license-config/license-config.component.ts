@@ -14,6 +14,12 @@ import { activatePageLoad } from '../../../utils/route-activation';
 
 type LicenseTab = 'overview' | 'features' | 'matrix' | 'audit';
 
+interface LicenseTabDef {
+  id: LicenseTab;
+  label: string;
+  icon: string;
+}
+
 @Component({
   standalone: false,
   selector: 'app-license-config',
@@ -21,6 +27,13 @@ type LicenseTab = 'overview' | 'features' | 'matrix' | 'audit';
   styleUrls: ['./license-config.component.css']
 })
 export class LicenseConfigComponent implements OnInit, OnDestroy {
+  readonly tabs: LicenseTabDef[] = [
+    { id: 'overview', label: 'Overview', icon: '📊' },
+    { id: 'features', label: 'Features', icon: '🧩' },
+    { id: 'matrix', label: 'Tier matrix', icon: '⊞' },
+    { id: 'audit', label: 'History', icon: '🕐' }
+  ];
+
   features: AdminFeature[] = [];
   tiers: LicenseTierView[] = [];
   auditEntries: LicenseAuditEntry[] = [];
@@ -669,5 +682,25 @@ export class LicenseConfigComponent implements OnInit, OnDestroy {
     if (action.includes('created')) return '＋';
     if (action.includes('deactivated')) return '⊘';
     return '•';
+  }
+
+  tierFeaturePercent(tier: LicenseTierView): number {
+    const total = this.activeFeatures.length || this.features.length;
+    if (!total) return 0;
+    return Math.min(100, Math.round((this.featureCountForTier(tier) / total) * 100));
+  }
+
+  tabBadgeCount(tab: LicenseTab): number | null {
+    if (tab === 'features') return this.features.length;
+    if (tab === 'audit') return this.auditEntries.length;
+    return null;
+  }
+
+  showTabPulse(tab: LicenseTab): boolean {
+    return tab === 'matrix' && this.hasPendingToggles();
+  }
+
+  showUnsavedMatrixBadge(): boolean {
+    return this.hasUnsavedSelectedTierChanges() && !this.bulkTierAction;
   }
 }

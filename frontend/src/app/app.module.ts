@@ -20,7 +20,6 @@ import { ExamListComponent } from './components/exams/exam-list/exam-list.compon
 import { ExamFormComponent } from './components/exams/exam-form/exam-form.component';
 import { MarksEntryComponent } from './components/exams/marks-entry/marks-entry.component';
 import { ReportCardComponent } from './components/exams/report-card/report-card.component';
-import { RankingsComponent } from './components/exams/rankings/rankings.component';
 import { MarkSheetComponent } from './components/exams/mark-sheet/mark-sheet.component';
 import { ResultsAnalysisComponent } from './components/exams/results-analysis/results-analysis.component';
 import { PublishResultsComponent } from './components/exams/publish-results/publish-results.component';
@@ -127,7 +126,6 @@ import { RbacManagementComponent } from './components/settings/rbac-management/r
     ReportCardComponent,
     MarkSheetComponent,
     ResultsAnalysisComponent,
-    RankingsComponent,
     PublishResultsComponent,
     InvoiceListComponent,
     InvoiceNotePageComponent,

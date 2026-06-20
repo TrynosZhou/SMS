@@ -261,35 +261,6 @@ export class ExamService {
       catchError(err => throwError(() => err))
     );
   }
-  // ---------------- Rankings ----------------
-  getClassRankingsByType(examType: string, classId: string): Observable<any> {
-    let params = new HttpParams()
-      .set('examType', this.normalizeExamType(examType, false))
-      .set('classId', classId);
-    return this.http.get(`${this.apiUrl}/exams/rankings/class-by-type`, { params }).pipe(
-      catchError(err => throwError(() => err))
-    );
-  }
-
-  getSubjectRankingsByType(examType: string, subjectId: string, classId: string): Observable<any> {
-    let params = new HttpParams()
-      .set('examType', this.normalizeExamType(examType, false))
-      .set('subjectId', subjectId)
-      .set('classId', classId);
-    return this.http.get(`${this.apiUrl}/exams/rankings/subject-by-type`, { params }).pipe(
-      catchError(err => throwError(() => err))
-    );
-  }
-
-  getOverallPerformanceRankings(form: string, examType: string): Observable<any> {
-    let params = new HttpParams()
-      .set('form', form)
-      .set('examType', this.normalizeExamType(examType, false));
-    return this.http.get(`${this.apiUrl}/exams/rankings/overall-performance`, { params }).pipe(
-      catchError(err => throwError(() => err))
-    );
-  }
-
   // ---------------- Publish/Unpublish ----------------
   publishExamByType(examType: string, term: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/exams/publish-by-type`, {

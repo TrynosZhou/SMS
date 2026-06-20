@@ -1,4 +1,4 @@
-<div class="rp-page record-payment-container">
+<div class="rp-page">
   <div class="rp-toast-stack" *ngIf="error || success">
     <div class="rp-toast rp-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
@@ -17,442 +17,416 @@
         <div>
           <span class="rp-hero-eyebrow">Finance</span>
           <h1>Record Payment</h1>
-          <p class="rp-hero-sub">Find a student, review their balance, and post a payment with an instant receipt.</p>
+          <p class="rp-hero-sub">Find a student, review their balance, post a payment, and print or download the receipt instantly.</p>
           <p class="rp-hero-meta" *ngIf="lastLoadedAt && studentData">
             Balance loaded <time [attr.datetime]="lastLoadedAt.toISOString()">{{ lastLoadedAt | date : 'medium' }}</time>
           </p>
         </div>
       </div>
-      <div class="rp-hero__actions">
-        <a routerLink="/invoices" class="rp-hero-btn rp-hero-btn--white">Invoices</a>
-        <a routerLink="/finance/balance-enquiry" class="rp-hero-btn rp-hero-btn--white">Balance enquiry</a>
-        <a routerLink="/invoices/new" class="rp-hero-btn rp-hero-btn--accent">+ New invoice</a>
-      </div>
+      <aside class="rp-hero-aside">
+        <span class="rp-hero-badge">{{ paymentForm.term || currentTerm || 'Current term' }}</span>
+        <span class="rp-hero-badge rp-hero-badge--muted" *ngIf="studentData">{{ studentData.studentNumber }}</span>
+      </aside>
     </div>
 
-    <div class="rp-hero-stats" *ngIf="studentData">
-      <article class="rp-stat">
-        <span class="rp-stat__value">{{ currencySymbol }}{{ formatCurrency(studentData.balance) }}</span>
+    <nav class="rp-cross-links" aria-label="Related finance pages">
+      <a routerLink="/invoices">Billing</a>
+      <a routerLink="/finance/balance-enquiry">Balance enquiry</a>
+      <a routerLink="/financial-reports/student-ledger">Student ledger</a>
+      <a routerLink="/invoices/new">+ New invoice</a>
+    </nav>
+
+    <div class="rp-hero-stats">
+      <article class="rp-stat" [class.rp-stat--rose]="studentData && studentData.balance > 0" [class.rp-stat--mint]="studentData && studentData.balance <= 0">
+        <span class="rp-stat__icon" aria-hidden="true">⚖</span>
+        <span class="rp-stat__value">{{ studentData ? currencySymbol + ' ' + formatCurrency(studentData.balance) : '—' }}</span>
         <span class="rp-stat__label">Tuition balance</span>
       </article>
-      <article class="rp-stat rp-stat--rose" *ngIf="studentData.uniformBalance > 0">
-        <span class="rp-stat__value">{{ currencySymbol }}{{ formatCurrency(studentData.uniformBalance || 0) }}</span>
+      <article class="rp-stat rp-stat--rose" *ngIf="studentData && studentData.uniformBalance > 0">
+        <span class="rp-stat__icon" aria-hidden="true">👕</span>
+        <span class="rp-stat__value">{{ currencySymbol }} {{ formatCurrency(studentData.uniformBalance) }}</span>
         <span class="rp-stat__label">Uniform</span>
       </article>
-      <article class="rp-stat rp-stat--mint">
-        <span class="rp-stat__value">{{ recentPayments.length }}</span>
+      <article class="rp-stat">
+        <span class="rp-stat__icon" aria-hidden="true">📜</span>
+        <span class="rp-stat__value">{{ studentData ? recentPayments.length : '—' }}</span>
         <span class="rp-stat__label">Recent payments</span>
       </article>
-      <article class="rp-stat">
-        <span class="rp-stat__value">{{ paymentForm.term || currentTerm }}</span>
-        <span class="rp-stat__label">Term</span>
+      <article class="rp-stat rp-stat--mint">
+        <span class="rp-stat__icon" aria-hidden="true">💵</span>
+        <span class="rp-stat__value">{{ paymentForm.amount > 0 ? currencySymbol + ' ' + formatCurrency(paymentForm.amount) : '—' }}</span>
+        <span class="rp-stat__label">Amount to post</span>
       </article>
     </div>
   </header>
 
-  <section class="search-section rp-panel" [class.searching]="loading">
-    <h2 class="rp-panel-title"><span aria-hidden="true">🔍</span> Find student</h2>
-    <p class="rp-panel-intro">Search by student number, name, or ID. Auto-search runs after 3 characters; press Enter to search immediately.</p>
+  <section class="rp-panel rp-panel--search" [class.rp-panel--active]="loading">
+    <div class="rp-panel__head">
+      <h2 class="rp-panel__title">Find student</h2>
+      <p class="rp-panel__intro">Search by student number, name, or ID. Auto-search runs after 3 characters; press Enter to search immediately.</p>
+    </div>
+
     <div class="rp-search-row">
-      <div class="rp-search-wrap search-input-wrapper">
+      <div class="rp-search-wrap">
         <span class="rp-search-prefix" aria-hidden="true">🔍</span>
         <input
           type="search"
           id="studentId"
           [(ngModel)]="studentId"
           placeholder="Student ID, name, or number…"
-          class="search-input"
+          class="rp-search-input"
           (keyup.enter)="getBalance()"
           (input)="onSearchInput()"
-          [class.has-value]="studentId"
+          [class.rp-search-input--filled]="studentId"
           autocomplete="off" />
         <button
           *ngIf="studentId"
           type="button"
-          class="clear-input-btn"
+          class="rp-clear-btn"
           (click)="clear()"
           title="Clear search"
-          aria-label="Clear">✕</button>
+          aria-label="Clear">×</button>
       </div>
       <button
         type="button"
-        class="btn btn-primary btn-search"
+        class="rp-btn rp-btn--primary"
         (click)="getBalance()"
         [disabled]="loading || !studentId">
-        <span *ngIf="loading" class="spinner"></span>
-        <span *ngIf="!loading" class="icon">🔍</span>
+        <span *ngIf="loading" class="rp-spinner" aria-hidden="true"></span>
         {{ loading ? 'Searching…' : 'Search' }}
       </button>
     </div>
-    <div class="rp-hints search-hints">
-      <span class="hint-item"><kbd>Enter</kbd> search now</span>
-      <span class="hint-item"><kbd>Esc</kbd> clear</span>
+
+    <div class="rp-hints">
+      <span class="rp-hint"><kbd>Enter</kbd> search now</span>
+      <span class="rp-hint"><kbd>Esc</kbd> clear</span>
     </div>
   </section>
 
-  <div class="matching-students-section rp-matches" *ngIf="matchingStudents && matchingStudents.length > 0" [@fadeSlide]>
-    <div class="matching-header">
-      <span class="icon">👥</span>
-      <span>{{ matchingStudents.length }} students found - Please select one:</span>
+  <section class="rp-panel rp-panel--matches" *ngIf="matchingStudents?.length" [@fadeSlide]>
+    <div class="rp-panel__head">
+      <h2 class="rp-panel__title">Multiple students found</h2>
+      <p class="rp-panel__intro">{{ matchingStudents.length }} matches — select the correct student to continue.</p>
     </div>
-    <div class="student-cards">
-      <div 
-        *ngFor="let s of matchingStudents; trackBy: trackByStudentId" 
-        class="student-card"
+    <div class="rp-match-grid">
+      <button
+        type="button"
+        class="rp-match-card"
+        *ngFor="let s of matchingStudents; trackBy: trackByStudentId"
         (click)="selectStudent(s.studentId)"
-        [class.selected]="selectedMatchId === s.studentId"
-      >
-        <div class="student-avatar">{{ getInitials(s.fullName) }}</div>
-        <div class="student-details">
-          <div class="student-name">{{ s.fullName }}</div>
-          <div class="student-id">{{ s.studentNumber }}</div>
-        </div>
-        <span class="select-indicator">→</span>
-      </div>
+        [class.rp-match-card--selected]="selectedMatchId === s.studentId">
+        <span class="rp-match-avatar">{{ getInitials(s.fullName) }}</span>
+        <strong>{{ s.fullName }}</strong>
+        <span class="rp-match-meta">{{ s.studentNumber }}</span>
+      </button>
     </div>
-  </div>
+  </section>
 
-  <!-- Student Information and Record Payment Section -->
-  <div *ngIf="studentData" class="main-content" [@fadeSlide]>
-    <!-- Student Info Card -->
-    <div class="student-info-card">
-      <div class="card-header">
-        <div class="student-profile">
-          <div class="profile-avatar large">{{ getInitials(studentData.fullName) }}</div>
-          <div class="profile-details">
-            <h2>{{ studentData.fullName }}</h2>
-            <div class="student-meta">
-              <span class="meta-item">
-                <span class="meta-icon">🎓</span>
-                {{ studentData.studentNumber }}
-              </span>
-              <span class="meta-item" *ngIf="studentData.className">
-                <span class="meta-icon">📚</span>
-                {{ studentData.className }}
+  <section class="rp-loading-panel" *ngIf="loading && !studentData && !matchingStudents?.length" aria-live="polite">
+    <span class="rp-loading-ring" aria-hidden="true"></span>
+    <p>Looking up student balance…</p>
+  </section>
+
+  <section class="rp-empty" *ngIf="!loading && !studentData && !matchingStudents?.length">
+    <span class="rp-empty-icon" aria-hidden="true">💳</span>
+    <h3>No student selected</h3>
+    <p>Search for a student above to view their balance and record a payment.</p>
+  </section>
+
+  <div class="rp-main" *ngIf="studentData" [@fadeSlide]>
+    <section class="rp-student-card">
+      <div class="rp-student-avatar">{{ getInitials(studentData.fullName) }}</div>
+      <div class="rp-student-main">
+        <h2>{{ studentData.fullName }}</h2>
+        <div class="rp-student-meta">
+          <span class="rp-meta-pill">{{ studentData.studentNumber }}</span>
+          <span class="rp-meta-pill" *ngIf="studentData.className">{{ studentData.className }}</span>
+          <span class="rp-meta-pill rp-meta-pill--info" *ngIf="studentData.isStaffChild">Staff child</span>
+          <span class="rp-meta-pill rp-meta-pill--warn" *ngIf="studentData.isExempted">Exempted</span>
+        </div>
+      </div>
+      <div class="rp-student-balance">
+        <span class="rp-balance-label">Tuition balance</span>
+        <span class="rp-balance-value" [class.rp-balance-value--owed]="studentData.balance > 0" [class.rp-balance-value--paid]="studentData.balance <= 0">
+          {{ currencySymbol }} {{ formatCurrency(studentData.balance) }}
+        </span>
+        <span class="rp-balance-status rp-balance-status--paid" *ngIf="studentData.balance <= 0">Fully paid</span>
+        <span class="rp-balance-status rp-balance-status--owed" *ngIf="studentData.balance > 0">Outstanding</span>
+      </div>
+    </section>
+
+    <div class="rp-content-grid">
+      <div class="rp-content-col">
+        <div class="rp-summary-cards">
+          <article class="rp-summary-card rp-summary-card--primary">
+            <span class="rp-summary-label">Tuition balance</span>
+            <span class="rp-summary-value" [class.rp-summary-value--owed]="studentData.balance > 0">{{ currencySymbol }} {{ formatCurrency(studentData.balance) }}</span>
+          </article>
+          <article class="rp-summary-card rp-summary-card--rose" *ngIf="studentData.uniformBalance != null && studentData.uniformBalance > 0">
+            <span class="rp-summary-label">Uniform balance</span>
+            <span class="rp-summary-value">{{ currencySymbol }} {{ formatCurrency(studentData.uniformBalance) }}</span>
+            <span class="rp-summary-note">Separate from tuition</span>
+          </article>
+        </div>
+
+        <section class="rp-panel rp-panel--outstanding" *ngIf="studentData.outstandingInvoices?.length">
+          <div class="rp-panel__head">
+            <h2 class="rp-panel__title">Outstanding by term</h2>
+            <p class="rp-panel__intro" *ngIf="studentData.paymentInvoiceId">Payment will be applied to the oldest unpaid invoice first.</p>
+          </div>
+          <div class="rp-table-wrap">
+            <table class="rp-table">
+              <thead>
+                <tr>
+                  <th>Term</th>
+                  <th>Invoice</th>
+                  <th class="rp-num">Owed</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of studentData.outstandingInvoices">
+                  <td>
+                    {{ row.term || '—' }}
+                    <span *ngIf="row.includesPriorTermBalance" class="rp-prior-tag">prior balance</span>
+                  </td>
+                  <td class="rp-ref">{{ row.invoiceNumber }}</td>
+                  <td class="rp-num">{{ currencySymbol }} {{ formatCurrency(row.owed) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <div class="rp-notice" *ngIf="studentData.isStaffChild || studentData.isExempted">
+          <span class="rp-notice-icon" aria-hidden="true">ℹ️</span>
+          <div>
+            <strong>Fee policy applied</strong>
+            <p>No tuition or transport fees. Dining Hall charged at 50% if applicable.</p>
+          </div>
+        </div>
+
+        <section class="rp-panel rp-panel--recent" *ngIf="recentPayments?.length">
+          <div class="rp-panel__head">
+            <h2 class="rp-panel__title">Recent payments</h2>
+          </div>
+          <div class="rp-table-wrap">
+            <table class="rp-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Method</th>
+                  <th class="rp-num">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let payment of recentPayments; trackBy: trackByPaymentIndex">
+                  <td>{{ payment.date | date : 'mediumDate' }}</td>
+                  <td><span class="rp-method-pill">{{ payment.method }}</span></td>
+                  <td class="rp-num rp-num--credit">{{ currencySymbol }} {{ formatCurrency(payment.amount) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <section class="rp-panel rp-panel--form">
+        <div class="rp-panel__head">
+          <h2 class="rp-panel__title">Payment details</h2>
+          <p class="rp-panel__intro">Enter the amount and method, then confirm to post the payment.</p>
+        </div>
+
+        <form (ngSubmit)="confirmPayment()" class="rp-form">
+          <div class="rp-quick-amounts" *ngIf="studentData.balance > 0">
+            <span class="rp-field-label">Quick amount</span>
+            <div class="rp-amount-grid">
+              <button
+                type="button"
+                class="rp-amount-btn"
+                [class.rp-amount-btn--active]="paymentForm.amount === studentData.balance"
+                (click)="setQuickAmount(100)">
+                <span class="rp-amount-btn__label">Full balance</span>
+                <span class="rp-amount-btn__value">{{ currencySymbol }} {{ formatCurrency(studentData.balance) }}</span>
+              </button>
+              <button
+                type="button"
+                class="rp-amount-btn"
+                [class.rp-amount-btn--active]="paymentForm.amount === studentData.balance * 0.5"
+                (click)="setQuickAmount(50)">
+                <span class="rp-amount-btn__label">50%</span>
+                <span class="rp-amount-btn__value">{{ currencySymbol }} {{ formatCurrency(studentData.balance * 0.5) }}</span>
+              </button>
+              <button
+                type="button"
+                class="rp-amount-btn"
+                [class.rp-amount-btn--active]="paymentForm.amount === studentData.balance * 0.25"
+                (click)="setQuickAmount(25)">
+                <span class="rp-amount-btn__label">25%</span>
+                <span class="rp-amount-btn__value">{{ currencySymbol }} {{ formatCurrency(studentData.balance * 0.25) }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="rp-field rp-field--amount">
+            <label for="amount">Payment amount <span class="rp-required">*</span></label>
+            <div class="rp-amount-input-wrap">
+              <span class="rp-currency-prefix">{{ currencySymbol }}</span>
+              <input
+                type="number"
+                id="amount"
+                [(ngModel)]="paymentForm.amount"
+                name="amount"
+                class="rp-amount-input"
+                step="0.01"
+                min="0.01"
+                required
+                placeholder="0.00" />
+            </div>
+            <div class="rp-amount-hint" *ngIf="studentData.balance > 0">
+              <span *ngIf="paymentForm.amount >= studentData.balance" class="rp-badge rp-badge--success">Covers full balance</span>
+              <span *ngIf="paymentForm.amount < studentData.balance && paymentForm.amount > 0" class="rp-badge rp-badge--warn">
+                Remaining: {{ currencySymbol }} {{ formatCurrency(studentData.balance - paymentForm.amount) }}
               </span>
             </div>
           </div>
-        </div>
-        <div class="status-badges">
-          <span *ngIf="studentData.isStaffChild" class="badge badge-info">Staff Child</span>
-          <span *ngIf="studentData.isExempted" class="badge badge-warning">Exempted</span>
-        </div>
-      </div>
 
-      <!-- Balance Overview -->
-      <div class="balance-overview">
-        <div class="balance-card primary">
-          <div class="balance-label">Tuition Balance</div>
-          <div class="balance-value" [class.positive]="studentData.balance <= 0" [class.negative]="studentData.balance > 0">
-            {{ currencySymbol }} {{ formatCurrency(studentData.balance) }}
+          <div class="rp-form-grid">
+            <div class="rp-field">
+              <label for="term">Term <span class="rp-required">*</span></label>
+              <input type="text" id="term" [(ngModel)]="paymentForm.term" name="term" class="rp-input" required />
+              <small class="rp-field-hint">Current: {{ currentTerm }}</small>
+            </div>
+            <div class="rp-field">
+              <label for="paymentDate">Payment date <span class="rp-required">*</span></label>
+              <input type="date" id="paymentDate" [(ngModel)]="paymentForm.paymentDate" name="paymentDate" class="rp-input" required />
+            </div>
           </div>
-          <div class="balance-status">
-            <span *ngIf="studentData.balance <= 0" class="status-paid">✓ Fully Paid</span>
-            <span *ngIf="studentData.balance > 0" class="status-pending">Outstanding</span>
+
+          <div class="rp-field">
+            <span class="rp-field-label">Payment method <span class="rp-required">*</span></span>
+            <div class="rp-method-chips">
+              <button
+                type="button"
+                class="rp-method-chip"
+                *ngFor="let method of paymentMethods"
+                [class.rp-method-chip--active]="paymentForm.paymentMethod === method.value"
+                (click)="selectPaymentMethod(method.value)">
+                <span aria-hidden="true">{{ method.icon }}</span> {{ method.label }}
+              </button>
+            </div>
           </div>
-        </div>
-        <div class="balance-card secondary" *ngIf="studentData.uniformBalance != null && studentData.uniformBalance > 0">
-          <div class="balance-label">Uniform Balance</div>
-          <div class="balance-value negative">
-            {{ currencySymbol }} {{ formatCurrency(studentData.uniformBalance || 0) }}
+
+          <div class="rp-field">
+            <label for="notes">Notes <span class="rp-optional">(optional)</span></label>
+            <textarea
+              id="notes"
+              [(ngModel)]="paymentForm.notes"
+              name="notes"
+              class="rp-textarea"
+              rows="3"
+              placeholder="Reference number, payer name, or other notes…"></textarea>
           </div>
-          <div class="balance-note">Separate from tuition</div>
-        </div>
-      </div>
 
-      <div class="rp-outstanding-terms" *ngIf="studentData.outstandingInvoices?.length">
-        <h3 class="rp-outstanding-terms__title">Outstanding by term</h3>
-        <p class="rp-outstanding-terms__hint" *ngIf="studentData.paymentInvoiceId">
-          Payment will be applied to the oldest unpaid invoice first.
-        </p>
-        <table class="rp-outstanding-terms__table">
-          <thead>
-            <tr>
-              <th>Term</th>
-              <th>Invoice</th>
-              <th class="text-right">Owed</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let row of studentData.outstandingInvoices">
-              <td>
-                {{ row.term || '—' }}
-                <span *ngIf="row.includesPriorTermBalance" class="rp-prior-tag">prior balance</span>
-              </td>
-              <td>{{ row.invoiceNumber }}</td>
-              <td class="text-right">{{ currencySymbol }} {{ formatCurrency(row.owed) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Fee Policy Notice -->
-      <div *ngIf="studentData.isStaffChild || studentData.isExempted" class="policy-notice">
-        <span class="notice-icon">ℹ️</span>
-        <div class="notice-content">
-          <strong>Fee Policy Applied:</strong>
-          No tuition or transport fees. Dining Hall charged at 50% if applicable.
-        </div>
-      </div>
-    </div>
-
-    <!-- Payment Form Card -->
-    <div class="payment-form-card">
-      <div class="card-header">
-        <h2><span class="header-icon">💰</span> Record Payment</h2>
-      </div>
-
-      <form (ngSubmit)="confirmPayment()">
-        <!-- Quick Amount Buttons -->
-        <div class="quick-amounts" *ngIf="studentData.balance > 0">
-          <label class="section-label">Quick Select Amount</label>
-          <div class="amount-buttons">
-            <button 
-              type="button" 
-              class="amount-btn"
-              [class.active]="paymentForm.amount === studentData.balance"
-              (click)="setQuickAmount(100)"
-            >
-              <span class="amount-label">Full Balance</span>
-              <span class="amount-value">{{ currencySymbol }} {{ formatCurrency(studentData.balance) }}</span>
+          <div class="rp-form-actions">
+            <button
+              type="submit"
+              class="rp-btn rp-btn--success rp-btn--lg"
+              [disabled]="submitting || loading || !paymentForm.amount || paymentForm.amount <= 0">
+              <span *ngIf="submitting" class="rp-spinner" aria-hidden="true"></span>
+              {{ submitting ? 'Processing…' : 'Record payment' }}
             </button>
-            <button 
-              type="button" 
-              class="amount-btn"
-              [class.active]="paymentForm.amount === studentData.balance * 0.5"
-              (click)="setQuickAmount(50)"
-            >
-              <span class="amount-label">50%</span>
-              <span class="amount-value">{{ currencySymbol }} {{ formatCurrency(studentData.balance * 0.5) }}</span>
-            </button>
-            <button 
-              type="button" 
-              class="amount-btn"
-              [class.active]="paymentForm.amount === studentData.balance * 0.25"
-              (click)="setQuickAmount(25)"
-            >
-              <span class="amount-label">25%</span>
-              <span class="amount-value">{{ currencySymbol }} {{ formatCurrency(studentData.balance * 0.25) }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Amount Input -->
-        <div class="form-group amount-group">
-          <label for="amount">Payment Amount <span class="required">*</span></label>
-          <div class="amount-input-wrapper">
-            <span class="currency-prefix">{{ currencySymbol }}</span>
-            <input
-              type="number"
-              id="amount"
-              [(ngModel)]="paymentForm.amount"
-              name="amount"
-              class="form-control amount-input"
-              step="0.01"
-              min="0.01"
-              required
-              placeholder="0.00"
-            />
-          </div>
-          <div class="amount-comparison" *ngIf="studentData.balance > 0">
-            <span *ngIf="paymentForm.amount >= studentData.balance" class="comparison-badge full">
-              ✓ Covers full balance
-            </span>
-            <span *ngIf="paymentForm.amount < studentData.balance && paymentForm.amount > 0" class="comparison-badge partial">
-              Remaining: {{ currencySymbol }} {{ formatCurrency(studentData.balance - paymentForm.amount) }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Payment Details Grid -->
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="term">Term <span class="required">*</span></label>
-            <input
-              type="text"
-              id="term"
-              [(ngModel)]="paymentForm.term"
-              name="term"
-              class="form-control"
-              required
-            />
-            <small class="form-hint">Current: {{ currentTerm }}</small>
-          </div>
-          <div class="form-group">
-            <label for="paymentDate">Payment Date <span class="required">*</span></label>
-            <input
-              type="date"
-              id="paymentDate"
-              [(ngModel)]="paymentForm.paymentDate"
-              name="paymentDate"
-              class="form-control"
-              required
-            />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="paymentMethod">Payment method <span class="required">*</span></label>
-          <div class="rp-method-chips payment-method-grid">
             <button
               type="button"
-              class="rp-method-chip"
-              *ngFor="let method of paymentMethods"
-              [class.rp-method-chip--active]="paymentForm.paymentMethod === method.value"
-              (click)="selectPaymentMethod(method.value)">
-              <span>{{ method.icon }}</span> {{ method.label }}
+              class="rp-btn rp-btn--outline"
+              (click)="showReceiptPreview()"
+              [disabled]="loadingReceipt || !hasReceiptAvailable()">
+              View receipt
             </button>
           </div>
-        </div>
-
-        <div class="form-group">
-          <label for="notes">Notes <span class="optional">(Optional)</span></label>
-          <textarea
-            id="notes"
-            [(ngModel)]="paymentForm.notes"
-            name="notes"
-            class="form-control"
-            rows="2"
-            placeholder="Add any additional notes about this payment..."
-          ></textarea>
-        </div>
-
-        <!-- Form Actions -->
-        <div class="form-actions">
-          <button
-            type="submit"
-            class="btn btn-success btn-lg"
-            [disabled]="submitting || loading || !paymentForm.amount || paymentForm.amount <= 0"
-          >
-            <span *ngIf="submitting" class="spinner"></span>
-            <span *ngIf="!submitting" class="icon">💳</span>
-            {{ submitting ? 'Processing...' : 'Record Payment' }}
-          </button>
-          <button
-            type="button"
-            class="btn btn-outline"
-            (click)="showReceiptPreview()"
-            [disabled]="loadingReceipt || !hasReceiptAvailable()"
-          >
-            <span class="icon">🧾</span> View Receipt
-          </button>
-        </div>
-      </form>
-    </div>
-
-    <!-- Recent Payments -->
-    <div class="recent-payments-card" *ngIf="recentPayments && recentPayments.length > 0">
-      <div class="card-header">
-        <h2><span class="header-icon">📜</span> Recent Payments</h2>
-      </div>
-      <div class="payments-list">
-        <div *ngFor="let payment of recentPayments; trackBy: trackByPaymentIndex" class="payment-item">
-          <div class="payment-info">
-            <div class="payment-amount">{{ currencySymbol }} {{ formatCurrency(payment.amount) }}</div>
-            <div class="payment-date">{{ payment.date | date:'mediumDate' }}</div>
-          </div>
-          <div class="payment-method-badge">{{ payment.method }}</div>
-        </div>
-      </div>
+        </form>
+      </section>
     </div>
   </div>
 
-  <!-- Payment Confirmation Modal -->
-  <div class="modal-overlay" *ngIf="showConfirmModal" (click)="closeConfirmModal()">
-    <div class="modal-content" (click)="$event.stopPropagation()" [@scaleIn]>
-      <div class="modal-header">
-        <h3>Confirm Payment</h3>
-        <button class="modal-close" (click)="closeConfirmModal()">✕</button>
+  <!-- Confirm modal -->
+  <div class="rp-modal-overlay" *ngIf="showConfirmModal" (click)="closeConfirmModal()" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="rp-modal" (click)="$event.stopPropagation()" [@scaleIn]>
+      <div class="rp-modal__head">
+        <h3 id="confirm-title">Confirm payment</h3>
+        <button type="button" class="rp-modal__close" (click)="closeConfirmModal()" aria-label="Close">×</button>
       </div>
-      <div class="modal-body">
-        <div class="confirm-summary">
-          <div class="confirm-row">
-            <span class="confirm-label">Student:</span>
-            <span class="confirm-value">{{ studentData?.fullName }}</span>
+      <div class="rp-modal__body">
+        <div class="rp-confirm-grid">
+          <div class="rp-confirm-row">
+            <span class="rp-confirm-label">Student</span>
+            <span class="rp-confirm-value">{{ studentData?.fullName }}</span>
           </div>
-          <div class="confirm-row">
-            <span class="confirm-label">Amount:</span>
-            <span class="confirm-value highlight">{{ currencySymbol }} {{ formatCurrency(paymentForm.amount) }}</span>
+          <div class="rp-confirm-row">
+            <span class="rp-confirm-label">Amount</span>
+            <span class="rp-confirm-value rp-confirm-value--highlight">{{ currencySymbol }} {{ formatCurrency(paymentForm.amount) }}</span>
           </div>
-          <div class="confirm-row">
-            <span class="confirm-label">Method:</span>
-            <span class="confirm-value">{{ paymentForm.paymentMethod }}</span>
+          <div class="rp-confirm-row">
+            <span class="rp-confirm-label">Method</span>
+            <span class="rp-confirm-value">{{ paymentForm.paymentMethod }}</span>
           </div>
-          <div class="confirm-row">
-            <span class="confirm-label">Date:</span>
-            <span class="confirm-value">{{ paymentForm.paymentDate | date:'mediumDate' }}</span>
+          <div class="rp-confirm-row">
+            <span class="rp-confirm-label">Date</span>
+            <span class="rp-confirm-value">{{ paymentForm.paymentDate | date : 'mediumDate' }}</span>
           </div>
-          <div class="confirm-row" *ngIf="paymentForm.notes">
-            <span class="confirm-label">Notes:</span>
-            <span class="confirm-value">{{ paymentForm.notes }}</span>
+          <div class="rp-confirm-row" *ngIf="paymentForm.notes">
+            <span class="rp-confirm-label">Notes</span>
+            <span class="rp-confirm-value">{{ paymentForm.notes }}</span>
           </div>
         </div>
-        <div class="balance-preview">
-          <div class="preview-item">
-            <span>Current Balance:</span>
+        <div class="rp-balance-preview">
+          <div class="rp-preview-row">
+            <span>Current balance</span>
             <span>{{ currencySymbol }} {{ formatCurrency(studentData?.balance || 0) }}</span>
           </div>
-          <div class="preview-item">
-            <span>Payment:</span>
-            <span class="text-success">- {{ currencySymbol }} {{ formatCurrency(paymentForm.amount) }}</span>
+          <div class="rp-preview-row rp-preview-row--deduct">
+            <span>Payment</span>
+            <span>− {{ currencySymbol }} {{ formatCurrency(paymentForm.amount) }}</span>
           </div>
-          <div class="preview-item total">
-            <span>New Balance:</span>
-            <span [class.text-success]="(studentData?.balance || 0) - paymentForm.amount <= 0">
+          <div class="rp-preview-row rp-preview-row--total">
+            <span>New balance</span>
+            <span [class.rp-text-success]="(studentData?.balance || 0) - paymentForm.amount <= 0">
               {{ currencySymbol }} {{ formatCurrency(Math.max(0, (studentData?.balance || 0) - paymentForm.amount)) }}
             </span>
           </div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline" (click)="closeConfirmModal()">Cancel</button>
-        <button 
-          type="button" 
-          class="btn btn-success" 
-          (click)="recordPayment()"
-          [disabled]="submitting"
-        >
-          <span *ngIf="submitting" class="spinner"></span>
-          {{ submitting ? 'Processing...' : 'Confirm Payment' }}
+      <div class="rp-modal__foot">
+        <button type="button" class="rp-btn rp-btn--ghost" (click)="closeConfirmModal()">Cancel</button>
+        <button type="button" class="rp-btn rp-btn--success" (click)="recordPayment()" [disabled]="submitting">
+          <span *ngIf="submitting" class="rp-spinner" aria-hidden="true"></span>
+          {{ submitting ? 'Processing…' : 'Confirm payment' }}
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Receipt Preview Modal (full screen) -->
-  <div class="modal-overlay pdf-preview-maximized-overlay" *ngIf="showReceipt" (click)="closeReceipt()">
-    <div class="receipt-modal pdf-preview-maximized-modal" (click)="$event.stopPropagation()">
-      <div class="receipt-header">
-        <h3>Payment Receipt</h3>
-        <div class="receipt-toolbar" *ngIf="receiptPdfUrl && !loadingReceipt">
-          <button type="button" class="btn btn-outline btn-sm" (click)="openReceiptInNewWindow()">
-            <span class="icon">🔗</span> New Tab
-          </button>
-          <button type="button" class="btn btn-primary btn-sm" (click)="downloadReceipt()">
-            <span class="icon">💾</span> Download
-          </button>
-          <button type="button" class="btn btn-success btn-sm" (click)="printReceipt()">
-            <span class="icon">🖨️</span> Print
-          </button>
-          <button type="button" class="btn btn-outline btn-sm" (click)="closeReceipt()">Close</button>
+  <!-- Receipt modal -->
+  <div class="rp-modal-overlay rp-modal-overlay--fullscreen" *ngIf="showReceipt" (click)="closeReceipt()">
+    <div class="rp-receipt-modal" (click)="$event.stopPropagation()">
+      <div class="rp-receipt-head">
+        <h3>Payment receipt</h3>
+        <div class="rp-receipt-toolbar" *ngIf="receiptPdfUrl && !loadingReceipt">
+          <button type="button" class="rp-btn rp-btn--outline rp-btn--sm" (click)="openReceiptInNewWindow()">New tab</button>
+          <button type="button" class="rp-btn rp-btn--primary rp-btn--sm" (click)="downloadReceipt()">Download</button>
+          <button type="button" class="rp-btn rp-btn--success rp-btn--sm" (click)="printReceipt()">Print</button>
         </div>
-        <button type="button" class="modal-close" (click)="closeReceipt()" aria-label="Close">✕</button>
+        <button type="button" class="rp-modal__close" (click)="closeReceipt()" aria-label="Close">×</button>
       </div>
-      <div *ngIf="loadingReceipt" class="receipt-loading pdf-preview-body">
-        <div class="spinner-large"></div>
-        <p>Loading Receipt...</p>
+      <div *ngIf="loadingReceipt" class="rp-receipt-body rp-receipt-body--center">
+        <span class="rp-loading-ring rp-loading-ring--lg" aria-hidden="true"></span>
+        <p>Loading receipt…</p>
       </div>
-      <div *ngIf="!loadingReceipt && !receiptPdfUrl" class="receipt-loading pdf-preview-body">
-        <span class="empty-icon">📄</span>
+      <div *ngIf="!loadingReceipt && !receiptPdfUrl" class="rp-receipt-body rp-receipt-body--center">
+        <span class="rp-empty-icon" aria-hidden="true">📄</span>
         <p>Receipt not available</p>
       </div>
-      <div *ngIf="receiptPdfUrl && !loadingReceipt" class="receipt-content pdf-preview-body">
-        <iframe
-          [src]="receiptPdfUrl"
-          class="receipt-iframe"
-          title="Receipt PDF"
-          type="application/pdf">
-        </iframe>
+      <div *ngIf="receiptPdfUrl && !loadingReceipt" class="rp-receipt-body">
+        <iframe [src]="receiptPdfUrl" class="rp-receipt-iframe" title="Receipt PDF"></iframe>
       </div>
     </div>
   </div>

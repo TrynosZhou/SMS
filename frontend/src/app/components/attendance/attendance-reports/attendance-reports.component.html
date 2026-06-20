@@ -1,279 +1,255 @@
-<div class="att-reports-page att-reports-page--modern">
-  <div class="att-reports-toast-stack" *ngIf="success || error">
-    <div class="att-reports-toast att-reports-toast--success" *ngIf="success" role="status">
+<div class="att-page">
+  <div class="att-toast-stack" *ngIf="success || error">
+    <div class="att-toast att-toast--success" *ngIf="success" role="status">
       <span>{{ success }}</span>
-      <button type="button" class="att-reports-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+      <button type="button" class="att-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
     </div>
-    <div class="att-reports-toast att-reports-toast--error" *ngIf="error" role="alert">
+    <div class="att-toast att-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
-      <button type="button" class="att-reports-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+      <button type="button" class="att-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
   </div>
 
-  <header class="att-reports-hero">
-    <div class="att-reports-hero__main">
-      <div class="att-reports-hero-left">
-        <span class="att-reports-hero-icon" aria-hidden="true">📊</span>
+  <header class="att-hero">
+    <div class="att-hero__main">
+      <div class="att-hero-left">
+        <span class="att-hero-icon" aria-hidden="true">📊</span>
         <div>
-          <span class="att-reports-hero-eyebrow">Attendance analytics</span>
+          <span class="att-hero-eyebrow">Attendance analytics</span>
           <h1>Attendance Reports</h1>
-          <p class="att-reports-hero-sub">Class-wide attendance insights by term and date range — filter, visualize, and export.</p>
+          <p class="att-hero-sub">Class-wide attendance insights by term and date range — filter, visualize, and export.</p>
         </div>
       </div>
-      <div class="att-reports-hero__actions">
-        <a routerLink="/attendance/mark" class="att-reports-hero-btn att-reports-hero-btn--outline">📝 Mark attendance</a>
-        <button type="button" class="att-reports-hero-refresh" (click)="generateReport()" [disabled]="loading || !selectedClassId" title="Regenerate" aria-label="Regenerate">
-          <span [class.spinning]="loading">↻</span>
-        </button>
-        <ng-container *ngIf="hasReportData">
-          <button type="button" class="att-reports-hero-btn" (click)="toggleCharts()" [class.att-reports-hero-btn--active]="showCharts">
-            {{ showCharts ? '📉 Hide charts' : '📈 Show charts' }}
-          </button>
-          <button type="button" class="att-reports-hero-btn" (click)="toggleViewMode()">
-            {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
-          </button>
-          <button type="button" class="att-reports-hero-btn att-reports-hero-btn--white" (click)="exportToCSV()" [disabled]="!filteredReport.length">CSV</button>
-          <button type="button" class="att-reports-hero-btn att-reports-hero-btn--white" (click)="exportToPDF()" [disabled]="!filteredReport.length">PDF</button>
-          <button type="button" class="att-reports-hero-btn att-reports-hero-btn--white" (click)="printReport()" [disabled]="!filteredReport.length">Print</button>
-        </ng-container>
-      </div>
+      <aside class="att-hero-aside">
+        <span class="att-hero-badge" *ngIf="filterSummary">{{ filterSummary.class }}</span>
+        <span class="att-hero-badge att-hero-badge--muted" *ngIf="filterSummary?.term">{{ filterSummary.term }}</span>
+      </aside>
     </div>
 
-    <div class="att-reports-hero-stats" *ngIf="hasReportData && !loading">
-      <article class="att-reports-stat">
-        <span class="att-reports-stat__value">{{ dashboardStats.students }}</span>
-        <span class="att-reports-stat__label">Showing</span>
+    <nav class="att-cross-links" aria-label="Related attendance pages">
+      <a routerLink="/attendance/mark">Mark attendance</a>
+      <a routerLink="/dashboard">Dashboard</a>
+    </nav>
+
+    <div class="att-hero-stats" *ngIf="!loading">
+      <article class="att-stat">
+        <span class="att-stat__icon" aria-hidden="true">👥</span>
+        <span class="att-stat__value">{{ hasReportData ? dashboardStats.students : '—' }}</span>
+        <span class="att-stat__label">Showing</span>
       </article>
-      <article class="att-reports-stat att-reports-stat--mint">
-        <span class="att-reports-stat__value">{{ dashboardStats.average }}%</span>
-        <span class="att-reports-stat__label">Avg attendance</span>
+      <article class="att-stat att-stat--mint">
+        <span class="att-stat__icon" aria-hidden="true">✓</span>
+        <span class="att-stat__value">{{ hasReportData ? dashboardStats.average + '%' : '—' }}</span>
+        <span class="att-stat__label">Avg attendance</span>
       </article>
-      <article class="att-reports-stat att-reports-stat--rose">
-        <span class="att-reports-stat__value">{{ dashboardStats.concerns }}</span>
-        <span class="att-reports-stat__label">At risk</span>
+      <article class="att-stat att-stat--rose">
+        <span class="att-stat__icon" aria-hidden="true">⚠</span>
+        <span class="att-stat__value">{{ hasReportData ? dashboardStats.concerns : '—' }}</span>
+        <span class="att-stat__label">At risk</span>
       </article>
-      <article class="att-reports-stat att-reports-stat--sky">
-        <span class="att-reports-stat__value">{{ dashboardStats.excellent }}%</span>
-        <span class="att-reports-stat__label">Excellent rate</span>
+      <article class="att-stat att-stat--sky">
+        <span class="att-stat__icon" aria-hidden="true">★</span>
+        <span class="att-stat__value">{{ hasReportData ? dashboardStats.excellent + '%' : '—' }}</span>
+        <span class="att-stat__label">Excellent rate</span>
       </article>
-      <article class="att-reports-stat">
-        <span class="att-reports-stat__value">{{ getTrendIcon() }}</span>
-        <span class="att-reports-stat__label">{{ getTrendText() }}</span>
+      <article class="att-stat">
+        <span class="att-stat__icon" aria-hidden="true">{{ getTrendIcon() }}</span>
+        <span class="att-stat__value">{{ hasReportData ? getTrendText() : '—' }}</span>
+        <span class="att-stat__label">Trend</span>
       </article>
-      <article class="att-reports-stat att-reports-stat--muted">
-        <span class="att-reports-stat__value">{{ dashboardStats.records }}</span>
-        <span class="att-reports-stat__label">Status records</span>
+      <article class="att-stat att-stat--muted">
+        <span class="att-stat__icon" aria-hidden="true">📋</span>
+        <span class="att-stat__value">{{ hasReportData ? dashboardStats.records : '—' }}</span>
+        <span class="att-stat__label">Status records</span>
       </article>
     </div>
-    <div class="att-reports-hero-stats att-reports-hero-stats--skeleton" *ngIf="loading">
-      <div class="att-reports-skeleton att-reports-skeleton--stat" *ngFor="let i of [1,2,3,4,5,6]"></div>
+
+    <div class="att-hero-stats att-hero-stats--skeleton" *ngIf="loading">
+      <div class="att-skeleton att-skeleton--stat" *ngFor="let i of [1,2,3,4,5,6]"></div>
+    </div>
+
+    <div class="att-hero-toolbar" *ngIf="hasReportData && !loading">
+      <button type="button" class="att-btn att-btn--ghost att-btn--sm" (click)="generateReport()" [disabled]="loading || !selectedClassId" title="Regenerate">
+        <span [class.att-spin]="loading">↻</span> Refresh
+      </button>
+      <button type="button" class="att-btn att-btn--ghost att-btn--sm" (click)="toggleCharts()" [class.att-btn--active]="showCharts">
+        {{ showCharts ? 'Hide charts' : 'Show charts' }}
+      </button>
+      <button type="button" class="att-btn att-btn--ghost att-btn--sm" (click)="toggleViewMode()">
+        {{ viewMode === 'table' ? 'Card view' : 'Table view' }}
+      </button>
+      <button type="button" class="att-btn att-btn--outline att-btn--sm" (click)="exportToCSV()" [disabled]="!filteredReport.length">Export CSV</button>
+      <button type="button" class="att-btn att-btn--outline att-btn--sm" (click)="exportToPDF()" [disabled]="!filteredReport.length">Export PDF</button>
+      <button type="button" class="att-btn att-btn--outline att-btn--sm" (click)="printReport()" [disabled]="!filteredReport.length">Print</button>
     </div>
   </header>
 
-  <div class="att-reports-status-strip" *ngIf="hasReportData && lastGeneratedAt && !loading">
-    <span class="att-reports-status-strip__dot"></span>
+  <div class="att-status-strip" *ngIf="hasReportData && lastGeneratedAt && !loading">
+    <span class="att-status-strip__dot"></span>
     <span>
       Report ready
       <strong>· {{ filterSummary?.class }}</strong>
       <span *ngIf="filterSummary?.term"> · {{ filterSummary?.term }}</span>
-      <span *ngIf="lastGeneratedAt"> · generated {{ lastGeneratedAt | date:'short' }}</span>
+      <span *ngIf="filterSummary?.dates"> · {{ filterSummary?.dates }}</span>
+      <span> · generated {{ lastGeneratedAt | date : 'short' }}</span>
     </span>
   </div>
 
-  <section class="att-reports-panel att-reports-panel--filters">
-    <button type="button" class="att-reports-panel__toggle" (click)="toggleFiltersExpanded()" [attr.aria-expanded]="filtersExpanded">
-      <div class="att-reports-panel__head att-reports-panel__head--inline">
-        <span class="att-reports-panel__toggle-icon" aria-hidden="true">📋</span>
+  <section class="att-panel att-panel--filters">
+    <button type="button" class="att-panel__toggle" (click)="toggleFiltersExpanded()" [attr.aria-expanded]="filtersExpanded">
+      <div class="att-panel__head att-panel__head--inline">
+        <span class="att-panel__toggle-icon" aria-hidden="true">📋</span>
         <div>
-          <h2 class="att-reports-panel__title">Report criteria</h2>
-          <p class="att-reports-panel__intro">Select class, term, and date range, then generate the report.</p>
+          <h2 class="att-panel__title">Report criteria</h2>
+          <p class="att-panel__intro">Select class, term, and date range, then generate the report.</p>
         </div>
       </div>
-      <span class="att-reports-panel__chevron" [class.expanded]="filtersExpanded">▼</span>
+      <span class="att-panel__chevron" [class.expanded]="filtersExpanded">▼</span>
     </button>
 
-    <form class="filters-section modern-filters" #f="ngForm" *ngIf="filtersExpanded">
-      <div class="form-row modern-form-row">
-        <div class="form-group">
-          <label><span class="label-icon">🏫</span> Class <span class="required">*</span></label>
-          <select [(ngModel)]="selectedClassId" (ngModelChange)="onSelectionChange()" name="classId" required class="modern-select" [disabled]="loadingClasses">
+    <form class="att-filters" #f="ngForm" *ngIf="filtersExpanded">
+      <div class="att-form-row">
+        <div class="att-field">
+          <label for="att-class">Class <span class="att-required">*</span></label>
+          <select id="att-class" [(ngModel)]="selectedClassId" (ngModelChange)="onSelectionChange()" name="classId" required class="att-select" [disabled]="loadingClasses">
             <option value="">{{ loadingClasses ? 'Loading classes…' : 'Select class' }}</option>
             <option *ngFor="let cls of classes" [value]="cls.id">{{ cls.name }}</option>
           </select>
         </div>
-        <div class="form-group">
-          <label><span class="label-icon">📅</span> Term</label>
-          <select [(ngModel)]="selectedTerm" (ngModelChange)="onSelectionChange()" name="term" class="modern-select">
+        <div class="att-field">
+          <label for="att-term">Term</label>
+          <select id="att-term" [(ngModel)]="selectedTerm" (ngModelChange)="onSelectionChange()" name="term" class="att-select">
             <option value="">All terms</option>
             <option *ngFor="let term of availableTerms" [value]="term">{{ term }}</option>
           </select>
         </div>
       </div>
 
-      <div class="form-row modern-form-row">
-        <div class="form-group full-width">
-          <label><span class="label-icon">📆</span> Date range</label>
-          <div class="preset-buttons modern-presets">
-            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'today'" (click)="applyDateRangePreset('today')">Today</button>
-            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'last7days'" (click)="applyDateRangePreset('last7days')">Last 7 days</button>
-            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'last30days'" (click)="applyDateRangePreset('last30days')">Last 30 days</button>
-            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'thisMonth'" (click)="applyDateRangePreset('thisMonth')">This month</button>
-            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'lastMonth'" (click)="applyDateRangePreset('lastMonth')">Last month</button>
-            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'thisTerm'" (click)="applyDateRangePreset('thisTerm')">This term</button>
-            <button type="button" class="preset-btn modern-preset-btn" [class.active]="dateRangePreset === 'custom'" (click)="applyDateRangePreset('custom')">Custom</button>
-          </div>
+      <div class="att-field att-field--full">
+        <span class="att-field-label">Date range</span>
+        <div class="att-chips">
+          <button type="button" class="att-chip" [class.att-chip--active]="dateRangePreset === 'today'" (click)="applyDateRangePreset('today')">Today</button>
+          <button type="button" class="att-chip" [class.att-chip--active]="dateRangePreset === 'last7days'" (click)="applyDateRangePreset('last7days')">Last 7 days</button>
+          <button type="button" class="att-chip" [class.att-chip--active]="dateRangePreset === 'last30days'" (click)="applyDateRangePreset('last30days')">Last 30 days</button>
+          <button type="button" class="att-chip" [class.att-chip--active]="dateRangePreset === 'thisMonth'" (click)="applyDateRangePreset('thisMonth')">This month</button>
+          <button type="button" class="att-chip" [class.att-chip--active]="dateRangePreset === 'lastMonth'" (click)="applyDateRangePreset('lastMonth')">Last month</button>
+          <button type="button" class="att-chip" [class.att-chip--active]="dateRangePreset === 'thisTerm'" (click)="applyDateRangePreset('thisTerm')">This term</button>
+          <button type="button" class="att-chip" [class.att-chip--active]="dateRangePreset === 'custom'" (click)="applyDateRangePreset('custom')">Custom</button>
         </div>
       </div>
 
-      <div class="form-row modern-form-row" *ngIf="dateRangePreset === 'custom' || (!dateRangePreset && (startDate || endDate))">
-        <div class="form-group">
-          <label><span class="label-icon">📅</span> Start date</label>
-          <input type="date" [(ngModel)]="startDate" name="startDate" class="modern-input">
+      <div class="att-form-row" *ngIf="dateRangePreset === 'custom' || (!dateRangePreset && (startDate || endDate))">
+        <div class="att-field">
+          <label for="att-start">Start date</label>
+          <input type="date" id="att-start" [(ngModel)]="startDate" name="startDate" class="att-input">
         </div>
-        <div class="form-group">
-          <label><span class="label-icon">📅</span> End date</label>
-          <input type="date" [(ngModel)]="endDate" name="endDate" class="modern-input">
+        <div class="att-field">
+          <label for="att-end">End date</label>
+          <input type="date" id="att-end" [(ngModel)]="endDate" name="endDate" class="att-input">
         </div>
       </div>
 
-      <div class="form-actions modern-actions-section">
-        <button type="button" class="btn btn-primary modern-btn-primary" (click)="generateReport()" [disabled]="loading || !selectedClassId">
-          <span *ngIf="!loading">📊</span>
-          <span *ngIf="loading" class="loading-spinner-inline"></span>
+      <div class="att-form-actions">
+        <button type="button" class="att-btn att-btn--primary" (click)="generateReport()" [disabled]="loading || !selectedClassId">
+          <span *ngIf="loading" class="att-spinner" aria-hidden="true"></span>
           {{ loading ? 'Generating…' : 'Generate report' }}
         </button>
       </div>
     </form>
   </section>
 
-  <div class="att-reports-context" *ngIf="filterSummary">
-    <span class="att-reports-context__chip">{{ filterSummary.class }}</span>
-    <span class="att-reports-context__chip" *ngIf="filterSummary.term">{{ filterSummary.term }}</span>
-    <span class="att-reports-context__chip" *ngIf="filterSummary.dates">{{ filterSummary.dates }}</span>
-    <span class="att-reports-context__meta" *ngIf="lastGeneratedAt">Generated {{ lastGeneratedAt | date:'short' }}</span>
-  </div>
-
-  <!-- Analytics -->
-  <section class="att-reports-analytics" *ngIf="hasReportData && !loading && showCharts">
-    <div class="insights-grid att-reports-insights">
-      <article class="insight-card primary">
-        <span class="insight-label">Class average</span>
-        <h3>{{ averageAttendanceRate | number:'1.1-1' }}%</h3>
+  <section class="att-analytics" *ngIf="hasReportData && !loading && showCharts">
+    <div class="att-insights">
+      <article class="att-insight att-insight--primary">
+        <span class="att-insight__label">Class average</span>
+        <h3>{{ averageAttendanceRate | number : '1.1-1' }}%</h3>
         <p>Across {{ rawReportRows.length }} student{{ rawReportRows.length === 1 ? '' : 's' }}</p>
-        <div class="trend-indicator" [class.trend-up]="trendDirection === 'up'" [class.trend-down]="trendDirection === 'down'">
-          <span>{{ getTrendIcon() }}</span> {{ getTrendText() }}
+        <div class="att-trend" [class.att-trend--up]="trendDirection === 'up'" [class.att-trend--down]="trendDirection === 'down'">
+          {{ getTrendIcon() }} {{ getTrendText() }}
         </div>
       </article>
-      <article class="insight-card warning">
-        <span class="insight-label">Needs follow-up</span>
+      <article class="att-insight att-insight--warn">
+        <span class="att-insight__label">Needs follow-up</span>
         <h3>{{ concernCount }}</h3>
         <p>Below {{ concernThreshold }}% attendance</p>
       </article>
-      <article class="insight-card success" *ngIf="topPerformer">
-        <span class="insight-label">Top performer</span>
+      <article class="att-insight att-insight--success" *ngIf="topPerformer">
+        <span class="att-insight__label">Top performer</span>
         <h3>{{ topPerformer.firstName }} {{ topPerformer.lastName }}</h3>
-        <p>{{ topPerformer.attendanceRateNumber | number:'1.1-1' }}% · #{{ topPerformer.studentNumber }}</p>
+        <p>{{ topPerformer.attendanceRateNumber | number : '1.1-1' }}% · #{{ topPerformer.studentNumber }}</p>
       </article>
-      <article class="insight-card neutral" *ngIf="lowestPerformer">
-        <span class="insight-label">Lowest attendance</span>
+      <article class="att-insight att-insight--neutral" *ngIf="lowestPerformer">
+        <span class="att-insight__label">Lowest attendance</span>
         <h3>{{ lowestPerformer.firstName }} {{ lowestPerformer.lastName }}</h3>
-        <p>{{ lowestPerformer.attendanceRateNumber | number:'1.1-1' }}% · #{{ lowestPerformer.studentNumber }}</p>
+        <p>{{ lowestPerformer.attendanceRateNumber | number : '1.1-1' }}% · #{{ lowestPerformer.studentNumber }}</p>
       </article>
     </div>
 
-    <div class="charts-section att-reports-charts">
-      <div class="chart-container">
+    <div class="att-charts">
+      <div class="att-chart-card">
         <h3>Status breakdown</h3>
-        <div class="status-chart">
-          <div class="status-item">
-            <div class="status-track">
-              <div class="status-bar present" [style.width.%]="getStatusPercentage('present')"></div>
+        <div class="att-status-bars">
+          <div class="att-status-row" *ngFor="let s of statusBreakdown">
+            <div class="att-status-track">
+              <div class="att-status-fill" [class]="'att-status-fill--' + s.cls" [style.width.%]="getStatusPercentage(s.key)"></div>
             </div>
-            <div class="status-info">
-              <span class="status-label">Present</span>
-              <span class="status-value">{{ attendanceByStatus.present }} · {{ getStatusPercentage('present') | number:'1.0-0' }}%</span>
-            </div>
-          </div>
-          <div class="status-item">
-            <div class="status-track">
-              <div class="status-bar absent" [style.width.%]="getStatusPercentage('absent')"></div>
-            </div>
-            <div class="status-info">
-              <span class="status-label">Absent</span>
-              <span class="status-value">{{ attendanceByStatus.absent }} · {{ getStatusPercentage('absent') | number:'1.0-0' }}%</span>
-            </div>
-          </div>
-          <div class="status-item">
-            <div class="status-track">
-              <div class="status-bar late" [style.width.%]="getStatusPercentage('late')"></div>
-            </div>
-            <div class="status-info">
-              <span class="status-label">Late</span>
-              <span class="status-value">{{ attendanceByStatus.late }} · {{ getStatusPercentage('late') | number:'1.0-0' }}%</span>
-            </div>
-          </div>
-          <div class="status-item">
-            <div class="status-track">
-              <div class="status-bar excused" [style.width.%]="getStatusPercentage('excused')"></div>
-            </div>
-            <div class="status-info">
-              <span class="status-label">Excused</span>
-              <span class="status-value">{{ attendanceByStatus.excused }} · {{ getStatusPercentage('excused') | number:'1.0-0' }}%</span>
+            <div class="att-status-meta">
+              <span>{{ s.label }}</span>
+              <span>{{ s.count }} · {{ getStatusPercentage(s.key) | number : '1.0-0' }}%</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="chart-container">
+      <div class="att-chart-card">
         <h3>Performance distribution</h3>
-        <div class="distribution-visual">
-          <div class="distribution-bar">
-            <div class="bar-segment excellent" [style.width.%]="attendanceDistribution.excellent" *ngIf="attendanceDistribution.excellent > 0" [title]="'Excellent: ' + attendanceDistribution.excellent + '%'">{{ attendanceDistribution.excellent }}%</div>
-            <div class="bar-segment good" [style.width.%]="attendanceDistribution.good" *ngIf="attendanceDistribution.good > 0">{{ attendanceDistribution.good }}%</div>
-            <div class="bar-segment attention" [style.width.%]="attendanceDistribution.attention" *ngIf="attendanceDistribution.attention > 0">{{ attendanceDistribution.attention }}%</div>
+        <div class="att-distribution">
+          <div class="att-distribution-bar">
+            <div class="att-distribution-seg att-distribution-seg--excellent" [style.width.%]="attendanceDistribution.excellent" *ngIf="attendanceDistribution.excellent > 0">{{ attendanceDistribution.excellent }}%</div>
+            <div class="att-distribution-seg att-distribution-seg--good" [style.width.%]="attendanceDistribution.good" *ngIf="attendanceDistribution.good > 0">{{ attendanceDistribution.good }}%</div>
+            <div class="att-distribution-seg att-distribution-seg--attention" [style.width.%]="attendanceDistribution.attention" *ngIf="attendanceDistribution.attention > 0">{{ attendanceDistribution.attention }}%</div>
           </div>
-          <div class="distribution-legend">
-            <span class="legend-item"><span class="legend-color excellent"></span> Excellent (≥95%) — {{ getDistributionCount('excellent') }}</span>
-            <span class="legend-item"><span class="legend-color good"></span> Good ({{ concernThreshold }}–94%) — {{ getDistributionCount('good') }}</span>
-            <span class="legend-item"><span class="legend-color attention"></span> At risk (&lt;{{ concernThreshold }}%) — {{ getDistributionCount('attention') }}</span>
+          <div class="att-distribution-legend">
+            <span><span class="att-legend-dot att-legend-dot--excellent"></span> Excellent (≥95%) — {{ getDistributionCount('excellent') }}</span>
+            <span><span class="att-legend-dot att-legend-dot--good"></span> Good ({{ concernThreshold }}–94%) — {{ getDistributionCount('good') }}</span>
+            <span><span class="att-legend-dot att-legend-dot--attention"></span> At risk (&lt;{{ concernThreshold }}%) — {{ getDistributionCount('attention') }}</span>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="att-reports-panel att-reports-panel--advanced" *ngIf="hasReportData && !loading">
-    <div class="att-reports-panel__head att-reports-panel__head--row">
+  <section class="att-panel att-panel--refine" *ngIf="hasReportData && !loading">
+    <div class="att-panel__head att-panel__head--row">
       <div>
-        <h2 class="att-reports-panel__title">Refine results</h2>
-        <p class="att-reports-panel__intro">{{ filteredReport.length }} of {{ rawReportRows.length }} students</p>
+        <h2 class="att-panel__title">Refine results</h2>
+        <p class="att-panel__intro">{{ filteredReport.length }} of {{ rawReportRows.length }} students</p>
       </div>
-      <button type="button" class="att-reports-panel__reset" (click)="resetFilters()">Reset filters</button>
+      <button type="button" class="att-link-btn" (click)="resetFilters()">Reset filters</button>
     </div>
 
-    <div class="filters-advanced modern-advanced-filters">
-      <div class="search-box modern-search-box">
-        <label>Search students</label>
-        <div class="search-input modern-search-input">
-          <span class="search-icon">🔍</span>
-          <input type="text" placeholder="Name or student number…" [(ngModel)]="searchTerm" name="searchTerm"
-                 (ngModelChange)="onSearchChange()" class="modern-input-field">
-          <button *ngIf="searchTerm" type="button" class="clear-search-btn" (click)="searchTerm = ''; onSearchChange()">×</button>
+    <div class="att-refine-grid">
+      <div class="att-field">
+        <label for="att-search">Search students</label>
+        <div class="att-search-wrap">
+          <span class="att-search-icon" aria-hidden="true">🔍</span>
+          <input id="att-search" type="search" placeholder="Name or student number…" [(ngModel)]="searchTerm" name="searchTerm" (ngModelChange)="onSearchChange()" class="att-search-input">
+          <button *ngIf="searchTerm" type="button" class="att-clear-btn" (click)="searchTerm = ''; onSearchChange()" aria-label="Clear">×</button>
         </div>
       </div>
-      <div class="slider-group">
-        <div class="slider-header">
-          <label>Minimum attendance</label>
-          <span class="slider-value">{{ minAttendance }}%</span>
+      <div class="att-field">
+        <div class="att-slider-head">
+          <label for="att-min">Minimum attendance</label>
+          <span class="att-slider-value">{{ minAttendance }}%</span>
         </div>
-        <input type="range" min="0" max="100" step="5" [ngModel]="minAttendance" (ngModelChange)="onMinAttendanceChange($event)" name="minAttendance">
+        <input id="att-min" type="range" min="0" max="100" step="5" [ngModel]="minAttendance" (ngModelChange)="onMinAttendanceChange($event)" name="minAttendance" class="att-range">
       </div>
-      <div class="toggle-group">
-        <label class="toggle">
+      <div class="att-toggle-row">
+        <label class="att-toggle">
           <input type="checkbox" [checked]="showOnlyConcerns" (change)="toggleConcerns()">
-          <span class="toggle-slider"></span>
+          <span class="att-toggle__slider"></span>
         </label>
-        <div class="toggle-text">
+        <div>
           <strong>At-risk only</strong>
           <small>Below {{ concernThreshold }}% attendance</small>
         </div>
@@ -281,103 +257,102 @@
     </div>
   </section>
 
-  <div class="att-reports-skeleton-panel" *ngIf="loading">
-    <div class="att-reports-skeleton att-reports-skeleton--row" *ngFor="let i of [1,2,3,4,5,6,7,8]"></div>
-  </div>
+  <section class="att-loading-panel" *ngIf="loading">
+    <span class="att-loading-ring" aria-hidden="true"></span>
+    <p>Generating attendance report…</p>
+  </section>
 
-  <section class="att-reports-panel att-reports-panel--results" *ngIf="hasReportData && !loading">
-    <div class="att-reports-results-toolbar">
-      <h2 class="att-reports-panel__title">Student results</h2>
-      <div class="att-reports-results-toolbar__actions">
-        <button type="button" class="att-reports-toolbar-btn" [class.active]="viewMode === 'table'" (click)="viewMode = 'table'">☰ Table</button>
-        <button type="button" class="att-reports-toolbar-btn" [class.active]="viewMode === 'cards'" (click)="viewMode = 'cards'">▦ Cards</button>
+  <section class="att-panel att-panel--results" *ngIf="hasReportData && !loading">
+    <div class="att-results-head">
+      <h2 class="att-panel__title">Student results</h2>
+      <div class="att-view-toggle">
+        <button type="button" class="att-view-btn" [class.active]="viewMode === 'table'" (click)="viewMode = 'table'">Table</button>
+        <button type="button" class="att-view-btn" [class.active]="viewMode === 'cards'" (click)="viewMode = 'cards'">Cards</button>
       </div>
     </div>
 
-    <div class="no-results att-reports-empty-inline" *ngIf="!filteredReport.length">
-      <div class="no-results-icon">🕵️</div>
+    <div class="att-empty-inline" *ngIf="!filteredReport.length">
+      <span class="att-empty-icon" aria-hidden="true">🕵️</span>
       <h3>No students match filters</h3>
-      <p>Adjust search, minimum attendance, or at-risk toggle.</p>
-      <button type="button" class="btn btn-outline-modern" (click)="resetFilters()">Reset filters</button>
+      <p>Adjust search, minimum attendance, or the at-risk toggle.</p>
+      <button type="button" class="att-btn att-btn--outline" (click)="resetFilters()">Reset filters</button>
     </div>
 
-    <div class="report-cards" *ngIf="filteredReport.length && viewMode === 'cards'">
-      <div class="student-card" *ngFor="let item of filteredReport; trackBy: trackByStudent">
-        <div class="card-header-mini">
+    <div class="att-card-grid" *ngIf="filteredReport.length && viewMode === 'cards'">
+      <article class="att-student-card" *ngFor="let item of filteredReport; trackBy: trackByStudent">
+        <div class="att-student-card__head">
           <div>
             <h4>{{ item.firstName }} {{ item.lastName }}</h4>
-            <span class="student-number">#{{ item.studentNumber }}</span>
+            <span class="att-student-num">#{{ item.studentNumber }}</span>
           </div>
-          <span class="badge" [ngClass]="getAttendanceBadgeClass(item.attendanceRateNumber ?? 0)">
-            {{ (item.attendanceRateNumber ?? 0) | number:'1.1-2' }}%
+          <span class="att-badge" [ngClass]="getAttendanceBadgeClass(item.attendanceRateNumber ?? 0)">
+            {{ (item.attendanceRateNumber ?? 0) | number : '1.1-2' }}%
           </span>
         </div>
-        <div class="card-stats">
-          <div class="stat-item"><span class="stat-label">Present</span><span class="stat-value present">{{ item.present }}</span></div>
-          <div class="stat-item"><span class="stat-label">Absent</span><span class="stat-value absent">{{ item.absent }}</span></div>
-          <div class="stat-item"><span class="stat-label">Late</span><span class="stat-value late">{{ item.late }}</span></div>
-          <div class="stat-item"><span class="stat-label">Excused</span><span class="stat-value excused">{{ item.excused }}</span></div>
-          <div class="stat-item"><span class="stat-label">Total</span><span class="stat-value total">{{ item.total }}</span></div>
+        <div class="att-student-card__stats">
+          <div><span>Present</span><strong class="att-num--present">{{ item.present }}</strong></div>
+          <div><span>Absent</span><strong class="att-num--absent">{{ item.absent }}</strong></div>
+          <div><span>Late</span><strong class="att-num--late">{{ item.late }}</strong></div>
+          <div><span>Excused</span><strong class="att-num--excused">{{ item.excused }}</strong></div>
+          <div><span>Total</span><strong>{{ item.total }}</strong></div>
         </div>
-        <div class="card-progress">
-          <div class="progress-bar" [ngClass]="getProgressBarClass(item.attendanceRateNumber ?? 0)" [ngStyle]="getProgressStyle(item.attendanceRateNumber ?? 0)"></div>
+        <div class="att-progress">
+          <div class="att-progress__bar" [ngClass]="getProgressBarClass(item.attendanceRateNumber ?? 0)" [ngStyle]="getProgressStyle(item.attendanceRateNumber ?? 0)"></div>
         </div>
-        <div class="card-status">
-          <span class="status-chip" [ngClass]="getAttendanceBadgeClass(item.attendanceRateNumber ?? 0)">
-            {{ getAttendanceStatus(item.attendanceRateNumber ?? 0) }}
-          </span>
-        </div>
-      </div>
+        <span class="att-status-pill" [ngClass]="getAttendanceBadgeClass(item.attendanceRateNumber ?? 0)">
+          {{ getAttendanceStatus(item.attendanceRateNumber ?? 0) }}
+        </span>
+      </article>
     </div>
 
-    <div class="report-table modern-report-table" *ngIf="filteredReport.length && viewMode === 'table'">
-      <table class="modern-data-table">
+    <div class="att-table-wrap" *ngIf="filteredReport.length && viewMode === 'table'">
+      <table class="att-table">
         <thead>
           <tr>
-            <th class="col-rank">#</th>
-            <th (click)="changeSort('studentNumber')" class="sortable">
+            <th class="att-col-rank">#</th>
+            <th class="att-sortable" (click)="changeSort('studentNumber')">
               Student #
-              <span class="sort-indicator" [class.asc]="getSortDirection('studentNumber') === 'asc'" [class.desc]="getSortDirection('studentNumber') === 'desc'"></span>
+              <span class="att-sort" [class.asc]="getSortDirection('studentNumber') === 'asc'" [class.desc]="getSortDirection('studentNumber') === 'desc'"></span>
             </th>
-            <th (click)="changeSort('firstName')" class="sortable">
+            <th class="att-sortable" (click)="changeSort('firstName')">
               Student name
-              <span class="sort-indicator" [class.asc]="getSortDirection('firstName') === 'asc'" [class.desc]="getSortDirection('firstName') === 'desc'"></span>
+              <span class="att-sort" [class.asc]="getSortDirection('firstName') === 'asc'" [class.desc]="getSortDirection('firstName') === 'desc'"></span>
             </th>
             <th>Present</th>
             <th>Absent</th>
             <th>Late</th>
             <th>Excused</th>
             <th>Total</th>
-            <th (click)="changeSort('attendanceRateNumber')" class="sortable">
+            <th class="att-sortable" (click)="changeSort('attendanceRateNumber')">
               Attendance
-              <span class="sort-indicator" [class.asc]="getSortDirection('attendanceRateNumber') === 'asc'" [class.desc]="getSortDirection('attendanceRateNumber') === 'desc'"></span>
+              <span class="att-sort" [class.asc]="getSortDirection('attendanceRateNumber') === 'asc'" [class.desc]="getSortDirection('attendanceRateNumber') === 'desc'"></span>
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let item of filteredReport; let i = index; trackBy: trackByStudent" [class.row-at-risk]="(item.attendanceRateNumber ?? 0) < concernThreshold">
-            <td class="col-rank">{{ i + 1 }}</td>
-            <td>{{ item.studentNumber }}</td>
+          <tr *ngFor="let item of filteredReport; let i = index; trackBy: trackByStudent" [class.att-row--risk]="(item.attendanceRateNumber ?? 0) < concernThreshold">
+            <td class="att-col-rank">{{ i + 1 }}</td>
+            <td class="att-ref">{{ item.studentNumber }}</td>
             <td>
-              <div class="name-cell">
-                <span class="name">{{ item.firstName }} {{ item.lastName }}</span>
-                <small class="status-chip" [ngClass]="getAttendanceBadgeClass(item.attendanceRateNumber ?? 0)">
+              <div class="att-name-cell">
+                <span class="att-name">{{ item.firstName }} {{ item.lastName }}</span>
+                <span class="att-status-pill att-status-pill--sm" [ngClass]="getAttendanceBadgeClass(item.attendanceRateNumber ?? 0)">
                   {{ getAttendanceStatus(item.attendanceRateNumber ?? 0) }}
-                </small>
+                </span>
               </div>
             </td>
-            <td class="present">{{ item.present }}</td>
-            <td class="absent">{{ item.absent }}</td>
-            <td class="late">{{ item.late }}</td>
-            <td class="excused">{{ item.excused }}</td>
+            <td class="att-num--present">{{ item.present }}</td>
+            <td class="att-num--absent">{{ item.absent }}</td>
+            <td class="att-num--late">{{ item.late }}</td>
+            <td class="att-num--excused">{{ item.excused }}</td>
             <td><strong>{{ item.total }}</strong></td>
             <td>
-              <div class="attendance-cell">
-                <span class="badge" [ngClass]="getAttendanceBadgeClass(item.attendanceRateNumber ?? 0)">
-                  {{ (item.attendanceRateNumber ?? 0) | number:'1.1-2' }}%
+              <div class="att-rate-cell">
+                <span class="att-badge" [ngClass]="getAttendanceBadgeClass(item.attendanceRateNumber ?? 0)">
+                  {{ (item.attendanceRateNumber ?? 0) | number : '1.1-2' }}%
                 </span>
-                <div class="progress">
-                  <div class="progress-bar" [ngClass]="getProgressBarClass(item.attendanceRateNumber ?? 0)" [ngStyle]="getProgressStyle(item.attendanceRateNumber ?? 0)"></div>
+                <div class="att-progress att-progress--inline">
+                  <div class="att-progress__bar" [ngClass]="getProgressBarClass(item.attendanceRateNumber ?? 0)" [ngStyle]="getProgressStyle(item.attendanceRateNumber ?? 0)"></div>
                 </div>
               </div>
             </td>
@@ -387,16 +362,16 @@
     </div>
   </section>
 
-  <div class="att-reports-empty" *ngIf="!loading && !hasReportData && selectedClassId">
-    <span class="att-reports-empty__icon">📊</span>
+  <section class="att-empty" *ngIf="!loading && !hasReportData && selectedClassId">
+    <span class="att-empty-icon" aria-hidden="true">📊</span>
     <h3>No report data</h3>
     <p>No attendance records found for the selected criteria. Try another term or date range.</p>
-    <a routerLink="/attendance/mark" class="att-reports-empty__cta">Mark attendance for this class</a>
-  </div>
+    <a routerLink="/attendance/mark" class="att-btn att-btn--primary">Mark attendance for this class</a>
+  </section>
 
-  <div class="att-reports-empty" *ngIf="!loading && !hasReportData && !selectedClassId">
-    <span class="att-reports-empty__icon">📈</span>
+  <section class="att-empty" *ngIf="!loading && !hasReportData && !selectedClassId">
+    <span class="att-empty-icon" aria-hidden="true">📈</span>
     <h3>Generate a report</h3>
     <p>Select a class and click <strong>Generate report</strong> to view attendance analytics, charts, and export options.</p>
-  </div>
+  </section>
 </div>

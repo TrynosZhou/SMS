@@ -113,6 +113,17 @@ export class PublishResultsComponent implements OnInit, OnDestroy {
     return this.examTypes.find((t) => t.value === this.publishExamType)?.label || '';
   }
 
+  getCriteriaCompleteCount(): number {
+    let count = 0;
+    if (this.publishExamType) count++;
+    if (this.publishTerm?.trim()) count++;
+    return count;
+  }
+
+  getCriteriaProgressPercent(): number {
+    return (this.getCriteriaCompleteCount() / 2) * 100;
+  }
+
   clearAlert(kind: 'success' | 'error'): void {
     if (kind === 'success') this.success = '';
     else this.error = '';

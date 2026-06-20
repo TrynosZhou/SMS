@@ -445,8 +445,8 @@
       <div
         class="sidebar-menu"
         *ngIf="sidebarMenuVisible(
-          ['Exam Manager', 'Marks Input', 'Mark Sheets', 'Report Cards', 'Results Analysis', 'Rankings', 'Marks Progress', 'Publish Results'],
-          canAccessExamsNav() || canAccessReportCardsNav() || canAccessRankingsNav()
+          ['Exam Manager', 'Marks Input', 'Mark Sheets', 'Report Cards', 'Results Analysis', 'Marks Progress', 'Publish Results'],
+          canAccessExamsNav() || canAccessReportCardsNav()
         )">
         <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('examManagement')" (click)="toggleMenu('examManagement')">
           <span class="sidebar-icon">📝</span>
@@ -469,10 +469,6 @@
           <a routerLink="/results-analysis" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessExamsNav()">
             <span class="sidebar-icon">📈</span>
             <span class="sidebar-text">Results Analysis</span>
-          </a>
-          <a routerLink="/rankings" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessRankingsNav()">
-            <span class="sidebar-icon">🏆</span>
-            <span class="sidebar-text">Rankings</span>
           </a>
           <a routerLink="/check_mark_progess" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessExamsNav()">
             <span class="sidebar-icon">📈</span>

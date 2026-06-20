@@ -842,6 +842,12 @@ return;
     this.applyMarksFilters();
   }
 
+  clearAlert(type: 'success' | 'error'): void {
+    if (type === 'success') this.success = '';
+    else this.error = '';
+    this.cdr.markForCheck();
+  }
+
   getCriteriaCompleteCount(): number {
     let count = 0;
     if (this.selectedClassId) count++;

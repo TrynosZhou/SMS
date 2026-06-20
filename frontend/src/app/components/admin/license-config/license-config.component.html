@@ -1,136 +1,185 @@
 <div class="license-config-page">
+  <div class="lc-toast-stack" *ngIf="success || error || tiersError">
+    <div class="lc-toast lc-toast--success" *ngIf="success" role="status">
+      <span class="lc-toast__icon">✓</span>
+      <span>{{ success }}</span>
+      <button type="button" class="lc-toast__close" (click)="success = ''" aria-label="Dismiss">×</button>
+    </div>
+    <div class="lc-toast lc-toast--error" *ngIf="error" role="alert">
+      <span class="lc-toast__icon">⚠</span>
+      <span>{{ error }}</span>
+      <button type="button" class="lc-toast__close" (click)="error = ''" aria-label="Dismiss">×</button>
+    </div>
+    <div class="lc-toast lc-toast--warn" *ngIf="tiersError && !error" role="alert">
+      <span class="lc-toast__icon">!</span>
+      <span>{{ tiersError }}</span>
+      <button type="button" class="lc-toast__close" (click)="tiersError = ''" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
   <header class="lc-hero">
-    <div class="lc-hero-text">
-      <p class="lc-eyebrow">Admin · Licensing</p>
+    <div class="lc-hero__main">
+      <span class="lc-hero__eyebrow">System Administration</span>
       <h1>License Configuration</h1>
       <p class="lc-lead">
-        Register product features and map them to Bronze, Gold, and Platinum tiers. Changes apply
-        immediately for every school on that tier.
+        Register product features and map them to Bronze, Gold, and Platinum tiers.
+        Changes apply immediately for every school on that tier.
       </p>
+      <div class="lc-hero__meta">
+        <span class="lc-meta-pill" [class.lc-meta-pill--busy]="loading">
+          <span class="lc-meta-pill__dot"></span>
+          {{ loading ? 'Loading…' : 'Ready' }}
+        </span>
+        <span class="lc-meta-pill lc-meta-pill--muted" *ngIf="!loading">
+          {{ tiers.length }} tiers · {{ features.length }} features
+        </span>
+      </div>
     </div>
-    <div class="lc-hero-actions">
-      <button type="button" class="lc-btn lc-btn-ghost" (click)="loadAll()" [disabled]="loading">
-        ↻ Refresh
-      </button>
-      <button type="button" class="lc-btn lc-btn-primary" (click)="showCreateFeature = !showCreateFeature">
-        {{ showCreateFeature ? 'Cancel' : '+ Register feature' }}
-      </button>
+    <div class="lc-hero__aside">
+      <div class="lc-hero__badge" aria-hidden="true">
+        <span class="lc-hero__badge-icon">🔑</span>
+        <span class="lc-hero__badge-label">Licensing</span>
+      </div>
+      <div class="lc-hero-actions">
+        <button type="button" class="lc-btn lc-btn-ghost" (click)="loadAll()" [disabled]="loading">
+          ↻ Refresh
+        </button>
+        <button type="button" class="lc-btn lc-btn-primary" (click)="showCreateFeature = !showCreateFeature">
+          {{ showCreateFeature ? 'Cancel' : '+ Register feature' }}
+        </button>
+      </div>
     </div>
   </header>
 
-  <div class="lc-alerts" *ngIf="success || error || tiersError">
-    <div class="lc-alert lc-alert-success" *ngIf="success">
-      <span>{{ success }}</span>
-      <button type="button" class="lc-alert-close" (click)="success = ''" aria-label="Dismiss">×</button>
+  <div class="lc-skeleton" *ngIf="loading" aria-busy="true" aria-label="Loading license configuration">
+    <div class="lc-skeleton__tabs"></div>
+    <div class="lc-skeleton__stats">
+      <div class="lc-skeleton__stat" *ngFor="let _ of [1,2,3]"></div>
     </div>
-    <div class="lc-alert lc-alert-error" *ngIf="error">
-      <span>{{ error }}</span>
-      <button type="button" class="lc-alert-close" (click)="error = ''" aria-label="Dismiss">×</button>
-    </div>
-    <div class="lc-alert lc-alert-error" *ngIf="tiersError && !error">
-      <span>{{ tiersError }}</span>
-      <button type="button" class="lc-alert-close" (click)="tiersError = ''" aria-label="Dismiss">×</button>
-    </div>
-  </div>
-
-  <div class="lc-loading" *ngIf="loading">
-    <span class="lc-spinner"></span>
-    <span>Loading license configuration…</span>
+    <div class="lc-skeleton__panel"></div>
   </div>
 
   <ng-container *ngIf="!loading">
-    <nav class="lc-tabs" role="tablist">
+    <nav class="lc-tabs" role="tablist" aria-label="License configuration sections">
       <button
         type="button"
         class="lc-tab"
-        [class.active]="activeTab === 'overview'"
-        (click)="setTab('overview')">
-        Overview
-      </button>
-      <button
-        type="button"
-        class="lc-tab"
-        [class.active]="activeTab === 'features'"
-        (click)="setTab('features')">
-        Features
-        <span class="lc-tab-badge">{{ features.length }}</span>
-      </button>
-      <button
-        type="button"
-        class="lc-tab"
-        [class.active]="activeTab === 'matrix'"
-        (click)="setTab('matrix')">
-        Tier matrix
-        <span class="lc-tab-badge lc-tab-badge-pulse" *ngIf="hasPendingToggles()">…</span>
-      </button>
-      <button
-        type="button"
-        class="lc-tab"
-        [class.active]="activeTab === 'audit'"
-        (click)="setTab('audit')">
-        History
+        *ngFor="let tab of tabs"
+        role="tab"
+        [class.active]="activeTab === tab.id"
+        [attr.aria-selected]="activeTab === tab.id"
+        (click)="setTab(tab.id)">
+        <span class="lc-tab__icon" aria-hidden="true">{{ tab.icon }}</span>
+        {{ tab.label }}
+        <span class="lc-tab-badge" *ngIf="tabBadgeCount(tab.id) as count">{{ count }}</span>
+        <span class="lc-tab-badge lc-tab-badge--pulse" *ngIf="showTabPulse(tab.id)">…</span>
+        <span class="lc-tab-badge lc-tab-badge--warn" *ngIf="tab.id === 'matrix' && showUnsavedMatrixBadge()">!</span>
       </button>
     </nav>
 
     <!-- Overview -->
-    <section class="lc-panel" *ngIf="activeTab === 'overview'">
+    <section class="lc-panel" *ngIf="activeTab === 'overview'" aria-labelledby="lc-overview-title">
+      <h2 id="lc-overview-title" class="lc-sr-only">License overview</h2>
+
       <div class="lc-stats">
-        <article class="lc-stat-card">
+        <article class="lc-stat-card lc-stat-card--features">
+          <span class="lc-stat-icon" aria-hidden="true">🧩</span>
           <span class="lc-stat-label">Registered features</span>
           <strong class="lc-stat-value">{{ features.length }}</strong>
           <span class="lc-stat-meta">{{ activeFeatures.length }} active</span>
         </article>
-        <article class="lc-stat-card">
+        <article class="lc-stat-card lc-stat-card--tiers">
+          <span class="lc-stat-icon" aria-hidden="true">🏅</span>
           <span class="lc-stat-label">License tiers</span>
           <strong class="lc-stat-value">{{ tiers.length }}</strong>
           <span class="lc-stat-meta">Gold · Bronze · Platinum</span>
         </article>
-        <article class="lc-stat-card">
+        <article class="lc-stat-card lc-stat-card--assign">
+          <span class="lc-stat-icon" aria-hidden="true">🔗</span>
           <span class="lc-stat-label">Tier assignments</span>
           <strong class="lc-stat-value">{{ totalAssignments() }}</strong>
           <span class="lc-stat-meta">Across all tiers</span>
         </article>
       </div>
 
-      <div class="lc-tier-cards">
-        <article class="lc-tier-card" *ngFor="let tier of tiers">
-          <div class="lc-tier-card-head">
+      <div class="lc-section-head">
+        <h3>License tiers</h3>
+        <p>Feature coverage per plan — open the matrix to adjust assignments.</p>
+      </div>
+
+      <div class="lc-tier-cards" *ngIf="tiers.length; else noTiers">
+        <article class="lc-tier-card" *ngFor="let tier of tiers" [class.lc-tier-card--selected]="selectedTierId === tier.id">
+          <div class="lc-tier-card__top">
             <span class="tier-badge" [ngClass]="tierBadgeClass(tier.tierName)">{{ tier.displayName }}</span>
             <code class="lc-tier-code">{{ tier.tierName }}</code>
           </div>
           <p class="lc-tier-desc" *ngIf="tier.description">{{ tier.description }}</p>
-          <p class="lc-tier-count">
-            <strong>{{ featureCountForTier(tier) }}</strong>
-            / {{ activeFeatures.length || features.length }} features enabled
-          </p>
-          <button type="button" class="lc-btn lc-btn-sm" (click)="selectedTierId = tier.id; setTab('matrix')">
-            Configure →
+          <p class="lc-tier-desc lc-tier-desc--muted" *ngIf="!tier.description">Schools on this tier receive the features you assign below.</p>
+
+          <div class="lc-tier-progress">
+            <div class="lc-tier-progress__bar">
+              <div class="lc-tier-progress__fill" [style.width.%]="tierFeaturePercent(tier)"></div>
+            </div>
+            <span class="lc-tier-progress__label">
+              <strong>{{ featureCountForTier(tier) }}</strong>
+              / {{ activeFeatures.length || features.length }} features
+              ({{ tierFeaturePercent(tier) }}%)
+            </span>
+          </div>
+
+          <button type="button" class="lc-btn lc-btn-sm lc-btn-outline" (click)="selectedTierId = tier.id; setTab('matrix')">
+            Configure matrix →
           </button>
         </article>
       </div>
 
+      <ng-template #noTiers>
+        <div class="lc-empty-state">
+          <span class="lc-empty-state__icon">🏅</span>
+          <h3>No license tiers found</h3>
+          <p>Run the license migration on the server, then refresh this page.</p>
+          <button type="button" class="lc-btn lc-btn-primary lc-btn-sm" (click)="loadAll()">↻ Refresh</button>
+        </div>
+      </ng-template>
+
       <div class="lc-tip">
-        <strong>How it works</strong>
-        <ul>
-          <li>Features are registered once, then toggled per tier — never hard-coded in the app.</li>
-          <li>Platinum does not automatically include every feature; assign each one explicitly.</li>
-          <li>Deactivated features stay in history but cannot be newly granted.</li>
-        </ul>
+        <div class="lc-tip__icon" aria-hidden="true">💡</div>
+        <div>
+          <strong>How licensing works</strong>
+          <ul>
+            <li>Features are registered once, then toggled per tier — never hard-coded in the app.</li>
+            <li>Platinum does not automatically include every feature; assign each one explicitly.</li>
+            <li>Deactivated features stay in history but cannot be newly granted.</li>
+          </ul>
+        </div>
       </div>
     </section>
 
-    <!-- Features tab -->
-    <section class="lc-panel" *ngIf="activeTab === 'features'">
-      <div class="lc-panel-toolbar">
-        <input
-          type="search"
-          class="lc-search"
-          [(ngModel)]="featureSearch"
-          placeholder="Search by key or name…" />
+    <!-- Features -->
+    <section class="lc-panel" *ngIf="activeTab === 'features'" aria-labelledby="lc-features-title">
+      <div class="lc-panel-head">
+        <div>
+          <h2 id="lc-features-title">Feature registry</h2>
+          <p>Manage keys, labels, and activation state for gated modules.</p>
+        </div>
+        <div class="lc-panel-toolbar">
+          <div class="lc-search-wrap">
+            <span class="lc-search-icon" aria-hidden="true">🔍</span>
+            <input
+              type="search"
+              class="lc-search"
+              [(ngModel)]="featureSearch"
+              placeholder="Search by key or name…"
+              aria-label="Search features" />
+          </div>
+        </div>
       </div>
 
       <div class="lc-create-card" *ngIf="showCreateFeature">
-        <h2>Register new feature</h2>
+        <div class="lc-create-card__head">
+          <h3>Register new feature</h3>
+          <p>Add a module key that can be assigned to license tiers.</p>
+        </div>
         <div class="lc-form-grid">
           <label class="lc-field">
             <span>Feature key</span>
@@ -178,20 +227,14 @@
               <th>Display name</th>
               <th>Description</th>
               <th>Status</th>
-              <th></th>
+              <th class="lc-th-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let f of filteredFeatures" [class.lc-row-inactive]="!f.isActive">
-              <td>
+              <td class="lc-td-key">
                 <code class="lc-key">{{ f.featureKey }}</code>
-                <button
-                  type="button"
-                  class="lc-icon-btn"
-                  title="Copy key"
-                  (click)="copyFeatureKey(f.featureKey)">
-                  ⧉
-                </button>
+                <button type="button" class="lc-icon-btn" title="Copy key" (click)="copyFeatureKey(f.featureKey)">⧉</button>
               </td>
               <td>
                 <input type="text" class="lc-inline-input" [(ngModel)]="f.displayName" [disabled]="!f.isActive" />
@@ -212,7 +255,7 @@
               <td class="lc-actions">
                 <button
                   type="button"
-                  class="lc-btn lc-btn-sm"
+                  class="lc-btn lc-btn-sm lc-btn-outline"
                   (click)="saveFeatureMeta(f)"
                   [disabled]="!f.isActive || isSavingMeta(f.id)">
                   <span class="lc-spinner lc-spinner-sm" *ngIf="isSavingMeta(f.id)"></span>
@@ -230,16 +273,29 @@
           </tbody>
         </table>
       </div>
+
       <ng-template #noFeatures>
-        <p class="lc-empty">No features match your search. Register one to get started.</p>
+        <div class="lc-empty-state">
+          <span class="lc-empty-state__icon">🧩</span>
+          <h3>No features yet</h3>
+          <p>Register your first feature to start building the tier matrix.</p>
+          <button type="button" class="lc-btn lc-btn-primary lc-btn-sm" (click)="showCreateFeature = true">+ Register feature</button>
+        </div>
       </ng-template>
     </section>
 
     <!-- Tier matrix -->
-    <section class="lc-panel" *ngIf="activeTab === 'matrix'">
+    <section class="lc-panel" *ngIf="activeTab === 'matrix'" aria-labelledby="lc-matrix-title">
+      <div class="lc-panel-head">
+        <div>
+          <h2 id="lc-matrix-title">Tier feature matrix</h2>
+          <p>Toggle features per tier. Select a tier, edit checkboxes, then save.</p>
+        </div>
+      </div>
+
       <div class="lc-matrix-toolbar">
         <label class="lc-field lc-field-inline">
-          <span>Tier</span>
+          <span>Editing tier</span>
           <select class="lc-select" [(ngModel)]="selectedTierId">
             <option *ngFor="let tier of tiers" [ngValue]="tier.id">
               {{ tier.displayName }} ({{ featureCountForTier(tier) }} features)
@@ -247,27 +303,29 @@
           </select>
         </label>
         <ng-container *ngIf="selectedTier as tier">
-          <button
-            type="button"
-            class="lc-btn lc-btn-sm lc-btn-primary"
-            (click)="saveSelectedTierAssignments()"
-            [disabled]="!!bulkTierAction || !hasUnsavedSelectedTierChanges()">
-            Save {{ tier.displayName }}
-          </button>
-          <button
-            type="button"
-            class="lc-btn lc-btn-sm"
-            (click)="grantAllActiveForSelectedTier($event)"
-            [disabled]="!!bulkTierAction || !activeFeatures.length">
-            Grant all active
-          </button>
-          <button
-            type="button"
-            class="lc-btn lc-btn-sm lc-btn-ghost"
-            (click)="clearSelectedTier($event)"
-            [disabled]="!!bulkTierAction">
-            Clear tier
-          </button>
+          <div class="lc-matrix-actions">
+            <button
+              type="button"
+              class="lc-btn lc-btn-sm lc-btn-primary"
+              (click)="saveSelectedTierAssignments()"
+              [disabled]="!!bulkTierAction || !hasUnsavedSelectedTierChanges()">
+              Save {{ tier.displayName }}
+            </button>
+            <button
+              type="button"
+              class="lc-btn lc-btn-sm lc-btn-outline"
+              (click)="grantAllActiveForSelectedTier($event)"
+              [disabled]="!!bulkTierAction || !activeFeatures.length">
+              Grant all active
+            </button>
+            <button
+              type="button"
+              class="lc-btn lc-btn-sm lc-btn-ghost"
+              (click)="clearSelectedTier($event)"
+              [disabled]="!!bulkTierAction">
+              Clear tier
+            </button>
+          </div>
           <span class="lc-bulk-status" *ngIf="bulkTierAction === tier.id">
             <span class="lc-spinner lc-spinner-sm"></span> Saving tier…
           </span>
@@ -277,18 +335,22 @@
         </ng-container>
       </div>
 
-      <input
-        type="search"
-        class="lc-search lc-search-matrix"
-        [(ngModel)]="featureSearch"
-        placeholder="Filter features in matrix…" />
+      <div class="lc-search-wrap lc-search-wrap--wide">
+        <span class="lc-search-icon" aria-hidden="true">🔍</span>
+        <input
+          type="search"
+          class="lc-search"
+          [(ngModel)]="featureSearch"
+          placeholder="Filter features in matrix…"
+          aria-label="Filter matrix features" />
+      </div>
 
       <div class="lc-matrix-wrap" *ngIf="tiers.length && features.length; else matrixEmpty">
         <table class="lc-matrix">
           <thead>
             <tr>
               <th class="lc-matrix-feature-col">Feature</th>
-              <th *ngFor="let tier of tiers" class="lc-matrix-tier-col">
+              <th *ngFor="let tier of tiers" class="lc-matrix-tier-col" [class.lc-matrix-tier-col--selected]="tier.id === selectedTierId">
                 <span class="tier-badge tier-badge-sm" [ngClass]="tierBadgeClass(tier.tierName)">
                   {{ tier.displayName }}
                 </span>
@@ -304,7 +366,7 @@
                 <strong>{{ f.displayName }}</strong>
                 <code>{{ f.featureKey }}</code>
               </td>
-              <td *ngFor="let tier of tiers" class="lc-matrix-cell">
+              <td *ngFor="let tier of tiers" class="lc-matrix-cell" [class.lc-matrix-cell--selected]="tier.id === selectedTierId">
                 <label
                   class="lc-matrix-check"
                   [class.pending]="isTogglePending(tier.id, f.id)"
@@ -323,19 +385,23 @@
       </div>
 
       <ng-template #matrixEmpty>
-        <p class="lc-empty">{{ matrixEmptyMessage }}</p>
-        <button
-          type="button"
-          class="lc-btn lc-btn-primary lc-btn-sm"
-          *ngIf="!tiers.length && features.length"
-          (click)="loadAll()">
-          ↻ Refresh tiers
-        </button>
+        <div class="lc-empty-state">
+          <span class="lc-empty-state__icon">⊞</span>
+          <h3>Matrix unavailable</h3>
+          <p>{{ matrixEmptyMessage }}</p>
+          <button
+            type="button"
+            class="lc-btn lc-btn-primary lc-btn-sm"
+            *ngIf="!tiers.length && features.length"
+            (click)="loadAll()">
+            ↻ Refresh tiers
+          </button>
+        </div>
       </ng-template>
 
-      <!-- Quick assign cards for selected tier -->
       <div class="lc-quick-assign" *ngIf="selectedTier as tier">
         <h3>Quick assign — {{ tier.displayName }}</h3>
+        <p class="lc-quick-assign__hint">Tap chips to toggle features for the selected tier, then save.</p>
         <div class="lc-feature-chips">
           <label
             class="lc-chip"
@@ -355,19 +421,33 @@
     </section>
 
     <!-- Audit -->
-    <section class="lc-panel" *ngIf="activeTab === 'audit'">
-      <h2 class="lc-panel-title">Change history</h2>
-      <div class="lc-audit-list" *ngIf="auditEntries.length; else noAudit">
+    <section class="lc-panel" *ngIf="activeTab === 'audit'" aria-labelledby="lc-audit-title">
+      <div class="lc-panel-head">
+        <div>
+          <h2 id="lc-audit-title">Change history</h2>
+          <p>Recent grants, revokes, and feature registry updates.</p>
+        </div>
+      </div>
+
+      <div class="lc-audit-timeline" *ngIf="auditEntries.length; else noAudit">
         <article class="lc-audit-item" *ngFor="let entry of auditEntries">
-          <span class="lc-audit-icon">{{ auditActionIcon(entry.action) }}</span>
+          <div class="lc-audit-item__rail">
+            <span class="lc-audit-icon" [class.lc-audit-icon--grant]="entry.action.includes('granted')">{{ auditActionIcon(entry.action) }}</span>
+            <span class="lc-audit-item__line" aria-hidden="true"></span>
+          </div>
           <div class="lc-audit-body">
             <p>{{ formatAuditAction(entry) }}</p>
             <small>{{ entry.createdAt | date: 'medium' }} · {{ entry.performedByName || 'System' }}</small>
           </div>
         </article>
       </div>
+
       <ng-template #noAudit>
-        <p class="lc-empty">No license changes recorded yet.</p>
+        <div class="lc-empty-state">
+          <span class="lc-empty-state__icon">🕐</span>
+          <h3>No history yet</h3>
+          <p>License changes will appear here after you grant or revoke features.</p>
+        </div>
       </ng-template>
     </section>
   </ng-container>

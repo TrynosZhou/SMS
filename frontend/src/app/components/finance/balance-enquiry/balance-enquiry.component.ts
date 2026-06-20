@@ -18,7 +18,7 @@ import {
 @Component({
   standalone: false,  selector: 'app-balance-enquiry',
   templateUrl: './balance-enquiry.component.html',
-  styleUrls: ['./balance-enquiry.component.css', './balance-enquiry-modern.css']
+  styleUrls: ['./balance-enquiry-modern.css']
 })
 export class BalanceEnquiryComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();

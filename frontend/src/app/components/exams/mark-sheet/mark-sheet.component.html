@@ -1,275 +1,301 @@
-<div class="mark-sheet-page">
-  <!-- Modern Page Header -->
-  <header class="page-header">
-    <div class="header-content">
-      <h1>
-        <span class="header-icon">📊</span>
-        Generate Mark Sheet
-      </h1>
-      <p class="subtitle">Select class and exam type to generate and export class mark sheets</p>
+<div class="ms-page">
+  <div class="ms-toast-stack" *ngIf="success || error">
+    <div class="ms-toast ms-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="ms-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
     </div>
-    <div class="header-actions">
-      <button class="btn btn-back" (click)="router.navigate(['/exams'])">
-        ⬅️ Back to Exams
-      </button>
-    </div>
-  </header>
-
-  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
-  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
-
-  <!-- Step indicator -->
-  <div class="steps-indicator">
-    <div class="step" [class.active]="!markSheetData" [class.done]="markSheetData">
-      <span class="step-num">1</span>
-      <span class="step-label">Select options</span>
-    </div>
-    <div class="step-connector"></div>
-    <div class="step" [class.active]="!!markSheetData">
-      <span class="step-num">2</span>
-      <span class="step-label">View mark sheet</span>
+    <div class="ms-toast ms-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="ms-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
   </div>
 
-  <!-- Selection Card -->
-  <section class="selection-card card-modern" @fadeIn>
-    <h2 class="section-title">
-      <span class="section-icon">⚙️</span>
-      Selection
-    </h2>
-    <div class="selection-form">
-      <div class="form-row">
-        <div class="form-group">
-          <label for="class">Class <span class="required">*</span></label>
-          <select 
-            id="class"
-            [(ngModel)]="selectedClassId" 
-            [ngModelOptions]="{standalone: true}"
-            (change)="onClassChange()"
-            (ngModelChange)="onSelectionChange()"
-            [disabled]="loadingClasses"
-            class="form-control">
-            <option value="">{{ loadingClasses ? 'Loading classes...' : '-- Select Class --' }}</option>
-<option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">
-              {{ cls.name }} ({{ cls.form }})
-            </option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="term">Term</label>
-          <input 
-            type="text" 
-            id="term"
-            [ngModel]="selectedTerm || (loadingTerm ? 'Loading...' : 'Not set')" 
-            [ngModelOptions]="{standalone: true}"
-            readonly
-            [disabled]="loadingTerm"
-            class="form-control form-control-readonly">
-          <small class="form-hint">
-            {{ loadingTerm ? 'Loading...' : (selectedTerm ? 'From settings' : 'Configure in settings') }}
-          </small>
-        </div>
-
-        <div class="form-group">
-          <label for="examType">Exam type <span class="required">*</span></label>
-          <select 
-            id="examType"
-            [(ngModel)]="selectedExamType" 
-            [ngModelOptions]="{standalone: true}"
-            (change)="onExamTypeChange()"
-            (ngModelChange)="onSelectionChange()"
-            class="form-control">
-            <option value="">-- Select Exam Type --</option>
-            <option *ngFor="let type of examTypes" [value]="type.value">
-              {{ type.label }}
-            </option>
-          </select>
-        </div>
-
-        <div class="form-group form-group-action">
-          <label>&nbsp;</label>
-          <button 
-            class="btn btn-generate" 
-            (click)="generateMarkSheet()" 
-            [disabled]="loading || !selectedClassId || !selectedExamType || !selectedTerm">
-            <span *ngIf="!loading">📊 Generate</span>
-            <span *ngIf="loading" class="btn-loading"><span class="spinner-small"></span> Generating...</span>
-          </button>
+  <header class="ms-hero">
+    <div class="ms-hero__main">
+      <div class="ms-hero-left">
+        <span class="ms-hero-icon" aria-hidden="true">📊</span>
+        <div>
+          <span class="ms-hero-eyebrow">Examinations</span>
+          <h1>Mark Sheet</h1>
+          <p class="ms-hero-sub">Generate class mark sheets by class and exam type — export PDF or Excel.</p>
         </div>
       </div>
-    </div>
-  </section>
-
-  <!-- Mark Sheet Display -->
-  <section *ngIf="markSheetData" class="mark-sheet-result card-modern mark-sheet-container" @slideIn>
-    <div class="mark-sheet-header">
-      <div class="header-info">
-        <h2 class="result-title">{{ markSheetData.class.name }} — {{ markSheetData.class.form }}</h2>
-        <div class="header-meta">
-          <span class="meta-badge">{{ selectedExamType | titlecase }}</span>
-          <span class="meta-text">Generated {{ markSheetData.generatedAt | date:'medium' }}</span>
-          <span class="meta-text" *ngIf="markSheetData.class.classTeacherName"> | Class Teacher: {{ markSheetData.class.classTeacherName }}</span>
-        </div>
-      </div>
-      <div class="header-actions">
-        <button class="btn btn-blue" (click)="exportToExcel()" [disabled]="loading">📥 Excel</button>
-        <button class="btn btn-blue btn-download-pdf" (click)="downloadPDF()" [disabled]="loading"><span class="download-icon">📥</span> <span class="download-text">Download PDF</span></button>
-        <button class="btn btn-blue" (click)="printMarkSheet()" [disabled]="loading">🖨️ Print Preview</button>
-      </div>
+      <aside class="ms-hero-aside">
+        <span class="ms-hero-badge" *ngIf="selectedClassId">{{ getSelectedClassName() }}</span>
+        <span class="ms-hero-badge ms-hero-badge--muted" *ngIf="selectedTerm">{{ selectedTerm }}</span>
+        <span class="ms-hero-badge ms-hero-badge--muted" *ngIf="selectedExamType">{{ getExamTypeLabel() }}</span>
+      </aside>
     </div>
 
-    <!-- Statistics Cards -->
-    <div *ngIf="showStatistics" class="statistics-grid">
-        <div class="stat-card">
-          <div class="stat-icon">👥</div>
-          <div class="stat-content">
-            <div class="stat-value">{{ statistics.totalStudents }}</div>
-            <div class="stat-label">Total Students</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">📊</div>
-          <div class="stat-content">
-            <div class="stat-value">{{ statistics.averageScore }}</div>
-            <div class="stat-label">Class average (core)</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">🏆</div>
-          <div class="stat-content">
-            <div class="stat-value">{{ statistics.highestScore }}</div>
-            <div class="stat-label">Highest average (core)</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">✅</div>
-          <div class="stat-content">
-            <div class="stat-value">{{ statistics.passRate }}%</div>
-            <div class="stat-label">Pass Rate (Core ≥ 70%)</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">🎯</div>
-          <div class="stat-content">
-            <div class="stat-value">{{ statistics.highAchieversPercent }}%</div>
-            <div class="stat-label">Students with ≥ 70%</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">⚠️</div>
-          <div class="stat-content">
-            <div class="stat-value">{{ statistics.lowPerformersPercent }}%</div>
-            <div class="stat-label">Below 70% in Core</div>
-          </div>
-        </div>
+    <nav class="ms-cross-links" aria-label="Related exam pages">
+      <a routerLink="/exams">Enter marks</a>
+      <a routerLink="/results-analysis">Results analysis</a>
+      <a routerLink="/publish-results" *ngIf="isAdmin">Publish results</a>
+      <a routerLink="/check_mark_progess">Marks progress</a>
+    </nav>
+
+    <div class="ms-hero-stats" *ngIf="markSheetData">
+      <article class="ms-stat">
+        <span class="ms-stat__icon" aria-hidden="true">👥</span>
+        <span class="ms-stat__value">{{ statistics.totalStudents }}</span>
+        <span class="ms-stat__label">Students</span>
+      </article>
+      <article class="ms-stat ms-stat--sky">
+        <span class="ms-stat__icon" aria-hidden="true">📊</span>
+        <span class="ms-stat__value">{{ statistics.averageScore }}%</span>
+        <span class="ms-stat__label">Class average</span>
+      </article>
+      <article class="ms-stat ms-stat--mint">
+        <span class="ms-stat__icon" aria-hidden="true">✅</span>
+        <span class="ms-stat__value">{{ statistics.passRate }}%</span>
+        <span class="ms-stat__label">Pass rate</span>
+      </article>
+      <article class="ms-stat ms-stat--amber">
+        <span class="ms-stat__icon" aria-hidden="true">🏆</span>
+        <span class="ms-stat__value">{{ statistics.highestScore }}%</span>
+        <span class="ms-stat__label">Highest avg</span>
+      </article>
+      <article class="ms-stat">
+        <span class="ms-stat__icon" aria-hidden="true">🎯</span>
+        <span class="ms-stat__value">{{ statistics.highAchieversPercent }}%</span>
+        <span class="ms-stat__label">≥ 70%</span>
+      </article>
+      <article class="ms-stat ms-stat--muted">
+        <span class="ms-stat__icon" aria-hidden="true">📚</span>
+        <span class="ms-stat__value">{{ orderedSubjects.length }}</span>
+        <span class="ms-stat__label">Subjects</span>
+      </article>
+    </div>
+
+    <div class="ms-steps" aria-label="Progress">
+      <span class="ms-step" [class.ms-step--done]="markSheetData" [class.ms-step--active]="!markSheetData">
+        <strong>1</strong> Select options
+      </span>
+      <span class="ms-step-arrow">→</span>
+      <span class="ms-step" [class.ms-step--active]="!!markSheetData">
+        <strong>2</strong> View mark sheet
+      </span>
+    </div>
+  </header>
+
+  <section class="ms-panel ms-panel--select" @fadeIn>
+    <div class="ms-panel__head">
+      <h2 class="ms-panel__title">Generate mark sheet</h2>
+      <p class="ms-panel__intro">Choose class and exam type. The sheet generates automatically when all criteria are set.</p>
+    </div>
+
+    <div class="ms-form-grid">
+      <div class="ms-field">
+        <label for="msClass">Class <span class="ms-required">*</span></label>
+        <select
+          id="msClass"
+          [(ngModel)]="selectedClassId"
+          [ngModelOptions]="{ standalone: true }"
+          (change)="onClassChange()"
+          (ngModelChange)="onSelectionChange()"
+          [disabled]="loadingClasses"
+          class="ms-select">
+          <option value="">{{ loadingClasses ? 'Loading classes…' : 'Select class' }}</option>
+          <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">{{ cls.name }} ({{ cls.form }})</option>
+        </select>
       </div>
 
-    <!-- Search and Filter Bar -->
-    <div class="toolbar">
-      <div class="search-box">
-        <input 
-          type="text" 
-          [(ngModel)]="searchQuery" 
-          [ngModelOptions]="{standalone: true}"
-          (input)="onSearch()"
-          placeholder="Search by name, number, or position..."
-          class="search-input">
+      <div class="ms-field">
+        <label for="msTerm">Term</label>
+        <input
+          id="msTerm"
+          type="text"
+          [ngModel]="selectedTerm || (loadingTerm ? 'Loading…' : 'Not set')"
+          [ngModelOptions]="{ standalone: true }"
+          readonly
+          [disabled]="loadingTerm"
+          class="ms-input ms-input--readonly" />
+        <span class="ms-field-hint">{{ loadingTerm ? 'Loading…' : (selectedTerm ? 'From settings' : 'Configure in settings') }}</span>
       </div>
-      <div class="toolbar-actions">
-        <button 
-          class="btn btn-toggle-stats" 
-          (click)="showStatistics = !showStatistics">
-          {{ showStatistics ? 'Hide stats' : 'Show stats' }}
+
+      <div class="ms-field">
+        <label for="msExamType">Exam type <span class="ms-required">*</span></label>
+        <select
+          id="msExamType"
+          [(ngModel)]="selectedExamType"
+          [ngModelOptions]="{ standalone: true }"
+          (change)="onExamTypeChange()"
+          (ngModelChange)="onSelectionChange()"
+          class="ms-select">
+          <option value="">Select exam type</option>
+          <option *ngFor="let type of examTypes" [value]="type.value">{{ type.label }}</option>
+        </select>
+      </div>
+
+      <div class="ms-field ms-field--action">
+        <label class="ms-field-label-spacer">&nbsp;</label>
+        <button
+          type="button"
+          class="ms-btn ms-btn--primary ms-btn--block"
+          (click)="generateMarkSheet()"
+          [disabled]="loading || !selectedClassId || !selectedExamType || !selectedTerm">
+          <span *ngIf="loading" class="ms-spinner" aria-hidden="true"></span>
+          {{ loading ? 'Generating…' : 'Generate' }}
         </button>
       </div>
     </div>
 
-    <p class="mark-sheet-scroll-hint hide-print" aria-hidden="true">Scroll horizontally to view all subjects →</p>
-    <div class="mark-sheet-table-wrapper table-responsive leaderboard-table-wrap" role="region" aria-label="Mark sheet table" tabindex="0">
-        <table class="mark-sheet-table leaderboard-table">
-          <thead class="sticky-header">
-            <tr class="thead-row-navy">
-              <th rowspan="2" class="th-outer position-col sortable" (click)="sortTable('position')">
-                Pos {{ getSortIcon('position') }}
-              </th>
-              <th rowspan="2" class="th-outer student-number-col sortable" (click)="sortTable('studentNumber')">
-                Student No. {{ getSortIcon('studentNumber') }}
-              </th>
-              <th rowspan="2" class="th-outer student-name-col sortable" (click)="sortTable('studentName')">
-                Student Name {{ getSortIcon('studentName') }}
-              </th>
-              <th [colSpan]="orderedSubjects.length" class="th-outer th-subjects-group">Subjects</th>
-              <th rowspan="2" class="th-outer total-col sortable" (click)="sortTable('totalScore')">
-                Total {{ getSortIcon('totalScore') }}
-              </th>
-              <th rowspan="2" class="th-outer average-col sortable" (click)="sortTable('average')">
-                Average {{ getSortIcon('average') }}
-              </th>
-            </tr>
-            <tr class="thead-row-blue">
-              <th *ngFor="let subject of (orderedSubjects | safeArray)" class="th-subject subject-col">
-                <div class="subject-header">
-                  <div class="subject-name">{{ subject.name }}</div>
-                  <div class="subject-pass-rate">{{ getSubjectPassRate(subject.id) }}%</div>
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let row of (filteredMarkSheet | safeArray); let i = index" class="leaderboard-row">
-              <td class="position-cell">
-                <span class="position-badge" [ngClass]="getRankBadgeClass(row.position)">
-                  {{ row.position }}
-                </span>
-              </td>
-              <td class="student-number-cell">{{ row.studentNumber }}</td>
-              <td class="student-name-cell">
-                <div class="student-name-wrapper">
-                  <span>{{ row.studentName }}</span>
-                  <span *ngIf="row.position <= 3" class="top-badge">🏆</span>
-                </div>
-              </td>
-              <td *ngFor="let subject of orderedSubjects" class="mark-cell">
-                <span
-                  class="mark-display"
-                  [style.color]="getScoreColor(getSubjectMarkDisplay(row, subject.id))">
-                  {{ getSubjectMarkDisplay(row, subject.id) }}
-                </span>
-              </td>
-              <td class="total-cell">
-                <strong class="summary-mark">
-                  {{ getCoreTotals(row).totalScore }} / {{ getCoreTotals(row).totalMaxScore }}
-                </strong>
-              </td>
-              <td class="average-cell">
-                <div class="average-display">
-                  <strong class="average-value summary-mark">{{ getCoreAverageDisplay(row) }}</strong>
-                </div>
-              </td>
-            </tr>
-            <tr *ngIf="filteredMarkSheet.length === 0" class="no-results">
-              <td [colSpan]="orderedSubjects.length + 6" class="text-center">
-                No students found matching your search criteria.
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <div class="ms-criteria">
+      <div class="ms-criteria__track">
+        <div class="ms-criteria__fill" [style.width.%]="(getCriteriaCompleteCount() / 3) * 100"></div>
+      </div>
+      <div class="ms-chips">
+        <span class="ms-chip" [class.ms-chip--done]="selectedClassId">Class</span>
+        <span class="ms-chip" [class.ms-chip--done]="selectedTerm">Term</span>
+        <span class="ms-chip" [class.ms-chip--done]="selectedExamType">Exam type</span>
+      </div>
+      <span class="ms-criteria__label">{{ getCriteriaCompleteCount() }} of 3 ready</span>
+    </div>
+  </section>
+
+  <section class="ms-loading-panel" *ngIf="loading && !markSheetData">
+    <span class="ms-loading-ring" aria-hidden="true"></span>
+    <p>Generating mark sheet…</p>
+  </section>
+
+  <section class="ms-empty" *ngIf="!markSheetData && !loading && isSelectionValid()">
+    <span class="ms-empty-icon" aria-hidden="true">📊</span>
+    <h3>Ready to generate</h3>
+    <p>All criteria are set. Click <strong>Generate</strong> or wait for auto-generation.</p>
+  </section>
+
+  <section *ngIf="markSheetData" class="ms-panel ms-panel--results mark-sheet-container" @slideIn>
+    <div class="ms-result-head">
+      <div class="ms-result-info">
+        <h2 class="ms-result-title">{{ markSheetData.class.name }} — {{ markSheetData.class.form }}</h2>
+        <div class="ms-result-meta">
+          <span class="ms-meta-badge">{{ getExamTypeLabel() }}</span>
+          <span class="ms-meta-text">Generated {{ markSheetData.generatedAt | date : 'medium' }}</span>
+          <span class="ms-meta-text" *ngIf="markSheetData.class.classTeacherName">Class teacher: {{ markSheetData.class.classTeacherName }}</span>
+        </div>
+      </div>
+      <div class="ms-result-actions">
+        <button type="button" class="ms-btn ms-btn--outline ms-btn--sm" (click)="exportToExcel()" [disabled]="loading">Excel</button>
+        <button type="button" class="ms-btn ms-btn--primary ms-btn--sm" (click)="downloadPDF()" [disabled]="loading">Download PDF</button>
+        <button type="button" class="ms-btn ms-btn--ghost ms-btn--sm" (click)="printMarkSheet()" [disabled]="loading">Print preview</button>
+      </div>
     </div>
 
-    <div class="leaderboard-footer">
-      <div class="footer-summary">
-        <span class="footer-summary-item"><strong>Total Students:</strong> {{ markSheetData.markSheet.length }}</span>
-        <span class="footer-summary-item"><strong>Exams Included:</strong> {{ markSheetData.exams.length }}</span>
-        <span class="footer-summary-item" *ngIf="searchQuery"><strong>Filtered Results:</strong> {{ filteredMarkSheet.length }}</span>
+    <div *ngIf="showStatistics" class="ms-stats-grid">
+      <article class="ms-stat-card">
+        <span class="ms-stat-card__icon" aria-hidden="true">👥</span>
+        <span class="ms-stat-card__value">{{ statistics.totalStudents }}</span>
+        <span class="ms-stat-card__label">Total students</span>
+      </article>
+      <article class="ms-stat-card">
+        <span class="ms-stat-card__icon" aria-hidden="true">📊</span>
+        <span class="ms-stat-card__value">{{ statistics.averageScore }}%</span>
+        <span class="ms-stat-card__label">Class average (core)</span>
+      </article>
+      <article class="ms-stat-card">
+        <span class="ms-stat-card__icon" aria-hidden="true">🏆</span>
+        <span class="ms-stat-card__value">{{ statistics.highestScore }}%</span>
+        <span class="ms-stat-card__label">Highest average</span>
+      </article>
+      <article class="ms-stat-card ms-stat-card--mint">
+        <span class="ms-stat-card__icon" aria-hidden="true">✅</span>
+        <span class="ms-stat-card__value">{{ statistics.passRate }}%</span>
+        <span class="ms-stat-card__label">Pass rate (core ≥ 70%)</span>
+      </article>
+      <article class="ms-stat-card">
+        <span class="ms-stat-card__icon" aria-hidden="true">🎯</span>
+        <span class="ms-stat-card__value">{{ statistics.highAchieversPercent }}%</span>
+        <span class="ms-stat-card__label">Students ≥ 70%</span>
+      </article>
+      <article class="ms-stat-card ms-stat-card--amber">
+        <span class="ms-stat-card__icon" aria-hidden="true">⚠️</span>
+        <span class="ms-stat-card__value">{{ statistics.lowPerformersPercent }}%</span>
+        <span class="ms-stat-card__label">Below 70% in core</span>
+      </article>
+    </div>
+
+    <div class="ms-toolbar">
+      <div class="ms-search-wrap">
+        <span class="ms-search-icon" aria-hidden="true">🔍</span>
+        <input
+          type="search"
+          [(ngModel)]="searchQuery"
+          [ngModelOptions]="{ standalone: true }"
+          (input)="onSearch()"
+          placeholder="Search by name, number, or position…"
+          class="ms-search-input" />
+        <button type="button" class="ms-clear-btn" *ngIf="searchQuery" (click)="searchQuery = ''; onSearch()" aria-label="Clear search">×</button>
       </div>
-      <div class="footer-top-performers" *ngIf="statistics.topPerformers.length > 0">
-        <span class="footer-top-label">Top Performers</span>
-        <span *ngFor="let performer of statistics.topPerformers; let i = index" class="top-performer-pill">
+      <button type="button" class="ms-btn ms-btn--outline ms-btn--sm" (click)="showStatistics = !showStatistics">
+        {{ showStatistics ? 'Hide stats' : 'Show stats' }}
+      </button>
+    </div>
+
+    <p class="ms-scroll-hint hide-print" aria-hidden="true">Scroll horizontally to view all subjects →</p>
+
+    <div class="ms-table-wrap mark-sheet-table-wrapper" role="region" aria-label="Mark sheet table" tabindex="0">
+      <table class="mark-sheet-table ms-table">
+        <thead class="sticky-header">
+          <tr class="ms-thead-row-main">
+            <th rowspan="2" class="ms-th position-col sortable" (click)="sortTable('position')">Pos {{ getSortIcon('position') }}</th>
+            <th rowspan="2" class="ms-th student-number-col sortable" (click)="sortTable('studentNumber')">Student No. {{ getSortIcon('studentNumber') }}</th>
+            <th rowspan="2" class="ms-th student-name-col sortable" (click)="sortTable('studentName')">Student Name {{ getSortIcon('studentName') }}</th>
+            <th [colSpan]="orderedSubjects.length" class="ms-th ms-th--group">Subjects</th>
+            <th rowspan="2" class="ms-th total-col sortable" (click)="sortTable('totalScore')">Total {{ getSortIcon('totalScore') }}</th>
+            <th rowspan="2" class="ms-th average-col sortable" (click)="sortTable('average')">Average {{ getSortIcon('average') }}</th>
+          </tr>
+          <tr class="ms-thead-row-subjects">
+            <th *ngFor="let subject of (orderedSubjects | safeArray)" class="ms-th ms-th--subject subject-col">
+              <div class="subject-header">
+                <div class="subject-name">{{ subject.name }}</div>
+                <div class="subject-pass-rate">{{ getSubjectPassRate(subject.id) }}% pass</div>
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of (filteredMarkSheet | safeArray); let i = index" class="ms-row">
+            <td class="position-cell">
+              <span class="position-badge" [ngClass]="getRankBadgeClass(row.position)">{{ row.position }}</span>
+            </td>
+            <td class="student-number-cell">{{ row.studentNumber }}</td>
+            <td class="student-name-cell">
+              <div class="student-name-wrapper">
+                <span>{{ row.studentName }}</span>
+                <span *ngIf="row.position <= 3" class="top-badge" aria-hidden="true">🏆</span>
+              </div>
+            </td>
+            <td *ngFor="let subject of orderedSubjects" class="mark-cell">
+              <span class="mark-display" [style.color]="getScoreColor(getSubjectMarkDisplay(row, subject.id))">
+                {{ getSubjectMarkDisplay(row, subject.id) }}
+              </span>
+            </td>
+            <td class="total-cell">
+              <strong class="summary-mark">{{ getCoreTotals(row).totalScore }} / {{ getCoreTotals(row).totalMaxScore }}</strong>
+            </td>
+            <td class="average-cell">
+              <strong class="average-value summary-mark">{{ getCoreAverageDisplay(row) }}</strong>
+            </td>
+          </tr>
+          <tr *ngIf="filteredMarkSheet.length === 0" class="ms-no-results">
+            <td [colSpan]="orderedSubjects.length + 5">No students found matching your search.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="ms-footer">
+      <div class="ms-footer-summary">
+        <span><strong>Total students:</strong> {{ markSheetData.markSheet.length }}</span>
+        <span><strong>Exams included:</strong> {{ markSheetData.exams.length }}</span>
+        <span *ngIf="searchQuery"><strong>Filtered:</strong> {{ filteredMarkSheet.length }}</span>
+      </div>
+      <div class="ms-top-performers" *ngIf="statistics.topPerformers.length > 0">
+        <span class="ms-top-label">Top performers</span>
+        <span *ngFor="let performer of statistics.topPerformers; let i = index" class="ms-top-pill">
           {{ i + 1 }}. {{ performer.name }} ({{ performer.average }})
         </span>
       </div>
-    </div>
+    </footer>
   </section>
 </div>
-

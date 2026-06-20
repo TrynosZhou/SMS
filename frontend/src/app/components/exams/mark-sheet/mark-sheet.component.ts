@@ -439,6 +439,31 @@ setTimeout(() => this.error = '', 5000);
     });
   }
 
+  clearAlert(type: 'success' | 'error'): void {
+    if (type === 'success') this.success = '';
+    else this.error = '';
+    this.cdr.markForCheck();
+  }
+
+  getSelectedClassName(): string {
+    const cls = this.classes.find((c) => c.id === this.selectedClassId);
+    if (!cls) return '';
+    return cls.form ? `${cls.name} (${cls.form})` : cls.name;
+  }
+
+  getExamTypeLabel(): string {
+    const match = this.examTypes.find((t) => t.value === this.selectedExamType);
+    return match ? match.label : '';
+  }
+
+  getCriteriaCompleteCount(): number {
+    let count = 0;
+    if (this.selectedClassId) count++;
+    if (this.selectedTerm) count++;
+    if (this.selectedExamType) count++;
+    return count;
+  }
+
   /** Subjects in display order: Mathematics, English, Science, then others. */
   get orderedSubjects(): any[] {
     return sortMarkSheetSubjectsForDisplay(this.markSheetData?.subjects || []);

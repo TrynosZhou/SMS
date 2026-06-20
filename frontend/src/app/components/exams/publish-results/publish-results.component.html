@@ -15,7 +15,7 @@
       <div class="pr-hero-left">
         <span class="pr-hero-icon" aria-hidden="true">📢</span>
         <div>
-          <span class="pr-hero-eyebrow">Exams</span>
+          <span class="pr-hero-eyebrow">Examinations</span>
           <h1>Publish Results</h1>
           <p class="pr-hero-sub">Make exam results visible to students, parents, and teachers — or unpublish to allow editing again.</p>
           <p class="pr-hero-meta" *ngIf="lastLoadedAt && hasSelection && !loadingPreview">
@@ -26,75 +26,106 @@
           </p>
         </div>
       </div>
-      <div class="pr-hero__actions">
-        <button type="button" class="pr-hero-refresh" (click)="refresh()" [disabled]="loadingTerm || loadingPreview" title="Refresh" aria-label="Refresh">
-          <span [class.spinning]="loadingTerm || loadingPreview">↻</span>
-        </button>
-        <a routerLink="/check_mark_progess" class="pr-hero-btn pr-hero-btn--white">Marks progress</a>
-        <a routerLink="/mark-sheet" class="pr-hero-btn pr-hero-btn--white">Mark sheet</a>
-        <a routerLink="/report-cards" class="pr-hero-btn pr-hero-btn--accent">Report cards</a>
-      </div>
+      <aside class="pr-hero-aside">
+        <span class="pr-hero-badge" *ngIf="publishExamType">{{ selectedExamLabel }}</span>
+        <span class="pr-hero-badge pr-hero-badge--muted" *ngIf="publishTerm">{{ publishTerm }}</span>
+        <span class="pr-hero-badge pr-hero-badge--published" *ngIf="hasSelection && stats.published > 0 && stats.draft === 0">All published</span>
+        <span class="pr-hero-badge pr-hero-badge--draft" *ngIf="hasSelection && stats.draft > 0">{{ stats.draft }} draft</span>
+      </aside>
     </div>
 
-    <div class="pr-hero-stats" *ngIf="hasSelection && !loadingPreview && stats.totalExams > 0">
+    <nav class="pr-cross-links" aria-label="Related exam pages">
+      <a routerLink="/exams">Enter marks</a>
+      <a routerLink="/mark-sheet">Mark sheet</a>
+      <a routerLink="/report-cards">Report cards</a>
+      <a routerLink="/results-analysis">Results analysis</a>
+      <a routerLink="/check_mark_progess">Marks progress</a>
+    </nav>
+
+    <div class="pr-hero-stats" *ngIf="hasSelection && !loadingPreview">
       <article class="pr-stat">
-        <span class="pr-stat__value">{{ stats.classes }}</span>
+        <span class="pr-stat__icon" aria-hidden="true">🏫</span>
+        <span class="pr-stat__value">{{ stats.classes || '—' }}</span>
         <span class="pr-stat__label">Classes</span>
       </article>
       <article class="pr-stat">
-        <span class="pr-stat__value">{{ stats.totalExams }}</span>
+        <span class="pr-stat__icon" aria-hidden="true">📝</span>
+        <span class="pr-stat__value">{{ stats.totalExams || '—' }}</span>
         <span class="pr-stat__label">Total exams</span>
       </article>
       <article class="pr-stat pr-stat--mint">
-        <span class="pr-stat__value">{{ stats.published }}</span>
+        <span class="pr-stat__icon" aria-hidden="true">✅</span>
+        <span class="pr-stat__value">{{ stats.published || '—' }}</span>
         <span class="pr-stat__label">Published</span>
       </article>
       <article class="pr-stat pr-stat--rose">
-        <span class="pr-stat__value">{{ stats.draft }}</span>
+        <span class="pr-stat__icon" aria-hidden="true">📋</span>
+        <span class="pr-stat__value">{{ stats.draft || '—' }}</span>
         <span class="pr-stat__label">Draft</span>
       </article>
-      <article class="pr-stat pr-stat--accent">
-        <span class="pr-stat__value">{{ publishRate }}%</span>
+      <article class="pr-stat pr-stat--amber">
+        <span class="pr-stat__icon" aria-hidden="true">📊</span>
+        <span class="pr-stat__value">{{ hasSelection && stats.totalExams ? publishRate + '%' : '—' }}</span>
         <span class="pr-stat__label">Published rate</span>
       </article>
     </div>
     <div class="pr-hero-stats pr-hero-stats--skeleton" *ngIf="loadingPreview && hasSelection">
       <div class="pr-skeleton" *ngFor="let i of skeletonRows"></div>
     </div>
+
+    <div class="pr-hero-toolbar">
+      <button type="button" class="pr-btn pr-btn--ghost pr-btn--sm" (click)="refresh()" [disabled]="loadingTerm || loadingPreview">
+        <span [class.spinning]="loadingTerm || loadingPreview">↻</span> Refresh
+      </button>
+    </div>
+
+    <div class="pr-steps" aria-label="Progress">
+      <span class="pr-step" [class.pr-step--done]="hasSelection" [class.pr-step--active]="!hasSelection">
+        <strong>1</strong> Select period
+      </span>
+      <span class="pr-step-arrow">→</span>
+      <span class="pr-step" [class.pr-step--done]="stats.totalExams > 0 && !loadingPreview" [class.pr-step--active]="hasSelection && loadingPreview">
+        <strong>2</strong> Review status
+      </span>
+      <span class="pr-step-arrow">→</span>
+      <span class="pr-step" [class.pr-step--active]="canManage && hasSelection && stats.totalExams > 0 && !loadingPreview">
+        <strong>3</strong> Publish or unpublish
+      </span>
+    </div>
   </header>
 
-  <section class="pr-panel" *ngIf="!canManage">
+  <section class="pr-panel pr-panel--warn" *ngIf="!canManage">
     <div class="pr-hint pr-hint--warn">
-      <span aria-hidden="true">🔒</span>
+      <span class="pr-hint-icon" aria-hidden="true">🔒</span>
       <div>
         <h3>View only</h3>
-        <p>Only administrators can publish or unpublish exam results.</p>
+        <p>Only administrators can publish or unpublish exam results. You can still preview publish status below.</p>
       </div>
     </div>
   </section>
 
-  <section class="pr-panel">
-    <div class="pr-panel__head-row">
-      <div>
-        <h2 class="pr-panel__title">Exam period</h2>
-        <p class="pr-panel__intro">Select exam type and confirm the term. Preview shows publish status per class before you act.</p>
+  <section class="pr-panel pr-panel--select">
+    <div class="pr-panel__head">
+      <h2 class="pr-panel__title">Exam period</h2>
+      <p class="pr-panel__intro">Select exam type and confirm the term. The class preview updates automatically when both are set.</p>
+    </div>
+
+    <div class="pr-form-grid">
+      <div class="pr-field">
+        <span class="pr-field-label">Exam type <span class="pr-required">*</span></span>
+        <div class="pr-chips">
+          <button
+            type="button"
+            class="pr-chip"
+            *ngFor="let t of examTypes"
+            [class.pr-chip--active]="publishExamType === t.value"
+            (click)="selectExamType(t.value)">
+            {{ t.label }}
+          </button>
+        </div>
       </div>
-    </div>
 
-    <div class="pr-chips pr-chips--exam">
-      <span class="pr-chips-label">Exam type <span class="pr-required">*</span></span>
-      <button
-        type="button"
-        class="pr-chip"
-        *ngFor="let t of examTypes"
-        [class.pr-chip--active]="publishExamType === t.value"
-        (click)="selectExamType(t.value)">
-        {{ t.label }}
-      </button>
-    </div>
-
-    <div class="pr-filters-row">
-      <div class="pr-field pr-field--grow">
+      <div class="pr-field">
         <label for="pr-term">Term <span class="pr-required">*</span></label>
         <input
           id="pr-term"
@@ -104,12 +135,21 @@
           (ngModelChange)="onTermChange()"
           [placeholder]="loadingTerm ? 'Loading active term…' : 'e.g. Term 1 2026'"
           [disabled]="loadingTerm" />
-        <span class="pr-field-hint">Defaults to the active term from Academic Settings.</span>
+        <span class="pr-field-hint">{{ loadingTerm ? 'Loading…' : 'Defaults to the active term from Academic Settings' }}</span>
       </div>
     </div>
 
-    <div class="pr-summary" *ngIf="filterSummary">
-      <span class="pr-summary-pill">{{ filterSummary }}</span>
+    <div class="pr-criteria" *ngIf="publishExamType || publishTerm">
+      <div class="pr-criteria__track">
+        <div class="pr-criteria__fill" [style.width.%]="getCriteriaProgressPercent()"></div>
+      </div>
+      <div class="pr-chips pr-chips--status">
+        <span class="pr-chip pr-chip--done" *ngIf="publishExamType">{{ selectedExamLabel }}</span>
+        <span class="pr-chip" *ngIf="!publishExamType">Exam type</span>
+        <span class="pr-chip pr-chip--done" *ngIf="publishTerm?.trim()">{{ publishTerm }}</span>
+        <span class="pr-chip" *ngIf="!publishTerm?.trim()">Term</span>
+      </div>
+      <span class="pr-criteria__label">{{ getCriteriaCompleteCount() }}/2 criteria</span>
     </div>
   </section>
 
@@ -121,86 +161,96 @@
     </div>
   </section>
 
-  <section class="pr-panel pr-action-panel" *ngIf="canManage && hasSelection">
-    <h2 class="pr-panel__title">Actions</h2>
-    <p class="pr-panel__intro pr-action-intro">
-      Publishing locks marks for editing and makes results visible. Unpublishing reverses that for the selected exam type and term.
-    </p>
+  <section class="pr-panel pr-panel--actions" *ngIf="canManage && hasSelection && stats.totalExams > 0 && !loadingPreview">
+    <div class="pr-panel__head">
+      <h2 class="pr-panel__title">Publish actions</h2>
+      <p class="pr-panel__intro">Publishing locks marks for editing and makes results visible. Unpublishing reverses that for the selected exam type and term.</p>
+    </div>
 
     <div class="pr-action-cards">
       <article class="pr-action-card pr-action-card--publish">
-        <div class="pr-action-card__icon" aria-hidden="true">📢</div>
-        <h3>Publish all results</h3>
-        <p>Visible to students, parents, and teachers. Marks become read-only.</p>
+        <div class="pr-action-card__head">
+          <span class="pr-action-card__icon" aria-hidden="true">📢</span>
+          <div>
+            <h3>Publish all results</h3>
+            <p>Visible to students, parents, and teachers. Marks become read-only.</p>
+          </div>
+        </div>
         <button
           type="button"
           class="pr-btn pr-btn--publish"
           (click)="openConfirm('publish')"
-          [disabled]="publishing || unpublishing || loadingPreview || stats.draft === 0">
+          [disabled]="publishing || unpublishing || stats.draft === 0">
           <span *ngIf="!publishing">Publish {{ stats.draft || 0 }} draft exam(s)</span>
           <span *ngIf="publishing" class="pr-btn-loading"><span class="pr-spinner"></span> Publishing…</span>
         </button>
       </article>
 
       <article class="pr-action-card pr-action-card--unpublish">
-        <div class="pr-action-card__icon" aria-hidden="true">🔓</div>
-        <h3>Unpublish results</h3>
-        <p>Hides results from non-admin users. Marks and comments can be edited again.</p>
+        <div class="pr-action-card__head">
+          <span class="pr-action-card__icon" aria-hidden="true">🔓</span>
+          <div>
+            <h3>Unpublish results</h3>
+            <p>Hides results from non-admin users. Marks and comments can be edited again.</p>
+          </div>
+        </div>
         <button
           type="button"
           class="pr-btn pr-btn--unpublish"
           (click)="openConfirm('unpublish')"
-          [disabled]="publishing || unpublishing || loadingPreview || stats.published === 0">
+          [disabled]="publishing || unpublishing || stats.published === 0">
           <span *ngIf="!unpublishing">Unpublish {{ stats.published || 0 }} exam(s)</span>
           <span *ngIf="unpublishing" class="pr-btn-loading"><span class="pr-spinner"></span> Unpublishing…</span>
         </button>
       </article>
     </div>
-
-    <div class="pr-confirm" *ngIf="confirmAction" role="dialog" aria-labelledby="pr-confirm-title">
-      <div class="pr-confirm__box">
-        <h3 id="pr-confirm-title">{{ confirmAction === 'publish' ? 'Confirm publish' : 'Confirm unpublish' }}</h3>
-        <p *ngIf="confirmAction === 'publish'">
-          Publish all <strong>{{ selectedExamLabel }}</strong> results for <strong>{{ publishTerm }}</strong>?
-          This affects <strong>{{ stats.totalExams }}</strong> exam(s) across <strong>{{ stats.classes }}</strong> class(es).
-          Results will be visible to everyone and marks cannot be edited.
-        </p>
-        <p *ngIf="confirmAction === 'unpublish'">
-          Unpublish all <strong>{{ selectedExamLabel }}</strong> results for <strong>{{ publishTerm }}</strong>?
-          <strong>{{ stats.published }}</strong> published exam(s) will return to draft and be hidden from students and parents.
-        </p>
-        <div class="pr-confirm__actions">
-          <button type="button" class="pr-btn pr-btn--ghost" (click)="cancelConfirm()" [disabled]="publishing || unpublishing">Cancel</button>
-          <button
-            type="button"
-            class="pr-btn"
-            [class.pr-btn--publish]="confirmAction === 'publish'"
-            [class.pr-btn--unpublish]="confirmAction === 'unpublish'"
-            (click)="confirmAndExecute()"
-            [disabled]="publishing || unpublishing">
-            {{ confirmAction === 'publish' ? 'Yes, publish' : 'Yes, unpublish' }}
-          </button>
-        </div>
-      </div>
-    </div>
   </section>
 
-  <section class="pr-panel" *ngIf="hasSelection">
-    <div class="pr-panel__head-row">
+  <div class="pr-modal-backdrop" *ngIf="confirmAction" (click)="cancelConfirm()" role="presentation"></div>
+  <div class="pr-modal" *ngIf="confirmAction" role="dialog" aria-labelledby="pr-confirm-title" aria-modal="true">
+    <div class="pr-modal__box">
+      <div class="pr-modal__icon" aria-hidden="true">{{ confirmAction === 'publish' ? '📢' : '🔓' }}</div>
+      <h3 id="pr-confirm-title">{{ confirmAction === 'publish' ? 'Confirm publish' : 'Confirm unpublish' }}</h3>
+      <p *ngIf="confirmAction === 'publish'">
+        Publish all <strong>{{ selectedExamLabel }}</strong> results for <strong>{{ publishTerm }}</strong>?
+        This affects <strong>{{ stats.totalExams }}</strong> exam(s) across <strong>{{ stats.classes }}</strong> class(es).
+        Results will be visible to everyone and marks cannot be edited.
+      </p>
+      <p *ngIf="confirmAction === 'unpublish'">
+        Unpublish all <strong>{{ selectedExamLabel }}</strong> results for <strong>{{ publishTerm }}</strong>?
+        <strong>{{ stats.published }}</strong> published exam(s) will return to draft and be hidden from students and parents.
+      </p>
+      <div class="pr-modal__actions">
+        <button type="button" class="pr-btn pr-btn--ghost" (click)="cancelConfirm()" [disabled]="publishing || unpublishing">Cancel</button>
+        <button
+          type="button"
+          class="pr-btn"
+          [class.pr-btn--publish]="confirmAction === 'publish'"
+          [class.pr-btn--unpublish]="confirmAction === 'unpublish'"
+          (click)="confirmAndExecute()"
+          [disabled]="publishing || unpublishing">
+          {{ confirmAction === 'publish' ? 'Yes, publish' : 'Yes, unpublish' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <section class="pr-panel pr-panel--table" *ngIf="hasSelection">
+    <div class="pr-panel__head pr-panel__head--row">
       <div>
         <h2 class="pr-panel__title">Class status preview</h2>
         <p class="pr-panel__intro">Publish state for each class in this exam period.</p>
       </div>
+      <span class="pr-summary-pill" *ngIf="filterSummary">{{ filterSummary }}</span>
     </div>
 
-    <div class="pr-search-wrap" *ngIf="stats.totalExams > 0">
+    <div class="pr-search-wrap" *ngIf="stats.totalExams > 0 && !loadingPreview">
       <span class="pr-search-icon" aria-hidden="true">🔍</span>
       <input
         #prSearch
         type="search"
         class="pr-search-input"
         placeholder="Search class name…"
-        [disabled]="loadingPreview"
         (input)="onSearchInput(prSearch.value)" />
       <button type="button" class="pr-search-clear" *ngIf="searchQuery" (click)="prSearch.value = ''; clearSearch()">Clear</button>
     </div>
@@ -213,28 +263,37 @@
     <div class="pr-empty" *ngIf="!loadingPreview && stats.totalExams === 0">
       <span class="pr-empty-icon" aria-hidden="true">📭</span>
       <h3>No exams found</h3>
-      <p>No exams exist for {{ selectedExamLabel }} in {{ publishTerm }}. Create exams via the mark sheet first.</p>
-      <a routerLink="/mark-sheet" class="pr-btn pr-btn--ghost">Go to mark sheet</a>
+      <p>No exams exist for {{ selectedExamLabel }} in {{ publishTerm }}. Enter marks via the mark sheet first.</p>
+      <div class="pr-empty-actions">
+        <a routerLink="/exams" class="pr-btn pr-btn--outline">Enter marks</a>
+        <a routerLink="/mark-sheet" class="pr-btn pr-btn--ghost">Mark sheet</a>
+      </div>
     </div>
 
     <div class="pr-table-scroll" *ngIf="!loadingPreview && viewRows.length > 0">
       <table class="pr-table">
         <thead>
           <tr>
+            <th>#</th>
             <th>Class</th>
             <th>Status</th>
-            <th class="pr-col-actions">Actions</th>
+            <th class="pr-col-actions">Quick link</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let row of viewRows; trackBy: trackByClassId" [class.pr-row--published]="row.status === 'published'">
+          <tr *ngFor="let row of viewRows; trackBy: trackByClassId; let i = index" [class.pr-row--published]="row.status === 'published'">
+            <td class="pr-col-num">{{ i + 1 }}</td>
             <td><strong>{{ row.className }}</strong></td>
             <td>
-              <span class="pr-badge pr-badge--published" *ngIf="row.status === 'published'">Published</span>
-              <span class="pr-badge pr-badge--draft" *ngIf="row.status === 'draft'">Draft</span>
+              <span class="pr-badge pr-badge--published" *ngIf="row.status === 'published'">
+                <span aria-hidden="true">✓</span> Published
+              </span>
+              <span class="pr-badge pr-badge--draft" *ngIf="row.status === 'draft'">
+                <span aria-hidden="true">○</span> Draft
+              </span>
             </td>
             <td class="pr-col-actions">
-              <a routerLink="/mark-sheet" class="pr-link">Mark sheet</a>
+              <a routerLink="/mark-sheet" class="pr-link">Mark sheet →</a>
             </td>
           </tr>
         </tbody>
@@ -246,7 +305,7 @@
     </p>
   </section>
 
-  <section class="pr-panel pr-info-panel">
+  <section class="pr-panel pr-panel--info">
     <h2 class="pr-panel__title">What happens when you publish?</h2>
     <ul class="pr-info-list">
       <li>Results appear on report cards and portals for students and parents.</li>

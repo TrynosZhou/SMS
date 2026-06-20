@@ -159,6 +159,23 @@ constructor(
     return this.authService.hasRole('admin') || this.authService.hasRole('superadmin');
   }
 
+  clearAlert(kind: 'success' | 'error'): void {
+    if (kind === 'success') this.success = '';
+    else this.error = '';
+  }
+
+  hasActiveFilters(): boolean {
+    return !!(this.selectedGrade || this.selectedType || this.searchQuery?.trim());
+  }
+
+  refresh(): void {
+    this.loadUnenrolledStudents();
+  }
+
+  trackByStudentId(_index: number, s: any): string {
+    return s?.id || s?.studentId || String(_index);
+  }
+
   loadClasses(): void {
     this.classService
       .getClassesPaginated(1, 500)

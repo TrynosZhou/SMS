@@ -22,7 +22,7 @@ const SIDEBAR_MENU_ROUTE_PREFIXES: Record<string, string[]> = {
   registration: ['/teachers', '/students', '/admin/parents'],
   classManagement: ['/students/enroll', '/students/transfer', '/classes', '/admin/class-promotion'],
   attendance: ['/attendance'],
-  examManagement: ['/exams', '/mark-sheet', '/rankings', '/report-cards', '/results-analysis', '/check_mark_progess', '/publish-results'],
+  examManagement: ['/exams', '/mark-sheet', '/report-cards', '/results-analysis', '/check_mark_progess', '/publish-results'],
   financeManagement: ['/invoices', '/payments', '/balance-enquiry', '/finance/'],
   financialReports: ['/financial-reports'],
   messages: ['/messages'],
@@ -585,10 +585,6 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.canAccessModule('reportCards') || this.isAdmin() || this.isSuperAdmin() || this.isTeacher();
   }
 
-  canAccessRankingsNav(): boolean {
-    return this.canAccessModule('rankings') || this.isAdmin() || this.isSuperAdmin() || this.isTeacher();
-  }
-
   canAccessRecordBookNav(): boolean {
     return this.canAccessModule('recordBook') || this.isTeacher();
   }
@@ -604,7 +600,6 @@ export class AppComponent implements OnInit, OnDestroy {
       '/mark-sheet': 'Mark Sheet',
       '/report-cards': 'Report Cards',
       '/results-analysis': 'Results Analysis',
-      '/rankings': 'Rankings',
       '/check_mark_progess': 'Marks Progress',
       '/publish-results': 'Publish Results',
       '/students': 'Students',
@@ -1323,7 +1318,7 @@ export class AppComponent implements OnInit, OnDestroy {
     if (url.startsWith('/teachers')) return 'Teachers';
     if (url.startsWith('/classes')) return 'Classes';
     if (url.startsWith('/subjects')) return 'Subjects';
-    if (url.startsWith('/exams') || url.startsWith('/mark-sheet') || url.startsWith('/report-cards') || url.startsWith('/results-analysis') || url.startsWith('/publish-results') || url.startsWith('/check_mark_progess') || url.startsWith('/rankings')) return 'Exams';
+    if (url.startsWith('/exams') || url.startsWith('/mark-sheet') || url.startsWith('/report-cards') || url.startsWith('/results-analysis') || url.startsWith('/publish-results') || url.startsWith('/check_mark_progess')) return 'Exams';
 if (url.startsWith('/settings')) return 'Settings';
     if (url.startsWith('/attendance')) return 'Attendance';
     if (url.startsWith('/invoices') || url.startsWith('/payments') || url.startsWith('/finance')) return 'Finance';

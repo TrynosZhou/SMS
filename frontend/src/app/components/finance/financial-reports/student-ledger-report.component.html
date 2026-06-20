@@ -1,8 +1,12 @@
 <div class="sl-page">
-  <div class="sl-toast-stack" *ngIf="error">
-    <div class="sl-toast sl-toast--error" role="alert">
+  <div class="sl-toast-stack" *ngIf="error || success">
+    <div class="sl-toast sl-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="sl-toast__dismiss" (click)="error = ''" aria-label="Dismiss">×</button>
+    </div>
+    <div class="sl-toast sl-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="sl-toast__dismiss" (click)="success = ''" aria-label="Dismiss">×</button>
     </div>
   </div>
 
@@ -14,47 +18,78 @@
           <span class="sl-hero-eyebrow">Financial Reports</span>
           <h1>Student Ledger</h1>
           <p class="sl-hero-sub">
-            Term-scoped running balance for a single student — opening balance, invoices, and payments.
+            Term-scoped running balance for a single student — opening balance, invoices, and payments in one view.
           </p>
-          <nav class="sl-cross-links" aria-label="Related finance pages">
-            <a routerLink="/financial-reports/student-reconciliation">Student Reconciliation</a>
-            <span aria-hidden="true">·</span>
-            <a routerLink="/invoices">Billing</a>
-            <span aria-hidden="true">·</span>
-            <a routerLink="/finance/financial-books">Financial Books</a>
-          </nav>
         </div>
       </div>
+      <aside class="sl-hero-aside">
+        <span class="sl-hero-badge">Single student</span>
+        <span class="sl-hero-badge sl-hero-badge--muted" *ngIf="selectedTermName">{{ selectedTermName }}</span>
+      </aside>
     </div>
+
+    <nav class="sl-cross-links" aria-label="Related finance pages">
+      <a routerLink="/financial-reports/student-reconciliation">Student Reconciliation</a>
+      <a routerLink="/financial-reports/student-ledgers">Invoice Statements</a>
+      <a routerLink="/invoices">Billing</a>
+      <a routerLink="/finance/financial-books">Financial Books</a>
+    </nav>
 
     <div class="sl-hero-stats">
       <article class="sl-stat">
+        <span class="sl-stat__icon" aria-hidden="true">📅</span>
         <span class="sl-stat__value">{{ terms.length }}</span>
         <span class="sl-stat__label">Terms available</span>
       </article>
       <article class="sl-stat">
+        <span class="sl-stat__icon" aria-hidden="true">📊</span>
         <span class="sl-stat__value">{{ hasReport ? transactionCount : '—' }}</span>
         <span class="sl-stat__label">Transactions</span>
       </article>
       <article class="sl-stat sl-stat--mint">
+        <span class="sl-stat__icon" aria-hidden="true">↓</span>
         <span class="sl-stat__value">{{ hasReport ? currencySymbol + formatAmount(totalCredits) : '—' }}</span>
         <span class="sl-stat__label">Total credits</span>
       </article>
-      <article class="sl-stat" [class.sl-stat--rose]="balanceStatus === 'owed'" [class.sl-stat--mint]="balanceStatus === 'credit'">
+      <article
+        class="sl-stat"
+        [class.sl-stat--rose]="balanceStatus === 'owed'"
+        [class.sl-stat--mint]="balanceStatus === 'credit'">
+        <span class="sl-stat__icon" aria-hidden="true">⚖</span>
         <span class="sl-stat__value">{{ hasReport ? currencySymbol + formatAmount(absAmount(closingBalance)) : '—' }}</span>
         <span class="sl-stat__label">{{ hasReport ? balanceStatusLabel : 'Closing balance' }}</span>
       </article>
     </div>
   </header>
 
-  <section class="sl-panel">
-    <div class="sl-panel__head">
-      <h2 class="sl-panel__title">Find student</h2>
-      <p class="sl-panel__intro">Select a term, then search by Student ID, first name, or last name. Press Enter to search.</p>
+  <section class="sl-panel sl-panel--search">
+    <div class="sl-panel__head sl-panel__head--row">
+      <div>
+        <h2 class="sl-panel__title">Find student</h2>
+        <p class="sl-panel__intro">Select a term, then search by Student ID, first name, or last name. Press Enter to search.</p>
+      </div>
+      <div class="sl-panel__actions" *ngIf="hasReport">
+        <button type="button" class="sl-btn sl-btn--outline" (click)="previewPdf()" [disabled]="!canExportPdf || exportingPdf">
+          Preview PDF
+        </button>
+        <button type="button" class="sl-btn sl-btn--outline" (click)="downloadPdf()" [disabled]="!canExportPdf || exportingPdf">
+          {{ exportingPdf ? 'Generating…' : 'Download PDF' }}
+        </button>
+      </div>
     </div>
 
-    <div class="sl-term-row">
-      <p class="sl-loading-terms" *ngIf="loadingTerms">Loading terms…</p>
+    <div class="sl-term-block">
+      <div class="sl-term-block__label">
+        <span class="sl-label">School term</span>
+        <span class="sl-term-hint" *ngIf="loadingTerms">Loading terms…</span>
+      </div>
+
+      <div class="sl-term-skeleton" *ngIf="loadingTerms" aria-hidden="true">
+        <span class="sl-skeleton sl-skeleton--chip"></span>
+        <span class="sl-skeleton sl-skeleton--chip"></span>
+        <span class="sl-skeleton sl-skeleton--chip"></span>
+      </div>
+
       <div class="sl-chips" *ngIf="!loadingTerms && terms.length">
         <button
           type="button"
@@ -62,13 +97,20 @@
           *ngFor="let t of terms"
           [class.sl-chip--active]="selectedTermId === t.id"
           (click)="selectTerm(t.id)"
-          [disabled]="loadingTerms || loading">
+          [disabled]="loading">
           {{ t.name }}
         </button>
       </div>
+
       <div class="sl-field sl-field--term" *ngIf="!loadingTerms">
-        <label for="sl-term">Term</label>
-        <select id="sl-term" class="sl-select" [(ngModel)]="selectedTermId" [ngModelOptions]="{standalone:true}" [disabled]="loadingTerms || loading || !terms.length">
+        <label for="sl-term">Or choose from list</label>
+        <select
+          id="sl-term"
+          class="sl-select"
+          [(ngModel)]="selectedTermId"
+          [ngModelOptions]="{standalone:true}"
+          (ngModelChange)="selectTerm($event)"
+          [disabled]="loadingTerms || loading || !terms.length">
           <option *ngIf="!terms.length" value="">No terms available</option>
           <option *ngFor="let t of terms" [value]="t.id">{{ t.name }}</option>
         </select>
@@ -89,17 +131,12 @@
           [(ngModel)]="searchQuery"
           [ngModelOptions]="{standalone:true}"
           (keydown)="onSearchKeydown($event)"
-          [disabled]="loading" />
+          [disabled]="loading || !terms.length" />
       </div>
       <div class="sl-actions">
-        <button type="button" class="sl-btn sl-btn--primary" (click)="getReport()" [disabled]="loading || loadingTerms">
-          {{ loading ? 'Loading…' : 'Get report' }}
-        </button>
-        <button type="button" class="sl-btn" (click)="previewPdf()" [disabled]="!canExportPdf || exportingPdf">
-          Preview PDF
-        </button>
-        <button type="button" class="sl-btn" (click)="downloadPdf()" [disabled]="!canExportPdf || exportingPdf">
-          {{ exportingPdf ? '…' : 'Download PDF' }}
+        <button type="button" class="sl-btn sl-btn--primary" (click)="getReport()" [disabled]="loading || loadingTerms || !terms.length">
+          <span class="sl-btn-spinner" *ngIf="loading" aria-hidden="true"></span>
+          {{ loading ? 'Loading report…' : 'Get report' }}
         </button>
         <button type="button" class="sl-btn sl-btn--ghost" (click)="clearAll()" [disabled]="loading">Clear</button>
       </div>
@@ -109,10 +146,11 @@
   <section class="sl-panel sl-panel--matches" *ngIf="needsSelection && matches.length">
     <div class="sl-panel__head">
       <h2 class="sl-panel__title">Multiple students found</h2>
-      <p class="sl-panel__intro">Select the correct student to load their ledger.</p>
+      <p class="sl-panel__intro">Your search matched more than one student. Select the correct record to load their ledger.</p>
     </div>
     <div class="sl-match-grid">
       <button type="button" class="sl-match-card" *ngFor="let m of matches" (click)="selectMatch(m.id)">
+        <span class="sl-match-avatar">{{ (m.firstName?.[0] || '') + (m.lastName?.[0] || '') | uppercase }}</span>
         <strong>{{ m.firstName }} {{ m.lastName }}</strong>
         <span class="sl-match-meta">{{ m.admissionNumber }}</span>
         <span class="sl-match-meta" *ngIf="m.formName || m.className">{{ m.formName }} · {{ m.className }}</span>
@@ -120,66 +158,94 @@
     </div>
   </section>
 
+  <section class="sl-loading-panel" *ngIf="loading && !hasReport" aria-live="polite">
+    <div class="sl-loading-panel__inner">
+      <span class="sl-loading-ring" aria-hidden="true"></span>
+      <p>Building student ledger…</p>
+    </div>
+  </section>
+
   <section class="sl-empty" *ngIf="!loading && !loadingTerms && !hasReport && !needsSelection && terms.length">
     <span class="sl-empty-icon" aria-hidden="true">📋</span>
     <h3>No report loaded yet</h3>
-    <p>Select a term and search for a student to view their ledger.</p>
+    <p>Select a term and search for a student to view their ledger for the period.</p>
   </section>
 
   <ng-container *ngIf="hasReport && report as r">
-    <section class="sl-student-header">
+    <section class="sl-student-card">
+      <div class="sl-student-avatar" aria-hidden="true">{{ studentInitials }}</div>
       <div class="sl-student-main">
         <h2>{{ r.student.firstName }} {{ r.student.lastName }}</h2>
-        <p class="sl-student-meta">
-          <span>{{ r.student.admissionNumber }}</span>
-          <span *ngIf="r.student.formName || r.student.className">{{ r.student.formName }} · {{ r.student.className }}</span>
-        </p>
+        <div class="sl-student-meta">
+          <span class="sl-meta-pill">{{ r.student.admissionNumber }}</span>
+          <span class="sl-meta-pill" *ngIf="r.student.formName">{{ r.student.formName }}</span>
+          <span class="sl-meta-pill" *ngIf="r.student.className">{{ r.student.className }}</span>
+        </div>
         <p class="sl-term-range">
           <strong>{{ r.term.name }}</strong>
           <span>{{ r.term.startDate | date : 'mediumDate' }} – {{ r.term.endDate | date : 'mediumDate' }}</span>
         </p>
       </div>
-      <span class="sl-balance-badge" [class.sl-balance-badge--owed]="balanceStatus === 'owed'" [class.sl-balance-badge--credit]="balanceStatus === 'credit'" [class.sl-balance-badge--settled]="balanceStatus === 'settled'">
-        {{ balanceStatusLabel }}: {{ currencySymbol }}{{ formatAmount(absAmount(r.summary.closingBalance)) }}
-      </span>
-      <a class="sl-btn sl-btn--link" [routerLink]="recordPaymentLink()" [queryParams]="recordPaymentQuery()">Record payment</a>
+      <div class="sl-student-actions">
+        <span
+          class="sl-balance-badge"
+          [class.sl-balance-badge--owed]="balanceStatus === 'owed'"
+          [class.sl-balance-badge--credit]="balanceStatus === 'credit'"
+          [class.sl-balance-badge--settled]="balanceStatus === 'settled'">
+          {{ balanceStatusLabel }}: {{ currencySymbol }}{{ formatAmount(absAmount(r.summary.closingBalance)) }}
+        </span>
+        <a class="sl-btn sl-btn--primary sl-btn--link" [routerLink]="recordPaymentLink()" [queryParams]="recordPaymentQuery()">
+          Record payment
+        </a>
+      </div>
     </section>
 
     <div class="sl-summary-cards">
       <article class="sl-summary-card">
+        <span class="sl-summary-icon" aria-hidden="true">◷</span>
         <span class="sl-summary-label">Opening balance</span>
         <span class="sl-summary-value">{{ currencySymbol }}{{ formatAmount(r.summary.openingBalance) }}</span>
       </article>
       <article class="sl-summary-card sl-summary-card--debit">
+        <span class="sl-summary-icon" aria-hidden="true">↑</span>
         <span class="sl-summary-label">Total debits</span>
         <span class="sl-summary-value">{{ currencySymbol }}{{ formatAmount(r.summary.totalDebits) }}</span>
       </article>
       <article class="sl-summary-card sl-summary-card--credit">
+        <span class="sl-summary-icon" aria-hidden="true">↓</span>
         <span class="sl-summary-label">Total credits</span>
         <span class="sl-summary-value">{{ currencySymbol }}{{ formatAmount(r.summary.totalCredits) }}</span>
       </article>
-      <article class="sl-summary-card">
+      <article class="sl-summary-card sl-summary-card--closing">
+        <span class="sl-summary-icon" aria-hidden="true">⚖</span>
         <span class="sl-summary-label">Closing balance</span>
         <span class="sl-summary-value">{{ currencySymbol }}{{ formatAmount(r.summary.closingBalance) }}</span>
       </article>
     </div>
 
-    <section class="sl-panel">
+    <section class="sl-panel sl-panel--ledger">
       <div class="sl-panel__head sl-panel__head--row">
         <div>
           <h2 class="sl-panel__title">Transaction ledger</h2>
-          <p class="sl-panel__intro" *ngIf="filterActive">
-            Showing {{ filteredLines.length }} of {{ r.lines.length }} lines
+          <p class="sl-panel__intro">
+            <ng-container *ngIf="filterActive">Showing {{ filteredLines.length }} of {{ r.lines.length }} lines</ng-container>
+            <ng-container *ngIf="!filterActive">{{ r.lines.length }} line{{ r.lines.length === 1 ? '' : 's' }} for this term</ng-container>
           </p>
         </div>
-        <div class="sl-filter-search">
-          <input
-            type="search"
-            class="sl-filter-input"
-            placeholder="Filter by reference, description, type, date…"
-            [(ngModel)]="lineFilter"
-            [ngModelOptions]="{standalone:true}"
-            (ngModelChange)="applyLineFilters()" />
+        <div class="sl-filter-toolbar">
+          <div class="sl-filter-search">
+            <span class="sl-search-icon sl-search-icon--inline" aria-hidden="true">🔍</span>
+            <input
+              type="search"
+              class="sl-filter-input"
+              placeholder="Filter by reference, description, type, date…"
+              [(ngModel)]="lineFilter"
+              [ngModelOptions]="{standalone:true}"
+              (ngModelChange)="applyLineFilters()" />
+          </div>
+          <button type="button" class="sl-btn sl-btn--ghost sl-btn--sm" *ngIf="filterActive" (click)="clearLineFilter()">
+            Clear filters
+          </button>
         </div>
       </div>
 
@@ -195,11 +261,11 @@
       </div>
 
       <div class="sl-empty sl-empty--inline" *ngIf="!r.lines.length">
-        <p>No transactions for this term.</p>
+        <p>No transactions recorded for this term.</p>
       </div>
 
       <div class="sl-empty sl-empty--inline" *ngIf="r.lines.length && !filteredLines.length">
-        <p>No lines match the current filter.</p>
+        <p>No lines match the current filter. <button type="button" class="sl-link-btn" (click)="clearLineFilter()">Reset filters</button></p>
       </div>
 
       <div class="sl-table-wrap" *ngIf="filteredLines.length">
@@ -217,15 +283,23 @@
           </thead>
           <tbody>
             <tr *ngFor="let line of filteredLines" [class.sl-row--opening]="line.type === 'opening'">
-              <td>{{ line.date | date : 'mediumDate' }}</td>
+              <td class="sl-date">{{ line.date | date : 'mediumDate' }}</td>
               <td><span class="sl-type-pill sl-type-pill--{{ line.type }}">{{ line.type }}</span></td>
-              <td>{{ line.reference }}</td>
+              <td class="sl-ref">{{ line.reference || '—' }}</td>
               <td class="sl-desc" [title]="line.description">{{ line.description }}</td>
-              <td class="sl-num">{{ line.debit ? currencySymbol + formatAmount(line.debit) : '—' }}</td>
-              <td class="sl-num">{{ line.credit ? currencySymbol + formatAmount(line.credit) : '—' }}</td>
+              <td class="sl-num sl-num--debit">{{ line.debit ? currencySymbol + formatAmount(line.debit) : '—' }}</td>
+              <td class="sl-num sl-num--credit">{{ line.credit ? currencySymbol + formatAmount(line.credit) : '—' }}</td>
               <td class="sl-num sl-balance-cell">{{ currencySymbol }}{{ formatAmount(line.balance) }}</td>
             </tr>
           </tbody>
+          <tfoot *ngIf="!filterActive && r.lines.length">
+            <tr class="sl-table-foot">
+              <td colspan="4"><strong>Term totals</strong></td>
+              <td class="sl-num"><strong>{{ currencySymbol }}{{ formatAmount(r.summary.totalDebits) }}</strong></td>
+              <td class="sl-num"><strong>{{ currencySymbol }}{{ formatAmount(r.summary.totalCredits) }}</strong></td>
+              <td class="sl-num sl-balance-cell"><strong>{{ currencySymbol }}{{ formatAmount(r.summary.closingBalance) }}</strong></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </section>

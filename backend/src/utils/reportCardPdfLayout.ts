@@ -1,4 +1,6 @@
 import PDFDocument from 'pdfkit';
+import path from 'path';
+import fs from 'fs';
 import { Settings } from '../entities/Settings';
 import { decodeSchoolLogoBuffer, getReportCardPrimaryLogo, getReportCardSecondaryLogo } from './reportCardSchoolLogo';
 
@@ -44,10 +46,18 @@ const HEADER_LABEL = '#bfdbfe';
 const META_BLUE = '#93c5fd';
 const GOLD = '#f59e0b';
 const BORDER = '#e2e8f0';
+/** Solid outer frame around the full report card (matches printed sample). */
+const CARD_OUTER_BORDER = '#5db9d4';
+const CARD_OUTER_BORDER_WIDTH = 2.5;
 const ROW_ALT = '#f0f9ff';
 const LABEL_SLATE = '#64748b';
 const VALUE_DARK = '#1e293b';
 const REMARKS_BG = '#f8fafc';
+const MOTTO_FONT_NAME = 'ReportCardMotto';
+const MOTTO_COLOR = NAVY;
+const MOTTO_BOTTOM_PAD = 34;
+const MOTTO_FONT_SIZE = 28;
+const MOTTO_FALLBACK_FONT_SIZE = 15;
 
 function isEcdAOrBClass(className: string | undefined | null): boolean {
   const raw = (className || '').toString().trim();
@@ -284,6 +294,78 @@ function drawVLine(doc: PdfDoc, x: number, y: number, h: number) {
   doc.restore();
 }
 
+/** Solid rectangular frame around the entire report card. */
+function drawCardOuterFrame(
+  doc: PdfDoc,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
+  const inset = CARD_OUTER_BORDER_WIDTH / 2;
+  doc.save();
+  doc.rect(x + inset, y + inset, w - CARD_OUTER_BORDER_WIDTH, h - CARD_OUTER_BORDER_WIDTH)
+    .strokeColor(CARD_OUTER_BORDER)
+    .lineWidth(CARD_OUTER_BORDER_WIDTH)
+    .stroke();
+  doc.restore();
+}
+
+function resolveMottoFontPath(): string | null {
+  const backendRoot = path.resolve(__dirname, '../..');
+  const candidates = [
+    path.join(backendRoot, 'src/assets/fonts/GreatVibes-Regular.ttf'),
+    path.join(__dirname, '../assets/fonts/GreatVibes-Regular.ttf'),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+function ensureMottoFont(doc: PdfDoc): { font: string; size: number } {
+  const fontPath = resolveMottoFontPath();
+  if (fontPath) {
+    try {
+      doc.registerFont(MOTTO_FONT_NAME, fontPath);
+    } catch {
+      /* already registered on this document */
+    }
+    return { font: MOTTO_FONT_NAME, size: MOTTO_FONT_SIZE };
+  }
+  return { font: 'Times-Italic', size: MOTTO_FALLBACK_FONT_SIZE };
+}
+
+/** School motto centered at the bottom inside the report card frame. */
+function drawSchoolMottoFooter(
+  doc: PdfDoc,
+  motto: string,
+  innerX: number,
+  innerW: number,
+  frameBottomY: number,
+  contentBottomY: number
+): void {
+  const text = motto.trim();
+  if (!text) return;
+
+  const { font, size } = ensureMottoFont(doc);
+  const padX = 28;
+  const textWidth = innerW - padX * 2;
+
+  doc.font(font).fontSize(size).fillColor(MOTTO_COLOR);
+  const textH = doc.heightOfString(text, { width: textWidth, align: 'center' });
+  const idealY = frameBottomY - MOTTO_BOTTOM_PAD - textH;
+  const mottoY = Math.max(contentBottomY + 10, idealY);
+
+  if (mottoY + textH > frameBottomY - 10) return;
+
+  doc.text(text, innerX + padX, mottoY, {
+    width: textWidth,
+    align: 'center',
+    lineGap: 2,
+  });
+}
+
 /** Single-line table header (no wrap). */
 function drawTableHeaderLabel(
   doc: PdfDoc,
@@ -518,6 +600,8 @@ export interface ReportCardLayoutOptions {
   cardW?: number;
   /** Extra space between the results table and remarks (fills portrait page like print sample). */
   preRemarksGap?: number;
+  /** Outer border height — when set, the solid frame extends to this height (near page footer). */
+  frameHeight?: number;
 }
 
 export function renderReportCardLayout(
@@ -800,12 +884,13 @@ export function renderReportCardLayout(
   drawRemarkBlock("Head's Remarks", headRemarks);
 
   const cardHeight = y - cardStartY + metrics.cardBottomPad;
-  doc.save();
-  doc.roundedRect(cardX, cardStartY, cardW, cardHeight, 10)
-    .strokeColor(BORDER)
-    .lineWidth(0.5)
-    .stroke();
-  doc.restore();
+  const frameHeight = Math.max(cardHeight, options?.frameHeight ?? cardHeight);
+  const frameBottomY = cardStartY + frameHeight;
+  const schoolMotto = settings?.schoolMotto ? String(settings.schoolMotto).trim() : '';
+  if (schoolMotto) {
+    drawSchoolMottoFooter(doc, schoolMotto, innerX, innerW, frameBottomY, y);
+  }
+  drawCardOuterFrame(doc, cardX, cardStartY, cardW, frameHeight);
 
   return cardHeight;
 }

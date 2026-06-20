@@ -1,4 +1,4 @@
-<div class="be-page balance-enquiry-container">
+<div class="be-page">
   <div class="be-toast-stack" *ngIf="error || success">
     <div class="be-toast be-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
@@ -23,285 +23,295 @@
           </p>
         </div>
       </div>
-      <div class="be-hero__actions">
-        <a routerLink="/payments/record" class="be-hero-btn be-hero-btn--white">Record payment</a>
-        <a routerLink="/outstanding-balance" class="be-hero-btn be-hero-btn--white">Outstanding balances</a>
-        <a routerLink="/invoices" class="be-hero-btn be-hero-btn--accent">Invoices</a>
-      </div>
+      <aside class="be-hero-aside">
+        <span class="be-hero-badge" *ngIf="studentData">{{ studentData.studentNumber }}</span>
+        <span class="be-hero-badge be-hero-badge--muted" *ngIf="studentData?.className">{{ studentData.className }}</span>
+        <span class="be-hero-badge be-hero-badge--paid" *ngIf="studentData && studentData.balance <= 0">Fully paid</span>
+        <span class="be-hero-badge be-hero-badge--owed" *ngIf="studentData && studentData.balance > 0">Outstanding</span>
+      </aside>
     </div>
 
-    <div class="be-hero-stats" *ngIf="studentData">
-      <article class="be-stat" [class.be-stat--mint]="studentData.balance <= 0" [class.be-stat--rose]="studentData.balance > 0">
-        <span class="be-stat__value">{{ currencySymbol }}{{ formatCurrency(studentData.balance) }}</span>
+    <nav class="be-cross-links" aria-label="Related finance pages">
+      <a routerLink="/payments/record">Record payment</a>
+      <a routerLink="/invoices">Billing</a>
+      <a routerLink="/outstanding-balance">Outstanding balances</a>
+      <a routerLink="/financial-reports/student-ledger">Student ledger</a>
+    </nav>
+
+    <div class="be-hero-stats">
+      <article class="be-stat" [class.be-stat--mint]="studentData && studentData.balance <= 0" [class.be-stat--rose]="studentData && studentData.balance > 0">
+        <span class="be-stat__icon" aria-hidden="true">⚖</span>
+        <span class="be-stat__value">{{ studentData ? currencySymbol + ' ' + formatCurrency(studentData.balance) : '—' }}</span>
         <span class="be-stat__label">Tuition balance</span>
       </article>
-      <article class="be-stat be-stat--rose" *ngIf="studentData.uniformBalance != null && studentData.uniformBalance > 0">
-        <span class="be-stat__value">{{ currencySymbol }}{{ formatCurrency(studentData.uniformBalance || 0) }}</span>
+      <article class="be-stat be-stat--rose" *ngIf="studentData && studentData.uniformBalance > 0">
+        <span class="be-stat__icon" aria-hidden="true">👕</span>
+        <span class="be-stat__value">{{ currencySymbol }} {{ formatCurrency(studentData.uniformBalance) }}</span>
         <span class="be-stat__label">Uniform</span>
       </article>
-      <article class="be-stat" *ngIf="latestInvoice">
-        <span class="be-stat__value">#{{ latestInvoice.invoiceNumber || latestInvoice.id }}</span>
+      <article class="be-stat">
+        <span class="be-stat__icon" aria-hidden="true">📄</span>
+        <span class="be-stat__value">{{ latestInvoice ? '#' + (latestInvoice.invoiceNumber || latestInvoice.id) : '—' }}</span>
         <span class="be-stat__label">Latest invoice</span>
       </article>
       <article class="be-stat be-stat--mint" *ngIf="latestInvoice">
-        <span class="be-stat__value">{{ currencySymbol }}{{ formatCurrency(latestInvoice.paidAmount || 0) }}</span>
+        <span class="be-stat__icon" aria-hidden="true">✓</span>
+        <span class="be-stat__value">{{ currencySymbol }} {{ formatCurrency(latestInvoice.paidAmount || 0) }}</span>
         <span class="be-stat__label">Paid on invoice</span>
       </article>
     </div>
+
+    <div class="be-steps" aria-label="Progress">
+      <span class="be-step" [class.be-step--done]="studentData" [class.be-step--active]="!studentData">
+        <strong>1</strong> Find student
+      </span>
+      <span class="be-step-arrow">→</span>
+      <span class="be-step" [class.be-step--done]="studentData" [class.be-step--active]="studentData && !loadingPdf">
+        <strong>2</strong> View balance
+      </span>
+      <span class="be-step-arrow">→</span>
+      <span class="be-step" [class.be-step--active]="studentData">
+        <strong>3</strong> Statement &amp; actions
+      </span>
+    </div>
   </header>
 
-  <!-- Legacy header hidden via CSS -->
-  <div class="page-header">
-    <div class="header-content">
-      <div class="header-left">
-        <h1><span class="header-icon">💰</span> Balance Enquiry</h1>
-        <p class="header-subtitle">Check student balance and generate statements</p>
-      </div>
+  <section class="be-panel be-panel--search" [class.be-panel--active]="loading">
+    <div class="be-panel__head">
+      <h2 class="be-panel__title">Find student</h2>
+      <p class="be-panel__intro">Search by student number, name, or ID. Auto-search runs after 3 characters; press Enter to search immediately.</p>
     </div>
-  </div>
 
-  <section class="search-section be-panel" [class.searching]="loading">
-    <h2 class="be-panel-title"><span aria-hidden="true">🔍</span> Find student</h2>
-    <p class="be-panel-intro">Search by student number, name, or ID. Auto-search runs after 3 characters; press Enter to search immediately.</p>
-    <div class="be-search-row search-form">
-      <div class="be-search-wrap search-input-wrapper">
+    <div class="be-search-row">
+      <div class="be-search-wrap">
         <span class="be-search-prefix" aria-hidden="true">🔍</span>
         <input
           type="search"
           id="query"
           [(ngModel)]="query"
           placeholder="Student ID, name, or number…"
-          class="search-input"
+          class="be-search-input"
           (keyup.enter)="search()"
           (input)="onSearchInput()"
-          [class.has-value]="query"
-          autocomplete="off"
-        />
+          [class.be-search-input--filled]="query"
+          autocomplete="off" />
         <button
           *ngIf="query"
           type="button"
-          class="clear-input-btn"
+          class="be-clear-btn"
           (click)="clearSearch()"
           title="Clear search"
-          aria-label="Clear"
-        >✕</button>
+          aria-label="Clear">×</button>
       </div>
       <button
         type="button"
-        class="btn btn-primary btn-search"
+        class="be-btn be-btn--primary"
         (click)="search()"
-        [disabled]="loading || !query"
-      >
-        <span *ngIf="loading" class="spinner"></span>
-        <span *ngIf="!loading" class="icon">🔍</span>
+        [disabled]="loading || !query">
+        <span *ngIf="loading" class="be-spinner" aria-hidden="true"></span>
         {{ loading ? 'Searching…' : 'Search' }}
       </button>
     </div>
-    <div class="be-hints search-hints">
-      <span class="hint-item"><kbd>Enter</kbd> search now</span>
-      <span class="hint-item"><kbd>Esc</kbd> clear</span>
+
+    <div class="be-hints">
+      <span class="be-hint"><kbd>Enter</kbd> search now</span>
+      <span class="be-hint"><kbd>Esc</kbd> clear</span>
     </div>
   </section>
 
-  <!-- Matching Students Section -->
-  <div class="matching-students-section be-matches" *ngIf="matchingStudents && matchingStudents.length > 0">
-    <div class="matching-header">
-      <span class="icon">👥</span>
-      <span>{{ matchingStudents.length }} students found — select one:</span>
+  <section class="be-panel be-panel--matches" *ngIf="matchingStudents?.length">
+    <div class="be-panel__head">
+      <h2 class="be-panel__title">Multiple students found</h2>
+      <p class="be-panel__intro">{{ matchingStudents.length }} matches — select the correct student to continue.</p>
     </div>
-    <div class="student-cards">
-      <div
+    <div class="be-match-grid">
+      <button
+        type="button"
+        class="be-match-card"
         *ngFor="let s of matchingStudents; trackBy: trackByStudentId"
-        class="student-card"
         (click)="selectStudent(s.studentId)"
-        [class.selected]="selectedMatchId === s.studentId"
-      >
-        <div class="student-avatar">{{ getInitials(s.fullName) }}</div>
-        <div class="student-details">
-          <div class="student-name">{{ s.fullName }}</div>
-          <div class="student-id">{{ s.studentNumber }}</div>
+        [class.be-match-card--selected]="selectedMatchId === s.studentId">
+        <span class="be-match-avatar">{{ getInitials(s.fullName) }}</span>
+        <strong>{{ s.fullName }}</strong>
+        <span class="be-match-meta">{{ s.studentNumber }}</span>
+      </button>
+    </div>
+  </section>
+
+  <section class="be-loading-panel" *ngIf="loading && !studentData && !matchingStudents?.length" aria-live="polite">
+    <span class="be-loading-ring" aria-hidden="true"></span>
+    <p>Looking up student balance…</p>
+  </section>
+
+  <section class="be-empty" *ngIf="!loading && !studentData && !matchingStudents?.length">
+    <span class="be-empty-icon" aria-hidden="true">💰</span>
+    <h3>No student selected</h3>
+    <p>Search for a student above to view their balance and generate a statement.</p>
+  </section>
+
+  <div class="be-main" *ngIf="studentData">
+    <section class="be-student-card">
+      <div class="be-student-avatar">{{ getInitials(studentData.fullName) }}</div>
+      <div class="be-student-main">
+        <h2>{{ studentData.fullName }}</h2>
+        <div class="be-student-meta">
+          <span class="be-meta-pill">{{ studentData.studentNumber }}</span>
+          <span class="be-meta-pill" *ngIf="studentData.className">{{ studentData.className }}</span>
+          <span class="be-meta-pill be-meta-pill--info" *ngIf="studentData.isStaffChild">Staff child</span>
+          <span class="be-meta-pill be-meta-pill--warn" *ngIf="studentData.isExempted">Exempted</span>
         </div>
-        <span class="select-indicator">→</span>
       </div>
+      <div class="be-student-balance">
+        <span class="be-balance-label">Tuition balance</span>
+        <span class="be-balance-value" [class.be-balance-value--owed]="studentData.balance > 0" [class.be-balance-value--paid]="studentData.balance <= 0">
+          {{ currencySymbol }} {{ formatCurrency(studentData.balance) }}
+        </span>
+        <span class="be-balance-status be-balance-status--paid" *ngIf="studentData.balance <= 0">Fully paid</span>
+        <span class="be-balance-status be-balance-status--low" *ngIf="studentData.balance > 0 && studentData.balance <= 1000">Low balance</span>
+        <span class="be-balance-status be-balance-status--owed" *ngIf="studentData.balance > 1000">Outstanding</span>
+      </div>
+    </section>
+
+    <div class="be-content-grid">
+      <div class="be-content-col">
+        <div class="be-summary-cards">
+          <article class="be-summary-card be-summary-card--primary">
+            <span class="be-summary-label">Tuition balance</span>
+            <span class="be-summary-value" [class.be-summary-value--owed]="studentData.balance > 0">{{ currencySymbol }} {{ formatCurrency(studentData.balance) }}</span>
+            <span class="be-summary-note" *ngIf="studentData.balance <= 0">No amount outstanding</span>
+          </article>
+          <article class="be-summary-card be-summary-card--rose" *ngIf="studentData.uniformBalance != null && studentData.uniformBalance > 0">
+            <span class="be-summary-label">Uniform balance</span>
+            <span class="be-summary-value">{{ currencySymbol }} {{ formatCurrency(studentData.uniformBalance) }}</span>
+            <span class="be-summary-note">Separate from tuition</span>
+          </article>
+        </div>
+
+        <section class="be-panel be-panel--outstanding" *ngIf="studentData.outstandingInvoices?.length">
+          <div class="be-panel__head">
+            <h2 class="be-panel__title">Outstanding by term</h2>
+            <p class="be-panel__intro">Breakdown of unpaid invoices and prior-term balances.</p>
+          </div>
+          <div class="be-table-wrap">
+            <table class="be-table">
+              <thead>
+                <tr>
+                  <th>Term</th>
+                  <th>Invoice</th>
+                  <th class="be-num">Amount owed</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of studentData.outstandingInvoices">
+                  <td>
+                    {{ row.term || '—' }}
+                    <span *ngIf="row.includesPriorTermBalance" class="be-prior-tag">prior balance</span>
+                  </td>
+                  <td class="be-ref">{{ row.invoiceNumber }}</td>
+                  <td class="be-num be-num--debit">{{ currencySymbol }} {{ row.owed | number : '1.2-2' }}</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="be-table-foot">
+                  <td colspan="2"><strong>Total tuition balance</strong></td>
+                  <td class="be-num be-num--debit"><strong>{{ currencySymbol }} {{ studentData.balance | number : '1.2-2' }}</strong></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </section>
+
+        <div class="be-notice" *ngIf="studentData.isStaffChild || studentData.isExempted">
+          <span class="be-notice-icon" aria-hidden="true">ℹ️</span>
+          <div>
+            <strong>Fee policy applied</strong>
+            <p>No tuition or transport fees. Dining Hall charged at 50% if applicable.</p>
+          </div>
+        </div>
+
+        <section class="be-panel be-panel--invoice" *ngIf="latestInvoice">
+          <div class="be-panel__head">
+            <h2 class="be-panel__title">Latest invoice</h2>
+          </div>
+          <div class="be-invoice-grid">
+            <div class="be-invoice-item">
+              <span class="be-invoice-label">Invoice #</span>
+              <span class="be-invoice-value">{{ latestInvoice.invoiceNumber || latestInvoice.id }}</span>
+            </div>
+            <div class="be-invoice-item">
+              <span class="be-invoice-label">Term</span>
+              <span class="be-invoice-value">{{ latestInvoice.term || 'N/A' }}</span>
+            </div>
+            <div class="be-invoice-item">
+              <span class="be-invoice-label">Due date</span>
+              <span class="be-invoice-value">{{ latestInvoice.dueDate | date : 'mediumDate' }}</span>
+            </div>
+            <div class="be-invoice-item">
+              <span class="be-invoice-label">Amount paid</span>
+              <span class="be-invoice-value be-invoice-value--credit">{{ currencySymbol }} {{ (latestInvoice.paidAmount || 0) | number : '1.2-2' }}</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="be-content-col be-content-col--actions">
+        <section class="be-panel be-panel--actions">
+          <div class="be-panel__head">
+            <h2 class="be-panel__title">Statement &amp; actions</h2>
+            <p class="be-panel__intro">Generate and download the student's invoice statement with complete payment history.</p>
+          </div>
+
+          <div class="be-action-buttons">
+            <button type="button" class="be-btn be-btn--primary be-btn--block" (click)="previewStatement()" [disabled]="loadingPdf">
+              <span *ngIf="loadingPdf && previewMode" class="be-spinner" aria-hidden="true"></span>
+              <span *ngIf="!loadingPdf || !previewMode" aria-hidden="true">👁️</span>
+              {{ loadingPdf && previewMode ? 'Loading…' : 'Preview statement' }}
+            </button>
+            <button type="button" class="be-btn be-btn--outline be-btn--block" (click)="downloadStatement()" [disabled]="loadingPdf">
+              <span *ngIf="loadingPdf && !previewMode" class="be-spinner be-spinner--purple" aria-hidden="true"></span>
+              <span *ngIf="!loadingPdf || previewMode" aria-hidden="true">⬇️</span>
+              {{ loadingPdf && !previewMode ? 'Generating…' : 'Download PDF' }}
+            </button>
+            <button type="button" class="be-btn be-btn--ghost be-btn--block" (click)="printStatement()" [disabled]="loadingPdf">
+              <span aria-hidden="true">🖨️</span> Print statement
+            </button>
+          </div>
+
+          <div class="be-quick-links">
+            <a [routerLink]="['/payments/record']" [queryParams]="recordPaymentQueryParams" class="be-quick-link">
+              <span class="be-quick-link__icon" aria-hidden="true">💳</span>
+              <span>Record payment</span>
+            </a>
+            <a [routerLink]="['/invoices']" [queryParams]="{ studentId: studentData.studentId }" class="be-quick-link">
+              <span class="be-quick-link__icon" aria-hidden="true">📋</span>
+              <span>View invoices</span>
+            </a>
+            <a routerLink="/financial-reports/student-ledger" class="be-quick-link">
+              <span class="be-quick-link__icon" aria-hidden="true">📒</span>
+              <span>Student ledger</span>
+            </a>
+          </div>
+        </section>
+      </aside>
     </div>
   </div>
 
-  <!-- Student Result Section -->
-  <div *ngIf="studentData" class="main-content">
-    <!-- Student Info Card -->
-    <div class="student-info-card">
-      <div class="card-header">
-        <div class="student-profile">
-          <div class="profile-avatar">{{ getInitials(studentData.fullName) }}</div>
-          <div class="profile-details">
-            <h2>{{ studentData.fullName }}</h2>
-            <div class="student-meta">
-              <span class="meta-item">
-                <span class="meta-icon">🎓</span>
-                {{ studentData.studentNumber }}
-              </span>
-              <span class="meta-item" *ngIf="studentData.className">
-                <span class="meta-icon">📚</span>
-                {{ studentData.className }}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div class="status-badges">
-          <span *ngIf="studentData.isStaffChild" class="badge badge-info">Staff Child</span>
-          <span *ngIf="studentData.isExempted" class="badge badge-warning">Exempted</span>
-        </div>
-      </div>
-
-      <!-- Balance Overview -->
-      <div class="balance-overview">
-        <div class="balance-card primary">
-          <div class="balance-icon">💵</div>
-          <div class="balance-content">
-            <div class="balance-label">Tuition Balance</div>
-            <div class="balance-value" [class.positive]="studentData.balance <= 0" [class.negative]="studentData.balance > 0">
-              {{ currencySymbol }} {{ studentData.balance | number:'1.2-2' }}
-            </div>
-            <div class="balance-status">
-              <span *ngIf="studentData.balance <= 0" class="status-paid">✓ Fully Paid</span>
-              <span *ngIf="studentData.balance > 0 && studentData.balance <= 1000" class="status-low">Low Balance</span>
-              <span *ngIf="studentData.balance > 1000" class="status-pending">Outstanding</span>
-            </div>
-          </div>
-        </div>
-        <div class="balance-card secondary" *ngIf="studentData.uniformBalance != null && studentData.uniformBalance > 0">
-          <div class="balance-icon">👔</div>
-          <div class="balance-content">
-            <div class="balance-label">Uniform Balance</div>
-            <div class="balance-value negative">
-              {{ currencySymbol }} {{ (studentData.uniformBalance || 0) | number:'1.2-2' }}
-            </div>
-            <div class="balance-note">Separate from tuition</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Fee Policy Notice -->
-      <div *ngIf="studentData.isStaffChild || studentData.isExempted" class="policy-notice">
-        <span class="notice-icon">ℹ️</span>
-        <div class="notice-content">
-          <strong>Fee Policy Applied:</strong>
-          No tuition or transport fees. Dining Hall charged at 50% if applicable.
-        </div>
-      </div>
-
-      <!-- Outstanding by term (prior terms stay visible until cleared) -->
-      <div
-        class="outstanding-by-term"
-        *ngIf="studentData.outstandingInvoices?.length">
-        <h3 class="outstanding-by-term__title">Outstanding by invoice / term</h3>
-        <table class="outstanding-by-term__table">
-          <thead>
-            <tr>
-              <th>Term</th>
-              <th>Invoice</th>
-              <th class="text-right">Amount owed</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let row of studentData.outstandingInvoices">
-              <td>
-                {{ row.term || '—' }}
-                <span *ngIf="row.includesPriorTermBalance" class="be-prior-tag">includes prior-term balance</span>
-              </td>
-              <td>{{ row.invoiceNumber }}</td>
-              <td class="text-right">{{ currencySymbol }} {{ row.owed | number:'1.2-2' }}</td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colspan="2"><strong>Total tuition balance</strong></td>
-              <td class="text-right">
-                <strong>{{ currencySymbol }} {{ studentData.balance | number:'1.2-2' }}</strong>
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-      <!-- Quick Stats -->
-      <div class="quick-stats" *ngIf="latestInvoice">
-        <div class="stat-item">
-          <span class="stat-label">Latest Invoice</span>
-          <span class="stat-value">#{{ latestInvoice.invoiceNumber || latestInvoice.id }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Term</span>
-          <span class="stat-value">{{ latestInvoice.term || 'N/A' }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Due Date</span>
-          <span class="stat-value">{{ latestInvoice.dueDate | date:'mediumDate' }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Amount Paid</span>
-          <span class="stat-value paid">{{ currencySymbol }} {{ (latestInvoice.paidAmount || 0) | number:'1.2-2' }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Actions Card -->
-    <div class="actions-card">
-      <div class="card-header">
-        <h2><span class="header-icon">📄</span> Statement &amp; Actions</h2>
-      </div>
-      <div class="actions-content">
-        <p class="actions-description">Generate and download the student's invoice statement with complete payment history.</p>
-
-        <div class="action-buttons">
-          <button class="btn btn-primary btn-action" (click)="previewStatement()" [disabled]="loadingPdf">
-            <span *ngIf="loadingPdf && previewMode" class="spinner"></span>
-            <span *ngIf="!loadingPdf || !previewMode" class="icon">👁️</span>
-            {{ loadingPdf && previewMode ? 'Loading…' : 'Preview Statement' }}
+  <div class="be-modal-overlay be-modal-overlay--fullscreen" *ngIf="previewUrl" (click)="clearPreview()" role="presentation">
+    <div class="be-modal be-modal--fullscreen" (click)="$event.stopPropagation()" role="dialog" aria-labelledby="be-preview-title">
+      <div class="be-modal__header">
+        <h3 id="be-preview-title">Invoice statement preview</h3>
+        <div class="be-modal__toolbar">
+          <button type="button" class="be-btn be-btn--primary be-btn--sm" (click)="downloadStatement()">
+            ⬇️ Download
           </button>
-          <button class="btn btn-primary btn-action" (click)="downloadStatement()" [disabled]="loadingPdf">
-            <span *ngIf="loadingPdf && !previewMode" class="spinner"></span>
-            <span *ngIf="!loadingPdf || previewMode" class="icon">⬇️</span>
-            {{ loadingPdf && !previewMode ? 'Generating…' : 'Download PDF' }}
+          <button type="button" class="be-btn be-btn--outline be-btn--sm" (click)="printStatement()">
+            🖨️ Print
           </button>
-          <button class="btn btn-primary btn-action" (click)="printStatement()" [disabled]="loadingPdf">
-            <span class="icon">🖨️</span>
-            Print Statement
-          </button>
-        </div>
-
-        <div class="quick-links be-quick-links">
-          <a [routerLink]="['/payments/record']" [queryParams]="recordPaymentQueryParams" class="quick-link be-quick-link">
-            <span class="link-icon">💳</span>
-            <span class="link-text">Record Payment</span>
-          </a>
-          <a [routerLink]="['/invoices']" [queryParams]="{ studentId: studentData.studentId }" class="quick-link be-quick-link">
-            <span class="link-icon">📋</span>
-            <span class="link-text">View Invoices</span>
-          </a>
+          <button type="button" class="be-btn be-btn--ghost be-btn--sm" (click)="clearPreview()">Close</button>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- PDF Preview Modal (full screen) -->
-  <div class="modal-overlay pdf-preview-maximized-overlay" *ngIf="previewUrl" (click)="clearPreview()">
-    <div class="preview-modal pdf-preview-maximized-modal" (click)="$event.stopPropagation()">
-      <div class="preview-header">
-        <h3>Invoice Statement Preview</h3>
-        <div class="preview-toolbar">
-          <button type="button" class="btn btn-primary btn-sm" (click)="downloadStatement()">
-            <span class="icon">⬇️</span> Download
-          </button>
-          <button type="button" class="btn btn-primary btn-sm" (click)="printStatement()">
-            <span class="icon">🖨️</span> Print
-          </button>
-          <button type="button" class="btn btn-primary btn-sm" (click)="clearPreview()">Close</button>
-          <button type="button" class="modal-close" (click)="clearPreview()" aria-label="Close">✕</button>
-        </div>
-      </div>
-      <div class="preview-content pdf-preview-body">
-        <iframe [src]="previewUrl" class="preview-iframe" title="Invoice Statement PDF" type="application/pdf"></iframe>
+      <div class="be-modal__body">
+        <iframe [src]="previewUrl" class="be-preview-iframe" title="Invoice Statement PDF"></iframe>
       </div>
     </div>
   </div>

@@ -173,10 +173,9 @@ recentStudents: any[] = [];
     {
       id: 'reports',
       label: 'Reports & insight',
-      subtitle: 'Report cards and performance rankings',
+      subtitle: 'Report cards and academic insight',
       tiles: [
         { route: '/report-cards', icon: '📄', title: 'Report cards', desc: 'Generate and review PDFs', search: 'report card transcript grade', accent: 'violet' },
-        { route: '/rankings', icon: '🏆', title: 'Rankings', desc: 'Class and subject leagues', search: 'ranking position leaderboard top', accent: 'amber' },
       ],
     },
     {
@@ -715,7 +714,6 @@ if (this.textToggleInterval) {
     const baseMap: any = {
       exams: 'exams',
       reportCards: 'reportCards',
-      rankings: 'rankings',
       students: 'students',
       classes: 'classes',
       subjects: 'subjects',
