@@ -174,12 +174,16 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
             Array.isArray(api?.terms) && api.terms.length
               ? api.terms
               : this.termsFromSettings(settings);
-          this.terms = rawTerms.map((t: any, index: number) => ({
-            id: t.id || `term-${index}`,
-            name: t.name || t.label || `${t.term || ''} ${t.year || ''}`.trim() || `Term ${index + 1}`,
-            startDate: t.startDate || '',
-            endDate: t.endDate || '',
-          }));
+          this.terms = rawTerms.map((t: any, index: number) => {
+            const name =
+              t.name || t.label || `${t.term || ''} ${t.year || ''}`.trim() || `Term ${index + 1}`;
+            return {
+              id: t.id || this.slugTermId(name, index),
+              name,
+              startDate: t.startDate || '',
+              endDate: t.endDate || '',
+            };
+          });
 
           const activeTermId =
             api?.activeTermId ||
@@ -219,15 +223,19 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
         : [];
 
     if (parsed.length) {
-      return parsed.map((t: any, index: number) => ({
-        id: t.id || `term-${index}`,
-        name: t.label || t.term || `${t.term || ''} ${t.year || ''}`.trim(),
-        label: t.label,
-        term: t.term,
-        year: t.year,
-        startDate: t.startDate,
-        endDate: t.endDate,
-      }));
+      return parsed.map((t: any, index: number) => {
+        const name =
+          t.label || t.name || `${t.term || ''} ${t.year || ''}`.trim() || `Term ${index + 1}`;
+        return {
+          id: t.id || this.slugTermId(name, index),
+          name,
+          label: t.label,
+          term: t.term,
+          year: t.year,
+          startDate: t.startDate,
+          endDate: t.endDate,
+        };
+      });
     }
 
     const active = String(settings.activeTerm || settings.currentTerm || '').trim();
@@ -240,6 +248,14 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
         endDate: settings.termEndDate || '',
       },
     ];
+  }
+
+  private slugTermId(name: string, index: number): string {
+    const slug = String(name || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    return slug ? `term-${slug}` : `term-${index}`;
   }
 
   private matchActiveTermId(terms: TermOption[], activeTerm?: string | null): string | null {

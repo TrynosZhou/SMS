@@ -4,6 +4,11 @@ import { Invoice } from '../entities/Invoice';
 import { PaymentLog } from '../entities/PaymentLog';
 import { Settings } from '../entities/Settings';
 import { Student } from '../entities/Student';
+import {
+  computeCanonicalInvoiceBalance,
+  hydrateInvoiceLineItemsFromAmount,
+} from './invoiceFeesBalance';
+import { effectiveTermFeesForBalance } from './invoiceTermFees';
 
 export type AcademicTermRecord = {
   id: string;
@@ -254,10 +259,63 @@ export async function resolveTermById(termId: string): Promise<AcademicTermRecor
   );
 }
 
+function normalizeTermKey(value: unknown): string {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
 function invoiceMatchesTerm(invoiceTerm: string, term: AcademicTermRecord): boolean {
-  const inv = String(invoiceTerm || '').trim().toLowerCase();
+  const inv = normalizeTermKey(invoiceTerm);
   if (!inv) return false;
-  return termMatchKeys(term).some((k) => k === inv || inv.includes(k) || k.includes(inv));
+
+  const candidates = new Set<string>();
+  for (const key of termMatchKeys(term)) {
+    const normalized = normalizeTermKey(key);
+    if (normalized) candidates.add(normalized);
+  }
+  candidates.add(normalizeTermKey(term.name));
+  candidates.add(normalizeTermKey(term.label));
+  candidates.add(normalizeTermKey(`${term.term || ''} ${term.year || ''}`.trim()));
+
+  for (const key of candidates) {
+    if (!key) continue;
+    if (key === inv) return true;
+    if (inv.includes(key) || key.includes(inv)) return true;
+  }
+
+  const termPart = normalizeTermKey(term.term);
+  const yearPart = String(term.year || '').trim();
+  if (termPart && yearPart && inv.includes(termPart) && inv.includes(yearPart.toLowerCase())) {
+    return true;
+  }
+
+  return false;
+}
+
+function resolveTermInvoices(allInvoices: Invoice[], termMeta: AcademicTermRecord): Invoice[] {
+  const nonVoid = allInvoices.filter((inv) => !inv.isVoided);
+  let matched = nonVoid.filter((inv) => invoiceMatchesTerm(inv.term, termMeta));
+
+  if (matched.length === 0) {
+    const target = normalizeTermKey(termMeta.name);
+    matched = nonVoid.filter((inv) => normalizeTermKey(inv.term) === target);
+  }
+
+  return matched;
+}
+
+function invoiceTermFeesForLedger(invoice: Invoice): number {
+  const working = Object.assign(Object.create(Object.getPrototypeOf(invoice)), invoice) as Invoice;
+  hydrateInvoiceLineItemsFromAmount(working);
+  const uniform = round2(parseFloat(String(working.uniformTotal ?? 0)));
+  return round2(effectiveTermFeesForBalance(working) + uniform);
+}
+
+function appliedPrepaidOnInvoice(invoice: Invoice, totalOwed: number): number {
+  const prepaidRemaining = round2(parseFloat(String(invoice.prepaidAmount ?? 0)));
+  return round2(Math.min(Math.max(0, prepaidRemaining), Math.max(0, totalOwed)));
 }
 
 function mapStudentRow(student: Student): StudentLedgerStudent {
@@ -318,7 +376,7 @@ export async function buildStudentLedgerReport(
     where: { studentId },
     order: { dueDate: 'ASC', createdAt: 'ASC' },
   });
-  const termInvoices = allInvoices.filter((inv) => !inv.isVoided && invoiceMatchesTerm(inv.term, termMeta));
+  const termInvoices = resolveTermInvoices(allInvoices, termMeta);
 
   const invoiceIds = termInvoices.map((i) => i.id);
   const paymentLogs =
@@ -329,6 +387,15 @@ export async function buildStudentLedgerReport(
           order: { paymentDate: 'ASC', createdAt: 'ASC' },
         })
       : [];
+
+  const paymentLogsByInvoice = new Map<string, PaymentLog[]>();
+  for (const log of paymentLogs) {
+    const id = String(log.invoiceId || '');
+    if (!id) continue;
+    const bucket = paymentLogsByInvoice.get(id) || [];
+    bucket.push(log);
+    paymentLogsByInvoice.set(id, bucket);
+  }
 
   const events: Array<{
     date: Date;
@@ -341,22 +408,19 @@ export async function buildStudentLedgerReport(
   }> = [];
 
   let openingBalanceTotal = 0;
-  let invoiceFeesTotal = 0;
 
   for (const inv of termInvoices) {
     const prevBal = round2(parseFloat(String(inv.previousBalance ?? 0)));
-    const termFees = round2(
-      parseFloat(String(inv.tuitionAmount ?? 0)) +
-        parseFloat(String(inv.transportAmount ?? 0)) +
-        parseFloat(String(inv.diningHallAmount ?? 0)) +
-        parseFloat(String(inv.registrationAmount ?? 0)) +
-        parseFloat(String(inv.deskFeeAmount ?? 0)) +
-        parseFloat(String(inv.uniformTotal ?? 0))
-    );
+    const termFees = invoiceTermFeesForLedger(inv);
+    const totalOwed = round2(prevBal + termFees);
     openingBalanceTotal = round2(openingBalanceTotal + prevBal);
-    invoiceFeesTotal = round2(invoiceFeesTotal + termFees);
 
-    const openDate = parseDateOnly(termMeta.startDate) || parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || new Date();
+    const openDate =
+      parseDateOnly(termMeta.startDate) ||
+      parseDateOnly(inv.dueDate) ||
+      parseDateOnly(inv.createdAt) ||
+      new Date();
+
     if (Math.abs(prevBal) > 0.005) {
       const isCredit = prevBal < 0;
       events.push({
@@ -385,27 +449,98 @@ export async function buildStudentLedgerReport(
         sortKey: 1,
       });
     }
+
+    const invoiceLogs = paymentLogsByInvoice.get(inv.id) || [];
+    let loggedPayments = 0;
+    for (const log of invoiceLogs) {
+      const amt = round2(parseFloat(String(log.amountPaid ?? 0)));
+      if (amt <= 0.005) continue;
+      if (String(log.paymentMethod || '').toUpperCase() === 'ADJUSTMENT') continue;
+      loggedPayments = round2(loggedPayments + amt);
+      events.push({
+        date: parseDateOnly(log.paymentDate) || new Date(),
+        type: 'payment',
+        reference: log.receiptNumber || log.id,
+        description: (() => {
+          const method = shortPaymentMethod(log.paymentMethod || '');
+          return method ? `Payment — ${method}` : 'Payment';
+        })(),
+        debit: 0,
+        credit: amt,
+        sortKey: 2,
+      });
+    }
+
+    const prepaidApplied = appliedPrepaidOnInvoice(inv, totalOwed);
+    if (prepaidApplied > 0.005) {
+      events.push({
+        date: openDate,
+        type: 'payment',
+        reference: inv.invoiceNumber,
+        description: 'Prepaid applied',
+        debit: 0,
+        credit: prepaidApplied,
+        sortKey: 2,
+      });
+    }
+
+    const paidOnInvoice = round2(parseFloat(String(inv.paidAmount ?? 0)));
+    const unloggedPaid = round2(Math.max(0, paidOnInvoice - loggedPayments));
+    if (unloggedPaid > 0.005) {
+      events.push({
+        date: parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate,
+        type: 'payment',
+        reference: inv.invoiceNumber,
+        description: 'Payment applied',
+        debit: 0,
+        credit: unloggedPaid,
+        sortKey: 2,
+      });
+    }
+
+    const canonicalBalance = round2(computeCanonicalInvoiceBalance(inv));
+    const invoiceDebits = round2((prevBal > 0 ? prevBal : 0) + termFees);
+    const invoiceCredits = round2(loggedPayments + prepaidApplied + unloggedPaid);
+
+    if (canonicalBalance > 0.005 && invoiceDebits <= 0.005) {
+      events.push({
+        date: parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate,
+        type: 'invoice',
+        reference: inv.invoiceNumber,
+        description: 'Outstanding balance',
+        debit: canonicalBalance,
+        credit: 0,
+        sortKey: 1,
+      });
+    } else if (Math.abs(round2(invoiceDebits - invoiceCredits) - canonicalBalance) > 0.02) {
+      const delta = round2(canonicalBalance - (invoiceDebits - invoiceCredits));
+      if (delta > 0.02) {
+        events.push({
+          date: parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate,
+          type: 'invoice',
+          reference: inv.invoiceNumber,
+          description: 'Balance adjustment',
+          debit: delta,
+          credit: 0,
+          sortKey: 1,
+        });
+      } else if (delta < -0.02) {
+        events.push({
+          date: parseDateOnly(inv.dueDate) || parseDateOnly(inv.createdAt) || openDate,
+          type: 'payment',
+          reference: inv.invoiceNumber,
+          description: 'Credit adjustment',
+          debit: 0,
+          credit: Math.abs(delta),
+          sortKey: 2,
+        });
+      }
+    }
   }
 
-  for (const log of paymentLogs) {
-    const amt = round2(parseFloat(String(log.amountPaid ?? 0)));
-    if (amt <= 0.005) continue;
-    if (String(log.paymentMethod || '').toUpperCase() === 'ADJUSTMENT') continue;
-    events.push({
-      date: parseDateOnly(log.paymentDate) || new Date(),
-      type: 'payment',
-      reference: log.receiptNumber || log.id,
-      description: (() => {
-        const method = shortPaymentMethod(log.paymentMethod || '');
-        return method ? `Payment — ${method}` : 'Payment';
-      })(),
-      debit: 0,
-      credit: amt,
-      sortKey: 2,
-    });
-  }
-
-  events.sort((a, b) => a.date.getTime() - b.date.getTime() || a.sortKey - b.sortKey || a.reference.localeCompare(b.reference));
+  events.sort(
+    (a, b) => a.date.getTime() - b.date.getTime() || a.sortKey - b.sortKey || a.reference.localeCompare(b.reference)
+  );
 
   let running = 0;
   const lines: StudentLedgerLine[] = events.map((ev) => {
@@ -423,7 +558,13 @@ export async function buildStudentLedgerReport(
 
   const totalDebits = round2(lines.reduce((s, l) => s + l.debit, 0));
   const totalCredits = round2(lines.reduce((s, l) => s + l.credit, 0));
-  const closingBalance = round2(totalDebits - totalCredits);
+  const canonicalClosing = round2(
+    termInvoices.reduce((sum, inv) => sum + computeCanonicalInvoiceBalance(inv), 0)
+  );
+  const closingBalance =
+    Math.abs(round2(totalDebits - totalCredits) - canonicalClosing) > 0.02
+      ? canonicalClosing
+      : round2(totalDebits - totalCredits);
 
   return {
     student: mapStudentRow(student),
