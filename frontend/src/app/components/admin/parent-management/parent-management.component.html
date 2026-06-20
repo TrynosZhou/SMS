@@ -167,20 +167,36 @@
       <div class="full-width parents-email-field">
         <label>Parent email</label>
         <input
-          type="text"
+          type="email"
           class="form-input"
+          [class.form-input--invalid]="resetParentEmailError"
+          [class.form-input--valid]="resetParentEmailVerified"
           [(ngModel)]="resetParentEmail"
           (ngModelChange)="onResetParentEmailInput()"
-          (blur)="resetParentEmailSuggestions = []"
-          placeholder="Type to search (min 2 characters)"
-          autocomplete="off" />
+          (focus)="onResetParentEmailFocus()"
+          (blur)="onResetParentEmailBlur()"
+          placeholder="Type parent email to search registered accounts…"
+          autocomplete="off"
+          aria-autocomplete="list"
+          [attr.aria-expanded]="showResetEmailDropdown && resetParentEmailSuggestions.length > 0" />
         <span *ngIf="resetParentEmailSearching" class="reset-email-loading">Searching…</span>
-        <ul *ngIf="resetParentEmailSuggestions.length > 0 && !resetParentEmailSearching" class="reset-email-suggestions">
-          <li *ngFor="let p of resetParentEmailSuggestions" (mousedown)="selectResetParentEmail(p)">
+        <span *ngIf="resetParentEmailVerified && !resetParentEmailError" class="reset-email-verified" aria-hidden="true">✓</span>
+        <ul
+          *ngIf="showResetEmailDropdown && resetParentEmailSuggestions.length > 0 && !resetParentEmailSearching"
+          class="reset-email-suggestions"
+          role="listbox">
+          <li
+            *ngFor="let p of resetParentEmailSuggestions"
+            role="option"
+            (mousedown)="selectResetParentEmail(p)">
             <span class="reset-email-suggestion-email">{{ p.email }}</span>
             <span class="reset-email-suggestion-name" *ngIf="p.firstName || p.lastName">{{ p.firstName }} {{ p.lastName }}</span>
           </li>
         </ul>
+        <div class="field-error" *ngIf="resetParentEmailError">{{ resetParentEmailError }}</div>
+        <p class="reset-email-hint" *ngIf="!resetParentEmailError && (resetParentEmail || '').trim().length > 0 && resetParentEmailSuggestions.length > 0">
+          {{ resetParentEmailSuggestions.length }} matching registered email(s) — click one to autofill.
+        </p>
       </div>
     </div>
 
@@ -205,7 +221,7 @@
     </div>
 
     <div class="form-actions">
-      <button type="button" class="btn btn-primary" (click)="resetParentAccountPassword()" [disabled]="resettingParentPassword">
+      <button type="button" class="btn btn-primary" (click)="resetParentAccountPassword()" [disabled]="resettingParentPassword || !!resetParentEmailError">
         <span *ngIf="!resettingParentPassword">Reset password</span>
         <span *ngIf="resettingParentPassword">Resetting…</span>
       </button>
@@ -466,6 +482,18 @@
                 </div>
               </div>
             </div>
+          </div>
+
+          <div
+            class="student-search-not-found"
+            *ngIf="!searchingStudents && studentSearchNotFound && studentSearchQuery.trim().length >= 2"
+            role="status">
+            <span class="student-search-not-found__icon" aria-hidden="true">🎓</span>
+            <p class="student-search-not-found__title">Student not yet registered</p>
+            <p class="student-search-not-found__hint">
+              No student matches <strong>"{{ studentSearchQuery.trim() }}"</strong> by ID, first name, or last name.
+              Enroll the student first, then return here to link them to this parent.
+            </p>
           </div>
 
           <div class="form-actions">

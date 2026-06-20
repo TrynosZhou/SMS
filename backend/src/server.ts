@@ -365,6 +365,15 @@ async function startServer(): Promise<void> {
       }
     }
 
+    if (missingTables.length === 0 && AppDataSource.isInitialized) {
+      try {
+        const { reconcileOrphanCashbookStudentReceipts } = await import('./utils/financialBooks');
+        await reconcileOrphanCashbookStudentReceipts();
+      } catch (reconcileErr: any) {
+        console.warn('[Server] ⚠️ Cashbook receipt reconcile:', reconcileErr?.message || reconcileErr);
+      }
+    }
+
     console.log('[Server] Starting HTTP server on port', PORT);
     app.listen(PORT, () => console.log(`[Server] ✓ Server running on port ${PORT}`));
 }

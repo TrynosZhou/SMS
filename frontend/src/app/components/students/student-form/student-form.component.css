@@ -47,6 +47,58 @@
   color: inherit;
 }
 
+.admission-page-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.875rem 1rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+
+.admission-page-confirm--success {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.admission-page-confirm--error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.admission-page-confirm__icon {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.admission-page-confirm--success .admission-page-confirm__icon { background: #10b981; }
+.admission-page-confirm--error .admission-page-confirm__icon { background: #ef4444; }
+
+.admission-page-confirm__body { flex: 1; min-width: 0; }
+.admission-page-confirm__body strong { display: block; margin-bottom: 0.2rem; }
+.admission-page-confirm__body p { margin: 0; font-size: 0.875rem; line-height: 1.45; }
+
+.admission-page-confirm__dismiss {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.65;
+  padding: 0;
+  color: inherit;
+}
+
 /* Hero */
 .admission-hero {
   background: linear-gradient(135deg, #7c3aed 0%, #9333ea 50%, #a855f7 100%);

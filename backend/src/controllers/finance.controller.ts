@@ -1718,6 +1718,8 @@ export const getExemptionReportPDF = async (req: AuthRequest, res: Response) => 
     }
 
     const rows = await fetchExemptionReportRows();
+    const preview = String(req.query.preview || '').toLowerCase() === 'true';
+
     const settingsRepository = AppDataSource.getRepository(Settings);
     const settingsList = await settingsRepository.find({
       order: { createdAt: 'DESC' },
@@ -1731,26 +1733,33 @@ export const getExemptionReportPDF = async (req: AuthRequest, res: Response) => 
     const currencySymbol =
       settings?.currencySymbol != null && String(settings.currencySymbol).trim() !== ''
         ? String(settings.currencySymbol).trim()
-        : '';
+        : '$';
     const schoolLogo = (settings as any)?.schoolLogo ?? null;
 
-    const pdfBuffer = await createExemptionReportPDF({
+    const activeTerm = String(settings?.activeTerm || settings?.currentTerm || '').trim();
+    const scopeSubtitle = activeTerm
+      ? `Active exemptions · ${activeTerm}`
+      : 'Active fee exemptions across all terms';
+
+    const htmlBuffer = await createExemptionReportPDF({
       schoolName,
       currencySymbol,
       reportDate: new Date(),
       rows,
-      schoolLogo: schoolLogo != null ? String(schoolLogo).trim() : null
+      schoolLogo: schoolLogo != null ? String(schoolLogo).trim() : null,
+      schoolEmail: settings?.schoolEmail ?? null,
+      schoolPhone: settings?.schoolPhone ?? null,
+      schoolAddress: settings?.schoolAddress ?? null,
+      scopeSubtitle,
     });
 
-    const download = String(req.query.download || '') === '1';
-    res.setHeader('Content-Type', 'application/pdf');
+    const filename = `exemption-report-${new Date().toISOString().slice(0, 10)}.html`;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
-      download
-        ? 'attachment; filename="exemption-report.pdf"'
-        : 'inline; filename="exemption-report.pdf"'
+      `${preview ? 'inline' : 'attachment'}; filename="${filename}"`
     );
-    res.send(pdfBuffer);
+    res.send(htmlBuffer);
   } catch (error: any) {
     console.error('Error generating exemption report PDF:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
@@ -1764,6 +1773,7 @@ export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response)
     }
 
     const outstandingBalances = await fetchOutstandingBalanceRows();
+    const preview = String(req.query.preview || '').toLowerCase() === 'true';
 
     const settingsRepository = AppDataSource.getRepository(Settings);
     const settingsList = await settingsRepository.find({
@@ -1774,23 +1784,35 @@ export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response)
     const schoolName = (settings?.schoolName != null && String(settings.schoolName).trim() !== '')
       ? String(settings.schoolName).trim()
       : 'School';
-    // Currency symbol must always come from Settings (same as settings page)
     const currencySymbol = (settings?.currencySymbol != null && String(settings.currencySymbol).trim() !== '')
       ? String(settings.currencySymbol).trim()
-      : '';
+      : '$';
+
+    const activeTerm = String(settings?.activeTerm || settings?.currentTerm || '').trim();
+    const scopeSubtitle = activeTerm
+      ? `${activeTerm} and prior terms with unpaid balances`
+      : 'All terms with unpaid invoice balances';
 
     const schoolLogo = (settings as any)?.schoolLogo ?? null;
-    const pdfBuffer = await createOutstandingBalancePDF({
+    const htmlBuffer = await createOutstandingBalancePDF({
       schoolName,
       currencySymbol,
       reportDate: new Date(),
       balances: outstandingBalances,
-      schoolLogo: schoolLogo != null ? String(schoolLogo).trim() : null
+      schoolLogo: schoolLogo != null ? String(schoolLogo).trim() : null,
+      schoolEmail: settings?.schoolEmail ?? null,
+      schoolPhone: settings?.schoolPhone ?? null,
+      schoolAddress: settings?.schoolAddress ?? null,
+      scopeSubtitle,
     });
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'inline; filename="outstanding-invoices.pdf"');
-    res.send(pdfBuffer);
+    const filename = `outstanding-balances-${new Date().toISOString().slice(0, 10)}.html`;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `${preview ? 'inline' : 'attachment'}; filename="${filename}"`
+    );
+    res.send(htmlBuffer);
   } catch (error: any) {
     console.error('Error generating outstanding balances PDF:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
@@ -3213,77 +3235,174 @@ export const getCashReceipts = async (req: AuthRequest, res: Response) => {
 export const getCashReceiptsPDF = async (req: AuthRequest, res: Response) => {
   try {
     const { term: termParam } = req.query as { term?: string };
-    const settingsRepository = AppDataSource.getRepository(Settings);
-    const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
-    const invoiceRepository = AppDataSource.getRepository(Invoice);
+    const preview = String(req.query.preview || '').toLowerCase() === 'true';
+    const { rows, termToUse, settings } = await loadCashReceiptRowsForReport(termParam);
 
-    const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
-    const settings = settingsList.length > 0 ? settingsList[0] : null;
-    const activeTerm = (settings as any)?.activeTerm || (settings as any)?.currentTerm || null;
-    const { termToUse } = await resolveCashReceiptsTerm(paymentLogRepository, termParam, activeTerm);
-
-    const targetSettings = await settingsRepository.findOne({
-      where: [{ activeTerm: termToUse }, { currentTerm: termToUse }],
-      order: { createdAt: 'DESC' }
-    });
-    const rangeStart = targetSettings?.termStartDate || null;
-    const rangeEnd = targetSettings?.termEndDate || null;
-
-    const qb = paymentLogRepository
-      .createQueryBuilder('log')
-      .innerJoinAndSelect('log.invoice', 'invoice')
-      .leftJoinAndSelect('log.student', 'student')
-      .andWhere('ROUND(CAST(log.amountPaid AS numeric), 2) > 0')
-      .andWhere("UPPER(COALESCE(log.paymentMethod, '')) NOT IN ('ADJUSTMENT', '')")
-      .orderBy('log.paymentDate', 'DESC')
-      .addOrderBy('log.createdAt', 'DESC');
-
-    if (rangeStart && rangeEnd) {
-      qb.andWhere('log.paymentDate >= :startDate', { startDate: rangeStart })
-        .andWhere('log.paymentDate <= :endDate', { endDate: rangeEnd });
-    } else {
-      qb.andWhere('LOWER(TRIM(COALESCE(invoice.term, \'\'))) = LOWER(TRIM(:term))', { term: termToUse });
-    }
-
-    const logsEntities = await qb.getMany();
-    const rows = logsEntities.map((log: any) => {
-      const inv = log.invoice || {};
-      const stu = log.student || {};
-      return {
-        paymentDate: log.paymentDate,
-        receiptNumber: log.receiptNumber,
-        invoiceNumber: inv.invoiceNumber || '',
-        studentName: [stu.firstName, stu.lastName].filter(Boolean).join(' ').trim() || 'N/A',
-        studentNumber: stu.studentNumber || '',
-        amountPaid: parseFloat(String(log.amountPaid ?? 0))
-      };
-    });
-
-    // Total cash received = direct sum of payment log entries (actual payments recorded).
-    const totalCashReceived = rows.reduce((s, r) => s + r.amountPaid, 0);
-    const schoolName = (settings?.schoolName != null && String(settings.schoolName).trim() !== '') ? String(settings.schoolName).trim() : 'School';
-    const currencySymbol = (settings?.currencySymbol != null && String(settings.currencySymbol).trim() !== '') ? String(settings.currencySymbol).trim() : '';
+    const schoolName =
+      settings?.schoolName != null && String(settings.schoolName).trim() !== ''
+        ? String(settings.schoolName).trim()
+        : 'School';
+    const currencySymbol =
+      settings?.currencySymbol != null && String(settings.currencySymbol).trim() !== ''
+        ? String(settings.currencySymbol).trim()
+        : '$';
     const schoolLogo = (settings as any)?.schoolLogo ?? null;
 
-    const pdfBuffer = await createCashReceiptsPDF({
+    const htmlBuffer = await createCashReceiptsPDF({
       schoolName,
       currencySymbol,
       term: termToUse,
       reportDate: new Date(),
-      totalCashReceived: Math.round(totalCashReceived * 100) / 100,
       rows,
-      schoolLogo: schoolLogo != null ? String(schoolLogo).trim() : null
+      schoolLogo: schoolLogo != null ? String(schoolLogo).trim() : null,
     });
 
-    const filename = `Cash_Receipts_${termToUse.replace(/\s+/g, '_')}.pdf`;
-    const disposition = (req.query as any).download === '1' ? 'attachment' : 'inline';
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
-    res.send(pdfBuffer);
+    const filename = `Fees_Collection_${termToUse.replace(/\s+/g, '_')}.html`;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `${preview ? 'inline' : 'attachment'}; filename="${filename}"`
+    );
+    res.send(htmlBuffer);
   } catch (error: any) {
     console.error('Error generating cash receipts PDF:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
+};
+
+export const postCashReceiptsReportHtml = async (req: AuthRequest, res: Response) => {
+  try {
+    const preview = String(req.query.preview || '').toLowerCase() === 'true';
+    const body = req.body as {
+      term?: string;
+      rows?: Array<{
+        paymentDate?: string;
+        receiptNumber?: string;
+        invoiceNumber?: string;
+        studentName?: string;
+        studentNumber?: string;
+        amountPaid?: number;
+        paymentMethod?: string;
+      }>;
+    };
+
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+
+    const schoolName =
+      settings?.schoolName != null && String(settings.schoolName).trim() !== ''
+        ? String(settings.schoolName).trim()
+        : 'School';
+    const currencySymbol =
+      settings?.currencySymbol != null && String(settings.currencySymbol).trim() !== ''
+        ? String(settings.currencySymbol).trim()
+        : '$';
+    const schoolLogo = (settings as any)?.schoolLogo ?? null;
+
+    let termToUse = String(body.term || settings?.activeTerm || settings?.currentTerm || 'All terms').trim();
+    let rows = Array.isArray(body.rows)
+      ? body.rows.map((r) => ({
+          paymentDate: String(r.paymentDate || ''),
+          receiptNumber: String(r.receiptNumber || ''),
+          invoiceNumber: String(r.invoiceNumber || ''),
+          studentName: String(r.studentName || ''),
+          studentNumber: String(r.studentNumber || ''),
+          amountPaid: parseFloat(String(r.amountPaid ?? 0)) || 0,
+          paymentMethod: r.paymentMethod || null,
+        }))
+      : [];
+
+    if (!rows.length) {
+      const loaded = await loadCashReceiptRowsForReport(body.term);
+      rows = loaded.rows;
+      termToUse = loaded.termToUse;
+    }
+
+    const htmlBuffer = await createCashReceiptsPDF({
+      schoolName,
+      currencySymbol,
+      term: termToUse,
+      reportDate: new Date(),
+      rows,
+      schoolLogo: schoolLogo != null ? String(schoolLogo).trim() : null,
+    });
+
+    const filename = `Fees_Collection_${termToUse.replace(/\s+/g, '_')}.html`;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `${preview ? 'inline' : 'attachment'}; filename="${filename}"`
+    );
+    res.send(htmlBuffer);
+  } catch (error: any) {
+    console.error('Error generating cash receipts report HTML:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+async function loadCashReceiptRowsForReport(termParam?: string): Promise<{
+  rows: Array<{
+    paymentDate: string;
+    receiptNumber: string;
+    invoiceNumber: string;
+    studentName: string;
+    studentNumber: string;
+    amountPaid: number;
+    paymentMethod: string | null;
+  }>;
+  termToUse: string;
+  settings: Settings | null;
+}> {
+  const settingsRepository = AppDataSource.getRepository(Settings);
+  const paymentLogRepository = AppDataSource.getRepository(PaymentLog);
+
+  const settingsList = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
+  const settings = settingsList.length > 0 ? settingsList[0] : null;
+  const activeTerm = (settings as any)?.activeTerm || (settings as any)?.currentTerm || null;
+  const { termToUse } = await resolveCashReceiptsTerm(paymentLogRepository, termParam, activeTerm);
+
+  const targetSettings = await settingsRepository.findOne({
+    where: [{ activeTerm: termToUse }, { currentTerm: termToUse }],
+    order: { createdAt: 'DESC' },
+  });
+  const rangeStart = targetSettings?.termStartDate || null;
+  const rangeEnd = targetSettings?.termEndDate || null;
+
+  const qb = paymentLogRepository
+    .createQueryBuilder('log')
+    .innerJoinAndSelect('log.invoice', 'invoice')
+    .leftJoinAndSelect('log.student', 'student')
+    .andWhere('ROUND(CAST(log.amountPaid AS numeric), 2) > 0')
+    .andWhere("UPPER(COALESCE(log.paymentMethod, '')) NOT IN ('ADJUSTMENT', '')")
+    .orderBy('log.paymentDate', 'DESC')
+    .addOrderBy('log.createdAt', 'DESC');
+
+  if (rangeStart && rangeEnd) {
+    qb.andWhere('log.paymentDate >= :startDate', { startDate: rangeStart }).andWhere(
+      'log.paymentDate <= :endDate',
+      { endDate: rangeEnd }
+    );
+  } else {
+    qb.andWhere("LOWER(TRIM(COALESCE(invoice.term, ''))) = LOWER(TRIM(:term))", { term: termToUse });
+  }
+
+  const logsEntities = await qb.getMany();
+  const rows = logsEntities.map((log: any) => {
+    const inv = log.invoice || {};
+    const stu = log.student || {};
+    return {
+      paymentDate: log.paymentDate,
+      receiptNumber: log.receiptNumber,
+      invoiceNumber: inv.invoiceNumber || '',
+      studentName: [stu.firstName, stu.lastName].filter(Boolean).join(' ').trim() || 'N/A',
+      studentNumber: stu.studentNumber || '',
+      amountPaid: parseFloat(String(log.amountPaid ?? 0)),
+      paymentMethod: log.paymentMethod || null,
+    };
+  });
+
+  return { rows, termToUse, settings };
 };
 
 export const exportInvoicesCSV = async (req: AuthRequest, res: Response) => {

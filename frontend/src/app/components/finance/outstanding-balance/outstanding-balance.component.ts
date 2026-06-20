@@ -256,56 +256,66 @@ export class OutstandingBalanceComponent implements OnInit, OnDestroy {
     }, 4000);
   }
 
-  previewPdf(): void {
+  previewStatement(): void {
     this.loadingPdf = true;
     this.error = '';
     this.cdr.markForCheck();
-    this.financeService.getOutstandingBalancePDF().subscribe({
+    this.financeService.getOutstandingBalancePDF(true).subscribe({
       next: (blob: Blob) => {
         this.loadingPdf = false;
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank', 'noopener');
         setTimeout(() => URL.revokeObjectURL(url), 60000);
-        this.showToast('PDF opened in new tab');
+        this.showToast('Statement opened in new tab. Use Print → Save as PDF to export.');
         this.cdr.markForCheck();
       },
       error: (err: any) => {
         this.loadingPdf = false;
-        this.error = err?.error?.message || err?.message || 'Failed to load PDF.';
+        this.error = err?.error?.message || err?.message || 'Failed to load statement.';
         this.cdr.markForCheck();
       }
     });
   }
 
-  downloadPdf(): void {
+  downloadStatement(): void {
     this.downloadingPdf = true;
     this.error = '';
     this.cdr.markForCheck();
-    this.financeService.getOutstandingBalancePDF().subscribe({
+    this.financeService.getOutstandingBalancePDF(false).subscribe({
       next: (blob: Blob) => {
         this.downloadingPdf = false;
         if (!blob || blob.size === 0) {
-          this.error = 'Received empty PDF file';
+          this.error = 'Received empty statement file';
           this.cdr.markForCheck();
           return;
         }
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `Outstanding_Fees_${new Date().toISOString().split('T')[0]}.pdf`;
+        link.download = `Outstanding_Balances_${new Date().toISOString().split('T')[0]}.html`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(url), 60000);
-        this.showToast('PDF downloaded successfully');
+        this.showToast('Statement downloaded successfully');
         this.cdr.markForCheck();
       },
       error: (err: any) => {
         this.downloadingPdf = false;
-        this.error = err?.error?.message || err?.message || 'Failed to download PDF.';
+        this.error = err?.error?.message || err?.message || 'Failed to download statement.';
         this.cdr.markForCheck();
       }
     });
+  }
+
+  /** @deprecated */
+  previewPdf(): void {
+    this.previewStatement();
+  }
+
+  /** @deprecated */
+  downloadPdf(): void {
+    this.downloadStatement();
   }
 
   printReport(): void {

@@ -154,7 +154,15 @@ export class ParentOutboxComponent implements OnInit, OnDestroy {
   }
 
   recipientLabel(m: any): string {
-    const r = m.recipient || '';
+    const r = String(m?.recipient || '');
+    const parts = r.toLowerCase().split(',').map((s) => s.trim());
+    if (parts.includes('accountant')) return 'Accountant';
+    if (parts.includes('admin')) {
+      if (parts.includes('headmaster') || parts.includes('deputy_headmaster')) {
+        return 'Administrator (+ Headmaster & Deputy Headmaster)';
+      }
+      return 'School Admin';
+    }
     if (r === 'admin') return 'School Admin';
     if (r === 'accountant') return 'Accountant';
     return r || 'School';

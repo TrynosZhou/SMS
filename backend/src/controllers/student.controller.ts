@@ -12,7 +12,11 @@ import { ParentStudent } from '../entities/ParentStudent';
 import { generateStudentId } from '../utils/studentIdGenerator';
 import { Settings } from '../entities/Settings';
 import QRCode from 'qrcode';
-import PDFDocument from 'pdfkit';
+import {
+  createLogisticsReportHTMLBuffer,
+  extractGradeLabel,
+  LogisticsReportRow,
+} from '../utils/logisticsReportHtmlGenerator';
 import { createStudentIdCardPDF, createStudentIdCardsPDFBatch } from '../utils/studentIdCardPdf';
 import { isDemoUser } from '../utils/demoDataFilter';
 import { parseAmount } from '../utils/numberUtils';
@@ -2115,7 +2119,7 @@ export const generateTransportBusIdCards = async (req: AuthRequest, res: Respons
   }
 };
 
-async function generateLogisticsReportPdf(
+async function generateLogisticsReportHtml(
   req: AuthRequest,
   res: Response,
   options: { service: 'transport' | 'diningHall'; title: string }
@@ -2140,8 +2144,10 @@ async function generateLogisticsReportPdf(
 
   const studentRepository = AppDataSource.getRepository(Student);
   const settingsRepository = AppDataSource.getRepository(Settings);
+  const classRepository = AppDataSource.getRepository(Class);
 
   const { classId } = req.query as { classId?: string };
+  const preview = String(req.query.preview || '').toLowerCase() === 'true';
 
   const query = studentRepository
     .createQueryBuilder('student')
@@ -2169,168 +2175,57 @@ async function generateLogisticsReportPdf(
     order: { createdAt: 'DESC' }
   });
 
-  const doc = new PDFDocument({ size: 'A4', margin: 40 });
-  const buffers: Buffer[] = [];
-
-  doc.on('data', (chunk) => buffers.push(chunk));
-  doc.on('end', () => {
-    const pdfBuffer = Buffer.concat(buffers);
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${options.service}-students-report.pdf"`);
-    res.send(pdfBuffer);
-  });
+  let classFilterLabel: string | null = null;
+  if (classId) {
+    const cls = await classRepository.findOne({ where: { id: classId } });
+    classFilterLabel = cls?.name ? String(cls.name).trim() : 'Selected class';
+  }
 
   const schoolName = settings?.schoolName || 'School Management System';
   const schoolAddress = settings?.schoolAddress ? String(settings.schoolAddress).trim() : '';
   const schoolMotto = settings?.schoolMotto ? String(settings.schoolMotto).trim() : '';
   const schoolPhone = settings?.schoolPhone ? String(settings.schoolPhone).trim() : '';
   const schoolEmail = settings?.schoolEmail ? String(settings.schoolEmail).trim() : '';
+  const schoolLogo = (settings as any)?.schoolLogo ?? null;
 
-  const headerTextX = 40;
-  const headerTextWidth = 515;
-  const headerTopY = 40;
-  const nameFontSize = 16;
-  const textAscender = nameFontSize * 0.7;
-
-  const primaryLogo = (settings as any)?.schoolLogo;
-  if (primaryLogo && String(primaryLogo).trim().startsWith('data:image')) {
-    try {
-      const base64Data = String(primaryLogo).split(',')[1] || '';
-      const logoBuffer = Buffer.from(base64Data, 'base64');
-      doc.image(logoBuffer, 40, headerTopY, { width: 70, height: 50 });
-    } catch (error) {
-      console.error('Failed to render school logo in logistics report:', error);
-    }
-  }
-
-  doc.fontSize(nameFontSize).font('Helvetica-Bold').fillColor('#000000');
-  doc.text(schoolName, headerTextX, headerTopY + textAscender, { width: headerTextWidth, align: 'center' });
-
-  let cursorY = headerTopY + textAscender + 20;
-
-  if (schoolMotto) {
-    doc.fontSize(11).font('Helvetica-Oblique');
-    doc.text(schoolMotto, headerTextX, cursorY, { width: headerTextWidth, align: 'center' });
-    cursorY += 16;
-  }
-
-  if (schoolAddress) {
-    doc.fontSize(10).font('Helvetica');
-    doc.text(schoolAddress, headerTextX, cursorY, { width: headerTextWidth, align: 'center' });
-    cursorY += 16;
-  }
-
-  if (schoolPhone) {
-    doc.fontSize(10).font('Helvetica');
-    doc.text(`Phone: ${schoolPhone}`, headerTextX, cursorY, { width: headerTextWidth, align: 'center' });
-    cursorY += 14;
-  }
-
-  if (schoolEmail) {
-    doc.fontSize(10).font('Helvetica');
-    doc.text(`Email: ${schoolEmail}`, headerTextX, cursorY, { width: headerTextWidth, align: 'center' });
-    cursorY += 14;
-  }
-
-  cursorY += 4;
-
-  doc.moveTo(40, cursorY).lineTo(555, cursorY).strokeColor('#1F4B99').lineWidth(1).stroke();
-  cursorY += 18;
-
-  doc.fontSize(14).font('Helvetica-Bold').fillColor('#1F4B99');
-  doc.text(options.title, headerTextX, cursorY, { align: 'center', width: headerTextWidth });
-
-  cursorY += 30;
-
-  doc.fontSize(10).font('Helvetica').fillColor('#000000');
-  const totalLabel =
-    options.service === 'transport'
-      ? 'Total students using school transport'
-      : 'Total students using dining hall';
-  doc.text(`${totalLabel}: ${students.length}`, 40, cursorY);
-
-  if (classId) {
-    doc.text(`Class filter applied`, 300, cursorY, { align: 'right' });
-  }
-
-  cursorY += 20;
-
-  const headerY = cursorY;
-  const colX = {
-    index: 40,
-    studentNumber: 65,
-    lastName: 125,
-    firstName: 195,
-    className: 285,
-    contact: 370
-  };
-
-  doc.fontSize(10).font('Helvetica-Bold').fillColor('#1F4B99');
-  doc.text('#', colX.index, headerY);
-  doc.text('Student No', colX.studentNumber, headerY);
-  doc.text('Last Name', colX.lastName, headerY);
-  doc.text('First Name', colX.firstName, headerY);
-  doc.text('Class', colX.className, headerY);
-  doc.text('Contact', colX.contact, headerY);
-
-  cursorY += 14;
-  doc.moveTo(40, cursorY).lineTo(555, cursorY).strokeColor('#D7DFEB').lineWidth(1).stroke();
-  cursorY += 8;
-
-  doc.fontSize(9).font('Helvetica').fillColor('#000000');
-
-  const rowHeight = 16;
-  const extractGrade = (name: string | undefined | null): string => {
-    const n = (name || '').trim();
-    if (!n) return '-';
-    const hyphenIdx = n.indexOf('-');
-    if (hyphenIdx > 0) {
-      const beforeHyphen = n.slice(0, hyphenIdx).trim();
-      if (beforeHyphen) return beforeHyphen;
-    }
-    const parts = n.split(/\s+/);
-    if (parts[0]?.toLowerCase() === 'ecd' && parts[1]) {
-      return `ECD ${parts[1]}`;
-    }
-    if (parts[0]?.toLowerCase() === 'stage' && parts[1]) {
-      return `Stage ${parts[1]}`;
-    }
-    // Fallback: first two tokens if the first looks like a grade keyword
-    const gradeKeywords = ['grade', 'form', 'class', 'year', 'stage'];
-    if (gradeKeywords.includes(parts[0]?.toLowerCase()) && parts[1]) {
-      return `${parts[0][0].toUpperCase()}${parts[0].slice(1).toLowerCase()} ${parts[1]}`;
-    }
-    // Otherwise, return the first token to avoid overlapping long stream names
-    return parts[0] || n;
-  };
-
-  students.forEach((student, index) => {
-    if (cursorY > 780) {
-      doc.addPage();
-      cursorY = 40;
-    }
-
-    const lastName = (student.lastName || '').trim() || '-';
-    const firstName = (student.firstName || '').trim() || '-';
-    const contact = student.contactNumber || student.phoneNumber || '';
-    const displayClass = extractGrade(student.classEntity?.name);
-
-    doc.text(String(index + 1), colX.index, cursorY);
-    doc.text(student.studentNumber || '-', colX.studentNumber, cursorY, { width: 55 });
-    doc.text(lastName, colX.lastName, cursorY, { width: 65 });
-    doc.text(firstName, colX.firstName, cursorY, { width: 85 });
-    doc.text(displayClass || '-', colX.className, cursorY, { width: 80 });
-    doc.text(contact, colX.contact, cursorY, { width: 120 });
-
-    cursorY += rowHeight;
+  const rows: LogisticsReportRow[] = students.map((student) => {
+    const lastName = (student.lastName || '').trim() || '—';
+    const firstName = (student.firstName || '').trim() || '—';
+    const contact = (student.contactNumber || student.phoneNumber || '').trim();
+    const displayClass = extractGradeLabel(student.classEntity?.name) || '';
+    return {
+      studentNumber: (student.studentNumber || '').trim() || '—',
+      lastName,
+      firstName,
+      className: displayClass,
+      contact,
+    };
   });
 
-  doc.end();
+  const htmlBuffer = createLogisticsReportHTMLBuffer({
+    schoolName,
+    schoolMotto,
+    schoolAddress,
+    schoolPhone,
+    schoolEmail,
+    schoolLogo: schoolLogo != null ? String(schoolLogo).trim() : null,
+    reportTitle: options.title,
+    serviceType: options.service,
+    reportDate: new Date(),
+    classFilterLabel,
+    rows,
+  });
+
+  const slug = options.service === 'transport' ? 'Transport' : 'Dining_Hall';
+  const filename = `${slug}_Students_Report.html`;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Content-Disposition', `${preview ? 'inline' : 'attachment'}; filename="${filename}"`);
+  res.send(htmlBuffer);
 }
 
 export const generateTransportStudentsReport = async (req: AuthRequest, res: Response) => {
   try {
-    await generateLogisticsReportPdf(req, res, {
+    await generateLogisticsReportHtml(req, res, {
       service: 'transport',
       title: 'Students Using School Transport'
     });
@@ -2344,7 +2239,7 @@ export const generateTransportStudentsReport = async (req: AuthRequest, res: Res
 
 export const generateDiningHallStudentsReport = async (req: AuthRequest, res: Response) => {
   try {
-    await generateLogisticsReportPdf(req, res, {
+    await generateLogisticsReportHtml(req, res, {
       service: 'diningHall',
       title: 'Students Using Dining Hall'
     });

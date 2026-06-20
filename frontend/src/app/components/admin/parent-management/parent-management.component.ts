@@ -28,6 +28,7 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
   linking = false;
   unlinking = false;
   searchingStudents = false;
+  studentSearchNotFound = false;
   error = '';
   success = '';
   parentSearchQuery = '';
@@ -62,10 +63,14 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
   resetParentNewPassword = '';
   resettingParentPassword = false;
   resetParentTempPassword = '';
+  resetParentEmailError = '';
+  resetParentEmailVerified = false;
+  showResetEmailDropdown = false;
   /** Email autocomplete: suggestions from database as admin types */
   resetParentEmailSuggestions: { id: string; email: string; firstName: string; lastName: string }[] = [];
   resetParentEmailSearching = false;
   private resetParentEmailSearchTimeout: any = null;
+  private resetParentEmailBlurTimeout: ReturnType<typeof setTimeout> | null = null;
   private alertDismissTimer: ReturnType<typeof setTimeout> | null = null;
   private parentsLoadInFlight = false;
   private studentSearchDebounce: ReturnType<typeof setTimeout> | null = null;
@@ -150,6 +155,9 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
     }
     if (this.resetParentEmailSearchTimeout) {
       clearTimeout(this.resetParentEmailSearchTimeout);
+    }
+    if (this.resetParentEmailBlurTimeout) {
+      clearTimeout(this.resetParentEmailBlurTimeout);
     }
     if (this.studentSearchDebounce) {
       clearTimeout(this.studentSearchDebounce);
@@ -236,6 +244,7 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
     this.studentsSearchResults = [];
     this.selectedStudentIds = new Set<string>();
     this.relationshipType = 'guardian';
+    this.studentSearchNotFound = false;
     this.phoneNumberError = '';
     this.emailError = '';
   }
@@ -247,6 +256,7 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
     this.studentsSearchResults = [];
     this.selectedStudentIds = new Set<string>();
     this.relationshipType = 'guardian';
+    this.studentSearchNotFound = false;
     this.phoneNumberError = '';
     this.emailError = '';
   }
@@ -258,6 +268,222 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
     this.createEmailError = '';
     this.createdParentTempPassword = '';
     this.resetParentTempPassword = '';
+    this.resetParentEmailError = '';
+    this.resetParentEmailVerified = false;
+    this.resetParentEmailSuggestions = [];
+    this.showResetEmailDropdown = false;
+  }
+
+  private filterRegisteredParentEmails(query: string): { id: string; email: string; firstName: string; lastName: string }[] {
+    const q = query.trim().toLowerCase();
+    if (!q) {
+      return [];
+    }
+    return this.parents
+      .filter(p => {
+        const email = (p.email || '').trim().toLowerCase();
+        return email && email.includes(q);
+      })
+      .slice(0, 20)
+      .map(p => ({
+        id: p.id,
+        email: p.email || '',
+        firstName: p.firstName || '',
+        lastName: p.lastName || ''
+      }));
+  }
+
+  private isRegisteredParentEmail(email: string): boolean {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) {
+      return false;
+    }
+    if (this.parents.some(p => (p.email || '').trim().toLowerCase() === normalized)) {
+      return true;
+    }
+    return this.resetParentEmailSuggestions.some(p => (p.email || '').trim().toLowerCase() === normalized);
+  }
+
+  onResetParentEmailFocus(): void {
+    this.showResetEmailDropdown = true;
+    this.updateResetParentEmailSuggestions();
+  }
+
+  onResetParentEmailInput(): void {
+    this.resetParentEmailError = '';
+    this.resetParentEmailVerified = false;
+    this.showResetEmailDropdown = true;
+
+    if (this.resetParentEmailSearchTimeout) {
+      clearTimeout(this.resetParentEmailSearchTimeout);
+    }
+
+    const q = (this.resetParentEmail || '').trim();
+    if (!q) {
+      this.resetParentEmailSuggestions = [];
+      return;
+    }
+
+    this.updateResetParentEmailSuggestions();
+
+    if (this.isRegisteredParentEmail(q)) {
+      this.resetParentEmailVerified = true;
+      return;
+    }
+
+    if (this.parents.length === 0 && q.length >= 2) {
+      this.resetParentEmailSearchTimeout = setTimeout(() => {
+        this.resetParentEmailSearchTimeout = null;
+        this.fetchResetParentEmailSuggestions(q);
+      }, 300);
+    }
+  }
+
+  private updateResetParentEmailSuggestions(): void {
+    const q = (this.resetParentEmail || '').trim();
+    if (!q) {
+      this.resetParentEmailSuggestions = [];
+      return;
+    }
+    if (this.parents.length > 0) {
+      this.resetParentEmailSuggestions = this.filterRegisteredParentEmails(q);
+      this.cdr.markForCheck();
+      return;
+    }
+    if (q.length >= 2) {
+      this.fetchResetParentEmailSuggestions(q);
+    }
+  }
+
+  private fetchResetParentEmailSuggestions(query: string): void {
+    this.resetParentEmailSearching = true;
+    this.cdr.markForCheck();
+    this.parentService.searchParentEmails(query).subscribe({
+      next: (res) => {
+        this.resetParentEmailSearching = false;
+        this.resetParentEmailSuggestions = Array.isArray(res?.parents) ? res.parents : [];
+        const q = query.trim().toLowerCase();
+        if (this.resetParentEmailSuggestions.some(p => (p.email || '').trim().toLowerCase() === q)) {
+          this.resetParentEmailVerified = true;
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.resetParentEmailSearching = false;
+        this.resetParentEmailSuggestions = [];
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  onResetParentEmailBlur(): void {
+    if (this.resetParentEmailBlurTimeout) {
+      clearTimeout(this.resetParentEmailBlurTimeout);
+    }
+    this.resetParentEmailBlurTimeout = setTimeout(() => {
+      this.resetParentEmailBlurTimeout = null;
+      this.showResetEmailDropdown = false;
+      this.validateResetParentEmail(true);
+      this.cdr.markForCheck();
+    }, 200);
+  }
+
+  validateResetParentEmail(showErrorIfInvalid: boolean): boolean {
+    const email = (this.resetParentEmail || '').trim();
+    if (!email) {
+      if (showErrorIfInvalid) {
+        this.resetParentEmailError = 'Email is required';
+      }
+      this.resetParentEmailVerified = false;
+      return false;
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+      if (showErrorIfInvalid && email.includes('@')) {
+        this.resetParentEmailError = 'Enter a valid email address';
+      }
+      this.resetParentEmailVerified = false;
+      return false;
+    }
+
+    if (!this.isRegisteredParentEmail(email)) {
+      if (showErrorIfInvalid) {
+        this.resetParentEmailError = 'email not yet registered, try again';
+      }
+      this.resetParentEmailVerified = false;
+      return false;
+    }
+
+    this.resetParentEmailError = '';
+    this.resetParentEmailVerified = true;
+    return true;
+  }
+
+  selectResetParentEmail(item: { email: string }): void {
+    if (this.resetParentEmailBlurTimeout) {
+      clearTimeout(this.resetParentEmailBlurTimeout);
+      this.resetParentEmailBlurTimeout = null;
+    }
+    this.resetParentEmail = item.email || '';
+    this.resetParentEmailSuggestions = [];
+    this.showResetEmailDropdown = false;
+    this.resetParentEmailVerified = true;
+    this.resetParentEmailError = '';
+    this.cdr.markForCheck();
+  }
+
+  resetParentAccountPassword() {
+    this.error = '';
+    this.success = '';
+    this.resetParentTempPassword = '';
+    this.resetParentEmailError = '';
+
+    if (!this.validateResetParentEmail(true)) {
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const email = (this.resetParentEmail || '').trim();
+
+    const generatePassword = !!this.resetParentGeneratePassword;
+    const newPassword = (this.resetParentNewPassword || '').trim();
+    if (!generatePassword && !newPassword) {
+      this.error = 'New password is required';
+      setTimeout(() => this.error = '', 5000);
+      return;
+    }
+
+    this.resettingParentPassword = true;
+    this.cdr.markForCheck();
+    this.parentService.adminResetParentPassword({
+      email,
+      generatePassword,
+      newPassword: generatePassword ? undefined : newPassword
+    }).pipe(
+      finalize(() => {
+        this.resettingParentPassword = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (res: any) => {
+        this.showSuccess(res?.message || 'Password reset successfully');
+        const temp = res?.temporaryCredentials?.password;
+        this.resetParentTempPassword = (typeof temp === 'string' ? temp : '') || '';
+        this.cdr.markForCheck();
+      },
+      error: (err: any) => {
+        const status = err?.status ?? 0;
+        let msg = status === 0 || status === 502
+          ? 'Backend unavailable. Run the backend with npm run dev in the backend folder (port 3000).'
+          : (err.error?.message || 'Failed to reset password');
+        if (status === 404 || /no user account|not found/i.test(msg)) {
+          msg = 'email not yet registered, try again';
+          this.resetParentEmailError = msg;
+        }
+        this.showError(msg);
+      }
+    });
   }
 
   onCreateEmailInput(): void {
@@ -385,82 +611,6 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
           this.createEmailError = msg;
         }
         this.showError(msg, this.isDuplicateEmailError(err) ? 0 : 7000);
-      }
-    });
-  }
-
-  onResetParentEmailInput() {
-    const q = (this.resetParentEmail || '').trim();
-    if (this.resetParentEmailSearchTimeout) clearTimeout(this.resetParentEmailSearchTimeout);
-    if (q.length < 2) {
-      this.resetParentEmailSuggestions = [];
-      return;
-    }
-    this.resetParentEmailSearchTimeout = setTimeout(() => {
-      this.resetParentEmailSearchTimeout = null;
-      this.resetParentEmailSearching = true;
-      this.parentService.searchParentEmails(q).subscribe({
-        next: (res) => {
-          this.resetParentEmailSearching = false;
-          this.resetParentEmailSuggestions = Array.isArray(res?.parents) ? res.parents : [];
-        },
-        error: () => {
-          this.resetParentEmailSearching = false;
-          this.resetParentEmailSuggestions = [];
-        }
-      });
-    }, 300);
-  }
-
-  selectResetParentEmail(item: { email: string }) {
-    this.resetParentEmail = item.email || '';
-    this.resetParentEmailSuggestions = [];
-  }
-
-  resetParentAccountPassword() {
-    this.error = '';
-    this.success = '';
-    this.resetParentTempPassword = '';
-
-    const email = (this.resetParentEmail || '').trim();
-    if (!email) {
-      this.error = 'Email is required';
-      setTimeout(() => this.error = '', 5000);
-      return;
-    }
-
-    const generatePassword = !!this.resetParentGeneratePassword;
-    const newPassword = (this.resetParentNewPassword || '').trim();
-    if (!generatePassword && !newPassword) {
-      this.error = 'New password is required';
-      setTimeout(() => this.error = '', 5000);
-      return;
-    }
-
-    this.resettingParentPassword = true;
-    this.cdr.markForCheck();
-    this.parentService.adminResetParentPassword({
-      email,
-      generatePassword,
-      newPassword: generatePassword ? undefined : newPassword
-    }).pipe(
-      finalize(() => {
-        this.resettingParentPassword = false;
-        this.cdr.markForCheck();
-      })
-    ).subscribe({
-      next: (res: any) => {
-        this.showSuccess(res?.message || 'Password reset successfully');
-        const temp = res?.temporaryCredentials?.password;
-        this.resetParentTempPassword = (typeof temp === 'string' ? temp : '') || '';
-        this.cdr.markForCheck();
-      },
-      error: (err: any) => {
-        const status = err?.status ?? 0;
-        const msg = status === 0 || status === 502
-          ? 'Backend unavailable. Run the backend with npm run dev in the backend folder (port 3000).'
-          : (err.error?.message || 'Failed to reset password');
-        this.showError(msg);
       }
     });
   }
@@ -623,6 +773,7 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
     if (!this.selectedParent || q.length < 2) {
       this.studentsSearchResults = [];
       this.selectedStudentIds = new Set<string>();
+      this.studentSearchNotFound = false;
       this.searchingStudents = false;
       this.cdr.markForCheck();
       return;
@@ -652,6 +803,7 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
           return;
         }
         this.studentsSearchResults = response.students || [];
+        this.studentSearchNotFound = this.studentsSearchResults.length === 0;
         this.selectedStudentIds = new Set<string>();
         this.cdr.markForCheck();
       },
@@ -660,6 +812,7 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
           return;
         }
         this.studentsSearchResults = [];
+        this.studentSearchNotFound = false;
         this.showError(err.error?.message || 'Failed to search students');
       }
     });
@@ -762,6 +915,7 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
         this.selectedStudentIds = new Set<string>();
         this.studentSearchQuery = '';
         this.studentsSearchResults = [];
+        this.studentSearchNotFound = false;
 
         this.loadParents();
         setTimeout(() => { this.success = ''; this.error = ''; }, 6000);

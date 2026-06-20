@@ -354,13 +354,13 @@ export class RevenueRecognitionReportComponent implements OnInit, OnDestroy {
   downloadPdf(): void {
     this.downloadingPdf = true;
     this.cdr.markForCheck();
-    this.financeService.getCashReceiptsPDF(this.term?.trim() || undefined, true).subscribe({
+    this.financeService.getCashReceiptsPDF(this.term?.trim() || undefined, false).subscribe({
       next: (blob: Blob) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         const safe = (this.term || 'term').replace(/\s+/g, '_');
-        a.download = `Revenue_Recognition_${safe}.pdf`;
+        a.download = `Revenue_Recognition_${safe}.html`;
         a.click();
         URL.revokeObjectURL(url);
         this.downloadingPdf = false;

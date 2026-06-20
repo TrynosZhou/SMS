@@ -1,5 +1,5 @@
 <div class="es-page">
-  <div class="es-toast-stack" *ngIf="success || error">
+  <div class="es-toast-stack" *ngIf="(success || error) && !pageConfirmation">
     <div class="es-toast es-toast--success" *ngIf="success" role="status">
       <span>{{ success }}</span>
       <button type="button" class="es-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
@@ -8,6 +8,20 @@
       <span>{{ error }}</span>
       <button type="button" class="es-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
+  </div>
+
+  <div
+    class="es-page-confirm"
+    *ngIf="pageConfirmation"
+    [class.es-page-confirm--success]="pageConfirmation.type === 'success'"
+    [class.es-page-confirm--error]="pageConfirmation.type === 'error'"
+    role="status">
+    <span class="es-page-confirm__icon" aria-hidden="true">{{ pageConfirmation.type === 'success' ? '✓' : '✕' }}</span>
+    <div class="es-page-confirm__body">
+      <strong>{{ pageConfirmation.title }}</strong>
+      <p>{{ pageConfirmation.message }}</p>
+    </div>
+    <button type="button" class="es-page-confirm__dismiss" (click)="clearAlert(pageConfirmation.type)" aria-label="Dismiss">×</button>
   </div>
 
   <header class="es-hero">

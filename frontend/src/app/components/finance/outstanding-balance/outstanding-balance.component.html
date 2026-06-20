@@ -33,9 +33,9 @@
           {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
         </button>
         <button type="button" class="ob-hero-btn ob-hero-btn--white" (click)="exportCsv()" [disabled]="!filteredBalances.length || loading">CSV</button>
-        <button type="button" class="ob-hero-btn ob-hero-btn--white" (click)="previewPdf()" [disabled]="loadingPdf || !filteredBalances.length">Preview</button>
-        <button type="button" class="ob-hero-btn ob-hero-btn--white" (click)="downloadPdf()" [disabled]="downloadingPdf || !filteredBalances.length">
-          {{ downloadingPdf ? '…' : 'PDF' }}
+        <button type="button" class="ob-hero-btn ob-hero-btn--white" (click)="previewStatement()" [disabled]="loadingPdf || !filteredBalances.length">Preview</button>
+        <button type="button" class="ob-hero-btn ob-hero-btn--white" (click)="downloadStatement()" [disabled]="downloadingPdf || !filteredBalances.length">
+          {{ downloadingPdf ? '…' : 'Statement' }}
         </button>
         <button type="button" class="ob-hero-btn ob-hero-btn--white" (click)="printReport()" [disabled]="!filteredBalances.length || loading">Print</button>
       </div>

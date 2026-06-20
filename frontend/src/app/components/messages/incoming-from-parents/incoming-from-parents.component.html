@@ -1,375 +1,374 @@
-<div class="inbox-container">
-  <!-- Page Header -->
-  <div class="page-header">
-    <div class="header-content">
-      <div class="header-left">
-        <h1>
-          <span class="header-icon">📬</span>
-          Inbox
-          <span class="unread-badge" *ngIf="unreadCount() > 0">{{ unreadCount() }}</span>
-        </h1>
-        <p class="header-subtitle">Messages from parents</p>
+<div class="mi-page">
+  <div class="mi-toast-stack" *ngIf="success || error">
+    <div class="mi-toast mi-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="mi-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="mi-toast mi-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="mi-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="mi-hero">
+    <div class="mi-hero__main">
+      <div class="mi-hero-left">
+        <span class="mi-hero-icon" aria-hidden="true">📬</span>
+        <div>
+          <span class="mi-hero-eyebrow">Communication</span>
+          <h1>
+            Inbox
+            <span class="mi-unread-badge" *ngIf="unreadCount() > 0">{{ unreadCount() }}</span>
+          </h1>
+          <p class="mi-hero-sub">Messages from parents — read, reply, and manage incoming correspondence.</p>
+        </div>
       </div>
-      <div class="header-actions">
-        <button type="button" class="btn btn-icon" (click)="load()" title="Refresh" [disabled]="loading">
-          <span [class.spinning]="loading">🔄</span>
+      <aside class="mi-hero-aside">
+        <span class="mi-hero-badge">{{ filtered.length }} message(s)</span>
+        <span class="mi-hero-badge mi-hero-badge--unread" *ngIf="unreadCount() > 0">{{ unreadCount() }} unread</span>
+      </aside>
+      <div class="mi-hero__actions">
+        <button type="button" class="mi-hero-refresh" (click)="load()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
         </button>
-        <label class="auto-refresh-toggle">
+        <label class="mi-auto-refresh">
           <input type="checkbox" [(ngModel)]="autoRefresh" (change)="setupAutoRefresh()" />
-          <span class="toggle-label">Auto-refresh</span>
+          <span>Auto-refresh</span>
         </label>
-        <button type="button" class="btn btn-primary" [routerLink]="['/messages/send']">
-          <span class="icon">✉️</span> Compose
-        </button>
+        <a routerLink="/messages/send" class="mi-hero-btn mi-hero-btn--accent">✉️ Compose</a>
       </div>
     </div>
-  </div>
 
-  <!-- Alert -->
-  <div *ngIf="success" class="alert alert-success" role="status">
-    <span class="alert-icon">✓</span>
-    <span class="alert-text">{{ success }}</span>
-    <button class="alert-close" (click)="success = ''" aria-label="Dismiss">✕</button>
-  </div>
+    <nav class="mi-cross-links" aria-label="Related message pages">
+      <a routerLink="/messages/send">Send message</a>
+      <a routerLink="/messages/outgoing">Outbox</a>
+      <a routerLink="/messages/drafts">Drafts</a>
+      <a routerLink="/messages/inbox" *ngIf="!isAccountant()">Accountant inbox</a>
+    </nav>
 
-  <div *ngIf="error" class="alert alert-error">
-    <span class="alert-icon">⚠️</span>
-    <span class="alert-text">{{ error }}</span>
-    <button class="alert-close" (click)="error = ''">✕</button>
-  </div>
-
-  <!-- Bulk Actions Bar -->
-  <div class="bulk-actions-bar" *ngIf="selectedIds.size > 0">
-    <div class="bulk-info">
-      <span class="bulk-count">{{ selectedIds.size }}</span> selected
+    <div class="mi-hero-stats" *ngIf="!loading">
+      <article class="mi-stat">
+        <span class="mi-stat__icon" aria-hidden="true">📨</span>
+        <span class="mi-stat__value">{{ messages.length }}</span>
+        <span class="mi-stat__label">Total</span>
+      </article>
+      <article class="mi-stat mi-stat--rose">
+        <span class="mi-stat__icon" aria-hidden="true">●</span>
+        <span class="mi-stat__value">{{ unreadCount() }}</span>
+        <span class="mi-stat__label">Unread</span>
+      </article>
+      <article class="mi-stat mi-stat--mint">
+        <span class="mi-stat__icon" aria-hidden="true">✓</span>
+        <span class="mi-stat__value">{{ messages.length - unreadCount() }}</span>
+        <span class="mi-stat__label">Read</span>
+      </article>
+      <article class="mi-stat mi-stat--amber">
+        <span class="mi-stat__icon" aria-hidden="true">⭐</span>
+        <span class="mi-stat__value">{{ pinnedIds.size }}</span>
+        <span class="mi-stat__label">Pinned</span>
+      </article>
+      <article class="mi-stat">
+        <span class="mi-stat__icon" aria-hidden="true">👤</span>
+        <span class="mi-stat__value">{{ senders.length }}</span>
+        <span class="mi-stat__label">Senders</span>
+      </article>
     </div>
-    <div class="bulk-buttons">
-      <button class="btn btn-sm" (click)="bulkMarkRead()">
-        <span>✓</span> Mark Read
-      </button>
-      <button class="btn btn-sm" (click)="bulkMarkUnread()">
-        <span>○</span> Mark Unread
-      </button>
-      <button class="btn btn-sm btn-danger" (click)="clearSelection()">
-        <span>✕</span> Clear
-      </button>
+    <div class="mi-hero-stats mi-hero-stats--skeleton" *ngIf="loading">
+      <div class="mi-skeleton" *ngFor="let i of [1,2,3,4,5]"></div>
     </div>
-  </div>
 
-  <!-- Filters Section -->
-  <div class="filters-section">
-    <div class="filters-row">
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input 
-          type="text" 
-          placeholder="Search messages..." 
-          [(ngModel)]="query" 
-          (input)="applyFilterAndPaginate()"
-          class="search-input"
-        />
-        <button *ngIf="query" class="clear-btn" (click)="query = ''; applyFilterAndPaginate()">✕</button>
+    <div class="mi-steps" aria-label="Progress">
+      <span class="mi-step mi-step--active"><strong>1</strong> Filter &amp; search</span>
+      <span class="mi-step-arrow">→</span>
+      <span class="mi-step" [class.mi-step--active]="selected"><strong>2</strong> Read message</span>
+      <span class="mi-step-arrow">→</span>
+      <span class="mi-step" [class.mi-step--active]="replying"><strong>3</strong> Reply</span>
+    </div>
+  </header>
+
+  <section class="mi-bulk-bar" *ngIf="selectedIds.size > 0">
+    <span class="mi-bulk-bar__info"><strong>{{ selectedIds.size }}</strong> selected</span>
+    <div class="mi-bulk-bar__actions">
+      <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="bulkMarkRead()">✓ Mark read</button>
+      <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="bulkMarkUnread()">○ Mark unread</button>
+      <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="clearSelection()">Clear</button>
+    </div>
+  </section>
+
+  <section class="mi-panel mi-panel--filters">
+    <div class="mi-panel__head mi-panel__head--row">
+      <div>
+        <h2 class="mi-panel__title">Filters &amp; search</h2>
+        <p class="mi-panel__intro">Find messages by status, sender, or date range.</p>
       </div>
-      
-      <div class="filter-chips">
-        <button 
-          class="chip" 
-          [class.active]="filterMode === 'all'"
-          (click)="filterMode = 'all'; applyFilterAndPaginate()"
-        >
-          All
-        </button>
-        <button 
-          class="chip" 
-          [class.active]="filterMode === 'unread'"
-          (click)="filterMode = 'unread'; applyFilterAndPaginate()"
-        >
-          <span class="chip-dot"></span> Unread
-        </button>
-        <button 
-          class="chip" 
-          [class.active]="filterMode === 'read'"
-          (click)="filterMode = 'read'; applyFilterAndPaginate()"
-        >
-          Read
-        </button>
-        <button 
-          class="chip" 
-          [class.active]="pinnedOnly"
-          (click)="pinnedOnly = !pinnedOnly; applyFilterAndPaginate()"
-        >
-          ⭐ Pinned
-        </button>
-      </div>
-
-      <button class="btn btn-text" (click)="showFilters = !showFilters">
-        <span>🎛️</span> {{ showFilters ? 'Hide' : 'More' }} Filters
+      <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="showFilters = !showFilters">
+        {{ showFilters ? 'Hide' : 'More' }} filters
       </button>
     </div>
 
-    <div class="advanced-filters" *ngIf="showFilters">
-      <div class="filter-group">
+    <div class="mi-filter-row">
+      <div class="mi-search-wrap">
+        <span class="mi-search-icon" aria-hidden="true">🔍</span>
+        <input
+          type="search"
+          class="mi-search-input"
+          placeholder="Search messages…"
+          [(ngModel)]="query"
+          (input)="applyFilterAndPaginate()" />
+        <button *ngIf="query" type="button" class="mi-search-clear" (click)="query = ''; applyFilterAndPaginate()">×</button>
+      </div>
+
+      <div class="mi-chips">
+        <button type="button" class="mi-chip" [class.mi-chip--active]="filterMode === 'all'" (click)="filterMode = 'all'; applyFilterAndPaginate()">All</button>
+        <button type="button" class="mi-chip" [class.mi-chip--active]="filterMode === 'unread'" (click)="filterMode = 'unread'; applyFilterAndPaginate()">
+          <span class="mi-chip-dot"></span> Unread
+        </button>
+        <button type="button" class="mi-chip" [class.mi-chip--active]="filterMode === 'read'" (click)="filterMode = 'read'; applyFilterAndPaginate()">Read</button>
+        <button type="button" class="mi-chip" [class.mi-chip--active]="pinnedOnly" (click)="pinnedOnly = !pinnedOnly; applyFilterAndPaginate()">⭐ Pinned</button>
+      </div>
+    </div>
+
+    <div class="mi-advanced-filters" *ngIf="showFilters">
+      <div class="mi-field">
         <label>Sender</label>
-        <select [(ngModel)]="senderFilter" (change)="applyFilterAndPaginate()">
-          <option value="">All Senders</option>
+        <select class="mi-select" [(ngModel)]="senderFilter" (change)="applyFilterAndPaginate()">
+          <option value="">All senders</option>
           <option *ngFor="let s of senders" [value]="s.toLowerCase()">{{ s }}</option>
         </select>
       </div>
-      <div class="filter-group">
-        <label>Date From</label>
-        <input type="date" [(ngModel)]="dateStart" (change)="applyFilterAndPaginate()" />
+      <div class="mi-field">
+        <label>Date from</label>
+        <input type="date" class="mi-input" [(ngModel)]="dateStart" (change)="applyFilterAndPaginate()" />
       </div>
-      <div class="filter-group">
-        <label>Date To</label>
-        <input type="date" [(ngModel)]="dateEnd" (change)="applyFilterAndPaginate()" />
+      <div class="mi-field">
+        <label>Date to</label>
+        <input type="date" class="mi-input" [(ngModel)]="dateEnd" (change)="applyFilterAndPaginate()" />
       </div>
-      <div class="filter-group">
+      <div class="mi-field">
         <label>Sort</label>
-        <select [(ngModel)]="sortMode" (change)="applyFilterAndPaginate()">
-          <option value="newest">Newest First</option>
-          <option value="oldest">Oldest First</option>
+        <select class="mi-select" [(ngModel)]="sortMode" (change)="applyFilterAndPaginate()">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
         </select>
       </div>
-      <div class="filter-group">
-        <label>Per Page</label>
-        <select [(ngModel)]="pageSize" (change)="applyFilterAndPaginate()">
-          <option [value]="10">10</option>
-          <option [value]="20">20</option>
-          <option [value]="50">50</option>
+      <div class="mi-field">
+        <label>Per page</label>
+        <select class="mi-select" [(ngModel)]="pageSize" (change)="applyFilterAndPaginate()">
+          <option [ngValue]="10">10</option>
+          <option [ngValue]="20">20</option>
+          <option [ngValue]="50">50</option>
         </select>
       </div>
-      <button class="btn btn-text" (click)="clearFilters()">
-        <span>✕</span> Clear Filters
-      </button>
+      <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="clearFilters()" [disabled]="!hasActiveFilters()">Clear filters</button>
     </div>
-  </div>
+  </section>
 
-  <!-- Main Content -->
-  <div class="main-content">
-    <!-- Message List -->
-    <div class="message-list-panel">
-      <div class="list-header">
-        <label class="select-all">
+  <div class="mi-main">
+    <section class="mi-panel mi-panel--list">
+      <div class="mi-list-head">
+        <label class="mi-select-all">
           <input type="checkbox" [checked]="isAllPageSelected()" (change)="toggleSelectAllPage()" />
           <span>Select all</span>
         </label>
-        <span class="list-count">{{ filtered.length }} messages</span>
+        <span class="mi-list-count">{{ filtered.length }} messages</span>
       </div>
 
-      <div class="loading-state" *ngIf="loading">
-        <div class="spinner"></div>
-        <p>Loading messages...</p>
+      <div class="mi-loading" *ngIf="loading">
+        <span class="mi-loading-ring" aria-hidden="true"></span>
+        <p>Loading messages…</p>
       </div>
 
-      <div class="empty-state" *ngIf="!loading && paged.length === 0">
-        <span class="empty-icon">📭</span>
-        <p>No messages found</p>
-        <button class="btn btn-primary btn-sm" (click)="clearFilters()">Clear Filters</button>
+      <div class="mi-empty" *ngIf="!loading && paged.length === 0">
+        <span class="mi-empty-icon" aria-hidden="true">📭</span>
+        <h3>No messages found</h3>
+        <p>Try adjusting your filters or search query.</p>
+        <button type="button" class="mi-btn mi-btn--outline" (click)="clearFilters()" *ngIf="hasActiveFilters()">Clear filters</button>
       </div>
 
-      <div class="message-list" *ngIf="paged.length > 0">
-        <div 
-          *ngFor="let m of paged" 
-          class="message-item"
-          [class.unread]="!m.isRead"
-          [class.selected]="selected?.id === m.id"
-          [class.pinned]="isPinned(m)"
-        >
-          <label class="item-checkbox" (click)="$event.stopPropagation()">
+      <div class="mi-message-list" *ngIf="paged.length > 0">
+        <article
+          *ngFor="let m of paged"
+          class="mi-message-item"
+          [class.mi-message-item--unread]="!m.isRead"
+          [class.mi-message-item--selected]="selected?.id === m.id"
+          [class.mi-message-item--pinned]="isPinned(m)">
+          <label class="mi-item-check" (click)="$event.stopPropagation()">
             <input type="checkbox" [checked]="isSelected(m.id)" (change)="toggleId(m.id)" />
           </label>
-          
-          <div class="message-content" (click)="open(m)">
-            <div class="message-avatar">{{ getInitial(m) }}</div>
-            <div class="message-details">
-              <div class="message-header">
-                <span class="sender-name">{{ m.parentName || m.senderName || 'Unknown' }}</span>
-                <span class="message-time">{{ timeAgo(m.createdAt) }}</span>
+          <div class="mi-item-body" (click)="open(m)">
+            <span class="mi-item-avatar">{{ getInitial(m) }}</span>
+            <div class="mi-item-details">
+              <div class="mi-item-top">
+                <span class="mi-item-sender">{{ m.parentName || m.senderName || 'Unknown' }}</span>
+                <span class="mi-item-time">{{ timeAgo(m.createdAt) }}</span>
               </div>
-              <div class="message-subject">
-                <span *ngIf="isPinned(m)" class="pin-icon">⭐</span>
-                {{ m.subject || '(No Subject)' }}
+              <div class="mi-item-subject">
+                <span *ngIf="isPinned(m)" class="mi-pin-icon">⭐</span>
+                {{ m.subject || '(No subject)' }}
               </div>
-              <div class="message-preview">{{ getPreview(m.message) }}</div>
+              <div class="mi-item-preview">{{ getPreview(m.message) || '—' }}</div>
             </div>
-            <span class="unread-indicator" *ngIf="!m.isRead"></span>
+            <span class="mi-unread-dot" *ngIf="!m.isRead" aria-hidden="true"></span>
           </div>
-          
-          <button class="pin-btn" (click)="togglePin(m); $event.stopPropagation()" title="Pin message">
+          <button type="button" class="mi-pin-btn" (click)="togglePin(m); $event.stopPropagation()" [title]="isPinned(m) ? 'Unpin' : 'Pin'">
             {{ isPinned(m) ? '⭐' : '☆' }}
           </button>
+        </article>
+      </div>
+
+      <div class="mi-pagination" *ngIf="totalPages() > 1">
+        <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="prevPage()" [disabled]="currentPage === 1">← Prev</button>
+        <span class="mi-page-info">Page {{ currentPage }} of {{ totalPages() }}</span>
+        <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="nextPage()" [disabled]="currentPage === totalPages()">Next →</button>
+      </div>
+
+      <div class="mi-list-foot">
+        <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="exportCSV()" [disabled]="filtered.length === 0">📥 Export CSV</button>
+        <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="showTemplateManager = true">📝 Templates</button>
+      </div>
+    </section>
+
+    <section class="mi-panel mi-panel--detail" *ngIf="selected">
+      <div
+        class="mi-detail-confirm"
+        *ngIf="detailConfirmation"
+        [class.mi-detail-confirm--success]="detailConfirmation.type === 'success'"
+        [class.mi-detail-confirm--error]="detailConfirmation.type === 'error'"
+        role="status">
+        <span class="mi-detail-confirm__icon" aria-hidden="true">
+          {{ detailConfirmation.type === 'success' ? '✓' : '✕' }}
+        </span>
+        <div class="mi-detail-confirm__body">
+          <strong class="mi-detail-confirm__title">{{ detailConfirmation.title }}</strong>
+          <p class="mi-detail-confirm__message">{{ detailConfirmation.message }}</p>
+        </div>
+        <button
+          type="button"
+          class="mi-detail-confirm__dismiss"
+          (click)="clearDetailConfirmation()"
+          aria-label="Dismiss confirmation">
+          ×
+        </button>
+      </div>
+
+      <div class="mi-detail-head">
+        <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm mi-back-btn" (click)="selected = null" title="Back to list">← Back</button>
+        <div class="mi-detail-actions">
+          <button type="button" class="mi-icon-btn" (click)="togglePin(selected)" [title]="isPinned(selected) ? 'Unpin' : 'Pin'">{{ isPinned(selected) ? '⭐' : '☆' }}</button>
+          <button type="button" class="mi-icon-btn" (click)="printSelected()" title="Print">🖨️</button>
+          <button type="button" class="mi-icon-btn" (click)="copySelected()" title="Copy">📋</button>
+          <button type="button" class="mi-icon-btn" (click)="downloadSelected()" title="Download">📄</button>
         </div>
       </div>
 
-      <!-- Pagination -->
-      <div class="pagination" *ngIf="totalPages() > 1">
-        <button class="btn btn-sm" (click)="prevPage()" [disabled]="currentPage === 1">
-          ← Prev
-        </button>
-        <span class="page-info">Page {{ currentPage }} of {{ totalPages() }}</span>
-        <button class="btn btn-sm" (click)="nextPage()" [disabled]="currentPage === totalPages()">
-          Next →
-        </button>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="list-actions">
-        <button class="btn btn-sm" (click)="exportCSV()" [disabled]="filtered.length === 0">
-          <span>📥</span> Export CSV
-        </button>
-        <button class="btn btn-sm" (click)="showTemplateManager = !showTemplateManager">
-          <span>📝</span> Templates
-        </button>
-      </div>
-    </div>
-
-    <!-- Message Detail Panel -->
-    <div class="message-detail-panel" *ngIf="selected">
-      <div class="detail-header">
-        <button class="btn btn-icon back-btn" (click)="selected = null" title="Back to list">
-          ←
-        </button>
-        <div class="detail-actions">
-          <button class="btn btn-icon" (click)="togglePin(selected)" [title]="isPinned(selected) ? 'Unpin' : 'Pin'">
-            {{ isPinned(selected) ? '⭐' : '☆' }}
-          </button>
-          <button class="btn btn-icon" (click)="printSelected()" title="Print">🖨️</button>
-          <button class="btn btn-icon" (click)="copySelected()" title="Copy">📋</button>
-          <button class="btn btn-icon" (click)="downloadSelected()" title="Download">📄</button>
-        </div>
-      </div>
-
-      <div class="detail-content">
-        <h2 class="detail-subject">{{ selected.subject || '(No Subject)' }}</h2>
-        
-        <div class="detail-meta">
-          <div class="sender-info">
-            <div class="sender-avatar">{{ getInitial(selected) }}</div>
-            <div class="sender-details">
-              <span class="sender-name">{{ selected.parentName || selected.senderName }}</span>
-              <span class="sender-date">{{ formatDate(selected.createdAt) }}</span>
+      <div class="mi-detail-body">
+        <h2 class="mi-detail-subject">{{ selected.subject || '(No subject)' }}</h2>
+        <div class="mi-detail-meta">
+          <div class="mi-sender-card">
+            <span class="mi-sender-avatar">{{ getInitial(selected) }}</span>
+            <div>
+              <span class="mi-sender-name">{{ selected.parentName || selected.senderName }}</span>
+              <span class="mi-sender-date">{{ formatDate(selected.createdAt) }}</span>
             </div>
           </div>
-          <div class="read-status" [class.read]="selected.isRead">
+          <span class="mi-status-pill" [class.mi-status-pill--read]="selected.isRead">
             {{ selected.isRead ? 'Read' : 'Unread' }}
-          </div>
+          </span>
         </div>
-
-        <div class="detail-body">{{ selected.message }}</div>
-
-        <div class="detail-attachments" *ngIf="selected.attachments && selected.attachments.length">
+        <div class="mi-detail-message">{{ selected.message }}</div>
+        <div class="mi-attachments" *ngIf="selected.attachments?.length">
           <h4>📎 Attachments</h4>
-          <div class="attachment-list">
-            <a *ngFor="let a of selected.attachments" [href]="a" target="_blank" class="attachment-item">
-              <span class="attachment-icon">📄</span>
-              <span>Download</span>
-            </a>
+          <div class="mi-attachment-list">
+            <a *ngFor="let a of selected.attachments" [href]="a" target="_blank" class="mi-attachment-link">📄 Download</a>
           </div>
         </div>
       </div>
 
-      <div class="detail-footer">
-        <div class="footer-actions">
-          <button class="btn" [class.btn-outline]="selected.isRead" (click)="selected.isRead ? markUnread() : markRead()">
-            {{ selected.isRead ? '○ Mark Unread' : '✓ Mark Read' }}
-          </button>
-          <button class="btn btn-primary" (click)="toggleReply()">
-            <span>↩️</span> {{ replying ? 'Cancel Reply' : 'Reply' }}
-          </button>
-        </div>
+      <div class="mi-detail-foot">
+        <button type="button" class="mi-btn mi-btn--outline" (click)="selected.isRead ? markUnread() : markRead()">
+          {{ selected.isRead ? '○ Mark unread' : '✓ Mark read' }}
+        </button>
+        <button type="button" class="mi-btn mi-btn--primary" (click)="toggleReply()">
+          ↩️ {{ replying ? 'Cancel reply' : 'Reply' }}
+        </button>
       </div>
 
-      <!-- Reply Panel -->
-      <div class="reply-panel" *ngIf="replying">
-        <div class="reply-header">
-          <h3>Reply to {{ selected.parentName || selected.senderName }}</h3>
-        </div>
-
-        <div class="reply-template-select">
-          <select [(ngModel)]="selectedReplyTemplate">
-            <option value="">Use a template...</option>
+      <div class="mi-reply-panel" *ngIf="replying">
+        <h3 class="mi-reply-title">Reply to {{ selected.parentName || selected.senderName }}</h3>
+        <div class="mi-template-row">
+          <select class="mi-select" [(ngModel)]="selectedReplyTemplate">
+            <option value="">Use a template…</option>
             <option *ngFor="let t of replyTemplates" [value]="t.name">{{ t.name }}</option>
           </select>
-          <button class="btn btn-sm" (click)="applyReplyTemplate()" [disabled]="!selectedReplyTemplate">Apply</button>
+          <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="applyReplyTemplate()" [disabled]="!selectedReplyTemplate">Apply</button>
         </div>
-
-        <div class="reply-form">
-          <div class="form-group">
+        <div class="mi-reply-form">
+          <div class="mi-field">
             <label>Subject</label>
-            <input type="text" [(ngModel)]="replySubject" placeholder="Re: ..." />
+            <input type="text" class="mi-input" [(ngModel)]="replySubject" placeholder="Re: …" />
           </div>
-          <div class="form-group">
+          <div class="mi-field">
             <label>Message</label>
-            <textarea rows="6" [(ngModel)]="replyBody" placeholder="Type your reply..."></textarea>
+            <textarea class="mi-textarea" rows="6" [(ngModel)]="replyBody" placeholder="Type your reply…"></textarea>
           </div>
-          <div class="form-group">
+          <div class="mi-field">
             <label>Attachments</label>
-            <div class="file-upload">
-              <input type="file" multiple (change)="onReplyFilesChange($event)" #replyFileInput />
-              <button class="btn btn-sm" (click)="replyFileInput.click()">
-                <span>📎</span> Add Files
-              </button>
-            </div>
-            <div class="file-list" *ngIf="replyFiles.length > 0">
-              <div *ngFor="let f of replyFiles; let i = index" class="file-item">
+            <input type="file" multiple (change)="onReplyFilesChange($event)" #replyFileInput hidden />
+            <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="replyFileInput.click()">📎 Add files</button>
+            <div class="mi-file-list" *ngIf="replyFiles.length">
+              <div class="mi-file-item" *ngFor="let f of replyFiles; let i = index">
                 <span>📄 {{ f.name }}</span>
-                <button class="remove-btn" (click)="removeReplyFile(i)">✕</button>
+                <button type="button" class="mi-file-remove" (click)="removeReplyFile(i)">×</button>
               </div>
             </div>
           </div>
-          <div class="reply-actions">
-            <button class="btn btn-outline" (click)="toggleReply()">Cancel</button>
-            <button class="btn btn-primary" [disabled]="!canSendReply() || sendingReply" (click)="sendReply()">
-              <span>📤</span> {{ sendingReply ? 'Sending…' : 'Send Reply' }}
+          <div class="mi-reply-actions">
+            <button type="button" class="mi-btn mi-btn--ghost" (click)="toggleReply()">Cancel</button>
+            <button type="button" class="mi-btn mi-btn--primary" [disabled]="!canSendReply() || sendingReply" (click)="sendReply()">
+              {{ sendingReply ? 'Sending…' : '📤 Send reply' }}
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Empty Detail State -->
-    <div class="empty-detail" *ngIf="!selected">
-      <span class="empty-icon">✉️</span>
-      <p>Select a message to read</p>
-    </div>
+    <section class="mi-panel mi-panel--empty" *ngIf="!selected">
+      <span class="mi-empty-icon" aria-hidden="true">✉️</span>
+      <h3>Select a message</h3>
+      <p>Choose a message from the list to read and reply.</p>
+    </section>
   </div>
 
-  <!-- Template Manager Modal -->
-  <div class="modal-overlay" *ngIf="showTemplateManager" (click)="showTemplateManager = false">
-    <div class="template-modal" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>Reply Templates</h3>
-        <button class="modal-close" (click)="showTemplateManager = false">✕</button>
+  <div class="mi-modal-backdrop" *ngIf="showTemplateManager" (click)="showTemplateManager = false"></div>
+  <div class="mi-modal" *ngIf="showTemplateManager" role="dialog" aria-labelledby="mi-template-title">
+    <div class="mi-modal__box">
+      <div class="mi-modal__head">
+        <h3 id="mi-template-title">Reply templates</h3>
+        <button type="button" class="mi-modal__close" (click)="showTemplateManager = false" aria-label="Close">×</button>
       </div>
-      <div class="modal-body">
-        <div class="template-list" *ngIf="replyTemplates.length > 0">
-          <div *ngFor="let t of replyTemplates; let i = index" class="template-item">
-            <div class="template-field">
+      <div class="mi-modal__body">
+        <div class="mi-template-list" *ngIf="replyTemplates.length">
+          <article class="mi-template-card" *ngFor="let t of replyTemplates; let i = index">
+            <div class="mi-field">
               <label>Name</label>
-              <input type="text" [(ngModel)]="t.name" placeholder="Template name" />
+              <input type="text" class="mi-input" [(ngModel)]="t.name" placeholder="Template name" />
             </div>
-            <div class="template-field">
+            <div class="mi-field">
               <label>Subject</label>
-              <input type="text" [(ngModel)]="t.subject" placeholder="Reply subject" />
+              <input type="text" class="mi-input" [(ngModel)]="t.subject" placeholder="Reply subject" />
             </div>
-            <div class="template-field">
+            <div class="mi-field">
               <label>Body</label>
-              <textarea rows="3" [(ngModel)]="t.body" placeholder="Reply message..."></textarea>
+              <textarea class="mi-textarea" rows="3" [(ngModel)]="t.body" placeholder="Reply message…"></textarea>
             </div>
-            <button class="btn btn-sm btn-danger" (click)="removeReplyTemplate(i)">Remove</button>
-          </div>
+            <button type="button" class="mi-btn mi-btn--danger mi-btn--sm" (click)="removeReplyTemplate(i)">Remove</button>
+          </article>
         </div>
-        <div class="empty-templates" *ngIf="replyTemplates.length === 0">
-          <p>No templates yet. Create one to speed up your replies!</p>
-        </div>
+        <p class="mi-modal-empty" *ngIf="!replyTemplates.length">No templates yet. Create one to speed up replies.</p>
       </div>
-      <div class="modal-footer">
-        <button class="btn" (click)="addReplyTemplate()">
-          <span>➕</span> Add Template
-        </button>
-        <button class="btn btn-primary" (click)="saveReplyTemplates(); showTemplateManager = false">
-          Save & Close
-        </button>
+      <div class="mi-modal__foot">
+        <button type="button" class="mi-btn mi-btn--outline" (click)="addReplyTemplate()">➕ Add template</button>
+        <button type="button" class="mi-btn mi-btn--primary" (click)="saveReplyTemplates(); showTemplateManager = false">Save &amp; close</button>
       </div>
     </div>
   </div>

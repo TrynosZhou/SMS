@@ -33,9 +33,9 @@
           {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
         </button>
         <button type="button" class="er-hero-btn er-hero-btn--white" (click)="exportCsv()" [disabled]="!displayedRows.length || loading">CSV</button>
-        <button type="button" class="er-hero-btn er-hero-btn--white" (click)="previewPdf()" [disabled]="loadingPdf || !rows.length">Preview</button>
-        <button type="button" class="er-hero-btn er-hero-btn--white" (click)="downloadPdf()" [disabled]="downloadingPdf || !rows.length">
-          {{ downloadingPdf ? '…' : 'PDF' }}
+        <button type="button" class="er-hero-btn er-hero-btn--white" (click)="previewStatement()" [disabled]="loadingPdf || !rows.length">Preview</button>
+        <button type="button" class="er-hero-btn er-hero-btn--white" (click)="downloadStatement()" [disabled]="downloadingPdf || !rows.length">
+          {{ downloadingPdf ? '…' : 'Statement' }}
         </button>
         <button type="button" class="er-hero-btn er-hero-btn--white" (click)="printReport()" [disabled]="!displayedRows.length || loading">Print</button>
       </div>

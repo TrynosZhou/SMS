@@ -1,5 +1,5 @@
 <div class="manage-students-page manage-students-page--modern">
-  <div class="students-toast-stack" *ngIf="success || error">
+  <div class="students-toast-stack" *ngIf="(success || error) && !pageConfirmation">
     <div class="students-toast students-toast--success" *ngIf="success" role="status">
       <span>{{ success }}</span>
       <button type="button" class="students-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
@@ -8,6 +8,20 @@
       <span>{{ error }}</span>
       <button type="button" class="students-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
+  </div>
+
+  <div
+    class="students-page-confirm"
+    *ngIf="pageConfirmation"
+    [class.students-page-confirm--success]="pageConfirmation.type === 'success'"
+    [class.students-page-confirm--error]="pageConfirmation.type === 'error'"
+    role="status">
+    <span class="students-page-confirm__icon" aria-hidden="true">{{ pageConfirmation.type === 'success' ? '✓' : '✕' }}</span>
+    <div class="students-page-confirm__body">
+      <strong>{{ pageConfirmation.title }}</strong>
+      <p>{{ pageConfirmation.message }}</p>
+    </div>
+    <button type="button" class="students-page-confirm__dismiss" (click)="clearPageConfirmation()" aria-label="Dismiss confirmation">×</button>
   </div>
 
   <header class="manage-students-hero">
@@ -178,10 +192,29 @@
         <button
           type="button"
           class="students-action-btn"
+          (click)="openLogisticsReport(true)"
+          *ngIf="isLogisticsView"
+          [disabled]="!filteredStudents.length || loading"
+          title="Open printable report">
+          Report
+        </button>
+        <button
+          type="button"
+          class="students-action-btn"
+          (click)="openLogisticsReport(false)"
+          *ngIf="isLogisticsView"
+          [disabled]="!filteredStudents.length || loading"
+          title="Download report as HTML">
+          Statement
+        </button>
+        <button
+          type="button"
+          class="students-action-btn"
           (click)="printList()"
+          *ngIf="!isLogisticsView"
           [disabled]="!filteredStudents.length"
-          title="Print or PDF report">
-          {{ isLogisticsView ? 'PDF' : 'Print' }}
+          title="Print student list">
+          Print
         </button>
         <button
           type="button"

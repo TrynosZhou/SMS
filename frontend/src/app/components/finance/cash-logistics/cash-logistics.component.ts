@@ -402,13 +402,13 @@ if (this.truncated) {
 
   downloadFullPdf(): void {
     this.downloadingPdf = true;
-    this.finance.getCashReceiptsPDF(this.term?.trim() || undefined, true).subscribe({
+    this.finance.getCashReceiptsPDF(this.term?.trim() || undefined, false).subscribe({
       next: (blob: Blob) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         const safe = (this.term || 'term').replace(/\s+/g, '_');
-        a.download = `Cash_Receipts_${safe}.pdf`;
+        a.download = `Cash_Receipts_${safe}.html`;
         a.click();
         URL.revokeObjectURL(url);
         this.downloadingPdf = false;

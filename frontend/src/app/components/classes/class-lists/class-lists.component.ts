@@ -8,6 +8,7 @@ import { ClassService } from '../../../services/class.service';
 import { TeacherService } from '../../../services/teacher.service';
 import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
+import { buildStudentConfirmation, studentDisplayLabelFromParams } from '../../../utils/student-confirmation.util';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -55,6 +56,7 @@ export class ClassListsComponent implements OnInit, OnDestroy {
   loadingStudents = false;
   error = '';
   success = '';
+  pageConfirmation: { type: 'success' | 'error'; title: string; message: string } | null = null;
   loadingPdf = false;
   downloadingPdf = false;
   
@@ -334,8 +336,28 @@ export class ClassListsComponent implements OnInit, OnDestroy {
   }
 
   clearAlert(kind: 'success' | 'error'): void {
-    if (kind === 'success') this.success = '';
-    else this.error = '';
+    if (kind === 'success') {
+      this.success = '';
+      this.pageConfirmation = null;
+    } else {
+      this.error = '';
+      if (this.pageConfirmation?.type === 'error') {
+        this.pageConfirmation = null;
+      }
+    }
+    this.cdr.markForCheck();
+  }
+
+  private showPageConfirmation(type: 'success' | 'error', title: string, message: string): void {
+    this.pageConfirmation = { type, title, message };
+    if (type === 'success') {
+      this.success = message;
+      this.error = '';
+    } else {
+      this.error = message;
+      this.success = '';
+    }
+    this.cdr.markForCheck();
   }
 
   onStudentSearchInput(value: string): void {
@@ -1159,14 +1181,9 @@ next: (settings: any) => {
       .subscribe({
         next: () => {
           this.applyStudentFieldUpdate(student, field, payload);
-          this.success = 'Saved successfully.';
+          const parts = buildStudentConfirmation('updated', { student });
+          this.showPageConfirmation('success', parts.title, parts.message);
           hooks.onSuccess();
-          setTimeout(() => {
-            if (this.success) {
-              this.success = '';
-              this.cdr.detectChanges();
-            }
-          }, 4000);
         },
         error: (err: any) => {
           let msg = 'Failed to save.';
@@ -1402,14 +1419,14 @@ next: (settings: any) => {
     this.success = '';
     this.studentService.deleteStudent(id).subscribe({
       next: (data: any) => {
-        this.success = data?.message || 'Student deleted successfully';
+        const parts = buildStudentConfirmation('deleted', {
+          displayName: studentDisplayLabelFromParams(displayName, displayNumber),
+        });
+        this.showPageConfirmation('success', parts.title, data?.message || parts.message);
         this.loading = false;
         this.students = this.students.filter((s) => s.id !== id);
         this.applyFilters();
         this.cdr.markForCheck();
-        setTimeout(() => {
-          if (this.success) this.success = '';
-        }, 5000);
       },
       error: (err: any) => {
         console.error('Error deleting student:', err);

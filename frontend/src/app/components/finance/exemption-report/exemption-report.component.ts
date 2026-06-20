@@ -385,12 +385,12 @@ export class ExemptionReportComponent implements OnInit, OnDestroy {
     }).format(n || 0);
   }
 
-  previewPdf(): void {
+  previewStatement(): void {
     this.loadingPdf = true;
     this.error = '';
     this.cdr.markForCheck();
     this.financeService
-      .getExemptionReportPDF(false)
+      .getExemptionReportPDF(true)
       .pipe(
         finalize(() => {
           this.loadingPdf = false;
@@ -402,20 +402,20 @@ export class ExemptionReportComponent implements OnInit, OnDestroy {
           const url = URL.createObjectURL(blob);
           window.open(url, '_blank', 'noopener');
           setTimeout(() => URL.revokeObjectURL(url), 60000);
-          this.showToast('PDF opened in new tab');
+          this.showToast('Statement opened in new tab. Use Print → Save as PDF to export.');
         },
         error: (err) => {
-          this.error = err?.error?.message || err?.message || 'Failed to preview PDF';
+          this.error = err?.error?.message || err?.message || 'Failed to preview statement';
         }
       });
   }
 
-  downloadPdf(): void {
+  downloadStatement(): void {
     this.downloadingPdf = true;
     this.error = '';
     this.cdr.markForCheck();
     this.financeService
-      .getExemptionReportPDF(true)
+      .getExemptionReportPDF(false)
       .pipe(
         finalize(() => {
           this.downloadingPdf = false;
@@ -425,23 +425,33 @@ export class ExemptionReportComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (blob) => {
           if (!blob?.size) {
-            this.error = 'Received empty PDF file';
+            this.error = 'Received empty statement file';
             return;
           }
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `Exemption_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+          link.download = `Exemption_Report_${new Date().toISOString().split('T')[0]}.html`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
           setTimeout(() => URL.revokeObjectURL(url), 60000);
-          this.showToast('PDF downloaded successfully');
+          this.showToast('Statement downloaded successfully');
         },
         error: (err) => {
-          this.error = err?.error?.message || err?.message || 'Failed to download PDF';
+          this.error = err?.error?.message || err?.message || 'Failed to download statement';
         }
       });
+  }
+
+  /** @deprecated */
+  previewPdf(): void {
+    this.previewStatement();
+  }
+
+  /** @deprecated */
+  downloadPdf(): void {
+    this.downloadStatement();
   }
 
   printReport(): void {

@@ -30,6 +30,7 @@ import {
   deletePaymentLog,
   getCashReceipts,
   getCashReceiptsPDF,
+  postCashReceiptsReportHtml,
   repairReturningDeskFeeInvoices,
   reverseInvoicePrepayment,
   createUniformCharge,
@@ -153,6 +154,7 @@ router.post(
 );
 router.get('/cash-receipts', authorize(...FINANCE_OPERATORS_NO_DEMO), getCashReceipts);
 router.get('/cash-receipts/pdf', authorize(...FINANCE_OPERATORS_NO_DEMO), getCashReceiptsPDF);
+router.post('/cash-receipts/report-html', authorize(...FINANCE_OPERATORS_NO_DEMO), postCashReceiptsReportHtml);
 
 // Financial Books dashboard
 router.get(

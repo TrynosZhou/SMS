@@ -69,11 +69,11 @@
         <p class="sl-panel__intro">Select a term, then search by Student ID, first name, or last name. Press Enter to search.</p>
       </div>
       <div class="sl-panel__actions" *ngIf="hasReport">
-        <button type="button" class="sl-btn sl-btn--outline" (click)="previewPdf()" [disabled]="!canExportPdf || exportingPdf">
-          Preview PDF
+        <button type="button" class="sl-btn sl-btn--outline" (click)="previewStatement()" [disabled]="!canExportPdf || exportingPdf">
+          Preview statement
         </button>
-        <button type="button" class="sl-btn sl-btn--outline" (click)="downloadPdf()" [disabled]="!canExportPdf || exportingPdf">
-          {{ exportingPdf ? 'Generating…' : 'Download PDF' }}
+        <button type="button" class="sl-btn sl-btn--outline" (click)="downloadStatement()" [disabled]="!canExportPdf || exportingPdf">
+          {{ exportingPdf ? 'Generating…' : 'Download statement' }}
         </button>
       </div>
     </div>

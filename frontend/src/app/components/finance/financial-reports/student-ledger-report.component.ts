@@ -354,15 +354,15 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
     this.success = '';
   }
 
-  previewPdf(): void {
-    this.exportPdf(true);
+  previewStatement(): void {
+    this.exportStatement(true);
   }
 
-  downloadPdf(): void {
-    this.exportPdf(false);
+  downloadStatement(): void {
+    this.exportStatement(false);
   }
 
-  private exportPdf(preview: boolean): void {
+  private exportStatement(preview: boolean): void {
     if (!this.canExportPdf) return;
     this.exportingPdf = true;
     this.financeService
@@ -383,17 +383,33 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
           } else {
             const a = document.createElement('a');
             a.href = url;
-            a.download = `student-ledger-${admission}.pdf`;
+            a.download = `student-ledger-${admission}.html`;
             a.click();
           }
           setTimeout(() => URL.revokeObjectURL(url), 60000);
-          this.success = preview ? 'PDF opened in a new tab.' : 'Student ledger PDF downloaded.';
+          this.success = preview
+            ? 'Statement opened in a new tab. Use Print → Save as PDF to export.'
+            : 'Student ledger statement downloaded.';
           this.error = '';
         },
         error: () => {
-          this.error = 'Failed to generate PDF';
+          this.error = 'Failed to generate statement';
         },
       });
+  }
+
+  /** @deprecated */
+  previewPdf(): void {
+    this.previewStatement();
+  }
+
+  /** @deprecated */
+  downloadPdf(): void {
+    this.downloadStatement();
+  }
+
+  private exportPdf(preview: boolean): void {
+    this.exportStatement(preview);
   }
 
   formatAmount(n: number): string {

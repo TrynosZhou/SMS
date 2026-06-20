@@ -33,10 +33,11 @@
           {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
         </button>
         <button type="button" class="fc-hero-btn fc-hero-btn--white" (click)="exportCsv()" [disabled]="!displayedItems.length || loading">CSV</button>
-        <button type="button" class="fc-hero-btn fc-hero-btn--white" (click)="downloadPdf()" [disabled]="downloadingPdf || loading">
-          {{ downloadingPdf ? '…' : 'PDF' }}
+        <button type="button" class="fc-hero-btn fc-hero-btn--white" (click)="previewStatement()" [disabled]="loadingPdf || !displayedItems.length || loading">Preview</button>
+        <button type="button" class="fc-hero-btn fc-hero-btn--white" (click)="downloadStatement()" [disabled]="downloadingPdf || !displayedItems.length || loading">
+          {{ downloadingPdf ? '…' : 'Statement' }}
         </button>
-        <button type="button" class="fc-hero-btn fc-hero-btn--white" (click)="printReport()" [disabled]="!displayedItems.length || loading">Print</button>
+        <button type="button" class="fc-hero-btn fc-hero-btn--white" (click)="printReport()" [disabled]="loadingPdf || !displayedItems.length || loading">Print</button>
       </div>
     </div>
 

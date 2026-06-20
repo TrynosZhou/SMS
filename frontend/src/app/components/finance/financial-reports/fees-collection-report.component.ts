@@ -20,6 +20,7 @@ export class FeesCollectionReportComponent implements OnInit, OnDestroy {
   readonly skeletonRows = [0, 1, 2, 3, 4, 5];
 
   loading = false;
+  loadingPdf = false;
   downloadingPdf = false;
   error = '';
   success = '';
@@ -334,72 +335,115 @@ export class FeesCollectionReportComponent implements OnInit, OnDestroy {
     this.showToast(`Exported ${items.length} transaction(s) to CSV`);
   }
 
-  downloadPdf(): void {
-    this.downloadingPdf = true;
+  private mapRowsForReport(): Array<{
+    paymentDate: string;
+    receiptNumber: string;
+    invoiceNumber: string;
+    studentName: string;
+    studentNumber: string;
+    amountPaid: number;
+    paymentMethod: string;
+  }> {
+    return this.displayedItems.map((r) => ({
+      paymentDate: r.paymentDate || '',
+      receiptNumber: r.receiptNumber || '',
+      invoiceNumber: r.invoiceNumber || '',
+      studentName: r.studentName || '',
+      studentNumber: r.studentNumber || '',
+      amountPaid: parseFloat(String(r.amountPaid ?? 0)) || 0,
+      paymentMethod: r.paymentMethod || '',
+    }));
+  }
+
+  previewStatement(): void {
+    if (!this.displayedItems.length) return;
+    this.loadingPdf = true;
+    this.error = '';
     this.cdr.markForCheck();
-    this.financeService.getCashReceiptsPDF(this.term?.trim() || undefined, true).subscribe({
-      next: (blob: Blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const safe = (this.term || 'term').replace(/\s+/g, '_');
-        a.download = `Fees_Collection_${safe}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
-        this.downloadingPdf = false;
-        this.showToast('PDF downloaded successfully');
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.error = 'Could not download PDF.';
-        this.downloadingPdf = false;
-        this.cdr.markForCheck();
-      }
-    });
+    this.financeService
+      .postCashReceiptsReportHtml({ term: this.term, rows: this.mapRowsForReport() }, true)
+      .pipe(
+        finalize(() => {
+          this.loadingPdf = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank', 'noopener');
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+          this.showToast('Report opened in new tab. Use Print → Save as PDF to export.');
+        },
+        error: () => {
+          this.error = 'Could not generate report.';
+        },
+      });
+  }
+
+  downloadStatement(): void {
+    if (!this.displayedItems.length) return;
+    this.downloadingPdf = true;
+    this.error = '';
+    this.cdr.markForCheck();
+    this.financeService
+      .postCashReceiptsReportHtml({ term: this.term, rows: this.mapRowsForReport() }, false)
+      .pipe(
+        finalize(() => {
+          this.downloadingPdf = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          const safe = (this.term || 'term').replace(/\s+/g, '_');
+          a.download = `Fees_Collection_${safe}.html`;
+          a.click();
+          URL.revokeObjectURL(url);
+          this.showToast('Report downloaded successfully');
+        },
+        error: () => {
+          this.error = 'Could not download report.';
+        },
+      });
+  }
+
+  /** @deprecated */
+  downloadPdf(): void {
+    this.downloadStatement();
   }
 
   printReport(): void {
     if (!this.displayedItems.length) return;
-    const rows = this.displayedItems
-      .map(
-        (r) => `
-      <tr>
-        <td>${this.escapeHtml(r.receiptNumber || '—')}</td>
-        <td>${this.escapeHtml(r.paymentDate ? new Date(r.paymentDate).toLocaleDateString() : '—')}</td>
-        <td>${this.escapeHtml(r.studentName || '')} (${this.escapeHtml(r.studentNumber || '')})</td>
-        <td>${this.escapeHtml(r.invoiceNumber || '—')}</td>
-        <td style="text-align:right">${this.escapeHtml(this.currencySymbol)} ${this.formatAmount(r.amountPaid)}</td>
-        <td>${this.escapeHtml(r.paymentMethod || '—')}</td>
-      </tr>`
+    this.loadingPdf = true;
+    this.error = '';
+    this.cdr.markForCheck();
+    this.financeService
+      .postCashReceiptsReportHtml({ term: this.term, rows: this.mapRowsForReport() }, true)
+      .pipe(
+        finalize(() => {
+          this.loadingPdf = false;
+          this.cdr.markForCheck();
+        })
       )
-      .join('');
-    const html = `
-      <!DOCTYPE html><html><head><title>Fees Collection — ${this.escapeHtml(this.term)}</title>
-      <style>
-        body { font-family: system-ui, sans-serif; padding: 24px; color: #0f172a; }
-        h1 { font-size: 1.25rem; margin-bottom: 4px; }
-        p.meta { color: #64748b; font-size: 0.85rem; margin-top: 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.85rem; }
-        th, td { border: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; }
-        th { background: #f8fafc; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.04em; }
-      </style></head><body>
-      <h1>Fees Collection Report</h1>
-      <p class="meta">Term: ${this.escapeHtml(this.term)} · ${this.displayedItems.length} transactions · Printed ${new Date().toLocaleString()}</p>
-      <table><thead><tr><th>Receipt</th><th>Date</th><th>Student</th><th>Invoice</th><th>Amount</th><th>Method</th></tr></thead>
-      <tbody>${rows}</tbody></table></body></html>`;
-    const w = window.open('', '_blank');
-    if (!w) return;
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    w.print();
-  }
-
-  private escapeHtml(s: string): string {
-    return String(s ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          const w = window.open(url, '_blank');
+          if (w) {
+            w.addEventListener('load', () => {
+              w.focus();
+              w.print();
+            });
+          }
+          setTimeout(() => URL.revokeObjectURL(url), 120000);
+        },
+        error: () => {
+          this.error = 'Could not open print view.';
+        },
+      });
   }
 }

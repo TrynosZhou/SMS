@@ -53,6 +53,23 @@ export class DraftMessagesComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  isAccountant(): boolean {
+    return this.authService.isAccountant();
+  }
+
+  clearAlert(kind: 'success' | 'error'): void {
+    if (kind === 'success') {
+      this.successMessage = '';
+    } else {
+      this.error = '';
+    }
+    this.cdr.markForCheck();
+  }
+
+  hasActiveFilters(): boolean {
+    return !!(this.query.trim() || this.statusFilter !== 'all');
+  }
+
   load(): void {
     this.loading = true;
     this.error = '';

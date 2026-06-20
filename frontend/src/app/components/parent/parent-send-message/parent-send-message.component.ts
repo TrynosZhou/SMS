@@ -137,7 +137,10 @@ export class ParentSendMessageComponent implements OnInit, OnDestroy {
   }
 
   get recipientLabel(): string {
-    return this.recipient === 'accountant' ? 'Accountant' : 'Administrator';
+    if (this.recipient === 'accountant') {
+      return 'Accountant';
+    }
+    return 'Administrator (Headmaster & Deputy Headmaster copied)';
   }
 
   get hasDraftContent(): boolean {
@@ -299,9 +302,14 @@ export class ParentSendMessageComponent implements OnInit, OnDestroy {
 
   formatRecipient(value?: string): string {
     if (!value) return 'School';
-    const v = value.toLowerCase();
-    if (v.includes('account')) return 'Accountant';
-    if (v.includes('admin')) return 'Administrator';
+    const parts = value.toLowerCase().split(',').map((s) => s.trim());
+    if (parts.includes('accountant')) return 'Accountant';
+    if (parts.includes('admin')) {
+      if (parts.includes('headmaster') || parts.includes('deputy_headmaster')) {
+        return 'Administrator (Headmaster & Deputy Headmaster copied)';
+      }
+      return 'Administrator';
+    }
     return value;
   }
 

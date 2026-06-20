@@ -99,6 +99,27 @@ export class SendMessageComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  isAccountant(): boolean {
+    return this.authService.isAccountant();
+  }
+
+  clearAlert(kind: 'success' | 'error'): void {
+    if (kind === 'success') {
+      this.success = '';
+    } else {
+      this.error = '';
+    }
+    this.cdr.markForCheck();
+  }
+
+  getRecipientSummary(): string {
+    if (this.recipientsType === 'all') {
+      return 'All parents';
+    }
+    const n = this.selectedParentIds.size;
+    return n === 0 ? 'Select recipients' : `${n} selected`;
+  }
+
   isAllowed(): boolean {
     const user = this.authService.getCurrentUser();
     if (!user) return false;

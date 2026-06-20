@@ -89,6 +89,9 @@
               </button>
             </div>
             <p class="psm-hint">Sending to: <strong>{{ recipientLabel }}</strong></p>
+            <p class="psm-hint psm-hint--cc" *ngIf="recipient === 'admin'">
+              The Headmaster and Deputy Headmaster are automatically copied on messages to the Administrator.
+            </p>
           </section>
 
           <section class="psm-section">

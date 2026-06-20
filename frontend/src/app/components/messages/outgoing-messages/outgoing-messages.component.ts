@@ -68,6 +68,25 @@ export class OutgoingMessagesComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  isAccountant(): boolean {
+    return this.authService.isAccountant();
+  }
+
+  clearAlert(): void {
+    this.error = '';
+    this.cdr.markForCheck();
+  }
+
+  hasActiveFilters(): boolean {
+    return !!(
+      this.query.trim() ||
+      this.recipientFilter ||
+      this.dateStart ||
+      this.dateEnd ||
+      this.dateFilter
+    );
+  }
+
   private loadStoredFilters(): void {
     const raw = localStorage.getItem(this.storageKey);
     if (raw) {

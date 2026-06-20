@@ -10,6 +10,11 @@ import { validatePhoneNumber } from '../../../utils/phone-validator';
 import { AuthService } from '../../../services/auth.service';
 import { ModuleAccessService } from '../../../services/module-access.service';
 import { activatePageLoad } from '../../../utils/route-activation';
+import {
+  buildStudentConfirmation,
+  StudentConfirmationAction,
+  studentDisplayLabelFromParams,
+} from '../../../utils/student-confirmation.util';
 
 @Component({
   standalone: false,
@@ -51,6 +56,7 @@ student: any = {
   loadingStudent = false;
 error = '';
   success = '';
+  pageConfirmation: { type: 'success' | 'error'; title: string; message: string } | null = null;
   submitting = false;
   maxDate = '';
   selectedPhoto: File | null = null;
@@ -90,9 +96,46 @@ error = '';
     this.maxDate = today.toISOString().split('T')[0];
   }
 
-  private navigateToStudentsList(delayMs = 800): void {
+  private navigateToStudentsList(delayMs = 2500): void {
     this.studentRefresh.requestRefresh();
     setTimeout(() => this.router.navigate(['/students']), delayMs);
+  }
+
+  private navigateToStudentsListWithConfirmation(
+    action: StudentConfirmationAction,
+    student?: { firstName?: string; lastName?: string; studentNumber?: string } | null,
+    delayMs = 2500
+  ): void {
+    const parts = buildStudentConfirmation(action, { student });
+    this.showPageConfirmation('success', parts.title, parts.message);
+    const name = `${student?.firstName || ''} ${student?.lastName || ''}`.trim();
+    const number = student?.studentNumber || '';
+    this.studentRefresh.requestRefresh();
+    setTimeout(() => {
+      this.router.navigate(['/students'], {
+        queryParams: {
+          confirmed: action,
+          studentName: name || null,
+          studentNumber: number || null,
+        },
+      });
+    }, delayMs);
+  }
+
+  private showPageConfirmation(type: 'success' | 'error', title: string, message: string): void {
+    this.pageConfirmation = { type, title, message };
+    if (type === 'success') {
+      this.success = message;
+      this.error = '';
+    } else {
+      this.error = message;
+      this.success = '';
+    }
+    this.cdr.markForCheck();
+  }
+
+  private clearPageConfirmation(): void {
+    this.pageConfirmation = null;
   }
 
   private buildUpdateSuccessMessage(response: any): string {
@@ -116,8 +159,12 @@ goBack() {
   clearAlert(type: 'success' | 'error'): void {
     if (type === 'success') {
       this.success = '';
+      this.clearPageConfirmation();
     } else {
       this.error = '';
+      if (this.pageConfirmation?.type === 'error') {
+        this.clearPageConfirmation();
+      }
     }
     this.cdr.markForCheck();
   }
@@ -745,9 +792,10 @@ if (status === 'New') {
         }
         this.studentService.updateStudent(this.student.id, updateData, this.selectedPhoto || undefined).subscribe({
           next: (response: any) => {
-            this.success = response.message || 'Student updated successfully';
+            const parts = buildStudentConfirmation('updated', { student: this.student });
+            this.showPageConfirmation('success', parts.title, response?.message || parts.message);
             this.submitting = false;
-            setTimeout(() => this.router.navigate([this.returnUrl || '/classes/lists']), 1200);
+            setTimeout(() => this.router.navigate([this.returnUrl || '/classes/lists']), 2500);
           },
           error: (err: any) => {
             this.error = err.error?.message || err.message || 'Failed to update student';
@@ -804,12 +852,11 @@ if (status === 'New') {
           const newApiStatus = this.statusLabelToApiStatus(this.student.studentStatus);
           if (oldApiStatus !== newApiStatus) {
             this.studentService.correctStudentStatus(this.student.id, newApiStatus).subscribe({
-              next: (corr: any) => {
+              next: () => {
                 this.loadedStudentStatus = newApiStatus;
-                this.success = corr?.message || this.buildUpdateSuccessMessage(response);
                 this.submitting = false;
-                this.navigateToStudentsList();
-},
+                this.navigateToStudentsListWithConfirmation('updated', this.student);
+              },
               error: (err2: any) => {
                 this.error = err2?.error?.message || err2?.message || 'Failed to correct student status';
                 this.submitting = false;
@@ -817,10 +864,9 @@ if (status === 'New') {
               }
             });
           } else {
-            this.success = this.buildUpdateSuccessMessage(response);
             this.submitting = false;
-            this.navigateToStudentsList();
-}
+            this.navigateToStudentsListWithConfirmation('updated', this.student);
+          }
         },
         error: (err: any) => {
           console.error('Error updating student:', err);
@@ -869,10 +915,10 @@ if (status === 'New') {
       
       this.studentService.createStudent(studentData, this.selectedPhoto || undefined).subscribe({
         next: (response: any) => {
-          this.setSuccess('Record saved successfully');
           this.submitting = false;
-          this.navigateToStudentsList();
-},
+          const saved = response?.student || this.student;
+          this.navigateToStudentsListWithConfirmation('added', saved);
+        },
         error: (err: any) => {
           const msg = err?.error?.message || err?.message || '';
           if (String(msg).toLowerCase().includes('class id') && String(msg).toLowerCase().includes('enroll')) {

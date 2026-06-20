@@ -399,36 +399,195 @@
 </div>
 
 <div class="fb-modal-overlay" *ngIf="showAddEntryModal()" (click)="closeAddEntryModal()">
-  <div class="fb-modal" role="dialog" aria-labelledby="addEntryTitle" (click)="$event.stopPropagation()">
-    <header class="fb-modal__head">
-      <h2 id="addEntryTitle">Add cashbook entry</h2>
-      <button type="button" class="fb-modal__close" (click)="closeAddEntryModal()" aria-label="Close">×</button>
+  <div class="fb-modal fb-modal--entry" role="dialog" aria-labelledby="addEntryTitle" (click)="$event.stopPropagation()">
+    <header class="fb-modal-entry-hero">
+      <div class="fb-modal-entry-hero__main">
+        <span class="fb-modal-entry-hero__icon" aria-hidden="true">💵</span>
+        <div>
+          <span class="fb-modal-entry-hero__eyebrow">Finance · Cashbook</span>
+          <h2 id="addEntryTitle">Add cashbook entry</h2>
+          <p class="fb-modal-entry-hero__sub">Find a student, confirm their invoice balance, then record the transaction.</p>
+        </div>
+      </div>
+      <button type="button" class="fb-modal-entry-hero__close" (click)="closeAddEntryModal()" aria-label="Close">×</button>
     </header>
-    <form class="fb-form fb-form--modal" (ngSubmit)="submitCashbookEntry()">
-      <label>Date <input type="date" [(ngModel)]="cashbookForm.entryDate" name="entryDate" required /></label>
-      <label>Type
-        <select [(ngModel)]="cashbookForm.type" name="type">
-          <option value="receipt">Receipt (money in)</option>
-          <option value="payment">Payment (money out)</option>
-        </select>
-      </label>
-      <label>Payment method
-        <select [(ngModel)]="cashbookForm.paymentMethod" name="paymentMethod">
-          <option>Cash</option>
-          <option>Bank</option>
-          <option>Mobile Money</option>
-          <option>Cheque</option>
-          <option>Other</option>
-        </select>
-      </label>
-      <label class="fb-grow">Description <input type="text" [(ngModel)]="cashbookForm.description" name="description" required /></label>
-      <label>Amount <input type="number" min="0" step="0.01" [(ngModel)]="cashbookForm.amount" name="amount" required /></label>
-      <label>Reference <input type="text" [(ngModel)]="cashbookForm.reference" name="reference" /></label>
-      <footer class="fb-modal__foot">
-        <button type="button" class="fb-hero-btn fb-hero-btn--white fb-modal-cancel" (click)="closeAddEntryModal()">Cancel</button>
-        <button type="submit" class="fb-cb-add" [disabled]="savingCashbookEntry">
-          {{ savingCashbookEntry ? 'Saving…' : 'Save entry' }}
-        </button>
+
+    <div class="fb-modal-entry-progress" aria-hidden="true">
+      <div class="fb-modal-entry-progress__track">
+        <div class="fb-modal-entry-progress__fill" [style.width.%]="cashbookFormProgress"></div>
+      </div>
+      <span class="fb-modal-entry-progress__label">{{ cashbookFormProgress }}% complete</span>
+    </div>
+
+    <div class="fb-modal-entry-steps" aria-label="Progress">
+      <span class="fb-modal-entry-step" [class.fb-modal-entry-step--active]="!cashbookSelectedStudent" [class.fb-modal-entry-step--done]="!!cashbookSelectedStudent">
+        <strong>1</strong> Find student
+      </span>
+      <span class="fb-modal-entry-step-arrow">→</span>
+      <span class="fb-modal-entry-step" [class.fb-modal-entry-step--active]="!!cashbookSelectedStudent">
+        <strong>2</strong> Entry details
+      </span>
+    </div>
+
+    <form class="fb-modal-entry-form" (ngSubmit)="submitCashbookEntry()">
+      <section class="fb-modal-section fb-modal-section--student">
+        <div class="fb-modal-section__head">
+          <h3 class="fb-modal-section__title">Find student</h3>
+          <p class="fb-modal-section__intro">Search by student ID, first name, or full name.</p>
+        </div>
+
+        <div class="fb-cb-student-block">
+          <div class="fb-cb-student-search-wrap">
+            <span class="fb-cb-student-search-icon" aria-hidden="true">🔍</span>
+            <input
+              id="cbStudentSearch"
+              type="search"
+              class="fb-cb-student-input"
+              [(ngModel)]="cashbookStudentQuery"
+              name="cashbookStudentQuery"
+              autocomplete="off"
+              placeholder="e.g. JPS001 or Jane Doe…"
+              (input)="onCashbookStudentSearchInput($any($event.target).value)"
+              [disabled]="!!cashbookSelectedStudent" />
+            <span class="fb-cb-student-spinner" *ngIf="loadingCashbookStudentSearch" aria-hidden="true"></span>
+            <button
+              type="button"
+              class="fb-cb-student-clear"
+              *ngIf="cashbookSelectedStudent || cashbookStudentQuery"
+              (click)="clearCashbookStudent()"
+              aria-label="Clear student">
+              ×
+            </button>
+          </div>
+          <p class="fb-cb-student-hint" *ngIf="!cashbookSelectedStudent && !cashbookStudentSearchError">
+            Type at least 2 characters, then click the correct student from the list.
+          </p>
+          <p class="fb-cb-student-error" *ngIf="cashbookStudentSearchError" role="alert">{{ cashbookStudentSearchError }}</p>
+
+          <ul
+            class="fb-cb-student-suggestions"
+            *ngIf="showCashbookStudentDropdown && cashbookStudentMatches.length && !cashbookSelectedStudent"
+            role="listbox"
+            aria-label="Matching students">
+            <li
+              *ngFor="let s of cashbookStudentMatches"
+              role="option"
+              tabindex="0"
+              class="fb-cb-student-suggestion"
+              (click)="selectCashbookStudentMatch(s)"
+              (keydown.enter)="selectCashbookStudentMatch(s)">
+              <span class="fb-cb-student-suggestion__avatar">{{ getCashbookStudentInitials(s.fullName) }}</span>
+              <span class="fb-cb-student-suggestion__main">
+                <strong>{{ s.fullName }}</strong>
+                <span class="fb-cb-student-suggestion__meta">
+                  {{ s.studentNumber }}<span *ngIf="s.className"> · {{ s.className }}</span>
+                </span>
+              </span>
+              <span class="fb-cb-student-suggestion__pick">Select →</span>
+            </li>
+          </ul>
+
+          <div class="fb-cb-student-selected" *ngIf="cashbookSelectedStudent" role="status">
+            <span class="fb-cb-student-selected__avatar">{{ getCashbookStudentInitials(cashbookSelectedStudent.fullName) }}</span>
+            <div class="fb-cb-student-selected__main">
+              <strong>{{ cashbookSelectedStudent.fullName }}</strong>
+              <div class="fb-cb-student-selected__pills">
+                <span class="fb-cb-pill">{{ cashbookSelectedStudent.studentNumber }}</span>
+                <span class="fb-cb-pill fb-cb-pill--muted" *ngIf="cashbookSelectedStudent.className">
+                  {{ cashbookSelectedStudent.className }}
+                </span>
+              </div>
+            </div>
+            <div class="fb-cb-student-selected__balance">
+              <span class="fb-cb-student-selected__balance-label">Invoice balance</span>
+              <strong
+                class="fb-cb-student-selected__balance-value"
+                [class.fb-cb-student-selected__balance-value--owed]="cashbookSelectedStudent.balance > 0"
+                [class.fb-cb-student-selected__balance-value--paid]="cashbookSelectedStudent.balance <= 0">
+                {{ moneyCell(cashbookSelectedStudent.balance) }}
+              </strong>
+              <span class="fb-cb-student-selected__balance-tag fb-cb-student-selected__balance-tag--paid" *ngIf="cashbookSelectedStudent.balance <= 0">Fully paid</span>
+              <span class="fb-cb-student-selected__balance-tag fb-cb-student-selected__balance-tag--owed" *ngIf="cashbookSelectedStudent.balance > 0">Outstanding</span>
+            </div>
+            <button type="button" class="fb-cb-student-change" (click)="clearCashbookStudent()">Change</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="fb-modal-section" [class.fb-modal-section--locked]="!cashbookSelectedStudent">
+        <div class="fb-modal-section__head">
+          <h3 class="fb-modal-section__title">Transaction details</h3>
+          <p class="fb-modal-section__intro" *ngIf="!cashbookSelectedStudent">Select a student above to unlock this section.</p>
+          <p class="fb-modal-section__intro" *ngIf="cashbookSelectedStudent">Complete the receipt or payment details below.</p>
+        </div>
+
+        <div class="fb-modal-type-row">
+          <span class="fb-modal-type-label">Type</span>
+          <div class="fb-modal-type-pills" role="group" aria-label="Entry type">
+            <button
+              type="button"
+              class="fb-modal-type-pill"
+              [class.fb-modal-type-pill--active]="cashbookForm.type === 'receipt'"
+              [disabled]="!cashbookSelectedStudent"
+              (click)="setCashbookEntryType('receipt')">
+              <span class="fb-modal-type-pill__icon" aria-hidden="true">↓</span>
+              Receipt (money in)
+            </button>
+            <button
+              type="button"
+              class="fb-modal-type-pill"
+              [class.fb-modal-type-pill--active]="cashbookForm.type === 'payment'"
+              [disabled]="!cashbookSelectedStudent"
+              (click)="setCashbookEntryType('payment')">
+              <span class="fb-modal-type-pill__icon" aria-hidden="true">↑</span>
+              Payment (money out)
+            </button>
+          </div>
+        </div>
+
+        <div class="fb-modal-field-grid">
+          <label class="fb-modal-field">
+            <span class="fb-modal-field__label">Date</span>
+            <input type="date" [(ngModel)]="cashbookForm.entryDate" name="entryDate" required [disabled]="!cashbookSelectedStudent" />
+          </label>
+          <label class="fb-modal-field">
+            <span class="fb-modal-field__label">Payment method</span>
+            <select [(ngModel)]="cashbookForm.paymentMethod" name="paymentMethod" [disabled]="!cashbookSelectedStudent">
+              <option>Cash</option>
+              <option>Bank</option>
+              <option>Mobile Money</option>
+              <option>Cheque</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label class="fb-modal-field fb-modal-field--full">
+            <span class="fb-modal-field__label">Description</span>
+            <input type="text" [(ngModel)]="cashbookForm.description" name="description" required placeholder="What is this entry for?" [disabled]="!cashbookSelectedStudent" />
+          </label>
+          <label class="fb-modal-field">
+            <span class="fb-modal-field__label">Amount</span>
+            <div class="fb-modal-amount-wrap">
+              <span class="fb-modal-amount-prefix" *ngIf="currencySymbol">{{ currencySymbol }}</span>
+              <input type="number" min="0" step="0.01" [(ngModel)]="cashbookForm.amount" name="amount" required placeholder="0.00" [disabled]="!cashbookSelectedStudent" />
+            </div>
+          </label>
+          <label class="fb-modal-field">
+            <span class="fb-modal-field__label">Reference</span>
+            <input type="text" [(ngModel)]="cashbookForm.reference" name="reference" placeholder="Optional reference" [disabled]="!cashbookSelectedStudent" />
+          </label>
+        </div>
+      </section>
+
+      <footer class="fb-modal-entry-foot">
+        <p class="fb-modal-entry-foot__hint" *ngIf="!cashbookSelectedStudent">Select a student to enable saving.</p>
+        <p class="fb-modal-entry-foot__hint fb-modal-entry-foot__hint--ready" *ngIf="cashbookSelectedStudent && canSubmitCashbookEntry()">Ready to save this entry.</p>
+        <div class="fb-modal-entry-foot__actions">
+          <button type="button" class="fb-modal-btn fb-modal-btn--ghost" (click)="closeAddEntryModal()">Cancel</button>
+          <button type="submit" class="fb-modal-btn fb-modal-btn--primary" [disabled]="!canSubmitCashbookEntry()">
+            <span *ngIf="!savingCashbookEntry">✓ Save entry</span>
+            <span *ngIf="savingCashbookEntry">Saving…</span>
+          </button>
+        </div>
       </footer>
     </form>
   </div>

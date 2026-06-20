@@ -7,6 +7,11 @@ import { AuthService } from '../../../services/auth.service';
 import { StudentRefreshService } from '../../../services/student-refresh.service';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
+import {
+  buildStudentConfirmation,
+  StudentConfirmationAction,
+  studentDisplayLabelFromParams,
+} from '../../../utils/student-confirmation.util';
 
 @Component({
   standalone: false,  selector: 'app-student-list',
@@ -28,6 +33,7 @@ students: any[] = [];
   loadFailed = false;
   error = '';
   success = '';
+  pageConfirmation: { type: 'success' | 'error'; title: string; message: string } | null = null;
   private destroy$ = new Subject<void>();
 selectedStudent: any = null;
   pagination = {
@@ -90,6 +96,10 @@ selectedStudent: any = null;
       this.loadStudents(1);
     });
 
+    this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.applyRouteConfirmation();
+    });
+
     const pagePath = (this.router.url || '').split('?')[0];
     activatePageLoad(this.router, this.destroy$, pagePath, () => {
       this.loadClasses();
@@ -121,10 +131,56 @@ selectedStudent: any = null;
   clearAlert(type: 'success' | 'error'): void {
     if (type === 'success') {
       this.success = '';
+      this.clearPageConfirmation();
     } else {
       this.error = '';
+      if (this.pageConfirmation?.type === 'error') {
+        this.clearPageConfirmation();
+      }
     }
     this.cdr.markForCheck();
+  }
+
+  clearPageConfirmation(): void {
+    this.pageConfirmation = null;
+    this.clearRouteConfirmationParams();
+    this.cdr.markForCheck();
+  }
+
+  private showPageConfirmation(type: 'success' | 'error', title: string, message: string): void {
+    this.pageConfirmation = { type, title, message };
+    if (type === 'success') {
+      this.success = message;
+      this.error = '';
+    } else {
+      this.error = message;
+      this.success = '';
+    }
+    this.cdr.markForCheck();
+  }
+
+  private applyRouteConfirmation(): void {
+    const confirmed = this.route.snapshot.queryParamMap.get('confirmed') as StudentConfirmationAction | null;
+    if (!confirmed || !['added', 'updated', 'deleted'].includes(confirmed)) {
+      return;
+    }
+    const name = this.route.snapshot.queryParamMap.get('studentName');
+    const number = this.route.snapshot.queryParamMap.get('studentNumber');
+    const displayName = studentDisplayLabelFromParams(name, number);
+    const parts = buildStudentConfirmation(confirmed, { displayName });
+    this.showPageConfirmation('success', parts.title, parts.message);
+  }
+
+  private clearRouteConfirmationParams(): void {
+    const confirmed = this.route.snapshot.queryParamMap.get('confirmed');
+    if (!confirmed) {
+      return;
+    }
+    this.router.navigate([], {
+      queryParams: { confirmed: null, studentName: null, studentNumber: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   get dashboardStats() {
@@ -484,7 +540,7 @@ totalPages: response?.totalPages || 1
 
   printList() {
     if (this.isLogisticsTransport || this.isLogisticsDiningHall) {
-      this.downloadLogisticsReportPdf();
+      this.openLogisticsReport(true);
       return;
     }
     const rows = (this.filteredStudents || []);
@@ -626,13 +682,13 @@ totalPages: response?.totalPages || 1
     });
   }
 
-  downloadLogisticsReportPdf() {
+  openLogisticsReport(preview = true) {
     if (!this.isLogisticsTransport && !this.isLogisticsDiningHall) {
       return;
     }
 
     if (!this.filteredStudents.length) {
-      window.alert('No students available to include in the PDF report for the current filters.');
+      window.alert('No students available to include in the report for the current filters.');
       return;
     }
 
@@ -642,24 +698,38 @@ totalPages: response?.totalPages || 1
     const service: 'transport' | 'dining-hall' = this.isLogisticsTransport ? 'transport' : 'dining-hall';
     const classId = this.selectedClass || undefined;
 
-    this.studentService.generateLogisticsReport(service, classId).subscribe({
+    this.studentService.generateLogisticsReport(service, classId, preview).subscribe({
       next: (blob: Blob) => {
         this.loading = false;
         const fileURL = window.URL.createObjectURL(blob);
-        window.open(fileURL, '_blank');
-        setTimeout(() => window.URL.revokeObjectURL(fileURL), 100);
+        if (preview) {
+          window.open(fileURL, '_blank', 'noopener');
+          setTimeout(() => window.URL.revokeObjectURL(fileURL), 60000);
+        } else {
+          const a = document.createElement('a');
+          a.href = fileURL;
+          const prefix = this.isLogisticsTransport ? 'Transport' : 'Dining_Hall';
+          a.download = `${prefix}_Students_Report.html`;
+          a.click();
+          URL.revokeObjectURL(fileURL);
+        }
       },
       error: (err: any) => {
         this.loading = false;
-        console.error('Error generating logistics PDF report:', err);
-        this.error = 'Failed to generate logistics PDF report';
+        console.error('Error generating logistics report:', err);
+        this.error = 'Failed to generate logistics report';
         setTimeout(() => {
-          if (this.error === 'Failed to generate logistics PDF report') {
+          if (this.error === 'Failed to generate logistics report') {
             this.error = '';
           }
         }, 7000);
       }
     });
+  }
+
+  /** @deprecated use openLogisticsReport */
+  downloadLogisticsReportPdf() {
+    this.openLogisticsReport(true);
   }
 
   viewStudentDetails(student: any) {
@@ -793,11 +863,13 @@ totalPages: response?.totalPages || 1
     this.success = '';
     this.studentService.deleteStudent(id).subscribe({
       next: (data: any) => {
-        this.success = data.message || 'Student deleted successfully';
+        const parts = buildStudentConfirmation('deleted', {
+          displayName: studentDisplayLabelFromParams(studentName, studentNumber),
+        });
+        this.showPageConfirmation('success', parts.title, data?.message || parts.message);
         this.loading = false;
         this.selectedStudent = null;
         this.loadStudents();
-        setTimeout(() => this.success = '', 5000);
       },
       error: (err: any) => {
         console.error('Error deleting student:', err);

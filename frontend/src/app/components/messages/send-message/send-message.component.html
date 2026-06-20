@@ -1,309 +1,304 @@
-<div class="send-message-container">
-  <!-- Page Header -->
-  <div class="page-header">
-    <div class="header-content">
-      <div class="header-left">
-        <h1>
-          <span class="header-icon">✉️</span>
-          Send Message
-        </h1>
-        <p class="header-subtitle">Send notices and fee reminders to parents</p>
-      </div>
-      <div class="header-actions">
-        <button type="button" class="btn btn-primary" [routerLink]="['/messages/outbox']">
-          <span class="icon">📤</span> Sent Messages
-        </button>
-        <button type="button" class="btn btn-primary" [routerLink]="['/messages/drafts']">
-          <span class="icon">📝</span> Drafts
-        </button>
-      </div>
+<div class="ms-page">
+  <div class="ms-toast-stack" *ngIf="success || error">
+    <div class="ms-toast ms-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="ms-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="ms-toast ms-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="ms-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
   </div>
 
-  <!-- Error and Success Messages -->
-  <div *ngIf="error" class="alert alert-error">
-    <span class="alert-icon">⚠️</span>
-    <span class="alert-text">{{ error }}</span>
-    <button class="alert-close" (click)="error = ''">✕</button>
-  </div>
-  <div *ngIf="success" class="alert alert-success">
-    <span class="alert-icon">✅</span>
-    <span class="alert-text">{{ success }}</span>
-    <button class="alert-close" (click)="success = ''">✕</button>
+  <header class="ms-hero">
+    <div class="ms-hero__main">
+      <div class="ms-hero-left">
+        <span class="ms-hero-icon" aria-hidden="true">✉️</span>
+        <div>
+          <span class="ms-hero-eyebrow">Communication</span>
+          <h1>Send Message</h1>
+          <p class="ms-hero-sub">Compose and send notices, fee reminders, and updates to parents.</p>
+        </div>
+      </div>
+      <aside class="ms-hero-aside">
+        <span class="ms-hero-badge">{{ getRecipientSummary() }}</span>
+        <span class="ms-hero-badge ms-hero-badge--muted" *ngIf="attachments.length">{{ attachments.length }} file(s)</span>
+      </aside>
+      <div class="ms-hero__actions">
+        <a routerLink="/messages/outgoing" class="ms-hero-btn ms-hero-btn--ghost">📤 Outbox</a>
+        <a routerLink="/messages/drafts" class="ms-hero-btn ms-hero-btn--accent">📝 Drafts</a>
+      </div>
+    </div>
+
+    <nav class="ms-cross-links" aria-label="Related message pages">
+      <a routerLink="/messages/incoming">Inbox</a>
+      <a routerLink="/messages/outgoing">Outbox</a>
+      <a routerLink="/messages/drafts">Drafts</a>
+      <a routerLink="/messages/inbox" *ngIf="!isAccountant()">Accountant inbox</a>
+    </nav>
+
+    <div class="ms-hero-stats">
+      <article class="ms-stat">
+        <span class="ms-stat__icon" aria-hidden="true">📋</span>
+        <span class="ms-stat__value">{{ templates.length }}</span>
+        <span class="ms-stat__label">Templates</span>
+      </article>
+      <article class="ms-stat ms-stat--sky">
+        <span class="ms-stat__icon" aria-hidden="true">👥</span>
+        <span class="ms-stat__value">{{ recipientsType === 'all' ? 'All' : selectedParentIds.size }}</span>
+        <span class="ms-stat__label">Recipients</span>
+      </article>
+      <article class="ms-stat ms-stat--amber">
+        <span class="ms-stat__icon" aria-hidden="true">📎</span>
+        <span class="ms-stat__value">{{ attachments.length }}</span>
+        <span class="ms-stat__label">Attachments</span>
+      </article>
+      <article class="ms-stat ms-stat--mint">
+        <span class="ms-stat__icon" aria-hidden="true">✎</span>
+        <span class="ms-stat__value">{{ message.length }}</span>
+        <span class="ms-stat__label">Characters</span>
+      </article>
+    </div>
+
+    <div class="ms-steps" aria-label="Progress">
+      <span class="ms-step" [class.ms-step--active]="recipientsType === 'all' || selectedParentIds.size > 0"><strong>1</strong> Recipients</span>
+      <span class="ms-step-arrow">→</span>
+      <span class="ms-step" [class.ms-step--active]="subject.trim() && message.trim()"><strong>2</strong> Compose</span>
+      <span class="ms-step-arrow">→</span>
+      <span class="ms-step" [class.ms-step--active]="canSend()"><strong>3</strong> Preview &amp; send</span>
+    </div>
+  </header>
+
+  <div class="ms-notice ms-notice--warn" *ngIf="!isAllowed()" role="alert">
+    You do not have permission to send messages. Contact an administrator if you need access.
   </div>
 
-  <div class="main-content">
-    <!-- Compose Card -->
-    <div class="compose-card">
-      <div class="card-header">
-        <h2><span class="card-icon">📝</span> Compose Message</h2>
+  <div class="ms-main">
+    <section class="ms-panel ms-panel--compose">
+      <div class="ms-panel__head">
+        <h2 class="ms-panel__title">Compose message</h2>
+        <p class="ms-panel__intro">Fill in the subject, choose recipients, and write your message.</p>
       </div>
 
-      <div class="compose-form">
-        <!-- Subject -->
-        <div class="form-group">
-          <label for="subject">
-            Subject <span class="required">*</span>
-          </label>
-          <div class="input-wrapper">
-            <span class="input-icon">📌</span>
-            <input 
-              type="text" 
+      <div class="ms-form">
+        <div class="ms-field">
+          <label for="subject">Subject <span class="ms-required">*</span></label>
+          <div class="ms-input-wrap">
+            <span class="ms-input-icon" aria-hidden="true">📌</span>
+            <input
+              type="text"
               id="subject"
-              [(ngModel)]="subject" 
-              placeholder="Enter message subject..."
-              class="form-control"
-              maxlength="200"
-            />
+              class="ms-input ms-input--icon"
+              [(ngModel)]="subject"
+              placeholder="Enter message subject…"
+              maxlength="200" />
           </div>
-          <div class="char-count">{{ subject.length }}/200</div>
+          <span class="ms-char-count">{{ subject.length }}/200</span>
         </div>
 
-        <!-- Recipients -->
-        <div class="form-group">
-          <label>Recipients <span class="required">*</span></label>
-          <div class="recipient-options">
-            <div 
-              class="recipient-option"
-              [class.selected]="recipientsType === 'all'"
-              (click)="setRecipientsType('all')"
-            >
-              <div class="option-icon">👥</div>
-              <div class="option-content">
-                <div class="option-title">All Parents</div>
-                <div class="option-desc">Send to all registered parents</div>
-              </div>
-              <div class="option-check" *ngIf="recipientsType === 'all'">✓</div>
-            </div>
-            <div 
-              class="recipient-option"
-              [class.selected]="recipientsType === 'selected'"
-              (click)="setRecipientsType('selected')"
-            >
-              <div class="option-icon">👤</div>
-              <div class="option-content">
-                <div class="option-title">Specific Parents</div>
-                <div class="option-desc">Choose individual recipients</div>
-              </div>
-              <div class="option-check" *ngIf="recipientsType === 'selected'">✓</div>
-            </div>
+        <div class="ms-field">
+          <label>Recipients <span class="ms-required">*</span></label>
+          <div class="ms-recipient-cards">
+            <button
+              type="button"
+              class="ms-recipient-card"
+              [class.ms-recipient-card--active]="recipientsType === 'all'"
+              (click)="setRecipientsType('all')">
+              <span class="ms-recipient-card__icon">👥</span>
+              <span class="ms-recipient-card__title">All parents</span>
+              <span class="ms-recipient-card__desc">Send to every registered parent</span>
+              <span class="ms-recipient-card__check" *ngIf="recipientsType === 'all'">✓</span>
+            </button>
+            <button
+              type="button"
+              class="ms-recipient-card"
+              [class.ms-recipient-card--active]="recipientsType === 'selected'"
+              (click)="setRecipientsType('selected')">
+              <span class="ms-recipient-card__icon">👤</span>
+              <span class="ms-recipient-card__title">Specific parents</span>
+              <span class="ms-recipient-card__desc">Pick individual recipients</span>
+              <span class="ms-recipient-card__check" *ngIf="recipientsType === 'selected'">✓</span>
+            </button>
           </div>
 
-          <!-- Parent Selection -->
-          <div class="parents-selection" *ngIf="recipientsType === 'selected'">
-            <div class="selection-header">
-              <div class="search-wrapper">
-                <span class="search-icon">🔍</span>
-                <input 
-                  type="text" 
-                  [(ngModel)]="parentsSearch" 
-                  placeholder="Search by name, email, or phone..."
-                  class="search-input"
-                />
-                <button *ngIf="parentsSearch" class="clear-btn" (click)="parentsSearch = ''">✕</button>
+          <div class="ms-parents-panel" *ngIf="recipientsType === 'selected'">
+            <div class="ms-parents-toolbar">
+              <div class="ms-search-wrap">
+                <span class="ms-search-icon" aria-hidden="true">🔍</span>
+                <input
+                  type="search"
+                  class="ms-search-input"
+                  [(ngModel)]="parentsSearch"
+                  placeholder="Search by name, email, or phone…" />
+                <button *ngIf="parentsSearch" type="button" class="ms-search-clear" (click)="parentsSearch = ''">×</button>
               </div>
-              <div class="selection-info">
-                <span class="selected-count">{{ selectedParentIds.size }} selected</span>
-                <button 
-                  *ngIf="selectedParentIds.size > 0" 
-                  class="btn-text" 
-                  (click)="clearSelection()"
-                >
-                  Clear all
-                </button>
+              <div class="ms-parents-meta">
+                <span class="ms-selected-count">{{ selectedParentIds.size }} selected</span>
+                <button type="button" class="ms-btn ms-btn--ghost ms-btn--sm" *ngIf="selectedParentIds.size > 0" (click)="clearSelection()">Clear</button>
               </div>
             </div>
-            
-            <div class="parents-grid" *ngIf="parents.length > 0">
-              <div 
-                *ngFor="let p of filteredParents()" 
-                class="parent-card"
-                [class.selected]="selectedParentIds.has(p.id)"
-                (click)="toggleParentSelection(p.id)"
-              >
-                <div class="parent-avatar">{{ getInitials(p) }}</div>
-                <div class="parent-info">
-                  <div class="parent-name">{{ p.firstName || '' }} {{ p.lastName || '' }}</div>
-                  <div class="parent-contact">{{ p.email || p.phoneNumber || 'No contact' }}</div>
-                </div>
-                <div class="parent-check">
-                  <span *ngIf="selectedParentIds.has(p.id)">✓</span>
-                </div>
-              </div>
-            </div>
-            
-            <div class="empty-state" *ngIf="parents.length === 0 && !loadingParents">
-              <span class="empty-icon">👥</span>
-              <p>{{ parentsLoadError || 'No parents available' }}</p>
-              <button class="btn btn-primary btn-sm" (click)="loadParentsIfNeeded(true)">
-                Reload Parents
+
+            <div class="ms-parents-grid" *ngIf="parents.length > 0">
+              <button
+                type="button"
+                *ngFor="let p of filteredParents()"
+                class="ms-parent-chip"
+                [class.ms-parent-chip--selected]="selectedParentIds.has(p.id)"
+                (click)="toggleParentSelection(p.id)">
+                <span class="ms-parent-avatar">{{ getInitials(p) }}</span>
+                <span class="ms-parent-info">
+                  <span class="ms-parent-name">{{ p.firstName || '' }} {{ p.lastName || '' }}</span>
+                  <span class="ms-parent-contact">{{ p.email || p.phoneNumber || 'No contact' }}</span>
+                </span>
+                <span class="ms-parent-check" *ngIf="selectedParentIds.has(p.id)">✓</span>
               </button>
             </div>
-            
-            <div class="loading-state" *ngIf="loadingParents">
-              <div class="spinner"></div>
-              <p>Loading parents...</p>
+
+            <div class="ms-empty" *ngIf="parents.length === 0 && !loadingParents">
+              <span class="ms-empty-icon" aria-hidden="true">👥</span>
+              <p>{{ parentsLoadError || 'No parents available' }}</p>
+              <button type="button" class="ms-btn ms-btn--outline ms-btn--sm" (click)="loadParentsIfNeeded(true)">Reload parents</button>
+            </div>
+
+            <div class="ms-loading" *ngIf="loadingParents">
+              <span class="ms-loading-ring" aria-hidden="true"></span>
+              <p>Loading parents…</p>
             </div>
           </div>
         </div>
 
-        <!-- Message -->
-        <div class="form-group">
-          <label for="message">
-            Message <span class="required">*</span>
-          </label>
-          <div class="message-toolbar">
-            <button type="button" class="toolbar-btn" title="Bold" (click)="insertText('**', '**')">B</button>
-            <button type="button" class="toolbar-btn" title="Italic" (click)="insertText('_', '_')">I</button>
-            <span class="toolbar-divider"></span>
-            <button type="button" class="toolbar-btn" title="Bullet List" (click)="insertText('\n• ', '')">•</button>
+        <div class="ms-field">
+          <label for="message">Message <span class="ms-required">*</span></label>
+          <div class="ms-toolbar">
+            <button type="button" class="ms-toolbar-btn" title="Bold" (click)="insertText('**', '**')"><strong>B</strong></button>
+            <button type="button" class="ms-toolbar-btn" title="Italic" (click)="insertText('_', '_')"><em>I</em></button>
+            <span class="ms-toolbar-divider"></span>
+            <button type="button" class="ms-toolbar-btn" title="Bullet list" (click)="insertText('\n• ', '')">•</button>
           </div>
-          <textarea 
+          <textarea
             id="message"
-            [(ngModel)]="message" 
-            rows="10" 
-            placeholder="Write your message here...
+            class="ms-textarea"
+            rows="10"
+            [(ngModel)]="message"
+            placeholder="Write your message here…
 
 You can use placeholders like:
-• {parentName} - Parent's name
-• {studentName} - Student's name
-• {balance} - Outstanding balance"
-            class="form-control message-textarea"
-            maxlength="5000"
-          ></textarea>
-          <div class="textarea-footer">
-            <div class="char-count">{{ message.length }}/5000 characters</div>
-          </div>
+• {parentName} — Parent's name
+• {studentName} — Student's name
+• {balance} — Outstanding balance"
+            maxlength="5000"></textarea>
+          <span class="ms-char-count">{{ message.length }}/5000 characters</span>
         </div>
 
-        <!-- Attachments -->
-        <div class="form-group">
-          <label>Attachments <span class="optional">(Optional)</span></label>
-          <div 
-            class="drop-zone"
-            [class.drag-over]="isDragOver"
+        <div class="ms-field">
+          <label>Attachments <span class="ms-optional">(optional)</span></label>
+          <div
+            class="ms-dropzone"
+            [class.ms-dropzone--active]="isDragOver"
             (dragover)="onDragOver($event)"
             (dragleave)="onDragLeave($event)"
             (drop)="onDrop($event)"
-            (click)="fileInput.click()"
-          >
-            <input 
-              type="file" 
+            (click)="fileInput.click()">
+            <input
+              type="file"
               #fileInput
-              (change)="onFileChange($event)" 
-              multiple 
+              (change)="onFileChange($event)"
+              multiple
               hidden
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
-            />
-            <div class="drop-zone-content">
-              <span class="drop-icon">📎</span>
-              <p class="drop-text">Drag & drop files here or <span class="browse-link">browse</span></p>
-              <p class="drop-hint">PDF, DOC, DOCX, XLS, XLSX, PNG, JPG (Max 10MB each)</p>
-            </div>
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" />
+            <span class="ms-dropzone__icon" aria-hidden="true">📎</span>
+            <p class="ms-dropzone__text">Drag &amp; drop files here or <strong>browse</strong></p>
+            <p class="ms-dropzone__hint">PDF, DOC, DOCX, XLS, XLSX, PNG, JPG (max 10MB each)</p>
           </div>
-          
-          <div class="attachments-list" *ngIf="attachments.length > 0">
-            <div class="attachment-item" *ngFor="let f of attachments; let i = index">
-              <div class="attachment-icon">{{ getFileIcon(f.name) }}</div>
-              <div class="attachment-info">
-                <div class="attachment-name">{{ f.name }}</div>
-                <div class="attachment-size">{{ formatFileSize(f.size) }}</div>
+
+          <div class="ms-file-list" *ngIf="attachments.length > 0">
+            <div class="ms-file-item" *ngFor="let f of attachments; let i = index">
+              <span class="ms-file-icon">{{ getFileIcon(f.name) }}</span>
+              <div class="ms-file-info">
+                <span class="ms-file-name">{{ f.name }}</span>
+                <span class="ms-file-size">{{ formatFileSize(f.size) }}</span>
               </div>
-              <button class="attachment-remove" (click)="removeAttachment(i)" title="Remove">✕</button>
+              <button type="button" class="ms-file-remove" (click)="removeAttachment(i); $event.stopPropagation()" title="Remove">×</button>
             </div>
           </div>
         </div>
 
-        <!-- Actions -->
-        <div class="form-actions">
-          <button 
-            class="btn btn-primary btn-lg" 
-            [disabled]="!canSend() || loading" 
-            (click)="previewMessage()"
-          >
-            <span class="icon">👁️</span> Preview
-          </button>
-          <button 
-            class="btn btn-primary btn-lg" 
-            [disabled]="!canSend() || loading" 
-            (click)="send()"
-          >
-            <span *ngIf="loading" class="spinner"></span>
-            <span *ngIf="!loading" class="icon">📨</span>
-            {{ loading ? 'Sending...' : 'Send Message' }}
+        <div class="ms-form-actions">
+          <button type="button" class="ms-btn ms-btn--outline ms-btn--lg" [disabled]="!canSend() || loading" (click)="previewMessage()">👁️ Preview</button>
+          <button type="button" class="ms-btn ms-btn--primary ms-btn--lg" [disabled]="!canSend() || loading" (click)="send()">
+            <span class="ms-spinner" *ngIf="loading"></span>
+            {{ loading ? 'Sending…' : '📨 Send message' }}
           </button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Templates Sidebar -->
-    <div class="templates-sidebar">
-      <div class="card-header">
-        <h2><span class="card-icon">📋</span> Quick Templates</h2>
-      </div>
-      <div class="templates-list">
-        <div 
-          *ngFor="let t of templates" 
-          class="template-card"
-          [class.selected]="selectedTemplate === t.name"
-          (click)="selectTemplate(t)"
-        >
-          <div class="template-icon">{{ t.icon }}</div>
-          <div class="template-content">
-            <div class="template-name">{{ t.name }}</div>
-            <div class="template-preview">{{ t.preview }}</div>
-          </div>
+    <aside class="ms-sidebar">
+      <section class="ms-panel ms-panel--templates">
+        <div class="ms-panel__head">
+          <h2 class="ms-panel__title">Quick templates</h2>
+          <p class="ms-panel__intro">Click a template to fill the compose form.</p>
         </div>
-      </div>
-      
-      <div class="tips-section">
-        <h3><span class="tips-icon">💡</span> Tips</h3>
-        <ul class="tips-list">
+        <div class="ms-template-list">
+          <button
+            type="button"
+            *ngFor="let t of templates"
+            class="ms-template-card"
+            [class.ms-template-card--active]="selectedTemplate === t.name"
+            (click)="selectTemplate(t)">
+            <span class="ms-template-card__icon">{{ t.icon }}</span>
+            <span class="ms-template-card__body">
+              <span class="ms-template-card__name">{{ t.name }}</span>
+              <span class="ms-template-card__preview">{{ t.preview }}</span>
+            </span>
+          </button>
+        </div>
+      </section>
+
+      <section class="ms-panel ms-panel--tips">
+        <h3 class="ms-tips-title"><span aria-hidden="true">💡</span> Tips</h3>
+        <ul class="ms-tips-list">
           <li>Keep subject lines clear and concise</li>
           <li>Use templates for common messages</li>
           <li>Review recipients before sending</li>
-          <li>Attach relevant documents if needed</li>
+          <li>Attach relevant documents when needed</li>
         </ul>
-      </div>
-    </div>
+      </section>
+    </aside>
   </div>
 
-  <!-- Preview Modal -->
-  <div class="modal-overlay" *ngIf="showPreview" (click)="closePreview()">
-    <div class="preview-modal" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>Message Preview</h3>
-        <button class="modal-close" (click)="closePreview()">✕</button>
+  <div class="ms-modal-backdrop" *ngIf="showPreview" (click)="closePreview()"></div>
+  <div class="ms-modal" *ngIf="showPreview" role="dialog" aria-labelledby="ms-preview-title">
+    <div class="ms-modal__box" (click)="$event.stopPropagation()">
+      <div class="ms-modal__head">
+        <h3 id="ms-preview-title">Message preview</h3>
+        <button type="button" class="ms-modal__close" (click)="closePreview()" aria-label="Close">×</button>
       </div>
-      <div class="modal-body">
-        <div class="preview-section">
-          <label>To:</label>
-          <div class="preview-value">
-            {{ recipientsType === 'all' ? 'All Parents' : selectedParentIds.size + ' selected parent(s)' }}
-          </div>
+      <div class="ms-modal__body">
+        <div class="ms-preview-row">
+          <span class="ms-preview-label">To</span>
+          <span class="ms-preview-value">{{ recipientsType === 'all' ? 'All parents' : selectedParentIds.size + ' selected parent(s)' }}</span>
         </div>
-        <div class="preview-section">
-          <label>Subject:</label>
-          <div class="preview-value subject">{{ subject }}</div>
+        <div class="ms-preview-row">
+          <span class="ms-preview-label">Subject</span>
+          <span class="ms-preview-value ms-preview-value--subject">{{ subject }}</span>
         </div>
-        <div class="preview-section">
-          <label>Message:</label>
-          <div class="preview-value message">{{ message }}</div>
+        <div class="ms-preview-row">
+          <span class="ms-preview-label">Message</span>
+          <div class="ms-preview-message">{{ message }}</div>
         </div>
-        <div class="preview-section" *ngIf="attachments.length > 0">
-          <label>Attachments:</label>
-          <div class="preview-attachments">
-            <span *ngFor="let f of attachments" class="preview-attachment">
-              📎 {{ f.name }}
-            </span>
+        <div class="ms-preview-row" *ngIf="attachments.length > 0">
+          <span class="ms-preview-label">Attachments</span>
+          <div class="ms-preview-files">
+            <span class="ms-preview-file" *ngFor="let f of attachments">📎 {{ f.name }}</span>
           </div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" (click)="closePreview()">Edit</button>
-        <button class="btn btn-primary" (click)="sendFromPreview()" [disabled]="loading">
-          <span *ngIf="loading" class="spinner"></span>
-          {{ loading ? 'Sending...' : 'Send Now' }}
+      <div class="ms-modal__foot">
+        <button type="button" class="ms-btn ms-btn--ghost" (click)="closePreview()">Edit</button>
+        <button type="button" class="ms-btn ms-btn--primary" (click)="sendFromPreview()" [disabled]="loading">
+          <span class="ms-spinner ms-spinner--purple" *ngIf="loading"></span>
+          {{ loading ? 'Sending…' : 'Send now' }}
         </button>
       </div>
     </div>

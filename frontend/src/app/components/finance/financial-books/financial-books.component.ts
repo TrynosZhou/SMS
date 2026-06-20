@@ -85,6 +85,28 @@ export class FinancialBooksComponent implements OnInit, OnDestroy {
     reference: '',
   };
 
+  /** Cashbook modal — student lookup before saving an entry */
+  cashbookStudentQuery = '';
+  cashbookStudentMatches: Array<{
+    studentId: string;
+    studentNumber: string;
+    firstName?: string;
+    lastName?: string;
+    fullName: string;
+    className?: string | null;
+  }> = [];
+  cashbookSelectedStudent: {
+    studentId: string;
+    studentNumber: string;
+    fullName: string;
+    balance: number;
+    className?: string | null;
+  } | null = null;
+  loadingCashbookStudentSearch = false;
+  cashbookStudentSearchError = '';
+  showCashbookStudentDropdown = false;
+  private readonly cashbookModalStudentSearch$ = new Subject<string>();
+
   readonly showDebtorAlert = computed(() => this.balanceSheetSignal().debtorCount > 0);
   readonly debtorTabBadge = computed(() => this.debtorsSignal().length || this.balanceSheetSignal().debtorCount);
   readonly maxAgingAmount = computed(() => {
@@ -125,6 +147,9 @@ export class FinancialBooksComponent implements OnInit, OnDestroy {
         this.studentPickerSearch.set(q);
         this.applyStudentFilter();
       });
+    this.cashbookModalStudentSearch$
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((q) => this.searchCashbookStudent(q));
 
     const reload = () => this.bootstrap();
     reload();
@@ -316,13 +341,188 @@ export class FinancialBooksComponent implements OnInit, OnDestroy {
       paymentMethod: 'Cash',
       reference: '',
     };
+    this.resetCashbookStudentSearch();
     this.showAddEntryModal.set(true);
     this.cdr.markForCheck();
   }
 
   closeAddEntryModal(): void {
     this.showAddEntryModal.set(false);
+    this.resetCashbookStudentSearch();
     this.cdr.markForCheck();
+  }
+
+  onCashbookStudentSearchInput(value: string): void {
+    this.cashbookStudentQuery = value;
+    this.cashbookStudentSearchError = '';
+    if (this.cashbookSelectedStudent) {
+      this.cashbookSelectedStudent = null;
+    }
+    const q = (value || '').trim();
+    if (q.length < 2) {
+      this.cashbookStudentMatches = [];
+      this.showCashbookStudentDropdown = false;
+      this.loadingCashbookStudentSearch = false;
+      this.cdr.markForCheck();
+      return;
+    }
+    this.loadingCashbookStudentSearch = true;
+    this.showCashbookStudentDropdown = true;
+    this.cashbookModalStudentSearch$.next(q);
+  }
+
+  searchCashbookStudent(query: string): void {
+    const q = (query || '').trim();
+    if (q.length < 2) {
+      this.loadingCashbookStudentSearch = false;
+      return;
+    }
+    this.loadingCashbookStudentSearch = true;
+    this.cashbookStudentSearchError = '';
+    this.financeService
+      .getStudentBalance(q)
+      .pipe(
+        finalize(() => {
+          this.loadingCashbookStudentSearch = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (data: any) => {
+          if (data?.multipleMatches && Array.isArray(data.matches) && data.matches.length > 0) {
+            this.cashbookStudentMatches = data.matches;
+            this.showCashbookStudentDropdown = true;
+            return;
+          }
+          this.cashbookStudentMatches = [];
+          this.showCashbookStudentDropdown = false;
+          this.applyCashbookStudentSelection(data);
+        },
+        error: (err: any) => {
+          this.cashbookStudentMatches = [];
+          this.showCashbookStudentDropdown = false;
+          this.cashbookStudentSearchError =
+            err?.error?.message || 'Student not found. Try student number, first name, or full name.';
+        },
+      });
+  }
+
+  selectCashbookStudentMatch(match: {
+    studentId: string;
+    studentNumber?: string;
+    fullName?: string;
+    firstName?: string;
+    lastName?: string;
+    className?: string | null;
+  }): void {
+    if (!match?.studentId) return;
+    this.loadingCashbookStudentSearch = true;
+    this.cashbookStudentSearchError = '';
+    this.financeService
+      .getStudentBalance(match.studentId)
+      .pipe(
+        finalize(() => {
+          this.loadingCashbookStudentSearch = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (data: any) => {
+          this.cashbookStudentMatches = [];
+          this.showCashbookStudentDropdown = false;
+          this.cashbookStudentQuery = data?.fullName || match.fullName || this.cashbookStudentQuery;
+          this.applyCashbookStudentSelection(data);
+        },
+        error: (err: any) => {
+          this.cashbookStudentSearchError = err?.error?.message || 'Failed to load student balance';
+        },
+      });
+  }
+
+  applyCashbookStudentSelection(data: any): void {
+    if (!data?.studentId && !data?.id) return;
+    const fullName =
+      data.fullName ||
+      `${data.firstName || ''} ${data.lastName || ''}`.trim() ||
+      'Student';
+    this.cashbookSelectedStudent = {
+      studentId: data.studentId || data.id,
+      studentNumber: data.studentNumber || '',
+      fullName,
+      balance: Number(data.balance) || 0,
+      className: data.className || null,
+    };
+    this.cashbookStudentQuery = fullName;
+    this.prefillCashbookEntryForStudent();
+    this.cdr.markForCheck();
+  }
+
+  clearCashbookStudent(): void {
+    this.cashbookSelectedStudent = null;
+    this.cashbookStudentQuery = '';
+    this.cashbookStudentMatches = [];
+    this.showCashbookStudentDropdown = false;
+    this.cashbookStudentSearchError = '';
+    this.cdr.markForCheck();
+  }
+
+  private resetCashbookStudentSearch(): void {
+    this.cashbookStudentQuery = '';
+    this.cashbookStudentMatches = [];
+    this.cashbookSelectedStudent = null;
+    this.loadingCashbookStudentSearch = false;
+    this.cashbookStudentSearchError = '';
+    this.showCashbookStudentDropdown = false;
+  }
+
+  private prefillCashbookEntryForStudent(): void {
+    if (!this.cashbookSelectedStudent) return;
+    const { fullName, studentNumber } = this.cashbookSelectedStudent;
+    const label = this.cashbookForm.type === 'receipt' ? 'Receipt' : 'Payment';
+    if (!this.cashbookForm.description.trim()) {
+      this.cashbookForm.description = `${label} — ${fullName} (${studentNumber})`;
+    }
+    if (!this.cashbookForm.reference.trim() && studentNumber) {
+      this.cashbookForm.reference = studentNumber;
+    }
+  }
+
+  setCashbookEntryType(type: 'receipt' | 'payment'): void {
+    this.cashbookForm.type = type;
+    if (this.cashbookSelectedStudent) {
+      const { fullName, studentNumber } = this.cashbookSelectedStudent;
+      const label = type === 'receipt' ? 'Receipt' : 'Payment';
+      this.cashbookForm.description = `${label} — ${fullName} (${studentNumber})`;
+    }
+    this.cdr.markForCheck();
+  }
+
+  get cashbookFormProgress(): number {
+    let score = 0;
+    if (this.cashbookSelectedStudent) score += 40;
+    if (this.cashbookForm.entryDate) score += 10;
+    if (this.cashbookForm.description.trim()) score += 20;
+    if (Number(this.cashbookForm.amount) > 0) score += 30;
+    return Math.min(100, score);
+  }
+
+  canSubmitCashbookEntry(): boolean {
+    return (
+      !!this.cashbookSelectedStudent &&
+      !!this.cashbookForm.description.trim() &&
+      Number(this.cashbookForm.amount) > 0 &&
+      !this.savingCashbookEntry
+    );
+  }
+
+  getCashbookStudentInitials(name: string): string {
+    const parts = String(name || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!parts.length) return '?';
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
   }
 
   setCashbookViewMode(mode: CashbookViewMode): void {
@@ -428,11 +628,16 @@ export class FinancialBooksComponent implements OnInit, OnDestroy {
 
   submitCashbookEntry(): void {
     if (!this.canEditCashbook()) return;
+    if (!this.cashbookSelectedStudent) {
+      this.cashbookStudentSearchError = 'Please search and select a student before saving.';
+      return;
+    }
     if (!this.cashbookForm.description.trim() || !this.cashbookForm.amount) {
       this.error = 'Description and amount are required';
       return;
     }
     this.savingCashbookEntry = true;
+    this.cashbookStudentSearchError = '';
     this.financeService
       .createCashbookEntry({
         entryDate: this.cashbookForm.entryDate,
@@ -440,7 +645,8 @@ export class FinancialBooksComponent implements OnInit, OnDestroy {
         description: this.cashbookForm.description.trim(),
         amount: Number(this.cashbookForm.amount),
         paymentMethod: this.cashbookForm.paymentMethod,
-        reference: this.cashbookForm.reference || undefined,
+        reference: this.cashbookForm.reference || this.cashbookSelectedStudent.studentNumber || undefined,
+        studentId: this.cashbookSelectedStudent.studentId,
       })
       .pipe(
         finalize(() => {

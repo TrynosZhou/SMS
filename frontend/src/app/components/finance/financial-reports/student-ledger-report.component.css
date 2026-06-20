@@ -827,6 +827,8 @@
 .sl-type-pill--invoice { background: #fee2e2; color: #b91c1c; }
 .sl-type-pill--payment { background: #d1fae5; color: #047857; }
 
+.sl-type-pill--payment { background: #d1fae5; color: #047857; }
+
 @media (max-width: 768px) {
   .sl-student-actions {
     width: 100%;

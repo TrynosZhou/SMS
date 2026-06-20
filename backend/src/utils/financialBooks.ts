@@ -9,12 +9,16 @@ import { CashbookEntry, CashbookEntryType } from '../entities/CashbookEntry';
 import { ParentStudent } from '../entities/ParentStudent';
 import { Message } from '../entities/Message';
 import {
+  canonicalInvoiceTermFees,
   computeCanonicalInvoiceBalance,
   computeStudentTotalOutstanding,
   getConfiguredDeskFee,
   listStudentOutstandingInvoices,
 } from './invoiceFeesBalance';
 import { fetchOutstandingBalanceRows } from './outstandingBalances';
+import { recomputeInvoiceTotalsFromLineItems } from './studentLogisticsInvoice';
+import { parseAmount } from './numberUtils';
+import { InvoiceStatus } from '../entities/Invoice';
 
 const NOT_VOIDED = 'COALESCE(invoice.isVoided, false) = false';
 const BUCKET_LABELS = ['Current', '1–30 days', '31–60 days', '61–90 days', '90+ days'] as const;
@@ -534,7 +538,10 @@ export async function fetchCashbookEntries(options?: {
   if (fromDate) paymentQb.andWhere('log.paymentDate >= :fromDate', { fromDate });
   if (toDate) paymentQb.andWhere('log.paymentDate <= :toDate', { toDate });
 
-  const manualQb = cashbookRepository.createQueryBuilder('e').where("e.source = 'manual'");
+  const manualQb = cashbookRepository
+    .createQueryBuilder('e')
+    .where("e.source = 'manual'")
+    .andWhere('e.paymentLogId IS NULL');
   if (fromDate) manualQb.andWhere('e.entryDate >= :fromDate', { fromDate: options!.from });
   if (toDate) manualQb.andWhere('e.entryDate <= :toDate', { toDate: options!.to });
 
@@ -617,6 +624,179 @@ export async function fetchCashbookEntries(options?: {
     entries: entries.reverse(),
     summary: { count: filtered.length, totalIn, totalOut },
   };
+}
+
+function normalizePaymentMethod(raw?: string): string | null {
+  const val = String(raw || '').trim().toLowerCase();
+  if (!val) return 'CASH(USD)';
+  if (val.includes('ecocash')) return 'ECOCASH(USD)';
+  if (val.includes('bank') || val.includes('transfer')) return 'BANK TRANSFER(USD)';
+  if (val.includes('cash')) return 'CASH(USD)';
+  if (val === 'cash(usd)') return 'CASH(USD)';
+  if (val === 'ecocash(usd)') return 'ECOCASH(USD)';
+  if (val === 'bank transfer(usd)') return 'BANK TRANSFER(USD)';
+  return null;
+}
+
+function generateReceiptNumber(): string {
+  return `RCP-${new Date().getFullYear()}-${String(Date.now()).slice(-8)}`;
+}
+
+function extractStudentNumberFromCashbookText(text: string): string | null {
+  const parenMatch = String(text || '').match(/\(([A-Z0-9-]+)\)/i);
+  if (parenMatch?.[1]) return parenMatch[1].trim().toUpperCase();
+  const trimmed = String(text || '').trim();
+  if (/^[A-Z0-9-]{4,20}$/i.test(trimmed)) return trimmed.toUpperCase();
+  return null;
+}
+
+/** Apply a student fee receipt to their invoice and create a payment log (shows in cashbook + ledger). */
+export async function applyStudentPaymentFromCashbook(input: {
+  studentId: string;
+  invoiceId?: string;
+  paidAmount: number;
+  paymentDate: string;
+  paymentMethod?: string;
+  notes?: string;
+  payerUserId?: string;
+  payerName?: string;
+  receiptNumber?: string;
+}): Promise<{ paymentLog: PaymentLog; invoice: Invoice }> {
+  const paidAmountNum = round2(Math.abs(Number(input.paidAmount) || 0));
+  if (paidAmountNum <= 0) {
+    throw new Error('Payment amount must be greater than 0');
+  }
+
+  const normalizedMethod = normalizePaymentMethod(input.paymentMethod);
+  if (normalizedMethod === null) {
+    throw new Error('Invalid payment method. Allowed: CASH(USD), ECOCASH(USD), BANK TRANSFER(USD)');
+  }
+
+  const invoiceRepository = AppDataSource.getRepository(Invoice);
+  const studentRepository = AppDataSource.getRepository(Student);
+  const logRepo = AppDataSource.getRepository(PaymentLog);
+
+  let invoiceId = input.invoiceId?.trim() || null;
+  if (!invoiceId) {
+    invoiceId = await findLatestInvoiceIdForStudent(input.studentId);
+  }
+  if (!invoiceId) {
+    throw new Error('No invoice found for this student');
+  }
+
+  const invoice = await invoiceRepository.findOne({
+    where: { id: invoiceId, studentId: input.studentId },
+    relations: ['student'],
+  });
+  if (!invoice || invoice.isVoided) {
+    throw new Error('Invoice not found for this student');
+  }
+
+  const oldPaidAmount = parseAmount(invoice.paidAmount);
+  const oldPrepaidAmount = parseAmount(invoice.prepaidAmount);
+
+  invoice.paidAmount = oldPaidAmount + paidAmountNum;
+  recomputeInvoiceTotalsFromLineItems(invoice);
+
+  const previousBalance = parseAmount(invoice.previousBalance);
+  const termFees = canonicalInvoiceTermFees(invoice);
+  const totalOwed = round2(previousBalance + termFees);
+  const totalPaid = parseAmount(invoice.paidAmount);
+
+  if (totalPaid > totalOwed + 0.005) {
+    const excess = round2(totalPaid - totalOwed);
+    invoice.paidAmount = totalOwed;
+    invoice.prepaidAmount = round2(oldPrepaidAmount + excess);
+    invoice.balance = 0;
+    invoice.status = InvoiceStatus.PAID;
+  }
+
+  await invoiceRepository.save(invoice);
+
+  const actualPaymentDate = parseDateOnly(input.paymentDate) || new Date();
+  const receiptNumber =
+    String(input.receiptNumber || '').trim() && !extractStudentNumberFromCashbookText(input.receiptNumber || '')
+      ? String(input.receiptNumber).trim()
+      : generateReceiptNumber();
+
+  const log = logRepo.create({
+    invoiceId: invoice.id,
+    studentId: invoice.studentId,
+    amountPaid: paidAmountNum,
+    paymentDate: actualPaymentDate,
+    paymentMethod: normalizedMethod,
+    receiptNumber,
+    payerUserId: input.payerUserId || null,
+    payerName: input.payerName || null,
+    notes: input.notes || null,
+  });
+  const paymentLog = await logRepo.save(log);
+
+  return { paymentLog, invoice };
+}
+
+/** Backfill manual cashbook receipts that were saved without updating invoices. */
+export async function reconcileOrphanCashbookStudentReceipts(): Promise<{ applied: number; skipped: number }> {
+  await ensureCashbookTable();
+  const cashbookRepository = AppDataSource.getRepository(CashbookEntry);
+  const studentRepository = AppDataSource.getRepository(Student);
+
+  const orphans = await cashbookRepository.find({
+    where: { source: 'manual', type: CashbookEntryType.RECEIPT },
+    order: { entryDate: 'ASC', createdAt: 'ASC' },
+  });
+  const pending = orphans.filter((e) => !e.paymentLogId);
+  if (pending.length === 0) return { applied: 0, skipped: 0 };
+
+  const students = await studentRepository.find({ select: ['id', 'studentNumber'] });
+  const byNumber = new Map(
+    students
+      .map((s) => [String(s.studentNumber || '').trim().toUpperCase(), s.id] as const)
+      .filter(([num]) => !!num)
+  );
+
+  let applied = 0;
+  let skipped = 0;
+
+  for (const entry of pending) {
+    const refNum = extractStudentNumberFromCashbookText(entry.reference || '');
+    const descNum = extractStudentNumberFromCashbookText(entry.description || '');
+    const studentNumber = refNum || descNum;
+    const studentId = studentNumber ? byNumber.get(studentNumber.toUpperCase()) : undefined;
+    if (!studentId) {
+      skipped += 1;
+      continue;
+    }
+
+    try {
+      const amount = round2(parseFloat(String(entry.moneyIn ?? 0)));
+      if (amount <= 0) {
+        skipped += 1;
+        continue;
+      }
+
+      await applyStudentPaymentFromCashbook({
+        studentId,
+        paidAmount: amount,
+        paymentDate: (parseDateOnly(entry.entryDate) || new Date()).toISOString().split('T')[0],
+        paymentMethod: entry.paymentMethod || undefined,
+        notes: entry.description,
+        receiptNumber: entry.reference || undefined,
+      });
+
+      await cashbookRepository.delete(entry.id);
+      applied += 1;
+    } catch (err) {
+      console.warn('[CashbookReconcile] Skipped orphan entry', entry.id, err);
+      skipped += 1;
+    }
+  }
+
+  if (applied > 0) {
+    console.log(`[CashbookReconcile] Applied ${applied} orphan student receipt(s) to invoices`);
+  }
+
+  return { applied, skipped };
 }
 
 export async function createManualCashbookEntry(input: {

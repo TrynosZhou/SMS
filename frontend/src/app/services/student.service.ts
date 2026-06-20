@@ -393,8 +393,8 @@ return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/students`, { params
     });
   }
 
-  generateLogisticsReport(service: 'transport' | 'dining-hall', classId?: string): Observable<Blob> {
-    const queryParams: any = {};
+  generateLogisticsReport(service: 'transport' | 'dining-hall', classId?: string, preview = true): Observable<Blob> {
+    const queryParams: any = { preview: preview ? 'true' : 'false' };
     if (classId) {
       queryParams.classId = classId;
     }

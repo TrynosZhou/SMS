@@ -20,6 +20,7 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
   loading = false;
   error = '';
   success = '';
+  detailConfirmation: { type: 'success' | 'error'; title: string; message: string } | null = null;
   sendingReply = false;
   query = '';
   roleBox: 'admin' | 'accountant' = 'admin';
@@ -79,12 +80,9 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
     this.loadStoredFilters();
     this.loadPinnedIds();
     this.loadTemplates();
-    this.route.queryParamMap.subscribe(p => {
-      const id = p.get('id');
-      if (id && this.messages.length > 0) {
-        const m = this.messages.find(x => String(x.id || '') === String(id));
-        if (m) this.selected = m;
-      }
+    this.route.queryParamMap.subscribe(() => {
+      this.selectMessageFromRoute();
+      this.applyRouteConfirmation();
     });
     this.load();
     this.setupAutoRefresh();
@@ -142,6 +140,118 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
     }
   }
 
+  isAccountant(): boolean {
+    return this.authService.isAccountant();
+  }
+
+  clearAlert(kind: 'success' | 'error'): void {
+    if (kind === 'success') {
+      this.success = '';
+      this.detailConfirmation = null;
+      this.clearRouteConfirmationParams();
+    } else {
+      this.error = '';
+      if (this.detailConfirmation?.type === 'error') {
+        this.detailConfirmation = null;
+      }
+    }
+    this.cdr.markForCheck();
+  }
+
+  clearDetailConfirmation(): void {
+    this.detailConfirmation = null;
+    this.success = '';
+    this.clearRouteConfirmationParams();
+    this.cdr.markForCheck();
+  }
+
+  private showDetailConfirmation(
+    title: string,
+    message: string,
+    type: 'success' | 'error' = 'success'
+  ): void {
+    this.detailConfirmation = { type, title, message };
+    if (type === 'success') {
+      this.success = message;
+      this.error = '';
+    } else {
+      this.error = message;
+      this.success = '';
+    }
+    this.cdr.markForCheck();
+  }
+
+  private clearRouteConfirmationParams(): void {
+    const replied = this.route.snapshot.queryParamMap.get('replied');
+    const sent = this.route.snapshot.queryParamMap.get('sent');
+    if (!replied && !sent) {
+      return;
+    }
+    this.router.navigate([], {
+      queryParams: { replied: null, sent: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  private selectMessageFromRoute(): void {
+    const id = this.route.snapshot.queryParamMap.get('id');
+    if (!id || this.messages.length === 0) {
+      return;
+    }
+    const m = this.messages.find((x) => String(x.id || '') === String(id));
+    if (m) {
+      this.selected = m;
+      if (!m.isRead) {
+        this.markRead();
+      }
+    }
+  }
+
+  private applyRouteConfirmation(): void {
+    const replied = this.route.snapshot.queryParamMap.get('replied');
+    const sent = this.route.snapshot.queryParamMap.get('sent');
+    const id = this.route.snapshot.queryParamMap.get('id');
+    if (replied === '1' && id) {
+      const m = this.messages.find((x) => String(x.id || '') === String(id)) || this.selected;
+      const recipientName =
+        (m?.parentName || m?.senderName || 'the parent').trim() || 'the parent';
+      this.showDetailConfirmation(
+        'Reply sent',
+        `Your reply was sent successfully to ${recipientName}. It will appear in their inbox.`,
+        'success'
+      );
+      return;
+    }
+    if (sent === '1') {
+      this.showDetailConfirmation(
+        'Message sent',
+        'Your message was sent successfully.',
+        'success'
+      );
+    }
+  }
+
+  private persistReplyConfirmation(messageId: string): void {
+    this.router.navigate([], {
+      queryParams: { id: messageId, replied: '1' },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  hasActiveFilters(): boolean {
+    return !!(
+      this.query.trim() ||
+      this.filterMode !== 'all' ||
+      this.sortMode !== 'newest' ||
+      this.senderFilter ||
+      this.dateStart ||
+      this.dateEnd ||
+      this.pinnedOnly
+    );
+  }
+
   load(): void {
     this.loading = true;
     this.error = '';
@@ -162,6 +272,8 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
           );
           this.applyFilterAndPaginate();
           this.incomingMessageNotifications.setCount(this.messages.filter((m) => !m.isRead).length);
+          this.selectMessageFromRoute();
+          this.applyRouteConfirmation();
         },
         error: (err: any) => {
           this.error = err?.error?.message || 'Failed to load incoming messages';
@@ -266,6 +378,9 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
   }
 
   open(msg: any): void {
+    if (this.selected?.id !== msg?.id) {
+      this.clearDetailConfirmation();
+    }
     this.selected = msg;
     this.replying = false;
     this.replySubject = `Re: ${msg.subject || ''}`.trim();
@@ -391,6 +506,7 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
     this.sendingReply = true;
     this.error = '';
     this.success = '';
+    this.detailConfirmation = null;
     this.cdr.markForCheck();
 
     this.messageService.replyToIncoming(id, subject, body, files).subscribe({
@@ -401,26 +517,23 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
         this.replyBody = '';
         this.replyFiles = [];
         this.selectedReplyTemplate = '';
-        this.success =
+        const confirmationMessage =
           res?.message ||
           `Your reply was sent successfully to ${recipientName}. It will appear in their inbox.`;
-        const sentMsg = this.success;
-        this.cdr.markForCheck();
-        setTimeout(() => {
-          if (this.success === sentMsg) {
-            this.success = '';
-            this.cdr.markForCheck();
-          }
-        }, 6000);
+        this.showDetailConfirmation('Reply sent', confirmationMessage, 'success');
+        this.persistReplyConfirmation(id);
       },
       error: (err: any) => {
         this.sendingReply = false;
-        this.error = err?.error?.message || 'Failed to send reply. Please try again.';
-        this.cdr.markForCheck();
+        const errorMessage = err?.error?.message || 'Failed to send reply. Please try again.';
+        this.showDetailConfirmation('Reply failed', errorMessage, 'error');
         setTimeout(() => {
-          this.error = '';
-          this.cdr.markForCheck();
-        }, 5000);
+          if (this.detailConfirmation?.type === 'error') {
+            this.clearDetailConfirmation();
+            this.error = '';
+            this.cdr.markForCheck();
+          }
+        }, 8000);
       }
     });
   }

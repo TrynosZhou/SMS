@@ -3,6 +3,7 @@ import { AppDataSource } from '../config/database';
 import { AuthRequest } from '../middleware/auth';
 import { CashbookEntryType } from '../entities/CashbookEntry';
 import {
+  applyStudentPaymentFromCashbook,
   createManualCashbookEntry,
   fetchBalanceSheetSummary,
   fetchCashbookEntries,
@@ -12,6 +13,7 @@ import {
   fetchRecentPayments,
   fetchStudentStatement,
   findLatestInvoiceIdForStudent,
+  reconcileOrphanCashbookStudentReceipts,
   sendFeeRemindersToDebtors,
 } from '../utils/financialBooks';
 
@@ -94,14 +96,17 @@ export const getCashbook = async (req: AuthRequest, res: Response) => {
 export const postCashbookEntry = async (req: AuthRequest, res: Response) => {
   try {
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
-    const { entryDate, type, description, amount, paymentMethod, reference } = req.body as {
-      entryDate?: string;
-      type?: string;
-      description?: string;
-      amount?: number;
-      paymentMethod?: string;
-      reference?: string;
-    };
+    const { entryDate, type, description, amount, paymentMethod, reference, studentId, invoiceId } =
+      req.body as {
+        entryDate?: string;
+        type?: string;
+        description?: string;
+        amount?: number;
+        paymentMethod?: string;
+        reference?: string;
+        studentId?: string;
+        invoiceId?: string;
+      };
 
     if (!entryDate || !type || !description || amount == null) {
       return res.status(400).json({ message: 'entryDate, type, description, and amount are required' });
@@ -111,6 +116,34 @@ export const postCashbookEntry = async (req: AuthRequest, res: Response) => {
       String(type).toLowerCase() === CashbookEntryType.PAYMENT
         ? CashbookEntryType.PAYMENT
         : CashbookEntryType.RECEIPT;
+
+    if (normalizedType === CashbookEntryType.RECEIPT) {
+      if (!studentId) {
+        return res.status(400).json({ message: 'studentId is required for receipt entries' });
+      }
+
+      const payer = req.user;
+      const payerName = payer ? `${payer.firstName || ''} ${payer.lastName || ''}`.trim() : null;
+      const result = await applyStudentPaymentFromCashbook({
+        studentId,
+        invoiceId,
+        paidAmount: Number(amount),
+        paymentDate: entryDate,
+        paymentMethod,
+        notes: description,
+        payerUserId: payer?.id,
+        payerName: payerName || null,
+        receiptNumber: reference,
+      });
+
+      return res.status(201).json({
+        message: 'Payment recorded and applied to student invoice',
+        paymentLogId: result.paymentLog.id,
+        invoiceId: result.invoice.id,
+        receiptNumber: result.paymentLog.receiptNumber,
+        invoiceBalance: result.invoice.balance,
+      });
+    }
 
     const entry = await createManualCashbookEntry({
       entryDate,
@@ -125,7 +158,7 @@ export const postCashbookEntry = async (req: AuthRequest, res: Response) => {
     res.status(201).json(entry);
   } catch (error: any) {
     console.error('Error creating cashbook entry:', error);
-    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+    res.status(500).json({ message: error.message || 'Server error', error: error.message || 'Unknown error' });
   }
 };
 
@@ -185,6 +218,9 @@ async function loadSchoolBrandingForLedger(): Promise<{
   schoolName: string;
   currencySymbol: string;
   schoolLogo: string | null;
+  schoolEmail: string | null;
+  schoolPhone: string | null;
+  schoolAddress: string | null;
 }> {
   const settingsRepository = AppDataSource.getRepository(Settings);
   const rows = await settingsRepository.find({ order: { createdAt: 'DESC' }, take: 1 });
@@ -193,6 +229,9 @@ async function loadSchoolBrandingForLedger(): Promise<{
     schoolName: String(settings?.schoolName || 'School').trim() || 'School',
     currencySymbol: String(settings?.currencySymbol || '$').trim() || '$',
     schoolLogo: settings?.schoolLogo ?? null,
+    schoolEmail: settings?.schoolEmail ?? null,
+    schoolPhone: settings?.schoolPhone ?? null,
+    schoolAddress: settings?.schoolAddress ?? null,
   };
 }
 
@@ -260,12 +299,15 @@ export const getStudentLedgerReportPdf = async (req: AuthRequest, res: Response)
       schoolName: branding.schoolName,
       currencySymbol: branding.currencySymbol,
       schoolLogo: branding.schoolLogo,
+      schoolEmail: branding.schoolEmail,
+      schoolPhone: branding.schoolPhone,
+      schoolAddress: branding.schoolAddress,
       report,
       generatedAt: new Date(),
     });
 
-    const filename = `student-ledger-${report.student.admissionNumber}.pdf`;
-    res.setHeader('Content-Type', 'application/pdf');
+    const filename = `student-ledger-${report.student.admissionNumber}.html`;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
       `${preview ? 'inline' : 'attachment'}; filename="${filename}"`

@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { In } from 'typeorm';
+import { In, IsNull, Not } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { Student } from '../entities/Student';
 import { Parent } from '../entities/Parent';
@@ -11,6 +11,11 @@ import { AuthRequest } from '../middleware/auth';
 import { ParentStudent } from '../entities/ParentStudent';
 import { canAccessStaffMessages, canManageAllMessageBoxes } from '../constants/userRoles';
 import { isPreviewingRole } from '../utils/viewAsRole';
+import {
+  buildParentMessageRecipients,
+  resolveStaffParentInboxFromQuery,
+  staffInboxMatchesParentMessage,
+} from '../utils/parentMessageRecipients';
 
 async function resolveStudentForMessage(req: AuthRequest): Promise<Student | null> {
   if (!req.user) return null;
@@ -669,7 +674,7 @@ export const sendParentMessage = async (req: AuthRequest, res: Response) => {
     const record = messageRepository.create({
       subject: subject.trim(),
       message: message.trim(),
-      recipients: recipient.toLowerCase(),
+      recipients: buildParentMessageRecipients(recipient.toLowerCase() as 'admin' | 'accountant'),
       senderId: ctx.senderUserId,
       senderName: `${parent.firstName || ''} ${parent.lastName || ''}`.trim() || req.user?.email || 'Parent',
       parentId: parent.id,
@@ -679,9 +684,13 @@ export const sendParentMessage = async (req: AuthRequest, res: Response) => {
         : null
     });
     const saved = await messageRepository.save(record);
+    const successMessage =
+      recipient.toLowerCase() === 'admin'
+        ? 'Message sent successfully. The Administrator, Headmaster, and Deputy Headmaster will receive it.'
+        : 'Message sent successfully';
     res.json({
       success: true,
-      message: 'Message sent successfully',
+      message: successMessage,
       id: saved.id,
       createdAt: saved.createdAt,
       attachments: saved.attachments ? JSON.parse(saved.attachments) : []
@@ -762,17 +771,22 @@ export const getIncomingFromParents = async (req: AuthRequest, res: Response) =>
     if (!user || !canAccessStaffMessages(user.role)) {
       return res.status(403).json({ message: 'Access denied. Staff role required.' });
     }
-    const boxRaw = (req.query.box as string | undefined)?.toLowerCase();
-    const box = boxRaw && (boxRaw === 'admin' || boxRaw === 'accountant')
-      ? boxRaw
-      : String(user.role).toLowerCase() === UserRole.ACCOUNTANT ? 'accountant' : 'admin';
+    const inboxBox = resolveStaffParentInboxFromQuery(user.role, req.query.box as string | undefined);
     const messageRepository = AppDataSource.getRepository(Message);
     const parentRepository = AppDataSource.getRepository(Parent);
     const messages = await messageRepository.find({
-      where: { recipients: box },
-      order: { createdAt: 'DESC' }
+      where: {
+        parentId: Not(IsNull()),
+        senderId: Not(IsNull()),
+      },
+      order: { createdAt: 'DESC' },
     });
-    const fromParents = messages.filter(m => !!m.parentId && !!m.senderId);
+    const fromParents = messages.filter(
+      (m) =>
+        !!m.parentId &&
+        !!m.senderId &&
+        staffInboxMatchesParentMessage(m.recipients, inboxBox)
+    );
     const parentIds = Array.from(new Set(fromParents.map(m => m.parentId!).filter(Boolean)));
     let parentsById: Record<string, Parent> = {};
     if (parentIds.length > 0) {
@@ -810,18 +824,17 @@ export const getIncomingFromParentsUnreadCount = async (req: AuthRequest, res: R
     if (!user || !canAccessStaffMessages(user.role)) {
       return res.status(403).json({ message: 'Access denied. Staff role required.' });
     }
-    const boxRaw = (req.query.box as string | undefined)?.toLowerCase();
-    const box = boxRaw && (boxRaw === 'admin' || boxRaw === 'accountant')
-      ? boxRaw
-      : String(user.role).toLowerCase() === UserRole.ACCOUNTANT ? 'accountant' : 'admin';
+    const inboxBox = resolveStaffParentInboxFromQuery(user.role, req.query.box as string | undefined);
     const messageRepository = AppDataSource.getRepository(Message);
-    const count = await messageRepository
+    const unreadFromParents = await messageRepository
       .createQueryBuilder('m')
-      .where('m.recipients = :box', { box })
-      .andWhere('m.isRead = :isRead', { isRead: false })
+      .where('m.isRead = :isRead', { isRead: false })
       .andWhere('m.parentId IS NOT NULL')
       .andWhere('m.senderId IS NOT NULL')
-      .getCount();
+      .getMany();
+    const count = unreadFromParents.filter((m) =>
+      staffInboxMatchesParentMessage(m.recipients, inboxBox)
+    ).length;
     res.json({ count });
   } catch (error: any) {
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });

@@ -10,6 +10,20 @@
     </div>
   </div>
 
+  <div
+    class="admission-page-confirm"
+    *ngIf="pageConfirmation"
+    [class.admission-page-confirm--success]="pageConfirmation.type === 'success'"
+    [class.admission-page-confirm--error]="pageConfirmation.type === 'error'"
+    role="status">
+    <span class="admission-page-confirm__icon" aria-hidden="true">{{ pageConfirmation.type === 'success' ? '✓' : '✕' }}</span>
+    <div class="admission-page-confirm__body">
+      <strong>{{ pageConfirmation.title }}</strong>
+      <p>{{ pageConfirmation.message }}</p>
+    </div>
+    <button type="button" class="admission-page-confirm__dismiss" (click)="clearAlert(pageConfirmation.type)" aria-label="Dismiss">×</button>
+  </div>
+
   <header class="admission-hero">
     <div class="admission-hero__top">
       <nav class="admission-breadcrumb" aria-label="Breadcrumb">

@@ -10,6 +10,7 @@ import html2canvas from 'html2canvas';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
+import { buildStudentConfirmation, studentDisplayLabelFromParams } from '../../../utils/student-confirmation.util';
 
 @Component({
   standalone: false,  selector: 'app-enroll-student',
@@ -21,6 +22,7 @@ export class EnrollStudentComponent implements OnInit, OnDestroy {
 loading = false;
   error = '';
   success = '';
+  pageConfirmation: { type: 'success' | 'error'; title: string; message: string } | null = null;
   currencySymbol = '';
   schoolName = '';
   schoolAddress = '';
@@ -160,8 +162,28 @@ constructor(
   }
 
   clearAlert(kind: 'success' | 'error'): void {
-    if (kind === 'success') this.success = '';
-    else this.error = '';
+    if (kind === 'success') {
+      this.success = '';
+      this.pageConfirmation = null;
+    } else {
+      this.error = '';
+      if (this.pageConfirmation?.type === 'error') {
+        this.pageConfirmation = null;
+      }
+    }
+    this.cdr.markForCheck();
+  }
+
+  private showPageConfirmation(type: 'success' | 'error', title: string, message: string): void {
+    this.pageConfirmation = { type, title, message };
+    if (type === 'success') {
+      this.success = message;
+      this.error = '';
+    } else {
+      this.error = message;
+      this.success = '';
+    }
+    this.cdr.markForCheck();
   }
 
   hasActiveFilters(): boolean {
@@ -321,7 +343,8 @@ const g = (s.grade || s.classLevel || '—').toString();
     this.enrollingMap[sid] = true;
     this.studentService.enrollStudent(String(sid), String(classId)).subscribe({
       next: () => {
-        this.success = 'Student enrolled successfully';
+        const parts = buildStudentConfirmation('enrolled', { student });
+        this.showPageConfirmation('success', parts.title, parts.message);
         this.students = this.students.filter((s) => (s.id || s.studentId) !== sid);
         this.filtered = this.filtered.filter((s) => (s.id || s.studentId) !== sid);
         this.recomputeOptions();
@@ -484,13 +507,15 @@ if (!confirmed) return;
     this.success = '';
     this.studentService.deleteStudent(String(sid)).subscribe({
       next: (data: any) => {
-        this.success = data?.message || 'Student deleted successfully';
+        const parts = buildStudentConfirmation('deleted', {
+          displayName: studentDisplayLabelFromParams(name, number),
+        });
+        this.showPageConfirmation('success', parts.title, data?.message || parts.message);
         this.students = this.students.filter((s) => (s.id || s.studentId) !== sid);
         this.filtered = this.filtered.filter((s) => (s.id || s.studentId) !== sid);
         this.recomputeOptions();
         this.recomputeStats();
         this.deletingMap[sid] = false;
-        setTimeout(() => (this.success = ''), 5000);
         this.cdr.markForCheck();
 },
       error: (err: any) => {

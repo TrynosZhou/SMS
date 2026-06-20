@@ -811,6 +811,40 @@
   background: #fff;
 }
 
+.student-search-not-found {
+  text-align: center;
+  padding: 1.25rem 1rem;
+  margin-bottom: 0.65rem;
+  border: 1px dashed #fcd34d;
+  border-radius: 10px;
+  background: #fffbeb;
+}
+
+.student-search-not-found__icon {
+  font-size: 1.75rem;
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.student-search-not-found__title {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.student-search-not-found__hint {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #a16207;
+}
+
+.student-search-not-found__hint strong {
+  color: #78350f;
+  font-weight: 600;
+}
+
 .search-results-header {
   display: flex;
   align-items: center;
@@ -960,6 +994,34 @@
   right: 12px;
   top: 2.4rem;
   font-size: 0.75rem;
+  color: var(--parents-muted);
+}
+
+.reset-email-verified {
+  position: absolute;
+  right: 12px;
+  top: 2.35rem;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  font-size: 0.75rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.form-input--valid {
+  border-color: #86efac !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+}
+
+.reset-email-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
   color: var(--parents-muted);
 }
 

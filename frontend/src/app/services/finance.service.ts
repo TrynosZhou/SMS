@@ -262,8 +262,9 @@ getStudentBalance(studentId: string): Observable<any> {
     );
   }
 
-  getOutstandingBalancePDF(): Observable<Blob> {
+  getOutstandingBalancePDF(preview = false): Observable<Blob> {
     return this.http.get(`${this.apiUrl}/finance/outstanding-balances/pdf`, {
+      params: { preview: preview ? 'true' : 'false' },
       responseType: 'blob'
     });
   }
@@ -278,11 +279,9 @@ getStudentBalance(studentId: string): Observable<any> {
     );
   }
 
-  getExemptionReportPDF(download = false): Observable<Blob> {
-    const params: any = {};
-    if (download) params.download = '1';
+  getExemptionReportPDF(preview = false): Observable<Blob> {
     return this.http.get(`${this.apiUrl}/finance/exemption-report/pdf`, {
-      params,
+      params: { preview: preview ? 'true' : 'false' },
       responseType: 'blob'
     });
   }
@@ -372,13 +371,34 @@ getStudentBalance(studentId: string): Observable<any> {
     return this.http.get<{ sumPaid: number; sumBalance: number; count: number }>(`${this.apiUrl}/finance/audit/invoices/summary`, { params });
   }
 
-  /** Cash receipts PDF: preview (inline) or download (attachment). */
-  getCashReceiptsPDF(term?: string, download = false): Observable<Blob> {
-    let params: any = {};
+  /** Cash receipts report HTML: preview (inline) or download (attachment). */
+  getCashReceiptsPDF(term?: string, preview = false): Observable<Blob> {
+    const params: any = { preview: preview ? 'true' : 'false' };
     if (term && term.trim()) params.term = term.trim();
-    if (download) params.download = '1';
     return this.http.get(`${this.apiUrl}/finance/cash-receipts/pdf`, {
       params,
+      responseType: 'blob'
+    });
+  }
+
+  /** Fees collection report HTML with optional filtered rows (respects on-screen filters). */
+  postCashReceiptsReportHtml(
+    body: {
+      term?: string;
+      rows?: Array<{
+        paymentDate?: string;
+        receiptNumber?: string;
+        invoiceNumber?: string;
+        studentName?: string;
+        studentNumber?: string;
+        amountPaid?: number;
+        paymentMethod?: string;
+      }>;
+    },
+    preview = true
+  ): Observable<Blob> {
+    return this.http.post(`${this.apiUrl}/finance/cash-receipts/report-html`, body, {
+      params: { preview: preview ? 'true' : 'false' },
       responseType: 'blob'
     });
   }
@@ -557,6 +577,8 @@ getStudentBalance(studentId: string): Observable<any> {
     amount: number;
     paymentMethod?: string;
     reference?: string;
+    studentId?: string;
+    invoiceId?: string;
   }): Observable<any> {
     return this.http.post(`${this.apiUrl}/finance/cashbook`, body);
   }
