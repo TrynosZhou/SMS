@@ -336,8 +336,8 @@
 
           <div class="fb-hero-stats fb-hero-stats--compact">
             <article class="fb-stat"><span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(statement.summary.totalInvoiced) }}</span><span class="fb-stat__label">Invoiced</span></article>
-            <article class="fb-stat fb-stat--mint"><span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(statement.summary.totalPaid) }}</span><span class="fb-stat__label">Paid</span></article>
-            <article class="fb-stat fb-stat--rose"><span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(statement.summary.balance) }}</span><span class="fb-stat__label">Balance</span></article>
+            <article class="fb-stat fb-stat--mint fb-stat--align-right"><span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(statement.summary.totalPaid) }}</span><span class="fb-stat__label">Paid</span></article>
+            <article class="fb-stat fb-stat--rose fb-stat--align-right"><span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(statement.summary.balance) }}</span><span class="fb-stat__label">Balance</span></article>
           </div>
 
           <h3>Ledger</h3>

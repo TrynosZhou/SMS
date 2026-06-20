@@ -102,13 +102,19 @@
   margin-top: 1rem;
 }
 
-.fb-hero-stats--compact { margin-top: 0; margin-bottom: 1rem; }
+.fb-hero-stats--compact {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
 
 .fb-stat {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   padding: 0.85rem 1rem;
+  min-width: 0;
 }
 
 .fb-panel .fb-stat {
@@ -117,7 +123,27 @@
   color: #0f172a;
 }
 
-.fb-stat__value { display: block; font-size: 1.25rem; font-weight: 700; }
+.fb-stat__value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  max-width: 100%;
+}
+
+.fb-hero-stats--compact .fb-stat {
+  padding: 0.75rem 0.7rem;
+}
+
+.fb-hero-stats--compact .fb-stat__value {
+  font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+}
+
+.fb-stat--align-right {
+  text-align: right;
+}
+
 .fb-stat__label { display: block; font-size: 0.78rem; opacity: 0.85; margin-top: 0.15rem; }
 .fb-stat--mint .fb-stat__value { color: #059669; }
 .fb-stat--rose .fb-stat__value { color: #e11d48; }
@@ -1551,6 +1577,7 @@
 
 @media (max-width: 900px) {
   .fb-hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fb-hero-stats--compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .fb-grid-2 { grid-template-columns: 1fr; }
   .fb-form { grid-template-columns: 1fr; }
 }
@@ -1558,6 +1585,7 @@
 @media (max-width: 560px) {
   .fb-page { padding: 1rem; }
   .fb-hero-stats { grid-template-columns: 1fr; }
+  .fb-hero-stats--compact { grid-template-columns: 1fr; }
   .fb-modal-field-grid { grid-template-columns: 1fr; }
   .fb-modal-type-pill { min-width: 100%; }
   .fb-cb-student-selected {
