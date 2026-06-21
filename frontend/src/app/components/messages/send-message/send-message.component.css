@@ -170,22 +170,26 @@
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 10px;
   margin-bottom: 14px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
 }
 
 .ms-stat {
   position: relative;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 12px 14px 12px 38px;
+  color: #000;
 }
 
-.ms-stat__icon { position: absolute; left: 12px; top: 14px; font-size: 0.85rem; opacity: 0.75; }
-.ms-stat__value { display: block; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.ms-stat__label { display: block; font-size: 0.72rem; opacity: 0.85; margin-top: 2px; }
-.ms-stat--sky .ms-stat__value { color: #bae6fd; }
-.ms-stat--amber .ms-stat__value { color: #fde68a; }
-.ms-stat--mint .ms-stat__value { color: #bbf7d0; }
+.ms-stat__icon { position: absolute; left: 12px; top: 14px; font-size: 0.85rem; opacity: 1; }
+.ms-stat__value { display: block; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; color: #000; }
+.ms-stat__label { display: block; font-size: 0.72rem; margin-top: 2px; color: #000; font-weight: 700; }
+.ms-stat--sky .ms-stat__value,
+.ms-stat--amber .ms-stat__value,
+.ms-stat--mint .ms-stat__value { color: #000; }
 
 .ms-steps {
   display: flex;

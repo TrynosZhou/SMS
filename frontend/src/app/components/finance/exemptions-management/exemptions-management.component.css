@@ -127,6 +127,9 @@
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   margin-top: 16px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
 }
 
 .fx-hero-stats--skeleton { min-height: 3.5rem; }
@@ -134,18 +137,19 @@
 .fx-skeleton {
   height: 3rem;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.15);
+  background: #e2e8f0;
   animation: fx-pulse 1.2s ease-in-out infinite;
 }
 
 @keyframes fx-pulse { 50% { opacity: 0.5; } }
 
 .fx-stat {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 10px 12px;
   text-align: center;
+  color: #000;
 }
 
 .fx-stat__value {
@@ -153,7 +157,7 @@
   font-size: 1.05rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #facc15;
+  color: #000;
 }
 
 .fx-stat__label {
@@ -161,12 +165,13 @@
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.75);
+  color: #000;
+  font-weight: 700;
   margin-top: 2px;
 }
 
-.fx-stat--mint .fx-stat__value { color: #bbf7d0; }
-.fx-stat--accent .fx-stat__value { color: #fde68a; }
+.fx-stat--mint .fx-stat__value,
+.fx-stat--accent .fx-stat__value { color: #000; }
 
 .fx-panel {
   background: #fff;

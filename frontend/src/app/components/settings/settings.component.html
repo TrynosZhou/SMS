@@ -32,21 +32,49 @@
   </div>
 
   <div class="system-settings-page system-settings-page--modern" *ngIf="settings.studentIdPrefix">
-    <header class="system-settings-hero" *ngIf="showSchoolSections()">
+    <header class="system-settings-hero system-settings-hero--purple" *ngIf="showSchoolSections()">
       <div class="system-settings-hero__main">
-        <span class="system-settings-hero__eyebrow">Administration</span>
-        <h1>System Settings</h1>
-        <p class="system-settings-subtitle">Configure school profile, fees, email, notifications, access control, and security in one place.</p>
+        <div class="system-settings-hero__left">
+          <span class="system-settings-hero__icon" aria-hidden="true">{{ getActiveTabConfig()?.icon || '⚙️' }}</span>
+          <div>
+            <span class="system-settings-hero__eyebrow">{{ getActiveTabConfig()?.label || 'Administration' }}</span>
+            <h1>System Settings</h1>
+            <p class="system-settings-subtitle">{{ getActiveTabConfig()?.description || 'Configure school profile, fees, email, notifications, access control, and security in one place.' }}</p>
+          </div>
+        </div>
+        <div class="system-settings-hero__aside">
+          <span class="system-settings-meta-pill" *ngIf="settingsLastSaved">
+            <span class="system-settings-meta-pill__label">Last saved</span>
+            {{ formatSettingsSavedAt() }}
+          </span>
+          <span class="system-settings-meta-pill system-settings-meta-pill--status" [class.is-saving]="loading || savingNotifications || savingSecurity">
+            <span class="system-settings-meta-pill__dot"></span>
+            {{ (loading || savingNotifications || savingSecurity) ? 'Saving…' : 'Ready' }}
+          </span>
+        </div>
+        <div class="system-settings-hero__actions">
+          <button type="button" class="system-settings-hero-refresh" (click)="refreshSettings()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+            <span [class.ss-spin]="loading">↻</span>
+          </button>
+        </div>
       </div>
-      <div class="system-settings-hero__aside">
-        <span class="system-settings-meta-pill" *ngIf="settingsLastSaved">
-          <span class="system-settings-meta-pill__label">Last saved</span>
-          {{ formatSettingsSavedAt() }}
-        </span>
-        <span class="system-settings-meta-pill system-settings-meta-pill--status" [class.is-saving]="loading || savingNotifications || savingSecurity">
-          <span class="system-settings-meta-pill__dot"></span>
-          {{ (loading || savingNotifications || savingSecurity) ? 'Saving…' : 'Ready' }}
-        </span>
+
+      <nav class="ss-cross-links" aria-label="Related pages" *ngIf="activeTabCrossLinks.length">
+        <a *ngFor="let link of activeTabCrossLinks" [routerLink]="link.route">{{ link.label }}</a>
+      </nav>
+
+      <div class="ss-hero-stats" *ngIf="activeTabStats.length">
+        <article class="ss-stat" *ngFor="let stat of activeTabStats">
+          <span class="ss-stat__value">{{ stat.value }}</span>
+          <span class="ss-stat__label">{{ stat.label }}</span>
+        </article>
+      </div>
+
+      <div class="ss-steps" *ngIf="activeTabSteps.length" aria-label="Progress">
+        <ng-container *ngFor="let step of activeTabSteps; let last = last">
+          <span class="ss-step" [class.ss-step--active]="step.active"><strong>{{ step.num }}</strong> {{ step.label }}</span>
+          <span class="ss-step-arrow" *ngIf="!last">→</span>
+        </ng-container>
       </div>
     </header>
 
@@ -81,6 +109,7 @@
           <p>{{ activeTabCfg.description }}</p>
         </div>
         <span class="system-settings-tab-intro__badge" *ngIf="activeTabCfg.dedicatedSave">Own save action</span>
+        <span class="system-settings-tab-intro__badge system-settings-tab-intro__badge--hint" *ngIf="!activeTabCfg.dedicatedSave">Use Save Settings below</span>
       </div>
     </div>
 
@@ -90,7 +119,7 @@
         [attr.disabled]="isDemoUser() ? true : null"
         [class.demo-readonly]="isDemoUser()">
       <!-- Student ID Prefix -->
-      <div class="form-section tab-panel" *ngIf="isTab('student-id-prefix')">
+      <div class="form-section tab-panel ss-panel" *ngIf="isTab('student-id-prefix')">
         <h2 class="tab-panel-title">Student ID Prefix</h2>
         <p class="tab-panel-desc">Configure how student identification numbers are generated.</p>
         <div class="form-group">
@@ -101,7 +130,7 @@
       </div>
 
       <!-- Fees Settings -->
-      <div class="form-section tab-panel" *ngIf="isTab('school-settings')">
+      <div class="form-section tab-panel ss-panel" *ngIf="isTab('school-settings')">
         <h2 class="tab-panel-title">Fees Settings</h2>
         <p class="tab-panel-desc">Fees, payroll, uniforms, and payment details.</p>
         <div class="form-group">
@@ -184,12 +213,12 @@
 
         <div class="form-group">
           <label>Other Fees</label>
-          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-            <input type="text" [(ngModel)]="newFeeName" name="newFeeName" placeholder="Fee Name" style="flex: 1;">
-            <input type="number" [(ngModel)]="newFeeAmount" name="newFeeAmount" placeholder="Amount" min="0" step="0.01" style="width: 150px;">
+          <div class="ss-inline-row">
+            <input type="text" [(ngModel)]="newFeeName" name="newFeeName" placeholder="Fee Name" class="ss-inline-row__grow">
+            <input type="number" [(ngModel)]="newFeeAmount" name="newFeeAmount" placeholder="Amount" min="0" step="0.01" class="ss-inline-row__amount">
             <button type="button" class="btn btn-secondary" (click)="addOtherFee()">Add</button>
           </div>
-          <div *ngFor="let fee of settings.feesSettings.otherFees; let i = index" style="display: flex; justify-content: space-between; align-items: center; padding: 5px; background: #f5f5f5; margin-bottom: 5px;">
+          <div *ngFor="let fee of settings.feesSettings.otherFees; let i = index" class="ss-list-item">
             <span>{{ fee.name }}: {{ fee.amount | number:'1.2-2' }}</span>
             <button type="button" class="btn btn-danger btn-sm" (click)="removeOtherFee(i)">Remove</button>
           </div>
@@ -197,50 +226,50 @@
       </div>
 
       <!-- Payroll: Loan interest & Banks (admin/superadmin only) -->
-      <div class="form-section" *ngIf="isTab('school-settings') && (authService.hasRole('admin') || authService.hasRole('superadmin'))">
-        <h2>💰 Payroll — Loan Interest & Banks</h2>
-        <p class="section-description" style="color: #6c757d; margin-bottom: 16px;">
+      <div class="form-section ss-sub-panel" *ngIf="isTab('school-settings') && (authService.hasRole('admin') || authService.hasRole('superadmin'))">
+        <h2 class="ss-sub-panel__title">Payroll — Loan interest &amp; banks</h2>
+        <p class="ss-sub-panel__desc">
           Configure interest rates for staff loans (repayable in 1, 2, or 3 months) and the list of banks used for salary deposits.
         </p>
         <div class="form-group">
           <label>Loan interest — 1 month (%)</label>
-          <input type="number" [(ngModel)]="settings.payrollSettings.loanInterestRate1Month" name="loanRate1" min="0" step="0.01" style="max-width: 120px;">
+          <input type="number" [(ngModel)]="settings.payrollSettings.loanInterestRate1Month" name="loanRate1" min="0" step="0.01" class="ss-input-narrow">
           <small>Interest rate when loan is cleared in one month</small>
         </div>
         <div class="form-group">
           <label>Loan interest — 2 months (%)</label>
-          <input type="number" [(ngModel)]="settings.payrollSettings.loanInterestRate2Months" name="loanRate2" min="0" step="0.01" style="max-width: 120px;">
+          <input type="number" [(ngModel)]="settings.payrollSettings.loanInterestRate2Months" name="loanRate2" min="0" step="0.01" class="ss-input-narrow">
           <small>Interest rate when loan is cleared in two months</small>
         </div>
         <div class="form-group">
           <label>Loan interest — 3 months (%)</label>
-          <input type="number" [(ngModel)]="settings.payrollSettings.loanInterestRate3Months" name="loanRate3" min="0" step="0.01" style="max-width: 120px;">
+          <input type="number" [(ngModel)]="settings.payrollSettings.loanInterestRate3Months" name="loanRate3" min="0" step="0.01" class="ss-input-narrow">
           <small>Interest rate when loan is cleared in three months</small>
         </div>
-        <div class="form-group" style="margin-top: 20px;">
+        <div class="form-group ss-sub-panel__section">
           <label>Banks (for salary deposit)</label>
-          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-            <input type="text" [(ngModel)]="newBankName" name="newBankName" placeholder="Bank name" style="flex: 1; max-width: 300px;">
+          <div class="ss-inline-row">
+            <input type="text" [(ngModel)]="newBankName" name="newBankName" placeholder="Bank name" class="ss-inline-row__grow ss-inline-row__grow--md">
             <button type="button" class="btn btn-secondary" (click)="addBank()">Add bank</button>
           </div>
-          <div *ngIf="settings.payrollSettings?.banks?.length > 0" style="display: flex; flex-wrap: wrap; gap: 8px;">
-            <div *ngFor="let bank of settings.payrollSettings.banks; let i = index" style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+          <div *ngIf="settings.payrollSettings?.banks?.length > 0" class="ss-chip-wrap">
+            <div *ngFor="let bank of settings.payrollSettings.banks; let i = index" class="ss-chip">
               <span>{{ bank.name }}</span>
               <button type="button" class="btn btn-danger btn-sm" (click)="removeBank(i)">Remove</button>
             </div>
           </div>
-          <div *ngIf="!settings.payrollSettings?.banks?.length" class="alert alert-info" style="margin-top: 8px;">No banks added. Add banks that will be used for salary deposits.</div>
+          <div *ngIf="!settings.payrollSettings?.banks?.length" class="ss-info-callout">No banks added. Add banks that will be used for salary deposits.</div>
         </div>
       </div>
 
       <!-- Uniform Items -->
-      <div class="form-section" *ngIf="isTab('school-settings')">
-        <h2>Uniform Items</h2>
-        <p class="section-description">Manage uniform items and pricing. Items listed here will be available when creating student invoices.</p>
-        <div style="margin-bottom: 15px;">
-          <button type="button" class="btn btn-secondary" (click)="openUniformItemModal()">➕ Add Uniform Item</button>
+      <div class="form-section ss-sub-panel" *ngIf="isTab('school-settings')">
+        <h2 class="ss-sub-panel__title">Uniform items</h2>
+        <p class="ss-sub-panel__desc">Manage uniform items and pricing. Items listed here will be available when creating student invoices.</p>
+        <div class="ss-sub-panel__toolbar">
+          <button type="button" class="btn btn-secondary" (click)="openUniformItemModal()">+ Add uniform item</button>
         </div>
-        <div *ngIf="uniformItems.length === 0" class="alert alert-info" style="margin-bottom: 15px;">
+        <div *ngIf="uniformItems.length === 0" class="ss-info-callout">
           No uniform items configured yet. Click "Add Uniform Item" to create one.
         </div>
         <div *ngIf="uniformItems.length > 0" class="uniform-table-wrapper">
@@ -277,7 +306,7 @@
       </div>
 
       <!-- School Information tab -->
-      <div class="tab-panel" *ngIf="isTab('school-information')">
+      <div class="tab-panel ss-panel" *ngIf="isTab('school-information')">
         <h2 class="tab-panel-title">School Details</h2>
         <p class="tab-panel-desc">Configure your school's basic information.</p>
         <div class="outlined-field outlined-field--full">
@@ -335,7 +364,7 @@
       </div>
 
       <!-- General tab -->
-      <div class="tab-panel" *ngIf="isTab('general')">
+      <div class="tab-panel ss-panel" *ngIf="isTab('general')">
         <h2 class="tab-panel-title">General</h2>
         <p class="tab-panel-desc">Currency, leadership, and school identity details.</p>
         <div class="form-group">
@@ -354,7 +383,7 @@
       </div>
 
       <!-- Email Settings tab -->
-      <div class="tab-panel" *ngIf="isTab('email-settings')">
+      <div class="tab-panel ss-panel" *ngIf="isTab('email-settings')">
         <h2 class="tab-panel-title">Email Configuration</h2>
         <p class="tab-panel-desc">Configure SMTP settings for outgoing emails.</p>
         <div class="outlined-field-row">
@@ -390,7 +419,7 @@
       </div>
 
       <!-- Notifications tab -->
-      <div class="tab-panel notification-settings-panel" *ngIf="isTab('notifications')">
+      <div class="tab-panel notification-settings-panel ss-panel" *ngIf="isTab('notifications')">
         <div class="notification-card">
           <h3 class="notification-card-title">WhatsApp Notifications</h3>
           <p class="notification-card-intro">
@@ -724,7 +753,7 @@
       </div>
 
       <!-- Security Settings (password policy) -->
-      <div class="tab-panel security-settings-panel" *ngIf="isTab('security')">
+      <div class="tab-panel security-settings-panel ss-panel" *ngIf="isTab('security')">
         <h2 class="tab-panel-title">Security Settings</h2>
         <p class="tab-panel-desc">Manage login policies, password requirements, and session controls.</p>
 
@@ -852,98 +881,114 @@
       </fieldset>
 
       <!-- Module Access Control (RBAC outside disabled fieldset so Save permissions works) -->
-      <div class="form-section tab-panel" *ngIf="isTab('module-access')">
+      <div class="form-section tab-panel tab-panel--module-access" *ngIf="isTab('module-access')">
         <app-rbac-management *ngIf="authService.isAdmin()"></app-rbac-management>
-        <div class="rbac-legacy-note" *ngIf="!authService.isAdmin()">
+        <div class="ma-panel ma-panel--notice" *ngIf="!authService.isAdmin()">
+          <span class="ma-empty__icon" aria-hidden="true">🔒</span>
+          <h3>Administrator access required</h3>
           <p>Only administrators can manage permissions and roles.</p>
         </div>
-
-        <hr class="rbac-divider" *ngIf="authService.isAdmin()" />
 
         <fieldset
           [attr.disabled]="isDemoUser() ? true : null"
           [class.demo-readonly]="isDemoUser()">
-        <!-- Head Teacher (Universal Teacher Account) — legacy quick toggles; save via main Save Settings -->
-        <div class="module-access-group universal-teacher-group">
-          <h3>👥 Head Teacher</h3>
-          <p class="section-description" style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
-            A shared teacher account that all teachers can use to test the system. Enable below and create the account in Admin → Manage Accounts. You can restrict which modules this account can access.
-          </p>
-          <div class="form-group checkbox-inline" style="margin-bottom: 12px;">
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.universalTeacherEnabled" name="universalTeacherEnabled">
-              <span>Enable Head Teacher (allow creating and using the shared teacher account)</span>
-            </label>
-          </div>
-          <div class="checkbox-group" *ngIf="settings.universalTeacherEnabled && settings.moduleAccess?.universalTeacher">
-            <!-- Existing high-level module toggles -->
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.students" name="universalTeacherStudents">
-              <span>Students</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.classes" name="universalTeacherClasses">
-              <span>Classes</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.subjects" name="universalTeacherSubjects">
-              <span>Subjects</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.exams" name="universalTeacherExams">
-              <span>Exams</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.reportCards" name="universalTeacherReportCards">
-              <span>Report Cards</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.finance" name="universalTeacherFinance">
-              <span>Finance</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.settings" name="universalTeacherSettings">
-              <span>Settings</span>
-            </label>
+        <section class="ma-panel ma-panel--head-teacher" *ngIf="authService.isAdmin()">
+          <div class="ma-panel__head">
+            <div>
+              <h2 class="ma-panel__title">Head Teacher account</h2>
+              <p class="ma-panel__intro">
+                A shared teacher account that staff can use to test the system. Enable below and create the account in
+                <button type="button" class="ma-inline-link" (click)="openAdvancedManagement()">Advanced accounts</button>.
+                Restrict which modules this account can access.
+              </p>
+            </div>
+            <span class="ma-status-pill" [class.ma-status-pill--on]="settings.universalTeacherEnabled">
+              {{ settings.universalTeacherEnabled ? 'Enabled' : 'Disabled' }}
+            </span>
           </div>
 
-          <!-- Per-module manager access for Universal Teacher -->
-          <div class="checkbox-group" *ngIf="settings.universalTeacherEnabled && settings.moduleAccess?.universalTeacher" style="margin-top: 10px; border-top: 1px solid #e0e0e0; padding-top: 8px;">
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.subjectManager" name="universalTeacherSubjectManager">
-              <span>Subject Manager</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.studentManager" name="universalTeacherStudentManager">
-              <span>Student Manager</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.examManager" name="universalTeacherExamManager">
-              <span>Exam Manager</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.logisticsManager" name="universalTeacherLogisticsManager">
-              <span>Financial Reports</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.classManager" name="universalTeacherClassManager">
-              <span>Class Manager</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.teacherManager" name="universalTeacherTeacherManager">
-              <span>Teacher Manager</span>
-            </label>
+          <label class="ma-toggle-card">
+            <input type="checkbox" [(ngModel)]="settings.universalTeacherEnabled" name="universalTeacherEnabled">
+            <span class="ma-toggle-card__body">
+              <strong>Enable Head Teacher</strong>
+              <small>Allow creating and using the shared teacher account</small>
+            </span>
+          </label>
+
+          <div class="ma-module-grid" *ngIf="settings.universalTeacherEnabled && settings.moduleAccess?.universalTeacher">
+            <p class="ma-subsection-title">Core modules</p>
+            <div class="ma-check-grid">
+              <label class="ma-check">
+                <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.students" name="universalTeacherStudents">
+                <span>Students</span>
+              </label>
+              <label class="ma-check">
+                <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.classes" name="universalTeacherClasses">
+                <span>Classes</span>
+              </label>
+              <label class="ma-check">
+                <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.subjects" name="universalTeacherSubjects">
+                <span>Subjects</span>
+              </label>
+              <label class="ma-check">
+                <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.exams" name="universalTeacherExams">
+                <span>Exams</span>
+              </label>
+              <label class="ma-check">
+                <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.reportCards" name="universalTeacherReportCards">
+                <span>Report cards</span>
+              </label>
+              <label class="ma-check">
+                <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.finance" name="universalTeacherFinance">
+                <span>Finance</span>
+              </label>
+              <label class="ma-check">
+                <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.settings" name="universalTeacherSettings">
+                <span>Settings</span>
+              </label>
+            </div>
+
+            <p class="ma-subsection-title">Manager access</p>
+            <div class="ma-check-grid">
+              <label class="ma-check">
+                <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.subjectManager" name="universalTeacherSubjectManager">
+                <span>Subject manager</span>
+              </label>
+              <label class="ma-check">
+                <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.studentManager" name="universalTeacherStudentManager">
+                <span>Student manager</span>
+              </label>
+              <label class="ma-check">
+                <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.examManager" name="universalTeacherExamManager">
+                <span>Exam manager</span>
+              </label>
+              <label class="ma-check">
+                <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.logisticsManager" name="universalTeacherLogisticsManager">
+                <span>Financial reports</span>
+              </label>
+              <label class="ma-check">
+                <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.classManager" name="universalTeacherClassManager">
+                <span>Class manager</span>
+              </label>
+              <label class="ma-check">
+                <input type="checkbox" [(ngModel)]="settings.moduleAccess.universalTeacher.teacherManager" name="universalTeacherTeacherManager">
+                <span>Teacher manager</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+      <section class="ma-panel ma-panel--danger" *ngIf="authService.isAdmin() && !isDemoUser()">
+        <div class="ma-panel__head">
+          <div>
+            <h2 class="ma-panel__title ma-panel__title--danger">Danger zone</h2>
+            <p class="ma-panel__intro">Permanently wipe operational school data. Admin accounts and core settings are preserved.</p>
           </div>
         </div>
 
-      <!-- Danger Zone: Reset System -->
-      <div class="form-section" *ngIf="isTab('module-access') && authService.isAdmin() && !isDemoUser()">
-        <h2 style="color: #c53030;">Danger Zone: Reset System / Wipe Database</h2>
-        <div class="alert alert-error" style="margin-top: 10px; padding: 12px; background: #fff5f5; border-left: 4px solid #c53030; color: #742a2a;">
-          <p style="margin: 0 0 6px 0;">
-            This operation will permanently delete:
-          </p>
-          <ul style="margin: 0 0 6px 18px; padding: 0;">
+        <div class="ma-danger-callout">
+          <p><strong>This operation will permanently delete:</strong></p>
+          <ul>
             <li>All students, parents and their links</li>
             <li>All invoices, payments, uniform invoice items and balances</li>
             <li>All marks, report card remarks, attendance and record books</li>
@@ -951,29 +996,29 @@
             <li>All messages and student transfer records</li>
             <li>All non-admin user accounts (teachers, parents, students, demo users)</li>
           </ul>
-          <p style="margin: 0;">
-            Admin and SuperAdmin accounts plus core system settings will be preserved so you can log in and configure real production data.
-          </p>
+          <p>Admin and SuperAdmin accounts plus core system settings will be preserved so you can log in and configure production data.</p>
         </div>
-        <div style="margin-top: 12px;">
-          <div class="form-group" style="margin-bottom: 10px;">
-            <label style="font-weight: 600; color: #742a2a;">Type RESET to confirm *</label>
+
+        <div class="ma-danger-form">
+          <div class="ma-field">
+            <label for="resetConfirmText">Type RESET to confirm <span class="ma-required">*</span></label>
             <input
+              id="resetConfirmText"
               type="text"
+              class="ma-input"
               [(ngModel)]="resetConfirmText"
               name="resetConfirmText"
-              placeholder="Type RESET to enable the button"
-              style="max-width: 260px;">
+              placeholder="Type RESET to enable the button">
           </div>
           <button
             type="button"
-            class="btn btn-danger"
+            class="ma-btn ma-btn--danger"
             (click)="resetSystemData()"
-            [disabled]="resettingSystem">
-            {{ resettingSystem ? 'Resetting system...' : '🧨 Reset System / Wipe Database' }}
+            [disabled]="resettingSystem || resetConfirmText !== 'RESET'">
+            {{ resettingSystem ? 'Resetting system…' : 'Reset system / wipe database' }}
           </button>
         </div>
-      </div>
+      </section>
         </fieldset>
       </div>
 

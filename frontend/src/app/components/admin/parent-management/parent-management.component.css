@@ -108,8 +108,12 @@
 
 .parents-hero__stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
 }
 
 .parents-hero__stats--skeleton {
@@ -117,40 +121,33 @@
 }
 
 .parents-stat {
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 0.65rem 0.85rem;
   text-align: center;
+  color: #000;
 }
 
-.parents-stat--warn .parents-stat__value {
-  color: #fde68a;
-}
-
-.parents-stat:nth-child(2) .parents-stat__value {
-  color: #a7f3d0;
-}
-
-.parents-stat:nth-child(4) .parents-stat__value {
-  color: #7dd3fc;
-}
-
-.parents-stat:nth-child(5) .parents-stat__value {
-  color: #fbcfe8;
-}
+.parents-stat--warn .parents-stat__value,
+.parents-stat:nth-child(2) .parents-stat__value,
+.parents-stat:nth-child(4) .parents-stat__value,
+.parents-stat:nth-child(5) .parents-stat__value { color: #000; opacity: 1; }
 
 .parents-stat__value {
   display: block;
   font-size: 1.35rem;
   font-weight: 700;
   line-height: 1.2;
+  color: #000;
+  font-variant-numeric: tabular-nums;
 }
 
 .parents-stat__label {
   display: block;
   font-size: 0.7rem;
-  opacity: 0.88;
+  color: #000;
+  font-weight: 700;
   margin-top: 0.15rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;

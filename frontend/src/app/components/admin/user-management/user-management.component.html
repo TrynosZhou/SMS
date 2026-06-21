@@ -1,57 +1,147 @@
 <div class="um-page">
-  <div class="alert alert-success um-alert" *ngIf="success">{{ success }}</div>
-  <div class="alert alert-error um-alert" *ngIf="error">{{ error }}</div>
+  <div class="um-toast-stack" *ngIf="success || error">
+    <div class="um-toast um-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="um-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+    </div>
+    <div class="um-toast um-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="um-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+  </div>
 
-  <!-- Page header card -->
-  <div class="um-card um-header-card">
-    <div class="um-header-left">
-      <span class="um-header-icon" aria-hidden="true">👥</span>
-      <div>
-        <h1>User Management</h1>
-        <p>Manage user accounts and permissions</p>
+  <header class="um-hero">
+    <div class="um-hero__main">
+      <div class="um-hero-left">
+        <span class="um-hero-icon" aria-hidden="true">👥</span>
+        <div>
+          <span class="um-hero-eyebrow">System Admin</span>
+          <h1>User Management</h1>
+          <p class="um-hero-sub">Manage user accounts, roles, and portal access — reset passwords, unlock accounts, and create logins.</p>
+        </div>
+      </div>
+      <aside class="um-hero-aside">
+        <span class="um-hero-badge">{{ dashboardStats.showing }} showing</span>
+        <span class="um-hero-badge um-hero-badge--muted" *ngIf="hasActiveFilters()">Filtered</span>
+      </aside>
+      <div class="um-hero__actions">
+        <button type="button" class="um-hero-refresh" (click)="refreshUsers()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <button type="button" class="um-hero-btn um-hero-btn--white" (click)="goToSystemActivity()">System activity</button>
+        <button type="button" class="um-hero-btn um-hero-btn--accent" (click)="openAddUser()">+ Add user</button>
       </div>
     </div>
-    <div class="um-header-actions">
-      <button type="button" class="btn btn-add-user" (click)="openAddUser()">
-        <span class="btn-icon">+</span> Add User
-      </button>
-      <button type="button" class="btn btn-system-activity" (click)="goToSystemActivity()">
-        <span class="btn-icon">⚡</span> System Activity
-      </button>
-    </div>
-  </div>
 
-  <!-- Filters card -->
-  <div class="um-card um-filters-card">
-    <div class="um-search-wrap">
-      <span class="um-search-icon" aria-hidden="true">🔍</span>
-      <input
-        type="text"
-        [(ngModel)]="searchQuery"
-        (ngModelChange)="applyFilters()"
-        placeholder="Search users"
-        aria-label="Search users" />
-    </div>
-    <div class="um-filter-group">
-      <label for="um-role">ROLE</label>
-      <select id="um-role" [(ngModel)]="roleFilter" (ngModelChange)="applyFilters()">
-        <option *ngFor="let o of roleFilterOptions" [value]="o.value">{{ o.label }}</option>
-      </select>
-    </div>
-    <div class="um-filter-group">
-      <label for="um-status">STATUS</label>
-      <select id="um-status" [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()">
-        <option *ngFor="let o of statusFilterOptions" [value]="o.value">{{ o.label }}</option>
-      </select>
-    </div>
-    <button type="button" class="btn btn-clear-filters" (click)="clearFilters()">
-      <span aria-hidden="true">✕</span> Clear Filters
-    </button>
-  </div>
+    <nav class="um-cross-links" aria-label="Related admin pages">
+      <a routerLink="/user-log">System activity</a>
+      <a routerLink="/admin/manage-accounts">Advanced accounts</a>
+      <a routerLink="/settings">Settings</a>
+    </nav>
 
-  <!-- Table card -->
-  <div class="um-card um-table-card">
-    <div *ngIf="loading" class="um-loading">Loading users...</div>
+    <div class="um-hero-stats" *ngIf="!loading">
+      <article class="um-stat">
+        <span class="um-stat__value">{{ dashboardStats.total }}</span>
+        <span class="um-stat__label">Total</span>
+      </article>
+      <article class="um-stat">
+        <span class="um-stat__value">{{ dashboardStats.showing }}</span>
+        <span class="um-stat__label">Showing</span>
+      </article>
+      <article class="um-stat">
+        <span class="um-stat__value">{{ dashboardStats.active }}</span>
+        <span class="um-stat__label">Active</span>
+      </article>
+      <article class="um-stat">
+        <span class="um-stat__value">{{ dashboardStats.locked }}</span>
+        <span class="um-stat__label">Locked</span>
+      </article>
+      <article class="um-stat">
+        <span class="um-stat__value">{{ dashboardStats.staff }}</span>
+        <span class="um-stat__label">Staff</span>
+      </article>
+      <article class="um-stat">
+        <span class="um-stat__value">{{ dashboardStats.portal }}</span>
+        <span class="um-stat__label">Portal users</span>
+      </article>
+    </div>
+    <div class="um-hero-stats um-hero-stats--skeleton" *ngIf="loading">
+      <div class="um-skeleton" *ngFor="let i of skeletonRows"></div>
+    </div>
+
+    <div class="um-steps" aria-label="Progress">
+      <span class="um-step um-step--active" [class.um-step--done]="hasActiveFilters() || filteredUsers.length > 0">
+        <strong>1</strong> Search &amp; filter
+      </span>
+      <span class="um-step-arrow">→</span>
+      <span class="um-step" [class.um-step--active]="filteredUsers.length > 0">
+        <strong>2</strong> Review accounts
+      </span>
+      <span class="um-step-arrow">→</span>
+      <span class="um-step" [class.um-step--active]="showAddUserModal || showResetModal || showEditNameModal">
+        <strong>3</strong> Manage user
+      </span>
+    </div>
+  </header>
+
+  <section class="um-panel um-panel--filters">
+    <div class="um-panel__head um-panel__head--row">
+      <div>
+        <h2 class="um-panel__title">Search &amp; filters</h2>
+        <p class="um-panel__intro">Find users by name, username, email, or role. Filter by status.</p>
+      </div>
+      <button type="button" class="um-btn-clear" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
+    </div>
+
+    <div class="um-filters-row">
+      <div class="um-search-wrap">
+        <span class="um-search-icon" aria-hidden="true">🔍</span>
+        <input
+          type="search"
+          [(ngModel)]="searchQuery"
+          (ngModelChange)="applyFilters()"
+          placeholder="Search users…"
+          aria-label="Search users" />
+      </div>
+      <div class="um-field">
+        <label for="um-role">Role</label>
+        <select id="um-role" class="um-select" [(ngModel)]="roleFilter" (ngModelChange)="applyFilters()">
+          <option *ngFor="let o of roleFilterOptions" [value]="o.value">{{ o.label }}</option>
+        </select>
+      </div>
+      <div class="um-field">
+        <label for="um-status">Status</label>
+        <select id="um-status" class="um-select" [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()">
+          <option *ngFor="let o of statusFilterOptions" [value]="o.value">{{ o.label }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="um-chips">
+      <button
+        type="button"
+        class="um-chip"
+        *ngFor="let chip of statusChips"
+        [class.um-chip--active]="statusFilter === chip.id"
+        [class.um-chip--rose]="chip.id === 'Locked'"
+        (click)="setStatusFilter(chip.id)">
+        {{ chip.label }}<span class="um-chip__count"> ({{ chip.count }})</span>
+      </button>
+    </div>
+  </section>
+
+  <section class="um-panel um-panel--table">
+    <div class="um-panel__head um-panel__head--row">
+      <div>
+        <h2 class="um-panel__title">User accounts</h2>
+        <p class="um-panel__intro">{{ filteredUsers.length }} of {{ users.length }} accounts</p>
+      </div>
+    </div>
+
+    <div *ngIf="loading" class="um-loading">
+      <div class="um-spinner" aria-hidden="true"></div>
+      <p>Loading users…</p>
+    </div>
 
     <div class="um-table-wrap" *ngIf="!loading">
       <table class="um-table">
@@ -125,10 +215,10 @@
 
       <p class="um-empty" *ngIf="filteredUsers.length === 0">No users found.</p>
     </div>
-  </div>
+  </section>
 
   <p class="um-footer-link">
-    <button type="button" class="btn-link" (click)="openAdvancedManagement()">
+    <button type="button" class="um-link-btn" (click)="openAdvancedManagement()">
       Advanced account tools (teacher accounts, head teacher, bulk setup)
     </button>
   </p>

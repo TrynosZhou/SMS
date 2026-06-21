@@ -35,7 +35,7 @@
       <a routerLink="/payments/record">Record payment</a>
       <a routerLink="/invoices">Billing</a>
       <a routerLink="/outstanding-balance">Outstanding balances</a>
-      <a routerLink="/financial-reports/student-ledger">Student ledger</a>
+      <a [routerLink]="['/financial-reports/student-ledger']" [queryParams]="studentLedgerQueryParams">Student ledger</a>
     </nav>
 
     <div class="be-hero-stats">
@@ -286,7 +286,7 @@
               <span class="be-quick-link__icon" aria-hidden="true">📋</span>
               <span>View invoices</span>
             </a>
-            <a routerLink="/financial-reports/student-ledger" class="be-quick-link">
+            <a [routerLink]="['/financial-reports/student-ledger']" [queryParams]="studentLedgerQueryParams" class="be-quick-link">
               <span class="be-quick-link__icon" aria-hidden="true">📒</span>
               <span>Student ledger</span>
             </a>

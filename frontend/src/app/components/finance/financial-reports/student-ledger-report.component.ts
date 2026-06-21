@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, forkJoin, of } from 'rxjs';
 import { catchError, finalize, takeUntil } from 'rxjs/operators';
 import { FinanceService } from '../../../services/finance.service';
@@ -53,6 +53,7 @@ interface LedgerReport {
 })
 export class StudentLedgerReportComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+  private autoLoadFromRoute = false;
 
   loading = false;
   loadingTerms = false;
@@ -85,12 +86,19 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
     private financeService: FinanceService,
     private settingsService: SettingsService,
     private router: Router,
+    private route: ActivatedRoute,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.bootstrap();
-    activatePageLoad(this.router, this.destroy$, '/financial-reports/student-ledger', () => this.bootstrap());
+    this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe((params) => {
+      this.applyRouteQueryParams(params as Record<string, string>);
+    });
+    activatePageLoad(this.router, this.destroy$, '/financial-reports/student-ledger', () => {
+      this.bootstrap();
+      this.applyRouteQueryParams(this.route.snapshot.queryParams as Record<string, string>);
+    });
   }
 
   ngOnDestroy(): void {
@@ -199,6 +207,8 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
             this.error =
               'No school terms found. Add terms under Academic Settings or create invoices for a term.';
           }
+
+          this.tryAutoLoadFromRoute();
         },
         error: () => {
           this.error = 'Could not load school terms. Configure terms under Academic Settings.';
@@ -297,6 +307,32 @@ export class StudentLedgerReportComponent implements OnInit, OnDestroy {
     this.needsSelection = false;
     this.matches = [];
     this.loadReport({ studentId });
+  }
+
+  private applyRouteQueryParams(params: Record<string, string>): void {
+    const studentId = String(params['studentId'] || '').trim();
+    const q = String(params['q'] || '').trim();
+    if (!studentId && !q) {
+      return;
+    }
+
+    if (q) {
+      this.searchQuery = q;
+    }
+
+    if (studentId) {
+      this.resolvedStudentId = studentId;
+      this.autoLoadFromRoute = true;
+      this.tryAutoLoadFromRoute();
+    }
+  }
+
+  private tryAutoLoadFromRoute(): void {
+    if (!this.autoLoadFromRoute || !this.resolvedStudentId || !this.selectedTermId || this.loadingTerms) {
+      return;
+    }
+    this.autoLoadFromRoute = false;
+    this.loadReport({ studentId: this.resolvedStudentId });
   }
 
   private loadReport(opts: { studentId?: string; q?: string }): void {

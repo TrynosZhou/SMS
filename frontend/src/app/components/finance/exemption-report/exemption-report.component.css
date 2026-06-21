@@ -148,16 +148,20 @@
   grid-template-columns: repeat(5, 1fr);
   gap: 10px;
   margin-top: 16px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
 }
 
 .er-hero-stats--skeleton { min-height: 3.5rem; }
 
 .er-stat {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 10px 12px;
   text-align: center;
+  color: #000;
 }
 
 .er-stat__value {
@@ -165,6 +169,7 @@
   font-size: 1.05rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  color: #000;
 }
 
 .er-stat__label {
@@ -172,25 +177,22 @@
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.75);
+  color: #000;
+  font-weight: 700;
   margin-top: 2px;
 }
 
-.er-stat--mint .er-stat__value { color: #bbf7d0; }
-.er-stat--amber .er-stat__value { color: #fde68a; }
+.er-stat--mint .er-stat__value,
+.er-stat--amber .er-stat__value { color: #000; }
 
 .er-skeleton {
   height: 3rem;
   border-radius: 10px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.08) 75%);
-  background-size: 200% 100%;
-  animation: er-shimmer 1.2s ease infinite;
+  background: #e2e8f0;
+  animation: er-pulse 1.2s ease-in-out infinite;
 }
 
-@keyframes er-shimmer {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
-}
+@keyframes er-pulse { 50% { opacity: 0.5; } }
 
 .er-panel {
   background: #fff;

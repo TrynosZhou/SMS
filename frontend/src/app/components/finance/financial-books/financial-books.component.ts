@@ -47,6 +47,61 @@ export class FinancialBooksComponent implements OnInit, OnDestroy {
   cashbookFromDraft = '';
   cashbookToDraft = '';
 
+  readonly skeletonSlots = [1, 2, 3, 4, 5];
+
+  get heroEyebrow(): string {
+    switch (this.activeTab()) {
+      case 'cashbook': return 'Cashbook';
+      case 'debtors': return 'Debtors';
+      case 'statements': return 'Statements';
+      default: return 'Finance';
+    }
+  }
+
+  get heroSubtitle(): string {
+    switch (this.activeTab()) {
+      case 'cashbook':
+        return 'Track receipts and payments with searchable, date-filtered cashbook entries.';
+      case 'debtors':
+        return 'Review outstanding balances, send reminders, and open student statements.';
+      case 'statements':
+        return 'View full student ledgers, invoices, and payment history with PDF export.';
+      default:
+        return 'Cashbook, debtors, collections, and student statements in one dashboard.';
+    }
+  }
+
+  get tabIntro(): { icon: string; title: string; description: string } | null {
+    switch (this.activeTab()) {
+      case 'overview':
+        return {
+          icon: '📊',
+          title: 'Overview',
+          description: 'Summary of aging, class debt, and recent payments.',
+        };
+      case 'cashbook':
+        return {
+          icon: '💵',
+          title: 'Cashbook',
+          description: 'Money in and out with date filters and table or card view.',
+        };
+      case 'debtors':
+        return {
+          icon: '⚠️',
+          title: 'Debtors',
+          description: 'Students with unpaid balances sorted by amount owed.',
+        };
+      case 'statements':
+        return {
+          icon: '📄',
+          title: 'Statements',
+          description: 'Per-student financial statement with ledger and PDF download.',
+        };
+      default:
+        return null;
+    }
+  }
+
   currencySymbol = '';
   lastLoadedAt: Date | null = null;
   success = '';

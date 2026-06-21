@@ -166,15 +166,19 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
 }
 
 .sl-stat {
   position: relative;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 12px 14px 12px 38px;
   overflow: hidden;
+  color: #000;
 }
 
 .sl-stat::before {
@@ -184,7 +188,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: rgba(255, 255, 255, 0.35);
+  background: #e2e8f0;
 }
 
 .sl-stat__icon {
@@ -192,7 +196,7 @@
   left: 12px;
   top: 14px;
   font-size: 0.85rem;
-  opacity: 0.75;
+  opacity: 1;
 }
 
 .sl-stat__value {
@@ -200,17 +204,19 @@
   font-size: 1.3rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+  color: #000;
 }
 
 .sl-stat__label {
   display: block;
   font-size: 0.75rem;
-  opacity: 0.85;
   margin-top: 2px;
+  color: #000;
+  font-weight: 700;
 }
 
-.sl-stat--mint .sl-stat__value { color: #a7f3d0; }
-.sl-stat--rose .sl-stat__value { color: #fecaca; }
+.sl-stat--mint .sl-stat__value,
+.sl-stat--rose .sl-stat__value { color: #000; }
 
 /* Panels */
 .sl-panel {

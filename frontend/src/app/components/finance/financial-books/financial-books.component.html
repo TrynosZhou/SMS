@@ -10,37 +10,47 @@
     </div>
   </div>
 
-  <header class="fb-hero" *ngIf="activeTab() === 'overview'">
+  <header class="fb-hero">
     <div class="fb-hero__main">
       <div class="fb-hero-left">
         <span class="fb-hero-icon" aria-hidden="true">📚</span>
         <div>
-          <span class="fb-hero-eyebrow">Finance</span>
+          <span class="fb-hero-eyebrow">{{ heroEyebrow }}</span>
           <h1>Financial Management</h1>
-          <p class="fb-hero-sub">Cashbook, debtors, collections, and student statements in one dashboard.</p>
-          <p class="fb-hero-meta" *ngIf="lastLoadedAt && !loadingKpis">
-            Last updated {{ lastLoadedAt | date : 'medium' }}
-          </p>
+          <p class="fb-hero-sub">{{ heroSubtitle }}</p>
         </div>
       </div>
+      <aside class="fb-hero-aside">
+        <span class="fb-hero-badge" *ngIf="lastLoadedAt && !loadingKpis">Updated {{ lastLoadedAt | date : 'shortTime' }}</span>
+        <span class="fb-hero-badge fb-hero-badge--muted" *ngIf="loadingKpis">Loading…</span>
+      </aside>
       <div class="fb-hero__actions">
-        <button type="button" class="fb-hero-btn fb-hero-btn--primary" (click)="goRecordPayment()">Record Payment</button>
+        <button type="button" class="fb-hero-btn fb-hero-btn--white" (click)="goRecordPayment()">Record payment</button>
+        <button type="button" class="fb-hero-btn fb-hero-btn--accent" (click)="openAddEntryModal()" *ngIf="canEditCashbook()">+ Add entry</button>
         <button type="button" class="fb-hero-refresh" (click)="refreshAll()" [disabled]="loadingKpis" title="Refresh" aria-label="Refresh">
           <span [class.spinning]="loadingKpis">↻</span>
         </button>
       </div>
     </div>
 
-    <div class="fb-hero-stats">
-      <article class="fb-stat fb-stat--mint">
+    <nav class="fb-cross-links" aria-label="Related finance pages">
+      <a routerLink="/invoices">Billing</a>
+      <a routerLink="/payments/record">Record payment</a>
+      <a routerLink="/financial-reports/fees-collection">Fee collection</a>
+      <a routerLink="/financial-reports/student-ledger">Student ledger</a>
+      <a routerLink="/financial-reports/aged-debtors">Debtor aging</a>
+    </nav>
+
+    <div class="fb-hero-stats" *ngIf="!loadingKpis">
+      <article class="fb-stat">
         <span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(balanceSheet.cashBalance) }}</span>
         <span class="fb-stat__label">Cash balance</span>
       </article>
-      <article class="fb-stat fb-stat--rose">
+      <article class="fb-stat">
         <span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(balanceSheet.totalDebtors) }}</span>
-        <span class="fb-stat__label">Total outstanding</span>
+        <span class="fb-stat__label">Outstanding</span>
       </article>
-      <article class="fb-stat fb-stat--accent">
+      <article class="fb-stat">
         <span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(balanceSheet.monthlyCollections) }}</span>
         <span class="fb-stat__label">Monthly collections</span>
       </article>
@@ -48,6 +58,31 @@
         <span class="fb-stat__value">{{ balanceSheet.debtorCount }}</span>
         <span class="fb-stat__label">Debtors</span>
       </article>
+      <article class="fb-stat" *ngIf="activeTab() === 'cashbook'">
+        <span class="fb-stat__value">{{ cashbookSummary.count }}</span>
+        <span class="fb-stat__label">Cashbook entries</span>
+      </article>
+      <article class="fb-stat" *ngIf="activeTab() === 'debtors'">
+        <span class="fb-stat__value">{{ filteredDebtors.length }}</span>
+        <span class="fb-stat__label">Showing</span>
+      </article>
+    </div>
+    <div class="fb-hero-stats fb-hero-stats--skeleton" *ngIf="loadingKpis">
+      <div class="fb-skeleton" *ngFor="let i of skeletonSlots"></div>
+    </div>
+
+    <div class="fb-steps" aria-label="Progress">
+      <span class="fb-step" [class.fb-step--active]="activeTab() === 'overview'" [class.fb-step--done]="activeTab() !== 'overview'">
+        <strong>1</strong> Overview
+      </span>
+      <span class="fb-step-arrow">→</span>
+      <span class="fb-step" [class.fb-step--active]="activeTab() === 'cashbook'" [class.fb-step--done]="activeTab() === 'debtors' || activeTab() === 'statements'">
+        <strong>2</strong> Cashbook
+      </span>
+      <span class="fb-step-arrow">→</span>
+      <span class="fb-step" [class.fb-step--active]="activeTab() === 'debtors' || activeTab() === 'statements'">
+        <strong>3</strong> Debtors &amp; statements
+      </span>
     </div>
   </header>
 
@@ -78,15 +113,22 @@
       <button type="button" class="fb-manage-fees" (click)="goManageFees()">Manage fees</button>
     </div>
 
-    <div class="fb-links" *ngIf="activeTab() === 'overview'">
-      <a routerLink="/invoices">Billing</a>
-      <a routerLink="/financial-reports/fees-collection">Fee Collection</a>
-      <a routerLink="/financial-reports/student-ledger">Student Ledger</a>
-      <a routerLink="/financial-reports/aged-debtors">Debtor Aging</a>
+    <div class="fb-tab-intro" *ngIf="tabIntro as intro">
+      <span class="fb-tab-intro__icon" aria-hidden="true">{{ intro.icon }}</span>
+      <div class="fb-tab-intro__text">
+        <strong>{{ intro.title }}</strong>
+        <p>{{ intro.description }}</p>
+      </div>
     </div>
 
   <!-- Overview -->
-  <section class="fb-panel" *ngIf="activeTab() === 'overview'">
+  <section class="fb-panel fb-panel--accent" *ngIf="activeTab() === 'overview'">
+    <div class="fb-panel__head">
+      <div>
+        <h2 class="fb-panel__title">Financial overview</h2>
+        <p class="fb-panel__intro">Debtors aging, class debt breakdown, and recent payment activity.</p>
+      </div>
+    </div>
     <div class="fb-panel__loading" *ngIf="loadingOverview">Loading overview…</div>
 
     <div class="fb-grid-2" *ngIf="!loadingOverview">
@@ -158,7 +200,13 @@
   </section>
 
   <!-- Cashbook -->
-  <section class="fb-panel fb-panel--cashbook" *ngIf="activeTab() === 'cashbook'">
+  <section class="fb-panel fb-panel--cashbook fb-panel--accent" *ngIf="activeTab() === 'cashbook'">
+    <div class="fb-panel__head">
+      <div>
+        <h2 class="fb-panel__title">Cashbook</h2>
+        <p class="fb-panel__intro">Track money in and out. Filter by date, search entries, or add a new transaction.</p>
+      </div>
+    </div>
     <div class="fb-cb-toolbar">
       <div class="fb-cb-dates">
         <label class="fb-cb-field">
@@ -271,11 +319,22 @@
   </section>
 
   <!-- Debtors -->
-  <section class="fb-panel" *ngIf="activeTab() === 'debtors'">
-    <div class="fb-filters">
-      <label class="fb-grow">Search debtors
-        <input type="search" placeholder="Name, ID, or class" (input)="onDebtorSearchInput($any($event.target).value)" />
-      </label>
+  <section class="fb-panel fb-panel--accent" *ngIf="activeTab() === 'debtors'">
+    <div class="fb-panel__head fb-panel__head--row">
+      <div>
+        <h2 class="fb-panel__title">Debtors</h2>
+        <p class="fb-panel__intro">Students with outstanding balances. Send reminders or open their statement.</p>
+      </div>
+      <button type="button" class="fb-link-btn fb-link-btn--action" (click)="sendRemindersToAllDebtors()" [disabled]="sendingReminders || !canEditCashbook() || !debtors.length">
+        {{ sendingReminders ? 'Sending…' : 'Send reminders' }}
+      </button>
+    </div>
+    <div class="fb-filters fb-filters--modern">
+      <div class="fb-search-wrap">
+        <span class="fb-search-icon" aria-hidden="true">🔍</span>
+        <input type="search" placeholder="Search by name, ID, or class…" (input)="onDebtorSearchInput($any($event.target).value)" />
+      </div>
+      <span class="fb-filter-meta">{{ filteredDebtors.length }} of {{ debtors.length }} debtors</span>
     </div>
     <div class="fb-panel__loading" *ngIf="loadingDebtors">Loading debtors…</div>
     <div class="fb-table-wrap" *ngIf="!loadingDebtors">
@@ -306,7 +365,13 @@
   </section>
 
   <!-- Statements -->
-  <section class="fb-panel" *ngIf="activeTab() === 'statements'">
+  <section class="fb-panel fb-panel--accent" *ngIf="activeTab() === 'statements'">
+    <div class="fb-panel__head">
+      <div>
+        <h2 class="fb-panel__title">Student statements</h2>
+        <p class="fb-panel__intro">Select a student to view ledger, invoices, payments, and download a PDF statement.</p>
+      </div>
+    </div>
     <div class="fb-grid-2">
       <article class="fb-card">
         <h2>Select student</h2>
@@ -334,10 +399,10 @@
             </div>
           </div>
 
-          <div class="fb-hero-stats fb-hero-stats--compact">
+          <div class="fb-hero-stats fb-hero-stats--compact fb-hero-stats--panel">
             <article class="fb-stat"><span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(statement.summary.totalInvoiced) }}</span><span class="fb-stat__label">Invoiced</span></article>
-            <article class="fb-stat fb-stat--mint fb-stat--align-right"><span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(statement.summary.totalPaid) }}</span><span class="fb-stat__label">Paid</span></article>
-            <article class="fb-stat fb-stat--rose fb-stat--align-right"><span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(statement.summary.balance) }}</span><span class="fb-stat__label">Balance</span></article>
+            <article class="fb-stat"><span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(statement.summary.totalPaid) }}</span><span class="fb-stat__label">Paid</span></article>
+            <article class="fb-stat"><span class="fb-stat__value">{{ currencySymbol }}{{ formatMoney(statement.summary.balance) }}</span><span class="fb-stat__label">Balance</span></article>
           </div>
 
           <h3>Ledger</h3>

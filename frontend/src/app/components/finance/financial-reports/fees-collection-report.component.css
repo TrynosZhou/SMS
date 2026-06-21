@@ -148,16 +148,20 @@
   grid-template-columns: repeat(6, 1fr);
   gap: 10px;
   margin-top: 16px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
 }
 
 .fc-hero-stats--skeleton { min-height: 3.5rem; }
 
 .fc-stat {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 10px 12px;
   text-align: center;
+  color: #000;
 }
 
 .fc-stat__value {
@@ -165,6 +169,7 @@
   font-size: 1.05rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  color: #000;
 }
 
 .fc-stat__label {
@@ -172,26 +177,23 @@
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.75);
+  color: #000;
+  font-weight: 700;
   margin-top: 2px;
 }
 
-.fc-stat--mint .fc-stat__value { color: #bbf7d0; }
-.fc-stat--amber .fc-stat__value { color: #fde68a; }
-.fc-stat--rose .fc-stat__value { color: #fecdd3; }
+.fc-stat--mint .fc-stat__value,
+.fc-stat--amber .fc-stat__value,
+.fc-stat--rose .fc-stat__value { color: #000; }
 
 .fc-skeleton {
   height: 3rem;
   border-radius: 10px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.08) 75%);
-  background-size: 200% 100%;
-  animation: fc-shimmer 1.2s ease infinite;
+  background: #e2e8f0;
+  animation: fc-pulse 1.2s ease-in-out infinite;
 }
 
-@keyframes fc-shimmer {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
-}
+@keyframes fc-pulse { 50% { opacity: 0.5; } }
 
 .fc-progress-panel {
   background: #fff;

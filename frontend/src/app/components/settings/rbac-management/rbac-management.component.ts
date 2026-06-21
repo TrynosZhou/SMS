@@ -26,6 +26,7 @@ export class RbacManagementComponent implements OnInit {
   saving = false;
   error = '';
   success = '';
+  readonly skeletonSlots = [1, 2, 3, 4, 5];
 
   modules: RbacModule[] = [];
   moduleGroups: RbacModuleGroup[] = [];
@@ -59,6 +60,31 @@ export class RbacManagementComponent implements OnInit {
 
   get selectedRole(): RbacRole | undefined {
     return this.roles.find((r) => r.id === this.selectedRoleId);
+  }
+
+  get dashboardStats(): {
+    roles: number;
+    customRoles: number;
+    users: number;
+    modules: number;
+    financePages: number;
+  } {
+    return {
+      roles: this.roles.length,
+      customRoles: this.roles.filter((r) => !r.isSystem).length,
+      users: this.users.length,
+      modules: this.modules.length,
+      financePages: this.financePages.length,
+    };
+  }
+
+  clearAlert(type: 'success' | 'error'): void {
+    if (type === 'success') {
+      this.success = '';
+    } else {
+      this.error = '';
+    }
+    this.cdr.markForCheck();
   }
 
   /** Teacher / Class Teacher roles cannot be granted Teacher or Parent registration records */

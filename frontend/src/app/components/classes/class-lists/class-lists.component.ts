@@ -731,6 +731,7 @@ next: (settings: any) => {
         this.lastLoadedTerm = this.selectedTerm;
         this.lastLoadedAt = new Date();
         this.generatedAt = new Date();
+        this.loadClassTeacherName();
 
         if (this.filteredStudents.length === 0) {
           this.error = 'No students found in the selected class for this term.';

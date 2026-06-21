@@ -177,6 +177,9 @@
   grid-template-columns: repeat(5, 1fr);
   gap: 10px;
   margin-top: 16px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
 }
 
 .fa-hero-stats--skeleton { min-height: 3.5rem; }
@@ -184,18 +187,19 @@
 .fa-skeleton {
   height: 3rem;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.15);
+  background: #e2e8f0;
   animation: fa-pulse 1.2s ease-in-out infinite;
 }
 
 @keyframes fa-pulse { 50% { opacity: 0.5; } }
 
 .fa-stat {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 10px 12px;
   text-align: center;
+  color: #000;
 }
 
 .fa-stat__value {
@@ -203,7 +207,7 @@
   font-size: 1.05rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #facc15;
+  color: #000;
 }
 
 .fa-stat__label {
@@ -211,13 +215,14 @@
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.75);
+  color: #000;
+  font-weight: 700;
   margin-top: 2px;
 }
 
-.fa-stat--mint .fa-stat__value { color: #bbf7d0; }
-.fa-stat--rose .fa-stat__value { color: #fecdd3; }
-.fa-stat--accent .fa-stat__value { color: #fde68a; }
+.fa-stat--mint .fa-stat__value,
+.fa-stat--rose .fa-stat__value,
+.fa-stat--accent .fa-stat__value { color: #000; }
 
 .fa-mode-tabs {
   display: flex;

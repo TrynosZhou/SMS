@@ -27,6 +27,7 @@ export interface UserManagementRow {
 })
 export class UserManagementComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+  readonly skeletonRows = [0, 1, 2, 3, 4, 5];
 
   users: UserManagementRow[] = [];
   filteredUsers: UserManagementRow[] = [];
@@ -110,6 +111,77 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  get dashboardStats(): {
+    total: number;
+    showing: number;
+    active: number;
+    locked: number;
+    staff: number;
+    portal: number;
+  } {
+    let active = 0;
+    let locked = 0;
+    let staff = 0;
+    let portal = 0;
+    for (const u of this.users) {
+      if (u.status === 'Active') active++;
+      else if (u.status === 'Locked') locked++;
+      const role = (u.role || '').toLowerCase();
+      if (role === 'parent' || role === 'student') portal++;
+      else staff++;
+    }
+    return {
+      total: this.users.length,
+      showing: this.filteredUsers.length,
+      active,
+      locked,
+      staff,
+      portal
+    };
+  }
+
+  get statusChips(): Array<{ id: string; label: string; count: number }> {
+    let active = 0;
+    let locked = 0;
+    let inactive = 0;
+    for (const u of this.users) {
+      if (u.status === 'Active') active++;
+      else if (u.status === 'Locked') locked++;
+      else inactive++;
+    }
+    return [
+      { id: 'all', label: 'All statuses', count: this.users.length },
+      { id: 'Active', label: 'Active', count: active },
+      { id: 'Locked', label: 'Locked', count: locked },
+      { id: 'Inactive', label: 'Inactive', count: inactive }
+    ];
+  }
+
+  clearAlert(kind: 'success' | 'error'): void {
+    if (kind === 'success') {
+      this.success = '';
+    } else {
+      this.error = '';
+    }
+    this.cdr.markForCheck();
+  }
+
+  hasActiveFilters(): boolean {
+    return !!this.searchQuery.trim() || this.roleFilter !== 'all' || this.statusFilter !== 'all';
+  }
+
+  refreshUsers(): void {
+    this.clearAlert('success');
+    this.clearAlert('error');
+    this.loadUsers();
+  }
+
+  setStatusFilter(value: string): void {
+    this.statusFilter = value;
+    this.applyFilters();
+    this.cdr.markForCheck();
   }
 
   isSuperAdmin(): boolean {

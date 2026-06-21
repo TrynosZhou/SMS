@@ -71,6 +71,8 @@ export class ResultsAnalysisComponent implements OnInit, OnDestroy {
   bottomStudents: StudentRank[] = [];
   allStudentsRanked: StudentRank[] = [];
   gradeDistribution: GradeDistributionRow[] = [];
+  readonly skeletonRows = [1, 2, 3, 4, 5];
+  isAdmin = false;
 
   gradeThresholds: Record<string, number> = {
     excellent: 90,
@@ -100,6 +102,7 @@ export class ResultsAnalysisComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.isAdmin = this.authService.isAdmin();
     activatePageLoad(this.router, this.destroy$, '/results-analysis', () => this.bootstrapPage());
   }
 
@@ -109,9 +112,38 @@ export class ResultsAnalysisComponent implements OnInit, OnDestroy {
   }
 
   private bootstrapPage(): void {
+    this.isAdmin = this.authService.isAdmin();
     this.loadGradeSettings();
     this.loadTermOptions();
     this.loadClasses();
+  }
+
+  clearAlert(): void {
+    this.error = '';
+  }
+
+  get dashboardStats(): {
+    students: number;
+    subjects: number;
+    classAverage: number;
+    passRate: number;
+    avgSubjectPass: number;
+  } {
+    const students = this.allStudentsRanked.length;
+    const subjects = this.markSheetData?.subjects?.length || 0;
+    const classAverage =
+      students > 0
+        ? Math.round((this.allStudentsRanked.reduce((sum, row) => sum + row.average, 0) / students) * 10) / 10
+        : 0;
+    const passCount = this.allStudentsRanked.filter((row) => row.average >= 70).length;
+    const passRate = students > 0 ? Math.round((passCount / students) * 1000) / 10 : 0;
+    const avgSubjectPass =
+      this.subjectPassRates.length > 0
+        ? Math.round(
+            (this.subjectPassRates.reduce((sum, row) => sum + row.passRate, 0) / this.subjectPassRates.length) * 10
+          ) / 10
+        : 0;
+    return { students, subjects, classAverage, passRate, avgSubjectPass };
   }
 
   loadGradeSettings(): void {

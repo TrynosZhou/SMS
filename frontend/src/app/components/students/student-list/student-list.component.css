@@ -160,21 +160,25 @@
   grid-template-columns: repeat(6, 1fr);
   gap: 10px;
   margin-top: 16px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
 }
 
 .students-stat-card {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 10px 12px;
   text-align: center;
+  color: #000;
 }
 
 .students-stat-card__value {
   display: block;
   font-size: 1.35rem;
   font-weight: 800;
-  color: #fff;
+  color: #000;
   line-height: 1.1;
 }
 
@@ -184,15 +188,15 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: rgba(255, 255, 255, 0.75);
+  color: #000;
   margin-top: 4px;
 }
 
-.students-stat-card--day .students-stat-card__value { color: #fde68a; }
-.students-stat-card--boarder .students-stat-card__value { color: #c4b5fd; }
-.students-stat-card--male .students-stat-card__value { color: #93c5fd; }
-.students-stat-card--female .students-stat-card__value { color: #f9a8d4; }
-.students-stat-card--muted .students-stat-card__value { color: rgba(255, 255, 255, 0.9); }
+.students-stat-card--day .students-stat-card__value,
+.students-stat-card--boarder .students-stat-card__value,
+.students-stat-card--male .students-stat-card__value,
+.students-stat-card--female .students-stat-card__value,
+.students-stat-card--muted .students-stat-card__value { color: #000; }
 
 .manage-students-hero-icon {
   display: flex;

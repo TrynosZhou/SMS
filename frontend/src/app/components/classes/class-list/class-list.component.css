@@ -141,19 +141,24 @@
 
 .cl-hero-stats {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
   margin-top: 16px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
 }
 
 .cl-hero-stats--skeleton { min-height: 3.5rem; }
 
 .cl-stat {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 10px 12px;
   text-align: center;
+  color: #000;
 }
 
 .cl-stat__value {
@@ -161,6 +166,7 @@
   font-size: 1.05rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  color: #000;
 }
 
 .cl-stat__label {
@@ -168,19 +174,19 @@
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.75);
+  color: #000;
+  font-weight: 700;
   margin-top: 2px;
 }
 
-.cl-stat--mint .cl-stat__value { color: #bbf7d0; }
-.cl-stat--amber .cl-stat__value { color: #fde68a; }
-.cl-stat--rose .cl-stat__value { color: #fecdd3; }
+.cl-stat--mint .cl-stat__value,
+.cl-stat--amber .cl-stat__value,
+.cl-stat--rose .cl-stat__value { color: #000; opacity: 1; }
 
 .cl-skeleton {
   height: 3rem;
   border-radius: 10px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.08) 75%);
-  background-size: 200% 100%;
+  background: #e2e8f0;
   animation: cl-shimmer 1.2s ease infinite;
 }
 

@@ -131,26 +131,32 @@
 
 .mark-hero-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 12px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
 }
 
 .mark-stat {
   position: relative;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
   padding: 12px 14px 12px 38px;
+  color: #000;
 }
 
-.mark-stat__icon { position: absolute; left: 12px; top: 14px; font-size: 0.85rem; opacity: 0.75; }
-.mark-stat__value { display: block; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.mark-stat__label { display: block; font-size: 0.72rem; opacity: 0.85; margin-top: 2px; }
-.mark-stat--mint .mark-stat__value { color: #bbf7d0; }
-.mark-stat--rose .mark-stat__value { color: #fecaca; }
-.mark-stat--amber .mark-stat__value { color: #fde68a; }
-.mark-stat--sky .mark-stat__value { color: #bae6fd; }
+.mark-stat__icon { position: absolute; left: 12px; top: 14px; font-size: 0.85rem; opacity: 1; color: #000; }
+.mark-stat__value { display: block; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; color: #000; }
+.mark-stat__label { display: block; font-size: 0.72rem; margin-top: 2px; color: #000; font-weight: 700; }
+.mark-stat--mint .mark-stat__value,
+.mark-stat--rose .mark-stat__value,
+.mark-stat--amber .mark-stat__value,
+.mark-stat--sky .mark-stat__value,
+.mark-stat--muted .mark-stat__value { color: #000; opacity: 1; }
 
 .mark-hero-toolbar {
   display: flex;

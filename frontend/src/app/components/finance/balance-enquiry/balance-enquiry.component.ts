@@ -146,6 +146,18 @@ export class BalanceEnquiryComponent implements OnInit, OnDestroy {
     };
   }
 
+  get studentLedgerQueryParams(): Record<string, string> {
+    if (!this.studentData) return {};
+    const display =
+      this.studentData.studentNumber ||
+      `${this.studentData.firstName || ''} ${this.studentData.lastName || ''}`.trim() ||
+      this.studentData.studentId;
+    return {
+      studentId: this.studentData.studentId,
+      q: display,
+    };
+  }
+
   clearSearch(): void {
     this.query = '';
     this.studentData = null;

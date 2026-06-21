@@ -148,9 +148,13 @@
 
 .cp-hero-stats {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
   margin-top: 16px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
 }
 
 .cp-hero-stats--skeleton {
@@ -158,17 +162,20 @@
 }
 
 .cp-stat {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 10px 12px;
   text-align: center;
+  color: #000;
 }
 
 .cp-stat__value {
   display: block;
   font-size: 1.2rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #000;
 }
 
 .cp-stat__label {
@@ -176,21 +183,21 @@
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  opacity: 0.88;
+  color: #000;
+  font-weight: 700;
   margin-top: 2px;
 }
 
-.cp-stat--mint .cp-stat__value { color: #6ee7b7; }
-.cp-stat--sky .cp-stat__value { color: #7dd3fc; }
-.cp-stat--amber .cp-stat__value { color: #fde68a; }
-.cp-stat--rose .cp-stat__value { color: #fecaca; }
-.cp-stat--violet .cp-stat__value { color: #ddd6fe; }
+.cp-stat--mint .cp-stat__value,
+.cp-stat--sky .cp-stat__value,
+.cp-stat--amber .cp-stat__value,
+.cp-stat--rose .cp-stat__value,
+.cp-stat--violet .cp-stat__value { color: #000; opacity: 1; }
 
 .cp-skeleton {
   height: 52px;
   border-radius: 10px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.15) 25%, rgba(255,255,255,0.28) 50%, rgba(255,255,255,0.15) 75%);
-  background-size: 200% 100%;
+  background: #e2e8f0;
   animation: cp-shimmer 1.2s ease-in-out infinite;
 }
 

@@ -152,25 +152,31 @@
 
 .manage-teachers-stats {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
   margin-top: 16px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
 }
 
 .teachers-stat-card {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 10px 12px;
   text-align: center;
+  color: #000;
 }
 
 .teachers-stat-card__value {
   display: block;
   font-size: 1.35rem;
   font-weight: 800;
-  color: #fff;
+  color: #000;
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
 .teachers-stat-card__label {
@@ -179,14 +185,14 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: rgba(255, 255, 255, 0.75);
+  color: #000;
   margin-top: 4px;
 }
 
-.teachers-stat-card--active .teachers-stat-card__value { color: #86efac; }
-.teachers-stat-card--male .teachers-stat-card__value { color: #93c5fd; }
-.teachers-stat-card--female .teachers-stat-card__value { color: #f9a8d4; }
-.teachers-stat-card--muted .teachers-stat-card__value { color: rgba(255, 255, 255, 0.9); }
+.teachers-stat-card--active .teachers-stat-card__value,
+.teachers-stat-card--male .teachers-stat-card__value,
+.teachers-stat-card--female .teachers-stat-card__value,
+.teachers-stat-card--muted .teachers-stat-card__value { color: #000; opacity: 1; }
 
 .manage-teachers-panel {
   background: #f3f0fa;

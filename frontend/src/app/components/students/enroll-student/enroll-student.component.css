@@ -207,9 +207,13 @@
 
 .es-hero-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 14px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
 }
 
 .es-hero-stats--skeleton { min-height: 3.25rem; }
@@ -225,19 +229,20 @@
 
 .es-stat {
   position: relative;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
   padding: 12px 14px 12px 38px;
+  color: #000;
 }
 
-.es-stat__icon { position: absolute; left: 12px; top: 14px; font-size: 0.85rem; opacity: 0.75; }
-.es-stat__value { display: block; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.es-stat__label { display: block; font-size: 0.72rem; opacity: 0.85; margin-top: 2px; }
-.es-stat--sky .es-stat__value { color: #bae6fd; }
-.es-stat--rose .es-stat__value { color: #fecdd3; }
-.es-stat--amber .es-stat__value { color: #fde68a; }
-.es-stat--mint .es-stat__value { color: #bbf7d0; }
+.es-stat__icon { position: absolute; left: 12px; top: 14px; font-size: 0.85rem; opacity: 1; color: #000; }
+.es-stat__value { display: block; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; color: #000; }
+.es-stat__label { display: block; font-size: 0.72rem; margin-top: 2px; color: #000; font-weight: 700; }
+.es-stat--sky .es-stat__value,
+.es-stat--rose .es-stat__value,
+.es-stat--amber .es-stat__value,
+.es-stat--mint .es-stat__value { color: #000; opacity: 1; }
 
 .es-steps {
   display: flex;

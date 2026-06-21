@@ -55,6 +55,32 @@ export class StudentTransferComponent implements OnInit, OnDestroy {
   transferHistory: any[] = [];
   showHistory = false;
 
+  get dashboardStats(): {
+    total: number;
+    withClass: number;
+    showing: number;
+    classes: number;
+    history: number;
+  } {
+    const withClass = this.students.filter(
+      (s) => !!(s.classId || s.class?.id || s.class?.name || s.className)
+    ).length;
+    return {
+      total: this.students.length,
+      withClass,
+      showing: this.filteredStudents.length,
+      classes: this.availableClasses.length,
+      history: this.transferHistory.length
+    };
+  }
+
+  get step3Active(): boolean {
+    return (
+      !!this.selectedStudent &&
+      !!(this.targetClassId || this.destinationSchool.trim())
+    );
+  }
+
   constructor(
     private studentService: StudentService,
     private classService: ClassService,
@@ -73,7 +99,25 @@ export class StudentTransferComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-}
+  }
+
+  clearAlert(kind: 'success' | 'error'): void {
+    if (kind === 'success') {
+      this.success = '';
+    } else {
+      this.error = '';
+    }
+  }
+
+  refresh(): void {
+    this.clearAlert('success');
+    this.clearAlert('error');
+    this.loadStudents();
+    this.loadClasses();
+    if (this.selectedStudent?.id) {
+      this.loadTransferHistory(this.selectedStudent.id);
+    }
+  }
 
   loadStudents(): void {
     this.loadingStudents = true;

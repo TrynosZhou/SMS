@@ -23,7 +23,9 @@
           </p>
         </div>
       </div>
-      <div class="cmp-hero__actions">
+    </div>
+
+    <div class="cmp-hero__actions">
         <button type="button" class="cmp-hero-refresh" (click)="refresh()" [disabled]="loading || !selectedExamType" title="Refresh" aria-label="Refresh">
           <span [class.spinning]="loading">↻</span>
         </button>
@@ -32,7 +34,6 @@
         <button type="button" class="cmp-hero-btn" (click)="expandAll()" [disabled]="!viewData.length">Expand all</button>
         <button type="button" class="cmp-hero-btn" (click)="collapseAll()" [disabled]="!viewData.length">Collapse all</button>
         <a routerLink="/mark-sheet" class="cmp-hero-btn cmp-hero-btn--accent">Mark sheet</a>
-      </div>
     </div>
 
     <div class="cmp-hero-stats" *ngIf="hasData && selectedExamType && !loading">

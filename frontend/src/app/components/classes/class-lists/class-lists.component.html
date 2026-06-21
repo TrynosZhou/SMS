@@ -38,57 +38,88 @@
           </p>
         </div>
       </div>
+      <aside class="cll-hero-aside">
+        <span class="cll-hero-badge" *ngIf="selectedClassId && selectedTerm">{{ getSelectedClassName() }}</span>
+        <span class="cll-hero-badge cll-hero-badge--muted" *ngIf="selectedTerm">{{ selectedTerm }}</span>
+        <span class="cll-hero-badge cll-hero-badge--muted" *ngIf="filteredStudents.length && !loadingStudents">
+          {{ filteredStudents.length }} student{{ filteredStudents.length !== 1 ? 's' : '' }}
+        </span>
+      </aside>
       <div class="cll-hero__actions">
         <button type="button" class="cll-hero-refresh" (click)="refreshAll()" [disabled]="loading || loadingStudents" title="Refresh" aria-label="Refresh">
           <span [class.spinning]="loading || loadingStudents">↻</span>
         </button>
-        <button type="button" class="cll-hero-btn" (click)="toggleViewMode()" title="Toggle view" *ngIf="filteredStudents.length && !loadingStudents">
-          {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
-        </button>
-        <button type="button" class="cll-hero-btn cll-hero-btn--white" (click)="exportCsv()" [disabled]="!filteredStudents.length || loadingStudents">CSV</button>
-        <button type="button" class="cll-hero-btn cll-hero-btn--white" (click)="printReport()" [disabled]="!filteredStudents.length || loadingStudents">Print</button>
-        <button type="button" class="cll-hero-btn cll-hero-btn--white" (click)="previewPdf()" [disabled]="!filteredStudents.length || loadingPdf || loadingStudents">
-          {{ loadingPdf ? '…' : 'Preview PDF' }}
-        </button>
-        <button type="button" class="cll-hero-btn cll-hero-btn--white" (click)="downloadPdf()" [disabled]="!filteredStudents.length || downloadingPdf || loadingStudents">
-          {{ downloadingPdf ? '…' : 'Download PDF' }}
-        </button>
-        <a routerLink="/classes" class="cll-hero-btn cll-hero-btn--accent">Manage classes</a>
+        <a routerLink="/classes" class="cll-hero-btn cll-hero-btn--white">Manage classes</a>
       </div>
     </div>
 
-    <div class="cll-hero-stats" *ngIf="hasStudentData && filteredStudents.length && !loadingStudents">
+    <nav class="cll-cross-links" aria-label="Related class pages">
+      <a routerLink="/classes">Manage classes</a>
+      <a routerLink="/classes/new">Add class</a>
+      <a routerLink="/students/enroll_student">Enroll student</a>
+      <a routerLink="/students/transfer">Transfer student</a>
+    </nav>
+
+    <div class="cll-hero-stats" *ngIf="!loadingStudents">
       <article class="cll-stat">
-        <span class="cll-stat__value">{{ dashboardStats.showing }}</span>
+        <span class="cll-stat__value">{{ hasStudentData ? dashboardStats.showing : '—' }}</span>
         <span class="cll-stat__label">Showing</span>
       </article>
       <article class="cll-stat">
-        <span class="cll-stat__value">{{ dashboardStats.total }}</span>
+        <span class="cll-stat__value">{{ hasStudentData ? dashboardStats.total : '—' }}</span>
         <span class="cll-stat__label">Total loaded</span>
       </article>
-      <article class="cll-stat cll-stat--rose">
-        <span class="cll-stat__value">{{ dashboardStats.female }}</span>
+      <article class="cll-stat">
+        <span class="cll-stat__value">{{ hasStudentData ? dashboardStats.female : '—' }}</span>
         <span class="cll-stat__label">Female</span>
       </article>
-      <article class="cll-stat cll-stat--mint">
-        <span class="cll-stat__value">{{ dashboardStats.male }}</span>
+      <article class="cll-stat">
+        <span class="cll-stat__value">{{ hasStudentData ? dashboardStats.male : '—' }}</span>
         <span class="cll-stat__label">Male</span>
       </article>
-      <article class="cll-stat cll-stat--amber">
-        <span class="cll-stat__value">{{ dashboardStats.day }}</span>
+      <article class="cll-stat">
+        <span class="cll-stat__value">{{ hasStudentData ? dashboardStats.day : '—' }}</span>
         <span class="cll-stat__label">Day</span>
       </article>
       <article class="cll-stat">
-        <span class="cll-stat__value">{{ dashboardStats.boarder }}</span>
+        <span class="cll-stat__value">{{ hasStudentData ? dashboardStats.boarder : '—' }}</span>
         <span class="cll-stat__label">Boarder</span>
       </article>
     </div>
     <div class="cll-hero-stats cll-hero-stats--skeleton" *ngIf="loadingStudents">
       <div class="cll-skeleton" *ngFor="let i of skeletonRows"></div>
     </div>
+
+    <div class="cll-steps" aria-label="Progress">
+      <span class="cll-step cll-step--active" [class.cll-step--done]="selectedClassId && selectedTerm">
+        <strong>1</strong> Select class &amp; term
+      </span>
+      <span class="cll-step-arrow">→</span>
+      <span class="cll-step" [class.cll-step--active]="!!(selectedClassId && selectedTerm)" [class.cll-step--done]="filteredStudents.length > 0">
+        <strong>2</strong> Load roster
+      </span>
+      <span class="cll-step-arrow">→</span>
+      <span class="cll-step" [class.cll-step--active]="filteredStudents.length > 0">
+        <strong>3</strong> Review &amp; export
+      </span>
+    </div>
+
+    <div class="cll-hero-toolbar" *ngIf="filteredStudents.length && !loadingStudents">
+      <button type="button" class="cll-hero-btn" (click)="toggleViewMode()" title="Toggle view">
+        {{ viewMode === 'table' ? '▦ Cards' : '☰ Table' }}
+      </button>
+      <button type="button" class="cll-hero-btn cll-hero-btn--white" (click)="exportCsv()">CSV</button>
+      <button type="button" class="cll-hero-btn cll-hero-btn--white" (click)="printReport()">Print</button>
+      <button type="button" class="cll-hero-btn cll-hero-btn--white" (click)="previewPdf()" [disabled]="loadingPdf">
+        {{ loadingPdf ? '…' : 'Preview PDF' }}
+      </button>
+      <button type="button" class="cll-hero-btn cll-hero-btn--white" (click)="downloadPdf()" [disabled]="downloadingPdf">
+        {{ downloadingPdf ? '…' : 'Download PDF' }}
+      </button>
+    </div>
   </header>
 
-  <section class="cll-panel">
+  <section class="cll-panel cll-panel--select">
     <div class="cll-panel__head-row">
       <div>
         <h2 class="cll-panel__title">Select class & term</h2>
@@ -155,7 +186,74 @@
     <button type="button" class="cll-btn-secondary" (click)="loadStudents()">Reload</button>
   </section>
 
-  <section class="cll-panel" *ngIf="filteredStudents.length > 0 && !loadingStudents">
+  <section class="cll-panel cll-panel--roster" *ngIf="filteredStudents.length > 0 && !loadingStudents">
+    <div class="cll-roster-head">
+      <div>
+        <h2 class="cll-panel__title">Student roster</h2>
+        <p class="cll-panel__intro">{{ getSelectedClassName() }} · {{ selectedTerm }}</p>
+        <p class="cll-teachers" *ngIf="classTeacher1FullName || classTeacher2FullName">
+          <span *ngIf="classTeacher1FullName">
+            Home teacher:
+            <a *ngIf="canEditClassTeacher()" href="javascript:void(0)" class="cll-teacher-link" (click)="openClassTeacherModal(1); $event.preventDefault()">{{ classTeacher1FullName }}</a>
+            <span *ngIf="!canEditClassTeacher()">{{ classTeacher1FullName }}</span>
+          </span>
+          <span class="cll-teachers-sep" *ngIf="classTeacher1FullName && classTeacher2FullName">·</span>
+          <span *ngIf="classTeacher2FullName">
+            Class teacher:
+            <a *ngIf="canEditClassTeacher()" href="javascript:void(0)" class="cll-teacher-link" (click)="openClassTeacherModal(2); $event.preventDefault()">{{ classTeacher2FullName }}</a>
+            <span *ngIf="!canEditClassTeacher()">{{ classTeacher2FullName }}</span>
+          </span>
+        </p>
+      </div>
+      <button type="button" class="cll-btn-clear" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
+    </div>
+
+    <div class="cll-filters-row">
+      <div class="cll-search-wrap">
+        <span class="cll-search-icon" aria-hidden="true">🔍</span>
+        <input
+          type="search"
+          class="cll-search-input"
+          placeholder="Search by ID or name…"
+          [value]="studentSearchQuery"
+          (input)="onStudentSearchInput($any($event.target).value)" />
+        <button type="button" class="cll-search-clear" *ngIf="studentSearchQuery" (click)="clearStudentSearch()">Clear</button>
+      </div>
+      <div class="cll-field cll-field--sort">
+        <label for="cll-sort">Sort by</label>
+        <select id="cll-sort" class="cll-select" [ngModel]="sortBy" (ngModelChange)="onSortByChange($event)" [ngModelOptions]="{standalone: true}">
+          <option value="lastName">Last name</option>
+          <option value="firstName">First name</option>
+          <option value="studentNumber">Student ID</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="cll-chips">
+      <button
+        type="button"
+        class="cll-chip"
+        *ngFor="let chip of genderChips"
+        [class.cll-chip--active]="genderFilter === chip.id"
+        (click)="onGenderFilterChange(chip.id)">
+        {{ chip.label }}<span class="cll-chip__count"> ({{ chip.count }})</span>
+      </button>
+    </div>
+    <div class="cll-chips">
+      <button
+        type="button"
+        class="cll-chip"
+        *ngFor="let chip of typeChips"
+        [class.cll-chip--active]="typeFilter === chip.id"
+        (click)="onTypeFilterChange(chip.id)">
+        {{ chip.label }}<span class="cll-chip__count"> ({{ chip.count }})</span>
+      </button>
+    </div>
+
+    <div class="cll-summary" *ngIf="hasActiveFilters() || filteredStudents.length !== students.length">
+      <span class="cll-summary-pill">{{ filterSummary }}</span>
+    </div>
+
     <div class="cll-data-panel">
         <div class="cll-table-scroll hide-print-ui" *ngIf="viewMode === 'table'">
         <div class="table-container" id="class-list-pdf">

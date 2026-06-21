@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -8,6 +8,7 @@ import { AuthService } from '../../services/auth.service';
 import { PromotionRuleService } from '../../services/promotion-rule.service';
 import { ClassService } from '../../services/class.service';
 import { validatePhoneNumber } from '../../utils/phone-validator';
+import { RbacManagementComponent } from './rbac-management/rbac-management.component';
 
 type SystemSettingsTabId =
   | 'school-information'
@@ -19,6 +20,10 @@ type SystemSettingsTabId =
   | 'module-access'
   | 'security';
 
+type SettingsTabStat = { label: string; value: string | number };
+type SettingsTabLink = { label: string; route: string };
+type SettingsTabStep = { num: number; label: string; active: boolean };
+
 @Component({
   standalone: false,  selector: 'app-settings',
 templateUrl: './settings.component.html',
@@ -26,6 +31,7 @@ templateUrl: './settings.component.html',
 })
 export class SettingsComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+  @ViewChild(RbacManagementComponent) rbacManagement?: RbacManagementComponent;
   settingsView: 'school' | 'academic' = 'school';
   activeTab: SystemSettingsTabId = 'school-information';
 
@@ -373,9 +379,217 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  get moduleAccessStats(): {
+    headTeacherEnabled: boolean;
+    headTeacherModules: number;
+    roles: number;
+    users: number;
+    modules: number;
+  } {
+    const ut = this.settings?.moduleAccess?.universalTeacher;
+    const moduleKeys = [
+      'students', 'classes', 'subjects', 'exams', 'reportCards', 'finance', 'settings',
+      'subjectManager', 'studentManager', 'examManager', 'logisticsManager', 'classManager', 'teacherManager',
+    ] as const;
+    let headTeacherModules = 0;
+    if (ut) {
+      for (const key of moduleKeys) {
+        if (ut[key]) headTeacherModules++;
+      }
+    }
+    return {
+      headTeacherEnabled: !!this.settings?.universalTeacherEnabled,
+      headTeacherModules,
+      roles: this.rbacManagement?.roles?.length ?? 0,
+      users: this.rbacManagement?.users?.length ?? 0,
+      modules: this.rbacManagement?.modules?.length ?? 0,
+    };
+  }
+
+  get activeTabStats(): SettingsTabStat[] {
+    const sym = this.settings?.currencySymbol || '';
+    const ns = this.settings?.notificationSettings;
+    const smsOn = [
+      ns?.sms?.reportCardReady,
+      ns?.sms?.feePaymentReceived,
+      ns?.sms?.studentAbsence,
+    ].filter(Boolean).length;
+
+    switch (this.activeTab) {
+      case 'school-information':
+        return [
+          { label: 'School name', value: this.settings?.schoolName ? 'Set' : '—' },
+          { label: 'Logo', value: this.settings?.schoolLogo ? 'Yes' : 'No' },
+          { label: 'Phone', value: this.settings?.schoolPhone ? 'Set' : '—' },
+          { label: 'Email', value: this.settings?.schoolEmail ? 'Set' : '—' },
+          { label: 'Website', value: this.settings?.schoolWebsite ? 'Yes' : 'No' },
+        ];
+      case 'general':
+        return [
+          { label: 'Currency', value: this.settings?.currencySymbol || '—' },
+          { label: 'Headmaster', value: this.settings?.headmasterName ? 'Set' : '—' },
+          { label: 'Motto', value: this.settings?.schoolMotto ? 'Set' : '—' },
+        ];
+      case 'school-settings':
+        return [
+          { label: 'Day scholar', value: `${sym}${this.settings?.feesSettings?.dayScholarTuitionFee ?? 0}` },
+          { label: 'Boarder', value: `${sym}${this.settings?.feesSettings?.boarderTuitionFee ?? 0}` },
+          { label: 'Other fees', value: this.settings?.feesSettings?.otherFees?.length ?? 0 },
+          { label: 'Uniforms', value: this.uniformItems?.length ?? 0 },
+          { label: 'Banks', value: this.settings?.payrollSettings?.banks?.length ?? 0 },
+        ];
+      case 'student-id-prefix':
+        return [
+          { label: 'Prefix', value: this.settings?.studentIdPrefix || '—' },
+          { label: 'Length', value: (this.settings?.studentIdPrefix || '').length },
+        ];
+      case 'email-settings':
+        return [
+          { label: 'SMTP host', value: this.settings?.emailSettings?.smtpHost ? 'Set' : '—' },
+          { label: 'Port', value: this.settings?.emailSettings?.smtpPort || '—' },
+          { label: 'From address', value: this.settings?.emailSettings?.fromAddress ? 'Set' : '—' },
+        ];
+      case 'notifications':
+        return [
+          { label: 'SMS toggles', value: smsOn },
+          { label: 'Push', value: ns?.push?.enabled ? 'On' : 'Off' },
+          { label: 'WhatsApp', value: ns?.sms?.reportCardReady ? 'On' : 'Off' },
+          { label: 'Admin phones', value: (ns?.whatsapp?.adminPhones || []).length },
+        ];
+      case 'module-access':
+        return [
+          { label: 'Head teacher', value: this.moduleAccessStats.headTeacherEnabled ? 'On' : 'Off' },
+          { label: 'HT modules', value: this.moduleAccessStats.headTeacherModules },
+          { label: 'Roles', value: this.moduleAccessStats.roles },
+          { label: 'Users', value: this.moduleAccessStats.users },
+          { label: 'Modules', value: this.moduleAccessStats.modules },
+        ];
+      case 'security':
+        return [
+          { label: 'Min length', value: this.settings?.securitySettings?.minPasswordLength ?? '—' },
+          { label: 'Max attempts', value: this.settings?.securitySettings?.maxLoginAttempts ?? '—' },
+          { label: '2FA', value: this.settings?.securitySettings?.enableTwoFactorAuth ? 'On' : 'Off' },
+          { label: 'Session (min)', value: this.settings?.securitySettings?.sessionTimeoutMinutes ?? '—' },
+        ];
+      default:
+        return [];
+    }
+  }
+
+  get activeTabCrossLinks(): SettingsTabLink[] {
+    const common: SettingsTabLink[] = [
+      { label: 'User management', route: '/user-management' },
+      { label: 'System activity', route: '/user-log' },
+    ];
+    switch (this.activeTab) {
+      case 'school-information':
+        return [...common, { label: 'General settings', route: '/system-settings?tab=general' }];
+      case 'general':
+        return [...common, { label: 'School information', route: '/system-settings?tab=school-information' }];
+      case 'school-settings':
+        return [...common, { label: 'Finance', route: '/finance' }];
+      case 'student-id-prefix':
+        return [...common, { label: 'Enroll student', route: '/students/enroll_student' }];
+      case 'email-settings':
+        return [...common, { label: 'Notifications', route: '/system-settings?tab=notifications' }];
+      case 'notifications':
+        return [...common, { label: 'Email settings', route: '/system-settings?tab=email-settings' }];
+      case 'module-access':
+        return [
+          ...common,
+          { label: 'Advanced accounts', route: '/admin/manage-accounts' },
+        ];
+      case 'security':
+        return [
+          ...common,
+          { label: 'Permissions & roles', route: '/system-settings?tab=module-access' },
+        ];
+      default:
+        return common;
+    }
+  }
+
+  get activeTabSteps(): SettingsTabStep[] {
+    switch (this.activeTab) {
+      case 'school-information':
+        return [
+          { num: 1, label: 'Basic details', active: true },
+          { num: 2, label: 'Contact & web', active: !!(this.settings?.schoolPhone || this.settings?.schoolEmail) },
+          { num: 3, label: 'Logo', active: !!this.settings?.schoolLogo },
+        ];
+      case 'general':
+        return [
+          { num: 1, label: 'Currency', active: true },
+          { num: 2, label: 'Leadership', active: !!this.settings?.headmasterName },
+          { num: 3, label: 'Identity', active: !!this.settings?.schoolMotto },
+        ];
+      case 'school-settings':
+        return [
+          { num: 1, label: 'Tuition & fees', active: true },
+          { num: 2, label: 'Banking details', active: !!this.settings?.feesSettings?.paymentBanking?.accountNumber },
+          { num: 3, label: 'Uniforms', active: (this.uniformItems?.length ?? 0) > 0 },
+        ];
+      case 'student-id-prefix':
+        return [
+          { num: 1, label: 'Set prefix', active: true },
+          { num: 2, label: 'Save settings', active: !!(this.settings?.studentIdPrefix?.length) },
+        ];
+      case 'email-settings':
+        return [
+          { num: 1, label: 'SMTP server', active: true },
+          { num: 2, label: 'Credentials', active: !!this.settings?.emailSettings?.smtpUsername },
+          { num: 3, label: 'From address', active: !!this.settings?.emailSettings?.fromAddress },
+        ];
+      case 'notifications':
+        return [
+          { num: 1, label: 'WhatsApp', active: true },
+          { num: 2, label: 'SMS', active: !!(this.settings?.notificationSettings?.sms?.feePaymentReceived || this.settings?.notificationSettings?.sms?.studentAbsence) },
+          { num: 3, label: 'Save', active: false },
+        ];
+      case 'module-access':
+        return [
+          { num: 1, label: 'Permissions matrix', active: true },
+          { num: 2, label: 'Head teacher', active: !!this.settings?.universalTeacherEnabled },
+          ...(this.authService.isAdmin() && !this.isDemoUser()
+            ? [{ num: 3, label: 'Danger zone', active: false }]
+            : []),
+        ];
+      case 'security':
+        return [
+          { num: 1, label: 'Password policy', active: true },
+          { num: 2, label: 'Session', active: !!this.settings?.securitySettings?.sessionTimeoutMinutes },
+          { num: 3, label: 'Save', active: false },
+        ];
+      default:
+        return [];
+    }
+  }
+
+  refreshSettings(): void {
+    this.loadSettings();
+    if (this.activeTab === 'school-settings') {
+      this.loadUniformItems();
+    }
+    if (this.activeTab === 'module-access') {
+      this.rbacManagement?.loadAll();
+    }
+    this.cdr.markForCheck();
+  }
+
+  openAdvancedManagement(): void {
+    this.router.navigate(['/admin/manage-accounts']);
+  }
+
   setActiveTab(tab: SystemSettingsTabId): void {
     this.activeTab = tab;
     this.error = '';
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    this.cdr.markForCheck();
   }
 
   markSettingsSaved(): void {

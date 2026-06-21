@@ -196,9 +196,13 @@
 
 .mo-hero-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 14px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
 }
 
 .mo-hero-stats--skeleton { min-height: 3.25rem; }
@@ -206,7 +210,7 @@
 .mo-skeleton {
   height: 3.25rem;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.15);
+  background: #e2e8f0;
   animation: mo-pulse 1.2s ease-in-out infinite;
 }
 
@@ -214,18 +218,19 @@
 
 .mo-stat {
   position: relative;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
   padding: 12px 14px 12px 38px;
+  color: #000;
 }
 
-.mo-stat__icon { position: absolute; left: 12px; top: 14px; font-size: 0.85rem; opacity: 0.75; }
-.mo-stat__value { display: block; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.mo-stat__label { display: block; font-size: 0.72rem; opacity: 0.85; margin-top: 2px; }
-.mo-stat--sky .mo-stat__value { color: #bae6fd; }
-.mo-stat--amber .mo-stat__value { color: #fde68a; }
-.mo-stat--mint .mo-stat__value { color: #bbf7d0; }
+.mo-stat__icon { position: absolute; left: 12px; top: 14px; font-size: 0.85rem; opacity: 1; color: #000; }
+.mo-stat__value { display: block; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; color: #000; }
+.mo-stat__label { display: block; font-size: 0.72rem; margin-top: 2px; color: #000; font-weight: 700; }
+.mo-stat--sky .mo-stat__value,
+.mo-stat--amber .mo-stat__value,
+.mo-stat--mint .mo-stat__value { color: #000; opacity: 1; }
 
 .mo-steps {
   display: flex;

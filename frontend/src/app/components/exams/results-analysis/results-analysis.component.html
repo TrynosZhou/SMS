@@ -1,183 +1,224 @@
 <div class="ra-page">
-  <header class="ra-header">
-    <div>
-      <h1><span class="ra-header-icon">📈</span> Results Analysis</h1>
-      <p class="ra-subtitle">Analyse class performance by term, exam type, and subject</p>
+  <div class="ra-toast-stack" *ngIf="error">
+    <div class="ra-toast ra-toast--error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="ra-toast__dismiss" (click)="clearAlert()" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="ra-hero">
+    <div class="ra-hero__main">
+      <div class="ra-hero-left">
+        <span class="ra-hero-icon" aria-hidden="true">📈</span>
+        <div>
+          <span class="ra-hero-eyebrow">Exams</span>
+          <h1>Results Analysis</h1>
+          <p class="ra-hero-sub">Analyse class performance by term, exam type, and subject — pass rates, rankings, and grade distribution.</p>
+        </div>
+      </div>
+      <aside class="ra-hero-aside" *ngIf="analysisLoaded">
+        <span class="ra-hero-badge">{{ selectedTerm }}</span>
+        <span class="ra-hero-badge ra-hero-badge--muted">{{ selectedClassLabel }}</span>
+        <span class="ra-hero-badge ra-hero-badge--muted">{{ selectedExamTypeLabel }}</span>
+      </aside>
+    </div>
+
+    <nav class="ra-cross-links" aria-label="Related exam pages">
+      <a routerLink="/exams">Enter marks</a>
+      <a routerLink="/mark-sheet">Mark sheet</a>
+      <a routerLink="/report-cards">Report cards</a>
+      <a routerLink="/publish-results" *ngIf="isAdmin">Publish results</a>
+      <a routerLink="/check_mark_progess">Marks progress</a>
+    </nav>
+
+    <div class="ra-hero-stats" *ngIf="analysisLoaded && !loading">
+      <article class="ra-stat">
+        <span class="ra-stat__value">{{ dashboardStats.students }}</span>
+        <span class="ra-stat__label">Students</span>
+      </article>
+      <article class="ra-stat">
+        <span class="ra-stat__value">{{ dashboardStats.subjects }}</span>
+        <span class="ra-stat__label">Subjects</span>
+      </article>
+      <article class="ra-stat">
+        <span class="ra-stat__value">{{ formatAverage(dashboardStats.classAverage) }}%</span>
+        <span class="ra-stat__label">Class average</span>
+      </article>
+      <article class="ra-stat">
+        <span class="ra-stat__value">{{ dashboardStats.passRate }}%</span>
+        <span class="ra-stat__label">Pass rate (≥70%)</span>
+      </article>
+      <article class="ra-stat">
+        <span class="ra-stat__value">{{ dashboardStats.avgSubjectPass }}%</span>
+        <span class="ra-stat__label">Avg subject pass</span>
+      </article>
+    </div>
+    <div class="ra-hero-stats ra-hero-stats--skeleton" *ngIf="loading">
+      <div class="ra-skeleton" *ngFor="let i of skeletonRows"></div>
     </div>
   </header>
 
-  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+  <section class="ra-panel ra-panel--params">
+    <div class="ra-panel__head">
+      <h2 class="ra-panel__title">Analysis parameters</h2>
+      <p class="ra-panel__intro">Select term, class, and exam type, then load the analysis.</p>
+    </div>
 
-  <!-- Analysis Parameters -->
-  <section class="ra-params card">
-    <h2 class="ra-section-title">
-      <span class="ra-section-icon">🎛️</span>
-      Analysis Parameters
-    </h2>
-    <div class="ra-params-grid">
+    <div class="ra-form-grid">
       <div class="ra-field">
-        <label for="ra-term">Choose Term <span class="required">*</span></label>
+        <label for="ra-term">Term <span class="ra-required">*</span></label>
         <select
           id="ra-term"
           [(ngModel)]="selectedTerm"
           [ngModelOptions]="{ standalone: true }"
           (change)="onSelectionReset()"
           [disabled]="loadingTerms"
-          class="ra-control">
-          <option value="">{{ loadingTerms ? 'Loading terms...' : '-- Select Term --' }}</option>
+          class="ra-select">
+          <option value="">{{ loadingTerms ? 'Loading terms…' : 'Select term' }}</option>
           <option *ngFor="let term of availableTerms" [value]="term">{{ term }}</option>
         </select>
       </div>
 
       <div class="ra-field">
-        <label for="ra-class">Choose Class <span class="required">*</span></label>
+        <label for="ra-class">Class <span class="ra-required">*</span></label>
         <select
           id="ra-class"
           [(ngModel)]="selectedClassId"
           [ngModelOptions]="{ standalone: true }"
           (change)="onSelectionReset()"
           [disabled]="loadingClasses"
-          class="ra-control">
-          <option value="">{{ loadingClasses ? 'Loading classes...' : '-- Select Class --' }}</option>
+          class="ra-select">
+          <option value="">{{ loadingClasses ? 'Loading classes…' : 'Select class' }}</option>
           <option *ngFor="let cls of classes" [value]="cls.id">{{ cls.name }} ({{ cls.form }})</option>
         </select>
       </div>
 
       <div class="ra-field">
-        <label for="ra-exam-type">Exam Type <span class="required">*</span></label>
+        <label for="ra-exam-type">Exam type <span class="ra-required">*</span></label>
         <select
           id="ra-exam-type"
           [(ngModel)]="selectedExamType"
           [ngModelOptions]="{ standalone: true }"
           (change)="onSelectionReset()"
-          class="ra-control">
-          <option value="">-- Select Exam Type --</option>
+          class="ra-select">
+          <option value="">Select exam type</option>
           <option *ngFor="let type of examTypes" [value]="type.value">{{ type.label }}</option>
         </select>
       </div>
     </div>
 
-    <div class="ra-actions">
-      <button
-        class="btn-get-analysis"
-        (click)="getAnalysis()"
-        [disabled]="loading || !isSelectionValid()">
-        <span *ngIf="!loading">📊 Get Analysis</span>
-        <span *ngIf="loading" class="btn-loading"><span class="spinner"></span> Loading...</span>
+    <div class="ra-form-actions">
+      <button type="button" class="ra-btn ra-btn--primary" (click)="getAnalysis()" [disabled]="loading || !isSelectionValid()">
+        <span class="ra-spinner" *ngIf="loading" aria-hidden="true"></span>
+        {{ loading ? 'Loading analysis…' : 'Get analysis' }}
       </button>
     </div>
   </section>
 
-  <!-- Results -->
   <ng-container *ngIf="analysisLoaded && markSheetData">
-    <div class="ra-meta">
-      <span class="ra-meta-badge">{{ selectedTerm }}</span>
-      <span class="ra-meta-badge">{{ selectedClassLabel }}</span>
-      <span class="ra-meta-badge">{{ selectedExamTypeLabel }}</span>
-    </div>
-
-    <!-- Tabs -->
-    <div class="ra-tabs">
+    <div class="ra-tabs" role="tablist" aria-label="Analysis views">
       <button
+        type="button"
         class="ra-tab"
-        [class.active]="activeTab === 'overall'"
+        role="tab"
+        [class.ra-tab--active]="activeTab === 'overall'"
+        [attr.aria-selected]="activeTab === 'overall'"
         (click)="setActiveTab('overall')">
-        Overall Class Analysis
+        Overall class analysis
       </button>
       <button
+        type="button"
         class="ra-tab"
-        [class.active]="activeTab === 'individual'"
+        role="tab"
+        [class.ra-tab--active]="activeTab === 'individual'"
+        [attr.aria-selected]="activeTab === 'individual'"
         (click)="setActiveTab('individual')">
-        Individual Student Performance
+        Individual performance
       </button>
     </div>
 
-    <!-- Overall Class Analysis -->
-    <section *ngIf="activeTab === 'overall'" class="ra-overall">
-      <h2 class="ra-summary-title">
-        <span class="ra-summary-icon">▦</span>
-        Overall Class Performance Summary
-      </h2>
+    <section *ngIf="activeTab === 'overall'" class="ra-panel">
+      <div class="ra-panel__head">
+        <h2 class="ra-panel__title">Overall class performance</h2>
+        <p class="ra-panel__intro">Subject pass rates, top and bottom performers, and grade distribution.</p>
+      </div>
 
       <div class="ra-cards-grid">
-        <!-- Subject Pass Rates -->
-        <div class="ra-card ra-card--pass">
-          <div class="ra-card-header">
-            <span class="ra-card-icon">📈</span>
-            <h3>Subject Pass Rates</h3>
+        <article class="ra-card ra-card--pass">
+          <div class="ra-card__head">
+            <span class="ra-card__icon" aria-hidden="true">📈</span>
+            <h3>Subject pass rates</h3>
           </div>
-          <ul class="ra-pass-list">
-            <li *ngFor="let subject of subjectPassRates" class="ra-pass-item">
-              <span class="ra-pass-name">{{ subject.name }}</span>
-              <span class="ra-pass-badge">{{ subject.passRate | number:'1.1-1' }}%</span>
+          <ul class="ra-list">
+            <li *ngFor="let subject of subjectPassRates" class="ra-list__row">
+              <span class="ra-list__name">{{ subject.name }}</span>
+              <span class="ra-pill ra-pill--pass">{{ subject.passRate | number:'1.1-1' }}%</span>
             </li>
             <li *ngIf="subjectPassRates.length === 0" class="ra-empty-row">No subjects found</li>
           </ul>
-        </div>
+        </article>
 
-        <!-- Top 5 Students -->
-        <div class="ra-card ra-card--top">
-          <div class="ra-card-header">
-            <span class="ra-card-icon">⭐</span>
-            <h3>Top 5 Students</h3>
+        <article class="ra-card ra-card--top">
+          <div class="ra-card__head">
+            <span class="ra-card__icon" aria-hidden="true">⭐</span>
+            <h3>Top 5 students</h3>
           </div>
-          <ul class="ra-rank-list">
-            <li *ngFor="let student of topStudents; let i = index" class="ra-rank-item">
-              <span class="ra-rank-num">{{ i + 1 }}</span>
-              <span class="ra-rank-name">{{ student.studentName }}</span>
-              <span class="ra-score-badge">{{ formatAverage(student.average) }}%</span>
+          <ul class="ra-list">
+            <li *ngFor="let student of topStudents; let i = index" class="ra-list__row">
+              <span class="ra-rank">{{ i + 1 }}</span>
+              <span class="ra-list__name">{{ student.studentName }}</span>
+              <span class="ra-pill ra-pill--score">{{ formatAverage(student.average) }}%</span>
             </li>
             <li *ngIf="topStudents.length === 0" class="ra-empty-row">No student data</li>
           </ul>
-        </div>
+        </article>
 
-        <!-- Bottom 5 Students -->
-        <div class="ra-card ra-card--bottom">
-          <div class="ra-card-header">
-            <span class="ra-card-icon">⚠️</span>
-            <h3>Bottom 5 Students</h3>
+        <article class="ra-card ra-card--bottom">
+          <div class="ra-card__head">
+            <span class="ra-card__icon" aria-hidden="true">⚠️</span>
+            <h3>Bottom 5 students</h3>
           </div>
-          <ul class="ra-rank-list">
-            <li *ngFor="let student of bottomStudents; let i = index" class="ra-rank-item">
-              <span class="ra-rank-num">{{ i + 1 }}</span>
-              <span class="ra-rank-name">{{ student.studentName }}</span>
-              <span class="ra-score-badge">{{ formatAverage(student.average) }}%</span>
+          <ul class="ra-list">
+            <li *ngFor="let student of bottomStudents; let i = index" class="ra-list__row">
+              <span class="ra-rank">{{ i + 1 }}</span>
+              <span class="ra-list__name">{{ student.studentName }}</span>
+              <span class="ra-pill ra-pill--score">{{ formatAverage(student.average) }}%</span>
             </li>
             <li *ngIf="bottomStudents.length === 0" class="ra-empty-row">No student data</li>
           </ul>
-        </div>
+        </article>
       </div>
 
-      <!-- Subject-Specific Analysis -->
-      <section class="ra-subject-section card">
-        <h2 class="ra-section-title">
-          <span class="ra-section-icon">☰</span>
-          Subject-Specific Analysis
-        </h2>
-        <div class="ra-subject-select-wrap">
-          <label for="ra-subject">Select Subject</label>
+      <section class="ra-subpanel">
+        <div class="ra-panel__head ra-panel__head--compact">
+          <h3 class="ra-panel__title">Subject-specific analysis</h3>
+          <p class="ra-panel__intro">Choose a subject to view grade distribution.</p>
+        </div>
+
+        <div class="ra-field ra-field--subject">
+          <label for="ra-subject">Subject</label>
           <select
             id="ra-subject"
             [(ngModel)]="selectedSubjectId"
             [ngModelOptions]="{ standalone: true }"
             (change)="onSubjectChange()"
-            class="ra-control">
-            <option value="">-- Select a Subject --</option>
+            class="ra-select">
+            <option value="">Select a subject</option>
             <option *ngFor="let subject of markSheetData.subjects" [value]="subject.id">
               {{ subject.name }}
             </option>
           </select>
         </div>
 
-        <div class="ra-grade-distribution" *ngIf="selectedSubjectId">
-          <h3 class="ra-grade-title">Grade Distribution</h3>
-          <ul class="ra-grade-list">
-            <li *ngFor="let row of gradeDistribution" class="ra-grade-item">
+        <div class="ra-grade-block" *ngIf="selectedSubjectId">
+          <h4 class="ra-grade-block__title">Grade distribution</h4>
+          <ul class="ra-list ra-list--grades">
+            <li *ngFor="let row of gradeDistribution" class="ra-list__row">
               <span class="ra-grade-label">
-                <span class="ra-grade-bar"></span>
+                <span class="ra-grade-bar" aria-hidden="true"></span>
                 {{ row.label }}
               </span>
-              <span class="ra-grade-count">{{ row.count }} {{ row.count === 1 ? 'student' : 'students' }}</span>
+              <span class="ra-pill ra-pill--muted">{{ row.count }} {{ row.count === 1 ? 'student' : 'students' }}</span>
             </li>
             <li *ngIf="gradeDistribution.length === 0" class="ra-empty-row">No marks recorded for this subject</li>
           </ul>
@@ -185,26 +226,26 @@
       </section>
     </section>
 
-    <!-- Individual Student Performance -->
-    <section *ngIf="activeTab === 'individual'" class="ra-individual card">
-      <h2 class="ra-summary-title">
-        <span class="ra-summary-icon">👥</span>
-        Individual Student Performance
-      </h2>
+    <section *ngIf="activeTab === 'individual'" class="ra-panel">
+      <div class="ra-panel__head">
+        <h2 class="ra-panel__title">Individual student performance</h2>
+        <p class="ra-panel__intro">Full class ranking by core subject average.</p>
+      </div>
+
       <div class="ra-table-wrap">
         <table class="ra-table">
           <thead>
             <tr>
               <th>Rank</th>
-              <th>Student Name</th>
-              <th>Core Average</th>
+              <th>Student name</th>
+              <th class="ra-table__num">Core average</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let student of allStudentsRanked">
-              <td><span class="ra-rank-num ra-rank-num--sm">{{ student.position }}</span></td>
+              <td><span class="ra-rank ra-rank--sm">{{ student.position }}</span></td>
               <td>{{ student.studentName }}</td>
-              <td><span class="ra-score-badge ra-score-badge--inline">{{ formatAverage(student.average) }}%</span></td>
+              <td class="ra-table__num"><span class="ra-pill ra-pill--score">{{ formatAverage(student.average) }}%</span></td>
             </tr>
             <tr *ngIf="allStudentsRanked.length === 0">
               <td colspan="3" class="ra-empty-row">No student data available</td>
@@ -215,10 +256,9 @@
     </section>
   </ng-container>
 
-  <!-- Empty state -->
-  <section *ngIf="!analysisLoaded && !loading" class="ra-empty card">
-    <div class="ra-empty-icon">📊</div>
-    <h3>Ready to Analyse Results</h3>
-    <p>Select term, class, and exam type above, then click <strong>Get Analysis</strong>.</p>
+  <section *ngIf="!analysisLoaded && !loading" class="ra-panel ra-empty">
+    <span class="ra-empty__icon" aria-hidden="true">📊</span>
+    <h3>Ready to analyse results</h3>
+    <p>Select term, class, and exam type above, then click <strong>Get analysis</strong>.</p>
   </section>
 </div>
