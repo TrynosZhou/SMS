@@ -132,7 +132,24 @@ export class FinanceService {
     return this.http.post(`${this.apiUrl}/finance/students/${studentId}/sync-exemption-invoices`, {});
   }
 
-getStudentBalance(studentId: string): Observable<any> {
+  lookupStudent(query: string): Observable<any> {
+    return this.http
+      .get(`${this.apiUrl}/finance/student-lookup`, { params: { q: query.trim() } })
+      .pipe(
+        timeout(15000),
+        catchError((error: any) => {
+          if (error?.name === 'TimeoutError') {
+            return throwError(() => ({
+              status: 408,
+              error: { message: 'Student lookup timed out. Try the student number or a more specific name.' },
+            }));
+          }
+          return throwError(() => error);
+        })
+      );
+  }
+
+  getStudentBalance(studentId: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/finance/balance`, { params: { studentId } }).pipe(
       timeout(45000),
       catchError((error: any) => {
@@ -628,6 +645,33 @@ getStudentBalance(studentId: string): Observable<any> {
       params: { termId, studentId, preview: preview ? 'true' : 'false' },
       responseType: 'blob',
     });
+  }
+
+  getRemediationPreview(options: {
+    studentIds: string;
+    startDate?: string;
+    endDate?: string;
+  }): Observable<any> {
+    const params: any = { studentIds: options.studentIds };
+    if (options.startDate) params.startDate = options.startDate;
+    if (options.endDate) params.endDate = options.endDate;
+    return this.http.get(`${this.apiUrl}/finance/remediation/preview`, { params });
+  }
+
+  postRemediationReverse(payload: {
+    paymentLogIds: string[];
+    reason?: string;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/finance/remediation/reverse`, payload);
+  }
+
+  postRemediationCreditNote(payload: {
+    invoiceId: string;
+    item: 'tuition' | 'transport' | 'diningHall' | 'combined';
+    amount: number;
+    reason?: string;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/finance/remediation/credit-note`, payload);
   }
 }
 

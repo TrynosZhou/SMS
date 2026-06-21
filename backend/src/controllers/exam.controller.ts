@@ -4087,12 +4087,17 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
       generatedAt: new Date()
     };
 
-    // Generate PDF
-    const pdfBuffer = await createMarkSheetPDF(pdfData, settings);
+    // Generate HTML report (print to PDF via browser)
+    const htmlBuffer = await createMarkSheetPDF(pdfData, settings);
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="mark-sheet-${classEntity.name}-${examType}-${new Date().toISOString().split('T')[0]}.pdf"`);
-    return res.send(pdfBuffer);
+    const safeClass = String(classEntity.name || 'class').replace(/\s+/g, '-');
+    const safeExam = String(examType || 'exam').replace(/_/g, '-');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="mark-sheet-${safeClass}-${safeExam}-${new Date().toISOString().split('T')[0]}.html"`
+    );
+    return res.send(htmlBuffer);
   } catch (error: any) {
     console.error('Error generating mark sheet PDF:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });

@@ -78,6 +78,14 @@
         <span class="btn-icon">📗</span>
         <span>Debit Note</span>
       </a>
+      <a
+        class="btn btn-action btn-remediation"
+        routerLink="/finance/admin/invoice-sync-remediation"
+        *ngIf="canInvoiceSyncRemediation()"
+        title="Reverse fictitious payments and credit duplicated tuition (sync bug remediation)">
+        <span class="btn-icon">🛠️</span>
+        <span>Sync Remediation</span>
+      </a>
       <button class="btn btn-action btn-create" type="button" (click)="openUniformItemsModal()" *ngIf="canCreateInvoice()" title="Process uniform items for a student and charge against uniform account">
         <span class="btn-icon">👕</span>
         <span>Uniform Items</span>

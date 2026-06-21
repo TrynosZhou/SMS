@@ -152,14 +152,18 @@
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
   margin-bottom: 14px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
 }
 
 .be-stat {
   position: relative;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 12px 14px 12px 38px;
+  color: #000;
 }
 
 .be-stat__icon {
@@ -167,7 +171,7 @@
   left: 12px;
   top: 14px;
   font-size: 0.85rem;
-  opacity: 0.75;
+  opacity: 1;
 }
 
 .be-stat__value {
@@ -176,17 +180,19 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+  color: #000;
 }
 
 .be-stat__label {
   display: block;
   font-size: 0.75rem;
-  opacity: 0.85;
   margin-top: 2px;
+  color: #000;
+  font-weight: 700;
 }
 
-.be-stat--mint .be-stat__value { color: #bbf7d0; }
-.be-stat--rose .be-stat__value { color: #fecdd3; }
+.be-stat--mint .be-stat__value,
+.be-stat--rose .be-stat__value { color: #000; }
 
 .be-steps {
   display: flex;

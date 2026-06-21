@@ -34,6 +34,8 @@ export class AttendanceReportsComponent implements OnInit, OnDestroy {
   sortDirection: 'asc' | 'desc' = 'desc';
   lastGeneratedAt: Date | null = null;
   concernThreshold = 75;
+  schoolName = 'School';
+  schoolLogo: string | null = null;
   topPerformer: any = null;
   lowestPerformer: any = null;
   averageAttendanceRate = 0;
@@ -90,6 +92,14 @@ export class AttendanceReportsComponent implements OnInit, OnDestroy {
   private bootstrapPage(): void {
     this.loadClasses();
     this.loadAvailableTerms();
+    this.settingsService.getSettings().subscribe({
+      next: (s: any) => {
+        this.schoolName = String(s?.schoolName || 'School').trim() || 'School';
+        const logo = this.normalizeSchoolLogo(s?.schoolLogo);
+        this.schoolLogo = logo;
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   get dashboardStats() {
@@ -473,99 +483,603 @@ next: (data: any) => {
     }
   }
 
-  // Export to PDF
+  // Export to PDF (opens styled HTML print view)
   exportToPDF() {
-    if (!this.filteredReport.length) {
-      return;
-    }
+    this.openPrintableReport(true);
+  }
+
+  // Print report
+  printReport() {
+    this.openPrintableReport(true);
+  }
+
+  private openPrintableReport(autoPrint: boolean): void {
+    if (!this.filteredReport.length) return;
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    printWindow.document.write(this.buildAttendanceReportHtml());
+    printWindow.document.close();
+    printWindow.focus();
+    if (autoPrint) {
+      setTimeout(() => printWindow.print(), 300);
+    }
+  }
+
+  private escapeHtml(value: unknown): string {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  private schoolInitials(): string {
+    const words = this.schoolName.split(/\s+/).filter(Boolean);
+    if (!words.length) return 'S';
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+
+  private normalizeSchoolLogo(value: unknown): string | null {
+    let v = String(value ?? '').trim();
+    if (!v) return null;
+
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+      v = v.slice(1, -1).trim();
+    }
+
+    if (v.startsWith('data:image')) {
+      const commaIndex = v.indexOf(',');
+      if (commaIndex > -1) {
+        const header = v.slice(0, commaIndex + 1);
+        const payload = v.slice(commaIndex + 1).replace(/\s/g, '');
+        return `${header}${payload}`;
+      }
+      return v;
+    }
+
+    if (/^https?:\/\//i.test(v)) return v;
+
+    if (/^[A-Za-z0-9+/=\s]+$/.test(v) && v.length > 64) {
+      return `data:image/png;base64,${v.replace(/\s/g, '')}`;
+    }
+
+    return v;
+  }
+
+  private buildHeaderLogoHtml(): string {
+    const raw = String(this.schoolLogo ?? '').trim();
+    if (raw) {
+      return `<img src="${this.escapeHtml(raw)}" alt="${this.escapeHtml(this.schoolName)} logo" class="crest crest--logo" />`;
+    }
+    return `<div class="crest crest--placeholder" aria-hidden="true">${this.escapeHtml(this.schoolInitials())}</div>`;
+  }
+
+  private formatTermPill(term: string): string {
+    const t = String(term || '').trim();
+    if (!t) return 'All terms';
+    const match = t.match(/^(Term\s*\d+)\s+(\d{4})$/i);
+    if (match) return `${match[1]} · ${match[2]}`;
+    return t;
+  }
+
+  private buildAttendanceReportHtml(): string {
     const className = this.getClassName(this.selectedClassId) || 'Class';
-    const reportDate = this.formatDateObjToDDMMYYYY(new Date());
-    
-    let htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Attendance Report - ${className}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          h1 { color: #1f2937; margin-bottom: 10px; }
-          .meta { color: #6b7280; margin-bottom: 20px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th { background: #f9fafb; padding: 10px; text-align: left; border-bottom: 2px solid #e5e7eb; }
-          td { padding: 8px; border-bottom: 1px solid #e5e7eb; }
-          .summary { margin: 20px 0; padding: 15px; background: #f9fafb; border-radius: 8px; }
-          .summary-item { margin: 5px 0; }
-        </style>
-      </head>
-      <body>
-        <h1>Attendance Report - ${className}</h1>
-        <div class="meta">
-          <p>Generated: ${reportDate}</p>
-          <p>Term: ${this.selectedTerm || 'All Terms'}</p>
-          <p>Date Range: ${this.formatISOToDDMMYYYY(this.startDate) || 'N/A'} to ${this.formatISOToDDMMYYYY(this.endDate) || 'N/A'}</p>
+    const generatedAt = new Date();
+    const reportDate = this.formatDateObjToDDMMYYYY(generatedAt);
+    const reportTime = generatedAt.toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const termLabel = this.selectedTerm || 'All Terms';
+    const dateFrom = this.formatISOToDDMMYYYY(this.startDate) || 'N/A';
+    const dateTo = this.formatISOToDDMMYYYY(this.endDate) || 'N/A';
+    const avgRate = this.averageAttendanceRate.toFixed(2);
+    const totalStudents = this.filteredReport.length;
+    const concernCount = this.concernCount;
+    const headerLogo = this.buildHeaderLogoHtml();
+    const concernOk = concernCount === 0;
+
+    const tableRows = this.filteredReport
+      .map((item, index) => {
+        const rate = item.attendanceRateNumber ?? 0;
+        const present = item.present ?? 0;
+        const absent = item.absent ?? 0;
+        const late = item.late ?? 0;
+        const excused = item.excused ?? 0;
+        const total = item.total ?? 0;
+        const rowClass = index % 2 === 1 ? 'row-alt' : '';
+        return `
+          <tr class="${rowClass}">
+            <td class="col-id">${this.escapeHtml(item.studentNumber)}</td>
+            <td class="col-name">${this.escapeHtml(item.firstName)} ${this.escapeHtml(item.lastName)}</td>
+            <td class="col-num col-present">${present}</td>
+            <td class="col-num col-absent">${absent}</td>
+            <td class="col-num col-late">${late}</td>
+            <td class="col-num col-excused">${excused}</td>
+            <td class="col-num col-total">${total}</td>
+            <td class="col-rate">
+              <div class="rate-cell">
+                <div class="rate-bar" aria-hidden="true"><span class="rate-fill" style="width:${Math.min(100, Math.max(0, rate))}%"></span></div>
+                <span class="rate-text">${rate.toFixed(2)}%</span>
+              </div>
+            </td>
+          </tr>`;
+      })
+      .join('');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Attendance Report — ${this.escapeHtml(className)}</title>
+  <style>
+    :root {
+      --navy: #2b3a67;
+      --navy-dark: #1e2a4a;
+      --navy-soft: #eef1f8;
+      --ink: #111827;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --paper: #f3f4f6;
+      --present: #059669;
+      --absent: #dc2626;
+      --late: #d97706;
+      --excused: #2563eb;
+      --radius: 10px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.45;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    body { padding: 24px; }
+
+    .report {
+      max-width: 980px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(43, 58, 103, 0.08);
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    .report-header {
+      padding: 22px 28px 18px;
+      border-bottom: 3px solid var(--navy);
+    }
+
+    .header-grid {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .crest {
+      flex-shrink: 0;
+      width: 52px;
+      height: 52px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(43, 58, 103, 0.18);
+    }
+
+    .crest--logo {
+      object-fit: contain;
+      background: #fff;
+      border: 1px solid var(--line);
+      padding: 4px;
+    }
+
+    .crest--placeholder {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .header-titles .school-name {
+      margin: 0 0 4px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.2;
+    }
+
+    .header-titles h1 {
+      margin: 0 0 2px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--navy);
+      line-height: 1.2;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .header-titles .class-name {
+      margin: 0;
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .header-right {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .term-pill {
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: var(--navy-soft);
+      color: var(--navy);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin-bottom: 6px;
+    }
+
+    .header-meta {
+      margin: 0;
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ── Meta row ── */
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 24px;
+      padding: 12px 28px;
+      background: #fafbfc;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.82rem;
+    }
+
+    .meta-row span { color: var(--muted); }
+    .meta-row strong { color: var(--ink); font-weight: 700; margin-left: 4px; }
+
+    /* ── Summary cards ── */
+    .summary {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr;
+      gap: 14px;
+      padding: 20px 28px;
+    }
+
+    .card {
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card--featured {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(43, 58, 103, 0.22);
+    }
+
+    .card--light {
+      background: #f9fafb;
+      border: 1px solid var(--line);
+    }
+
+    .card__label {
+      margin: 0 0 8px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.85;
+    }
+
+    .card--light .card__label { color: var(--muted); }
+
+    .card__value {
+      margin: 0;
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .card__sub {
+      margin: 6px 0 0;
+      font-size: 0.75rem;
+      opacity: 0.8;
+    }
+
+    .card--light .card__sub { color: var(--muted); }
+
+    .card__icon {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      font-size: 1.1rem;
+      opacity: 0.55;
+    }
+
+    .card__icon--ok { color: var(--present); opacity: 1; }
+
+    /* ── Table ── */
+    .table-section { padding: 0 28px 20px; }
+
+    .table-wrap {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      background: var(--navy);
+      color: #fff;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-align: left;
+      padding: 11px 12px;
+    }
+
+    thead th:first-child { border-top-left-radius: var(--radius); }
+    thead th:last-child { border-top-right-radius: var(--radius); }
+
+    tbody td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr.row-alt { background: #f9fafb; }
+
+    .col-id { color: var(--muted); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+    .col-name { font-weight: 700; color: var(--ink); }
+    .col-num { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .col-total { color: var(--muted); font-weight: 600; }
+    .col-present { color: var(--present); }
+    .col-absent { color: var(--absent); }
+    .col-late { color: var(--late); }
+    .col-excused { color: var(--excused); }
+
+    th.col-num, th.col-total { text-align: center; }
+
+    .rate-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 120px;
+    }
+
+    .rate-bar {
+      flex: 1;
+      height: 7px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .rate-fill {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, #34d399, var(--present));
+      border-radius: 999px;
+    }
+
+    .rate-text {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--ink);
+      min-width: 44px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 12px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .legend-dot--present { background: var(--present); }
+    .legend-dot--absent { background: var(--absent); }
+    .legend-dot--late { background: var(--late); }
+    .legend-dot--excused { background: var(--excused); }
+
+    /* ── Footer ── */
+    .report-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 28px 18px;
+      border-top: 1px solid var(--line);
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    /* ── Print ── */
+    @media print {
+      body { padding: 0; background: #fff; }
+      .report { box-shadow: none; border-radius: 0; max-width: none; }
+
+      .report-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: #fff;
+        z-index: 100;
+        padding: 14px 18px 12px;
+      }
+
+      .meta-row {
+        position: fixed;
+        top: 100px;
+        left: 0;
+        right: 0;
+        z-index: 99;
+        padding: 8px 18px;
+      }
+
+      .summary {
+        margin-top: 148px;
+        padding: 12px 18px;
+        break-inside: avoid;
+      }
+
+      .table-section { padding: 0 18px 36px; }
+
+      thead { display: table-header-group; }
+      thead th { background: var(--navy) !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      tbody tr { break-inside: avoid; }
+
+      .report-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #fff;
+        padding: 8px 18px;
+        border-top: 1px solid var(--line);
+      }
+
+      .page-num::after { content: counter(page); }
+
+      @page {
+        margin: 0 0 28mm 0;
+        size: A4;
+      }
+    }
+  </style>
+</head>
+<body>
+  <article class="report">
+    <header class="report-header">
+      <div class="header-grid">
+        <div class="header-left">
+          ${headerLogo}
+          <div class="header-titles">
+            <p class="school-name">${this.escapeHtml(this.schoolName)}</p>
+            <h1>Attendance Report</h1>
+            <p class="class-name">${this.escapeHtml(className)}</p>
+          </div>
         </div>
-        <div class="summary">
-          <div class="summary-item"><strong>Average Attendance:</strong> ${this.averageAttendanceRate.toFixed(2)}%</div>
-          <div class="summary-item"><strong>Total Students:</strong> ${this.filteredReport.length}</div>
-          <div class="summary-item"><strong>Students Needing Attention:</strong> ${this.concernCount}</div>
+        <div class="header-right">
+          <div class="term-pill">${this.escapeHtml(this.formatTermPill(termLabel))}</div>
+          <p class="header-meta">Generated ${this.escapeHtml(reportDate)} · ${this.escapeHtml(reportTime)}<br />Page <span class="page-num"></span></p>
         </div>
+      </div>
+    </header>
+
+    <div class="meta-row">
+      <div><span>Term:</span><strong>${this.escapeHtml(termLabel)}</strong></div>
+      <div><span>Date Range:</span><strong>${this.escapeHtml(dateFrom)} to ${this.escapeHtml(dateTo)}</strong></div>
+      <div><span>Class:</span><strong>${this.escapeHtml(className)}</strong></div>
+    </div>
+
+    <section class="summary">
+      <article class="card card--featured">
+        <p class="card__label">Average Attendance</p>
+        <p class="card__value">${avgRate}%</p>
+        <p class="card__sub">Class-wide rate for selected period</p>
+      </article>
+      <article class="card card--light">
+        <span class="card__icon" aria-hidden="true">👥</span>
+        <p class="card__label">Total Students</p>
+        <p class="card__value">${totalStudents}</p>
+        <p class="card__sub">Enrolled in this class group</p>
+      </article>
+      <article class="card card--light">
+        <span class="card__icon${concernOk ? ' card__icon--ok' : ''}" aria-hidden="true">${concernOk ? '✓' : '⚠'}</span>
+        <p class="card__label">Students Needing Attention</p>
+        <p class="card__value">${concernCount}</p>
+        <p class="card__sub">Below ${this.concernThreshold}% attendance threshold</p>
+      </article>
+    </section>
+
+    <section class="table-section">
+      <div class="table-wrap">
         <table>
           <thead>
             <tr>
               <th>Student #</th>
               <th>Name</th>
-              <th>Present</th>
-              <th>Absent</th>
-              <th>Late</th>
-              <th>Excused</th>
-              <th>Total</th>
-              <th>Attendance %</th>
+              <th class="col-num">Present</th>
+              <th class="col-num">Absent</th>
+              <th class="col-num">Late</th>
+              <th class="col-num">Excused</th>
+              <th class="col-num">Total</th>
+              <th>Attendance Rate</th>
             </tr>
           </thead>
           <tbody>
-    `;
-
-    this.filteredReport.forEach(item => {
-      htmlContent += `
-        <tr>
-          <td>${item.studentNumber}</td>
-          <td>${item.firstName} ${item.lastName}</td>
-          <td>${item.present ?? 0}</td>
-          <td>${item.absent ?? 0}</td>
-          <td>${item.late ?? 0}</td>
-          <td>${item.excused ?? 0}</td>
-          <td>${item.total ?? 0}</td>
-          <td>${(item.attendanceRateNumber ?? 0).toFixed(2)}%</td>
-        </tr>
-      `;
-    });
-
-    htmlContent += `
+            ${tableRows}
           </tbody>
         </table>
-      </body>
-      </html>
-    `;
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot legend-dot--present"></span> Present</span>
+        <span class="legend-item"><span class="legend-dot legend-dot--absent"></span> Absent</span>
+        <span class="legend-item"><span class="legend-dot legend-dot--late"></span> Late</span>
+        <span class="legend-item"><span class="legend-dot legend-dot--excused"></span> Excused</span>
+      </div>
+    </section>
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-    }, 250);
-  }
-
-  // Print report
-  printReport() {
-    this.isPrintMode = true;
-    setTimeout(() => {
-      window.print();
-      this.isPrintMode = false;
-    }, 100);
+    <footer class="report-footer">
+      <span>${this.escapeHtml(this.schoolName)} · ${this.escapeHtml(className)}</span>
+      <span>Page <span class="page-num"></span></span>
+    </footer>
+  </article>
+</body>
+</html>`;
   }
 
   // Toggle view mode

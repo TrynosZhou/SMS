@@ -196,6 +196,7 @@ export class PermissionService {
       'tuitionAdjust',
       'bulkInvoices',
       'exemptionCorrection',
+      'invoiceSyncRemediation',
     ];
     if (sensitivePages.includes(pageKey)) {
       return false;

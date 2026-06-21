@@ -377,18 +377,18 @@ setTimeout(() => this.error = '', 5000);
         link.href = fileURL;
         const className = this.markSheetData?.class?.name || 'class';
         const examType = this.selectedExamType.replace('_', '-');
-        link.download = `mark-sheet-${className}-${examType}-${new Date().toISOString().split('T')[0]}.pdf`;
+        link.download = `mark-sheet-${className}-${examType}-${new Date().toISOString().split('T')[0]}.html`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(fileURL);
         this.loading = false;
-        this.success = 'Mark sheet PDF downloaded successfully';
+        this.success = 'Mark sheet downloaded successfully';
         setTimeout(() => this.success = '', 5000);
       },
       error: (err: any) => {
         console.error('Error downloading mark sheet PDF:', err);
-        this.error = err.error?.message || 'Failed to download mark sheet PDF';
+        this.error = err.error?.message || 'Failed to download mark sheet';
         this.loading = false;
         setTimeout(() => this.error = '', 5000);
       }
@@ -448,7 +448,7 @@ setTimeout(() => this.error = '', 5000);
   getSelectedClassName(): string {
     const cls = this.classes.find((c) => c.id === this.selectedClassId);
     if (!cls) return '';
-    return cls.form ? `${cls.name} (${cls.form})` : cls.name;
+    return cls.name || '';
   }
 
   getExamTypeLabel(): string {

@@ -148,14 +148,18 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
 }
 
 .rp-stat {
   position: relative;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 12px 14px 12px 38px;
+  color: #000;
 }
 
 .rp-stat__icon {
@@ -163,7 +167,7 @@
   left: 12px;
   top: 14px;
   font-size: 0.85rem;
-  opacity: 0.75;
+  opacity: 1;
 }
 
 .rp-stat__value {
@@ -172,17 +176,19 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+  color: #000;
 }
 
 .rp-stat__label {
   display: block;
   font-size: 0.75rem;
-  opacity: 0.85;
   margin-top: 2px;
+  color: #000;
+  font-weight: 700;
 }
 
-.rp-stat--mint .rp-stat__value { color: #bbf7d0; }
-.rp-stat--rose .rp-stat__value { color: #fecdd3; }
+.rp-stat--mint .rp-stat__value,
+.rp-stat--rose .rp-stat__value { color: #000; }
 
 /* Panels */
 .rp-panel {

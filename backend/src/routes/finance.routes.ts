@@ -19,6 +19,7 @@ import {
   generateInvoicePDF,
   generateReceiptPDF,
   getStudentBalance,
+  lookupStudentForFinance,
   getOutstandingBalances,
   getOutstandingBalancesPDF,
   getExemptionReport,
@@ -53,6 +54,11 @@ import {
   getStudentLedgerReportPdf,
   getSchoolTermsForReports,
 } from '../controllers/financialBooks.controller';
+import {
+  getRemediationPreview,
+  postRemediationReverse,
+  postRemediationCreditNote,
+} from '../controllers/financeRemediation.controller';
 
 const router = Router();
 
@@ -137,6 +143,7 @@ router.post(
   voidTuitionExemptInvoices
 );
 router.get('/', requireFinanceInvoiceListAccess(), getInvoices);
+router.get('/student-lookup', authorize(...FINANCE_OPERATORS), lookupStudentForFinance);
 router.get('/balance', getStudentBalance);
 router.get('/next-uniform-receipt', authorize(...FINANCE_OPERATORS), getNextUniformReceiptNumberController);
 router.post('/uniform-charge', authorize(...FINANCE_OPERATORS), createUniformCharge);
@@ -230,6 +237,25 @@ router.get('/audit/reconcile-term-outstanding', authorize(...FINANCE_OPERATORS_N
 router.get('/audit/invoice-reconciliation', authorize(...FINANCE_OPERATORS_NO_DEMO), (req, res) => (require('../controllers/finance.controller').auditInvoiceReconciliation)(req, res));
 
 router.post('/repair/returning-desk-fee', authorize(...FINANCE_EXECUTIVE), repairReturningDeskFeeInvoices);
+
+router.get(
+  '/remediation/preview',
+  authorize(...FINANCE_OPERATORS_NO_DEMO),
+  requireFinancePageView('invoiceSyncRemediation'),
+  getRemediationPreview
+);
+router.post(
+  '/remediation/reverse',
+  authorize(...FINANCE_OPERATORS_NO_DEMO),
+  requireFinancePageEdit('invoiceSyncRemediation'),
+  postRemediationReverse
+);
+router.post(
+  '/remediation/credit-note',
+  authorize(...FINANCE_OPERATORS_NO_DEMO),
+  requireFinancePageEdit('invoiceSyncRemediation'),
+  postRemediationCreditNote
+);
 
 router.get('/:id/pdf', generateInvoicePDF);
 router.get('/:id/receipt', generateReceiptPDF);

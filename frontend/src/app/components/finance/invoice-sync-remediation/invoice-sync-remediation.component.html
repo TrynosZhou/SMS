@@ -1,0 +1,257 @@
+<div class="rem-page">
+  <header class="rem-hero">
+    <div class="rem-hero__main">
+      <div class="rem-hero__left">
+        <span class="rem-hero__icon" aria-hidden="true">🛠️</span>
+        <div>
+          <span class="rem-hero__eyebrow">Admin · Finance</span>
+          <h1>Invoice Sync Remediation</h1>
+          <p class="rem-hero__sub">
+            Reverse fictitious payments and credit duplicated tuition charges from the transport/DH sync bug.
+            Original records are kept for audit — nothing is deleted.
+          </p>
+        </div>
+      </div>
+      <div class="rem-hero__actions">
+        <button type="button" class="rem-btn rem-btn--ghost" (click)="goBack()">← Back to invoices</button>
+      </div>
+    </div>
+  </header>
+
+  <div *ngIf="error" class="rem-alert rem-alert--error" role="alert">{{ error }}</div>
+  <div *ngIf="success" class="rem-alert rem-alert--success" role="status">{{ success }}</div>
+
+  <!-- Step 1: Filter & Preview -->
+  <section class="rem-card">
+    <h2><span class="step-badge">1</span> Filter &amp; Preview Payments</h2>
+    <p class="rem-hint">Enter Student ID(s) and an optional date range. Select specific payment rows — nothing is auto-selected.</p>
+
+    <div class="rem-form-grid">
+      <div class="rem-field rem-field--wide">
+        <label for="studentIds">Student ID(s)</label>
+        <textarea
+          id="studentIds"
+          rows="2"
+          class="form-control"
+          [(ngModel)]="studentIdsInput"
+          placeholder="e.g. JPS4912026 or comma-separated list"></textarea>
+        <small>Student numbers or UUIDs, separated by commas or new lines.</small>
+      </div>
+      <div class="rem-field">
+        <label for="startDate">From date</label>
+        <input id="startDate" type="date" class="form-control" [(ngModel)]="startDate" />
+      </div>
+      <div class="rem-field">
+        <label for="endDate">To date</label>
+        <input id="endDate" type="date" class="form-control" [(ngModel)]="endDate" />
+      </div>
+    </div>
+
+    <button type="button" class="rem-btn rem-btn--primary" (click)="loadPreview()" [disabled]="loading">
+      {{ loading ? 'Loading…' : 'Load payments' }}
+    </button>
+
+    <div *ngIf="notFound.length" class="rem-warn">
+      Not found: {{ notFound.join(', ') }}
+    </div>
+
+    <div *ngIf="students.length > 1" class="rem-student-picker">
+      <p>Select student:</p>
+      <div class="rem-student-chips">
+        <button
+          type="button"
+          *ngFor="let s of students"
+          class="rem-chip"
+          [class.rem-chip--active]="activeStudent?.id === s.id"
+          (click)="selectStudent(s)">
+          {{ s.studentNumber }} — {{ s.firstName }} {{ s.lastName }}
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <ng-container *ngIf="activeStudent">
+    <section class="rem-card rem-summary">
+      <h3>{{ activeStudent.firstName }} {{ activeStudent.lastName }} ({{ activeStudent.studentNumber }})</h3>
+      <p *ngIf="activeStudent.className">Class: {{ activeStudent.className }}</p>
+      <p class="rem-balance">
+        Total outstanding:
+        <strong>{{ currencySymbol }} {{ activeStudent.totalOutstanding | number:'1.2-2' }}</strong>
+      </p>
+    </section>
+
+    <section class="rem-card" *ngIf="activeStudent.payments.length">
+      <h2>Payment records in range</h2>
+      <div class="rem-table-wrap">
+        <table class="rem-table">
+          <thead>
+            <tr>
+              <th class="col-check"></th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Method</th>
+              <th>Receipt / Reference</th>
+              <th>Notes</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let p of activeStudent.payments"
+              [class.rem-row--reversed]="p.reversedAt"
+              [class.rem-row--blocked]="!p.canReverse">
+              <td>
+                <input
+                  type="checkbox"
+                  [checked]="p.selected"
+                  [disabled]="!p.canReverse"
+                  (change)="togglePayment(p, $any($event.target).checked)"
+                  [attr.aria-label]="'Select payment ' + p.id" />
+              </td>
+              <td>{{ formatDate(p.paymentDate) }}</td>
+              <td>{{ currencySymbol }} {{ p.amountPaid | number:'1.2-2' }}</td>
+              <td>{{ p.paymentMethod || '—' }}</td>
+              <td>{{ p.receiptNumber || p.invoiceNumber || '—' }}</td>
+              <td class="col-notes">{{ p.notes || '—' }}</td>
+              <td>
+                <span *ngIf="p.reversedAt" class="rem-tag rem-tag--muted">Reversed</span>
+                <span *ngIf="!p.canReverse && !p.reversedAt" class="rem-tag">{{ p.reverseBlockedReason }}</span>
+                <span *ngIf="p.canReverse" class="rem-tag rem-tag--ok">Reversible</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="rem-card rem-empty" *ngIf="!activeStudent.payments.length && !loading">
+      No payment logs found for this student in the selected date range.
+    </section>
+
+    <!-- Step 2: Reverse -->
+    <section class="rem-card">
+      <h2><span class="step-badge">2</span> Reverse Selected Payment(s)</h2>
+      <div class="rem-field">
+        <label for="reversalReason">Reason (required)</label>
+        <textarea
+          id="reversalReason"
+          rows="2"
+          class="form-control"
+          [(ngModel)]="reversalReason"></textarea>
+      </div>
+      <button
+        type="button"
+        class="rem-btn rem-btn--danger"
+        (click)="openReverseConfirm()"
+        [disabled]="submittingReverse || !selectedPayments.length">
+        Reverse {{ selectedPayments.length || '' }} selected payment(s)
+      </button>
+    </section>
+
+    <!-- Step 3: Credit note -->
+    <section class="rem-card" [class.rem-card--disabled]="!reversalsCompleted">
+      <h2><span class="step-badge">3</span> Apply Credit Note</h2>
+      <p class="rem-hint" *ngIf="!reversalsCompleted">
+        Complete Step 2 first — credit note is enabled after a successful reversal in this session.
+      </p>
+
+      <div class="rem-form-grid" *ngIf="reversalsCompleted">
+        <div class="rem-field">
+          <label for="creditInvoice">Invoice</label>
+          <select id="creditInvoice" class="form-control" [(ngModel)]="creditForm.invoiceId" (ngModelChange)="onCreditInvoiceChange()">
+            <option value="">— Select invoice —</option>
+            <option *ngFor="let inv of activeStudent.invoices" [value]="inv.id">
+              {{ inv.invoiceNumber }} ({{ inv.term }}) — bal {{ currencySymbol }}{{ inv.displayBalance | number:'1.2-2' }}
+            </option>
+          </select>
+        </div>
+        <div class="rem-field">
+          <label for="creditItem">Line item</label>
+          <select id="creditItem" class="form-control" [(ngModel)]="creditForm.item" (ngModelChange)="onCreditItemChange()">
+            <option value="combined">
+              Tuition + fees ({{ currencySymbol }}{{ maxCreditAmount | number:'1.2-2' }} max)
+            </option>
+            <option value="tuition" *ngIf="selectedCreditInvoice && selectedCreditInvoice.tuitionAmount > 0">
+              Tuition only ({{ currencySymbol }}{{ selectedCreditInvoice.tuitionAmount | number:'1.2-2' }} max)
+            </option>
+            <option value="diningHall" *ngIf="selectedCreditInvoice && selectedCreditInvoice.diningHallAmount > 0">
+              Dining Hall only ({{ currencySymbol }}{{ selectedCreditInvoice.diningHallAmount | number:'1.2-2' }} max)
+            </option>
+            <option value="transport" *ngIf="selectedCreditInvoice && selectedCreditInvoice.transportAmount > 0">
+              Transport only ({{ currencySymbol }}{{ selectedCreditInvoice.transportAmount | number:'1.2-2' }} max)
+            </option>
+          </select>
+          <small *ngIf="creditForm.item === 'combined' && creditLineBreakdown">
+            Includes: {{ creditLineBreakdown }}
+          </small>
+        </div>
+        <div class="rem-field">
+          <label for="creditAmount">Credit amount</label>
+          <input
+            id="creditAmount"
+            type="number"
+            min="0.01"
+            [max]="maxCreditAmount"
+            step="0.01"
+            class="form-control"
+            [(ngModel)]="creditForm.amount" />
+        </div>
+        <div class="rem-field rem-field--wide">
+          <label for="creditReason">Reason</label>
+          <textarea id="creditReason" rows="2" class="form-control" [(ngModel)]="creditReason"></textarea>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="rem-btn rem-btn--primary"
+        (click)="openCreditConfirm()"
+        [disabled]="!reversalsCompleted || submittingCredit">
+        Apply credit note
+      </button>
+    </section>
+  </ng-container>
+
+  <!-- Reverse confirm modal -->
+  <div class="rem-modal-backdrop" *ngIf="showReverseConfirm" (click)="cancelReverseConfirm()"></div>
+  <div class="rem-modal" *ngIf="showReverseConfirm" role="dialog" aria-labelledby="reverseConfirmTitle">
+    <h3 id="reverseConfirmTitle">Confirm payment reversal</h3>
+    <ul class="rem-confirm-list">
+      <li *ngFor="let p of selectedPayments">
+        Reverse <strong>{{ currencySymbol }} {{ p.amountPaid | number:'1.2-2' }}</strong>
+        dated {{ formatDate(p.paymentDate) }}
+        <span *ngIf="p.receiptNumber">({{ p.receiptNumber }})</span>
+      </li>
+    </ul>
+    <p class="rem-confirm-reason"><strong>Reason:</strong> {{ reversalReason || defaultReversalReason }}</p>
+    <p class="rem-hint">The original payment will be marked reversed; a compensating REVERSAL log will be created.</p>
+    <div class="rem-modal-actions">
+      <button type="button" class="rem-btn rem-btn--ghost" (click)="cancelReverseConfirm()">Cancel</button>
+      <button type="button" class="rem-btn rem-btn--danger" (click)="confirmReverse()" [disabled]="submittingReverse">
+        Confirm reversal
+      </button>
+    </div>
+  </div>
+
+  <!-- Credit confirm modal -->
+  <div class="rem-modal-backdrop" *ngIf="showCreditConfirm" (click)="cancelCreditConfirm()"></div>
+  <div class="rem-modal" *ngIf="showCreditConfirm" role="dialog" aria-labelledby="creditConfirmTitle">
+    <h3 id="creditConfirmTitle">Confirm credit note</h3>
+    <p>
+      This will issue a credit of
+      <strong>{{ currencySymbol }} {{ creditForm.amount | number:'1.2-2' }}</strong>
+      against <strong>{{ itemLabel(creditForm.item) }}</strong>
+      on invoice <strong>{{ selectedCreditInvoice?.invoiceNumber }}</strong>.
+    </p>
+    <p *ngIf="creditForm.item === 'combined' && creditLineBreakdown" class="rem-hint">
+      Applied across: {{ creditLineBreakdown }}
+    </p>
+    <p class="rem-confirm-reason"><strong>Reason:</strong> {{ creditReason || defaultCreditReason }}</p>
+    <div class="rem-modal-actions">
+      <button type="button" class="rem-btn rem-btn--ghost" (click)="cancelCreditConfirm()">Cancel</button>
+      <button type="button" class="rem-btn rem-btn--primary" (click)="confirmCreditNote()" [disabled]="submittingCredit">
+        Confirm credit note
+      </button>
+    </div>
+  </div>
+</div>

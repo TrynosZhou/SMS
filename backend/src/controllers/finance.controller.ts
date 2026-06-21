@@ -28,9 +28,10 @@ import {
   withDisplayBalance,
   repairInvoiceFinancialsIfStale
 } from '../utils/invoiceFeesBalance';
+import { lookupStudentByQuery } from '../utils/studentLookup';
 import { recomputeInvoiceTotalsFromLineItems } from '../utils/studentLogisticsInvoice';
 import { fetchExemptionReportRows } from '../utils/exemptionReport';
-import { syncExemptionInvoicesForStudent } from '../utils/exemptionInvoice';
+import { syncExemptionInvoicesForStudent, applyExemptionToInvoice, isFullPercentageExemption, shouldSkipTermFeeInvoiceCreation, studentHasActiveFeeExemption } from '../utils/exemptionInvoice';
 import { createExemptionReportPDF } from '../utils/exemptionReportPdfGenerator';
 import { buildPaginationResponse, resolvePaginationParams } from '../utils/pagination';
 import { UserRole } from '../entities/User';
@@ -310,6 +311,13 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
         : breakdownText;
     }
 
+    if (isTermFeeInvoice && shouldSkipTermFeeInvoiceCreation(student)) {
+      return res.status(400).json({
+        message:
+          'This student has 100% fee exemption. Term fee invoices cannot be created for fully exempt students.',
+      });
+    }
+
     const invoice = invoiceRepository.create({
       invoiceNumber,
       studentId,
@@ -330,6 +338,10 @@ export const createInvoice = async (req: AuthRequest, res: Response) => {
       registrationAmount: registrationVal,
       deskFeeAmount: deskVal
     });
+
+    if (settings?.feesSettings && studentHasActiveFeeExemption(student)) {
+      applyExemptionToInvoice(student, invoice, settings.feesSettings as Record<string, unknown>);
+    }
 
     const savedInvoice = await invoiceRepository.save(invoice);
 
@@ -1233,88 +1245,44 @@ export const createBulkInvoices = async (req: AuthRequest, res: Response) => {
           results.errors.push(`${student.firstName} ${student.lastName}: Invoice for ${nextTerm} already exists`);
           continue;
         }
-        
-        // Desk fee and registration fee: only charged once at registration (first invoice only; does not apply to staff children)
-        const shouldChargeOneTimeFees = !lastInvoice;
-        
-        // Calculate fees based on staff child/exempted status
-        let termFees = 0;
-        
-        // Staff children and exempted students don't pay tuition fees
-        if (!student.isStaffChild && !student.isExempted) {
-          const tuitionFeeNum = student.studentType === 'Boarder' 
-            ? boarderTuitionFee
-            : dayScholarTuitionFee;
-          
-          if (tuitionFeeNum <= 0) {
-            results.failed++;
-            results.errors.push(`${student.firstName} ${student.lastName}: Tuition fee not set for ${student.studentType}`);
-            continue;
-          }
-          
-          termFees += tuitionFeeNum;
+
+        if (shouldSkipTermFeeInvoiceCreation(student)) {
+          continue;
         }
 
-        // Registration fee: only charged once at registration (first invoice only)
-        if (!student.isStaffChild && !student.isExempted && shouldChargeOneTimeFees) {
-          termFees += registrationFee;
-        }
+        const appliedPrepaid = Math.min(previousPrepaid, previousBalance);
+        const remainingPrepaid = Math.max(0, previousPrepaid - appliedPrepaid);
 
-        // Desk fee: only charged once at registration (first invoice only)
-        if (!student.isStaffChild && !student.isExempted && shouldChargeOneTimeFees) {
-          termFees += deskFee;
-        }
-        
-        // Transport cost: only for day scholars who use transport AND are not staff children or exempted
-        if (student.studentType === 'Day Scholar' && student.usesTransport && !student.isStaffChild && !student.isExempted) {
-          termFees += transportCost;
-        }
-
-        // Dining hall cost: full price for regular students, 50% for staff children or exempted
-        if (student.usesDiningHall) {
-          const diningCost = diningHallCost;
-          if (student.isStaffChild || student.isExempted) {
-            termFees += diningCost * 0.5; // 50% for staff children/exempted
-          } else {
-            termFees += diningCost; // Full price for regular students
-          }
-        }
-
-        if (!Number.isFinite(termFees)) {
-          termFees = 0;
-        }
-
-        // Calculate total amount due for the new invoice (before applying prepaid credit)
-        const totalAmount = previousBalance + termFees;
-        const appliedPrepaid = Math.min(previousPrepaid, totalAmount);
-        const remainingPrepaid = previousPrepaid - appliedPrepaid;
-        const finalBalance = totalAmount - appliedPrepaid;
-
-        // Generate invoice number (advance sequence only after we commit to this number)
         const invoiceNumber = `${invoicePrefix}${String(nextSequence).padStart(6, '0')}`;
 
-        // Create invoice for the following term
-        // term variable is the current term, but we're creating invoice for next term
         const invoice = invoiceRepository.create({
           invoiceNumber,
           studentId: student.id,
-          amount: termFees,
+          amount: 0,
           previousBalance,
-          balance: finalBalance,
+          balance: 0,
           prepaidAmount: remainingPrepaid,
           paidAmount: appliedPrepaid,
-          tuitionAmount: termFees,
+          tuitionAmount: 0,
           transportAmount: 0,
           diningHallAmount: 0,
           registrationAmount: 0,
           deskFeeAmount: 0,
           dueDate: new Date(dueDate),
           term: nextTerm,
-          description: description || `Fees for ${nextTerm} - ${student.studentType}${(student.isStaffChild || student.isExempted) ? ' (Staff/Exempted)' : ''}`,
-          status: finalBalance <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PENDING
+          description: description || `Fees for ${nextTerm} - ${student.studentType}`,
+          status: InvoiceStatus.PENDING,
+          uniformTotal: 0,
         });
 
-        recomputeInvoiceTotalsFromLineItems(invoice);
+        applyExemptionToInvoice(student, invoice, feesConfig as Record<string, unknown>);
+
+        const termFees = parseAmount(invoice.amount);
+        const finalBalance = parseAmount(invoice.balance);
+
+        if (termFees <= 0.005 && previousBalance <= 0.005) {
+          continue;
+        }
 
         const savedInvoice = await invoiceRepository.save(invoice);
 
@@ -1815,6 +1783,30 @@ export const getOutstandingBalancesPDF = async (req: AuthRequest, res: Response)
     res.send(htmlBuffer);
   } catch (error: any) {
     console.error('Error generating outstanding balances PDF:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+/** Lightweight student lookup for invoice/payment forms (no balance or stats queries). */
+export const lookupStudentForFinance = async (req: AuthRequest, res: Response) => {
+  try {
+    const q = String(req.query.q || req.query.search || '').trim();
+    if (!q) {
+      return res.status(400).json({ message: 'Enter Student ID, last name, or first name.' });
+    }
+
+    const result = await lookupStudentByQuery(q);
+    if (result.kind === 'none') {
+      return res.status(404).json({
+        message: 'No student found. Try the student number, last name, or first name.',
+      });
+    }
+    if (result.kind === 'multiple') {
+      return res.json({ multipleMatches: true, matches: result.matches });
+    }
+    return res.json({ student: result.student });
+  } catch (error: any) {
+    console.error('Error looking up student:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

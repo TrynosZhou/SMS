@@ -1,0 +1,303 @@
+.rem-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+.rem-hero__main {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.rem-hero__left {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.rem-hero__icon {
+  font-size: 2.25rem;
+}
+
+.rem-hero__eyebrow {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #b45309;
+  margin-bottom: 4px;
+}
+
+.rem-hero h1 {
+  margin: 0 0 8px;
+  font-size: 1.65rem;
+  color: #1e293b;
+}
+
+.rem-hero__sub {
+  margin: 0;
+  color: #64748b;
+  max-width: 560px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.rem-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px 22px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.rem-card--disabled {
+  opacity: 0.72;
+}
+
+.rem-card h2 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.step-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #0f766e;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rem-hint {
+  color: #64748b;
+  font-size: 13px;
+  margin: 0 0 14px;
+}
+
+.rem-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.rem-field label {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.rem-field small {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.rem-field--wide {
+  grid-column: 1 / -1;
+}
+
+.rem-btn {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.rem-btn--primary {
+  background: linear-gradient(135deg, #0f766e, #0d9488);
+  color: #fff;
+}
+
+.rem-btn--danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+.rem-btn--ghost {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.rem-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.rem-alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+
+.rem-alert--error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.rem-alert--success {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.rem-warn {
+  margin-top: 10px;
+  color: #b45309;
+  font-size: 13px;
+}
+
+.rem-student-picker {
+  margin-top: 16px;
+}
+
+.rem-student-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rem-chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.rem-chip--active {
+  background: #0f766e;
+  color: #fff;
+  border-color: #0f766e;
+}
+
+.rem-summary h3 {
+  margin: 0 0 6px;
+}
+
+.rem-balance {
+  margin: 8px 0 0;
+  font-size: 15px;
+}
+
+.rem-table-wrap {
+  overflow-x: auto;
+}
+
+.rem-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.rem-table th,
+.rem-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.rem-table th {
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+.col-check {
+  width: 36px;
+}
+
+.col-notes {
+  max-width: 200px;
+  word-break: break-word;
+}
+
+.rem-row--reversed {
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.rem-row--blocked {
+  opacity: 0.7;
+}
+
+.rem-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.rem-tag--muted {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.rem-tag--ok {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.rem-empty {
+  color: #64748b;
+  font-style: italic;
+}
+
+.rem-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 1000;
+}
+
+.rem-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1001;
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  width: min(480px, calc(100vw - 32px));
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+}
+
+.rem-modal h3 {
+  margin: 0 0 12px;
+}
+
+.rem-confirm-list {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.rem-confirm-reason {
+  font-size: 13px;
+  color: #475569;
+}
+
+.rem-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}

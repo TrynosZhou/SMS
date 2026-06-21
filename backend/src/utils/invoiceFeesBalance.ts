@@ -4,6 +4,7 @@ import { Student } from '../entities/Student';
 import { Settings } from '../entities/Settings';
 import { parseAmount } from './numberUtils';
 import { recomputeInvoiceTotalsFromLineItems } from './studentLogisticsInvoice';
+import { isFullPercentageExemption } from './exemptionInvoice';
 import {
   outstandingExcludingTransportBucket,
   remainingBucketsAfterAppliedTotals,
@@ -71,15 +72,6 @@ export function computeCanonicalInvoiceBalance(invoice: Invoice | null | undefin
   return canonical;
 }
 
-function isFullPercentageExemption(student: Student | null | undefined): boolean {
-  return (
-    !!student &&
-    (student as any).isExempted === true &&
-    String((student as any).exemptionType || '').trim().toLowerCase() === 'percentage' &&
-    tryNum((student as any).exemptionPercent) >= 100
-  );
-}
-
 /**
  * Outstanding tuition/fees for one invoice.
  * When `logisticsFees` is set (parent portal), transport bucket may be excluded via waterfall.
@@ -93,7 +85,7 @@ export function computeInvoiceFeesOutstanding(
   if (!invoice || invoice.isVoided) return 0;
 
   if (isFullPercentageExemption(student)) {
-    return parseFloat(Math.max(0, tryNum(invoice.balance)).toFixed(2));
+    return 0;
   }
 
   const base = computeCanonicalInvoiceBalance(invoice);
@@ -123,12 +115,7 @@ export function computeInvoiceOwedAmount(
   if (!invoice || invoice.isVoided) return 0;
 
   if (isFullPercentageExemption(student)) {
-    const canonical = computeCanonicalInvoiceBalance(invoice);
-    const fromColumn = tryNum(invoice.balance);
-    if (fromColumn <= 0.005) {
-      return parseFloat(Math.max(0, canonical).toFixed(2));
-    }
-    return parseFloat(Math.max(0, Math.min(fromColumn, canonical)).toFixed(2));
+    return 0;
   }
 
   return parseFloat(Math.max(0, computeCanonicalInvoiceBalance(invoice)).toFixed(2));

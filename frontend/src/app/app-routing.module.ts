@@ -16,6 +16,7 @@ import { ResultsAnalysisComponent } from './components/exams/results-analysis/re
 import { PublishResultsComponent } from './components/exams/publish-results/publish-results.component';
 import { InvoiceListComponent } from './components/finance/invoice-list/invoice-list.component';
 import { InvoiceNotePageComponent } from './components/finance/invoice-note-page/invoice-note-page.component';
+import { InvoiceSyncRemediationComponent } from './components/finance/invoice-sync-remediation/invoice-sync-remediation.component';
 import { InvoiceFormComponent } from './components/finance/invoice-form/invoice-form.component';
 import { InvoiceStatementsComponent } from './components/finance/invoice-statements/invoice-statements.component';
 import { RecordPaymentComponent } from './components/finance/record-payment/record-payment.component';
@@ -136,6 +137,7 @@ const routes: Routes = [
   { path: 'invoices', component: InvoiceListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'billing' } },
   { path: 'invoices/credit-note', component: InvoiceNotePageComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'creditNotes' } },
   { path: 'invoices/debit-note', component: InvoiceNotePageComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'debitNotes' } },
+  { path: 'finance/admin/invoice-sync-remediation', component: InvoiceSyncRemediationComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'invoiceSyncRemediation' } },
   { path: 'invoices/new', component: InvoiceFormComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'billing' } },
   { path: 'invoices/statements', component: InvoiceStatementsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'reportStudentLedgers' } },
   { path: 'payments/record', component: RecordPaymentComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'recordPayment' } },

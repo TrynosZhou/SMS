@@ -1442,6 +1442,10 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     return this.canManageFinance() && this.permissionService.canAccessFinancePage('exemptionCorrection', 'edit');
   }
 
+  canInvoiceSyncRemediation(): boolean {
+    return this.canManageFinance() && this.permissionService.canAccessFinancePage('invoiceSyncRemediation', 'edit');
+  }
+
   canEditTransportOnInvoice(): boolean {
     return this.permissionService.canAccessFinancePage('transportAdjust', 'edit');
   }

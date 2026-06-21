@@ -96,7 +96,7 @@
           [disabled]="loadingClasses"
           class="ms-select">
           <option value="">{{ loadingClasses ? 'Loading classes…' : 'Select class' }}</option>
-          <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">{{ cls.name }} ({{ cls.form }})</option>
+          <option *ngFor="let cls of (classes | safeArray)" [value]="cls.id">{{ cls.name }}</option>
         </select>
       </div>
 

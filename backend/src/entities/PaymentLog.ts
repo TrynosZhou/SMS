@@ -43,6 +43,21 @@ export class PaymentLog {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
+  /** When set, this payment was voided via admin remediation (original row kept for audit). */
+  @Column({ type: 'timestamp', nullable: true })
+  reversedAt: Date | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  reversedByUserId: string | null;
+
+  /** On the original payment: id of the compensating reversal log. */
+  @Column({ type: 'varchar', nullable: true })
+  reversalPaymentLogId: string | null;
+
+  /** On a reversal log: id of the payment being reversed. */
+  @Column({ type: 'varchar', nullable: true })
+  reversesPaymentLogId: string | null;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 }

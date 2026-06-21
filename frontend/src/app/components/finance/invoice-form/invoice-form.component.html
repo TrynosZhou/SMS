@@ -1,507 +1,522 @@
-<div class="invoice-form-container">
-  <!-- Header Section -->
-  <div class="form-header">
-    <div class="header-content">
-      <h1>
-        <span class="icon">💰</span>
-        Create Invoice
-      </h1>
-      <p class="subtitle">Generate a new invoice for a student</p>
-    </div>
-    <div class="header-actions">
-      <button type="button" class="btn btn-secondary" (click)="router.navigate(['/invoices'])">
-        <span>←</span> Back to Invoices
-      </button>
+<div class="if-page">
+  <div class="if-toast-stack" *ngIf="error && !createdInvoiceId">
+    <div class="if-toast if-toast--error" *ngIf="error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="if-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
   </div>
 
-  <!-- Alert Messages -->
-  <div class="alert alert-success" *ngIf="success">
-    <span class="alert-icon">✓</span>
-    {{ success }}
-    <div *ngIf="createdInvoiceId" class="success-actions" style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-      <button 
-        type="button" 
-        class="btn btn-primary" 
-        (click)="viewInvoicePDF()"
-        [disabled]="loadingPdf">
-        <span *ngIf="!loadingPdf">📄</span>
-        <span *ngIf="loadingPdf" class="spinner"></span>
-        {{ loadingPdf ? 'Loading PDF...' : 'View Invoice PDF' }}
-      </button>
-      <button 
-        type="button" 
-        class="btn btn-secondary" 
-        (click)="createNewInvoice()">
-        <span>➕</span> Create Another Invoice
-      </button>
-      <button 
-        type="button" 
-        class="btn btn-secondary" 
-        (click)="router.navigate(['/invoices'])">
-        <span>←</span> Back to Invoices
-      </button>
-    </div>
-  </div>
-  <div class="alert alert-error" *ngIf="error">
-    <span class="alert-icon">⚠</span>
-    {{ error }}
-  </div>
-
-  <form (ngSubmit)="onSubmit()" #invoiceForm="ngForm" class="invoice-form" *ngIf="!createdInvoiceId">
-    <!-- Student Selection Section -->
-    <div class="form-section">
-      <div class="section-header">
-        <h2>
-          <span class="section-icon">👨‍🎓</span>
-          Student Selection
-        </h2>
-        <p class="section-description">Select the student for this invoice</p>
+  <header class="if-hero" *ngIf="!createdInvoiceId">
+    <div class="if-hero__main">
+      <div class="if-hero-left">
+        <span class="if-hero-icon" aria-hidden="true">🧾</span>
+        <div>
+          <span class="if-hero-eyebrow">Finance</span>
+          <h1>Create Invoice</h1>
+          <p class="if-hero-sub">Generate a new invoice for a student — tuition, dining hall, uniform items, and optional discounts.</p>
+        </div>
       </div>
+      <aside class="if-hero-aside">
+        <span class="if-hero-badge">{{ displayTerm }}</span>
+        <span class="if-hero-badge if-hero-badge--muted" *ngIf="displayStudentNumber">{{ displayStudentNumber }}</span>
+      </aside>
+    </div>
 
-      <div class="form-group">
-        <label for="studentSearch">
-          Student <span class="required">*</span>
-        </label>
-        <div class="search-box">
-          <input 
-            type="text" 
-            id="studentSearch"
-            [(ngModel)]="studentSearchQuery" 
-            [ngModelOptions]="{standalone: true}"
-            placeholder="Search by name or student number..."
-            class="search-input"
-            (input)="filterStudents()"
-            [class.error]="invoiceForm.submitted && !invoice.studentId">
-          <span class="search-icon">🔍</span>
-        </div>
-        <div class="student-selector" *ngIf="filteredStudents.length > 0 && studentSearchQuery">
-          <div 
-            *ngFor="let student of filteredStudents" 
-            class="student-option"
-            [class.selected]="invoice.studentId === student.id"
-            (click)="selectStudent(student)">
-            <div class="student-option-content">
-              <span class="student-icon">👨‍🎓</span>
-              <div class="student-details">
-                <strong>{{ student.firstName }} {{ student.lastName }}</strong>
-                <small>{{ student.studentNumber }} | {{ student.class?.name || 'No Class' }}</small>
-              </div>
-              <span class="check-icon" *ngIf="invoice.studentId === student.id">✓</span>
-            </div>
-          </div>
-        </div>
-        <div class="selected-student-info" *ngIf="selectedStudentData">
-          <div class="info-box">
-            <div class="info-content">
-              <span class="info-icon">👨‍🎓</span>
-              <div>
-                <strong>{{ selectedStudentData.firstName }} {{ selectedStudentData.lastName }}</strong>
-                <p class="info-text">
-                  Student #: {{ selectedStudentData.studentNumber }} | 
-                  Class: {{ selectedStudentData.class?.name || 'N/A' }} | 
-                  Type: {{ selectedStudentData.studentType || 'Day Scholar' }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <small class="form-hint">Search and select a student to create an invoice</small>
-      </div>
+    <nav class="if-cross-links" aria-label="Related finance pages">
+      <a routerLink="/invoices">← Billing</a>
+      <a routerLink="/payments/record">Record payment</a>
+      <a routerLink="/balance-enquiry">Balance enquiry</a>
+      <button type="button" class="if-cross-links__refresh" (click)="refreshPage()">↻ Refresh</button>
+    </nav>
 
-      <div class="form-group" *ngIf="isSuperAdmin && selectedStudentData">
-        <label>Current Invoice Balance</label>
-        <div class="balance-action-row">
-          <button type="button" class="btn btn-secondary" (click)="fetchStudentBalance()" [disabled]="fetchingBalance">
-            {{ fetchingBalance ? 'Fetching...' : '🔍 Get Current Balance' }}
+    <div class="if-hero-stats">
+      <article class="if-stat">
+        <span class="if-stat__icon" aria-hidden="true">👤</span>
+        <span class="if-stat__value if-stat__value--text">{{ displayStudentName }}</span>
+        <span class="if-stat__label">Student</span>
+      </article>
+      <ng-container *ngIf="!createdInvoiceId">
+        <article class="if-stat">
+          <span class="if-stat__icon" aria-hidden="true">📋</span>
+          <span class="if-stat__value">{{ currencySymbol }} {{ getCurrentInvoiceBalance() | number:'1.2-2' }}</span>
+          <span class="if-stat__label">Current invoice balance</span>
+        </article>
+        <article class="if-stat">
+          <span class="if-stat__icon" aria-hidden="true">👕</span>
+          <span class="if-stat__value">{{ currencySymbol }} {{ getUniformBalance() | number:'1.2-2' }}</span>
+          <span class="if-stat__label">Uniform</span>
+        </article>
+      </ng-container>
+      <article class="if-stat" *ngIf="createdInvoiceId">
+        <span class="if-stat__icon" aria-hidden="true">📅</span>
+        <span class="if-stat__value if-stat__value--text">{{ displayTerm }}</span>
+        <span class="if-stat__label">Term</span>
+      </article>
+      <article class="if-stat if-stat--accent">
+        <span class="if-stat__icon" aria-hidden="true">💰</span>
+        <span class="if-stat__value">{{ currencySymbol }} {{ displayTotal | number:'1.2-2' }}</span>
+        <span class="if-stat__label">{{ createdInvoiceId ? 'Invoice total' : 'Final total' }}</span>
+      </article>
+    </div>
+  </header>
+
+  <!-- Errors while filling the form (top) -->
+  <div
+    #statusBanner
+    *ngIf="statusMessage && !createdInvoiceId"
+    class="if-status"
+    [class.if-status--error]="statusType === 'error'"
+    [class.if-status--info]="statusType === 'info'"
+    [attr.role]="statusType === 'error' ? 'alert' : 'status'"
+    aria-live="polite">
+    <span class="if-status__icon if-spinner if-spinner--dark" *ngIf="statusType === 'info'" aria-hidden="true"></span>
+    <span class="if-status__icon" *ngIf="statusType === 'error'" aria-hidden="true">⚠️</span>
+    <div class="if-status__body">
+      <strong *ngIf="statusType === 'error'">Could not create invoice</strong>
+      <p>{{ statusMessage }}</p>
+      <a
+        routerLink="/invoices"
+        class="if-status__link"
+        *ngIf="statusType === 'error' && (statusMessage.includes('Duplicate') || statusMessage.includes('duplicate'))">
+        Open Billing →
+      </a>
+    </div>
+    <button
+      type="button"
+      class="if-status__dismiss"
+      *ngIf="statusType === 'error'"
+      (click)="dismissStatus()"
+      aria-label="Dismiss">×</button>
+  </div>
+
+  <form (ngSubmit)="onSubmit()" #invoiceForm="ngForm" class="if-layout" *ngIf="!createdInvoiceId" [class.if-layout--busy]="submitting">
+    <div class="if-submit-overlay" *ngIf="submitting" aria-live="polite">
+      <span class="if-spinner if-spinner--lg" aria-hidden="true"></span>
+      <p>Creating invoice{{ lastSubmitStudentName ? ' for ' + lastSubmitStudentName : '' }}…</p>
+    </div>
+    <div class="if-main">
+      <!-- Student -->
+      <section class="if-panel if-panel--student">
+        <div class="if-panel__head">
+          <h2 class="if-panel__title">Student</h2>
+          <p class="if-panel__intro">Enter Student ID, last name, or first name in the box below, then click <strong>Get Student</strong>.</p>
+        </div>
+
+        <div class="if-search-row">
+          <div class="if-search-wrap">
+            <span class="if-search-prefix" aria-hidden="true">🔍</span>
+            <input
+              #studentLookupInput
+              type="search"
+              id="studentLookup"
+              [(ngModel)]="studentLookupQuery"
+              [ngModelOptions]="{ standalone: true }"
+              class="if-search-input"
+              placeholder="Student ID, last name, or first name…"
+              (keyup.enter)="getStudent()"
+              [disabled]="!!selectedStudentData"
+              autocomplete="off" />
+            <button
+              *ngIf="studentLookupQuery && !selectedStudentData"
+              type="button"
+              class="if-clear-btn"
+              (click)="clearStudentLookup()"
+              aria-label="Clear search">×</button>
+          </div>
+          <button
+            type="button"
+            class="if-btn if-btn--primary"
+            (click)="getStudent()"
+            [disabled]="fetchingStudent || !!selectedStudentData || !hasStudentLookupInput">
+            <span *ngIf="fetchingStudent" class="if-spinner" aria-hidden="true"></span>
+            {{ fetchingStudent ? 'Looking up…' : 'Get Student' }}
           </button>
-          <div class="balance-display" *ngIf="studentBalanceInfo">
-            <div>
-              <span class="balance-label">Outstanding Balance:</span>
-              <span class="balance-value">{{ currencySymbol }} {{ studentBalanceInfo.balance | number:'1.2-2' }}</span>
+        </div>
+
+        <p class="if-lookup-hint" *ngIf="!selectedStudentData && !studentLookupAttempted">
+          Enter a Student ID, last name, or first name, then click Get Student.
+        </p>
+        <p
+          class="if-lookup-message if-lookup-message--error"
+          *ngIf="studentLookupMessage && !selectedStudentData"
+          role="alert">
+          {{ studentLookupMessage }}
+        </p>
+
+        <div class="if-match-list" *ngIf="filteredStudents.length > 1 && !selectedStudentData">
+          <p class="if-match-list__title">Multiple students found — select the correct one:</p>
+          <button
+            type="button"
+            class="if-match-card"
+            *ngFor="let student of filteredStudents"
+            (click)="selectStudent(student)"
+            [class.if-match-card--selected]="invoice.studentId === student.id">
+            <span class="if-match-avatar">{{ getInitials(student.firstName + ' ' + student.lastName) }}</span>
+            <span class="if-match-name">{{ student.firstName }} {{ student.lastName }}</span>
+            <span class="if-match-meta">{{ student.studentNumber }} · {{ student.class?.name || 'No class' }}</span>
+          </button>
+        </div>
+
+        <div class="if-student-card" *ngIf="selectedStudentData">
+          <span class="if-student-avatar">{{ getInitials(selectedStudentData.firstName + ' ' + selectedStudentData.lastName) }}</span>
+          <div class="if-student-info">
+            <strong>{{ selectedStudentData.firstName }} {{ selectedStudentData.lastName }}</strong>
+            <div class="if-student-pills">
+              <span class="if-pill">{{ selectedStudentData.studentNumber }}</span>
+              <span class="if-pill" *ngIf="selectedStudentData.class?.name">{{ selectedStudentData.class.name }}</span>
+              <span class="if-pill if-pill--muted">{{ selectedStudentData.studentType || 'Day Scholar' }}</span>
+              <span class="if-pill if-pill--balance if-pill--loading" *ngIf="fetchingBalance">
+                Balance…
+              </span>
+              <span
+                class="if-pill if-pill--balance"
+                [class.if-pill--owed]="studentBalanceInfo && studentBalanceInfo.balance > 0"
+                [class.if-pill--paid]="studentBalanceInfo && studentBalanceInfo.balance <= 0"
+                *ngIf="!fetchingBalance && studentBalanceInfo">
+                Invoice balance: {{ currencySymbol }} {{ studentBalanceInfo.balance | number:'1.2-2' }}
+              </span>
             </div>
-            <div *ngIf="studentBalanceInfo.lastInvoiceNumber">
-              <span class="balance-label">Last Invoice Details:</span>
-              <div style="margin-top: 8px; padding: 10px; background: #f5f5f5; border-radius: 4px;">
-                <div style="margin-bottom: 6px;">
-                  <strong>{{ studentBalanceInfo.lastInvoiceNumber }}</strong>
-                  <span *ngIf="studentBalanceInfo.lastInvoiceTerm" style="margin-left: 8px; color: #666;">
-                    ({{ studentBalanceInfo.lastInvoiceTerm }})
-                  </span>
-                  <span style="margin-left: 8px; color: #666; font-size: 0.9em;">
-                    {{ studentBalanceInfo.lastInvoiceDate | date:'mediumDate' }}
-                  </span>
-                </div>
-                <div style="font-size: 0.9em; color: #555;">
-                  <div *ngIf="studentBalanceInfo.lastInvoicePreviousBalance > 0" style="margin-bottom: 4px;">
-                    Previous Balance: <strong>{{ currencySymbol }} {{ studentBalanceInfo.lastInvoicePreviousBalance | number:'1.2-2' }}</strong>
-                  </div>
-                  <div style="margin-bottom: 4px;">
-                    Invoice Amount: <strong>{{ currencySymbol }} {{ studentBalanceInfo.lastInvoiceAmount | number:'1.2-2' }}</strong>
-                  </div>
-                  <div *ngIf="studentBalanceInfo.lastInvoicePaidAmount > 0" style="margin-bottom: 4px; color: #28a745;">
-                    Paid: <strong>{{ currencySymbol }} {{ studentBalanceInfo.lastInvoicePaidAmount | number:'1.2-2' }}</strong>
-                  </div>
-                  <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #ddd; font-weight: 600;">
-                    Current Balance: <strong style="color: #dc3545;">{{ currencySymbol }} {{ studentBalanceInfo.balance | number:'1.2-2' }}</strong>
-                  </div>
-                </div>
+            <p class="if-balance-inline-error" *ngIf="balanceLoadError && !fetchingBalance" role="alert">
+              {{ balanceLoadError }}
+            </p>
+          </div>
+          <button type="button" class="if-btn if-btn--ghost if-btn--sm" (click)="clearStudentSelection()">Change</button>
+        </div>
+
+        <div class="if-notice if-notice--info" *ngIf="isAccountant && selectedStudentData">
+          <strong>Accountant notice</strong>
+          <p>You can only create invoices for uniform items. Set fee amounts to zero and add uniform items below.</p>
+        </div>
+
+        <div class="if-balance-block" *ngIf="selectedStudentData && studentBalanceInfo">
+          <div class="if-balance-card">
+            <div class="if-balance-row if-balance-row--highlight">
+              <span>Outstanding invoice balance</span>
+              <strong>{{ currencySymbol }} {{ studentBalanceInfo.balance | number:'1.2-2' }}</strong>
+            </div>
+            <div class="if-balance-row" *ngIf="studentBalanceInfo.uniformBalance > 0">
+              <span>Uniform balance</span>
+              <strong>{{ currencySymbol }} {{ studentBalanceInfo.uniformBalance | number:'1.2-2' }}</strong>
+            </div>
+            <ng-container *ngIf="studentBalanceInfo.lastInvoiceNumber">
+              <div class="if-balance-row">
+                <span>Last invoice</span>
+                <span>{{ studentBalanceInfo.lastInvoiceNumber }} <em *ngIf="studentBalanceInfo.lastInvoiceTerm">({{ studentBalanceInfo.lastInvoiceTerm }})</em></span>
               </div>
-            </div>
-            <div *ngIf="!studentBalanceInfo.lastInvoiceNumber" style="color: #666; font-style: italic;">
-              No previous invoices found
-            </div>
+              <div class="if-balance-row" *ngIf="studentBalanceInfo.lastInvoicePreviousBalance > 0">
+                <span>Previous balance</span>
+                <span>{{ currencySymbol }} {{ studentBalanceInfo.lastInvoicePreviousBalance | number:'1.2-2' }}</span>
+              </div>
+              <div class="if-balance-row">
+                <span>Last invoice amount</span>
+                <span>{{ currencySymbol }} {{ studentBalanceInfo.lastInvoiceAmount | number:'1.2-2' }}</span>
+              </div>
+              <div class="if-balance-row" *ngIf="studentBalanceInfo.lastInvoicePaidAmount > 0">
+                <span>Paid on last invoice</span>
+                <span class="if-text-success">{{ currencySymbol }} {{ studentBalanceInfo.lastInvoicePaidAmount | number:'1.2-2' }}</span>
+              </div>
+            </ng-container>
+            <p class="if-balance-empty" *ngIf="!studentBalanceInfo.lastInvoiceNumber">No previous invoices on file.</p>
           </div>
         </div>
-        <small class="form-hint">Review the current balance before applying any discount.</small>
-      </div>
-      
-      <div class="alert alert-info" *ngIf="isAccountant && selectedStudentData" style="margin-top: 15px; padding: 15px; background: #e3f2fd; border-left: 4px solid #2196f3; border-radius: 4px;">
-        <strong>📋 Accountant Notice:</strong> You can only create invoices for uniform items. Set the amount to 0 and add uniform items below.
-      </div>
-    </div>
+      </section>
 
-    <!-- Invoice Details Section -->
-    <div class="form-section">
-      <div class="section-header">
-        <h2>
-          <span class="section-icon">📋</span>
-          Invoice Details
-        </h2>
-        <p class="section-description">Enter invoice amount and payment information</p>
-      </div>
-
-      <div class="form-grid">
-        <div class="form-group">
-          <label for="tuitionAmount">
-            Tuition Amount <span class="required" *ngIf="!isAccountant">*</span>
-            <span class="currency-badge">{{ currencySymbol }}</span>
-          </label>
-          <div class="amount-input-wrapper">
-            <span class="currency-symbol">{{ currencySymbol }}</span>
-            <input 
-              type="number" 
-              id="tuitionAmount"
-              [(ngModel)]="invoice.tuitionAmount" 
-              name="tuitionAmount" 
-              step="0.01" 
-              min="0"
-              [readonly]="isAccountant"
-              placeholder="0.00"
-              class="form-input amount-input"
-              (input)="calculateBalance()"
-              [class.error]="invoiceForm.submitted && (invoice.tuitionAmount === null || invoice.tuitionAmount === undefined || invoice.tuitionAmount < 0)"
-              [style.background-color]="isAccountant ? '#f5f5f5' : ''"
-              [style.cursor]="isAccountant ? 'not-allowed' : ''">
-          </div>
-          <small class="form-hint" *ngIf="!isAccountant">Enter the tuition fee for this invoice</small>
-          <small class="form-hint" *ngIf="isAccountant" style="color: #666;">Accountants cannot set tuition fees. Use uniform items section below.</small>
-        </div>
-
-        <div class="form-group">
-          <label for="diningHallAmount">
-            Dining Hall Amount
-            <span class="currency-badge">{{ currencySymbol }}</span>
-          </label>
-          <div class="amount-input-wrapper">
-            <span class="currency-symbol">{{ currencySymbol }}</span>
-            <input 
-              type="number" 
-              id="diningHallAmount"
-              [(ngModel)]="invoice.diningHallAmount" 
-              name="diningHallAmount" 
-              step="0.01" 
-              min="0"
-              [readonly]="isAccountant"
-              placeholder="0.00"
-              class="form-input amount-input"
-              (input)="calculateBalance()"
-              [class.error]="invoiceForm.submitted && (invoice.diningHallAmount === null || invoice.diningHallAmount === undefined || invoice.diningHallAmount < 0)"
-              [style.background-color]="isAccountant ? '#f5f5f5' : ''"
-              [style.cursor]="isAccountant ? 'not-allowed' : ''">
-          </div>
-          <small class="form-hint" *ngIf="!isAccountant">Enter the dining hall fee for this invoice</small>
-          <small class="form-hint" *ngIf="isAccountant" style="color: #666;">Accountants cannot set dining hall fees. Use uniform items section below.</small>
-        </div>
-
-        <div class="form-group">
-          <label for="amount">
-            Other Charges Amount
-            <span class="optional">(Optional)</span>
-            <span class="currency-badge">{{ currencySymbol }}</span>
-          </label>
-          <div class="amount-input-wrapper">
-            <span class="currency-symbol">{{ currencySymbol }}</span>
-            <input 
-              type="number" 
-              id="amount"
-              [(ngModel)]="invoice.amount" 
-              name="amount" 
-              step="0.01" 
-              min="0"
-              [readonly]="isAccountant"
-              placeholder="0.00"
-              class="form-input amount-input"
-              (input)="calculateBalance()"
-              [class.error]="invoiceForm.submitted && (invoice.amount === null || invoice.amount === undefined || invoice.amount < 0)"
-              [style.background-color]="isAccountant ? '#f5f5f5' : ''"
-              [style.cursor]="isAccountant ? 'not-allowed' : ''">
-          </div>
-          <small class="form-hint">Use this for any additional manual charges</small>
-        </div>
-
-        <div class="form-group">
-          <label for="dueDate">
-            Due Date <span class="required">*</span>
-          </label>
-          <input 
-            type="date" 
-            id="dueDate"
-            [(ngModel)]="invoice.dueDate" 
-            name="dueDate" 
-            required
-            class="form-input"
-            [min]="minDate"
-            [class.error]="invoiceForm.submitted && !invoice.dueDate">
-          <small class="form-hint">Select the payment due date</small>
-        </div>
-
-        <div class="form-group">
-          <label for="term">
-            Term <span class="required">*</span>
-            <span class="suggestion-badge" *ngIf="suggestedTerm" (click)="useSuggestedTerm()" title="Click to use suggested term">
-              💡 Suggested: {{ suggestedTerm }}
-            </span>
-          </label>
-          <input 
-            type="text" 
-            id="term"
-            [(ngModel)]="invoice.term" 
-            name="term" 
-            placeholder="e.g., Term 1 2024" 
-            required
-            class="form-input"
-            [class.error]="invoiceForm.submitted && !invoice.term">
-          <small class="form-hint">Enter the term for this invoice (e.g., Term 1 2024)</small>
-        </div>
-      </div>
-
-      <div class="form-group full-width">
-        <label for="description">Description</label>
-        <textarea 
-          id="description"
-          [(ngModel)]="invoice.description" 
-          name="description"
-          placeholder="Enter invoice description (e.g., Tuition fees, Registration fees, etc.)"
-          class="form-input"
-          rows="4"></textarea>
-        <small class="form-hint">Optional description for the invoice</small>
-      </div>
-    </div>
-
-    <!-- Uniform Items Section -->
-    <div class="form-section">
-      <div class="section-header">
-        <h2>
-          <span class="section-icon">🧥</span>
-          Uniform Items
-        </h2>
-        <p class="section-description">
-          Add uniform items requested by the student. These will be included on the invoice.
-          <span *ngIf="isAccountant" style="color: #2196f3; font-weight: 600;">(Accountants can create invoices for uniform items only)</span>
+      <div class="if-invoice-body" [class.if-invoice-body--locked]="!selectedStudentData">
+        <p class="if-invoice-lock-hint" *ngIf="!selectedStudentData">
+          Load a student with <strong>Get Student</strong> before entering invoice details.
         </p>
-      </div>
 
-      <div class="uniform-select-grid">
-        <div class="form-group">
-          <label>Uniform Item</label>
-          <select [(ngModel)]="uniformSelection.itemId" name="uniformItemSelect" class="form-input">
-            <option value="">Select item...</option>
-            <option *ngFor="let item of uniformItemsCatalog" [value]="item.id">
-              {{ item.name }} — {{ currencySymbol }} {{ item.unitPrice | number:'1.2-2' }}
-            </option>
-          </select>
+      <!-- Invoice details -->
+      <section class="if-panel if-panel--details">
+        <div class="if-panel__head">
+          <h2 class="if-panel__title">Invoice details</h2>
+          <p class="if-panel__intro">Enter fee line items, due date, and term for this invoice.</p>
         </div>
-        <div class="form-group">
-          <label>Quantity</label>
-          <input type="number" [(ngModel)]="uniformSelection.quantity" name="uniformItemQuantity" min="1" class="form-input">
-        </div>
-        <div class="uniform-actions">
-          <button type="button" class="btn btn-secondary" (click)="addUniformItem()">➕ Add Item</button>
-        </div>
-      </div>
 
-      <div *ngIf="selectedUniformItems.length > 0" class="uniform-items-list">
-        <table>
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th style="text-align: right;">Unit Price ({{ currencySymbol }})</th>
-              <th style="text-align: center;">Quantity</th>
-              <th style="text-align: right;">Line Total ({{ currencySymbol }})</th>
-              <th style="text-align: center;">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let item of selectedUniformItems">
-              <td>{{ item.name }}</td>
-              <td style="text-align: right;">{{ item.unitPrice | number:'1.2-2' }}</td>
-              <td style="text-align: center;">
-                <input 
-                  type="number" 
-                  [(ngModel)]="item.quantity" 
-                  (ngModelChange)="updateUniformQuantity(item, $event)" 
-                  min="1" 
-                  class="quantity-input"
-                  [ngModelOptions]="{standalone: true}">
-              </td>
-              <td style="text-align: right;">{{ item.lineTotal | number:'1.2-2' }}</td>
-              <td style="text-align: center;">
-                <button type="button" class="btn btn-danger btn-sm" (click)="removeUniformItem(item.id)">Remove</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="if-form-grid">
+          <div class="if-field">
+            <label for="tuitionAmount">Tuition <span class="if-required" *ngIf="!isAccountant">*</span></label>
+            <div class="if-amount-wrap">
+              <span class="if-currency">{{ currencySymbol }}</span>
+              <input
+                type="number"
+                id="tuitionAmount"
+                [(ngModel)]="invoice.tuitionAmount"
+                name="tuitionAmount"
+                step="0.01"
+                min="0"
+                class="if-amount-input"
+                [readonly]="isAccountant"
+                [class.if-input--readonly]="isAccountant"
+                (input)="calculateBalance()"
+                placeholder="0.00" />
+            </div>
+          </div>
 
-        <div class="uniform-summary">
-          <div>
-            <span class="summary-label">Uniform Subtotal:</span>
-            <span class="summary-value">{{ currencySymbol }} {{ getUniformSubtotal() | number:'1.2-2' }}</span>
+          <div class="if-field">
+            <label for="diningHallAmount">Dining hall</label>
+            <div class="if-amount-wrap">
+              <span class="if-currency">{{ currencySymbol }}</span>
+              <input
+                type="number"
+                id="diningHallAmount"
+                [(ngModel)]="invoice.diningHallAmount"
+                name="diningHallAmount"
+                step="0.01"
+                min="0"
+                class="if-amount-input"
+                [readonly]="isAccountant"
+                [class.if-input--readonly]="isAccountant"
+                (input)="calculateBalance()"
+                placeholder="0.00" />
+            </div>
           </div>
-          <div>
-            <span class="summary-label">Grand Total (Base + Uniform):</span>
-            <span class="summary-value total">{{ currencySymbol }} {{ getInvoiceGrandTotal() | number:'1.2-2' }}</span>
+
+          <div class="if-field">
+            <label for="amount">Other charges <span class="if-optional">(optional)</span></label>
+            <div class="if-amount-wrap">
+              <span class="if-currency">{{ currencySymbol }}</span>
+              <input
+                type="number"
+                id="amount"
+                [(ngModel)]="invoice.amount"
+                name="amount"
+                step="0.01"
+                min="0"
+                class="if-amount-input"
+                [readonly]="isAccountant"
+                [class.if-input--readonly]="isAccountant"
+                (input)="calculateBalance()"
+                placeholder="0.00" />
+            </div>
           </div>
-          <div *ngIf="isSuperAdmin">
-            <span class="summary-label">Discount:</span>
-            <span class="summary-value discount">- {{ currencySymbol }} {{ discountAmount || 0 | number:'1.2-2' }}</span>
+
+          <div class="if-field">
+            <label for="dueDate">Due date <span class="if-required">*</span></label>
+            <input
+              type="date"
+              id="dueDate"
+              [(ngModel)]="invoice.dueDate"
+              name="dueDate"
+              required
+              class="if-input"
+              [min]="minDate"
+              [class.if-input--error]="invoiceForm.submitted && !invoice.dueDate" />
           </div>
-          <div>
-            <span class="summary-label">Final Amount:</span>
-            <span class="summary-value final">{{ currencySymbol }} {{ getFinalInvoiceAmount() | number:'1.2-2' }}</span>
+
+          <div class="if-field if-field--wide">
+            <label for="term">
+              Term <span class="if-required">*</span>
+              <button type="button" class="if-suggest-chip" *ngIf="suggestedTerm" (click)="useSuggestedTerm()">
+                Use {{ suggestedTerm }}
+              </button>
+            </label>
+            <input
+              type="text"
+              id="term"
+              [(ngModel)]="invoice.term"
+              name="term"
+              placeholder="e.g. Term 1 2026"
+              required
+              class="if-input"
+              [class.if-input--error]="invoiceForm.submitted && !invoice.term" />
+          </div>
+
+          <div class="if-field if-field--full">
+            <label for="description">Description <span class="if-optional">(optional)</span></label>
+            <textarea
+              id="description"
+              [(ngModel)]="invoice.description"
+              name="description"
+              rows="3"
+              class="if-textarea"
+              placeholder="Tuition fees, registration, etc."></textarea>
           </div>
         </div>
-      </div>
-      <div *ngIf="selectedUniformItems.length === 0" class="alert alert-info">
-        No uniform items added yet.
-      </div>
-    </div>
+      </section>
 
-    <!-- Discount Section -->
-    <div class="form-section" *ngIf="isSuperAdmin">
-      <div class="section-header">
-        <h2>
-          <span class="section-icon">💡</span>
-          Discount Adjustment (SuperAdmin Only)
-        </h2>
-        <p class="section-description">
-          Apply a discount to reduce the invoice total for this student.
-        </p>
-      </div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label for="discountAmount">Discount Amount</label>
-          <div class="amount-input-wrapper">
-            <span class="currency-symbol">{{ currencySymbol }}</span>
-            <input 
-              type="number" 
+      <!-- Uniform -->
+      <section class="if-panel if-panel--uniform">
+        <div class="if-panel__head">
+          <h2 class="if-panel__title">Uniform items</h2>
+          <p class="if-panel__intro">Add uniform items to include on this invoice.</p>
+        </div>
+
+        <div class="if-uniform-add">
+          <div class="if-field if-field--grow">
+            <label>Item</label>
+            <select [(ngModel)]="uniformSelection.itemId" name="uniformItemSelect" class="if-input">
+              <option value="">Select item…</option>
+              <option *ngFor="let item of uniformItemsCatalog" [value]="item.id">
+                {{ item.name }} — {{ currencySymbol }} {{ item.unitPrice | number:'1.2-2' }}
+              </option>
+            </select>
+          </div>
+          <div class="if-field if-field--qty">
+            <label>Qty</label>
+            <input type="number" [(ngModel)]="uniformSelection.quantity" name="uniformItemQuantity" min="1" class="if-input" />
+          </div>
+          <button type="button" class="if-btn if-btn--secondary" (click)="addUniformItem()">Add item</button>
+        </div>
+
+        <div class="if-empty-hint" *ngIf="selectedUniformItems.length === 0">No uniform items added yet.</div>
+
+        <div class="if-table-wrap" *ngIf="selectedUniformItems.length > 0">
+          <table class="if-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th class="if-num">Unit price</th>
+                <th class="if-num">Qty</th>
+                <th class="if-num">Line total</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of selectedUniformItems">
+                <td>{{ item.name }}</td>
+                <td class="if-num">{{ currencySymbol }} {{ item.unitPrice | number:'1.2-2' }}</td>
+                <td class="if-num">
+                  <input
+                    type="number"
+                    [(ngModel)]="item.quantity"
+                    (ngModelChange)="updateUniformQuantity(item, $event)"
+                    min="1"
+                    class="if-qty-input"
+                    [ngModelOptions]="{ standalone: true }" />
+                </td>
+                <td class="if-num"><strong>{{ currencySymbol }} {{ item.lineTotal | number:'1.2-2' }}</strong></td>
+                <td>
+                  <button type="button" class="if-btn if-btn--danger if-btn--sm" (click)="removeUniformItem(item.id)">Remove</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Discount -->
+      <section class="if-panel if-panel--discount" *ngIf="isSuperAdmin">
+        <div class="if-panel__head">
+          <h2 class="if-panel__title">Discount <span class="if-badge-admin">SuperAdmin</span></h2>
+          <p class="if-panel__intro">Optional discount applied to the invoice total.</p>
+        </div>
+        <div class="if-field if-field--narrow">
+          <label for="discountAmount">Discount amount</label>
+          <div class="if-amount-wrap">
+            <span class="if-currency">{{ currencySymbol }}</span>
+            <input
+              type="number"
               id="discountAmount"
               [(ngModel)]="discountAmount"
               name="discountAmount"
-              [ngModelOptions]="{standalone: true}"
+              [ngModelOptions]="{ standalone: true }"
               step="0.01"
               min="0"
-              class="form-input amount-input">
+              class="if-amount-input"
+              placeholder="0.00" />
           </div>
-          <small class="form-hint">Discount cannot exceed the total before discount.</small>
+          <small class="if-hint">Cannot exceed the total before discount.</small>
         </div>
-        <div class="final-total-card">
-          <div class="final-total-label">Final Invoice Amount</div>
-          <div class="final-total-value">{{ currencySymbol }} {{ getFinalInvoiceAmount() | number:'1.2-2' }}</div>
-          <div class="final-total-note">Total after discount</div>
+      </section>
+
+      <!-- Next term balance preview -->
+      <section class="if-panel if-panel--preview" *ngIf="nextTermBalance">
+        <div class="if-panel__head">
+          <h2 class="if-panel__title">Balance preview</h2>
+          <p class="if-panel__intro">Estimated balance after applying this invoice amount.</p>
         </div>
+        <div class="if-preview-value">
+          {{ currencySymbol }} {{ nextTermBalance.nextTermBalance | number:'1.2-2' }}
+        </div>
+      </section>
+
+      <div class="if-form-actions">
+        <p class="if-inline-error" *ngIf="error && !statusMessage" role="alert">{{ error }}</p>
+        <button type="button" class="if-btn if-btn--ghost" (click)="goBack()" [disabled]="submitting">Cancel</button>
+        <button type="submit" class="if-btn if-btn--primary" [disabled]="submitting || !selectedStudentData">
+          <span *ngIf="submitting" class="if-spinner" aria-hidden="true"></span>
+          {{ submitting ? 'Creating…' : 'Create invoice' }}
+        </button>
+      </div>
       </div>
     </div>
 
-    <!-- Balance Information Section -->
-    <div class="form-section" *ngIf="nextTermBalance">
-      <div class="section-header">
-        <h2>
-          <span class="section-icon">📊</span>
-          Current Balance - Term 1
-        </h2>
-        <p class="section-description">
-          Total invoice amount applied as the current balance for Term 1.
-        </p>
-      </div>
-
-      <div class="balance-info-card">
-        <div class="balance-item highlight">
-          <div class="balance-label">
-            <span class="balance-icon">📊</span>
-            Current Balance (Term 1)
+    <!-- Sticky summary -->
+    <aside class="if-aside">
+      <div class="if-summary-card">
+        <h3>Invoice summary</h3>
+        <dl class="if-summary-list">
+          <div class="if-summary-row">
+            <dt>Tuition</dt>
+            <dd>{{ currencySymbol }} {{ (invoice.tuitionAmount || 0) | number:'1.2-2' }}</dd>
           </div>
-          <div class="balance-value total">
-            {{ currencySymbol }} {{ nextTermBalance.nextTermBalance | number:'1.2-2' }}
+          <div class="if-summary-row">
+            <dt>Dining hall</dt>
+            <dd>{{ currencySymbol }} {{ (invoice.diningHallAmount || 0) | number:'1.2-2' }}</dd>
           </div>
-        </div>
+          <div class="if-summary-row">
+            <dt>Other</dt>
+            <dd>{{ currencySymbol }} {{ (invoice.amount || 0) | number:'1.2-2' }}</dd>
+          </div>
+          <div class="if-summary-row">
+            <dt>Uniform</dt>
+            <dd>{{ currencySymbol }} {{ getUniformSubtotal() | number:'1.2-2' }}</dd>
+          </div>
+          <div class="if-summary-row" *ngIf="isSuperAdmin && discountAmount > 0">
+            <dt>Discount</dt>
+            <dd class="if-text-danger">− {{ currencySymbol }} {{ discountAmount | number:'1.2-2' }}</dd>
+          </div>
+          <div class="if-summary-row if-summary-row--total">
+            <dt>Total due</dt>
+            <dd>{{ currencySymbol }} {{ getFinalInvoiceAmount() | number:'1.2-2' }}</dd>
+          </div>
+        </dl>
+        <p class="if-summary-note" *ngIf="!selectedStudentData">Click Get Student to load a student record.</p>
+        <p class="if-summary-note" *ngIf="selectedStudentData && invoice.dueDate">Due {{ invoice.dueDate | date:'mediumDate' }}</p>
       </div>
-    </div>
-
-    <!-- Form Actions -->
-    <div class="form-actions">
-      <button 
-        type="button" 
-        class="btn btn-secondary" 
-        (click)="router.navigate(['/invoices'])">
-        <span>❌</span> Cancel
-      </button>
-      <button 
-        type="submit" 
-        class="btn btn-primary"
-        [disabled]="submitting">
-        <span *ngIf="!submitting">💰</span>
-        <span *ngIf="submitting" class="spinner"></span>
-        {{ submitting ? 'Creating Invoice...' : 'Create Invoice' }}
-      </button>
-    </div>
+    </aside>
   </form>
 
-  <!-- PDF Viewer Modal -->
-  <div *ngIf="showPdfViewer" class="pdf-viewer-overlay pdf-preview-maximized-overlay" (click)="closePdfViewer()">
+  <!-- Maximized full-screen PDF preview (shown immediately after create — no confirmation panel) -->
+  <div
+    *ngIf="showPdfViewer && createdInvoiceId"
+    class="pdf-viewer-overlay pdf-preview-maximized-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="ifPdfViewerTitle">
     <div class="pdf-viewer-modal pdf-preview-maximized-modal" (click)="$event.stopPropagation()">
-      <div class="pdf-viewer-header">
-        <h3>
-          <span>📄</span>
-          Invoice PDF - {{ createdInvoiceNumber || 'Invoice' }}
+      <div class="pdf-viewer-header if-pdf-header">
+        <h3 id="ifPdfViewerTitle">
+          <span aria-hidden="true">📄</span>
+          Invoice PDF — {{ createdInvoiceNumber || 'Invoice' }}
+          <span class="if-pdf-header-sub" *ngIf="createdSummary">{{ createdSummary.studentName }} · {{ createdSummary.term }}</span>
         </h3>
-        <div class="pdf-viewer-actions">
-          <button 
-            type="button" 
-            class="btn btn-primary btn-sm" 
-            (click)="downloadInvoicePDF()"
-            title="Download PDF">
-            <span>💾</span> Download
+        <div class="pdf-viewer-actions if-pdf-header-actions">
+          <button type="button" class="if-btn if-btn--primary if-btn--sm" (click)="downloadInvoicePDF()" [disabled]="loadingPdf">
+            Download
           </button>
-          <button 
-            type="button" 
-            class="btn btn-secondary btn-sm" 
-            (click)="closePdfViewer()"
-            title="Close">
-            <span>✕</span> Close
+          <button type="button" class="if-btn if-btn--ghost if-btn--sm if-btn--on-dark" (click)="createNewInvoice()">
+            Create another
+          </button>
+          <button type="button" class="if-btn if-btn--ghost if-btn--sm if-btn--on-dark" (click)="closePdfViewer()">
+            Close
           </button>
         </div>
       </div>
       <div class="pdf-viewer-content pdf-preview-body">
-        <iframe 
-          *ngIf="safePdfUrl" 
-          [src]="safePdfUrl" 
+        <iframe
+          *ngIf="safePdfUrl && !loadingPdf"
+          [src]="safePdfUrl"
           class="pdf-iframe"
-          title="Invoice PDF Viewer">
-        </iframe>
-        <div *ngIf="loadingPdf" class="pdf-loading">
-          <div class="spinner-large"></div>
-          <p>Loading PDF...</p>
+          title="Invoice PDF preview"></iframe>
+        <div *ngIf="loadingPdf" class="pdf-loading if-pdf-loading">
+          <span class="if-spinner if-spinner--lg" aria-hidden="true"></span>
+          <p>Generating invoice PDF preview…</p>
+        </div>
+        <div *ngIf="pdfLoadError && !loadingPdf" class="if-pdf-loading if-pdf-loading--error" role="alert">
+          <p>{{ pdfLoadError }}</p>
+          <button type="button" class="if-btn if-btn--secondary if-btn--sm" (click)="viewInvoicePDF()">Retry</button>
         </div>
       </div>
     </div>
