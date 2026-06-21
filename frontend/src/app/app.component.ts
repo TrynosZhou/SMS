@@ -207,9 +207,6 @@ export class AppComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Set initial meta tags
-    this.updateMetaFromRoute();
-
     // Initialize dashboard title rotation state
     this.currentUrl = this.router.url || '';
     this.syncDashboardTitleRotation();
