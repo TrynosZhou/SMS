@@ -5,10 +5,12 @@ import { validatePhoneNumber } from '../../utils/phone-validator';
 import { ActivatedRoute } from '@angular/router';
 import { finalize, timeout, catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
+import { Title } from '@angular/platform-browser';
 
 @Component({
-  standalone: false,  selector: 'app-login',
-templateUrl: './login.component.html',
+  standalone: false,
+  selector: 'app-login',
+  templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
 export class LoginComponent implements OnInit {
@@ -80,10 +82,13 @@ export class LoginComponent implements OnInit {
     private authService: AuthService,
     private router: Router,
     private route: ActivatedRoute,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private title: Title
   ) { }
 
   ngOnInit(): void {
+    this.title.setTitle('Sign In – Junior Primary School Management System');
+
     const logoutReason = this.authService.consumeLogoutReason();
     if (logoutReason) {
       this.infoMessage = this.getLogoutMessage(logoutReason);
@@ -313,7 +318,6 @@ export class LoginComponent implements OnInit {
       this.forgotError = 'Password must be at least 8 characters long';
       return;
     }
-    // Relaxed policy: allow any non-empty string, only check match
     if (pw !== confirm) {
       this.forgotError = 'Passwords do not match';
       return;
@@ -355,14 +359,16 @@ export class LoginComponent implements OnInit {
   }
 
   onSignIn() {
-    if (!this.email || !this.password) {
+    const identifier = (this.email || '').trim();
+    const password = (this.password || '').trim();
+    if (!identifier || !password) {
       this.error = 'Please enter username and password';
       return;
     }
 
     this.loading = true;
     this.error = '';
-    this.authService.login(this.email, this.password).pipe(
+    this.authService.login(identifier, password).pipe(
       timeout(30000),
       catchError((err: any) => {
         if (err?.name === 'TimeoutError') {
@@ -387,13 +393,11 @@ export class LoginComponent implements OnInit {
         
         const user = response.user;
         
-        // Ensure token is stored before navigation
         if (!response.token) {
           this.error = 'Authentication token not received';
           return;
         }
         
-        // Navigate immediately - token and user are already stored
         const role = String(user.role || '').toLowerCase();
 
         if (role === 'teacher') {
@@ -431,7 +435,6 @@ export class LoginComponent implements OnInit {
             this.error = 'Failed to navigate. Please try again.';
           });
         } else {
-          // Navigate to regular dashboard for other roles
           this.router.navigate(['/dashboard']).catch(err => {
             console.error('Navigation error:', err);
             this.error = 'Failed to navigate. Please try again.';
@@ -444,10 +447,15 @@ export class LoginComponent implements OnInit {
         console.error('Error message:', err.error?.message || err.message);
         
         if (err.status === 0) {
-          // Connection error - server not reachable
-          this.error = 'Cannot connect to server. Please ensure the backend server is running on port 3000.';
+          this.error = 'Cannot connect to server. Ensure the SMS backend is running (npm run dev in the backend folder on port 3001).';
+        } else if (err.status === 400) {
+          const details = err.error?.details;
+          if (Array.isArray(details) && details.length) {
+            this.error = details.map((d: any) => d.msg).filter(Boolean).join('. ');
+          } else {
+            this.error = err.error?.message || err.error?.error || 'Login failed. Please check your credentials.';
+          }
         } else if (err.status === 423) {
-          // Account locked (too many failed attempts)
           this.error = err.error?.message || 'Your account has been locked. Please contact the administrator or superadmin to unlock it.';
         } else if (err.status === 401) {
           const errorMessage = err.error?.message || 'Invalid username or password. Please try again.';
@@ -460,10 +468,8 @@ export class LoginComponent implements OnInit {
             this.error = errorMessage;
           }
         } else if (err.status === 500) {
-          // Server error
           this.error = 'Server error. Please try again later.';
         } else {
-          // Other errors
           this.error = err.error?.message || err.message || 'Login failed. Please check your credentials.';
         }
       }
@@ -482,7 +488,6 @@ export class LoginComponent implements OnInit {
     this.error = '';
     this.signupContactNumberError = '';
     
-    // Validation
     if (!this.signupRole || !this.signupUsername || !this.signupPassword || !this.signupConfirmPassword) {
       this.error = 'Please fill in all required fields';
       return;
@@ -495,7 +500,6 @@ export class LoginComponent implements OnInit {
       }
     }
 
-    // Validate phone number (parents only)
     if (this.signupRole === 'PARENT') {
       const phoneResult = validatePhoneNumber(this.signupContactNumber, true);
       if (!phoneResult.isValid) {
@@ -534,7 +538,6 @@ export class LoginComponent implements OnInit {
       return;
     }
 
-    // Validate role
     const validRoles = ['PARENT', 'STUDENT'];
     if (!validRoles.includes(this.signupRole)) {
       this.error = 'Please select a valid role';
@@ -544,18 +547,15 @@ export class LoginComponent implements OnInit {
     this.loading = true;
     this.error = '';
     
-    // Convert role to lowercase for backend enum
     const roleLower = this.signupRole.toLowerCase();
     const trimmedUsername = this.signupUsername.trim();
     
-    // Determine email per role
     const registerData: any = {
       username: trimmedUsername,
       password: this.signupPassword.trim(),
       role: roleLower,
     };
 
-    // Only add parent-specific fields for parents
     if (this.signupRole === 'PARENT') {
       registerData.email = this.signupEmail.trim();
       registerData.firstName = this.signupFirstName.trim();
@@ -684,8 +684,6 @@ export class LoginComponent implements OnInit {
       .subscribe({
       next: (res: any) => {
         this.success = 'If the email exists, a password reset link has been sent.';
-
-        // Development convenience: backend may return token
         const token = res?.token;
         if (token && typeof token === 'string' && token.trim()) {
           this.resetToken = token.trim();

@@ -1,5 +1,6 @@
 /** Use IPv4 loopback — on Windows, "localhost" can hit ::1 first and ETIMEDOUT before 127.0.0.1 */
-const API_TARGET = "http://127.0.0.1:3000";
+/** SMS API port — use 3001 locally so port 3000 can stay free for other apps */
+const API_TARGET = "http://127.0.0.1:3001";
 
 const PROXY_CONFIG = {
   "/api": {
