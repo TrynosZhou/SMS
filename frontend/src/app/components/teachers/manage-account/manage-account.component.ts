@@ -6,6 +6,7 @@ import { AuthService } from '../../../services/auth.service';
 import { AccountService } from '../../../services/account.service';
 import { TeacherService } from '../../../services/teacher.service';
 import { SettingsService } from '../../../services/settings.service';
+import { ParentService } from '../../../services/parent.service';
 import { activatePageLoad } from '../../../utils/route-activation';
 
 type AccountTab = 'overview' | 'security';
@@ -32,6 +33,7 @@ export class ManageAccountComponent implements OnInit, OnDestroy {
   error = '';
   success = '';
   isTeacher = false;
+  isParent = false;
   isAccountant = false;
   isDemo = false;
   mustChangePassword = false;
@@ -43,6 +45,9 @@ export class ManageAccountComponent implements OnInit, OnDestroy {
   teacherProfile: any = null;
   teacherClasses: any[] = [];
   teacherSubjects: string[] = [];
+  parentProfile: any = null;
+  linkedStudents: any[] = [];
+  loadingParent = false;
   profileLastSynced: Date | null = null;
 
   showCurrentPassword = false;
@@ -57,6 +62,7 @@ export class ManageAccountComponent implements OnInit, OnDestroy {
     private accountService: AccountService,
     private authService: AuthService,
     private teacherService: TeacherService,
+    private parentService: ParentService,
     private settingsService: SettingsService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -78,6 +84,9 @@ export class ManageAccountComponent implements OnInit, OnDestroy {
     this.loadAccountInfo();
     if (this.isTeacher) {
       this.loadTeacherContext();
+    }
+    if (this.isParent) {
+      this.loadParentContext();
     }
     if (this.mustChangePassword) {
       this.activeTab = 'security';
@@ -107,6 +116,10 @@ export class ManageAccountComponent implements OnInit, OnDestroy {
       this.teacherProfile = currentUser.teacher;
       this.applyTeacherDisplayName(currentUser.teacher, currentUser.fullName);
     }
+    if (currentUser.parent) {
+      this.parentProfile = currentUser.parent;
+      this.applyParentDisplayName(currentUser.parent, currentUser.fullName);
+    }
   }
 
   private applyAccountData(data: {
@@ -125,6 +138,7 @@ export class ManageAccountComponent implements OnInit, OnDestroy {
     this.newEmail = this.currentEmail;
     const role = (data.role || '').toLowerCase();
     this.isTeacher = role === 'teacher';
+    this.isParent = role === 'parent';
     this.isAccountant = role === 'accountant';
     this.isDemo = data.isDemo === true;
     this.roleLabel = this.formatRoleLabel(role);
@@ -189,6 +203,10 @@ export class ManageAccountComponent implements OnInit, OnDestroy {
               .map((s: any) => (typeof s === 'string' ? s : s?.name))
               .filter(Boolean);
           }
+          if (data.parent) {
+            this.parentProfile = data.parent;
+            this.applyParentDisplayName(data.parent, data.fullName);
+          }
           this.profileLastSynced = new Date();
           this.cdr.markForCheck();
         },
@@ -204,6 +222,77 @@ export class ManageAccountComponent implements OnInit, OnDestroy {
           setTimeout(() => (this.error = ''), 8000);
         },
       });
+  }
+
+  private loadParentContext(): void {
+    this.loadingParent = true;
+    this.parentService
+      .getLinkedStudents()
+      .pipe(
+        timeout(this.requestTimeoutMs),
+        catchError(() => of({ students: [] })),
+        finalize(() => {
+          this.loadingParent = false;
+          this.cdr.markForCheck();
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((res: any) => {
+        const students = Array.isArray(res?.students) ? res.students : Array.isArray(res) ? res : [];
+        this.linkedStudents = students;
+        this.cdr.markForCheck();
+      });
+
+    if (!this.parentProfile) {
+      this.parentService
+        .getCurrentProfile()
+        .pipe(
+          timeout(this.requestTimeoutMs),
+          catchError(() => of(null)),
+          takeUntil(this.destroy$)
+        )
+        .subscribe((profile: any) => {
+          if (!profile) {
+            return;
+          }
+          this.parentProfile = profile;
+          this.applyParentDisplayName(profile);
+          this.cdr.markForCheck();
+        });
+    }
+  }
+
+  private applyParentDisplayName(parent: any, fullNameOverride?: string): void {
+    if (fullNameOverride?.trim()) {
+      this.displayName = fullNameOverride.trim();
+      return;
+    }
+    const built = [parent?.lastName, parent?.firstName].filter(Boolean).join(' ').trim();
+    if (built) {
+      this.displayName = built;
+    }
+  }
+
+  get linkedStudentsCount(): number {
+    return this.linkedStudents.length;
+  }
+
+  get parentPhone(): string {
+    return (this.parentProfile?.phoneNumber || '').trim();
+  }
+
+  get parentGender(): string {
+    return (this.parentProfile?.gender || '').trim();
+  }
+
+  formatStudentName(student: any): string {
+    const name = [student?.lastName, student?.firstName].filter(Boolean).join(' ').trim();
+    return name || student?.fullName?.trim() || 'Student';
+  }
+
+  formatStudentClass(student: any): string {
+    const parts = [student?.className, student?.form].filter(Boolean);
+    return parts.join(' · ') || '—';
   }
 
   private loadTeacherContext(): void {
@@ -362,6 +451,9 @@ export class ManageAccountComponent implements OnInit, OnDestroy {
     if (this.isTeacher) {
       return 'Manage your profile, teaching assignments, and account security.';
     }
+    if (this.isParent) {
+      return 'View your profile, linked students, and keep your login secure.';
+    }
     if (this.isAccountant) {
       return 'Review your account details and update your login password.';
     }
@@ -381,6 +473,9 @@ export class ManageAccountComponent implements OnInit, OnDestroy {
       return [
         { route: '/parent/dashboard', icon: '🏠', label: 'Dashboard' },
         { route: '/parent/inbox', icon: '📧', label: 'Inbox' },
+        { route: '/parent/student-portal', icon: '👨‍🎓', label: 'Student Portal' },
+        { route: '/parent/link-students', icon: '🔗', label: 'Link Students' },
+        { route: '/parent/invoice-statement', icon: '🧾', label: 'Invoice' },
       ];
     }
     return [{ route: this.authService.getDashboardRoute(), icon: '🏠', label: 'Dashboard' }];

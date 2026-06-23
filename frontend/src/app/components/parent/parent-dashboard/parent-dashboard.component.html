@@ -1,6 +1,4 @@
-<div class="pdb-layout">
-
-  <!-- ── Main Content ──────────────────────────────────────────────────── -->
+<div class="pdb-page">
   <main class="pdb-main">
 
     <!-- Hero -->
@@ -195,22 +193,6 @@
                 </a>
               </li>
             </ul>
-          </section>
-
-          <section class="section-card">
-            <h2 class="section-title">🔗 Quick links</h2>
-            <div class="pdb-quick-grid">
-              <a *ngFor="let q of quickLinks" [routerLink]="q.route" class="pdb-quick-tile" [ngClass]="'pdb-quick-tile--' + q.pastel">
-                <span class="pdb-quick-icon-wrap">
-                  <span class="pdb-quick-icon">{{ q.icon }}</span>
-                  <span
-                    class="pdb-quick-badge"
-                    *ngIf="isInboxQuickLink(q.route) && unreadMessageCount > 0"
-                    [attr.aria-label]="unreadMessageCount + ' unread messages'">{{ getInboxBadgeLabel() }}</span>
-                </span>
-                <span class="pdb-quick-label">{{ q.label }}</span>
-              </a>
-            </div>
           </section>
         </aside>
       </div>

@@ -1,169 +1,176 @@
 <div class="pls-layout">
-
-  <!-- ── Main Content ──────────────────────────────────────────────────── -->
   <main class="pls-main">
 
-    <!-- Header -->
-    <div class="pls-header">
-      <div class="header-left">
-        <h1 class="page-title">🔗 Link Students</h1>
-        <p class="page-sub">Connect your child(ren) to your parent account using their Student ID</p>
-      </div>
-      <div class="header-right">
-        <div class="stat-chip">
-          <span class="stat-val">{{ linkedStudents.length }}</span>
-          <span class="stat-lbl">Linked</span>
+    <header class="pls-hero">
+      <div class="pls-hero__main">
+        <div class="pls-hero__badges">
+          <span class="pls-pill">Parent Portal</span>
+          <span class="pls-pill pls-pill--live" *ngIf="!loading">
+            <span class="pls-live-dot"></span> {{ linkedStudents.length }} linked
+          </span>
         </div>
-        <button class="back-btn" (click)="goToDashboard()">← Dashboard</button>
+        <h1 class="pls-hero__title">Link Students</h1>
+        <p class="pls-hero__sub">Connect your child(ren) to your account using their Student ID from the school.</p>
       </div>
+      <div class="pls-hero__aside">
+        <div class="pls-stat-chip">
+          <span class="pls-stat-num">{{ linkedStudents.length }}</span>
+          <span class="pls-stat-lbl">Linked</span>
+        </div>
+        <button type="button" class="pls-refresh" (click)="loadLinkedStudents()" [disabled]="loading" title="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <button type="button" class="pls-back-btn" (click)="goToDashboard()">← Dashboard</button>
+      </div>
+    </header>
+
+    <div class="pls-alert pls-alert--success" *ngIf="success" role="status">
+      <span class="pls-alert__icon">✓</span>
+      <span>{{ success }}</span>
+    </div>
+    <div class="pls-alert pls-alert--error" *ngIf="error" role="alert">
+      <span class="pls-alert__icon">✕</span>
+      <span>{{ error }}</span>
     </div>
 
-    <!-- Alerts -->
-    <div class="pls-alert success" *ngIf="success">
-      <span>✅</span> {{ success }}
-    </div>
-    <div class="pls-alert error" *ngIf="error">
-      <span>⚠️</span> {{ error }}
-    </div>
-
-    <!-- ── Two-column grid ────────────────────────────────────────────── -->
-    <div class="pls-grid">
-
-      <!-- Left: Link Form + How it works -->
-      <div class="pls-left">
-
-        <!-- Link Form Card -->
-        <div class="form-card">
-          <div class="form-card-header">
-            <span class="form-card-icon">➕</span>
-            <div>
-              <div class="form-card-title">Add a Student</div>
-              <div class="form-card-sub">Enter your child's Student ID to link them.</div>
-            </div>
+    <div class="pls-columns">
+      <div class="pls-col-form">
+        <div class="pls-card">
+          <div class="pls-card__head">
+            <h2>Add a student</h2>
+            <p>Enter your child's Student ID exactly as shown on their admission letter or report card.</p>
           </div>
 
-          <form (ngSubmit)="linkStudent()" autocomplete="off">
-            <div class="field-group">
-              <label class="field-label">Student ID <span class="req">*</span></label>
-              <div class="field-wrap" [class.active]="studentId">
-                <span class="field-icon">🎓</span>
+          <form (ngSubmit)="linkStudent()" class="pls-form" autocomplete="off">
+            <div class="pls-field">
+              <label for="studentId">Student ID <span class="pls-req">*</span></label>
+              <div class="pls-input-wrap" [class.pls-input-wrap--active]="studentId">
                 <input
+                  #studentIdInput
+                  id="studentId"
                   type="text"
                   [(ngModel)]="studentId"
                   name="studentId"
                   placeholder="e.g. STU-2024-001"
-                  class="field-input"
+                  class="pls-input"
                   [disabled]="linking"
                   autocomplete="off"
                   required />
                 <button
                   type="button"
-                  class="clear-btn"
+                  class="pls-input-clear"
                   *ngIf="studentId"
                   (click)="studentId = ''"
-                  [disabled]="linking">✕</button>
+                  [disabled]="linking"
+                  aria-label="Clear">×</button>
               </div>
-              <small class="field-hint">You can find the Student ID on the school admission letter or report card.</small>
+              <small class="pls-hint">Contact the school office if you cannot find the Student ID.</small>
             </div>
 
-            <button
-              type="submit"
-              class="link-btn"
-              [disabled]="linking || !studentId.trim()">
-              <span *ngIf="!linking">🔗 Link Student</span>
-              <span *ngIf="linking" class="loading-row">
-                <span class="spinner sm"></span> Linking…
+            <button type="submit" class="pls-submit" [disabled]="linking || !studentId.trim()">
+              <span *ngIf="!linking">Link student</span>
+              <span *ngIf="linking" class="pls-loading-row">
+                <span class="pls-spinner pls-spinner--sm"></span> Linking…
               </span>
             </button>
           </form>
         </div>
 
-        <!-- How It Works -->
-        <div class="how-card">
-          <div class="how-title">📋 How It Works</div>
-          <div class="steps">
-            <div class="step">
-              <div class="step-num">1</div>
-              <div class="step-body">
-                <div class="step-heading">Get the Student ID</div>
-                <div class="step-desc">Find your child's Student ID on their admission letter, school report card, or by contacting the school office.</div>
+        <div class="pls-steps-card">
+          <h3 class="pls-steps-title">How it works</h3>
+          <ol class="pls-steps">
+            <li>
+              <span class="pls-step-num">1</span>
+              <div>
+                <strong>Get the Student ID</strong>
+                <p>Find it on the admission letter, report card, or ask the school office.</p>
               </div>
-            </div>
-            <div class="step">
-              <div class="step-num">2</div>
-              <div class="step-body">
-                <div class="step-heading">Enter &amp; Link</div>
-                <div class="step-desc">Type the Student ID in the form above and click "Link Student".</div>
+            </li>
+            <li>
+              <span class="pls-step-num">2</span>
+              <div>
+                <strong>Enter and link</strong>
+                <p>Type the ID above and click Link student.</p>
               </div>
-            </div>
-            <div class="step">
-              <div class="step-num">3</div>
-              <div class="step-body">
-                <div class="step-heading">Access Student Info</div>
-                <div class="step-desc">Once linked, you can view fees, report cards, and send messages from your dashboard.</div>
+            </li>
+            <li>
+              <span class="pls-step-num">3</span>
+              <div>
+                <strong>Access student services</strong>
+                <p>View fees, report cards, and messages from your dashboard.</p>
               </div>
-            </div>
-          </div>
+            </li>
+          </ol>
         </div>
-
       </div>
 
-      <!-- Right: Linked Students List -->
-      <div class="pls-right">
-        <div class="linked-card">
-          <div class="linked-card-header">
-            <span class="linked-card-title">🎓 Your Linked Students</span>
-            <span class="count-badge">{{ linkedStudents.length }}</span>
+      <div class="pls-col-list">
+        <div class="pls-card pls-card--list">
+          <div class="pls-card__head pls-card__head--row">
+            <div>
+              <h2>Your linked students</h2>
+              <p>Students connected to {{ parentName }}</p>
+            </div>
+            <span class="pls-count">{{ linkedStudents.length }}</span>
           </div>
 
-          <!-- Loading -->
-          <div class="pls-loading" *ngIf="loading">
-            <div class="spinner"></div>
-            <span>Loading students…</span>
+          <div class="pls-skeleton-list" *ngIf="loading" aria-busy="true">
+            <div class="pls-skeleton-card" *ngFor="let _ of [0,1]"></div>
           </div>
 
-          <!-- Empty -->
           <div class="pls-empty" *ngIf="!loading && linkedStudents.length === 0">
-            <div class="empty-icon">👨‍👩‍👧‍👦</div>
-            <p class="empty-title">No students linked yet</p>
-            <p class="empty-sub">Use the form to link your child(ren).</p>
+            <div class="pls-empty__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <h3>No students linked yet</h3>
+            <p>Use the form to link your first child.</p>
           </div>
 
-          <!-- Student Cards -->
-          <div class="student-list" *ngIf="!loading && linkedStudents.length > 0">
-            <div class="student-card" *ngFor="let s of linkedStudents">
-
-              <!-- Unlink confirmation overlay -->
-              <div class="unlink-confirm" *ngIf="confirmUnlinkId === s.id">
-                <p>Remove <strong>{{ s.firstName }} {{ s.lastName }}</strong> from your account?</p>
-                <div class="confirm-actions">
-                  <button class="confirm-yes" (click)="confirmUnlink()">Yes, Unlink</button>
-                  <button class="confirm-no"  (click)="cancelUnlink()">Cancel</button>
+          <div class="pls-student-list" *ngIf="!loading && linkedStudents.length > 0">
+            <article class="pls-student" *ngFor="let s of linkedStudents">
+              <div class="pls-unlink" *ngIf="confirmUnlinkId === s.id">
+                <p>Remove <strong>{{ formatStudentName(s) }}</strong> from your account?</p>
+                <div class="pls-unlink__actions">
+                  <button type="button" class="pls-unlink__yes" (click)="confirmUnlink()">Yes, unlink</button>
+                  <button type="button" class="pls-unlink__no" (click)="cancelUnlink()">Cancel</button>
                 </div>
               </div>
 
-              <div class="sc-row" [class.blurred]="confirmUnlinkId === s.id">
-                <div class="sc-avatar">{{ studentInitials(s) }}</div>
-                <div class="sc-info">
-                  <div class="sc-name">{{ s.firstName }} {{ s.lastName }}</div>
-                  <div class="sc-meta">
-                    <span class="meta-pill">🪪 {{ s.studentNumber }}</span>
-                    <span class="meta-pill">🏫 {{ (s.class || s.classEntity)?.name || 'N/A' }}</span>
-                    <span class="meta-pill">👤 {{ s.studentType || 'Day Scholar' }}</span>
+              <div class="pls-student__body" [class.pls-student__body--dimmed]="confirmUnlinkId === s.id">
+                <div class="pls-student__avatar" aria-hidden="true">{{ studentInitials(s) }}</div>
+                <div class="pls-student__info">
+                  <h3 class="pls-student__name">{{ formatStudentName(s) }}</h3>
+                  <div class="pls-student__meta">
+                    <span class="pls-meta-tag">{{ s.studentNumber || 'No ID' }}</span>
+                    <span class="pls-meta-tag">{{ formatStudentClass(s) }}</span>
+                    <span class="pls-meta-tag">{{ s.studentType || 'Day Scholar' }}</span>
+                  </div>
+                  <div class="pls-student__links">
+                    <button type="button" class="pls-quick-link" (click)="openReportCard(s)">Report card</button>
+                    <button type="button" class="pls-quick-link" (click)="openInvoiceStatement(s)">Invoice</button>
+                    <button type="button" class="pls-quick-link" (click)="openStudentPortal(s)">Student portal</button>
                   </div>
                 </div>
-                <div class="sc-actions">
-                  <span class="linked-badge">✓ Linked</span>
-                  <button class="unlink-btn" (click)="requestUnlink(s.id)">Unlink</button>
+                <div class="pls-student__actions">
+                  <span class="pls-linked-badge">Linked</span>
+                  <button type="button" class="pls-unlink-btn" (click)="requestUnlink(s.id)">Unlink</button>
                 </div>
               </div>
-
-            </div>
+            </article>
           </div>
+        </div>
 
+        <div class="pls-help-card">
+          <h3>Need help?</h3>
+          <p>If linking fails, verify the Student ID or contact the school office for assistance.</p>
+          <a routerLink="/parent/send-message" class="pls-help-link">Send a message →</a>
         </div>
       </div>
-
     </div>
   </main>
 </div>

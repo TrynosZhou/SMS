@@ -38,6 +38,7 @@ import { AssignSubjectComponent } from './components/subjects/assign-subject/ass
 import { SettingsComponent } from './components/settings/settings.component';
 import { AuthInterceptor } from './interceptors/auth.interceptor';
 import { ParentDashboardComponent } from './components/parent/parent-dashboard/parent-dashboard.component';
+import { ParentPortalSidebarComponent } from './components/parent/parent-portal-sidebar/parent-portal-sidebar.component';
 import { LinkStudentsComponent } from './components/parent/link-students/link-students.component';
 import { ManageAccountComponent } from './components/teachers/manage-account/manage-account.component';
 import { ManageAccountsComponent } from './components/admin/manage-accounts/manage-accounts.component';
@@ -142,6 +143,7 @@ import { RbacManagementComponent } from './components/settings/rbac-management/r
     AssignSubjectComponent,
     SettingsComponent,
     ParentDashboardComponent,
+    ParentPortalSidebarComponent,
     LinkStudentsComponent,
     ManageAccountComponent,
     ManageAccountsComponent,

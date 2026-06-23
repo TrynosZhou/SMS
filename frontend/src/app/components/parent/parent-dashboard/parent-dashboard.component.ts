@@ -37,15 +37,6 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
   unreadMessageCount = 0;
   lastRefreshedAt: Date | null = null;
 
-  readonly quickLinks = [
-    { route: '/parent/inbox', icon: '📧', label: 'Inbox', pastel: 'sky' },
-    { route: '/parent/send-message', icon: '✉️', label: 'Send message', pastel: 'violet' },
-    { route: '/parent/invoice-statement', icon: '🧾', label: 'Invoice', pastel: 'rose' },
-    { route: '/parent/student-portal', icon: '🎓', label: 'Student portal', pastel: 'emerald' },
-    { route: '/parent/link-students', icon: '🔗', label: 'Link students', pastel: 'amber' },
-    { route: '/parent/manage-account', icon: '👤', label: 'My account', pastel: 'slate' },
-  ];
-
   carouselImages: string[] = [];
   carouselIndex = 0;
   carouselAnimating = true;
@@ -119,18 +110,6 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
 
   private refreshUnreadMessageCount(): void {
     this.parentMessageNotifications.refresh().pipe(takeUntil(this.destroy$)).subscribe();
-  }
-
-  getInboxBadgeLabel(): string {
-    const n = this.unreadMessageCount;
-    if (n <= 0) {
-      return '';
-    }
-    return n > 99 ? '99+' : String(n);
-  }
-
-  isInboxQuickLink(route: string): boolean {
-    return route === '/parent/inbox';
   }
 
   private bootstrapDashboard() {

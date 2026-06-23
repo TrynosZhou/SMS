@@ -108,6 +108,9 @@ error = '';
   private autoGenerationTimeout: any = null;
   // Guard against duplicate parent balance checks (bootstrapPage fires 4+ times)
   private parentBalanceCheckInProgress = false;
+  private parentBalanceCleared = false;
+  private parentTermsReady = false;
+  private parentAutoGenerateAttempted = false;
   
   // Auto-save state for remarks
   savedRemarks: Set<string> = new Set(); // Track saved remarks by key: "studentId_classTeacher" or "studentId_headmaster"
@@ -386,6 +389,8 @@ const currentYear = new Date().getFullYear();
       .pipe(
         finalize(() => {
           this.loadingTerms = false;
+          this.parentTermsReady = true;
+          this.tryParentAutoGenerate();
           this.cdr.markForCheck();
         })
       )
@@ -555,7 +560,9 @@ const currentYear = new Date().getFullYear();
           this.selectedExamType = 'mid_term';
         }
 
+        this.parentBalanceCleared = true;
         this.loading = false;
+        this.tryParentAutoGenerate();
         this.cdr.markForCheck();
       },
       error: (err: any) => {
@@ -1629,6 +1636,10 @@ if (err.status === 0) {
       this.filteredReportCards = [];
       this.parentReportMaximized = false;
       this.success = '';
+      this.parentAutoGenerateAttempted = false;
+      if (this.parentBalanceCleared && this.isSelectionValid()) {
+        setTimeout(() => this.tryParentAutoGenerate(), 50);
+      }
       return;
     }
     this.checkAndAutoGenerate();
@@ -1853,6 +1864,54 @@ if (err.status === 0) {
 
   getOverallAverageColor(_reportCard: any): string {
     return '#2563eb';
+  }
+
+  goToParentDashboard(): void {
+    this.router.navigate(['/parent/dashboard']);
+  }
+
+  getParentStudentInitials(): string {
+    const name = (this.parentStudentName || '').trim();
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase() || 'ST';
+  }
+
+  get primaryParentReportCard(): any | null {
+    return this.reportCards.length > 0 ? this.reportCards[0] : null;
+  }
+
+  setParentExamType(value: string): void {
+    if (this.selectedExamType === value) {
+      return;
+    }
+    this.selectedExamType = value;
+    this.onSelectionChange();
+    if (this.isParent && this.parentBalanceCleared && this.isSelectionValid()) {
+      this.reportCards = [];
+      this.filteredReportCards = [];
+      this.parentAutoGenerateAttempted = false;
+      this.tryParentAutoGenerate();
+    }
+  }
+
+  private tryParentAutoGenerate(): void {
+    if (!this.isParent || !this.parentStudentId || this.accessDenied) {
+      return;
+    }
+    if (!this.parentBalanceCleared || !this.parentTermsReady) {
+      return;
+    }
+    if (!this.isSelectionValid() || this.loading || this.autoGenerationInProgress) {
+      return;
+    }
+    if (this.parentAutoGenerateAttempted && this.reportCards.length > 0) {
+      return;
+    }
+    this.parentAutoGenerateAttempted = true;
+    this.generateReportCards();
   }
 }
 

@@ -1,4 +1,354 @@
-<div class="ma-shell">
+<!-- Parent portal account page -->
+<div class="pma-layout" *ngIf="isParent">
+  <main class="pma-main">
+    <header class="pma-hero">
+      <div class="pma-hero__main">
+        <div class="pma-hero__badges">
+          <span class="pma-pill">Parent Portal</span>
+          <span class="pma-pill" [ngClass]="accountStatusClass">{{ accountStatusLabel }}</span>
+        </div>
+        <h1 class="pma-hero__title">My Account</h1>
+        <p class="pma-hero__sub">{{ pageSubtitle }}</p>
+      </div>
+      <div class="pma-hero__aside">
+        <div class="pma-hero__stats" *ngIf="!loadingParent">
+          <div class="pma-stat-chip">
+            <span class="pma-stat-num">{{ linkedStudentsCount }}</span>
+            <span class="pma-stat-lbl">Linked students</span>
+          </div>
+        </div>
+        <button type="button" class="pma-back-btn" (click)="goToDashboard()">
+          ← Dashboard
+        </button>
+      </div>
+    </header>
+
+    <div class="pma-alert pma-alert--success" *ngIf="success" role="status">
+      <span class="pma-alert__icon">✓</span>
+      <span>{{ success }}</span>
+    </div>
+    <div class="pma-alert pma-alert--error" *ngIf="error" role="alert">
+      <span class="pma-alert__icon">✕</span>
+      <span>{{ error }}</span>
+      <button type="button" class="pma-alert__close" (click)="error = ''" aria-label="Dismiss">×</button>
+    </div>
+
+    <div class="pma-banner pma-banner--warn" *ngIf="!isDemo && mustChangePassword">
+      <div class="pma-banner__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </div>
+      <div class="pma-banner__copy">
+        <strong>Password change required</strong>
+        <p>Please set a new password in the Security section before continuing.</p>
+      </div>
+      <button type="button" class="pma-btn pma-btn--light" (click)="setTab('security')">Update now</button>
+    </div>
+
+    <div class="pma-banner pma-banner--info" *ngIf="isDemo">
+      <div class="pma-banner__icon" aria-hidden="true">ℹ</div>
+      <div class="pma-banner__copy">
+        <strong>Demo account</strong>
+        <p>Password and profile changes are disabled for demo users.</p>
+      </div>
+    </div>
+
+    <nav class="pma-tabs" aria-label="Account sections">
+      <button
+        type="button"
+        class="pma-tab"
+        [class.pma-tab--active]="activeTab === 'overview'"
+        (click)="setTab('overview')">
+        Profile
+      </button>
+      <button
+        type="button"
+        class="pma-tab"
+        [class.pma-tab--active]="activeTab === 'security'"
+        (click)="setTab('security')">
+        Security
+        <span class="pma-tab-badge" *ngIf="mustChangePassword && !isDemo">!</span>
+      </button>
+    </nav>
+
+    <div class="pma-columns">
+      <section class="pma-content">
+        <!-- Profile -->
+        <div class="pma-card" *ngIf="activeTab === 'overview'">
+          <div class="pma-card__head">
+            <h2>Profile overview</h2>
+            <p>Your contact details and login information on file with the school.</p>
+          </div>
+
+          <div class="pma-loading" *ngIf="loadingProfile && !accountInfo">
+            <div class="spinner"></div>
+            <span>Loading account information…</span>
+          </div>
+
+          <div class="pma-info-grid" *ngIf="accountInfo">
+            <article class="pma-info-card">
+              <h3>Personal details</h3>
+              <dl class="pma-dl">
+                <div class="pma-dl__row">
+                  <dt>Full name</dt>
+                  <dd>{{ displayName || '—' }}</dd>
+                </div>
+                <div class="pma-dl__row" *ngIf="parentGender">
+                  <dt>Gender</dt>
+                  <dd>{{ parentGender }}</dd>
+                </div>
+                <div class="pma-dl__row" *ngIf="parentPhone">
+                  <dt>Phone</dt>
+                  <dd>{{ parentPhone }}</dd>
+                </div>
+                <div class="pma-dl__row">
+                  <dt>Email</dt>
+                  <dd>{{ currentEmail || parentProfile?.email || 'Not set' }}</dd>
+                </div>
+              </dl>
+            </article>
+
+            <article class="pma-info-card">
+              <h3>Login &amp; access</h3>
+              <dl class="pma-dl">
+                <div class="pma-dl__row">
+                  <dt>Username</dt>
+                  <dd>{{ currentUsername || '—' }}</dd>
+                </div>
+                <div class="pma-dl__row">
+                  <dt>Account type</dt>
+                  <dd>{{ roleLabel }}</dd>
+                </div>
+                <div class="pma-dl__row">
+                  <dt>Status</dt>
+                  <dd>
+                    <span class="pma-status" [ngClass]="accountStatusClass">{{ accountStatusLabel }}</span>
+                  </dd>
+                </div>
+              </dl>
+            </article>
+          </div>
+
+          <div class="pma-section">
+            <div class="pma-section__head">
+              <h3>Linked students</h3>
+              <span class="pma-count">{{ linkedStudentsCount }}</span>
+            </div>
+
+            <div class="pma-loading pma-loading--inline" *ngIf="loadingParent">
+              <div class="spinner sm"></div>
+              <span>Loading students…</span>
+            </div>
+
+            <div class="pma-student-list" *ngIf="!loadingParent && linkedStudents.length > 0">
+              <div class="pma-student" *ngFor="let student of linkedStudents">
+                <div class="pma-student__avatar" aria-hidden="true">
+                  {{ formatStudentName(student).charAt(0).toUpperCase() }}
+                </div>
+                <div class="pma-student__info">
+                  <span class="pma-student__name">{{ formatStudentName(student) }}</span>
+                  <span class="pma-student__meta">{{ formatStudentClass(student) }}</span>
+                </div>
+                <a routerLink="/parent/student-portal" class="pma-student__link">View portal</a>
+              </div>
+            </div>
+
+            <div class="pma-empty" *ngIf="!loadingParent && linkedStudents.length === 0">
+              <p>No students linked yet.</p>
+              <a routerLink="/parent/link-students" class="pma-link">Link a student →</a>
+            </div>
+          </div>
+
+          <div class="pma-tip" *ngIf="!isDemo">
+            <div class="pma-tip__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+            </div>
+            <div>
+              <strong>Protect your account</strong>
+              <p>Use a strong, unique password and update it regularly.</p>
+              <button type="button" class="pma-link-btn" (click)="setTab('security')">Go to Security →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Security -->
+        <div class="pma-card" *ngIf="activeTab === 'security'">
+          <div class="pma-card__head">
+            <h2>Security &amp; password</h2>
+            <p>Update your email or change your password. All fields marked with * are required.</p>
+          </div>
+
+          <form *ngIf="accountInfo && !isDemo" (ngSubmit)="updateAccount()" class="pma-form" autocomplete="off">
+            <div class="pma-form-block">
+              <h3 class="pma-form-block__title">Contact email</h3>
+              <div class="field-group">
+                <label class="field-label">New email <span class="optional">(optional)</span></label>
+                <div class="field-input-wrap">
+                  <input
+                    type="email"
+                    [(ngModel)]="newEmail"
+                    name="newEmail"
+                    placeholder="Enter new email address"
+                    autocomplete="off"
+                    class="field-input" />
+                </div>
+                <small class="field-hint">Leave blank to keep your current email.</small>
+              </div>
+            </div>
+
+            <div class="pma-form-block">
+              <h3 class="pma-form-block__title">Change password</h3>
+
+              <div class="field-group">
+                <label class="field-label">Current password <span class="required">*</span></label>
+                <div class="field-input-wrap">
+                  <input
+                    [type]="showCurrentPassword ? 'text' : 'password'"
+                    [(ngModel)]="currentPassword"
+                    name="currentPassword"
+                    placeholder="Enter your current password"
+                    required
+                    autocomplete="current-password"
+                    class="field-input" />
+                  <button
+                    type="button"
+                    class="eye-btn"
+                    (click)="toggleCurrentPasswordVisibility()"
+                    [attr.aria-label]="showCurrentPassword ? 'Hide password' : 'Show password'">
+                    {{ showCurrentPassword ? 'Hide' : 'Show' }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <label class="field-label">New password <span class="required">*</span></label>
+                <div class="field-input-wrap">
+                  <input
+                    [type]="showNewPassword ? 'text' : 'password'"
+                    [(ngModel)]="newPassword"
+                    name="newPassword"
+                    placeholder="Enter new password"
+                    required
+                    autocomplete="new-password"
+                    class="field-input" />
+                  <button
+                    type="button"
+                    class="eye-btn"
+                    (click)="toggleNewPasswordVisibility()"
+                    [attr.aria-label]="showNewPassword ? 'Hide password' : 'Show password'">
+                    {{ showNewPassword ? 'Hide' : 'Show' }}
+                  </button>
+                </div>
+
+                <div class="strength-wrap" *ngIf="newPassword">
+                  <div class="strength-track">
+                    <div class="strength-fill" [ngClass]="strengthClass"></div>
+                  </div>
+                  <span class="strength-text" [ngClass]="strengthClass">{{ strengthLabel }}</span>
+                </div>
+
+                <div class="requirements-grid" *ngIf="newPassword">
+                  <span class="req-item" [class.met]="passwordLengthOk">
+                    <span class="req-icon">{{ passwordLengthOk ? '✓' : '○' }}</span>
+                    At least {{ minPasswordLength }} characters
+                  </span>
+                  <span class="req-item" [class.met]="hasUpper">
+                    <span class="req-icon">{{ hasUpper ? '✓' : '○' }}</span>
+                    Uppercase letter
+                  </span>
+                  <span class="req-item" [class.met]="hasLower">
+                    <span class="req-icon">{{ hasLower ? '✓' : '○' }}</span>
+                    Lowercase letter
+                  </span>
+                  <span class="req-item" [class.met]="hasNumber">
+                    <span class="req-icon">{{ hasNumber ? '✓' : '○' }}</span>
+                    Number
+                  </span>
+                  <span class="req-item" [class.met]="hasSpecial">
+                    <span class="req-icon">{{ hasSpecial ? '✓' : '○' }}</span>
+                    Special character
+                  </span>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <label class="field-label">Confirm new password <span class="required">*</span></label>
+                <div
+                  class="field-input-wrap"
+                  [class.match]="passwordsMatch"
+                  [class.mismatch]="confirmPassword && !passwordsMatch">
+                  <input
+                    [type]="showConfirmPassword ? 'text' : 'password'"
+                    [(ngModel)]="confirmPassword"
+                    name="confirmPassword"
+                    placeholder="Re-enter new password"
+                    required
+                    autocomplete="new-password"
+                    class="field-input" />
+                  <button
+                    type="button"
+                    class="eye-btn"
+                    (click)="toggleConfirmPasswordVisibility()"
+                    [attr.aria-label]="showConfirmPassword ? 'Hide password' : 'Show password'">
+                    {{ showConfirmPassword ? 'Hide' : 'Show' }}
+                  </button>
+                </div>
+                <small class="field-hint match-hint" *ngIf="passwordsMatch">Passwords match</small>
+                <small class="field-hint mismatch-hint" *ngIf="confirmPassword && !passwordsMatch">Passwords do not match</small>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-save" [disabled]="!canSubmit">
+                <span *ngIf="!saving">Update password</span>
+                <span *ngIf="saving" class="loading-row"><span class="spinner sm"></span> Updating…</span>
+              </button>
+              <button type="button" class="btn-cancel" (click)="clearPasswordFields()" [disabled]="saving">
+                Clear fields
+              </button>
+            </div>
+          </form>
+
+          <div class="pma-empty-panel" *ngIf="isDemo">
+            <p>Password changes are not available on demo accounts.</p>
+          </div>
+        </div>
+      </section>
+
+      <aside class="pma-aside">
+        <div class="pma-profile-card">
+          <div class="pma-avatar" aria-hidden="true">{{ getProfileInitials() }}</div>
+          <h2 class="pma-profile-name">{{ displayName || currentUsername || 'Parent' }}</h2>
+          <span class="pma-role-chip">{{ roleLabel }}</span>
+          <p class="pma-sync-note" *ngIf="profileLastSynced">
+            Last synced {{ formatSyncedAt() }}
+          </p>
+        </div>
+
+        <div class="pma-quick-card">
+          <h3 class="pma-quick-title">Quick links</h3>
+          <a *ngFor="let link of quickLinks" [routerLink]="link.route" class="pma-quick-link">
+            <span class="pma-quick-link__icon">{{ link.icon }}</span>
+            {{ link.label }}
+          </a>
+        </div>
+
+        <div class="pma-help-card">
+          <h3>Need help?</h3>
+          <p>Contact the school office if your details are incorrect or you cannot sign in.</p>
+          <a routerLink="/parent/send-message" class="pma-link">Send a message →</a>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<!-- Staff / teacher account page -->
+<div class="ma-shell" *ngIf="!isParent">
   <!-- Page hero -->
   <header class="ma-hero">
     <div class="ma-hero-top">
@@ -247,7 +597,7 @@
                   <input
                     type="email"
                     [(ngModel)]="newEmail"
-                    name="newEmail"
+                    name="newEmailStaff"
                     placeholder="Enter new email address"
                     autocomplete="off"
                     class="field-input" />
@@ -266,7 +616,7 @@
                   <input
                     [type]="showCurrentPassword ? 'text' : 'password'"
                     [(ngModel)]="currentPassword"
-                    name="currentPassword"
+                    name="currentPasswordStaff"
                     placeholder="Enter your current password"
                     required
                     autocomplete="current-password"
@@ -288,7 +638,7 @@
                   <input
                     [type]="showNewPassword ? 'text' : 'password'"
                     [(ngModel)]="newPassword"
-                    name="newPassword"
+                    name="newPasswordStaff"
                     placeholder="Enter new password"
                     required
                     autocomplete="new-password"
@@ -343,7 +693,7 @@
                   <input
                     [type]="showConfirmPassword ? 'text' : 'password'"
                     [(ngModel)]="confirmPassword"
-                    name="confirmPassword"
+                    name="confirmPasswordStaff"
                     placeholder="Re-enter new password"
                     required
                     autocomplete="new-password"

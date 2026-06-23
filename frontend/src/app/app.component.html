@@ -243,54 +243,10 @@
       </div>
 
       <!-- Parent portal navigation -->
-      <div *ngIf="isParentNavVisible()">
-        <div class="sidebar-portal-head" *ngIf="!isSidebarVisuallyCollapsed()">
-          <span class="sidebar-portal-head__title">Parent Portal</span>
-          <span class="sidebar-portal-head__sub">{{ getParentPortalLabel() }}</span>
-        </div>
-        <a routerLink="/parent/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="sidebar-item">
-          <span class="sidebar-icon">📊</span>
-          <span class="sidebar-text">Dashboard</span>
-        </a>
-        <a routerLink="/parent/inbox" routerLinkActive="active" class="sidebar-item">
-          <span class="sidebar-icon-wrap">
-            <span class="sidebar-icon">📧</span>
-            <span
-              class="sidebar-icon-badge"
-              *ngIf="showParentSidebarInboxBadge()"
-              [attr.aria-label]="unreadParentInboxCount + ' unread messages'">{{ getParentSidebarInboxBadgeLabel() }}</span>
-          </span>
-          <span class="sidebar-text">My Inbox</span>
-        </a>
-        <a routerLink="/parent/send-message" routerLinkActive="active" class="sidebar-item">
-          <span class="sidebar-icon">✉️</span>
-          <span class="sidebar-text">Send Message</span>
-        </a>
-        <a routerLink="/parent/outbox" routerLinkActive="active" class="sidebar-item">
-          <span class="sidebar-icon">📤</span>
-          <span class="sidebar-text">Outbox</span>
-        </a>
-        <a routerLink="/parent/invoice-statement" routerLinkActive="active" class="sidebar-item">
-          <span class="sidebar-icon">🧾</span>
-          <span class="sidebar-text">Invoice</span>
-        </a>
-        <a routerLink="/parent/student-portal" routerLinkActive="active" class="sidebar-item">
-          <span class="sidebar-icon">🎓</span>
-          <span class="sidebar-text">Student Portal</span>
-        </a>
-        <a routerLink="/parent/link-students" routerLinkActive="active" class="sidebar-item">
-          <span class="sidebar-icon">🔗</span>
-          <span class="sidebar-text">Link Students</span>
-        </a>
-        <a
-          routerLink="/parent/manage-account"
-          routerLinkActive="active"
-          class="sidebar-item"
-          *ngIf="authService.canChangeOwnPassword()">
-          <span class="sidebar-icon">👤</span>
-          <span class="sidebar-text">My Account</span>
-        </a>
-      </div>
+      <app-parent-portal-sidebar
+        *ngIf="isParentNavVisible()"
+        [collapsed]="isSidebarVisuallyCollapsed()">
+      </app-parent-portal-sidebar>
 
       <!-- Staff / admin navigation -->
       <div *ngIf="!isStudent() && !isParentNavVisible()">

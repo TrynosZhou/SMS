@@ -1,0 +1,157 @@
+<nav class="pps-nav" [class.pps-nav--collapsed]="collapsed" aria-label="Parent portal navigation">
+  <div class="pps-portal-head" *ngIf="!collapsed">
+    <span class="pps-portal-head__title">Parent Portal</span>
+    <span class="pps-portal-head__sub">{{ parentPortalLabel }}</span>
+  </div>
+
+  <a
+    routerLink="/parent/dashboard"
+    routerLinkActive="active"
+    [routerLinkActiveOptions]="{ exact: true }"
+    class="pps-nav-item"
+    [attr.title]="collapsed ? 'Dashboard' : null">
+    <span class="pps-nav-item__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+      </svg>
+    </span>
+    <span class="pps-nav-item__label">Dashboard</span>
+  </a>
+
+  <div class="pps-nav-divider" role="separator"></div>
+
+  <div class="pps-nav-group">
+    <button
+      type="button"
+      class="pps-nav-group__header"
+      (click)="toggleNavGroup('messages')"
+      [attr.aria-expanded]="messagesGroupOpen"
+      [attr.title]="collapsed ? 'Messages' : null">
+      <span class="pps-nav-group__title">
+        <span class="pps-nav-item__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
+          </svg>
+        </span>
+        <span class="pps-nav-group__label">Messages</span>
+      </span>
+      <span class="pps-nav-chevron" [class.pps-nav-chevron--collapsed]="!messagesGroupOpen" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </span>
+    </button>
+    <div class="pps-nav-group__panel" [class.pps-nav-group__panel--open]="messagesGroupOpen || collapsed">
+      <div class="pps-nav-group__items">
+        <a routerLink="/parent/inbox" routerLinkActive="active" class="pps-nav-item pps-nav-item--child" [attr.title]="collapsed ? 'My Inbox' : null">
+          <span class="pps-nav-item__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 12h-6l-2 3H10l-2-3H4"></path>
+              <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+            </svg>
+          </span>
+          <span class="pps-nav-item__label">My Inbox</span>
+          <span
+            class="pps-nav-badge"
+            *ngIf="unreadMessageCount > 0"
+            [attr.aria-label]="unreadMessageCount + ' unread messages'">{{ getInboxBadgeLabel() }}</span>
+        </a>
+        <a routerLink="/parent/send-message" routerLinkActive="active" class="pps-nav-item pps-nav-item--child" [attr.title]="collapsed ? 'Send Message' : null">
+          <span class="pps-nav-item__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </span>
+          <span class="pps-nav-item__label">Send Message</span>
+        </a>
+        <a routerLink="/parent/outbox" routerLinkActive="active" class="pps-nav-item pps-nav-item--child" [attr.title]="collapsed ? 'Outbox' : null">
+          <span class="pps-nav-item__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+              <polyline points="16 6 12 2 8 6"></polyline>
+              <line x1="12" y1="2" x2="12" y2="15"></line>
+            </svg>
+          </span>
+          <span class="pps-nav-item__label">Outbox</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="pps-nav-divider" role="separator"></div>
+
+  <div class="pps-nav-group">
+    <button
+      type="button"
+      class="pps-nav-group__header"
+      (click)="toggleNavGroup('academic')"
+      [attr.aria-expanded]="academicGroupOpen"
+      [attr.title]="collapsed ? 'Academic' : null">
+      <span class="pps-nav-group__title">
+        <span class="pps-nav-item__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+            <path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5"></path>
+          </svg>
+        </span>
+        <span class="pps-nav-group__label">Academic</span>
+      </span>
+      <span class="pps-nav-chevron" [class.pps-nav-chevron--collapsed]="!academicGroupOpen" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </span>
+    </button>
+    <div class="pps-nav-group__panel" [class.pps-nav-group__panel--open]="academicGroupOpen || collapsed">
+      <div class="pps-nav-group__items">
+        <a routerLink="/parent/invoice-statement" routerLinkActive="active" class="pps-nav-item pps-nav-item--child" [attr.title]="collapsed ? 'Invoice' : null">
+          <span class="pps-nav-item__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+          </span>
+          <span class="pps-nav-item__label">Invoice</span>
+        </a>
+        <a routerLink="/parent/student-portal" routerLinkActive="active" class="pps-nav-item pps-nav-item--child" [attr.title]="collapsed ? 'Student Portal' : null">
+          <span class="pps-nav-item__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="10" r="3"></circle>
+              <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"></path>
+            </svg>
+          </span>
+          <span class="pps-nav-item__label">Student Portal</span>
+        </a>
+        <a routerLink="/parent/link-students" routerLinkActive="active" class="pps-nav-item pps-nav-item--child" [attr.title]="collapsed ? 'Link Students' : null">
+          <span class="pps-nav-item__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+          </span>
+          <span class="pps-nav-item__label">Link Students</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <ng-container *ngIf="canManageAccount">
+    <div class="pps-nav-divider" role="separator"></div>
+    <a routerLink="/parent/manage-account" routerLinkActive="active" class="pps-nav-item" [attr.title]="collapsed ? 'My Account' : null">
+      <span class="pps-nav-item__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </span>
+      <span class="pps-nav-item__label">My Account</span>
+    </a>
+  </ng-container>
+</nav>
