@@ -41,7 +41,7 @@ export class SettingsService {
       if (status === 0 || error?.message?.includes('Connection refused')) {
         console.warn(
           `[SettingsService] ${operation} failed: backend not reachable (status 0). ` +
-          'Ensure the backend is running (e.g. npm run start in backend folder) and listening on port 3000.'
+          'Ensure the backend is running (e.g. npm run dev in the backend folder) and listening on port 3001.'
         );
         return of(fallback);
       }

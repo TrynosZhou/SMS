@@ -19,27 +19,26 @@
     <div class="src-hero__actions">
       <button
         type="button"
-        class="src-btn src-btn--ghost"
-        (click)="generateAndPreview()"
+        class="src-btn src-btn--white"
+        (click)="viewReport()"
         [disabled]="!canGenerate || loading || loadingPdf">
-        <span class="src-spin" *ngIf="loading">↻</span>
-        <span *ngIf="!loading">↻</span>
+        <span class="src-spin" *ngIf="loading || loadingPdf">↻</span>
+        <span *ngIf="!loading && !loadingPdf">↻</span>
         Refresh
       </button>
       <button
         type="button"
-        class="src-btn src-btn--outline"
-        (click)="previewPdf()"
+        class="src-btn src-btn--white"
+        (click)="openPdfViewer()"
         [disabled]="loading || loadingPdf || !inlinePdf"
-        *ngIf="reportCard">
-        👁 Full preview
+        *ngIf="inlinePdf">
+        👁 View PDF
       </button>
       <button
         type="button"
         class="src-btn src-btn--white"
         (click)="downloadPDF()"
-        [disabled]="loading || loadingPdf || !reportCard"
-        *ngIf="reportCard">
+        [disabled]="loading || loadingPdf || !inlinePdf">
         ⬇️ Download PDF
       </button>
     </div>
@@ -56,14 +55,16 @@
   <!-- ── Filters toolbar ───────────────────────────────────── -->
   <section class="src-toolbar" [@fadeIn]>
     <div class="src-toolbar__group">
-      <span class="src-toolbar__label">Academic term</span>
+      <span class="src-toolbar__label">Academic term <span class="src-required">*</span></span>
       <div class="src-toolbar__control">
         <span *ngIf="loadingTerms" class="src-toolbar__loading">Loading…</span>
         <select
           *ngIf="!loadingTerms"
           class="src-toolbar__select"
           [(ngModel)]="selectedTerm"
-          (ngModelChange)="onTermChange()">
+          (ngModelChange)="onTermChange()"
+          [disabled]="loading || loadingPdf">
+          <option value="">— Select term —</option>
           <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
         </select>
       </div>
@@ -76,185 +77,128 @@
           class="src-toolbar__select"
           [(ngModel)]="selectedExamType"
           (ngModelChange)="onExamTypeChange()"
-          [disabled]="loadingTerms || loading">
+          [disabled]="loadingTerms || loading || loadingPdf">
           <option value="">— Select exam type —</option>
           <option *ngFor="let opt of examTypeOptions" [value]="opt.value">{{ opt.label }}</option>
         </select>
       </div>
     </div>
 
-    <div class="src-toolbar__status" *ngIf="selectedExamType">
+    <div class="src-toolbar__actions">
+      <button
+        type="button"
+        class="src-btn src-btn--primary"
+        (click)="viewReport()"
+        [disabled]="loadingTerms || loading || loadingPdf || !selectedTerm || !selectedExamType">
+        <span class="src-spin" *ngIf="loading || loadingPdf"></span>
+        📄 View Report
+      </button>
+    </div>
+
+    <div class="src-toolbar__status" *ngIf="showPdfViewer || inlinePdf || loading || loadingPdf">
       <span
         class="src-status-dot"
         [class.dot-loading]="loading || loadingPdf"
         [class.dot-ready]="inlinePdf && !loading && !loadingPdf"
         [class.dot-error]="pdfLoadError && !loading && !loadingPdf"></span>
-      <span *ngIf="loading">Loading report card…</span>
-      <span *ngIf="!loading && loadingPdf">Rendering PDF…</span>
-      <span *ngIf="!loading && !loadingPdf && reportCard">Ready</span>
+      <span *ngIf="loading || loadingPdf">Generating PDF preview…</span>
+      <span *ngIf="!loading && !loadingPdf && inlinePdf">PDF ready</span>
       <span *ngIf="!loading && !loadingPdf && pdfLoadError">PDF unavailable</span>
     </div>
   </section>
 
-  <!-- ── Loading ───────────────────────────────────────────── -->
-  <div class="src-loader-center" *ngIf="loading || loadingTerms">
+  <div class="src-loader-center" *ngIf="loadingTerms">
     <div class="src-spinner"></div>
-    <p>{{ loadingTerms ? 'Loading term options…' : 'Fetching your report card…' }}</p>
+    <p>Loading term options…</p>
   </div>
 
-  <div class="src-pick-hint" *ngIf="!loading && !loadingTerms && !selectedExamType" [@fadeIn]>
+  <div class="src-pick-hint" *ngIf="!loadingTerms && (!selectedTerm || !selectedExamType) && !loading && !loadingPdf" [@fadeIn]>
     <span aria-hidden="true">📋</span>
-    <p>Select an <strong>exam type</strong> from the dropdown above to load your report card.</p>
+    <p>Select your <strong>academic term</strong> and <strong>exam type</strong>, then click <strong>View Report</strong> to open your report card PDF.</p>
   </div>
 
-  <!-- ── Report card content ───────────────────────────────── -->
-  <ng-container *ngIf="!loading && !loadingTerms && selectedExamType">
+  <div class="src-pick-hint" *ngIf="!loadingTerms && selectedTerm && selectedExamType && !inlinePdf && !loading && !loadingPdf && !error && !pdfLoadError" [@fadeIn]>
+    <span aria-hidden="true">👆</span>
+    <p>Ready to view. Click <strong>View Report</strong> to generate your report card PDF preview.</p>
+  </div>
 
-    <div class="src-card" *ngIf="reportCard" [@fadeIn]>
+  <div class="src-empty" *ngIf="selectedExamType && !loading && !loadingPdf && !inlinePdf && !error && pdfLoadError" [@fadeIn]>
+    <span class="src-empty-icon">📄</span>
+    <h3>PDF preview unavailable</h3>
+    <p>Could not render the report card PDF. Try <strong>Refresh</strong> or use <strong>Download PDF</strong> if available.</p>
+    <button type="button" class="src-btn src-btn--secondary" (click)="viewReport()">🔄 Retry</button>
+  </div>
 
-      <div class="src-rc-info">
-        <div class="src-rc-info-header">
-          <div class="src-rc-avatar">
-            {{ (reportCard.student?.name || studentFullName || '?')[0].toUpperCase() }}
-          </div>
-          <div class="src-rc-info-text">
-            <h2 class="src-rc-name">{{ reportCard.student?.name || studentFullName }}</h2>
-            <p class="src-rc-meta">
-              <span>{{ student?.studentNumber }}</span>
-              <span>{{ reportCard.class || className }}</span>
-              <span>{{ selectedTerm || activeTerm }}</span>
-              <span>{{ getExamTypeLabel(selectedExamType) }}</span>
-              <span *ngIf="reportCard.classPosition">
-                Position {{ reportCard.classPosition }} of {{ reportCard.totalStudents }}
-              </span>
-            </p>
-          </div>
-          <div class="src-rc-overall">
-            <div class="src-overall-circle" [ngClass]="overallGradeClass">
-              {{ reportCard.overallAverage | number:'1.0-0' }}%
-            </div>
-            <p class="src-overall-label">Overall average</p>
-          </div>
-        </div>
-      </div>
+  <div class="src-empty" *ngIf="selectedExamType && !loading && !loadingPdf && !inlinePdf && error" [@fadeIn]>
+    <span class="src-empty-icon">📄</span>
+    <h3>No report card found</h3>
+    <p>No report card is available for <strong>{{ getExamTypeLabel(selectedExamType) }}</strong> in <strong>{{ selectedTerm }}</strong>.<br>
+       Try another exam type or term, or contact your class teacher.</p>
+  </div>
 
-      <div class="src-table-wrap" *ngIf="reportCard.subjects?.length">
-        <table class="src-table">
-          <thead>
-            <tr>
-              <th>Subject</th>
-              <th>Code</th>
-              <th>Score</th>
-              <th>Max</th>
-              <th>Class avg</th>
-              <th>Grade</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let s of reportCard.subjects"
-                [class.row-high]="(s.percentage ?? 0) >= 80"
-                [class.row-low]="(s.percentage ?? 0) < 50">
-              <td data-label="Subject">{{ s.subject || s.name || s.subjectName || '—' }}</td>
-              <td data-label="Code">{{ s.subjectCode || s.code || '—' }}</td>
-              <td
-                data-label="Score"
-                class="td-num src-mark-score"
-                [style.color]="getMarkScoreColor(s.score, s.grade === 'N/A')">
-                {{ s.grade === 'N/A' ? 'N/A' : (s.score ?? '—') }}
-              </td>
-              <td data-label="Max" class="td-num">{{ s.maxScore ?? '—' }}</td>
-              <td data-label="Class avg" class="td-num">{{ s.classAverage ?? '—' }}</td>
-              <td data-label="Grade">
-                <span class="src-badge" [ngClass]="subjectGradeClass(s)">{{ s.grade || '—' }}</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+</div>
 
-      <div class="src-perf-row">
-        <div class="src-perf-chip highlight">
-          <span class="pchip-label">Overall average</span>
-          <span class="pchip-value" [style.color]="getOverallAverageColor()">
-            {{ reportCard.overallAverage | number:'1.1-1' }}%
-          </span>
-        </div>
-        <div class="src-perf-chip">
-          <span class="pchip-label">Overall grade</span>
-          <span class="pchip-value">
-            <span class="src-badge" [ngClass]="overallGradeClass">{{ reportCard.overallGrade }}</span>
-          </span>
-        </div>
-        <div class="src-perf-chip" *ngIf="reportCard.classPosition">
-          <span class="pchip-label">Class position</span>
-          <span class="pchip-value">{{ reportCard.classPosition }} / {{ reportCard.totalStudents }}</span>
-        </div>
-        <div class="src-perf-chip" *ngIf="reportCard.totalAttendance !== undefined">
-          <span class="pchip-label">Attendance</span>
-          <span class="pchip-value">{{ reportCard.presentAttendance ?? '—' }} / {{ reportCard.totalAttendance }} days</span>
-        </div>
-      </div>
-
-      <div class="src-remarks" *ngIf="reportCard.remarks">
-        <h3 class="src-remarks-title">Remarks</h3>
-        <div class="src-remark-item" *ngIf="reportCard.remarks.classTeacherRemarks">
-          <span class="src-remark-role">Class teacher</span>
-          <p>{{ reportCard.remarks.classTeacherRemarks }}</p>
-        </div>
-        <div class="src-remark-item" *ngIf="reportCard.remarks.headmasterRemarks">
-          <span class="src-remark-role">Head's remarks</span>
-          <p>{{ reportCard.remarks.headmasterRemarks }}</p>
-        </div>
-        <div class="src-remark-empty"
-             *ngIf="!reportCard.remarks.classTeacherRemarks && !reportCard.remarks.headmasterRemarks">
-          No remarks have been entered for this report card yet.
-        </div>
-      </div>
-    </div>
-
-    <!-- PDF preview -->
-    <section class="src-pdf-section" *ngIf="reportCard" [@fadeIn]>
-      <div class="src-pdf-section-header">
+<!-- Maximized report card PDF preview -->
+<div
+  *ngIf="showPdfViewer"
+  class="src-pdf-viewer-overlay pdf-preview-maximized-overlay"
+  (click)="closePdfViewer()"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-label]="'Report card PDF for ' + getExamTypeLabel(selectedExamType)">
+  <div class="src-pdf-viewer-modal pdf-preview-maximized-modal" (click)="$event.stopPropagation()">
+    <div class="src-pdf-viewer-header">
+      <div class="src-pdf-viewer-title">
+        <span aria-hidden="true">📄</span>
         <div>
-          <strong>PDF preview</strong>
-          <p>Official printable report card for {{ getExamTypeLabel(selectedExamType) }} · {{ selectedTerm }}</p>
-        </div>
-        <div class="src-pdf-section-actions">
-          <button type="button" class="src-btn src-btn--secondary" (click)="previewPdf()" [disabled]="loadingPdf || !inlinePdf">
-            Maximize
-          </button>
-          <button type="button" class="src-btn src-btn--secondary" (click)="loadInlinePdf()" [disabled]="loadingPdf">
-            Reload
-          </button>
+          <h3>Report Card — {{ getExamTypeLabel(selectedExamType) }}</h3>
+          <p>
+            {{ studentFullName }}
+            <span *ngIf="selectedTerm"> · {{ selectedTerm }}</span>
+            <span *ngIf="reportCard?.overallAverage != null">
+              · Average <strong>{{ reportCard.overallAverage | number:'1.0-0' }}%</strong>
+            </span>
+          </p>
         </div>
       </div>
-
-      <div class="src-pdf-loading" *ngIf="loadingPdf">
-        <div class="src-spinner src-spinner-dark"></div>
-        <p>Rendering PDF…</p>
+      <div class="src-pdf-viewer-actions">
+        <button
+          type="button"
+          class="src-btn src-btn--white src-btn--sm"
+          (click)="downloadPDF()"
+          [disabled]="loading || loadingPdf || !inlinePdf">
+          ⬇️ Download
+        </button>
+        <button
+          type="button"
+          class="src-btn src-btn--outline src-btn--sm src-pdf-viewer-close"
+          (click)="closePdfViewer()">
+          ✕ Close
+        </button>
       </div>
-
-      <div class="src-pdf-viewport" *ngIf="inlinePdf && !loadingPdf">
-        <iframe
-          [src]="inlinePdf"
-          class="src-pdf-frame"
-          frameborder="0"
-          title="Report card PDF">
-        </iframe>
-      </div>
-
-      <div class="src-pdf-error-notice" *ngIf="pdfLoadError && !loadingPdf">
-        <p>The PDF preview could not be rendered. Use <strong>Download PDF</strong> above to get a printable copy.</p>
-      </div>
-    </section>
-
-    <div class="src-empty" *ngIf="!reportCard && !error" [@fadeIn]>
-      <span class="src-empty-icon">📄</span>
-      <h3>No report card found</h3>
-      <p>No report card is available for <strong>{{ getExamTypeLabel(selectedExamType) }}</strong> in <strong>{{ selectedTerm }}</strong>.<br>
-         Try another exam type or term, or contact your class teacher.</p>
     </div>
-
-  </ng-container>
-
+    <div class="src-pdf-viewer-body pdf-preview-body">
+      <iframe
+        *ngIf="inlinePdf && !loading && !loadingPdf && !pdfLoadError"
+        [src]="inlinePdf"
+        class="src-pdf-viewer-frame pdf-iframe"
+        frameborder="0"
+        title="Report card PDF preview">
+      </iframe>
+      <div class="src-pdf-viewer-loading" *ngIf="loading || loadingPdf">
+        <div class="src-spinner src-spinner-light"></div>
+        <p>{{ loading ? 'Loading report card…' : 'Generating PDF preview…' }}</p>
+      </div>
+      <div class="src-pdf-viewer-error" *ngIf="pdfLoadError && !loading && !loadingPdf">
+        <span>⚠️</span>
+        <p>Could not load the report card PDF.</p>
+        <div class="src-pdf-error-actions">
+          <button type="button" class="src-btn src-btn--secondary src-btn--sm" (click)="viewReport()">🔄 Retry</button>
+          <button type="button" class="src-btn src-btn--white src-btn--sm" (click)="downloadPDF()" [disabled]="!inlinePdf">
+            ⬇️ Download Instead
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>

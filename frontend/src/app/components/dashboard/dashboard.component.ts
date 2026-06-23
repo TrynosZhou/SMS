@@ -652,8 +652,8 @@ if (this.textToggleInterval) {
           this.schoolName = data.schoolName || '';
         }
         this.schoolMotto = data.schoolMotto || '';
-        this.schoolLogo = data.schoolLogo || null;
-        this.schoolLogo2 = data.schoolLogo2 || null;
+        this.schoolLogo = this.normalizeSchoolLogoSrc(data.schoolLogo || null);
+        this.schoolLogo2 = this.normalizeSchoolLogoSrc(data.schoolLogo2 || null);
         this.moduleAccess = data.moduleAccess || {};
         this.currencySymbol = data.currencySymbol || '$';
 
@@ -1096,5 +1096,38 @@ if (this.textToggleInterval) {
         this.studentError = err?.error?.message || 'Failed to download invoice PDF.';
       },
     });
+  }
+
+  private normalizeSchoolLogoSrc(value: string | null): string | null {
+    if (!value) return null;
+
+    let v = String(value).trim();
+    if (!v) return null;
+
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+      v = v.slice(1, -1).trim();
+    }
+
+    v = v.replace(/\\n/g, '').replace(/\\r/g, '').replace(/\\t/g, '').replace(/\\"/g, '"');
+
+    if (v.startsWith('data:image')) {
+      const commaIndex = v.indexOf(',');
+      if (commaIndex > -1) {
+        const header = v.slice(0, commaIndex + 1);
+        const payload = v.slice(commaIndex + 1).replace(/\s/g, '');
+        return `${header}${payload}`;
+      }
+      return v;
+    }
+
+    if (/^https?:\/\//i.test(v)) {
+      return v;
+    }
+
+    if (/^[A-Za-z0-9+/=\r\n]+$/.test(v) && v.length > 64) {
+      return `data:image/png;base64,${v.replace(/\s/g, '')}`;
+    }
+
+    return v;
   }
 }

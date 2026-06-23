@@ -90,25 +90,26 @@
 }
 
 .top-navbar-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
   object-fit: contain;
   background: #ffffff;
-  padding: 2px;
+  padding: 4px;
   flex-shrink: 0;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.15);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
 .top-navbar-logo-fallback {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.95);
-  font-size: 1.35rem;
+  font-size: 1.45rem;
   flex-shrink: 0;
 }
 

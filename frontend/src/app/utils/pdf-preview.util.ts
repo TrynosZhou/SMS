@@ -1,6 +1,9 @@
 /** Default zoom for embedded PDF previews on desktop (Chrome/Edge PDF viewer). */
 export const PDF_PREVIEW_DESKTOP_ZOOM = 120;
 
+/** Default zoom for report card PDF previews (readable without manual zoom-in). */
+export const PDF_REPORT_CARD_PREVIEW_ZOOM = 113;
+
 /** Viewport width at or below which mobile PDF settings apply. */
 export const PDF_PREVIEW_MOBILE_MAX_WIDTH_PX = 768;
 
@@ -31,7 +34,15 @@ export function pdfBlobViewerUrl(blobUrl: string): string {
   return `${blobUrl}#${pdfViewerFragment()}`;
 }
 
-/** A4 landscape report cards — fit entire page in the preview viewport. */
+/** Report card previews — fixed zoom so students don't start at a tiny fit-to-page scale. */
+export function pdfReportCardViewerFragment(): string {
+  if (isMobilePdfViewport()) {
+    return 'view=FitH&zoom=page-width&toolbar=1&navpanes=0';
+  }
+  return `zoom=${PDF_REPORT_CARD_PREVIEW_ZOOM}&toolbar=1&navpanes=0`;
+}
+
+/** A4 landscape report cards — readable default zoom in embedded/fullscreen viewers. */
 export function pdfReportCardViewerUrl(blobUrl: string): string {
   if (!blobUrl) {
     return blobUrl;
@@ -39,5 +50,5 @@ export function pdfReportCardViewerUrl(blobUrl: string): string {
   if (blobUrl.includes('#')) {
     return blobUrl;
   }
-  return `${blobUrl}#view=Fit&toolbar=1&navpanes=0`;
+  return `${blobUrl}#${pdfReportCardViewerFragment()}`;
 }

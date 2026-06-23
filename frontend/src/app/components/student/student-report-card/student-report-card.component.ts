@@ -57,6 +57,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
   inlinePdf: SafeResourceUrl | null = null;
   private pdfBlobUrl: string | null = null;
   pdfLoadError = false;
+  showPdfViewer = false;
 
   // Grade data
   gradeThresholds: any = null;
@@ -149,19 +150,13 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
         } else if (this.availableTerms.length) {
           this.activeTerm = this.availableTerms[0];
         }
-        if (!this.selectedTerm) {
-          this.selectedTerm = this.activeTerm;
-        }
         this.loadingTerms = false;
         this.cdr.markForCheck();
-        this.autoGenerate();
       },
       error: () => {
         if (!this.activeTerm && this.availableTerms.length) this.activeTerm = this.availableTerms[0];
-        if (!this.selectedTerm) this.selectedTerm = this.activeTerm;
         this.loadingTerms = false;
         this.cdr.markForCheck();
-        this.autoGenerate();
       }
     });
   }
@@ -194,22 +189,18 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
     this.loadTermOptions();
   }
 
-  // ── Auto-generate when both term + examType are ready ─────────
-  private autoGenerate() {
-    if (this.selectedTerm && this.selectedExamType) {
-      this.generateAndPreview();
-    }
-    // If no exam type yet, wait for user to pick one
-  }
-
-  onExamTypeChange() {
+  private resetPreviewState(): void {
     this.reportCard = null;
-    this.inlinePdf  = null;
+    this.inlinePdf = null;
     this.revokePdfUrl();
     this.error = '';
-    if (this.selectedTerm && this.selectedExamType) {
-      this.generateAndPreview();
-    }
+    this.pdfLoadError = false;
+    this.showPdfViewer = false;
+    this.cdr.markForCheck();
+  }
+
+  onExamTypeChange(): void {
+    this.resetPreviewState();
   }
 
   getExamTypeLabel(type: string): string {
@@ -217,14 +208,36 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
     return match?.label || type || 'Exam';
   }
 
-  onTermChange() {
-    this.reportCard = null;
-    this.inlinePdf  = null;
-    this.revokePdfUrl();
-    this.error = '';
-    if (this.selectedTerm && this.selectedExamType) {
-      this.generateAndPreview();
+  onTermChange(): void {
+    this.resetPreviewState();
+  }
+
+  viewReport(): void {
+    if (!this.selectedTerm) {
+      this.error = 'Please select an academic term.';
+      return;
     }
+    if (!this.selectedExamType) {
+      this.error = 'Please select an exam type.';
+      return;
+    }
+    if (!this.canGenerate) {
+      this.error = 'Report card cannot be loaded. Please contact the administrator.';
+      return;
+    }
+    this.generateAndPreview();
+  }
+
+  openPdfViewer(): void {
+    if (this.inlinePdf) {
+      this.showPdfViewer = true;
+      this.cdr.markForCheck();
+    }
+  }
+
+  closePdfViewer(): void {
+    this.showPdfViewer = false;
+    this.cdr.markForCheck();
   }
 
   // ── Core: fetch report-card data then load PDF inline ─────────
@@ -239,6 +252,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
     this.inlinePdf = null;
     this.reportCard = null;
     this.revokePdfUrl();
+    this.showPdfViewer = true;
     this.cdr.markForCheck();
 
     this.examService.getReportCard(
@@ -253,6 +267,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
 
         if (!cards.length) {
           this.loading = false;
+          this.showPdfViewer = false;
           this.error = 'No report card found for the selected term and exam type.';
           this.cdr.markForCheck();
           return;
@@ -271,15 +286,14 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
           this.reportCard.remarks.headmasterRemarks = buildHeadmasterRemarkFromCard(this.reportCard, this.headmasterName);
         }
 
-        // Show the HTML card immediately
+        // Load PDF into maximized preview
         this.loading = false;
         this.cdr.markForCheck();
-
-        // Load PDF in the background — non-blocking
         this.loadInlinePdf();
       },
       error: (err: any) => {
         this.loading = false;
+        this.showPdfViewer = false;
         const msg = err.error?.message || '';
         this.reportCard = null;
         this.inlinePdf = null;
@@ -343,17 +357,14 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
 
   // ── Download ─────────────────────────────────────────────────
   previewPdf(): void {
-    if (!this.pdfBlobUrl && this.reportCard) {
-      this.loadInlinePdf();
-      return;
-    }
-    if (this.pdfBlobUrl) {
-      window.open(pdfReportCardViewerUrl(this.pdfBlobUrl), '_blank', 'noopener,noreferrer');
-    }
+    this.openPdfViewer();
   }
 
   downloadPDF() {
-    if (!this.pdfBlobUrl && !this.reportCard) { this.error = 'Generate the report card first.'; return; }
+    if (!this.pdfBlobUrl && !this.selectedExamType) {
+      this.error = 'Select an exam type and generate the report card first.';
+      return;
+    }
 
     if (this.pdfBlobUrl) {
       // Re-use the already-fetched blob
