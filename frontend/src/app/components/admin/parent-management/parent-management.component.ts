@@ -302,6 +302,12 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
     return name || 'Parent';
   }
 
+  get canSendToInbox(): boolean {
+    return !this.sendingMessage
+      && !!this.messageSubject.trim()
+      && !!this.messageBody.trim();
+  }
+
   sendDirectMessage(): void {
     if (!this.selectedParent?.id) {
       this.showError('Please select a parent first');

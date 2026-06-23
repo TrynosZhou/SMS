@@ -307,7 +307,7 @@
             class="btn btn-blue"
             (click)="toggleMessagePanel()"
             [class.btn-blue--active]="showMessagePanel"
-            [disabled]="savingParent || deletingParent || sendingMessage">
+            [disabled]="savingParent || deletingParent || sendingMessage || canSendToInbox">
             <span class="btn__icon" aria-hidden="true">✉️</span>
             Send Message
           </button>

@@ -9,8 +9,9 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 
 @Component({
-  standalone: false,  selector: 'app-student-invoice-statement',
-templateUrl: './student-invoice-statement.component.html',
+  standalone: false,
+  selector: 'app-student-invoice-statement',
+  templateUrl: './student-invoice-statement.component.html',
   styleUrls: ['./student-invoice-statement.component.css'],
   animations: [
     trigger('fadeIn', [
@@ -24,34 +25,29 @@ export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
   student: any;
   studentId = '';
 
-  // Invoices
   allInvoices: any[] = [];
   filteredInvoices: any[] = [];
-  selectedInvoice: any = null;
 
-  // Balance
   currentBalance = 0;
 
-  // Filters
   searchQuery = '';
   statusFilter = 'all';
 
-  // Loading states
   loading = false;
-  loadingPdf = false;
 
-  // Alerts
   error = '';
   success = '';
 
-  // Settings
   currencySymbol = 'KES';
-  schoolLogo: string | null = null;
 
-  // Inline PDF
-  inlinePdf: SafeResourceUrl | null = null;
-  private pdfBlobUrl: string | null = null;
-  pdfError = false;
+  showPdfViewer = false;
+  modalInvoice: any = null;
+  modalSafePdfUrl: SafeResourceUrl | null = null;
+  private modalPdfBlobUrl: string | null = null;
+  modalInvoiceNumber = '';
+  modalInvoiceId = '';
+  modalLoadingPdf = false;
+  modalPdfError = false;
 
   private readonly destroy$ = new Subject<void>();
   private readonly requestTimeoutMs = 60000;
@@ -72,43 +68,49 @@ export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
-    this.revokePdfUrl();
+    this.revokeModalPdfUrl();
   }
 
-  private revokePdfUrl() {
-    if (this.pdfBlobUrl) {
-      window.URL.revokeObjectURL(this.pdfBlobUrl);
-      this.pdfBlobUrl = null;
+  private revokeModalPdfUrl() {
+    if (this.modalPdfBlobUrl) {
+      window.URL.revokeObjectURL(this.modalPdfBlobUrl);
+      this.modalPdfBlobUrl = null;
     }
   }
 
-  // ── Student data ──────────────────────────────────────────────
   loadStudentData(retryCount = 0) {
     const maxRetries = 5;
     this.user = this.authService.getCurrentUser();
 
     if (!this.user) {
       if (retryCount < maxRetries) { setTimeout(() => this.loadStudentData(retryCount + 1), 500); return; }
-      this.error = 'User information not found. Please log in again.'; return;
+      this.error = 'User information not found. Please log in again.';
+      return;
     }
 
     if (this.user.role === 'student' && !this.user.student) {
       if (retryCount < maxRetries) { setTimeout(() => this.loadStudentData(retryCount + 1), 1000); return; }
-      this.error = 'Student information not found. Please log out and log in again.'; return;
+      this.error = 'Student information not found. Please log out and log in again.';
+      return;
     }
 
-    if (!this.user.student) { this.error = 'Student information not found. Please log out and log in again.'; return; }
+    if (!this.user.student) {
+      this.error = 'Student information not found. Please log out and log in again.';
+      return;
+    }
 
-    this.student   = this.user.student;
+    this.student = this.user.student;
     this.studentId = this.student.id || '';
 
-    if (!this.studentId) { this.error = 'Student ID not found. Please log in again.'; return; }
+    if (!this.studentId) {
+      this.error = 'Student ID not found. Please log in again.';
+      return;
+    }
 
     this.loadInvoices();
     this.loadCurrentBalance();
   }
 
-  // ── Settings ─────────────────────────────────────────────────
   loadSettings() {
     this.settingsService.getSettings().subscribe({
       next: (data: any) => {
@@ -118,11 +120,10 @@ export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Invoices ──────────────────────────────────────────────────
   loadInvoices() {
     if (!this.studentId) return;
     this.loading = true;
-    this.error   = '';
+    this.error = '';
 
     this.financeService.getInvoices(this.studentId).pipe(
       timeout(this.requestTimeoutMs),
@@ -146,9 +147,6 @@ export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
           return dB - dA;
         });
         this.applyFilter();
-        if (this.allInvoices.length > 0) {
-          this.selectInvoice(this.allInvoices[0]);
-        }
         this.cdr.markForCheck();
       },
     });
@@ -168,7 +166,6 @@ export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Filter / search ───────────────────────────────────────────
   applyFilter() {
     let list = [...this.allInvoices];
 
@@ -188,51 +185,88 @@ export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
   }
 
   clearSearch() {
-    this.searchQuery  = '';
+    this.searchQuery = '';
     this.statusFilter = 'all';
     this.applyFilter();
   }
 
-  // ── Invoice selection & PDF ───────────────────────────────────
-  selectInvoice(invoice: any) {
-    if (this.selectedInvoice?.id === invoice?.id) return;
-    this.selectedInvoice = invoice;
-    this.inlinePdf = null;
-    this.revokePdfUrl();
-    this.pdfError = false;
-    this.loadInlinePdf(invoice.id);
+  viewInvoicePdf(invoice: any, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+    if (!invoice?.id) {
+      return;
+    }
+
+    this.modalInvoice = invoice;
+    this.showPdfViewer = true;
+    this.modalInvoiceNumber = invoice.invoiceNumber || `INV-${invoice.id}`;
+    this.modalInvoiceId = invoice.id;
+    this.modalPdfError = false;
+    this.modalSafePdfUrl = null;
+    this.error = '';
+    this.loadModalPdf(invoice.id);
   }
 
-  loadInlinePdf(invoiceId: string) {
-    this.loadingPdf = true;
-    this.pdfError   = false;
+  loadModalPdf(invoiceId: string): void {
+    this.modalLoadingPdf = true;
+    this.modalPdfError = false;
+    this.revokeModalPdfUrl();
+    this.modalSafePdfUrl = null;
 
     this.financeService.getInvoicePDF(invoiceId).pipe(
       timeout(this.requestTimeoutMs),
       takeUntil(this.destroy$),
       catchError(() => {
-        this.pdfError = true;
+        this.modalPdfError = true;
         return of(null);
       }),
       finalize(() => {
-        this.loadingPdf = false;
+        this.modalLoadingPdf = false;
         this.cdr.markForCheck();
       })
     ).subscribe({
       next: (response: any) => {
-        if (!response) return;
+        if (!response) {
+          return;
+        }
         const blob: Blob = response.blob || response;
-        if (!blob || blob.size === 0) { this.pdfError = true; return; }
-        this.revokePdfUrl();
-        this.pdfBlobUrl = window.URL.createObjectURL(blob);
-        this.inlinePdf = this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlobViewerUrl(this.pdfBlobUrl));
+        if (!blob || blob.size === 0) {
+          this.modalPdfError = true;
+          return;
+        }
+        this.revokeModalPdfUrl();
+        this.modalPdfBlobUrl = window.URL.createObjectURL(blob);
+        this.modalSafePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
+          pdfBlobViewerUrl(this.modalPdfBlobUrl)
+        );
         this.cdr.markForCheck();
       },
     });
   }
 
-  retryPdf() {
-    if (this.selectedInvoice?.id) this.loadInlinePdf(this.selectedInvoice.id);
+  retryModalPdf(): void {
+    if (this.modalInvoiceId) {
+      this.loadModalPdf(this.modalInvoiceId);
+    }
+  }
+
+  closePdfViewer(): void {
+    this.showPdfViewer = false;
+    this.revokeModalPdfUrl();
+    this.modalSafePdfUrl = null;
+    this.modalPdfError = false;
+    this.modalLoadingPdf = false;
+    this.modalInvoice = null;
+    this.cdr.markForCheck();
+  }
+
+  downloadModalPdf(): void {
+    if (!this.modalInvoiceId) {
+      return;
+    }
+    this.downloadPDF(this.modalInvoiceId);
   }
 
   downloadPDF(invoiceId: string) {
@@ -240,11 +274,14 @@ export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
     this.financeService.getInvoicePDF(invoiceId).subscribe({
       next: (response: any) => {
         const blob: Blob = response.blob || response;
-        const filename   = response.filename || `Invoice-${invoiceId}.pdf`;
-        if (!blob || blob.size === 0) { this.error = 'Received empty PDF file.'; return; }
-        const url  = window.URL.createObjectURL(blob);
+        const filename = response.filename || `Invoice-${invoiceId}.pdf`;
+        if (!blob || blob.size === 0) {
+          this.error = 'Received empty PDF file.';
+          return;
+        }
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href  = url;
+        link.href = url;
         link.download = filename;
         document.body.appendChild(link);
         link.click();
@@ -260,15 +297,14 @@ export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Computed helpers ──────────────────────────────────────────
   get studentFullName(): string {
     if (!this.student) return '';
     return `${this.student.firstName || ''} ${this.student.lastName || ''}`.trim()
       || this.user?.fullName || '';
   }
 
-  get totalInvoiced(): number {
-    return this.allInvoices.reduce((s, inv) => s + parseFloat(String(inv.amount || inv.totalAmount || 0)), 0);
+  get latestInvoice(): any | null {
+    return this.allInvoices.length > 0 ? this.allInvoices[0] : null;
   }
 
   get totalPaid(): number {
@@ -285,7 +321,7 @@ export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
 
   getStatusClass(status: string): string {
     const s = (status || '').toLowerCase();
-    if (s === 'paid')    return 'badge-paid';
+    if (s === 'paid') return 'badge-paid';
     if (s === 'partial') return 'badge-partial';
     if (s === 'overdue') return 'badge-overdue';
     return 'badge-pending';

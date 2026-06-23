@@ -37,6 +37,10 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
   loadingTerms = false;
   selectedExamType = '';
   examTypes: string[] = ['mid_term', 'end_term'];
+  readonly examTypeOptions = [
+    { value: 'mid_term', label: 'Mid-Term', icon: '📋' },
+    { value: 'end_term', label: 'End-Term', icon: '🎓' },
+  ];
 
   // Student class (resolved automatically)
   classId = '';
@@ -206,6 +210,11 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
     if (this.selectedTerm && this.selectedExamType) {
       this.generateAndPreview();
     }
+  }
+
+  getExamTypeLabel(type: string): string {
+    const match = this.examTypeOptions.find(o => o.value === type);
+    return match?.label || type || 'Exam';
   }
 
   onTermChange() {

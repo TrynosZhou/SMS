@@ -1,8 +1,10 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
-import { Subject } from 'rxjs';
-import { finalize, takeUntil } from 'rxjs/operators';
+import { Subject, of } from 'rxjs';
+import { catchError, finalize, takeUntil } from 'rxjs/operators';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { activatePageLoad } from '../../utils/route-activation';
+import { pdfBlobViewerUrl } from '../../utils/pdf-preview.util';
 import { AuthService } from '../../services/auth.service';
 import { SettingsService } from '../../services/settings.service';
 import { StudentService } from '../../services/student.service';
@@ -204,6 +206,16 @@ recentStudents: any[] = [];
   loadingBalance = false;
   activeTerm: string = '';
   currencySymbol: string = '$';
+  studentDataLastUpdated: Date | null = null;
+  studentError = '';
+  loadingInvoicePdf = false;
+  showInvoicePdfViewer = false;
+  invoiceModalSafePdfUrl: SafeResourceUrl | null = null;
+  private invoiceModalPdfBlobUrl: string | null = null;
+  invoiceModalNumber = '';
+  invoiceModalId = '';
+  invoiceModalBalance = 0;
+  invoiceModalPdfError = false;
 
   private studentDataRetryCount = 0;
   private readonly MAX_STUDENT_DATA_RETRIES = 3;
@@ -221,6 +233,7 @@ constructor(
     private moduleAccessService: ModuleAccessService,
     public themeService: ThemeService,
     private incomingMessageNotifications: IncomingMessageNotificationService,
+    private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef
 ) {}
 
@@ -262,9 +275,22 @@ constructor(
     this.destroy$.next();
     this.destroy$.complete();
     this.stopUnreadMessagesPolling();
+    this.revokeInvoiceModalPdfUrl();
 if (this.textToggleInterval) {
       clearInterval(this.textToggleInterval);
     }
+  }
+
+  private revokeInvoiceModalPdfUrl(): void {
+    if (this.invoiceModalPdfBlobUrl) {
+      window.URL.revokeObjectURL(this.invoiceModalPdfBlobUrl);
+      this.invoiceModalPdfBlobUrl = null;
+    }
+  }
+
+  private getStudentId(): string {
+    const user = this.authService.getCurrentUser();
+    return user?.student?.id || '';
   }
 
   loadStatistics() {
@@ -510,6 +536,21 @@ if (this.textToggleInterval) {
 
   getStudentDashboardSubtitle(): string {
     return 'Your report card, invoice statement, and parent portal — all in one place.';
+  }
+
+  formatStudentUpdatedAt(): string {
+    if (!this.studentDataLastUpdated) {
+      return '';
+    }
+    return this.studentDataLastUpdated.toLocaleString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  refreshStudentDashboard(): void {
+    this.studentDataRetryCount = 0;
+    this.loadStudentData();
   }
 
   getStudentNumber(): string {
@@ -905,13 +946,17 @@ if (this.textToggleInterval) {
     });
 
     this.loadingBalance = true;
-    this.financeService.getStudentBalance(studentId).subscribe({
-      next: (data: any) => {
+    this.financeService.getStudentBalance(studentId).pipe(
+      finalize(() => {
         this.loadingBalance = false;
+        this.studentDataLastUpdated = new Date();
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (data: any) => {
         this.studentBalance = parseFloat(String(data.balance || 0));
       },
       error: () => {
-        this.loadingBalance = false;
         this.studentBalance = 0;
       }
     });
@@ -923,5 +968,133 @@ if (this.textToggleInterval) {
 
   viewInvoiceStatement() {
     this.router.navigate(['/student/invoice-statement']);
+  }
+
+  viewStudentInvoicePreview(): void {
+    const studentId = this.getStudentId();
+    if (!studentId) {
+      this.studentError = 'Student information not found. Please log in again.';
+      return;
+    }
+
+    this.studentError = '';
+    this.loadingInvoicePdf = true;
+    this.cdr.markForCheck();
+
+    this.financeService.getInvoices(studentId).pipe(
+      takeUntil(this.destroy$),
+      catchError((err: any) => {
+        this.studentError = err?.error?.message || 'Failed to load invoices.';
+        return of([]);
+      }),
+      finalize(() => {
+        if (!this.showInvoicePdfViewer) {
+          this.loadingInvoicePdf = false;
+          this.cdr.markForCheck();
+        }
+      })
+    ).subscribe({
+      next: (invoices: any) => {
+        const list = Array.isArray(invoices) ? invoices : [];
+        if (!list.length) {
+          this.studentError = 'No invoice statement is available yet.';
+          this.loadingInvoicePdf = false;
+          this.cdr.markForCheck();
+          return;
+        }
+
+        const latestInvoice = [...list].sort((a: any, b: any) => {
+          const dateA = new Date(a.createdAt || a.dueDate || 0).getTime();
+          const dateB = new Date(b.createdAt || b.dueDate || 0).getTime();
+          return dateB - dateA;
+        })[0];
+
+        this.invoiceModalId = latestInvoice.id;
+        this.invoiceModalNumber = latestInvoice.invoiceNumber || `INV-${latestInvoice.id}`;
+        this.invoiceModalBalance = parseFloat(String(latestInvoice.balance ?? this.studentBalance ?? 0));
+        this.showInvoicePdfViewer = true;
+        this.invoiceModalPdfError = false;
+        this.invoiceModalSafePdfUrl = null;
+        this.loadStudentInvoiceModalPdf(latestInvoice.id);
+      },
+    });
+  }
+
+  private loadStudentInvoiceModalPdf(invoiceId: string): void {
+    this.loadingInvoicePdf = true;
+    this.invoiceModalPdfError = false;
+    this.revokeInvoiceModalPdfUrl();
+    this.invoiceModalSafePdfUrl = null;
+
+    this.financeService.getInvoicePDF(invoiceId).pipe(
+      takeUntil(this.destroy$),
+      catchError(() => {
+        this.invoiceModalPdfError = true;
+        return of(null);
+      }),
+      finalize(() => {
+        this.loadingInvoicePdf = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (response: any) => {
+        if (!response) {
+          return;
+        }
+        const blob: Blob = response.blob || response;
+        if (!blob || blob.size === 0) {
+          this.invoiceModalPdfError = true;
+          return;
+        }
+        this.revokeInvoiceModalPdfUrl();
+        this.invoiceModalPdfBlobUrl = window.URL.createObjectURL(blob);
+        this.invoiceModalSafePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
+          pdfBlobViewerUrl(this.invoiceModalPdfBlobUrl)
+        );
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  retryStudentInvoicePdf(): void {
+    if (this.invoiceModalId) {
+      this.loadStudentInvoiceModalPdf(this.invoiceModalId);
+    }
+  }
+
+  closeStudentInvoicePdfViewer(): void {
+    this.showInvoicePdfViewer = false;
+    this.revokeInvoiceModalPdfUrl();
+    this.invoiceModalSafePdfUrl = null;
+    this.invoiceModalPdfError = false;
+    this.loadingInvoicePdf = false;
+    this.cdr.markForCheck();
+  }
+
+  downloadStudentInvoicePdf(): void {
+    if (!this.invoiceModalId) {
+      return;
+    }
+    this.financeService.getInvoicePDF(this.invoiceModalId).subscribe({
+      next: (response: any) => {
+        const blob: Blob = response.blob || response;
+        const filename = response.filename || `Invoice-${this.invoiceModalId}.pdf`;
+        if (!blob || blob.size === 0) {
+          this.studentError = 'Received empty PDF file.';
+          return;
+        }
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err: any) => {
+        this.studentError = err?.error?.message || 'Failed to download invoice PDF.';
+      },
+    });
   }
 }

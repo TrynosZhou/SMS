@@ -3,7 +3,7 @@
    ============================================================ */
 
 .sis-page {
-  max-width: 1300px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 20px;
   font-family: inherit;
@@ -187,18 +187,44 @@
 
 @keyframes sis-spin { to { transform: rotate(360deg); } }
 
-/* ── Two-column grid ─────────────────────────────────────────── */
-.sis-content-grid {
-  display: grid;
-  grid-template-columns: 380px 1fr;
-  gap: 20px;
-  align-items: start;
+/* ── Invoices section ────────────────────────────────────────── */
+.sis-invoices-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-/* ── Left Panel ──────────────────────────────────────────────── */
-.sis-left { display: flex; flex-direction: column; gap: 14px; }
+.sis-tip-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  color: #1e3a8a;
+}
 
-/* Filter bar */
+.sis-tip-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.sis-tip-card strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.sis-tip-card p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #475569;
+}
+
+/* ── Filter bar ──────────────────────────────────────────────── */
 .sis-filter-bar {
   background: white;
   border-radius: 10px;
@@ -280,33 +306,33 @@
   padding: 0;
 }
 
-/* Invoice list */
-.sis-invoice-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: calc(100vh - 320px);
-  overflow-y: auto;
-  padding-right: 2px;
+/* Invoice grid */
+.sis-invoice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
 }
 
 .sis-invoice-card {
   background: white;
-  border-radius: 10px;
-  padding: 14px 16px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1.5px solid #e2e8f0;
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.sis-invoice-card:hover  { border-color: #93c5fd; box-shadow: 0 4px 12px rgba(37,99,235,0.1); }
+.sis-invoice-card:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.1);
+  transform: translateY(-2px);
+}
 
-.sis-invoice-card.selected {
-  border-color: #2563eb;
-  background: #eff6ff;
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+.sis-invoice-card--outstanding {
+  border-left: 4px solid #ef4444;
 }
 
 .ic-top-row {
@@ -385,6 +411,17 @@
 
 .ic-btn:hover { background: #eff6ff; border-color: #2563eb; }
 
+.ic-btn--primary {
+  background: #1d4ed8;
+  color: #fff;
+  border-color: #1d4ed8;
+}
+
+.ic-btn--primary:hover {
+  background: #1e40af;
+  border-color: #1e40af;
+}
+
 .ic-btn.download { color: #16a34a; border-color: #bbf7d0; }
 .ic-btn.download:hover { background: #f0fdf4; border-color: #16a34a; }
 
@@ -401,104 +438,112 @@
 
 .sis-empty-filter span { font-size: 36px; display: block; margin-bottom: 10px; }
 
-/* ── Right Panel (PDF Viewer) ────────────────────────────────── */
-.sis-right {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  overflow: hidden;
+/* ── Maximized PDF viewer modal ──────────────────────────────── */
+.sis-pdf-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
   display: flex;
-  flex-direction: column;
-  min-height: 600px;
-  position: sticky;
-  top: 20px;
+  background: rgba(0, 0, 0, 0.88);
 }
 
-.sis-pdf-topbar {
+.sis-pdf-viewer-modal {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  overflow: hidden;
+}
+
+.sis-pdf-viewer-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 18px;
-  background: linear-gradient(135deg, #eff6ff, #dbeafe);
-  border-bottom: 1px solid #bfdbfe;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 22px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 60%, #2563eb 100%);
+  color: #fff;
+  flex-shrink: 0;
 }
 
-.pdf-topbar-info {
+.sis-pdf-viewer-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex: 1;
+  gap: 12px;
   min-width: 0;
 }
 
-.pdf-topbar-icon { font-size: 22px; flex-shrink: 0; }
-
-.pdf-inv-num {
-  font-size: 15px;
+.sis-pdf-viewer-title h3 {
+  margin: 0;
+  font-size: 18px;
   font-weight: 700;
-  color: #1e3a8a;
 }
 
-.pdf-inv-meta {
-  font-size: 12px;
-  color: #64748b;
-  margin-top: 2px;
+.sis-pdf-viewer-title p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  opacity: 0.9;
 }
 
-.sis-pdf-placeholder {
-  flex: 1;
+.sis-pdf-viewer-actions {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 30px;
-  color: #94a3b8;
-  text-align: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
-.ph-icon { font-size: 64px; display: block; margin-bottom: 16px; opacity: 0.35; }
-.sis-pdf-placeholder h3 { margin: 0 0 8px 0; font-size: 18px; color: #64748b; }
-.sis-pdf-placeholder p  { margin: 0; font-size: 13px; }
-
-.sis-pdf-loading {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  color: #64748b;
-  font-size: 14px;
-  gap: 14px;
+.sis-pdf-viewer-close {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
-.sis-pdf-frame {
-  display: block;
+.sis-pdf-viewer-close:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.sis-pdf-viewer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  background: #525659;
+}
+
+.sis-pdf-viewer-frame {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  flex: 1;
-  min-height: 600px;
+  height: 100%;
   border: none;
 }
 
-.sis-pdf-error {
-  flex: 1;
+.sis-pdf-viewer-loading,
+.sis-pdf-viewer-error {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 60px 30px;
+  color: #e2e8f0;
   text-align: center;
-  color: #64748b;
-  font-size: 14px;
+  padding: 24px;
 }
 
-.sis-pdf-error span { font-size: 44px; }
-.sis-pdf-error p    { margin: 0; }
+.sis-pdf-viewer-error span {
+  font-size: 44px;
+}
 
-.pdf-error-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.sis-pdf-viewer-error p {
+  margin: 0;
+  color: #cbd5e1;
+}
+
+.pdf-error-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
 
 /* ── Full Empty State ────────────────────────────────────────── */
 .sis-empty {
@@ -514,19 +559,10 @@
 .sis-empty p  { color: #64748b; font-size: 14px; line-height: 1.6; margin: 0; }
 
 /* ── Responsive ─────────────────────────────────────────────── */
-@media (max-width: 1024px) {
-  .sis-content-grid { grid-template-columns: 320px 1fr; }
-}
-
 @media (max-width: 768px) {
   .sis-page { padding: 12px; }
 
-  .sis-content-grid { grid-template-columns: 1fr; }
-
-  .sis-right { position: static; min-height: 450px; }
-  .sis-pdf-frame { min-height: 450px; }
-
-  .sis-invoice-list { max-height: 360px; }
+  .sis-invoice-grid { grid-template-columns: 1fr; }
 
   .sis-stats-row { grid-template-columns: repeat(2, 1fr); }
 
@@ -541,14 +577,4 @@
   .sis-btn-primary { width: 100%; justify-content: center; }
 
   .ic-details-row { grid-template-columns: 1fr; }
-}
-
-/* Print */
-@media print {
-  .sis-header, .sis-stats-row, .sis-filter-bar,
-  .sis-left, .sis-pdf-topbar, .ic-actions-row { display: none; }
-
-  .sis-content-grid { display: block; }
-  .sis-right { box-shadow: none; }
-  .sis-pdf-frame { min-height: 90vh; }
 }

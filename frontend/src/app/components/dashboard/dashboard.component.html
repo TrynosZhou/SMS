@@ -1,15 +1,162 @@
-<div class="dashboard-container" [class.dark-mode]="themeService.darkMode">
-  <main class="main-content dash-page">
+<div class="dashboard-container" [class.dark-mode]="themeService.darkMode" [class.dashboard-container--student]="isStudent()">
+  <main class="main-content dash-page" [class.dash-page--student]="isStudent()">
+
+    <!-- ── Student dashboard ───────────────────────────────────── -->
+    <section class="sd-page" *ngIf="isStudent()" aria-label="Student dashboard">
+
+      <header class="sd-hero">
+        <div class="sd-hero__main">
+          <span class="sd-pill">Student Portal</span>
+          <p class="sd-hero__eyebrow">{{ getSmartGreeting() }}</p>
+          <h1 class="sd-hero__title">{{ getGreetingName() }}</h1>
+          <p class="sd-hero__meta" *ngIf="getStudentNumber() || getStudentClassName()">
+            <span *ngIf="getStudentNumber()">🆔 {{ getStudentNumber() }}</span>
+            <span *ngIf="getStudentClassName()"> · 🏫 {{ getStudentClassName() }}</span>
+          </p>
+          <p class="sd-hero__date">{{ getCurrentDateTime() }}</p>
+          <p class="sd-hero__updated" *ngIf="studentDataLastUpdated && !loadingBalance">
+            Balance updated {{ formatStudentUpdatedAt() }}
+          </p>
+        </div>
+        <div class="sd-hero__actions">
+          <button
+            type="button"
+            class="sd-btn sd-btn--ghost"
+            (click)="refreshStudentDashboard()"
+            [disabled]="loadingBalance">
+            <span class="sd-spin" *ngIf="loadingBalance">↻</span>
+            <span *ngIf="!loadingBalance">↻</span>
+            Refresh
+          </button>
+          <a
+            *ngIf="canChangeOwnPassword()"
+            class="sd-btn sd-btn--outline"
+            [routerLink]="changePasswordRoute">
+            🔐 Change password
+          </a>
+        </div>
+      </header>
+
+      <div class="sd-alert sd-alert--error" *ngIf="studentError">
+        <span aria-hidden="true">⚠️</span>
+        <div>{{ studentError }}</div>
+      </div>
+
+      <div class="sd-alert sd-alert--warn" *ngIf="!loadingBalance && studentBalance > 0">
+        <span aria-hidden="true">⚠️</span>
+        <div>
+          <strong>Outstanding balance: {{ currencySymbol }} {{ studentBalance | number:'1.2-2' }}</strong>
+          <p>Please clear your fees to access all academic records. View your invoice statement for payment details.</p>
+        </div>
+        <button
+          type="button"
+          class="sd-btn sd-btn--white sd-btn--sm"
+          (click)="viewStudentInvoicePreview()"
+          [disabled]="loadingInvoicePdf">
+          {{ loadingInvoicePdf ? 'Loading…' : 'View invoice' }}
+        </button>
+      </div>
+
+      <div class="sd-alert sd-alert--success" *ngIf="!loadingBalance && studentBalance <= 0">
+        <span aria-hidden="true">✅</span>
+        <div>
+          <strong>Your account is fully paid up</strong>
+          <p>You can view your report card and download invoice statements anytime.</p>
+        </div>
+      </div>
+
+      <!-- Stats skeleton -->
+      <div class="sd-stats sd-stats--skeleton" *ngIf="loadingBalance" aria-busy="true">
+        <div class="sd-skeleton-card" *ngFor="let _ of [0,1,2]"></div>
+      </div>
+
+      <div class="sd-stats" *ngIf="!loadingBalance">
+        <article
+          class="sd-stat"
+          [class.sd-stat--danger]="studentBalance > 0"
+          [class.sd-stat--success]="studentBalance <= 0">
+          <span class="sd-stat__icon">{{ studentBalance > 0 ? '💰' : '✅' }}</span>
+          <div>
+            <div class="sd-stat__val">{{ currencySymbol }} {{ studentBalance | number:'1.2-2' }}</div>
+            <div class="sd-stat__lbl">Current balance</div>
+          </div>
+        </article>
+        <article class="sd-stat sd-stat--sky">
+          <span class="sd-stat__icon">📅</span>
+          <div>
+            <div class="sd-stat__val sd-stat__val--text">{{ activeTerm || '—' }}</div>
+            <div class="sd-stat__lbl">Active term</div>
+          </div>
+        </article>
+        <article class="sd-stat sd-stat--violet">
+          <span class="sd-stat__icon">🏫</span>
+          <div>
+            <div class="sd-stat__val sd-stat__val--text">{{ getStudentClassName() || '—' }}</div>
+            <div class="sd-stat__lbl">Your class</div>
+          </div>
+        </article>
+      </div>
+
+      <section class="sd-panel">
+        <div class="sd-panel__head">
+          <h2>⚡ Quick actions</h2>
+          <p>Jump to your report card, fees, and account tools.</p>
+        </div>
+        <div class="sd-qa-grid">
+          <a routerLink="/student/report-card" class="sd-qa-tile sd-qa-tile--violet">
+            <span class="sd-qa-icon">📄</span>
+            <span class="sd-qa-body">
+              <span class="sd-qa-label">Report card</span>
+              <span class="sd-qa-hint">Grades, remarks & PDF</span>
+            </span>
+            <span class="sd-qa-arrow" aria-hidden="true">→</span>
+          </a>
+          <a routerLink="/student/invoice-statement" class="sd-qa-tile sd-qa-tile--sky">
+            <span class="sd-qa-icon">🧾</span>
+            <span class="sd-qa-body">
+              <span class="sd-qa-label">Invoice statement</span>
+              <span class="sd-qa-hint">Fees, balance & PDF preview</span>
+            </span>
+            <span class="sd-qa-arrow" aria-hidden="true">→</span>
+          </a>
+          <a routerLink="/student/parent-portal" class="sd-qa-tile sd-qa-tile--emerald">
+            <span class="sd-qa-icon">👨‍👩‍👧</span>
+            <span class="sd-qa-body">
+              <span class="sd-qa-label">Parent portal</span>
+              <span class="sd-qa-hint">Share access with guardians</span>
+            </span>
+            <span class="sd-qa-arrow" aria-hidden="true">→</span>
+          </a>
+          <a
+            *ngIf="canChangeOwnPassword()"
+            [routerLink]="changePasswordRoute"
+            class="sd-qa-tile sd-qa-tile--slate">
+            <span class="sd-qa-icon">🔐</span>
+            <span class="sd-qa-body">
+              <span class="sd-qa-label">Change password</span>
+              <span class="sd-qa-hint">Keep your login secure</span>
+            </span>
+            <span class="sd-qa-arrow" aria-hidden="true">→</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="sd-tip">
+        <span class="sd-tip__icon" aria-hidden="true">💡</span>
+        <div>
+          <strong>Need help?</strong>
+          <p>Use <strong>Invoice statement</strong> to preview or download your fee invoice PDF. Your <strong>Report card</strong> shows grades for the current term once results are published.</p>
+        </div>
+      </section>
+    </section>
+
+    <!-- ── Staff dashboard ───────────────────────────────────────── -->
+    <ng-container *ngIf="!isStudent()">
     <header class="dash-page-header">
       <div class="dash-page-header__intro">
         <span class="dash-page-eyebrow">{{ getRoleLabel() }}</span>
         <h1 class="dash-page-title">{{ getSmartGreeting() }}, {{ getGreetingName() }}</h1>
-        <p class="dash-page-subtitle" *ngIf="!isStudent()">Your workspace overview — quick stats, shortcuts, and recent activity.</p>
-        <p class="dash-page-subtitle" *ngIf="isStudent()">{{ getStudentDashboardSubtitle() }}</p>
-        <p class="dash-page-meta dash-student-meta" *ngIf="isStudent() && (getStudentNumber() || getStudentClassName())">
-          <span *ngIf="getStudentNumber()">🆔 {{ getStudentNumber() }}</span>
-          <span *ngIf="getStudentClassName()"> · 🏫 {{ getStudentClassName() }}</span>
-        </p>
+        <p class="dash-page-subtitle">Your workspace overview — quick stats, shortcuts, and recent activity.</p>
         <p class="dash-page-meta">{{ getCurrentDateTime() }}</p>
       </div>
       <div class="dash-page-header__actions">
@@ -187,26 +334,6 @@
         </div>
       </div>
     </section>
-
-    <section
-      class="dash-finance-strip dash-finance-strip--student"
-      *ngIf="isStudent()"
-      aria-label="Your balance"
-    >
-      <a routerLink="/student/invoice-statement" class="dash-finance-strip__col dash-finance-strip__balance dash-finance-strip__col--grow dash-finance-strip__link">
-        <span class="dash-finance-strip__icon" aria-hidden="true">💰</span>
-        <div class="dash-finance-strip__text">
-          <p class="dash-finance-strip__value" *ngIf="!loadingBalance">
-            {{ currencySymbol }} {{ studentBalance | number:'1.2-2' }}
-          </p>
-          <p class="dash-finance-strip__value dash-finance-strip__value--muted" *ngIf="loadingBalance">…</p>
-          <p class="dash-finance-strip__label">Current invoice balance · Open Invoice Statement</p>
-        </div>
-      </a>
-      <div class="dash-finance-strip__col dash-finance-strip__hint" *ngIf="activeTerm">
-        <span class="dash-finance-strip__hint-text">{{ activeTerm }}</span>
-      </div>
-    </section>
     
     <div class="dashboard-cards dash-body-grid">
       <div class="dash-shortcuts-row" *ngIf="isAdmin() || isAccountant()">
@@ -317,30 +444,6 @@
         </div>
       </div>
 
-      <div class="card modern-card dash-student-hub" *ngIf="isStudent()">
-        <div class="card-header-modern">
-          <h2>
-            <span class="card-icon">🎓</span>
-            Student portal
-          </h2>
-          <p class="dash-card-subtitle">Shortcuts to everything in your student account.</p>
-        </div>
-        <div class="dash-tile-grid dash-tile-grid--student">
-          <a
-            *ngFor="let m of getModuleShortcutsForView()"
-            [routerLink]="m.route"
-            class="dash-tile dash-tile--student"
-          >
-            <span class="dash-tile-icon" aria-hidden="true">{{ m.icon }}</span>
-            <span class="dash-tile-body">
-              <span class="dash-tile-title">{{ m.label }}</span>
-              <span class="dash-tile-desc" *ngIf="m.desc">{{ m.desc }}</span>
-            </span>
-            <span class="dash-tile-arrow" aria-hidden="true">→</span>
-          </a>
-        </div>
-      </div>
-      
       <!-- Recent Activity Section -->
       <div class="card recent-activity modern-card" *ngIf="canViewDashboardStats() && !loadingStats">
         <div class="card-header-flex">
@@ -418,9 +521,72 @@
         </div>
       </div>
     </div>
+    </ng-container>
   </main>
 
   <!-- Bulk Message Modal -->
   <app-bulk-message *ngIf="showBulkMessage" (close)="closeBulkMessage()"></app-bulk-message>
+
+  <!-- Student invoice PDF preview (maximized) -->
+  <div
+    *ngIf="showInvoicePdfViewer"
+    class="sd-pdf-viewer-overlay pdf-preview-maximized-overlay"
+    (click)="closeStudentInvoicePdfViewer()"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="'Invoice PDF preview for ' + invoiceModalNumber">
+    <div class="sd-pdf-viewer-modal pdf-preview-maximized-modal" (click)="$event.stopPropagation()">
+      <div class="sd-pdf-viewer-header">
+        <div class="sd-pdf-viewer-title">
+          <span aria-hidden="true">📄</span>
+          <div>
+            <h3>Invoice Statement — {{ invoiceModalNumber }}</h3>
+            <p>
+              Balance due:
+              <strong>{{ currencySymbol }} {{ invoiceModalBalance | number:'1.2-2' }}</strong>
+            </p>
+          </div>
+        </div>
+        <div class="sd-pdf-viewer-actions">
+          <button
+            type="button"
+            class="sd-btn sd-btn--white sd-btn--sm"
+            (click)="downloadStudentInvoicePdf()"
+            [disabled]="loadingInvoicePdf || invoiceModalPdfError">
+            ⬇️ Download
+          </button>
+          <button
+            type="button"
+            class="sd-btn sd-btn--outline sd-btn--sm sd-pdf-viewer-close"
+            (click)="closeStudentInvoicePdfViewer()">
+            ✕ Close
+          </button>
+        </div>
+      </div>
+      <div class="sd-pdf-viewer-body pdf-preview-body">
+        <iframe
+          *ngIf="invoiceModalSafePdfUrl && !loadingInvoicePdf && !invoiceModalPdfError"
+          [src]="invoiceModalSafePdfUrl"
+          class="sd-pdf-viewer-frame pdf-iframe"
+          frameborder="0"
+          title="Invoice statement PDF preview">
+        </iframe>
+        <div class="sd-pdf-viewer-loading" *ngIf="loadingInvoicePdf">
+          <div class="sd-pdf-spinner"></div>
+          <p>Loading invoice statement PDF…</p>
+        </div>
+        <div class="sd-pdf-viewer-error" *ngIf="invoiceModalPdfError && !loadingInvoicePdf">
+          <span>⚠️</span>
+          <p>Could not load the invoice statement PDF.</p>
+          <div class="sd-pdf-error-actions">
+            <button type="button" class="sd-btn sd-btn--outline sd-btn--sm" (click)="retryStudentInvoicePdf()">🔄 Retry</button>
+            <button type="button" class="sd-btn sd-btn--white sd-btn--sm" (click)="downloadStudentInvoicePdf()" *ngIf="invoiceModalId">
+              ⬇️ Download Instead
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 

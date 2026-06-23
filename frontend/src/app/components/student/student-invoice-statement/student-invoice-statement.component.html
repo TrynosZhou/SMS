@@ -12,9 +12,12 @@
         </p>
       </div>
     </div>
-    <div class="sis-header-right" *ngIf="selectedInvoice">
-      <button class="sis-btn sis-btn-primary" (click)="downloadPDF(selectedInvoice.id)" [disabled]="loadingPdf">
-        ⬇️ Download PDF
+    <div class="sis-header-right" *ngIf="latestInvoice">
+      <button
+        class="sis-btn sis-btn-primary"
+        (click)="viewInvoicePdf(latestInvoice)"
+        [disabled]="modalLoadingPdf">
+        👁 View latest PDF
       </button>
     </div>
   </div>
@@ -78,161 +81,106 @@
     <p>Loading your invoices…</p>
   </div>
 
-  <!-- ── Main content (two-column) ────────────────────────────── -->
-  <div class="sis-content-grid" *ngIf="!loading && allInvoices.length > 0" [@fadeIn]>
+  <!-- ── Invoice list ─────────────────────────────────────────── -->
+  <section class="sis-invoices-section" *ngIf="!loading && allInvoices.length > 0" [@fadeIn]>
 
-    <!-- Left: Invoice List -->
-    <div class="sis-left">
-
-      <!-- Search & filter bar -->
-      <div class="sis-filter-bar">
-        <div class="sis-search-wrap">
-          <span class="search-icon">🔍</span>
-          <input
-            class="sis-search"
-            type="text"
-            placeholder="Search invoice # or term…"
-            [(ngModel)]="searchQuery"
-            (ngModelChange)="applyFilter()" />
-          <button class="search-clear" *ngIf="searchQuery" (click)="searchQuery=''; applyFilter()">✕</button>
-        </div>
-        <div class="sis-status-filters">
-          <button class="sf-btn" [class.active]="statusFilter==='all'"     (click)="statusFilter='all';     applyFilter()">All</button>
-          <button class="sf-btn" [class.active]="statusFilter==='paid'"    (click)="statusFilter='paid';    applyFilter()">Paid</button>
-          <button class="sf-btn" [class.active]="statusFilter==='partial'" (click)="statusFilter='partial'; applyFilter()">Partial</button>
-          <button class="sf-btn" [class.active]="statusFilter==='overdue'" (click)="statusFilter='overdue'; applyFilter()">Overdue</button>
-          <button class="sf-btn" [class.active]="statusFilter==='pending'" (click)="statusFilter='pending'; applyFilter()">Pending</button>
-        </div>
-      </div>
-
-      <!-- Results count -->
-      <div class="sis-results-count" *ngIf="filteredInvoices.length !== allInvoices.length">
-        Showing {{ filteredInvoices.length }} of {{ allInvoices.length }} invoices
-        <button class="clear-filter-btn" (click)="clearSearch()">Clear filter</button>
-      </div>
-
-      <!-- Invoice cards -->
-      <div class="sis-invoice-list">
-        <div
-          *ngFor="let inv of filteredInvoices"
-          class="sis-invoice-card"
-          [class.selected]="selectedInvoice?.id === inv.id"
-          (click)="selectInvoice(inv)"
-          role="button" tabindex="0"
-          (keyup.enter)="selectInvoice(inv)"
-          [@fadeIn]>
-
-          <div class="ic-top-row">
-            <div class="ic-num">{{ inv.invoiceNumber || ('INV-' + inv.id) }}</div>
-            <span class="ic-badge" [ngClass]="getStatusClass(inv.status)">
-              {{ inv.status || 'Pending' }}
-            </span>
-          </div>
-
-          <div class="ic-details-row">
-            <div class="ic-detail">
-              <span class="ic-lbl">Term</span>
-              <span class="ic-val">{{ inv.term || '—' }}</span>
-            </div>
-            <div class="ic-detail">
-              <span class="ic-lbl">Due Date</span>
-              <span class="ic-val">{{ formatDate(inv.dueDate) }}</span>
-            </div>
-            <div class="ic-detail">
-              <span class="ic-lbl">Amount</span>
-              <span class="ic-val">{{ currencySymbol }} {{ (inv.amount || inv.totalAmount || 0) | number:'1.2-2' }}</span>
-            </div>
-          </div>
-
-          <div class="ic-amounts-row">
-            <div class="ic-amount-chip">
-              <span class="chip-lbl">Paid</span>
-              <span class="chip-val paid">{{ currencySymbol }} {{ (inv.paidAmount || 0) | number:'1.2-2' }}</span>
-            </div>
-            <div class="ic-amount-chip" *ngIf="(inv.balance || 0) > 0">
-              <span class="chip-lbl">Balance Due</span>
-              <span class="chip-val due">{{ currencySymbol }} {{ (inv.balance || 0) | number:'1.2-2' }}</span>
-            </div>
-            <div class="ic-amount-chip" *ngIf="(inv.balance || 0) <= 0">
-              <span class="chip-val cleared">Fully Cleared</span>
-            </div>
-          </div>
-
-          <div class="ic-actions-row">
-            <button class="ic-btn" (click)="$event.stopPropagation(); selectInvoice(inv)">
-              👁 View PDF
-            </button>
-            <button class="ic-btn download" (click)="$event.stopPropagation(); downloadPDF(inv.id)">
-              ⬇️ Download
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- No results from filter -->
-      <div class="sis-empty-filter" *ngIf="filteredInvoices.length === 0 && (searchQuery || statusFilter !== 'all')">
-        <span>🔍</span>
-        <p>No invoices match your search.</p>
-        <button class="sis-btn sis-btn-outline" (click)="clearSearch()">Clear Search</button>
+    <div class="sis-tip-card">
+      <span class="sis-tip-icon" aria-hidden="true">💡</span>
+      <div>
+        <strong>View your invoice statements</strong>
+        <p>Select <strong>View PDF</strong> on any invoice to open a full-screen preview with your balance and payment details. You can also download a copy from there.</p>
       </div>
     </div>
 
-    <!-- Right: Inline PDF Viewer -->
-    <div class="sis-right pdf-inline-preview-maximized">
-      <!-- PDF header -->
-      <div class="sis-pdf-topbar" *ngIf="selectedInvoice">
-        <div class="pdf-topbar-info">
-          <span class="pdf-topbar-icon">📄</span>
-          <div>
-            <div class="pdf-inv-num">{{ selectedInvoice.invoiceNumber || ('INV-' + selectedInvoice.id) }}</div>
-            <div class="pdf-inv-meta">
-              {{ selectedInvoice.term || '' }}
-              <span *ngIf="selectedInvoice.term && selectedInvoice.dueDate"> · </span>
-              {{ formatDate(selectedInvoice.dueDate) }}
-            </div>
+    <!-- Search & filter bar -->
+    <div class="sis-filter-bar">
+      <div class="sis-search-wrap">
+        <span class="search-icon">🔍</span>
+        <input
+          class="sis-search"
+          type="text"
+          placeholder="Search invoice # or term…"
+          [(ngModel)]="searchQuery"
+          (ngModelChange)="applyFilter()" />
+        <button class="search-clear" *ngIf="searchQuery" (click)="searchQuery=''; applyFilter()">✕</button>
+      </div>
+      <div class="sis-status-filters">
+        <button class="sf-btn" [class.active]="statusFilter==='all'"     (click)="statusFilter='all';     applyFilter()">All</button>
+        <button class="sf-btn" [class.active]="statusFilter==='paid'"    (click)="statusFilter='paid';    applyFilter()">Paid</button>
+        <button class="sf-btn" [class.active]="statusFilter==='partial'" (click)="statusFilter='partial'; applyFilter()">Partial</button>
+        <button class="sf-btn" [class.active]="statusFilter==='overdue'" (click)="statusFilter='overdue'; applyFilter()">Overdue</button>
+        <button class="sf-btn" [class.active]="statusFilter==='pending'" (click)="statusFilter='pending'; applyFilter()">Pending</button>
+      </div>
+    </div>
+
+    <!-- Results count -->
+    <div class="sis-results-count" *ngIf="filteredInvoices.length !== allInvoices.length">
+      Showing {{ filteredInvoices.length }} of {{ allInvoices.length }} invoices
+      <button class="clear-filter-btn" (click)="clearSearch()">Clear filter</button>
+    </div>
+
+    <!-- Invoice cards grid -->
+    <div class="sis-invoice-grid">
+      <article
+        *ngFor="let inv of filteredInvoices"
+        class="sis-invoice-card"
+        [class.sis-invoice-card--outstanding]="(inv.balance || 0) > 0"
+        [@fadeIn]>
+
+        <div class="ic-top-row">
+          <div class="ic-num">{{ inv.invoiceNumber || ('INV-' + inv.id) }}</div>
+          <span class="ic-badge" [ngClass]="getStatusClass(inv.status)">
+            {{ inv.status || 'Pending' }}
+          </span>
+        </div>
+
+        <div class="ic-details-row">
+          <div class="ic-detail">
+            <span class="ic-lbl">Term</span>
+            <span class="ic-val">{{ inv.term || '—' }}</span>
+          </div>
+          <div class="ic-detail">
+            <span class="ic-lbl">Due Date</span>
+            <span class="ic-val">{{ formatDate(inv.dueDate) }}</span>
+          </div>
+          <div class="ic-detail">
+            <span class="ic-lbl">Amount</span>
+            <span class="ic-val">{{ currencySymbol }} {{ (inv.amount || inv.totalAmount || 0) | number:'1.2-2' }}</span>
           </div>
         </div>
-        <button class="sis-btn sis-btn-sm sis-btn-outline" (click)="downloadPDF(selectedInvoice.id)">
-          ⬇️ Download
-        </button>
-      </div>
 
-      <!-- Placeholder — no invoice selected -->
-      <div class="sis-pdf-placeholder" *ngIf="!selectedInvoice && !loadingPdf">
-        <span class="ph-icon">🧾</span>
-        <h3>Select an Invoice</h3>
-        <p>Click an invoice on the left to view the PDF preview here.</p>
-      </div>
+        <div class="ic-amounts-row">
+          <div class="ic-amount-chip">
+            <span class="chip-lbl">Paid</span>
+            <span class="chip-val paid">{{ currencySymbol }} {{ (inv.paidAmount || 0) | number:'1.2-2' }}</span>
+          </div>
+          <div class="ic-amount-chip" *ngIf="(inv.balance || 0) > 0">
+            <span class="chip-lbl">Balance Due</span>
+            <span class="chip-val due">{{ currencySymbol }} {{ (inv.balance || 0) | number:'1.2-2' }}</span>
+          </div>
+          <div class="ic-amount-chip" *ngIf="(inv.balance || 0) <= 0">
+            <span class="chip-val cleared">Fully Cleared</span>
+          </div>
+        </div>
 
-      <!-- PDF loading -->
-      <div class="sis-pdf-loading" *ngIf="loadingPdf">
-        <div class="sis-spinner dark"></div>
-        <p>Generating PDF preview…</p>
-      </div>
-
-      <!-- PDF iframe -->
-      <iframe
-        *ngIf="inlinePdf && !loadingPdf && !pdfError"
-        [src]="inlinePdf"
-        class="sis-pdf-frame"
-        frameborder="0"
-        title="Invoice PDF"
-        [@fadeIn]>
-      </iframe>
-
-      <!-- PDF error -->
-      <div class="sis-pdf-error" *ngIf="pdfError && !loadingPdf">
-        <span>⚠️</span>
-        <p>PDF preview could not be loaded.</p>
-        <div class="pdf-error-actions">
-          <button class="sis-btn sis-btn-outline" (click)="retryPdf()">🔄 Retry Preview</button>
-          <button class="sis-btn sis-btn-primary" (click)="downloadPDF(selectedInvoice.id)" *ngIf="selectedInvoice">
-            ⬇️ Download Instead
+        <div class="ic-actions-row">
+          <button class="ic-btn ic-btn--primary" (click)="viewInvoicePdf(inv, $event)">
+            👁 View PDF
+          </button>
+          <button class="ic-btn download" (click)="downloadPDF(inv.id)">
+            ⬇️ Download
           </button>
         </div>
-      </div>
+      </article>
     </div>
-  </div>
+
+    <!-- No results from filter -->
+    <div class="sis-empty-filter" *ngIf="filteredInvoices.length === 0 && (searchQuery || statusFilter !== 'all')">
+      <span>🔍</span>
+      <p>No invoices match your search.</p>
+      <button class="sis-btn sis-btn-outline" (click)="clearSearch()">Clear Search</button>
+    </div>
+  </section>
 
   <!-- ── Empty state (no invoices at all) ─────────────────────── -->
   <div class="sis-empty" *ngIf="!loading && allInvoices.length === 0 && !error" [@fadeIn]>
@@ -242,4 +190,70 @@
        Please contact the school administration for assistance.</p>
   </div>
 
+</div>
+
+<!-- Maximized invoice PDF preview -->
+<div
+  *ngIf="showPdfViewer"
+  class="sis-pdf-viewer-overlay pdf-preview-maximized-overlay"
+  (click)="closePdfViewer()"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-label]="'Invoice PDF preview for ' + modalInvoiceNumber">
+  <div class="sis-pdf-viewer-modal pdf-preview-maximized-modal" (click)="$event.stopPropagation()">
+    <div class="sis-pdf-viewer-header pdf-viewer-header">
+      <div class="sis-pdf-viewer-title">
+        <span aria-hidden="true">📄</span>
+        <div>
+          <h3>Invoice Statement — {{ modalInvoiceNumber }}</h3>
+          <p *ngIf="modalInvoice">
+            Balance due:
+            <strong>{{ currencySymbol }} {{ (modalInvoice.balance || 0) | number:'1.2-2' }}</strong>
+          </p>
+        </div>
+      </div>
+      <div class="sis-pdf-viewer-actions pdf-viewer-actions">
+        <button
+          type="button"
+          class="sis-btn sis-btn-sm sis-btn-primary"
+          (click)="downloadModalPdf()"
+          [disabled]="modalLoadingPdf || modalPdfError">
+          ⬇️ Download
+        </button>
+        <button
+          type="button"
+          class="sis-btn sis-btn-sm sis-btn-outline sis-pdf-viewer-close"
+          (click)="closePdfViewer()">
+          ✕ Close
+        </button>
+      </div>
+    </div>
+    <div class="sis-pdf-viewer-body pdf-preview-body">
+      <iframe
+        *ngIf="modalSafePdfUrl && !modalLoadingPdf && !modalPdfError"
+        [src]="modalSafePdfUrl"
+        class="sis-pdf-viewer-frame pdf-iframe"
+        frameborder="0"
+        title="Invoice statement PDF preview">
+      </iframe>
+      <div class="sis-pdf-viewer-loading pdf-loading" *ngIf="modalLoadingPdf">
+        <div class="sis-spinner dark"></div>
+        <p>Loading invoice statement PDF…</p>
+      </div>
+      <div class="sis-pdf-viewer-error" *ngIf="modalPdfError && !modalLoadingPdf">
+        <span>⚠️</span>
+        <p>Could not load the invoice statement PDF.</p>
+        <div class="pdf-error-actions">
+          <button type="button" class="sis-btn sis-btn-outline" (click)="retryModalPdf()">🔄 Retry</button>
+          <button
+            type="button"
+            class="sis-btn sis-btn-primary"
+            (click)="downloadModalPdf()"
+            *ngIf="modalInvoiceId">
+            ⬇️ Download Instead
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
