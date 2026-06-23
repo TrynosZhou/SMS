@@ -54,6 +54,14 @@ export class MessageService {
     return this.http.get(`${this.apiUrl}/messages/parent`);
   }
 
+  getParentInboxUnreadCount(): Observable<{ count: number }> {
+    return this.http.get<{ count: number }>(`${this.apiUrl}/messages/parent/unread-count`);
+  }
+
+  markParentMessageRead(messageId: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/messages/parent/${messageId}/read`, {});
+  }
+
   sendParentMessage(recipient: 'admin' | 'accountant', subject: string, message: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/messages/parent/send`, {
       recipient,

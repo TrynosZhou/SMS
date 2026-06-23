@@ -374,15 +374,9 @@ export class SendMessageComponent implements OnInit, OnDestroy {
 
   private handleSuccess(res: any, selectedCount?: number): void {
     const count = res?.savedMessageCount ?? res?.parentCount ?? res?.recipientCount ?? res?.sent ?? selectedCount ?? '';
-    this.success = res?.message || (count ? `Message sent successfully to ${count} recipient(s)! 🎉` : 'Message sent successfully!');
+    const base = res?.message || (count ? `Message sent successfully to ${count} recipient(s).` : 'Message sent successfully.');
+    this.success = base.includes('successfully') ? base : `Message sent successfully. ${base}`;
     this.resetForm();
-    
-    setTimeout(() => {
-      if (this.success.includes('successfully')) {
-        this.success = '';
-        this.cdr.markForCheck();
-      }
-    }, 5000);
   }
 
   private handleError(err: any): void {

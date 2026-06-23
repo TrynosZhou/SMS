@@ -2,6 +2,7 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Subject, forkJoin, of } from 'rxjs';
 import { catchError, finalize, takeUntil, timeout } from 'rxjs/operators';
 import { MessageService } from '../../../services/message.service';
+import { ParentMessageNotificationService } from '../../../services/parent-message-notification.service';
 import { AuthService } from '../../../services/auth.service';
 import { ParentService } from '../../../services/parent.service';
 import { environment } from '../../../../environments/environment';
@@ -49,6 +50,7 @@ export class ParentInboxComponent implements OnInit, OnDestroy {
 
   constructor(
     private messageService: MessageService,
+    private parentMessageNotifications: ParentMessageNotificationService,
     private authService: AuthService,
     private parentService: ParentService,
     private cdr: ChangeDetectorRef
@@ -133,7 +135,33 @@ export class ParentInboxComponent implements OnInit, OnDestroy {
         this.allMessages = inbox?.messages || [];
         this.sentCount = (outbox?.messages || []).length;
         this.applyFilter();
+        this.syncUnreadBadge();
       });
+  }
+
+  private syncUnreadBadge(): void {
+    const count = this.allMessages.filter((m) => !m.isRead).length;
+    this.parentMessageNotifications.setCount(count);
+  }
+
+  private markMessageReadOnServer(messageId: string): void {
+    if (!messageId) {
+      return;
+    }
+    this.messageService.markParentMessageRead(messageId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        const msg = this.allMessages.find((m) => m.id === messageId);
+        if (msg) {
+          msg.isRead = true;
+        }
+        this.syncUnreadBadge();
+        this.parentMessageNotifications.refresh().pipe(takeUntil(this.destroy$)).subscribe();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.parentMessageNotifications.refresh().pipe(takeUntil(this.destroy$)).subscribe();
+      }
+    });
   }
 
   private handleLoadError(err: any) {
@@ -164,7 +192,11 @@ export class ParentInboxComponent implements OnInit, OnDestroy {
   }
 
   markAllRead(): void {
-    this.allMessages.forEach((m) => this.readIds.add(m.id));
+    const unread = this.allMessages.filter((m) => !m.isRead);
+    unread.forEach((m) => {
+      this.readIds.add(m.id);
+      this.markMessageReadOnServer(m.id);
+    });
     this.applyFilter();
     this.cdr.markForCheck();
   }
@@ -217,6 +249,11 @@ export class ParentInboxComponent implements OnInit, OnDestroy {
     } else {
       this.expandedId = m.id;
       this.readIds.add(m.id);
+      if (!m.isRead) {
+        this.markMessageReadOnServer(m.id);
+      } else {
+        this.syncUnreadBadge();
+      }
       if (this.replyingForId && this.replyingForId !== m.id) {
         this.cancelReply();
       }

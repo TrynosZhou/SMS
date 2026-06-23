@@ -97,8 +97,8 @@
       <a
         [routerLink]="getMessagesNavLink()"
         class="top-nav-icon-btn top-nav-icon-btn--messages"
-        [attr.title]="showMessagesNavBadge() ? 'Messages (' + unreadIncomingMessageCount + ' unread)' : 'Messages'"
-        [attr.aria-label]="showMessagesNavBadge() ? 'Messages, ' + unreadIncomingMessageCount + ' unread' : 'Messages'"
+        [attr.title]="showMessagesNavBadge() ? 'Messages (' + (isParent() && !isActingAsStudent() ? unreadParentInboxCount : unreadIncomingMessageCount) + ' unread)' : 'Messages'"
+        [attr.aria-label]="showMessagesNavBadge() ? 'Messages, ' + getMessagesNavBadgeLabel() + ' unread' : 'Messages'"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
@@ -253,7 +253,13 @@
           <span class="sidebar-text">Dashboard</span>
         </a>
         <a routerLink="/parent/inbox" routerLinkActive="active" class="sidebar-item">
-          <span class="sidebar-icon">📧</span>
+          <span class="sidebar-icon-wrap">
+            <span class="sidebar-icon">📧</span>
+            <span
+              class="sidebar-icon-badge"
+              *ngIf="showParentSidebarInboxBadge()"
+              [attr.aria-label]="unreadParentInboxCount + ' unread messages'">{{ getParentSidebarInboxBadgeLabel() }}</span>
+          </span>
           <span class="sidebar-text">My Inbox</span>
         </a>
         <a routerLink="/parent/send-message" routerLinkActive="active" class="sidebar-item">

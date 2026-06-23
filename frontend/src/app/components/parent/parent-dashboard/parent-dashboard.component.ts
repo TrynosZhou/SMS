@@ -8,6 +8,7 @@ import { SettingsService } from '../../../services/settings.service';
 import { FinanceService } from '../../../services/finance.service';
 import { NewsService } from '../../../services/news.service';
 import { MessageService } from '../../../services/message.service';
+import { ParentMessageNotificationService } from '../../../services/parent-message-notification.service';
 import { News } from '../../../types/news';
 import { environment } from '../../../../environments/environment';
 
@@ -52,6 +53,7 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
   private carouselIntervalMs = 5000;
   private readonly destroy$ = new Subject<void>();
   private readonly requestTimeoutMs = 60000;
+  private parentUnreadPollHandle: ReturnType<typeof setInterval> | null = null;
 
   private readonly backendBaseUrl = (() => {
     const apiUrl = String(environment.apiUrl || '').trim();
@@ -68,6 +70,7 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
     private financeService: FinanceService,
     private newsService: NewsService,
     private messageService: MessageService,
+    private parentMessageNotifications: ParentMessageNotificationService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {
@@ -90,12 +93,44 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.bootstrapDashboard();
+    this.parentUnreadCountSub();
+    this.parentUnreadPollHandle = setInterval(() => this.refreshUnreadMessageCount(), 30000);
   }
 
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
     this.stopCarousel();
+    if (this.parentUnreadPollHandle) {
+      clearInterval(this.parentUnreadPollHandle);
+      this.parentUnreadPollHandle = null;
+    }
+  }
+
+  private parentUnreadCountSub(): void {
+    this.parentMessageNotifications.unreadCount$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((count) => {
+        this.unreadMessageCount = count;
+        this.cdr.markForCheck();
+      });
+    this.refreshUnreadMessageCount();
+  }
+
+  private refreshUnreadMessageCount(): void {
+    this.parentMessageNotifications.refresh().pipe(takeUntil(this.destroy$)).subscribe();
+  }
+
+  getInboxBadgeLabel(): string {
+    const n = this.unreadMessageCount;
+    if (n <= 0) {
+      return '';
+    }
+    return n > 99 ? '99+' : String(n);
+  }
+
+  isInboxQuickLink(route: string): boolean {
+    return route === '/parent/inbox';
   }
 
   private bootstrapDashboard() {
@@ -147,8 +182,8 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
           this.students = students?.students || [];
 
           const msgs = messages?.messages || [];
-          this.unreadMessageCount = msgs.filter((m: any) => !m.isRead).length;
           this.recentMessages = msgs.slice(0, 4);
+          this.parentMessageNotifications.setCount(msgs.filter((m: any) => !m.isRead).length);
 
           if (profile) {
             const lastName = (profile.lastName || '').trim();

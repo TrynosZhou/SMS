@@ -110,7 +110,10 @@ Best regards,
         this.loading = false;
         
         // Build detailed success message
-        let successMsg = response.message || 'Bulk message sent successfully!';
+        let successMsg = response.message || 'Message sent successfully!';
+        if (!String(successMsg).toLowerCase().includes('success')) {
+          successMsg = `Message sent successfully. ${successMsg}`;
+        }
         if (response.savedMessageCount) {
           successMsg += ` ${response.savedMessageCount} message(s) have been saved to parent inboxes.`;
         }

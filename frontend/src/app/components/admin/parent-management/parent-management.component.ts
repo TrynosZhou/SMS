@@ -1,5 +1,6 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ParentService } from '../../../services/parent.service';
+import { MessageService } from '../../../services/message.service';
 import { AuthService } from '../../../services/auth.service';
 import { PermissionService } from '../../../services/permission.service';
 import { Router } from '@angular/router';
@@ -76,8 +77,14 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
   private studentSearchDebounce: ReturnType<typeof setTimeout> | null = null;
   private studentSearchRequestId = 0;
 
+  showMessagePanel = false;
+  messageSubject = '';
+  messageBody = '';
+  sendingMessage = false;
+
   constructor(
     private parentService: ParentService,
+    private messageService: MessageService,
     private authService: AuthService,
     private permissionService: PermissionService,
     private router: Router,
@@ -247,6 +254,8 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
     this.studentSearchNotFound = false;
     this.phoneNumberError = '';
     this.emailError = '';
+    this.resetMessageForm();
+    this.showMessagePanel = false;
   }
 
   clearSelectedParent() {
@@ -259,6 +268,84 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
     this.studentSearchNotFound = false;
     this.phoneNumberError = '';
     this.emailError = '';
+    this.showMessagePanel = false;
+    this.resetMessageForm();
+  }
+
+  toggleMessagePanel(): void {
+    if (!this.selectedParent) {
+      return;
+    }
+    this.showMessagePanel = !this.showMessagePanel;
+    if (this.showMessagePanel) {
+      this.editMode = false;
+    }
+    this.cdr.markForCheck();
+  }
+
+  clearMessageForm(): void {
+    this.resetMessageForm();
+    this.cdr.markForCheck();
+  }
+
+  private resetMessageForm(): void {
+    this.messageSubject = '';
+    this.messageBody = '';
+    this.sendingMessage = false;
+  }
+
+  get selectedParentDisplayName(): string {
+    if (!this.selectedParent) {
+      return '';
+    }
+    const name = `${this.selectedParent.firstName || ''} ${this.selectedParent.lastName || ''}`.trim();
+    return name || 'Parent';
+  }
+
+  sendDirectMessage(): void {
+    if (!this.selectedParent?.id) {
+      this.showError('Please select a parent first');
+      return;
+    }
+
+    const subject = (this.messageSubject || '').trim();
+    const body = (this.messageBody || '').trim();
+    if (!subject) {
+      this.showError('Message subject is required');
+      return;
+    }
+    if (!body) {
+      this.showError('Message body is required');
+      return;
+    }
+
+    this.sendingMessage = true;
+    this.error = '';
+    this.cdr.markForCheck();
+
+    this.messageService.sendMessageToSpecificParentsJSON(subject, body, [this.selectedParent.id]).pipe(
+      finalize(() => {
+        this.sendingMessage = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (res: any) => {
+        const recipient = this.selectedParentDisplayName;
+        this.showSuccess(
+          res?.message || `Message sent successfully to ${recipient}. It will appear in their parent portal inbox.`,
+          0
+        );
+        this.resetMessageForm();
+        this.showMessagePanel = false;
+      },
+      error: (err: any) => {
+        const status = err?.status ?? 0;
+        const msg = status === 0 || status === 502
+          ? 'Backend unavailable. Ensure the SMS API server is running.'
+          : (err.error?.message || 'Failed to send message');
+        this.showError(msg);
+      }
+    });
   }
 
   setAdminTab(tab: 'manage' | 'create' | 'reset') {
@@ -639,6 +726,7 @@ export class ParentManagementComponent implements OnInit, OnDestroy {
       return;
     }
     this.editMode = true;
+    this.showMessagePanel = false;
     this.editParent = { ...this.selectedParent };
     this.phoneNumberError = '';
     this.emailError = '';

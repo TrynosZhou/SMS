@@ -433,8 +433,8 @@ export const sendMessageToSpecificParents = async (req: AuthRequest, res: Respon
       success: true,
       message:
         failed > 0
-          ? `Message sent to ${sent} parent(s). ${failed} failed.`
-          : `Message sent successfully to ${sent} parent(s).`,
+          ? `Message sent successfully to ${sent} parent(s). ${failed} failed to deliver.`
+          : `Message sent successfully to ${sent} parent(s). It will appear in their inbox.`,
       sent,
       failed,
       parentCount: parents.length,
@@ -564,6 +564,69 @@ export const getParentMessages = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error fetching parent messages:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const getParentInboxUnreadCount = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    if (isPreviewingRole(req, UserRole.PARENT)) {
+      return res.json({ count: 0 });
+    }
+
+    const ctx = await resolveParentForMessage(req);
+    if (!ctx) {
+      return res.status(403).json({ message: 'Access denied. Parent role required.' });
+    }
+
+    const messageRepository = AppDataSource.getRepository(Message);
+    const count = await messageRepository
+      .createQueryBuilder('msg')
+      .where('msg.parentId = :parentId', { parentId: ctx.parent.id })
+      .andWhere('msg.isRead = :isRead', { isRead: false })
+      .andWhere('msg.recipients IN (:...inboxRecipients)', {
+        inboxRecipients: ['parent', 'all', 'parents'],
+      })
+      .getCount();
+
+    res.json({ count });
+  } catch (error: any) {
+    console.error('Error fetching parent inbox unread count:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const markParentMessageRead = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    if (isPreviewingRole(req, UserRole.PARENT)) {
+      return res.status(403).json({ message: 'Preview mode cannot update messages.' });
+    }
+
+    const ctx = await resolveParentForMessage(req);
+    if (!ctx) {
+      return res.status(403).json({ message: 'Access denied. Parent role required.' });
+    }
+
+    const { id } = req.params as { id: string };
+    const messageRepository = AppDataSource.getRepository(Message);
+    const msg = await messageRepository.findOne({ where: { id, parentId: ctx.parent.id } });
+    if (!msg) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    msg.isRead = true;
+    await messageRepository.save(msg);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error marking parent message read:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };

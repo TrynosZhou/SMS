@@ -151,7 +151,7 @@
     </div>
 
     <div class="form-actions">
-      <button type="button" class="btn btn-primary" (click)="createParentAccount()" [disabled]="creatingParent">
+      <button type="button" class="btn btn-blue" (click)="createParentAccount()" [disabled]="creatingParent">
         <span *ngIf="!creatingParent">Create parent</span>
         <span *ngIf="creatingParent">Creating…</span>
       </button>
@@ -221,7 +221,7 @@
     </div>
 
     <div class="form-actions">
-      <button type="button" class="btn btn-primary" (click)="resetParentAccountPassword()" [disabled]="resettingParentPassword || !!resetParentEmailError">
+      <button type="button" class="btn btn-blue" (click)="resetParentAccountPassword()" [disabled]="resettingParentPassword || !!resetParentEmailError">
         <span *ngIf="!resettingParentPassword">Reset password</span>
         <span *ngIf="resettingParentPassword">Resetting…</span>
       </button>
@@ -244,7 +244,7 @@
           [(ngModel)]="parentSearchQuery"
           (ngModelChange)="filterParents()"
           placeholder="Search name, email, or phone…" />
-        <button type="button" class="btn btn-ghost" (click)="clearSearch()" *ngIf="parentSearchQuery" title="Clear search">✕</button>
+        <button type="button" class="btn btn-blue btn--icon" (click)="clearSearch()" *ngIf="parentSearchQuery" title="Clear search" aria-label="Clear search">✕</button>
       </div>
 
       <div class="list-container" *ngIf="!loading; else loadingParents">
@@ -264,9 +264,12 @@
               {{ (parent.firstName || parent.lastName || 'P').charAt(0) | uppercase }}
             </div>
             <div class="parent-info">
-              <div class="parent-name">
+              <button
+                type="button"
+                class="parent-name parent-name--link"
+                (click)="selectParent(parent); $event.stopPropagation()">
                 {{ parent.firstName || 'Unknown' }} {{ parent.lastName || '' }}
-              </div>
+              </button>
               <div class="parent-meta">
                 <span *ngIf="parent.email">{{ parent.email }}</span>
                 <span *ngIf="parent.phoneNumber">{{ parent.phoneNumber }}</span>
@@ -301,32 +304,101 @@
         <div class="header-actions">
           <button
             type="button"
-            class="btn btn-secondary"
+            class="btn btn-blue"
+            (click)="toggleMessagePanel()"
+            [class.btn-blue--active]="showMessagePanel"
+            [disabled]="savingParent || deletingParent || sendingMessage">
+            <span class="btn__icon" aria-hidden="true">✉️</span>
+            Send Message
+          </button>
+          <button
+            type="button"
+            class="btn btn-blue"
             (click)="startEditParent()"
             *ngIf="!editMode"
-            [disabled]="savingParent || deletingParent">
+            [class.btn-blue--active]="!showMessagePanel"
+            [disabled]="savingParent || deletingParent || sendingMessage">
+            <span class="btn__icon" aria-hidden="true">✏️</span>
             Edit
           </button>
           <button
             type="button"
-            class="btn btn-secondary"
+            class="btn btn-blue"
             (click)="cancelEditParent()"
             *ngIf="editMode"
+            [class.btn-blue--active]="!showMessagePanel"
             [disabled]="savingParent || deletingParent">
             Cancel
           </button>
           <button
             type="button"
-            class="btn btn-danger-outline"
+            class="btn btn-blue"
             (click)="deleteSelectedParent()"
-            [disabled]="deletingParent">
+            [disabled]="deletingParent || sendingMessage">
+            <span class="btn__icon" aria-hidden="true">🗑️</span>
             {{ deletingParent ? 'Deleting…' : 'Delete' }}
           </button>
-          <button type="button" class="btn btn-ghost" (click)="clearSelectedParent()">Close</button>
+          <button type="button" class="btn btn-blue" (click)="clearSelectedParent()">Close</button>
         </div>
       </div>
 
-      <div class="section-card">
+      <div class="section-card section-card--message" *ngIf="showMessagePanel && !editMode">
+        <div class="message-panel-head">
+          <div>
+            <h3 class="section-card__title section-card__title--message">
+              <span aria-hidden="true">✉️</span>
+              Direct message
+            </h3>
+            <p class="message-panel-intro">
+              Compose a message for <strong>{{ selectedParentDisplayName }}</strong>. It will appear in their parent portal inbox.
+            </p>
+          </div>
+        </div>
+
+        <div class="message-form message-form--full">
+          <div class="message-field">
+              <label for="parent-msg-subject">Subject</label>
+              <input
+                id="parent-msg-subject"
+                type="text"
+                class="form-input"
+                [(ngModel)]="messageSubject"
+                placeholder="Enter message subject…"
+                maxlength="200" />
+            </div>
+            <div class="message-field">
+              <label for="parent-msg-body">Message</label>
+              <textarea
+                id="parent-msg-body"
+                class="form-input message-textarea"
+                rows="8"
+                [(ngModel)]="messageBody"
+                placeholder="Write your message to this parent…"
+                maxlength="5000"></textarea>
+              <span class="message-char-count">{{ messageBody.length }}/5000</span>
+            </div>
+            <div class="form-actions message-form-actions">
+              <button
+                type="button"
+                class="btn btn-blue"
+                (click)="sendDirectMessage()"
+                [disabled]="sendingMessage || !messageSubject.trim() || !messageBody.trim()">
+                <span class="btn__icon" aria-hidden="true">📨</span>
+                <span *ngIf="!sendingMessage">Send to inbox</span>
+                <span *ngIf="sendingMessage">Sending…</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn-blue"
+                (click)="clearMessageForm()"
+                [disabled]="sendingMessage">
+                Clear
+              </button>
+            </div>
+        </div>
+      </div>
+
+      <div class="section-card" *ngIf="!showMessagePanel">
         <h3 class="section-card__title">Contact details</h3>
         <div class="details-grid">
           <div>
@@ -368,11 +440,11 @@
         </div>
 
         <div class="form-actions" *ngIf="editMode">
-          <button type="button" class="btn btn-primary" (click)="saveParentChanges()" [disabled]="savingParent">
+          <button type="button" class="btn btn-blue" (click)="saveParentChanges()" [disabled]="savingParent">
             <span *ngIf="!savingParent">Save changes</span>
             <span *ngIf="savingParent">Saving…</span>
           </button>
-          <button type="button" class="btn btn-secondary" (click)="cancelEditParent()" [disabled]="savingParent">Cancel</button>
+          <button type="button" class="btn btn-blue" (click)="cancelEditParent()" [disabled]="savingParent">Cancel</button>
         </div>
       </div>
 
@@ -400,7 +472,7 @@
             </div>
             <button
               type="button"
-              class="btn btn-link btn-danger"
+              class="btn btn-danger-modern"
               (click)="unlinkStudent(link)"
               [disabled]="unlinking">
               Unlink
@@ -424,7 +496,7 @@
               (input)="onStudentSearchInput($any($event.target).value)"
               (keyup.enter)="searchStudents()"
               placeholder="Student ID or name (min 2 characters)…" />
-            <button type="button" class="btn btn-secondary" (click)="searchStudents()" [disabled]="searchingStudents">
+            <button type="button" class="btn btn-blue" (click)="searchStudents()" [disabled]="searchingStudents">
               <span *ngIf="!searchingStudents">Search</span>
               <span *ngIf="searchingStudents">Searching…</span>
             </button>
@@ -499,7 +571,7 @@
           <div class="form-actions">
             <button
               type="button"
-              class="btn btn-primary"
+              class="btn btn-blue"
               (click)="linkSelectedStudents()"
               [disabled]="linking || selectedStudentIds.size === 0">
               <span *ngIf="!linking">

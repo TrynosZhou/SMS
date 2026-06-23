@@ -14,6 +14,7 @@ import { environment } from '../environments/environment';
 import { LogoutConfirmService } from './services/logout-confirm.service';
 import { ConnectivityService } from './services/connectivity.service';
 import { IncomingMessageNotificationService } from './services/incoming-message-notification.service';
+import { ParentMessageNotificationService } from './services/parent-message-notification.service';
 import { RbacService, RbacRole } from './services/rbac.service';
 
 /** Route prefixes per sidebar section (for active-state highlighting only). */
@@ -70,8 +71,11 @@ export class AppComponent implements OnInit, OnDestroy {
   selectedViewAsRoleId = '';
   loadingViewAsRoles = false;
   unreadIncomingMessageCount = 0;
+  unreadParentInboxCount = 0;
   private unreadPollHandle: ReturnType<typeof setInterval> | null = null;
   private unreadCountSub?: Subscription;
+  private parentUnreadPollHandle: ReturnType<typeof setInterval> | null = null;
+  private parentUnreadCountSub?: Subscription;
 
   constructor(
     public authService: AuthService, 
@@ -89,7 +93,8 @@ export class AppComponent implements OnInit, OnDestroy {
     public logoutConfirm: LogoutConfirmService,
     public connectivity: ConnectivityService,
     private rbacService: RbacService,
-    private incomingMessageNotifications: IncomingMessageNotificationService
+    private incomingMessageNotifications: IncomingMessageNotificationService,
+    private parentMessageNotifications: ParentMessageNotificationService
   ) {
     const cachedName = sessionStorage.getItem(AppComponent.SCHOOL_NAME_CACHE_KEY);
     if (cachedName) {
@@ -127,6 +132,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.syncExpandedMenusFromUrl(this.router.url || '');
       this.loadViewAsRoles();
       this.startIncomingMessageBadge();
+      this.startParentInboxBadge();
     }
 
     this.brandingRefreshSubscription = this.settingsService.brandingRefreshRequested$.subscribe(() => {
@@ -141,11 +147,13 @@ export class AppComponent implements OnInit, OnDestroy {
         this.syncExpandedMenusFromUrl(this.router.url || '');
         this.loadViewAsRoles();
         this.startIncomingMessageBadge();
+        this.startParentInboxBadge();
         this.cdr.markForCheck();
       } else {
         this.viewAsRoles = [];
         this.selectedViewAsRoleId = '';
         this.stopIncomingMessageBadge();
+        this.stopParentInboxBadge();
         this.schoolLogo = null;
         this.schoolWebsite = '';
         this.schoolFacebookUrl = '';
@@ -260,6 +268,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.themeSubscription?.unsubscribe();
     this.stopDashboardTitleRotation();
     this.stopIncomingMessageBadge();
+    this.stopParentInboxBadge();
   }
 
   getTopNavbarTitle(): string {
@@ -483,7 +492,9 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   getMessagesNavBadgeLabel(): string {
-    const n = this.unreadIncomingMessageCount;
+    const n = this.isParent() && !this.isActingAsStudent()
+      ? this.unreadParentInboxCount
+      : this.unreadIncomingMessageCount;
     if (n <= 0) {
       return '';
     }
@@ -491,7 +502,18 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   showMessagesNavBadge(): boolean {
+    if (this.isParent() && !this.isActingAsStudent()) {
+      return this.parentMessageNotifications.canShowParentInboxBadge() && this.unreadParentInboxCount > 0;
+    }
     return this.incomingMessageNotifications.canShowIncomingBadge() && this.unreadIncomingMessageCount > 0;
+  }
+
+  showParentSidebarInboxBadge(): boolean {
+    return this.showMessagesNavBadge();
+  }
+
+  getParentSidebarInboxBadgeLabel(): string {
+    return this.getMessagesNavBadgeLabel();
   }
 
   private startIncomingMessageBadge(): void {
@@ -525,6 +547,39 @@ export class AppComponent implements OnInit, OnDestroy {
       return;
     }
     this.incomingMessageNotifications.refresh().subscribe(() => this.cdr.markForCheck());
+  }
+
+  private startParentInboxBadge(): void {
+    this.stopParentInboxBadge();
+    if (!this.authService.isAuthenticated() || !this.parentMessageNotifications.canShowParentInboxBadge()) {
+      this.unreadParentInboxCount = 0;
+      return;
+    }
+    this.parentUnreadCountSub = this.parentMessageNotifications.unreadCount$.subscribe((count) => {
+      this.unreadParentInboxCount = count;
+      this.cdr.markForCheck();
+    });
+    this.refreshParentInboxBadge();
+    this.parentUnreadPollHandle = setInterval(() => this.refreshParentInboxBadge(), 30000);
+  }
+
+  private stopParentInboxBadge(): void {
+    if (this.parentUnreadPollHandle) {
+      clearInterval(this.parentUnreadPollHandle);
+      this.parentUnreadPollHandle = null;
+    }
+    if (this.parentUnreadCountSub) {
+      this.parentUnreadCountSub.unsubscribe();
+      this.parentUnreadCountSub = undefined;
+    }
+    this.unreadParentInboxCount = 0;
+  }
+
+  private refreshParentInboxBadge(): void {
+    if (!this.authService.isAuthenticated() || !this.parentMessageNotifications.canShowParentInboxBadge()) {
+      return;
+    }
+    this.parentMessageNotifications.refresh().subscribe(() => this.cdr.markForCheck());
   }
 
   getNavbarDisplayName(): string {

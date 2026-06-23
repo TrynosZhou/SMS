@@ -5,6 +5,8 @@ import multer from 'multer';
 import {
   sendBulkMessage,
   getParentMessages,
+  getParentInboxUnreadCount,
+  markParentMessageRead,
   getStaffMessages,
   sendParentMessage,
   getParentOutbox,
@@ -76,6 +78,8 @@ router.post(
 );
 router.post('/send', optionalMultipartArray('attachments', 5), sendMessageToSpecificParents);
 router.get('/parent', getParentMessages);
+router.get('/parent/unread-count', getParentInboxUnreadCount);
+router.post('/parent/:id/read', markParentMessageRead);
 router.get('/staff', getStaffMessages);
 router.post('/parent/send', optionalMultipartArray('attachments', 5), sendParentMessage);
 router.get('/parent/outbox', getParentOutbox);
