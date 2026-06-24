@@ -1,49 +1,235 @@
-<div class="sp-wrap">
-  <div class="sp-header">
-    <div>
-      <h1 class="sp-title">🎓 Student Portal</h1>
-      <p class="sp-subtitle">Open your linked student profile(s).</p>
-    </div>
-    <div class="sp-actions">
-      <button class="sp-btn sp-btn-outline" (click)="loadStudents()" [disabled]="loading">↻ Refresh</button>
-      <button class="sp-btn sp-btn-primary" (click)="linkStudents()">🔗 Link Students</button>
-    </div>
-  </div>
+<div class="src-page pr-results-page">
 
-  <div class="sp-alert sp-alert-error" *ngIf="error">⚠️ {{ error }}</div>
-
-  <div class="sp-loading" *ngIf="loading">
-    <div class="sp-spinner"></div>
-    <span>Loading linked students…</span>
-  </div>
-
-  <div class="sp-empty" *ngIf="!loading && students.length === 0 && !error">
-    <div class="sp-empty-icon">👨‍👩‍👧‍👦</div>
-    <h3>No Linked Students</h3>
-    <p>Link your account to your child’s student profile to access their dashboard.</p>
-    <button class="sp-btn sp-btn-primary" (click)="linkStudents()">🔗 Link a Student</button>
-  </div>
-
-  <div class="sp-grid" *ngIf="!loading && students.length > 0">
-    <div class="sp-card" *ngFor="let s of students">
-      <div class="sp-card-head">
-        <div class="sp-avatar">{{ (s.firstName || 'S').charAt(0).toUpperCase() }}{{ (s.lastName || '').charAt(0).toUpperCase() }}</div>
-        <div class="sp-name-block">
-          <div class="sp-name">{{ studentName(s) }}</div>
-          <div class="sp-meta">{{ studentMeta(s) }}</div>
+  <header class="src-hero" [@fadeIn]>
+    <div class="src-hero__main">
+      <div class="src-hero__brand">
+        <img *ngIf="safeSchoolLogoUrl" [src]="safeSchoolLogoUrl" alt="" class="src-hero__logo" />
+        <span class="src-hero__logo-fallback" *ngIf="!safeSchoolLogoUrl" aria-hidden="true">📊</span>
+        <div>
+          <span class="src-pill">Results</span>
+          <h1 class="src-hero__title">{{ studentFullName || 'Student Results' }}</h1>
+          <p class="src-hero__meta" *ngIf="student?.studentNumber || className">
+            <span *ngIf="student?.studentNumber">🆔 {{ student.studentNumber }}</span>
+            <span *ngIf="className"> · 🏫 {{ className }}</span>
+          </p>
+          <p class="src-hero__meta" *ngIf="!student && !loadingStudents && students.length > 0">
+            Select a student, term, and exam type to view report cards.
+          </p>
         </div>
       </div>
+    </div>
+    <div class="src-hero__actions" *ngIf="students.length > 0">
+      <button
+        type="button"
+        class="src-btn src-btn--white"
+        (click)="viewResults()"
+        [disabled]="!canGenerate || loading || loadingPdf || loadingStudents">
+        <span class="src-spin" *ngIf="loading || loadingPdf">↻</span>
+        <span *ngIf="!loading && !loadingPdf">↻</span>
+        Refresh
+      </button>
+      <button
+        type="button"
+        class="src-btn src-btn--white"
+        (click)="openPdfViewer()"
+        [disabled]="loading || loadingPdf || !inlinePdf"
+        *ngIf="inlinePdf">
+        👁 View PDF
+      </button>
+      <button
+        type="button"
+        class="src-btn src-btn--white"
+        (click)="downloadPDF()"
+        [disabled]="loading || loadingPdf || !inlinePdf">
+        ⬇️ Download PDF
+      </button>
+    </div>
+  </header>
 
-      <div class="sp-card-actions">
-        <button class="sp-btn sp-btn-primary" (click)="openStudentDashboard(s)">🚀 Open Student Dashboard</button>
-        <button class="sp-btn sp-btn-primary" (click)="openReportCard(s)">📄 Report Card</button>
-        <button class="sp-btn sp-btn-outline" (click)="openInvoiceStatement(s)">🧾 Invoice Statement</button>
+  <div class="src-alert src-alert-error" *ngIf="error" [@fadeIn]>
+    <span>⚠️</span> {{ error }}
+  </div>
+  <div class="src-alert src-alert-success" *ngIf="success" [@fadeIn]>
+    <span>✓</span> {{ success }}
+  </div>
+
+  <div class="src-loader-center" *ngIf="loadingStudents">
+    <div class="src-spinner"></div>
+    <p>Loading linked students…</p>
+  </div>
+
+  <div class="pr-empty" *ngIf="!loadingStudents && students.length === 0 && !error">
+    <div class="pr-empty__icon">👨‍👩‍👧‍👦</div>
+    <h3>No linked students</h3>
+    <p>Link your account to your child’s student profile to view their report cards.</p>
+    <button type="button" class="src-btn src-btn--primary" (click)="linkStudents()">🔗 Link a student</button>
+  </div>
+
+  <section class="src-toolbar" *ngIf="!loadingStudents && students.length > 0" [@fadeIn]>
+    <div class="src-toolbar__group" *ngIf="hasMultipleStudents">
+      <span class="src-toolbar__label">Student <span class="src-required">*</span></span>
+      <div class="src-toolbar__control">
+        <select
+          class="src-toolbar__select"
+          [(ngModel)]="selectedStudentId"
+          (ngModelChange)="onStudentChange()"
+          [disabled]="loading || loadingPdf">
+          <option value="">— Select student —</option>
+          <option *ngFor="let s of students" [value]="s.id">
+            {{ studentDisplayName(s) }}<ng-container *ngIf="studentMeta(s)"> · {{ studentMeta(s) }}</ng-container>
+          </option>
+        </select>
       </div>
+    </div>
 
-      <div class="sp-note">
-        Tip: you can open report cards and invoices without re-logging in as the student.
+    <div class="src-toolbar__group">
+      <span class="src-toolbar__label">Academic term <span class="src-required">*</span></span>
+      <div class="src-toolbar__control">
+        <span *ngIf="loadingTerms" class="src-toolbar__loading">Loading…</span>
+        <select
+          *ngIf="!loadingTerms"
+          class="src-toolbar__select"
+          [(ngModel)]="selectedTerm"
+          (ngModelChange)="onTermChange()"
+          [disabled]="loading || loadingPdf || (hasMultipleStudents && !selectedStudentId)">
+          <option value="">— Select term —</option>
+          <option *ngFor="let t of availableTerms" [value]="t">{{ t }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="src-toolbar__group">
+      <span class="src-toolbar__label">Exam type <span class="src-required">*</span></span>
+      <div class="src-toolbar__control">
+        <select
+          class="src-toolbar__select"
+          [(ngModel)]="selectedExamType"
+          (ngModelChange)="onExamTypeChange()"
+          [disabled]="loadingTerms || loading || loadingPdf || (hasMultipleStudents && !selectedStudentId)">
+          <option value="">— Select exam type —</option>
+          <option *ngFor="let opt of examTypeOptions" [value]="opt.value">{{ opt.label }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="src-toolbar__actions">
+      <button
+        type="button"
+        class="src-btn src-btn--primary"
+        (click)="viewResults()"
+        [disabled]="loadingStudents || loadingTerms || loading || loadingPdf || !selectedStudentId || !selectedTerm || !selectedExamType">
+        <span class="src-spin" *ngIf="loading || loadingPdf"></span>
+        📊 View Results
+      </button>
+    </div>
+
+    <div class="src-toolbar__status" *ngIf="showPdfViewer || inlinePdf || loading || loadingPdf">
+      <span
+        class="src-status-dot"
+        [class.dot-loading]="loading || loadingPdf"
+        [class.dot-ready]="inlinePdf && !loading && !loadingPdf"
+        [class.dot-error]="pdfLoadError && !loading && !loadingPdf"></span>
+      <span *ngIf="loading || loadingPdf">Generating PDF preview…</span>
+      <span *ngIf="!loading && !loadingPdf && inlinePdf">PDF ready</span>
+      <span *ngIf="!loading && !loadingPdf && pdfLoadError">PDF unavailable</span>
+    </div>
+  </section>
+
+  <div class="src-loader-center" *ngIf="!loadingStudents && students.length > 0 && loadingTerms">
+    <div class="src-spinner"></div>
+    <p>Loading term options…</p>
+  </div>
+
+  <div class="src-pick-hint" *ngIf="!loadingStudents && students.length > 0 && !loadingTerms && (!selectedStudentId || !selectedTerm || !selectedExamType) && !loading && !loadingPdf" [@fadeIn]>
+    <span aria-hidden="true">📋</span>
+    <p>
+      <ng-container *ngIf="hasMultipleStudents">Select a <strong>student</strong>, </ng-container>
+      <ng-container *ngIf="!hasMultipleStudents">Select your </ng-container>
+      <strong>academic term</strong> and <strong>exam type</strong>, then click <strong>View Results</strong> to open the report card PDF.
+    </p>
+  </div>
+
+  <div class="src-pick-hint" *ngIf="!loadingStudents && students.length > 0 && !loadingTerms && selectedStudentId && selectedTerm && selectedExamType && !inlinePdf && !loading && !loadingPdf && !error && !pdfLoadError" [@fadeIn]>
+    <span aria-hidden="true">👆</span>
+    <p>Ready to view. Click <strong>View Results</strong> to generate the report card PDF preview.</p>
+  </div>
+
+  <div class="src-empty" *ngIf="selectedExamType && !loading && !loadingPdf && !inlinePdf && !error && pdfLoadError" [@fadeIn]>
+    <span class="src-empty-icon">📄</span>
+    <h3>PDF preview unavailable</h3>
+    <p>Could not render the report card PDF. Try <strong>Refresh</strong> or use <strong>Download PDF</strong> if available.</p>
+    <button type="button" class="src-btn src-btn--secondary" (click)="viewResults()">🔄 Retry</button>
+  </div>
+
+  <div class="src-empty" *ngIf="selectedExamType && !loading && !loadingPdf && !inlinePdf && error" [@fadeIn]>
+    <span class="src-empty-icon">📄</span>
+    <h3>No report card found</h3>
+    <p>No report card is available for <strong>{{ getExamTypeLabel(selectedExamType) }}</strong> in <strong>{{ selectedTerm }}</strong>.<br>
+       Try another exam type or term, or contact the school.</p>
+  </div>
+
+</div>
+
+<div
+  *ngIf="showPdfViewer"
+  class="src-pdf-viewer-overlay pdf-preview-maximized-overlay"
+  (click)="closePdfViewer()"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-label]="'Report card PDF for ' + getExamTypeLabel(selectedExamType)">
+  <div class="src-pdf-viewer-modal pdf-preview-maximized-modal" (click)="$event.stopPropagation()">
+    <div class="src-pdf-viewer-header">
+      <div class="src-pdf-viewer-title">
+        <span aria-hidden="true">📄</span>
+        <div>
+          <h3>Report Card — {{ getExamTypeLabel(selectedExamType) }}</h3>
+          <p>
+            {{ studentFullName }}
+            <span *ngIf="selectedTerm"> · {{ selectedTerm }}</span>
+            <span *ngIf="reportCard?.overallAverage != null">
+              · Average <strong>{{ reportCard.overallAverage | number:'1.0-0' }}%</strong>
+            </span>
+          </p>
+        </div>
+      </div>
+      <div class="src-pdf-viewer-actions">
+        <button
+          type="button"
+          class="src-btn src-btn--white src-btn--sm"
+          (click)="downloadPDF()"
+          [disabled]="loading || loadingPdf || !inlinePdf">
+          ⬇️ Download
+        </button>
+        <button
+          type="button"
+          class="src-btn src-btn--outline src-btn--sm src-pdf-viewer-close"
+          (click)="closePdfViewer()">
+          ✕ Close
+        </button>
+      </div>
+    </div>
+    <div class="src-pdf-viewer-body pdf-preview-body">
+      <iframe
+        *ngIf="inlinePdf && !loading && !loadingPdf && !pdfLoadError"
+        [src]="inlinePdf"
+        class="src-pdf-viewer-frame pdf-iframe"
+        frameborder="0"
+        title="Report card PDF preview">
+      </iframe>
+      <div class="src-pdf-viewer-loading" *ngIf="loading || loadingPdf">
+        <div class="src-spinner src-spinner-light"></div>
+        <p>{{ loading ? 'Loading report card…' : 'Generating PDF preview…' }}</p>
+      </div>
+      <div class="src-pdf-viewer-error" *ngIf="pdfLoadError && !loading && !loadingPdf">
+        <span>⚠️</span>
+        <p>Could not load the report card PDF.</p>
+        <div class="src-pdf-error-actions">
+          <button type="button" class="src-btn src-btn--secondary src-btn--sm" (click)="viewResults()">🔄 Retry</button>
+          <button type="button" class="src-btn src-btn--white src-btn--sm" (click)="downloadPDF()" [disabled]="!inlinePdf">
+            ⬇️ Download Instead
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </div>
-

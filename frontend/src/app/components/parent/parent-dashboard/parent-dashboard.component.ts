@@ -375,7 +375,7 @@ export class ParentDashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.router.navigate(['/report-cards'], { queryParams: { studentId: student.id } });
+    this.router.navigate(['/parent/results'], { queryParams: { studentId: student.id } });
   }
 
   unlinkStudent(studentId: string) {

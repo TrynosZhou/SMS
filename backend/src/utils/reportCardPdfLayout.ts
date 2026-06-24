@@ -136,7 +136,7 @@ export function resolveLayoutMetrics(
   const longRemarks = remarksCharCount > 280;
   if (subjectCount >= 14 || (subjectCount >= 10 && longRemarks)) {
     return {
-      bannerH: 72,
+      bannerH: 88,
       tableRowMinH: 28,
       tableHeaderH: 30,
       sectionBarH: 20,
@@ -152,7 +152,7 @@ export function resolveLayoutMetrics(
   }
   if (subjectCount >= 10 || longRemarks) {
     return {
-      bannerH: 88,
+      bannerH: 100,
       tableRowMinH: 34,
       tableHeaderH: 34,
       sectionBarH: 24,
@@ -167,7 +167,7 @@ export function resolveLayoutMetrics(
     };
   }
   return {
-    bannerH: 96,
+    bannerH: 108,
     tableRowMinH: 38,
     tableHeaderH: 38,
     sectionBarH: 26,
@@ -485,6 +485,9 @@ function measureSubjectRowHeight(
   return Math.max(minRowH, Math.ceil(textH) + CELL_PAD * 2);
 }
 
+/** Side banner column width — wide enough for logos with embedded school name text. */
+const BANNER_SIDE_W = 112;
+
 function drawBannerSchoolLogo(
   doc: PdfDoc,
   innerX: number,
@@ -494,17 +497,19 @@ function drawBannerSchoolLogo(
   rawLogo: string | null,
   initials: string
 ): void {
-  const logoBox = Math.min(sideW - 12, bannerH - 12, 48);
-  const logoX = innerX + (sideW - logoBox) / 2;
-  const logoY = y + (bannerH - logoBox) / 2;
+  const pad = 4;
+  const logoW = Math.max(40, sideW - pad * 2);
+  const logoH = Math.max(40, bannerH - pad * 2);
+  const logoX = innerX + (sideW - logoW) / 2;
+  const logoY = y + (bannerH - logoH) / 2;
   const buffer = rawLogo ? decodeSchoolLogoBuffer(rawLogo) : null;
 
   if (buffer) {
     try {
       doc.save();
-      doc.roundedRect(logoX, logoY, logoBox, logoBox, 6).fillColor('#ffffff').fill();
-      doc.image(buffer, logoX + 2, logoY + 2, {
-        fit: [logoBox - 4, logoBox - 4],
+      doc.roundedRect(logoX, logoY, logoW, logoH, 6).fillColor('#ffffff').fill();
+      doc.image(buffer, logoX + 3, logoY + 3, {
+        fit: [logoW - 6, logoH - 6],
         align: 'center',
         valign: 'center'
       });
@@ -519,11 +524,11 @@ function drawBannerSchoolLogo(
     }
   }
 
-  const logoR = 26;
+  const logoR = Math.min(logoW, logoH) / 2 - 4;
   const logoCx = innerX + sideW / 2;
   const logoCy = y + bannerH / 2;
   doc.circle(logoCx, logoCy, logoR).fillColor('#ffffff').fill();
-  doc.fontSize(14).font('Helvetica-Bold').fillColor(NAVY);
+  doc.fontSize(Math.max(12, Math.min(16, logoR * 0.55))).font('Helvetica-Bold').fillColor(NAVY);
   doc.text(initials, logoCx - logoR, logoCy - 7, { width: logoR * 2, align: 'center' });
 }
 
@@ -627,7 +632,7 @@ export function renderReportCardLayout(
 
   const metrics = resolveLayoutMetrics(reportCard.subjects.length, remarksCharCount(reportCard));
   const bannerH = metrics.bannerH;
-  const sideW = 72;
+  const sideW = BANNER_SIDE_W;
   const centerW = innerW - sideW * 2;
 
   doc.rect(innerX, y, sideW, bannerH).fillColor(NAVY_SIDE).fill();
@@ -637,15 +642,15 @@ export function renderReportCardLayout(
   drawBannerSchoolLogo(doc, innerX, y, bannerH, sideW, getReportCardPrimaryLogo(settings), initials);
 
   const centerX = innerX + sideW;
-  doc.fontSize(16).font('Helvetica').fillColor('#ffffff');
-  doc.text(schoolName, centerX, y + 12, { width: centerW, align: 'center' });
+  doc.fontSize(17).font('Helvetica-Bold').fillColor('#ffffff');
+  doc.text(schoolName, centerX, y + 14, { width: centerW, align: 'center' });
   const metaParts = [schoolAddress, schoolPhone ? `Tel: ${schoolPhone}` : ''].filter(Boolean);
   if (metaParts.length) {
-    doc.fontSize(10).fillColor(META_BLUE);
-    doc.text(metaParts.join('  •  '), centerX, y + 32, { width: centerW, align: 'center' });
+    doc.fontSize(10).font('Helvetica').fillColor(META_BLUE);
+    doc.text(metaParts.join('  •  '), centerX, y + 36, { width: centerW, align: 'center' });
   }
   const examLabel = examTypeLabel(reportCard.examType || '');
-  drawGoldPill(doc, `Report Card — ${examLabel}`, centerX + centerW / 2, y + 42, centerW - 16);
+  drawGoldPill(doc, `Report Card — ${examLabel}`, centerX + centerW / 2, y + 48, centerW - 16);
 
   const rightX = innerX + sideW + centerW;
   drawBannerSchoolLogo(doc, rightX, y, bannerH, sideW, getReportCardSecondaryLogo(settings), initials);

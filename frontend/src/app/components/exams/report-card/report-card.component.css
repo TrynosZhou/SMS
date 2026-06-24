@@ -1194,9 +1194,9 @@
 
 .rc-banner {
   display: grid;
-  grid-template-columns: 88px 1fr auto;
+  grid-template-columns: 120px 1fr auto;
   background: #1e3a8a;
-  min-height: 88px;
+  min-height: 108px;
 }
 
 .rc-card-download {
@@ -1246,7 +1246,8 @@
   align-items: center;
   justify-content: center;
   background: #1e40af;
-  padding: 12px 8px;
+  padding: 10px 8px;
+  min-width: 120px;
 }
 
 .rc-banner-side--right {
@@ -1270,14 +1271,14 @@
 
 .rc-logo-img {
   display: block;
-  width: 52px;
-  height: 52px;
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  max-width: 104px;
+  height: auto;
+  max-height: 96px;
   object-fit: contain;
   background: #ffffff;
-  border-radius: 6px;
-  padding: 4px;
+  border-radius: 8px;
+  padding: 6px;
   box-sizing: border-box;
 }
 

@@ -162,7 +162,7 @@ export class LinkStudentsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   openReportCard(student: any): void {
     if (!student?.id) return;
-    this.router.navigate(['/report-cards'], { queryParams: { studentId: student.id } });
+    this.router.navigate(['/parent/results'], { queryParams: { studentId: student.id } });
   }
 
   openInvoiceStatement(student: any): void {

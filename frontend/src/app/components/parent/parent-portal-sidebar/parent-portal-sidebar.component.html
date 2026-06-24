@@ -1,7 +1,7 @@
 <nav class="pps-nav" [class.pps-nav--collapsed]="collapsed" aria-label="Parent portal navigation">
   <div class="pps-portal-head" *ngIf="!collapsed">
     <span class="pps-portal-head__title">Parent Portal</span>
-    <span class="pps-portal-head__sub">{{ parentPortalLabel }}</span>
+    <span class="pps-portal-head__sub">{{ parentDisplayName }}</span>
   </div>
 
   <a
@@ -119,15 +119,16 @@
           </span>
           <span class="pps-nav-item__label">Invoice</span>
         </a>
-        <a routerLink="/parent/student-portal" routerLinkActive="active" class="pps-nav-item pps-nav-item--child" [attr.title]="collapsed ? 'Student Portal' : null">
+        <a routerLink="/parent/results" routerLinkActive="active" class="pps-nav-item pps-nav-item--child" [attr.title]="collapsed ? 'Results' : null">
           <span class="pps-nav-item__icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <circle cx="12" cy="10" r="3"></circle>
-              <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"></path>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
             </svg>
           </span>
-          <span class="pps-nav-item__label">Student Portal</span>
+          <span class="pps-nav-item__label">Results</span>
         </a>
         <a routerLink="/parent/link-students" routerLinkActive="active" class="pps-nav-item pps-nav-item--child" [attr.title]="collapsed ? 'Link Students' : null">
           <span class="pps-nav-item__icon" aria-hidden="true">

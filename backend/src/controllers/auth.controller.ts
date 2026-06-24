@@ -1011,9 +1011,8 @@ export const login = async (req: Request, res: Response) => {
       }
       if (user.parent) {
         response.user.parent = user.parent;
-        if (!response.user.fullName) {
-          response.user.fullName = [user.parent.firstName, user.parent.lastName].filter(Boolean).join(' ').trim();
-        }
+        response.user.fullName = [user.parent.lastName, user.parent.firstName].filter(Boolean).join(' ').trim()
+          || response.user.fullName;
       }
     }
 

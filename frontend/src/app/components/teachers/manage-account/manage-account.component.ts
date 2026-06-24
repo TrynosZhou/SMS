@@ -473,7 +473,7 @@ export class ManageAccountComponent implements OnInit, OnDestroy {
       return [
         { route: '/parent/dashboard', icon: '🏠', label: 'Dashboard' },
         { route: '/parent/inbox', icon: '📧', label: 'Inbox' },
-        { route: '/parent/student-portal', icon: '👨‍🎓', label: 'Student Portal' },
+        { route: '/parent/results', icon: '📊', label: 'Results' },
         { route: '/parent/link-students', icon: '🔗', label: 'Link Students' },
         { route: '/parent/invoice-statement', icon: '🧾', label: 'Invoice' },
       ];
