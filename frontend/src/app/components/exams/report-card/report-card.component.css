@@ -258,6 +258,21 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.rc-form-grid--generate {
+  grid-template-columns:
+    minmax(7.5rem, 1fr)
+    minmax(9rem, 1.15fr)
+    minmax(7rem, 0.95fr)
+    auto;
+  align-items: end;
+  gap: 0.65rem;
+}
+
+.rc-generate-alert-wrap {
+  margin-top: -1.5rem;
+  margin-bottom: 1.5rem;
+}
+
 .rc-field { min-width: 0; }
 
 .rc-field label,
@@ -314,9 +329,58 @@
   min-height: 1.45rem;
 }
 
-.rc-field--action { display: flex; flex-direction: column; }
+.rc-field--action {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
+}
 
-.rc-form-actions-inline { width: 100%; }
+.rc-form-actions-inline { width: 100%; display: flex; flex-direction: column; gap: 0.75rem; }
+
+.rc-btn--generate {
+  width: auto;
+  min-width: 10.5rem;
+  max-width: 100%;
+  white-space: nowrap;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.rc-generate-alert {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.rc-generate-alert--success {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+
+.rc-generate-alert__text { flex: 1 1 auto; }
+
+.rc-generate-alert__dismiss {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.6;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.rc-generate-alert__dismiss:hover { opacity: 1; }
 
 .rc-form-footer {
   display: flex;
@@ -538,13 +602,27 @@
 
 @media (max-width: 1100px) {
   .rc-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rc-form-grid--generate {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  .rc-form-grid--generate .rc-field--action {
+    grid-column: 1 / -1;
+  }
+  .rc-form-grid--generate .rc-btn--generate {
+    width: 100%;
+  }
   .rc-field--action { grid-column: 1 / -1; }
   .rc-hero-stats { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 640px) {
   .rc-form-grid,
-  .rc-form-grid--parent { grid-template-columns: 1fr; }
+  .rc-form-grid--parent,
+  .rc-form-grid--generate { grid-template-columns: 1fr; }
+  .rc-form-grid--generate .rc-field--action {
+    grid-column: auto;
+  }
   .rc-hero-stats { grid-template-columns: repeat(2, 1fr); }
   .rc-page { padding: 1rem; }
   .rc-toast-stack { left: 1rem; right: 1rem; max-width: none; }

@@ -177,7 +177,7 @@
         <span class="rc-hero-badge rc-hero-badge--muted" *ngIf="selectedExamType">{{ getExamTypeLabel() }}</span>
       </aside>
       <div class="rc-hero__actions" *ngIf="reportCards.length > 0 && !isParent">
-        <button type="button" class="rc-hero-refresh" (click)="generateReportCards()" [disabled]="loading" title="Regenerate" aria-label="Regenerate">
+        <button type="button" class="rc-hero-refresh" (click)="generateReportCards()" [disabled]="loading || !isSelectionValid()" title="Regenerate" aria-label="Regenerate">
           <span [class.spinning]="loading">↻</span>
         </button>
         <button type="button" class="rc-hero-btn rc-hero-btn--white" (click)="exportSummaryCsv()" [disabled]="!filteredReportCards.length || loading">CSV</button>
@@ -337,7 +337,14 @@
       </div>
 
       <form (ngSubmit)="generateReportCards()" class="rc-generate-form">
-        <div class="rc-form-grid">
+        <div class="rc-generate-alert-wrap" *ngIf="generateSuccess">
+          <div class="rc-generate-alert rc-generate-alert--success" role="status" [@fadeInOut]>
+            <span class="rc-generate-alert__text">✓ {{ generateSuccess }}</span>
+            <button type="button" class="rc-generate-alert__dismiss" (click)="clearGenerateSuccess()" aria-label="Dismiss">×</button>
+          </div>
+        </div>
+
+        <div class="rc-form-grid rc-form-grid--generate">
           <div class="rc-field" [class.rc-field--error]="isFieldInvalid('class')">
             <label for="rcClass">Class <span class="rc-required">*</span></label>
             <select
@@ -390,16 +397,15 @@
           </div>
 
           <div class="rc-field rc-field--action">
-            <label class="rc-field-label-spacer">&nbsp;</label>
-            <div class="rc-form-actions-inline">
-              <button
-                type="submit"
-                class="rc-btn rc-btn--primary rc-btn--block"
-                [disabled]="loading || loadingTerms || !isSelectionValid()">
-                <span *ngIf="loading" class="rc-spinner" aria-hidden="true"></span>
-                {{ loading ? 'Generating…' : 'Generate report cards' }}
-              </button>
-            </div>
+            <label class="rc-field-label-spacer" for="rcGenerateBtn">&nbsp;</label>
+            <button
+              id="rcGenerateBtn"
+              type="submit"
+              class="rc-btn rc-btn--primary rc-btn--generate"
+              [disabled]="loading || loadingTerms || loadingClasses || !isSelectionValid()">
+              <span *ngIf="loading" class="rc-spinner" aria-hidden="true"></span>
+              {{ loading ? 'Generating…' : 'Generate report cards' }}
+            </button>
           </div>
         </div>
 

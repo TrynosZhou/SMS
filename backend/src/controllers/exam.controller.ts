@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { resolveHeadmasterRemark } from '../utils/headmasterRemarks';
-import { In, IsNull } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { Exam, ExamType, ExamStatus } from '../entities/Exam';
 import { Marks } from '../entities/Marks';
@@ -68,6 +68,69 @@ function normalizeExamType(type: string): ExamType {
   
   // If we can't match, throw an error with helpful message
   throw new Error(`Invalid exam type: "${type}". Valid types are: ${validValues.join(', ')}`);
+}
+
+function normalizeTermKey(term: string): string {
+  return String(term || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function termsRoughlyMatch(requested: string, stored: string): boolean {
+  const requestedKey = normalizeTermKey(requested);
+  const storedKey = normalizeTermKey(stored);
+  if (!requestedKey || !storedKey) {
+    return false;
+  }
+  if (requestedKey === storedKey) {
+    return true;
+  }
+  if (requestedKey.includes(storedKey) || storedKey.includes(requestedKey)) {
+    return true;
+  }
+  const termNumber = (value: string) => {
+    const match = value.match(/term\s*(\d+)/i);
+    return match ? match[1] : null;
+  };
+  const termYear = (value: string) => {
+    const match = value.match(/(20\d{2})/);
+    return match ? match[1] : null;
+  };
+  const requestedNumber = termNumber(requestedKey);
+  const storedNumber = termNumber(storedKey);
+  if (requestedNumber && storedNumber && requestedNumber === storedNumber) {
+    const requestedYear = termYear(requestedKey);
+    const storedYear = termYear(storedKey);
+    return !requestedYear || !storedYear || requestedYear === storedYear;
+  }
+  return false;
+}
+
+async function findExamsForReportCardScope(
+  examRepository: Repository<Exam>,
+  classId: string,
+  normalizedExamType: ExamType,
+  termValue: string
+): Promise<{ exams: Exam[]; resolvedTerm: string }> {
+  const exactMatches = await examRepository.find({
+    where: { classId, type: normalizedExamType, term: termValue },
+    relations: ['subjects'],
+  });
+  if (exactMatches.length > 0) {
+    return { exams: exactMatches, resolvedTerm: termValue };
+  }
+
+  const examsForType = await examRepository.find({
+    where: { classId, type: normalizedExamType },
+    relations: ['subjects'],
+  });
+  const looselyMatched = examsForType.filter((exam) => termsRoughlyMatch(termValue, exam.term || ''));
+  if (looselyMatched.length === 0) {
+    return { exams: [], resolvedTerm: termValue };
+  }
+
+  const resolvedTerm = looselyMatched[0].term || termValue;
+  const resolvedKey = normalizeTermKey(resolvedTerm);
+  const exams = looselyMatched.filter((exam) => normalizeTermKey(exam.term || '') === resolvedKey);
+  return { exams, resolvedTerm };
 }
 
 // Helper function to assign positions with proper tie handling
@@ -1700,7 +1763,8 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
     const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
     const isTeacher = user?.role === 'teacher';
     const isStudent = user?.role === 'student';
-    const termValue = term ? String(term).trim() : '';
+    let termValue = term ? String(term).trim() : '';
+    const requestedTerm = termValue;
     
     console.log('[getReportCard] Report card request received:', { classId, examType, term: termValue, studentId, subjectId, isParent, isTeacher, isAdmin, isStudent, query: req.query, path: req.path });
     
@@ -1985,10 +2049,17 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       });
     }
     
-    let exams = await examRepository.find({
-      where: { classId: classId as string, type: normalizedExamType, term: termValue },
-      relations: ['subjects']
-    });
+    const examScope = await findExamsForReportCardScope(
+      examRepository,
+      classId as string,
+      normalizedExamType,
+      requestedTerm
+    );
+    let exams = examScope.exams;
+    if (exams.length > 0 && examScope.resolvedTerm !== requestedTerm) {
+      console.log('[getReportCard] Resolved term alias:', requestedTerm, '->', examScope.resolvedTerm);
+      termValue = examScope.resolvedTerm;
+    }
     
     // Filter by exam status: parents and students only see published results.
     // Teachers and administrators may load report cards from draft exams for remarks and preview.
@@ -2068,10 +2139,10 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
 
       // Check if there are any exams for this class at all
 
-      const allClassExams = await examRepository.find({
-        where: { classId: classId as string, term: termValue },
+      const allClassExams = (await examRepository.find({
+        where: { classId: classId as string },
         relations: ['subjects']
-      });
+      })).filter((exam) => termsRoughlyMatch(requestedTerm, exam.term || ''));
       console.log('[getReportCard] Total exams for this class and term:', allClassExams.length);
       console.log('[getReportCard] Available exam types:', allClassExams.map(e => ({ name: e.name, type: e.type, status: e.status })));
       console.log('[getReportCard] Requested examType (original):', examType, 'normalized:', normalizedExamType);
@@ -2103,6 +2174,7 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       // Provide more helpful error message
 
       const availableTypes = [...new Set(allClassExams.map(e => e.type))];
+      const availableTerms = [...new Set(allClassExams.map(e => e.term).filter(Boolean))];
       
       // Convert enum values to user-friendly names
       const typeNameMap: { [key: string]: string } = {
@@ -2114,15 +2186,18 @@ export const getReportCard = async (req: AuthRequest, res: Response) => {
       const availableTypeNames = availableTypes.map(t => typeNameMap[t] || t);
       
       const message = availableTypeNames.length > 0
-        ? `No ${examType} exams found for ${termValue}. Available exam types: ${availableTypeNames.join(', ')}`
-        : `No exams found for ${termValue} in this class.`;
+        ? `No ${examType} exams found for ${requestedTerm}. Available exam types: ${availableTypeNames.join(', ')}`
+        : availableTerms.length > 0
+          ? `No ${examType} exams found for ${requestedTerm}. Available terms for this class: ${availableTerms.join(', ')}`
+          : `No exams found for ${requestedTerm} in this class.`;
       
       return res.status(404).json({ 
         message,
         requestedType: examType,
         normalizedType: normalizedExamType,
         availableTypes: availableTypeNames, // Return user-friendly names
-        term: termValue
+        availableTerms,
+        term: requestedTerm
       });
     }
 
@@ -2709,7 +2784,7 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
     const isStudent = user?.role === 'student';
     /** Parents/students: PDF only from published exams. Admins may print draft report cards. */
     const requirePublishedPdf = isParent || isStudent;
-    const termValue = term ? String(term).trim() : null;
+    let termValue = term ? String(term).trim() : null;
     
     console.log('[generateReportCardPDF] PDF generation request:', { studentId, examId, classId, examType, term: termValue, isParent, isStudent, query: req.query });
 
@@ -2887,10 +2962,16 @@ export const generateReportCardPDF = async (req: AuthRequest, res: Response) => 
       }
       
       // Get all exams of the specified type for this class
-      let exams = await examRepository.find({
-        where: { classId: classId as string, type: normalizedExamType, term: termValue as string },
-        relations: ['subjects']
-      });
+      const pdfExamScope = await findExamsForReportCardScope(
+        examRepository,
+        classId as string,
+        normalizedExamType,
+        termValue as string
+      );
+      let exams = pdfExamScope.exams;
+      if (exams.length > 0 && pdfExamScope.resolvedTerm !== termValue) {
+        termValue = pdfExamScope.resolvedTerm;
+      }
 
       if (requirePublishedPdf) {
         const beforeCount = exams.length;

@@ -60,6 +60,7 @@ export class ReportCardComponent implements OnInit, OnDestroy {
   loadingClasses = false;
 error = '';
   success = '';
+  generateSuccess = '';
   canEditRemarks = false;
   private remarksEditRoleAllowed = false;
   savingRemarks = false;
@@ -358,7 +359,6 @@ if (teacher.id) {
       .subscribe({
         next: (response: any) => {
           this.classes = response.classes || [];
-          setTimeout(() => this.checkAndAutoGenerate(), 300);
         },
         error: (err: any) => {
           console.error('Error loading teacher classes:', err);
@@ -401,29 +401,25 @@ const currentYear = new Date().getFullYear();
             if (!this.availableTerms.includes(activeTerm)) {
               this.availableTerms.unshift(activeTerm);
             }
-            // Only auto-apply active term if no term was pre-selected (e.g. from query params)
-            if (!this.selectedTerm) {
+            // Pre-select active term for staff (generation still requires button click).
+            if (!this.isParent && !this.selectedTerm && activeTerm) {
               this.selectedTerm = activeTerm;
             }
           } else if (!this.selectedTerm && this.availableTerms.length > 0) {
-            this.selectedTerm = this.availableTerms[0];
+            if (this.isParent) {
+              this.selectedTerm = this.availableTerms[0];
+            }
           }
           if (this.isParent && !this.selectedExamType) {
             this.selectedExamType = 'mid_term';
-          }
-          if (!this.isParent) {
-            this.checkAndAutoGenerate();
           }
         },
         error: (err: any) => {
-          if (!this.selectedTerm && this.availableTerms.length > 0) {
+          if (this.isParent && !this.selectedTerm && this.availableTerms.length > 0) {
             this.selectedTerm = this.availableTerms[0];
           }
           if (this.isParent && !this.selectedExamType) {
             this.selectedExamType = 'mid_term';
-          }
-          if (!this.isParent) {
-            this.checkAndAutoGenerate();
           }
           if (err.status !== 0) {
             console.error('Error loading active term:', err);
@@ -596,7 +592,6 @@ this.loadAllClasses(1, []);
           this.classes = allClasses;
           this.loadingClasses = false;
           this.cdr.markForCheck();
-setTimeout(() => this.checkAndAutoGenerate(), 300);
         }
       },
       error: (err: any) => {
@@ -616,8 +611,14 @@ if (err.status === 0) {
   }
 
   generateReportCards() {
-    if (!this.selectedClass || !this.selectedExamType || !this.selectedTerm) {
-      this.error = 'Please select class, term, and exam type';
+    if (!this.isSelectionValid()) {
+      this.error = 'Please select class, term, and exam type before generating report cards.';
+      setTimeout(() => {
+        if (this.error === 'Please select class, term, and exam type before generating report cards.') {
+          this.error = '';
+          this.cdr.markForCheck();
+        }
+      }, 5000);
       return;
     }
 
@@ -634,6 +635,7 @@ if (err.status === 0) {
     this.autoGenerationInProgress = true; // Set flag to prevent duplicate calls
     this.error = '';
     this.success = '';
+    this.generateSuccess = '';
     this.reportCards = [];
     this.accessDenied = false;
     this.validationError = null; // Clear previous validation errors
@@ -742,7 +744,12 @@ if (err.status === 0) {
         const reportCardsArray = Array.isArray(this.reportCards) ? this.reportCards : [];
         this.filteredReportCards = [...reportCardsArray];
         this.classInfo = { name: data.class, examType: data.examType, term: data.term || this.selectedTerm };
-        this.success = `Generated ${this.reportCards.length} report card(s) for ${data.class} - ${this.selectedTerm}`;
+        const generatedMessage = `Generated ${this.reportCards.length} report card(s) for ${data.class} - ${this.selectedTerm}`;
+        if (this.isParent) {
+          this.success = generatedMessage;
+        } else {
+          this.generateSuccess = generatedMessage;
+        }
         this.lastLoadedAt = new Date();
         this.applyFilters();
         this.loading = false;
@@ -769,7 +776,14 @@ if (err.status === 0) {
         if (err.status === 0) {
           this.error = 'Cannot connect to server. Please ensure the backend server is running.';
         } else if (err.status === 404) {
-          this.error = err.error?.message || 'Report card endpoint not found. Please check the server configuration.';
+          const errorData = err.error || {};
+          let message = errorData.message || 'No report cards found for the selected class, term, and exam type.';
+          if (Array.isArray(errorData.availableTerms) && errorData.availableTerms.length > 0) {
+            message += ` Available terms: ${errorData.availableTerms.join(', ')}.`;
+          } else if (Array.isArray(errorData.availableTypes) && errorData.availableTypes.length > 0) {
+            message += ` Available exam types: ${errorData.availableTypes.join(', ')}.`;
+          }
+          this.error = message;
         } else if (err.status === 400) {
           // Handle validation errors with detailed information
           const errorData = err.error;
@@ -1319,6 +1333,10 @@ if (err.status === 0) {
     else this.error = '';
   }
 
+  clearGenerateSuccess(): void {
+    this.generateSuccess = '';
+  }
+
   onSearchInput(value: string): void {
     this.searchInput$.next((value || '').trim());
   }
@@ -1617,7 +1635,11 @@ if (err.status === 0) {
 
   // Validation
   isSelectionValid(): boolean {
-    return !!(this.selectedClass && this.selectedExamType && this.selectedTerm);
+    return !!(
+      String(this.selectedClass || '').trim() &&
+      String(this.selectedExamType || '').trim() &&
+      String(this.selectedTerm || '').trim()
+    );
   }
 
   isFieldInvalid(fieldName: string): boolean {
@@ -1642,44 +1664,25 @@ if (err.status === 0) {
       }
       return;
     }
-    this.checkAndAutoGenerate();
+    this.clearPendingAutoGeneration();
+    this.generateSuccess = '';
+    this.reportCards = [];
+    this.filteredReportCards = [];
+    this.classInfo = null;
+    this.lastLoadedAt = null;
+    this.validationError = null;
   }
-  
-  checkAndAutoGenerate() {
-    if (this.isParent) {
-      return;
-    }
-    // Clear any pending timeout
+
+  private clearPendingAutoGeneration(): void {
     if (this.autoGenerationTimeout) {
       clearTimeout(this.autoGenerationTimeout);
       this.autoGenerationTimeout = null;
     }
-
-    if (this.loading || this.autoGenerationInProgress || !this.isSelectionValid()) {
-      return;
-    }
-
-    // For parents/students with pre-selected params, skip the loadingTerms guard
-    // (the term was already chosen in the picker; we don't need loadTermOptions to finish)
-    const skipTermsGuard = this.isParent && !!this.parentStudentId && !!this.selectedTerm && !!this.selectedExamType;
-    if (!skipTermsGuard && this.loadingTerms) {
-      return;
-    }
-
-    this.autoGenerationTimeout = setTimeout(() => {
-      if (this.isSelectionValid() && !this.loading && !this.autoGenerationInProgress) {
-        this.autoGenerationInProgress = true;
-        this.generateReportCards();
-      }
-    }, 300);
+    this.autoGenerationInProgress = false;
   }
 
   resetSelection() {
-    // Clear any pending auto-generation
-    if (this.autoGenerationTimeout) {
-      clearTimeout(this.autoGenerationTimeout);
-      this.autoGenerationTimeout = null;
-    }
+    this.clearPendingAutoGeneration();
     // Clear any pending auto-save
     if (this.autoSaveRemarksTimeout) {
       clearTimeout(this.autoSaveRemarksTimeout);
@@ -1691,7 +1694,7 @@ if (err.status === 0) {
       this.selectedClass = '';
     }
     this.selectedExamType = this.isParent ? 'mid_term' : '';
-    this.selectedTerm = this.availableTerms.length > 0 ? this.availableTerms[0] : '';
+    this.selectedTerm = this.isParent && this.availableTerms.length > 0 ? this.availableTerms[0] : '';
     this.reportCards = [];
     this.filteredReportCards = [];
     this.classInfo = null;
@@ -1699,6 +1702,7 @@ if (err.status === 0) {
     this.selectedGradeBand = 'all';
     this.lastLoadedAt = null;
     this.parentReportMaximized = false;
+    this.generateSuccess = '';
     if (!this.isParent) {
       this.onSelectionChange();
     }

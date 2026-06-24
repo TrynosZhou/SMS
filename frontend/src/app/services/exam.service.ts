@@ -156,7 +156,7 @@ export class ExamService {
   ): Observable<any> {
     let params = new HttpParams()
       .set('classId', classId)
-      .set('examType', this.normalizeExamType(examType, true))  // ← CHANGED: Added true
+      .set('examType', this.normalizeExamType(examType, false))
       .set('term', term);
 
     if (studentId) params = params.set('studentId', studentId);
@@ -184,7 +184,7 @@ export class ExamService {
   ): Observable<Blob> {
     let params = new HttpParams()
       .set('classId', classId)
-      .set('examType', this.normalizeExamType(examType, true))  // ← CHANGED: Added true
+      .set('examType', this.normalizeExamType(examType, false))
       .set('term', term);
 
     if (studentId) params = params.set('studentId', studentId);
@@ -208,7 +208,7 @@ export class ExamService {
     const payload = {
       studentId,
       classId,
-      examType: this.normalizeExamType(examType, true),
+      examType: this.normalizeExamType(examType, false),
       term,
       classTeacherRemarks,
       headmasterRemarks
