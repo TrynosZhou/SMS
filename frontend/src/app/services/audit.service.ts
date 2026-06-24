@@ -81,7 +81,7 @@ export class AuditService {
     return this.http.get(`${this.apiUrl}/audit/user-sessions/export.csv`, { params: httpParams, responseType: 'blob' });
   }
 
-  exportSessionsPdf(params?: any) {
+  exportSessionsPdf(params?: any, preview = false) {
     let httpParams = new HttpParams();
     if (params) {
       Object.keys(params).forEach(k => {
@@ -90,6 +90,9 @@ export class AuditService {
           httpParams = httpParams.set(k, v);
         }
       });
+    }
+    if (preview) {
+      httpParams = httpParams.set('preview', 'true');
     }
     return this.http.get(`${this.apiUrl}/audit/user-sessions/export.pdf`, { params: httpParams, responseType: 'blob' });
   }

@@ -4,8 +4,12 @@ import { AuthRequest } from '../middleware/auth';
 import { UserRole } from '../entities/User';
 import { UserSessionLog } from '../entities/UserSessionLog';
 import { ModuleAccessLog } from '../entities/ModuleAccessLog';
-import PDFDocument from 'pdfkit';
+import { Settings } from '../entities/Settings';
 import { SelectQueryBuilder } from 'typeorm';
+import {
+  buildUserSessionsFilterSummary,
+  createUserSessionsPDF,
+} from '../utils/userSessionsPdfGenerator';
 
 function applyUserSessionFilters(
   qb: SelectQueryBuilder<UserSessionLog>,
@@ -184,31 +188,24 @@ export const exportUserSessionsPdf = async (req: AuthRequest, res: Response) => 
     const dir = String(sortDir).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
     qb.orderBy(`s.${key}`, dir as any);
     const rows = await qb.getMany();
+
+    const settingsList = await AppDataSource.getRepository(Settings).find({
+      order: { createdAt: 'DESC' },
+      take: 1,
+    });
+    const settings = settingsList[0] || null;
+    const preview = String(req.query.preview || '').toLowerCase() === 'true';
+    const pdfBuffer = await createUserSessionsPDF(rows, settings, {
+      generatedAt: new Date(),
+      filterSummary: buildUserSessionsFilterSummary(req.query as Record<string, any>),
+    });
+
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="user_sessions.pdf"');
-    const doc = new PDFDocument({ margin: 40, size: 'A4' });
-    doc.pipe(res);
-    doc.fontSize(16).text('User Sessions Report');
-    doc.moveDown(0.5);
-    doc.fontSize(10).text(`Generated: ${new Date().toLocaleString()}`);
-    doc.moveDown();
-    const header = ['User','Role','Login','Last','Logout','Minutes','Modules'];
-    doc.fontSize(10).text(header.join(' | '));
-    doc.moveDown(0.2);
-    for (const s of rows) {
-      const minutes = Math.round((s.timeSpentSeconds || 0) / 60);
-      const line = [
-        (s.username || s.userId || ''),
-        (s.role || ''),
-        (s.loginAt ? new Date(s.loginAt).toLocaleString() : ''),
-        (s.lastActivityAt ? new Date(s.lastActivityAt).toLocaleString() : ''),
-        (s.logoutAt ? new Date(s.logoutAt).toLocaleString() : ''),
-        String(minutes),
-        (s.modules || '')
-      ].join(' | ');
-      doc.text(line, { continued: false });
-    }
-    doc.end();
+    res.setHeader(
+      'Content-Disposition',
+      `${preview ? 'inline' : 'attachment'}; filename="user_activity_log_${new Date().toISOString().slice(0, 10)}.pdf"`
+    );
+    return res.send(pdfBuffer);
   } catch (err: any) {
     console.error('exportUserSessionsPdf error:', err);
     return res.status(500).json({ message: 'Server error', error: err.message || 'Unknown error' });

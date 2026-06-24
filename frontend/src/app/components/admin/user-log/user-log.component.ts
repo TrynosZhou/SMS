@@ -1,9 +1,11 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { AuditService } from '../../../services/audit.service';
 import { Subject } from 'rxjs';
 import { debounceTime, finalize, takeUntil } from 'rxjs/operators';
 import { activatePageLoad } from '../../../utils/route-activation';
+import { pdfBlobViewerUrl } from '../../../utils/pdf-preview.util';
 
 @Component({
   standalone: false,
@@ -34,14 +36,42 @@ export class UserLogComponent implements OnInit, OnDestroy {
   sortKey = 'loginAt';
   sortDir: 'asc' | 'desc' = 'desc';
 
+  previewLoading = false;
+  pdfPreviewBlobUrl: string | null = null;
+  pdfPreviewSafeUrl: SafeResourceUrl | null = null;
+
   constructor(
     private auditService: AuditService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private sanitizer: DomSanitizer
   ) {}
 
   get totalPages(): number {
     return Math.max(1, Math.ceil(this.total / this.limit));
+  }
+
+  get dashboardStats() {
+    return {
+      total: this.total,
+      showing: this.sessions.length,
+      active: this.sessions.filter((s) => !s.logoutAt).length,
+      loggedOut: this.sessions.filter((s) => !!s.logoutAt).length,
+    };
+  }
+
+  get sortLabel(): string {
+    const labels: Record<string, string> = {
+      loginAt: 'login time',
+      lastActivityAt: 'last activity',
+      logoutAt: 'logout time',
+      timeSpentSeconds: 'duration',
+      username: 'username',
+      role: 'role',
+      sessionId: 'session ID',
+      ipAddress: 'IP address',
+    };
+    return labels[this.sortKey] || this.sortKey;
   }
 
   ngOnInit(): void {
@@ -68,6 +98,7 @@ export class UserLogComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.closePdfPreview();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -139,6 +170,77 @@ export class UserLogComponent implements OnInit, OnDestroy {
     this.endDate = undefined;
     this.page = 1;
     this.load();
+  }
+
+  hasActiveFilters(): boolean {
+    return (
+      this.action !== 'all' ||
+      this.role !== 'all' ||
+      !!this.entityId.trim() ||
+      !!this.performedBy.trim() ||
+      !!this.startDate ||
+      !!this.endDate
+    );
+  }
+
+  clearAlert(): void {
+    this.error = '';
+    this.cdr.markForCheck();
+  }
+
+  sortIndicator(key: string): string {
+    if (this.sortKey !== key) {
+      return '↕';
+    }
+    return this.sortDir === 'asc' ? '↑' : '↓';
+  }
+
+  formatDuration(seconds: number | null | undefined): string {
+    const total = Math.max(0, Number(seconds) || 0);
+    const minutes = Math.floor(total / 60);
+    if (minutes < 60) {
+      return `${minutes} min`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const rem = minutes % 60;
+    return rem ? `${hours}h ${rem}m` : `${hours}h`;
+  }
+
+  formatRole(role: string | null | undefined): string {
+    if (!role) {
+      return '—';
+    }
+    return String(role).replace(/_/g, ' ');
+  }
+
+  getInitials(value: string | null | undefined): string {
+    const raw = String(value || 'U').trim();
+    if (raw.length <= 2) {
+      return raw.slice(0, 2).toUpperCase();
+    }
+    const parts = raw.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return raw.slice(0, 2).toUpperCase();
+  }
+
+  isSessionActive(session: any): boolean {
+    return !session?.logoutAt;
+  }
+
+  parseModules(modules: string | null | undefined): string[] {
+    return String(modules || '')
+      .split(',')
+      .map((m) => m.trim())
+      .filter(Boolean);
+  }
+
+  truncateSessionId(sessionId: string): string {
+    if (!sessionId || sessionId.length <= 14) {
+      return sessionId;
+    }
+    return `${sessionId.slice(0, 8)}…${sessionId.slice(-4)}`;
   }
 
   private buildExportParams(): Record<string, string> {
@@ -260,7 +362,7 @@ export class UserLogComponent implements OnInit, OnDestroy {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `audit_logs_${new Date().toISOString().slice(0, 10)}.pdf`;
+        a.download = `user_activity_log_${new Date().toISOString().slice(0, 10)}.pdf`;
         a.click();
         URL.revokeObjectURL(url);
       },
@@ -269,5 +371,45 @@ export class UserLogComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       }
     });
+  }
+
+  previewPdf(): void {
+    if (!this.sessions.length) return;
+    this.previewLoading = true;
+    this.error = '';
+    this.closePdfPreview(false);
+    this.cdr.markForCheck();
+
+    this.auditService
+      .exportSessionsPdf(this.buildExportParams(), true)
+      .pipe(
+        finalize(() => {
+          this.previewLoading = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (blob: Blob) => {
+          this.pdfPreviewBlobUrl = URL.createObjectURL(blob);
+          this.pdfPreviewSafeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
+            pdfBlobViewerUrl(this.pdfPreviewBlobUrl)
+          );
+        },
+        error: (err: any) => {
+          this.error = err?.error?.message || 'Failed to preview PDF';
+        }
+      });
+  }
+
+  closePdfPreview(revoke = true): void {
+    if (revoke && this.pdfPreviewBlobUrl) {
+      URL.revokeObjectURL(this.pdfPreviewBlobUrl);
+    }
+    this.pdfPreviewBlobUrl = null;
+    this.pdfPreviewSafeUrl = null;
+  }
+
+  downloadFromPreview(): void {
+    this.downloadServerPDF();
   }
 }

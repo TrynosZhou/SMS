@@ -1,173 +1,267 @@
 <div class="ul-page" id="user-log-export-container">
-  <div class="ul-alert" *ngIf="error" role="alert">{{ error }}</div>
+  <div class="ul-toast-stack" *ngIf="error">
+    <div class="ul-toast ul-toast--error" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="ul-toast__dismiss" (click)="clearAlert()" aria-label="Dismiss">×</button>
+    </div>
+  </div>
 
-  <header class="ul-header">
-    <div class="ul-header__icon" aria-hidden="true">🕐</div>
-    <div>
-      <h1 class="ul-header__title">Audit Logs</h1>
-      <p class="ul-header__subtitle">View and filter system audit logs for staff login sessions and module activity.</p>
+  <header class="ul-hero">
+    <div class="ul-hero__main">
+      <div class="ul-hero-left">
+        <span class="ul-hero-icon" aria-hidden="true">🕐</span>
+        <div>
+          <span class="ul-hero-eyebrow">System Admin</span>
+          <h1>Activity Log</h1>
+          <p class="ul-hero-sub">Track staff login sessions, session duration, modules accessed, and sign-out activity across the system.</p>
+        </div>
+      </div>
+      <aside class="ul-hero-aside">
+        <span class="ul-hero-badge">{{ total }} {{ total === 1 ? 'event' : 'events' }}</span>
+        <span class="ul-hero-badge ul-hero-badge--muted" *ngIf="hasActiveFilters()">Filtered</span>
+      </aside>
+      <div class="ul-hero__actions">
+        <button type="button" class="ul-hero-refresh" (click)="load()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <button type="button" class="ul-hero-btn ul-hero-btn--white" (click)="exportCSV()" [disabled]="!sessions.length">CSV</button>
+        <button type="button" class="ul-hero-btn ul-hero-btn--white" (click)="previewPdf()" [disabled]="!sessions.length || previewLoading">
+          {{ previewLoading ? 'Loading…' : 'Preview' }}
+        </button>
+        <button type="button" class="ul-hero-btn ul-hero-btn--white" (click)="downloadServerPDF()" [disabled]="!sessions.length">PDF</button>
+      </div>
+    </div>
+
+    <nav class="ul-cross-links" aria-label="Related admin pages">
+      <a routerLink="/user-management">User management</a>
+      <a routerLink="/admin/manage-accounts">Advanced accounts</a>
+      <a routerLink="/settings">Settings</a>
+    </nav>
+
+    <div class="ul-hero-stats" *ngIf="!loading">
+      <article class="ul-stat">
+        <span class="ul-stat__value">{{ dashboardStats.total }}</span>
+        <span class="ul-stat__label">Total events</span>
+      </article>
+      <article class="ul-stat">
+        <span class="ul-stat__value">{{ dashboardStats.showing }}</span>
+        <span class="ul-stat__label">This page</span>
+      </article>
+      <article class="ul-stat ul-stat--mint">
+        <span class="ul-stat__value">{{ dashboardStats.active }}</span>
+        <span class="ul-stat__label">Active sessions</span>
+      </article>
+      <article class="ul-stat ul-stat--slate">
+        <span class="ul-stat__value">{{ dashboardStats.loggedOut }}</span>
+        <span class="ul-stat__label">Logged out</span>
+      </article>
+    </div>
+    <div class="ul-hero-stats ul-hero-stats--skeleton" *ngIf="loading">
+      <div class="ul-skeleton" *ngFor="let i of [1,2,3,4]"></div>
     </div>
   </header>
 
-  <section class="ul-card">
-    <div class="ul-filters">
-      <div class="ul-filters__title">
-        <span class="ul-filters__funnel" aria-hidden="true">🔽</span>
-        <span>Filters</span>
+  <section class="ul-panel ul-panel--filters">
+    <div class="ul-panel__head ul-panel__head--row">
+      <div>
+        <h2 class="ul-panel__title">Search &amp; filters</h2>
+        <p class="ul-panel__intro">Narrow sessions by status, role, user, or date range.</p>
       </div>
-
-      <div class="ul-filters__grid">
-        <div class="ul-field">
-          <label class="ul-field__label" for="ul-action">ACTION</label>
-          <select id="ul-action" class="ul-field__control" [(ngModel)]="action" (change)="onFilterChange()">
-            <option value="all">All Actions</option>
-            <option value="active">Active Session</option>
-            <option value="logged_out">Logged Out</option>
-          </select>
-        </div>
-
-        <div class="ul-field">
-          <label class="ul-field__label" for="ul-entity-type">ENTITY TYPE</label>
-          <select id="ul-entity-type" class="ul-field__control" [(ngModel)]="role" (change)="onFilterChange()">
-            <option value="all">All Types</option>
-            <option value="admin">Admin</option>
-            <option value="superadmin">Super Admin</option>
-            <option value="accountant">Accountant</option>
-          </select>
-        </div>
-
-        <div class="ul-field">
-          <label class="ul-field__label" for="ul-entity-id">ENTITY ID</label>
-          <input
-            id="ul-entity-id"
-            type="text"
-            class="ul-field__control"
-            [(ngModel)]="entityId"
-            (ngModelChange)="onEntityIdChange($event)"
-            placeholder="" />
-        </div>
-
-        <div class="ul-field">
-          <label class="ul-field__label" for="ul-performed-by">PERFORMED BY</label>
-          <input
-            id="ul-performed-by"
-            type="text"
-            class="ul-field__control"
-            [(ngModel)]="performedBy"
-            (ngModelChange)="onPerformedByChange($event)"
-            placeholder="" />
-        </div>
-
-        <div class="ul-field">
-          <label class="ul-field__label" for="ul-start-date">START DATE</label>
-          <input
-            id="ul-start-date"
-            type="date"
-            class="ul-field__control"
-            [(ngModel)]="startDate"
-            (change)="onFilterChange()" />
-        </div>
-
-        <div class="ul-field">
-          <label class="ul-field__label" for="ul-end-date">END DATE</label>
-          <input
-            id="ul-end-date"
-            type="date"
-            class="ul-field__control"
-            [(ngModel)]="endDate"
-            (change)="onFilterChange()" />
-        </div>
-      </div>
-
-      <div class="ul-filters__footer">
-        <button type="button" class="ul-btn-clear" (click)="clearFilters()">
-          <span aria-hidden="true">✕</span> Clear Filters
-        </button>
-      </div>
+      <button type="button" class="ul-btn-clear" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
     </div>
 
-    <div class="ul-toolbar">
-      <p class="ul-events-count">
-        <strong>{{ total }}</strong> {{ total === 1 ? 'event' : 'events' }}
-      </p>
-      <div class="ul-toolbar__right">
-        <label class="ul-rows">
-          <span class="ul-rows__label">Rows</span>
-          <select class="ul-rows__select" [(ngModel)]="limit" (change)="onFilterChange()">
-            <option [ngValue]="10">10</option>
-            <option [ngValue]="20">20</option>
-            <option [ngValue]="50">50</option>
-            <option [ngValue]="100">100</option>
-          </select>
-        </label>
-        <button type="button" class="ul-btn-secondary" (click)="load()" [disabled]="loading">Refresh</button>
-        <button type="button" class="ul-btn-secondary" (click)="exportCSV()" [disabled]="!sessions.length">Export CSV</button>
-        <button type="button" class="ul-btn-secondary" (click)="downloadServerPDF()" [disabled]="!sessions.length">Export PDF</button>
+    <div class="ul-filters-row">
+      <div class="ul-search-wrap">
+        <span class="ul-search-icon" aria-hidden="true">🔍</span>
+        <input
+          type="search"
+          id="ul-performed-by"
+          class="ul-search-input"
+          [(ngModel)]="performedBy"
+          (ngModelChange)="onPerformedByChange($event)"
+          placeholder="Search username…"
+          aria-label="Search username" />
       </div>
+
+      <div class="ul-field">
+        <label for="ul-action">Status</label>
+        <select id="ul-action" class="ul-select" [(ngModel)]="action" (change)="onFilterChange()">
+          <option value="all">All sessions</option>
+          <option value="active">Active now</option>
+          <option value="logged_out">Logged out</option>
+        </select>
+      </div>
+
+      <div class="ul-field">
+        <label for="ul-entity-type">Role</label>
+        <select id="ul-entity-type" class="ul-select" [(ngModel)]="role" (change)="onFilterChange()">
+          <option value="all">All roles</option>
+          <option value="superadmin">Super Admin</option>
+          <option value="admin">Admin</option>
+          <option value="director">Director</option>
+          <option value="headmaster">Headmaster</option>
+          <option value="deputy_headmaster">Deputy Headmaster</option>
+          <option value="accountant">Accountant</option>
+          <option value="teacher">Teacher</option>
+        </select>
+      </div>
+
+      <div class="ul-field">
+        <label for="ul-entity-id">User ID</label>
+        <input
+          id="ul-entity-id"
+          type="text"
+          class="ul-input"
+          [(ngModel)]="entityId"
+          (ngModelChange)="onEntityIdChange($event)"
+          placeholder="Partial user ID…" />
+      </div>
+
+      <div class="ul-field">
+        <label for="ul-start-date">From</label>
+        <input id="ul-start-date" type="date" class="ul-input" [(ngModel)]="startDate" (change)="onFilterChange()" />
+      </div>
+
+      <div class="ul-field">
+        <label for="ul-end-date">To</label>
+        <input id="ul-end-date" type="date" class="ul-input" [(ngModel)]="endDate" (change)="onFilterChange()" />
+      </div>
+    </div>
+  </section>
+
+  <section class="ul-panel ul-panel--table">
+    <div class="ul-panel__head ul-panel__head--row">
+      <div>
+        <h2 class="ul-panel__title">Session history</h2>
+        <p class="ul-panel__intro">Sorted by {{ sortLabel }}. Click column headers to re-sort.</p>
+      </div>
+      <label class="ul-rows">
+        <span class="ul-rows__label">Rows</span>
+        <select class="ul-rows__select" [(ngModel)]="limit" (change)="onFilterChange()">
+          <option [ngValue]="10">10</option>
+          <option [ngValue]="20">20</option>
+          <option [ngValue]="50">50</option>
+          <option [ngValue]="100">100</option>
+        </select>
+      </label>
     </div>
 
     <div class="ul-table-zone" *ngIf="loading" aria-busy="true">
-      <div class="ul-loading">Loading audit logs…</div>
+      <div class="ul-loading">
+        <div class="ul-spinner"></div>
+        <p>Loading activity log…</p>
+      </div>
     </div>
 
     <div class="ul-table-zone" *ngIf="!loading && sessions.length === 0">
       <div class="ul-empty">
         <span class="ul-empty__icon" aria-hidden="true">📋</span>
-        <p>No audit events match your filters.</p>
+        <h3>No sessions found</h3>
+        <p>Try adjusting your filters or date range.</p>
+        <button type="button" class="ul-btn ul-btn--outline" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
       </div>
     </div>
 
     <div class="ul-table-wrap" *ngIf="!loading && sessions.length > 0">
-      <table class="ul-table" id="user-log-table">
-        <thead>
-          <tr>
-            <th (click)="applySort('username')">User</th>
-            <th (click)="applySort('role')">Role</th>
-            <th (click)="applySort('loginAt')">Login Time</th>
-            <th (click)="applySort('lastActivityAt')">Last Activity</th>
-            <th (click)="applySort('logoutAt')">Logout Time</th>
-            <th (click)="applySort('timeSpentSeconds')">Duration</th>
-            <th>Modules</th>
-            <th (click)="applySort('sessionId')">Session ID</th>
-            <th (click)="applySort('ipAddress')">IP Address</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let s of sessions">
-            <td>
-              <span class="ul-user-cell">
-                {{ s.username || s.userId }}
-                <button type="button" class="ul-copy" (click)="copy(s.username || s.userId)">Copy</button>
-              </span>
-            </td>
-            <td>
-              <span class="ul-role" [class.admin]="s.role === 'admin'" [class.superadmin]="s.role === 'superadmin'" [class.accountant]="s.role === 'accountant'">
-                {{ s.role }}
-              </span>
-            </td>
-            <td>{{ s.loginAt | date:'medium' }}</td>
-            <td>{{ s.lastActivityAt ? (s.lastActivityAt | date:'medium') : '—' }}</td>
-            <td>
-              <span [class.ul-active]="!s.logoutAt">{{ s.logoutAt ? (s.logoutAt | date:'medium') : 'Active' }}</span>
-            </td>
-            <td>{{ (s.timeSpentSeconds || 0) / 60 | number:'1.0-0' }} min</td>
-            <td class="ul-modules">{{ s.modules || '—' }}</td>
-            <td>
-              <span class="ul-user-cell">
-                {{ s.sessionId || '—' }}
-                <button type="button" class="ul-copy" *ngIf="s.sessionId" (click)="copy(s.sessionId)">Copy</button>
-              </span>
-            </td>
-            <td>{{ s.ipAddress || '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="ul-table-scroll">
+        <table class="ul-table" id="user-log-table">
+          <thead>
+            <tr>
+              <th (click)="applySort('username')" [class.ul-th--active]="sortKey === 'username'">
+                User <span class="ul-sort">{{ sortIndicator('username') }}</span>
+              </th>
+              <th (click)="applySort('role')" [class.ul-th--active]="sortKey === 'role'">
+                Role <span class="ul-sort">{{ sortIndicator('role') }}</span>
+              </th>
+              <th>Status</th>
+              <th (click)="applySort('loginAt')" [class.ul-th--active]="sortKey === 'loginAt'">
+                Login <span class="ul-sort">{{ sortIndicator('loginAt') }}</span>
+              </th>
+              <th (click)="applySort('lastActivityAt')" [class.ul-th--active]="sortKey === 'lastActivityAt'">
+                Last activity <span class="ul-sort">{{ sortIndicator('lastActivityAt') }}</span>
+              </th>
+              <th (click)="applySort('logoutAt')" [class.ul-th--active]="sortKey === 'logoutAt'">
+                Logout <span class="ul-sort">{{ sortIndicator('logoutAt') }}</span>
+              </th>
+              <th (click)="applySort('timeSpentSeconds')" [class.ul-th--active]="sortKey === 'timeSpentSeconds'">
+                Duration <span class="ul-sort">{{ sortIndicator('timeSpentSeconds') }}</span>
+              </th>
+              <th>Modules</th>
+              <th (click)="applySort('sessionId')" [class.ul-th--active]="sortKey === 'sessionId'">
+                Session <span class="ul-sort">{{ sortIndicator('sessionId') }}</span>
+              </th>
+              <th (click)="applySort('ipAddress')" [class.ul-th--active]="sortKey === 'ipAddress'">
+                IP <span class="ul-sort">{{ sortIndicator('ipAddress') }}</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of sessions">
+              <td>
+                <div class="ul-user">
+                  <span class="ul-user__avatar">{{ getInitials(s.username || s.userId) }}</span>
+                  <div class="ul-user__meta">
+                    <span class="ul-user__name">{{ s.username || s.userId || '—' }}</span>
+                    <button type="button" class="ul-copy-btn" (click)="copy(s.username || s.userId)" title="Copy username">Copy</button>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="ul-role" [ngClass]="'ul-role--' + (s.role || 'default')">{{ formatRole(s.role) }}</span>
+              </td>
+              <td>
+                <span class="ul-status" [class.ul-status--active]="isSessionActive(s)" [class.ul-status--out]="!isSessionActive(s)">
+                  {{ isSessionActive(s) ? 'Active' : 'Logged out' }}
+                </span>
+              </td>
+              <td [title]="s.loginAt">{{ s.loginAt | date:'medium' }}</td>
+              <td [title]="s.lastActivityAt">{{ s.lastActivityAt ? (s.lastActivityAt | date:'medium') : '—' }}</td>
+              <td [title]="s.logoutAt">{{ s.logoutAt ? (s.logoutAt | date:'medium') : '—' }}</td>
+              <td>{{ formatDuration(s.timeSpentSeconds) }}</td>
+              <td>
+                <div class="ul-module-chips" *ngIf="parseModules(s.modules).length; else noModules">
+                  <span class="ul-module-chip" *ngFor="let m of parseModules(s.modules)">{{ m }}</span>
+                </div>
+                <ng-template #noModules>—</ng-template>
+              </td>
+              <td>
+                <div class="ul-session-id" *ngIf="s.sessionId; else noSession">
+                  <code>{{ truncateSessionId(s.sessionId) }}</code>
+                  <button type="button" class="ul-copy-btn" (click)="copy(s.sessionId)" title="Copy session ID">Copy</button>
+                </div>
+                <ng-template #noSession>—</ng-template>
+              </td>
+              <td>{{ s.ipAddress || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <div class="ul-pagination" *ngIf="total > limit">
-        <button type="button" class="ul-btn-secondary" (click)="onPageChange(false)" [disabled]="page <= 1">Previous</button>
-        <span>Page {{ page }} of {{ totalPages }}</span>
-        <button type="button" class="ul-btn-secondary" (click)="onPageChange(true)" [disabled]="page >= totalPages">Next</button>
+        <button type="button" class="ul-btn ul-btn--outline ul-btn--sm" (click)="onPageChange(false)" [disabled]="page <= 1">← Previous</button>
+        <span class="ul-pagination__info">Page {{ page }} of {{ totalPages }}</span>
+        <button type="button" class="ul-btn ul-btn--outline ul-btn--sm" (click)="onPageChange(true)" [disabled]="page >= totalPages">Next →</button>
       </div>
     </div>
   </section>
+</div>
+
+<div class="ul-pdf-overlay" *ngIf="pdfPreviewBlobUrl" (click)="closePdfPreview()">
+  <div class="ul-pdf-modal" (click)="$event.stopPropagation()">
+    <div class="ul-pdf-modal__header">
+      <span class="ul-pdf-modal__title">Activity log report preview</span>
+      <div class="ul-pdf-modal__actions">
+        <button type="button" class="ul-btn ul-btn--outline ul-btn--sm" (click)="downloadFromPreview()">Download PDF</button>
+        <button type="button" class="ul-btn ul-btn--outline ul-btn--sm ul-btn--close" (click)="closePdfPreview()">Close</button>
+      </div>
+    </div>
+    <div class="ul-pdf-modal__body">
+      <app-pdf-blob-viewer
+        *ngIf="pdfPreviewBlobUrl"
+        [blobUrl]="pdfPreviewBlobUrl"
+        [loadingExternal]="previewLoading"
+        title="User activity log PDF">
+      </app-pdf-blob-viewer>
+    </div>
+  </div>
 </div>
