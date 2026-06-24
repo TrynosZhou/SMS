@@ -58,7 +58,7 @@ export class StudentPortalComponent implements OnInit, OnDestroy {
   currencySymbol = '$';
 
   inlinePdf: SafeResourceUrl | null = null;
-  private pdfBlobUrl: string | null = null;
+  pdfBlobUrl: string | null = null;
   pdfLoadError = false;
   showPdfViewer = false;
 

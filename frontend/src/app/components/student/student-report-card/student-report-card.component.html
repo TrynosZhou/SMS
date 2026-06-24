@@ -178,14 +178,14 @@
       </div>
     </div>
     <div class="src-pdf-viewer-body pdf-preview-body">
-      <iframe
-        *ngIf="inlinePdf && !loading && !loadingPdf && !pdfLoadError"
-        [src]="inlinePdf"
-        class="src-pdf-viewer-frame pdf-iframe"
-        frameborder="0"
+      <app-pdf-blob-viewer
+        *ngIf="pdfBlobUrl && !loading && !pdfLoadError"
+        [blobUrl]="pdfBlobUrl"
+        [loadingExternal]="loadingPdf"
+        [reportCardMode]="true"
         title="Report card PDF preview">
-      </iframe>
-      <div class="src-pdf-viewer-loading" *ngIf="loading || loadingPdf">
+      </app-pdf-blob-viewer>
+      <div class="src-pdf-viewer-loading" *ngIf="loading || (loadingPdf && !pdfBlobUrl)">
         <div class="src-spinner src-spinner-light"></div>
         <p>{{ loading ? 'Loading report card…' : 'Generating PDF preview…' }}</p>
       </div>
@@ -194,7 +194,7 @@
         <p>Could not load the report card PDF.</p>
         <div class="src-pdf-error-actions">
           <button type="button" class="src-btn src-btn--secondary src-btn--sm" (click)="viewReport()">🔄 Retry</button>
-          <button type="button" class="src-btn src-btn--white src-btn--sm" (click)="downloadPDF()" [disabled]="!inlinePdf">
+          <button type="button" class="src-btn src-btn--white src-btn--sm" (click)="downloadPDF()" [disabled]="!pdfBlobUrl">
             ⬇️ Download Instead
           </button>
         </div>

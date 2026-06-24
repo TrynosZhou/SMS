@@ -7,7 +7,7 @@ export const PDF_REPORT_CARD_PREVIEW_ZOOM = 113;
 /** Viewport width at or below which mobile PDF settings apply. */
 export const PDF_PREVIEW_MOBILE_MAX_WIDTH_PX = 768;
 
-function isMobilePdfViewport(): boolean {
+export function isMobilePdfViewport(): boolean {
   if (typeof window === 'undefined') {
     return false;
   }

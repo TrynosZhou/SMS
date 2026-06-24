@@ -1,0 +1,37 @@
+<div class="pbv-root" [attr.aria-label]="title">
+  <div class="pbv-loading" *ngIf="showLoading">
+    <div class="pbv-spinner"></div>
+    <p>{{ rendering ? 'Rendering PDF preview…' : 'Loading PDF…' }}</p>
+  </div>
+
+  <div class="pbv-error" *ngIf="showError">
+    <span aria-hidden="true">⚠️</span>
+    <p>{{ renderError }}</p>
+    <button type="button" class="pbv-open-btn" *ngIf="blobUrl" (click)="openInBrowser()">
+      Open PDF in browser
+    </button>
+  </div>
+
+  <iframe
+    *ngIf="showContent && !useJsRenderer && safeIframeUrl"
+    [src]="safeIframeUrl"
+    class="pbv-iframe pdf-iframe"
+    frameborder="0"
+    [title]="title">
+  </iframe>
+
+  <div class="pbv-pages" *ngIf="showContent && useJsRenderer && pageImages.length">
+    <img
+      *ngFor="let page of pageImages; let i = index"
+      [src]="page"
+      class="pbv-page"
+      [alt]="title + ' — page ' + (i + 1)"
+      loading="lazy" />
+  </div>
+
+  <div class="pbv-mobile-actions" *ngIf="useJsRenderer && blobUrl && showContent">
+    <button type="button" class="pbv-open-btn pbv-open-btn--inline" (click)="openInBrowser()">
+      Open in browser
+    </button>
+  </div>
+</div>

@@ -55,7 +55,7 @@ export class StudentReportCardComponent implements OnInit, OnDestroy {
 
   // Inline PDF preview
   inlinePdf: SafeResourceUrl | null = null;
-  private pdfBlobUrl: string | null = null;
+  pdfBlobUrl: string | null = null;
   pdfLoadError = false;
   showPdfViewer = false;
 

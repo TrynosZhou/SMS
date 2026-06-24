@@ -100,6 +100,7 @@ import { PayrollProcessComponent } from './components/payroll/payroll-process/pa
 import { PayrollEntriesComponent } from './components/payroll/payroll-entries/payroll-entries.component';
 import { PayrollReportsComponent } from './components/payroll/payroll-reports/payroll-reports.component';
 import { LoanOverviewComponent } from './components/payroll/loan-overview/loan-overview.component';
+import { PdfBlobViewerComponent } from './components/shared/pdf-blob-viewer/pdf-blob-viewer.component';
 import { StudentPortalComponent } from './components/parent/student-portal/student-portal.component';
 import { ParentPortalComponent } from './components/student/parent-portal/parent-portal.component';
 import { DocEditorComponent } from './components/shared/doc-editor/doc-editor.component';
@@ -213,6 +214,7 @@ SendMessageComponent,
     TeacherInventoryRecordComponent,
     StudentInventoryPanelComponent,
     FeatureGateComponent,
+    PdfBlobViewerComponent,
     LicenseConfigComponent,
     AccessDeniedComponent,
     RbacManagementComponent,
