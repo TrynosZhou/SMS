@@ -36,6 +36,7 @@ export class ParentInboxComponent implements OnInit, OnDestroy {
   replySubject = '';
   replyBody = '';
   sending = false;
+  deletingId: string | null = null;
   attachments: File[] = [];
   isDragging = false;
 
@@ -395,6 +396,56 @@ export class ParentInboxComponent implements OnInit, OnDestroy {
 
   removeAttachment(i: number): void {
     this.attachments.splice(i, 1);
+  }
+
+  deleteMessage(msg: any, event?: Event): void {
+    event?.stopPropagation();
+    if (!msg?.id || this.deletingId) {
+      return;
+    }
+    const label = (msg.subject || 'this message').trim().slice(0, 80);
+    if (!window.confirm(`Permanently delete "${label}"? This cannot be undone.`)) {
+      return;
+    }
+
+    this.deletingId = msg.id;
+    this.error = '';
+    this.messageService
+      .deleteParentInboxMessage(msg.id)
+      .pipe(
+        timeout(this.requestTimeoutMs),
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.deletingId = null;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.allMessages = this.allMessages.filter((m) => m.id !== msg.id);
+          if (this.expandedId === msg.id) {
+            this.expandedId = null;
+          }
+          if (this.replyingForId === msg.id) {
+            this.cancelReply();
+          }
+          this.applyFilter();
+          this.syncUnreadBadge();
+          this.parentMessageNotifications.refresh().pipe(takeUntil(this.destroy$)).subscribe();
+          this.success = 'Message deleted permanently.';
+          setTimeout(() => {
+            this.success = '';
+            this.cdr.markForCheck();
+          }, 4000);
+        },
+        error: (err: any) => {
+          this.error = err?.error?.message || 'Failed to delete message.';
+          setTimeout(() => {
+            this.error = '';
+            this.cdr.markForCheck();
+          }, 5000);
+        },
+      });
   }
 
   getAttachments(message: any): { name: string; url: string; icon: string }[] {

@@ -62,6 +62,10 @@ export class MessageService {
     return this.http.post(`${this.apiUrl}/messages/parent/${messageId}/read`, {});
   }
 
+  deleteParentInboxMessage(messageId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/messages/parent/${messageId}`);
+  }
+
   sendParentMessage(recipient: 'admin' | 'accountant', subject: string, message: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/messages/parent/send`, {
       recipient,
@@ -110,6 +114,10 @@ export class MessageService {
 
   markIncomingUnread(id: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/messages/incoming/${id}/unread`, {});
+  }
+
+  deleteIncomingMessage(id: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/messages/incoming/${id}`);
   }
 
   replyToIncoming(id: string, subject: string, message: string, files: File[] = []): Observable<any> {

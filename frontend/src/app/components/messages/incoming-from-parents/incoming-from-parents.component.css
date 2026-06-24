@@ -776,6 +776,31 @@
 
 .mi-pin-btn:hover { opacity: 1; }
 
+.mi-delete-btn {
+  border: none;
+  background: transparent;
+  padding: 16px 14px;
+  font-size: 1.05rem;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s, background 0.15s;
+  align-self: flex-start;
+  line-height: 1;
+  border-radius: 8px;
+}
+
+.mi-delete-btn:hover:not(:disabled) {
+  opacity: 1;
+  background: #fee2e2;
+}
+
+.mi-delete-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.mi-icon-btn--danger:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
 .mi-pagination {
   display: flex;
   align-items: center;

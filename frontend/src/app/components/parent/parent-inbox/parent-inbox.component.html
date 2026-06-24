@@ -116,6 +116,15 @@
                 </div>
               </div>
               <div class="msg-right">
+                <button
+                  type="button"
+                  class="msg-delete-btn"
+                  (click)="deleteMessage(msg, $event)"
+                  [disabled]="deletingId === msg.id"
+                  title="Delete permanently"
+                  aria-label="Delete message permanently">
+                  🗑️
+                </button>
                 <span class="msg-date" [title]="formatDateFull(msg.createdAt)">{{ formatDate(msg.createdAt) }}</span>
                 <span class="att-badge" *ngIf="getAttachments(msg).length > 0">📎 {{ getAttachments(msg).length }}</span>
                 <span class="expand-icon">{{ expandedId === msg.id ? '▲' : '▼' }}</span>
@@ -148,6 +157,13 @@
 
               <div class="msg-actions" *ngIf="replyingForId !== msg.id">
                 <button type="button" class="reply-btn" (click)="openReply(msg); $event.stopPropagation()">↩ Reply</button>
+                <button
+                  type="button"
+                  class="delete-btn"
+                  (click)="deleteMessage(msg, $event)"
+                  [disabled]="deletingId === msg.id">
+                  🗑️ Delete
+                </button>
               </div>
 
               <div class="reply-form" *ngIf="replyingForId === msg.id" (click)="$event.stopPropagation()">

@@ -91,6 +91,9 @@
     <div class="mi-bulk-bar__actions">
       <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="bulkMarkRead()">✓ Mark read</button>
       <button type="button" class="mi-btn mi-btn--outline mi-btn--sm" (click)="bulkMarkUnread()">○ Mark unread</button>
+      <button type="button" class="mi-btn mi-btn--danger mi-btn--sm" (click)="bulkDelete()" [disabled]="bulkDeleting">
+        🗑️ Delete
+      </button>
       <button type="button" class="mi-btn mi-btn--ghost mi-btn--sm" (click)="clearSelection()">Clear</button>
     </div>
   </section>
@@ -213,6 +216,15 @@
           <button type="button" class="mi-pin-btn" (click)="togglePin(m); $event.stopPropagation()" [title]="isPinned(m) ? 'Unpin' : 'Pin'">
             {{ isPinned(m) ? '⭐' : '☆' }}
           </button>
+          <button
+            type="button"
+            class="mi-delete-btn"
+            (click)="deleteMessage(m, $event)"
+            [disabled]="deletingId === m.id || bulkDeleting"
+            title="Delete permanently"
+            aria-label="Delete message permanently">
+            🗑️
+          </button>
         </article>
       </div>
 
@@ -258,6 +270,15 @@
           <button type="button" class="mi-icon-btn" (click)="printSelected()" title="Print">🖨️</button>
           <button type="button" class="mi-icon-btn" (click)="copySelected()" title="Copy">📋</button>
           <button type="button" class="mi-icon-btn" (click)="downloadSelected()" title="Download">📄</button>
+          <button
+            type="button"
+            class="mi-icon-btn mi-icon-btn--danger"
+            (click)="deleteMessage(selected)"
+            [disabled]="deletingId === selected.id || bulkDeleting"
+            title="Delete permanently"
+            aria-label="Delete message permanently">
+            🗑️
+          </button>
         </div>
       </div>
 
@@ -287,6 +308,13 @@
       <div class="mi-detail-foot">
         <button type="button" class="mi-btn mi-btn--outline" (click)="selected.isRead ? markUnread() : markRead()">
           {{ selected.isRead ? '○ Mark unread' : '✓ Mark read' }}
+        </button>
+        <button
+          type="button"
+          class="mi-btn mi-btn--danger"
+          (click)="deleteMessage(selected)"
+          [disabled]="deletingId === selected.id || bulkDeleting">
+          🗑️ Delete permanently
         </button>
         <button type="button" class="mi-btn mi-btn--primary" (click)="toggleReply()">
           ↩️ {{ replying ? 'Cancel reply' : 'Reply' }}

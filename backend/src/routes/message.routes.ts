@@ -15,6 +15,8 @@ import {
   getIncomingFromParentsUnreadCount,
   markIncomingRead,
   markIncomingUnread,
+  deleteParentInboxMessage,
+  deleteIncomingMessage,
   replyToIncomingMessage,
   sendMessageToSpecificParents,
   getDraftMessages,
@@ -80,6 +82,7 @@ router.post('/send', optionalMultipartArray('attachments', 5), sendMessageToSpec
 router.get('/parent', getParentMessages);
 router.get('/parent/unread-count', getParentInboxUnreadCount);
 router.post('/parent/:id/read', markParentMessageRead);
+router.delete('/parent/:id', deleteParentInboxMessage);
 router.get('/staff', getStaffMessages);
 router.post('/parent/send', optionalMultipartArray('attachments', 5), sendParentMessage);
 router.get('/parent/outbox', getParentOutbox);
@@ -88,6 +91,7 @@ router.get('/incoming/parents/unread-count', getIncomingFromParentsUnreadCount);
 router.get('/incoming/parents', getIncomingFromParents);
 router.post('/incoming/:id/read', markIncomingRead);
 router.post('/incoming/:id/unread', markIncomingUnread);
+router.delete('/incoming/:id', deleteIncomingMessage);
 router.post('/incoming/:id/reply', optionalMultipartArray('attachments', 5), replyToIncomingMessage);
 router.get('/drafts', getDraftMessages);
 router.post('/drafts/:id/resend', resendDraftMessage);

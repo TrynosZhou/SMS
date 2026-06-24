@@ -22,6 +22,8 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
   success = '';
   detailConfirmation: { type: 'success' | 'error'; title: string; message: string } | null = null;
   sendingReply = false;
+  deletingId: string | null = null;
+  bulkDeleting = false;
   query = '';
   roleBox: 'admin' | 'accountant' = 'admin';
   replying = false;
@@ -612,6 +614,111 @@ export class IncomingFromParentsComponent implements OnInit, OnDestroy {
       });
     };
     run(0);
+  }
+
+  deleteMessage(m: any, event?: Event): void {
+    event?.stopPropagation();
+    if (!m?.id || this.deletingId || this.bulkDeleting) {
+      return;
+    }
+    const label = (m.subject || 'this message').trim().slice(0, 80);
+    if (!window.confirm(`Permanently delete "${label}"? This cannot be undone.`)) {
+      return;
+    }
+
+    this.deletingId = m.id;
+    this.error = '';
+    this.messageService.deleteIncomingMessage(m.id).subscribe({
+      next: () => {
+        this.removeMessageFromState(m.id);
+        this.success = 'Message deleted permanently.';
+        this.incomingMessageNotifications.refresh().subscribe();
+        setTimeout(() => {
+          this.success = '';
+          this.cdr.markForCheck();
+        }, 4000);
+      },
+      error: (err: any) => {
+        this.error = err?.error?.message || 'Failed to delete message.';
+        setTimeout(() => {
+          this.error = '';
+          this.cdr.markForCheck();
+        }, 5000);
+      },
+      complete: () => {
+        this.deletingId = null;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  bulkDelete(): void {
+    const ids = Array.from(this.selectedIds);
+    if (ids.length === 0 || this.bulkDeleting) {
+      return;
+    }
+    if (!window.confirm(`Permanently delete ${ids.length} selected message(s)? This cannot be undone.`)) {
+      return;
+    }
+
+    this.bulkDeleting = true;
+    this.error = '';
+    let completed = 0;
+    let failed = 0;
+
+    const run = (index: number) => {
+      if (index >= ids.length) {
+        this.bulkDeleting = false;
+        this.clearSelection();
+        this.applyFilterAndPaginate();
+        this.incomingMessageNotifications.refresh().subscribe();
+        if (failed > 0) {
+          this.error = `${failed} message(s) could not be deleted.`;
+          setTimeout(() => {
+            this.error = '';
+            this.cdr.markForCheck();
+          }, 5000);
+        }
+        if (completed > 0) {
+          this.success = `${completed} message(s) deleted permanently.`;
+          setTimeout(() => {
+            this.success = '';
+            this.cdr.markForCheck();
+          }, 4000);
+        }
+        this.cdr.markForCheck();
+        return;
+      }
+
+      const id = ids[index];
+      this.messageService.deleteIncomingMessage(id).subscribe({
+        next: () => {
+          completed++;
+          this.removeMessageFromState(id);
+          run(index + 1);
+        },
+        error: () => {
+          failed++;
+          run(index + 1);
+        }
+      });
+    };
+
+    run(0);
+  }
+
+  private removeMessageFromState(messageId: string): void {
+    this.messages = this.messages.filter(m => m.id !== messageId);
+    this.pinnedIds.delete(messageId);
+    this.selectedIds.delete(messageId);
+    localStorage.setItem(this.pinnedStorageKey, JSON.stringify(Array.from(this.pinnedIds)));
+    if (this.selected?.id === messageId) {
+      this.selected = null;
+      this.replying = false;
+      this.detailConfirmation = null;
+    }
+    this.applyFilterAndPaginate();
+    this.cdr.markForCheck();
   }
 
   clearFilters(): void {

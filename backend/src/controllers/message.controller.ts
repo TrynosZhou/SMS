@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Response } from 'express';
 import { In, IsNull, Not } from 'typeorm';
 import { AppDataSource } from '../config/database';
@@ -16,6 +18,43 @@ import {
   resolveStaffParentInboxFromQuery,
   staffInboxMatchesParentMessage,
 } from '../utils/parentMessageRecipients';
+
+const PARENT_INBOX_RECIPIENTS = ['parent', 'all', 'parents'];
+
+function removeMessageAttachmentFiles(attachmentsJson: string | null | undefined): void {
+  if (!attachmentsJson) {
+    return;
+  }
+  try {
+    const parsed = JSON.parse(attachmentsJson);
+    const attachmentPaths = Array.isArray(parsed) ? parsed : [];
+    for (const item of attachmentPaths) {
+      const rel = String(item).replace(/^\//, '');
+      if (!rel.startsWith('uploads/')) {
+        continue;
+      }
+      const fullPath = path.join(process.cwd(), rel);
+      try {
+        if (fs.existsSync(fullPath)) {
+          fs.unlinkSync(fullPath);
+        }
+      } catch {
+        // Best-effort file cleanup
+      }
+    }
+  } catch {
+    // Ignore malformed attachment metadata
+  }
+}
+
+function isParentInboxMessage(msg: Message): boolean {
+  const recipient = String(msg.recipients || '').trim().toLowerCase();
+  return PARENT_INBOX_RECIPIENTS.includes(recipient);
+}
+
+function isIncomingParentMessage(msg: Message): boolean {
+  return !!msg.parentId && !!msg.senderId && !isParentInboxMessage(msg);
+}
 
 async function resolveStudentForMessage(req: AuthRequest): Promise<Student | null> {
   if (!req.user) return null;
@@ -946,6 +985,68 @@ export const markIncomingUnread = async (req: AuthRequest, res: Response) => {
     await repo.save(msg);
     res.json({ success: true });
   } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const deleteParentInboxMessage = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    if (isPreviewingRole(req, UserRole.PARENT)) {
+      return res.status(403).json({ message: 'Preview mode cannot delete messages.' });
+    }
+
+    const ctx = await resolveParentForMessage(req);
+    if (!ctx) {
+      return res.status(403).json({ message: 'Access denied. Parent role required.' });
+    }
+
+    const { id } = req.params as { id: string };
+    const messageRepository = AppDataSource.getRepository(Message);
+    const msg = await messageRepository.findOne({ where: { id, parentId: ctx.parent.id } });
+    if (!msg || !isParentInboxMessage(msg)) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    removeMessageAttachmentFiles(msg.attachments);
+    await messageRepository.remove(msg);
+    res.json({ success: true, message: 'Message deleted permanently.' });
+  } catch (error: any) {
+    console.error('Error deleting parent inbox message:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
+  }
+};
+
+export const deleteIncomingMessage = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const user = req.user;
+    if (!user || !canAccessStaffMessages(user.role)) {
+      return res.status(403).json({ message: 'Access denied. Staff role required.' });
+    }
+
+    const { id } = req.params as { id: string };
+    const inboxBox = resolveStaffParentInboxFromQuery(user.role, req.query.box as string | undefined);
+    const messageRepository = AppDataSource.getRepository(Message);
+    const msg = await messageRepository.findOne({ where: { id } });
+    if (!msg || !isIncomingParentMessage(msg)) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+    if (!staffInboxMatchesParentMessage(msg.recipients, inboxBox)) {
+      return res.status(403).json({ message: 'You do not have permission to delete this message.' });
+    }
+
+    removeMessageAttachmentFiles(msg.attachments);
+    await messageRepository.remove(msg);
+    res.json({ success: true, message: 'Message deleted permanently.' });
+  } catch (error: any) {
+    console.error('Error deleting incoming message:', error);
     res.status(500).json({ message: 'Server error', error: error.message || 'Unknown error' });
   }
 };
