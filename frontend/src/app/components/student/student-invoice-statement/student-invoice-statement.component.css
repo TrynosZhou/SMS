@@ -507,6 +507,12 @@
   background: #525659;
 }
 
+.sis-pdf-viewer-body app-pdf-blob-viewer {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
 .sis-pdf-viewer-frame {
   position: absolute;
   inset: 0;

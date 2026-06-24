@@ -43,7 +43,7 @@ export class StudentInvoiceStatementComponent implements OnInit, OnDestroy {
   showPdfViewer = false;
   modalInvoice: any = null;
   modalSafePdfUrl: SafeResourceUrl | null = null;
-  private modalPdfBlobUrl: string | null = null;
+  modalPdfBlobUrl: string | null = null;
   modalInvoiceNumber = '';
   modalInvoiceId = '';
   modalLoadingPdf = false;

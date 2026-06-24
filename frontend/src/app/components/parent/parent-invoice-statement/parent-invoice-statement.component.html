@@ -54,21 +54,19 @@
 
   <section
     class="pis-pdf-panel pdf-inline-preview-maximized"
-    *ngIf="selectedStudent && (loadingPdf || inlinePdf || pdfError || selectedInvoice)">
+    *ngIf="selectedStudent && (loadingPdf || pdfBlobUrl || pdfError || selectedInvoice)">
 
-    <div class="pis-pdf-loading" *ngIf="loadingPdf">
+    <div class="pis-pdf-loading" *ngIf="loadingPdf && !pdfBlobUrl">
       <div class="pis-spinner dark"></div>
       <p>Loading invoice statement…</p>
     </div>
 
-    <iframe
-      *ngIf="inlinePdf && !loadingPdf && !pdfError"
-      [src]="inlinePdf"
-      class="pis-pdf-frame"
-      frameborder="0"
-      title="Invoice statement PDF"
-      [@fadeIn]>
-    </iframe>
+    <app-pdf-blob-viewer
+      *ngIf="pdfBlobUrl && !pdfError"
+      [blobUrl]="pdfBlobUrl"
+      [loadingExternal]="loadingPdf"
+      title="Invoice statement PDF">
+    </app-pdf-blob-viewer>
 
     <div class="pis-pdf-error" *ngIf="pdfError && !loadingPdf">
       <span>⚠️</span>

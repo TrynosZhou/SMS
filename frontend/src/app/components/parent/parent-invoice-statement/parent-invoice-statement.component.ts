@@ -34,7 +34,7 @@ export class ParentInvoiceStatementComponent implements OnInit, OnDestroy {
   loadingInvoices = false;
 
   inlinePdf: SafeResourceUrl | null = null;
-  private pdfBlobUrl: string | null = null;
+  pdfBlobUrl: string | null = null;
   loadingPdf = false;
   pdfError = false;
 

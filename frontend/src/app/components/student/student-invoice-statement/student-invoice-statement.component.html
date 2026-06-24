@@ -222,24 +222,25 @@
         </button>
         <button
           type="button"
-          class="sis-btn sis-btn-sm sis-btn-outline sis-pdf-viewer-close"
+          class="sis-btn sis-btn-sm sis-btn-primary"
           (click)="closePdfViewer()">
           ✕ Close
         </button>
       </div>
     </div>
     <div class="sis-pdf-viewer-body pdf-preview-body">
-      <iframe
-        *ngIf="modalSafePdfUrl && !modalLoadingPdf && !modalPdfError"
-        [src]="modalSafePdfUrl"
-        class="sis-pdf-viewer-frame pdf-iframe"
-        frameborder="0"
-        title="Invoice statement PDF preview">
-      </iframe>
-      <div class="sis-pdf-viewer-loading pdf-loading" *ngIf="modalLoadingPdf">
+      <div class="sis-pdf-viewer-loading pdf-loading" *ngIf="modalLoadingPdf && !modalPdfBlobUrl">
         <div class="sis-spinner dark"></div>
         <p>Loading invoice statement PDF…</p>
       </div>
+
+      <app-pdf-blob-viewer
+        *ngIf="modalPdfBlobUrl && !modalPdfError"
+        [blobUrl]="modalPdfBlobUrl"
+        [loadingExternal]="modalLoadingPdf"
+        title="Invoice statement PDF preview">
+      </app-pdf-blob-viewer>
+
       <div class="sis-pdf-viewer-error" *ngIf="modalPdfError && !modalLoadingPdf">
         <span>⚠️</span>
         <p>Could not load the invoice statement PDF.</p>
