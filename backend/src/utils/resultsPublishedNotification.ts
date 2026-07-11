@@ -9,6 +9,7 @@ import { Teacher } from '../entities/Teacher';
 import { Class } from '../entities/Class';
 import {
   isWhatsAppConfigured,
+  isWhatsAppDryRun,
   normalizeWhatsAppRecipient,
   sendWhatsAppMessage,
   sleep,
@@ -17,11 +18,19 @@ import {
 
 export interface ResultsNotificationSummary {
   enabled: boolean;
+  configured: boolean;
+  dryRun: boolean;
   attempted: number;
   sent: number;
   failed: number;
   skipped: number;
   recipients: number;
+  /** Parents successfully notified via WhatsApp */
+  parentsNotified: number;
+  /** Parents with a valid phone that were attempted */
+  parentsAttempted: number;
+  parentsFailed: number;
+  parentsSkipped: number;
 }
 
 type RecipientKind = 'parent' | 'student' | 'teacher' | 'administrator';
@@ -213,6 +222,7 @@ async function collectRecipients(
     addRecipient(recipients, phone, 'administrator');
   }
 
+  return recipients;
 }
 
 /**
@@ -225,11 +235,17 @@ export async function notifyResultsPublished(
 ): Promise<ResultsNotificationSummary> {
   const summary: ResultsNotificationSummary = {
     enabled: isResultsNotificationEnabled(settings),
+    configured: isWhatsAppConfigured(),
+    dryRun: isWhatsAppDryRun() || !isWhatsAppConfigured(),
     attempted: 0,
     sent: 0,
     failed: 0,
     skipped: 0,
-    recipients: 0
+    recipients: 0,
+    parentsNotified: 0,
+    parentsAttempted: 0,
+    parentsFailed: 0,
+    parentsSkipped: 0
   };
 
   if (!summary.enabled) {
@@ -264,16 +280,22 @@ export async function notifyResultsPublished(
   const delay = whatsAppSendDelayMs();
 
   for (const entry of recipientMap.values()) {
+    const isParent = entry.kinds.has('parent');
     summary.attempted += 1;
+    if (isParent) summary.parentsAttempted += 1;
+
     const message = buildMessage(schoolName, examType, term, classNames, entry);
     const result = await sendWhatsAppMessage(entry.phone, message);
 
     if (result.skipped) {
       summary.skipped += 1;
+      if (isParent) summary.parentsSkipped += 1;
     } else if (result.ok) {
       summary.sent += 1;
+      if (isParent) summary.parentsNotified += 1;
     } else {
       summary.failed += 1;
+      if (isParent) summary.parentsFailed += 1;
       console.warn(`[WhatsApp] Failed to notify ${entry.phone}: ${result.error}`);
     }
 
@@ -284,25 +306,31 @@ export async function notifyResultsPublished(
 
   console.info(
     `[Results notification] ${examTypeLabel(examType)} / ${term}: ` +
-      `${summary.sent} sent, ${summary.failed} failed, ${summary.skipped} skipped (dry-run), ` +
+      `${summary.sent} sent (${summary.parentsNotified} parents), ` +
+      `${summary.failed} failed, ${summary.skipped} skipped (dry-run), ` +
       `${summary.recipients} recipients`
   );
 
   return summary;
 }
 
+/**
+ * Await WhatsApp notifications and return the summary (used by publish API).
+ */
+export async function sendResultsPublishedNotifications(
+  publishedExams: Exam[]
+): Promise<ResultsNotificationSummary> {
+  if (!AppDataSource.isInitialized) {
+    await AppDataSource.initialize();
+  }
+  const settingsRepo = AppDataSource.getRepository(Settings);
+  const settings = await settingsRepo.find({ take: 1, order: { createdAt: 'ASC' } }).then((rows) => rows[0] || null);
+  return notifyResultsPublished(publishedExams, settings);
+}
+
 /** Fire-and-forget wrapper — does not block the publish API response. */
 export function queueResultsPublishedNotifications(publishedExams: Exam[]): void {
-  void (async () => {
-    try {
-      if (!AppDataSource.isInitialized) {
-        await AppDataSource.initialize();
-      }
-      const settingsRepo = AppDataSource.getRepository(Settings);
-      const settings = await settingsRepo.find({ take: 1, order: { createdAt: 'ASC' } }).then((rows) => rows[0] || null);
-      await notifyResultsPublished(publishedExams, settings);
-    } catch (err) {
-      console.error('[Results notification] Unexpected error:', err);
-    }
-  })();
+  void sendResultsPublishedNotifications(publishedExams).catch((err) => {
+    console.error('[Results notification] Unexpected error:', err);
+  });
 }

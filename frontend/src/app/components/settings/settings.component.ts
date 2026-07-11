@@ -271,6 +271,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
   settingsLastSaved: Date | null = null;
   error = '';
   success = '';
+  notificationSaveSuccess = '';
+  notificationSaveError = '';
   newFeeName = '';
   newFeeAmount = 0;
   // Promotion Rules (database-backed)
@@ -373,9 +375,17 @@ export class SettingsComponent implements OnInit, OnDestroy {
   clearAlert(type: 'success' | 'error'): void {
     if (type === 'success') {
       this.success = '';
+      this.notificationSaveSuccess = '';
     } else {
       this.error = '';
+      this.notificationSaveError = '';
     }
+    this.cdr.markForCheck();
+  }
+
+  clearNotificationSaveAlert(): void {
+    this.notificationSaveSuccess = '';
+    this.notificationSaveError = '';
     this.cdr.markForCheck();
   }
 
@@ -1152,8 +1162,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
     if (this.isDemoUser()) {
       this.error = 'Demo accounts cannot modify system settings. This is a demo environment.';
-      setTimeout(() => this.error = '', 5000);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      this.notificationSaveError = this.error;
+      this.notificationSaveSuccess = '';
+      setTimeout(() => {
+        this.error = '';
+        this.notificationSaveError = '';
+        this.cdr.detectChanges();
+      }, 5000);
+      this.scrollToNotificationSaveAlert();
       return;
     }
 
@@ -1165,24 +1181,50 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.savingNotifications = true;
     this.error = '';
     this.success = '';
+    this.notificationSaveSuccess = '';
+    this.notificationSaveError = '';
 
     const payload = { notificationSettings: this.settings.notificationSettings };
     this.settingsService.updateSettings(payload).subscribe({
       next: (response: any) => {
-        this.success = response?.message || 'Notification settings saved successfully.';
+        const msg = response?.message || 'Notification settings saved successfully.';
+        this.success = msg;
+        this.notificationSaveSuccess = msg;
+        this.notificationSaveError = '';
         this.markSettingsSaved();
         this.savingNotifications = false;
         this.cdr.detectChanges();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        setTimeout(() => { this.success = ''; this.cdr.detectChanges(); }, 5000);
+        this.scrollToNotificationSaveAlert();
+        setTimeout(() => {
+          this.success = '';
+          this.notificationSaveSuccess = '';
+          this.cdr.detectChanges();
+        }, 6000);
       },
       error: (err: any) => {
-        this.error = err?.error?.message || 'Failed to save notification settings.';
+        const msg = err?.error?.message || 'Failed to save notification settings.';
+        this.error = msg;
+        this.notificationSaveError = msg;
+        this.notificationSaveSuccess = '';
         this.savingNotifications = false;
         this.cdr.detectChanges();
-        setTimeout(() => this.error = '', 5000);
+        this.scrollToNotificationSaveAlert();
+        setTimeout(() => {
+          this.error = '';
+          this.notificationSaveError = '';
+          this.cdr.detectChanges();
+        }, 6000);
       }
     });
+  }
+
+  private scrollToNotificationSaveAlert(): void {
+    setTimeout(() => {
+      const el = document.querySelector('.notification-save-alert-wrap') as HTMLElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 50);
   }
 
   private ensureNotificationSettings(): void {

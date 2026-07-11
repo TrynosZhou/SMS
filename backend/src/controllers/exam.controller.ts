@@ -31,7 +31,7 @@ import {
   findInvoiceForReportCardAccess,
   getConfiguredDeskFee
 } from '../utils/invoiceFeesBalance';
-import { queueResultsPublishedNotifications } from '../utils/resultsPublishedNotification';
+import { sendResultsPublishedNotifications, queueResultsPublishedNotifications } from '../utils/resultsPublishedNotification';
 
 const ALLOWED_RANKING_SUBJECTS = new Set<string>(['Mathematics', 'Science', 'English']);
 
@@ -984,15 +984,60 @@ export const publishExamByType = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    let whatsappSummary = null;
     if (newlyPublished.length > 0) {
-      queueResultsPublishedNotifications(newlyPublished);
+      try {
+        whatsappSummary = await sendResultsPublishedNotifications(newlyPublished);
+      } catch (notifyErr: any) {
+        console.error('[publishExamByType] WhatsApp notification error:', notifyErr);
+        whatsappSummary = {
+          enabled: true,
+          configured: false,
+          dryRun: true,
+          attempted: 0,
+          sent: 0,
+          failed: 0,
+          skipped: 0,
+          recipients: 0,
+          parentsNotified: 0,
+          parentsAttempted: 0,
+          parentsFailed: 0,
+          parentsSkipped: 0,
+          error: notifyErr?.message || 'Notification failed'
+        };
+      }
     }
 
     res.json({ 
       message: `Exam results published successfully. ${publishedCount} exam(s) published across all classes. Results are now visible to all users.`,
       publishedCount: publishedCount,
       totalExams: exams.length,
-      notificationsQueued: newlyPublished.length > 0
+      notificationsQueued: newlyPublished.length > 0,
+      whatsapp: whatsappSummary
+        ? {
+            enabled: whatsappSummary.enabled,
+            configured: whatsappSummary.configured,
+            dryRun: whatsappSummary.dryRun,
+            parentsNotified: whatsappSummary.parentsNotified,
+            parentsAttempted: whatsappSummary.parentsAttempted,
+            parentsFailed: whatsappSummary.parentsFailed,
+            parentsSkipped: whatsappSummary.parentsSkipped,
+            totalSent: whatsappSummary.sent,
+            totalFailed: whatsappSummary.failed,
+            totalRecipients: whatsappSummary.recipients
+          }
+        : {
+            enabled: false,
+            configured: false,
+            dryRun: true,
+            parentsNotified: 0,
+            parentsAttempted: 0,
+            parentsFailed: 0,
+            parentsSkipped: 0,
+            totalSent: 0,
+            totalFailed: 0,
+            totalRecipients: 0
+          }
     });
   } catch (error: any) {
     console.error('Error publishing exams by type:', error);

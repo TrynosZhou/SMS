@@ -1,13 +1,13 @@
 <div class="pr-page">
-  <div class="pr-toast-stack" *ngIf="success || error">
-    <div class="pr-toast pr-toast--success" *ngIf="success" role="status">
-      <span>{{ success }}</span>
-      <button type="button" class="pr-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
-    <div class="pr-toast pr-toast--error" *ngIf="error" role="alert">
-      <span>{{ error }}</span>
-      <button type="button" class="pr-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
-    </div>
+  <div class="pr-alert pr-alert--success" *ngIf="success" role="status">
+    <span class="pr-alert__icon" aria-hidden="true">✓</span>
+    <span class="pr-alert__text">{{ success }}</span>
+    <button type="button" class="pr-alert__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
+  </div>
+  <div class="pr-alert pr-alert--error" *ngIf="error" role="alert">
+    <span class="pr-alert__icon" aria-hidden="true">✗</span>
+    <span class="pr-alert__text">{{ error }}</span>
+    <button type="button" class="pr-alert__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
   </div>
 
   <header class="pr-hero">
@@ -161,7 +161,7 @@
     </div>
   </section>
 
-  <section class="pr-panel pr-panel--actions" *ngIf="canManage && hasSelection && stats.totalExams > 0 && !loadingPreview">
+  <section class="pr-panel pr-panel--actions" *ngIf="canManage">
     <div class="pr-panel__head">
       <h2 class="pr-panel__title">Publish actions</h2>
       <p class="pr-panel__intro">Publishing locks marks for editing and makes results visible. Unpublishing reverses that for the selected exam type and term.</p>
@@ -180,7 +180,7 @@
           type="button"
           class="pr-btn pr-btn--publish"
           (click)="openConfirm('publish')"
-          [disabled]="publishing || unpublishing || stats.draft === 0">
+          [disabled]="!canPublish">
           <span *ngIf="!publishing">Publish {{ stats.draft || 0 }} draft exam(s)</span>
           <span *ngIf="publishing" class="pr-btn-loading"><span class="pr-spinner"></span> Publishing…</span>
         </button>
@@ -198,7 +198,7 @@
           type="button"
           class="pr-btn pr-btn--unpublish"
           (click)="openConfirm('unpublish')"
-          [disabled]="publishing || unpublishing || stats.published === 0">
+          [disabled]="!canUnpublish">
           <span *ngIf="!unpublishing">Unpublish {{ stats.published || 0 }} exam(s)</span>
           <span *ngIf="unpublishing" class="pr-btn-loading"><span class="pr-spinner"></span> Unpublishing…</span>
         </button>
@@ -310,6 +310,7 @@
     <ul class="pr-info-list">
       <li>Results appear on report cards and portals for students and parents.</li>
       <li>Teachers can view results; marks and remarks become read-only.</li>
+      <li>If WhatsApp notifications are enabled, parents with valid numbers are notified — the success message shows how many were reached.</li>
       <li>Unpublishing hides results and restores edit access for administrators.</li>
       <li>Actions apply to <strong>all classes</strong> for the selected exam type and term.</li>
     </ul>

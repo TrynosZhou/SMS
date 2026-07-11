@@ -488,6 +488,19 @@
           </div>
         </div>
 
+        <div class="notification-save-alert-wrap" *ngIf="notificationSaveSuccess || notificationSaveError">
+          <div class="notification-save-alert notification-save-alert--success" *ngIf="notificationSaveSuccess" role="status">
+            <span class="notification-save-alert__icon" aria-hidden="true">✓</span>
+            <span class="notification-save-alert__text">{{ notificationSaveSuccess }}</span>
+            <button type="button" class="notification-save-alert__dismiss" (click)="clearNotificationSaveAlert()" aria-label="Dismiss">×</button>
+          </div>
+          <div class="notification-save-alert notification-save-alert--error" *ngIf="notificationSaveError" role="alert">
+            <span class="notification-save-alert__icon" aria-hidden="true">✗</span>
+            <span class="notification-save-alert__text">{{ notificationSaveError }}</span>
+            <button type="button" class="notification-save-alert__dismiss" (click)="clearNotificationSaveAlert()" aria-label="Dismiss">×</button>
+          </div>
+        </div>
+
         <div class="notification-save-row">
           <button
             type="button"
