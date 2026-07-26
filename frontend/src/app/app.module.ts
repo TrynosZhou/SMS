@@ -23,6 +23,7 @@ import { ReportCardComponent } from './components/exams/report-card/report-card.
 import { MarkSheetComponent } from './components/exams/mark-sheet/mark-sheet.component';
 import { ResultsAnalysisComponent } from './components/exams/results-analysis/results-analysis.component';
 import { PublishResultsComponent } from './components/exams/publish-results/publish-results.component';
+import { TeacherAppraisalComponent } from './components/exams/teacher-appraisal/teacher-appraisal.component';
 import { InvoiceListComponent } from './components/finance/invoice-list/invoice-list.component';
 import { InvoiceNotePageComponent } from './components/finance/invoice-note-page/invoice-note-page.component';
 import { InvoiceSyncRemediationComponent } from './components/finance/invoice-sync-remediation/invoice-sync-remediation.component';
@@ -130,6 +131,7 @@ import { RbacManagementComponent } from './components/settings/rbac-management/r
     MarkSheetComponent,
     ResultsAnalysisComponent,
     PublishResultsComponent,
+    TeacherAppraisalComponent,
     InvoiceListComponent,
     InvoiceNotePageComponent,
     InvoiceSyncRemediationComponent,

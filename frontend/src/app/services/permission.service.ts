@@ -23,6 +23,7 @@ const ROUTE_TO_RBAC: Record<string, string> = {
   news: 'notices',
   messages: 'messages',
   recordBook: 'recordBook',
+  teacherAppraisal: 'teacherAppraisal',
   timetable: 'timetable',
   audit: 'audit',
   accounts: 'accounts',

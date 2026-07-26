@@ -37,6 +37,15 @@ interface GradeDistributionRow {
   count: number;
 }
 
+interface SubjectScoreBar {
+  id: string;
+  name: string;
+  percentage: number;
+  score: number | null;
+  maxScore: number | null;
+  grade: string;
+}
+
 @Component({
   standalone: false,
   selector: 'app-results-analysis',
@@ -59,6 +68,9 @@ export class ResultsAnalysisComponent implements OnInit, OnDestroy {
   ];
 
   activeTab: 'overall' | 'individual' = 'overall';
+  individualView: 'performance' | 'ranking' = 'performance';
+  selectedStudentId = '';
+  selectedStudentBars: SubjectScoreBar[] = [];
   loading = false;
   loadingClasses = false;
   loadingTerms = false;
@@ -274,6 +286,9 @@ export class ResultsAnalysisComponent implements OnInit, OnDestroy {
     this.bottomStudents = [];
     this.allStudentsRanked = [];
     this.selectedSubjectId = '';
+    this.selectedStudentId = '';
+    this.selectedStudentBars = [];
+    this.individualView = 'performance';
     this.gradeDistribution = [];
   }
 
@@ -345,6 +360,13 @@ export class ResultsAnalysisComponent implements OnInit, OnDestroy {
 
     if (subjects.length > 0 && !this.selectedSubjectId) {
       this.selectedSubjectId = subjects[0].id;
+    }
+    if (ranked.length > 0) {
+      this.selectedStudentId = ranked[0].studentId;
+      this.buildSelectedStudentBars();
+    } else {
+      this.selectedStudentId = '';
+      this.selectedStudentBars = [];
     }
     this.updateGradeDistribution();
   }
@@ -450,5 +472,71 @@ export class ResultsAnalysisComponent implements OnInit, OnDestroy {
   setActiveTab(tab: 'overall' | 'individual'): void {
     this.activeTab = tab;
     this.cdr.markForCheck();
+  }
+
+  setIndividualView(view: 'performance' | 'ranking'): void {
+    this.individualView = view;
+    if (view === 'performance' && this.selectedStudentId) {
+      this.buildSelectedStudentBars();
+    }
+    this.cdr.markForCheck();
+  }
+
+  onStudentChange(): void {
+    this.buildSelectedStudentBars();
+    this.cdr.markForCheck();
+  }
+
+  private buildSelectedStudentBars(): void {
+    if (!this.selectedStudentId || !this.markSheetData?.markSheet?.length) {
+      this.selectedStudentBars = [];
+      return;
+    }
+
+    const row = this.markSheetData.markSheet.find((r: any) => r.studentId === this.selectedStudentId);
+    const subjects = this.markSheetData.subjects || [];
+    if (!row || !subjects.length) {
+      this.selectedStudentBars = [];
+      return;
+    }
+
+    this.selectedStudentBars = subjects.map((subject: any) => {
+      const subjectData = row.subjects?.[subject.id];
+      const percentage = this.getSubjectPercentage(row, subject.id);
+      const hasScore =
+        subjectData &&
+        (subjectData.score != null ||
+          subjectData.percentage != null ||
+          Number.isFinite(Number(subjectData.score)) ||
+          Number.isFinite(Number(subjectData.percentage)));
+      return {
+        id: subject.id,
+        name: subject.name,
+        percentage: Math.round(percentage * 10) / 10,
+        score: hasScore && subjectData?.score != null ? Number(subjectData.score) : hasScore ? percentage : null,
+        maxScore: subjectData?.maxScore != null ? Number(subjectData.maxScore) : null,
+        grade: this.getGradeLabel(percentage)
+      } as SubjectScoreBar;
+    });
+  }
+
+  get selectedStudentName(): string {
+    const student = this.allStudentsRanked.find((s) => s.studentId === this.selectedStudentId);
+    return student?.studentName || '';
+  }
+
+  get selectedStudentRank(): StudentRank | null {
+    return this.allStudentsRanked.find((s) => s.studentId === this.selectedStudentId) || null;
+  }
+
+  barHeight(percentage: number): string {
+    const pct = Math.max(0, Math.min(100, Number(percentage) || 0));
+    return `${pct}%`;
+  }
+
+  barColorClass(percentage: number): string {
+    if (percentage >= 70) return 'ra-vbar__fill--pass';
+    if (percentage >= 40) return 'ra-vbar__fill--mid';
+    return 'ra-vbar__fill--low';
   }
 }

@@ -309,6 +309,201 @@
   color: #fff;
 }
 
+.ra-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 1.15rem;
+}
+
+.ra-subtab {
+  padding: 0.5rem 0.95rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.ra-subtab:hover { background: #f8fafc; }
+
+.ra-subtab--active {
+  background: #ede9fe;
+  border-color: #7c3aed;
+  color: #5b21b6;
+}
+
+.ra-student-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.15rem;
+}
+
+.ra-student-meta__item {
+  background: #f8fafc;
+  border: 1px solid var(--ra-border);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+}
+
+.ra-student-meta__label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ra-muted);
+  margin-bottom: 0.25rem;
+}
+
+.ra-student-meta__item strong {
+  font-size: 0.95rem;
+  color: var(--ra-text);
+}
+
+.ra-chart-block__head {
+  margin-bottom: 0.85rem;
+}
+
+.ra-chart-block__head h3 {
+  margin: 0 0 0.25rem;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--ra-text);
+}
+
+.ra-chart-block__head p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ra-muted);
+}
+
+.ra-vbars {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.65rem;
+  min-height: 240px;
+  padding: 1rem 0.75rem 0.5rem;
+  margin-bottom: 1.15rem;
+  overflow-x: auto;
+  border: 1px solid var(--ra-border);
+  border-radius: 12px;
+  background:
+    linear-gradient(#f8fafc, #f8fafc) padding-box,
+    repeating-linear-gradient(
+      to top,
+      transparent 0,
+      transparent calc(20% - 1px),
+      #e2e8f0 calc(20% - 1px),
+      #e2e8f0 20%
+    );
+  background-size: 100% 100%, 100% 200px;
+  background-position: 0 0, 0 bottom;
+  background-repeat: no-repeat;
+}
+
+.ra-vbar {
+  flex: 1 1 72px;
+  min-width: 64px;
+  max-width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ra-vbar__value {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #334155;
+  font-variant-numeric: tabular-nums;
+}
+
+.ra-vbar__track {
+  width: 100%;
+  height: 180px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(226, 232, 240, 0.55);
+  border-radius: 10px 10px 4px 4px;
+  overflow: hidden;
+}
+
+.ra-vbar__fill {
+  width: 70%;
+  min-height: 2px;
+  border-radius: 8px 8px 2px 2px;
+  transition: height 0.35s ease;
+}
+
+.ra-vbar__fill--pass { background: linear-gradient(180deg, #8b5cf6 0%, #6d28d9 100%); }
+.ra-vbar__fill--mid { background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%); }
+.ra-vbar__fill--low { background: linear-gradient(180deg, #fb7185 0%, #e11d48 100%); }
+
+.ra-vbar__label {
+  display: block;
+  width: 100%;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #475569;
+  text-align: center;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ra-vbar__grade {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #64748b;
+  text-align: center;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ra-table-wrap--compact { margin-top: 0.25rem; }
+
+.ra-table tbody tr.ra-table__row--active {
+  background: #f5f3ff;
+}
+
+.ra-table tbody tr.ra-table__row--clickable {
+  cursor: pointer;
+}
+
+.ra-table tbody tr.ra-table__row--clickable:hover {
+  background: #f8fafc;
+}
+
+.ra-table tbody tr.ra-table__row--clickable.ra-table__row--active:hover {
+  background: #ede9fe;
+}
+
+.ra-hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.82rem;
+  color: var(--ra-muted);
+}
+
+.ra-inline-empty {
+  padding: 1.25rem 1rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: var(--ra-muted);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
 .ra-cards-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -503,6 +698,8 @@
   .ra-cards-grid { grid-template-columns: 1fr; }
   .ra-card--pass { grid-row: auto; }
   .ra-tab { flex: 1 1 100%; }
+  .ra-student-meta { grid-template-columns: 1fr; }
+  .ra-vbar { min-width: 56px; }
 }
 
 @media print {

@@ -1,14 +1,14 @@
 import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged, filter, finalize, takeUntil } from 'rxjs/operators';
 import { AuthService } from './services/auth.service';
 import { SettingsService } from './services/settings.service';
 import { ModuleAccessService } from './services/module-access.service';
 import { PermissionService } from './services/permission.service';
 import { LicenseService } from './services/license.service';
 import { ThemeService } from './services/theme.service';
-import { Subscription } from 'rxjs';
-import { filter } from 'rxjs/operators';
 import { AuditService } from './services/audit.service';
 import { environment } from '../environments/environment';
 import { LogoutConfirmService } from './services/logout-confirm.service';
@@ -16,6 +16,7 @@ import { ConnectivityService } from './services/connectivity.service';
 import { IncomingMessageNotificationService } from './services/incoming-message-notification.service';
 import { ParentMessageNotificationService } from './services/parent-message-notification.service';
 import { RbacService, RbacRole } from './services/rbac.service';
+import { FinanceService } from './services/finance.service';
 
 /** Route prefixes per sidebar section (for active-state highlighting only). */
 const SIDEBAR_MENU_ROUTE_PREFIXES: Record<string, string[]> = {
@@ -23,7 +24,7 @@ const SIDEBAR_MENU_ROUTE_PREFIXES: Record<string, string[]> = {
   registration: ['/teachers', '/students', '/admin/parents'],
   classManagement: ['/students/enroll', '/students/transfer', '/classes', '/admin/class-promotion'],
   attendance: ['/attendance'],
-  examManagement: ['/exams', '/mark-sheet', '/report-cards', '/results-analysis', '/check_mark_progess', '/publish-results'],
+  examManagement: ['/exams', '/mark-sheet', '/report-cards', '/results-analysis', '/check_mark_progess', '/publish-results', '/teacher-appraisal'],
   financeManagement: ['/invoices', '/payments', '/balance-enquiry', '/finance/'],
   financialReports: ['/financial-reports'],
   messages: ['/messages'],
@@ -77,6 +78,17 @@ export class AppComponent implements OnInit, OnDestroy {
   private parentUnreadPollHandle: ReturnType<typeof setInterval> | null = null;
   private parentUnreadCountSub?: Subscription;
 
+  /** Quick Balance Enquiry modal (admin / accountant header shortcut). */
+  balanceEnquiryOpen = false;
+  balanceEnquiryQuery = '';
+  balanceEnquiryLoading = false;
+  balanceEnquiryError = '';
+  balanceEnquiryCurrency = 'USD';
+  balanceEnquiryStudent: any = null;
+  balanceEnquiryMatches: any[] = [];
+  private readonly balanceEnquiryDestroy$ = new Subject<void>();
+  private readonly balanceEnquirySearch$ = new Subject<string>();
+
   constructor(
     public authService: AuthService, 
     private settingsService: SettingsService,
@@ -94,7 +106,8 @@ export class AppComponent implements OnInit, OnDestroy {
     public connectivity: ConnectivityService,
     private rbacService: RbacService,
     private incomingMessageNotifications: IncomingMessageNotificationService,
-    private parentMessageNotifications: ParentMessageNotificationService
+    private parentMessageNotifications: ParentMessageNotificationService,
+    private financeService: FinanceService
   ) {
     const cachedName = sessionStorage.getItem(AppComponent.SCHOOL_NAME_CACHE_KEY);
     if (cachedName) {
@@ -109,6 +122,14 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.balanceEnquirySearch$
+      .pipe(debounceTime(400), distinctUntilChanged(), takeUntil(this.balanceEnquiryDestroy$))
+      .subscribe((q) => {
+        if (this.balanceEnquiryOpen && q.length >= 3) {
+          this.runBalanceEnquirySearch(q);
+        }
+      });
+
     this.connectivity.connectionMessage$.subscribe((msg) => {
       this.connectionBanner = msg;
       this.cdr.markForCheck();
@@ -154,6 +175,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.selectedViewAsRoleId = '';
         this.stopIncomingMessageBadge();
         this.stopParentInboxBadge();
+        this.closeBalanceEnquiryModal();
         this.schoolLogo = null;
         this.schoolWebsite = '';
         this.schoolFacebookUrl = '';
@@ -269,6 +291,8 @@ export class AppComponent implements OnInit, OnDestroy {
     this.stopDashboardTitleRotation();
     this.stopIncomingMessageBadge();
     this.stopParentInboxBadge();
+    this.balanceEnquiryDestroy$.next();
+    this.balanceEnquiryDestroy$.complete();
   }
 
   getTopNavbarTitle(): string {
@@ -370,6 +394,10 @@ export class AppComponent implements OnInit, OnDestroy {
         const logo = this.normalizeSchoolLogoSrc(settings?.schoolLogo || null);
         const websiteUrl = String(settings?.schoolWebsite || '').trim();
         const facebookUrl = String(settings?.schoolFacebookUrl || '').trim();
+        const currency = String(settings?.currencySymbol || '').trim();
+        if (currency) {
+          this.balanceEnquiryCurrency = currency;
+        }
 
         if (name) {
           sessionStorage.setItem(AppComponent.SCHOOL_NAME_CACHE_KEY, name);
@@ -654,6 +682,9 @@ export class AppComponent implements OnInit, OnDestroy {
       '/results-analysis': 'Results Analysis',
       '/check_mark_progess': 'Marks Progress',
       '/publish-results': 'Publish Results',
+      '/teacher-appraisal': 'Teacher Appraisal',
+      '/parent/teacher-feedback': 'Teacher Feedback',
+      '/student/teacher-feedback': 'Teacher Feedback',
       '/students': 'Students',
       '/teachers': 'Teachers',
       '/classes': 'Classes',
@@ -784,6 +815,129 @@ export class AppComponent implements OnInit, OnDestroy {
   /** Only SuperAdmin, Admin, and Accountant can access Outstanding Invoices (teachers cannot). */
   canAccessOutstandingInvoices(): boolean {
     return this.isSuperAdmin() || this.isAdmin() || this.isAccountant();
+  }
+
+  /** Header Balance Enquiry shortcut for finance operators. */
+  canUseHeaderBalanceEnquiry(): boolean {
+    return this.isSuperAdmin() || this.isAdmin() || this.isAccountant() || this.isDirector();
+  }
+
+  openBalanceEnquiryModal(): void {
+    if (!this.canUseHeaderBalanceEnquiry()) return;
+    this.balanceEnquiryOpen = true;
+    this.balanceEnquiryError = '';
+    this.cdr.markForCheck();
+    setTimeout(() => {
+      const input = document.querySelector<HTMLInputElement>('#header-balance-enquiry-query');
+      input?.focus();
+      input?.select();
+    }, 50);
+  }
+
+  closeBalanceEnquiryModal(): void {
+    this.balanceEnquiryOpen = false;
+    this.balanceEnquiryLoading = false;
+    this.balanceEnquiryError = '';
+    this.balanceEnquiryQuery = '';
+    this.balanceEnquiryStudent = null;
+    this.balanceEnquiryMatches = [];
+    this.cdr.markForCheck();
+  }
+
+  onBalanceEnquiryInput(): void {
+    this.balanceEnquiryError = '';
+    this.balanceEnquirySearch$.next((this.balanceEnquiryQuery || '').trim());
+  }
+
+  searchBalanceEnquiry(): void {
+    const q = (this.balanceEnquiryQuery || '').trim();
+    if (!q) {
+      this.balanceEnquiryError = 'Enter a student ID, first name, or last name';
+      this.cdr.markForCheck();
+      return;
+    }
+    this.runBalanceEnquirySearch(q);
+  }
+
+  private runBalanceEnquirySearch(query: string): void {
+    this.balanceEnquiryLoading = true;
+    this.balanceEnquiryError = '';
+    this.balanceEnquiryStudent = null;
+    this.balanceEnquiryMatches = [];
+    this.cdr.markForCheck();
+
+    this.financeService
+      .getStudentBalance(query)
+      .pipe(
+        takeUntil(this.balanceEnquiryDestroy$),
+        finalize(() => {
+          this.balanceEnquiryLoading = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (data: any) => {
+          if (data?.multipleMatches && Array.isArray(data.matches) && data.matches.length > 0) {
+            this.balanceEnquiryMatches = data.matches;
+            return;
+          }
+          this.balanceEnquiryStudent = data;
+          this.balanceEnquiryMatches = [];
+        },
+        error: (err: any) => {
+          this.balanceEnquiryError =
+            err?.error?.message || 'Student not found. Check the name or student ID and try again.';
+        }
+      });
+  }
+
+  selectBalanceEnquiryMatch(studentId: string): void {
+    if (!studentId) return;
+    this.balanceEnquiryQuery = studentId;
+    this.runBalanceEnquirySearch(studentId);
+  }
+
+  formatBalanceEnquiryAmount(amount: number | string | null | undefined): string {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(Number(amount) || 0);
+  }
+
+  getBalanceEnquiryFullName(student: any): string {
+    if (!student) return '—';
+    const last = String(student.lastName || '').trim();
+    const first = String(student.firstName || '').trim();
+    if (last || first) return `${last} ${first}`.trim();
+    return String(student.fullName || '—').trim() || '—';
+  }
+
+  formatStudentTypeLabel(studentType: string | null | undefined): string {
+    const raw = String(studentType || '').trim();
+    if (!raw) return '—';
+    const lower = raw.toLowerCase();
+    if (lower.includes('board')) return 'Boarder';
+    if (lower.includes('day')) return 'Day Scholar';
+    return raw;
+  }
+
+  trackBalanceEnquiryMatch(_index: number, match: any): string {
+    return match?.studentId || String(_index);
+  }
+
+  payInvoiceFromBalanceEnquiry(): void {
+    const student = this.balanceEnquiryStudent;
+    if (!student) return;
+
+    const queryParams: Record<string, string | number> = {
+      studentId: student.studentNumber || student.studentId,
+      firstName: student.firstName || '',
+      lastName: student.lastName || '',
+      balance: student.balance ?? 0
+    };
+
+    this.closeBalanceEnquiryModal();
+    this.router.navigate(['/payments/record'], { queryParams }).catch(() => {});
   }
 
   isDemoUser(): boolean {
@@ -1154,6 +1308,10 @@ export class AppComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   onEscapeKey(): void {
+    if (this.balanceEnquiryOpen) {
+      this.closeBalanceEnquiryModal();
+      return;
+    }
     if (this.mobileMenuOpen) {
       this.closeMobileMenu();
       this.cdr.markForCheck();

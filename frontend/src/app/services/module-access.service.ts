@@ -36,6 +36,7 @@ export interface ModuleAccess {
     attendance?: boolean;
     teacherManager?: boolean;
     inventory?: boolean;
+    teacherAppraisal?: boolean;
   };
   parents?: {
     reportCards?: boolean;
@@ -80,6 +81,7 @@ export interface ModuleAccess {
     teacherManager?: boolean;
     payroll?: boolean;
     inventory?: boolean;
+    teacherAppraisal?: boolean;
   };
   director?: {
     students?: boolean;
@@ -98,6 +100,7 @@ export interface ModuleAccess {
     inventory?: boolean;
     parents?: boolean;
     logistics?: boolean;
+    teacherAppraisal?: boolean;
   };
   headmaster?: {
     students?: boolean;
@@ -116,6 +119,7 @@ export interface ModuleAccess {
     inventory?: boolean;
     parents?: boolean;
     logistics?: boolean;
+    teacherAppraisal?: boolean;
   };
   deputy_headmaster?: {
     students?: boolean;
@@ -134,6 +138,7 @@ export interface ModuleAccess {
     inventory?: boolean;
     parents?: boolean;
     logistics?: boolean;
+    teacherAppraisal?: boolean;
   };
   superadmin?: {
     [key: string]: boolean; // Superadmin has access to everything
@@ -194,7 +199,8 @@ export class ModuleAccessService {
       recordBook: true,
       attendance: true,
       teacherManager: false,
-      inventory: false
+      inventory: false,
+      teacherAppraisal: true
     },
     parents: {
       reportCards: true,
@@ -238,7 +244,8 @@ export class ModuleAccessService {
       dashboard: true,
       teacherManager: true,
       payroll: true,
-      inventory: true
+      inventory: true,
+      teacherAppraisal: true
     },
     director: {
       students: true,
@@ -256,7 +263,8 @@ export class ModuleAccessService {
       payroll: true,
       inventory: true,
       parents: true,
-      logistics: true
+      logistics: true,
+      teacherAppraisal: true
     },
     headmaster: {
       students: true,
@@ -274,7 +282,8 @@ export class ModuleAccessService {
       payroll: false,
       inventory: true,
       parents: true,
-      logistics: true
+      logistics: true,
+      teacherAppraisal: true
     },
     deputy_headmaster: {
       students: true,
@@ -292,7 +301,8 @@ export class ModuleAccessService {
       payroll: false,
       inventory: false,
       parents: true,
-      logistics: false
+      logistics: false,
+      teacherAppraisal: true
     },
     superadmin: {}, // All access
     demo_user: {

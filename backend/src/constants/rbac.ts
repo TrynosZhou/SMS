@@ -46,6 +46,13 @@ export const RBAC_MODULES: RbacModuleDef[] = [
   { key: 'classes', label: 'Classes', routeModule: 'classes', group: 'academic' },
   { key: 'subjects', label: 'Subjects', routeModule: 'subjects', group: 'academic' },
   { key: 'recordBook', label: 'Record Book', routeModule: 'recordBook', group: 'academic' },
+  {
+    key: 'teacherAppraisal',
+    label: 'Teacher Appraisal',
+    routeModule: 'teacherAppraisal',
+    group: 'academic',
+    description: 'Teacher performance appraisal cycles, evaluations, goals, and reports',
+  },
   { key: 'finance', label: 'Finance / Fees', routeModule: 'finance', group: 'financeOps' },
   { key: 'payroll', label: 'Payroll', routeModule: 'payroll', group: 'financeOps' },
   { key: 'reports', label: 'Reports', routeModule: 'reports', group: 'financeOps' },

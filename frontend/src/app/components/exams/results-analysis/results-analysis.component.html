@@ -13,7 +13,7 @@
         <div>
           <span class="ra-hero-eyebrow">Exams</span>
           <h1>Results Analysis</h1>
-          <p class="ra-hero-sub">Analyse class performance by term, exam type, and subject — pass rates, rankings, and grade distribution.</p>
+          <p class="ra-hero-sub">Analyse class performance by term, exam type, and subject — pass rates, rankings, grade distribution, and individual subject bar graphs.</p>
         </div>
       </div>
       <aside class="ra-hero-aside" *ngIf="analysisLoaded">
@@ -229,30 +229,159 @@
     <section *ngIf="activeTab === 'individual'" class="ra-panel">
       <div class="ra-panel__head">
         <h2 class="ra-panel__title">Individual student performance</h2>
-        <p class="ra-panel__intro">Full class ranking by core subject average.</p>
+        <p class="ra-panel__intro">
+          View a student's subject scores as a bar graph, or switch to the full class ranking list.
+        </p>
       </div>
 
-      <div class="ra-table-wrap">
-        <table class="ra-table">
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Student name</th>
-              <th class="ra-table__num">Core average</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let student of allStudentsRanked">
-              <td><span class="ra-rank ra-rank--sm">{{ student.position }}</span></td>
-              <td>{{ student.studentName }}</td>
-              <td class="ra-table__num"><span class="ra-pill ra-pill--score">{{ formatAverage(student.average) }}%</span></td>
-            </tr>
-            <tr *ngIf="allStudentsRanked.length === 0">
-              <td colspan="3" class="ra-empty-row">No student data available</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="ra-subtabs" role="tablist" aria-label="Individual views">
+        <button
+          type="button"
+          class="ra-subtab"
+          role="tab"
+          [class.ra-subtab--active]="individualView === 'performance'"
+          [attr.aria-selected]="individualView === 'performance'"
+          (click)="setIndividualView('performance')">
+          Subject performance
+        </button>
+        <button
+          type="button"
+          class="ra-subtab"
+          role="tab"
+          [class.ra-subtab--active]="individualView === 'ranking'"
+          [attr.aria-selected]="individualView === 'ranking'"
+          (click)="setIndividualView('ranking')">
+          Individual ranking
+        </button>
       </div>
+
+      <ng-container *ngIf="individualView === 'performance'">
+        <div class="ra-field ra-field--subject">
+          <label for="ra-student">Student</label>
+          <select
+            id="ra-student"
+            [(ngModel)]="selectedStudentId"
+            [ngModelOptions]="{ standalone: true }"
+            (change)="onStudentChange()"
+            class="ra-select">
+            <option value="">Select a student</option>
+            <option *ngFor="let student of allStudentsRanked" [value]="student.studentId">
+              {{ student.position }}. {{ student.studentName }}
+            </option>
+          </select>
+        </div>
+
+        <div class="ra-student-meta" *ngIf="selectedStudentRank as student">
+          <div class="ra-student-meta__item">
+            <span class="ra-student-meta__label">Student</span>
+            <strong>{{ student.studentName }}</strong>
+          </div>
+          <div class="ra-student-meta__item">
+            <span class="ra-student-meta__label">Class position</span>
+            <strong>{{ student.position }} / {{ allStudentsRanked.length }}</strong>
+          </div>
+          <div class="ra-student-meta__item">
+            <span class="ra-student-meta__label">Core average</span>
+            <strong>{{ formatAverage(student.average) }}%</strong>
+          </div>
+        </div>
+
+        <div class="ra-chart-block" *ngIf="selectedStudentId && selectedStudentBars.length">
+          <div class="ra-chart-block__head">
+            <h3>Subject scores</h3>
+            <p>Each bar shows the student's percentage score for that subject.</p>
+          </div>
+
+          <div class="ra-vbars" role="img" [attr.aria-label]="'Subject performance for ' + selectedStudentName">
+            <div class="ra-vbar" *ngFor="let bar of selectedStudentBars">
+              <span class="ra-vbar__value">{{ bar.percentage | number:'1.0-1' }}%</span>
+              <div class="ra-vbar__track">
+                <div
+                  class="ra-vbar__fill"
+                  [ngClass]="barColorClass(bar.percentage)"
+                  [style.height]="barHeight(bar.percentage)"
+                  [attr.title]="bar.name + ': ' + (bar.percentage | number:'1.0-1') + '%'">
+                </div>
+              </div>
+              <span class="ra-vbar__label" [title]="bar.name">{{ bar.name }}</span>
+              <span class="ra-vbar__grade">{{ bar.grade }}</span>
+            </div>
+          </div>
+
+          <div class="ra-table-wrap ra-table-wrap--compact">
+            <table class="ra-table">
+              <thead>
+                <tr>
+                  <th>Subject</th>
+                  <th class="ra-table__num">Score</th>
+                  <th class="ra-table__num">%</th>
+                  <th>Grade</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let bar of selectedStudentBars">
+                  <td>{{ bar.name }}</td>
+                  <td class="ra-table__num">
+                    <ng-container *ngIf="bar.score != null; else noScore">
+                      {{ bar.score | number:'1.0-1' }}<span *ngIf="bar.maxScore">/{{ bar.maxScore }}</span>
+                    </ng-container>
+                    <ng-template #noScore>—</ng-template>
+                  </td>
+                  <td class="ra-table__num">{{ bar.percentage | number:'1.0-1' }}%</td>
+                  <td><span class="ra-pill ra-pill--muted">{{ bar.grade }}</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="ra-inline-empty" *ngIf="!selectedStudentId">
+          Select a student to view their subject performance bar graph.
+        </div>
+        <div class="ra-inline-empty" *ngIf="selectedStudentId && selectedStudentBars.length === 0">
+          No subject scores found for this student.
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="individualView === 'ranking'">
+        <div class="ra-panel__head ra-panel__head--compact">
+          <h3 class="ra-panel__title">Class ranking</h3>
+          <p class="ra-panel__intro">
+            Students in {{ selectedClassLabel || 'the selected class' }} ordered by core subject average.
+          </p>
+        </div>
+
+        <div class="ra-table-wrap">
+          <table class="ra-table">
+            <thead>
+              <tr>
+                <th>Position</th>
+                <th>Student name</th>
+                <th class="ra-table__num">Core average</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                *ngFor="let student of allStudentsRanked"
+                class="ra-table__row--clickable"
+                [class.ra-table__row--active]="student.studentId === selectedStudentId"
+                (click)="selectedStudentId = student.studentId; onStudentChange(); setIndividualView('performance')">
+                <td><span class="ra-rank ra-rank--sm">{{ student.position }}</span></td>
+                <td>{{ student.studentName }}</td>
+                <td class="ra-table__num">
+                  <span class="ra-pill ra-pill--score">{{ formatAverage(student.average) }}%</span>
+                </td>
+              </tr>
+              <tr *ngIf="allStudentsRanked.length === 0">
+                <td colspan="3" class="ra-empty-row">No student data available</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="ra-hint" *ngIf="allStudentsRanked.length">
+          Tip: click a student in the ranking to open their subject performance graph.
+        </p>
+      </ng-container>
     </section>
   </ng-container>
 

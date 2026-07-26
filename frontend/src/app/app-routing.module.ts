@@ -14,6 +14,7 @@ import { ReportCardComponent } from './components/exams/report-card/report-card.
 import { MarkSheetComponent } from './components/exams/mark-sheet/mark-sheet.component';
 import { ResultsAnalysisComponent } from './components/exams/results-analysis/results-analysis.component';
 import { PublishResultsComponent } from './components/exams/publish-results/publish-results.component';
+import { TeacherAppraisalComponent } from './components/exams/teacher-appraisal/teacher-appraisal.component';
 import { InvoiceListComponent } from './components/finance/invoice-list/invoice-list.component';
 import { InvoiceNotePageComponent } from './components/finance/invoice-note-page/invoice-note-page.component';
 import { InvoiceSyncRemediationComponent } from './components/finance/invoice-sync-remediation/invoice-sync-remediation.component';
@@ -135,6 +136,9 @@ const routes: Routes = [
   { path: 'mark-sheet', component: MarkSheetComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams', title: 'Mark Sheet', pageTitle: 'Mark Sheet' } },
   { path: 'check_mark_progess', component: MarksProgressComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
   { path: 'publish-results', component: PublishResultsComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'exams' } },
+  { path: 'teacher-appraisal', component: TeacherAppraisalComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'teacherAppraisal', title: 'Teacher Appraisal', pageTitle: 'Teacher Appraisal' } },
+  { path: 'parent/teacher-feedback', component: TeacherAppraisalComponent, canActivate: [AuthGuard], data: { title: 'Teacher Feedback', pageTitle: 'Teacher Feedback' } },
+  { path: 'student/teacher-feedback', component: TeacherAppraisalComponent, canActivate: [AuthGuard], data: { title: 'Teacher Feedback', pageTitle: 'Teacher Feedback' } },
   { path: 'invoices', component: InvoiceListComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'billing' } },
   { path: 'invoices/credit-note', component: InvoiceNotePageComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'creditNotes' } },
   { path: 'invoices/debit-note', component: InvoiceNotePageComponent, canActivate: [AuthGuard, ModuleAccessGuard], data: { module: 'finance', financePage: 'debitNotes' } },

@@ -1,0 +1,354 @@
+<div class="ta-page">
+  <div class="ta-alert ta-alert--success" *ngIf="success" role="status">
+    <span>{{ success }}</span>
+    <button type="button" class="ta-alert__dismiss" (click)="success = ''">×</button>
+  </div>
+  <div class="ta-alert ta-alert--error" *ngIf="error" role="alert">
+    <span>{{ error }}</span>
+    <button type="button" class="ta-alert__dismiss" (click)="error = ''">×</button>
+  </div>
+
+  <header class="ta-hero">
+    <div class="ta-hero__main">
+      <div class="ta-hero-left">
+        <span class="ta-hero-icon" aria-hidden="true">📋</span>
+        <div>
+          <span class="ta-hero-eyebrow">Academic</span>
+          <h1>Teacher Appraisal</h1>
+          <p class="ta-hero-sub">Multi-source performance appraisal — self, supervisor, peer, student and parent feedback with composite scoring.</p>
+        </div>
+      </div>
+      <div class="ta-hero__actions" *ngIf="isLeadership && selectedCycleId">
+        <button type="button" class="ta-btn ta-btn--white" (click)="downloadDeptPdf()">Department PDF</button>
+      </div>
+    </div>
+
+    <div class="ta-cycle-bar" *ngIf="cycles.length">
+      <label for="ta-cycle">Active cycle</label>
+      <select id="ta-cycle" class="ta-select" [(ngModel)]="selectedCycleId" (ngModelChange)="onCycleFilterChange()">
+        <option *ngFor="let c of cycles" [ngValue]="c.id">{{ c.name }} ({{ c.status }})</option>
+      </select>
+    </div>
+
+    <nav class="ta-tabs" aria-label="Appraisal sections">
+      <button
+        type="button"
+        class="ta-tab"
+        *ngFor="let t of tabs"
+        [class.ta-tab--active]="activeTab === t.id"
+        (click)="setTab(t.id)">
+        {{ t.label }}
+      </button>
+    </nav>
+  </header>
+
+  <div class="ta-loading" *ngIf="loading">Loading appraisal module…</div>
+
+  <!-- Dashboard -->
+  <section class="ta-panel" *ngIf="!loading && activeTab === 'dashboard' && isLeadership">
+    <div class="ta-panel__head">
+      <h2>Completion dashboard</h2>
+      <p>Track self and supervisor submissions for the selected cycle.</p>
+    </div>
+    <div class="ta-stats" *ngIf="dashboard?.aggregates">
+      <article class="ta-stat" *ngFor="let s of dashboard.aggregates.sourceAverages">
+        <span class="ta-stat__value">{{ s.average != null ? s.average : '—' }}</span>
+        <span class="ta-stat__label">{{ s.source }} (n={{ s.count }})</span>
+      </article>
+    </div>
+
+    <div class="ta-bars" *ngIf="dashboard?.aggregates?.criterionAverages?.length">
+      <h3>Average by criterion</h3>
+      <div class="ta-bar-row" *ngFor="let c of dashboard.aggregates.criterionAverages">
+        <span class="ta-bar-label">{{ c.name }}</span>
+        <div class="ta-bar-track"><div class="ta-bar-fill" [style.width]="trendWidth(c.average)"></div></div>
+        <span class="ta-bar-value">{{ c.average != null ? c.average : '—' }}</span>
+      </div>
+    </div>
+
+    <div class="ta-table-wrap" *ngIf="dashboard?.completion?.length">
+      <table class="ta-table">
+        <thead>
+          <tr>
+            <th>Teacher</th>
+            <th>Self</th>
+            <th>Supervisor</th>
+            <th>Peer</th>
+            <th>Student</th>
+            <th>Parent</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of dashboard.completion">
+            <td>{{ row.teacherName }}</td>
+            <td>{{ row.sources.self || 0 }}</td>
+            <td>{{ row.sources.supervisor || 0 }}</td>
+            <td>{{ row.sources.peer || 0 }}</td>
+            <td>{{ row.sources.student || 0 }}</td>
+            <td>{{ row.sources.parent || 0 }}</td>
+            <td>
+              <button type="button" class="ta-link" (click)="evalTeacherId = row.teacherId; setTab('my-results'); loadMyResults()">View</button>
+              <button type="button" class="ta-link" (click)="downloadTeacherPdf(row.teacherId)">PDF</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Cycles -->
+  <section class="ta-panel" *ngIf="!loading && activeTab === 'cycles' && isLeadership">
+    <div class="ta-panel__head"><h2>Appraisal cycles</h2></div>
+    <div class="ta-form-grid">
+      <label>Name <input class="ta-input" [(ngModel)]="cycleForm.name" placeholder="Term 1 2026" /></label>
+      <label>Start <input class="ta-input" type="date" [(ngModel)]="cycleForm.startDate" /></label>
+      <label>End <input class="ta-input" type="date" [(ngModel)]="cycleForm.endDate" /></label>
+      <label>Status
+        <select class="ta-select" [(ngModel)]="cycleForm.status">
+          <option value="draft">Draft</option>
+          <option value="active">Active</option>
+          <option value="closed">Closed</option>
+        </select>
+      </label>
+    </div>
+    <h3 class="ta-subhead">Composite source weights (%)</h3>
+    <div class="ta-form-grid ta-form-grid--5">
+      <label>Self <input class="ta-input" type="number" [(ngModel)]="cycleForm.sourceWeights.self" /></label>
+      <label>Supervisor <input class="ta-input" type="number" [(ngModel)]="cycleForm.sourceWeights.supervisor" /></label>
+      <label>Peer <input class="ta-input" type="number" [(ngModel)]="cycleForm.sourceWeights.peer" /></label>
+      <label>Student <input class="ta-input" type="number" [(ngModel)]="cycleForm.sourceWeights.student" /></label>
+      <label>Parent <input class="ta-input" type="number" [(ngModel)]="cycleForm.sourceWeights.parent" /></label>
+    </div>
+    <div class="ta-actions">
+      <button type="button" class="ta-btn ta-btn--primary" (click)="saveCycle()" [disabled]="saving">{{ editingCycleId ? 'Update cycle' : 'Create cycle' }}</button>
+      <button type="button" class="ta-btn ta-btn--ghost" *ngIf="editingCycleId" (click)="resetCycleForm()">Cancel</button>
+    </div>
+    <div class="ta-table-wrap">
+      <table class="ta-table">
+        <thead><tr><th>Name</th><th>Dates</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let c of cycles">
+            <td>{{ c.name }}</td>
+            <td>{{ c.startDate | date:'mediumDate' }} – {{ c.endDate | date:'mediumDate' }}</td>
+            <td><span class="ta-badge">{{ c.status }}</span></td>
+            <td><button type="button" class="ta-link" (click)="editCycle(c)">Edit</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Criteria -->
+  <section class="ta-panel" *ngIf="!loading && activeTab === 'criteria' && isLeadership">
+    <div class="ta-panel__head"><h2>Appraisal criteria</h2></div>
+    <div class="ta-form-grid">
+      <label>Name <input class="ta-input" [(ngModel)]="criterionForm.name" /></label>
+      <label>Weight <input class="ta-input" type="number" [(ngModel)]="criterionForm.weight" /></label>
+      <label>Scale min <input class="ta-input" type="number" [(ngModel)]="criterionForm.scaleMin" /></label>
+      <label>Scale max <input class="ta-input" type="number" [(ngModel)]="criterionForm.scaleMax" /></label>
+    </div>
+    <label class="ta-full">Description <textarea class="ta-input" rows="2" [(ngModel)]="criterionForm.description"></textarea></label>
+    <div class="ta-actions">
+      <button type="button" class="ta-btn ta-btn--primary" (click)="saveCriterion()" [disabled]="saving">{{ editingCriterionId ? 'Update' : 'Add criterion' }}</button>
+      <button type="button" class="ta-btn ta-btn--ghost" *ngIf="editingCriterionId" (click)="resetCriterionForm()">Cancel</button>
+    </div>
+    <div class="ta-table-wrap">
+      <table class="ta-table">
+        <thead><tr><th>Name</th><th>Weight</th><th>Scale</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let c of criteria">
+            <td>{{ c.name }}</td>
+            <td>{{ c.weight }}</td>
+            <td>{{ c.scaleMin }}–{{ c.scaleMax }}</td>
+            <td>
+              <button type="button" class="ta-link" (click)="editCriterion(c)">Edit</button>
+              <button type="button" class="ta-link" (click)="deactivateCriterion(c.id)">Deactivate</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Peers -->
+  <section class="ta-panel" *ngIf="!loading && activeTab === 'peers' && isLeadership">
+    <div class="ta-panel__head"><h2>Peer review assignments</h2></div>
+    <div class="ta-form-grid">
+      <label>Evaluator
+        <select class="ta-select" [(ngModel)]="peerForm.evaluatorTeacherId">
+          <option value="">Select…</option>
+          <option *ngFor="let t of teachers" [value]="t.id">{{ teacherLabel(t) }}</option>
+        </select>
+      </label>
+      <label>Target teacher
+        <select class="ta-select" [(ngModel)]="peerForm.targetTeacherId">
+          <option value="">Select…</option>
+          <option *ngFor="let t of teachers" [value]="t.id">{{ teacherLabel(t) }}</option>
+        </select>
+      </label>
+    </div>
+    <div class="ta-actions">
+      <button type="button" class="ta-btn ta-btn--primary" (click)="savePeer()" [disabled]="saving">Assign</button>
+    </div>
+    <div class="ta-table-wrap">
+      <table class="ta-table">
+        <thead><tr><th>Evaluator</th><th>Reviews</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let p of peerAssignments">
+            <td>{{ teacherLabel(p.evaluatorTeacher) }}</td>
+            <td>{{ teacherLabel(p.targetTeacher) }}</td>
+            <td><button type="button" class="ta-link" (click)="removePeer(p.id)">Remove</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Evaluate / Feedback form -->
+  <section class="ta-panel" *ngIf="!loading && (activeTab === 'evaluate' || activeTab === 'feedback')">
+    <div class="ta-panel__head">
+      <h2>{{ activeTab === 'feedback' ? 'Teacher feedback' : 'Submit appraisal' }}</h2>
+      <p *ngIf="!isParent && !isStudent">Score each criterion, then submit. Same criteria set is used for all source types.</p>
+      <p *ngIf="isParent">You can rate teachers assigned to your child's class. Score each criterion, then submit.</p>
+      <p *ngIf="isStudent">You can rate teachers assigned to your class. Score each criterion, then submit.</p>
+    </div>
+
+    <div class="ta-empty" *ngIf="(isParent || isStudent) && !teachers.length">
+      No teachers are linked to your class yet, so there is nothing to rate. Please contact the school office if you
+      think this is a mistake.
+    </div>
+
+    <div class="ta-form-grid">
+      <label *ngIf="isLeadership || isParent || isStudent || evalSourceType === 'peer'">Teacher
+        <select class="ta-select" [(ngModel)]="evalTeacherId">
+          <option value="">Select…</option>
+          <option *ngFor="let t of (evalSourceType === 'peer' ? (myPeerTargets.length ? myPeerTargets : []) : teachers)"
+            [value]="evalSourceType === 'peer' ? t.targetTeacher?.id || t.targetTeacherId : t.id">
+            {{ evalSourceType === 'peer' ? teacherLabel(t.targetTeacher) : teacherLabel(t) }}
+          </option>
+        </select>
+      </label>
+
+      <label *ngIf="!isParent && !isStudent">Source type
+        <select class="ta-select" [(ngModel)]="evalSourceType" (ngModelChange)="onSourceTypeChange()">
+          <option value="self" *ngIf="isTeacher">Self</option>
+          <option value="supervisor" *ngIf="isLeadership">Supervisor</option>
+          <option value="peer" *ngIf="isTeacher">Peer</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="ta-score-list">
+      <div class="ta-score-row" *ngFor="let c of criteria">
+        <div class="ta-score-meta">
+          <strong>{{ c.name }}</strong>
+          <span>{{ c.description }}</span>
+        </div>
+        <input
+          class="ta-input ta-input--score"
+          type="number"
+          [min]="c.scaleMin"
+          [max]="c.scaleMax"
+          [(ngModel)]="scoreDraft[c.id].score"
+          [placeholder]="c.scaleMin + '–' + c.scaleMax" />
+        <input class="ta-input" type="text" [(ngModel)]="scoreDraft[c.id].comment" placeholder="Optional comment" />
+      </div>
+    </div>
+
+    <label class="ta-full">Overall comments
+      <textarea class="ta-input" rows="3" [(ngModel)]="evalComments"></textarea>
+    </label>
+
+    <div class="ta-actions">
+      <button type="button" class="ta-btn ta-btn--primary" (click)="submitAppraisal()" [disabled]="saving">
+        {{ saving ? 'Submitting…' : 'Submit appraisal' }}
+      </button>
+    </div>
+  </section>
+
+  <!-- My results -->
+  <section class="ta-panel" *ngIf="!loading && activeTab === 'my-results'">
+    <div class="ta-panel__head">
+      <h2>Results &amp; trends</h2>
+      <p>Composite score and per-source breakdown across cycles.</p>
+    </div>
+
+    <div class="ta-form-grid" *ngIf="isLeadership">
+      <label>Teacher
+        <select class="ta-select" [(ngModel)]="evalTeacherId" (ngModelChange)="loadMyResults()">
+          <option value="">Select…</option>
+          <option *ngFor="let t of teachers" [value]="t.id">{{ teacherLabel(t) }}</option>
+        </select>
+      </label>
+    </div>
+
+    <div *ngIf="history?.summaries?.length; else noHistory">
+      <article class="ta-cycle-card" *ngFor="let s of history.summaries">
+        <header>
+          <h3>{{ s.cycle?.name }}</h3>
+          <strong>Composite: {{ s.compositeScore != null ? s.compositeScore : '—' }}</strong>
+        </header>
+        <div class="ta-bars">
+          <div class="ta-bar-row" *ngFor="let src of ['self','supervisor','peer','student','parent']">
+            <span class="ta-bar-label">{{ src }}</span>
+            <div class="ta-bar-track"><div class="ta-bar-fill" [style.width]="trendWidth(s.bySource?.[src])"></div></div>
+            <span class="ta-bar-value">{{ s.bySource?.[src] != null ? s.bySource[src] : '—' }}</span>
+          </div>
+        </div>
+        <button type="button" class="ta-btn ta-btn--ghost ta-btn--sm" (click)="downloadTeacherPdf(s.teacherId)">Download PDF</button>
+      </article>
+    </div>
+    <ng-template #noHistory>
+      <p class="ta-muted">No appraisal history yet for this teacher.</p>
+    </ng-template>
+  </section>
+
+  <!-- Goals -->
+  <section class="ta-panel" *ngIf="!loading && activeTab === 'goals'">
+    <div class="ta-panel__head"><h2>Development goals</h2></div>
+    <div class="ta-form-grid" *ngIf="isLeadership">
+      <label>Teacher
+        <select class="ta-select" [(ngModel)]="evalTeacherId" (ngModelChange)="loadGoals()">
+          <option value="">Select…</option>
+          <option *ngFor="let t of teachers" [value]="t.id">{{ teacherLabel(t) }}</option>
+        </select>
+      </label>
+    </div>
+    <label class="ta-full">Goal description
+      <textarea class="ta-input" rows="2" [(ngModel)]="goalForm.description"></textarea>
+    </label>
+    <div class="ta-form-grid">
+      <label>Status
+        <select class="ta-select" [(ngModel)]="goalForm.status">
+          <option value="open">Open</option>
+          <option value="in-progress">In progress</option>
+          <option value="achieved">Achieved</option>
+          <option value="missed">Missed</option>
+        </select>
+      </label>
+      <label>Follow-up cycle
+        <select class="ta-select" [(ngModel)]="goalForm.followUpCycleId">
+          <option value="">None</option>
+          <option *ngFor="let c of cycles" [value]="c.id">{{ c.name }}</option>
+        </select>
+      </label>
+    </div>
+    <div class="ta-actions">
+      <button type="button" class="ta-btn ta-btn--primary" (click)="saveGoal()" [disabled]="saving">Save goal</button>
+    </div>
+    <div class="ta-table-wrap">
+      <table class="ta-table">
+        <thead><tr><th>Goal</th><th>Status</th><th>Follow-up</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let g of goals">
+            <td>{{ g.description }}</td>
+            <td>{{ g.status }}</td>
+            <td>{{ g.followUpCycle?.name || '—' }}</td>
+            <td><button type="button" class="ta-link" (click)="deleteGoal(g.id)">Delete</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

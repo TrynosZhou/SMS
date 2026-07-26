@@ -1873,7 +1873,11 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
           firstName: s.firstName,
           lastName: s.lastName,
           fullName: `${s.firstName} ${s.lastName}`,
-          className: s.classEntity ? s.classEntity.name : null
+          className: s.classEntity
+            ? [s.classEntity.name, s.classEntity.form].filter(Boolean).join(' - ')
+            : null,
+          gender: (s as any).gender || null,
+          studentType: (s as any).studentType || null
         }));
 
       const studentsByLastName = await studentRepository
@@ -1997,6 +2001,10 @@ export const getStudentBalance = async (req: AuthRequest, res: Response) => {
       firstName: student.firstName,
       lastName: student.lastName,
       fullName: `${student.lastName} ${student.firstName}`,
+      gender: (student as any).gender || null,
+      className: student.classEntity
+        ? [student.classEntity.name, student.classEntity.form].filter(Boolean).join(' - ')
+        : null,
       studentStatus: (student as any).studentStatus || null,
       studentType: (student as any).studentType || null,
       usesTransport: !!(student as any).usesTransport,

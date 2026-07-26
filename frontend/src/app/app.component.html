@@ -94,6 +94,22 @@
         </svg>
       </button>
 
+      <button
+        *ngIf="canUseHeaderBalanceEnquiry()"
+        type="button"
+        class="top-nav-icon-btn"
+        (click)="openBalanceEnquiryModal()"
+        title="Balance Enquiry"
+        aria-label="Balance Enquiry">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+          <path d="M2 10h20"></path>
+          <circle cx="7.5" cy="14.5" r="1.2"></circle>
+          <path d="M12 13.5h6"></path>
+          <path d="M12 16h3.5"></path>
+        </svg>
+      </button>
+
       <a
         [routerLink]="getMessagesNavLink()"
         class="top-nav-icon-btn top-nav-icon-btn--messages"
@@ -230,6 +246,10 @@
         <a routerLink="/student/report-card" routerLinkActive="active" class="sidebar-item">
           <span class="sidebar-icon">📄</span>
           <span class="sidebar-text">Report Card</span>
+        </a>
+        <a routerLink="/student/teacher-feedback" routerLinkActive="active" class="sidebar-item">
+          <span class="sidebar-icon">📋</span>
+          <span class="sidebar-text">Teacher Feedback</span>
         </a>
         <a routerLink="/student/invoice-statement" routerLinkActive="active" class="sidebar-item">
           <span class="sidebar-icon">💰</span>
@@ -406,9 +426,9 @@
       <!-- Exam Mgt -->
       <div
         class="sidebar-menu"
-        *ngIf="sidebarMenuVisible(
-          ['Exam Manager', 'Marks Input', 'Mark Sheets', 'Report Cards', 'Results Analysis', 'Marks Progress', 'Publish Results'],
-          canAccessExamsNav() || canAccessReportCardsNav()
+        *ngIf="        sidebarMenuVisible(
+          ['Exam Manager', 'Marks Input', 'Mark Sheets', 'Report Cards', 'Results Analysis', 'Marks Progress', 'Publish Results', 'Teacher Appraisal'],
+          canAccessExamsNav() || canAccessReportCardsNav() || canAccessModule('teacherAppraisal')
         )">
         <div class="sidebar-menu-header" [class.section-active]="isMenuRouteActive('examManagement')" (click)="toggleMenu('examManagement')">
           <span class="sidebar-icon">📝</span>
@@ -439,6 +459,10 @@
           <a routerLink="/publish-results" routerLinkActive="active" class="sidebar-subitem" *ngIf="isAdmin() || isSuperAdmin()">
             <span class="sidebar-icon">📢</span>
             <span class="sidebar-text">Publish Results</span>
+          </a>
+          <a routerLink="/teacher-appraisal" routerLinkActive="active" class="sidebar-subitem" *ngIf="canAccessModule('teacherAppraisal')">
+            <span class="sidebar-icon">📋</span>
+            <span class="sidebar-text">Teacher Appraisal</span>
           </a>
         </div>
       </div>
@@ -721,6 +745,112 @@
       <button type="button" class="logout-confirm-btn logout-confirm-btn--primary" (click)="onLogoutConfirmYes()">
         Yes, sign out
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- Header Balance Enquiry Modal -->
+<div
+  class="be-quick-overlay"
+  *ngIf="balanceEnquiryOpen"
+  (click)="closeBalanceEnquiryModal()"
+  role="presentation">
+  <div
+    class="be-quick-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="be-quick-title"
+    (click)="$event.stopPropagation()">
+    <div class="be-quick-modal__header">
+      <div>
+        <span class="be-quick-modal__eyebrow">Finance</span>
+        <h2 id="be-quick-title">Balance Enquiry</h2>
+        <p>Search by Student ID, First Name, or Last Name.</p>
+      </div>
+      <button type="button" class="be-quick-modal__close" (click)="closeBalanceEnquiryModal()" aria-label="Close">×</button>
+    </div>
+
+    <div class="be-quick-modal__body">
+      <div class="be-quick-search">
+        <input
+          id="header-balance-enquiry-query"
+          type="search"
+          class="be-quick-input"
+          [(ngModel)]="balanceEnquiryQuery"
+          [ngModelOptions]="{ standalone: true }"
+          (input)="onBalanceEnquiryInput()"
+          (keyup.enter)="searchBalanceEnquiry()"
+          placeholder="Student ID, First Name, or Last Name…"
+          autocomplete="off" />
+        <button
+          type="button"
+          class="be-quick-btn"
+          (click)="searchBalanceEnquiry()"
+          [disabled]="balanceEnquiryLoading || !balanceEnquiryQuery">
+          {{ balanceEnquiryLoading ? 'Searching…' : 'Search' }}
+        </button>
+      </div>
+
+      <div class="be-quick-error" *ngIf="balanceEnquiryError" role="alert">{{ balanceEnquiryError }}</div>
+
+      <div class="be-quick-matches" *ngIf="balanceEnquiryMatches.length">
+        <p class="be-quick-matches__title">{{ balanceEnquiryMatches.length }} matches — select a student</p>
+        <button
+          type="button"
+          class="be-quick-match"
+          *ngFor="let match of balanceEnquiryMatches; trackBy: trackBalanceEnquiryMatch"
+          (click)="selectBalanceEnquiryMatch(match.studentId)">
+          <strong>{{ match.lastName || '' }} {{ match.firstName || match.fullName }}</strong>
+          <span>{{ match.studentNumber }}<ng-container *ngIf="match.className"> · {{ match.className }}</ng-container></span>
+        </button>
+      </div>
+
+      <div class="be-quick-loading" *ngIf="balanceEnquiryLoading && !balanceEnquiryStudent && !balanceEnquiryMatches.length">
+        Looking up invoice balance…
+      </div>
+
+      <div class="be-quick-result" *ngIf="balanceEnquiryStudent">
+        <div class="be-quick-result__row">
+          <span class="be-quick-result__label">Full name</span>
+          <strong>{{ getBalanceEnquiryFullName(balanceEnquiryStudent) }}</strong>
+        </div>
+        <div class="be-quick-result__row">
+          <span class="be-quick-result__label">Gender</span>
+          <strong>{{ balanceEnquiryStudent.gender || '—' }}</strong>
+        </div>
+        <div class="be-quick-result__row">
+          <span class="be-quick-result__label">Class</span>
+          <strong>{{ balanceEnquiryStudent.className || '—' }}</strong>
+        </div>
+        <div class="be-quick-result__row">
+          <span class="be-quick-result__label">Type</span>
+          <strong>{{ formatStudentTypeLabel(balanceEnquiryStudent.studentType) }}</strong>
+        </div>
+        <div class="be-quick-result__row be-quick-result__row--balance">
+          <span class="be-quick-result__label">Current invoice balance</span>
+          <div class="be-quick-balance-actions">
+            <strong
+              [class.be-quick-balance--owed]="balanceEnquiryStudent.balance > 0"
+              [class.be-quick-balance--paid]="balanceEnquiryStudent.balance <= 0">
+              {{ balanceEnquiryCurrency }} {{ formatBalanceEnquiryAmount(balanceEnquiryStudent.balance) }}
+            </strong>
+            <button
+              type="button"
+              class="be-quick-pay-btn"
+              (click)="payInvoiceFromBalanceEnquiry()"
+              [disabled]="!balanceEnquiryStudent">
+              Pay Invoice
+            </button>
+          </div>
+        </div>
+        <div class="be-quick-result__meta" *ngIf="balanceEnquiryStudent.studentNumber">
+          Student ID: {{ balanceEnquiryStudent.studentNumber }}
+        </div>
+      </div>
+
+      <div class="be-quick-empty" *ngIf="!balanceEnquiryLoading && !balanceEnquiryError && !balanceEnquiryStudent && !balanceEnquiryMatches.length">
+        Enter a student ID or name to fetch the current invoice balance.
+      </div>
     </div>
   </div>
 </div>
