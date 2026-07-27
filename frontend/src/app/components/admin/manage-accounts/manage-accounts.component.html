@@ -1,33 +1,81 @@
-<div class="container">
-  <!-- Header Section -->
-  <div class="page-header">
-    <div class="header-content">
-      <h1>
-        <span class="icon">👤</span>
-        Manage Teacher Accounts
-      </h1>
-      <p class="subtitle">Create and manage user accounts for teachers in the system</p>
+<div class="mac-page">
+  <div class="mac-toast-stack" *ngIf="success || error">
+    <div id="success-message" class="mac-toast mac-toast--success" *ngIf="success" [@fadeInOut] role="status">
+      <span [innerHTML]="success"></span>
+      <button type="button" class="mac-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
     </div>
-    <button class="btn btn-icon" routerLink="/teachers/new" title="Add New Teacher">
-      ➕ Add Teacher
-    </button>
+    <div class="mac-toast mac-toast--error" *ngIf="error" [@fadeInOut] role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="mac-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
   </div>
 
-  <!-- Alert Messages -->
-  <div id="success-message" class="alert alert-success" *ngIf="success" [@fadeInOut] role="alert">
-    <span class="alert-icon">✓</span>
-    <span [innerHTML]="success"></span>
-  </div>
-  <div class="alert alert-error" *ngIf="error" [@fadeInOut]>
-    <span class="alert-icon">✕</span>
-    <span>{{ error }}</span>
-  </div>
+  <header class="mac-hero">
+    <div class="mac-hero__main">
+      <div class="mac-hero-left">
+        <span class="mac-hero-icon" aria-hidden="true">⚙️</span>
+        <div>
+          <span class="mac-hero-eyebrow">System Admin</span>
+          <h1>Advanced Accounts</h1>
+          <p class="mac-hero-sub">Create user logins, manage staff accounts, provision teacher access, and reset passwords.</p>
+        </div>
+      </div>
+      <aside class="mac-hero-aside">
+        <span class="mac-hero-badge">{{ dashboardStats.teachers }} teachers</span>
+        <span class="mac-hero-badge mac-hero-badge--muted">{{ dashboardStats.staff }} staff</span>
+      </aside>
+      <div class="mac-hero__actions">
+        <button type="button" class="mac-hero-refresh" (click)="refreshPage()" [disabled]="loading" title="Refresh" aria-label="Refresh">
+          <span [class.spinning]="loading">↻</span>
+        </button>
+        <a class="mac-hero-btn mac-hero-btn--white" routerLink="/teachers/new">+ Add teacher</a>
+        <a class="mac-hero-btn mac-hero-btn--accent" routerLink="/user-management">User management</a>
+      </div>
+    </div>
+
+    <nav class="mac-cross-links" aria-label="Related admin pages">
+      <a routerLink="/user-management">User management</a>
+      <a routerLink="/admin/manage-account">My account</a>
+      <a routerLink="/user-log">System activity</a>
+      <a routerLink="/system-settings">Settings</a>
+    </nav>
+
+    <div class="mac-hero-stats" *ngIf="!loading || teachers.length">
+      <article class="mac-stat">
+        <span class="mac-stat__value">{{ dashboardStats.teachers }}</span>
+        <span class="mac-stat__label">Teachers</span>
+      </article>
+      <article class="mac-stat">
+        <span class="mac-stat__value">{{ dashboardStats.withAccount }}</span>
+        <span class="mac-stat__label">With accounts</span>
+      </article>
+      <article class="mac-stat">
+        <span class="mac-stat__value">{{ dashboardStats.withoutAccount }}</span>
+        <span class="mac-stat__label">Without accounts</span>
+      </article>
+      <article class="mac-stat">
+        <span class="mac-stat__value">{{ dashboardStats.coverage }}%</span>
+        <span class="mac-stat__label">Coverage</span>
+      </article>
+      <article class="mac-stat">
+        <span class="mac-stat__value">{{ dashboardStats.staff }}</span>
+        <span class="mac-stat__label">Staff logins</span>
+      </article>
+      <article class="mac-stat">
+        <span class="mac-stat__value">{{ dashboardStats.showing }}</span>
+        <span class="mac-stat__label">Showing (filtered)</span>
+      </article>
+    </div>
+    <div class="mac-hero-stats mac-hero-stats--skeleton" *ngIf="loading && !teachers.length">
+      <div class="mac-skeleton" *ngFor="let i of skeletonRows"></div>
+    </div>
+  </header>
 
   <!-- Manual User Account Creation -->
-  <div class="manual-account-card" *ngIf="canCreateManualAccounts()" [@fadeInUp]>
-    <div class="manual-account-header">
+  <section class="mac-panel manual-account-card" *ngIf="canCreateManualAccounts()" [@fadeInUp]>
+    <div class="mac-panel__head manual-account-header">
       <div>
-        <h2>Create User Account</h2>
+        <h2>Create user account</h2>
         <p>Create login credentials for administrators, accountants, parents, students, or teachers. For teachers, only username and password are required (email is not needed).</p>
       </div>
       <div class="manual-account-meta">
@@ -153,10 +201,10 @@
         </button>
       </div>
     </form>
-  </div>
+  </section>
 
   <!-- Head Teacher Account (Universal Teacher) -->
-  <div class="manual-account-card universal-teacher-card" *ngIf="canCreateManualAccounts()" [@fadeInUp]>
+  <section class="mac-panel manual-account-card universal-teacher-card" *ngIf="canCreateManualAccounts()" [@fadeInUp]>
     <div class="manual-account-header">
       <div>
         <h2>👥 Head Teacher Account</h2>
@@ -205,42 +253,10 @@
         </button>
       </div>
     </div>
-  </div>
-
-  <!-- Teacher Account Overview -->
-  <div class="stats-container" *ngIf="teachers.length > 0">
-    <div class="stat-card">
-      <div class="stat-icon total">👥</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ teachers.length }}</div>
-        <div class="stat-label">Total Teachers</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon active">✅</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ getAccountsWithAccount() }}</div>
-        <div class="stat-label">With Accounts</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon pending">⚠️</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ getAccountsWithoutAccount() }}</div>
-        <div class="stat-label">Without Accounts</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon percentage">📊</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ getAccountPercentage() }}%</div>
-        <div class="stat-label">Account Coverage</div>
-      </div>
-    </div>
-  </div>
+  </section>
 
   <!-- Staff accounts (admin, superadmin, accountant) -->
-  <div class="manual-account-card staff-accounts-card" *ngIf="canCreateManualAccounts()" [@fadeInUp]>
+  <section class="mac-panel manual-account-card staff-accounts-card" *ngIf="canCreateManualAccounts()" [@fadeInUp]>
     <div class="manual-account-header">
       <div>
         <h2>👔 Administrator & Staff Accounts</h2>
@@ -307,7 +323,7 @@
       </table>
     </div>
     <div *ngIf="!loadingStaff && staffUsers.length === 0" class="empty-staff">No staff accounts found.</div>
-  </div>
+  </section>
 
   <!-- Staff Profile Popup (edit role / username / email from list) -->
   <div *ngIf="showStaffProfileModal && staffProfileTarget" class="modal-overlay" (click)="closeStaffProfileModal()" [@fadeInOut]>
@@ -397,7 +413,7 @@
   </div>
 
   <!-- Demo Account Notice -->
-  <div class="demo-notice-card" *ngIf="isAdmin() && isDemoUser()" [@fadeInUp]>
+  <section class="mac-panel demo-notice-card" *ngIf="isAdmin() && isDemoUser()" [@fadeInUp]>
     <div class="demo-notice-content">
       <span class="demo-notice-icon">🔒</span>
       <div>
@@ -405,11 +421,10 @@
         <p>You are logged in as a demo user. Password changes are disabled in the demo environment. This account is for testing purposes only.</p>
       </div>
     </div>
-  </div>
+  </section>
 
   <!-- Admin Password Change Section -->
-  <!-- Show password change section for admin/superadmin users (not demo) -->
-  <div class="admin-password-section" *ngIf="(isAdmin() || getCurrentAdminInfo()) && !isDemoUser()" [@fadeInUp]>
+  <section class="mac-panel admin-password-section" *ngIf="(isAdmin() || getCurrentAdminInfo()) && !isDemoUser()" [@fadeInUp]>
     <div class="password-section-header" (click)="togglePasswordChangeSection()">
       <div class="password-section-title">
         <span class="password-icon">🔐</span>
@@ -543,84 +558,43 @@
         </div>
       </form>
     </div>
-  </div>
-
-  <!-- Statistics Cards -->
-  <div class="stats-container" *ngIf="!loading && teachers.length > 0">
-    <div class="stat-card">
-      <div class="stat-icon total">👥</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ teachers.length }}</div>
-        <div class="stat-label">Total Teachers</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon active">✓</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ getAccountsWithAccount() }}</div>
-        <div class="stat-label">With Accounts</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon pending">⚠️</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ getAccountsWithoutAccount() }}</div>
-        <div class="stat-label">Without Accounts</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon percentage">📊</div>
-      <div class="stat-content">
-        <div class="stat-value">{{ getAccountPercentage() }}%</div>
-        <div class="stat-label">Account Coverage</div>
-      </div>
-    </div>
-  </div>
+  </section>
 
   <!-- Search and Filter Section -->
-  <div class="search-filter-section" *ngIf="!loading && teachers.length > 0">
+  <section class="mac-panel search-filter-section" *ngIf="!loading && teachers.length > 0">
     <div class="search-wrapper">
       <span class="search-icon">🔍</span>
-      <input 
-        type="text" 
-        class="search-input" 
-        placeholder="Search by name, employee number, or status..."
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search by name, employee number…"
         [(ngModel)]="searchQuery"
         (input)="filterTeachers()">
-      <button class="clear-search" *ngIf="searchQuery" (click)="clearSearch()" title="Clear search">
-        ✕
-      </button>
+      <button class="clear-search" *ngIf="searchQuery" (click)="clearSearch()" title="Clear search">✕</button>
     </div>
     <div class="filter-options">
-      <button 
-        class="filter-btn" 
-        [class.active]="filterStatus === 'all'"
-        (click)="setFilter('all')">
-        All ({{ teachers.length }})
+      <button class="filter-btn" [class.active]="filterStatus === 'all'" (click)="setFilter('all')">
+        All&nbsp;<span style="opacity:.7">({{ teachers.length }})</span>
       </button>
-      <button 
-        class="filter-btn" 
-        [class.active]="filterStatus === 'with-account'"
-        (click)="setFilter('with-account')">
-        With Account ({{ getAccountsWithAccount() }})
+      <button class="filter-btn" [class.active]="filterStatus === 'with-account'" (click)="setFilter('with-account')">
+        ✓ With Account&nbsp;<span style="opacity:.7">({{ getAccountsWithAccount() }})</span>
       </button>
-      <button 
-        class="filter-btn" 
-        [class.active]="filterStatus === 'without-account'"
-        (click)="setFilter('without-account')">
-        Without Account ({{ getAccountsWithoutAccount() }})
+      <button class="filter-btn" [class.active]="filterStatus === 'without-account'" (click)="setFilter('without-account')">
+        ⚠ No Account&nbsp;<span style="opacity:.7">({{ getAccountsWithoutAccount() }})</span>
       </button>
     </div>
-  </div>
+  </section>
 
   <!-- Loading State -->
-  <div *ngIf="loading && teachers.length === 0" class="loading-container">
-    <div class="spinner"></div>
-    <p>Loading teachers...</p>
-  </div>
+  <section class="mac-panel mac-loading-panel" *ngIf="loading && teachers.length === 0">
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading teachers…</p>
+    </div>
+  </section>
 
   <!-- Teachers Table -->
-  <div *ngIf="!loading" class="table-container">
+  <section class="mac-panel table-container" *ngIf="!loading">
     <div *ngIf="filteredTeachers.length > 0">
       <table class="teachers-table">
         <thead>
@@ -636,7 +610,7 @@
           <tr *ngFor="let teacher of paginatedTeachers" [@fadeInUp]>
             <td>
               <div class="employee-number">
-                <span class="employee-icon">🆔</span>
+                <span class="employee-icon" aria-hidden="true">🪪</span>
                 {{ teacher.teacherId }}
               </div>
             </td>
@@ -647,52 +621,43 @@
             </td>
             <td>
               <div class="teacher-email">
-                {{ teacher.email ? teacher.email : '—' }}
+                {{ teacher.email || '—' }}
               </div>
             </td>
             <td>
-              <span class="status-badge" 
-                    [class.has-account]="teacher.hasAccount" 
+              <span class="status-badge"
+                    [class.has-account]="teacher.hasAccount"
                     [class.no-account]="!teacher.hasAccount">
-                <span class="status-icon">{{ teacher.hasAccount ? '✓' : '⚠️' }}</span>
+                <span class="status-icon">{{ teacher.hasAccount ? '✓' : '⚠' }}</span>
                 {{ teacher.accountStatus }}
               </span>
             </td>
             <td>
               <div class="action-buttons">
-                <button 
-                  *ngIf="!teacher.hasAccount" 
-                  class="btn btn-primary btn-sm" 
+                <button
+                  *ngIf="!teacher.hasAccount"
+                  class="btn btn-primary btn-sm"
                   (click)="openCreateAccountModal(teacher)"
                   [disabled]="creatingAccount">
-                  <span *ngIf="!creatingAccount || selectedTeacher?.id !== teacher.id">
-                    ➕ Create Account
-                  </span>
+                  <span *ngIf="!creatingAccount || selectedTeacher?.id !== teacher.id">+ Create Account</span>
                   <span *ngIf="creatingAccount && selectedTeacher?.id === teacher.id" class="btn-loading">
-                    <span class="spinner-small"></span>
-                    Creating...
+                    <span class="spinner-small"></span> Creating…
                   </span>
                 </button>
-                <button 
-                  *ngIf="teacher.hasAccount" 
-                  class="btn btn-info btn-sm" 
-                  (click)="viewAccountDetails(teacher)">
-                  👁️ View Details
+                <button *ngIf="teacher.hasAccount" class="btn btn-info btn-sm" (click)="viewAccountDetails(teacher)">
+                  View
                 </button>
-                <button 
-                  *ngIf="teacher.hasAccount" 
-                  class="btn btn-secondary btn-sm" 
-                  (click)="openResetPasswordModal(teacher)">
-                  🔑 Reset Password
+                <button *ngIf="teacher.hasAccount" class="btn btn-secondary btn-sm" (click)="openResetPasswordModal(teacher)">
+                  Reset PW
                 </button>
-                <button 
-                  *ngIf="teacher.hasAccount" 
-                  class="btn btn-danger btn-sm" 
+                <button
+                  *ngIf="teacher.hasAccount"
+                  class="btn btn-danger btn-sm"
                   (click)="deleteAccount(teacher)"
                   [disabled]="deletingAccountUserId === teacher.userId"
                   title="Delete login account (teacher record remains)">
-                  <span *ngIf="deletingAccountUserId !== teacher.userId">🗑️ Delete</span>
-                  <span *ngIf="deletingAccountUserId === teacher.userId" class="btn-loading"><span class="spinner-small"></span> Deleting...</span>
+                  <span *ngIf="deletingAccountUserId !== teacher.userId">Delete</span>
+                  <span *ngIf="deletingAccountUserId === teacher.userId" class="btn-loading"><span class="spinner-small"></span> …</span>
                 </button>
               </div>
             </td>
@@ -744,7 +709,7 @@
         🔄 Clear Filters
       </button>
     </div>
-  </div>
+  </section>
 
   <!-- Create Account Modal -->
   <div *ngIf="showCreateModal" class="modal-overlay" (click)="closeCreateModal()" [@fadeInOut]>

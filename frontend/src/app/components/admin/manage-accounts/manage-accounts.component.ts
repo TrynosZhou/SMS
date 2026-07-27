@@ -195,6 +195,42 @@ export class ManageAccountsComponent implements OnInit, OnDestroy {
     }
   }
 
+  readonly skeletonRows = [1, 2, 3, 4, 5, 6];
+
+  get dashboardStats(): {
+    teachers: number;
+    withAccount: number;
+    withoutAccount: number;
+    coverage: number;
+    staff: number;
+    showing: number;
+  } {
+    const teachers = this.teachers.length;
+    const withAccount = this.getAccountsWithAccount();
+    const withoutAccount = this.getAccountsWithoutAccount();
+    return {
+      teachers,
+      withAccount,
+      withoutAccount,
+      coverage: this.getAccountPercentage(),
+      staff: this.staffUsers.length,
+      showing: this.filteredTeachers.length,
+    };
+  }
+
+  clearAlert(kind: 'success' | 'error'): void {
+    if (kind === 'success') this.success = '';
+    else this.error = '';
+  }
+
+  refreshPage(): void {
+    this.loadTeachers();
+    this.loadUniversalTeacherStatus();
+    if (this.canCreateManualAccounts()) {
+      this.loadStaffUsers();
+    }
+  }
+
   private bootstrapPage(): void {
     this.loadTeachers();
     this.loadUniversalTeacherStatus();

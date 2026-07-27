@@ -457,7 +457,22 @@ export class ManageAccountComponent implements OnInit, OnDestroy {
     if (this.isAccountant) {
       return 'Review your account details and update your login password.';
     }
+    if (this.isAdminStaff) {
+      return 'Review your administrator profile and keep your login credentials secure.';
+    }
     return 'Review your profile and keep your login credentials secure.';
+  }
+
+  get isAdminStaff(): boolean {
+    const role = (this.accountInfo?.role || this.authService.getCurrentUser()?.role || '').toLowerCase();
+    return ['admin', 'superadmin', 'director', 'headmaster', 'deputy_headmaster'].includes(role);
+  }
+
+  get heroEyebrow(): string {
+    if (this.isAdminStaff) return 'System Admin';
+    if (this.isTeacher) return 'Staff Portal';
+    if (this.isAccountant) return 'Finance';
+    return 'Account';
   }
 
   get quickLinks(): Array<{ route: string; icon: string; label: string }> {
@@ -478,7 +493,21 @@ export class ManageAccountComponent implements OnInit, OnDestroy {
         { route: '/parent/invoice-statement', icon: '🧾', label: 'Invoice' },
       ];
     }
+    if (this.isAdminStaff) {
+      return [
+        { route: this.authService.getDashboardRoute(), icon: '🏠', label: 'Dashboard' },
+        { route: '/user-management', icon: '👥', label: 'User management' },
+        { route: '/admin/manage-accounts', icon: '⚙️', label: 'Advanced accounts' },
+        { route: '/user-log', icon: '📋', label: 'System activity' },
+        { route: '/system-settings', icon: '🔧', label: 'System settings' },
+      ];
+    }
     return [{ route: this.authService.getDashboardRoute(), icon: '🏠', label: 'Dashboard' }];
+  }
+
+  clearAlert(kind: 'success' | 'error'): void {
+    if (kind === 'success') this.success = '';
+    else this.error = '';
   }
 
   setTab(tab: AccountTab): void {
