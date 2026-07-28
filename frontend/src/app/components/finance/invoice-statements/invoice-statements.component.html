@@ -1,10 +1,7 @@
+<span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
 <!-- Student Ledgers (financial-reports/student-ledgers) -->
 <div class="sl-page" *ngIf="hideInvoiceActions">
-  <div class="sl-toast-stack" *ngIf="success || error">
-    <div class="sl-toast sl-toast--success" *ngIf="success" role="status">
-      <span>{{ success }}</span>
-      <button type="button" class="sl-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
+  <div class="sl-toast-stack" *ngIf="error">
     <div class="sl-toast sl-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="sl-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
@@ -171,7 +168,6 @@
     </header>
 
     <!-- Alerts -->
-    <div class="alert alert-success" *ngIf="success">{{ success }}</div>
     <div class="alert alert-error" *ngIf="error">{{ error }}</div>
 
     <!-- Stats cards -->

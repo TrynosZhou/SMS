@@ -21,13 +21,13 @@
 .rp-textarea {
   width: 100%;
   padding: 0.65rem 0.85rem;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #000000;
   border-radius: 10px;
   font-size: 0.95rem;
   box-sizing: border-box;
   background: #fff;
   transition: border-color 0.15s, box-shadow 0.15s;
-  color: #1e293b;
+  color: #000000;
 }
 
 .rp-input:focus,
@@ -106,22 +106,23 @@
   align-items: center;
   padding: 0 1rem;
   background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #000000;
   border-right: none;
   border-radius: 10px 0 0 10px;
   font-weight: 700;
-  color: #475569;
+  color: #000000;
 }
 
 .rp-amount-input {
   flex: 1;
   padding: 0.75rem 1rem;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #000000;
   border-radius: 0 10px 10px 0;
   font-size: 1.2rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   min-width: 0;
+  color: #000000;
 }
 
 .rp-amount-hint { margin-top: 0.5rem; }

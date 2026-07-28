@@ -349,7 +349,8 @@ export class ClassListsComponent implements OnInit, OnDestroy {
   }
 
   private showPageConfirmation(type: 'success' | 'error', title: string, message: string): void {
-    this.pageConfirmation = { type, title, message };
+    // Success uses the system-wide dialog via `this.success` + smsSuccessConfirm.
+    this.pageConfirmation = null;
     if (type === 'success') {
       this.success = message;
       this.error = '';

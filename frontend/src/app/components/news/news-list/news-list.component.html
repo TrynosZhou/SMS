@@ -1,6 +1,6 @@
 <div class="news-list-container">
-  <!-- Alert Messages -->
-  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<!-- Alert Messages -->
   <div class="alert alert-error" *ngIf="error">{{ error }}</div>
 
   <!-- Page Header -->

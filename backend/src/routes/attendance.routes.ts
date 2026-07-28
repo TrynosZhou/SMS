@@ -15,10 +15,36 @@ const router = Router();
 router.use(authenticate);
 
 // Mark attendance (bulk for a class on a date)
-router.post('/', authorize(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), requirePermission('attendance', 'create'), markAttendance);
+router.post(
+  '/',
+  authorize(
+    UserRole.TEACHER,
+    UserRole.ADMIN,
+    UserRole.SUPERADMIN,
+    UserRole.DIRECTOR,
+    UserRole.HEADMASTER,
+    UserRole.DEPUTY_HEADMASTER,
+    UserRole.DEMO_USER
+  ),
+  requirePermission('attendance', 'create'),
+  markAttendance
+);
 
 // Get attendance records
-router.get('/', authorize(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.DEMO_USER), requireModuleView('attendance'), getAttendance);
+router.get(
+  '/',
+  authorize(
+    UserRole.TEACHER,
+    UserRole.ADMIN,
+    UserRole.SUPERADMIN,
+    UserRole.DIRECTOR,
+    UserRole.HEADMASTER,
+    UserRole.DEPUTY_HEADMASTER,
+    UserRole.DEMO_USER
+  ),
+  requireModuleView('attendance'),
+  getAttendance
+);
 
 // Delete attendance records for a class on a date
 router.delete('/', authorize(UserRole.ADMIN, UserRole.SUPERADMIN), deleteAttendance);

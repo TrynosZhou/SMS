@@ -1,11 +1,8 @@
+<span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
 <div class="rcp-page" *ngIf="isParent" [class.rcp-page--loaded]="reportCards.length > 0">
-  <div class="rc-toast-stack" *ngIf="success || error || connectionBanner">
+  <div class="rc-toast-stack" *ngIf="error || connectionBanner">
     <div class="rc-toast rc-toast--warn" *ngIf="connectionBanner" role="status" [@fadeInOut]>
       <span>{{ connectionBanner }}</span>
-    </div>
-    <div class="rc-toast rc-toast--success" *ngIf="success" role="status" [@fadeInOut]>
-      <span>{{ success }}</span>
-      <button type="button" class="rc-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
     </div>
     <div class="rc-toast rc-toast--error" *ngIf="error && !validationError && !accessDenied" role="alert" [@fadeInOut]>
       <span>{{ error }}</span>
@@ -141,13 +138,9 @@
 </div>
 
 <div class="rc-page" *ngIf="!isParent">
-  <div class="rc-toast-stack" *ngIf="success || error || autoSavingRemarks || connectionBanner">
+  <div class="rc-toast-stack" *ngIf="error || autoSavingRemarks || connectionBanner">
     <div class="rc-toast rc-toast--warn" *ngIf="connectionBanner" role="status" [@fadeInOut]>
       <span>{{ connectionBanner }}</span>
-    </div>
-    <div class="rc-toast rc-toast--success" *ngIf="success" role="status" [@fadeInOut]>
-      <span>{{ success }}</span>
-      <button type="button" class="rc-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
     </div>
     <div class="rc-toast rc-toast--error" *ngIf="error && !validationError" role="alert" [@fadeInOut] [class.rc-toast--warn]="accessDenied">
       <span>{{ error }}</span>

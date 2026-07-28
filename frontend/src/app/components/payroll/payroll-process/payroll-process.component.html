@@ -1,5 +1,6 @@
 <div class="container process-page">
-  <header class="page-header">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<header class="page-header">
     <div class="header-content">
       <h1 class="page-title">
         <span class="title-icon">⚙️</span>
@@ -10,7 +11,6 @@
     <a routerLink="/payroll" class="btn btn-outline">← Back</a>
   </header>
 
-  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
   <div class="alert alert-error" *ngIf="error">{{ error }}</div>
 
   <!-- Generate section -->

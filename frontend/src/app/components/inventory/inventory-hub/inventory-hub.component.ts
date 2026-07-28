@@ -7,6 +7,7 @@ import { StudentService } from '../../../services/student.service';
 import { AuthService } from '../../../services/auth.service';
 import { ModuleAccessService } from '../../../services/module-access.service';
 import { ThemeService } from '../../../services/theme.service';
+import { SuccessConfirmService } from '../../../services/success-confirm.service';
 
 export type InvTab = 'textbooks' | 'furniture' | 'teacherAlloc' | 'ops' | 'fines' | 'reports' | 'settings';
 export type CatalogView = 'table' | 'cards';
@@ -98,6 +99,7 @@ export class InventoryHubComponent implements OnInit, OnDestroy {
     public auth: AuthService,
     private moduleAccess: ModuleAccessService,
     public theme: ThemeService,
+    private successConfirm: SuccessConfirmService,
     private cdr: ChangeDetectorRef,
     private route: ActivatedRoute,
     private router: Router
@@ -177,6 +179,10 @@ export class InventoryHubComponent implements OnInit, OnDestroy {
   }
 
   private showToast(type: 'success' | 'error' | 'info', message: string) {
+    if (type === 'success') {
+      void this.successConfirm.show({ title: 'Success!', message });
+      return;
+    }
     if (this.toastTimer) clearTimeout(this.toastTimer);
     this.toast = { type, message };
     this.toastTimer = setTimeout(() => (this.toast = null), 4200);

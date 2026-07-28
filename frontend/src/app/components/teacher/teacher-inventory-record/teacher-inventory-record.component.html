@@ -54,9 +54,9 @@
     </button>
   </div>
 
-  <!-- Success banners -->
-  <div class="tir-alert tir-alert-success" *ngIf="issueTextbookSuccess">{{ issueTextbookSuccess }}</div>
-  <div class="tir-alert tir-alert-success" *ngIf="issueFurnitureSuccess">{{ issueFurnitureSuccess }}</div>
+  <!-- Success banners → system dialog -->
+  <span class="sms-success-bridge" *ngIf="issueTextbookSuccess" [smsSuccessConfirm]="issueTextbookSuccess" (smsSuccessConfirmClear)="issueTextbookSuccess = ''" aria-hidden="true"></span>
+  <span class="sms-success-bridge" *ngIf="issueFurnitureSuccess" [smsSuccessConfirm]="issueFurnitureSuccess" (smsSuccessConfirmClear)="issueFurnitureSuccess = ''" aria-hidden="true"></span>
 
   <!-- =================== TEXTBOOKS =================== -->
   <ng-container *ngIf="mode === 'textbooks'">

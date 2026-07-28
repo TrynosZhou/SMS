@@ -1,10 +1,6 @@
 <div class="pr-page">
-  <div class="pr-alert pr-alert--success" *ngIf="success" role="status">
-    <span class="pr-alert__icon" aria-hidden="true">✓</span>
-    <span class="pr-alert__text">{{ success }}</span>
-    <button type="button" class="pr-alert__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-  </div>
-  <div class="pr-alert pr-alert--error" *ngIf="error" role="alert">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="pr-alert pr-alert--error" *ngIf="error" role="alert">
     <span class="pr-alert__icon" aria-hidden="true">✗</span>
     <span class="pr-alert__text">{{ error }}</span>
     <button type="button" class="pr-alert__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
@@ -112,17 +108,16 @@
 
     <div class="pr-form-grid">
       <div class="pr-field">
-        <span class="pr-field-label">Exam type <span class="pr-required">*</span></span>
-        <div class="pr-chips">
-          <button
-            type="button"
-            class="pr-chip"
-            *ngFor="let t of examTypes"
-            [class.pr-chip--active]="publishExamType === t.value"
-            (click)="selectExamType(t.value)">
-            {{ t.label }}
-          </button>
-        </div>
+        <label for="pr-exam-type">Exam type <span class="pr-required">*</span></label>
+        <select
+          id="pr-exam-type"
+          class="pr-select"
+          [(ngModel)]="publishExamType"
+          (ngModelChange)="selectExamType($event)"
+          [ngModelOptions]="{standalone: true}">
+          <option value="">Select exam type</option>
+          <option *ngFor="let t of examTypes" [value]="t.value">{{ t.label }}</option>
+        </select>
       </div>
 
       <div class="pr-field">
@@ -157,7 +152,7 @@
     <span class="pr-hint-icon" aria-hidden="true">👆</span>
     <div>
       <h3>Select an exam type</h3>
-      <p>Choose <strong>Mid Term</strong> or <strong>End of Term</strong> to preview publish status across all classes.</p>
+      <p>Choose an exam type from the dropdown to preview publish status across all classes.</p>
     </div>
   </section>
 

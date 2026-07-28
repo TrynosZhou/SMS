@@ -1,5 +1,6 @@
 <div class="container">
-  <div class="page-header">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="page-header">
     <h1>
       <span class="header-icon">📋</span>
       Payroll Entries
@@ -13,7 +14,6 @@
     </div>
   </div>
 
-  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
   <div class="alert alert-error" *ngIf="error">{{ error }}</div>
 
   <div class="loading-state" *ngIf="loading">Loading entries...</div>

@@ -9,6 +9,7 @@ import { TeacherService } from '../../../services/teacher.service';
 import { StudentService } from '../../../services/student.service';
 import { SettingsService } from '../../../services/settings.service';
 import { AuthService } from '../../../services/auth.service';
+import { SuccessConfirmService } from '../../../services/success-confirm.service';
 
 @Component({
   standalone: false,  selector: 'app-mark-attendance',
@@ -38,6 +39,8 @@ classes: any[] = [];
   statusFilter: string = 'all'; // 'all', 'present', 'absent', 'late', 'excused'
   hasUnsavedChanges = false;
   lastSavedDate: Date | null = null;
+  /** True when attendance for the selected class + date has already been saved. */
+  registerAlreadyMarked = false;
 
   // Bulk marking properties
   showBulkModal = false;
@@ -56,6 +59,7 @@ classes: any[] = [];
     private studentService: StudentService,
     private settingsService: SettingsService,
     private authService: AuthService,
+    private successConfirm: SuccessConfirmService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -253,11 +257,13 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
       this.students = [];
       this.attendanceData = [];
       this.rosterLoaded = false;
+      this.registerAlreadyMarked = false;
       return;
     }
 
     this.loading = true;
     this.rosterLoaded = false;
+    this.registerAlreadyMarked = false;
     this.error = '';
     
     // Load students for the selected class
@@ -274,6 +280,7 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
         this.error = 'Failed to load students';
         this.loading = false;
         this.rosterLoaded = false;
+        this.registerAlreadyMarked = false;
         console.error(err);
         this.cdr.markForCheck();
       }
@@ -288,6 +295,7 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
     }));
     this.updateFilteredData();
     this.hasUnsavedChanges = true;
+    this.registerAlreadyMarked = false;
   }
 
   loadExistingAttendance() {
@@ -319,11 +327,17 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
           });
           this.updateFilteredData();
           this.hasUnsavedChanges = false;
+          this.registerAlreadyMarked = true;
+        } else {
+          this.registerAlreadyMarked = false;
         }
+        this.cdr.markForCheck();
       },
       error: (err: any) => {
         // If no attendance found, that's okay - we'll create new records
+        this.registerAlreadyMarked = false;
         console.log('No existing attendance found for this date');
+        this.cdr.markForCheck();
       }
     });
   }
@@ -341,12 +355,14 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
     } else {
       this.error = '';
     }
+    this.registerAlreadyMarked = false;
     this.loadExistingAttendance();
   }
 
   onTermChange(): void {
     this.currentTerm = this.selectedTerm;
     this.rosterLoaded = false;
+    this.registerAlreadyMarked = false;
     this.students = [];
     this.attendanceData = [];
     this.updateFilteredData();
@@ -355,6 +371,7 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
 
   onSelectionFieldChange(): void {
     this.rosterLoaded = false;
+    this.registerAlreadyMarked = false;
     this.cdr.markForCheck();
   }
 
@@ -385,51 +402,108 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
   }
 
   markAll(status: string) {
+    if (this.registerAlreadyMarked) {
+      return;
+    }
     this.attendanceData.forEach(item => {
       item.status = status;
     });
     this.hasUnsavedChanges = true;
     this.updateFilteredData();
+    this.cdr.markForCheck();
+  }
+
+  canSaveAttendance(): boolean {
+    return (
+      !this.submitting &&
+      !this.registerAlreadyMarked &&
+      this.rosterLoaded &&
+      !!this.selectedClassId &&
+      !!this.selectedDate &&
+      this.attendanceData.length > 0 &&
+      !this.isWeekendSelected()
+    );
+  }
+
+  onRemarksChange(): void {
+    if (this.registerAlreadyMarked) {
+      return;
+    }
+    this.hasUnsavedChanges = true;
+    this.cdr.markForCheck();
+  }
+
+  saveButtonTitle(): string {
+    if (this.isWeekendSelected()) {
+      return 'Cannot save attendance on weekends';
+    }
+    if (this.registerAlreadyMarked) {
+      return 'Attendance for this class and date has already been marked';
+    }
+    if (!this.rosterLoaded || this.attendanceData.length === 0) {
+      return 'Load a class roll first';
+    }
+    if (this.submitting) {
+      return 'Saving attendance…';
+    }
+    return 'Save attendance for all students in this class';
   }
 
   submitAttendance() {
-    if (!this.selectedClassId || !this.selectedDate) {
-      this.error = 'Please select a class and date';
-      return;
-    }
-
-    if (this.isWeekendSelected()) {
-      this.error = 'You cannot mark attendance on weekends (Saturday or Sunday).';
-      return;
-    }
-
-    if (this.attendanceData.length === 0) {
-      this.error = 'No students to mark attendance for';
+    if (!this.canSaveAttendance()) {
+      if (this.registerAlreadyMarked) {
+        this.error = 'Attendance for this class and date has already been marked. You can only mark the register once per day.';
+      } else if (this.isWeekendSelected()) {
+        this.error = 'You cannot mark attendance on weekends (Saturday or Sunday).';
+      } else if (!this.selectedClassId || !this.selectedDate) {
+        this.error = 'Please select a class and date';
+      } else if (this.attendanceData.length === 0) {
+        this.error = 'No students to mark attendance for';
+      }
+      this.cdr.markForCheck();
       return;
     }
 
     this.submitting = true;
     this.error = '';
     this.success = '';
+    this.cdr.markForCheck();
+
+    // Persist the full class roll (all statuses currently shown)
+    const payload = this.attendanceData.map((item) => ({
+      studentId: item.studentId,
+      status: item.status || 'present',
+      remarks: item.remarks || '',
+    }));
 
     this.attendanceService.markAttendance(
       this.selectedClassId,
       this.selectedDate,
-      this.attendanceData
+      payload
     ).subscribe({
       next: (response: any) => {
-        const count = typeof response?.count === 'number' ? response.count : this.attendanceData.length;
-        const msg = response?.message;
+        const count = typeof response?.count === 'number' ? response.count : payload.length;
         const dateText = this.getFormattedDate();
-        this.success = msg || `Attendance saved for ${dateText}. Records saved: ${count}.`;
+        const className = this.getSelectedClassName();
+        const detail =
+          response?.message ||
+          `Attendance for ${className} on ${dateText} has been saved (${count} student${count === 1 ? '' : 's'}).`;
         this.submitting = false;
         this.hasUnsavedChanges = false;
+        this.registerAlreadyMarked = true;
         this.lastSavedDate = new Date();
         this.cdr.markForCheck();
-        setTimeout(() => { this.success = ''; this.cdr.markForCheck(); }, 5000);
+        void this.successConfirm.show({
+          title: 'Attendance saved successfully!',
+          message: detail,
+        });
       },
       error: (err: any) => {
         this.error = err.error?.message || 'Failed to mark attendance';
+        if (err.status === 409) {
+          this.registerAlreadyMarked = true;
+          this.hasUnsavedChanges = false;
+        }
         this.submitting = false;
         this.cdr.markForCheck();
         setTimeout(() => { this.error = ''; this.cdr.markForCheck(); }, 5000);
@@ -771,11 +845,15 @@ const normalized = this.normalizeToWeekday(this.selectedDate);
 
   // Quick status update
   updateStatus(studentId: string, status: string) {
+    if (this.registerAlreadyMarked) {
+      return;
+    }
     const item = this.attendanceData.find(a => a.studentId === studentId);
     if (item) {
       item.status = status;
       this.hasUnsavedChanges = true;
       this.updateFilteredData();
+      this.cdr.markForCheck();
     }
   }
 

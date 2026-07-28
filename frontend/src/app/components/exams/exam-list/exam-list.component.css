@@ -1,4 +1,12 @@
 /* Enter Marks — modern purple theme */
+:host {
+  display: block;
+  min-height: 100%;
+  padding: 1rem 1rem 1.5rem;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #f8fafc 0%, #ede9fe 55%, #e9d5ff 100%);
+}
+
 .exam-page {
   --exam-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
   --exam-purple: #7c3aed;
@@ -9,8 +17,17 @@
   --exam-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.04);
   max-width: 1400px;
   margin: 0 auto;
-  padding: 1.25rem 1.5rem 2.5rem;
+  padding: 1.35rem 1.5rem 2rem;
   box-sizing: border-box;
+  border: 4px solid #7c3aed;
+  outline: 2px solid #c4b5fd;
+  outline-offset: 3px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #faf5ff 100%);
+  box-shadow:
+    0 0 0 1px rgba(124, 58, 237, 0.08),
+    0 12px 40px rgba(91, 33, 182, 0.14),
+    0 4px 12px rgba(15, 23, 42, 0.06);
 }
 
 /* Toasts */
@@ -218,9 +235,31 @@
   align-items: start;
 }
 
+.exam-form-grid--with-action {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1.1fr) auto;
+  align-items: start;
+}
+
 .exam-field {
   margin-bottom: 0;
   min-width: 0;
+}
+
+.exam-field--action {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-bottom: 0;
+}
+
+.exam-field__action-spacer {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  visibility: hidden;
+  height: 1.25em;
+  line-height: 1.25em;
 }
 
 .exam-field label {
@@ -239,15 +278,26 @@
 .exam-marks-input {
   width: 100%;
   padding: 0.6rem 0.85rem;
-  border: 1px solid var(--exam-border);
+  border: 1.5px solid #94a3b8;
   border-radius: 10px;
   font-size: 0.95rem;
   box-sizing: border-box;
   background: #fff;
+  color: #0f172a;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.exam-input--readonly { background: #f8fafc; color: var(--exam-muted); cursor: default; }
+.exam-select,
+.exam-input {
+  min-height: 2.65rem;
+}
+
+.exam-input--readonly {
+  background: #f8fafc;
+  color: #475569;
+  cursor: default;
+  border-color: #94a3b8;
+}
 
 .exam-select:focus,
 .exam-input:focus,
@@ -255,7 +305,7 @@
 .exam-marks-input:focus {
   outline: none;
   border-color: var(--exam-purple);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18);
 }
 
 .exam-field--error .exam-select,
@@ -348,6 +398,28 @@
   gap: 0.65rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--exam-border);
+}
+
+.exam-form-actions--inline {
+  padding-top: 0;
+  border-top: none;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  align-items: center;
+  min-height: 2.65rem; /* match select/input control height */
+}
+
+.exam-form-actions--inline .exam-btn {
+  height: 2.65rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exam-form-actions--inline .exam-btn--primary {
+  min-width: 9.5rem;
 }
 
 .exam-form-actions--footer {
@@ -628,48 +700,52 @@
 /* Table */
 .exam-table-wrap {
   overflow-x: auto;
-  border: 1px solid var(--exam-border);
+  border: 2px solid #94a3b8;
   border-radius: 12px;
   margin-bottom: 1rem;
+  background: #fff;
 }
 
 .exam-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  border: 1px solid #cbd5e1;
 }
 
 .exam-table th,
 .exam-table td {
   padding: 0.7rem 0.9rem;
-  border-bottom: 1px solid var(--exam-border);
+  border: 1px solid #cbd5e1;
   text-align: left;
   vertical-align: middle;
+  color: #000000;
 }
 
 .exam-table th {
   position: sticky;
   top: 0;
-  background: #f8fafc;
-  font-weight: 600;
+  background: #f1f5f9;
+  font-weight: 800;
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: #475569;
+  color: #000000;
   z-index: 1;
+  border-bottom: 2px solid #94a3b8;
 }
 
-.exam-table tbody tr:hover { background: #fafbfc; }
+.exam-table tbody tr:hover { background: #f8fafc; }
 .exam-row--saved { background: #f0fdf4; }
 .exam-row--saved:hover { background: #ecfdf5 !important; }
 .exam-row--entered { background: #eff6ff; }
 .exam-row--entered:hover { background: #dbeafe !important; }
 
-.exam-col-rank { width: 44px; color: #94a3b8; font-weight: 600; text-align: center; }
+.exam-col-rank { width: 44px; color: #000000; font-weight: 600; text-align: center; }
 .exam-col-pass { width: 52px; text-align: center; }
-.exam-col-marks { width: 120px; }
+.exam-col-marks { width: 130px; }
 .exam-col-actions { min-width: 108px; width: 108px; text-align: center; }
-.exam-ref { font-family: ui-monospace, monospace; font-size: 0.82rem; color: #475569; }
+.exam-ref { font-family: ui-monospace, monospace; font-size: 0.82rem; color: #000000; font-weight: 600; }
 
 .exam-pass-check {
   width: 16px;
@@ -679,22 +755,35 @@
 }
 
 .exam-marks-input {
-  max-width: 100px;
+  max-width: 108px;
   text-align: center;
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  padding: 0.45rem 0.5rem;
+  padding: 0.5rem 0.55rem;
+  border: 2px solid #64748b;
+  border-radius: 10px;
+  background: #fff;
+  color: #000000;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .exam-marks-input--filled {
-  border-color: #93c5fd;
+  border-color: #2563eb;
   background: #eff6ff;
+  color: #000000;
+}
+
+.exam-marks-input:focus {
+  border-color: var(--exam-purple);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
 }
 
 .exam-marks-input:disabled {
   background: #f1f5f9;
+  border-color: #94a3b8;
   cursor: not-allowed;
-  opacity: 0.75;
+  opacity: 0.8;
 }
 
 .exam-status {
@@ -805,6 +894,13 @@
 
 @media (max-width: 1100px) {
   .exam-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .exam-form-grid--with-action {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .exam-field--action {
+    grid-column: 1 / -1;
+    padding-bottom: 0;
+  }
 }
 
 @media (max-width: 900px) {
@@ -812,11 +908,21 @@
 }
 
 @media (max-width: 640px) {
-  .exam-form-grid { grid-template-columns: 1fr; }
+  .exam-form-grid,
+  .exam-form-grid--with-action { grid-template-columns: 1fr; }
+  .exam-field--action { padding-bottom: 0; }
+  .exam-form-actions--inline {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .exam-form-actions--inline .exam-btn {
+    flex: 1 1 auto;
+  }
 }
 
 @media (max-width: 768px) {
-  .exam-page { padding: 1rem; }
+  :host { padding: 0.75rem 0.65rem 1.25rem; }
+  .exam-page { padding: 1rem; border-width: 3px; outline-width: 2px; outline-offset: 2px; border-radius: 16px; }
   .exam-toast-stack { left: 1rem; right: 1rem; max-width: none; }
   .exam-hero-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -1,5 +1,6 @@
 <div class="news-form-container">
-  <!-- Header -->
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<!-- Header -->
   <div class="page-header">
     <h1>
       <span class="header-icon">📝</span>
@@ -19,7 +20,6 @@
   <!-- Form -->
   <div class="form-container" *ngIf="!loading">
     <!-- Alert Messages -->
-    <div class="alert alert-success" *ngIf="success">{{ success }}</div>
     <div class="alert alert-error" *ngIf="error">{{ error }}</div>
 
     <form [formGroup]="newsForm" (ngSubmit)="onSubmit()">

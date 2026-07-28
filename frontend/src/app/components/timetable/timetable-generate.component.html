@@ -1,5 +1,6 @@
 <div class="timetable-generate-container">
-  <!-- Header -->
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<!-- Header -->
   <div class="page-header">
     <div class="header-content">
       <h1>
@@ -15,12 +16,6 @@
     <span class="alert-icon">⚠️</span>
     <span>{{ error }}</span>
     <button class="alert-close" (click)="error = ''" title="Close">&times;</button>
-  </div>
-
-  <div class="alert alert-success" *ngIf="success">
-    <span class="alert-icon">✅</span>
-    <span>{{ success }}</span>
-    <button class="alert-close" (click)="success = ''" title="Close">&times;</button>
   </div>
 
   <!-- Conflict Warnings -->

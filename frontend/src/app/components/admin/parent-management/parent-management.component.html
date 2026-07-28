@@ -1,5 +1,6 @@
 <div class="parents-page parents-page--modern">
-  <header class="parents-hero">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<header class="parents-hero">
     <div class="parents-hero__content">
       <div class="parents-hero__title-row">
         <span class="parents-hero__icon" aria-hidden="true">👨‍👩‍👧‍👦</span>
@@ -44,11 +45,6 @@
   </header>
 
   <div class="parents-toasts" aria-live="polite">
-    <div class="parents-toast parents-toast--success" *ngIf="success" role="status">
-      <span class="parents-toast__icon">✓</span>
-      <span class="parents-toast__text">{{ success }}</span>
-      <button type="button" class="parents-toast__close" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
     <div class="parents-toast parents-toast--error" *ngIf="error" role="alert">
       <span class="parents-toast__icon">!</span>
       <span class="parents-toast__text">{{ error }}</span>

@@ -1,9 +1,6 @@
 <div class="employee-page employee-page--modern" [class.employee-page--edit]="isEdit">
-  <div class="employee-toast-stack" *ngIf="success || error">
-    <div class="employee-toast employee-toast--success" *ngIf="success" role="status">
-      <span>{{ success }}</span>
-      <button type="button" class="employee-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="employee-toast-stack" *ngIf="error">
     <div class="employee-toast employee-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="employee-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>

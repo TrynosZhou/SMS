@@ -1,9 +1,6 @@
 <div class="inv-page container">
-  <div class="inv-toast-stack" *ngIf="success || error">
-    <div class="inv-toast inv-toast--success" *ngIf="success" role="status">
-      <span>{{ success }}</span>
-      <button type="button" class="inv-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="inv-toast-stack" *ngIf="error">
     <div class="inv-toast inv-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="inv-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
@@ -645,7 +642,7 @@
 
         <div class="modal-body uniform-modal-body">
           <div class="alert alert-error" *ngIf="uniformError">{{ uniformError }}</div>
-          <div class="alert alert-success" *ngIf="uniformSuccess">{{ uniformSuccess }}</div>
+          <span class="sms-success-bridge" *ngIf="uniformSuccess" [smsSuccessConfirm]="uniformSuccess" (smsSuccessConfirmClear)="uniformSuccess = ''" aria-hidden="true"></span>
 
           <!-- Tab: Charge / Bill -->
           <div *ngIf="activeUniformTab === 'charge'">

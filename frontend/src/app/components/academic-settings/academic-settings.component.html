@@ -1,6 +1,6 @@
 <div class="academic-settings-page">
-  <div class="alert alert-success academic-alert" *ngIf="success">{{ success }}</div>
-  <div class="alert alert-error academic-alert" *ngIf="error">{{ error }}</div>
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="alert alert-error academic-alert" *ngIf="error">{{ error }}</div>
 
   <header class="academic-page-header">
     <div class="academic-page-title">

@@ -1,5 +1,6 @@
 <div class="record-book-container">
-  <div class="page-header">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="page-header">
     <div class="header-content">
       <div>
         <h1>📚 My Record Book</h1>
@@ -23,12 +24,6 @@
     <button class="alert-close" (click)="error = ''">&times;</button>
   </div>
   
-  <div *ngIf="success" class="alert alert-success">
-    <span class="alert-icon">✓</span>
-    <span>{{ success }}</span>
-    <button class="alert-close" (click)="success = ''">&times;</button>
-  </div>
-
   <!-- Class Selection -->
   <div class="card class-selector-card">
     <div class="card-header">

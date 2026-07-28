@@ -210,8 +210,8 @@
 .ms-field-label-spacer {
   display: block;
   font-size: 0.85rem;
-  font-weight: 600;
-  color: #334155;
+  font-weight: 700;
+  color: #000000;
   margin-bottom: 0.5rem;
 }
 
@@ -222,22 +222,30 @@
 .ms-search-input {
   width: 100%;
   padding: 0.6rem 0.85rem;
-  border: 1px solid var(--ms-border);
+  border: 2px solid #475569;
   border-radius: 10px;
   font-size: 0.95rem;
   box-sizing: border-box;
   background: #fff;
+  color: #000000;
+  font-weight: 600;
+  min-height: 2.65rem;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.ms-input--readonly { background: #f8fafc; color: var(--ms-muted); cursor: default; }
+.ms-input--readonly {
+  background: #f8fafc;
+  color: #000000;
+  cursor: default;
+  border-color: #475569;
+}
 
 .ms-select:focus,
 .ms-input:focus,
 .ms-search-input:focus {
   outline: none;
   border-color: var(--ms-purple);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18);
 }
 
 .ms-field-hint {

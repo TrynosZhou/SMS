@@ -1,5 +1,6 @@
 <div class="allocate-container">
-  <!-- Page header -->
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<!-- Page header -->
   <div class="page-header">
     <div class="header-content">
       <span class="header-icon" aria-hidden="true">🏫</span>
@@ -16,12 +17,6 @@
     <span class="alert-message">{{ error }}</span>
     <button type="button" class="alert-close" (click)="error = ''" title="Dismiss">&times;</button>
   </div>
-  <div class="alert alert-success" *ngIf="success" role="alert">
-    <span class="alert-icon" aria-hidden="true">✓</span>
-    <span class="alert-message">{{ success }}</span>
-    <button type="button" class="alert-close" (click)="success = ''" title="Dismiss">&times;</button>
-  </div>
-
   <!-- All Registered Teachers Section -->
   <div class="card all-teachers-card">
     <div class="card-header">

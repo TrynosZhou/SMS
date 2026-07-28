@@ -15,6 +15,9 @@ export class AuthInterceptor implements HttpInterceptor {
     '/auth/forgot-password/set',
     '/news/public',
     '/settings/public',
+    '/chatbot/chat',
+    '/chatbot/escalate',
+    '/chatbot/status',
   ];
 
   constructor(
@@ -64,14 +67,15 @@ export class AuthInterceptor implements HttpInterceptor {
       }
     }
 
-    // Clone the request with cleaned URL and add the authorization header if token exists
+    // Clone request; attach Authorization whenever a non-expired token exists
+    // (including public chatbot endpoints so role-aware answers work when logged in).
     let authReq = req;
-    if (cleanedUrl !== req.url || (requiresAuth && token)) {
+    if (cleanedUrl !== req.url || (token && !this.authService.isTokenExpired(token))) {
       const update: any = {};
       if (cleanedUrl !== req.url) {
         update.url = cleanedUrl;
       }
-      if (requiresAuth && token) {
+      if (token && !this.authService.isTokenExpired(token)) {
         const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
         const actingStudentId = this.authService.getStudentPortalStudentId();
         if (actingStudentId) {

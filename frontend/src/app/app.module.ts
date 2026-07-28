@@ -117,10 +117,15 @@ import { AdmissionPortalComponent } from './components/admissions/admission-port
 import { AdmissionFormComponent } from './components/admissions/admission-form/admission-form.component';
 import { AdmissionStatusComponent } from './components/admissions/admission-status/admission-status.component';
 import { AdmissionsAdminComponent } from './components/admin/admissions-admin/admissions-admin.component';
+import { ChatbotWidgetComponent } from './components/chatbot/chatbot-widget/chatbot-widget.component';
+import { ChatbotFaqAdminComponent } from './components/admin/chatbot-faq-admin/chatbot-faq-admin.component';
+import { ChatbotHelpdeskAdminComponent } from './components/admin/chatbot-helpdesk-admin/chatbot-helpdesk-admin.component';
+import { SmsSuccessConfirmDirective } from './directives/sms-success-confirm.directive';
 
 @NgModule({
   declarations: [
     AppComponent,
+    SmsSuccessConfirmDirective,
     LoginComponent,
     DashboardComponent,
     StudentListComponent,
@@ -228,6 +233,9 @@ SendMessageComponent,
     AdmissionFormComponent,
     AdmissionStatusComponent,
     AdmissionsAdminComponent,
+    ChatbotWidgetComponent,
+    ChatbotFaqAdminComponent,
+    ChatbotHelpdeskAdminComponent,
   ],
   imports: [
     BrowserModule,

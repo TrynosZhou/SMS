@@ -1,5 +1,6 @@
 <div class="mr-page" #pageRoot>
-  <div class="mr-topbar">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="mr-topbar">
     <button type="button" class="mr-back" (click)="back()">← Back</button>
     <div class="mr-title">
       <div class="mr-kicker">Teacher · Mark response</div>
@@ -12,8 +13,6 @@
   <div class="mr-card">
     <div *ngIf="loading" class="mr-muted">Loading response…</div>
     <div *ngIf="error" class="mr-alert mr-alert-error">{{ error }}</div>
-    <div *ngIf="success" class="mr-alert mr-alert-success">{{ success }}</div>
-
     <ng-container *ngIf="!loading && response">
       <div class="mr-meta">
         <div class="mr-chip">

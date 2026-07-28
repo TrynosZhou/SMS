@@ -1,9 +1,6 @@
 <div class="cf-page">
-  <div class="cf-toast-stack" *ngIf="success || error || loadError">
-    <div class="cf-toast cf-toast--success" *ngIf="success" [@fadeInOut] role="status">
-      <span>{{ success }}</span>
-      <button type="button" class="cf-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="cf-toast-stack" *ngIf="error || loadError">
     <div class="cf-toast cf-toast--error" *ngIf="error" [@fadeInOut] role="alert">
       <span>{{ error }}</span>
       <button type="button" class="cf-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>

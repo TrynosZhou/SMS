@@ -27,6 +27,7 @@
     "migrate-teaching-periods": "npx ts-node scripts/run-teaching-periods-migration.ts",
     "migrate-appraisal": "npx ts-node scripts/run-appraisal-migration.ts",
     "migrate-admissions": "npx ts-node scripts/run-admission-migration.ts",
+    "migrate-chatbot": "npx ts-node scripts/run-chatbot-migration.ts",
     "migrate-settings-columns": "npx ts-node scripts/add-settings-columns.ts",
     "clear-payroll-runs": "npx ts-node scripts/clear-payroll-runs.ts",
     "check-exam-duplicates": "node scripts/check-exam-duplicates.js",

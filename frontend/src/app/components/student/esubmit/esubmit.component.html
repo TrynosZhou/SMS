@@ -1,5 +1,6 @@
 <div class="esub-page">
-  <header class="esub-hero">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<header class="esub-hero">
     <div class="esub-hero-inner">
       <div class="esub-hero-text">
         <span class="esub-badge">Student · E‑Learning</span>
@@ -38,7 +39,6 @@
       </div>
     </div>
 
-    <div class="esub-alert esub-alert-success" *ngIf="success">{{ success }}</div>
     <div class="esub-alert esub-alert-error" *ngIf="error">{{ error }}</div>
 
       <div class="esub-field">

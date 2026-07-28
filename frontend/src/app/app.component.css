@@ -1782,6 +1782,120 @@
 }
 
 /* ========================================
+   SYSTEM-WIDE SUCCESS CONFIRMATION DIALOG
+   ======================================== */
+
+.sms-success-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10060;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(3px);
+  animation: smsSuccessOverlayIn 0.2s ease-out;
+}
+
+@keyframes smsSuccessOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sms-success-dialog {
+  width: min(100%, 380px);
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.2);
+  padding: 2.15rem 1.85rem 1.65rem;
+  text-align: center;
+  animation: smsSuccessPop 0.22s ease-out;
+}
+
+@keyframes smsSuccessPop {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.sms-success-dialog__icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.05rem;
+}
+
+.sms-success-dialog__icon svg {
+  width: 68px;
+  height: 68px;
+}
+
+.sms-success-dialog__title {
+  margin: 0 0 0.6rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #157347;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.sms-success-dialog__detail {
+  margin: 0 0 1.45rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #6c757d;
+}
+
+.sms-success-dialog__ok {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  margin: 0 auto;
+  padding: 0.78rem 1.5rem;
+  border: none;
+  border-radius: 999px;
+  background: #157347;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.sms-success-dialog__ok:hover {
+  background: #146c43;
+}
+
+.sms-success-dialog__ok:active {
+  transform: scale(0.98);
+}
+
+:host-context(.dark-mode) .sms-success-dialog,
+.dark-mode .sms-success-dialog {
+  background: #1e293b;
+}
+
+:host-context(.dark-mode) .sms-success-dialog__detail,
+.dark-mode .sms-success-dialog__detail {
+  color: #94a3b8;
+}
+
+:host-context(.dark-mode) .sms-success-dialog__title,
+.dark-mode .sms-success-dialog__title {
+  color: #4ade80;
+}
+
+:host-context(.dark-mode) .sms-success-dialog__ok,
+.dark-mode .sms-success-dialog__ok {
+  background: #15803d;
+}
+
+/* ========================================
    LOGOUT CONFIRMATION MODAL
    ======================================== */
 

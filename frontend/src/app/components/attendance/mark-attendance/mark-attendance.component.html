@@ -1,9 +1,6 @@
 <div class="mark-page">
-  <div class="mark-toast-stack" *ngIf="success || error">
-    <div class="mark-toast mark-toast--success" *ngIf="success" role="status">
-      <span>{{ success }}</span>
-      <button type="button" class="mark-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" [smsSuccessTitle]="'Success!'" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="mark-toast-stack" *ngIf="error">
     <div class="mark-toast mark-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="mark-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
@@ -66,10 +63,11 @@
     </div>
 
     <div class="mark-hero-toolbar" *ngIf="rosterLoaded">
-      <span class="mark-save-pill" *ngIf="hasUnsavedChanges || lastSavedDate">
-        <span class="mark-save-pill__dot" [class.saved]="!hasUnsavedChanges && lastSavedDate"></span>
-        <span *ngIf="hasUnsavedChanges">Unsaved changes</span>
-        <span *ngIf="!hasUnsavedChanges && lastSavedDate">Saved {{ lastSavedDate | date : 'short' }}</span>
+      <span class="mark-save-pill" *ngIf="registerAlreadyMarked || hasUnsavedChanges || lastSavedDate">
+        <span class="mark-save-pill__dot" [class.saved]="registerAlreadyMarked || (!hasUnsavedChanges && lastSavedDate)"></span>
+        <span *ngIf="registerAlreadyMarked">Already marked for this date</span>
+        <span *ngIf="!registerAlreadyMarked && hasUnsavedChanges">Unsaved changes</span>
+        <span *ngIf="!registerAlreadyMarked && !hasUnsavedChanges && lastSavedDate">Saved {{ lastSavedDate | date : 'short' }}</span>
       </span>
       <div class="mark-hero-toolbar__actions">
         <button type="button" class="mark-btn mark-btn--ghost mark-btn--sm" (click)="refreshAttendance()" [disabled]="loading">↻ Refresh</button>
@@ -87,7 +85,7 @@
       <p class="mark-panel__intro">Choose a term, class, and school day, then load the class roll.</p>
     </div>
 
-    <div class="mark-form-grid">
+    <div class="mark-form-grid mark-form-grid--with-action">
       <div class="mark-field">
         <label for="markAttTerm">Term <span class="mark-required">*</span></label>
         <select id="markAttTerm" [(ngModel)]="selectedTerm" name="term" (ngModelChange)="onTermChange()" class="mark-select" required>
@@ -108,7 +106,15 @@
         <span class="mark-field-hint" *ngIf="selectedDate">
           {{ getFormattedDate() }}
           <span class="mark-weekend-badge" *ngIf="isWeekendSelected()">Weekend — cannot save</span>
+          <span class="mark-weekend-badge mark-already-marked-badge" *ngIf="!isWeekendSelected() && registerAlreadyMarked">Already marked</span>
         </span>
+      </div>
+      <div class="mark-field mark-field--action">
+        <label class="mark-field-label-spacer" aria-hidden="true">&nbsp;</label>
+        <button type="button" class="mark-btn mark-btn--primary mark-btn--inline" (click)="fetchClassList()" [disabled]="loading || loadingClasses">
+          <span *ngIf="loading" class="mark-spinner" aria-hidden="true"></span>
+          {{ loading ? 'Loading…' : 'Load class roll' }}
+        </button>
       </div>
     </div>
 
@@ -116,13 +122,6 @@
       <button type="button" class="mark-chip" (click)="goToYesterday()">← Previous day</button>
       <button type="button" class="mark-chip" [class.mark-chip--active]="isToday()" (click)="goToToday()">Today</button>
       <button type="button" class="mark-chip" (click)="goToTomorrow()">Next day →</button>
-    </div>
-
-    <div class="mark-form-actions">
-      <button type="button" class="mark-btn mark-btn--primary" (click)="fetchClassList()" [disabled]="loading || loadingClasses">
-        <span *ngIf="loading" class="mark-spinner" aria-hidden="true"></span>
-        {{ loading ? 'Loading class list…' : 'Load class roll' }}
-      </button>
     </div>
   </section>
 
@@ -138,9 +137,9 @@
         <p class="mark-panel__intro">{{ filteredAttendanceData.length }} of {{ attendanceData.length }} students</p>
       </div>
       <div class="mark-bulk-actions">
-        <button type="button" class="mark-bulk-btn mark-bulk-btn--present" (click)="markAll('present')">All present</button>
-        <button type="button" class="mark-bulk-btn mark-bulk-btn--absent" (click)="markAll('absent')">All absent</button>
-        <button type="button" class="mark-bulk-btn mark-bulk-btn--late" (click)="markAll('late')">All late</button>
+        <button type="button" class="mark-bulk-btn mark-bulk-btn--present" (click)="markAll('present')" [disabled]="registerAlreadyMarked">All present</button>
+        <button type="button" class="mark-bulk-btn mark-bulk-btn--absent" (click)="markAll('absent')" [disabled]="registerAlreadyMarked">All absent</button>
+        <button type="button" class="mark-bulk-btn mark-bulk-btn--late" (click)="markAll('late')" [disabled]="registerAlreadyMarked">All late</button>
       </div>
     </div>
 
@@ -182,14 +181,14 @@
             <td>{{ getStudentGender(item.studentId) || '—' }}</td>
             <td>
               <div class="mark-status-btns">
-                <button type="button" class="mark-status-btn mark-status-btn--present" [class.active]="item.status === 'present'" (click)="updateStatus(item.studentId, 'present')">Present</button>
-                <button type="button" class="mark-status-btn mark-status-btn--absent" [class.active]="item.status === 'absent'" (click)="updateStatus(item.studentId, 'absent')">Absent</button>
-                <button type="button" class="mark-status-btn mark-status-btn--late" [class.active]="item.status === 'late'" (click)="updateStatus(item.studentId, 'late')">Late</button>
-                <button type="button" class="mark-status-btn mark-status-btn--excused" [class.active]="item.status === 'excused'" (click)="updateStatus(item.studentId, 'excused')">Excused</button>
+                <button type="button" class="mark-status-btn mark-status-btn--present" [class.active]="item.status === 'present'" (click)="updateStatus(item.studentId, 'present')" [disabled]="registerAlreadyMarked">Present</button>
+                <button type="button" class="mark-status-btn mark-status-btn--absent" [class.active]="item.status === 'absent'" (click)="updateStatus(item.studentId, 'absent')" [disabled]="registerAlreadyMarked">Absent</button>
+                <button type="button" class="mark-status-btn mark-status-btn--late" [class.active]="item.status === 'late'" (click)="updateStatus(item.studentId, 'late')" [disabled]="registerAlreadyMarked">Late</button>
+                <button type="button" class="mark-status-btn mark-status-btn--excused" [class.active]="item.status === 'excused'" (click)="updateStatus(item.studentId, 'excused')" [disabled]="registerAlreadyMarked">Excused</button>
               </div>
             </td>
             <td>
-              <input type="text" [(ngModel)]="item.remarks" [name]="'remarks_' + i" placeholder="Optional…" class="mark-remarks-input" (input)="hasUnsavedChanges = true">
+              <input type="text" [(ngModel)]="item.remarks" [name]="'remarks_' + i" placeholder="Optional…" class="mark-remarks-input" (input)="onRemarksChange()" [readonly]="registerAlreadyMarked">
             </td>
           </tr>
         </tbody>
@@ -203,10 +202,15 @@
     </div>
 
     <div class="mark-submit-row">
-      <button type="button" class="mark-btn mark-btn--ghost" (click)="resetForm()" [disabled]="submitting">Reset</button>
-      <button type="button" class="mark-btn mark-btn--primary mark-btn--lg" (click)="submitAttendance()" [disabled]="submitting || !hasUnsavedChanges || isWeekendSelected()">
+      <button type="button" class="mark-btn mark-btn--ghost" (click)="resetForm()" [disabled]="submitting || registerAlreadyMarked">Reset</button>
+      <button
+        type="button"
+        class="mark-btn mark-btn--primary mark-btn--lg"
+        (click)="submitAttendance()"
+        [disabled]="!canSaveAttendance()"
+        [attr.title]="saveButtonTitle()">
         <span *ngIf="submitting" class="mark-spinner" aria-hidden="true"></span>
-        {{ submitting ? 'Saving…' : 'Save attendance' }}
+        {{ submitting ? 'Saving…' : (registerAlreadyMarked ? 'Already marked' : 'Save attendance') }}
       </button>
     </div>
   </section>

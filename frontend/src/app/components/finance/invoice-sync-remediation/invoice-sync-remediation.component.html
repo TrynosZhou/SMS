@@ -1,5 +1,6 @@
 <div class="rem-page">
-  <header class="rem-hero">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<header class="rem-hero">
     <div class="rem-hero__main">
       <div class="rem-hero__left">
         <span class="rem-hero__icon" aria-hidden="true">🛠️</span>
@@ -19,8 +20,6 @@
   </header>
 
   <div *ngIf="error" class="rem-alert rem-alert--error" role="alert">{{ error }}</div>
-  <div *ngIf="success" class="rem-alert rem-alert--success" role="status">{{ success }}</div>
-
   <!-- Step 1: Filter & Preview -->
   <section class="rem-card">
     <h2><span class="step-badge">1</span> Filter &amp; Preview Payments</h2>

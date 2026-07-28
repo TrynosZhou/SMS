@@ -1,6 +1,7 @@
 <div class="pob-layout">
 
-  <!-- Main Content -->
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<!-- Main Content -->
   <main class="pob-main">
 
     <!-- Header -->
@@ -28,10 +29,6 @@
     <div class="pob-alert error" *ngIf="error">
       <span>⚠️</span> {{ error }}
     </div>
-    <div class="pob-alert success" *ngIf="success">
-      <span>✅</span> {{ success }}
-    </div>
-
     <!-- Search Bar -->
     <div class="pob-search">
       <span class="search-icon">🔍</span>

@@ -1,5 +1,6 @@
 <div class="pay-emp-page" [class.pay-emp-page--dark]="theme.darkMode">
-  <header class="pay-emp-hero">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<header class="pay-emp-hero">
     <div class="pay-emp-hero__bg" aria-hidden="true"></div>
     <div class="pay-emp-hero__row">
       <div class="pay-emp-hero__text">
@@ -16,12 +17,6 @@
       </div>
     </div>
   </header>
-
-  <div class="pay-emp-alert pay-emp-alert--success" *ngIf="success" role="status">
-    <span class="pay-emp-alert__icon" aria-hidden="true">✓</span>
-    <span class="pay-emp-alert__msg">{{ success }}</span>
-    <button type="button" class="pay-emp-alert__close" (click)="dismissSuccess()" aria-label="Dismiss">×</button>
-  </div>
 
   <div class="pay-emp-alert pay-emp-alert--error" *ngIf="error" role="alert">
     <span class="pay-emp-alert__icon" aria-hidden="true">!</span>

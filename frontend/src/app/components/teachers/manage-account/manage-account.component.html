@@ -1,3 +1,4 @@
+<span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
 <!-- Parent portal account page -->
 <div class="pma-layout" *ngIf="isParent">
   <main class="pma-main">
@@ -23,10 +24,6 @@
       </div>
     </header>
 
-    <div class="pma-alert pma-alert--success" *ngIf="success" role="status">
-      <span class="pma-alert__icon">✓</span>
-      <span>{{ success }}</span>
-    </div>
     <div class="pma-alert pma-alert--error" *ngIf="error" role="alert">
       <span class="pma-alert__icon">✕</span>
       <span>{{ error }}</span>
@@ -349,11 +346,7 @@
 
 <!-- Staff / teacher / admin account page -->
 <div class="ma-page" *ngIf="!isParent">
-  <div class="ma-toast-stack" *ngIf="success || error">
-    <div class="ma-toast ma-toast--success" *ngIf="success" role="status">
-      <span>{{ success }}</span>
-      <button type="button" class="ma-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
+  <div class="ma-toast-stack" *ngIf="error">
     <div class="ma-toast ma-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="ma-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>

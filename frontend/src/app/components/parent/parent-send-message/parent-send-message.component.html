@@ -1,5 +1,6 @@
 <div class="psm-layout">
-  <main class="psm-main">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<main class="psm-main">
     <header class="psm-hero">
       <div class="psm-hero__main">
         <div class="psm-hero__badges">
@@ -27,9 +28,6 @@
       </div>
     </header>
 
-    <div class="psm-alert psm-alert-success" *ngIf="success" role="status">
-      <span class="alert-icon">✓</span> {{ success }}
-    </div>
     <div class="psm-alert psm-alert-error" *ngIf="error" role="alert">
       <span class="alert-icon">✕</span> {{ error }}
     </div>

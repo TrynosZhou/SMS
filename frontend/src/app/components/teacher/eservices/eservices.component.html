@@ -1,5 +1,6 @@
 <div class="es-page">
-  <h1 class="es-title">E-Learning: Create Task / Assign</h1>
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<h1 class="es-title">E-Learning: Create Task / Assign</h1>
   <p class="es-subtitle">
     Create assignments, tests or notes for a whole class or a specific student.
   </p>
@@ -9,7 +10,6 @@
     <section class="es-card es-form-card">
       <h2>Create Task / Assignment</h2>
 
-      <div class="es-alert es-alert-success" *ngIf="success">{{ success }}</div>
       <div class="es-alert es-alert-error" *ngIf="error">{{ error }}</div>
 
       <div class="es-field">

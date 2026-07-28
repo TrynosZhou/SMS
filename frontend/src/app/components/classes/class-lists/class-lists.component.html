@@ -1,27 +1,10 @@
 <div class="cll-page">
-  <div class="cll-toast-stack" *ngIf="(success || error) && !pageConfirmation">
-    <div class="cll-toast cll-toast--success" *ngIf="success" role="status">
-      <span>{{ success }}</span>
-      <button type="button" class="cll-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="cll-toast-stack" *ngIf="error">
     <div class="cll-toast cll-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="cll-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
     </div>
-  </div>
-
-  <div
-    class="cll-page-confirm"
-    *ngIf="pageConfirmation"
-    [class.cll-page-confirm--success]="pageConfirmation.type === 'success'"
-    [class.cll-page-confirm--error]="pageConfirmation.type === 'error'"
-    role="status">
-    <span class="cll-page-confirm__icon" aria-hidden="true">{{ pageConfirmation.type === 'success' ? '✓' : '✕' }}</span>
-    <div class="cll-page-confirm__body">
-      <strong>{{ pageConfirmation.title }}</strong>
-      <p>{{ pageConfirmation.message }}</p>
-    </div>
-    <button type="button" class="cll-page-confirm__dismiss" (click)="clearAlert(pageConfirmation.type)" aria-label="Dismiss">×</button>
   </div>
 
   <header class="cll-hero">
@@ -257,25 +240,6 @@
     <div class="cll-data-panel">
         <div class="cll-table-scroll hide-print-ui" *ngIf="viewMode === 'table'">
         <div class="table-container" id="class-list-pdf">
-          <div class="meta-bar">
-            <div class="meta-item">
-              <span class="meta-label">Class:</span>
-              <span class="meta-value">{{ getSelectedClassName() }}</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">Term:</span>
-              <span class="meta-value">{{ selectedTerm }}</span>
-            </div>
-            <div class="meta-item" *ngIf="academicYear">
-              <span class="meta-label">Year:</span>
-              <span class="meta-value">{{ academicYear }}</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">Generated:</span>
-              <span class="meta-value">{{ generatedAt | date : 'd MMM y' }}</span>
-            </div>
-          </div>
-
           <table class="students-table">
             <thead>
               <tr>

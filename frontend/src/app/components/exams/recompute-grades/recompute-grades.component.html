@@ -1,10 +1,10 @@
 <div class="recompute-container">
-  <h2>Recompute Grades</h2>
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<h2>Recompute Grades</h2>
   <p class="helper">
     Regenerate grades for all classes using the current thresholds and labels from Settings.
   </p>
 
-  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
   <div class="alert alert-error" *ngIf="error">{{ error }}</div>
 
   <div *ngIf="summary" class="summary">

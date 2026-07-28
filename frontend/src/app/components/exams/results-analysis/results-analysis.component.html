@@ -64,7 +64,7 @@
       <p class="ra-panel__intro">Select term, class, and exam type, then load the analysis.</p>
     </div>
 
-    <div class="ra-form-grid">
+    <div class="ra-form-grid ra-form-grid--with-action">
       <div class="ra-field">
         <label for="ra-term">Term <span class="ra-required">*</span></label>
         <select
@@ -105,13 +105,14 @@
           <option *ngFor="let type of examTypes" [value]="type.value">{{ type.label }}</option>
         </select>
       </div>
-    </div>
 
-    <div class="ra-form-actions">
-      <button type="button" class="ra-btn ra-btn--primary" (click)="getAnalysis()" [disabled]="loading || !isSelectionValid()">
-        <span class="ra-spinner" *ngIf="loading" aria-hidden="true"></span>
-        {{ loading ? 'Loading analysis…' : 'Get analysis' }}
-      </button>
+      <div class="ra-field ra-field--action">
+        <label class="ra-field-label-spacer" aria-hidden="true">&nbsp;</label>
+        <button type="button" class="ra-btn ra-btn--primary ra-btn--inline" (click)="getAnalysis()" [disabled]="loading || !isSelectionValid()">
+          <span class="ra-spinner" *ngIf="loading" aria-hidden="true"></span>
+          {{ loading ? 'Loading…' : 'Get analysis' }}
+        </button>
+      </div>
     </div>
   </section>
 

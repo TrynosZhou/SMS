@@ -1,10 +1,6 @@
 <div class="settings-page" [class.settings-page--system]="showSchoolSections()" [class.settings-page--academic]="showAcademicSections()">
-  <div class="settings-toast-stack" *ngIf="success || error">
-    <div class="settings-toast settings-toast--success" *ngIf="success" role="status">
-      <span class="settings-toast__icon">✓</span>
-      <span class="settings-toast__text">{{ success }}</span>
-      <button type="button" class="settings-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="settings-toast-stack" *ngIf="error">
     <div class="settings-toast settings-toast--error" *ngIf="error" role="alert">
       <span class="settings-toast__icon">✗</span>
       <span class="settings-toast__text">{{ error }}</span>
@@ -488,18 +484,14 @@
           </div>
         </div>
 
-        <div class="notification-save-alert-wrap" *ngIf="notificationSaveSuccess || notificationSaveError">
-          <div class="notification-save-alert notification-save-alert--success" *ngIf="notificationSaveSuccess" role="status">
-            <span class="notification-save-alert__icon" aria-hidden="true">✓</span>
-            <span class="notification-save-alert__text">{{ notificationSaveSuccess }}</span>
-            <button type="button" class="notification-save-alert__dismiss" (click)="clearNotificationSaveAlert()" aria-label="Dismiss">×</button>
-          </div>
+        <div class="notification-save-alert-wrap" *ngIf="notificationSaveError">
           <div class="notification-save-alert notification-save-alert--error" *ngIf="notificationSaveError" role="alert">
             <span class="notification-save-alert__icon" aria-hidden="true">✗</span>
             <span class="notification-save-alert__text">{{ notificationSaveError }}</span>
             <button type="button" class="notification-save-alert__dismiss" (click)="clearNotificationSaveAlert()" aria-label="Dismiss">×</button>
           </div>
         </div>
+        <span class="sms-success-bridge" *ngIf="notificationSaveSuccess" [smsSuccessConfirm]="notificationSaveSuccess" (smsSuccessConfirmClear)="notificationSaveSuccess = ''" aria-hidden="true"></span>
 
         <div class="notification-save-row">
           <button

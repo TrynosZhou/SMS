@@ -279,29 +279,40 @@
 .pr-field-label {
   display: block;
   font-size: 0.85rem;
-  font-weight: 600;
-  color: #334155;
+  font-weight: 700;
+  color: #000000;
   margin-bottom: 0.5rem;
 }
 
-.pr-input {
+.pr-input,
+.pr-select {
   width: 100%;
   padding: 0.6rem 0.85rem;
-  border: 1px solid var(--pr-border);
+  border: 2px solid #000000;
   border-radius: 10px;
   font-size: 0.95rem;
   box-sizing: border-box;
   background: #fff;
+  color: #000000;
+  font-weight: 600;
+  min-height: 2.65rem;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.pr-input:focus {
+.pr-input:focus,
+.pr-select:focus {
   outline: none;
   border-color: var(--pr-purple);
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
 }
 
-.pr-input:disabled { background: #f8fafc; color: var(--pr-muted); }
+.pr-input:disabled,
+.pr-select:disabled {
+  background: #f8fafc;
+  color: #000000;
+  border-color: #334155;
+  opacity: 0.85;
+}
 
 .pr-field-hint {
   display: block;
@@ -587,10 +598,11 @@
 .pr-search-input {
   width: 100%;
   padding: 0.65rem 5rem 0.65rem 2.25rem;
-  border: 1px solid var(--pr-border);
+  border: 2px solid #000000;
   border-radius: 10px;
   font-size: 0.9rem;
   box-sizing: border-box;
+  color: #000000;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 

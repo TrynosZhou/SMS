@@ -208,8 +208,8 @@
   margin-bottom: 1rem;
 }
 
-.cmp-panel__title { margin: 0 0 4px; font-size: 1.1rem; font-weight: 700; color: #1e293b; }
-.cmp-panel__intro { margin: 0; font-size: 0.85rem; color: #64748b; }
+.cmp-panel__title { margin: 0 0 4px; font-size: 1.1rem; font-weight: 700; color: #000000; }
+.cmp-panel__intro { margin: 0; font-size: 0.85rem; color: #000000; }
 
 .cmp-btn-clear {
   background: none;
@@ -233,7 +233,7 @@
 .cmp-chips-label {
   font-size: 0.78rem;
   font-weight: 700;
-  color: #64748b;
+  color: #000000;
   margin-right: 4px;
 }
 
@@ -244,7 +244,7 @@
   background: #f8fafc;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #475569;
+  color: #000000;
   cursor: pointer;
 }
 
@@ -258,7 +258,7 @@
 
 .cmp-filters-row {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 12px;
 }
@@ -267,18 +267,34 @@
   display: block;
   font-size: 0.78rem;
   font-weight: 700;
-  color: #475569;
+  color: #000000;
   margin-bottom: 6px;
+}
+
+.cmp-required {
+  color: #dc2626;
 }
 
 .cmp-input,
 .cmp-select {
   width: 100%;
   padding: 0.55rem 0.75rem;
-  border: 1px solid var(--cmp-border);
+  border: 2px solid #475569;
   border-radius: 10px;
   font-size: 0.88rem;
   box-sizing: border-box;
+  background: #fff;
+  color: #000000;
+  font-weight: 600;
+  min-height: 2.5rem;
+}
+
+.cmp-input:disabled,
+.cmp-select:disabled {
+  background: #f8fafc;
+  border-color: #64748b;
+  color: #000000;
+  opacity: 0.85;
 }
 
 .cmp-input:focus,
@@ -305,10 +321,11 @@
 .cmp-search-input {
   width: 100%;
   padding: 0.6rem 5rem 0.6rem 2.25rem;
-  border: 1px solid var(--cmp-border);
+  border: 2px solid #475569;
   border-radius: 10px;
   font-size: 0.9rem;
   box-sizing: border-box;
+  color: #000000;
 }
 
 .cmp-search-clear {
@@ -332,7 +349,8 @@
   background: #f8fafc;
   border-radius: 8px;
   font-size: 0.8rem;
-  color: #64748b;
+  font-weight: 600;
+  color: #000000;
 }
 
 .cmp-hint-panel {
@@ -344,13 +362,13 @@
 }
 
 .cmp-hint-icon { font-size: 2rem; }
-.cmp-hint-panel h3 { margin: 0 0 4px; font-size: 1rem; color: #1e293b; }
-.cmp-hint-panel p { margin: 0; font-size: 0.88rem; color: #475569; }
+.cmp-hint-panel h3 { margin: 0 0 4px; font-size: 1rem; color: #000000; }
+.cmp-hint-panel p { margin: 0; font-size: 0.88rem; color: #000000; }
 
 .cmp-loading-panel {
   text-align: center;
   padding: 3rem;
-  color: #64748b;
+  color: #000000;
 }
 
 .cmp-spinner {
@@ -369,8 +387,8 @@
 }
 
 .cmp-empty-icon { font-size: 2.5rem; display: block; margin-bottom: 8px; }
-.cmp-empty h3 { margin: 0 0 8px; color: #1e293b; }
-.cmp-empty p { margin: 0 0 1rem; color: #64748b; font-size: 0.9rem; }
+.cmp-empty h3 { margin: 0 0 8px; color: #000000; }
+.cmp-empty p { margin: 0 0 1rem; color: #000000; font-size: 0.9rem; }
 
 .cmp-btn-secondary {
   padding: 0.55rem 1.1rem;
@@ -379,7 +397,7 @@
   border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
-  color: #475569;
+  color: #000000;
 }
 
 .cmp-class-grid {
@@ -441,7 +459,7 @@
   margin: 0 0 4px;
   font-size: 1rem;
   font-weight: 700;
-  color: #0f172a;
+  color: #000000;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -450,7 +468,7 @@
 .cmp-class-meta {
   margin: 0;
   font-size: 0.78rem;
-  color: #64748b;
+  color: #000000;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -500,13 +518,14 @@
   justify-content: center;
   font-size: 0.72rem;
   font-weight: 800;
-  color: #1e293b;
+  color: #000000;
 }
 
 .cmp-ring-label {
   font-size: 0.68rem;
-  color: #64748b;
+  color: #000000;
   white-space: nowrap;
+  font-weight: 600;
 }
 
 .cmp-expand {
@@ -539,10 +558,10 @@
   padding: 10px 14px;
   text-align: left;
   font-size: 0.68rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #64748b;
+  color: #000000;
   background: #f8fafc;
   border-bottom: 1px solid var(--cmp-border);
 }
@@ -551,6 +570,12 @@
   padding: 12px 14px;
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
+  color: #000000;
+}
+
+.cmp-table tbody td strong {
+  color: #000000;
+  font-weight: 700;
 }
 
 .cmp-table tbody tr:last-child td { border-bottom: none; }
@@ -583,7 +608,7 @@
 .cmp-bar-pct {
   font-size: 0.72rem;
   font-weight: 700;
-  color: #64748b;
+  color: #000000;
 }
 
 .cmp-count-badge {
@@ -592,7 +617,8 @@
   background: #f1f5f9;
   border-radius: 6px;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
+  color: #000000;
 }
 
 .cmp-status {
@@ -607,7 +633,7 @@
 
 .cmp-status--done { background: #22c55e; color: #fff; }
 .cmp-status--prog { background: #f59e0b; color: #fff; }
-.cmp-status--none { background: #f1f5f9; color: #64748b; }
+.cmp-status--none { background: #f1f5f9; color: #000000; }
 
 @media (max-width: 1100px) {
   .cmp-hero-stats { grid-template-columns: repeat(3, 1fr); }

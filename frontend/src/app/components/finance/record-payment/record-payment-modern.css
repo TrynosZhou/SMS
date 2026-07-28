@@ -248,10 +248,12 @@
 .rp-search-input {
   width: 100%;
   padding: 0.65rem 2.5rem 0.65rem 2.25rem;
-  border: 1px solid var(--rp-border);
+  border: 2px solid #000000;
   border-radius: 10px;
   font-size: 0.95rem;
   box-sizing: border-box;
+  color: #000000;
+  background: #fff;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
@@ -261,7 +263,7 @@
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
 }
 
-.rp-search-input--filled { border-color: #c4b5fd; }
+.rp-search-input--filled { border-color: #000000; }
 
 .rp-clear-btn {
   position: absolute;

@@ -349,9 +349,10 @@ button {
   width: 100%;
   padding: 0.625rem 0.875rem;
   font-size: 0.9375rem;
-  border: 1px solid var(--gray-300);
+  border: 2px solid #000000;
   border-radius: var(--radius-md);
   background-color: var(--bg-primary);
+  color: #000000;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   min-height: 44px; /* Touch-friendly */
 }
@@ -720,6 +721,147 @@ tr:hover {
 }
 
 /* ========================================
+   SYSTEM-WIDE TEXTBOX & DROPDOWN VISIBILITY
+   Black 2px borders on all text inputs, textareas, and selects
+   :where() keeps type exclusions from bloating specificity so wrap
+   exceptions (e.g. .search-bar input) can clear the inner border.
+   ======================================== */
+
+input:where(:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]):not([type="color"])),
+textarea,
+.form-control,
+select,
+.form-select {
+  border: 2px solid #000000 !important;
+  color: #000000;
+  background-color: #ffffff;
+  box-sizing: border-box;
+}
+
+select,
+.form-select {
+  border-radius: 10px;
+  font-weight: 600;
+  min-height: 2.5rem;
+}
+
+input:where(:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]):not([type="color"])):focus,
+textarea:focus,
+.form-control:focus,
+select:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #7c3aed !important;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18);
+}
+
+input:disabled,
+textarea:disabled,
+.form-control:disabled,
+select:disabled,
+.form-select:disabled {
+  background-color: #f8fafc !important;
+  color: #000000;
+  border-color: #000000 !important;
+  opacity: 0.85;
+  cursor: not-allowed;
+}
+
+/* Common component select class names (emulated encapsulation may still apply
+   component borders; !important keeps outlines strong everywhere). */
+select.exam-select,
+select.ms-select,
+select.ra-select,
+select.rc-select,
+select.rcp-select,
+select.src-toolbar__select,
+select.cmp-select,
+select.cl-select,
+select.cll-select,
+select.es-select,
+select.ob-select,
+select.fc-select,
+select.ad-select,
+select.sl-select,
+select.inv-select,
+select.fa-select,
+select.um-select,
+select.ul-select,
+select.lc-select,
+select.el-select,
+select.mo-select,
+select.mi-select,
+select.ta-select,
+select.filter-select,
+select.manage-students-select,
+select.manage-teachers-select,
+select.modern-select,
+select.form-select,
+select.doc-select,
+select.pay-emp-select,
+select.rbac-select,
+select.tir-select,
+.faq-field select,
+.faq-toolbar__side select,
+.adm-admin-filters__field select,
+.fr-toolbar select,
+.top-nav-view-as-select,
+.manual-account-form select,
+.form-group select,
+.form-row select,
+.academic-pagination-left select,
+.academic-modal select,
+.filter-wrap select,
+.view-control select,
+.pagination-size select,
+.page-size-select,
+.role-select,
+.uniform-select,
+.uniform-catalog-select {
+  border: 2px solid #000000 !important;
+  color: #000000;
+}
+
+/* Search / amount / composer wraps that own the outline — keep inner input borderless */
+.fb-cb-search-wrap,
+.fb-search-wrap,
+.fx-amount-wrap,
+.search-bar,
+.dash-hub-search-wrap,
+.search-wrapper,
+.pls-input-wrap,
+.field-input-wrap,
+.amount-input-wrapper,
+.search-input-wrapper,
+.md-search-wrap,
+.inv-search-wrap,
+.cb-composer__box {
+  border: 2px solid #000000 !important;
+}
+
+.fb-cb-search-wrap input,
+.fb-cb-search,
+.fb-search-wrap input,
+.fx-amount-wrap .fx-input,
+.search-bar input,
+.search-bar .search-input,
+.dash-hub-search-wrap input,
+.dash-hub-search,
+.search-wrapper .search-input,
+.pls-input-wrap input,
+.field-input-wrap input,
+.amount-input-wrapper input,
+.search-input-wrapper input,
+.md-search-wrap input,
+.inv-search-wrap input,
+.cb-composer__input {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+/* ========================================
    PRINT STYLES
    ======================================== */
 
@@ -740,4 +882,13 @@ tr:hover {
     box-shadow: none;
     border: 1px solid var(--gray-300);
   }
+}
+
+/* ========================================
+   SYSTEM-WIDE SUCCESS DIALOG BRIDGE
+   Local success toasts/alerts are hidden; AppComponent hosts the only UI.
+   ======================================== */
+[smsSuccessConfirm],
+.sms-success-bridge {
+  display: none !important;
 }

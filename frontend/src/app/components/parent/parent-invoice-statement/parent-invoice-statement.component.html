@@ -1,6 +1,7 @@
 <div class="pis-layout pis-layout--maximized">
 
-  <header class="pis-toolbar">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<header class="pis-toolbar">
     <div class="pis-toolbar__left">
       <h1 class="pis-toolbar__title">Invoice</h1>
       <p class="pis-toolbar__meta" *ngIf="selectedStudent">
@@ -21,8 +22,6 @@
   </header>
 
   <div class="pis-alert pis-alert-error" *ngIf="error" [@fadeIn]>⚠️ {{ error }}</div>
-  <div class="pis-alert pis-alert-success" *ngIf="success" [@fadeIn]>✓ {{ success }}</div>
-
   <div class="pis-student-tabs pis-student-tabs--compact" *ngIf="!loadingStudents && students.length > 1">
     <button
       *ngFor="let s of students"

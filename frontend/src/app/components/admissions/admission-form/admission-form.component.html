@@ -1,5 +1,6 @@
 <div class="adm-apply">
-  <div class="adm-apply__topbar">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="adm-apply__topbar">
     <button type="button" class="adm-apply-back" (click)="cancel()">
       <span aria-hidden="true">←</span> Back to portal
     </button>
@@ -23,8 +24,6 @@
   </header>
 
   <div class="adm-apply-alert adm-apply-alert--error" *ngIf="error" role="alert">{{ error }}</div>
-  <div class="adm-apply-alert adm-apply-alert--ok" *ngIf="success" role="status">{{ success }}</div>
-
   <form class="adm-apply-form" (ngSubmit)="submit()">
     <section class="adm-apply-card">
       <div class="adm-apply-card__head">

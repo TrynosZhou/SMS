@@ -1,6 +1,7 @@
 <div class="src-page pr-results-page">
 
-  <header class="src-hero" [@fadeIn]>
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<header class="src-hero" [@fadeIn]>
     <div class="src-hero__main">
       <div class="src-hero__brand">
         <img *ngIf="safeSchoolLogoUrl" [src]="safeSchoolLogoUrl" alt="" class="src-hero__logo" />
@@ -49,10 +50,6 @@
   <div class="src-alert src-alert-error" *ngIf="error" [@fadeIn]>
     <span>⚠️</span> {{ error }}
   </div>
-  <div class="src-alert src-alert-success" *ngIf="success" [@fadeIn]>
-    <span>✓</span> {{ success }}
-  </div>
-
   <div class="src-loader-center" *ngIf="loadingStudents">
     <div class="src-spinner"></div>
     <p>Loading linked students…</p>

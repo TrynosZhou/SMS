@@ -1,5 +1,6 @@
 <div class="subjects-container">
-  <!-- Header Section -->
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<!-- Header Section -->
   <div class="page-header">
     <div class="header-content">
       <div class="header-title">
@@ -14,11 +15,6 @@
   </div>
 
   <!-- Alert Messages -->
-  <div class="alert alert-success" *ngIf="success" (click)="success = ''">
-    <span class="alert-icon">✅</span>
-    <span>{{ success }}</span>
-    <button class="alert-close" aria-label="Close">×</button>
-  </div>
   <div class="alert alert-error" *ngIf="error" (click)="error = ''">
     <span class="alert-icon">⚠️</span>
     <span>{{ error }}</span>

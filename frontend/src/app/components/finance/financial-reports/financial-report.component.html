@@ -1,10 +1,7 @@
+<span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
 <!-- Enrolment vs Billing — modern layout -->
 <div class="evb-page fr-page" *ngIf="isEnrolmentReport">
-  <div class="evb-toast-stack" *ngIf="success || error">
-    <div class="evb-toast evb-toast--success" *ngIf="success" role="status">
-      <span>{{ success }}</span>
-      <button type="button" class="evb-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
+  <div class="evb-toast-stack" *ngIf="error">
     <div class="evb-toast evb-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="evb-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
@@ -233,11 +230,7 @@
 
 <!-- Student Reconciliation — modern layout -->
 <div class="sr-page fr-page" *ngIf="isStudentReconcileReport">
-  <div class="sr-toast-stack" *ngIf="success || error">
-    <div class="sr-toast sr-toast--success" *ngIf="success" role="status">
-      <span>{{ success }}</span>
-      <button type="button" class="sr-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
+  <div class="sr-toast-stack" *ngIf="error">
     <div class="sr-toast sr-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="sr-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>

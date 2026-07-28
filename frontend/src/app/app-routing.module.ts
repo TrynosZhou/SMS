@@ -84,6 +84,8 @@ import { AdmissionPortalComponent } from './components/admissions/admission-port
 import { AdmissionFormComponent } from './components/admissions/admission-form/admission-form.component';
 import { AdmissionStatusComponent } from './components/admissions/admission-status/admission-status.component';
 import { AdmissionsAdminComponent } from './components/admin/admissions-admin/admissions-admin.component';
+import { ChatbotFaqAdminComponent } from './components/admin/chatbot-faq-admin/chatbot-faq-admin.component';
+import { ChatbotHelpdeskAdminComponent } from './components/admin/chatbot-helpdesk-admin/chatbot-helpdesk-admin.component';
 
 const routes: Routes = [
   { path: '', component: SplashComponent, data: { title: 'Junior Primary School Management System | Smart Edu System', description: 'Junior Primary School Management System - Manage students, teachers, classes, exams and attendance. School management for administrators, teachers and parents.', robots: 'index,follow' } },
@@ -95,6 +97,8 @@ const routes: Routes = [
   { path: 'admissions/apply', component: AdmissionFormComponent, canActivate: [AuthGuard], data: { title: 'Apply for Admission', pageTitle: 'Application Form' } },
   { path: 'admissions/status/:id', component: AdmissionStatusComponent, canActivate: [AuthGuard], runGuardsAndResolvers: 'paramsChange', data: { title: 'Application Status', pageTitle: 'Application Status' } },
   { path: 'admin/admissions', component: AdmissionsAdminComponent, canActivate: [AuthGuard], data: { title: 'Admissions Review', pageTitle: 'Admissions' } },
+  { path: 'admin/helpdesk', component: ChatbotHelpdeskAdminComponent, canActivate: [AuthGuard, AdminGuard], data: { title: 'Helpdesk', pageTitle: 'Helpdesk' } },
+  { path: 'admin/helpdesk-faqs', component: ChatbotFaqAdminComponent, canActivate: [AuthGuard, AdminGuard], data: { title: 'Helpdesk FAQs', pageTitle: 'Helpdesk FAQs' } },
   { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard], data: { title: 'Dashboard', pageTitle: 'Dashboard' } },
   { path: 'account/change-password', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'parent/dashboard', component: ParentDashboardComponent, canActivate: [AuthGuard] },

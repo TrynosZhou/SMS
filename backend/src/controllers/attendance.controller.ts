@@ -10,16 +10,21 @@ import { UserRole } from '../entities/User';
 export const markAttendance = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
-    
-    // Check if user has permission (teacher, admin, or superadmin)
-    if (!user || (user.role !== UserRole.TEACHER && user.role !== UserRole.ADMIN && user.role !== UserRole.SUPERADMIN)) {
-      return res.status(403).json({ message: 'You do not have permission to mark attendance' });
+
+    // Route already enforces authenticate + authorize + requirePermission('attendance','create')
+    if (!user?.id) {
+      return res.status(401).json({ message: 'Authentication required' });
     }
 
     const { classId, date, attendanceData } = req.body;
 
     if (!classId || !date || !attendanceData || !Array.isArray(attendanceData)) {
       return res.status(400).json({ message: 'Class ID, date, and attendance data are required' });
+    }
+
+    const dateStr = String(date).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return res.status(400).json({ message: 'Date must be in YYYY-MM-DD format' });
     }
 
     const attendanceRepository = AppDataSource.getRepository(Attendance);
@@ -41,26 +46,32 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
     const settings = settingsList.length > 0 ? settingsList[0] : null;
     const currentTerm = settings?.activeTerm || settings?.currentTerm || null;
 
-    const attendanceDate = new Date(date);
     // Prevent weekend attendance marking (Saturday=6, Sunday=0)
-    // Compute weekday from the YYYY-MM-DD string to avoid timezone shifting
-    const [yy, mm, dd] = String(date).split('-').map(v => parseInt(v, 10));
-    const dayOfWeek =
-      Number.isFinite(yy) && Number.isFinite(mm) && Number.isFinite(dd)
-        ? new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay()
-        : attendanceDate.getUTCDay();
+    const [yy, mm, dd] = dateStr.split('-').map((v) => parseInt(v, 10));
+    const dayOfWeek = new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay();
     if (dayOfWeek === 0 || dayOfWeek === 6) {
       return res.status(400).json({ message: 'Attendance cannot be marked on weekends (Saturday and Sunday).' });
     }
+
+    // Only allow marking once per class per day
+    const existingCount = await attendanceRepository
+      .createQueryBuilder('attendance')
+      .where('attendance."classId" = :classId', { classId })
+      .andWhere('attendance.date = :date', { date: dateStr })
+      .getCount();
+
+    if (existingCount > 0) {
+      return res.status(409).json({
+        message: 'Attendance for this class and date has already been marked. You can only mark the register once per day.',
+        count: existingCount,
+        date: dateStr,
+        classId,
+      });
+    }
+
     const results = [];
 
-    // Delete existing attendance records for this class and date
-    await attendanceRepository.delete({
-      classId,
-      date: attendanceDate
-    });
-
-    // Create new attendance records
+    // Create attendance records for the full class roll
     for (const item of attendanceData) {
       const { studentId, status, remarks } = item;
 
@@ -68,10 +79,13 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
         continue;
       }
 
-      // Verify student exists and belongs to the class
-      const student = await studentRepository.findOne({
+      // Verify student exists (prefer same class; still allow if student id is valid and active)
+      let student = await studentRepository.findOne({
         where: { id: studentId, classId }
       });
+      if (!student) {
+        student = await studentRepository.findOne({ where: { id: studentId } });
+      }
 
       if (!student) {
         continue;
@@ -80,7 +94,7 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
       const attendance = attendanceRepository.create({
         studentId,
         classId,
-        date: attendanceDate,
+        date: dateStr as any,
         status: status as AttendanceStatus,
         term: currentTerm,
         remarks: remarks || null,
@@ -91,10 +105,19 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
       results.push(saved);
     }
 
+    if (results.length === 0) {
+      return res.status(400).json({
+        message: 'No attendance records were saved. Check that students belong to this class.',
+        count: 0,
+        date: dateStr,
+        classId
+      });
+    }
+
     res.json({
       message: `Attendance marked successfully for ${results.length} student(s)`,
       count: results.length,
-      date: attendanceDate.toISOString().split('T')[0],
+      date: dateStr,
       classId
     });
   } catch (error: any) {
@@ -110,10 +133,10 @@ export const getAttendance = async (req: AuthRequest, res: Response) => {
     }
 
     const user = req.user;
-    
-    // Check if user has permission
-    if (!user || (user.role !== UserRole.TEACHER && user.role !== UserRole.ADMIN && user.role !== UserRole.SUPERADMIN)) {
-      return res.status(403).json({ message: 'You do not have permission to view attendance' });
+
+    // Route already enforces authenticate + authorize + module view
+    if (!user?.id) {
+      return res.status(401).json({ message: 'Authentication required' });
     }
 
     const { classId, date, studentId, term, startDate, endDate } = req.query;

@@ -232,10 +232,12 @@
 .fx-search-input {
   width: 100%;
   padding: 0.6rem 5rem 0.6rem 2.25rem;
-  border: 1px solid var(--fx-border);
+  border: 2px solid #000000;
   border-radius: 10px;
   font-size: 0.9rem;
   box-sizing: border-box;
+  color: #000000;
+  background: #fff;
 }
 
 .fx-search-input:focus {
@@ -391,7 +393,7 @@
 .fx-amount-wrap {
   display: flex;
   align-items: stretch;
-  border: 1px solid var(--fx-border);
+  border: 2px solid #000000;
   border-radius: 10px;
   overflow: hidden;
   max-width: 280px;
@@ -401,15 +403,15 @@
 .fx-amount-suffix {
   padding: 0.55rem 12px;
   background: #f8fafc;
-  color: #64748b;
+  color: #000000;
   font-weight: 700;
   font-size: 0.88rem;
   display: flex;
   align-items: center;
 }
 
-.fx-amount-prefix { border-right: 1px solid var(--fx-border); }
-.fx-amount-suffix { border-left: 1px solid var(--fx-border); }
+.fx-amount-prefix { border-right: 2px solid #000000; }
+.fx-amount-suffix { border-left: 2px solid #000000; }
 
 .fx-input {
   flex: 1;
@@ -417,11 +419,13 @@
   padding: 0.55rem 0.75rem;
   font-size: 0.88rem;
   min-width: 0;
+  color: #000000;
+  background: #fff;
 }
 
 .fx-input--full {
   width: 100%;
-  border: 1px solid var(--fx-border);
+  border: 2px solid #000000;
   border-radius: 10px;
   box-sizing: border-box;
 }

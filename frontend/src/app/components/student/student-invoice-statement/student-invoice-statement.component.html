@@ -1,6 +1,7 @@
 <div class="sis-page">
 
-  <!-- ── Page Header ──────────────────────────────────────────── -->
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<!-- ── Page Header ──────────────────────────────────────────── -->
   <div class="sis-header" [@fadeIn]>
     <div class="sis-header-left">
       <div class="sis-avatar">💰</div>
@@ -24,8 +25,6 @@
 
   <!-- ── Alerts ───────────────────────────────────────────────── -->
   <div class="sis-alert sis-alert-error"   *ngIf="error"   [@fadeIn]>⚠️ {{ error }}</div>
-  <div class="sis-alert sis-alert-success" *ngIf="success" [@fadeIn]>✓ {{ success }}</div>
-
   <!-- ── Summary Stats Row ────────────────────────────────────── -->
   <div class="sis-stats-row" *ngIf="!loading" [@fadeIn]>
     <div class="sis-stat-card"

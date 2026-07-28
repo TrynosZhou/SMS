@@ -1,5 +1,6 @@
 <div class="exam-form-page">
-  <header class="page-header">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<header class="page-header">
     <div>
       <h1>Create Exam</h1>
       <p class="subtitle">
@@ -33,7 +34,6 @@
 
   <div class="grid-layout">
     <section class="main-card">
-      <div class="alert alert-success" *ngIf="success">{{ success }}</div>
       <div class="alert alert-error" *ngIf="error">{{ error }}</div>
 
       <form (ngSubmit)="onSubmit()" autocomplete="off">

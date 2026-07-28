@@ -1,5 +1,6 @@
 <div class="link-account-container">
-  <div class="link-account-card">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="link-account-card">
     <header class="card-header">
       <div class="header-content">
         <h1>Link Teacher Account</h1>
@@ -119,11 +120,6 @@
         </div>
 
         <!-- Alerts -->
-        <div class="alert alert-success" *ngIf="success">
-          <span class="alert-icon">✅</span>
-          {{ success }}
-        </div>
-
         <div class="alert alert-error" *ngIf="error">
           <span class="alert-icon">⚠️</span>
           {{ error }}

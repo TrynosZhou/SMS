@@ -451,11 +451,13 @@
 }
 
 .fb-cb-field input[type='date'] {
-  border: 1px solid #cbd5e1;
+  border: 2px solid #000000;
   border-radius: 8px;
   padding: 0.45rem 0.65rem;
   font-size: 0.88rem;
   min-width: 150px;
+  color: #000000;
+  background: #fff;
 }
 
 .fb-cb-apply {
@@ -501,7 +503,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  border: 1px solid #cbd5e1;
+  border: 2px solid #000000;
   border-radius: 10px;
   padding: 0 0.75rem;
   background: #fff;
@@ -519,6 +521,8 @@
   padding: 0.55rem 0;
   font-size: 0.9rem;
   min-width: 0;
+  color: #000000;
+  background: transparent;
 }
 
 .fb-cb-add {
@@ -1044,11 +1048,11 @@
 .fb-modal-field select {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid #cbd5e1;
+  border: 2px solid #000000;
   border-radius: 10px;
   padding: 0.55rem 0.7rem;
   font-size: 0.88rem;
-  color: #0f172a;
+  color: #000000;
   background: #fff;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -1209,10 +1213,12 @@
 
 .fb-cb-student-input {
   width: 100%;
-  border: 1px solid #cbd5e1;
+  border: 2px solid #000000;
   border-radius: 10px;
   padding: 0.6rem 2.25rem 0.6rem 2.35rem;
   font-size: 0.9rem;
+  color: #000000;
+  background: #fff;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
@@ -1664,11 +1670,13 @@
 }
 
 .fb-filters input, .fb-filters select, .fb-search {
-  border: 1px solid #cbd5e1;
+  border: 2px solid #000000;
   border-radius: 8px;
   padding: 0.45rem 0.6rem;
   font-size: 0.9rem;
   min-width: 140px;
+  color: #000000;
+  background: #fff;
 }
 
 .fb-grow { flex: 1; min-width: 180px; }
@@ -1690,7 +1698,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  border: 1px solid #cbd5e1;
+  border: 2px solid #000000;
   border-radius: 10px;
   padding: 0 0.75rem;
   background: #fff;
@@ -1705,6 +1713,7 @@
   padding: 0.55rem 0;
   font-size: 0.9rem;
   min-width: 0;
+  color: #000000;
   background: transparent;
 }
 

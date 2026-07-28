@@ -1,5 +1,6 @@
 <div class="record-book-container">
-  <!-- Page Header -->
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<!-- Page Header -->
   <div class="page-header">
     <div class="header-content">
       <div class="header-left">
@@ -33,12 +34,6 @@
     <button class="alert-close" (click)="error = ''">&times;</button>
   </div>
   
-  <div *ngIf="success" class="alert alert-success">
-    <span class="alert-icon">✓</span>
-    <span class="alert-text">{{ success }}</span>
-    <button class="alert-close" (click)="success = ''">&times;</button>
-  </div>
-
   <!-- Teacher Search Card -->
   <div class="search-card">
     <div class="card-header">

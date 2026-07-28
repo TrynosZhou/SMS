@@ -1,14 +1,11 @@
 <div class="sl-page">
-  <div class="sl-toast-stack" *ngIf="error || success">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="sl-toast-stack" *ngIf="error || success">
     <div class="sl-toast sl-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="sl-toast__dismiss" (click)="error = ''" aria-label="Dismiss">×</button>
     </div>
-    <div class="sl-toast sl-toast--success" *ngIf="success" role="status">
-      <span>{{ success }}</span>
-      <button type="button" class="sl-toast__dismiss" (click)="success = ''" aria-label="Dismiss">×</button>
     </div>
-  </div>
 
   <header class="sl-hero">
     <div class="sl-hero__main">

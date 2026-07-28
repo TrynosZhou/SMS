@@ -20,6 +20,7 @@ import licenseRoutes from './license.routes';
 import rbacRoutes from './rbac.routes';
 import appraisalRoutes from './appraisal.routes';
 import admissionRoutes from './admission.routes';
+import chatbotRoutes from './chatbot.routes';
 
 const router = Router();
 
@@ -45,6 +46,7 @@ router.use('/license', licenseRoutes);
 router.use('/rbac', rbacRoutes);
 router.use('/teacher-appraisal', appraisalRoutes);
 router.use('/admissions', admissionRoutes);
+router.use('/chatbot', chatbotRoutes);
 
 export default router;
 

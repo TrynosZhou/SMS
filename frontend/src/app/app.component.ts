@@ -12,6 +12,7 @@ import { ThemeService } from './services/theme.service';
 import { AuditService } from './services/audit.service';
 import { environment } from '../environments/environment';
 import { LogoutConfirmService } from './services/logout-confirm.service';
+import { SuccessConfirmService } from './services/success-confirm.service';
 import { ConnectivityService } from './services/connectivity.service';
 import { IncomingMessageNotificationService } from './services/incoming-message-notification.service';
 import { ParentMessageNotificationService } from './services/parent-message-notification.service';
@@ -29,7 +30,7 @@ const SIDEBAR_MENU_ROUTE_PREFIXES: Record<string, string[]> = {
   financialReports: ['/financial-reports'],
   messages: ['/messages'],
   recordKeeping: ['/teacher/record-book', '/teacher/my-classes'],
-  systemAdministration: ['/system-settings', '/admin/manage-accounts', '/user-log', '/admin/license-config', '/system/integrations'],
+  systemAdministration: ['/system-settings', '/admin/manage-accounts', '/user-log', '/admin/license-config', '/system/integrations', '/admin/helpdesk', '/admin/helpdesk-faqs'],
 };
 
 @Component({
@@ -103,6 +104,7 @@ export class AppComponent implements OnInit, OnDestroy {
     private meta: Meta,
     private cdr: ChangeDetectorRef,
     public logoutConfirm: LogoutConfirmService,
+    public successConfirm: SuccessConfirmService,
     public connectivity: ConnectivityService,
     private rbacService: RbacService,
     private incomingMessageNotifications: IncomingMessageNotificationService,
@@ -1332,6 +1334,10 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.mobileMenuOpen) {
       this.closeMobileMenu();
       this.cdr.markForCheck();
+      return;
+    }
+    if (this.successConfirm.visible) {
+      this.successConfirm.close();
       return;
     }
     if (this.logoutConfirm.visible) {

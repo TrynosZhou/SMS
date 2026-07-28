@@ -79,14 +79,7 @@
       </div>
     </div>
 
-    <div *ngIf="noteSuccess" class="alert alert-success note-result-alert" role="status">
-      <span class="alert-icon" aria-hidden="true">✅</span>
-      <div class="note-result-text">
-        <strong>{{ isCredit ? 'Credit note confirmed' : 'Debit note confirmed' }}</strong>
-        <p>{{ noteSuccess }}</p>
-      </div>
-      <button type="button" class="alert-close" (click)="noteSuccess = ''" aria-label="Dismiss">✕</button>
-    </div>
+    <span class="sms-success-bridge" *ngIf="noteSuccess" [smsSuccessConfirm]="noteSuccess" (smsSuccessConfirmClear)="noteSuccess = ''" aria-hidden="true"></span>
 
     <div *ngIf="noteError" class="alert alert-error note-result-alert" role="alert">
       <span class="alert-icon" aria-hidden="true">⚠️</span>

@@ -1,0 +1,90 @@
+<div class="cb-root" *ngIf="visible">
+  <button
+    type="button"
+    class="cb-fab"
+    (click)="toggle()"
+    [attr.aria-expanded]="open"
+    aria-label="Open helpdesk chatbot">
+    <span *ngIf="!open" aria-hidden="true">💬</span>
+    <span *ngIf="open" aria-hidden="true">✕</span>
+  </button>
+
+  <section class="cb-panel" *ngIf="open" role="dialog" aria-label="School helpdesk">
+    <header class="cb-header">
+      <div>
+        <strong>Helpdesk</strong>
+        <span class="cb-sub">AI assistant · FAQ guided</span>
+      </div>
+      <div class="cb-header-actions">
+        <button type="button" class="cb-linkish" (click)="newChat()" title="Start new chat">New</button>
+        <button type="button" class="cb-linkish" (click)="openEscalate()" title="Escalate to human support">Escalate</button>
+      </div>
+    </header>
+
+    <div class="cb-ai-warn" *ngIf="!aiConfigured">
+      AI key not configured — FAQ matches still work. Admins: set OPENAI_API_KEY on the server.
+    </div>
+
+    <div class="cb-escalate" *ngIf="escalateMode">
+      <p class="cb-escalate-title">Escalate to school support</p>
+      <input class="cb-input" [(ngModel)]="escalateSubject" name="escalateSubject" placeholder="Subject" />
+      <textarea
+        class="cb-textarea"
+        rows="4"
+        [(ngModel)]="escalateDescription"
+        name="escalateDescription"
+        placeholder="Describe your issue"></textarea>
+      <input class="cb-input" [(ngModel)]="escalateEmail" name="escalateEmail" placeholder="Contact email (optional)" />
+      <input class="cb-input" [(ngModel)]="escalatePhone" name="escalatePhone" placeholder="Contact phone (optional)" />
+      <div class="cb-escalate-actions">
+        <button type="button" class="cb-btn cb-btn--ghost" (click)="cancelEscalate()">Cancel</button>
+        <button type="button" class="cb-btn" (click)="submitEscalate()" [disabled]="escalating || !escalateDescription.trim()">
+          {{ escalating ? 'Sending…' : 'Create ticket' }}
+        </button>
+      </div>
+    </div>
+
+    <ng-container *ngIf="!escalateMode">
+      <div class="cb-messages" #msgBox>
+        <div
+          class="cb-msg"
+          *ngFor="let m of messages"
+          [class.cb-msg--user]="m.role === 'user'"
+          [class.cb-msg--bot]="m.role === 'assistant'">
+          <div class="cb-bubble">{{ m.content }}</div>
+        </div>
+        <div class="cb-typing" *ngIf="sending">Thinking…</div>
+      </div>
+
+      <p class="cb-error" *ngIf="error">{{ error }}</p>
+      <p class="cb-ok" *ngIf="escalateSuccess">{{ escalateSuccess }}</p>
+
+      <div class="cb-composer">
+        <div class="cb-composer__box" [class.cb-composer__box--disabled]="sending">
+          <textarea
+            class="cb-composer__input"
+            rows="1"
+            [(ngModel)]="draft"
+            name="chatDraft"
+            placeholder="Ask a question…"
+            (keydown)="onKeydown($event)"
+            [disabled]="sending"
+            aria-label="Message"></textarea>
+          <button
+            type="button"
+            class="cb-composer__send"
+            (click)="send()"
+            [disabled]="sending || !draft.trim()"
+            [attr.aria-label]="sending ? 'Sending' : 'Send message'">
+            <svg *ngIf="!sending" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span *ngIf="sending" class="cb-composer__spinner" aria-hidden="true"></span>
+          </button>
+        </div>
+        <p class="cb-composer__hint">Press Enter to send · Shift+Enter for new line</p>
+      </div>
+    </ng-container>
+  </section>
+</div>

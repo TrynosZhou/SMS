@@ -1,5 +1,6 @@
 <div class="timetable-config-page">
-  <div class="config-header">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="config-header">
     <h2>📅 Timetable Configuration</h2>
     <p class="subtitle">Configure scheduling rules for timetable generation</p>
   </div>
@@ -143,11 +144,6 @@
   </div>
 
   <!-- Messages -->
-  <div class="alert alert-success" *ngIf="success">
-    <span class="alert-icon">✅</span>
-    <span>{{ success }}</span>
-    <button class="alert-close" (click)="success = ''" title="Close">&times;</button>
-  </div>
   <div class="alert alert-error" *ngIf="error">
     <span class="alert-icon">⚠️</span>
     <span>{{ error }}</span>

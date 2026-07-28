@@ -1,9 +1,6 @@
 <div class="mac-page">
-  <div class="mac-toast-stack" *ngIf="success || error">
-    <div id="success-message" class="mac-toast mac-toast--success" *ngIf="success" [@fadeInOut] role="status">
-      <span [innerHTML]="success"></span>
-      <button type="button" class="mac-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="mac-toast-stack" *ngIf="error">
     <div class="mac-toast mac-toast--error" *ngIf="error" [@fadeInOut] role="alert">
       <span>{{ error }}</span>
       <button type="button" class="mac-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>

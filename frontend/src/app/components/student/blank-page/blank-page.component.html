@@ -1,5 +1,6 @@
 <div class="blank-page">
-  <div class="blank-topbar">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="blank-topbar">
     <button type="button" class="btn-back" (click)="backToTasks()">← Back</button>
     <div class="topbar-title">
       <div class="topbar-label">Blank Page</div>
@@ -10,8 +11,6 @@
   <div class="card">
     <div *ngIf="loading" class="muted">Loading task…</div>
     <div *ngIf="error" class="alert alert-error">{{ error }}</div>
-    <div *ngIf="success" class="alert alert-success">{{ success }}</div>
-
     <ng-container *ngIf="!loading && task">
       <div class="task-meta">
         <div class="meta-row">

@@ -227,19 +227,37 @@
 /* Form */
 .mark-form-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
   margin-bottom: 1rem;
+  align-items: start;
 }
 
-.mark-field { margin-bottom: 0.5rem; }
+.mark-form-grid--with-action {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+}
 
-.mark-field label {
+.mark-field { margin-bottom: 0.5rem; min-width: 0; }
+
+.mark-field--action {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.mark-field label,
+.mark-field-label-spacer {
   display: block;
   font-size: 0.85rem;
   font-weight: 600;
   color: #334155;
   margin-bottom: 0.5rem;
+}
+
+.mark-field-label-spacer {
+  visibility: hidden;
+  height: 1.2em;
+  line-height: 1.2em;
 }
 
 .mark-required { color: #dc2626; }
@@ -286,6 +304,22 @@
   font-weight: 600;
 }
 
+.mark-already-marked-badge {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.mark-bulk-btn:disabled,
+.mark-status-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mark-remarks-input[readonly] {
+  background: #f1f5f9;
+  cursor: default;
+}
+
 .mark-date-nav {
   display: flex;
   flex-wrap: wrap;
@@ -308,7 +342,6 @@
 .mark-chip:hover { border-color: var(--mark-purple); color: var(--mark-purple-dark); }
 .mark-chip--active { background: var(--mark-purple); border-color: var(--mark-purple); color: #fff; }
 
-.mark-form-actions { padding-top: 0.5rem; border-top: 1px solid var(--mark-border); }
 
 /* Buttons */
 .mark-btn {
@@ -342,6 +375,11 @@
 .mark-btn--ghost:hover:not(:disabled) { background: #f1f5f9; border-color: #e2e8f0; }
 .mark-btn--sm { padding: 0.4rem 0.75rem; font-size: 0.82rem; }
 .mark-btn--lg { padding: 0.75rem 1.25rem; font-weight: 600; }
+.mark-btn--inline {
+  white-space: nowrap;
+  height: 2.65rem;
+  align-self: stretch;
+}
 
 .mark-link-btn {
   background: none;
@@ -417,22 +455,47 @@
 .mark-bulk-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
 .mark-bulk-btn {
-  padding: 0.45rem 0.85rem;
+  padding: 0.5rem 0.95rem;
   border-radius: 8px;
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.902rem; /* 0.82rem + 10% */
+  font-weight: 700;
   cursor: pointer;
-  border: 1px solid;
-  background: #fff;
-  transition: all 0.15s;
+  border: 2px solid transparent;
+  transition: filter 0.15s, opacity 0.15s;
 }
 
-.mark-bulk-btn--present { border-color: #a7f3d0; color: #047857; }
-.mark-bulk-btn--present:hover { background: #ecfdf5; }
-.mark-bulk-btn--absent { border-color: #fecaca; color: #b91c1c; }
-.mark-bulk-btn--absent:hover { background: #fef2f2; }
-.mark-bulk-btn--late { border-color: #fde68a; color: #b45309; }
-.mark-bulk-btn--late:hover { background: #fffbeb; }
+.mark-bulk-btn--present {
+  background: #059669;
+  border-color: #047857;
+  color: #ffffff;
+}
+.mark-bulk-btn--present:hover {
+  background: #047857;
+  color: #ffffff;
+  filter: brightness(1.05);
+}
+
+.mark-bulk-btn--absent {
+  background: #dc2626;
+  border-color: #b91c1c;
+  color: #ffffff;
+}
+.mark-bulk-btn--absent:hover {
+  background: #b91c1c;
+  color: #ffffff;
+  filter: brightness(1.05);
+}
+
+.mark-bulk-btn--late {
+  background: #d97706;
+  border-color: #b45309;
+  color: #ffffff;
+}
+.mark-bulk-btn--late:hover {
+  background: #b45309;
+  color: #ffffff;
+  filter: brightness(1.05);
+}
 
 .mark-refine-row {
   display: flex;
@@ -494,26 +557,32 @@
   border-bottom: 1px solid var(--mark-border);
   text-align: left;
   vertical-align: middle;
+  color: #000000;
 }
 
 .mark-table th {
   position: sticky;
   top: 0;
   background: #f8fafc;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: #475569;
+  color: #000000;
   z-index: 1;
+}
+
+.mark-table tbody td {
+  color: #000000;
+  font-weight: 500;
 }
 
 .mark-table tbody tr:hover { background: #fafbfc; }
 .mark-row--absent { background: #fff7ed; }
 .mark-row--absent:hover { background: #ffedd5 !important; }
 
-.mark-col-rank { width: 44px; color: #94a3b8; font-weight: 600; text-align: center; }
-.mark-ref { font-family: ui-monospace, monospace; font-size: 0.82rem; color: #475569; }
+.mark-col-rank { width: 44px; color: #000000; font-weight: 700; text-align: center; }
+.mark-ref { font-family: ui-monospace, monospace; font-size: 0.82rem; color: #000000; font-weight: 600; }
 
 .mark-status-btns {
   display: flex;
@@ -635,7 +704,9 @@
 .mark-progress__hint { margin: 0; font-size: 0.8rem; color: var(--mark-muted); font-style: italic; }
 
 @media (max-width: 900px) {
-  .mark-form-grid { grid-template-columns: 1fr; }
+  .mark-form-grid,
+  .mark-form-grid--with-action { grid-template-columns: 1fr; }
+  .mark-field--action .mark-btn { width: 100%; }
 }
 
 @media (max-width: 768px) {

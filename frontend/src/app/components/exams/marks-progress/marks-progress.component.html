@@ -1,9 +1,6 @@
 <div class="cmp-page">
-  <div class="cmp-toast-stack" *ngIf="success || error">
-    <div class="cmp-toast cmp-toast--success" *ngIf="success" role="status">
-      <span>{{ success }}</span>
-      <button type="button" class="cmp-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="cmp-toast-stack" *ngIf="error">
     <div class="cmp-toast cmp-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="cmp-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
@@ -76,19 +73,19 @@
       <button type="button" class="cmp-btn-clear" *ngIf="hasActiveFilters()" (click)="resetFilters()">Clear filters</button>
     </div>
 
-    <div class="cmp-chips cmp-chips--exam">
-      <span class="cmp-chips-label">Exam type</span>
-      <button
-        type="button"
-        class="cmp-chip"
-        *ngFor="let t of examTypes"
-        [class.cmp-chip--active]="selectedExamType === t.value"
-        (click)="selectExamType(t.value)">
-        {{ t.label }}
-      </button>
-    </div>
-
     <div class="cmp-filters-row">
+      <div class="cmp-field">
+        <label for="cmp-exam-type">Exam type <span class="cmp-required">*</span></label>
+        <select
+          id="cmp-exam-type"
+          class="cmp-select"
+          [(ngModel)]="selectedExamType"
+          (ngModelChange)="selectExamType($event)"
+          [ngModelOptions]="{standalone: true}">
+          <option value="">Select exam type</option>
+          <option *ngFor="let t of examTypes" [value]="t.value">{{ t.label }}</option>
+        </select>
+      </div>
       <div class="cmp-field">
         <label for="cmp-term">Term</label>
         <input
@@ -172,7 +169,7 @@
     <span class="cmp-hint-icon" aria-hidden="true">👆</span>
     <div>
       <h3>Select an exam type</h3>
-      <p>Choose <strong>Mid Term</strong> or <strong>End Term</strong> above to load marks entry progress.</p>
+      <p>Choose an exam type from the dropdown above to load marks entry progress.</p>
     </div>
   </section>
 

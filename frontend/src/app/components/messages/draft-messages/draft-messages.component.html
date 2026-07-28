@@ -1,9 +1,6 @@
 <div class="md-page">
-  <div class="md-toast-stack" *ngIf="successMessage || error">
-    <div class="md-toast md-toast--success" *ngIf="successMessage" role="status">
-      <span>{{ successMessage }}</span>
-      <button type="button" class="md-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
+  <span class="sms-success-bridge" *ngIf="successMessage" [smsSuccessConfirm]="successMessage" (smsSuccessConfirmClear)="successMessage = ''" aria-hidden="true"></span>
+<div class="md-toast-stack" *ngIf="error">
     <div class="md-toast md-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="md-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>

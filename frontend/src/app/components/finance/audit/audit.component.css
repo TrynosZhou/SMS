@@ -324,10 +324,12 @@
 .fa-search-input {
   width: 100%;
   padding: 0.6rem 5rem 0.6rem 2.25rem;
-  border: 1px solid var(--fa-border);
+  border: 2px solid #000000;
   border-radius: 10px;
   font-size: 0.9rem;
   box-sizing: border-box;
+  color: #000000;
+  background: #fff;
 }
 
 .fa-search-input:focus {
@@ -407,10 +409,12 @@
 .fa-select {
   width: 100%;
   padding: 0.55rem 0.75rem;
-  border: 1px solid var(--fa-border);
+  border: 2px solid #000000;
   border-radius: 10px;
   font-size: 0.88rem;
   box-sizing: border-box;
+  color: #000000;
+  background: #fff;
 }
 
 .fa-input:focus,

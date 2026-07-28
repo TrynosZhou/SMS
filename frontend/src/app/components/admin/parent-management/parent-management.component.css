@@ -431,11 +431,12 @@
 
 .search-bar input {
   flex: 1;
-  border: none;
-  background: transparent;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
   padding: 0.4rem 0;
   font-size: 0.875rem;
-  outline: none;
 }
 
 /* List */

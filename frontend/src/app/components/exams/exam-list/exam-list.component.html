@@ -1,14 +1,11 @@
 <div class="exam-page">
-  <div class="exam-toast-stack" *ngIf="success || error || connectionBanner || isAutoSaving">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="exam-toast-stack" *ngIf="error || connectionBanner || isAutoSaving">
     <div class="exam-toast exam-toast--warn" *ngIf="connectionBanner" role="status">
       <span>{{ connectionBanner }}</span>
     </div>
     <div class="exam-toast exam-toast--info" *ngIf="isAutoSaving" role="status">
       <span>Auto-saving marks…</span>
-    </div>
-    <div class="exam-toast exam-toast--success" *ngIf="success" role="status">
-      <span>{{ success }}</span>
-      <button type="button" class="exam-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
     </div>
     <div class="exam-toast exam-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
@@ -89,7 +86,7 @@
       <p class="exam-panel__intro">Choose class, term, exam type, and subject to load students for marks entry.</p>
     </div>
 
-    <div class="exam-form-grid">
+    <div class="exam-form-grid exam-form-grid--with-action">
       <div class="exam-field" [class.exam-field--error]="isFieldInvalid('class')">
         <label for="examClass">Class <span class="exam-required">*</span></label>
         <select id="examClass" [(ngModel)]="selectedClassId" (ngModelChange)="onSelectionChange()" required class="exam-select" [disabled]="loadingClasses">
@@ -123,6 +120,17 @@
         </select>
         <span class="exam-field-hint exam-field-hint--error" *ngIf="selectedClassId && subjects.length === 0 && !isAdmin">No subjects for this class.</span>
       </div>
+
+      <div class="exam-field exam-field--action">
+        <label class="exam-field__action-spacer" aria-hidden="true">&nbsp;</label>
+        <div class="exam-form-actions exam-form-actions--inline">
+          <button type="button" class="exam-btn exam-btn--primary" (click)="loadStudents()" [disabled]="!isSelectionValid() || loadingStudents">
+            <span *ngIf="loadingStudents" class="exam-spinner" aria-hidden="true"></span>
+            {{ loadingStudents ? 'Loading…' : 'Load students' }}
+          </button>
+          <button type="button" class="exam-btn exam-btn--outline" (click)="resetSelection()" [disabled]="loadingStudents">Reset</button>
+        </div>
+      </div>
     </div>
 
     <div class="exam-criteria">
@@ -136,14 +144,6 @@
         <span class="exam-chip" [class.exam-chip--done]="selectedSubjectId">Subject</span>
       </div>
       <span class="exam-criteria__label">{{ getCriteriaCompleteCount() }} of 4 ready</span>
-    </div>
-
-    <div class="exam-form-actions">
-      <button type="button" class="exam-btn exam-btn--primary" (click)="loadStudents()" [disabled]="!isSelectionValid() || loadingStudents">
-        <span *ngIf="loadingStudents" class="exam-spinner" aria-hidden="true"></span>
-        {{ loadingStudents ? 'Loading students…' : 'Load students' }}
-      </button>
-      <button type="button" class="exam-btn exam-btn--outline" (click)="resetSelection()" [disabled]="loadingStudents">Reset</button>
     </div>
   </section>
 

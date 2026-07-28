@@ -1,5 +1,6 @@
 <div class="container">
-  <div class="card">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
       <div>
         <h1>Enter Marks</h1>
@@ -12,7 +13,6 @@
       <button type="button" class="btn btn-secondary" (click)="router.navigate(['/exams'])">Back to Exams</button>
     </div>
     
-    <div class="alert alert-success" *ngIf="success">{{ success }}</div>
     <div class="alert alert-error" *ngIf="error">{{ error }}</div>
     
     <div *ngIf="loading" style="text-align: center; padding: 20px;">

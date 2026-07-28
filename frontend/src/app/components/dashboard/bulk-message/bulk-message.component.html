@@ -1,5 +1,6 @@
 <div class="modal-overlay" (click)="closeModal()">
-  <div class="bulk-message-modal" (click)="$event.stopPropagation()">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="bulk-message-modal" (click)="$event.stopPropagation()">
     <!-- Modal Header -->
     <div class="modal-header">
       <h2>
@@ -12,7 +13,6 @@
     </div>
 
     <!-- Alert Messages -->
-    <div class="alert alert-success" *ngIf="success">{{ success }}</div>
     <div class="alert alert-error" *ngIf="error">{{ error }}</div>
 
     <!-- Message Form -->

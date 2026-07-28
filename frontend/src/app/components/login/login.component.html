@@ -1,3 +1,4 @@
+<span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
 <!-- Full-screen blue frame (always visible on login route) -->
 <div class="login-page-frame" aria-hidden="true"></div>
 
@@ -96,7 +97,6 @@
 
     <!-- Messages -->
     <div class="alert alert-info" *ngIf="infoMessage">{{ infoMessage }}</div>
-    <div class="alert alert-success" *ngIf="success">{{ success }}</div>
     <div class="alert alert-error" *ngIf="error">{{ error }}</div>
 
     <!-- Sign In Form -->
@@ -165,8 +165,8 @@
       </div>
 
       <div class="modal-body">
-        <div class="alert alert-success" *ngIf="forgotSuccess">{{ forgotSuccess }}</div>
         <div class="alert alert-error" *ngIf="forgotError">{{ forgotError }}</div>
+        <span class="sms-success-bridge" *ngIf="forgotSuccess" [smsSuccessConfirm]="forgotSuccess" (smsSuccessConfirmClear)="forgotSuccess = ''" aria-hidden="true"></span>
 
         <div class="form-group" *ngIf="forgotStep === 'verify'">
           <label>Role *</label>

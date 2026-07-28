@@ -1,14 +1,13 @@
 <div class="inv-page" [class.inv-page--dark]="theme.darkMode">
-  <!-- Toast -->
+  <!-- Toast (errors / info only; success uses system dialog) -->
   <div
     class="inv-toast"
-    *ngIf="toast"
-    [class.inv-toast--success]="toast.type === 'success'"
+    *ngIf="toast && toast.type !== 'success'"
     [class.inv-toast--error]="toast.type === 'error'"
     [class.inv-toast--info]="toast.type === 'info'"
     role="status"
   >
-    <span class="inv-toast__icon" aria-hidden="true">{{ toast.type === 'success' ? '✓' : toast.type === 'error' ? '!' : 'ℹ' }}</span>
+    <span class="inv-toast__icon" aria-hidden="true">{{ toast.type === 'error' ? '!' : 'ℹ' }}</span>
     <span class="inv-toast__text">{{ toast.message }}</span>
     <button type="button" class="inv-toast__close" (click)="dismissToast()" aria-label="Dismiss">×</button>
   </div>

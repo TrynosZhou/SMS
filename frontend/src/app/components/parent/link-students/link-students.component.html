@@ -1,5 +1,6 @@
 <div class="pls-layout">
-  <main class="pls-main">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<main class="pls-main">
 
     <header class="pls-hero">
       <div class="pls-hero__main">
@@ -24,10 +25,6 @@
       </div>
     </header>
 
-    <div class="pls-alert pls-alert--success" *ngIf="success" role="status">
-      <span class="pls-alert__icon">✓</span>
-      <span>{{ success }}</span>
-    </div>
     <div class="pls-alert pls-alert--error" *ngIf="error" role="alert">
       <span class="pls-alert__icon">✕</span>
       <span>{{ error }}</span>

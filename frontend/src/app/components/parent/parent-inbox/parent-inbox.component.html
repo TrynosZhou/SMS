@@ -1,5 +1,6 @@
 <div class="pib-layout">
-  <main class="pib-main">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<main class="pib-main">
     <header class="pib-hero">
       <div class="pib-hero__main">
         <div class="pib-hero__badges">
@@ -32,7 +33,6 @@
       </div>
     </header>
 
-    <div class="pib-alert pib-alert-success" *ngIf="success" role="status">✓ {{ success }}</div>
     <div class="pib-alert pib-alert-error" *ngIf="error" role="alert">✕ {{ error }}</div>
 
     <div class="pib-toolbar" *ngIf="!loading && allMessages.length > 0">

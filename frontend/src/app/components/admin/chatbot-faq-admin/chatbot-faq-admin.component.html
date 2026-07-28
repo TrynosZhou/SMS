@@ -1,0 +1,224 @@
+<div class="faq-page">
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="faq-shell">
+    <header class="faq-hero">
+      <div class="faq-hero__main">
+        <span class="faq-hero__eyebrow">System Administration</span>
+        <h1 class="faq-hero__title">Helpdesk FAQ knowledge base</h1>
+        <p class="faq-hero__lead">
+          Manage the Q&amp;A entries that ground chatbot answers. Updates apply immediately — no code deploy needed.
+        </p>
+        <div class="faq-hero__actions">
+          <button type="button" class="faq-btn faq-btn--light" (click)="startCreate()">
+            + Add FAQ
+          </button>
+          <a routerLink="/admin/helpdesk" class="faq-btn faq-btn--ghost-light">
+            Tickets &amp; chats
+          </a>
+        </div>
+      </div>
+      <div class="faq-hero__stats" *ngIf="!loading">
+        <div class="faq-stat">
+          <span class="faq-stat__value">{{ faqs.length }}</span>
+          <span class="faq-stat__label">Total</span>
+        </div>
+        <div class="faq-stat">
+          <span class="faq-stat__value">{{ activeCount }}</span>
+          <span class="faq-stat__label">Active</span>
+        </div>
+        <div class="faq-stat">
+          <span class="faq-stat__value">{{ inactiveCount }}</span>
+          <span class="faq-stat__label">Inactive</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="faq-alert faq-alert--error" *ngIf="error" role="alert">{{ error }}</div>
+    <!-- Editor panel -->
+    <section class="faq-panel faq-panel--form" *ngIf="formOpen" aria-label="FAQ editor">
+      <div class="faq-panel__head">
+        <div>
+          <h2 class="faq-panel__title">{{ editing ? 'Edit FAQ entry' : 'New FAQ entry' }}</h2>
+          <p class="faq-panel__sub">
+            Write clear questions and step-by-step answers. Keywords improve retrieval matching.
+          </p>
+        </div>
+        <button type="button" class="faq-icon-btn" (click)="cancelEdit()" aria-label="Close editor">✕</button>
+      </div>
+
+      <div class="faq-form">
+        <label class="faq-field faq-field--full">
+          <span>Question <em>*</em></span>
+          <input
+            [(ngModel)]="form.question"
+            name="faqQ"
+            placeholder="e.g. How do I check my fee balance?"
+            maxlength="500" />
+        </label>
+
+        <label class="faq-field faq-field--full">
+          <span>Answer <em>*</em></span>
+          <textarea
+            [(ngModel)]="form.answer"
+            name="faqA"
+            rows="6"
+            placeholder="Provide concise, accurate steps users can follow in this system…"></textarea>
+        </label>
+
+        <label class="faq-field">
+          <span>Keywords</span>
+          <input
+            [(ngModel)]="form.keywords"
+            name="faqK"
+            placeholder="fees balance invoice payment" />
+        </label>
+
+        <label class="faq-field">
+          <span>Category</span>
+          <select [(ngModel)]="form.category" name="faqCat">
+            <option *ngFor="let c of categories" [value]="c">{{ categoryLabel(c) }}</option>
+          </select>
+        </label>
+
+        <label class="faq-field">
+          <span>Audience</span>
+          <select [(ngModel)]="form.audience" name="faqAud">
+            <option *ngFor="let a of audiences" [value]="a.value">{{ a.label }}</option>
+          </select>
+        </label>
+
+        <label class="faq-field">
+          <span>Sort order</span>
+          <input type="number" [(ngModel)]="form.sortOrder" name="faqSort" />
+        </label>
+
+        <label class="faq-switch">
+          <input type="checkbox" [(ngModel)]="form.isActive" name="faqActive" />
+          <span class="faq-switch__track" aria-hidden="true"></span>
+          <span class="faq-switch__text">Active — available to the chatbot</span>
+        </label>
+      </div>
+
+      <div class="faq-form__footer">
+        <button type="button" class="faq-btn faq-btn--ghost" (click)="cancelEdit()">Cancel</button>
+        <button
+          type="button"
+          class="faq-btn faq-btn--primary"
+          (click)="save()"
+          [disabled]="saving || !(form.question || '').trim() || !(form.answer || '').trim()">
+          {{ saving ? 'Saving…' : editing ? 'Save changes' : 'Create FAQ' }}
+        </button>
+      </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="faq-toolbar" aria-label="Filter FAQs">
+      <div class="faq-toolbar__search">
+        <span class="faq-toolbar__search-icon" aria-hidden="true">🔍</span>
+        <input
+          type="search"
+          [(ngModel)]="search"
+          name="faqSearch"
+          placeholder="Search questions, answers, keywords…" />
+      </div>
+      <div class="faq-toolbar__chips" role="group" aria-label="Category">
+        <button
+          type="button"
+          class="faq-chip"
+          [class.active]="categoryFilter === 'all'"
+          (click)="categoryFilter = 'all'">
+          All
+        </button>
+        <button
+          type="button"
+          class="faq-chip"
+          *ngFor="let c of categories"
+          [class.active]="categoryFilter === c"
+          (click)="categoryFilter = c">
+          {{ categoryLabel(c) }}
+        </button>
+      </div>
+      <div class="faq-toolbar__side">
+        <select [(ngModel)]="statusFilter" name="faqStatus" aria-label="Status filter">
+          <option value="all">All statuses</option>
+          <option value="active">Active only</option>
+          <option value="inactive">Inactive only</option>
+        </select>
+        <button type="button" class="faq-btn faq-btn--ghost faq-btn--sm" (click)="clearFilters()" *ngIf="search || categoryFilter !== 'all' || statusFilter !== 'all'">
+          Clear
+        </button>
+        <button type="button" class="faq-btn faq-btn--ghost faq-btn--sm" (click)="load()" [disabled]="loading">
+          Refresh
+        </button>
+      </div>
+    </section>
+
+    <!-- Loading -->
+    <div class="faq-loading" *ngIf="loading" aria-busy="true">
+      <div class="faq-skeleton faq-skeleton--bar"></div>
+      <div class="faq-skeleton faq-skeleton--row"></div>
+      <div class="faq-skeleton faq-skeleton--row"></div>
+      <div class="faq-skeleton faq-skeleton--row short"></div>
+    </div>
+
+    <!-- List -->
+    <section class="faq-list" *ngIf="!loading" aria-label="FAQ entries">
+      <div class="faq-list__meta">
+        <h2 class="faq-list__title">Entries</h2>
+        <span class="faq-list__count">
+          {{ filteredFaqs.length }} shown
+          <ng-container *ngIf="filteredFaqs.length !== faqs.length"> of {{ faqs.length }}</ng-container>
+        </span>
+      </div>
+
+      <div class="faq-empty" *ngIf="!filteredFaqs.length">
+        <div class="faq-empty__icon" aria-hidden="true">❓</div>
+        <p class="faq-empty__title">No FAQs match your filters</p>
+        <p class="faq-empty__text" *ngIf="faqs.length">Try clearing search or category filters.</p>
+        <p class="faq-empty__text" *ngIf="!faqs.length">Create your first knowledge-base entry to guide the chatbot.</p>
+        <button type="button" class="faq-btn faq-btn--primary" *ngIf="!faqs.length" (click)="startCreate()">
+          + Add FAQ
+        </button>
+      </div>
+
+      <article
+        class="faq-card"
+        *ngFor="let f of filteredFaqs"
+        [class.faq-card--inactive]="f.isActive === false"
+        [class.faq-card--open]="expandedId === f.id">
+        <div class="faq-card__top">
+          <button type="button" class="faq-card__toggle" (click)="toggleExpand(f)">
+            <span class="faq-card__chevron" aria-hidden="true">{{ expandedId === f.id ? '▾' : '▸' }}</span>
+            <span class="faq-card__question">{{ f.question }}</span>
+          </button>
+          <div class="faq-card__actions">
+            <button type="button" class="faq-btn faq-btn--ghost faq-btn--sm" (click)="startEdit(f)">Edit</button>
+            <button type="button" class="faq-btn faq-btn--ghost faq-btn--sm" (click)="toggleActive(f)">
+              {{ f.isActive === false ? 'Enable' : 'Disable' }}
+            </button>
+            <button type="button" class="faq-btn faq-btn--danger faq-btn--sm" (click)="remove(f)">Delete</button>
+          </div>
+        </div>
+
+        <div class="faq-card__tags">
+          <span class="faq-tag faq-tag--cat">{{ categoryLabel(f.category) }}</span>
+          <span class="faq-tag">{{ audienceLabel(f.audience) }}</span>
+          <span class="faq-tag" [class.faq-tag--on]="f.isActive !== false" [class.faq-tag--off]="f.isActive === false">
+            {{ f.isActive === false ? 'Inactive' : 'Active' }}
+          </span>
+          <span class="faq-tag faq-tag--muted" *ngIf="f.sortOrder != null">Sort {{ f.sortOrder }}</span>
+        </div>
+
+        <div class="faq-card__body" *ngIf="expandedId === f.id">
+          <p class="faq-card__answer">{{ f.answer }}</p>
+          <p class="faq-card__keywords" *ngIf="f.keywords">
+            <strong>Keywords:</strong> {{ f.keywords }}
+          </p>
+        </div>
+        <p class="faq-card__preview" *ngIf="expandedId !== f.id">
+          {{ f.answer }}
+        </p>
+      </article>
+    </section>
+  </div>
+</div>

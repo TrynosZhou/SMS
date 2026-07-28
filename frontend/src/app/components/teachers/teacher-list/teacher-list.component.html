@@ -1,9 +1,6 @@
 <div class="manage-teachers-page manage-teachers-page--modern">
-  <div class="teachers-toast-stack" *ngIf="success || error">
-    <div class="teachers-toast teachers-toast--success" *ngIf="success" role="status">
-      <span>{{ success }}</span>
-      <button type="button" class="teachers-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
-    </div>
+  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
+<div class="teachers-toast-stack" *ngIf="error">
     <div class="teachers-toast teachers-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>
       <button type="button" class="teachers-toast__dismiss" (click)="clearAlert('error')" aria-label="Dismiss">×</button>

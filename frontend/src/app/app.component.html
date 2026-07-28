@@ -663,6 +663,22 @@
             <span class="sidebar-text">System Settings</span>
           </a>
           <a
+            routerLink="/admin/helpdesk"
+            routerLinkActive="active"
+            class="sidebar-subitem"
+            *ngIf="isSystemAdminUserManagementVisible()">
+            <span class="sidebar-icon">💬</span>
+            <span class="sidebar-text">Helpdesk</span>
+          </a>
+          <a
+            routerLink="/admin/helpdesk-faqs"
+            routerLinkActive="active"
+            class="sidebar-subitem"
+            *ngIf="isSystemAdminUserManagementVisible()">
+            <span class="sidebar-icon">❓</span>
+            <span class="sidebar-text">Helpdesk FAQs</span>
+          </a>
+          <a
             routerLink="/user-log"
             routerLinkActive="active"
             class="sidebar-subitem"
@@ -756,6 +772,38 @@
     </div>
   </div>
 </div>
+
+<!-- System-wide success confirmation -->
+<ng-container *ngIf="successConfirm.state$ | async as sc">
+  <div
+    class="sms-success-overlay"
+    *ngIf="sc.visible"
+    role="presentation"
+    (click)="successConfirm.close()"
+  >
+    <div
+      class="sms-success-dialog"
+      role="alertdialog"
+      aria-labelledby="sms-success-title"
+      aria-describedby="sms-success-desc"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="sms-success-dialog__icon" aria-hidden="true">
+        <svg viewBox="0 0 72 72" width="72" height="72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="36" cy="36" r="30" stroke="#157347" stroke-width="3.25"/>
+          <path d="M22 37.5 L31.5 47 L50 26" stroke="#157347" stroke-width="3.25" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h2 id="sms-success-title" class="sms-success-dialog__title">{{ sc.title }}</h2>
+      <p id="sms-success-desc" class="sms-success-dialog__detail" *ngIf="sc.message">
+        {{ sc.message }}
+      </p>
+      <button type="button" class="sms-success-dialog__ok" (click)="successConfirm.close()">
+        {{ sc.okLabel }}
+      </button>
+    </div>
+  </div>
+</ng-container>
 
 <!-- Header Balance Enquiry Modal -->
 <div
@@ -867,3 +915,5 @@
 <main class="main-content" [class.dark-mode]="themeService.darkMode" [class.sidebar-open]="isAuthenticated() && showAppSidebar() && !isSidebarVisuallyCollapsed()" [class.menu-open]="isAuthenticated() && mobileMenuOpen" [class.main-content--admissions]="isApplicant()">
   <router-outlet></router-outlet>
 </main>
+
+<app-chatbot-widget></app-chatbot-widget>
