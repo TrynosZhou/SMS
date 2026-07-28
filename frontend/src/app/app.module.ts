@@ -113,6 +113,10 @@ import { FeatureGateComponent } from './components/shared/feature-gate/feature-g
 import { LicenseConfigComponent } from './components/admin/license-config/license-config.component';
 import { AccessDeniedComponent } from './components/access-denied/access-denied.component';
 import { RbacManagementComponent } from './components/settings/rbac-management/rbac-management.component';
+import { AdmissionPortalComponent } from './components/admissions/admission-portal/admission-portal.component';
+import { AdmissionFormComponent } from './components/admissions/admission-form/admission-form.component';
+import { AdmissionStatusComponent } from './components/admissions/admission-status/admission-status.component';
+import { AdmissionsAdminComponent } from './components/admin/admissions-admin/admissions-admin.component';
 
 @NgModule({
   declarations: [
@@ -220,6 +224,10 @@ SendMessageComponent,
     LicenseConfigComponent,
     AccessDeniedComponent,
     RbacManagementComponent,
+    AdmissionPortalComponent,
+    AdmissionFormComponent,
+    AdmissionStatusComponent,
+    AdmissionsAdminComponent,
   ],
   imports: [
     BrowserModule,

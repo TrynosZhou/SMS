@@ -60,6 +60,16 @@ export class SettingsService {
     };
   }
 
+  /** School name and logo for login and other pages before sign-in. */
+  getPublicBranding(): Observable<{ schoolName: string; schoolLogo: string | null }> {
+    return this.http
+      .get<{ schoolName: string; schoolLogo: string | null }>(`${this.apiUrl}/settings/public/branding`)
+      .pipe(
+        timeout(15000),
+        catchError(this.handleError('getPublicBranding', { schoolName: '', schoolLogo: null }))
+      );
+  }
+
   getSettings(): Observable<any> {
     return this.http.get(`${this.apiUrl}/settings`).pipe(
       timeout(60000),

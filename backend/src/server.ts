@@ -51,6 +51,7 @@ app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 app.use('/uploads', express.static('uploads'));
 app.use('/uploads/students', express.static('uploads/students'));
 app.use('/uploads/parent-messages', express.static('uploads/parent-messages'));
+app.use('/uploads/admissions', express.static('uploads/admissions'));
 
 // =================== ROUTES ===================
 app.use('/api', actionLogger, routes);

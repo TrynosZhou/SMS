@@ -14,7 +14,7 @@
 </div>
 
 <!-- Top Navigation Bar -->
-<nav class="top-navbar" *ngIf="isAuthenticated()">
+<nav class="top-navbar" *ngIf="isAuthenticated() && !isApplicant()">
   <div class="top-navbar-content">
     <div class="top-navbar-brand">
       <button
@@ -327,6 +327,14 @@
               *ngIf="isRegistrationParentsVisible()">
               <span class="sidebar-icon">👨‍👩‍👧</span>
               <span class="sidebar-text">Parents</span>
+            </a>
+            <a
+              routerLink="/admin/admissions"
+              routerLinkActive="active"
+              class="sidebar-subitem"
+              *ngIf="showAdmissionsAdminLink()">
+              <span class="sidebar-icon">📝</span>
+              <span class="sidebar-text">Admissions</span>
             </a>
           </div>
         </div>
@@ -856,6 +864,6 @@
 </div>
 
 <!-- Main Content -->
-<main class="main-content" [class.dark-mode]="themeService.darkMode" [class.sidebar-open]="isAuthenticated() && showAppSidebar() && !isSidebarVisuallyCollapsed()" [class.menu-open]="isAuthenticated() && mobileMenuOpen">
+<main class="main-content" [class.dark-mode]="themeService.darkMode" [class.sidebar-open]="isAuthenticated() && showAppSidebar() && !isSidebarVisuallyCollapsed()" [class.menu-open]="isAuthenticated() && mobileMenuOpen" [class.main-content--admissions]="isApplicant()">
   <router-outlet></router-outlet>
 </main>

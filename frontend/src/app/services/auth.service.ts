@@ -403,6 +403,10 @@ export class AuthService {
     return this.hasRole('parent');
   }
 
+  isApplicant(): boolean {
+    return this.hasRole('applicant');
+  }
+
   isSuperAdmin(): boolean {
     return this.hasRole('superadmin');
   }

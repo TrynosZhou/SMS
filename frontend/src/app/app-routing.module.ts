@@ -80,6 +80,10 @@ import { AccessDeniedComponent } from './components/access-denied/access-denied.
 import { ParentInvoiceStatementComponent } from './components/parent/parent-invoice-statement/parent-invoice-statement.component';
 import { StudentPortalComponent } from './components/parent/student-portal/student-portal.component';
 import { ParentPortalComponent } from './components/student/parent-portal/parent-portal.component';
+import { AdmissionPortalComponent } from './components/admissions/admission-portal/admission-portal.component';
+import { AdmissionFormComponent } from './components/admissions/admission-form/admission-form.component';
+import { AdmissionStatusComponent } from './components/admissions/admission-status/admission-status.component';
+import { AdmissionsAdminComponent } from './components/admin/admissions-admin/admissions-admin.component';
 
 const routes: Routes = [
   { path: '', component: SplashComponent, data: { title: 'Junior Primary School Management System | Smart Edu System', description: 'Junior Primary School Management System - Manage students, teachers, classes, exams and attendance. School management for administrators, teachers and parents.', robots: 'index,follow' } },
@@ -87,6 +91,10 @@ const routes: Routes = [
   { path: 'login', component: LoginComponent, data: { title: 'Login - Junior Primary School Management System', description: 'Sign in to Junior Primary School Management System to access your school dashboard.', robots: 'index, follow' } },
   { path: 'reset-password', component: LoginComponent, data: { title: 'Reset Password - Junior Primary School Management System', description: 'Reset your password for Junior Primary School Management System.', robots: 'noindex,nofollow' } },
   { path: 'sign-in', redirectTo: '/login', pathMatch: 'full' },
+  { path: 'admissions/portal', component: AdmissionPortalComponent, canActivate: [AuthGuard], data: { title: 'Admissions Portal', pageTitle: 'Admissions' } },
+  { path: 'admissions/apply', component: AdmissionFormComponent, canActivate: [AuthGuard], data: { title: 'Apply for Admission', pageTitle: 'Application Form' } },
+  { path: 'admissions/status/:id', component: AdmissionStatusComponent, canActivate: [AuthGuard], runGuardsAndResolvers: 'paramsChange', data: { title: 'Application Status', pageTitle: 'Application Status' } },
+  { path: 'admin/admissions', component: AdmissionsAdminComponent, canActivate: [AuthGuard], data: { title: 'Admissions Review', pageTitle: 'Admissions' } },
   { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard], data: { title: 'Dashboard', pageTitle: 'Dashboard' } },
   { path: 'account/change-password', component: ManageAccountComponent, canActivate: [AuthGuard] },
   { path: 'parent/dashboard', component: ParentDashboardComponent, canActivate: [AuthGuard] },

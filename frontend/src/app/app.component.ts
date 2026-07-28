@@ -746,7 +746,23 @@ export class AppComponent implements OnInit, OnDestroy {
 
   /** Global left navigation (admin, teacher, parent, student). */
   showAppSidebar(): boolean {
-    return this.isAuthenticated();
+    if (!this.isAuthenticated()) {
+      return false;
+    }
+    return !this.authService.isApplicant();
+  }
+
+  isApplicant(): boolean {
+    return this.authService.isApplicant();
+  }
+
+  showAdmissionsAdminLink(): boolean {
+    return (
+      this.isAdmin() ||
+      this.isSuperAdmin() ||
+      this.isDirector() ||
+      this.isSchoolLeadership()
+    );
   }
 
   /** Parent portal menu — real parents and “view as parent”, not while in student portal mode. */
@@ -1004,7 +1020,8 @@ export class AppComponent implements OnInit, OnDestroy {
     return (
       this.showTeachersRegistrationLink() ||
       this.showStudentsRegistrationLink() ||
-      this.showParentsRegistrationLink()
+      this.showParentsRegistrationLink() ||
+      this.showAdmissionsAdminLink()
     );
   }
 

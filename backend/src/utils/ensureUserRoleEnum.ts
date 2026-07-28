@@ -1,6 +1,6 @@
 import { AppDataSource } from '../config/database';
 
-const NEW_ROLE_VALUES = ['director', 'headmaster', 'deputy_headmaster'] as const;
+const NEW_ROLE_VALUES = ['director', 'headmaster', 'deputy_headmaster', 'applicant'] as const;
 
 /** Add new UserRole enum values when migrations did not run (PostgreSQL). */
 export async function ensureUserRoleEnumValues(): Promise<void> {

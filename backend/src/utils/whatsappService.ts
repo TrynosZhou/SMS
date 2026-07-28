@@ -102,3 +102,10 @@ export function whatsAppSendDelayMs(): number {
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/** Opens WhatsApp app/web with a pre-filled message (fallback when Cloud API is unavailable). */
+export function buildWhatsAppWebUrl(phone: string, body: string): string | null {
+  const to = normalizeWhatsAppRecipient(phone);
+  if (!to) return null;
+  return `https://wa.me/${to}?text=${encodeURIComponent(body)}`;
+}

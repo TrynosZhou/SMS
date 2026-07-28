@@ -16,6 +16,8 @@ export enum UserRole {
   TEACHER = 'teacher',
   PARENT = 'parent',
   STUDENT = 'student',
+  /** Prospective student applying for admission (online applications portal) */
+  APPLICANT = 'applicant',
   DEMO_USER = 'demo_user'
 }
 

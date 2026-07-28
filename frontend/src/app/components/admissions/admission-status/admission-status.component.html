@@ -1,0 +1,177 @@
+<div class="adm-status">
+  <div class="adm-status__topbar">
+    <button type="button" class="adm-status-back" (click)="back()">
+      <span class="adm-status-back__icon" aria-hidden="true">←</span>
+      Back
+    </button>
+  </div>
+
+  <div class="adm-status-alert" *ngIf="error" role="alert">{{ error }}</div>
+
+  <div class="adm-status-loading" *ngIf="loading" aria-busy="true">
+    <div class="adm-status-skeleton adm-status-skeleton--hero"></div>
+    <div class="adm-status-skeleton adm-status-skeleton--line"></div>
+    <div class="adm-status-skeleton adm-status-skeleton--line short"></div>
+  </div>
+
+  <ng-container *ngIf="application && !loading">
+    <header class="adm-status-hero">
+      <div class="adm-status-hero__main">
+        <span class="adm-status-hero__eyebrow">Application status</span>
+        <p class="adm-status-hero__ref">{{ application.applicationNumber }}</p>
+        <h1 class="adm-status-hero__title">{{ application.firstName }} {{ application.lastName }}</h1>
+        <p class="adm-status-hero__meta">
+          <span class="adm-status-hero__type">
+            {{ application.applicationType === 'transfer' ? 'Transfer student' : 'New admission' }}
+          </span>
+          <span class="adm-status-hero__dot" aria-hidden="true">·</span>
+          <span>Submitted {{ application.submittedAt || application.createdAt | date:'mediumDate' }}</span>
+        </p>
+      </div>
+      <div class="adm-status-hero__aside">
+        <span
+          class="adm-status-pill"
+          [class.adm-status-pill--pending]="application.status === 'pending'"
+          [class.adm-status-pill--review]="application.status === 'under_review'"
+          [class.adm-status-pill--accepted]="application.status === 'accepted'"
+          [class.adm-status-pill--rejected]="application.status === 'rejected'">
+          {{ admissionService.statusLabel(application.status) }}
+        </span>
+        <p class="adm-status-hero__hint">{{ statusSummary(application.status) }}</p>
+      </div>
+    </header>
+
+    <section class="adm-status-track" aria-label="Application progress">
+      <div class="adm-status-track__bar">
+        <div class="adm-status-track__fill" [style.width.%]="statusProgress(application.status)"></div>
+      </div>
+      <ol class="adm-status-steps">
+        <li
+          *ngFor="let step of statusSteps; let i = index"
+          class="adm-status-step"
+          [class.adm-status-step--done]="stepIndex(application.status) >= i"
+          [class.adm-status-step--current]="stepIndex(application.status) === i">
+          <span class="adm-status-step__dot">{{ i + 1 }}</span>
+          <span class="adm-status-step__label">{{ step }}</span>
+        </li>
+      </ol>
+    </section>
+
+    <div class="adm-status-callout adm-status-callout--feedback" *ngIf="application.reviewNotes">
+      <div class="adm-status-callout__icon" aria-hidden="true">💬</div>
+      <div>
+        <h2 class="adm-status-callout__title">Message from the school</h2>
+        <p class="adm-status-callout__body">{{ application.reviewNotes }}</p>
+      </div>
+    </div>
+
+    <div class="adm-status-callout adm-status-callout--enrolled" *ngIf="application.enrolledStudent?.studentNumber || application.enrolledStudentId">
+      <div class="adm-status-callout__icon" aria-hidden="true">✓</div>
+      <div>
+        <h2 class="adm-status-callout__title">Enrolled</h2>
+        <p class="adm-status-callout__body" *ngIf="application.enrolledStudent?.studentNumber">
+          Student ID <strong>{{ application.enrolledStudent!.studentNumber }}</strong>
+          <span class="adm-status-muted" *ngIf="application.enrolledAt"> · {{ application.enrolledAt | date:'medium' }}</span>
+        </p>
+      </div>
+    </div>
+
+    <section class="adm-status-card adm-status-card--action" *ngIf="canEnroll()">
+      <div>
+        <h2 class="adm-status-card__title">Ready to enroll</h2>
+        <p class="adm-status-card__lead">This application is accepted. Create the official student record to issue a Student ID.</p>
+      </div>
+      <button type="button" class="adm-status-btn adm-status-btn--primary" [disabled]="enrolling" (click)="enroll()">
+        {{ enrolling ? 'Enrolling…' : 'Enroll as student' }}
+      </button>
+    </section>
+
+    <div class="adm-status-grid">
+      <section class="adm-status-card">
+        <div class="adm-status-card__head">
+          <span class="adm-status-card__icon" aria-hidden="true">👤</span>
+          <h2 class="adm-status-card__title">Applicant details</h2>
+        </div>
+        <dl class="adm-status-dl">
+          <div class="adm-status-dl__row">
+            <dt>Date of birth</dt>
+            <dd>{{ application.dateOfBirth | date:'mediumDate' }}</dd>
+          </div>
+          <div class="adm-status-dl__row">
+            <dt>Gender</dt>
+            <dd>{{ application.gender }}</dd>
+          </div>
+          <div class="adm-status-dl__row adm-status-dl__row--full">
+            <dt>Address</dt>
+            <dd>{{ application.address }}</dd>
+          </div>
+          <div class="adm-status-dl__row">
+            <dt>Phone</dt>
+            <dd>{{ application.phone }}</dd>
+          </div>
+          <div class="adm-status-dl__row">
+            <dt>Email</dt>
+            <dd>{{ application.email || '—' }}</dd>
+          </div>
+          <div class="adm-status-dl__row">
+            <dt>Class / grade</dt>
+            <dd>{{ application.classApplyingFor?.name || application.gradeApplyingFor || '—' }}</dd>
+          </div>
+          <div class="adm-status-dl__row adm-status-dl__row--full" *ngIf="application.previousSchool">
+            <dt>Previous school</dt>
+            <dd>{{ application.previousSchool }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="adm-status-card">
+        <div class="adm-status-card__head">
+          <span class="adm-status-card__icon" aria-hidden="true">🛡️</span>
+          <h2 class="adm-status-card__title">Parent / guardian</h2>
+        </div>
+        <dl class="adm-status-dl">
+          <div class="adm-status-dl__row adm-status-dl__row--full">
+            <dt>Name</dt>
+            <dd>{{ application.guardianName }}</dd>
+          </div>
+          <div class="adm-status-dl__row">
+            <dt>Relationship</dt>
+            <dd>{{ application.guardianRelationship || '—' }}</dd>
+          </div>
+          <div class="adm-status-dl__row">
+            <dt>Phone</dt>
+            <dd>{{ application.guardianPhone }}</dd>
+          </div>
+          <div class="adm-status-dl__row adm-status-dl__row--full">
+            <dt>Email</dt>
+            <dd>{{ application.guardianEmail || '—' }}</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+
+    <section class="adm-status-card adm-status-card--docs">
+      <div class="adm-status-card__head">
+        <span class="adm-status-card__icon" aria-hidden="true">📎</span>
+        <h2 class="adm-status-card__title">Submitted documents</h2>
+      </div>
+
+      <div class="adm-status-docs" *ngIf="application.documents?.length; else noDocs">
+        <article class="adm-status-doc" *ngFor="let d of application.documents">
+          <div class="adm-status-doc__icon" [attr.data-type]="d.documentType" aria-hidden="true"></div>
+          <div class="adm-status-doc__info">
+            <p class="adm-status-doc__name">{{ docLabel(d.documentType) }}</p>
+            <p class="adm-status-doc__file">{{ d.originalFilename }}</p>
+            <p class="adm-status-doc__meta" *ngIf="d.fileSize">{{ formatFileSize(d.fileSize) }}</p>
+          </div>
+          <button type="button" class="adm-status-btn adm-status-btn--ghost" (click)="downloadDoc(d.id)">
+            Download
+          </button>
+        </article>
+      </div>
+      <ng-template #noDocs>
+        <p class="adm-status-muted">No documents on file.</p>
+      </ng-template>
+    </section>
+  </ng-container>
+</div>

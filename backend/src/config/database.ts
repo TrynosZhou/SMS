@@ -69,6 +69,8 @@ import { Appraisal } from '../entities/Appraisal';
 import { AppraisalScore } from '../entities/AppraisalScore';
 import { AppraisalGoal } from '../entities/AppraisalGoal';
 import { AppraisalPeerAssignment } from '../entities/AppraisalPeerAssignment';
+import { AdmissionApplication } from '../entities/AdmissionApplication';
+import { AdmissionDocument } from '../entities/AdmissionDocument';
 
 // Load environment variables from .env file (backend folder so it works regardless of cwd)
 const backendRoot = path.resolve(__dirname, '../..');
@@ -93,7 +95,7 @@ console.log('[DB Config] Module type check - typeof module:', typeof module);
 
 console.log('[DB Config] Preparing entity list...');
 // Try using entity classes first, fallback to paths if needed
-const entities = [User, Student, Teacher, Class, Subject, Exam, Marks, ExamStudentPassRateInclusion, Invoice, Parent, ParentStudent, Settings, ReportCardRemarks, Message, UniformItem, InvoiceUniformItem, UniformCharge, UniformChargeItem, UniformPaymentLog, Attendance, PromotionRule, RecordBook, StudentTransfer, Timetable, TimetableEntry, TimetableConfig, TimetableVersion, TimetableChangeLog, TeacherClass, PaymentLog, CashbookEntry, UserSessionLog, LoginAttemptLog, ModuleAccessLog, UserActionLog, News, AncillaryStaff, SalaryStructure, SalaryAssignment, PayrollRun, PayrollEntry, PayrollEntryLine, EmployeeLoanAccount, LoanSchedule, ElearningTask, ElearningResponse, InventoryTextbookCatalog, InventoryFurnitureItem, InventoryTextbookIssuance, InventoryFurnitureIssuance, InventoryFine, InventoryAuditLog, InventoryTeacherTextbookAllocation, InventoryTeacherFurnitureAllocation, School, Feature, LicenseTier, TierFeature, License, LicenseFeatureAuditLog, RbacRole, UserRbacRole, AppraisalCycle, AppraisalCriterion, Appraisal, AppraisalScore, AppraisalGoal, AppraisalPeerAssignment];
+const entities = [User, Student, Teacher, Class, Subject, Exam, Marks, ExamStudentPassRateInclusion, Invoice, Parent, ParentStudent, Settings, ReportCardRemarks, Message, UniformItem, InvoiceUniformItem, UniformCharge, UniformChargeItem, UniformPaymentLog, Attendance, PromotionRule, RecordBook, StudentTransfer, Timetable, TimetableEntry, TimetableConfig, TimetableVersion, TimetableChangeLog, TeacherClass, PaymentLog, CashbookEntry, UserSessionLog, LoginAttemptLog, ModuleAccessLog, UserActionLog, News, AncillaryStaff, SalaryStructure, SalaryAssignment, PayrollRun, PayrollEntry, PayrollEntryLine, EmployeeLoanAccount, LoanSchedule, ElearningTask, ElearningResponse, InventoryTextbookCatalog, InventoryFurnitureItem, InventoryTextbookIssuance, InventoryFurnitureIssuance, InventoryFine, InventoryAuditLog, InventoryTeacherTextbookAllocation, InventoryTeacherFurnitureAllocation, School, Feature, LicenseTier, TierFeature, License, LicenseFeatureAuditLog, RbacRole, UserRbacRole, AppraisalCycle, AppraisalCriterion, Appraisal, AppraisalScore, AppraisalGoal, AppraisalPeerAssignment, AdmissionApplication, AdmissionDocument];
 console.log('[DB Config] Entity count:', entities.length);
 console.log('[DB Config] Entity names:', entities.map(e => e?.name || 'unknown').join(', '));
 console.log('[DB Config] Checking each entity...');

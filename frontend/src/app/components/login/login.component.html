@@ -6,7 +6,12 @@
 <div class="login-shell" [class.landscape-mode]="activeTab === 'signup'">
   <aside class="login-hero" aria-label="About this system">
     <div class="login-brand">
-      <div class="login-brand-icon" aria-hidden="true">
+      <img
+        *ngIf="schoolLogo"
+        class="login-brand-logo"
+        [src]="schoolLogo"
+        [alt]="schoolDisplayName + ' logo'" />
+      <div class="login-brand-icon" *ngIf="!schoolLogo" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path
             d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82Z"
@@ -14,8 +19,8 @@
         </svg>
       </div>
       <div class="login-brand-text">
-        <span class="login-brand-name">School Management</span>
-        <span class="login-brand-tag">School Management System</span>
+        <span class="login-brand-name">{{ schoolDisplayName }}</span>
+        <span class="login-brand-tag" *ngIf="showGenericTagline">School Management System</span>
       </div>
     </div>
 
@@ -26,6 +31,14 @@
       A unified platform for administrators, teachers, parents, and students — manage academics,
       finance, attendance, and communication in one place.
     </p>
+
+    <div class="login-hero-admissions">
+      <span class="login-hero-admissions__label">New to our school?</span>
+      <button type="button" class="login-hero-admissions__link" (click)="openAdmissionsApply('applicant')">
+        Apply for admission online
+      </button>
+      <span class="login-hero-admissions__hint">Prospective students and parents applying for children</span>
+    </div>
 
     <div class="login-hero-stats">
       <div class="login-stat">
@@ -46,6 +59,7 @@
   </aside>
 
   <div class="login-panel">
+    <div class="login-panel__stack" [class.login-panel__stack--apply]="admissionApplyMode">
     <div class="login-card" [class.signup-card]="activeTab === 'signup'">
     <div class="login-header">
       <h2>Welcome back 👋</h2>
@@ -253,7 +267,8 @@
     <div *ngIf="activeTab === 'signup'" class="tab-content signup-content">
       <div class="info-box">
         <p>
-          <strong>Note:</strong> Teachers log in with their EmployeeID as username (provided by the administrator). Use the Link button on the teacher dashboard to link with your teacher profile and access assigned classes.
+          <strong>Admissions:</strong> Choose <em>Prospective student</em> to apply for yourself, or <em>Parent / guardian (admissions)</em> to apply for your child.
+          Enrolled students and existing parents use the Student or Parent options. Teachers sign in with Employee ID (from the school).
         </p>
       </div>
       <form (ngSubmit)="onSignUp()" class="signup-form">
@@ -268,12 +283,14 @@
                 class="form-control"
                 required>
                 <option value="">Select a role...</option>
-                <option value="STUDENT">Student</option>
-                <option value="PARENT">Parent</option>
+                <option value="APPLICANT">Prospective student (admissions)</option>
+                <option value="PARENT_ADMISSION">Parent / guardian (admissions)</option>
+                <option value="STUDENT">Student (enrolled — portal access)</option>
+                <option value="PARENT">Parent (enrolled children — portal)</option>
               </select>
-              <small class="form-text">Select your role</small>
+              <small class="form-text">Choose admissions if you are applying to join the school</small>
             </div>
-            <div class="form-group" *ngIf="signupRole === 'PARENT'">
+            <div class="form-group" *ngIf="signupRole === 'PARENT' || signupRole === 'PARENT_ADMISSION'">
               <label>Email *</label>
               <input 
                 type="email" 
@@ -283,6 +300,24 @@
                 required
                 autocomplete="email">
               <small class="form-text">Parents can use this email to sign in</small>
+            </div>
+            <div class="form-group" *ngIf="signupRole === 'APPLICANT'">
+              <label>Email *</label>
+              <input
+                type="email"
+                [(ngModel)]="signupEmail"
+                name="signupEmailApplicant"
+                placeholder="Your email address"
+                required
+                autocomplete="email">
+            </div>
+            <div class="form-group" *ngIf="signupRole === 'APPLICANT'">
+              <label>First name *</label>
+              <input type="text" [(ngModel)]="signupFirstName" name="applicantFirstName" required />
+            </div>
+            <div class="form-group" *ngIf="signupRole === 'APPLICANT'">
+              <label>Last name *</label>
+              <input type="text" [(ngModel)]="signupLastName" name="applicantLastName" required />
             </div>
             <div class="form-group">
               <label>{{ signupRole === 'STUDENT' ? 'Student ID *' : 'Username *' }}</label>
@@ -295,7 +330,7 @@
                 autocomplete="username">
               <small class="form-text" *ngIf="signupRole === 'STUDENT'">Enter your Student ID exactly as issued (e.g. JPS5072026). It must already exist in the school system.</small>
             </div>
-            <div class="form-group" *ngIf="signupRole === 'PARENT'">
+            <div class="form-group" *ngIf="signupRole === 'PARENT' || signupRole === 'PARENT_ADMISSION'">
               <label>First Name *</label>
               <input 
                 type="text" 
@@ -304,7 +339,7 @@
                 placeholder="First Name" 
                 required>
             </div>
-            <div class="form-group" *ngIf="signupRole === 'PARENT'">
+            <div class="form-group" *ngIf="signupRole === 'PARENT' || signupRole === 'PARENT_ADMISSION'">
               <label>Last Name *</label>
               <input 
                 type="text" 
@@ -317,7 +352,7 @@
 
           <!-- Right Column -->
           <div class="signup-column">
-            <div class="form-group" *ngIf="signupRole === 'PARENT'">
+            <div class="form-group" *ngIf="signupRole === 'PARENT' || signupRole === 'PARENT_ADMISSION'">
               <label>Gender *</label>
               <select 
                 [(ngModel)]="signupGender" 
@@ -329,7 +364,7 @@
                 <option value="Female">Female</option>
               </select>
             </div>
-            <div class="form-group" *ngIf="signupRole === 'PARENT'">
+            <div class="form-group" *ngIf="signupRole === 'PARENT' || signupRole === 'PARENT_ADMISSION'">
               <label>Contact Number *</label>
               <input 
                 type="tel" 
@@ -343,7 +378,7 @@
               <small class="form-text" *ngIf="!signupContactNumberError">Format: 07XXXXXXXX or +2637XXXXXXXX</small>
               <small class="form-error" *ngIf="signupContactNumberError">{{ signupContactNumberError }}</small>
             </div>
-            <div class="form-group" *ngIf="signupRole === 'PARENT'">
+            <div class="form-group" *ngIf="signupRole === 'PARENT' || signupRole === 'PARENT_ADMISSION'">
               <label>Physical Address *</label>
               <textarea
                 [(ngModel)]="signupAddress"
@@ -449,6 +484,127 @@
         </button>
         <div class="form-footer">
           <a href="#" (click)="setTab('signin'); $event.preventDefault()" class="link">Back to Sign In</a>
+        </div>
+      </form>
+    </div>
+    </div>
+
+    <div class="login-admissions" *ngIf="!admissionApplyMode" role="navigation" aria-label="Apply for school admission">
+      <div class="login-admissions__head">
+        <span class="login-admissions__icon" aria-hidden="true">🎓</span>
+        <div>
+          <strong>Apply for admission</strong>
+          <p>Prospective students or parents applying on behalf of their children</p>
+        </div>
+      </div>
+      <div class="login-admissions__actions">
+        <button type="button" class="login-admissions__btn" (click)="openAdmissionsApply('applicant')">
+          I am a prospective student
+        </button>
+        <button type="button" class="login-admissions__btn login-admissions__btn--alt" (click)="openAdmissionsApply('parent')">
+          Parent / guardian (for my child)
+        </button>
+      </div>
+    </div>
+
+    <div
+      id="login-admissions-apply"
+      class="login-admissions login-admissions--form"
+      *ngIf="admissionApplyMode"
+      role="form"
+      aria-label="Admission application form">
+      <div class="login-admissions__head">
+        <span class="login-admissions__icon" aria-hidden="true">🎓</span>
+        <div>
+          <strong>Admission application</strong>
+          <p *ngIf="admissionApplyMode === 'applicant'">Prospective student — complete the form and upload documents.</p>
+          <p *ngIf="admissionApplyMode === 'parent'">Parent / guardian — apply on behalf of your child.</p>
+        </div>
+        <button type="button" class="login-admissions__close" (click)="closeAdmissionsApply()" aria-label="Close application form">✕</button>
+      </div>
+
+      <div class="login-admissions-alert login-admissions-alert--error" *ngIf="admissionApplyError">{{ admissionApplyError }}</div>
+      <div class="login-admissions-alert login-admissions-alert--ok" *ngIf="admissionApplySuccess">{{ admissionApplySuccess }}</div>
+
+      <form class="login-adm-form" (ngSubmit)="submitAdmissionApplication()">
+        <div class="login-adm-grid">
+          <div class="login-adm-field">
+            <label>First name *</label>
+            <input type="text" [(ngModel)]="admFirstName" name="admFirstName" required />
+          </div>
+          <div class="login-adm-field">
+            <label>Last name *</label>
+            <input type="text" [(ngModel)]="admLastName" name="admLastName" required />
+          </div>
+          <div class="login-adm-field">
+            <label>Date of birth *</label>
+            <input type="date" [(ngModel)]="admDateOfBirth" name="admDateOfBirth" required />
+          </div>
+          <div class="login-adm-field">
+            <label>Gender *</label>
+            <select [(ngModel)]="admGender" name="admGender" required>
+              <option value="">Select…</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+          <div class="login-adm-field login-adm-field--full">
+            <label>Address *</label>
+            <textarea rows="2" [(ngModel)]="admAddress" name="admAddress" required></textarea>
+          </div>
+          <div class="login-adm-field">
+            <label>Grade / level applying for *</label>
+            <input
+              type="text"
+              [(ngModel)]="admGradeApplyingFor"
+              name="admGradeApplyingFor"
+              placeholder="e.g. Grade 1, Grade 7, Form 1"
+              required />
+          </div>
+          <div class="login-adm-field">
+            <label>Student contact phone *</label>
+            <input type="tel" [(ngModel)]="admPhone" name="admPhone" placeholder="07XXXXXXXX" required />
+          </div>
+        </div>
+
+        <h3 class="login-adm-subhead">Parent / guardian</h3>
+        <div class="login-adm-grid">
+          <div class="login-adm-field">
+            <label>Guardian full name *</label>
+            <input type="text" [(ngModel)]="admGuardianName" name="admGuardianName" required />
+          </div>
+          <div class="login-adm-field">
+            <label>Guardian phone *</label>
+            <input type="tel" [(ngModel)]="admGuardianPhone" name="admGuardianPhone" required />
+          </div>
+        </div>
+
+        <h3 class="login-adm-subhead">Documents</h3>
+        <p class="login-adm-hint">PDF or images (JPEG, PNG, WebP), max 5 MB each.</p>
+        <div class="login-adm-docs">
+          <div class="login-adm-doc">
+            <label>Birth certificate *</label>
+            <input type="file" accept=".pdf,image/*" (change)="onAdmissionFile($any($event.target).files?.[0] || null, 'birth')" />
+            <small *ngIf="admBirthCertificate">{{ admBirthCertificate.name }}</small>
+          </div>
+          <div class="login-adm-doc">
+            <label>Report card (previous term) *</label>
+            <input type="file" accept=".pdf,image/*" (change)="onAdmissionFile($any($event.target).files?.[0] || null, 'report')" />
+            <small *ngIf="admReportCard">{{ admReportCard.name }}</small>
+          </div>
+        </div>
+
+        <p class="login-adm-auth-hint" *ngIf="!authService.getToken()">
+          You will need a prospective student or parent admissions account to submit. Use <strong>Sign Up</strong> above, then <strong>Sign In</strong>.
+        </p>
+
+        <div class="login-adm-actions">
+          <button type="button" class="login-admissions__btn login-admissions__btn--alt" (click)="closeAdmissionsApply()" [disabled]="admissionApplyLoading">
+            Cancel
+          </button>
+          <button type="submit" class="login-admissions__btn" [disabled]="admissionApplyLoading">
+            {{ admissionApplyLoading ? 'Submitting…' : 'Submit application' }}
+          </button>
         </div>
       </form>
     </div>

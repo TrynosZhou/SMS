@@ -3,6 +3,7 @@ import { authenticate, authorize } from '../middleware/auth';
 import { requirePermission } from '../middleware/requirePermission';
 import { UserRole } from '../entities/User';
 import { 
+  getPublicBranding,
   getSettings, 
   updateSettings, 
   getActiveTerm, 
@@ -17,6 +18,8 @@ import {
 } from '../controllers/settings.controller';
 
 const router = Router();
+
+router.get('/public/branding', getPublicBranding);
 
 router.use(authenticate);
 

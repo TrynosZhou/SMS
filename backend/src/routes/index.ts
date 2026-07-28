@@ -19,6 +19,7 @@ import licenseAdminRoutes from './licenseAdmin.routes';
 import licenseRoutes from './license.routes';
 import rbacRoutes from './rbac.routes';
 import appraisalRoutes from './appraisal.routes';
+import admissionRoutes from './admission.routes';
 
 const router = Router();
 
@@ -43,6 +44,7 @@ router.use('/license', licenseRoutes);
 
 router.use('/rbac', rbacRoutes);
 router.use('/teacher-appraisal', appraisalRoutes);
+router.use('/admissions', admissionRoutes);
 
 export default router;
 

@@ -6,6 +6,8 @@ import { ActivatedRoute } from '@angular/router';
 import { finalize, timeout, catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 import { Title } from '@angular/platform-browser';
+import { AdmissionClassOption, AdmissionService } from '../../services/admission.service';
+import { SettingsService } from '../../services/settings.service';
 
 @Component({
   standalone: false,
@@ -72,21 +74,62 @@ export class LoginComponent implements OnInit {
   // Phone validation error
   signupContactNumberError = '';
 
+  /** Admissions apply panel (outside login card) */
+  admissionApplyMode: 'applicant' | 'parent' | null = null;
+  admissionApplyLoading = false;
+  admissionApplyError = '';
+  admissionApplySuccess = '';
+  admissionApplySubmitAfterAuth = false;
+  admFirstName = '';
+  admLastName = '';
+  admDateOfBirth = '';
+  admAddress = '';
+  admGender = '';
+  admGradeApplyingFor = '';
+  admPhone = '';
+  admGuardianName = '';
+  admGuardianPhone = '';
+  admBirthCertificate: File | null = null;
+  admReportCard: File | null = null;
+  admClasses: AdmissionClassOption[] = [];
+  readonly admMaxFileSize = 5 * 1024 * 1024;
+  readonly admAllowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+
   signinHelpTooltip =
     'Enter your Username in the field above. You may also use: Email (parents), Student ID (students), or Employee ID (teachers), depending on your role. ' +
     'Teachers: Employee ID and password. ' +
     'Students: Student ID and the password you created during sign up. ' +
     'Parents: Email address and password.';
 
+  private static readonly SCHOOL_NAME_CACHE_KEY = 'sms_schoolDisplayName';
+  private static readonly SCHOOL_LOGO_CACHE_KEY = 'sms_schoolDisplayLogo';
+
+  /** Full school name from Settings (login hero). */
+  schoolName = '';
+  schoolLogo: string | null = null;
+
+  get schoolDisplayName(): string {
+    const n = this.schoolName.trim();
+    return n || 'School Management';
+  }
+
+  get showGenericTagline(): boolean {
+    return !this.schoolName.trim();
+  }
+
   constructor(
-    private authService: AuthService,
     private router: Router,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
-    private title: Title
+    private title: Title,
+    private admissionService: AdmissionService,
+    private settingsService: SettingsService,
+    public authService: AuthService
   ) { }
 
   ngOnInit(): void {
+    this.applyBrandingFromCache();
+    this.loadPublicSchoolBranding();
     this.title.setTitle('Sign In – Junior Primary School Management System');
 
     const logoutReason = this.authService.consumeLogoutReason();
@@ -117,6 +160,10 @@ export class LoginComponent implements OnInit {
         this.success = '';
         this.infoMessage = '';
       }
+      const applyAs = params.get('apply');
+      if (applyAs === 'applicant' || applyAs === 'parent') {
+        this.openAdmissionsApply(applyAs);
+      }
     });
   }
 
@@ -145,6 +192,205 @@ export class LoginComponent implements OnInit {
 
   toggleResetPasswordVisibility() {
     this.showResetPassword = !this.showResetPassword;
+  }
+
+  /** Show online admission application form (prospective student or parent). */
+  openAdmissionsApply(mode: 'applicant' | 'parent'): void {
+    this.admissionApplyMode = mode;
+    this.admissionApplyError = '';
+    this.admissionApplySuccess = '';
+    this.error = '';
+    this.success = '';
+    if (!this.admClasses.length) {
+      this.admissionService.getClasses().subscribe({
+        next: (c) => (this.admClasses = Array.isArray(c) ? c : []),
+        error: () => (this.admClasses = []),
+      });
+    }
+    this.closeForgotPasswordModal();
+    setTimeout(() => {
+      const el = document.getElementById('login-admissions-apply');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }
+
+  closeAdmissionsApply(): void {
+    this.admissionApplyMode = null;
+    this.admissionApplyError = '';
+    this.admissionApplySuccess = '';
+    this.admissionApplySubmitAfterAuth = false;
+    this.clearAdmissionApplyFields();
+  }
+
+  private clearAdmissionApplyFields(): void {
+    this.admFirstName = '';
+    this.admLastName = '';
+    this.admDateOfBirth = '';
+    this.admAddress = '';
+    this.admGender = '';
+    this.admGradeApplyingFor = '';
+    this.admPhone = '';
+    this.admGuardianName = '';
+    this.admGuardianPhone = '';
+    this.admBirthCertificate = null;
+    this.admReportCard = null;
+  }
+
+  onAdmissionFile(selected: File | null, kind: 'birth' | 'report'): void {
+    if (!selected) return;
+    if (!this.admAllowedTypes.includes(selected.type)) {
+      this.admissionApplyError = 'Only PDF, JPEG, PNG, or WebP files are allowed';
+      return;
+    }
+    if (selected.size > this.admMaxFileSize) {
+      this.admissionApplyError = 'Each file must be 5 MB or smaller';
+      return;
+    }
+    this.admissionApplyError = '';
+    if (kind === 'birth') this.admBirthCertificate = selected;
+    else this.admReportCard = selected;
+  }
+
+  validateAdmissionApply(): string | null {
+    if (!this.admFirstName.trim() || !this.admLastName.trim()) {
+      return 'First name and last name are required';
+    }
+    if (!this.admDateOfBirth) return 'Date of birth is required';
+    if (!this.admAddress.trim()) return 'Address is required';
+    if (!this.admGender) return 'Gender is required';
+    if (!this.admGradeApplyingFor.trim()) return 'Grade / level applying for is required';
+    const phoneCheck = validatePhoneNumber(this.admPhone, true);
+    if (!phoneCheck.isValid) return phoneCheck.error || 'Valid contact phone is required';
+    if (!this.admGuardianName.trim() || !this.admGuardianPhone.trim()) {
+      return 'Guardian name and phone are required';
+    }
+    const guardianPhoneCheck = validatePhoneNumber(this.admGuardianPhone, true);
+    if (!guardianPhoneCheck.isValid) {
+      return guardianPhoneCheck.error || 'Valid guardian phone is required';
+    }
+    if (!this.admBirthCertificate) return 'Birth certificate upload is required';
+    if (!this.admReportCard) return 'Report card for the previous term is required';
+    return null;
+  }
+
+  submitAdmissionApplication(fromAuthCallback = false): void {
+    this.admissionApplyError = '';
+    this.admissionApplySuccess = '';
+    const validation = this.validateAdmissionApply();
+    if (validation) {
+      this.admissionApplyError = validation;
+      return;
+    }
+
+    if (!this.authService.getToken()) {
+      this.admissionApplySubmitAfterAuth = true;
+      this.infoMessage =
+        'Sign in or create an admissions account above, then your application will be submitted automatically.';
+      this.openAdmissionsSignup(this.admissionApplyMode === 'parent' ? 'parent' : 'applicant');
+      this.prefillSignupFromAdmissionForm();
+      return;
+    }
+
+    const role = String(this.authService.getCurrentUser()?.role || '').toLowerCase();
+    if (role !== 'applicant' && role !== 'parent') {
+      this.admissionApplyError = 'Only prospective students and parents can submit admission applications.';
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append('applicationType', 'new_admission');
+    fd.append('firstName', this.admFirstName.trim());
+    fd.append('lastName', this.admLastName.trim());
+    fd.append('dateOfBirth', this.admDateOfBirth);
+    fd.append('gender', this.admGender);
+    fd.append('address', this.admAddress.trim());
+    fd.append('phone', this.admPhone.trim());
+    fd.append('gradeApplyingFor', this.admGradeApplyingFor.trim());
+    fd.append('guardianName', this.admGuardianName.trim());
+    fd.append('guardianPhone', this.admGuardianPhone.trim());
+    if (this.admBirthCertificate) fd.append('birthCertificate', this.admBirthCertificate);
+    if (this.admReportCard) fd.append('reportCard', this.admReportCard);
+
+    this.admissionApplyLoading = true;
+    this.admissionService.submitApplication(fd).subscribe({
+      next: (res) => {
+        this.admissionApplyLoading = false;
+        this.admissionApplySubmitAfterAuth = false;
+        this.admissionApplySuccess = res.message || 'Application submitted successfully';
+        const id = res.application?.id;
+        setTimeout(() => {
+          if (id) {
+            sessionStorage.setItem('admissionFocusApplicationId', id);
+            this.router.navigate(['/admissions/status', id], { replaceUrl: true });
+          } else {
+            this.router.navigate(['/admissions/portal'], { replaceUrl: true });
+          }
+        }, fromAuthCallback ? 400 : 800);
+      },
+      error: (err) => {
+        this.admissionApplyLoading = false;
+        this.admissionApplyError = err.error?.message || 'Failed to submit application';
+      },
+    });
+  }
+
+  private prefillSignupFromAdmissionForm(): void {
+    if (this.admissionApplyMode === 'applicant') {
+      if (!this.signupFirstName.trim()) this.signupFirstName = this.admFirstName.trim();
+      if (!this.signupLastName.trim()) this.signupLastName = this.admLastName.trim();
+    }
+    if (this.admissionApplyMode === 'parent') {
+      if (!this.signupFirstName.trim()) this.signupFirstName = this.admGuardianName.trim().split(/\s+/)[0] || '';
+      if (!this.signupLastName.trim()) {
+        const parts = this.admGuardianName.trim().split(/\s+/);
+        this.signupLastName = parts.length > 1 ? parts.slice(1).join(' ') : '';
+      }
+      if (!this.signupContactNumber.trim()) this.signupContactNumber = this.admGuardianPhone.trim();
+      if (!this.signupAddress.trim()) this.signupAddress = this.admAddress.trim();
+    }
+  }
+
+  private handlePostLoginAdmission(role: string): boolean {
+    if (!this.admissionApplySubmitAfterAuth && !this.admissionApplyMode) {
+      return false;
+    }
+    if (role !== 'applicant' && role !== 'parent') {
+      return false;
+    }
+    if (!this.admissionApplySubmitAfterAuth) {
+      return false;
+    }
+    this.submitAdmissionApplication(true);
+    return true;
+  }
+
+  /** Open Sign Up for online admission (prospective student or parent on behalf of a child). */
+  openAdmissionsSignup(mode: 'applicant' | 'parent'): void {
+    this.activeTab = 'signup';
+    this.error = '';
+    this.success = '';
+    this.infoMessage =
+      mode === 'parent'
+        ? 'Sign up as a parent or guardian, then sign in to submit your child’s admission application.'
+        : 'Sign up as a prospective student, then sign in to submit your admission application.';
+
+    if (!this.admissionApplyMode) {
+      this.email = '';
+      this.password = '';
+      this.signupUsername = '';
+      this.signupPassword = '';
+      this.signupConfirmPassword = '';
+      this.signupFirstName = '';
+      this.signupLastName = '';
+      this.signupGender = '';
+      this.signupContactNumber = '';
+      this.signupEmail = '';
+      this.signupAddress = '';
+      this.signupContactNumberError = '';
+    }
+    this.signupRole = mode === 'parent' ? 'PARENT_ADMISSION' : 'APPLICANT';
+    this.closeForgotPasswordModal();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   setTab(tab: 'signin' | 'signup' | 'reset') {
@@ -400,12 +646,38 @@ export class LoginComponent implements OnInit {
         
         const role = String(user.role || '').toLowerCase();
 
+        if (this.handlePostLoginAdmission(role)) {
+          return;
+        }
+
+        if (role === 'applicant') {
+          const focusId = sessionStorage.getItem('admissionFocusApplicationId');
+          if (focusId) {
+            this.router.navigate(['/admissions/status', focusId], { replaceUrl: true }).catch(err => {
+              console.error('Navigation error:', err);
+              this.error = 'Failed to navigate. Please try again.';
+            });
+          } else {
+            this.router.navigate(['/admissions/portal']).catch(err => {
+              console.error('Navigation error:', err);
+              this.error = 'Failed to navigate. Please try again.';
+            });
+          }
+          return;
+        }
+
         if (role === 'teacher') {
           this.router.navigate(['/teacher/dashboard']).catch(err => {
             console.error('Navigation error:', err);
             this.error = 'Failed to navigate. Please try again.';
           });
         } else if (role === 'parent') {
+          const goAdmissions = sessionStorage.getItem('admissionsPortalAfterLogin') === '1';
+          if (goAdmissions) {
+            sessionStorage.removeItem('admissionsPortalAfterLogin');
+            this.router.navigate(['/admissions/portal']);
+            return;
+          }
           this.authService.getParentStudents().subscribe({
             next: (res: any) => {
               const students = Array.isArray(res) ? res : (res?.students || []);
@@ -493,14 +765,21 @@ export class LoginComponent implements OnInit {
       return;
     }
 
-    if (this.signupRole === 'PARENT') {
+    if (this.signupRole === 'PARENT' || this.signupRole === 'PARENT_ADMISSION') {
       if (!this.signupFirstName || !this.signupLastName || !this.signupContactNumber || !this.signupGender) {
         this.error = 'Please fill in all required fields including gender';
         return;
       }
     }
 
-    if (this.signupRole === 'PARENT') {
+    if (this.signupRole === 'APPLICANT') {
+      if (!this.signupFirstName || !this.signupLastName || !this.signupEmail) {
+        this.error = 'First name, last name, and email are required for applicant accounts';
+        return;
+      }
+    }
+
+    if (this.signupRole === 'PARENT' || this.signupRole === 'PARENT_ADMISSION') {
       const phoneResult = validatePhoneNumber(this.signupContactNumber, true);
       if (!phoneResult.isValid) {
         this.signupContactNumberError = phoneResult.error || 'Invalid phone number';
@@ -512,7 +791,7 @@ export class LoginComponent implements OnInit {
       }
     }
 
-    if (this.signupRole === 'PARENT') {
+    if (this.signupRole === 'PARENT' || this.signupRole === 'PARENT_ADMISSION') {
       if (!this.signupEmail) {
         this.error = 'Please provide an email address for parent accounts';
         return;
@@ -528,6 +807,14 @@ export class LoginComponent implements OnInit {
       }
     }
 
+    if (this.signupRole === 'APPLICANT') {
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(this.signupEmail)) {
+        this.error = 'Please enter a valid email address';
+        return;
+      }
+    }
+
     if (this.signupPassword.length < 8) {
       this.error = 'Password must be at least 8 characters long';
       return;
@@ -538,7 +825,7 @@ export class LoginComponent implements OnInit {
       return;
     }
 
-    const validRoles = ['PARENT', 'STUDENT'];
+    const validRoles = ['PARENT', 'PARENT_ADMISSION', 'STUDENT', 'APPLICANT'];
     if (!validRoles.includes(this.signupRole)) {
       this.error = 'Please select a valid role';
       return;
@@ -547,7 +834,8 @@ export class LoginComponent implements OnInit {
     this.loading = true;
     this.error = '';
     
-    const roleLower = this.signupRole.toLowerCase();
+    const roleLower =
+      this.signupRole === 'PARENT_ADMISSION' ? 'parent' : this.signupRole.toLowerCase();
     const trimmedUsername = this.signupUsername.trim();
     
     const registerData: any = {
@@ -556,7 +844,7 @@ export class LoginComponent implements OnInit {
       role: roleLower,
     };
 
-    if (this.signupRole === 'PARENT') {
+    if (this.signupRole === 'PARENT' || this.signupRole === 'PARENT_ADMISSION') {
       registerData.email = this.signupEmail.trim();
       registerData.firstName = this.signupFirstName.trim();
       registerData.lastName = this.signupLastName.trim();
@@ -564,6 +852,13 @@ export class LoginComponent implements OnInit {
       registerData.phoneNumber = this.signupContactNumber;
       registerData.contactNumber = this.signupContactNumber;
       registerData.address = this.signupAddress.trim();
+    }
+
+    if (this.signupRole === 'APPLICANT') {
+      registerData.email = this.signupEmail.trim();
+      registerData.firstName = this.signupFirstName.trim();
+      registerData.lastName = this.signupLastName.trim();
+      registerData.role = 'applicant';
     }
 
     this.authService.register(registerData).pipe(
@@ -582,10 +877,17 @@ export class LoginComponent implements OnInit {
       })
     ).subscribe({
       next: () => {
+        if (this.signupRole === 'PARENT_ADMISSION' || this.signupRole === 'APPLICANT') {
+          sessionStorage.setItem('admissionsPortalAfterLogin', '1');
+        }
         const signInHint =
           this.signupRole === 'STUDENT'
             ? ` Sign in with Student ID "${trimmedUsername}" and your password.`
-            : '';
+            : this.signupRole === 'APPLICANT'
+              ? ' Sign in with your username or email to complete your application.'
+              : this.signupRole === 'PARENT_ADMISSION'
+                ? ' Sign in to start your child\'s admission application.'
+                : '';
         this.success = `Account created successfully!${signInHint || ' Please sign in.'}`;
         const studentIdForSignIn = this.signupRole === 'STUDENT' ? trimmedUsername : '';
         setTimeout(() => {
@@ -699,5 +1001,86 @@ export class LoginComponent implements OnInit {
         }
       }
     });
+  }
+
+  private applyBrandingFromCache(): void {
+    try {
+      const cachedName = sessionStorage.getItem(LoginComponent.SCHOOL_NAME_CACHE_KEY);
+      const cachedLogo = sessionStorage.getItem(LoginComponent.SCHOOL_LOGO_CACHE_KEY);
+      if (cachedName?.trim()) {
+        this.schoolName = cachedName.trim();
+      }
+      if (cachedLogo) {
+        this.schoolLogo = this.normalizeSchoolLogoSrc(cachedLogo);
+      }
+    } catch {
+      // ignore sessionStorage errors
+    }
+  }
+
+  private loadPublicSchoolBranding(): void {
+    this.settingsService.getPublicBranding().subscribe({
+      next: (branding) => {
+        if (!branding || typeof branding !== 'object') return;
+
+        const name = String(branding.schoolName || '').trim();
+        const logo = this.normalizeSchoolLogoSrc(branding.schoolLogo ?? null);
+
+        if (name) {
+          this.schoolName = name;
+          try {
+            sessionStorage.setItem(LoginComponent.SCHOOL_NAME_CACHE_KEY, name);
+          } catch {
+            // ignore
+          }
+          this.title.setTitle(`Sign In – ${name}`);
+        }
+        if (logo) {
+          this.schoolLogo = logo;
+          try {
+            if (logo.length < 500_000) {
+              sessionStorage.setItem(LoginComponent.SCHOOL_LOGO_CACHE_KEY, logo);
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private normalizeSchoolLogoSrc(value: string | null): string | null {
+    if (!value) return null;
+
+    let v = String(value).trim();
+    if (!v) return null;
+
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+      v = v.slice(1, -1).trim();
+    }
+
+    v = v.replace(/\\n/g, '').replace(/\\r/g, '').replace(/\\t/g, '').replace(/\\"/g, '"');
+
+    if (v.startsWith('data:image')) {
+      const commaIndex = v.indexOf(',');
+      if (commaIndex > -1) {
+        const header = v.slice(0, commaIndex + 1);
+        const payload = v.slice(commaIndex + 1).replace(/\s/g, '');
+        return `${header}${payload}`;
+      }
+      return v;
+    }
+
+    if (/^https?:\/\//i.test(v)) {
+      return v;
+    }
+
+    if (/^[A-Za-z0-9+/=\r\n]+$/.test(v) && v.length > 64) {
+      return `data:image/png;base64,${v.replace(/\s/g, '')}`;
+    }
+
+    return v;
   }
 }

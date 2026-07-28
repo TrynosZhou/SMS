@@ -1,0 +1,244 @@
+<div class="adm-apply">
+  <div class="adm-apply__topbar">
+    <button type="button" class="adm-apply-back" (click)="cancel()">
+      <span aria-hidden="true">←</span> Back to portal
+    </button>
+  </div>
+
+  <header class="adm-apply-hero">
+    <div class="adm-apply-hero__main">
+      <span class="adm-apply-hero__eyebrow">Online admissions</span>
+      <h1 class="adm-apply-hero__title">Application form</h1>
+      <p class="adm-apply-hero__lead">
+        Complete each section below and upload required documents. Fields marked with * are mandatory.
+      </p>
+    </div>
+    <ol class="adm-apply-steps" aria-label="Form sections">
+      <li class="adm-apply-steps__item adm-apply-steps__item--active">1. Type</li>
+      <li class="adm-apply-steps__item">2. Applicant</li>
+      <li class="adm-apply-steps__item">3. Academic</li>
+      <li class="adm-apply-steps__item">4. Guardian</li>
+      <li class="adm-apply-steps__item">5. Documents</li>
+    </ol>
+  </header>
+
+  <div class="adm-apply-alert adm-apply-alert--error" *ngIf="error" role="alert">{{ error }}</div>
+  <div class="adm-apply-alert adm-apply-alert--ok" *ngIf="success" role="status">{{ success }}</div>
+
+  <form class="adm-apply-form" (ngSubmit)="submit()">
+    <section class="adm-apply-card">
+      <div class="adm-apply-card__head">
+        <span class="adm-apply-card__num">1</span>
+        <div>
+          <h2 class="adm-apply-card__title">Application type</h2>
+          <p class="adm-apply-card__sub">Choose whether this is a new enrolment or a transfer from another school.</p>
+        </div>
+      </div>
+      <div class="adm-type-picker">
+        <label class="adm-type-option" [class.adm-type-option--selected]="applicationType === 'new_admission'">
+          <input type="radio" name="appType" value="new_admission" [(ngModel)]="applicationType" />
+          <span class="adm-type-option__icon" aria-hidden="true">✨</span>
+          <span class="adm-type-option__title">New admission</span>
+          <span class="adm-type-option__hint">First-time enrolment at our school</span>
+        </label>
+        <label class="adm-type-option" [class.adm-type-option--selected]="applicationType === 'transfer'">
+          <input type="radio" name="appType" value="transfer" [(ngModel)]="applicationType" />
+          <span class="adm-type-option__icon" aria-hidden="true">↔</span>
+          <span class="adm-type-option__title">Transfer</span>
+          <span class="adm-type-option__hint">Moving from another school</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="adm-apply-card">
+      <div class="adm-apply-card__head">
+        <span class="adm-apply-card__num">2</span>
+        <div>
+          <h2 class="adm-apply-card__title">Applicant details</h2>
+          <p class="adm-apply-card__sub">Personal information for the student applying.</p>
+        </div>
+      </div>
+      <div class="adm-apply-grid">
+        <div class="adm-apply-field">
+          <label>First name *</label>
+          <input type="text" [(ngModel)]="firstName" name="firstName" required placeholder="First name" />
+        </div>
+        <div class="adm-apply-field">
+          <label>Last name *</label>
+          <input type="text" [(ngModel)]="lastName" name="lastName" required placeholder="Last name" />
+        </div>
+        <div class="adm-apply-field">
+          <label>Date of birth *</label>
+          <input type="date" [(ngModel)]="dateOfBirth" name="dateOfBirth" required />
+        </div>
+        <div class="adm-apply-field">
+          <label>Gender *</label>
+          <select [(ngModel)]="gender" name="gender" required>
+            <option value="">Select gender…</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+        <div class="adm-apply-field adm-apply-field--full">
+          <label>Home address *</label>
+          <textarea rows="2" [(ngModel)]="address" name="address" required placeholder="Street, suburb, city"></textarea>
+        </div>
+        <div class="adm-apply-field">
+          <label>Contact phone *</label>
+          <input type="tel" [(ngModel)]="phone" name="phone" required placeholder="07XXXXXXXX" />
+        </div>
+        <div class="adm-apply-field">
+          <label>Email</label>
+          <input type="email" [(ngModel)]="email" name="email" placeholder="optional@email.com" />
+        </div>
+      </div>
+    </section>
+
+    <section class="adm-apply-card">
+      <div class="adm-apply-card__head">
+        <span class="adm-apply-card__num">3</span>
+        <div>
+          <h2 class="adm-apply-card__title">Academic information</h2>
+          <p class="adm-apply-card__sub">Grade or class level and any prior schooling.</p>
+        </div>
+      </div>
+      <div class="adm-apply-grid">
+        <div class="adm-apply-field adm-apply-field--full" *ngIf="applicationType === 'transfer'">
+          <label>Previous school *</label>
+          <input type="text" [(ngModel)]="previousSchool" name="previousSchool" placeholder="Name of previous school" />
+        </div>
+        <div class="adm-apply-field">
+          <label>Class applying for</label>
+          <select [(ngModel)]="classApplyingForId" name="classApplyingForId">
+            <option value="">Select class (optional)</option>
+            <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
+          </select>
+        </div>
+        <div class="adm-apply-field">
+          <label>Grade / form applying for *</label>
+          <input type="text" [(ngModel)]="gradeApplyingFor" name="gradeApplyingFor" placeholder="e.g. Grade 1, Form 1" />
+        </div>
+        <div class="adm-apply-field adm-apply-field--full">
+          <label>Additional notes</label>
+          <textarea rows="2" [(ngModel)]="academicNotes" name="academicNotes" placeholder="Anything else the school should know (optional)"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="adm-apply-card">
+      <div class="adm-apply-card__head">
+        <span class="adm-apply-card__num">4</span>
+        <div>
+          <h2 class="adm-apply-card__title">Parent / guardian</h2>
+          <p class="adm-apply-card__sub">Primary contact for this application.</p>
+        </div>
+      </div>
+      <div class="adm-apply-grid">
+        <div class="adm-apply-field">
+          <label>Full name *</label>
+          <input type="text" [(ngModel)]="guardianName" name="guardianName" required />
+        </div>
+        <div class="adm-apply-field">
+          <label>Relationship</label>
+          <input type="text" [(ngModel)]="guardianRelationship" name="guardianRelationship" placeholder="Mother, Father, Guardian…" />
+        </div>
+        <div class="adm-apply-field">
+          <label>Phone *</label>
+          <input type="tel" [(ngModel)]="guardianPhone" name="guardianPhone" required />
+        </div>
+        <div class="adm-apply-field">
+          <label>Email</label>
+          <input type="email" [(ngModel)]="guardianEmail" name="guardianEmail" />
+        </div>
+        <div class="adm-apply-field adm-apply-field--full">
+          <label>Address</label>
+          <textarea rows="2" [(ngModel)]="guardianAddress" name="guardianAddress"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="adm-apply-card adm-apply-card--docs">
+      <div class="adm-apply-card__head">
+        <span class="adm-apply-card__num">5</span>
+        <div>
+          <h2 class="adm-apply-card__title">Documents</h2>
+          <p class="adm-apply-card__sub">PDF or images (JPEG, PNG, WebP). Maximum 5 MB per file.</p>
+        </div>
+      </div>
+
+      <div class="adm-upload-list">
+        <div class="adm-upload" [class.adm-upload--done]="birthCertificate">
+          <div class="adm-upload__meta">
+            <p class="adm-upload__label">Birth certificate *</p>
+            <p class="adm-upload__file" *ngIf="birthCertificate">{{ birthCertificate.name }}</p>
+            <p class="adm-upload__placeholder" *ngIf="!birthCertificate">Required — certified copy</p>
+          </div>
+          <label class="adm-upload__btn">
+            {{ birthCertificate ? 'Change' : 'Upload' }}
+            <input type="file" accept=".pdf,image/*" hidden (change)="onFile($any($event.target).files?.[0] || null, 'birth')" />
+          </label>
+        </div>
+
+        <div class="adm-upload" [class.adm-upload--done]="reportCard">
+          <div class="adm-upload__meta">
+            <p class="adm-upload__label">Report card (previous term) *</p>
+            <p class="adm-upload__file" *ngIf="reportCard">{{ reportCard.name }}</p>
+            <p class="adm-upload__placeholder" *ngIf="!reportCard">Required — most recent term</p>
+          </div>
+          <label class="adm-upload__btn">
+            {{ reportCard ? 'Change' : 'Upload' }}
+            <input type="file" accept=".pdf,image/*" hidden (change)="onFile($any($event.target).files?.[0] || null, 'report')" />
+          </label>
+        </div>
+
+        <div class="adm-upload" [class.adm-upload--done]="idPhoto">
+          <div class="adm-upload__meta">
+            <p class="adm-upload__label">ID / passport photo</p>
+            <p class="adm-upload__file" *ngIf="idPhoto">{{ idPhoto.name }}</p>
+            <p class="adm-upload__placeholder" *ngIf="!idPhoto">Optional</p>
+          </div>
+          <label class="adm-upload__btn">
+            {{ idPhoto ? 'Change' : 'Upload' }}
+            <input type="file" accept="image/*,.pdf" hidden (change)="onFile($any($event.target).files?.[0] || null, 'photo')" />
+          </label>
+        </div>
+
+        <div class="adm-upload" [class.adm-upload--done]="medicalForm">
+          <div class="adm-upload__meta">
+            <p class="adm-upload__label">Medical form</p>
+            <p class="adm-upload__file" *ngIf="medicalForm">{{ medicalForm.name }}</p>
+            <p class="adm-upload__placeholder" *ngIf="!medicalForm">Optional</p>
+          </div>
+          <label class="adm-upload__btn">
+            {{ medicalForm ? 'Change' : 'Upload' }}
+            <input type="file" accept=".pdf,image/*" hidden (change)="onFile($any($event.target).files?.[0] || null, 'medical')" />
+          </label>
+        </div>
+
+        <div class="adm-upload" [class.adm-upload--done]="otherDocument">
+          <div class="adm-upload__meta">
+            <p class="adm-upload__label">Other supporting document</p>
+            <p class="adm-upload__file" *ngIf="otherDocument">{{ otherDocument.name }}</p>
+            <p class="adm-upload__placeholder" *ngIf="!otherDocument">Optional</p>
+          </div>
+          <label class="adm-upload__btn">
+            {{ otherDocument ? 'Change' : 'Upload' }}
+            <input type="file" accept=".pdf,image/*" hidden (change)="onFile($any($event.target).files?.[0] || null, 'other')" />
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <footer class="adm-apply-footer">
+      <p class="adm-apply-footer__note">By submitting, you confirm the information provided is accurate.</p>
+      <div class="adm-apply-footer__actions">
+        <button type="button" class="adm-apply-btn adm-apply-btn--ghost" (click)="cancel()" [disabled]="loading">
+          Cancel
+        </button>
+        <button type="submit" class="adm-apply-btn adm-apply-btn--primary" [disabled]="loading">
+          {{ loading ? 'Submitting…' : 'Submit application' }}
+        </button>
+      </div>
+    </footer>
+  </form>
+</div>

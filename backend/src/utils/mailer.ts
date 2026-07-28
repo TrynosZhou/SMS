@@ -69,3 +69,56 @@ export async function sendPasswordResetEmail(to: string, resetLink: string): Pro
     return { ok: false, error: e?.message || 'Failed to send email' };
   }
 }
+
+export async function sendTransactionalEmail(
+  to: string,
+  subject: string,
+  text: string,
+  html: string
+): Promise<SendMailResult> {
+  try {
+    const host = process.env.SMTP_HOST;
+    const portRaw = process.env.SMTP_PORT;
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    const from = process.env.SMTP_FROM || user;
+
+    if (!host || !portRaw || !user || !pass || !from) {
+      return { ok: false, error: 'SMTP is not configured' };
+    }
+
+    const port = Number(portRaw);
+    const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+
+    let nodemailer: any;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      nodemailer = require('nodemailer');
+    } catch (e: any) {
+      try {
+        const imported = await import('nodemailer');
+        nodemailer = (imported as any).default || imported;
+      } catch (e2: any) {
+        return {
+          ok: false,
+          error: `Failed to load nodemailer: ${e2?.message || e?.message || 'Unknown error'}`,
+        };
+      }
+    }
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000,
+    });
+
+    await transporter.sendMail({ from, to, subject, text, html });
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Failed to send email' };
+  }
+}

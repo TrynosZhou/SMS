@@ -1,0 +1,63 @@
+<div class="adm-portal">
+  <header class="adm-hero">
+    <div>
+      <span class="adm-eyebrow">Online admissions</span>
+      <h1>Application portal</h1>
+      <p *ngIf="isApplicant()">Apply as a prospective student, upload documents, and track your application status.</p>
+      <p *ngIf="isParent()">Apply on behalf of your child, upload required documents, and track progress.</p>
+    </div>
+    <div class="adm-hero__actions">
+      <button type="button" class="adm-btn adm-btn--primary" (click)="startApplication()">+ New application</button>
+      <button type="button" class="adm-btn adm-btn--ghost" (click)="logout()">Sign out</button>
+    </div>
+  </header>
+
+  <div class="adm-alert adm-alert--error" *ngIf="error">{{ error }}</div>
+
+  <section class="adm-panel" *ngIf="loading">
+    <p class="adm-muted">Loading your applications…</p>
+  </section>
+
+  <section class="adm-panel" *ngIf="!loading && applications.length === 0">
+    <h2>No applications yet</h2>
+    <p class="adm-muted">Start a new application to submit personal details, academic information, and required documents.</p>
+    <button type="button" class="adm-btn adm-btn--primary" (click)="startApplication()">Start application</button>
+  </section>
+
+  <section class="adm-panel" *ngIf="!loading && applications.length > 0">
+    <h2>Your applications</h2>
+    <div class="adm-table-wrap">
+      <table class="adm-table">
+        <thead>
+          <tr>
+            <th>Reference</th>
+            <th>Applicant</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Submitted</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let app of applications">
+            <td><strong>{{ app.applicationNumber }}</strong></td>
+            <td>{{ app.firstName }} {{ app.lastName }}</td>
+            <td>{{ app.applicationType === 'transfer' ? 'Transfer' : 'New admission' }}</td>
+            <td>
+              <span class="adm-badge" [class.adm-badge--pending]="app.status === 'pending'"
+                [class.adm-badge--review]="app.status === 'under_review'"
+                [class.adm-badge--ok]="app.status === 'accepted'"
+                [class.adm-badge--no]="app.status === 'rejected'">
+                {{ admissionService.statusLabel(app.status) }}
+              </span>
+            </td>
+            <td>{{ app.submittedAt || app.createdAt | date:'mediumDate' }}</td>
+            <td>
+              <a class="adm-btn adm-btn--sm" [routerLink]="['/admissions/status', app.id]">View</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

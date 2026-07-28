@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AppDataSource } from '../config/database';
 import { Settings } from '../entities/Settings';
 import { Invoice, InvoiceStatus } from '../entities/Invoice';
@@ -168,6 +168,34 @@ const ensureModuleAccessDefaults = (current?: Settings['moduleAccess'] | null): 
     students: { ...DEFAULT_MODULE_ACCESS?.students, ...(existing.students || {}) },
     demoAccount: { ...DEFAULT_MODULE_ACCESS?.demoAccount, ...(existing.demoAccount || {}) }
   };
+};
+
+/** Public branding for login and other unauthenticated pages (name + logo only). */
+export const getPublicBranding = async (_req: Request, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const settingsRepository = AppDataSource.getRepository(Settings);
+    const settingsList = await settingsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 1,
+      select: ['schoolName', 'schoolLogo']
+    });
+    const settings = settingsList.length > 0 ? settingsList[0] : null;
+
+    res.json({
+      schoolName: String(settings?.schoolName || '').trim(),
+      schoolLogo: settings?.schoolLogo ?? null
+    });
+  } catch (error: any) {
+    console.error('Error fetching public branding:', error);
+    res.status(500).json({
+      message: 'Server error',
+      error: error?.message || 'Unknown error'
+    });
+  }
 };
 
 export const getSettings = async (req: AuthRequest, res: Response) => {

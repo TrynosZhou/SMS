@@ -38,6 +38,13 @@ export const RBAC_MODULES: RbacModuleDef[] = [
     description: 'Registration → Parents menu and parent management',
   },
   { key: 'students', label: 'Student Records', routeModule: 'students', group: 'people' },
+  {
+    key: 'admissions',
+    label: 'Admissions',
+    routeModule: 'admissions',
+    group: 'people',
+    description: 'Online applications, document review, and admission decisions',
+  },
   { key: 'attendance', label: 'Attendance', routeModule: 'attendance', group: 'academic' },
   { key: 'timetable', label: 'Timetable', routeModule: 'timetable', group: 'academic' },
   { key: 'exams', label: 'Exams & Results', routeModule: 'exams', group: 'academic' },

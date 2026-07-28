@@ -1139,12 +1139,12 @@ export const register = async (req: Request, res: Response) => {
       }
     }
 
-    // Validate role - only allow PARENT and STUDENT for self-registration
-    const allowedRoles = [UserRole.PARENT, UserRole.STUDENT];
+    // Validate role - allow PARENT, STUDENT, and APPLICANT for self-registration
+    const allowedRoles = [UserRole.PARENT, UserRole.STUDENT, UserRole.APPLICANT];
     const requestedRole = role ? (role.toLowerCase() as UserRole) : UserRole.STUDENT;
 
     if (!allowedRoles.includes(requestedRole)) {
-      return res.status(400).json({ message: 'Invalid role for self-registration. Only Parent and Student can sign up here. Other roles are created by the Administrator under User Management.' });
+      return res.status(400).json({ message: 'Invalid role for self-registration. Only Parent, Student, and Prospective Applicant can sign up here. Other roles are created by the Administrator under User Management.' });
     }
 
     // Check if username already exists (case-insensitive)
@@ -1248,6 +1248,30 @@ export const register = async (req: Request, res: Response) => {
       }
 
       return res.status(201).json({ message: 'User registered successfully' });
+    }
+
+    // APPLICANT self-signup (prospective student — online admissions portal)
+    if (requestedRole === UserRole.APPLICANT) {
+      if (!trimmedEmail) {
+        return res.status(400).json({ message: 'Email is required for applicant registration' });
+      }
+      const firstName = String(profileData.firstName || '').trim();
+      const lastName = String(profileData.lastName || '').trim();
+      if (!firstName || !lastName) {
+        return res.status(400).json({ message: 'First name and last name are required' });
+      }
+
+      const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
+      const user = userRepository.create({
+        email: trimmedEmail,
+        username: trimmedUsername,
+        password: hashedPassword,
+        role: UserRole.APPLICANT,
+        firstName,
+        lastName,
+      });
+      await userRepository.save(user);
+      return res.status(201).json({ message: 'Applicant account created successfully' });
     }
 
     const hashedPassword = await bcrypt.hash(trimmedPassword, 10);

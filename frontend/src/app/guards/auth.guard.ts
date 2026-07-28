@@ -17,6 +17,13 @@ export class AuthGuard implements CanActivate {
     const role = this.authService.getEffectiveRole();
     const url = state.url.split('?')[0];
 
+    if (role === 'applicant') {
+      if (url === '/dashboard') {
+        this.router.navigate(['/admissions/portal']);
+        return false;
+      }
+    }
+
     if (role === 'parent') {
       if (url === '/dashboard') {
         this.router.navigate(['/parent/dashboard']);
@@ -61,6 +68,7 @@ export class AuthGuard implements CanActivate {
         '/parent/',
         '/report-cards',
         '/account/change-password',
+        '/admissions/',
       ];
       const isAllowed = allowedPrefixes.some(
         (prefix) => url === prefix || url.startsWith(prefix + '/') || url.startsWith(prefix)
@@ -80,6 +88,15 @@ export class AuthGuard implements CanActivate {
       const isAllowed = allowedPrefixes.some((prefix) => url === prefix || url.startsWith(prefix));
       if (!isAllowed) {
         this.router.navigate(['/dashboard']);
+        return false;
+      }
+    }
+
+    if (role === 'applicant') {
+      const allowedPrefixes = ['/admissions/', '/account/change-password'];
+      const isAllowed = allowedPrefixes.some((prefix) => url === prefix || url.startsWith(prefix));
+      if (!isAllowed) {
+        this.router.navigate(['/admissions/portal']);
         return false;
       }
     }
