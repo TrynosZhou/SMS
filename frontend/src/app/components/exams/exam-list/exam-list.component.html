@@ -1,11 +1,17 @@
 <div class="exam-page">
-  <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
-<div class="exam-toast-stack" *ngIf="error || connectionBanner || isAutoSaving">
+<div class="exam-toast-stack" *ngIf="error || connectionBanner || isAutoSaving || autoSaveNotice || success">
     <div class="exam-toast exam-toast--warn" *ngIf="connectionBanner" role="status">
       <span>{{ connectionBanner }}</span>
     </div>
     <div class="exam-toast exam-toast--info" *ngIf="isAutoSaving" role="status">
       <span>Auto-saving marks…</span>
+    </div>
+    <div class="exam-toast exam-toast--success" *ngIf="autoSaveNotice" role="status">
+      <span>{{ autoSaveNotice }}</span>
+    </div>
+    <div class="exam-toast exam-toast--success" *ngIf="success" role="status">
+      <span>{{ success }}</span>
+      <button type="button" class="exam-toast__dismiss" (click)="clearAlert('success')" aria-label="Dismiss">×</button>
     </div>
     <div class="exam-toast exam-toast--error" *ngIf="error" role="alert">
       <span>{{ error }}</span>

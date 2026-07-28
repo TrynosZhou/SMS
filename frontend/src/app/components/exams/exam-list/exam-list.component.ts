@@ -73,6 +73,8 @@ loadingStudents = false;
   // Auto-save state
   lastSavedStudentId: string | null = null;
   autoSaveTimeout: any = null;
+  /** Transient inline notice for auto-save (no system success modal). */
+  autoSaveNotice = '';
   isAutoSaving = false;
   pendingSaves: Set<string> = new Set();
   savedRecords: Set<string> = new Set(); // Track which student+subject combinations have been saved
@@ -125,8 +127,7 @@ loadingStudents = false;
         if (msg === 'Connection is restored') {
           void this.offlineSync.flushQueue().then(() => {
             this.failedMarkKeys.clear();
-            this.success = 'Offline marks synced to server.';
-            this.cdr.markForCheck();
+            this.showAutoSaveSuccess('Offline marks synced to server.');
           });
         }
         this.cdr.markForCheck();
@@ -1199,12 +1200,12 @@ return;
   }
 
   showAutoSaveSuccess(message: string) {
-    this.success = message;
+    this.autoSaveNotice = message;
     this.lastAutoSaveAt = new Date();
     this.cdr.markForCheck();
     setTimeout(() => {
-      if (this.success === message) {
-        this.success = '';
+      if (this.autoSaveNotice === message) {
+        this.autoSaveNotice = '';
         this.cdr.markForCheck();
       }
     }, 3000);
