@@ -639,38 +639,88 @@
             </div>
             </div>
 
-            <div class="rc-remarks" *ngIf="!isParent || reportCard.remarks?.classTeacherRemarks || reportCard.remarks?.headmasterRemarks || reportCard.headmasterAutoRemarks">
+            <div class="rc-remarks" *ngIf="!isParent || reportCard.remarks?.classTeacherRemarks || reportCard.remarks?.headmasterRemarks">
             <div class="remarks-item" *ngIf="!isParent || reportCard.remarks?.classTeacherRemarks">
               <label class="remarks-label">
                 Class Teacher Remarks
-                <span class="remarks-ai-badge" *ngIf="!isParent">AI generated</span>
-                <span *ngIf="canEditRemarks && isRemarksSaved(reportCard.student.id, 'classTeacher')" 
+                <span *ngIf="canEditRemarks && isRemarksSaved(reportCard.student.id, 'classTeacher')"
                       class="saved-badge" title="Saved">✓ Saved</span>
-                <span *ngIf="canEditRemarks && remarksSaveFailed(reportCard)" 
+                <span *ngIf="canEditRemarks && remarksSaveFailed(reportCard)"
                       class="unsaved-badge unsaved-badge--error" title="Save failed">⚠ Not saved</span>
-                <span *ngIf="canEditRemarks && !remarksSaveFailed(reportCard) && !isRemarksSaved(reportCard.student.id, 'classTeacher') && reportCard.remarks?.classTeacherRemarks" 
+                <span *ngIf="canEditRemarks && !remarksSaveFailed(reportCard) && !isRemarksSaved(reportCard.student.id, 'classTeacher') && reportCard.remarks?.classTeacherRemarks"
                       class="unsaved-badge" title="Not saved yet">○ Entered</span>
-                <button *ngIf="canEditRemarks && remarksSaveFailed(reportCard)" 
-                        type="button" 
-                        class="btn btn-xs btn-retry" 
+                <button *ngIf="canEditRemarks && remarksSaveFailed(reportCard)"
+                        type="button"
+                        class="btn btn-xs btn-retry"
                         (click)="retryRemarksSave(reportCard)">Retry</button>
-                <button *ngIf="canEditRemarks" 
-                        type="button" 
-                        class="btn btn-xs btn-ai-sparkle" 
-                        (click)="generateAIRemark(reportCard, 'classTeacher')"
-                        [disabled]="aiGeneratingMap.get(reportCard.student.id + '_classTeacher')">
-                  <span *ngIf="!aiGeneratingMap.get(reportCard.student.id + '_classTeacher')">↻ Regenerate</span>
-                  <span *ngIf="aiGeneratingMap.get(reportCard.student.id + '_classTeacher')" class="spinner-tiny"></span>
-                </button>
               </label>
-              <p class="remarks-ai-hint" *ngIf="canEditRemarks">Remarks are generated automatically from performance and conduct indicators. You may edit before saving.</p>
-              <textarea 
+
+              <div class="remarks-mode-toggle" *ngIf="canEditRemarks" role="group" aria-label="Class teacher remarks mode">
+                <button
+                  type="button"
+                  class="remarks-mode-btn"
+                  [class.active]="getRemarksMode(reportCard, 'classTeacher') === 'custom'"
+                  (click)="setRemarksMode(reportCard, 'classTeacher', 'custom')">
+                  Custom Remarks
+                </button>
+                <button
+                  type="button"
+                  class="remarks-mode-btn"
+                  [class.active]="getRemarksMode(reportCard, 'classTeacher') === 'ai'"
+                  (click)="setRemarksMode(reportCard, 'classTeacher', 'ai')"
+                  [disabled]="aiGeneratingMap.get(reportCard.student.id + '_classTeacher')">
+                  AI Remarks
+                </button>
+              </div>
+
+              <p class="remarks-ai-hint" *ngIf="canEditRemarks && getRemarksMode(reportCard, 'classTeacher') === 'custom'">
+                Type your own class teacher remark below.
+              </p>
+              <p class="remarks-ai-hint" *ngIf="canEditRemarks && getRemarksMode(reportCard, 'classTeacher') === 'ai'">
+                Choose an AI alternative below — it will be pasted into the text box. You can still edit it before saving.
+              </p>
+
+              <div
+                class="ai-alternatives"
+                *ngIf="canEditRemarks && getRemarksMode(reportCard, 'classTeacher') === 'ai'">
+                <div class="ai-alternatives__toolbar">
+                  <span class="ai-alternatives__title">AI alternatives</span>
+                  <button
+                    type="button"
+                    class="btn btn-xs btn-ai-sparkle"
+                    (click)="generateAIRemarkAlternatives(reportCard, 'classTeacher', true)"
+                    [disabled]="aiGeneratingMap.get(reportCard.student.id + '_classTeacher')">
+                    <span *ngIf="!aiGeneratingMap.get(reportCard.student.id + '_classTeacher')">↻ Generate options</span>
+                    <span *ngIf="aiGeneratingMap.get(reportCard.student.id + '_classTeacher')" class="spinner-tiny"></span>
+                  </button>
+                </div>
+                <p class="ai-alternatives__loading" *ngIf="aiGeneratingMap.get(reportCard.student.id + '_classTeacher')">
+                  Generating remarks with OpenAI…
+                </p>
+                <p class="ai-alternatives__error" *ngIf="getAiError(reportCard, 'classTeacher')">
+                  {{ getAiError(reportCard, 'classTeacher') }}
+                </p>
+                <ul class="ai-alternatives__list" *ngIf="getAiAlternatives(reportCard, 'classTeacher').length">
+                  <li *ngFor="let option of getAiAlternatives(reportCard, 'classTeacher'); let oi = index">
+                    <button
+                      type="button"
+                      class="ai-alternative-option"
+                      [class.selected]="getAiSelectedIndex(reportCard, 'classTeacher') === oi"
+                      (click)="selectAiRemark(reportCard, 'classTeacher', option, oi)">
+                      <span class="ai-alternative-option__index">{{ oi + 1 }}</span>
+                      <span class="ai-alternative-option__text">{{ option }}</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+
+              <textarea
                 *ngIf="canEditRemarks"
-                [(ngModel)]="reportCard.remarks.classTeacherRemarks" 
+                [(ngModel)]="reportCard.remarks.classTeacherRemarks"
                 name="classTeacherRemarks_{{reportCard.student.id}}"
                 class="remarks-textarea"
                 [class.saved]="isRemarksSaved(reportCard.student.id, 'classTeacher')"
-                placeholder="AI-generated class teacher remarks will appear here…"
+                [placeholder]="getRemarksMode(reportCard, 'classTeacher') === 'ai' ? 'Select an AI alternative above to paste it here…' : 'Type a custom class teacher remark…'"
                 rows="3"
                 maxlength="500"
                 (input)="onRemarksChange(reportCard, 'classTeacher')"
@@ -680,41 +730,93 @@
               </div>
             </div>
 
-            <div class="remarks-item" *ngIf="!isParent || reportCard.remarks?.headmasterRemarks || reportCard.headmasterAutoRemarks">
+            <div class="remarks-item" *ngIf="!isParent || reportCard.remarks?.headmasterRemarks">
               <label class="remarks-label">
                 Head's Remarks
-                <span *ngIf="isAdmin && isRemarksSaved(reportCard.student.id, 'headmaster')" 
+                <span *ngIf="isAdmin && isRemarksSaved(reportCard.student.id, 'headmaster')"
                       class="saved-badge" title="Saved">✓ Saved</span>
-                <span *ngIf="isAdmin && !isRemarksSaved(reportCard.student.id, 'headmaster') && (reportCard.remarks?.headmasterRemarks || reportCard.headmasterAutoRemarks)" 
+                <span *ngIf="isAdmin && !isRemarksSaved(reportCard.student.id, 'headmaster') && reportCard.remarks?.headmasterRemarks"
                       class="unsaved-badge" title="Not saved yet">○ Entered</span>
                 <span *ngIf="!isAdmin" class="read-only-badge">Read-only</span>
-                <button *ngIf="isAdmin" 
-                        type="button" 
-                        class="btn btn-xs btn-ai-sparkle" 
-                        (click)="generateAIRemark(reportCard, 'headmaster')"
-                        [disabled]="aiGeneratingMap.get(reportCard.student.id + '_headmaster')">
-                  <span *ngIf="!aiGeneratingMap.get(reportCard.student.id + '_headmaster')">✨ AI Remark</span>
-                  <span *ngIf="aiGeneratingMap.get(reportCard.student.id + '_headmaster')" class="spinner-tiny"></span>
-                </button>
               </label>
-              <textarea 
+
+              <div class="remarks-mode-toggle" *ngIf="isAdmin" role="group" aria-label="Head remarks mode">
+                <button
+                  type="button"
+                  class="remarks-mode-btn"
+                  [class.active]="getRemarksMode(reportCard, 'headmaster') === 'custom'"
+                  (click)="setRemarksMode(reportCard, 'headmaster', 'custom')">
+                  Custom Remarks
+                </button>
+                <button
+                  type="button"
+                  class="remarks-mode-btn"
+                  [class.active]="getRemarksMode(reportCard, 'headmaster') === 'ai'"
+                  (click)="setRemarksMode(reportCard, 'headmaster', 'ai')"
+                  [disabled]="aiGeneratingMap.get(reportCard.student.id + '_headmaster')">
+                  AI Remarks
+                </button>
+              </div>
+
+              <p class="remarks-ai-hint" *ngIf="isAdmin && getRemarksMode(reportCard, 'headmaster') === 'custom'">
+                Type your own head's remark below.
+              </p>
+              <p class="remarks-ai-hint" *ngIf="isAdmin && getRemarksMode(reportCard, 'headmaster') === 'ai'">
+                Choose an AI alternative below — it will be pasted into the text box. You can still edit it before saving.
+              </p>
+
+              <div
+                class="ai-alternatives"
+                *ngIf="isAdmin && getRemarksMode(reportCard, 'headmaster') === 'ai'">
+                <div class="ai-alternatives__toolbar">
+                  <span class="ai-alternatives__title">AI alternatives</span>
+                  <button
+                    type="button"
+                    class="btn btn-xs btn-ai-sparkle"
+                    (click)="generateAIRemarkAlternatives(reportCard, 'headmaster', true)"
+                    [disabled]="aiGeneratingMap.get(reportCard.student.id + '_headmaster')">
+                    <span *ngIf="!aiGeneratingMap.get(reportCard.student.id + '_headmaster')">↻ Generate options</span>
+                    <span *ngIf="aiGeneratingMap.get(reportCard.student.id + '_headmaster')" class="spinner-tiny"></span>
+                  </button>
+                </div>
+                <p class="ai-alternatives__loading" *ngIf="aiGeneratingMap.get(reportCard.student.id + '_headmaster')">
+                  Generating remarks with OpenAI…
+                </p>
+                <p class="ai-alternatives__error" *ngIf="getAiError(reportCard, 'headmaster')">
+                  {{ getAiError(reportCard, 'headmaster') }}
+                </p>
+                <ul class="ai-alternatives__list" *ngIf="getAiAlternatives(reportCard, 'headmaster').length">
+                  <li *ngFor="let option of getAiAlternatives(reportCard, 'headmaster'); let oi = index">
+                    <button
+                      type="button"
+                      class="ai-alternative-option"
+                      [class.selected]="getAiSelectedIndex(reportCard, 'headmaster') === oi"
+                      (click)="selectAiRemark(reportCard, 'headmaster', option, oi)">
+                      <span class="ai-alternative-option__index">{{ oi + 1 }}</span>
+                      <span class="ai-alternative-option__text">{{ option }}</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+
+              <textarea
                 *ngIf="isAdmin"
-                [(ngModel)]="reportCard.remarks.headmasterRemarks" 
+                [(ngModel)]="reportCard.remarks.headmasterRemarks"
                 name="headmasterRemarks_{{reportCard.student.id}}"
                 class="remarks-textarea"
                 [class.saved]="isRemarksSaved(reportCard.student.id, 'headmaster')"
-                placeholder="Head's remarks are generated from overall performance and can be adjusted if necessary."
+                [placeholder]="getRemarksMode(reportCard, 'headmaster') === 'ai' ? 'Select an AI alternative above to paste it here…' : 'Type a custom head\'s remark…'"
                 rows="3"
                 maxlength="500"
                 (input)="onRemarksChange(reportCard, 'headmaster')"
                 (blur)="onRemarksBlur(reportCard)"></textarea>
               <div *ngIf="!isAdmin" class="remarks-readonly">
-                {{ reportCard.remarks?.headmasterRemarks || reportCard.headmasterAutoRemarks || 'No head\u2019s remarks entered' }}
+                {{ reportCard.remarks?.headmasterRemarks || 'No head\u2019s remarks entered' }}
               </div>
             </div>
 
             <div *ngIf="canEditRemarks" class="remarks-actions">
-              <span *ngIf="isRemarksSaved(reportCard.student.id, 'classTeacher')" 
+              <span *ngIf="isRemarksSaved(reportCard.student.id, 'classTeacher')"
                     class="saved-indicator">
                 ✓ Remarks saved
               </span>

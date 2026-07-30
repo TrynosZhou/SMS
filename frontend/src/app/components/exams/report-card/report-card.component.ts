@@ -16,8 +16,7 @@ import { Subject } from 'rxjs';
 import { activatePageLoad } from '../../../utils/route-activation';
 import { pdfReportCardViewerUrl } from '../../../utils/pdf-preview.util';
 import { computeCoreAverageFromReportSubjects } from '../../../utils/mark-sheet-subject-order';
-import { buildHeadmasterRemarkFromCard } from '../../../utils/headmaster-remarks.util';
-import { buildClassTeacherRemarkFromCard } from '../../../utils/class-teacher-remarks.util';
+// Template auto-remarks removed — users choose Custom or AI remarks only.
 
 type GradeBandFilter = 'all' | 'outstanding' | 'good' | 'needs-support';
 @Component({
@@ -70,6 +69,14 @@ error = '';
   selectedGradeBand: GradeBandFilter = 'all';
   lastLoadedAt: Date | null = null;
   aiGeneratingMap: Map<string, boolean> = new Map();
+  /** Per-field remarks entry mode: custom (type) or ai (pick from OpenAI list). */
+  remarksModeMap: Map<string, 'custom' | 'ai'> = new Map();
+  /** OpenAI alternative remarks keyed by studentId_remarkType. */
+  aiAlternativesMap: Map<string, string[]> = new Map();
+  /** Currently selected alternative index (optional highlight). */
+  aiSelectedIndexMap: Map<string, number> = new Map();
+  /** Field-level AI error message. */
+  aiErrorMap: Map<string, string> = new Map();
   
   fieldErrors: any = {};
   touchedFields: Set<string> = new Set();
@@ -730,9 +737,11 @@ if (err.status === 0) {
           this.applyCoreSubjectRanking(this.reportCards);
         }
 
-        // Generate head's remarks after averages are final.
-        this.applyHeadmasterRemarksToCards(this.reportCards);
-        this.applyClassTeacherRemarksToCards(this.reportCards);
+        // Do not auto-fill template remarks — user chooses Custom or AI remarks.
+        for (const card of this.reportCards) {
+          this.ensureRemarksObject(card);
+          delete card.headmasterAutoRemarks;
+        }
 
         // Sort report cards by class position in ascending order
         this.reportCards.sort((a: any, b: any) => {
@@ -1548,89 +1557,138 @@ if (err.status === 0) {
     return sum / this.filteredReportCards.length;
   }
 
-  private applyHeadmasterRemarksToCards(cards: any[]): void {
-    for (const card of cards) {
-      if (!card) continue;
-      const autoHeadRemark = this.generateHeadmasterRemark(card);
-      card.headmasterAutoRemarks = autoHeadRemark;
+  private remarksKey(studentId: string, remarkType: 'classTeacher' | 'headmaster'): string {
+    return `${studentId}_${remarkType}`;
+  }
 
-      const existing = String(card.remarks?.headmasterRemarks || '').trim();
-      const headSaved = this.isRemarksSaved(card.student?.id, 'headmaster');
+  getRemarksMode(reportCard: any, remarkType: 'classTeacher' | 'headmaster'): 'custom' | 'ai' {
+    const id = reportCard?.student?.id;
+    if (!id) return 'custom';
+    return this.remarksModeMap.get(this.remarksKey(id, remarkType)) || 'custom';
+  }
 
-      if (!autoHeadRemark) continue;
+  getAiAlternatives(reportCard: any, remarkType: 'classTeacher' | 'headmaster'): string[] {
+    const id = reportCard?.student?.id;
+    if (!id) return [];
+    return this.aiAlternativesMap.get(this.remarksKey(id, remarkType)) || [];
+  }
 
-      if (this.isAdmin && !headSaved) {
-        if (!card.remarks) {
-          card.remarks = { classTeacherRemarks: null, headmasterRemarks: null };
-        }
-        card.remarks.headmasterRemarks = autoHeadRemark;
-        this.onRemarksChange(card, 'headmaster');
-      } else if (!existing) {
-        if (!card.remarks) {
-          card.remarks = { classTeacherRemarks: null, headmasterRemarks: null };
-        }
-        card.remarks.headmasterRemarks = autoHeadRemark;
+  getAiSelectedIndex(reportCard: any, remarkType: 'classTeacher' | 'headmaster'): number {
+    const id = reportCard?.student?.id;
+    if (!id) return -1;
+    return this.aiSelectedIndexMap.get(this.remarksKey(id, remarkType)) ?? -1;
+  }
+
+  getAiError(reportCard: any, remarkType: 'classTeacher' | 'headmaster'): string {
+    const id = reportCard?.student?.id;
+    if (!id) return '';
+    return this.aiErrorMap.get(this.remarksKey(id, remarkType)) || '';
+  }
+
+  setRemarksMode(reportCard: any, remarkType: 'classTeacher' | 'headmaster', mode: 'custom' | 'ai'): void {
+    if (!reportCard?.student?.id) return;
+    if (remarkType === 'headmaster' && !this.isAdmin) return;
+    if (remarkType === 'classTeacher' && !this.canEditRemarks) return;
+
+    const key = this.remarksKey(reportCard.student.id, remarkType);
+    this.remarksModeMap.set(key, mode);
+    this.aiErrorMap.delete(key);
+    this.ensureRemarksObject(reportCard);
+
+    if (mode === 'ai') {
+      // Generate a fresh list when switching to AI (or if empty).
+      if (!this.aiAlternativesMap.get(key)?.length) {
+        this.generateAIRemarkAlternatives(reportCard, remarkType);
       }
     }
+    this.cdr.markForCheck();
   }
 
-  private applyClassTeacherRemarksToCards(cards: any[]): void {
-    if (!this.canEditRemarks) return;
-    for (const card of cards) {
-      if (!card?.student) continue;
-      const existing = String(card.remarks?.classTeacherRemarks || '').trim();
-      const teacherSaved = this.isRemarksSaved(card.student.id, 'classTeacher');
-      if (teacherSaved && existing) continue;
+  selectAiRemark(reportCard: any, remarkType: 'classTeacher' | 'headmaster', remark: string, index: number): void {
+    if (!reportCard?.student?.id || !remark) return;
+    const key = this.remarksKey(reportCard.student.id, remarkType);
+    this.ensureRemarksObject(reportCard);
 
-      const autoRemark = buildClassTeacherRemarkFromCard(card);
-      if (!autoRemark) continue;
-
-      if (!card.remarks) {
-        card.remarks = { classTeacherRemarks: null, headmasterRemarks: null };
-      }
-      if (!existing) {
-        card.remarks.classTeacherRemarks = autoRemark;
-        this.onRemarksChange(card, 'classTeacher');
-      }
+    if (remarkType === 'classTeacher') {
+      reportCard.remarks.classTeacherRemarks = remark;
+    } else {
+      reportCard.remarks.headmasterRemarks = remark;
     }
+
+    this.aiSelectedIndexMap.set(key, index);
+    this.onRemarksChange(reportCard, remarkType);
+    this.success =
+      remarkType === 'classTeacher'
+        ? 'AI class teacher remark selected.'
+        : 'AI head\u2019s remark selected.';
+    setTimeout(() => {
+      if (this.success) this.success = '';
+      this.cdr.markForCheck();
+    }, 2500);
+    this.cdr.markForCheck();
   }
 
-  generateHeadmasterRemark(card: any): string {
-    return buildHeadmasterRemarkFromCard(card, this.headmasterName);
-  }
-
-  generateAIRemark(reportCard: any, remarkType: 'classTeacher' | 'headmaster') {
+  generateAIRemarkAlternatives(
+    reportCard: any,
+    remarkType: 'classTeacher' | 'headmaster',
+    force = false
+  ): void {
     if (!reportCard || !reportCard.student) return;
+    if (remarkType === 'classTeacher' && !this.canEditRemarks) return;
+    if (remarkType === 'headmaster' && !this.isAdmin) return;
 
-    const key = reportCard.student.id + '_' + remarkType;
+    const key = this.remarksKey(reportCard.student.id, remarkType);
+    if (this.aiGeneratingMap.get(key) && !force) return;
+
+    this.remarksModeMap.set(key, 'ai');
     this.aiGeneratingMap.set(key, true);
+    this.aiErrorMap.delete(key);
+    this.error = '';
     this.cdr.markForCheck();
 
-    setTimeout(() => {
-      let remark = '';
+    const studentName =
+      String(reportCard.student.name || '').trim() ||
+      `${reportCard.student.firstName || ''} ${reportCard.student.lastName || ''}`.trim() ||
+      'The learner';
 
-      if (remarkType === 'classTeacher') {
-        remark = buildClassTeacherRemarkFromCard(reportCard);
-      } else {
-        remark = this.generateHeadmasterRemark(reportCard);
-      }
-
-      this.ensureRemarksObject(reportCard);
-
-      if (remarkType === 'classTeacher') {
-        reportCard.remarks.classTeacherRemarks = remark;
-      } else {
-        reportCard.remarks.headmasterRemarks = remark;
-      }
-
-      this.onRemarksChange(reportCard, remarkType);
-      this.aiGeneratingMap.set(key, false);
-      this.success = remarkType === 'classTeacher'
-        ? 'Class teacher remark regenerated by AI.'
-        : 'Head\u2019s remark regenerated by AI.';
-      setTimeout(() => (this.success = ''), 3000);
-      this.cdr.markForCheck();
-    }, 400);
+    this.examService
+      .generateReportCardAiRemark({
+        remarkType,
+        studentName,
+        className: this.getSelectedClassName(),
+        term: this.selectedTerm,
+        examType: this.selectedExamType,
+        overallAverage: reportCard.overallAverage,
+        position: reportCard.position ?? reportCard.classPosition,
+        totalStudents: reportCard.totalStudents ?? this.reportCards?.length,
+        headmasterName: this.headmasterName,
+        subjects: Array.isArray(reportCard.subjects) ? reportCard.subjects : [],
+        count: 5,
+      })
+      .subscribe({
+        next: (res) => {
+          const list = Array.isArray(res?.remarks)
+            ? res.remarks.map((r) => String(r || '').trim()).filter(Boolean)
+            : res?.remark
+              ? [String(res.remark).trim()]
+              : [];
+          this.aiAlternativesMap.set(key, list);
+          this.aiSelectedIndexMap.delete(key);
+          this.aiGeneratingMap.set(key, false);
+          if (!list.length) {
+            this.aiErrorMap.set(key, 'No AI alternatives were returned. Try again.');
+          }
+          this.cdr.markForCheck();
+        },
+        error: (err: any) => {
+          console.error('AI remark generation failed:', err);
+          this.aiGeneratingMap.set(key, false);
+          this.aiAlternativesMap.set(key, []);
+          const apiMsg = err?.error?.message || err?.message || 'AI remark request failed';
+          this.aiErrorMap.set(key, apiMsg);
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   // Validation

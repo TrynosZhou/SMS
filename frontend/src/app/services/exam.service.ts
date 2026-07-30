@@ -218,6 +218,34 @@ export class ExamService {
     );
   }
 
+  /** Generate alternative class-teacher / headmaster remarks via OpenAI. */
+  generateReportCardAiRemark(payload: {
+    remarkType: 'classTeacher' | 'headmaster';
+    studentName: string;
+    className?: string;
+    term?: string;
+    examType?: string;
+    overallAverage?: string | number;
+    position?: string | number;
+    totalStudents?: string | number;
+    headmasterName?: string;
+    subjects?: any[];
+    count?: number;
+  }): Observable<{ remarks: string[]; remark?: string; remarkType: string; model?: string; source?: string }> {
+    return this.http
+      .post<{ remarks: string[]; remark?: string; remarkType: string; model?: string; source?: string }>(
+        `${this.apiUrl}/exams/report-card/ai-remark`,
+        {
+          ...payload,
+          count: payload.count ?? 5,
+          examType: payload.examType
+            ? this.normalizeExamType(payload.examType, false)
+            : payload.examType,
+        }
+      )
+      .pipe(catchError((err) => throwError(() => err)));
+  }
+
   // ---------------- Mark Sheets ----------------
   generateMarkSheet(classId: string, examType: string, term?: string): Observable<any> {
     let params = new HttpParams()

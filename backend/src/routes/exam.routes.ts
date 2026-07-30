@@ -23,6 +23,7 @@ import {
   getReportCard,
   generateReportCardPDF,
   saveReportCardRemarks,
+  generateReportCardAiRemark,
   generateMarkSheet,
   generateMarkSheetPDF,
   generateMarkSheetExcel,
@@ -57,6 +58,19 @@ router.get('/rankings/overall-performance', getOverallPerformanceRankings);
 router.get('/report-card', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.PARENT, UserRole.STUDENT, UserRole.TEACHER), getReportCard);
 router.get('/report-card/pdf', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.PARENT, UserRole.STUDENT), generateReportCardPDF);
 router.post('/report-card/remarks', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DIRECTOR, UserRole.HEADMASTER, UserRole.DEPUTY_HEADMASTER, UserRole.TEACHER, UserRole.DEMO_USER), saveReportCardRemarks);
+router.post(
+  '/report-card/ai-remark',
+  authorize(
+    UserRole.SUPERADMIN,
+    UserRole.ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.HEADMASTER,
+    UserRole.DEPUTY_HEADMASTER,
+    UserRole.TEACHER,
+    UserRole.DEMO_USER
+  ),
+  generateReportCardAiRemark
+);
 router.get('/mark-sheet', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), generateMarkSheet);
 router.get('/mark-sheet/pdf', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), generateMarkSheetPDF);
 router.get('/mark-sheet/excel', authorize(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.DEMO_USER), generateMarkSheetExcel);

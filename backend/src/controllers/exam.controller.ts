@@ -32,6 +32,7 @@ import {
   getConfiguredDeskFee
 } from '../utils/invoiceFeesBalance';
 import { sendResultsPublishedNotifications, queueResultsPublishedNotifications } from '../utils/resultsPublishedNotification';
+import { generateReportCardRemarkAlternatives, isOpenAiConfigured } from '../services/reportCardAi.service';
 
 const ALLOWED_RANKING_SUBJECTS = new Set<string>(['Mathematics', 'Science', 'English']);
 
@@ -4655,6 +4656,83 @@ export const getMarksEntryProgress = async (req: AuthRequest, res: Response) => 
   } catch (error: any) {
     console.error('Error computing marks entry progress:', error);
     return res.status(500).json({ message: 'Failed to compute marks entry progress', error: error.message || 'Unknown error' });
+  }
+};
+
+/**
+ * Generate alternative class-teacher or headmaster remarks via OpenAI (OPENAI_API_KEY).
+ * Used by /report-cards "AI Remarks" mode — user picks one alternative to paste.
+ */
+export const generateReportCardAiRemark = async (req: AuthRequest, res: Response) => {
+  try {
+    const {
+      remarkType,
+      studentName,
+      className,
+      term,
+      examType,
+      overallAverage,
+      position,
+      totalStudents,
+      headmasterName,
+      subjects,
+      count,
+    } = req.body || {};
+
+    const type = remarkType === 'headmaster' ? 'headmaster' : remarkType === 'classTeacher' ? 'classTeacher' : null;
+    if (!type) {
+      return res.status(400).json({ message: 'remarkType must be "classTeacher" or "headmaster"' });
+    }
+
+    const name = String(studentName || '').trim();
+    if (!name) {
+      return res.status(400).json({ message: 'studentName is required' });
+    }
+
+    if (!isOpenAiConfigured()) {
+      return res.status(503).json({
+        message: 'OpenAI is not configured. Set OPENAI_API_KEY in the backend environment.',
+        configured: false,
+      });
+    }
+
+    const result = await generateReportCardRemarkAlternatives({
+      remarkType: type,
+      studentName: name,
+      className: className ? String(className) : undefined,
+      term: term ? String(term) : undefined,
+      examType: examType ? String(examType) : undefined,
+      overallAverage,
+      position,
+      totalStudents,
+      headmasterName: headmasterName ? String(headmasterName) : undefined,
+      subjects: Array.isArray(subjects) ? subjects : [],
+      count: typeof count === 'number' ? count : 5,
+    });
+
+    return res.json({
+      remarks: result.remarks,
+      remark: result.remarks[0] || '',
+      remarkType: type,
+      model: result.model,
+      source: 'openai',
+    });
+  } catch (error: any) {
+    console.error('Error generating AI report-card remark:', error?.message || error);
+    const status = error?.response?.status;
+    if (status === 401 || status === 403) {
+      return res.status(502).json({
+        message: 'OpenAI rejected the API key. Check OPENAI_API_KEY in the backend .env.',
+      });
+    }
+    if (status === 429) {
+      return res.status(429).json({
+        message: 'OpenAI rate limit reached. Please try again in a moment.',
+      });
+    }
+    return res.status(500).json({
+      message: error?.message || 'Failed to generate AI remarks',
+    });
   }
 };
 
