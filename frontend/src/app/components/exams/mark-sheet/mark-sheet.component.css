@@ -500,7 +500,7 @@
   text-align: right;
 }
 
-/* Table */
+/* Table — wrapper is the single outer frame (avoids double right border) */
 .ms-table-wrap,
 .mark-sheet-table-wrapper {
   overflow-x: auto;
@@ -508,9 +508,10 @@
   margin-bottom: 1rem;
   max-width: 100%;
   -webkit-overflow-scrolling: touch;
-  scrollbar-gutter: stable;
   border-radius: 12px;
-  border: 1px solid var(--ms-border);
+  border: 1.5px solid #94a3b8;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .ms-table-wrap::-webkit-scrollbar,
@@ -526,35 +527,62 @@
   width: max-content;
   min-width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  border-spacing: 0;
+  font-size: 0.88rem;
   background: #fff;
+  color: var(--ms-text);
 }
 
 .ms-table th,
 .ms-table td {
-  border: 1px solid var(--ms-border);
-  padding: 0.65rem 0.75rem;
+  border: 1.5px solid #94a3b8;
+  padding: 0.7rem 0.8rem;
   text-align: center;
   vertical-align: middle;
 }
 
+/* Drop outer cell edges so they flush with the wrapper (one line, not two) */
+.ms-table .ms-thead-row-main > th:first-child,
+.ms-table tbody > tr > td:first-child {
+  border-left: none;
+}
+
+.ms-table .ms-thead-row-main > th:last-child,
+.ms-table tbody > tr > td:last-child {
+  border-right: none;
+}
+
+.ms-table .ms-thead-row-main > th {
+  border-top: none;
+}
+
+.ms-table tbody > tr:last-child > td {
+  border-bottom: none;
+}
+
 .ms-thead-row-main .ms-th {
-  background: var(--ms-purple-dark);
+  background: #5b21b6;
   color: #fff;
   font-weight: 700;
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
+  border-color: #4c1d95;
+  white-space: nowrap;
 }
 
 .ms-thead-row-subjects .ms-th--subject {
-  background: var(--ms-purple);
+  background: #7c3aed;
   color: #fff;
   font-weight: 600;
   padding: 0.55rem 0.5rem;
+  border-color: #6d28d9;
 }
 
-.ms-th--group { text-align: center; }
+.ms-th--group {
+  text-align: center;
+  border-color: #4c1d95;
+}
 
 .ms-table .sortable { cursor: pointer; user-select: none; }
 .ms-table .sortable:hover { filter: brightness(1.08); }
@@ -567,7 +595,7 @@
 }
 
 .subject-name {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -576,44 +604,84 @@
 .subject-pass-rate {
   font-size: 0.65rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.82);
 }
 
-.ms-row:nth-child(odd) { background: #fff; }
-.ms-row:nth-child(even) { background: #faf5ff; }
-.ms-row:hover { background: #f5f3ff !important; }
+/* Fully visible alternating rows + solid grid */
+.ms-table tbody .ms-row:nth-child(odd) > td {
+  background: #ffffff;
+}
 
-.position-col { width: 52px; }
-.student-number-col { width: 120px; }
-.student-name-col { width: 200px; text-align: left !important; }
-.subject-col { min-width: 110px; }
+.ms-table tbody .ms-row:nth-child(even) > td {
+  background: #f1f5f9;
+}
+
+.ms-table tbody .ms-row:hover > td {
+  background: #ede9fe !important;
+}
+
+.ms-table tbody .ms-row:nth-child(odd) > td.total-cell,
+.ms-table tbody .ms-row:nth-child(odd) > td.average-cell {
+  background: #f8fafc;
+}
+
+.ms-table tbody .ms-row:nth-child(even) > td.total-cell,
+.ms-table tbody .ms-row:nth-child(even) > td.average-cell {
+  background: #e2e8f0;
+}
+
+.ms-table tbody .ms-row:hover > td.total-cell,
+.ms-table tbody .ms-row:hover > td.average-cell {
+  background: #ddd6fe !important;
+}
+
+.position-col { width: 56px; }
+.student-number-col { width: 128px; }
+.student-name-col { width: 210px; text-align: left !important; }
+.subject-col { min-width: 112px; }
 .total-col,
-.average-col { width: 100px; }
+.average-col { width: 108px; }
 
 .position-cell { font-weight: 600; }
 
 .student-number-cell {
-  font-family: ui-monospace, monospace;
-  color: var(--ms-purple-dark);
-  font-weight: 500;
-  font-size: 0.82rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #5b21b6;
+  font-weight: 600;
+  font-size: 0.84rem;
 }
 
 .student-name-cell {
   text-align: left !important;
-  font-weight: 500;
-  color: #1e293b;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.ms-student-link {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.ms-student-link:hover {
+  background: #ddd6fe !important;
+  color: #4c1d95;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .mark-display {
   display: inline-block;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-variant-numeric: tabular-nums;
+  color: #1d4ed8;
 }
 
 .total-cell,
-.average-cell { background: #f5f3ff; }
+.average-cell {
+  font-weight: 700;
+}
 
 .summary-mark,
 .average-value {
@@ -632,12 +700,13 @@
   border-radius: 50%;
   font-weight: 700;
   font-size: 0.82rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
 }
 
 .position-badge.rank-gold { background: #f59e0b; color: #fff; }
 .position-badge.rank-silver { background: #94a3b8; color: #fff; }
 .position-badge.rank-bronze { background: #b45309; color: #fff; }
-.position-badge.rank-default { background: #e2e8f0; color: #475569; }
+.position-badge.rank-default { background: #e2e8f0; color: #334155; }
 
 .student-name-wrapper { display: flex; align-items: center; gap: 8px; }
 
@@ -649,8 +718,9 @@
   padding: 2rem;
   text-align: center;
   color: #92400e;
-  background: #fffbeb;
+  background: #fffbeb !important;
   font-style: italic;
+  border: 1.5px solid #94a3b8;
 }
 
 /* Footer */
@@ -729,7 +799,10 @@
   .mark-sheet-table { font-size: 10px; }
 
   .mark-sheet-table th,
-  .mark-sheet-table td { padding: 6px 4px; }
+  .mark-sheet-table td {
+    padding: 6px 4px;
+    border: 1px solid #64748b !important;
+  }
 
   .sticky-header { position: static; }
 }

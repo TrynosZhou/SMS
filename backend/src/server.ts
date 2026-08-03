@@ -24,6 +24,12 @@ if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
   console.warn('⚠️ JWT_SECRET should be at least 32 characters long');
 }
 
+if (!String(process.env.OPENAI_API_KEY || '').trim()) {
+  console.warn(
+    '⚠️ OPENAI_API_KEY is not set. AI Helpdesk and AI report-card remarks will be unavailable until you add it in the host environment (e.g. Render → Environment).'
+  );
+}
+
 // =================== EXPRESS APP ===================
 const app = express();
 

@@ -18,6 +18,15 @@ services:
         generateValue: true
       - key: JWT_EXPIRES_IN
         value: 7d
+      # Set the real key in Render Dashboard → Environment (do not commit secrets)
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_MAX_TOKENS
+        value: "500"
+      - key: OPENAI_API_URL
+        value: https://api.openai.com/v1/chat/completions
 
 databases:
   - name: school_db

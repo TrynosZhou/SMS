@@ -631,6 +631,40 @@ setTimeout(() => this.error = '', 5000);
     return 'rank-default';
   }
 
+  /** Open /report-cards for this student using the current mark-sheet filters. */
+  openStudentReportCard(row: any): void {
+    const studentId = String(row?.studentId || '').trim();
+    if (!studentId) {
+      this.error = 'Cannot open report card: student id is missing.';
+      setTimeout(() => {
+        if (this.error?.includes('student id is missing')) this.error = '';
+        this.cdr.markForCheck();
+      }, 4000);
+      this.cdr.markForCheck();
+      return;
+    }
+    if (!this.selectedClassId || !this.selectedExamType || !this.selectedTerm) {
+      this.error = 'Select class, term, and exam type before opening a report card.';
+      setTimeout(() => {
+        if (this.error?.includes('before opening a report card')) this.error = '';
+        this.cdr.markForCheck();
+      }, 4000);
+      this.cdr.markForCheck();
+      return;
+    }
+
+    void this.router.navigate(['/report-cards'], {
+      queryParams: {
+        classId: this.selectedClassId,
+        examType: this.selectedExamType,
+        term: this.selectedTerm,
+        studentId,
+        studentName: row?.studentName || undefined,
+        from: 'mark-sheet',
+      },
+    });
+  }
+
   getScoreColor(score: number): string {
     return getMarkSheetScoreColor(score);
   }

@@ -119,6 +119,9 @@ error = '';
   private parentBalanceCleared = false;
   private parentTermsReady = false;
   private parentAutoGenerateAttempted = false;
+  /** When opened from mark-sheet (or similar), focus this student after generate. */
+  private focusStudentId: string | null = null;
+  private deepLinkApplied = false;
   
   // Auto-save state for remarks
   savedRemarks: Set<string> = new Set(); // Track saved remarks by key: "studentId_classTeacher" or "studentId_headmaster"
@@ -366,6 +369,7 @@ if (teacher.id) {
       .subscribe({
         next: (response: any) => {
           this.classes = response.classes || [];
+          this.applyStaffDeepLinkFromQuery();
         },
         error: (err: any) => {
           console.error('Error loading teacher classes:', err);
@@ -599,6 +603,7 @@ this.loadAllClasses(1, []);
           this.classes = allClasses;
           this.loadingClasses = false;
           this.cdr.markForCheck();
+          this.applyStaffDeepLinkFromQuery();
         }
       },
       error: (err: any) => {
@@ -610,6 +615,7 @@ if (err.status === 0) {
         }
         if (accumulatedClasses.length > 0) {
           this.classes = accumulatedClasses;
+          this.applyStaffDeepLinkFromQuery();
         }
         this.loadingClasses = false;
         this.cdr.markForCheck();
@@ -767,6 +773,8 @@ if (err.status === 0) {
         if (this.isParent && this.reportCards.length > 0) {
           this.parentReportMaximized = true;
           setTimeout(() => this.scrollToParentReportCard(), 100);
+        } else if (this.focusStudentId) {
+          this.focusStudentReportCard(this.focusStudentId);
         }
         this.cdr.markForCheck();
 },
@@ -1771,6 +1779,78 @@ if (err.status === 0) {
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+  }
+
+  /**
+   * Deep-link from /mark-sheet (double-click student): set class/term/exam and open that student's card.
+   */
+  private applyStaffDeepLinkFromQuery(): void {
+    if (this.isParent || this.deepLinkApplied) return;
+
+    const params = this.route.snapshot.queryParams;
+    const classId = String(params['classId'] || '').trim();
+    const examType = String(params['examType'] || '').trim();
+    const term = String(params['term'] || '').trim();
+    const studentId = String(params['studentId'] || '').trim();
+    const studentName = String(params['studentName'] || '').trim();
+
+    if (!classId && !studentId) return;
+
+    this.deepLinkApplied = true;
+
+    if (classId) {
+      this.selectedClass = classId;
+    }
+    if (examType) {
+      this.selectedExamType = examType;
+    }
+    if (term) {
+      this.selectedTerm = term;
+      if (term && !this.availableTerms.includes(term)) {
+        this.availableTerms.unshift(term);
+      }
+    }
+    if (studentId) {
+      this.focusStudentId = studentId;
+    }
+    if (studentName) {
+      this.studentSearchQuery = studentName;
+      this.searchInput$.next(studentName);
+    }
+
+    this.cdr.markForCheck();
+
+    // Wait briefly so term options / settings finish settling, then generate.
+    setTimeout(() => {
+      if (this.isSelectionValid()) {
+        this.generateReportCards();
+      }
+    }, 200);
+  }
+
+  private focusStudentReportCard(studentId: string): void {
+    const id = String(studentId || '').trim();
+    if (!id) return;
+
+    // Prefer filtering to the student so the card is obvious.
+    const card = this.reportCards.find((c: any) => String(c?.student?.id) === id);
+    if (card?.student?.name || card?.student?.studentNumber) {
+      const q = String(card.student.studentNumber || card.student.name || '').trim();
+      if (q) {
+        this.studentSearchQuery = q;
+        this.searchInput$.next(q);
+        this.applyFilters();
+      }
+    }
+
+    setTimeout(() => {
+      const el = document.getElementById(`rc-card-${id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.classList.add('rc-card--focus');
+        setTimeout(() => el.classList.remove('rc-card--focus'), 2500);
+      }
+    }, 150);
   }
 
   // Download all PDFs

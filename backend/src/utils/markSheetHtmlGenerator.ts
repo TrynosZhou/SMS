@@ -2,7 +2,6 @@ import { Settings } from '../entities/Settings';
 import {
   formatMarkSheetAverage,
   isCoreSubjectName,
-  MARK_SHEET_SCORE_BLUE,
 } from './markSheetSubjectOrder';
 
 export interface MarkSheetHTMLRow {
@@ -185,9 +184,11 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
       --gold-soft: #fef9e7;
       --ink: #111827;
       --muted: #6b7280;
-      --line: #e5e7eb;
+      --line: #94a3b8;
+      --line-soft: #cbd5e1;
+      --row-alt: #f1f5f9;
       --paper: #f3f4f6;
-      --score: ${MARK_SHEET_SCORE_BLUE};
+      --score: #000;
       --present: #059669;
       --mid: #2563eb;
       --low: #d97706;
@@ -297,7 +298,7 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
       padding: 12px 24px;
       background: #fafbfc;
       border-bottom: 1px solid var(--line);
-      font-size: 0.82rem;
+      font-size: 0.98rem;
     }
 
     .meta-row span { color: var(--muted); }
@@ -306,7 +307,7 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
     /* Summary */
     .summary {
       display: grid;
-      grid-template-columns: 1.25fr 1fr 1fr 1fr;
+      grid-template-columns: repeat(4, 1fr);
       gap: 12px;
       padding: 18px 24px;
     }
@@ -315,43 +316,33 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
       border-radius: 12px;
       padding: 14px 16px;
       position: relative;
-    }
-
-    .card--featured {
-      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
-      color: #fff;
-    }
-
-    .card--light {
-      background: #f9fafb;
-      border: 1px solid var(--line);
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      color: #000;
     }
 
     .card__label {
       margin: 0 0 6px;
       font-size: 0.65rem;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      opacity: 0.85;
+      color: #000;
     }
-
-    .card--light .card__label { color: var(--muted); }
 
     .card__value {
       margin: 0;
       font-size: 1.85rem;
       font-weight: 700;
       line-height: 1.1;
+      color: #000;
     }
 
     .card__sub {
       margin: 5px 0 0;
       font-size: 0.72rem;
-      opacity: 0.82;
+      color: #000;
     }
-
-    .card--light .card__sub { color: var(--muted); }
 
     .card__icon {
       position: absolute;
@@ -368,18 +359,21 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
       font-size: 0.85rem;
     }
 
-    /* Table */
+    /* Table — solid grid lines, flush with outer frame (no double right edge) */
     .table-section { padding: 0 24px 18px; }
 
     .table-wrap {
-      border: 1px solid var(--line);
+      border: 1.5px solid var(--line);
       border-radius: 12px;
       overflow: hidden;
+      background: #fff;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
+      border-spacing: 0;
+      table-layout: auto;
     }
 
     thead th {
@@ -391,12 +385,21 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
       text-transform: uppercase;
       padding: 10px 8px;
       text-align: center;
-      border-right: 1px solid rgba(255,255,255,0.15);
+      border: 1.5px solid var(--navy-dark);
     }
 
-    thead th:last-child { border-right: none; }
+    thead .group-row > th:first-child,
+    tbody > tr > td:first-child {
+      border-left: none;
+    }
 
-    thead .group-row th {
+    thead .group-row > th:last-child,
+    tbody > tr > td:last-child {
+      border-right: none;
+    }
+
+    thead .group-row > th {
+      border-top: none;
       padding: 10px 8px;
       font-size: 0.78rem;
     }
@@ -407,6 +410,7 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
       font-size: 0.74rem;
       font-weight: 700;
       padding: 9px 6px;
+      border-color: #1a3468;
     }
 
     thead th.col-mark {
@@ -427,17 +431,23 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
 
     tbody td {
       padding: 8px;
-      border-bottom: 1px solid var(--line);
+      border: 1.5px solid var(--line);
       vertical-align: middle;
+      background: #fff;
     }
 
-    tbody tr:last-child td { border-bottom: none; }
-    tbody tr.row-alt { background: #f9fafb; }
+    tbody tr.row-alt td {
+      background: var(--row-alt);
+    }
+
+    tbody tr:last-child > td {
+      border-bottom: none;
+    }
 
     tbody td.col-pos { text-align: center; }
     tbody td.col-id { color: var(--ink); font-size: 0.88rem; font-weight: 700; font-variant-numeric: tabular-nums; }
     tbody td.col-name { font-weight: 700; color: var(--ink); }
-    tbody td.col-mark { text-align: center; font-weight: 700; color: var(--score); font-variant-numeric: tabular-nums; }
+    tbody td.col-mark { text-align: center; font-weight: 700; color: #000; font-variant-numeric: tabular-nums; }
     tbody td.col-total { text-align: center; font-variant-numeric: tabular-nums; }
     tbody td.col-avg { text-align: right; }
 
@@ -516,8 +526,29 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
       body { padding: 0; background: #fff; }
       .report { box-shadow: none; border-radius: 0; max-width: none; }
       thead { display: table-header-group; }
-      thead th { background: var(--navy) !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      thead .subject-row th { background: #234585 !important; color: #fff !important; }
+      thead th {
+        background: var(--navy) !important;
+        color: #fff !important;
+        border-color: var(--navy-dark) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      thead .subject-row th { background: #234585 !important; color: #fff !important; border-color: #1a3468 !important; }
+      tbody td {
+        border: 1.5px solid #64748b !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      tbody tr.row-alt td {
+        background: #e2e8f0 !important;
+      }
+      .table-wrap { border: 1.5px solid #64748b !important; }
+      thead .group-row > th:first-child,
+      tbody > tr > td:first-child { border-left: none !important; }
+      thead .group-row > th:last-child,
+      tbody > tr > td:last-child { border-right: none !important; }
+      thead .group-row > th { border-top: none !important; }
+      tbody tr:last-child > td { border-bottom: none !important; }
       tbody tr { break-inside: avoid; }
       .summary, .banner, .meta-row { break-inside: avoid; }
       .report-footer {
@@ -554,23 +585,23 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
     </div>
 
     <section class="summary">
-      <article class="card card--featured">
+      <article class="card">
         <p class="card__label">Pass Rate</p>
         <p class="card__value">${passRate}%</p>
         <p class="card__sub">Students scoring 70% and above</p>
       </article>
-      <article class="card card--light">
+      <article class="card">
         <span class="card__icon" aria-hidden="true">👥</span>
         <p class="card__label">Students</p>
         <p class="card__value">${studentCount}</p>
         <p class="card__sub">Enrolled in this class</p>
       </article>
-      <article class="card card--light">
+      <article class="card">
         <p class="card__label">Class Average</p>
         <p class="card__value">${escapeHtml(formatMarkSheetAverage(classAverage))}</p>
         <p class="card__sub">Mean of all student averages</p>
       </article>
-      <article class="card card--light">
+      <article class="card">
         <p class="card__label">Top Score</p>
         <p class="card__value">${topStudent ? escapeHtml(formatMarkSheetAverage(topStudent.average)) : '—'}</p>
         <p class="card__sub">${topStudent ? escapeHtml(topStudent.studentName) : 'No data'}</p>

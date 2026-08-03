@@ -172,9 +172,9 @@
         </div>
       </div>
       <div class="ms-result-actions">
-        <button type="button" class="ms-btn ms-btn--outline ms-btn--sm" (click)="exportToExcel()" [disabled]="loading">Excel</button>
+        <button type="button" class="ms-btn ms-btn--primary ms-btn--sm" (click)="exportToExcel()" [disabled]="loading">Excel</button>
         <button type="button" class="ms-btn ms-btn--primary ms-btn--sm" (click)="downloadPDF()" [disabled]="loading">Download PDF</button>
-        <button type="button" class="ms-btn ms-btn--ghost ms-btn--sm" (click)="printMarkSheet()" [disabled]="loading">Print preview</button>
+        <button type="button" class="ms-btn ms-btn--primary ms-btn--sm" (click)="printMarkSheet()" [disabled]="loading">Print preview</button>
       </div>
     </div>
 
@@ -255,8 +255,16 @@
             <td class="position-cell">
               <span class="position-badge" [ngClass]="getRankBadgeClass(row.position)">{{ row.position }}</span>
             </td>
-            <td class="student-number-cell">{{ row.studentNumber }}</td>
-            <td class="student-name-cell">
+            <td
+              class="student-number-cell ms-student-link"
+              title="Double-click to open this student's report card"
+              (dblclick)="openStudentReportCard(row); $event.stopPropagation()">
+              {{ row.studentNumber }}
+            </td>
+            <td
+              class="student-name-cell ms-student-link"
+              title="Double-click to open this student's report card"
+              (dblclick)="openStudentReportCard(row); $event.stopPropagation()">
               <div class="student-name-wrapper">
                 <span>{{ row.studentName }}</span>
                 <span *ngIf="row.position <= 3" class="top-badge" aria-hidden="true">🏆</span>
