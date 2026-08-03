@@ -4215,7 +4215,21 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
     };
 
     // Generate HTML report (print to PDF via browser)
-    const htmlBuffer = await createMarkSheetPDF(pdfData, settings);
+    const envFrontend = (process.env.FRONTEND_URL || '').trim().replace(/\/$/, '');
+    const originHeader = (req.get('origin') || '').trim().replace(/\/$/, '');
+    let refererOrigin = '';
+    try {
+      const referer = (req.get('referer') || '').trim();
+      if (referer) {
+        const u = new URL(referer);
+        refererOrigin = `${u.protocol}//${u.host}`;
+      }
+    } catch {
+      /* ignore invalid referer */
+    }
+    const frontendBase = envFrontend || originHeader || refererOrigin || 'http://localhost:4200';
+    const dashboardUrl = `${frontendBase}/dashboard`;
+    const htmlBuffer = await createMarkSheetPDF(pdfData, settings, { dashboardUrl });
 
     const safeClass = String(classEntity.name || 'class').replace(/\s+/g, '-');
     const safeExam = String(examType || 'exam').replace(/_/g, '-');

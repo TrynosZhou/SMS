@@ -228,23 +228,23 @@
       </button>
     </div>
 
-    <p class="ms-scroll-hint hide-print" aria-hidden="true">Scroll horizontally to view all subjects →</p>
+    <p class="ms-scroll-hint hide-print" aria-hidden="true">Scroll subjects horizontally — Total &amp; Average stay visible →</p>
 
     <div class="ms-table-wrap mark-sheet-table-wrapper" role="region" aria-label="Mark sheet table" tabindex="0">
       <table class="mark-sheet-table ms-table">
         <thead class="sticky-header">
           <tr class="ms-thead-row-main">
-            <th rowspan="2" class="ms-th position-col sortable" (click)="sortTable('position')">Pos {{ getSortIcon('position') }}</th>
-            <th rowspan="2" class="ms-th student-number-col sortable" (click)="sortTable('studentNumber')">Student No. {{ getSortIcon('studentNumber') }}</th>
-            <th rowspan="2" class="ms-th student-name-col sortable" (click)="sortTable('studentName')">Student Name {{ getSortIcon('studentName') }}</th>
+            <th rowspan="2" class="ms-th position-col ms-sticky-left ms-sticky-left--pos sortable" (click)="sortTable('position')">Pos {{ getSortIcon('position') }}</th>
+            <th rowspan="2" class="ms-th student-number-col ms-sticky-left ms-sticky-left--id sortable" (click)="sortTable('studentNumber')">Student No. {{ getSortIcon('studentNumber') }}</th>
+            <th rowspan="2" class="ms-th student-name-col ms-sticky-left ms-sticky-left--name sortable" (click)="sortTable('studentName')">Student Name {{ getSortIcon('studentName') }}</th>
             <th [colSpan]="orderedSubjects.length" class="ms-th ms-th--group">Subjects</th>
-            <th rowspan="2" class="ms-th total-col sortable" (click)="sortTable('totalScore')">Total {{ getSortIcon('totalScore') }}</th>
-            <th rowspan="2" class="ms-th average-col sortable" (click)="sortTable('average')">Average {{ getSortIcon('average') }}</th>
+            <th rowspan="2" class="ms-th total-col ms-sticky-right ms-sticky-right--total sortable" (click)="sortTable('totalScore')">Total {{ getSortIcon('totalScore') }}</th>
+            <th rowspan="2" class="ms-th average-col ms-sticky-right ms-sticky-right--avg sortable" (click)="sortTable('average')">Average {{ getSortIcon('average') }}</th>
           </tr>
           <tr class="ms-thead-row-subjects">
             <th *ngFor="let subject of (orderedSubjects | safeArray)" class="ms-th ms-th--subject subject-col">
               <div class="subject-header">
-                <div class="subject-name">{{ subject.name }}</div>
+                <div class="subject-name" [title]="subject.name">{{ subject.name }}</div>
                 <div class="subject-pass-rate">{{ getSubjectPassRate(subject.id) }}% pass</div>
               </div>
             </th>
@@ -252,17 +252,17 @@
         </thead>
         <tbody>
           <tr *ngFor="let row of (filteredMarkSheet | safeArray); let i = index" class="ms-row">
-            <td class="position-cell">
+            <td class="position-cell ms-sticky-left ms-sticky-left--pos">
               <span class="position-badge" [ngClass]="getRankBadgeClass(row.position)">{{ row.position }}</span>
             </td>
             <td
-              class="student-number-cell ms-student-link"
+              class="student-number-cell ms-student-link ms-sticky-left ms-sticky-left--id"
               title="Double-click to open this student's report card"
               (dblclick)="openStudentReportCard(row); $event.stopPropagation()">
               {{ row.studentNumber }}
             </td>
             <td
-              class="student-name-cell ms-student-link"
+              class="student-name-cell ms-student-link ms-sticky-left ms-sticky-left--name"
               title="Double-click to open this student's report card"
               (dblclick)="openStudentReportCard(row); $event.stopPropagation()">
               <div class="student-name-wrapper">
@@ -275,10 +275,10 @@
                 {{ getSubjectMarkDisplay(row, subject.id) }}
               </span>
             </td>
-            <td class="total-cell">
+            <td class="total-cell ms-sticky-right ms-sticky-right--total">
               <strong class="summary-mark">{{ getCoreTotals(row).totalScore }} / {{ getCoreTotals(row).totalMaxScore }}</strong>
             </td>
-            <td class="average-cell">
+            <td class="average-cell ms-sticky-right ms-sticky-right--avg">
               <strong class="average-value summary-mark">{{ getCoreAverageDisplay(row) }}</strong>
             </td>
           </tr>

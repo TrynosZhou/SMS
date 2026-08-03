@@ -100,7 +100,16 @@ function buildLogoHtml(logo: string | null, schoolName: string): string {
   return `<div class="logo-badge logo-badge--text" aria-hidden="true">${escapeHtml(initials)}</div>`;
 }
 
-export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings | null): string {
+export interface MarkSheetHTMLOptions {
+  /** Absolute frontend URL for the Dashboard link (blob previews need an absolute URL). */
+  dashboardUrl?: string;
+}
+
+export function createMarkSheetHTML(
+  data: MarkSheetHTMLData,
+  settings: Settings | null,
+  options?: MarkSheetHTMLOptions
+): string {
   const schoolName = String(settings?.schoolName || 'School').trim() || 'School';
   const logo = normalizeLogo(settings?.schoolLogo);
   const classLabel = `${data.class.name}${data.class.form ? ` (${data.class.form})` : ''}`;
@@ -170,6 +179,8 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
     .join('');
 
   const logoHtml = buildLogoHtml(logo, schoolName);
+  const downloadFileName = `mark-sheet-${String(data.class.name || 'class').replace(/\s+/g, '-')}-${String(data.examType || 'exam').replace(/_/g, '-')}-${generated.toISOString().split('T')[0]}.pdf`;
+  const dashboardUrl = String(options?.dashboardUrl || '/dashboard').trim() || '/dashboard';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -288,6 +299,60 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
       letter-spacing: 0.06em;
       text-transform: uppercase;
       white-space: nowrap;
+    }
+
+    .banner-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .btn-download-pdf {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 999px;
+      background: var(--gold);
+      color: #000;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+      text-decoration: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      transition: filter 0.15s ease, transform 0.15s ease;
+      font-family: inherit;
+      line-height: 1;
+    }
+
+    a.btn-download-pdf:visited {
+      color: #000;
+    }
+
+    .btn-download-pdf:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+    }
+
+    .btn-download-pdf:active {
+      transform: translateY(0);
+    }
+
+    .btn-download-pdf:disabled {
+      opacity: 0.7;
+      cursor: wait;
+      transform: none;
+    }
+
+    .btn-download-pdf svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
     }
 
     /* Meta */
@@ -525,6 +590,7 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
     @media print {
       body { padding: 0; background: #fff; }
       .report { box-shadow: none; border-radius: 0; max-width: none; }
+      .no-print { display: none !important; }
       thead { display: table-header-group; }
       thead th {
         background: var(--navy) !important;
@@ -574,7 +640,26 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
           <h1 class="banner-title">Mark Sheet</h1>
         </div>
       </div>
-      <div class="exam-pill">${escapeHtml(examLabel)}</div>
+      <div class="banner-actions">
+        <a
+          id="btn-dashboard"
+          class="btn-download-pdf btn-dashboard no-print"
+          href="${escapeHtml(dashboardUrl)}"
+          title="Go to Dashboard">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M4 13h7V4H4v9zm0 7h7v-5H4v5zm9 0h7V11h-7v9zm0-16v5h7V4h-7z" fill="currentColor"/>
+          </svg>
+          <span>Dashboard</span>
+        </a>
+        <button type="button" id="btn-download-pdf" class="btn-download-pdf no-print" title="Download mark sheet as PDF">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 19h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+          </svg>
+          <span>Download</span>
+        </button>
+        <div class="exam-pill">${escapeHtml(examLabel)}</div>
+      </div>
     </header>
 
     <div class="meta-row">
@@ -639,11 +724,107 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
   </article>
   <script>
     (function () {
+      var PDF_FILENAME = ${JSON.stringify(downloadFileName)};
+      var DASHBOARD_URL = ${JSON.stringify(dashboardUrl)};
+
       if (typeof window !== 'undefined') {
-        var els = document.querySelectorAll('.page-num');
         var style = document.createElement('style');
         style.textContent = '@media print { .page-num::after { content: counter(page); } }';
         document.head.appendChild(style);
+      }
+
+      var dashboardBtn = document.getElementById('btn-dashboard');
+      if (dashboardBtn) {
+        dashboardBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          var target = DASHBOARD_URL || '/dashboard';
+          try {
+            if (window.opener && !window.opener.closed) {
+              window.opener.location.href = target;
+              window.close();
+              return;
+            }
+          } catch (err) { /* cross-origin opener — fall through */ }
+          window.location.href = target;
+        });
+      }
+
+      function loadHtml2Pdf(callback) {
+        if (typeof html2pdf !== 'undefined') {
+          callback(null);
+          return;
+        }
+        var script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+        script.onload = function () { callback(null); };
+        script.onerror = function () { callback(new Error('Failed to load PDF library')); };
+        document.head.appendChild(script);
+      }
+
+      function downloadAsPdf() {
+        var btn = document.getElementById('btn-download-pdf');
+        var report = document.querySelector('.report');
+        if (!report) return;
+
+        if (btn) {
+          btn.disabled = true;
+          btn.setAttribute('aria-busy', 'true');
+        }
+
+        var hidden = [];
+        document.querySelectorAll('.no-print').forEach(function (el) {
+          hidden.push({ el: el, display: el.style.display });
+          el.style.display = 'none';
+        });
+
+        function restoreHidden() {
+          hidden.forEach(function (item) {
+            item.el.style.display = item.display;
+          });
+          if (btn) {
+            btn.disabled = false;
+            btn.removeAttribute('aria-busy');
+          }
+        }
+
+        loadHtml2Pdf(function (err) {
+          if (err || typeof html2pdf === 'undefined') {
+            restoreHidden();
+            window.print();
+            return;
+          }
+
+          var opt = {
+            margin: [8, 8, 8, 8],
+            filename: PDF_FILENAME,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: {
+              scale: 2,
+              useCORS: true,
+              logging: false,
+              backgroundColor: '#ffffff'
+            },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+            pagebreak: { mode: ['css', 'legacy'] }
+          };
+
+          html2pdf()
+            .set(opt)
+            .from(report)
+            .save()
+            .then(function () {
+              restoreHidden();
+            })
+            .catch(function () {
+              restoreHidden();
+              window.print();
+            });
+        });
+      }
+
+      var downloadBtn = document.getElementById('btn-download-pdf');
+      if (downloadBtn) {
+        downloadBtn.addEventListener('click', downloadAsPdf);
       }
     })();
   </script>
@@ -651,6 +832,10 @@ export function createMarkSheetHTML(data: MarkSheetHTMLData, settings: Settings 
 </html>`;
 }
 
-export function createMarkSheetHTMLBuffer(data: MarkSheetHTMLData, settings: Settings | null): Buffer {
-  return Buffer.from(createMarkSheetHTML(data, settings), 'utf-8');
+export function createMarkSheetHTMLBuffer(
+  data: MarkSheetHTMLData,
+  settings: Settings | null,
+  options?: MarkSheetHTMLOptions
+): Buffer {
+  return Buffer.from(createMarkSheetHTML(data, settings, options), 'utf-8');
 }

@@ -13,12 +13,12 @@
   box-sizing: border-box;
 }
 
-/* Toasts */
+/* Toasts — sit below sticky app navbar so they are fully visible */
 .ms-toast-stack {
   position: fixed;
-  top: 1rem;
+  top: calc(64px + 0.75rem);
   right: 1rem;
-  z-index: 100;
+  z-index: 1105;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -500,9 +500,14 @@
   text-align: right;
 }
 
-/* Table — wrapper is the single outer frame (avoids double right border) */
+/* Table — scroll subjects; pin identity + Total/Average */
 .ms-table-wrap,
 .mark-sheet-table-wrapper {
+  --ms-sticky-pos: 48px;
+  --ms-sticky-id: 108px;
+  --ms-sticky-name: 148px;
+  --ms-sticky-total: 92px;
+  --ms-sticky-avg: 78px;
   overflow-x: auto;
   overflow-y: visible;
   margin-bottom: 1rem;
@@ -526,30 +531,24 @@
 .mark-sheet-table.ms-table {
   width: max-content;
   min-width: 100%;
-  border-collapse: collapse;
+  max-width: none;
+  border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.88rem;
+  table-layout: auto;
+  font-size: 0.82rem;
   background: #fff;
   color: var(--ms-text);
 }
 
 .ms-table th,
 .ms-table td {
-  border: 1.5px solid #94a3b8;
-  padding: 0.7rem 0.8rem;
+  border-right: 1.5px solid #94a3b8;
+  border-bottom: 1.5px solid #94a3b8;
+  border-top: none;
+  border-left: none;
+  padding: 0.45rem 0.4rem;
   text-align: center;
   vertical-align: middle;
-}
-
-/* Drop outer cell edges so they flush with the wrapper (one line, not two) */
-.ms-table .ms-thead-row-main > th:first-child,
-.ms-table tbody > tr > td:first-child {
-  border-left: none;
-}
-
-.ms-table .ms-thead-row-main > th:last-child,
-.ms-table tbody > tr > td:last-child {
-  border-right: none;
 }
 
 .ms-table .ms-thead-row-main > th {
@@ -560,6 +559,11 @@
   border-bottom: none;
 }
 
+.ms-table .ms-thead-row-main > th:last-child,
+.ms-table tbody > tr > td:last-child {
+  border-right: none;
+}
+
 .ms-thead-row-main .ms-th {
   background: #5b21b6;
   color: #fff;
@@ -568,6 +572,7 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   border-color: #4c1d95;
+  border-right-color: #4c1d95;
   white-space: nowrap;
 }
 
@@ -575,13 +580,15 @@
   background: #7c3aed;
   color: #fff;
   font-weight: 600;
-  padding: 0.55rem 0.5rem;
+  padding: 0.4rem 0.35rem;
   border-color: #6d28d9;
+  border-right-color: #6d28d9;
 }
 
 .ms-th--group {
   text-align: center;
   border-color: #4c1d95;
+  border-right-color: #4c1d95;
 }
 
 .ms-table .sortable { cursor: pointer; user-select: none; }
@@ -595,16 +602,19 @@
 }
 
 .subject-name {
-  font-size: 0.74rem;
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .subject-pass-rate {
-  font-size: 0.65rem;
+  font-size: 0.58rem;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.82);
+  white-space: nowrap;
 }
 
 /* Fully visible alternating rows + solid grid */
@@ -635,12 +645,87 @@
   background: #ddd6fe !important;
 }
 
-.position-col { width: 56px; }
-.student-number-col { width: 128px; }
-.student-name-col { width: 210px; text-align: left !important; }
-.subject-col { min-width: 112px; }
+/* Compact fixed widths for sticky columns */
+.position-col,
+.ms-sticky-left--pos {
+  width: var(--ms-sticky-pos);
+  min-width: var(--ms-sticky-pos);
+  max-width: var(--ms-sticky-pos);
+  white-space: nowrap;
+}
+
+.student-number-col,
+.ms-sticky-left--id {
+  width: var(--ms-sticky-id);
+  min-width: var(--ms-sticky-id);
+  max-width: var(--ms-sticky-id);
+  white-space: nowrap;
+}
+
+.student-name-col,
+.ms-sticky-left--name {
+  width: var(--ms-sticky-name);
+  min-width: var(--ms-sticky-name);
+  max-width: var(--ms-sticky-name);
+  text-align: left !important;
+  white-space: nowrap;
+}
+
+.subject-col,
+.ms-table tbody td.mark-cell {
+  width: auto;
+  min-width: 64px;
+  white-space: nowrap;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+}
+
 .total-col,
-.average-col { width: 108px; }
+.ms-sticky-right--total {
+  width: var(--ms-sticky-total);
+  min-width: var(--ms-sticky-total);
+  max-width: var(--ms-sticky-total);
+  white-space: nowrap;
+}
+
+.average-col,
+.ms-sticky-right--avg {
+  width: var(--ms-sticky-avg);
+  min-width: var(--ms-sticky-avg);
+  max-width: var(--ms-sticky-avg);
+  white-space: nowrap;
+}
+
+/* Pin left identity columns */
+.ms-sticky-left {
+  position: sticky;
+  z-index: 4;
+}
+
+.ms-sticky-left--pos { left: 0; }
+.ms-sticky-left--id { left: var(--ms-sticky-pos); }
+.ms-sticky-left--name {
+  left: calc(var(--ms-sticky-pos) + var(--ms-sticky-id));
+  box-shadow: 6px 0 8px -6px rgba(15, 23, 42, 0.28);
+}
+
+/* Pin Total + Average on the right so they stay visible with many subjects */
+.ms-sticky-right {
+  position: sticky;
+  z-index: 4;
+}
+
+.ms-sticky-right--avg { right: 0; }
+.ms-sticky-right--total {
+  right: var(--ms-sticky-avg);
+  box-shadow: -6px 0 8px -6px rgba(15, 23, 42, 0.28);
+}
+
+.ms-table thead .ms-sticky-left,
+.ms-table thead .ms-sticky-right {
+  z-index: 6;
+  background: #5b21b6;
+}
 
 .position-cell { font-weight: 600; }
 
@@ -648,13 +733,19 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: #5b21b6;
   font-weight: 600;
-  font-size: 0.84rem;
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .student-name-cell {
   text-align: left !important;
   font-weight: 600;
   color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ms-student-link {
@@ -673,7 +764,7 @@
 .mark-display {
   display: inline-block;
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 0.84rem;
   font-variant-numeric: tabular-nums;
   color: #1d4ed8;
 }
@@ -681,12 +772,14 @@
 .total-cell,
 .average-cell {
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .summary-mark,
 .average-value {
   color: #0f172a !important;
   font-weight: 700;
+  font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -802,6 +895,14 @@
   .mark-sheet-table td {
     padding: 6px 4px;
     border: 1px solid #64748b !important;
+  }
+
+  .ms-sticky-left,
+  .ms-sticky-right {
+    position: static !important;
+    left: auto !important;
+    right: auto !important;
+    box-shadow: none !important;
   }
 
   .sticky-header { position: static; }
