@@ -1,10 +1,20 @@
 <div class="parents-page parents-page--modern">
   <span class="sms-success-bridge" *ngIf="success" [smsSuccessConfirm]="success" (smsSuccessConfirmClear)="success = ''" aria-hidden="true"></span>
-<header class="parents-hero">
+
+  <div class="parents-toasts" aria-live="polite">
+    <div class="parents-toast parents-toast--error" *ngIf="error" role="alert">
+      <span class="parents-toast__icon">!</span>
+      <span class="parents-toast__text">{{ error }}</span>
+      <button type="button" class="parents-toast__close" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
+  <header class="parents-hero">
     <div class="parents-hero__content">
       <div class="parents-hero__title-row">
         <span class="parents-hero__icon" aria-hidden="true">👨‍👩‍👧‍👦</span>
         <div>
+          <span class="parents-hero__eyebrow">Admin</span>
           <h1 class="parents-hero__title">Parent Management</h1>
           <p class="parents-hero__subtitle">
             Register guardians, reset portal access, and link students to family accounts.
@@ -22,7 +32,7 @@
         <span class="parents-stat__value">{{ dashboardStats.total }}</span>
         <span class="parents-stat__label">Total parents</span>
       </div>
-      <div class="parents-stat">
+      <div class="parents-stat parents-stat--linked">
         <span class="parents-stat__value">{{ dashboardStats.withStudents }}</span>
         <span class="parents-stat__label">With linked students</span>
       </div>
@@ -30,11 +40,11 @@
         <span class="parents-stat__value">{{ dashboardStats.unlinked }}</span>
         <span class="parents-stat__label">Not linked</span>
       </div>
-      <div class="parents-stat">
+      <div class="parents-stat parents-stat--students">
         <span class="parents-stat__value">{{ dashboardStats.linkedStudents }}</span>
         <span class="parents-stat__label">Linked students</span>
       </div>
-      <div class="parents-stat">
+      <div class="parents-stat parents-stat--muted">
         <span class="parents-stat__value">{{ dashboardStats.studentAccounts }}</span>
         <span class="parents-stat__label">Student accounts</span>
       </div>
@@ -44,14 +54,7 @@
     </div>
   </header>
 
-  <div class="parents-toasts" aria-live="polite">
-    <div class="parents-toast parents-toast--error" *ngIf="error" role="alert">
-      <span class="parents-toast__icon">!</span>
-      <span class="parents-toast__text">{{ error }}</span>
-      <button type="button" class="parents-toast__close" (click)="clearAlert('error')" aria-label="Dismiss">×</button>
-    </div>
-  </div>
-
+  <div class="parents-shell">
   <nav class="parents-tabs" aria-label="Parent admin sections">
     <button
       type="button"
@@ -586,5 +589,6 @@
         <p>Select a parent from the list to view details, edit contact info, and manage student links.</p>
       </div>
     </ng-template>
+  </div>
   </div>
 </div>

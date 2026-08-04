@@ -141,7 +141,7 @@
 .stat-gross { background: #f0fdf4; border-color: #bbf7d0; }
 .stat-allowances { background: #eff6ff; border-color: #bfdbfe; }
 .stat-deductions { background: #fef2f2; border-color: #fecaca; }
-.stat-net { background: #f5f3ff; border-color: #ddd6fe; }
+.stat-net { background: #f8fafc; border-color: #e2e8f0; }
 .stat-count { background: var(--gray-50); }
 
 .stat-card .stat-label {

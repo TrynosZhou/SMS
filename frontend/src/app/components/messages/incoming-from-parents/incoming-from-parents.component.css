@@ -1,13 +1,13 @@
-/* Incoming Messages — modern purple theme */
+/* Incoming Messages — classic professional layout */
 :host {
   display: block;
 }
 
 .mi-page {
-  --mi-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
-  --mi-purple: #7c3aed;
-  --mi-purple-dark: #5b21b6;
-  --mi-purple-deep: #6d28d9;
+  --mi-gradient: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
+  --mi-purple: #1e3a5f;
+  --mi-purple-dark: #152a45;
+  --mi-purple-deep: #1e3a5f;
   --mi-border: #e2e8f0;
   --mi-muted: #64748b;
   --mi-text: #0f172a;
@@ -38,7 +38,7 @@
   padding: 0.75rem 1rem;
   border-radius: 10px;
   font-size: 0.9rem;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
   animation: mi-toast-in 0.25s ease;
 }
 
@@ -54,12 +54,22 @@
 
 /* Hero */
 .mi-hero {
+  position: relative;
+  overflow: hidden;
   background: var(--mi-gradient);
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 22px 26px 18px;
   margin-bottom: 1.25rem;
-  box-shadow: 0 4px 24px rgba(91, 33, 182, 0.28);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
   color: #fff;
+}
+
+.mi-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .mi-hero__main {
@@ -74,16 +84,16 @@
 .mi-hero-left { display: flex; align-items: flex-start; gap: 14px; flex: 1; min-width: 220px; }
 
 .mi-hero-icon {
-  width: 52px;
-  height: 52px;
-  background: #facc15;
-  border-radius: 14px;
+  width: 42px;
+  height: 42px;
+  background: #f59e0b;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.55rem;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: none;
 }
 
 .mi-hero-eyebrow {
@@ -92,7 +102,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
+  color: #fbbf24;
   margin-bottom: 4px;
 }
 
@@ -142,8 +152,8 @@
 .mi-hero-refresh {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
   font-size: 1.2rem;
@@ -166,7 +176,7 @@
   color: rgba(255, 255, 255, 0.92);
 }
 
-.mi-auto-refresh input { accent-color: #facc15; cursor: pointer; }
+.mi-auto-refresh input { accent-color: #f59e0b; cursor: pointer; }
 
 .mi-hero-btn {
   padding: 0.5rem 0.85rem;
@@ -183,10 +193,10 @@
 .mi-hero-btn--accent {
   background: #fff;
   color: var(--mi-purple-deep);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
 }
 
-.mi-hero-btn--accent:hover { background: #faf5ff; }
+.mi-hero-btn--accent:hover { background: #ffffff; }
 
 .mi-cross-links {
   display: flex;
@@ -279,8 +289,8 @@
   flex-wrap: wrap;
   padding: 0.75rem 1rem;
   margin-bottom: 1rem;
-  background: #faf5ff;
-  border: 1px solid #ddd6fe;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
 }
 
@@ -291,14 +301,14 @@
 .mi-panel {
   background: #fff;
   border: 1px solid var(--mi-border);
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 1.35rem 1.5rem;
   margin-bottom: 1.25rem;
   box-shadow: var(--mi-shadow);
 }
 
 .mi-panel--filters { border-top: 3px solid var(--mi-purple); }
-.mi-panel--list { border-top: 3px solid #6366f1; margin-bottom: 0; }
+.mi-panel--list { border-top: 3px solid #1d4ed8; margin-bottom: 0; }
 .mi-panel--detail { border-top: 3px solid var(--mi-purple); margin-bottom: 0; }
 
 .mi-detail-confirm {
@@ -436,7 +446,7 @@
 .mi-search-input:focus {
   outline: none;
   border-color: var(--mi-purple);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
 }
 
 .mi-search-clear {
@@ -474,7 +484,7 @@
   transition: all 0.15s;
 }
 
-.mi-chip:hover { border-color: #c4b5fd; background: #faf5ff; }
+.mi-chip:hover { border-color: #cbd5e1; background: #ffffff; }
 
 .mi-chip--active {
   background: var(--mi-purple);
@@ -532,7 +542,7 @@
 .mi-textarea:focus {
   outline: none;
   border-color: var(--mi-purple);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
 }
 
 /* Main layout */
@@ -630,21 +640,21 @@
 .mi-message-item:hover { background: #f8fafc; }
 
 .mi-message-item--unread {
-  background: #faf5ff;
+  background: #ffffff;
   box-shadow: inset 3px 0 0 var(--mi-purple);
 }
 
-.mi-message-item--unread:hover { background: #f5f3ff; }
+.mi-message-item--unread:hover { background: #f8fafc; }
 
 .mi-message-item--selected {
-  background: #ede9fe;
-  box-shadow: inset 0 0 0 2px rgba(124, 58, 237, 0.22);
+  background: #f1f5f9;
+  box-shadow: inset 0 0 0 2px rgba(30, 58, 95, 0.22);
 }
 
-.mi-message-item--pinned { box-shadow: inset 3px 0 0 #facc15; }
+.mi-message-item--pinned { box-shadow: inset 3px 0 0 #f59e0b; }
 
 .mi-message-item--pinned.mi-message-item--unread {
-  box-shadow: inset 3px 0 0 #facc15, inset 6px 0 0 var(--mi-purple);
+  box-shadow: inset 3px 0 0 #f59e0b, inset 6px 0 0 var(--mi-purple);
 }
 
 .mi-item-check {
@@ -759,7 +769,7 @@
   background: var(--mi-purple);
   flex-shrink: 0;
   margin-top: 8px;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 0 2px rgba(30, 58, 95, 0.15);
 }
 
 .mi-pin-btn {
@@ -849,7 +859,7 @@
   transition: all 0.15s;
 }
 
-.mi-icon-btn:hover { background: #faf5ff; border-color: #c4b5fd; }
+.mi-icon-btn:hover { background: #ffffff; border-color: #cbd5e1; }
 
 .mi-detail-subject {
   margin: 0 0 1rem;
@@ -928,13 +938,13 @@
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--mi-purple-deep);
-  background: #faf5ff;
-  border: 1px solid #ddd6fe;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   text-decoration: none;
   transition: background 0.15s;
 }
 
-.mi-attachment-link:hover { background: #f3e8ff; }
+.mi-attachment-link:hover { background: #f1f5f9; }
 
 .mi-detail-foot {
   display: flex;
@@ -949,7 +959,7 @@
 .mi-reply-panel {
   margin-top: 1.25rem;
   padding-top: 1.25rem;
-  border-top: 2px dashed #ddd6fe;
+  border-top: 2px dashed #e2e8f0;
 }
 
 .mi-reply-title {
@@ -1044,7 +1054,7 @@
   color: var(--mi-purple-deep);
 }
 
-.mi-btn--outline:hover:not(:disabled) { background: #faf5ff; }
+.mi-btn--outline:hover:not(:disabled) { background: #ffffff; }
 
 .mi-btn--ghost {
   background: transparent;

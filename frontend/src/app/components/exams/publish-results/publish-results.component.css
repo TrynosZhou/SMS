@@ -1,9 +1,9 @@
-/* Publish Results — modern purple theme (matches Mark Sheet / Report Cards) */
+/* Publish Results — classic professional layout (matches Mark Sheet / Report Cards) */
 .pr-page {
-  --pr-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
-  --pr-purple: #7c3aed;
-  --pr-purple-dark: #5b21b6;
-  --pr-purple-deep: #6d28d9;
+  --pr-gradient: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
+  --pr-purple: #1e3a5f;
+  --pr-purple-dark: #152a45;
+  --pr-purple-deep: #152a45;
   --pr-border: #e2e8f0;
   --pr-muted: #64748b;
   --pr-text: #0f172a;
@@ -12,6 +12,7 @@
   margin: 0 auto;
   padding: 1.25rem 1.5rem 2.5rem;
   box-sizing: border-box;
+  background: transparent;
 }
 
 /* Inline confirmation alerts — full width in page flow (not clipped by layout) */
@@ -79,11 +80,22 @@
 /* Hero */
 .pr-hero {
   background: var(--pr-gradient);
-  border-radius: 16px;
-  padding: 22px 26px 18px;
+  border-radius: 12px;
+  padding: 1.35rem 1.5rem 1.1rem;
   margin-bottom: 1.25rem;
-  box-shadow: 0 4px 24px rgba(91, 33, 182, 0.28);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  position: relative;
+  overflow: hidden;
   color: #fff;
+}
+
+.pr-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .pr-hero__main {
@@ -98,30 +110,30 @@
 .pr-hero-left { display: flex; align-items: flex-start; gap: 14px; }
 
 .pr-hero-icon {
-  width: 52px;
-  height: 52px;
-  background: #facc15;
-  border-radius: 14px;
+  width: 42px;
+  height: 42px;
+  background: #f59e0b;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.55rem;
+  font-size: 1.25rem;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: none;
 }
 
 .pr-hero-eyebrow {
   display: block;
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
+  color: #fbbf24;
   margin-bottom: 4px;
 }
 
-.pr-hero h1 { margin: 0 0 6px; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
-.pr-hero-sub { margin: 0; opacity: 0.92; font-size: 0.95rem; max-width: 640px; line-height: 1.5; }
+.pr-hero h1 { margin: 0 0 6px; font-size: clamp(1.3rem, 2vw, 1.75rem); font-weight: 700; letter-spacing: -0.02em; }
+.pr-hero-sub { margin: 0; font-size: 0.88rem; color: rgba(255, 255, 255, 0.78); max-width: 640px; line-height: 1.45; }
 .pr-hero-meta { margin: 6px 0 0; font-size: 0.78rem; color: rgba(255, 255, 255, 0.65); }
 
 .pr-hero-aside { display: flex; flex-wrap: wrap; gap: 0.5rem; align-content: flex-start; }
@@ -187,18 +199,20 @@
 
 .pr-stat {
   position: relative;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-left: 3px solid #94a3b8;
+  border-radius: 8px;
   padding: 12px 14px 12px 38px;
+  color: #0f172a;
 }
 
 .pr-stat__icon { position: absolute; left: 12px; top: 14px; font-size: 0.85rem; opacity: 0.75; }
-.pr-stat__value { display: block; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.pr-stat__label { display: block; font-size: 0.72rem; opacity: 0.85; margin-top: 2px; }
-.pr-stat--mint .pr-stat__value { color: #bbf7d0; }
-.pr-stat--rose .pr-stat__value { color: #fecdd3; }
-.pr-stat--amber .pr-stat__value { color: #fde68a; }
+.pr-stat__value { display: block; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; color: #0f172a; }
+.pr-stat__label { display: block; font-size: 0.72rem; color: #64748b; margin-top: 2px; }
+.pr-stat--mint .pr-stat__value { color: #047857; }
+.pr-stat--rose .pr-stat__value { color: #be123c; }
+.pr-stat--amber .pr-stat__value { color: #b45309; }
 
 .pr-hero-toolbar {
   display: flex;
@@ -303,7 +317,7 @@
 .pr-select:focus {
   outline: none;
   border-color: var(--pr-purple);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
 }
 
 .pr-input:disabled,
@@ -340,19 +354,19 @@
   transition: all 0.15s;
 }
 
-.pr-chip:hover { border-color: #c4b5fd; background: #f5f3ff; }
+.pr-chip:hover { border-color: #cbd5e1; background: #f8fafc; }
 
 .pr-chip--active {
-  background: #ede9fe;
-  border-color: #a78bfa;
+  background: #f1f5f9;
+  border-color: #94a3b8;
   color: var(--pr-purple-deep);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.12);
 }
 
 .pr-chips--status .pr-chip { cursor: default; padding: 0.25rem 0.6rem; font-size: 0.72rem; border-radius: 999px; }
 .pr-chips--status .pr-chip--done {
-  background: #f5f3ff;
-  border-color: #c4b5fd;
+  background: #f8fafc;
+  border-color: #cbd5e1;
   color: var(--pr-purple-deep);
 }
 
@@ -505,7 +519,7 @@
 }
 .pr-btn--ghost { background: transparent; border-color: var(--pr-border); color: var(--pr-muted); }
 .pr-btn--outline { border-color: var(--pr-purple); color: var(--pr-purple-deep); }
-.pr-btn--outline:hover:not(:disabled) { background: #f5f3ff; }
+.pr-btn--outline:hover:not(:disabled) { background: #f8fafc; }
 .pr-btn--sm { padding: 0.4rem 0.75rem; font-size: 0.82rem; color: rgba(255, 255, 255, 0.95); border-color: rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.12); }
 .pr-btn--sm:hover:not(:disabled) { background: rgba(255, 255, 255, 0.22); }
 
@@ -609,7 +623,7 @@
 .pr-search-input:focus {
   outline: none;
   border-color: var(--pr-purple);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
 }
 
 .pr-search-clear {

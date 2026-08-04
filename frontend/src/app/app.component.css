@@ -1946,7 +1946,7 @@
 
 .logout-confirm-dialog__accent {
   height: 4px;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #4a90e2 100%);
+  background: #f59e0b;
 }
 
 .logout-confirm-dialog__body {
@@ -1960,12 +1960,12 @@
   flex-shrink: 0;
   width: 52px;
   height: 52px;
-  border-radius: 14px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #ede9fe 0%, #e0f2fe 100%);
-  border: 1px solid rgba(102, 126, 234, 0.2);
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
 }
 
 .logout-confirm-dialog__icon {
@@ -2050,13 +2050,14 @@
 }
 
 .logout-confirm-btn--primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #1e3a5f;
   color: #ffffff;
-  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35);
+  box-shadow: none;
 }
 
 .logout-confirm-btn--primary:hover {
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.45);
+  background: #152a45;
+  box-shadow: none;
 }
 
 :host-context(.dark-mode) .logout-confirm-dialog,

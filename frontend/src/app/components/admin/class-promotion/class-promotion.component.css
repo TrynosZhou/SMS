@@ -1,9 +1,9 @@
-/* Class Promotion — modern purple theme */
+/* Class Promotion — classic professional layout */
 .cp-page {
-  --cp-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
-  --cp-purple: #7c3aed;
+  --cp-gradient: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
+  --cp-purple: #1e3a5f;
   --cp-border: #e2e8f0;
-  --cp-bg: #eef0f8;
+  --cp-bg: transparent;
   max-width: 1400px;
   margin: 0 auto;
   padding: 1.25rem 1.5rem 6rem;
@@ -37,12 +37,24 @@
 .cp-toast__dismiss { background: none; border: none; font-size: 1.25rem; cursor: pointer; opacity: 0.6; }
 
 .cp-hero {
+  position: relative;
+  overflow: hidden;
+  position: relative;
+  overflow: hidden;
   background: var(--cp-gradient);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 20px 24px 16px;
   margin-bottom: 1.25rem;
-  box-shadow: 0 4px 20px rgba(91, 33, 182, 0.25);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
   color: #fff;
+}
+
+.cp-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .cp-hero__main {
@@ -60,10 +72,11 @@
 }
 
 .cp-hero-icon {
-  width: 48px;
-  height: 48px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  width: 42px;
+  height: 42px;
+  background: #f59e0b;
+  color: #111;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -77,7 +90,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
+  color: #fbbf24;
   margin-bottom: 4px;
 }
 
@@ -124,12 +137,12 @@
 
 .cp-hero-btn--white {
   background: #fff;
-  color: #5b21b6;
+  color: #1e3a5f;
   border-color: #fff;
 }
 
 .cp-hero-btn--white:hover {
-  background: #f5f3ff;
+  background: #f8fafc;
 }
 
 .cp-hero-btn:disabled {
@@ -267,7 +280,7 @@
   padding: 1.15rem 1.25rem;
   border: 2px solid #e8e0f5;
   border-radius: 12px;
-  background: #faf8ff;
+  background: #f8fafc;
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
   display: flex;
@@ -276,14 +289,14 @@
 }
 
 .cp-mode-card:hover {
-  border-color: #c4b5fd;
+  border-color: #cbd5e1;
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(124, 58, 237, 0.12);
 }
 
 .cp-mode-card--active {
   border-color: var(--cp-purple);
-  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   box-shadow: 0 4px 14px rgba(124, 58, 237, 0.2);
 }
 
@@ -307,8 +320,8 @@
   margin-top: 4px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #ede9fe;
-  color: #5b21b6;
+  background: #f1f5f9;
+  color: #1e3a5f;
   font-size: 0.72rem;
   font-weight: 700;
 }
@@ -375,14 +388,14 @@
   border: 1px solid #d8ccf5;
   border-radius: 8px;
   background: #fff;
-  color: #5b21b6;
+  color: #1e3a5f;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
 }
 
 .cp-chip-btn:hover {
-  background: #f5f3ff;
+  background: #f8fafc;
 }
 
 .cp-filter-chips {
@@ -404,8 +417,8 @@
 }
 
 .cp-filter-chip:hover {
-  border-color: #c4b5fd;
-  color: #5b21b6;
+  border-color: #cbd5e1;
+  color: #1e3a5f;
 }
 
 .cp-filter-chip--active {
@@ -510,8 +523,8 @@
 }
 
 .cp-badge--accent {
-  background: #ede9fe;
-  color: #5b21b6;
+  background: #f1f5f9;
+  color: #1e3a5f;
 }
 
 .cp-class-card__path {
@@ -520,8 +533,8 @@
   justify-content: center;
   gap: 12px;
   padding: 0.75rem 1.25rem;
-  background: #f5f3ff;
-  border-bottom: 1px solid #ede9fe;
+  background: #f8fafc;
+  border-bottom: 1px solid #f1f5f9;
   font-size: 0.85rem;
   font-weight: 600;
 }
@@ -569,13 +582,13 @@
 }
 
 .cp-student:hover:not(.cp-student--disabled) {
-  border-color: #c4b5fd;
+  border-color: #cbd5e1;
   box-shadow: 0 2px 8px rgba(124, 58, 237, 0.1);
 }
 
 .cp-student--selected {
   border-color: var(--cp-purple);
-  background: #f5f3ff;
+  background: #f8fafc;
   box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
 }
 
@@ -840,7 +853,7 @@
 }
 
 .cp-modal-summary__row--highlight {
-  background: #ede9fe;
+  background: #f1f5f9;
   margin: 0 -1rem;
   padding-left: 1rem;
   padding-right: 1rem;

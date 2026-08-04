@@ -1,13 +1,13 @@
-/* Send Message — modern purple theme */
+/* Send Message — classic professional layout */
 :host {
   display: block;
 }
 
 .ms-page {
-  --ms-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
-  --ms-purple: #7c3aed;
-  --ms-purple-dark: #5b21b6;
-  --ms-purple-deep: #6d28d9;
+  --ms-gradient: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
+  --ms-purple: #1e3a5f;
+  --ms-purple-dark: #152a45;
+  --ms-purple-deep: #1e3a5f;
   --ms-border: #e2e8f0;
   --ms-muted: #64748b;
   --ms-text: #0f172a;
@@ -38,7 +38,7 @@
   padding: 0.75rem 1rem;
   border-radius: 10px;
   font-size: 0.9rem;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
   animation: ms-toast-in 0.25s ease;
 }
 
@@ -54,12 +54,22 @@
 
 /* Hero */
 .ms-hero {
+  position: relative;
+  overflow: hidden;
   background: var(--ms-gradient);
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 22px 26px 18px;
   margin-bottom: 1.25rem;
-  box-shadow: 0 4px 24px rgba(91, 33, 182, 0.28);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
   color: #fff;
+}
+
+.ms-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .ms-hero__main {
@@ -74,16 +84,16 @@
 .ms-hero-left { display: flex; align-items: flex-start; gap: 14px; flex: 1; min-width: 220px; }
 
 .ms-hero-icon {
-  width: 52px;
-  height: 52px;
-  background: #facc15;
-  border-radius: 14px;
+  width: 42px;
+  height: 42px;
+  background: #f59e0b;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.55rem;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: none;
 }
 
 .ms-hero-eyebrow {
@@ -92,7 +102,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
+  color: #fbbf24;
   margin-bottom: 4px;
 }
 
@@ -130,10 +140,10 @@
 .ms-hero-btn--accent {
   background: #fff;
   color: var(--ms-purple-deep);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
 }
 
-.ms-hero-btn--accent:hover { background: #faf5ff; }
+.ms-hero-btn--accent:hover { background: #ffffff; }
 
 .ms-hero-btn--ghost {
   background: rgba(255, 255, 255, 0.12);
@@ -240,14 +250,14 @@
 .ms-panel {
   background: #fff;
   border: 1px solid var(--ms-border);
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 1.35rem 1.5rem;
   box-shadow: var(--ms-shadow);
 }
 
 .ms-panel--compose { border-top: 3px solid var(--ms-purple); }
-.ms-panel--templates { border-top: 3px solid #6366f1; margin-bottom: 0; }
-.ms-panel--tips { border-top: 3px solid #facc15; padding: 1.15rem 1.25rem; }
+.ms-panel--templates { border-top: 3px solid #1d4ed8; margin-bottom: 0; }
+.ms-panel--tips { border-top: 3px solid #f59e0b; padding: 1.15rem 1.25rem; }
 
 .ms-panel__head { margin-bottom: 1.25rem; }
 .ms-panel__title { margin: 0 0 4px; font-size: 1.12rem; font-weight: 700; color: var(--ms-text); }
@@ -300,7 +310,7 @@
 .ms-search-input:focus {
   outline: none;
   border-color: var(--ms-purple);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
 }
 
 .ms-textarea {
@@ -343,12 +353,12 @@
   color: inherit;
 }
 
-.ms-recipient-card:hover { border-color: #c4b5fd; background: #faf5ff; }
+.ms-recipient-card:hover { border-color: #cbd5e1; background: #ffffff; }
 
 .ms-recipient-card--active {
   border-color: var(--ms-purple);
-  background: #f5f3ff;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.12);
+  background: #f8fafc;
+  box-shadow: 0 0 0 2px rgba(30, 58, 95, 0.12);
 }
 
 .ms-recipient-card__icon { font-size: 1.5rem; }
@@ -455,12 +465,12 @@
   transition: all 0.15s;
 }
 
-.ms-parent-chip:hover { border-color: #c4b5fd; background: #faf5ff; }
+.ms-parent-chip:hover { border-color: #cbd5e1; background: #ffffff; }
 
 .ms-parent-chip--selected {
   border-color: var(--ms-purple);
-  background: #f5f3ff;
-  box-shadow: inset 0 0 0 1px rgba(124, 58, 237, 0.15);
+  background: #f8fafc;
+  box-shadow: inset 0 0 0 1px rgba(30, 58, 95, 0.15);
 }
 
 .ms-parent-avatar {
@@ -556,7 +566,7 @@
 .ms-dropzone:hover,
 .ms-dropzone--active {
   border-color: var(--ms-purple);
-  background: #faf5ff;
+  background: #ffffff;
 }
 
 .ms-dropzone__icon { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
@@ -623,12 +633,12 @@
   transition: all 0.15s;
 }
 
-.ms-template-card:hover { border-color: #c4b5fd; background: #faf5ff; }
+.ms-template-card:hover { border-color: #cbd5e1; background: #ffffff; }
 
 .ms-template-card--active {
   border-color: var(--ms-purple);
-  background: #f5f3ff;
-  box-shadow: inset 0 0 0 1px rgba(124, 58, 237, 0.15);
+  background: #f8fafc;
+  box-shadow: inset 0 0 0 1px rgba(30, 58, 95, 0.15);
 }
 
 .ms-template-card__icon { font-size: 1.35rem; flex-shrink: 0; }
@@ -719,7 +729,7 @@
   color: var(--ms-purple-deep);
 }
 
-.ms-btn--outline:hover:not(:disabled) { background: #faf5ff; }
+.ms-btn--outline:hover:not(:disabled) { background: #ffffff; }
 
 .ms-btn--ghost {
   background: transparent;
@@ -742,7 +752,7 @@
 }
 
 .ms-spinner--purple {
-  border-color: rgba(109, 40, 217, 0.25);
+  border-color: rgba(30, 58, 95, 0.25);
   border-top-color: var(--ms-purple);
 }
 
@@ -852,8 +862,8 @@
 .ms-preview-file {
   display: inline-block;
   padding: 0.35rem 0.65rem;
-  background: #faf5ff;
-  border: 1px solid #ddd6fe;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   font-size: 0.8125rem;
   color: var(--ms-purple-deep);

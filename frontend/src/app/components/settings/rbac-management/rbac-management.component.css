@@ -1,7 +1,7 @@
-/* RBAC — modern purple theme */
+/* RBAC — classic professional layout */
 .rbac-page {
-  --rbac-purple: #7c3aed;
-  --rbac-purple-dark: #5b21b6;
+  --rbac-purple: #1e3a5f;
+  --rbac-purple-dark: #152a45;
   --rbac-border: #e2e8f0;
   --rbac-muted: #64748b;
   --rbac-text: #0f172a;
@@ -27,7 +27,7 @@
   border-radius: 10px;
   font-size: 0.9rem;
   font-weight: 600;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
 }
 
 .rbac-toast--success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; }
@@ -73,8 +73,8 @@
 .rbac-refresh {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  border: 2px solid var(--rbac-border);
+  border-radius: 8px;
+  border: 1px solid var(--rbac-border);
   background: #fff;
   color: var(--rbac-purple);
   font-size: 1.2rem;
@@ -162,7 +162,7 @@
 }
 
 .rbac-tab:hover {
-  border-color: #c4b5fd;
+  border-color: #cbd5e1;
   color: var(--rbac-purple-dark);
 }
 
@@ -181,7 +181,7 @@
 .rbac-panel {
   background: #fff;
   border: 1px solid var(--rbac-border);
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 1.15rem 1.25rem;
   border-top: 3px solid var(--rbac-purple);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
@@ -262,10 +262,10 @@
 }
 
 .rbac-matrix th {
-  background: linear-gradient(180deg, #6d28d9 0%, #5b21b6 100%);
+  background: linear-gradient(180deg, #1e3a5f 0%, #152a45 100%);
   font-weight: 700;
   color: #fff;
-  border-color: #5b21b6;
+  border-color: #152a45;
 }
 
 .rbac-matrix tbody tr:nth-child(even) {
@@ -297,7 +297,7 @@
 }
 
 .row-toggle:hover:not(:disabled) {
-  border-color: #c4b5fd;
+  border-color: #cbd5e1;
   color: var(--rbac-purple-dark);
 }
 
@@ -389,8 +389,8 @@
   text-transform: uppercase;
   padding: 2px 8px;
   border-radius: 6px;
-  background: #ede9fe;
-  color: #5b21b6;
+  background: #f1f5f9;
+  color: #152a45;
 }
 
 .rbac-role-card p {
@@ -452,7 +452,7 @@
 
 .rbac-user-row:hover,
 .rbac-user-row--active {
-  background: #f5f3ff;
+  background: #f8fafc;
 }
 
 .u-name {
@@ -522,9 +522,9 @@
 
 .rbac-module-group-hint { max-width: 900px; margin-bottom: 10px; }
 
-.rbac-matrix .rbac-records-row { background: #faf5ff; }
+.rbac-matrix .rbac-records-row { background: #ffffff; }
 
-.rbac-matrix .rbac-records-row .mod-label { color: #5b21b6; }
+.rbac-matrix .rbac-records-row .mod-label { color: #152a45; }
 
 .rbac-finance-section {
   margin-top: 28px;

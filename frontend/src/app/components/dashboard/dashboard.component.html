@@ -154,9 +154,9 @@
     <ng-container *ngIf="!isStudent()">
     <header class="dash-page-header">
       <div class="dash-page-header__intro">
-        <span class="dash-page-eyebrow">{{ getRoleLabel() }}</span>
+        <span class="dash-page-eyebrow">{{ getRoleLabel() }} · Dashboard</span>
         <h1 class="dash-page-title">{{ getSmartGreeting() }}, {{ getGreetingName() }}</h1>
-        <p class="dash-page-subtitle">Your workspace overview — quick stats, shortcuts, and recent activity.</p>
+        <p class="dash-page-subtitle">Overview of enrolment, staff, academics, and school operations.</p>
         <p class="dash-page-meta">{{ getCurrentDateTime() }}</p>
       </div>
       <div class="dash-page-header__actions">
@@ -182,7 +182,7 @@
     <div class="dash-status-strip" *ngIf="canViewDashboardStats()">
       <span class="dash-status-strip__dot" [class.dash-status-strip__dot--loading]="loadingStats"></span>
       <span *ngIf="!loadingStats">
-        Data snapshot
+        Live snapshot
         <strong *ngIf="statsLastUpdated">· updated {{ formatStatsUpdatedAt() }}</strong>
       </span>
       <span *ngIf="loadingStats">Refreshing dashboard data…</span>
@@ -195,105 +195,76 @@
 
     <!-- Statistics Cards -->
     <div class="stats-grid stats-grid--live" *ngIf="canViewDashboardStats() && !loadingStats">
-      <div class="stat-card primary modern-card">
+      <article class="stat-card primary">
         <div class="stat-icon-wrapper">
-          <div class="stat-icon modern-icon">👥</div>
-          <div class="icon-badge">+</div>
+          <div class="stat-icon" aria-hidden="true">👥</div>
         </div>
         <div class="stat-content">
-          <div class="stat-value animated-value">{{ stats.totalStudents }}</div>
-          <div class="stat-label">Total Students</div>
+          <div class="stat-value">{{ stats.totalStudents }}</div>
+          <div class="stat-label">Total students</div>
           <div class="stat-sublabel" *ngIf="stats.totalStudents > 0">
-            <span class="sublabel-item">📘 {{ stats.dayScholars }} Day Scholars</span>
-            <span class="sublabel-item">🏠 {{ stats.boarders }} Boarders</span>
+            <span class="sublabel-item">{{ stats.dayScholars }} day · {{ stats.boarders }} boarding</span>
           </div>
         </div>
-        <div class="stat-trend up">
-          <span class="trend-icon">📈</span>
-        </div>
-      </div>
-      
-      <div class="stat-card success modern-card">
+      </article>
+
+      <article class="stat-card success">
         <div class="stat-icon-wrapper">
-          <div class="stat-icon modern-icon">👨‍🏫</div>
+          <div class="stat-icon" aria-hidden="true">👨‍🏫</div>
         </div>
         <div class="stat-content">
-          <div class="stat-value animated-value">{{ stats.totalTeachers }}</div>
+          <div class="stat-value">{{ stats.totalTeachers }}</div>
           <div class="stat-label">Teachers</div>
-          <div class="stat-sublabel">
-            <span class="sublabel-item">Active Staff</span>
-          </div>
+          <div class="stat-sublabel"><span class="sublabel-item">Active staff</span></div>
         </div>
-        <div class="stat-trend">
-          <span class="trend-icon">✨</span>
-        </div>
-      </div>
-      
-      <div class="stat-card info modern-card">
+      </article>
+
+      <article class="stat-card info">
         <div class="stat-icon-wrapper">
-          <div class="stat-icon modern-icon">🏫</div>
+          <div class="stat-icon" aria-hidden="true">🏫</div>
         </div>
         <div class="stat-content">
-          <div class="stat-value animated-value">{{ stats.totalClasses }}</div>
-          <div class="stat-label">Active Classes</div>
-          <div class="stat-sublabel">
-            <span class="sublabel-item">Currently Running</span>
-          </div>
+          <div class="stat-value">{{ stats.totalClasses }}</div>
+          <div class="stat-label">Classes</div>
+          <div class="stat-sublabel"><span class="sublabel-item">Active this term</span></div>
         </div>
-        <div class="stat-trend">
-          <span class="trend-icon">🎓</span>
-        </div>
-      </div>
-      
-      <div class="stat-card warning modern-card">
+      </article>
+
+      <article class="stat-card warning">
         <div class="stat-icon-wrapper">
-          <div class="stat-icon modern-icon">📚</div>
+          <div class="stat-icon" aria-hidden="true">📚</div>
         </div>
         <div class="stat-content">
-          <div class="stat-value animated-value">{{ stats.totalSubjects }}</div>
+          <div class="stat-value">{{ stats.totalSubjects }}</div>
           <div class="stat-label">Subjects</div>
-          <div class="stat-sublabel">
-            <span class="sublabel-item">Available Courses</span>
-          </div>
+          <div class="stat-sublabel"><span class="sublabel-item">In catalogue</span></div>
         </div>
-        <div class="stat-trend">
-          <span class="trend-icon">📖</span>
-        </div>
-      </div>
-      
-      <div class="stat-card danger modern-card" *ngIf="canViewDashboardStats() && canAccessModule('finance')">
+      </article>
+
+      <article class="stat-card danger" *ngIf="canViewDashboardStats() && canAccessModule('finance')">
         <div class="stat-icon-wrapper">
-          <div class="stat-icon modern-icon">💰</div>
+          <div class="stat-icon" aria-hidden="true">💰</div>
         </div>
         <div class="stat-content">
-          <div class="stat-value animated-value">{{ stats.totalInvoices }}</div>
-          <div class="stat-label">Total Invoices</div>
+          <div class="stat-value">{{ stats.totalInvoices }}</div>
+          <div class="stat-label">Invoices</div>
           <div class="stat-sublabel" *ngIf="stats.totalBalance > 0">
-            <span class="sublabel-item warning-text">⚠️ Outstanding: {{ stats.totalBalance | number:'1.2-2' }}</span>
+            <span class="sublabel-item warning-text">Outstanding {{ currencySymbol }} {{ stats.totalBalance | number:'1.2-2' }}</span>
           </div>
         </div>
-        <div class="stat-trend">
-          <span class="trend-icon">💳</span>
-        </div>
-      </div>
-      
-      <div class="stat-card secondary modern-card" *ngIf="canViewDashboardStats()">
+      </article>
+
+      <article class="stat-card secondary" *ngIf="canViewDashboardStats()">
         <div class="stat-icon-wrapper">
-          <div class="stat-icon modern-icon">👶</div>
+          <div class="stat-icon" aria-hidden="true">👶</div>
         </div>
         <div class="stat-content">
-          <div class="stat-value animated-value">{{ stats.staffChildren }}</div>
-          <div class="stat-label">Staff Children</div>
-          <div class="stat-sublabel">
-            <span class="sublabel-item">Special Category</span>
-          </div>
+          <div class="stat-value">{{ stats.staffChildren }}</div>
+          <div class="stat-label">Staff children</div>
+          <div class="stat-sublabel"><span class="sublabel-item">Special category</span></div>
         </div>
-        <div class="stat-trend">
-          <span class="trend-icon">⭐</span>
-        </div>
-      </div>
+      </article>
     </div>
-    
     <div class="loading-stats" *ngIf="canViewDashboardStats() && loadingStats">
       <div class="spinner"></div>
       <p>Loading statistics...</p>
@@ -339,10 +310,7 @@
       <div class="dash-shortcuts-row" *ngIf="isAdmin() || isAccountant()">
         <div class="card modern-card dash-modules-card">
           <div class="card-header-modern">
-            <h2>
-              <span class="card-icon">🧩</span>
-              Quick modules
-            </h2>
+            <h2>Quick modules</h2>
             <p class="dash-card-subtitle">{{ isAccountant() ? 'Finance and related areas you use most.' : 'Jump to the most-used areas of the system.' }}</p>
           </div>
           <div class="dash-module-grid">
@@ -370,11 +338,8 @@
 
       <div class="card modern-card" *ngIf="isTeacher()">
         <div class="card-header-modern">
-          <h2>
-            <span class="card-icon">👨‍🏫</span>
-            Teaching hub
-          </h2>
-          <p class="dash-card-subtitle">Shortcuts while you are on the main dashboard.</p>
+          <h2>Teaching hub</h2>
+          <p class="dash-card-subtitle">Shortcuts for marks, attendance, and class work.</p>
         </div>
         <div class="dash-tile-grid">
             <a routerLink="/exams" class="dash-tile" *ngIf="canAccessModule('exams')">
@@ -447,12 +412,9 @@
       <!-- Recent Activity Section -->
       <div class="card recent-activity modern-card" *ngIf="canViewDashboardStats() && !loadingStats">
         <div class="card-header-flex">
-          <h2>
-            <span class="card-icon">🕒</span>
-            Recent Activity
-          </h2>
+          <h2>Recent activity</h2>
           <a routerLink="/students" class="view-all-link modern-link" *ngIf="recentStudents.length > 0">
-            View All 
+            View all
             <span class="link-arrow">→</span>
           </a>
         </div>

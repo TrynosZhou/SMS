@@ -66,12 +66,12 @@
 }
 
 .academic-tab:hover {
-  color: #7c3aed;
+  color: #1e3a5f;
 }
 
 .academic-tab.active {
-  color: #7c3aed;
-  border-bottom-color: #7c3aed;
+  color: #1e3a5f;
+  border-bottom-color: #1e3a5f;
   font-weight: 600;
 }
 
@@ -228,7 +228,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.85rem 1.25rem;
-  background: linear-gradient(90deg, #7c3aed 0%, #6366f1 50%, #4f46e5 100%);
+  background: linear-gradient(90deg, #1e3a5f 0%, #1d4ed8 50%, #1e3a5f 100%);
   color: #fff;
 }
 
@@ -313,18 +313,47 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+  background: #fff;
 }
 
-.academic-table thead tr {
-  background: linear-gradient(90deg, #7c3aed 0%, #6366f1 100%);
-  color: #fff;
+/* Lock header — override global th color / thead bg */
+.academic-table thead,
+.academic-table thead tr,
+.academic-table thead th {
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  color: #ffffff !important;
+}
+
+.academic-table thead tr:hover,
+.academic-table thead tr:hover th {
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  color: #ffffff !important;
 }
 
 .academic-table th {
   padding: 0.75rem 1rem;
   text-align: left;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   white-space: nowrap;
+  color: #ffffff !important;
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  border-bottom: 1px solid #152a45;
+}
+
+.academic-table thead .th-icon,
+.academic-table th .th-icon {
+  display: inline-block;
+  color: #ffffff !important;
+  filter: brightness(0) invert(1);
+  -webkit-filter: brightness(0) invert(1);
+  opacity: 1;
+  margin-right: 0.35rem;
 }
 
 .academic-table td {
@@ -339,7 +368,7 @@
 
 /* Classes tab (reference layout) */
 .academic-classes-panel .academic-panel-toolbar {
-  background: linear-gradient(90deg, #7c3aed 0%, #6d28d9 50%, #5b21b6 100%);
+  background: linear-gradient(90deg, #1e3a5f 0%, #1e3a5f 50%, #152a45 100%);
 }
 
 .academic-classes-table .th-icon {
@@ -366,8 +395,8 @@
   display: inline-block;
   padding: 0.25rem 0.65rem;
   border-radius: 999px;
-  background: #ede9fe;
-  color: #6d28d9;
+  background: #f1f5f9;
+  color: #1e3a5f;
   font-size: 0.8rem;
   font-weight: 600;
 }
@@ -514,8 +543,8 @@
 }
 
 .btn-edit:hover:not(:disabled) {
-  border-color: #7c3aed;
-  color: #7c3aed;
+  border-color: #1e3a5f;
+  color: #1e3a5f;
 }
 
 .academic-placeholder {
@@ -711,8 +740,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  background: #ede9fe;
-  color: #5b21b6;
+  background: #f1f5f9;
+  color: #152a45;
   padding: 0.35rem 0.65rem;
   border-radius: 999px;
   font-size: 0.85rem;
@@ -722,7 +751,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #7c3aed;
+  color: #1e3a5f;
   font-size: 1rem;
   line-height: 1;
 }
@@ -820,10 +849,20 @@
 }
 
 .subjects-manage-hero {
-  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #5b21b6 100%);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1e3a5f 0%, #1e3a5f 50%, #152a45 100%);
   color: #fff;
   padding: 1.35rem 1.5rem;
   border-radius: 10px 10px 0 0;
+}
+
+.subjects-manage-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .subjects-manage-hero h2 {
@@ -844,7 +883,7 @@
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #4f46e5 100%);
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #1e3a5f 100%);
   color: #fff;
   padding: 0.9rem 1.25rem;
 }
@@ -890,7 +929,7 @@
 
 .btn-subjects-add--inline {
   margin-top: 0.75rem;
-  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  background: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
   border-color: transparent;
 }
 
@@ -928,16 +967,30 @@
   border-radius: 0 0 10px 10px;
 }
 
-.subjects-table thead tr {
-  background: #f8fafc;
-  color: #475569;
+.subjects-table thead,
+.subjects-table thead tr,
+.subjects-table thead th {
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  color: #ffffff !important;
+}
+
+.subjects-table thead tr:hover,
+.subjects-table thead tr:hover th {
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  color: #ffffff !important;
 }
 
 .subjects-table th {
   font-size: 0.72rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  border-bottom: 2px solid #e2e8f0;
+  color: #ffffff !important;
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  border-bottom: 1px solid #152a45;
 }
 
 .subject-code-pill {

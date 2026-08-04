@@ -1,6 +1,6 @@
-/* Results Analysis — modern purple hero (matches exam module) */
+/* Results Analysis — classic professional layout */
 .ra-page {
-  --ra-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
+  --ra-gradient: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
   --ra-border: #e2e8f0;
   --ra-text: #0f172a;
   --ra-muted: #64748b;
@@ -8,16 +8,19 @@
   margin: 0 auto;
   padding: 1.25rem 1.5rem 2.5rem;
   box-sizing: border-box;
+  background: transparent;
 }
 
 .ra-toast-stack {
-  position: sticky;
-  top: 0.5rem;
-  z-index: 50;
+  position: fixed;
+  top: calc(64px + 0.75rem);
+  right: 1rem;
+  z-index: 1105;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  max-width: min(420px, calc(100vw - 2rem));
+  margin-bottom: 0;
 }
 
 .ra-toast {
@@ -35,11 +38,22 @@
 
 .ra-hero {
   background: var(--ra-gradient);
-  border-radius: 14px;
-  padding: 20px 24px 14px;
+  border-radius: 12px;
+  padding: 1.35rem 1.5rem 1.1rem;
   margin-bottom: 1.25rem;
-  box-shadow: 0 4px 20px rgba(91, 33, 182, 0.25);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  position: relative;
+  overflow: hidden;
   color: #fff;
+}
+
+.ra-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .ra-hero__main {
@@ -53,34 +67,34 @@
 .ra-hero-left { display: flex; align-items: flex-start; gap: 14px; }
 
 .ra-hero-icon {
-  width: 48px;
-  height: 48px;
-  background: #facc15;
-  border-radius: 12px;
+  width: 42px;
+  height: 42px;
+  background: #f59e0b;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   flex-shrink: 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  box-shadow: none;
 }
 
 .ra-hero-eyebrow {
   display: block;
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
+  color: #fbbf24;
   margin-bottom: 4px;
 }
 
-.ra-hero h1 { margin: 0 0 4px; font-size: 1.55rem; font-weight: 700; }
+.ra-hero h1 { margin: 0 0 4px; font-size: clamp(1.3rem, 2vw, 1.55rem); font-weight: 700; }
 
 .ra-hero-sub {
   margin: 0;
   font-size: 0.88rem;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.78);
   max-width: 42rem;
   line-height: 1.45;
 }
@@ -130,11 +144,11 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
-  margin-top: 16px;
-  background: #fff;
-  border-radius: 12px;
-  padding: 12px;
-  border: 1px solid #e2e8f0;
+  margin-top: 14px;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  border: none;
 }
 
 .ra-hero-stats--skeleton { min-height: 3.5rem; }
@@ -149,12 +163,13 @@
 @keyframes ra-pulse { 50% { opacity: 0.5; } }
 
 .ra-stat {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-left: 3px solid #94a3b8;
+  border-radius: 8px;
   padding: 10px 12px;
   text-align: center;
-  color: #000;
+  color: #0f172a;
 }
 
 .ra-stat__value {
@@ -162,7 +177,7 @@
   font-size: 1.05rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #000;
+  color: #0f172a;
 }
 
 .ra-stat__label {
@@ -170,7 +185,7 @@
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #000;
+  color: #64748b;
   font-weight: 700;
   margin-top: 2px;
 }
@@ -253,8 +268,8 @@
 
 .ra-select:focus {
   outline: none;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  border-color: #1e3a5f;
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
 }
 
 .ra-field--subject { max-width: 360px; margin-bottom: 1rem; }
@@ -289,12 +304,12 @@
 }
 
 .ra-btn--primary {
-  background: #7c3aed;
+  background: #1e3a5f;
   color: #fff;
-  border-color: #7c3aed;
+  border-color: #1e3a5f;
 }
 
-.ra-btn--primary:hover:not(:disabled) { background: #6d28d9; }
+.ra-btn--primary:hover:not(:disabled) { background: #1e3a5f; }
 
 .ra-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
@@ -336,8 +351,8 @@
 .ra-tab:hover { background: #f8fafc; }
 
 .ra-tab--active {
-  background: #7c3aed;
-  border-color: #7c3aed;
+  background: #1e3a5f;
+  border-color: #1e3a5f;
   color: #fff;
 }
 
@@ -363,9 +378,9 @@
 .ra-subtab:hover { background: #f8fafc; }
 
 .ra-subtab--active {
-  background: #ede9fe;
-  border-color: #7c3aed;
-  color: #5b21b6;
+  background: #f1f5f9;
+  border-color: #1e3a5f;
+  color: #152a45;
 }
 
 .ra-student-meta {
@@ -473,7 +488,7 @@
   transition: height 0.35s ease;
 }
 
-.ra-vbar__fill--pass { background: linear-gradient(180deg, #8b5cf6 0%, #6d28d9 100%); }
+.ra-vbar__fill--pass { background: linear-gradient(180deg, #274876 0%, #1e3a5f 100%); }
 .ra-vbar__fill--mid { background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%); }
 .ra-vbar__fill--low { background: linear-gradient(180deg, #fb7185 0%, #e11d48 100%); }
 
@@ -505,7 +520,7 @@
 .ra-table-wrap--compact { margin-top: 0.25rem; }
 
 .ra-table tbody tr.ra-table__row--active {
-  background: #f5f3ff;
+  background: #f8fafc;
 }
 
 .ra-table tbody tr.ra-table__row--clickable {
@@ -517,7 +532,7 @@
 }
 
 .ra-table tbody tr.ra-table__row--clickable.ra-table__row--active:hover {
-  background: #ede9fe;
+  background: #f1f5f9;
 }
 
 .ra-hint {
@@ -603,7 +618,7 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #7c3aed;
+  background: #1e3a5f;
   color: #fff;
   font-size: 0.78rem;
   font-weight: 700;
@@ -627,7 +642,7 @@
 }
 
 .ra-pill--pass { background: #dcfce7; color: #15803d; }
-.ra-pill--score { background: #ede9fe; color: #5b21b6; }
+.ra-pill--score { background: #f1f5f9; color: #152a45; }
 .ra-pill--muted { background: #f1f5f9; color: #475569; }
 
 .ra-subpanel {
@@ -656,7 +671,7 @@
   width: 4px;
   height: 22px;
   border-radius: 4px;
-  background: #7c3aed;
+  background: #1e3a5f;
   flex-shrink: 0;
 }
 
@@ -731,6 +746,7 @@
 
 @media (max-width: 768px) {
   .ra-page { padding: 1rem; }
+  .ra-toast-stack { left: 1rem; right: 1rem; max-width: none; }
   .ra-hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ra-form-grid,
   .ra-form-grid--with-action { grid-template-columns: 1fr; }

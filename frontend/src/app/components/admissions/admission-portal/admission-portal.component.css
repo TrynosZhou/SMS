@@ -3,35 +3,46 @@
   min-height: 100%;
   padding: 1rem 1rem 1.5rem;
   box-sizing: border-box;
-  background: linear-gradient(180deg, #f8fafc 0%, #ede9fe 55%, #e9d5ff 100%);
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 55%, #e2e8f0 100%);
 }
 
 .adm-portal {
   max-width: 960px;
   margin: 0 auto;
   padding: 1.35rem 1.5rem 2rem;
-  border: 4px solid #7c3aed;
-  outline: 2px solid #c4b5fd;
+  border: 4px solid #1e3a5f;
+  outline: 2px solid #cbd5e1;
   outline-offset: 3px;
   border-radius: 20px;
-  background: linear-gradient(180deg, #ffffff 0%, #faf5ff 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
   box-shadow:
-    0 0 0 1px rgba(124, 58, 237, 0.08),
-    0 12px 40px rgba(91, 33, 182, 0.14),
+    0 0 0 1px rgba(30, 58, 95, 0.08),
+    0 12px 40px rgba(30, 58, 95, 0.14),
     0 4px 12px rgba(15, 23, 42, 0.06);
 }
 
 .adm-hero {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
   padding: 1.5rem 1.75rem;
   margin-bottom: 1.25rem;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
   color: #fff;
-  box-shadow: 0 8px 28px rgba(91, 33, 182, 0.25);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.adm-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .adm-eyebrow {
@@ -40,7 +51,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.85;
+  color: #fbbf24;
   margin-bottom: 0.35rem;
 }
 
@@ -94,7 +105,7 @@
 
 .adm-btn--primary {
   background: #fff;
-  color: #6d28d9;
+  color: #1e3a5f;
 }
 
 .adm-btn--ghost {
@@ -104,16 +115,16 @@
 }
 
 .adm-panel .adm-btn--primary {
-  background: linear-gradient(135deg, #6d28d9, #7c3aed);
+  background: linear-gradient(135deg, #1e3a5f, #1e3a5f);
   color: #fff;
 }
 
 .adm-btn--sm {
   padding: 0.35rem 0.75rem;
   font-size: 0.8rem;
-  background: #eef2ff;
-  color: #4338ca;
-  border: 1px solid #c7d2fe;
+  background: #f1f5f9;
+  color: #1e3a5f;
+  border: 1px solid #cbd5e1;
   text-decoration: none;
   display: inline-block;
   text-align: center;

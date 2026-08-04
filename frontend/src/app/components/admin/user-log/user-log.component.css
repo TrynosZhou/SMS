@@ -1,7 +1,7 @@
 /* Activity Log — modern admin theme (aligned with user-management) */
 .ul-page {
-  --ul-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
-  --ul-purple: #7c3aed;
+  --ul-gradient: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
+  --ul-purple: #1e3a5f;
   --ul-border: #e2e8f0;
   --ul-muted: #64748b;
   --ul-text: #0f172a;
@@ -31,7 +31,7 @@
   padding: 0.75rem 1rem;
   border-radius: 10px;
   font-size: 0.9rem;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
 }
 
 .ul-toast--error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
@@ -39,12 +39,22 @@
 .ul-toast__dismiss:hover { opacity: 1; }
 
 .ul-hero {
+  position: relative;
+  overflow: hidden;
   background: var(--ul-gradient);
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 22px 26px 18px;
   margin-bottom: 1.25rem;
-  box-shadow: 0 4px 24px rgba(91, 33, 182, 0.28);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
   color: #fff;
+}
+
+.ul-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .ul-hero__main {
@@ -59,16 +69,16 @@
 .ul-hero-left { display: flex; align-items: flex-start; gap: 14px; }
 
 .ul-hero-icon {
-  width: 52px;
-  height: 52px;
-  background: #facc15;
-  border-radius: 14px;
+  width: 42px;
+  height: 42px;
+  background: #f59e0b;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.55rem;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: none;
 }
 
 .ul-hero-eyebrow {
@@ -77,7 +87,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
+  color: #fbbf24;
   margin-bottom: 4px;
 }
 
@@ -143,7 +153,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
-.ul-hero-btn--white:hover:not(:disabled) { background: #f5f3ff; }
+.ul-hero-btn--white:hover:not(:disabled) { background: #f8fafc; }
 .ul-hero-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .ul-cross-links {
@@ -212,14 +222,14 @@
 .ul-panel {
   background: #fff;
   border: 1px solid var(--ul-border);
-  border-radius: 14px;
+  border-radius: 8px;
   box-shadow: var(--ul-shadow);
   padding: 1.25rem 1.35rem;
   margin-bottom: 1.25rem;
 }
 
 .ul-panel--filters { border-top: 3px solid var(--ul-purple); }
-.ul-panel--table { border-top: 3px solid #6366f1; padding-bottom: 0.75rem; }
+.ul-panel--table { border-top: 3px solid #1d4ed8; padding-bottom: 0.75rem; }
 
 .ul-panel__head { margin-bottom: 1rem; }
 .ul-panel__head--row {
@@ -276,7 +286,7 @@
 .ul-select:focus {
   outline: none;
   border-color: var(--ul-purple);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
 }
 
 .ul-field label {
@@ -383,7 +393,7 @@
 }
 
 .ul-table thead th:hover { background: #f1f5f9; }
-.ul-th--active { color: var(--ul-purple); background: #faf5ff !important; }
+.ul-th--active { color: var(--ul-purple); background: #ffffff !important; }
 
 .ul-sort {
   font-size: 0.72rem;
@@ -423,8 +433,8 @@
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
-  color: #5b21b6;
+  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  color: #152a45;
   font-size: 0.72rem;
   font-weight: 700;
   display: flex;
@@ -463,7 +473,7 @@
 .ul-role--admin { background: #fde68a; color: #92400e; }
 .ul-role--superadmin { background: #bfdbfe; color: #1e40af; }
 .ul-role--accountant { background: #d1fae5; color: #065f46; }
-.ul-role--teacher { background: #e0e7ff; color: #3730a3; }
+.ul-role--teacher { background: #e2e8f0; color: #1e3a5f; }
 .ul-role--director,
 .ul-role--headmaster,
 .ul-role--deputy_headmaster { background: #fce7f3; color: #9d174d; }
@@ -564,7 +574,7 @@
   width: min(1100px, 96vw);
   height: min(90vh, 900px);
   background: #fff;
-  border-radius: 14px;
+  border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 24px 72px rgba(15, 23, 42, 0.35);
 }
@@ -576,7 +586,7 @@
   gap: 1rem;
   flex-wrap: wrap;
   padding: 0.85rem 1.15rem;
-  background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #152a45 0%, #1e3a5f 100%);
   color: #fff;
 }
 
@@ -594,7 +604,7 @@
 .ul-pdf-modal__actions .ul-btn--outline {
   background: #fff;
   border-color: rgba(255, 255, 255, 0.35);
-  color: #5b21b6;
+  color: #152a45;
 }
 
 .ul-pdf-modal__actions .ul-btn--close {

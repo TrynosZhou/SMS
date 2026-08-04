@@ -81,7 +81,7 @@
         <input #slSearch type="search" class="sl-search-input" placeholder="Search invoice #, student, term…" [disabled]="loading && !invoices.length" (input)="onLedgerSearchInput(slSearch.value)" />
         <button type="button" class="sl-search-clear" *ngIf="ledgerSearchQuery" (click)="slSearch.value = ''; clearLedgerSearch()">Clear</button>
       </div>
-      <button type="button" class="sl-hero-btn sl-hero-btn--white" style="background:#6d28d9;color:#fff;border:none;height:42px" (click)="loadInvoices()" [disabled]="loading">{{ loading ? 'Loading…' : 'Refresh' }}</button>
+      <button type="button" class="sl-hero-btn sl-hero-btn--white" style="background:#1e3a5f;color:#fff;border:none;height:42px" (click)="loadInvoices()" [disabled]="loading">{{ loading ? 'Loading…' : 'Refresh' }}</button>
     </div>
     <div class="sl-chips">
       <button type="button" class="sl-chip" [class.sl-chip--active]="ledgerStatusChip === 'all'" (click)="onLedgerStatusChip('all')">All<span class="sl-chip__count">({{ ledgerStatusCounts['all'] }})</span></button>

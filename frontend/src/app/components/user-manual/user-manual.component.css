@@ -6,7 +6,7 @@
 }
 
 .manual-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
   color: white;
   padding: 30px;
   border-radius: 12px;
@@ -67,7 +67,7 @@
 
 .spinner {
   border: 4px solid #f3f3f3;
-  border-top: 4px solid #667eea;
+  border-top: 4px solid #1e3a5f;
   border-radius: 50%;
   width: 50px;
   height: 50px;
@@ -104,11 +104,11 @@
   margin-top: 0;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 3px solid #667eea;
+  border-bottom: 3px solid #1e3a5f;
 }
 
 .manual-content h2 {
-  color: #667eea;
+  color: #1e3a5f;
   font-size: 26px;
   margin-top: 40px;
   margin-bottom: 20px;
@@ -117,7 +117,7 @@
 }
 
 .manual-content h3 {
-  color: #764ba2;
+  color: #152a45;
   font-size: 20px;
   margin-top: 30px;
   margin-bottom: 15px;
@@ -165,7 +165,7 @@
 }
 
 .manual-content blockquote {
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #1e3a5f;
   padding-left: 20px;
   margin: 20px 0;
   color: #666;
@@ -173,7 +173,7 @@
 }
 
 .manual-content a {
-  color: #667eea;
+  color: #1e3a5f;
   text-decoration: none;
   font-weight: 500;
 }
@@ -247,7 +247,7 @@
 }
 
 .toc-link {
-  color: #667eea;
+  color: #1e3a5f;
   text-decoration: none;
   padding: 8px 12px;
   border-radius: 6px;
@@ -259,7 +259,7 @@
 
 .toc-link:hover {
   background: #f0f0ff;
-  color: #764ba2;
+  color: #152a45;
   transform: translateX(5px);
 }
 

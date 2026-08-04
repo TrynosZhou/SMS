@@ -34,8 +34,8 @@
 .rp-textarea:focus,
 .rp-amount-input:focus {
   outline: none;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  border-color: #1e3a5f;
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
 }
 
 .rp-textarea { resize: vertical; min-height: 72px; }
@@ -75,11 +75,11 @@
   transition: all 0.15s;
 }
 
-.rp-amount-btn:hover { border-color: #c4b5fd; background: #faf5ff; }
+.rp-amount-btn:hover { border-color: #cbd5e1; background: #ffffff; }
 
 .rp-amount-btn--active {
-  border-color: #7c3aed;
-  background: #ede9fe;
+  border-color: #1e3a5f;
+  background: #f1f5f9;
 }
 
 .rp-amount-btn__label {
@@ -160,12 +160,12 @@
   transition: all 0.15s;
 }
 
-.rp-method-chip:hover { border-color: #c4b5fd; }
+.rp-method-chip:hover { border-color: #cbd5e1; }
 
 .rp-method-chip--active {
-  background: #ede9fe;
-  border-color: #c4b5fd;
-  color: #6d28d9;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #1e3a5f;
 }
 
 .rp-form-actions {
@@ -257,7 +257,7 @@
 
 .rp-confirm-label { color: #64748b; font-size: 0.875rem; }
 .rp-confirm-value { font-weight: 600; color: #1e293b; text-align: right; }
-.rp-confirm-value--highlight { color: #6d28d9; font-size: 1.1rem; }
+.rp-confirm-value--highlight { color: #1e3a5f; font-size: 1.1rem; }
 
 .rp-balance-preview {
   background: #f8fafc;

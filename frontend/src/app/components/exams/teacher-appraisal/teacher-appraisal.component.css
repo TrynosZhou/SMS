@@ -1,6 +1,6 @@
 .ta-page {
-  --ta-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
-  --ta-purple: #7c3aed;
+  --ta-gradient: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
+  --ta-purple: #1e3a5f;
   --ta-border: #e2e8f0;
   --ta-muted: #64748b;
   --ta-text: #0f172a;
@@ -8,6 +8,7 @@
   margin: 0 auto;
   padding: 1.25rem 1.5rem 2.5rem;
   box-sizing: border-box;
+  background: transparent;
 }
 
 .ta-alert {
@@ -28,20 +29,33 @@
 .ta-hero {
   background: var(--ta-gradient);
   color: #fff;
-  border-radius: 16px;
-  padding: 1.35rem 1.5rem 1rem;
+  border-radius: 12px;
+  padding: 1.35rem 1.5rem 1.1rem;
   margin-bottom: 1.25rem;
-  box-shadow: 0 4px 24px rgba(91, 33, 182, 0.28);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  position: relative;
+  overflow: hidden;
 }
+
+.ta-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
+}
+
 .ta-hero__main { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .ta-hero-left { display: flex; gap: 0.9rem; }
 .ta-hero-icon {
-  width: 48px; height: 48px; border-radius: 12px; background: #facc15;
-  display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;
+  width: 42px; height: 42px; border-radius: 8px; background: #f59e0b;
+  display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;
+  box-shadow: none;
 }
-.ta-hero-eyebrow { display: block; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.8; }
-.ta-hero h1 { margin: 0.15rem 0 0.35rem; font-size: 1.65rem; }
-.ta-hero-sub { margin: 0; opacity: 0.92; font-size: 0.92rem; max-width: 640px; }
+.ta-hero-eyebrow { display: block; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #fbbf24; margin-bottom: 4px; }
+.ta-hero h1 { margin: 0.15rem 0 0.35rem; font-size: clamp(1.3rem, 2vw, 1.65rem); color: #fff; }
+.ta-hero-sub { margin: 0; font-size: 0.88rem; color: rgba(255, 255, 255, 0.78); max-width: 640px; line-height: 1.45; }
 
 .ta-cycle-bar {
   display: flex; align-items: center; gap: 0.75rem; margin: 1rem 0 0.75rem; flex-wrap: wrap;
@@ -119,8 +133,8 @@
 .ta-input:focus,
 .ta-select:focus {
   outline: none;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  border-color: #1e3a5f;
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
 }
 
 .ta-input:disabled,
@@ -138,8 +152,8 @@
   border: none; border-radius: 10px; padding: 0.55rem 1rem;
   font-weight: 600; font-size: 0.88rem; cursor: pointer; font-family: inherit;
 }
-.ta-btn--primary { background: #16a34a; color: #fff; }
-.ta-btn--primary:hover:not(:disabled) { background: #15803d; }
+.ta-btn--primary { background: #1e3a5f; color: #fff; }
+.ta-btn--primary:hover:not(:disabled) { background: #152a45; }
 .ta-btn--white { background: #fff; color: var(--ta-purple); }
 .ta-btn--ghost { background: #fff; border: 1px solid var(--ta-border); color: #334155; }
 .ta-btn--sm { padding: 0.35rem 0.7rem; font-size: 0.8rem; }
@@ -150,7 +164,7 @@
 .ta-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
 .ta-table th, .ta-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid #cbd5e1; text-align: left; color: #000000; }
 .ta-table th { background: #f8fafc; color: #000000; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; }
-.ta-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; background: #ede9fe; color: #5b21b6; font-size: 0.75rem; font-weight: 700; }
+.ta-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; background: #f1f5f9; color: #152a45; font-size: 0.75rem; font-weight: 700; }
 
 .ta-stats {
   display: grid;
@@ -174,7 +188,7 @@
 }
 .ta-bar-label { font-size: 0.82rem; color: #000000; text-transform: capitalize; font-weight: 600; }
 .ta-bar-track { height: 10px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
-.ta-bar-fill { height: 100%; background: #7c3aed; border-radius: 999px; min-width: 0; }
+.ta-bar-fill { height: 100%; background: #1e3a5f; border-radius: 999px; min-width: 0; }
 .ta-bar-value { font-size: 0.82rem; font-weight: 700; text-align: right; color: #000000; }
 
 .ta-score-list { display: flex; flex-direction: column; gap: 0.75rem; margin: 1rem 0; }

@@ -1,6 +1,6 @@
 .link-account-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
   padding: 2rem;
   display: flex;
   justify-content: center;
@@ -29,7 +29,7 @@
 }
 
 .card-header {
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
   color: white;
   padding: 2rem;
   display: flex;
@@ -126,8 +126,8 @@
 
 .form-input:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  border-color: #1e3a5f;
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
 }
 
 .form-input:disabled {
@@ -155,13 +155,13 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 4px 12px rgba(30, 58, 95, 0.3);
 }
 
 .btn-secondary {
@@ -233,7 +233,7 @@
 .profile-avatar {
   width: 60px;
   height: 60px;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -303,8 +303,8 @@
 }
 
 .tag {
-  background: #e0e7ff;
-  color: #4f46e5;
+  background: #e2e8f0;
+  color: #1e3a5f;
   padding: 0.25rem 0.75rem;
   border-radius: 16px;
   font-size: 0.875rem;

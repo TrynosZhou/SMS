@@ -1,8 +1,8 @@
-/* Mark Sheet — modern purple theme */
+/* Mark Sheet — classic professional layout */
 .ms-page {
-  --ms-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
-  --ms-purple: #7c3aed;
-  --ms-purple-dark: #6d28d9;
+  --ms-gradient: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
+  --ms-purple: #1e3a5f;
+  --ms-purple-dark: #152a45;
   --ms-border: #e2e8f0;
   --ms-muted: #64748b;
   --ms-text: #0f172a;
@@ -11,6 +11,7 @@
   margin: 0 auto;
   padding: 1.25rem 1.5rem 2.5rem;
   box-sizing: border-box;
+  background: transparent;
 }
 
 /* Toasts — sit below sticky app navbar so they are fully visible */
@@ -49,11 +50,22 @@
 /* Hero */
 .ms-hero {
   background: var(--ms-gradient);
-  border-radius: 16px;
-  padding: 22px 26px 18px;
+  border-radius: 12px;
+  padding: 1.35rem 1.5rem 1.1rem;
   margin-bottom: 1.25rem;
-  box-shadow: 0 4px 24px rgba(91, 33, 182, 0.28);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  position: relative;
+  overflow: hidden;
   color: #fff;
+}
+
+.ms-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .ms-hero__main {
@@ -68,30 +80,30 @@
 .ms-hero-left { display: flex; align-items: flex-start; gap: 14px; }
 
 .ms-hero-icon {
-  width: 52px;
-  height: 52px;
-  background: #facc15;
-  border-radius: 14px;
+  width: 42px;
+  height: 42px;
+  background: #f59e0b;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.55rem;
+  font-size: 1.25rem;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: none;
 }
 
 .ms-hero-eyebrow {
   display: block;
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
+  color: #fbbf24;
   margin-bottom: 4px;
 }
 
-.ms-hero h1 { margin: 0 0 6px; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
-.ms-hero-sub { margin: 0; opacity: 0.92; font-size: 0.95rem; max-width: 640px; line-height: 1.5; }
+.ms-hero h1 { margin: 0 0 6px; font-size: clamp(1.3rem, 2vw, 1.75rem); font-weight: 700; letter-spacing: -0.02em; }
+.ms-hero-sub { margin: 0; font-size: 0.88rem; color: rgba(255, 255, 255, 0.78); max-width: 640px; line-height: 1.45; }
 
 .ms-hero-aside { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
@@ -138,24 +150,26 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 10px;
-  margin-bottom: 14px;
+  margin: 14px 0;
 }
 
 .ms-stat {
   position: relative;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-left: 3px solid #94a3b8;
+  border-radius: 8px;
   padding: 12px 14px 12px 38px;
+  color: #0f172a;
 }
 
 .ms-stat__icon { position: absolute; left: 12px; top: 14px; font-size: 0.85rem; opacity: 0.75; }
-.ms-stat__value { display: block; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.ms-stat__label { display: block; font-size: 0.72rem; opacity: 0.85; margin-top: 2px; }
-.ms-stat--mint .ms-stat__value { color: #bbf7d0; }
-.ms-stat--amber .ms-stat__value { color: #fde68a; }
-.ms-stat--sky .ms-stat__value { color: #bae6fd; }
-.ms-stat--muted .ms-stat__value { opacity: 0.9; }
+.ms-stat__value { display: block; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; color: #0f172a; }
+.ms-stat__label { display: block; font-size: 0.72rem; color: #64748b; margin-top: 2px; }
+.ms-stat--mint .ms-stat__value { color: #047857; }
+.ms-stat--amber .ms-stat__value { color: #b45309; }
+.ms-stat--sky .ms-stat__value { color: #0369a1; }
+.ms-stat--muted .ms-stat__value { color: #64748b; }
 
 .ms-steps {
   display: flex;
@@ -245,7 +259,7 @@
 .ms-search-input:focus {
   outline: none;
   border-color: var(--ms-purple);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.18);
 }
 
 .ms-field-hint {
@@ -305,8 +319,8 @@
 }
 
 .ms-chip--done {
-  background: #f5f3ff;
-  border-color: #c4b5fd;
+  background: #f8fafc;
+  border-color: #cbd5e1;
   color: var(--ms-purple-dark);
 }
 
@@ -339,7 +353,7 @@
 .ms-btn--primary { background: var(--ms-purple); border-color: var(--ms-purple); color: #fff; }
 .ms-btn--primary:hover:not(:disabled) { background: var(--ms-purple-dark); border-color: var(--ms-purple-dark); }
 .ms-btn--outline { border-color: var(--ms-purple); color: var(--ms-purple-dark); }
-.ms-btn--outline:hover:not(:disabled) { background: #f5f3ff; }
+.ms-btn--outline:hover:not(:disabled) { background: #f8fafc; }
 .ms-btn--ghost { background: transparent; border-color: transparent; color: var(--ms-muted); }
 .ms-btn--ghost:hover:not(:disabled) { background: #f1f5f9; border-color: #e2e8f0; }
 .ms-btn--sm { padding: 0.4rem 0.75rem; font-size: 0.82rem; }
@@ -417,8 +431,8 @@
 
 .ms-meta-badge {
   padding: 0.25rem 0.65rem;
-  background: #f5f3ff;
-  border: 1px solid #ddd6fe;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 600;
@@ -565,30 +579,30 @@
 }
 
 .ms-thead-row-main .ms-th {
-  background: #5b21b6;
+  background: #152a45;
   color: #fff;
   font-weight: 700;
   font-size: 0.74rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  border-color: #4c1d95;
-  border-right-color: #4c1d95;
+  border-color: #152a45;
+  border-right-color: #152a45;
   white-space: nowrap;
 }
 
 .ms-thead-row-subjects .ms-th--subject {
-  background: #7c3aed;
+  background: #1e3a5f;
   color: #fff;
   font-weight: 600;
   padding: 0.4rem 0.35rem;
-  border-color: #6d28d9;
-  border-right-color: #6d28d9;
+  border-color: #1e3a5f;
+  border-right-color: #1e3a5f;
 }
 
 .ms-th--group {
   text-align: center;
-  border-color: #4c1d95;
-  border-right-color: #4c1d95;
+  border-color: #152a45;
+  border-right-color: #152a45;
 }
 
 .ms-table .sortable { cursor: pointer; user-select: none; }
@@ -627,7 +641,7 @@
 }
 
 .ms-table tbody .ms-row:hover > td {
-  background: #ede9fe !important;
+  background: #f1f5f9 !important;
 }
 
 .ms-table tbody .ms-row:nth-child(odd) > td.total-cell,
@@ -642,7 +656,7 @@
 
 .ms-table tbody .ms-row:hover > td.total-cell,
 .ms-table tbody .ms-row:hover > td.average-cell {
-  background: #ddd6fe !important;
+  background: #e2e8f0 !important;
 }
 
 /* Compact fixed widths for sticky columns */
@@ -724,14 +738,14 @@
 .ms-table thead .ms-sticky-left,
 .ms-table thead .ms-sticky-right {
   z-index: 6;
-  background: #5b21b6;
+  background: #152a45;
 }
 
 .position-cell { font-weight: 600; }
 
 .student-number-cell {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: #5b21b6;
+  color: #152a45;
   font-weight: 600;
   font-size: 0.75rem;
   overflow: hidden;
@@ -755,8 +769,8 @@
 }
 
 .ms-student-link:hover {
-  background: #ddd6fe !important;
-  color: #4c1d95;
+  background: #e2e8f0 !important;
+  color: #152a45;
   text-decoration: underline;
   text-underline-offset: 2px;
 }

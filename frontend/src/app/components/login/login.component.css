@@ -22,10 +22,10 @@
   z-index: 10001;
   pointer-events: none;
   box-sizing: border-box;
-  border: 8px solid #2563eb;
+  border: 8px solid #1e3a5f;
   box-shadow:
-    inset 0 0 0 2px #1d4ed8,
-    0 0 0 4px rgba(37, 99, 235, 0.15);
+    inset 0 0 0 2px #152a45,
+    0 0 0 4px rgba(30, 58, 95, 0.12);
 }
 
 /* Light grid background (blueprint-style) */
@@ -45,7 +45,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 80% 60% at 20% 40%, rgba(124, 58, 237, 0.06) 0%, transparent 55%);
+  background: radial-gradient(ellipse 80% 60% at 20% 40%, rgba(30, 58, 95, 0.06) 0%, transparent 55%);
 }
 
 .login-shell {
@@ -100,12 +100,13 @@
 }
 
 .login-brand-icon {
-  background: linear-gradient(145deg, #8b5cf6 0%, #7c3aed 100%);
-  color: #fff;
+  background: #f59e0b;
+  color: #111;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.28);
+  box-shadow: none;
+  border-radius: 8px;
 }
 
 .login-brand-icon svg {
@@ -147,7 +148,7 @@
 
 .login-hero-title em {
   font-style: italic;
-  color: #7c3aed;
+  color: #1e3a5f;
   font-weight: 700;
 }
 
@@ -307,12 +308,12 @@
 }
 
 .tab-btn:hover {
-  color: #7c3aed;
-  background: rgba(124, 58, 237, 0.06);
+  color: #1e3a5f;
+  background: rgba(30, 58, 95, 0.12);
 }
 
 .tab-btn.active {
-  color: #7c3aed;
+  color: #1e3a5f;
   background: #ffffff;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
   border-bottom-color: transparent;
@@ -426,7 +427,7 @@
   outline: none;
   border-color: #a78bfa;
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.12);
 }
 
 .password-input-wrapper,
@@ -496,8 +497,8 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background-color: #f5f3ff;
-  color: #7c3aed;
+  background-color: #f8fafc;
+  color: #1e3a5f;
   border: 1px solid #ddd6fe;
   font-size: 11px;
   font-weight: 700;
@@ -506,7 +507,7 @@
 }
 
 .help-icon:hover {
-  background-color: #ede9fe;
+  background-color: #f1f5f9;
 }
 
 .btn {
@@ -520,14 +521,14 @@
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
+  background: linear-gradient(180deg, #1e3a5f 0%, #1e3a5f 100%);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+  box-shadow: 0 4px 14px rgba(30, 58, 95, 0.12);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #7c3aed 0%, #6d28d9 100%);
-  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.42);
+  background: linear-gradient(180deg, #1e3a5f 0%, #152a45 100%);
+  box-shadow: 0 6px 18px rgba(30, 58, 95, 0.12);
   transform: translateY(-1px);
 }
 
@@ -551,7 +552,7 @@
 }
 
 .link {
-  color: #7c3aed;
+  color: #1e3a5f;
   text-decoration: none;
   font-weight: 600;
   cursor: pointer;
@@ -559,7 +560,7 @@
 
 .link:hover {
   text-decoration: underline;
-  color: #6d28d9;
+  color: #152a45;
 }
 
 .login-hero-admissions {
@@ -567,8 +568,8 @@
   padding: 1rem 1.15rem;
   border-radius: 12px;
   background: #fff;
-  border: 1px solid rgba(124, 58, 237, 0.35);
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.08);
+  border: 1px solid rgba(30, 58, 95, 0.12);
+  box-shadow: 0 4px 16px rgba(30, 58, 95, 0.12);
   max-width: 28rem;
 }
 
@@ -588,16 +589,16 @@
   padding: 0;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #7c3aed;
+  color: #1e3a5f;
   text-decoration: underline;
-  text-decoration-color: rgba(124, 58, 237, 0.45);
+  text-decoration-color: rgba(30, 58, 95, 0.12);
   text-underline-offset: 3px;
   cursor: pointer;
 }
 
 .login-hero-admissions__link:hover {
-  color: #6d28d9;
-  text-decoration-color: #6d28d9;
+  color: #152a45;
+  text-decoration-color: #152a45;
 }
 
 .login-hero-admissions__hint {
@@ -614,11 +615,11 @@
   box-sizing: border-box;
   padding: 14px 16px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   border: 1px solid #ddd6fe;
   box-shadow:
     0 1px 2px rgba(15, 23, 42, 0.04),
-    0 8px 24px rgba(124, 58, 237, 0.1);
+    0 8px 24px rgba(30, 58, 95, 0.12);
 }
 
 .login-admissions__head {
@@ -637,7 +638,7 @@
   flex-shrink: 0;
   border: none;
   background: transparent;
-  color: #6d28d9;
+  color: #152a45;
   font-size: 1.1rem;
   line-height: 1;
   cursor: pointer;
@@ -646,7 +647,7 @@
 }
 
 .login-admissions__close:hover {
-  background: rgba(124, 58, 237, 0.12);
+  background: rgba(30, 58, 95, 0.12);
 }
 
 .login-admissions-alert {
@@ -676,13 +677,13 @@
   margin: 12px 0 8px;
   font-size: 0.82rem;
   font-weight: 700;
-  color: #5b21b6;
+  color: #152a45;
 }
 
 .login-adm-hint {
   margin: 0 0 8px;
   font-size: 0.72rem;
-  color: #6d28d9;
+  color: #152a45;
 }
 
 .login-adm-grid {
@@ -722,8 +723,8 @@
 .login-adm-field input:focus,
 .login-adm-field select:focus,
 .login-adm-field textarea:focus {
-  outline: 2px solid rgba(124, 58, 237, 0.35);
-  border-color: #7c3aed;
+  outline: 2px solid rgba(30, 58, 95, 0.12);
+  border-color: #1e3a5f;
 }
 
 .login-adm-docs {
@@ -755,7 +756,7 @@
 .login-adm-auth-hint {
   margin: 12px 0 0;
   font-size: 0.75rem;
-  color: #5b21b6;
+  color: #152a45;
   line-height: 1.4;
 }
 
@@ -789,7 +790,7 @@
 .login-admissions__head p {
   margin: 2px 0 0;
   font-size: 0.78rem;
-  color: #5b21b6;
+  color: #152a45;
   line-height: 1.35;
 }
 
@@ -804,8 +805,8 @@
   min-width: 0;
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid #7c3aed;
-  background: #7c3aed;
+  border: 1px solid #1e3a5f;
+  background: #1e3a5f;
   color: #fff;
   font-size: 0.78rem;
   font-weight: 600;
@@ -814,19 +815,19 @@
 }
 
 .login-admissions__btn:hover {
-  background: #6d28d9;
-  border-color: #6d28d9;
+  background: #152a45;
+  border-color: #152a45;
 }
 
 .login-admissions__btn--alt {
   background: #fff;
-  color: #6d28d9;
+  color: #152a45;
   border-color: #a78bfa;
 }
 
 .login-admissions__btn--alt:hover {
-  background: #f5f3ff;
-  border-color: #7c3aed;
+  background: #f8fafc;
+  border-color: #1e3a5f;
 }
 
 .login-card .alert {
@@ -867,8 +868,8 @@
 }
 
 .alert-info {
-  background: #f5f3ff;
-  color: #5b21b6;
+  background: #f8fafc;
+  color: #152a45;
   border: 1px solid #ddd6fe;
 }
 
@@ -949,8 +950,8 @@
 }
 
 .signup-content .info-box {
-  background: #f5f3ff;
-  border-left: 4px solid #7c3aed;
+  background: #f8fafc;
+  border-left: 4px solid #1e3a5f;
   padding: 12px 14px;
   margin-bottom: 16px;
   border-radius: 10px;
@@ -959,7 +960,7 @@
 .signup-content .info-box p {
   margin: 0;
   font-size: 0.85rem;
-  color: #5b21b6;
+  color: #152a45;
   line-height: 1.5;
 }
 

@@ -1,7 +1,7 @@
-/* Outstanding Fees — modern purple theme */
+/* Outstanding Fees — classic professional layout */
 .ob-page {
-  --ob-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
-  --ob-purple: #7c3aed;
+  --ob-gradient: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
+  --ob-purple: #1e3a5f;
   --ob-border: #e2e8f0;
   max-width: 1400px;
   margin: 0 auto;
@@ -34,12 +34,24 @@
 .ob-toast__dismiss { background: none; border: none; font-size: 1.25rem; cursor: pointer; opacity: 0.6; }
 
 .ob-hero {
+  position: relative;
+  overflow: hidden;
+  position: relative;
+  overflow: hidden;
   background: var(--ob-gradient);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 20px 24px 16px;
   margin-bottom: 1.25rem;
-  box-shadow: 0 4px 20px rgba(91, 33, 182, 0.25);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
   color: #fff;
+}
+
+.ob-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .ob-hero__main {
@@ -57,16 +69,16 @@
 }
 
 .ob-hero-icon {
-  width: 48px;
-  height: 48px;
-  background: #facc15;
-  border-radius: 12px;
+  width: 42px;
+  height: 42px;
+  background: #f59e0b;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.5rem;
   flex-shrink: 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  box-shadow: none;
 }
 
 .ob-hero-eyebrow {
@@ -75,7 +87,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
+  color: #fbbf24;
   margin-bottom: 4px;
 }
 
@@ -109,8 +121,8 @@
 .ob-hero-refresh {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
   font-size: 1.2rem;
@@ -139,7 +151,7 @@
 
 .ob-hero-btn--white {
   background: #fff;
-  color: #6d28d9;
+  color: #152a45;
   border: none;
 }
 
@@ -313,14 +325,14 @@
 }
 
 .ob-chip:hover {
-  border-color: #c4b5fd;
-  color: #6d28d9;
+  border-color: #cbd5e1;
+  color: #152a45;
 }
 
 .ob-chip--active {
-  background: #ede9fe;
+  background: #f1f5f9;
   border-color: #a78bfa;
-  color: #5b21b6;
+  color: #1e3a5f;
 }
 
 .ob-chip__count {
@@ -395,14 +407,14 @@
   flex-wrap: wrap;
   gap: 8px;
   padding: 12px 1.25rem;
-  background: linear-gradient(90deg, #faf5ff 0%, #f8fafc 100%);
+  background: linear-gradient(90deg, #f8fafc 0%, #f8fafc 100%);
   border-bottom: 1px solid var(--ob-border);
 }
 
 .ob-class-head h3 {
   margin: 0;
   font-size: 0.95rem;
-  color: #5b21b6;
+  color: #1e3a5f;
   font-weight: 700;
 }
 
@@ -421,17 +433,37 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+  background: #fff;
+}
+
+/* Lock header — override global th/tr:hover */
+.ob-table thead,
+.ob-table thead tr,
+.ob-table thead th {
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  color: #ffffff !important;
+}
+
+.ob-table thead tr:hover,
+.ob-table thead tr:hover th {
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  color: #ffffff !important;
 }
 
 .ob-table thead th {
-  padding: 10px 14px;
+  padding: 12px 14px;
   text-align: left;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #64748b;
-  background: #f8fafc;
-  border-bottom: 1px solid var(--ob-border);
+  letter-spacing: 0.06em;
+  color: #ffffff !important;
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  border-bottom: 1px solid #152a45;
+  white-space: nowrap;
 }
 
 .ob-table tbody td {
@@ -442,7 +474,7 @@
 }
 
 .ob-table tbody tr:hover {
-  background: #faf5ff;
+  background: #f8fafc;
 }
 
 .ob-table .text-right {
@@ -456,18 +488,18 @@
   font-weight: 600;
   font-size: 0.8rem;
   font-family: ui-monospace, monospace;
-  background: #ede9fe;
-  color: #5b21b6;
+  background: #f1f5f9;
+  color: #1e3a5f;
 }
 
 .ob-id-badge--click {
   cursor: pointer;
-  background: #5b21b6;
+  background: #1e3a5f;
   color: #fff;
 }
 
 .ob-id-badge--click:hover {
-  background: #6d28d9;
+  background: #152a45;
 }
 
 .ob-prior-tag {
@@ -562,10 +594,10 @@
 .ob-footer-total {
   padding: 14px 1.25rem;
   text-align: right;
-  background: #faf5ff;
-  border-top: 2px solid #c4b5fd;
+  background: #f8fafc;
+  border-top: 2px solid #cbd5e1;
   font-size: 1rem;
-  color: #5b21b6;
+  color: #1e3a5f;
 }
 
 .ob-skeleton-table {

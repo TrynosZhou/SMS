@@ -1,8 +1,8 @@
-/* User Management — modern purple theme */
+/* User Management — classic professional layout */
 .um-page {
-  --um-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
-  --um-purple: #7c3aed;
-  --um-purple-dark: #5b21b6;
+  --um-gradient: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
+  --um-purple: #1e3a5f;
+  --um-purple-dark: #152a45;
   --um-border: #e2e8f0;
   --um-muted: #64748b;
   --um-text: #0f172a;
@@ -32,7 +32,7 @@
   padding: 0.75rem 1rem;
   border-radius: 10px;
   font-size: 0.9rem;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
 }
 
 .um-toast--success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; }
@@ -41,12 +41,22 @@
 .um-toast__dismiss:hover { opacity: 1; }
 
 .um-hero {
+  position: relative;
+  overflow: hidden;
   background: var(--um-gradient);
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 22px 26px 18px;
   margin-bottom: 1.25rem;
-  box-shadow: 0 4px 24px rgba(91, 33, 182, 0.28);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
   color: #fff;
+}
+
+.um-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .um-hero__main {
@@ -61,16 +71,16 @@
 .um-hero-left { display: flex; align-items: flex-start; gap: 14px; }
 
 .um-hero-icon {
-  width: 52px;
-  height: 52px;
-  background: #facc15;
-  border-radius: 14px;
+  width: 42px;
+  height: 42px;
+  background: #f59e0b;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.55rem;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: none;
 }
 
 .um-hero-eyebrow {
@@ -79,7 +89,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
+  color: #fbbf24;
   margin-bottom: 4px;
 }
 
@@ -105,8 +115,8 @@
 .um-hero-refresh {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
   font-size: 1.2rem;
@@ -132,8 +142,8 @@
   font-family: inherit;
 }
 
-.um-hero-btn--white { background: #fff; color: #6d28d9; }
-.um-hero-btn--accent { background: #facc15; color: #422006; }
+.um-hero-btn--white { background: #fff; color: #1e3a5f; }
+.um-hero-btn--accent { background: #f59e0b; color: #422006; }
 
 .um-cross-links {
   display: flex;
@@ -216,7 +226,7 @@
 .um-panel {
   background: #fff;
   border: 1px solid var(--um-border);
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 1.35rem 1.5rem;
   margin-bottom: 1.25rem;
   box-shadow: var(--um-shadow);
@@ -270,7 +280,7 @@
 .um-search-wrap input:focus {
   outline: none;
   border-color: var(--um-purple);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
 }
 
 .um-btn-clear {
@@ -296,7 +306,7 @@
   font-family: inherit;
 }
 
-.um-chip--active { background: #ede9fe; border-color: #c4b5fd; color: #5b21b6; }
+.um-chip--active { background: #f1f5f9; border-color: #cbd5e1; color: #152a45; }
 .um-chip--rose.um-chip--active { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
 .um-chip__count { opacity: 0.7; margin-left: 2px; }
 
@@ -367,7 +377,7 @@
 }
 
 .um-table thead {
-  background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #152a45 0%, #1e3a5f 100%);
 }
 
 .um-table th {
@@ -433,8 +443,8 @@
 
 .um-edit-name-btn:hover {
   opacity: 1;
-  background: #ede9fe;
-  border-color: #c4b5fd;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 .um-modal--edit-name {
@@ -451,7 +461,7 @@
 }
 
 .um-role-badge--school-admin {
-  color: #7c3aed;
+  color: #1e3a5f;
   font-weight: 600;
 }
 
@@ -585,7 +595,7 @@
 
 .um-modal {
   background: #fff;
-  border-radius: 14px;
+  border-radius: 8px;
   max-width: 440px;
   width: 100%;
   max-height: calc(100dvh - 2rem);
@@ -705,8 +715,8 @@
 }
 
 .um-input-group:focus-within {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
 }
 
 .um-input-group input {
@@ -808,7 +818,7 @@
   height: 1rem;
   margin: 0.1rem 0 0;
   flex-shrink: 0;
-  accent-color: #4f46e5;
+  accent-color: #1e3a5f;
   cursor: pointer;
 }
 
@@ -868,8 +878,8 @@
 .um-modal-body .um-form-row input:focus,
 .um-modal-body .um-form-row select:focus {
   outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
 }
 
 .um-modal-scroll .um-form-row input:disabled,
@@ -899,8 +909,8 @@
 
 .um-modal-scroll .um-form-col input:focus {
   outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
 }
 
 .um-btn {
@@ -929,13 +939,13 @@
 }
 
 .um-btn--primary {
-  background: linear-gradient(180deg, #4f46e5 0%, #4338ca 100%);
+  background: linear-gradient(180deg, #1e3a5f 0%, #1e3a5f 100%);
   color: #fff;
   box-shadow: 0 1px 2px rgba(67, 56, 202, 0.35);
 }
 
 .um-btn--primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #4338ca 0%, #3730a3 100%);
+  background: linear-gradient(180deg, #1e3a5f 0%, #1e3a5f 100%);
 }
 
 .um-form-row {

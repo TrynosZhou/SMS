@@ -1,4 +1,4 @@
-﻿:host { display: block; }
+:host { display: block; }
 .pib-layout { min-height: 100%; background: #f0f4f8; }
 .pib-main { padding: 28px 32px 40px; min-width: 0; }
 
@@ -141,7 +141,7 @@
   display: flex; align-items: center; justify-content: center;
   font-weight: 800; font-size: 16px; flex-shrink: 0;
 }
-.msg-avatar.unread-avatar { background: linear-gradient(135deg, #1d4ed8, #7c3aed); }
+.msg-avatar.unread-avatar { background: linear-gradient(135deg, #1d4ed8, #1e3a5f); }
 .msg-meta { min-width: 0; flex: 1; }
 .msg-subject-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
 .msg-subject { font-size: 15px; font-weight: 700; color: #0f172a; }

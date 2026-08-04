@@ -9,17 +9,26 @@
 /* Hero */
 .tir-hero {
   position: relative;
-  margin-bottom: 20px;
-  border-radius: 16px;
   overflow: hidden;
+  margin-bottom: 1.25rem;
+  border-radius: 12px;
   border: 1px solid #e2e8f0;
   background: #fff;
-  box-shadow: 0 4px 24px rgba(30, 58, 95, 0.08);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.tir-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
+  z-index: 1;
 }
 .tir-hero__bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #1e3a5f 0%, #312e81 55%, #4f46e5 100%);
+  background: linear-gradient(135deg, #1e3a5f 0%, #152a45 55%, #1e3a5f 100%);
   opacity: 0.08;
 }
 .tir-hero__content {
@@ -323,8 +332,8 @@
   text-decoration: none;
 }
 .tir-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.tir-btn-primary { background: #4f46e5; color: #fff; }
-.tir-btn-primary:hover:not(:disabled) { background: #4338ca; }
+.tir-btn-primary { background: #1e3a5f; color: #fff; }
+.tir-btn-primary:hover:not(:disabled) { background: #1e3a5f; }
 .tir-btn-secondary { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
 .tir-btn-secondary:hover { background: #e2e8f0; }
 .tir-btn-outline-danger { background: transparent; color: #dc2626; border: 1px solid #dc2626; }
@@ -533,8 +542,8 @@
 }
 .tir-input:focus, .tir-select:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  border-color: #1e3a5f;
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
 }
 .tir-radio-group {
   display: flex;
@@ -613,9 +622,9 @@
 .tir-copy-badge {
   display: inline-block;
   padding: 2px 8px;
-  background: #eef2ff;
-  color: #4338ca;
-  border: 1px solid #c7d2fe;
+  background: #f1f5f9;
+  color: #1e3a5f;
+  border: 1px solid #cbd5e1;
   border-radius: 6px;
   font-size: 0.72rem;
   font-weight: 700;
@@ -733,7 +742,7 @@
   transition: border-color 0.15s;
   min-height: 44px;
 }
-.tir-picker-trigger:hover { border-color: #6366f1; }
+.tir-picker-trigger:hover { border-color: #1d4ed8; }
 
 .tir-picker-placeholder { color: #94a3b8; font-size: 0.9rem; }
 .tir-picker-selected { color: #1e3a5f; font-size: 0.9rem; font-weight: 600; }
@@ -745,7 +754,7 @@
   left: 0;
   right: 0;
   background: #fff;
-  border: 2px solid #6366f1;
+  border: 2px solid #1d4ed8;
   border-radius: 10px;
   z-index: 9999;
   box-shadow: 0 8px 32px rgba(0,0,0,0.15);
@@ -793,8 +802,8 @@
 .tir-picker-name { font-size: 0.88rem; font-weight: 600; color: #1e293b; }
 .tir-picker-class {
   font-size: 0.72rem;
-  background: #e0e7ff;
-  color: #4338ca;
+  background: #e2e8f0;
+  color: #1e3a5f;
   padding: 2px 7px;
   border-radius: 10px;
   font-weight: 600;
@@ -847,9 +856,9 @@
   transition: all 0.15s;
 }
 .tir-rep-tab.active {
-  border-color: #6366f1;
-  background: #eef2ff;
-  color: #4338ca;
+  border-color: #1d4ed8;
+  background: #f1f5f9;
+  color: #1e3a5f;
 }
 
 .tir-report-btns {
@@ -892,7 +901,7 @@
   padding: 6px 10px;
   background: #f8fafc;
   border-radius: 6px;
-  border-left: 3px solid #6366f1;
+  border-left: 3px solid #1d4ed8;
 }
 
 .tir-report-table th { background: #1e3a5f; color: #fff; font-size: 0.78rem; }

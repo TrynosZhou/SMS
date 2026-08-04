@@ -1,18 +1,24 @@
-/* Admission form — modern layout (new + edit) */
+/* Admission form — classic professional layout (new + edit) */
 
 .admission-page--modern {
-  max-width: 1100px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 20px 24px 48px;
+  padding: 1.5rem 1.75rem 2.75rem;
   min-height: calc(100vh - 60px);
+  background: transparent;
 }
 
 /* Toasts */
 .admission-toast-stack {
+  position: fixed;
+  top: calc(64px + 0.75rem);
+  right: 1rem;
+  z-index: 1105;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 0;
+  max-width: min(420px, calc(100vw - 2rem));
 }
 
 .admission-toast {
@@ -101,11 +107,23 @@
 
 /* Hero */
 .admission-hero {
-  background: linear-gradient(135deg, #7c3aed 0%, #9333ea 50%, #a855f7 100%);
-  border-radius: 14px 14px 0 0;
-  padding: 18px 24px 16px;
-  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.28);
+  background: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
+  border-radius: 12px 12px 0 0;
+  padding: 1.35rem 1.5rem 1.1rem;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-bottom: none;
+  position: relative;
+  overflow: hidden;
   color: #fff;
+}
+
+.admission-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .admission-hero__top {
@@ -170,23 +188,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  background: #facc15;
-  border-radius: 12px;
-  font-size: 1.5rem;
+  width: 42px;
+  height: 42px;
+  background: #f59e0b;
+  border-radius: 8px;
+  font-size: 1.25rem;
   flex-shrink: 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  box-shadow: none;
+  color: #111;
 }
 
 .admission-hero__eyebrow {
   display: block;
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
+  color: #fbbf24;
   margin-bottom: 4px;
+  background: transparent;
 }
 
 .admission-hero__title {
@@ -238,12 +258,12 @@
 
 /* Panel */
 .admission-panel {
-  background: #f8f5fc;
-  border: 3px solid #a855f7;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-top: none;
-  border-radius: 0 0 14px 14px;
+  border-radius: 0 0 12px 12px;
   padding: 0 0 20px;
-  box-shadow: 0 8px 28px rgba(124, 58, 237, 0.1);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
 .admission-loading-banner {
@@ -287,7 +307,7 @@
   padding: 12px 16px;
   background: #fff;
   border-radius: 10px;
-  border: 1px solid #ede9fe;
+  border: 1px solid #f1f5f9;
 }
 
 .admission-form-intro__hint {
@@ -316,7 +336,7 @@
 }
 
 .legend-required {
-  background: #8b5cf6;
+  background: #1e3a5f;
 }
 
 .legend-optional {
@@ -330,10 +350,10 @@
 
 .admission-section--card {
   background: #fff;
-  border: 1px solid #ede9fe;
+  border: 1px solid #f1f5f9;
   border-radius: 12px;
   padding: 20px 22px 22px;
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.05);
+  box-shadow: 0 2px 8px rgba(30, 58, 95, 0.05);
 }
 
 .section-title {
@@ -361,7 +381,7 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c3aed 0%, #9333ea 50%, #a855f7 100%);
+  background: #1e3a5f;
   color: #fff;
   font-size: 0.8rem;
   font-weight: 800;
@@ -399,9 +419,9 @@
 }
 
 .eskooly-field.required .eskooly-label {
-  background: #ede9fe;
-  color: #6d28d9;
-  border: 1px solid #c4b5fd;
+  background: #f1f5f9;
+  color: #1e3a5f;
+  border: 1px solid #cbd5e1;
 }
 
 .eskooly-field.optional .eskooly-label {
@@ -425,8 +445,8 @@
 
 .eskooly-input:focus {
   outline: none;
-  border-color: #a855f7;
-  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15);
+  border-color: #1e3a5f;
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.12);
 }
 
 .eskooly-input.input-error {
@@ -494,8 +514,8 @@ select.eskooly-input {
   padding: 3px 8px;
   font-size: 0.7rem;
   font-weight: 700;
-  color: #7c3aed;
-  background: #f5f3ff;
+  color: #1e3a5f;
+  background: #f8fafc;
   border-radius: 6px;
 }
 
@@ -510,7 +530,7 @@ select.eskooly-input {
   height: 100px;
   object-fit: cover;
   border-radius: 8px;
-  border: 2px solid #ede9fe;
+  border: 2px solid #f1f5f9;
 }
 
 .photo-remove {
@@ -550,8 +570,8 @@ select.eskooly-input {
 }
 
 .type-summary.boarder {
-  background: #f5f3ff;
-  border-color: #c4b5fd;
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 .type-summary strong {
@@ -583,18 +603,18 @@ select.eskooly-input {
 }
 
 .eskooly-checkbox-row:hover {
-  background: #f5f3ff;
-  border-color: #c4b5fd;
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 .eskooly-checkbox-row--highlight {
-  background: #faf5ff;
-  border-color: #ddd6fe;
+  background: #ffffff;
+  border-color: #e2e8f0;
 }
 
 .eskooly-checkbox-row input {
   margin-top: 3px;
-  accent-color: #7c3aed;
+  accent-color: #1e3a5f;
   width: 16px;
   height: 16px;
   flex-shrink: 0;
@@ -631,10 +651,10 @@ select.eskooly-input {
 .estimated-invoice {
   margin-top: 16px;
   padding: 16px 18px;
-  border: 1px solid #c4b5fd;
+  border: 1px solid #cbd5e1;
   border-radius: 12px;
-  background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%);
-  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.08);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 2px 10px rgba(30, 58, 95, 0.08);
 }
 
 .estimated-invoice__head {
@@ -650,7 +670,7 @@ select.eskooly-input {
 .estimated-title {
   font-weight: 800;
   font-size: 0.9rem;
-  color: #6d28d9;
+  color: #1e3a5f;
 }
 
 .estimated-sub {
@@ -677,10 +697,10 @@ select.eskooly-input {
   justify-content: space-between;
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 2px solid #e9d5ff;
+  border-top: 2px solid #e2e8f0;
   font-weight: 800;
   font-size: 0.95rem;
-  color: #6d28d9;
+  color: #1e3a5f;
 }
 
 /* Footer */
@@ -693,7 +713,7 @@ select.eskooly-input {
   margin: 8px 0 12px;
   padding: 18px 20px;
   background: #fff;
-  border: 1px solid #ede9fe;
+  border: 1px solid #f1f5f9;
   border-radius: 12px;
 }
 
@@ -701,7 +721,7 @@ select.eskooly-input {
   position: sticky;
   bottom: 12px;
   z-index: 5;
-  box-shadow: 0 -4px 20px rgba(124, 58, 237, 0.1);
+  box-shadow: 0 -2px 8px rgba(15, 23, 42, 0.06);
 }
 
 .admission-actions__hint {
@@ -740,14 +760,15 @@ select.eskooly-input {
 }
 
 .btn-save {
-  background: linear-gradient(135deg, #7c3aed 0%, #9333ea 50%, #a855f7 100%);
+  background: #1e3a5f;
   color: #fff;
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+  box-shadow: none;
 }
 
 .btn-save:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.42);
+  background: #152a45;
+  transform: none;
+  box-shadow: none;
 }
 
 .btn-save:disabled {

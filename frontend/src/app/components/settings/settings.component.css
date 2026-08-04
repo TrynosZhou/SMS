@@ -28,7 +28,7 @@
   border-radius: 10px;
   font-weight: 600;
   font-size: 0.9rem;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
   animation: settings-toast-in 0.35s ease;
 }
 
@@ -148,15 +148,25 @@
 
 /* Hero */
 .system-settings-hero {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
   padding: 1.35rem 1.75rem 1.15rem;
-  background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(91, 33, 182, 0.28);
+  background: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
   color: #fff;
+}
+
+.system-settings-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .system-settings-hero__main {
@@ -179,14 +189,14 @@
 .system-settings-hero__icon {
   width: 48px;
   height: 48px;
-  background: #facc15;
-  border-radius: 14px;
+  background: #f59e0b;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.45rem;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: none;
 }
 
 .system-settings-hero__actions {
@@ -198,8 +208,8 @@
 .system-settings-hero-refresh {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
   font-size: 1.2rem;
@@ -225,9 +235,9 @@
 
 .system-settings-hero--compact {
   padding: 1.25rem 1.5rem;
-  background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
+  background: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
   border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 4px 24px rgba(91, 33, 182, 0.28);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
   color: #fff;
 }
 
@@ -237,7 +247,7 @@
 
 .system-settings-hero--purple .system-settings-hero__eyebrow,
 .system-settings-hero .system-settings-hero__eyebrow {
-  color: rgba(255, 255, 255, 0.75);
+  color: #fbbf24;
 }
 
 .system-settings-hero--purple h1,
@@ -273,7 +283,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
+  color: #fbbf24;
   margin-bottom: 0.35rem;
 }
 
@@ -404,14 +414,14 @@
 }
 
 .system-settings-tab:hover {
-  color: #7c3aed;
-  background: #f5f3ff;
+  color: #1e3a5f;
+  background: #f8fafc;
 }
 
 .system-settings-tab.active {
-  color: #6d28d9;
-  background: #f5f3ff;
-  box-shadow: inset 0 0 0 1px #ddd6fe;
+  color: #1e3a5f;
+  background: #f8fafc;
+  box-shadow: inset 0 0 0 1px #e2e8f0;
 }
 
 .system-settings-tab-intro {
@@ -419,9 +429,9 @@
   align-items: flex-start;
   gap: 12px;
   padding: 0.85rem 1.25rem;
-  background: #faf5ff;
-  border-bottom: 1px solid #e9d5ff;
-  border-left: 3px solid #7c3aed;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  border-left: 3px solid #1e3a5f;
 }
 
 .system-settings-tab-intro__icon {
@@ -456,8 +466,8 @@
   letter-spacing: 0.04em;
   padding: 4px 8px;
   border-radius: 6px;
-  background: #ede9fe;
-  color: #5b21b6;
+  background: #f1f5f9;
+  color: #152a45;
 }
 
 .system-settings-tab-intro__badge--hint {
@@ -565,7 +575,7 @@
 }
 
 .ss-step--active strong {
-  background: #facc15;
+  background: #f59e0b;
   color: #422006;
 }
 
@@ -578,19 +588,19 @@
 .ss-panel {
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 1.25rem 1.35rem;
-  border-top: 3px solid #7c3aed;
+  border-top: 3px solid #1e3a5f;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 
 .ss-sub-panel {
   background: #fafafa;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 1.15rem 1.25rem;
   margin-top: 1rem;
-  border-top: 3px solid #a78bfa;
+  border-top: 3px solid #94a3b8;
 }
 
 .ss-sub-panel__title {
@@ -671,10 +681,10 @@
 .ss-info-callout {
   margin-top: 8px;
   padding: 0.75rem 1rem;
-  background: #f5f3ff;
-  border: 1px solid #ddd6fe;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
-  color: #5b21b6;
+  color: #152a45;
   font-size: 0.88rem;
 }
 
@@ -771,7 +781,7 @@
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-  border-top: 3px solid #7c3aed;
+  border-top: 3px solid #1e3a5f;
   transition: box-shadow 0.2s ease;
 }
 
@@ -989,8 +999,8 @@
 .outlined-field input:focus,
 .outlined-field textarea:focus {
   outline: none;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  border-color: #1e3a5f;
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
 }
 
 .outlined-field-row {
@@ -1063,13 +1073,13 @@
   padding: 0.65rem 1.25rem;
   border-radius: 10px;
   font-weight: 700;
-  background: #7c3aed;
-  border-color: #7c3aed;
+  background: #1e3a5f;
+  border-color: #1e3a5f;
 }
 
 .settings-save-btn:hover:not(:disabled) {
-  background: #6d28d9;
-  border-color: #6d28d9;
+  background: #1e3a5f;
+  border-color: #1e3a5f;
 }
 
 .settings-save-btn__icon {
@@ -1095,7 +1105,7 @@
 }
 
 .system-settings-panel .tab-panel.ss-panel .form-section.payment-banking-settings {
-  background: #faf5ff;
+  background: #ffffff;
 }
 
 .form-section h2 {
@@ -1104,24 +1114,24 @@
   color: #0f172a;
   font-size: 1rem;
   font-weight: 800;
-  border-bottom: 2px solid #7c3aed;
+  border-bottom: 2px solid #1e3a5f;
   padding-bottom: 10px;
 }
 
 .payment-banking-settings {
   margin-top: 1.25rem;
   padding: 1rem 1.15rem;
-  background: #faf5ff;
-  border: 1px solid #ddd6fe;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
-  border-top: 3px solid #8b5cf6;
+  border-top: 3px solid #274876;
 }
 
 .payment-banking-settings h3 {
   margin: 0 0 0.35rem;
   font-size: 0.95rem;
   font-weight: 800;
-  color: #5b21b6;
+  color: #152a45;
 }
 
 .payment-banking-settings .section-hint {
@@ -1172,8 +1182,8 @@
 .form-group textarea:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  border-color: #1e3a5f;
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.12);
 }
 
 .form-group small {
@@ -1286,7 +1296,7 @@
 }
 
 .toggle-switch input:checked + .toggle-slider {
-  background-color: #7c3aed;
+  background-color: #1e3a5f;
 }
 
 .toggle-switch input:checked + .toggle-slider:before {
@@ -1405,15 +1415,15 @@
   border-radius: 999px;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #6d28d9;
+  color: #1e3a5f;
   text-decoration: none;
-  background: #f5f3ff;
-  border: 1px solid #ddd6fe;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   transition: background 0.15s;
 }
 
 .ma-cross-links a:hover {
-  background: #ede9fe;
+  background: #f1f5f9;
 }
 
 .ma-hero-stats {
@@ -1487,14 +1497,14 @@
 }
 
 .ma-step--active {
-  background: #f5f3ff;
-  border-color: #ddd6fe;
-  color: #5b21b6;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #152a45;
   font-weight: 600;
 }
 
 .ma-step--active strong {
-  background: #7c3aed;
+  background: #1e3a5f;
   color: #fff;
 }
 
@@ -1512,14 +1522,14 @@
 .ma-panel {
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 1.25rem 1.35rem;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-  border-top: 3px solid #7c3aed;
+  border-top: 3px solid #1e3a5f;
 }
 
 .ma-panel--head-teacher {
-  border-top-color: #8b5cf6;
+  border-top-color: #274876;
 }
 
 .ma-panel--danger {
@@ -1595,7 +1605,7 @@
   width: 18px;
   height: 18px;
   margin-top: 2px;
-  accent-color: #7c3aed;
+  accent-color: #1e3a5f;
   flex-shrink: 0;
 }
 
@@ -1654,14 +1664,14 @@
 }
 
 .ma-check:hover {
-  border-color: #c4b5fd;
-  background: #faf5ff;
+  border-color: #cbd5e1;
+  background: #ffffff;
 }
 
 .ma-check input {
   width: 16px;
   height: 16px;
-  accent-color: #7c3aed;
+  accent-color: #1e3a5f;
 }
 
 .ma-inline-link {
@@ -1670,14 +1680,14 @@
   padding: 0;
   font: inherit;
   font-weight: 700;
-  color: #7c3aed;
+  color: #1e3a5f;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .ma-inline-link:hover {
-  color: #5b21b6;
+  color: #152a45;
 }
 
 .ma-danger-callout {
@@ -1817,7 +1827,7 @@
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: #667eea;
+  accent-color: #1e3a5f;
 }
 
 .checkbox-label span {
@@ -1846,7 +1856,7 @@
 }
 
 .uniform-table th {
-  background: linear-gradient(180deg, #6d28d9 0%, #5b21b6 100%);
+  background: linear-gradient(180deg, #1e3a5f 0%, #152a45 100%);
   font-weight: 700;
   color: #fff;
   border-bottom: none;

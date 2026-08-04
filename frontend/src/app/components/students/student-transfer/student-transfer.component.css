@@ -1,25 +1,26 @@
-/* Student Transfer — modern purple theme (matches enroll-student) */
+/* Student Transfer — classic professional layout (matches enroll-student) */
 .st-page {
-  --st-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
-  --st-purple: #7c3aed;
-  --st-purple-dark: #5b21b6;
-  --st-purple-deep: #6d28d9;
+  --st-gradient: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
+  --st-purple: #1e3a5f;
+  --st-purple-dark: #152a45;
+  --st-purple-deep: #1e3a5f;
   --st-border: #e2e8f0;
   --st-muted: #64748b;
   --st-text: #0f172a;
   --st-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.04);
-  max-width: 1400px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 1.25rem 1.5rem 2.5rem;
+  padding: 1.5rem 1.75rem 2.75rem;
   box-sizing: border-box;
+  background: transparent;
 }
 
 /* Toasts */
 .st-toast-stack {
   position: fixed;
-  top: 1rem;
+  top: calc(64px + 0.75rem);
   right: 1rem;
-  z-index: 100;
+  z-index: 1105;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -51,11 +52,22 @@
 /* Hero */
 .st-hero {
   background: var(--st-gradient);
-  border-radius: 16px;
-  padding: 22px 26px 18px;
+  border-radius: 12px;
+  padding: 1.35rem 1.5rem 1.1rem;
   margin-bottom: 1.25rem;
-  box-shadow: 0 4px 24px rgba(91, 33, 182, 0.28);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  position: relative;
+  overflow: hidden;
   color: #fff;
+}
+
+.st-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .st-hero__main {
@@ -70,16 +82,17 @@
 .st-hero-left { display: flex; align-items: flex-start; gap: 14px; }
 
 .st-hero-icon {
-  width: 52px;
-  height: 52px;
-  background: #facc15;
-  border-radius: 14px;
+  width: 42px;
+  height: 42px;
+  background: #f59e0b;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.55rem;
+  font-size: 1.25rem;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: none;
+  color: #111;
 }
 
 .st-hero-eyebrow {
@@ -88,8 +101,9 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
+  color: #fbbf24;
   margin-bottom: 4px;
+  background: transparent;
 }
 
 .st-hero h1 { margin: 0 0 6px; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
@@ -114,15 +128,22 @@
 .st-hero-refresh {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
   font-size: 1.2rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.st-hero-refresh:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  transform: none;
 }
 
 .st-hero-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -290,7 +311,7 @@
 .st-search-input:focus {
   outline: none;
   border-color: var(--st-purple);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
 }
 
 .st-search-clear {
@@ -358,7 +379,7 @@
 
 .st-student-list::-webkit-scrollbar { width: 6px; }
 .st-student-list::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
-.st-student-list::-webkit-scrollbar-thumb { background: #c4b5fd; border-radius: 3px; }
+.st-student-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 
 .st-student-item {
   display: flex;
@@ -373,15 +394,15 @@
 }
 
 .st-student-item:hover {
-  background: #f5f3ff;
-  border-color: #c4b5fd;
+  background: #f8fafc;
+  border-color: #cbd5e1;
   transform: translateX(2px);
 }
 
 .st-student-item--selected {
-  background: #ede9fe;
+  background: #f1f5f9;
   border-color: var(--st-purple);
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 2px 8px rgba(30, 58, 95, 0.15);
 }
 
 .st-student-item__body { flex: 1; min-width: 0; }
@@ -442,8 +463,8 @@
   align-items: flex-start;
   gap: 1rem;
   padding: 1rem;
-  background: #f5f3ff;
-  border: 1px solid #ddd6fe;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   margin-bottom: 1.25rem;
   flex-wrap: wrap;
@@ -515,12 +536,12 @@
   font-family: inherit;
 }
 
-.st-type-card:hover { border-color: #c4b5fd; background: #faf5ff; }
+.st-type-card:hover { border-color: #cbd5e1; background: #ffffff; }
 
 .st-type-card--selected {
-  background: #ede9fe;
+  background: #f1f5f9;
   border-color: var(--st-purple);
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.12);
+  box-shadow: 0 2px 8px rgba(30, 58, 95, 0.12);
 }
 
 .st-type-card__icon { font-size: 1.5rem; flex-shrink: 0; }
@@ -596,7 +617,7 @@
 .st-textarea:focus {
   outline: none;
   border-color: var(--st-purple);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
 }
 
 .st-textarea { resize: vertical; min-height: 80px; }
@@ -629,20 +650,26 @@
 .st-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .st-btn--primary {
-  background: var(--st-purple);
-  border-color: var(--st-purple);
+  background: #1e3a5f;
+  border-color: #1e3a5f;
   color: #fff;
+  box-shadow: none;
 }
 
-.st-btn--primary:hover:not(:disabled) { background: var(--st-purple-dark); border-color: var(--st-purple-dark); }
+.st-btn--primary:hover:not(:disabled) {
+  background: #152a45;
+  border-color: #152a45;
+  box-shadow: none;
+  transform: none;
+}
 
 .st-btn--outline {
-  border-color: #c4b5fd;
+  border-color: #cbd5e1;
   color: var(--st-purple);
   background: #fff;
 }
 
-.st-btn--outline:hover:not(:disabled) { background: #f5f3ff; }
+.st-btn--outline:hover:not(:disabled) { background: #f8fafc; }
 
 .st-btn--ghost { background: #f8fafc; }
 .st-btn--ghost:hover:not(:disabled) { background: #f1f5f9; }

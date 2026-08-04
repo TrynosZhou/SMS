@@ -1,13 +1,13 @@
-/* Student Ledgers — modern purple theme */
+/* Student Ledgers — classic professional layout */
 .sl-page {
-  --sl-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 45%, #6d28d9 100%);
-  --sl-purple: #7c3aed;
+  --sl-gradient: linear-gradient(135deg, #1e3a5f 0%, #152a45 100%);
+  --sl-purple: #1e3a5f;
   --sl-border: #e2e8f0;
   max-width: 1400px;
   margin: 0 auto;
   padding: 1.25rem 1.5rem 2.5rem;
   box-sizing: border-box;
-  background: #f8fafc;
+  background: transparent;
   border-radius: 14px;
 }
 
@@ -36,12 +36,24 @@
 .sl-toast__dismiss { background: none; border: none; font-size: 1.25rem; cursor: pointer; opacity: 0.6; }
 
 .sl-hero {
+  position: relative;
+  overflow: hidden;
+  position: relative;
+  overflow: hidden;
   background: var(--sl-gradient);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 20px 24px 16px;
   margin-bottom: 1.25rem;
-  box-shadow: 0 4px 20px rgba(91, 33, 182, 0.25);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
   color: #fff;
+}
+
+.sl-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
 }
 
 .sl-hero__main {
@@ -55,10 +67,10 @@
 .sl-hero-left { display: flex; align-items: flex-start; gap: 14px; }
 
 .sl-hero-icon {
-  width: 48px;
-  height: 48px;
-  background: #facc15;
-  border-radius: 12px;
+  width: 42px;
+  height: 42px;
+  background: #f59e0b;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -72,7 +84,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
+  color: #fbbf24;
   margin-bottom: 4px;
 }
 
@@ -102,8 +114,8 @@
 .sl-hero-refresh {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
   font-size: 1.2rem;
@@ -135,14 +147,14 @@
 
 .sl-hero-btn--white {
   background: #fff;
-  color: #6d28d9;
+  color: #152a45;
   border-color: #fff;
 }
 
 .sl-hero-btn--accent {
-  background: #facc15;
+  background: #f59e0b;
   color: #422006;
-  border-color: #facc15;
+  border-color: #f59e0b;
 }
 
 .sl-hero-stats {
@@ -178,7 +190,7 @@
   font-size: 0.95rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #facc15;
+  color: #f59e0b;
 }
 
 .sl-stat__label {
@@ -272,7 +284,7 @@
   transform: translateY(-50%);
   border: none;
   background: transparent;
-  color: #6d28d9;
+  color: #152a45;
   font-weight: 700;
   cursor: pointer;
 }
@@ -296,9 +308,9 @@
 }
 
 .sl-chip--active {
-  background: #ede9fe;
-  border-color: #c4b5fd;
-  color: #5b21b6;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #1e3a5f;
 }
 
 .sl-chip__count { opacity: 0.75; margin-left: 4px; }
@@ -306,8 +318,8 @@
 .sl-summary-pill {
   display: inline-block;
   margin-top: 10px;
-  background: #f5f3ff;
-  color: #5b21b6;
+  background: #f8fafc;
+  color: #1e3a5f;
   border-radius: 999px;
   padding: 4px 12px;
   font-size: 0.78rem;
@@ -435,9 +447,9 @@
 .sl-btn-sm {
   padding: 4px 10px;
   border-radius: 8px;
-  border: 1px solid #c4b5fd;
-  background: #f5f3ff;
-  color: #6d28d9;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #152a45;
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;

@@ -5,7 +5,7 @@
   min-height: 100dvh;
   overflow-x: hidden;
   overflow-y: auto;
-  background: linear-gradient(160deg, #e0e7ff 0%, #f5f3ff 40%, #fce7f3 100%);
+  background: linear-gradient(160deg, #e2e8f0 0%, #f8fafc 40%, #fce7f3 100%);
 }
 
 .splash-wrapper {
@@ -21,7 +21,7 @@
   padding: 28px;
   background: linear-gradient(
     135deg,
-    rgba(139, 92, 246, 0.95) 0%,
+    rgba(39, 72, 118, 0.95) 0%,
     rgba(168, 85, 247, 0.9) 25%,
     rgba(236, 72, 153, 0.9) 50%,
     rgba(129, 140, 248, 0.9) 75%,
