@@ -673,10 +673,13 @@ setTimeout(() => this.error = '', 5000);
     return getMarkSheetScoreColor(average);
   }
 
-  /** Class pass rate for a subject (% of students scoring ≥ 70). */
+  /** Subject pass rate: % scoring ≥ 70 among students included in pass rate only. */
   getSubjectPassRate(subjectId: string): number {
     if (!this.markSheetData?.markSheet?.length) return 0;
-    const rows = this.markSheetData.markSheet;
+    const rows = this.markSheetData.markSheet.filter(
+      (row: any) => row.includeInClassPassRate !== false
+    );
+    if (rows.length === 0) return 0;
     let passed = 0;
     for (const row of rows) {
       if (this.getSubjectMarkDisplay(row, subjectId) >= 70) {

@@ -141,14 +141,20 @@ export class ResultsAnalysisComponent implements OnInit, OnDestroy {
     passRate: number;
     avgSubjectPass: number;
   } {
+    const allRows = this.markSheetData?.markSheet || [];
     const students = this.allStudentsRanked.length;
     const subjects = this.markSheetData?.subjects?.length || 0;
     const classAverage =
       students > 0
         ? Math.round((this.allStudentsRanked.reduce((sum, row) => sum + row.average, 0) / students) * 10) / 10
         : 0;
-    const passCount = this.allStudentsRanked.filter((row) => row.average >= 70).length;
-    const passRate = students > 0 ? Math.round((passCount / students) * 1000) / 10 : 0;
+    const passEligible = this.allStudentsRanked.filter((row) => {
+      const raw = allRows.find((r: any) => r.studentId === row.studentId);
+      return raw?.includeInClassPassRate !== false;
+    });
+    const passCount = passEligible.filter((row) => row.average >= 70).length;
+    const passRate =
+      passEligible.length > 0 ? Math.round((passCount / passEligible.length) * 1000) / 10 : 0;
     const avgSubjectPass =
       this.subjectPassRates.length > 0
         ? Math.round(
@@ -372,17 +378,18 @@ export class ResultsAnalysisComponent implements OnInit, OnDestroy {
   }
 
   private computeSubjectPassRate(subjectId: string, rows: any[]): number {
-    if (!rows.length) {
+    const eligible = rows.filter((row) => row.includeInClassPassRate !== false);
+    if (!eligible.length) {
       return 0;
     }
     let passed = 0;
-    for (const row of rows) {
+    for (const row of eligible) {
       const pct = this.getSubjectPercentage(row, subjectId);
       if (pct >= 70) {
         passed++;
       }
     }
-    return Math.round((passed / rows.length) * 1000) / 10;
+    return Math.round((passed / eligible.length) * 1000) / 10;
   }
 
   private getSubjectPercentage(row: any, subjectId: string): number {

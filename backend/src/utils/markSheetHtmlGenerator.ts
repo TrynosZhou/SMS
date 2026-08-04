@@ -213,8 +213,8 @@ export function createMarkSheetHTML(
       background: var(--paper);
       color: var(--ink);
       font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-      font-size: 12px;
-      line-height: 1.4;
+      font-size: 13px;
+      line-height: 1.45;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -444,11 +444,11 @@ export function createMarkSheetHTML(
     thead th {
       background: var(--navy);
       color: #fff !important;
-      font-size: 0.74rem;
+      font-size: 0.82rem;
       font-weight: 700;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
-      padding: 10px 8px;
+      padding: 9px 6px;
       text-align: center;
       border: 1.5px solid var(--navy-dark);
     }
@@ -495,10 +495,11 @@ export function createMarkSheetHTML(
     th.col-avg { width: 110px; }
 
     tbody td {
-      padding: 8px;
+      padding: 7px 6px;
       border: 1.5px solid var(--line);
       vertical-align: middle;
       background: #fff;
+      font-size: 0.92rem;
     }
 
     tbody tr.row-alt td {
@@ -509,12 +510,17 @@ export function createMarkSheetHTML(
       border-bottom: none;
     }
 
+    tbody tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
     tbody td.col-pos { text-align: center; }
-    tbody td.col-id { color: var(--ink); font-size: 0.88rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-    tbody td.col-name { font-weight: 700; color: var(--ink); }
-    tbody td.col-mark { text-align: center; font-weight: 700; color: #000; font-variant-numeric: tabular-nums; }
-    tbody td.col-total { text-align: center; font-variant-numeric: tabular-nums; }
-    tbody td.col-avg { text-align: right; }
+    tbody td.col-id { color: #000; font-size: 0.88rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    tbody td.col-name { font-weight: 700; color: #000; font-size: 0.92rem; }
+    tbody td.col-mark { text-align: center; font-weight: 700; color: #000; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+    tbody td.col-total { text-align: center; font-variant-numeric: tabular-nums; font-weight: 700; color: #000; }
+    tbody td.col-avg { text-align: center; }
 
     .rank {
       display: inline-flex;
@@ -537,33 +543,19 @@ export function createMarkSheetHTML(
       display: flex;
       align-items: center;
       gap: 6px;
-      justify-content: flex-end;
+      justify-content: center;
     }
 
     .avg-bar {
-      flex: 1;
-      max-width: 56px;
-      height: 6px;
-      background: #e5e7eb;
-      border-radius: 999px;
-      overflow: hidden;
+      display: none;
     }
-
-    .avg-fill {
-      display: block;
-      height: 100%;
-      border-radius: 999px;
-    }
-
-    .avg-fill--high { background: var(--present); }
-    .avg-fill--mid { background: var(--mid); }
-    .avg-fill--low { background: var(--low); }
 
     .avg-text {
-      font-size: 0.78rem;
+      font-size: 0.92rem;
       font-weight: 700;
-      min-width: 38px;
-      text-align: right;
+      min-width: 42px;
+      text-align: center;
+      color: #000;
       font-variant-numeric: tabular-nums;
     }
 
@@ -587,6 +579,35 @@ export function createMarkSheetHTML(
       color: var(--muted);
     }
 
+    /* Crisp export / print — avoid clipped rows and blurry canvas artifacts */
+    body.pdf-exporting {
+      background: #fff !important;
+      padding: 0 !important;
+    }
+
+    body.pdf-exporting .report {
+      max-width: none !important;
+      width: 100% !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      overflow: visible !important;
+    }
+
+    body.pdf-exporting .table-wrap {
+      overflow: visible !important;
+      border-radius: 0 !important;
+    }
+
+    body.pdf-exporting .banner,
+    body.pdf-exporting .summary,
+    body.pdf-exporting .meta-row,
+    body.pdf-exporting .card,
+    body.pdf-exporting tbody tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
     @media print {
       body { padding: 0; background: #fff; }
       .report { box-shadow: none; border-radius: 0; max-width: none; }
@@ -602,31 +623,49 @@ export function createMarkSheetHTML(
       thead .subject-row th { background: #234585 !important; color: #fff !important; border-color: #1a3468 !important; }
       tbody td {
         border: 1.5px solid #64748b !important;
+        color: #000 !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+      }
+      tbody td.col-mark,
+      tbody td.col-total,
+      tbody td.col-name,
+      tbody td.col-id,
+      .avg-text {
+        color: #000 !important;
       }
       tbody tr.row-alt td {
         background: #e2e8f0 !important;
       }
-      .table-wrap { border: 1.5px solid #64748b !important; }
+      .table-wrap {
+        border: 1.5px solid #64748b !important;
+        overflow: visible !important;
+        border-radius: 0 !important;
+      }
       thead .group-row > th:first-child,
       tbody > tr > td:first-child { border-left: none !important; }
       thead .group-row > th:last-child,
       tbody > tr > td:last-child { border-right: none !important; }
       thead .group-row > th { border-top: none !important; }
       tbody tr:last-child > td { border-bottom: none !important; }
-      tbody tr { break-inside: avoid; }
-      .summary, .banner, .meta-row { break-inside: avoid; }
-      .report-footer {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: #fff;
-        padding: 8px 18px;
+      tbody tr,
+      .card,
+      .banner,
+      .meta-row,
+      .summary {
+        break-inside: avoid;
+        page-break-inside: avoid;
       }
-      .table-section { padding-bottom: 36px; }
-      @page { size: A4 landscape; margin: 10mm; }
+      .report-footer {
+        position: running(footer);
+        position: static;
+        background: #fff;
+        padding: 8px 0 0;
+        margin-top: 10px;
+      }
+      .table-section { padding-bottom: 12px; }
+      .avg-bar { display: none !important; }
+      @page { size: A4 landscape; margin: 8mm; }
     }
   </style>
 </head>
@@ -777,7 +816,10 @@ export function createMarkSheetHTML(
           el.style.display = 'none';
         });
 
+        document.body.classList.add('pdf-exporting');
+
         function restoreHidden() {
+          document.body.classList.remove('pdf-exporting');
           hidden.forEach(function (item) {
             item.el.style.display = item.display;
           });
@@ -787,38 +829,92 @@ export function createMarkSheetHTML(
           }
         }
 
+        function finishWithPrint() {
+          restoreHidden();
+          window.print();
+        }
+
         loadHtml2Pdf(function (err) {
-          if (err || typeof html2pdf === 'undefined') {
-            restoreHidden();
-            window.print();
+          if (err || typeof html2canvas === 'undefined') {
+            finishWithPrint();
             return;
           }
 
-          var opt = {
-            margin: [8, 8, 8, 8],
-            filename: PDF_FILENAME,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: {
-              scale: 2,
-              useCORS: true,
-              logging: false,
-              backgroundColor: '#ffffff'
-            },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-            pagebreak: { mode: ['css', 'legacy'] }
-          };
+          var JsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+          if (!JsPDF) {
+            // Fallback to html2pdf helper if jsPDF global is unavailable
+            if (typeof html2pdf !== 'undefined') {
+              html2pdf()
+                .set({
+                  margin: [6, 6, 6, 6],
+                  filename: PDF_FILENAME,
+                  image: { type: 'jpeg', quality: 0.95 },
+                  html2canvas: {
+                    scale: 3,
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#ffffff',
+                    scrollX: 0,
+                    scrollY: 0,
+                    windowWidth: report.scrollWidth,
+                    windowHeight: report.scrollHeight
+                  },
+                  jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true },
+                  pagebreak: { mode: ['css'], avoid: ['tr', 'thead', '.card', '.banner', '.meta-row', '.summary'] }
+                })
+                .from(report)
+                .save()
+                .then(restoreHidden)
+                .catch(finishWithPrint);
+              return;
+            }
+            finishWithPrint();
+            return;
+          }
 
-          html2pdf()
-            .set(opt)
-            .from(report)
-            .save()
-            .then(function () {
-              restoreHidden();
-            })
-            .catch(function () {
-              restoreHidden();
-              window.print();
+          // High-resolution canvas → clean page slices (avoids white mid-row tears)
+          html2canvas(report, {
+            scale: 3,
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+            backgroundColor: '#ffffff',
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: Math.max(report.scrollWidth, report.offsetWidth),
+            windowHeight: Math.max(report.scrollHeight, report.offsetHeight)
+          }).then(function (canvas) {
+            var imgData = canvas.toDataURL('image/jpeg', 0.95);
+            var pdf = new JsPDF({
+              orientation: 'landscape',
+              unit: 'mm',
+              format: 'a4',
+              compress: true
             });
+            var pageW = pdf.internal.pageSize.getWidth();
+            var pageH = pdf.internal.pageSize.getHeight();
+            var margin = 5;
+            var usableW = pageW - margin * 2;
+            var usableH = pageH - margin * 2;
+            var imgW = usableW;
+            var imgH = (canvas.height * imgW) / canvas.width;
+
+            var y = margin;
+            pdf.addImage(imgData, 'JPEG', margin, y, imgW, imgH, undefined, 'FAST');
+
+            var heightLeft = imgH - usableH;
+            while (heightLeft > 1) {
+              y = margin - (imgH - heightLeft);
+              pdf.addPage();
+              pdf.addImage(imgData, 'JPEG', margin, y, imgW, imgH, undefined, 'FAST');
+              heightLeft -= usableH;
+            }
+
+            pdf.save(PDF_FILENAME);
+            restoreHidden();
+          }).catch(function () {
+            finishWithPrint();
+          });
         });
       }
 

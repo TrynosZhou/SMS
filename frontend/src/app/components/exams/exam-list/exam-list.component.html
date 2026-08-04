@@ -206,7 +206,7 @@
           <thead>
             <tr>
               <th class="exam-col-rank">#</th>
-              <th class="exam-col-pass" title="Include in class pass rate">Pass</th>
+              <th class="exam-col-pass" title="When checked, this student's marks count toward subject and class pass rates">Pass</th>
               <th>Student ID</th>
               <th>Last name</th>
               <th>First name</th>
@@ -219,7 +219,7 @@
             <tr *ngFor="let student of (filteredStudents | safeArray); let i = index" [class.exam-row--saved]="isRecordSaved(student.id)" [class.exam-row--entered]="hasMarks(student.id) && !isRecordSaved(student.id)">
               <td class="exam-col-rank">{{ i + 1 }}</td>
               <td class="exam-col-pass">
-                <input type="checkbox" class="exam-pass-check" [ngModel]="passRateInclusionForStudent(student.id)" (ngModelChange)="onPassRateInclusionChange(student.id, $event)" [disabled]="isPublished" [ngModelOptions]="{standalone: true}" title="Include in class pass rate" />
+                <input type="checkbox" class="exam-pass-check" [ngModel]="passRateInclusionForStudent(student.id)" (ngModelChange)="onPassRateInclusionChange(student.id, $event)" [disabled]="isPublished" [ngModelOptions]="{standalone: true}" title="Include this student's marks in subject and class pass rates" />
               </td>
               <td class="exam-ref">{{ student.studentNumber }}</td>
               <td>{{ student.lastName }}</td>
