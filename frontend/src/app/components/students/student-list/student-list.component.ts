@@ -38,7 +38,7 @@ students: any[] = [];
 selectedStudent: any = null;
   pagination = {
     page: 1,
-    limit: 50,
+    limit: 20,
     total: 0,
     totalPages: 1
   };
@@ -337,8 +337,8 @@ this.selectedStudentIds.clear();
     this.studentService.getStudentsPaginated({
       classId: this.selectedClass || undefined,
       grade: this.selectedGrade || undefined,
-      page,
-      limit: this.selectedGrade ? 1000 : this.pagination.limit,
+      page: Number(page) || 1,
+      limit: this.selectedGrade ? 1000 : Number(this.pagination.limit) || 20,
       search: this.searchQuery.trim() || undefined,
       studentType: this.selectedType || (logisticsMode ? 'Day Scholar' : undefined),
       usesTransport: usesTransport ? true : undefined,
@@ -380,11 +380,18 @@ try {
         } catch {
           this.gradeOptions = this.gradeOptions || [];
         }
+        const pageNum = Math.max(1, Number(response?.page ?? page) || 1);
+        const limitNum = Math.max(1, Number(response?.limit ?? this.pagination.limit) || 20);
+        const totalNum = Math.max(0, Number(response?.total ?? this.students.length) || 0);
+        const computedPages = Math.max(1, Math.ceil(totalNum / limitNum) || 1);
+        const apiPages = Number(response?.totalPages);
         this.pagination = {
-          page: response?.page || page,
-          limit: response?.limit || this.pagination.limit,
-          total: response?.total ?? this.students.length,
-totalPages: response?.totalPages || 1
+          page: pageNum,
+          limit: limitNum,
+          total: totalNum,
+          totalPages: Number.isFinite(apiPages) && apiPages > 0
+            ? Math.max(apiPages, computedPages)
+            : computedPages
         };
         this.stats = {
           totalDayScholars: response?.stats?.totalDayScholars ?? 0,
@@ -898,11 +905,22 @@ totalPages: response?.totalPages || 1
     this.loadStudents(1);
   }
 
+  get canGoPrevious(): boolean {
+    return Number(this.pagination.page) > 1;
+  }
+
+  get canGoNext(): boolean {
+    return Number(this.pagination.page) < Number(this.pagination.totalPages);
+  }
+
   onPageChange(page: number) {
-    if (page < 1 || page > this.pagination.totalPages || page === this.pagination.page) {
+    const target = Number(page);
+    const totalPages = Number(this.pagination.totalPages) || 1;
+    const current = Number(this.pagination.page) || 1;
+    if (!Number.isFinite(target) || target < 1 || target > totalPages || target === current) {
       return;
     }
-    this.loadStudents(page);
+    this.loadStudents(target);
   }
 
   onPageSizeChange(limit: number | string) {

@@ -588,8 +588,8 @@
 }
 
 .fb-cb-table-wrap {
-  border-radius: 0;
-  border: none;
+  border-radius: 8px;
+  border: 1.5px solid #94a3b8;
   overflow: hidden;
 }
 
@@ -599,14 +599,15 @@
 }
 
 .fb-cb-table th {
-  background: linear-gradient(180deg, #1e3a5f 0%, #152a45 100%);
-  color: #fff;
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  color: #ffffff !important;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   padding: 0.65rem 0.85rem;
-  border-bottom: none;
-  border-color: #152a45;
+  border: 1.5px solid #152a45;
+  border-top: none;
   white-space: nowrap;
 }
 
@@ -615,11 +616,39 @@
   vertical-align: middle;
   color: #334155;
   font-size: 0.86rem;
-  border-bottom: 1px solid #f1f5f9;
+  border: 1.5px solid #94a3b8;
+}
+
+.fb-cb-table tbody td:first-child {
+  border-left: none;
+}
+
+.fb-cb-table tbody td:last-child {
+  border-right: none;
+}
+
+.fb-cb-table thead th:first-child {
+  border-left: none;
+}
+
+.fb-cb-table thead th:last-child {
+  border-right: none;
 }
 
 .fb-cb-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+.fb-cb-table tbody tr:nth-child(even) {
+  background: #f1f5f9;
+}
+
+.fb-cb-table tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+
+.fb-cb-table tbody tr:hover {
+  background: #e2e8f0;
 }
 
 .fb-cb-table th:nth-child(1),
@@ -1629,22 +1658,89 @@
 
 .fb-class-row__amt { text-align: right; white-space: nowrap; }
 
-.fb-table-wrap { overflow: auto; border: 1px solid #e2e8f0; border-radius: 10px; }
-.fb-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-.fb-table th, .fb-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid #f1f5f9; text-align: left; }
+.fb-table-wrap {
+  overflow: auto;
+  border: 1.5px solid #94a3b8;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.fb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  border: none;
+  background: #fff;
+}
+
+.fb-table th,
+.fb-table td {
+  padding: 0.65rem 0.85rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.fb-table thead,
+.fb-table thead tr,
+.fb-table thead th {
+  background: #1e3a5f !important;
+  background-color: #1e3a5f !important;
+  color: #ffffff !important;
+}
+
 .fb-table th {
-  background: linear-gradient(180deg, #1e3a5f 0%, #152a45 100%);
   font-size: 0.72rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #fff;
+  letter-spacing: 0.05em;
+  color: #ffffff !important;
+  background-color: #1e3a5f !important;
+  border: 1.5px solid #152a45;
+  border-top: none;
+  white-space: nowrap;
+}
+
+.fb-table thead th:first-child {
+  border-left: none;
+}
+
+.fb-table thead th:last-child {
+  border-right: none;
+}
+
+.fb-table td {
+  border: 1.5px solid #94a3b8;
+  color: #1e293b;
+}
+
+.fb-table tbody td:first-child {
+  border-left: none;
+}
+
+.fb-table tbody td:last-child {
+  border-right: none;
+}
+
+.fb-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-.fb-table tbody tr:nth-child(even) td {
-  background: #fafafa;
+.fb-table tbody tr:nth-child(even) {
+  background: #f1f5f9;
 }
-.fb-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.fb-table tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+
+.fb-table tbody tr:hover {
+  background: #e2e8f0;
+}
+
+.fb-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 
 .fb-one-line {
   max-width: 16rem;
@@ -1659,12 +1755,6 @@
 
 .fb-overview-table .fb-table td {
   vertical-align: middle;
-}
-
-.fb-overview-table .fb-table tbody tr:nth-child(odd) td,
-.fb-overview-table .fb-table tbody tr:nth-child(even) td {
-  background: transparent;
-  border-bottom: 1px solid #f1f5f9;
 }
 
 .fb-empty { color: #94a3b8; text-align: center; padding: 1rem; }

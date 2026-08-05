@@ -514,14 +514,17 @@
   text-align: right;
 }
 
-/* Table — scroll subjects; pin identity + Total/Average */
+/* Table — scroll subjects; pin identity + Total/Average
+   Column proportions match classic mark sheet: narrow Pos, roomy Name,
+   equal subject columns, moderate Total / Average. */
 .ms-table-wrap,
 .mark-sheet-table-wrapper {
-  --ms-sticky-pos: 48px;
-  --ms-sticky-id: 108px;
-  --ms-sticky-name: 148px;
-  --ms-sticky-total: 92px;
-  --ms-sticky-avg: 78px;
+  --ms-sticky-pos: 52px;
+  --ms-sticky-id: 128px;
+  --ms-sticky-name: 210px;
+  --ms-sticky-total: 112px;
+  --ms-sticky-avg: 88px;
+  --ms-subject-col: 108px;
   overflow-x: auto;
   overflow-y: visible;
   margin-bottom: 1rem;
@@ -543,12 +546,12 @@
 .mark-sheet-table-wrapper::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 5px; }
 
 .mark-sheet-table.ms-table {
-  width: max-content;
+  width: 100%;
   min-width: 100%;
   max-width: none;
   border-collapse: separate;
   border-spacing: 0;
-  table-layout: auto;
+  table-layout: fixed;
   font-size: 0.82rem;
   background: #fff;
   color: var(--ms-text);
@@ -621,7 +624,11 @@
   text-transform: uppercase;
   letter-spacing: 0.02em;
   line-height: 1.15;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+  text-align: center;
 }
 
 .subject-pass-rate {
@@ -659,7 +666,7 @@
   background: #e2e8f0 !important;
 }
 
-/* Compact fixed widths for sticky columns */
+/* Column widths — Pos narrow · Name widest · subjects equal · Total/Avg moderate */
 .position-col,
 .ms-sticky-left--pos {
   width: var(--ms-sticky-pos);
@@ -674,6 +681,8 @@
   min-width: var(--ms-sticky-id);
   max-width: var(--ms-sticky-id);
   white-space: nowrap;
+  text-align: left !important;
+  padding-left: 0.65rem !important;
 }
 
 .student-name-col,
@@ -682,16 +691,19 @@
   min-width: var(--ms-sticky-name);
   max-width: var(--ms-sticky-name);
   text-align: left !important;
+  padding-left: 0.75rem !important;
   white-space: nowrap;
 }
 
 .subject-col,
 .ms-table tbody td.mark-cell {
+  /* Equal flexible band — share remaining width evenly */
   width: auto;
-  min-width: 64px;
+  min-width: var(--ms-subject-col);
   white-space: nowrap;
   padding-left: 0.35rem;
   padding-right: 0.35rem;
+  text-align: center;
 }
 
 .total-col,
@@ -700,6 +712,7 @@
   min-width: var(--ms-sticky-total);
   max-width: var(--ms-sticky-total);
   white-space: nowrap;
+  text-align: center;
 }
 
 .average-col,
@@ -708,6 +721,7 @@
   min-width: var(--ms-sticky-avg);
   max-width: var(--ms-sticky-avg);
   white-space: nowrap;
+  text-align: center;
 }
 
 /* Pin left identity columns */
@@ -748,6 +762,8 @@
   color: #152a45;
   font-weight: 600;
   font-size: 0.75rem;
+  text-align: left !important;
+  padding-left: 0.65rem !important;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -755,6 +771,7 @@
 
 .student-name-cell {
   text-align: left !important;
+  padding-left: 0.75rem !important;
   font-weight: 600;
   color: #0f172a;
   overflow: hidden;
@@ -920,4 +937,145 @@
   }
 
   .sticky-header { position: static; }
+
+  .ms-rc-modal-overlay { display: none !important; }
 }
+
+/* Report card modal — normal dialog size (not maximized) */
+.ms-rc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.55);
+  box-sizing: border-box;
+}
+
+.ms-rc-modal {
+  width: min(920px, 100%);
+  max-height: min(88vh, 900px);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+}
+
+.ms-rc-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0.85rem 1.1rem;
+  background: #1e3a5f;
+  color: #fff;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.ms-rc-modal__header::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f59e0b;
+}
+
+.ms-rc-modal__titles {
+  min-width: 0;
+  padding-left: 0.35rem;
+}
+
+.ms-rc-modal__eyebrow {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fbbf24;
+  margin-bottom: 2px;
+}
+
+.ms-rc-modal__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ms-rc-modal__close {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.ms-rc-modal__close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.ms-rc-modal__body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 420px;
+  height: min(72vh, 720px);
+  background: #525659;
+}
+
+.ms-rc-modal__loading,
+.ms-rc-modal__error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 1.5rem;
+  color: #f8fafc;
+  text-align: center;
+  z-index: 2;
+  background: #1e293b;
+}
+
+.ms-rc-modal__spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: ms-rc-spin 0.85s linear infinite;
+}
+
+@keyframes ms-rc-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .ms-rc-modal-overlay {
+    padding: 0.75rem;
+  }
+
+  .ms-rc-modal {
+    max-height: 92vh;
+  }
+
+  .ms-rc-modal__body {
+    min-height: 320px;
+    height: min(70vh, 560px);
+  }
+}
+

@@ -463,39 +463,54 @@
 /* Table Wrapper */
 .table-wrapper {
   background: white;
-  border-radius: 16px;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: none;
   margin-bottom: 24px;
   overflow-x: auto;
+  border: none;
 }
 
 .invoice-table {
   width: 100%;
   border-collapse: collapse;
+  border: none;
 }
 
 .invoice-table thead {
-  background: #f9fafb;
+  background: #1e3a5f;
   position: sticky;
   top: 0;
   z-index: 10;
 }
 
 .invoice-table th {
-  padding: 14px 12px;
+  padding: 12px 14px;
   text-align: left;
-  font-weight: 600;
-  color: #374151;
-  font-size: 13px;
-  border-bottom: 2px solid #e5e7eb;
+  font-weight: 700;
+  color: #ffffff !important;
+  background-color: #1e3a5f !important;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1.5px solid #152a45;
   white-space: nowrap;
 }
 
 .invoice-table td {
-  padding: 14px 12px;
-  border-bottom: 1px solid #f3f4f6;
+  padding: 12px 14px;
+  border: 1.5px solid #94a3b8;
   font-size: 14px;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.invoice-table tbody tr:nth-child(even) {
+  background: #f1f5f9;
+}
+
+.invoice-table tbody tr:nth-child(odd) {
+  background: #ffffff;
 }
 
 .invoice-table tbody tr {
@@ -503,7 +518,7 @@
 }
 
 .invoice-table tbody tr:hover {
-  background: #f9fafb;
+  background: #e2e8f0;
 }
 
 .invoice-table tbody tr.void-row td {

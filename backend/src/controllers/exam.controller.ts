@@ -4231,12 +4231,14 @@ export const generateMarkSheetPDF = async (req: AuthRequest, res: Response) => {
     const dashboardUrl = `${frontendBase}/dashboard`;
     const htmlBuffer = await createMarkSheetPDF(pdfData, settings, { dashboardUrl });
 
-    const safeClass = String(classEntity.name || 'class').replace(/\s+/g, '-');
-    const safeExam = String(examType || 'exam').replace(/_/g, '-');
+    const safeClass = String(classEntity.name || 'Mark Sheet')
+      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim() || 'Mark Sheet';
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
-      `inline; filename="mark-sheet-${safeClass}-${safeExam}-${new Date().toISOString().split('T')[0]}.html"`
+      `inline; filename="${safeClass}.html"`
     );
     return res.send(htmlBuffer);
   } catch (error: any) {

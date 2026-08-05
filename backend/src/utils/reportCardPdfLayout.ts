@@ -561,16 +561,28 @@ export function estimateReportCardHeight(
   ];
   const colW = innerW / 2;
   const infoPadX = 10;
+  const infoLabels = [
+    'Student Name',
+    'Exam',
+    'Student Number',
+    'Class Position',
+    'Class',
+    'Attendance'
+  ];
   for (let row = 0; row < 3; row++) {
-    let maxRowH = 32;
+    let maxRowH = 28;
     for (let col = 0; col < 2; col++) {
       const idx = row * 2 + col;
+      const labelPrefix = `${infoLabels[idx].toUpperCase()}: `;
+      doc.fontSize(9).font('Helvetica-Bold');
+      const labelW = doc.widthOfString(labelPrefix);
+      const valueMaxW = Math.max(24, colW - infoPadX * 2 - labelW);
       doc.fontSize(10).font('Helvetica');
       const valueH = doc.heightOfString(infoFields[idx].value, {
-        width: colW - infoPadX * 2,
+        width: valueMaxW,
         lineGap: 1
       });
-      maxRowH = Math.max(maxRowH, INFO_LABEL_H + valueH + 10);
+      maxRowH = Math.max(maxRowH, Math.max(valueH, 12) + 14);
     }
     h += Math.min(maxRowH, metrics.infoRowMaxH);
   }
@@ -690,15 +702,19 @@ export function renderReportCardLayout(
   const infoPadX = 10;
   const infoRowHeights: number[] = [];
   for (let row = 0; row < 3; row++) {
-    let maxRowH = 32;
+    let maxRowH = 28;
     for (let col = 0; col < 2; col++) {
       const idx = row * 2 + col;
-      doc.fontSize(10).font('Helvetica').fillColor(VALUE_DARK);
+      const labelPrefix = `${infoFields[idx].label.toUpperCase()}: `;
+      doc.fontSize(9).font('Helvetica-Bold');
+      const labelW = doc.widthOfString(labelPrefix);
+      const valueMaxW = Math.max(24, colW - infoPadX * 2 - labelW);
+      doc.fontSize(10).font('Helvetica');
       const valueH = doc.heightOfString(infoFields[idx].value, {
-        width: colW - infoPadX * 2,
+        width: valueMaxW,
         lineGap: 1
       });
-      maxRowH = Math.max(maxRowH, INFO_LABEL_H + valueH + 10);
+      maxRowH = Math.max(maxRowH, Math.max(valueH, 12) + 14);
     }
     infoRowHeights.push(Math.min(maxRowH, metrics.infoRowMaxH));
   }
@@ -713,17 +729,21 @@ export function renderReportCardLayout(
         drawVLine(doc, cellX + colW, cellY, infoRowH);
       }
       drawHLine(doc, innerX, cellY + infoRowH, innerW);
-      doc.fontSize(8).font('Helvetica').fillColor(LABEL_SLATE);
-      doc.text(infoFields[idx].label.toUpperCase(), cellX + infoPadX, cellY + 6, {
-        width: colW - infoPadX * 2,
-        characterSpacing: 0.4,
+
+      const labelPrefix = `${infoFields[idx].label.toUpperCase()}: `;
+      const textY = cellY + Math.max(6, (infoRowH - 12) / 2);
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000');
+      const labelW = doc.widthOfString(labelPrefix);
+      doc.text(labelPrefix, cellX + infoPadX, textY, {
         lineGap: 0,
-        lineBreak: false
+        lineBreak: false,
+        continued: false
       });
-      doc.fontSize(10).font('Helvetica').fillColor(VALUE_DARK);
-      const valueMaxH = Math.max(8, infoRowH - INFO_LABEL_H - 12);
-      doc.text(infoFields[idx].value, cellX + infoPadX, cellY + INFO_LABEL_H + 6, {
-        width: colW - infoPadX * 2,
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      const valueMaxW = Math.max(24, colW - infoPadX * 2 - labelW);
+      const valueMaxH = Math.max(10, infoRowH - 10);
+      doc.text(infoFields[idx].value, cellX + infoPadX + labelW, textY, {
+        width: valueMaxW,
         height: valueMaxH,
         lineGap: 1,
         ellipsis: true

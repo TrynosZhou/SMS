@@ -84,9 +84,23 @@ return this.http.get<PaginatedResponse<any>>(`${this.apiUrl}/students`, { params
         }
         // If response.data exists, ensure it's an array
         if (response.data !== undefined) {
+          const data = Array.isArray(response.data) ? response.data : [];
+          const page = Number(response.page ?? queryParams.page) || 1;
+          const limit = Number(response.limit ?? queryParams.limit) || 20;
+          const total = Number(response.total ?? data.length) || 0;
+          const totalPages = Math.max(
+            1,
+            Number(response.totalPages) > 0
+              ? Number(response.totalPages)
+              : Math.ceil(total / limit) || 1
+          );
           return {
             ...response,
-            data: Array.isArray(response.data) ? response.data : []
+            data,
+            page,
+            limit,
+            total,
+            totalPages
           };
         }
         // If response is an array directly, wrap it

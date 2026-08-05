@@ -695,7 +695,7 @@
   background: #fff;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  border: 1.5px solid #94a3b8;
 }
 
 .manage-students-table {
@@ -703,6 +703,7 @@
   border-collapse: collapse;
   font-size: 0.88rem;
   background: #fff;
+  border: none;
 }
 
 /* Lock header colors — override global th/tr:hover from styles.css */
@@ -731,7 +732,16 @@
   white-space: nowrap;
   color: #ffffff !important;
   background-color: #1e3a5f !important;
-  border-bottom: 1px solid #152a45;
+  border: 1.5px solid #152a45;
+  border-top: none;
+}
+
+.manage-students-table thead th:first-child {
+  border-left: none;
+}
+
+.manage-students-table thead th:last-child {
+  border-right: none;
 }
 
 .manage-students-table th.sortable {
@@ -812,17 +822,33 @@
 
 .manage-students-table td {
   padding: 12px 14px;
-  border-bottom: 1px solid #f1f5f9;
+  border: 1.5px solid #94a3b8;
   color: #1e293b;
   vertical-align: middle;
 }
 
-.manage-students-table tbody tr:hover {
-  background: #faf8ff;
+.manage-students-table tbody td:first-child {
+  border-left: none;
+}
+
+.manage-students-table tbody td:last-child {
+  border-right: none;
 }
 
 .manage-students-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+.manage-students-table tbody tr:nth-child(even) {
+  background: #f1f5f9;
+}
+
+.manage-students-table tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+
+.manage-students-table tbody tr:hover {
+  background: #e2e8f0;
 }
 
 .col-student-id {
@@ -942,22 +968,32 @@
 }
 
 .btn-page {
-  padding: 6px 14px;
-  border: 1px solid #d1d5db;
+  min-width: 40px;
+  height: 36px;
+  padding: 6px 12px;
+  border: 1px solid #1e3a5f;
   border-radius: 8px;
   background: #fff;
+  color: #1e3a5f;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .btn-page:hover:not(:disabled) {
-  border-color: #1d4ed8;
-  color: #1e3a5f;
+  background: #1e3a5f;
+  border-color: #1e3a5f;
+  color: #fff;
 }
 
 .btn-page:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+  background: #f8fafc;
 }
 
 .btn-add-first,

@@ -80,6 +80,13 @@ error = '';
   private autoGenerationInProgress = false;
   private autoGenerationTimeout: any = null;
 
+  /** Report card preview modal (double-click student on mark sheet). */
+  reportCardModalOpen = false;
+  reportCardModalLoading = false;
+  reportCardModalError = '';
+  reportCardModalTitle = 'Report card';
+  reportCardBlobUrl: string | null = null;
+
   constructor(
     private examService: ExamService,
     private classService: ClassService,
@@ -109,7 +116,8 @@ error = '';
     if (this.autoGenerationTimeout) {
       clearTimeout(this.autoGenerationTimeout);
     }
-}
+    this.closeReportCardModal();
+  }
 
 
   loadClasses() {
@@ -367,23 +375,16 @@ setTimeout(() => this.error = '', 5000);
     this.success = '';
 
     this.examService.downloadMarkSheetPDF(
-      this.selectedClassId, 
-      this.selectedExamType, 
+      this.selectedClassId,
+      this.selectedExamType,
       this.selectedTerm
     ).subscribe({
       next: (blob: Blob) => {
-        const fileURL = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = fileURL;
-        const className = this.markSheetData?.class?.name || 'class';
-        const examType = this.selectedExamType.replace('_', '-');
-        link.download = `mark-sheet-${className}-${examType}-${new Date().toISOString().split('T')[0]}.html`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(fileURL);
+        const blobUrl = URL.createObjectURL(blob);
+        // Open HTML preview — gold Download button saves PDF named after the class
+        window.open(blobUrl, '_blank');
         this.loading = false;
-        this.success = 'Mark sheet downloaded successfully';
+        this.success = 'Mark sheet preview opened — click Download to save the PDF';
         setTimeout(() => this.success = '', 5000);
       },
       error: (err: any) => {
@@ -631,7 +632,7 @@ setTimeout(() => this.error = '', 5000);
     return 'rank-default';
   }
 
-  /** Open /report-cards for this student using the current mark-sheet filters. */
+  /** Open this student's report card PDF in a modal (stay on mark-sheet). */
   openStudentReportCard(row: any): void {
     const studentId = String(row?.studentId || '').trim();
     if (!studentId) {
@@ -653,16 +654,50 @@ setTimeout(() => this.error = '', 5000);
       return;
     }
 
-    void this.router.navigate(['/report-cards'], {
-      queryParams: {
-        classId: this.selectedClassId,
-        examType: this.selectedExamType,
-        term: this.selectedTerm,
-        studentId,
-        studentName: row?.studentName || undefined,
-        from: 'mark-sheet',
-      },
-    });
+    this.closeReportCardModal();
+    this.reportCardModalOpen = true;
+    this.reportCardModalLoading = true;
+    this.reportCardModalError = '';
+    this.reportCardModalTitle = String(row?.studentName || 'Student').trim() || 'Report card';
+    this.cdr.markForCheck();
+
+    this.examService
+      .downloadAllReportCardsPDF(
+        this.selectedClassId,
+        this.selectedExamType,
+        this.selectedTerm,
+        studentId
+      )
+      .subscribe({
+        next: (blob: Blob) => {
+          if (!blob?.size) {
+            this.reportCardModalLoading = false;
+            this.reportCardModalError = 'Received empty report card PDF.';
+            this.cdr.markForCheck();
+            return;
+          }
+          this.reportCardBlobUrl = window.URL.createObjectURL(blob);
+          this.reportCardModalLoading = false;
+          this.cdr.markForCheck();
+        },
+        error: (err: any) => {
+          this.reportCardModalLoading = false;
+          this.reportCardModalError =
+            err?.error?.message || err?.message || 'Failed to load report card.';
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  closeReportCardModal(): void {
+    if (this.reportCardBlobUrl) {
+      window.URL.revokeObjectURL(this.reportCardBlobUrl);
+      this.reportCardBlobUrl = null;
+    }
+    this.reportCardModalOpen = false;
+    this.reportCardModalLoading = false;
+    this.reportCardModalError = '';
+    this.cdr.markForCheck();
   }
 
   getScoreColor(score: number): string {

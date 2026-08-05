@@ -359,10 +359,10 @@
         </label>
       </div>
       <div class="pagination-actions">
-        <button type="button" class="btn-page" (click)="onPageChange(1)" [disabled]="pagination.page === 1">⏮</button>
-        <button type="button" class="btn-page" (click)="onPageChange(pagination.page - 1)" [disabled]="pagination.page === 1">◀</button>
-        <button type="button" class="btn-page" (click)="onPageChange(pagination.page + 1)" [disabled]="pagination.page === pagination.totalPages">▶</button>
-        <button type="button" class="btn-page" (click)="onPageChange(pagination.totalPages)" [disabled]="pagination.page === pagination.totalPages">⏭</button>
+        <button type="button" class="btn-page" (click)="onPageChange(1)" [disabled]="!canGoPrevious" title="First page" aria-label="First page">⏮</button>
+        <button type="button" class="btn-page" (click)="onPageChange(pagination.page - 1)" [disabled]="!canGoPrevious" title="Previous page" aria-label="Previous page">◀</button>
+        <button type="button" class="btn-page" (click)="onPageChange(pagination.page + 1)" [disabled]="!canGoNext" title="Next page" aria-label="Next page">▶</button>
+        <button type="button" class="btn-page" (click)="onPageChange(pagination.totalPages)" [disabled]="!canGoNext" title="Last page" aria-label="Last page">⏭</button>
       </div>
     </div>
   </div>

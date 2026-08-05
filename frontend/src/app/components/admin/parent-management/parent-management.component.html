@@ -315,7 +315,6 @@
             class="btn btn-blue"
             (click)="startEditParent()"
             *ngIf="!editMode"
-            [class.btn-blue--active]="!showMessagePanel"
             [disabled]="savingParent || deletingParent || sendingMessage">
             <span class="btn__icon" aria-hidden="true">✏️</span>
             Edit
@@ -325,7 +324,6 @@
             class="btn btn-blue"
             (click)="cancelEditParent()"
             *ngIf="editMode"
-            [class.btn-blue--active]="!showMessagePanel"
             [disabled]="savingParent || deletingParent">
             Cancel
           </button>

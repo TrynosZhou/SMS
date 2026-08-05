@@ -376,14 +376,14 @@
 }
 
 .teachers-action-btn--primary {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
+  background: #1e3a5f;
+  border-color: #1e3a5f;
   color: #fff;
 }
 
 .teachers-action-btn--primary:hover:not(:disabled) {
-  background: #1e40af;
-  border-color: #1e40af;
+  background: #152a45;
+  border-color: #152a45;
   color: #fff;
   opacity: 1;
 }
@@ -689,7 +689,7 @@
   background: #fff;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  border: 1.5px solid #94a3b8;
 }
 
 .manage-teachers-table {
@@ -697,6 +697,7 @@
   border-collapse: collapse;
   font-size: 0.88rem;
   background: #fff;
+  border: none;
 }
 
 /* Lock header — override global th/tr:hover */
@@ -725,7 +726,16 @@
   white-space: nowrap;
   color: #ffffff !important;
   background-color: #1e3a5f !important;
-  border-bottom: 1px solid #152a45;
+  border: 1.5px solid #152a45;
+  border-top: none;
+}
+
+.manage-teachers-table thead th:first-child {
+  border-left: none;
+}
+
+.manage-teachers-table thead th:last-child {
+  border-right: none;
 }
 
 .manage-teachers-table th.sortable {
@@ -830,17 +840,33 @@
 
 .manage-teachers-table td {
   padding: 12px 14px;
-  border-bottom: 1px solid #f1f5f9;
+  border: 1.5px solid #94a3b8;
   color: #1e293b;
   vertical-align: middle;
 }
 
-.manage-teachers-table tbody tr:hover {
-  background: #f8fafc;
+.manage-teachers-table tbody td:first-child {
+  border-left: none;
+}
+
+.manage-teachers-table tbody td:last-child {
+  border-right: none;
 }
 
 .manage-teachers-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+.manage-teachers-table tbody tr:nth-child(even) {
+  background: #f1f5f9;
+}
+
+.manage-teachers-table tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+
+.manage-teachers-table tbody tr:hover {
+  background: #e2e8f0;
 }
 
 .col-id {

@@ -179,7 +179,11 @@ export function createMarkSheetHTML(
     .join('');
 
   const logoHtml = buildLogoHtml(logo, schoolName);
-  const downloadFileName = `mark-sheet-${String(data.class.name || 'class').replace(/\s+/g, '-')}-${String(data.examType || 'exam').replace(/_/g, '-')}-${generated.toISOString().split('T')[0]}.pdf`;
+  const rawClassName = String(data.class.name || 'Mark Sheet').trim() || 'Mark Sheet';
+  const downloadFileName = `${rawClassName
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim() || 'Mark Sheet'}.pdf`;
   const dashboardUrl = String(options?.dashboardUrl || '/dashboard').trim() || '/dashboard';
 
   return `<!DOCTYPE html>
@@ -800,7 +804,12 @@ export function createMarkSheetHTML(
         document.head.appendChild(script);
       }
 
-      function downloadAsPdf() {
+      function downloadAsPdf(e) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+
         var btn = document.getElementById('btn-download-pdf');
         var report = document.querySelector('.report');
         if (!report) return;
@@ -808,6 +817,8 @@ export function createMarkSheetHTML(
         if (btn) {
           btn.disabled = true;
           btn.setAttribute('aria-busy', 'true');
+          var label = btn.querySelector('span:last-child');
+          if (label) label.textContent = 'Preparing…';
         }
 
         var hidden = [];
@@ -826,95 +837,49 @@ export function createMarkSheetHTML(
           if (btn) {
             btn.disabled = false;
             btn.removeAttribute('aria-busy');
+            var labelEl = btn.querySelector('span:last-child');
+            if (labelEl) labelEl.textContent = 'Download';
           }
         }
 
-        function finishWithPrint() {
+        function failDownload(message) {
           restoreHidden();
-          window.print();
+          alert(message || 'Unable to download PDF. Please check your connection and try again.');
         }
 
         loadHtml2Pdf(function (err) {
-          if (err || typeof html2canvas === 'undefined') {
-            finishWithPrint();
+          if (err || typeof html2pdf === 'undefined') {
+            failDownload('PDF library failed to load. Please check your internet connection and try again.');
             return;
           }
 
-          var JsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
-          if (!JsPDF) {
-            // Fallback to html2pdf helper if jsPDF global is unavailable
-            if (typeof html2pdf !== 'undefined') {
-              html2pdf()
-                .set({
-                  margin: [6, 6, 6, 6],
-                  filename: PDF_FILENAME,
-                  image: { type: 'jpeg', quality: 0.95 },
-                  html2canvas: {
-                    scale: 3,
-                    useCORS: true,
-                    logging: false,
-                    backgroundColor: '#ffffff',
-                    scrollX: 0,
-                    scrollY: 0,
-                    windowWidth: report.scrollWidth,
-                    windowHeight: report.scrollHeight
-                  },
-                  jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true },
-                  pagebreak: { mode: ['css'], avoid: ['tr', 'thead', '.card', '.banner', '.meta-row', '.summary'] }
-                })
-                .from(report)
-                .save()
-                .then(restoreHidden)
-                .catch(finishWithPrint);
-              return;
-            }
-            finishWithPrint();
-            return;
-          }
-
-          // High-resolution canvas → clean page slices (avoids white mid-row tears)
-          html2canvas(report, {
-            scale: 3,
-            useCORS: true,
-            allowTaint: true,
-            logging: false,
-            backgroundColor: '#ffffff',
-            scrollX: 0,
-            scrollY: 0,
-            windowWidth: Math.max(report.scrollWidth, report.offsetWidth),
-            windowHeight: Math.max(report.scrollHeight, report.offsetHeight)
-          }).then(function (canvas) {
-            var imgData = canvas.toDataURL('image/jpeg', 0.95);
-            var pdf = new JsPDF({
-              orientation: 'landscape',
-              unit: 'mm',
-              format: 'a4',
-              compress: true
+          // Always download a real PDF file — never open the browser print dialog
+          html2pdf()
+            .set({
+              margin: [6, 6, 6, 6],
+              filename: PDF_FILENAME,
+              image: { type: 'jpeg', quality: 0.98 },
+              html2canvas: {
+                scale: 2.5,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff',
+                scrollX: 0,
+                scrollY: 0,
+                windowWidth: Math.max(report.scrollWidth, report.offsetWidth),
+                windowHeight: Math.max(report.scrollHeight, report.offsetHeight)
+              },
+              jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true },
+              pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', 'thead', '.card', '.banner', '.meta-row', '.summary'] }
+            })
+            .from(report)
+            .save()
+            .then(function () {
+              restoreHidden();
+            })
+            .catch(function () {
+              failDownload('PDF download failed. Please try again.');
             });
-            var pageW = pdf.internal.pageSize.getWidth();
-            var pageH = pdf.internal.pageSize.getHeight();
-            var margin = 5;
-            var usableW = pageW - margin * 2;
-            var usableH = pageH - margin * 2;
-            var imgW = usableW;
-            var imgH = (canvas.height * imgW) / canvas.width;
-
-            var y = margin;
-            pdf.addImage(imgData, 'JPEG', margin, y, imgW, imgH, undefined, 'FAST');
-
-            var heightLeft = imgH - usableH;
-            while (heightLeft > 1) {
-              y = margin - (imgH - heightLeft);
-              pdf.addPage();
-              pdf.addImage(imgData, 'JPEG', margin, y, imgW, imgH, undefined, 'FAST');
-              heightLeft -= usableH;
-            }
-
-            pdf.save(PDF_FILENAME);
-            restoreHidden();
-          }).catch(function () {
-            finishWithPrint();
-          });
         });
       }
 

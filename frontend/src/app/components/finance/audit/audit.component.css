@@ -471,7 +471,12 @@
   display: block;
 }
 
-.fa-table-scroll { overflow-x: auto; }
+.fa-table-scroll {
+  overflow-x: auto;
+  border: 1.5px solid #94a3b8;
+  border-radius: 8px;
+  background: #fff;
+}
 
 .fa-table {
   width: 100%;
@@ -479,6 +484,7 @@
   font-size: 0.82rem;
   min-width: 1100px;
   background: #fff;
+  border: none;
 }
 
 /* Lock header — override global th/tr:hover */
@@ -507,17 +513,49 @@
   color: #ffffff !important;
   background: #1e3a5f !important;
   background-color: #1e3a5f !important;
-  border-bottom: 1px solid #152a45;
+  border: 1.5px solid #152a45;
+  border-top: none;
   white-space: nowrap;
+}
+
+.fa-table thead th:first-child {
+  border-left: none;
+}
+
+.fa-table thead th:last-child {
+  border-right: none;
 }
 
 .fa-table tbody td {
   padding: 10px 12px;
-  border-bottom: 1px solid #f1f5f9;
+  border: 1.5px solid #94a3b8;
   vertical-align: middle;
+  color: #1e293b;
 }
 
-.fa-table tbody tr:hover { background: #f8fafc; }
+.fa-table tbody td:first-child {
+  border-left: none;
+}
+
+.fa-table tbody td:last-child {
+  border-right: none;
+}
+
+.fa-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.fa-table tbody tr:nth-child(even) {
+  background: #f1f5f9;
+}
+
+.fa-table tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+
+.fa-table tbody tr:hover {
+  background: #e2e8f0;
+}
 
 .fa-row--anomaly {
   background: #fef2f2 !important;

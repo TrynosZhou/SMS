@@ -303,4 +303,48 @@
       </div>
     </footer>
   </section>
+
+  <!-- Report card modal (double-click student) -->
+  <div
+    class="ms-rc-modal-overlay"
+    *ngIf="reportCardModalOpen"
+    (click)="closeReportCardModal()"
+    role="presentation">
+    <div
+      class="ms-rc-modal"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="reportCardModalTitle + ' report card'"
+      (click)="$event.stopPropagation()">
+      <header class="ms-rc-modal__header">
+        <div class="ms-rc-modal__titles">
+          <span class="ms-rc-modal__eyebrow">Report card</span>
+          <h2 class="ms-rc-modal__title">{{ reportCardModalTitle }}</h2>
+        </div>
+        <button
+          type="button"
+          class="ms-rc-modal__close"
+          (click)="closeReportCardModal()"
+          aria-label="Close report card">
+          ×
+        </button>
+      </header>
+      <div class="ms-rc-modal__body">
+        <div class="ms-rc-modal__loading" *ngIf="reportCardModalLoading">
+          <div class="ms-rc-modal__spinner" aria-hidden="true"></div>
+          <p>Loading report card…</p>
+        </div>
+        <div class="ms-rc-modal__error" *ngIf="!reportCardModalLoading && reportCardModalError">
+          <p>{{ reportCardModalError }}</p>
+          <button type="button" class="ms-btn ms-btn--primary ms-btn--sm" (click)="closeReportCardModal()">Close</button>
+        </div>
+        <app-pdf-blob-viewer
+          *ngIf="!reportCardModalLoading && !reportCardModalError && reportCardBlobUrl"
+          [blobUrl]="reportCardBlobUrl"
+          [reportCardMode]="true"
+          [title]="reportCardModalTitle + ' report card'">
+        </app-pdf-blob-viewer>
+      </div>
+    </div>
+  </div>
 </div>
